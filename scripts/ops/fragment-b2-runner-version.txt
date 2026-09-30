@@ -1,0 +1,1 @@
+v1 fail-closed canary, restore, status, preflight and bounded archive batch
