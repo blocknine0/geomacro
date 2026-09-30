@@ -1,0 +1,38 @@
+name: Patch B2 fragment resolver once
+
+on:
+  push:
+    branches:
+      - fix/b2-fragment-resolver-legacy-20260930
+
+permissions:
+  contents: write
+
+concurrency:
+  group: patch-b2-fragment-resolver-once
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fix/b2-fragment-resolver-legacy-20260930
+          fetch-depth: 1
+      - name: Apply guarded resolver patch
+        run: node scripts/ops/patch-b2-fragment-resolver-once.mjs
+      - name: Commit patched runtime if needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- supabase/functions/live-structure-intelligence/index.ts; then
+            echo "Resolver already patched."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/functions/live-structure-intelligence/index.ts
+          git commit -m "Use resolved B2 fragment locations in structuring runtime"
+          git push origin HEAD:fix/b2-fragment-resolver-legacy-20260930
