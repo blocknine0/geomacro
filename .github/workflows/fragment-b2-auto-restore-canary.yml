@@ -1,0 +1,31 @@
+name: Fragment B2 Auto Restore Canary
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fragment-b2-auto-restore-canary
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: ${{ secrets.B2_S3_ENDPOINT }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.1
+      - run: bun install --frozen-lockfile
+      - name: Select latest verified archive pointer
+        id: select
+        run: echo "fragment_id=$(node scripts/ops/b2-fragment-select-archived.mjs)" >> "$GITHUB_OUTPUT"
+      - name: Verify B2 readback and source equivalence/restore path
+        env:
+          B2_FRAGMENT_RESTORE_ID: ${{ steps.select.outputs.fragment_id }}
+        run: node scripts/ops/b2-fragment-restore.mjs
