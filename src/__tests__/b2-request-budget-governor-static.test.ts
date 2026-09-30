@@ -13,6 +13,15 @@ describe("B2 request budget governor", () => {
     expect(client).toContain('message === "B2_REQUEST_BUDGET_EXHAUSTED"');
   });
 
+  it("supports a read-capability preflight that only tolerates an explicit missing key", () => {
+    const client = read("scripts/ops/b2-s3-client.mjs");
+    expect(client).toContain("allowNotFound = false");
+    expect(client).toContain('result.status === 404 && errorCode === "NoSuchKey"');
+    expect(client).toContain("return null");
+    expect(client).toContain('getOptional: (key) => request("GET", key, Buffer.alloc(0), { allowNotFound: true })');
+    expect(client).toContain('B2_${method}_FAILED_${result.status}_${errorCode}');
+  });
+
   it("keeps cleanup workflows manual and gives each run a small hard request ceiling", () => {
     const structured = read(".github/workflows/structured-event-b2-verified-compaction.yml");
     const evidence = read(".github/workflows/structured-evidence-b2-delete-batch.yml");
