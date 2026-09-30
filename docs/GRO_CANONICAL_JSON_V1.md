@@ -6,6 +6,8 @@ Canonicalization identifier: `geomacro-canonical-json-v1`
 
 Signature scheme: `Ed25519`
 
+Normative conformance appendix: `test-vectors/gro-canonical-json-v1-edge-vectors.json`
+
 ## 1. Canonical byte pipeline
 
 A Risk Object is canonicalized from its already-parsed JSON data model.
@@ -89,14 +91,33 @@ The signed `verification.status` field is a statement carried by the artifact an
 
 `payload_hash` is directly reproducible from this specification and the received Risk Object.
 
-## 7. Independent verification test vector
+## 7. Normative conformance appendix
 
-The repository includes deterministic test vectors at:
+The repository file `test-vectors/gro-canonical-json-v1-edge-vectors.json` is incorporated by reference into this specification and is the normative cross-language conformance appendix for `geomacro-canonical-json-v1`.
 
-- `docs/examples/gro-1.1-canonical-v1-test-vector.json` for the signed Ed25519 reference object.
-- `docs/examples/gro-1.1-canonical-v1-edge-vectors.json` for numeric, Unicode-ordering, exponent, subnormal and negative-zero edge cases.
+An implementation claiming conformance MUST:
 
-The repository tests lock these vectors so future implementation changes cannot silently change the published cryptographic contract. Non-JavaScript implementations should run the edge vectors before claiming interoperability.
+1. parse `input_json_text` as JSON without filtering, rewriting, merging, or dropping object member names;
+2. canonicalize the resulting JSON data model according to Section 1;
+3. produce UTF-8 bytes whose decoded text is byte-for-byte identical to `canonical_json`;
+4. compute SHA-256 over those exact UTF-8 bytes and obtain `canonical_sha256`;
+5. preserve an own `__proto__` member as an ordinary JSON object member in the canonical bytes. It MUST NOT be interpreted as a prototype mutation, silently removed, or excluded from the signed representation.
+
+A mismatch in either the canonical bytes or the digest is a conformance failure.
+
+The normative vector covers recursive key ordering, UTF-16 code-unit ordering, ECMAScript number rendering, exponent thresholds, subnormal numbers, negative zero, string escaping, nested objects and arrays, and an own `__proto__` member. The production signing canonicalizer, the general-purpose TypeScript canonicalizer, and the independent Python implementation are all required by CI to reproduce the same normative bytes and digest.
+
+For the `geomacro-canonical-json-v1` identifier, the published `canonical_json` and `canonical_sha256` values in this normative appendix are immutable. A specification change that would alter those expected bytes or their digest requires a new canonicalization identifier/version rather than silently changing v1. Additional conformance vectors may be added only when they are consistent with the existing v1 rules and all maintained reference implementations reproduce them.
+
+Third-party implementations can run the repository's independent verifier against the normative appendix with:
+
+```
+python3 verifiers/python/verify_gro.py --vectors test-vectors/gro-canonical-json-v1-edge-vectors.json
+```
+
+Implementations do not need to use that verifier to conform; reproducing the normative `canonical_json` bytes and `canonical_sha256` digest independently is the interoperability requirement.
+
+The signed Ed25519 reference artifact remains at `docs/examples/gro-1.1-canonical-v1-test-vector.json`. The smaller `docs/examples/gro-1.1-canonical-v1-edge-vectors.json` file is retained only as an illustrative example and is not the normative conformance appendix.
 
 ## 8. Public trust endpoint
 
@@ -114,6 +135,12 @@ Run the deterministic interoperability vectors with:
 
 ```
 node scripts/verify-gro-independent.mjs --self-test
+```
+
+Run the normative cross-language conformance appendix with:
+
+```
+python3 verifiers/python/verify_gro.py --vectors test-vectors/gro-canonical-json-v1-edge-vectors.json
 ```
 
 Verify a Risk Object against the live trust registry with:

@@ -1,7 +1,8 @@
-name: GRO Canonical JSON Edge Vectors
+name: GRO Canonical JSON Normative Conformance
 
-# Cross-implementation conformance for geomacro-canonical-json-v1: the repo's TypeScript canonicalizers and an
-# independent Python implementation must both reproduce the committed edge vector byte for byte.
+# Normative cross-language conformance for geomacro-canonical-json-v1. The repository's TypeScript canonicalizers
+# and the independent Python implementation must reproduce the bytes and digest defined by the conformance appendix
+# incorporated into docs/GRO_CANONICAL_JSON_V1.md.
 
 on:
   workflow_dispatch: {}
@@ -46,10 +47,10 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: TypeScript canonicalizers reproduce the edge vector
+      - name: TypeScript canonicalizers reproduce normative vectors
         run: bun scripts/check-gro-canonical-vectors.ts
 
-      - name: Independent Python implementation reproduces the edge vector
+      - name: Independent Python implementation reproduces normative vectors
         run: |
           set -e
           for f in test-vectors/gro-canonical-json-v1-*.json; do
