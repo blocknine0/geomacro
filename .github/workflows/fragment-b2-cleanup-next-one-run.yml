@@ -1,4 +1,4 @@
-name: Fragment B2 Cleanup Next One
+name: Fragment B2 Cleanup Batch
 on:
   push:
     branches:
@@ -6,10 +6,10 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: fragment-b2-cleanup-next-one
+  group: fragment-b2-cleanup-batch
   cancel-in-progress: false
 jobs:
-  cleanup-one:
+  cleanup-batch:
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 20
@@ -21,6 +21,7 @@ jobs:
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_FRAGMENT_MIN_AGE_HOURS: "168"
       B2_FRAGMENT_SCAN_LIMIT: "120"
+      B2_FRAGMENT_BATCH_LIMIT: "10"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -29,5 +30,5 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
-      - name: Select and clean exactly one fully handled old fragment
+      - name: Clean up to ten fully handled old fragments with per-fragment verification
         run: node scripts/ops/b2-fragment-cleanup-next-one.mjs
