@@ -1,0 +1,30 @@
+name: Fragment B2 Archive Canary
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fragment-b2-archive-canary
+  cancel-in-progress: false
+jobs:
+  archive-canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: ${{ secrets.B2_S3_ENDPOINT }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_FRAGMENT_ARCHIVE_LIMIT: "1"
+      B2_FRAGMENT_MIN_AGE_HOURS: "168"
+      B2_FRAGMENT_DELETE_SOURCE: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: node scripts/ops/b2-fragment-archive-offload.mjs
