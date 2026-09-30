@@ -43,5 +43,8 @@ from public.live_fragment_manifest m
 left join public.live_fragment_archive_locations a
   on a.fragment_id = m.id;
 
+revoke all on public.resolved_live_fragment_locations from anon, authenticated;
+grant select on public.resolved_live_fragment_locations to service_role;
+
 comment on view public.resolved_live_fragment_locations is
   'Canonical immutable live fragment metadata plus verified active storage location; B2 is used only after source deletion is durably recorded.';
