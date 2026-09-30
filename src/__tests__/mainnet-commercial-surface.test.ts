@@ -16,18 +16,20 @@ describe("mainnet commercial website surface", () => {
     expect(care).toContain("What is live at launch?");
   });
 
-  it("keeps launch products separate from roadmap and testnet proofs", () => {
+  it("keeps core intelligence primary while launch status and technical proof stay on dedicated surfaces", () => {
     const home = read("src/components/home/commercial-home.tsx");
     const contact = read("src/routes/contact.tsx");
     const institution = read("src/routes/institutional.tsx");
 
-    expect(home).toContain("Available at launch");
-    expect(home).toContain("Risk Intelligence");
-    expect(home).toContain("Separate Risk Indices");
-    expect(home).toContain("Critical Minerals & Rare Earth Risk");
-    expect(home).toContain("Ask Geomacro");
-    expect(home).toContain("Roadmap, not launch promise");
-    expect(home).toContain("Paid agent and x402 production access");
+    expect(home).toContain("Explore Intelligence");
+    expect(home).toContain("View Risk Indices");
+    expect(home).toContain("Critical minerals & rare earths");
+    expect(home).toContain("API & Agent Access");
+    expect(home).not.toContain("Prediction Markets");
+    expect(home).not.toContain("Bridge and Swap");
+    expect(institution).toContain("Available at launch");
+    expect(institution).toContain("Separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
+    expect(institution).toContain("Paid agent and x402 production access");
     expect(contact).toContain("Prediction Markets, Bridge and Swap remain separate testnet technical proofs");
     expect(institution).toContain("Prediction Markets, Bridge and Swap remain separate testnet technical proofs");
   });
@@ -37,7 +39,8 @@ describe("mainnet commercial website surface", () => {
     const contact = read("src/routes/contact.tsx");
     const institution = read("src/routes/institutional.tsx");
 
-    expect(home).toContain("Commercial access");
+    expect(home).toContain("Contact Geomacro");
+    expect(home).toContain("API & Agent Access");
     expect(contact).toContain("Commercial access");
     expect(contact).toContain("Customer support");
     expect(institution).toContain("Discuss commercial access");
