@@ -74,9 +74,9 @@ jobs:
           if (!config.includes("CIRCLE_X402_PRICE_USDC=0.05")) throw new Error("Circle prelaunch config is not 0.05");
 
           if (manifest.commercial_milestone?.launch_price_usdc !== "0.05") throw new Error("manifest launch price mismatch");
-          if (manifest.commercial_milestone?.early_adoption_delivery_target !== 10000) throw new Error("manifest 10k milestone mismatch");
-          if (manifest.commercial_milestone?.gross_usdc_if_10000_successful_deliveries !== "500.00") throw new Error("manifest 10k gross milestone mismatch");
-          if (manifest.commercial_milestone?.pre_funding_required !== false) throw new Error("10k milestone must not require founder pre-funding");
+          if (manifest.commercial_milestone?.early_adoption_delivery_target !== 20000) throw new Error("manifest 20k milestone mismatch");
+          if (manifest.commercial_milestone?.gross_usdc_if_20000_successful_deliveries !== "1000.00") throw new Error("manifest 20k gross milestone mismatch");
+          if (manifest.commercial_milestone?.pre_funding_required !== false) throw new Error("20k milestone must not require founder pre-funding");
 
           if (manifest.required_gates?.includes("strict_p0_capacity_closure")) throw new Error("40k P0 scale proof must not be an initial launch gate");
           if (manifest.required_gates?.includes("provider_capped_paid_smoke_reconciled")) throw new Error("founder-funded provider canary must not block initial no-funds acceptance");
@@ -92,7 +92,7 @@ jobs:
           if (!env.includes("COINBASE_X402_MAINNET_ACK=")) throw new Error("Coinbase mainnet ack must remain present and blank by default");
           if (/^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$/m.test(env)) throw new Error("global production launch ack is active in .env.example");
           if (/^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$/m.test(env)) throw new Error("Coinbase real-funds ack is active in .env.example");
-          console.log("PASS: 0.05 USDC x 10,000 milestone is canonical and does not require founder pre-funding.");
+          console.log("PASS: 0.05 USDC x 20,000 milestone is canonical and does not require founder pre-funding.");
           NODE
 
       - name: Build exact candidate
@@ -134,7 +134,7 @@ jobs:
             candidate_sha: process.env.CANDIDATE_SHA,
             launch_price_usdc: manifest.commercial_milestone.launch_price_usdc,
             early_adoption_delivery_target: manifest.commercial_milestone.early_adoption_delivery_target,
-            gross_usdc_if_target_completed: manifest.commercial_milestone.gross_usdc_if_10000_successful_deliveries,
+            gross_usdc_if_target_completed: manifest.commercial_milestone.gross_usdc_if_20000_successful_deliveries,
             pre_funding_required: false,
             real_payment_performed: false,
             production_activation_performed: false,
@@ -146,7 +146,7 @@ jobs:
             marketplace_promotion: "post_launch_evidence_only",
             status: "PASS_NO_FUNDS_REQUIRED",
             notes: [
-              "10,000 is a post-launch adoption/revenue milestone, not a founder-funded test workload.",
+              "20,000 is a post-launch adoption/revenue milestone, not a founder-funded test workload.",
               "40k distributed capacity proof is retained as optional future scalability certification.",
               "This evidence does not authorize production funds or real-money settlement."
             ]
@@ -163,8 +163,8 @@ jobs:
             echo "## Initial Commercial Pay-Per-Call Acceptance"
             echo
             echo "- Launch price: **0.05 USDC per successful paid intelligence delivery**"
-            echo "- Early-adoption target: **10,000 successful deliveries**"
-            echo "- Gross receipts at 10,000 successful deliveries: **500.00 USDC** before provider/network costs"
+            echo "- Early-adoption target: **20,000 successful deliveries**"
+            echo "- Gross receipts at 20,000 successful deliveries: **1,000.00 USDC** before provider/network costs"
             echo "- Founder pre-funding required for the milestone: **NO**"
             echo "- Real-money payment performed by this workflow: **NO**"
             echo "- 40k scale certification required before initial launch: **NO**"
