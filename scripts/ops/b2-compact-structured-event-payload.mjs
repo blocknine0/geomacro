@@ -106,6 +106,7 @@ const { data: rows, error } = await db
   .from("live_structured_events")
   .select("id,story_key,domain,event_type,last_seen_at,last_observed_at,structured_payload,structure_version")
   .lt("last_seen_at", cutoff)
+  .not("structured_payload", "cs", JSON.stringify({ _archive: { v: 2 } }))
   .order("last_seen_at", { ascending: true })
   .limit(Math.max(limit * 8, 20));
 if (error) throw new Error(`STRUCTURED_EVENT_COMPACT_QUERY_FAILED_${error.code ?? "unknown"}: ${error.message ?? "unknown"}`);
