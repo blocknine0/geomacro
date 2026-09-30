@@ -33,7 +33,8 @@ describe("production launch safety contract", () => {
       "distributed_40k_observability_closure",
     ]);
     expect(manifest.commercial_milestone.launch_price_usdc).toBe("0.05");
-    expect(manifest.commercial_milestone.early_adoption_delivery_target).toBe(10000);
+    expect(manifest.commercial_milestone.early_adoption_delivery_target).toBe(20000);
+    expect(manifest.commercial_milestone.gross_usdc_if_20000_successful_deliveries).toBe("1000.00");
     expect(manifest.commercial_milestone.pre_funding_required).toBe(false);
     expect(manifest.launch_rule.scale_certification_required_before_initial_launch).toBe(false);
     expect(manifest.launch_rule.require_internal_real_money_canary_before_initial_launch).toBe(false);
@@ -57,8 +58,8 @@ describe("production launch safety contract", () => {
     const doc = read("docs/PRODUCTION_LAUNCH_ACCEPTANCE.md");
 
     expect(doc).toContain("Initial Commercial Pay-Per-Call Launch Acceptance");
-    expect(doc).toContain("The first 10,000 deliveries are an adoption and revenue milestone");
-    expect(doc).toContain("The founder does not need to purchase 10,000 calls");
+    expect(doc).toContain("The first 20,000 deliveries are an adoption and revenue milestone");
+    expect(doc).toContain("The founder does not need to purchase 20,000 calls");
     expect(doc).toContain("Optional scale certification");
   });
 });
