@@ -7,18 +7,17 @@ const workflow = readFileSync(
 );
 
 describe("structured evidence verified delete batch", () => {
-  it("is serialized, capped at ten rows, and scheduled every fifteen minutes", () => {
+  it("is serialized, capped at ten rows, and manual-only during B2 AccessDenied hold", () => {
     expect(workflow).toContain("workflow_dispatch");
-    expect(workflow).toContain("schedule:");
-    expect(workflow).toContain('cron: "7,22,37,52 * * * *"');
+    expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("cancel-in-progress: false");
     expect(workflow).toContain('test "$STRUCTURED_EVIDENCE_DELETE_LIMIT" -le 10');
     expect(workflow).toContain('seq 1 "$STRUCTURED_EVIDENCE_DELETE_LIMIT"');
   });
 
-  it("uses explicit safe defaults for scheduled runs and keeps manual inputs", () => {
-    expect(workflow).toContain("github.event_name == 'schedule' && '7' || inputs.older_days");
-    expect(workflow).toContain("github.event_name == 'schedule' && '10' || inputs.limit");
+  it("keeps explicit safe manual defaults", () => {
+    expect(workflow).toContain("STRUCTURED_EVIDENCE_DELETE_OLDER_DAYS: ${{ inputs.older_days }}");
+    expect(workflow).toContain("STRUCTURED_EVIDENCE_DELETE_LIMIT: ${{ inputs.limit }}");
     expect(workflow).toContain('default: "7"');
     expect(workflow).toContain('default: "10"');
   });
