@@ -74,7 +74,7 @@ describe("canonical product architecture alignment", () => {
     expect(riskGateDoc).not.toContain("+-- Event scope    -> Event Risk Object direction");
   });
 
-  it("keeps customer-controlled execution in the machine architecture while launch pages avoid authorization claims", () => {
+  it("keeps customer-controlled execution in the machine architecture while the homepage stays outcome-first", () => {
     const contract = read("docs/CANONICAL_DELIVERY_ARCHITECTURE.md");
     const architecture = read("src/content/docs/02-product-architecture.md");
     const commercial = read("docs/COMMERCIAL_INTELLIGENCE.md");
@@ -89,12 +89,12 @@ describe("canonical product architecture alignment", () => {
       expect(content).toContain("Customer-controlled action");
     }
 
-    expect(home).toContain("Roadmap, not launch promise");
+    expect(home).toContain("Machine and commercial access lives in dedicated product surfaces with explicit availability and product boundaries.");
     expect(home).not.toContain("Geomacro authorizes");
     expect(home).not.toContain("execution_authorized");
     expect(ecosystem).toContain("The customer retains");
     expect(ecosystem).toContain("execution authority and the final decision");
-    expect(riskGateRoute).toContain("The customer's own identity, permissions and policy layer applies its rules");
+    expect(riskGateRoute).toContain("The customer keeps identity, permissions, policy enforcement and final execution.");
     expect(institutional).toContain("Risk Gate, paid agent/x402 production access and broader machine delivery remain roadmap or controlled capabilities until separately promoted");
   });
 
@@ -132,15 +132,17 @@ describe("canonical product architecture alignment", () => {
     }
   });
 
-  it("keeps launch risk intelligence primary and machine/testnet capabilities outside the launch promise", () => {
+  it("keeps launch risk intelligence primary and technical proof outside the buyer-first homepage", () => {
     const home = read("src/components/home/commercial-home.tsx");
     const shell = read("src/components/site-shell.tsx");
     const institutional = read("src/routes/institutional.tsx");
     const predictionDocs = read("src/content/docs/34-prediction-markets.md");
 
     expect(home).toContain("Global risk intelligence");
-    expect(home).toContain("Available at launch");
-    expect(home).toContain("Roadmap, not launch promise");
+    expect(home).toContain("Explore Intelligence");
+    expect(home).toContain("View Risk Indices");
+    expect(home).toContain("API & Agent Access");
+    expect(home).toContain("Machine and commercial access lives in dedicated product surfaces with explicit availability and product boundaries.");
     expect(home).not.toContain("Prediction Markets");
     expect(home).not.toContain("Bridge and Swap");
     expect(shell).toContain("Technical Proof");
