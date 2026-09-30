@@ -74,8 +74,8 @@ describe("commercial public surface v2", () => {
     expect(about).toContain('id="product-use"');
     expect(about).toContain("No independent external security certification or production SLA is claimed unless actually completed or contracted.");
     expect(about).toContain("Risk Gate remains non-authorizing");
-    expect(shell).toContain('href="/about#privacy"');
-    expect(shell).toContain('href="/about#product-use"');
+    expect(shell).toContain('{ to: "/about", label: "About & Trust", description: "Product boundaries, privacy and trust disclosures" }');
+    expect(shell).toContain('<Link to="/about" className="hover:text-foreground">About & Trust</Link>');
     expect(existsSync(securityPath)).toBe(true);
     expect(read("public/.well-known/security.txt")).toContain("contact@geomacro.live");
   });
