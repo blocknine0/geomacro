@@ -3,7 +3,9 @@ import {
   ArrowRight,
   Bot,
   Braces,
+  Check,
   CheckCircle2,
+  CircleDollarSign,
   Database,
   Fingerprint,
   LockKeyhole,
@@ -31,6 +33,21 @@ const MACHINE_OUTPUTS = [
   ["Current state", "Risk level, direction, confidence, top drivers and versioned state."],
   ["Structural context", "Bounded country or directional-corridor context when the governed capability supports it."],
   ["Integrity metadata", "Stable query, state and delivery identifiers for machine-side persistence and comparison."],
+] as const;
+
+const FREE_ACCESS = [
+  "Public Intelligence explorer",
+  "Separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices",
+  "Ask Geomacro grounded query experience",
+  "Public research, methodology and trust documentation",
+] as const;
+
+const PAID_ACCESS = [
+  "Concise answer with what changed and why it matters",
+  "Current risk state, direction, confidence and top drivers",
+  "Bounded structural context and current developments",
+  "Machine-readable JSON with stable state and delivery hashes",
+  "Derived Geomacro intelligence only, not raw upstream data",
 ] as const;
 
 export const Route = createFileRoute("/data-api")({
@@ -70,7 +87,7 @@ function DataApiPage() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Button asChild size="lg" className="h-12 gap-2 px-6">
-                <Link to="/pricing">View access & pricing <ArrowRight className="h-4 w-4" /></Link>
+                <a href="#pricing">View access & pricing <ArrowRight className="h-4 w-4" /></a>
               </Button>
               <Button asChild size="lg" variant="outline" className="h-12 px-6"><Link to="/docs">Developer documentation</Link></Button>
               <Button asChild size="lg" variant="ghost" className="h-12 px-5"><Link to="/contact">Discuss integration</Link></Button>
@@ -150,31 +167,75 @@ function DataApiPage() {
         </div>
       </section>
 
-      <section className="border-y border-border/55 bg-card/15">
+      <section id="pricing" className="scroll-mt-24 border-y border-border/55 bg-card/15">
         <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
           <div className="max-w-3xl">
-            <LockKeyhole className="h-5 w-5 text-primary" />
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Hard boundaries</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Commercial access does not weaken the product contract.</h2>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Access & pricing</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Free to explore. x402 pay per successful commercial call.</h2>
+            <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">No subscription tier is required for the launch offer. The public site remains free; commercial machine delivery is priced per successful x402 delivery in USDC.</p>
           </div>
-          <div className="mt-9 grid gap-4 lg:grid-cols-3">
-            <Boundary title="Country + corridor scope" text="The controlled corridor model is ENDPOINT_COMPOSED_V0_1. route_modeling_status = NOT_MODELED unless a future validated model explicitly changes that boundary." />
-            <Boundary title="Customer controls execution" text="Risk Gate can return bounded context and recommendation, but execution_authorized=false. Identity, permissions, policy and final action stay customer-controlled." />
-            <Boundary title="One intelligence foundation" text="Authentication, entitlement, payment and transport may differ by rail. The underlying governed intelligence and product-specific rules remain canonical." />
+
+          <div className="mt-9 grid gap-5 lg:grid-cols-2">
+            <article className="rounded-[1.65rem] border border-border/60 bg-background/30 p-6 sm:p-8">
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Free Explorer</p>
+              <p className="mt-3 text-4xl font-semibold">$0</p>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">For people evaluating Geomacro or following the public risk-intelligence product.</p>
+              <ul className="mt-6 space-y-3">
+                {FREE_ACCESS.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 h-4 w-4 shrink-0 text-primary" /><span>{item}</span></li>)}
+              </ul>
+              <p className="mt-6 rounded-xl border border-border/60 bg-card/30 p-4 text-xs leading-5 text-muted-foreground">Free Explorer does not include a free structured commercial API.</p>
+              <Button asChild variant="outline" className="mt-6"><Link to="/intelligence">Open Free Explorer</Link></Button>
+            </article>
+
+            <article className="relative overflow-hidden rounded-[1.65rem] border border-primary/30 bg-[linear-gradient(145deg,color-mix(in_oklab,var(--primary)_12%,var(--card)),var(--card)_48%)] p-6 sm:p-8">
+              <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+              <div className="relative">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">x402 pay per call</p>
+                    <div className="mt-3 flex flex-wrap items-end gap-x-2 gap-y-1">
+                      <p className="text-4xl font-semibold">0.05</p>
+                      <span className="pb-1 text-sm text-muted-foreground">USDC / successful delivery</span>
+                    </div>
+                  </div>
+                  <CircleDollarSign className="h-6 w-6 text-primary" />
+                </div>
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">Launch price for the first 20,000 successfully settled and delivered commercial intelligence calls. Failed, stale, unavailable, replayed, refunded, internal, testnet or unpaid requests do not count as successful paid deliveries.</p>
+                <ul className="mt-6 space-y-3">
+                  {PAID_ACCESS.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 h-4 w-4 shrink-0 text-primary" /><span>{item}</span></li>)}
+                </ul>
+                <div className="mt-6 rounded-xl border border-primary/20 bg-background/25 p-4">
+                  <p className="text-xs font-medium">No-charge failure policy</p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">If Geomacro cannot deliver a fresh, eligible result, the request must fail closed rather than manufacture a chargeable answer.</p>
+                </div>
+              </div>
+            </article>
           </div>
         </div>
       </section>
 
       <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--primary)_10%,transparent),transparent_58%)] p-6 sm:p-9 lg:flex lg:items-center lg:justify-between lg:gap-10">
-          <div className="max-w-3xl">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            <h2 className="mt-4 text-2xl font-semibold sm:text-3xl">Integrate only the capability your workflow needs.</h2>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">Start with the public product, review the pricing and machine contract, then bring a concrete country, corridor or agent workflow for commercial evaluation.</p>
-          </div>
-          <div className="mt-7 flex shrink-0 flex-col gap-3 sm:flex-row lg:mt-0 lg:flex-col xl:flex-row">
-            <Button asChild size="lg" className="gap-2"><Link to="/pricing">Pricing <ArrowRight className="h-4 w-4" /></Link></Button>
-            <Button asChild size="lg" variant="outline"><Link to="/contact">Contact Geomacro</Link></Button>
+        <div className="max-w-3xl">
+          <LockKeyhole className="h-5 w-5 text-primary" />
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Hard boundaries</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Commercial access does not weaken the product contract.</h2>
+        </div>
+        <div className="mt-9 grid gap-4 lg:grid-cols-3">
+          <Boundary title="Country + corridor scope" text="The controlled corridor model is ENDPOINT_COMPOSED_V0_1. route_modeling_status = NOT_MODELED unless a future validated model explicitly changes that boundary." />
+          <Boundary title="Customer controls execution" text="Risk Gate can return bounded context and recommendation, but execution_authorized=false. Identity, permissions, policy and final action stay customer-controlled." />
+          <Boundary title="One intelligence foundation" text="Authentication, entitlement, payment and transport may differ by rail. The underlying governed intelligence and product-specific rules remain canonical." />
+        </div>
+      </section>
+
+      <section className="border-t border-border/55">
+        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
+          <div className="overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--primary)_10%,transparent),transparent_58%)] p-6 sm:p-9 lg:flex lg:items-center lg:justify-between lg:gap-10">
+            <div className="max-w-3xl">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <h2 className="mt-4 text-2xl font-semibold sm:text-3xl">Integrate only the capability your workflow needs.</h2>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">Start with the free product, review the machine contract and pricing, then bring a concrete country, corridor or agent workflow for commercial evaluation.</p>
+            </div>
+            <Button asChild size="lg" className="mt-7 shrink-0 gap-2 lg:mt-0"><Link to="/contact">Contact Geomacro <ArrowRight className="h-4 w-4" /></Link></Button>
           </div>
         </div>
       </section>
