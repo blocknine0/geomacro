@@ -12,7 +12,7 @@ Prediction markets and programmable onchain execution are secondary application,
 
 The canonical current commercial intelligence response contract is documented in [Geomacro Intelligence Contract v1](./GEOMACRO_INTELLIGENCE_CONTRACT_V1.md). The contract keeps the existing adaptive API identity while adding versioned current state, deterministic direct answers and redacted structural developments.
 
-Early-adoption pricing is **0.05 USDC per successful paid intelligence delivery for the first 10,000 deliveries**. The later reference price is **0.10 USDC**, subject to adoption evidence and an explicit commercial transition.
+Early-adoption pricing is **0.05 USDC per successfully settled and delivered intelligence call for the first 20,000 successful paid deliveries**. At that launch price, 20,000 successful paid deliveries equal **1,000 USDC gross before provider/network/hosting costs, refunds or disputes**. Failed, stale, unavailable, replayed, refunded, internal, testnet and unpaid requests do not count. Post-cohort pricing is an explicit operator-controlled commercial change and is not automatically increased by the intelligence engine.
 
 Current commercial responses do not redistribute raw upstream article material or source identity. Internal provenance and commercial-rights checks remain governed server-side.
 
@@ -30,7 +30,7 @@ Current commercial responses do not redistribute raw upstream article material o
 | Prediction Markets | Technical Proof | Experimental market and feedback layer |
 | Arc / USDC / Circle / CCTP | Technical Proof | Programmable execution and settlement proof |
 
-Private Pilot does not mean a generally available public hosted API, self-serve production authentication, production SLA or finalized public pricing interface currently exists.
+Private Pilot does not mean a generally available public hosted API, self-serve production authentication, production SLA or authorized real-money x402 settlement exists. The public pricing section documents the intended launch offer while production payments remain fail-closed until the coordinated launch gates are authorized.
 
 The separate public Risk Indices preserve the audited `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline product.
 
