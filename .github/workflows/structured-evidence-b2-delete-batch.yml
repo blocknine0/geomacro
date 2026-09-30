@@ -1,0 +1,66 @@
+name: Structured Evidence B2 Delete Batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      older_days:
+        description: "Delete B2-verified evidence older than this many days"
+        required: false
+        default: "7"
+        type: string
+      limit:
+        description: "Maximum rows to delete in this run (1-10)"
+        required: false
+        default: "10"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: structured-evidence-b2-delete
+  cancel-in-progress: false
+
+jobs:
+  delete-batch:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      STRUCTURED_EVIDENCE_DELETE_OLDER_DAYS: ${{ inputs.older_days }}
+      STRUCTURED_EVIDENCE_DELETE_LIMIT: ${{ inputs.limit }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with: { bun-version: "1.4.2" }
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify bounded cleanup configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_SUPABASE_URL" = "https://ldpwajisioljyjtojvfx.supabase.co"
+          test -n "$APP_SUPABASE_SERVICE_ROLE_KEY"
+          test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com"
+          test -n "$B2_KEY_ID"
+          test -n "$B2_APPLICATION_KEY"
+          case "$STRUCTURED_EVIDENCE_DELETE_LIMIT" in
+            ''|*[!0-9]*) exit 1 ;;
+          esac
+          test "$STRUCTURED_EVIDENCE_DELETE_LIMIT" -ge 1
+          test "$STRUCTURED_EVIDENCE_DELETE_LIMIT" -le 10
+      - name: Delete bounded rows one at a time with independent verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 "$STRUCTURED_EVIDENCE_DELETE_LIMIT"); do
+            echo "Verified cleanup iteration $i/$STRUCTURED_EVIDENCE_DELETE_LIMIT"
+            node scripts/ops/b2-delete-structured-evidence-canary.mjs
+          done
