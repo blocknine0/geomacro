@@ -23,10 +23,22 @@ function safeB2ErrorCode(text) {
   return "unknown";
 }
 
+function parseRequestBudget() {
+  const raw = String(process.env.B2_REQUEST_BUDGET ?? "").trim();
+  if (!raw) return null;
+  if (!/^\d+$/.test(raw)) throw new Error("B2_REQUEST_BUDGET_INVALID");
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < 1 || value > 10000) throw new Error("B2_REQUEST_BUDGET_INVALID");
+  return value;
+}
+
 export function createB2Client({ endpointUrl, accessKey, secretKey, bucket }) {
   const endpoint = parseB2Endpoint(endpointUrl);
   if (endpoint.endpoint !== "https://s3.us-east-005.backblazeb2.com" ||
       bucket !== "geomacro-private-archive" || !accessKey || !secretKey) throw new Error("B2_ARCHIVE_CONFIG_INVALID");
+
+  const requestBudget = parseRequestBudget();
+  let requestsStarted = 0;
 
   async function request(method, key, body = Buffer.alloc(0)) {
     if (!/^geomacro-evidence\/v1\/[A-Za-z0-9_./-]+$/.test(key) || key.includes("..")) {
@@ -37,6 +49,11 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket }) {
     const payloadHash = sha(body);
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      if (requestBudget !== null && requestsStarted >= requestBudget) {
+        throw new Error("B2_REQUEST_BUDGET_EXHAUSTED");
+      }
+      requestsStarted += 1;
+
       const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
       const day = timestamp.slice(0, 8);
       const headers = { host, "x-amz-content-sha256": payloadHash, "x-amz-date": timestamp };
@@ -70,7 +87,7 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket }) {
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : String(cause);
         const explicitHttpFailure = /^B2_(PUT|GET)_FAILED_\d+_[A-Za-z0-9_.:-]+$/.test(message);
-        if (explicitHttpFailure || attempt === MAX_ATTEMPTS) throw cause;
+        if (explicitHttpFailure || message === "B2_REQUEST_BUDGET_EXHAUSTED" || attempt === MAX_ATTEMPTS) throw cause;
       }
 
       await sleep(500 * 2 ** (attempt - 1));
@@ -82,5 +99,6 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket }) {
   return {
     put: (key, bytes) => request("PUT", key, bytes),
     get: (key) => request("GET", key),
+    usage: () => ({ requests_started: requestsStarted, request_budget: requestBudget }),
   };
 }
