@@ -1,0 +1,5 @@
+archive-canary: source deletion disabled; limit 1; minimum age 168h
+restore-canary: B2 hash must match canonical manifest; restored/source bytes must match canonical hash
+cleanup-canary: manual only; limit 1; restore acknowledgement required; fully-handled gate required
+storage deletion: Supabase Storage API only; direct SQL against storage.objects forbidden
+failure policy: fail closed on metadata, hash, readback, pointer, handled-count, removal, absence, or restore mismatch
