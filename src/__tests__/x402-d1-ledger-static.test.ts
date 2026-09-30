@@ -11,16 +11,23 @@ describe("Cloudflare D1 x402 delivery ledger contract", () => {
     expect(client).toContain('!== "edge_d1"');
   });
 
-  it("authenticates every mutation with a timestamped HMAC", () => {
+  it("authenticates every mutation with a timestamped WebCrypto HMAC verification", () => {
     expect(worker).toContain("x-geomacro-timestamp");
     expect(worker).toContain("x-geomacro-signature");
     expect(worker).toContain("MAX_SKEW_SECONDS = 60");
     expect(worker).toContain('name: "HMAC"');
+    expect(worker).toContain('crypto.subtle.verify("HMAC"');
+    expect(worker).not.toContain("timingSafeHexEqual");
+  });
+
+  it("bounds atomic amount parsing to the production numeric domain", () => {
+    expect(worker).toContain("amount.length <= 78");
+    expect(worker).toContain("BigInt(amount) > 0n");
   });
 
   it("preserves the prepared irreversible-side-effect boundary", () => {
     expect(worker).toContain("PREPARED_LEASE_EXPIRED_RECONCILIATION_REQUIRED");
-    expect(worker).toContain('state=\'manual_review\'');
+    expect(worker).toContain("state='manual_review'");
     expect(worker).toContain('row.state === "prepared"');
     expect(worker).toContain('row.state === "failed"');
   });
