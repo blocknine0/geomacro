@@ -109,10 +109,10 @@ describe("permanent intelligence orchestration contract", () => {
   it("keeps a bounded low-write GRI freshness path active during quota recovery", () => {
     const workflow = read(".github/workflows/auto-ingest-news.yml");
     expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).toContain('cron: "0 */2 * * *"');
+    expect(workflow).toContain('cron: "17 */6 * * *"');
     expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
     expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "4"');
-    expect(workflow).toContain("supabase-free-tier-budget.mjs");
+    expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
     expect(workflow).toContain("check-gri-input-change.mjs");
     expect(workflow).toContain("compute-gri-v12.js");
     expect(workflow).toContain("verify-gri-snapshot-v12.js");
