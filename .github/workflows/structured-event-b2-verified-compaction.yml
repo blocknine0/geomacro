@@ -13,8 +13,6 @@ on:
         required: false
         default: "10"
         type: string
-  schedule:
-    - cron: "4,19,34,49 * * * *"
 
 permissions:
   contents: read
@@ -35,18 +33,15 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      STRUCTURED_EVENT_COMPACT_OLDER_DAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.older_days || '7' }}
-      STRUCTURED_EVENT_COMPACT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '10' }}
+      STRUCTURED_EVENT_COMPACT_OLDER_DAYS: ${{ inputs.older_days }}
+      STRUCTURED_EVENT_COMPACT_LIMIT: ${{ inputs.limit }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
-
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with: { bun-version: "1.4.2" }
-
       - run: bun install --frozen-lockfile --ignore-scripts
-
       - name: Verify required archive configuration
         shell: bash
         run: |
@@ -56,6 +51,5 @@ jobs:
           test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com"
           test -n "$B2_KEY_ID"
           test -n "$B2_APPLICATION_KEY"
-
       - name: Compact only after verified B2 archive and restore
         run: node scripts/ops/b2-compact-structured-event-payload.mjs

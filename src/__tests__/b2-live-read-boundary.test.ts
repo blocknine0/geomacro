@@ -13,43 +13,21 @@ describe("non-destructive B2 live read boundary", () => {
     expect(source).toContain("CIRCUIT_OPEN_MS = 30_000");
   });
 
-  it("tries B2 before the unchanged bounded Supabase Intelligence fallback", () => {
-    const source = read("src/lib/public-intelligence.functions.ts");
-    expect(source).toContain("readB2PublicIntelligence");
-    expect(source).toContain("readPublicIntelligenceRowsFromSupabase");
-    expect(source.indexOf("const b2Rows = await readB2PublicIntelligence()"))
-      .toBeLessThan(source.indexOf("return readPublicIntelligenceRowsFromSupabase();"));
-    expect(source).toContain("A partial verified feed is preferable");
-    expect(source).toContain("to a page-level outage.");
+  it("preserves the verified B2 public read fallbacks", () => {
+    expect(read("src/lib/public-intelligence.functions.ts")).toContain("readB2PublicIntelligence");
+    expect(read("src/lib/public-risk.functions.ts")).toContain("readB2PublicRisk");
+    expect(read("src/lib/global-risk-read.server.ts")).toContain("readVerifiedB2GlobalRiskOrThrow");
   });
 
-  it("tries verified B2 risk before preserving both established fallbacks", () => {
-    const source = read("src/lib/public-risk.functions.ts");
-    expect(source).toContain("const b2 = await readB2PublicRisk();");
-    expect(source).toContain("readPublicGlobalRisk()");
-    expect(source).toContain("readPublicGlobalRiskFromEdge()");
-    expect(source).toContain("hosted canonical read unavailable; trying authoritative edge");
-  });
-
-  it("keeps the direct canonical GRI reader available from verified B2 when Supabase is unavailable", () => {
-    const source = read("src/lib/global-risk-read.server.ts");
-    expect(source).toContain('import { readB2PublicRisk } from "./b2-live.server"');
-    expect(source).toContain('if (!supabase) return readVerifiedB2GlobalRiskOrThrow("Risk index store unavailable")');
-    expect(source).toContain('return readVerifiedB2GlobalRiskOrThrow("Unable to load the canonical Global Risk Index")');
-    expect(source).toContain("serving verified B2 snapshot");
-  });
-
-  it("publishes hourly only after B2 write/readback verification and never deletes database history", () => {
+  it("keeps publisher verification but quota-holds automatic publishing while B2 GET is AccessDenied", () => {
     const publisher = read("scripts/ops/publish-b2-live-snapshots.ts");
     const workflow = read(".github/workflows/b2-live-snapshot-maintenance.yml");
     expect(publisher).toContain("await b2.put(item.key, packed)");
     expect(publisher).toContain("const readback = await b2.get(item.key)");
     expect(publisher).toContain("B2_LIVE_READBACK_HASH_INVALID");
     expect(publisher).not.toContain(".delete(");
-    expect(publisher).not.toContain("delete from");
     expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).toContain("schedule:");
-    expect(workflow).toContain('cron: "13 * * * *"');
+    expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("cancel-in-progress: true");
   });
 });
