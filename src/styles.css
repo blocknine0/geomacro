@@ -4,20 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
- */
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -63,7 +49,6 @@
 
 :root {
   --radius: 0.625rem;
-  /* Geomacro dark palette: obsidian + amber */
   --background: oklch(0.16 0.02 260);
   --foreground: oklch(0.96 0.01 90);
   --card: oklch(0.20 0.025 260);
@@ -138,16 +123,56 @@
     border-color: var(--color-border);
   }
 
+  html {
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    scrollbar-color: color-mix(in oklab, var(--primary) 35%, transparent) transparent;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     overflow-x: hidden;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
 
-  html {
-    overflow-x: hidden;
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 32%, transparent);
+    color: var(--foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--primary) 78%, white 10%);
+    outline-offset: 3px;
   }
 }
 
@@ -161,16 +186,39 @@
 }
 
 @keyframes bg-drift {
-  0%   { transform: scale(1.08) translate3d(0, 0, 0); }
-  50%  { transform: scale(1.12) translate3d(-1.5%, -1%, 0); }
-  100% { transform: scale(1.08) translate3d(0, 0, 0); }
+  0%   { transform: scale(1.06) translate3d(0, 0, 0); }
+  50%  { transform: scale(1.09) translate3d(-0.8%, -0.6%, 0); }
+  100% { transform: scale(1.06) translate3d(0, 0, 0); }
 }
 
 .animate-bg-drift {
-  animation: bg-drift 40s ease-in-out infinite;
+  animation: bg-drift 55s ease-in-out infinite;
   will-change: transform;
 }
 
+@media (max-width: 640px) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-bg-drift {
+    animation: none;
+    transform: scale(1.04);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-bg-drift { animation: none; }
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+
+  .animate-bg-drift {
+    animation: none;
+  }
 }
