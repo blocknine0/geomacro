@@ -1,0 +1,68 @@
+name: Fragment B2 Resolver-Backed Offload
+
+on:
+  workflow_dispatch:
+    inputs:
+      fragment_id:
+        description: Exact live_fragment_manifest UUID to archive/offload
+        required: true
+        type: string
+      delete_source:
+        description: Remove verified Supabase Storage source after B2 readback and resolver checks
+        required: true
+        default: false
+        type: boolean
+      confirmation:
+        description: Type DELETE_VERIFIED_SOURCE_USING_B2_RESOLVER when delete_source=true
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fragment-b2-resolver-backed-offload
+  cancel-in-progress: false
+
+jobs:
+  offload:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_FRAGMENT_TARGET_ID: ${{ inputs.fragment_id }}
+      B2_FRAGMENT_MIN_AGE_HOURS: "168"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Validate exact destructive authorization
+        shell: bash
+        env:
+          DELETE_SOURCE: ${{ inputs.delete_source }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          [[ "$B2_FRAGMENT_TARGET_ID" =~ ^[0-9a-fA-F-]{36}$ ]]
+          if [ "$DELETE_SOURCE" = "true" ]; then
+            test "$CONFIRMATION" = "DELETE_VERIFIED_SOURCE_USING_B2_RESOLVER"
+          fi
+      - name: Verify source, B2 readback, sidecar and current resolver route without deleting
+        env:
+          B2_FRAGMENT_RESOLVER_DELETE: "0"
+        run: node scripts/ops/b2-fragment-resolver-backed-offload.mjs
+      - name: Offload exact verified source through Storage API
+        if: ${{ inputs.delete_source }}
+        env:
+          B2_FRAGMENT_RESOLVER_DELETE: "1"
+          B2_FRAGMENT_RESOLVER_CONFIRM: ${{ inputs.confirmation }}
+        run: node scripts/ops/b2-fragment-resolver-backed-offload.mjs
