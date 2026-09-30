@@ -1,6 +1,7 @@
 name: B2 Read Health Canary Once
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
