@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAppSupabase } from "./supabase-app.server";
+import { readB2PublicRisk } from "./b2-live.server";
 import {
   GRI_LOOKBACK_HOURS,
   GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS,
@@ -184,9 +185,18 @@ async function loadRecentEvents(
  * All public UI surfaces call this server-side path. There is no browser-side
  * database fallback and no synthetic score.
  */
+async function readVerifiedB2GlobalRiskOrThrow(reason: string): Promise<GlobalRisk> {
+  const b2 = await readB2PublicRisk();
+  if (b2) {
+    console.warn(`[public-gri] ${reason}; serving verified B2 snapshot`);
+    return b2;
+  }
+  throw new Error(reason);
+}
+
 export async function readPublicGlobalRisk(): Promise<GlobalRisk> {
   const supabase = getAppSupabase();
-  if (!supabase) throw new Error("Risk index store unavailable");
+  if (!supabase) return readVerifiedB2GlobalRiskOrThrow("Risk index store unavailable");
 
   const now = Date.now();
   const snapshotSince = new Date(now - 31 * DAY).toISOString();
@@ -203,10 +213,10 @@ export async function readPublicGlobalRisk(): Promise<GlobalRisk> {
 
   if (snapshotResult.error) {
     console.error("[public-gri] canonical snapshot read failed", snapshotResult.error.message);
-    throw new Error("Unable to load the canonical Global Risk Index");
+    return readVerifiedB2GlobalRiskOrThrow("Unable to load the canonical Global Risk Index");
   }
   if (!snapshotResult.data?.length) {
-    throw new Error("No published verified snapshot exists for the current GRI methodology");
+    return readVerifiedB2GlobalRiskOrThrow("No published verified snapshot exists for the current GRI methodology");
   }
 
   const snapshots = snapshotResult.data as SnapshotRow[];

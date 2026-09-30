@@ -31,6 +31,14 @@ describe("non-destructive B2 live read boundary", () => {
     expect(source).toContain("hosted canonical read unavailable; trying authoritative edge");
   });
 
+  it("keeps the direct canonical GRI reader available from verified B2 when Supabase is unavailable", () => {
+    const source = read("src/lib/global-risk-read.server.ts");
+    expect(source).toContain('import { readB2PublicRisk } from "./b2-live.server"');
+    expect(source).toContain('if (!supabase) return readVerifiedB2GlobalRiskOrThrow("Risk index store unavailable")');
+    expect(source).toContain('return readVerifiedB2GlobalRiskOrThrow("Unable to load the canonical Global Risk Index")');
+    expect(source).toContain("serving verified B2 snapshot");
+  });
+
   it("publishes only after B2 write/readback verification and never deletes database history", () => {
     const publisher = read("scripts/ops/publish-b2-live-snapshots.ts");
     const workflow = read(".github/workflows/b2-live-snapshot-maintenance.yml");
