@@ -1,0 +1,54 @@
+name: Structured Event B2 Archive Canary
+
+on:
+  workflow_dispatch:
+    inputs:
+      older_days:
+        description: "Archive one structured event older than this many days; source remains untouched"
+        required: false
+        default: "30"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: structured-event-b2-archive-canary
+  cancel-in-progress: false
+
+jobs:
+  archive-only-canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: ${{ secrets.B2_S3_ENDPOINT }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      STRUCTURED_EVENT_ARCHIVE_OLDER_DAYS: ${{ inputs.older_days }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - name: Verify required archive configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_SUPABASE_URL" = "https://ldpwajisioljyjtojvfx.supabase.co"
+          test -n "$APP_SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$B2_S3_ENDPOINT"
+          test -n "$B2_KEY_ID"
+          test -n "$B2_APPLICATION_KEY"
+
+      - name: Archive and fully restore one cold structured payload without cleanup
+        run: node scripts/ops/b2-archive-structured-event-canary.mjs
