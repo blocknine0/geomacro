@@ -6,7 +6,7 @@ const ROOT = process.cwd();
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 describe("public GRI runtime resilience", () => {
-  it("keeps the canonical direct read and recovers through the authoritative Supabase edge", () => {
+  it("keeps the canonical direct read, verified B2 fallback, and authoritative Supabase edge recovery", () => {
     const server = read("src/lib/public-risk.functions.ts");
     const canonical = read("src/lib/global-risk-read.server.ts");
     const edge = read("src/lib/public-risk-edge.server.ts");
@@ -16,12 +16,14 @@ describe("public GRI runtime resilience", () => {
     expect(server).toContain('code: "RISK_INDEX_UNAVAILABLE"');
     expect(server).toContain("assertSameOrigin();");
     expect(server).toContain("hosted canonical read unavailable; trying authoritative edge");
-    expect(canonical).toContain('throw new Error("Risk index store unavailable")');
+    expect(canonical).toContain("readVerifiedB2GlobalRiskOrThrow");
+    expect(canonical).toContain('if (!supabase) return readVerifiedB2GlobalRiskOrThrow("Risk index store unavailable")');
+    expect(canonical).toContain("serving verified B2 snapshot");
     expect(edge).toContain("ldpwajisioljyjtojvfx");
     expect(edge).toContain("/functions/v1/public-risk-indices");
   });
 
-  it("only returns unavailable after both verified read paths fail", () => {
+  it("only returns unavailable after verified read paths fail", () => {
     const server = read("src/lib/public-risk.functions.ts");
 
     expect(server).toContain("catch (directError)");
