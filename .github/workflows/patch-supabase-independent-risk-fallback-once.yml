@@ -1,0 +1,29 @@
+name: Patch Supabase-independent risk fallback once
+on:
+  push:
+    branches:
+      - feat/supabase-independent-runtime-fallback
+permissions:
+  contents: write
+concurrency:
+  group: patch-supabase-independent-risk-fallback-once
+  cancel-in-progress: false
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: feat/supabase-independent-runtime-fallback
+          fetch-depth: 1
+      - run: node scripts/ops/patch-supabase-independent-risk-fallback-once.mjs
+      - shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/lib/global-risk-read.server.ts src/__tests__/b2-live-read-boundary.test.ts; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/global-risk-read.server.ts src/__tests__/b2-live-read-boundary.test.ts
+          git commit -m "Fallback canonical global risk reads to verified B2"
+          git push origin HEAD:feat/supabase-independent-runtime-fallback
