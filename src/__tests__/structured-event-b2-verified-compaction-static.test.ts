@@ -40,6 +40,12 @@ describe("structured-event verified B2 compaction", () => {
     expect(script).not.toContain("const HOT_KEYS");
   });
 
+  it("excludes already archived pointer-v2 rows in the database query", () => {
+    expect(script).toContain('.not("structured_payload", "cs", JSON.stringify({ _archive: { v: 2 } }))');
+    expect(script).toContain('.lt("last_seen_at", cutoff)');
+    expect(script).toContain('.limit(Math.max(limit * 8, 20))');
+  });
+
   it("can safely shrink an already-compacted v1 row by restoring the original first", () => {
     expect(script).toContain('pointer.schema === "geomacro.structured-event-cold-pointer.v1"');
     expect(script).toContain("existingPointer?.version === 1");
