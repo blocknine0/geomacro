@@ -58,6 +58,9 @@ describe("geomacro-canonical-json-v1 test vector", () => {
   });
 
   it("reproduces the normative cross-language conformance appendix", () => {
+    // Legacy illustrative fixture retained for audit compatibility:
+    // docs/examples/gro-1.1-canonical-v1-edge-vectors.json
+    // The normative conformance appendix is the test-vectors file below.
     const vector = JSON.parse(
       readFileSync(
         "test-vectors/gro-canonical-json-v1-edge-vectors.json",
