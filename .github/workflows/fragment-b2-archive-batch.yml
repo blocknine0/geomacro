@@ -1,0 +1,33 @@
+name: Fragment B2 Archive Batch
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Archive-only batch size, maximum 100"
+        required: true
+        default: "25"
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: fragment-b2-archive-batch
+  cancel-in-progress: false
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: ${{ secrets.B2_S3_ENDPOINT }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_FRAGMENT_ARCHIVE_LIMIT: ${{ inputs.limit }}
+      B2_FRAGMENT_MIN_AGE_HOURS: "168"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.1
+      - run: bun install --frozen-lockfile
+      - run: bash scripts/ops/fragment-b2-archive-batch.sh
