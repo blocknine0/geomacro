@@ -1,0 +1,33 @@
+name: Fragment B2 Cleanup Next One
+on:
+  push:
+    branches:
+      - ops/fragment-cleanup-batch10-20260930
+permissions:
+  contents: read
+concurrency:
+  group: fragment-b2-cleanup-next-one
+  cancel-in-progress: false
+jobs:
+  cleanup-one:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_FRAGMENT_MIN_AGE_HOURS: "168"
+      B2_FRAGMENT_SCAN_LIMIT: "120"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Select and clean exactly one fully handled old fragment
+        run: node scripts/ops/b2-fragment-cleanup-next-one.mjs
