@@ -56,26 +56,30 @@ describe("geomacro-canonical-json-v1 test vector", () => {
     );
     expect(signatureVerified).toBe(true);
   });
-  it("locks ECMAScript number and UTF-16 ordering edge cases", () => {
+
+  it("reproduces the normative cross-language conformance appendix", () => {
     const vector = JSON.parse(
       readFileSync(
-        "docs/examples/gro-1.1-canonical-v1-edge-vectors.json",
+        "test-vectors/gro-canonical-json-v1-edge-vectors.json",
         "utf8",
       ),
     ) as {
-      input: unknown;
+      input_json_text: string;
       canonical_json: string;
-      sha256: string;
+      canonical_sha256: string;
     };
 
-    const canonical = canonicalJson(vector.input);
+    const input = JSON.parse(vector.input_json_text) as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(input, "__proto__")).toBe(true);
+
+    const canonical = canonicalJson(input);
     expect(canonical).toBe(vector.canonical_json);
+    expect(canonical).toContain('"__proto__":{"injected":"signed"}');
 
     const hash = createHash("sha256")
       .update(canonical, "utf8")
       .digest("hex");
 
-    expect(hash).toBe(vector.sha256);
+    expect(hash).toBe(vector.canonical_sha256);
   });
-
 });
