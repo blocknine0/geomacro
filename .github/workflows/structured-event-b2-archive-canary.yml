@@ -18,27 +18,28 @@ concurrency:
 
 jobs:
   archive-only-canary:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
-      B2_S3_ENDPOINT: ${{ secrets.B2_S3_ENDPOINT }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       STRUCTURED_EVENT_ARCHIVE_OLDER_DAYS: ${{ inputs.older_days }}
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          node-version: "22"
-          cache: npm
+          bun-version: "1.4.2"
 
-      - run: npm ci --ignore-scripts
+      - run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Verify required archive configuration
         shell: bash
@@ -46,7 +47,7 @@ jobs:
           set -euo pipefail
           test "$APP_SUPABASE_URL" = "https://ldpwajisioljyjtojvfx.supabase.co"
           test -n "$APP_SUPABASE_SERVICE_ROLE_KEY"
-          test -n "$B2_S3_ENDPOINT"
+          test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com"
           test -n "$B2_KEY_ID"
           test -n "$B2_APPLICATION_KEY"
 
