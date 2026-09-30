@@ -82,11 +82,11 @@ describe("commercial website source-of-truth contract", () => {
     expect(shell).toContain('const PRIMARY_NAV = [');
     expect(shell).toContain('label: "Intelligence"');
     expect(shell).toContain('label: "Risk Indices"');
-    expect(shell).toContain('label: "For Institutions"');
-    expect(shell).toContain('label: "Ecosystem"');
+    expect(shell).toContain('label: "API & Agents"');
+    expect(shell).toContain('label: "Institutions"');
+    expect(shell).toContain('/data-api#pricing');
     expect(shell).toContain('Risk Gate · Private Pilot');
-    expect(shell).toContain('label: "Data & API"');
-    expect(shell).toContain("Product, evidence and roadmap");
+    expect(shell).toContain("Product, evidence and company");
     expect(shell).toContain("Technical Proof");
     expect(shell).toContain('label: "Testnet API"');
     expect(shell).toContain('label: "Agentic Commerce Demo"');
@@ -94,16 +94,16 @@ describe("commercial website source-of-truth contract", () => {
     expect(shell).toContain('label: "Arc / Onchain"');
   });
 
-  it("keeps the homepage commercially understandable without turning it into a live-data dashboard", () => {
+  it("keeps the homepage commercially understandable without price clutter or a live-data dashboard", () => {
     const home = read("src/components/home/commercial-home.tsx");
-    expect(home).toContain("Global risk intelligence");
-    expect(home).toContain("Turn world events into");
-    expect(home).toContain("decision-ready");
-    expect(home).toContain("Available at launch");
-    expect(home).toContain("What users get");
-    expect(home).toContain("Roadmap, not launch promise");
-    expect(home).toContain("Who it is for");
-    expect(home).toContain("Commercial access");
+    expect(home).toContain("Global risk intelligence for humans and machines");
+    expect(home).toContain("Know what changed.");
+    expect(home).toContain("Know why it matters.");
+    expect(home).toContain("Three risk domains");
+    expect(home).toContain("Not another raw-data feed.");
+    expect(home).toContain("Built for real workflows");
+    expect(home).toContain("Critical minerals & rare earths");
+    expect(home).not.toContain("0.05 USDC");
     expect(home).not.toContain("AgentCommerceStatus compact");
     expect(home).not.toContain("AskGeomacroSection");
     expect(home).not.toContain("RiskIndicesSection");
@@ -152,6 +152,19 @@ describe("commercial website source-of-truth contract", () => {
     expect(route).toContain("route_modeling_status = NOT_MODELED");
     expect(route).toContain("execution_authorized=false");
     expect(route).not.toContain("PUBLIC · GEOMACRO AGENT V1");
+  });
+
+  it("keeps pricing off the homepage and exposes only Free Explorer plus x402 pay per call", () => {
+    const home = read("src/components/home/commercial-home.tsx");
+    const route = read("src/routes/data-api.tsx");
+    expect(home).not.toContain("0.05 USDC");
+    expect(route).toContain('id="pricing"');
+    expect(route).toContain("Free Explorer");
+    expect(route).toContain("x402 pay per call");
+    expect(route).toContain("0.05");
+    expect(route).toContain("first 20,000");
+    expect(route).toContain("No subscription tier is required");
+    expect(route).not.toContain("0.10 USDC");
   });
 
   it("keeps Circle Alliance membership verifiable without implying endorsement", () => {
