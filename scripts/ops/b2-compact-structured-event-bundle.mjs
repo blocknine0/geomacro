@@ -132,7 +132,7 @@ const { data: rows, error } = await db
   .not("structured_payload", "cs", JSON.stringify({ _archive: { v: 2 } }))
   .order("last_seen_at", { ascending: true })
   .limit(limit);
-if (error) throw new Error(`STRUCTURED_EVENT_BUNDLE_QUERY_FAILED_${error.code ?? "unknown"}`);
+if (error) throw new Error(`STRUCTURED_EVENT_BUNDLE_QUERY_FAILED_${error.code ?? "unknown"}: ${error.message ?? "unknown"}`);
 
 const members = [];
 let rawPayloadBytes = 0;
@@ -185,6 +185,10 @@ if (compressed.length > MAX_BUNDLE_COMPRESSED_BYTES) throw new Error("STRUCTURED
 const bundleSha = sha256(compressed);
 const day = new Date().toISOString().slice(0, 10);
 const bundleKey = `geomacro-evidence/v1/structured-event-bundles/${day}/${bundleSha}.json.gz`;
+const preflightKey = `geomacro-evidence/v1/health/read-preflight/${day}/${bundleSha}.missing`;
+
+const preflightReadback = await b2.getOptional(preflightKey);
+if (preflightReadback !== null) throw new Error("STRUCTURED_EVENT_BUNDLE_READ_PREFLIGHT_COLLISION");
 
 await b2.put(bundleKey, compressed);
 const firstReadback = await b2.get(bundleKey);
@@ -226,6 +230,7 @@ const proof = {
   archived_member_count: members.length,
   compacted_member_count: updates.length,
   member_payload_hashes: Object.fromEntries(members.map((member) => [member.event_id, member.payload_sha256])),
+  pre_write_b2_read_preflight_verified: true,
   pre_update_full_b2_readback_verified: true,
   json_restore_verified: true,
   verified_at: new Date().toISOString(),
@@ -282,6 +287,7 @@ console.log(JSON.stringify({
   status: "progress",
   compacted: updates.length,
   archived_members: members.length,
+  b2_read_preflight_verified_before_write: true,
   full_b2_readback_verified_before_update: true,
   full_b2_readback_verified_after_update: true,
   json_restore_verified: true,
