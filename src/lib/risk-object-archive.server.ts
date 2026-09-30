@@ -22,6 +22,15 @@ async function downloadEdgeArchive(objectId: string): Promise<Buffer> {
   return Buffer.from(await data.arrayBuffer());
 }
 
+async function downloadLegacyStorageArchive(archiveKey: string): Promise<Buffer> {
+  const db = requireRiskSupabase();
+  const { data, error } = await db.storage
+    .from("geomacro-live-intelligence")
+    .download(archiveKey);
+  if (error || !data) throw new Error("RISK_OBJECT_ARCHIVE_UNAVAILABLE");
+  return Buffer.from(await data.arrayBuffer());
+}
+
 export async function loadRiskObjectPayload(row: ArchivedRiskObjectRow): Promise<GeomacroRiskObject> {
   if (row.payload) return row.payload as GeomacroRiskObject;
   if (!/^gro_[A-Za-z0-9_]+$/.test(row.object_id) ||
@@ -30,11 +39,18 @@ export async function loadRiskObjectPayload(row: ArchivedRiskObjectRow): Promise
       !/^[a-f0-9]{64}$/.test(row.archive_sha256 ?? "")) {
     throw new Error("RISK_OBJECT_ARCHIVE_POINTER_INVALID");
   }
-  const db = requireRiskSupabase();
-  const { data, error } = await db.storage.from("geomacro-live-intelligence").download(row.archive_key);
-  const compressed = error || !data
-    ? await downloadEdgeArchive(row.object_id)
-    : Buffer.from(await data.arrayBuffer());
+
+  // B2 is now the canonical cold path for externalized GRO payloads. Prefer the
+  // verified server-side bridge so bundle-backed rows do not first generate a
+  // guaranteed failed Supabase Storage GET. Keep Storage as a legacy fallback
+  // for older rows that may not yet exist in B2.
+  let compressed: Buffer;
+  try {
+    compressed = await downloadEdgeArchive(row.object_id);
+  } catch {
+    compressed = await downloadLegacyStorageArchive(row.archive_key);
+  }
+
   if (compressed.length > 2_000_000) throw new Error("RISK_OBJECT_ARCHIVE_TOO_LARGE");
   if (sha256(compressed) !== row.archive_sha256) {
     throw new Error("RISK_OBJECT_ARCHIVE_HASH_MISMATCH");
