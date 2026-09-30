@@ -61,7 +61,7 @@ jobs:
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "${EXPECTED_SUPABASE_PROJECT_REF}"
 
       - name: Require Supabase free-tier bulk-write budget
-        run: node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write
+        run: node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-recovery-target
 
       - name: Refresh governed global World Bank macro, fiscal and external observations
         shell: bash
