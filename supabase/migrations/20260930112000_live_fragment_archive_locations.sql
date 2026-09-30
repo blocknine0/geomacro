@@ -43,6 +43,7 @@ grant select, insert, update on table public.live_fragment_archive_locations to 
 create or replace function public.prevent_live_fragment_archive_location_mutation()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   if tg_op = 'UPDATE' then
