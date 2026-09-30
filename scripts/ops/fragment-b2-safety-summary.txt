@@ -1,0 +1,1 @@
+The recovery runner does not schedule recurring work. Archive and restore are manually dispatched. Archive-only keeps source deletion off. Cleanup is separately gated, single-fragment, and retains the offload script's independent fully-handled, B2-readback, Storage API removal, absence-proof and deletion-proof checks.
