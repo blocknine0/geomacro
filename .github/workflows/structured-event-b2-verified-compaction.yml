@@ -33,6 +33,7 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_REQUEST_BUDGET: "40"
       STRUCTURED_EVENT_COMPACT_OLDER_DAYS: ${{ inputs.older_days }}
       STRUCTURED_EVENT_COMPACT_LIMIT: ${{ inputs.limit }}
 
@@ -51,5 +52,6 @@ jobs:
           test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com"
           test -n "$B2_KEY_ID"
           test -n "$B2_APPLICATION_KEY"
+          test "$B2_REQUEST_BUDGET" = "40"
       - name: Compact only after verified B2 archive and restore
         run: node scripts/ops/b2-compact-structured-event-payload.mjs
