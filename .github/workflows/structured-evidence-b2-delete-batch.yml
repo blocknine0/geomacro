@@ -13,6 +13,8 @@ on:
         required: false
         default: "10"
         type: string
+  schedule:
+    - cron: "7,22,37,52 * * * *"
 
 permissions:
   contents: read
@@ -33,8 +35,8 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      STRUCTURED_EVIDENCE_DELETE_OLDER_DAYS: ${{ inputs.older_days }}
-      STRUCTURED_EVIDENCE_DELETE_LIMIT: ${{ inputs.limit }}
+      STRUCTURED_EVIDENCE_DELETE_OLDER_DAYS: ${{ github.event_name == 'schedule' && '7' || inputs.older_days }}
+      STRUCTURED_EVIDENCE_DELETE_LIMIT: ${{ github.event_name == 'schedule' && '10' || inputs.limit }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
