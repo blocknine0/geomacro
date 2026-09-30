@@ -6,8 +6,12 @@ Status: PREPARED, REAL-FUNDS GATE LOCKED.
 
 - Network: Base mainnet (`eip155:8453`)
 - Settlement asset: canonical USDC on Base
-- Launch price: `0.05 USDC` per successful paid intelligence delivery for the first 10,000 deliveries (`50000` atomic units); later reference price `0.10 USDC` after adoption evidence
+- Launch price: `0.05 USDC` per successful paid intelligence delivery for the first 20,000 successfully settled and delivered calls (`50000` atomic units)
+- Gross adoption milestone at the launch price: `1,000 USDC` before provider/network/hosting costs, refunds or disputes
+- Post-cohort pricing is operator-controlled and must be published explicitly before any change takes effect; there is no automatic price increase
 - Risk Gate output never authorizes execution: `execution_authorized=false`
+
+Failed, stale, unavailable, replayed, refunded, internal, testnet and unpaid requests do not count as successful paid deliveries.
 
 ## Activation boundary
 
