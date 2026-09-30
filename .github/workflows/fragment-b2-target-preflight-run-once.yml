@@ -1,0 +1,34 @@
+name: Fragment B2 Target Preflight Run Once
+on:
+  push:
+    branches:
+      - ops/fragment-target-preflight-run-20260930
+permissions:
+  contents: read
+concurrency:
+  group: fragment-b2-target-preflight-run-once
+  cancel-in-progress: false
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_FRAGMENT_TARGET_ID: b27c4ce5-bd5e-4403-b161-7e8afc3b2fce
+      B2_FRAGMENT_TARGET_DELETE: "0"
+      B2_FRAGMENT_MIN_AGE_HOURS: "168"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Verify exact target archive and cleanup eligibility without deleting
+        run: node scripts/ops/b2-fragment-targeted-cleanup.mjs
