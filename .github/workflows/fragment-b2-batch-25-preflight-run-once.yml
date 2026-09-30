@@ -1,0 +1,66 @@
+name: Fragment B2 Batch 25 Preflight Run Once
+on:
+  push:
+    branches:
+      - ops/fragment-b2-batch-25-20260930
+permissions:
+  contents: read
+concurrency:
+  group: fragment-b2-batch-25-preflight-run-once
+  cancel-in-progress: false
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_FRAGMENT_MIN_AGE_HOURS: "168"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Verify source, B2 readback and resolver route for 25 exact fragments without deleting
+        shell: bash
+        run: |
+          set -euo pipefail
+          ids=(
+            7a1bf699-9aff-46c5-80a7-3c44dbca727e
+            e31b5f0f-f001-4f02-bb57-c52e1ef9f30d
+            4557de38-162b-47d3-a06c-fbf063534158
+            ded224ea-4e36-4182-af1c-2762da22e15a
+            1f0f81dc-3490-40d7-87c3-739a5f811112
+            0936b7d6-d4e5-417a-aab0-4f5f9af7138b
+            c7d9116a-5ec4-446f-be47-92b8ded33df3
+            4c3b282f-3f85-4726-b859-dcc74debc462
+            3260dcd4-35a2-4ad3-b436-aafd476c3171
+            db4e7709-f503-4122-aeca-ca8e0f22a962
+            82aa6baa-92dc-46b0-9075-2c951d6bb75e
+            d889c81a-54f9-434f-8055-b282888dd2ae
+            f7c6ad0a-79d9-4f01-a3b5-d66b286dbb33
+            d4c0253f-ccee-4e9c-b545-7e2e441e6927
+            9e2b9185-4968-482c-8c5b-33a0a17ece3f
+            ec8687e1-ce9f-4b3f-935a-e19b6792593e
+            7139c4d8-f7b2-478d-a0cb-35dfdfd02587
+            90681909-bfe6-453a-ac7f-7c5bae2014cd
+            f9905f8d-f74b-4957-a320-dd3263deab45
+            a395a5b1-a36a-4db3-bdcb-0d2d4b4f049d
+            a0a84a7a-a881-4727-81a3-ea58e65bcfa2
+            79ee6ebc-5934-4721-ba35-c0a3a91c7d23
+            37fb080d-6452-4e58-b9d8-17c6a8637b73
+            2dc7a01b-6568-4cf3-abfe-0c71ea11917b
+            dc32f40f-7452-4c75-b533-05d446207144
+          )
+          for id in "${ids[@]}"; do
+            echo "=== verified preflight ${id} ==="
+            B2_FRAGMENT_TARGET_ID="$id" B2_FRAGMENT_RESOLVER_DELETE=0 node scripts/ops/b2-fragment-resolver-backed-offload.mjs
+          done
+          echo "PASS: all 25 fragments have verified B2 readback and current resolver source routes; no source object was deleted."
