@@ -29,7 +29,6 @@ const { data: rows, error } = await db
   .from("live_structured_events")
   .select("id,story_key,domain,event_type,last_seen_at,last_observed_at,structured_payload,structure_version")
   .lt("last_seen_at", cutoff)
-  .neq("structured_payload", {})
   .order("last_seen_at", { ascending: true })
   .limit(1);
 if (error) throw new Error(`STRUCTURED_EVENT_ARCHIVE_QUERY_FAILED_${error.code ?? "unknown"}: ${error.message ?? "unknown"}`);
@@ -39,7 +38,13 @@ if (!rows?.length) {
 }
 
 const row = rows[0];
-if (!/^[0-9a-f-]{36}$/i.test(String(row.id ?? "")) || !row.structured_payload || typeof row.structured_payload !== "object") {
+if (
+  !/^[0-9a-f-]{36}$/i.test(String(row.id ?? "")) ||
+  !row.structured_payload ||
+  typeof row.structured_payload !== "object" ||
+  Array.isArray(row.structured_payload) ||
+  Object.keys(row.structured_payload).length === 0
+) {
   throw new Error("STRUCTURED_EVENT_ARCHIVE_SOURCE_INVALID");
 }
 
@@ -92,7 +97,11 @@ const { data: current, error: currentError } = await db
   .select("id,structured_payload")
   .eq("id", row.id)
   .single();
-if (currentError || current?.id !== row.id || sha256(Buffer.from(JSON.stringify(current.structured_payload))) !== proof.source_payload_sha256) {
+if (
+  currentError ||
+  current?.id !== row.id ||
+  sha256(Buffer.from(JSON.stringify(current.structured_payload))) !== proof.source_payload_sha256
+) {
   throw new Error("STRUCTURED_EVENT_ARCHIVE_SOURCE_CHANGED");
 }
 
