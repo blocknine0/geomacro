@@ -12,7 +12,7 @@ async function b2Hmac(key: Uint8Array | string, value: string): Promise<Uint8Arr
   return new Uint8Array(await crypto.subtle.sign("HMAC", imported, b2Text.encode(value)));
 }
 async function downloadVerifiedB2Fragment(key: string, expectedSha: string): Promise<Blob> {
-  if (!/^geomacro-evidence\/v1\/live\/v1\/[A-Za-z0-9_./-]+\.ndjson\.gz$/.test(key) ||
+  if (!/^geomacro-evidence\/v1\/(?:live|fragments)\/v1\/[A-Za-z0-9_./-]+\.ndjson\.gz$/.test(key) ||
       key.includes("..") || !/^[a-f0-9]{64}$/.test(expectedSha)) throw new Error("B2_FRAGMENT_POINTER_INVALID");
   const access = Deno.env.get("B2_ARCHIVE_READ_KEY_ID")?.trim();
   const secret = Deno.env.get("B2_ARCHIVE_READ_APPLICATION_KEY")?.trim();
@@ -3099,10 +3099,10 @@ Deno.serve(async (req) => {
         error: requestedManifestError,
       } = await db
         .from(
-          "live_fragment_manifest",
+          "resolved_live_fragment_locations",
         )
         .select(
-          "id,object_path,storage_bucket,compressed_sha256,item_count,source_key,stream_key,period_end,verified_at",
+          "id,object_path:resolved_object_path,storage_bucket:resolved_storage_bucket,compressed_sha256,item_count,source_key,stream_key,period_end,verified_at",
         )
         .eq(
           "id",
@@ -3189,10 +3189,10 @@ Deno.serve(async (req) => {
         error: manifestError,
       } = await db
         .from(
-          "live_fragment_manifest",
+          "resolved_live_fragment_locations",
         )
         .select(
-          "id,object_path,storage_bucket,compressed_sha256,item_count,period_end,verified_at",
+          "id,object_path:resolved_object_path,storage_bucket:resolved_storage_bucket,compressed_sha256,item_count,period_end,verified_at",
         )
         .in(
           "verification_method",
