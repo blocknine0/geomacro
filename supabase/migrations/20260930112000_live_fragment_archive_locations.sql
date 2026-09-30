@@ -37,6 +37,8 @@ create index if not exists live_fragment_archive_locations_verified_idx
   on public.live_fragment_archive_locations(verified_at desc);
 
 alter table public.live_fragment_archive_locations enable row level security;
+revoke all on table public.live_fragment_archive_locations from anon, authenticated;
+grant select, insert, update on table public.live_fragment_archive_locations to service_role;
 
 create or replace function public.prevent_live_fragment_archive_location_mutation()
 returns trigger
