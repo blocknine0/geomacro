@@ -1,13 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
 import {
   ArrowRight,
   CheckCircle2,
-  Code2,
-  KeyRound,
+  Fingerprint,
   Route as RouteIcon,
   ShieldCheck,
-  TestTube2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,405 +29,150 @@ export const Route = createFileRoute("/risk-gate")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: "https://geomacro.live/risk-gate" }],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebPage",
-          name: "Geomacro Risk Gate Private Pilot",
-          url: "https://geomacro.live/risk-gate",
-          description: DESCRIPTION,
-          isPartOf: {
-            "@type": "WebSite",
-            name: "Geomacro",
-            url: "https://geomacro.live/",
-          },
-        }),
-      },
-    ],
   }),
   component: RiskGatePage,
 });
 
 function RiskGatePage() {
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
-      <section className="max-w-5xl">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="outline"
-            className="border-amber-400/40 bg-amber-400/5 font-mono text-[11px] text-amber-300"
-          >
-            PRIVATE PILOT
-          </Badge>
-          <Badge
-            variant="outline"
-            className="border-primary/30 bg-primary/5 font-mono text-[11px]"
-          >
-            TESTNET
-          </Badge>
+    <main>
+      <section className="relative overflow-hidden border-b border-border/55">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,color-mix(in_oklab,var(--primary)_13%,transparent),transparent_30%)]" />
+        <div className="relative mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-18 lg:grid-cols-[1.04fr_.96fr] lg:items-center lg:py-22">
+          <div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="border-amber-400/40 bg-amber-400/5 font-mono text-[10px] uppercase tracking-[0.14em] text-amber-300">PRIVATE PILOT</Badge>
+              <Badge variant="outline" className="border-primary/25 bg-primary/5 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">TESTNET</Badge>
+            </div>
+            <h1 className="mt-5 text-[clamp(2.8rem,6vw,5.6rem)] font-semibold leading-[0.96] tracking-[-0.05em]">
+              Put a risk check between context and action.
+            </h1>
+            <p className="mt-6 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+              Risk Gate verifies a signed country or corridor Risk Object, evaluates the current external-risk context and returns a bounded pre-decision recommendation before the customer&apos;s own system acts.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Button asChild size="lg" className="h-12 gap-2 px-6"><Link to="/contact">Discuss a Private Pilot <ArrowRight className="h-4 w-4" /></Link></Button>
+              <Button asChild size="lg" variant="outline" className="h-12 px-6"><Link to="/intelligence">See live intelligence</Link></Button>
+            </div>
+            <p className="mt-5 max-w-3xl text-xs leading-5 text-muted-foreground">Controlled pilot only. Geomacro returns decision context; it does not sign, authorize or submit customer transactions.</p>
+          </div>
+
+          <div className="rounded-[1.65rem] border border-border/65 bg-card/65 p-5 shadow-2xl shadow-black/20 backdrop-blur sm:p-7">
+            <p className="font-mono text-[10px] uppercase tracking-[0.17em] text-muted-foreground">Possible Risk Gate outputs</p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {OUTPUTS.map((output, index) => (
+                <div key={output} className="rounded-xl border border-border/60 bg-background/30 p-4">
+                  <p className="font-mono text-[10px] text-primary">0{index + 1}</p>
+                  <p className="mt-2 font-mono text-sm font-semibold">{output}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <p className="font-mono text-xs text-primary">execution_authorized = false</p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">The customer keeps identity, permissions, policy enforcement and final execution.</p>
+            </div>
+          </div>
         </div>
-
-        <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-6xl">
-          Check external risk before an action moves forward.
-        </h1>
-
-        <p className="mt-5 max-w-4xl text-lg leading-relaxed text-muted-foreground">
-          Risk Gate turns Geomacro&apos;s verified risk context into a bounded,
-          machine-readable pre-flight decision. It can verify a signed Risk
-          Object, evaluate country or directional-corridor context, explain the
-          risk change, and return a controlled decision before the customer&apos;s
-          own system acts.
-        </p>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Button asChild size="lg" className="gap-2">
-            <Link to="/contact">
-              Discuss a Private Pilot <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link to="/intelligence">See live intelligence</Link>
-          </Button>
-          <Button asChild size="lg" variant="ghost">
-            <a href="/api/risk-gate-readiness">Check readiness</a>
-          </Button>
-        </div>
-
-        <p className="mt-5 max-w-4xl text-xs leading-relaxed text-muted-foreground">
-          The current implementation is a controlled testnet/private-pilot
-          capability, not a generally available production service. Execution
-          remains customer-controlled and Geomacro does not sign or submit
-          customer transactions.
-        </p>
       </section>
 
-      <section className="mt-12 grid gap-4 md:grid-cols-3">
-        <StatusCard
-          label="LIVE"
-          title="Intelligence"
-          body="Current geopolitical, macroeconomic and strategic-resource context feeds the broader Geomacro intelligence layer."
-          to="/intelligence"
-        />
-        <StatusCard
-          label="PRIVATE PILOT"
-          title="Risk Objects"
-          body="Signed, versioned machine-readable objects carry risk, attribution, evidence, freshness and integrity context."
-          to="/risk-gate"
-        />
-        <StatusCard
-          label="TESTNET"
-          title="Risk Gate"
-          body="Pre-flight evaluation is being hardened with fail-closed tests before any production launch claim."
-          to="/risk-gate"
-        />
-      </section>
-
-      <section className="mt-14">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">
-          What Geomacro can actually do
-        </p>
-        <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight">
-          Risk context in. Verifiable decision context out.
-        </h2>
-        <div className="mt-5 rounded-xl border border-border/60 bg-background/30 p-5">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Current Private Pilot scope is country and directional corridor risk.
-            Geomacro supports a country or corridor Risk Object, including directional corridors composed from endpoints plus eligible bilateral evidence. Full physical-route and counterparty modelling are not claimed.
-          </p>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Event-specific Risk Objects remain a broader product direction only.
-            They are not part of the current Private Pilot contract.
-          </p>
+      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
+        <div className="max-w-3xl">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">How it works</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Four bounded steps. No hidden execution authority.</h2>
         </div>
-
-        <div className="mt-7 grid gap-5 lg:grid-cols-3">
+        <div className="mt-9 grid overflow-hidden rounded-2xl border border-border/65 bg-border/60 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            [
-              "01",
-              "Verify the object",
-              "Check GRO schema, issuer trust, payload integrity, signature and freshness before using the risk context.",
-            ],
-            [
-              "02",
-              "Evaluate the action",
-              "Activate relevant country, corridor and exposure modules from the requested workflow and context.",
-            ],
-            [
-              "03",
-              "Explain the result",
-              "Return current risk, previous state, delta, confidence, coverage, top drivers and threshold triggers.",
-            ],
-            [
-              "04",
-              "Apply bounded policy",
-              "Evaluate the caller-supplied policy profile and produce CONTINUE, REDUCE_LIMIT, REQUIRE_APPROVAL or PAUSE.",
-            ],
-            [
-              "05",
-              "Fail closed",
-              "Missing or expired required inputs, commercially ineligible evidence and integrity failures cannot silently become approval.",
-            ],
-            [
-              "06",
-              "Preserve auditability",
-              "Authenticated evaluations are designed to leave an immutable decision record that can be correlated with the risk context.",
-            ],
+            ["01", "Verify", "Validate object signature, integrity and freshness."],
+            ["02", "Evaluate", "Read current risk, change, confidence and relevant drivers."],
+            ["03", "Apply policy", "Evaluate the caller-supplied policy profile against the bounded context."],
+            ["04", "Return", "Return one controlled recommendation with an auditable decision record."],
           ].map(([step, title, body]) => (
-            <article
-              key={step}
-              className="rounded-2xl border border-border/70 bg-card/50 p-6"
-            >
-              <span className="font-mono text-xs text-primary">CAPABILITY {step}</span>
+            <article key={step} className="bg-background/88 p-5 sm:p-6">
+              <p className="font-mono text-[10px] tracking-[0.16em] text-primary">{step}</p>
               <h3 className="mt-3 text-lg font-semibold">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {body}
-              </p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="mt-14 overflow-hidden rounded-2xl border border-border/70 bg-card/50">
-        <div className="border-b border-border/70 p-6 sm:p-8">
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">
-            Testnet workflow
-          </p>
-          <h2 className="mt-3 text-2xl font-semibold">
-            A concrete machine path, without hidden execution authority.
-          </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            The testnet flow is intentionally bounded. A caller asks whether a
-            proposed action should be reviewed in the current external-risk
-            context. Geomacro returns decision context, not a wallet
-            authorization.
-          </p>
-        </div>
-
-        <div className="grid gap-px bg-border/60 md:grid-cols-4">
-          {[
-            ["1", "Request", "Country or directional corridor + action context + policy reference"],
-            ["2", "Verify", "Signed Risk Object + freshness + methodology + required inputs"],
-            ["3", "Evaluate", "Risk score + delta + confidence + coverage + drivers + thresholds"],
-            ["4", "Return", "CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE"],
-          ].map(([step, title, body]) => (
-            <div key={step} className="bg-background/80 p-6">
-              <span className="font-mono text-xs text-primary">STEP {step}</span>
-              <h3 className="mt-3 font-semibold">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {body}
+      <section className="border-y border-border/55 bg-card/15">
+        <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[.82fr_1.18fr] lg:items-start">
+          <div>
+            <RouteIcon className="h-5 w-5 text-primary" />
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Private Pilot scope</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Country and directional-corridor context only.</h2>
+          </div>
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-border/60 bg-background/30 p-5 sm:p-6">
+              <p className="text-sm leading-7 text-muted-foreground">
+                Current Private Pilot scope is country and directional corridor risk. Geomacro supports directional corridors composed from endpoints plus eligible bilateral evidence.
               </p>
             </div>
-          ))}
-        </div>
-
-        <div className="border-t border-border/70 p-6 sm:p-8">
-          <div className="rounded-xl border border-border/60 bg-background/40 p-5">
-            <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-              Response boundary
-            </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {OUTPUTS.map((output) => (
-                <div
-                  key={output}
-                  className="flex items-center gap-2 rounded-xl border border-border/60 px-4 py-3 font-mono text-sm"
-                >
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  {output}
-                </div>
-              ))}
+            <div className="rounded-2xl border border-border/60 bg-background/30 p-5 sm:p-6">
+              <p className="text-sm leading-7 text-muted-foreground">
+                Full physical-route and counterparty modelling are not claimed. Event-specific Risk Objects remain a broader product direction rather than part of the current pilot contract.
+              </p>
             </div>
-            <div className="mt-4 rounded-xl border border-border/60 bg-card/40 p-4">
-            <p className="font-mono text-xs text-muted-foreground">
-              execution_authorized = false
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              A risk recommendation is not permission to move money. The customer's own identity, permissions and policy layer applies its rules after the Risk Gate response.
-            </p>
-          </div>
           </div>
         </div>
       </section>
 
-      <section className="mt-14 grid gap-5 md:grid-cols-3">
-        <FeatureCard
-          icon={<KeyRound className="h-5 w-5 text-primary" />}
-          eyebrow="VERIFIABLE"
-          title="Signed Risk Objects"
-          body="GROs are versioned machine-readable artifacts with Ed25519 issuer verification, canonicalization, freshness and integrity metadata."
-        />
-        <FeatureCard
-          icon={<RouteIcon className="h-5 w-5 text-primary" />}
-          eyebrow="ACTION-AWARE"
-          title="Country + directional corridor"
-          body="The controlled pilot can evaluate country subjects and directional corridor context composed from endpoint risk and eligible bilateral evidence."
-        />
-        <FeatureCard
-          icon={<ShieldCheck className="h-5 w-5 text-primary" />}
-          eyebrow="FAIL-CLOSED"
-          title="No silent approval"
-          body="Stale, missing, malformed, unverifiable or commercially ineligible required context can force a review or PAUSE rather than an implicit CONTINUE."
-        />
+      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
+        <div className="max-w-3xl">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Trust model</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">A gate should fail safely when context is weak.</h2>
+        </div>
+        <div className="mt-9 grid gap-4 md:grid-cols-3">
+          <TrustCard icon={Fingerprint} title="Verifiable object" text="Signed, versioned Risk Objects preserve integrity, freshness and methodology context." />
+          <TrustCard icon={ShieldCheck} title="Fail-closed" text="Missing, stale, malformed or commercially ineligible required context cannot silently become approval." />
+          <TrustCard icon={CheckCircle2} title="Auditable response" text="The recommendation is designed to be correlated with the exact risk context used by the caller." />
+        </div>
       </section>
 
-      <section className="mt-14 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-        <article className="rounded-2xl border border-border/70 bg-card/50 p-6 sm:p-8">
-          <div className="flex items-center gap-3">
-            <Code2 className="h-5 w-5 text-primary" />
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-              MACHINE OUTPUT
-            </p>
-          </div>
-          <h2 className="mt-3 text-2xl font-semibold">
-            Built for systems, not just dashboards.
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            The same risk context can be consumed by an API, financial
-            workflow, treasury system or autonomous-agent integration. The
-            output is designed to be inspected, verified and logged as part of
-            the caller&apos;s own decision process.
-          </p>
-          <div className="mt-6 rounded-xl border border-border/60 bg-background/40 p-5 font-mono text-xs leading-relaxed">
-            <div>subject → action_context → policy</div>
-            <div>verified Risk Object</div>
-            <div>risk + delta + confidence + coverage</div>
-            <div>drivers + thresholds + integrity</div>
-            <div>decision → customer-controlled action</div>
-          </div>
-        </article>
-
-        <article className="rounded-2xl border border-border/70 bg-card/50 p-6 sm:p-8">
-          <div className="flex items-center gap-3">
-            <TestTube2 className="h-5 w-5 text-primary" />
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-amber-300">
-              TESTNET FIRST
-            </p>
-          </div>
-          <h2 className="mt-3 text-2xl font-semibold">
-            Harden the gate before opening the gate.
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Current work is focused on source certification, freshness,
-            adapter/runtime coverage, Risk Object verification, replay/tamper
-            resistance, degraded-state handling and end-to-end testnet
-            evidence.
-          </p>
-          <div className="mt-6 space-y-2 text-sm text-muted-foreground">
-            {[
-              "source → evidence → Risk Object lineage",
-              "freshness and commercial eligibility gates",
-              "missing/expired input fail-closed behavior",
-              "tamper and replay rejection",
-              "audit and integrity verification",
-            ].map((item) => (
-              <div key={item} className="flex gap-2">
-                <span className="text-primary">•</span>
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="mt-14 rounded-2xl border border-border/70 bg-card/50 p-6 sm:p-8">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">
-          Scope boundary
-        </p>
-        <h2 className="mt-3 text-2xl font-semibold">
-          What the current pilot does not claim.
-        </h2>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          {[
-            "Full physical-route or port-by-port logistics modelling",
-            "Entity-specific sanctions/compliance screening",
-            "Counterparty-specific financial exposure validation",
-            "Autonomous transaction signing or asset movement",
-            "General availability, production SLA or institutional certification",
-            "Full activation of every Risk Gate v2 module",
-          ].map((item) => (
-            <div
-              key={item}
-              className="rounded-xl border border-border/60 bg-background/30 px-4 py-3 text-sm text-muted-foreground"
-            >
-              {item}
+      <section className="border-y border-border/55 bg-card/15">
+        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
+          <div className="grid gap-8 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Machine boundary</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">Built to sit inside a customer-controlled workflow.</h2>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">Geomacro evaluates external-risk context. The customer still owns the identity, permissions, compliance, funds and final action.</p>
             </div>
-          ))}
+            <div className="rounded-2xl border border-border/60 bg-background/30 p-5 font-mono text-xs leading-7 text-muted-foreground sm:p-6">
+              <div>subject + action context</div>
+              <div className="text-primary">↓</div>
+              <div>verified Risk Object</div>
+              <div className="text-primary">↓</div>
+              <div>risk + delta + confidence + drivers</div>
+              <div className="text-primary">↓</div>
+              <div>CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE</div>
+              <div className="text-primary">↓</div>
+              <div>customer-controlled action</div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="mt-14 rounded-2xl border border-primary/25 bg-primary/[0.04] p-7 sm:p-9">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-          DESIGN PARTNERS
-        </p>
-        <div className="mt-3 flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <div>
-            <h2 className="text-2xl font-semibold">
-              Test one real decision against the gate.
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              The current route is for controlled testnet/private-pilot
-              validation. It is intentionally explicit about what is live,
-              what is gated and what remains customer-controlled.
-            </p>
+      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
+        <div className="overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--primary)_10%,transparent),transparent_58%)] p-6 sm:p-9 lg:flex lg:items-center lg:justify-between lg:gap-10">
+          <div className="max-w-3xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Design partners</p>
+            <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">Have a workflow that should stop, slow down or require review when external risk changes?</h2>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">Bring the action, subject, required freshness and policy boundary. We will map it to the current pilot scope before any integration commitment.</p>
           </div>
-          <Button asChild size="lg" className="shrink-0">
-            <Link to="/contact">Discuss the workflow</Link>
-          </Button>
+          <Button asChild size="lg" className="mt-7 shrink-0 gap-2 lg:mt-0"><Link to="/contact">Discuss a pilot <ArrowRight className="h-4 w-4" /></Link></Button>
         </div>
       </section>
     </main>
   );
 }
 
-function FeatureCard({
-  icon,
-  eyebrow,
-  title,
-  body,
-}: {
-  icon: ReactNode;
-  eyebrow: string;
-  title: string;
-  body: string;
-}) {
+function TrustCard({ icon: Icon, title, text }: { icon: typeof ShieldCheck; title: string; text: string }) {
   return (
-    <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
-      {icon}
-      <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-        {eyebrow}
-      </p>
-      <h2 className="mt-2 text-lg font-semibold">{title}</h2>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
-    </article>
-  );
-}
-
-function StatusCard({
-  label,
-  title,
-  body,
-  to,
-}: {
-  label: string;
-  title: string;
-  body: string;
-  to: "/intelligence" | "/global-risk" | "/risk-gate";
-}) {
-  return (
-    <article className="rounded-2xl border border-border/70 bg-card/40 p-5">
-      <p
-        className={`font-mono text-[10px] uppercase tracking-[0.16em] ${label === "LIVE" ? "text-primary" : "text-amber-300"}`}
-      >
-        {label}
-      </p>
-      <h2 className="mt-2 text-lg font-semibold">{title}</h2>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
-      <Button asChild variant="link" className="mt-3 h-auto p-0 text-xs">
-        <Link to={to}>
-          Learn more <ArrowRight className="ml-1 h-3 w-3" />
-        </Link>
-      </Button>
+    <article className="rounded-2xl border border-border/60 bg-card/35 p-5 sm:p-6">
+      <Icon className="h-5 w-5 text-primary" />
+      <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
     </article>
   );
 }
