@@ -34,31 +34,71 @@ const b2 = createB2Client({
   bucket: ARCHIVE_BUCKET,
 });
 
-const HOT_KEYS = [
-  "structure_version",
-  "country_version",
-  "story_version",
-  "scoring_version",
-  "relevance_version",
-  "event_label",
-  "primary_country_name",
-  "source_domains",
-  "source_families",
-  "cluster_tokens",
-  "why_it_matters",
-  "risk_channels",
-  "severity",
-  "confidence",
-  "direction",
-];
+function pointerV2(archiveKey, archiveSha256, payloadSha256) {
+  return {
+    _archive: {
+      v: 2,
+      k: archiveKey,
+      a: archiveSha256,
+      p: payloadSha256,
+    },
+  };
+}
 
-function compactProjection(payload, pointer) {
-  const projection = {};
-  for (const key of HOT_KEYS) {
-    if (Object.prototype.hasOwnProperty.call(payload, key)) projection[key] = payload[key];
+function legacyPointer(payload) {
+  const pointer = payload?._archive;
+  if (!pointer || typeof pointer !== "object" || Array.isArray(pointer)) return null;
+  if (pointer.v === 2 && typeof pointer.k === "string" && typeof pointer.a === "string" && typeof pointer.p === "string") {
+    return { version: 2, key: pointer.k, archiveSha256: pointer.a, payloadSha256: pointer.p };
   }
-  projection._archive = pointer;
-  return projection;
+  if (
+    pointer.schema === "geomacro.structured-event-cold-pointer.v1" &&
+    typeof pointer.archive_key === "string" &&
+    typeof pointer.archive_sha256 === "string" &&
+    typeof pointer.payload_sha256 === "string"
+  ) {
+    return {
+      version: 1,
+      key: pointer.archive_key,
+      archiveSha256: pointer.archive_sha256,
+      payloadSha256: pointer.payload_sha256,
+    };
+  }
+  return null;
+}
+
+function assertArchiveKey(key, eventId) {
+  const prefix = `geomacro-evidence/v1/structured-events/${eventId}/`;
+  if (!key.startsWith(prefix) || !key.endsWith(".json.gz") || key.includes("..")) {
+    throw new Error("STRUCTURED_EVENT_COMPACT_POINTER_INVALID");
+  }
+}
+
+async function restoreArchive(pointer, eventId) {
+  assertArchiveKey(pointer.key, eventId);
+  if (!/^[0-9a-f]{64}$/.test(pointer.archiveSha256) || !/^[0-9a-f]{64}$/.test(pointer.payloadSha256)) {
+    throw new Error("STRUCTURED_EVENT_COMPACT_POINTER_HASH_INVALID");
+  }
+  const readback = await b2.get(pointer.key);
+  if (readback.length > 4_500_000 || sha256(readback) !== pointer.archiveSha256) {
+    throw new Error("STRUCTURED_EVENT_COMPACT_READBACK_HASH_INVALID");
+  }
+  const restored = JSON.parse(gunzipSync(readback).toString("utf8"));
+  const restoredPayload = restored?.structured_payload;
+  if (
+    restored?.schema !== "geomacro.structured-event-payload-archive.v1" ||
+    restored?.event_id !== eventId ||
+    !restoredPayload ||
+    typeof restoredPayload !== "object" ||
+    Array.isArray(restoredPayload)
+  ) {
+    throw new Error("STRUCTURED_EVENT_COMPACT_RESTORE_INVALID");
+  }
+  const payloadRaw = Buffer.from(JSON.stringify(restoredPayload));
+  if (sha256(payloadRaw) !== pointer.payloadSha256) {
+    throw new Error("STRUCTURED_EVENT_COMPACT_RESTORE_INVALID");
+  }
+  return { restored, restoredPayload, payloadRaw, readback };
 }
 
 const cutoff = new Date(Date.now() - olderDays * 86_400_000).toISOString();
@@ -74,84 +114,101 @@ let compacted = 0;
 let skipped = 0;
 for (const row of rows ?? []) {
   if (compacted >= limit) break;
-  const payload = row.structured_payload;
+  const currentPayload = row.structured_payload;
   if (
     !/^[0-9a-f-]{36}$/i.test(String(row.id ?? "")) ||
-    !payload ||
-    typeof payload !== "object" ||
-    Array.isArray(payload) ||
-    Object.keys(payload).length === 0 ||
-    (payload._archive && typeof payload._archive === "object")
+    !currentPayload ||
+    typeof currentPayload !== "object" ||
+    Array.isArray(currentPayload) ||
+    Object.keys(currentPayload).length === 0
   ) {
     skipped += 1;
     continue;
   }
 
-  const payloadRaw = Buffer.from(JSON.stringify(payload));
-  if (payloadRaw.length > 4_000_000) throw new Error("STRUCTURED_EVENT_COMPACT_PAYLOAD_TOO_LARGE");
-  const envelope = {
-    schema: "geomacro.structured-event-payload-archive.v1",
-    event_id: row.id,
-    story_key: row.story_key,
-    domain: row.domain,
-    event_type: row.event_type,
-    structure_version: row.structure_version,
-    last_seen_at: row.last_seen_at,
-    last_observed_at: row.last_observed_at,
-    structured_payload: payload,
-  };
-  const raw = Buffer.from(JSON.stringify(envelope));
-  const compressed = gzipSync(raw, { level: 9 });
-  const archiveKey = `geomacro-evidence/v1/structured-events/${row.id}/${sha256(payloadRaw)}.json.gz`;
-  const proofKey = `geomacro-evidence/v1/index/structured-events/${row.id}/${sha256(payloadRaw)}.json`;
-
-  await b2.put(archiveKey, compressed);
-  const readback = await b2.get(archiveKey);
-  if (readback.length !== compressed.length || sha256(readback) !== sha256(compressed)) {
-    throw new Error("STRUCTURED_EVENT_COMPACT_READBACK_HASH_INVALID");
-  }
-  const restored = JSON.parse(gunzipSync(readback).toString("utf8"));
-  const restoredPayloadRaw = Buffer.from(JSON.stringify(restored?.structured_payload ?? null));
-  if (
-    restored?.schema !== envelope.schema ||
-    restored?.event_id !== row.id ||
-    sha256(Buffer.from(JSON.stringify(restored))) !== sha256(raw) ||
-    sha256(restoredPayloadRaw) !== sha256(payloadRaw)
-  ) {
-    throw new Error("STRUCTURED_EVENT_COMPACT_RESTORE_INVALID");
+  const existingPointer = legacyPointer(currentPayload);
+  if (existingPointer?.version === 2) {
+    skipped += 1;
+    continue;
   }
 
-  const pointer = {
-    schema: "geomacro.structured-event-cold-pointer.v1",
-    archive_bucket: ARCHIVE_BUCKET,
-    archive_key: archiveKey,
-    archive_sha256: sha256(compressed),
-    payload_sha256: sha256(payloadRaw),
-    verified_at: new Date().toISOString(),
-  };
-  const compact = compactProjection(payload, pointer);
+  let payload;
+  let payloadRaw;
+  let archiveKey;
+  let archiveSha256;
+  let payloadSha256;
+
+  if (existingPointer?.version === 1) {
+    const restored = await restoreArchive(existingPointer, row.id);
+    payload = restored.restoredPayload;
+    payloadRaw = restored.payloadRaw;
+    archiveKey = existingPointer.key;
+    archiveSha256 = existingPointer.archiveSha256;
+    payloadSha256 = existingPointer.payloadSha256;
+  } else {
+    payload = currentPayload;
+    payloadRaw = Buffer.from(JSON.stringify(payload));
+    if (payloadRaw.length > 4_000_000) throw new Error("STRUCTURED_EVENT_COMPACT_PAYLOAD_TOO_LARGE");
+    payloadSha256 = sha256(payloadRaw);
+    const envelope = {
+      schema: "geomacro.structured-event-payload-archive.v1",
+      event_id: row.id,
+      story_key: row.story_key,
+      domain: row.domain,
+      event_type: row.event_type,
+      structure_version: row.structure_version,
+      last_seen_at: row.last_seen_at,
+      last_observed_at: row.last_observed_at,
+      structured_payload: payload,
+    };
+    const raw = Buffer.from(JSON.stringify(envelope));
+    const compressed = gzipSync(raw, { level: 9 });
+    archiveKey = `geomacro-evidence/v1/structured-events/${row.id}/${payloadSha256}.json.gz`;
+    archiveSha256 = sha256(compressed);
+    await b2.put(archiveKey, compressed);
+    const readback = await b2.get(archiveKey);
+    if (readback.length !== compressed.length || sha256(readback) !== archiveSha256) {
+      throw new Error("STRUCTURED_EVENT_COMPACT_READBACK_HASH_INVALID");
+    }
+    const restored = JSON.parse(gunzipSync(readback).toString("utf8"));
+    const restoredPayloadRaw = Buffer.from(JSON.stringify(restored?.structured_payload ?? null));
+    if (
+      restored?.schema !== envelope.schema ||
+      restored?.event_id !== row.id ||
+      sha256(Buffer.from(JSON.stringify(restored))) !== sha256(raw) ||
+      sha256(restoredPayloadRaw) !== payloadSha256
+    ) {
+      throw new Error("STRUCTURED_EVENT_COMPACT_RESTORE_INVALID");
+    }
+  }
+
+  const compact = pointerV2(archiveKey, archiveSha256, payloadSha256);
   const compactRaw = Buffer.from(JSON.stringify(compact));
-  if (compactRaw.length >= payloadRaw.length) {
+  const currentRaw = Buffer.from(JSON.stringify(currentPayload));
+  if (compactRaw.length >= currentRaw.length) {
     skipped += 1;
     continue;
   }
 
+  const proofKey = `geomacro-evidence/v1/index/structured-events/${row.id}/${payloadSha256}.pointer-v2.json`;
   const proof = {
-    schema: "geomacro.structured-event-payload-compaction-proof.v1",
+    schema: "geomacro.structured-event-payload-compaction-proof.v2",
     event_id: row.id,
     archive_bucket: ARCHIVE_BUCKET,
     archive_key: archiveKey,
-    source_payload_sha256: pointer.payload_sha256,
-    archive_sha256: pointer.archive_sha256,
-    source_payload_bytes: payloadRaw.length,
+    source_payload_sha256: payloadSha256,
+    archive_sha256: archiveSha256,
+    full_payload_bytes: payloadRaw.length,
+    prior_hot_payload_bytes: currentRaw.length,
     compact_payload_bytes: compactRaw.length,
-    bytes_reduced_logical: payloadRaw.length - compactRaw.length,
+    bytes_reduced_this_update: currentRaw.length - compactRaw.length,
     full_b2_readback_verified: true,
     json_restore_verified: true,
-    verified_at: pointer.verified_at,
+    verified_at: new Date().toISOString(),
   };
   await b2.put(proofKey, Buffer.from(JSON.stringify(proof)));
 
+  const currentHash = sha256(currentRaw);
   const { data: current, error: currentError } = await db
     .from("live_structured_events")
     .select("id,structured_payload,last_seen_at")
@@ -161,7 +218,7 @@ for (const row of rows ?? []) {
     currentError ||
     current?.id !== row.id ||
     current?.last_seen_at !== row.last_seen_at ||
-    sha256(Buffer.from(JSON.stringify(current.structured_payload))) !== pointer.payload_sha256
+    sha256(Buffer.from(JSON.stringify(current.structured_payload))) !== currentHash
   ) {
     throw new Error("STRUCTURED_EVENT_COMPACT_SOURCE_CHANGED");
   }
@@ -177,22 +234,18 @@ for (const row of rows ?? []) {
     updateError ||
     updated?.id !== row.id ||
     updated?.last_seen_at !== row.last_seen_at ||
-    updated?.structured_payload?._archive?.payload_sha256 !== pointer.payload_sha256
+    updated?.structured_payload?._archive?.v !== 2 ||
+    updated?.structured_payload?._archive?.p !== payloadSha256
   ) {
     throw new Error("STRUCTURED_EVENT_COMPACT_UPDATE_UNCONFIRMED");
   }
 
   try {
-    const postReadback = await b2.get(pointer.archive_key);
-    if (sha256(postReadback) !== pointer.archive_sha256) throw new Error("STRUCTURED_EVENT_COMPACT_POST_UPDATE_ARCHIVE_HASH_INVALID");
-    const postRestored = JSON.parse(gunzipSync(postReadback).toString("utf8"));
-    if (sha256(Buffer.from(JSON.stringify(postRestored?.structured_payload ?? null))) !== pointer.payload_sha256) {
-      throw new Error("STRUCTURED_EVENT_COMPACT_POST_UPDATE_RESTORE_INVALID");
-    }
+    await restoreArchive({ key: archiveKey, archiveSha256, payloadSha256 }, row.id);
   } catch (cause) {
     const rollback = await db
       .from("live_structured_events")
-      .update({ structured_payload: payload })
+      .update({ structured_payload: currentPayload })
       .eq("id", row.id)
       .eq("last_seen_at", row.last_seen_at);
     if (rollback.error) throw new Error("STRUCTURED_EVENT_COMPACT_ROLLBACK_FAILED", { cause });
@@ -204,15 +257,16 @@ for (const row of rows ?? []) {
     ok: true,
     status: "progress",
     event_id: row.id,
+    pointer_version: 2,
     full_b2_readback_verified: true,
     json_restore_verified: true,
     source_row_retained: true,
-    hot_projection_retained: true,
     full_payload_externalized: true,
-    source_payload_bytes: payloadRaw.length,
+    full_payload_bytes: payloadRaw.length,
+    prior_hot_payload_bytes: currentRaw.length,
     compact_payload_bytes: compactRaw.length,
-    bytes_reduced_logical: payloadRaw.length - compactRaw.length,
-    archive_key: pointer.archive_key,
+    bytes_reduced_this_update: currentRaw.length - compactRaw.length,
+    archive_key: archiveKey,
   }));
 }
 
@@ -224,5 +278,5 @@ console.log(JSON.stringify({
   limit,
   older_days: olderDays,
   cutoff,
-  verification_mode: "full-b2-readback-plus-post-update-restore-with-rollback",
+  verification_mode: "pointer-v2-full-b2-readback-plus-post-update-restore-with-rollback",
 }));
