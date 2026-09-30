@@ -14,6 +14,7 @@ const MAX_DECOMPRESSED_BYTES = 40_000_000;
 // snapshot readable for a bounded 30-day recovery window so a paused Supabase
 // project does not turn an otherwise valid public archive into a page outage.
 const PUBLIC_INTELLIGENCE_FALLBACK_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const SOURCE_NETWORK_FALLBACK_MAX_AGE_MS = 90 * 60 * 1000;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -21,6 +22,14 @@ export const B2_PUBLIC_INTELLIGENCE_KEY =
   "geomacro-evidence/v1/live/public-intelligence/latest.json.gz";
 export const B2_PUBLIC_RISK_KEY =
   "geomacro-evidence/v1/live/risk-indices/latest.json.gz";
+export const B2_SOURCE_NETWORK_STATUS_KEY =
+  "geomacro-evidence/v1/live/source-network-status/latest.json.gz";
+
+export type B2SourceNetworkStatus = {
+  source_network_100_complete: boolean;
+  gdelt_gal_freshness_complete: boolean;
+  source_network_launch_complete: boolean;
+};
 
 type B2Config = { accessKey: string; secretKey: string };
 type CacheEntry = { expiresAt: number; bytes: Uint8Array };
@@ -204,4 +213,26 @@ export async function readB2PublicRisk(): Promise<GlobalRisk | null> {
     !/^[a-f0-9]{64}$/.test(String(payload.data.calculationHash ?? ""))
   ) return null;
   return payload.data;
+}
+
+export async function readB2SourceNetworkStatus(): Promise<B2SourceNetworkStatus | null> {
+  const payload = await readJsonGzip<{
+    schema?: string;
+    generated_at?: string;
+    source_project?: string;
+    data?: Partial<B2SourceNetworkStatus>;
+  }>(B2_SOURCE_NETWORK_STATUS_KEY);
+  if (
+    payload?.schema !== "geomacro.source-network-live.v1" ||
+    payload.source_project !== "ldpwajisioljyjtojvfx" ||
+    !recentEnough(payload.generated_at, SOURCE_NETWORK_FALLBACK_MAX_AGE_MS) ||
+    typeof payload.data?.source_network_100_complete !== "boolean" ||
+    typeof payload.data?.gdelt_gal_freshness_complete !== "boolean" ||
+    typeof payload.data?.source_network_launch_complete !== "boolean"
+  ) return null;
+  return {
+    source_network_100_complete: payload.data.source_network_100_complete,
+    gdelt_gal_freshness_complete: payload.data.gdelt_gal_freshness_complete,
+    source_network_launch_complete: payload.data.source_network_launch_complete,
+  };
 }
