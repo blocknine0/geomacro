@@ -29,8 +29,9 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(budget).toContain("raw_archive_historical_large_payloads");
     expect(budget).toContain('process.env.GITHUB_WORKFLOW === "Auto Ingest News"');
     expect(budget).toContain("SUPABASE_FREE_TIER_BULK_WRITE_FROZEN");
+    expect(budget).toContain('recurring_ingest_allowed: data.mode === "normal"');
     expect(autoIngestWorkflow).toContain('name: Auto Ingest News');
-    expect(autoIngestWorkflow).toContain("supabase-free-tier-budget.mjs");
+    expect(autoIngestWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
   });
 
   it("keeps raw cleanup on the Storage API and never SQL-deletes storage.objects", () => {
@@ -118,7 +119,8 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(orchestratorWorkflow).toContain("workflow_dispatch:");
     expect(orchestratorWorkflow).not.toContain("schedule:");
     expect(orchestratorWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write");
-    expect(autoIngestWorkflow).toContain('cron: "0 */2 * * *"');
+    expect(autoIngestWorkflow).toContain('cron: "17 */6 * * *"');
+    expect(autoIngestWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
     expect(budget).toContain('process.env.GITHUB_WORKFLOW === "Auto Ingest News"');
   });
 });

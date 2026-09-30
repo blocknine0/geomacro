@@ -149,11 +149,11 @@ describe('shared source discovery hardening', () => {
       );
 
       expect(workflow).toContain(
-        'GUARDIAN_QUERY_BUDGET_PER_CATEGORY: ${{ vars.GUARDIAN_QUERY_BUDGET_PER_CATEGORY }}'
+        'GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "3"'
       );
 
       expect(workflow).toContain(
-        'GUARDIAN_QUERY_ROTATION_HOURS: ${{ vars.GUARDIAN_QUERY_ROTATION_HOURS }}'
+        'GUARDIAN_QUERY_ROTATION_HOURS: "6"'
       );
     }
   });
