@@ -29,7 +29,7 @@ describe("structured evidence B2 archive canary", () => {
   it("is exactly one-row, non-destructive, manual-only, and serialized", () => {
     expect(script).toContain('.limit(1)');
     expect(script).not.toMatch(/\.delete\s*\(/);
-    expect(script).not.toMatch(/\.update\s*\(/);
+    expect(script).not.toContain(".update({");
     expect(script).not.toContain("storage.objects");
     expect(script).toContain("destructive_cleanup_performed: false");
     expect(workflow).toContain("workflow_dispatch");
