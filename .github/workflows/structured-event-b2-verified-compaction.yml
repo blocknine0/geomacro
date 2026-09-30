@@ -14,7 +14,7 @@ on:
         default: "10"
         type: string
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "4,19,34,49 * * * *"
 
 permissions:
   contents: read
