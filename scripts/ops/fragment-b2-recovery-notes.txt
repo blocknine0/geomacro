@@ -1,0 +1,9 @@
+Operational order:
+1 archive canary (non-destructive)
+2 auto restore canary (hash/readback verification)
+3 cleanup preflight (non-destructive)
+4 verified cleanup canary (single fragment only)
+5 remeasure DB and inspect readiness
+6 expand only after all previous checks stay green
+
+Do not bypass the existing fail-closed checks. Do not delete unverified data. Do not delete storage.objects via SQL.
