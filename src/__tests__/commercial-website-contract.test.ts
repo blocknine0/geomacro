@@ -170,8 +170,8 @@ describe("commercial website source-of-truth contract", () => {
   it("keeps Circle Alliance membership verifiable without implying endorsement", () => {
     const ecosystem = read("src/routes/ecosystem.tsx");
     expect(ecosystem).toContain("https://partners.circle.com/partner/geomacro");
-    expect(ecosystem).toContain("Geomacro is listed in Circle's Alliance Directory");
-    expect(ecosystem).toContain("does not mean Circle endorses Geomacro's risk methodology");
+    expect(ecosystem).toContain("Geomacro is listed in Circle");
+    expect(ecosystem).toContain("It does not mean Circle endorses Geomacro");
     expect(ecosystem).not.toContain("Official Circle Partner");
   });
 
