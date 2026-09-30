@@ -1,5 +1,8 @@
 name: Fragment B2 Archive Canary
 on:
+  push:
+    branches:
+      - ops/fragment-canary-run-once-20260930
   workflow_dispatch:
 permissions:
   contents: read
@@ -7,7 +10,7 @@ concurrency:
   group: fragment-b2-archive-canary
   cancel-in-progress: false
 jobs:
-  archive-canary:
+  archive-and-restore-canary:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -27,4 +30,24 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
-      - run: node scripts/ops/b2-fragment-archive-offload.mjs
+      - name: Archive exactly one old fragment without deleting source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/b2-fragment-archive-offload.mjs | tee "$RUNNER_TEMP/fragment-archive.json"
+      - name: Bind restore to the exact archived fragment
+        id: archived
+        shell: bash
+        run: |
+          set -euo pipefail
+          FRAGMENT_ID="$(node -e 'const fs=require("fs"); const lines=fs.readFileSync(process.env.RUNNER_TEMP+"/fragment-archive.json","utf8").trim().split(/\n/).filter(Boolean); const out=JSON.parse(lines.at(-1)); if(out.ok!==true || out.source_delete_enabled!==false || out.processed!==1 || out.deleted!==0 || !out.results?.[0]?.id) process.exit(2); process.stdout.write(String(out.results[0].id));')"
+          test -n "$FRAGMENT_ID"
+          echo "B2_FRAGMENT_RESTORE_ID=$FRAGMENT_ID" >> "$GITHUB_ENV"
+          echo "fragment_id=$FRAGMENT_ID" >> "$GITHUB_OUTPUT"
+      - name: Verify B2 restore path against the same fragment
+        run: node scripts/ops/b2-fragment-restore.mjs
+      - name: Confirm canary remained non-destructive
+        shell: bash
+        run: |
+          test "${B2_FRAGMENT_DELETE_SOURCE}" = "0"
+          echo "Archive + B2 readback + restore verification passed for ${{ steps.archived.outputs.fragment_id }}; source deletion stayed disabled."
