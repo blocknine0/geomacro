@@ -100,7 +100,8 @@ describe("separate public risk indices contract", () => {
     expect(workspace).toContain("Three risks. Three separate indices.");
     expect(workspace).toContain("instead of being compressed into one combined headline score");
     expect(commercialHome).toContain('to="/global-risk"');
-    expect(commercialHome).toContain("Separate Risk Indices");
+    expect(commercialHome).toContain("View Risk Indices");
+    expect(commercialHome).toContain("Critical minerals & rare earths");
     expect(commercialHome).not.toContain("View Global Risk Index");
     expect(commercialHome).not.toContain("useGlobalRisk");
     expect(commercialHome).not.toContain("RiskIndicesSection");
