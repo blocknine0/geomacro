@@ -2,6 +2,8 @@ name: B2 live public snapshot maintenance
 
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: "13 * * * *"
 
 permissions:
   contents: read

@@ -39,7 +39,7 @@ describe("non-destructive B2 live read boundary", () => {
     expect(source).toContain("serving verified B2 snapshot");
   });
 
-  it("publishes only after B2 write/readback verification and never deletes database history", () => {
+  it("publishes hourly only after B2 write/readback verification and never deletes database history", () => {
     const publisher = read("scripts/ops/publish-b2-live-snapshots.ts");
     const workflow = read(".github/workflows/b2-live-snapshot-maintenance.yml");
     expect(publisher).toContain("await b2.put(item.key, packed)");
@@ -48,7 +48,8 @@ describe("non-destructive B2 live read boundary", () => {
     expect(publisher).not.toContain(".delete(");
     expect(publisher).not.toContain("delete from");
     expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).not.toContain("schedule:");
+    expect(workflow).toContain("schedule:");
+    expect(workflow).toContain('cron: "13 * * * *"');
     expect(workflow).toContain("cancel-in-progress: true");
   });
 });

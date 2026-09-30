@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { createHash } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
+import { createClient } from "@supabase/supabase-js";
 import { createB2Client } from "./b2-s3-client.mjs";
 import { readPublicIntelligenceRowsFromSupabase } from "../../src/lib/public-intelligence.functions";
 import { readPublicGlobalRisk } from "../../src/lib/global-risk-read.server";
@@ -9,6 +10,7 @@ const ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const BUCKET = "geomacro-private-archive";
 const INTELLIGENCE_KEY = "geomacro-evidence/v1/live/public-intelligence/latest.json.gz";
 const RISK_KEY = "geomacro-evidence/v1/live/risk-indices/latest.json.gz";
+const SOURCE_NETWORK_KEY = "geomacro-evidence/v1/live/source-network-status/latest.json.gz";
 const PROOF_KEY = "geomacro-evidence/v1/live/live-snapshot-proof.json";
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 
@@ -19,6 +21,12 @@ if (
   !process.env.B2_KEY_ID ||
   !process.env.B2_APPLICATION_KEY
 ) throw new Error("B2_LIVE_PUBLISH_CONFIG_REQUIRED");
+
+const supabase = createClient(
+  process.env.APP_SUPABASE_URL,
+  process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { persistSession: false, autoRefreshToken: false }, db: { retry: false } },
+);
 
 const b2 = createB2Client({
   endpointUrl: ENDPOINT,
@@ -44,6 +52,18 @@ if (
   !/^[a-f0-9]{64}$/.test(String(risk.calculationHash ?? ""))
 ) throw new Error("B2_LIVE_RISK_PROOF_INVALID");
 
+const { data: sourceNetworkStatus, error: sourceNetworkError } = await supabase
+  .from("live_source_network_launch_status")
+  .select("source_network_100_complete,gdelt_gal_freshness_complete,source_network_launch_complete")
+  .maybeSingle();
+if (
+  sourceNetworkError ||
+  !sourceNetworkStatus ||
+  typeof sourceNetworkStatus.source_network_100_complete !== "boolean" ||
+  typeof sourceNetworkStatus.gdelt_gal_freshness_complete !== "boolean" ||
+  typeof sourceNetworkStatus.source_network_launch_complete !== "boolean"
+) throw new Error("B2_LIVE_SOURCE_NETWORK_STATUS_INVALID");
+
 const payloads = [
   {
     key: INTELLIGENCE_KEY,
@@ -63,6 +83,20 @@ const payloads = [
       generated_at: generatedAt,
       source_project: "ldpwajisioljyjtojvfx",
       data: risk,
+    },
+  },
+  {
+    key: SOURCE_NETWORK_KEY,
+    schema: "geomacro.source-network-live.v1",
+    value: {
+      schema: "geomacro.source-network-live.v1",
+      generated_at: generatedAt,
+      source_project: "ldpwajisioljyjtojvfx",
+      data: {
+        source_network_100_complete: sourceNetworkStatus.source_network_100_complete,
+        gdelt_gal_freshness_complete: sourceNetworkStatus.gdelt_gal_freshness_complete,
+        source_network_launch_complete: sourceNetworkStatus.source_network_launch_complete,
+      },
     },
   },
 ] as const;
@@ -98,5 +132,6 @@ console.log(JSON.stringify({
   generated_at: generatedAt,
   intelligence_rows: intelligenceRows.length,
   risk_snapshot_id: risk.snapshotId,
+  source_network_status: sourceNetworkStatus,
   b2_objects_verified: proofEntries.length + 1,
 }));
