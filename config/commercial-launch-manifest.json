@@ -4,7 +4,7 @@
   "production_funds_authorized": false,
   "official_launch_announced": false,
   "global_launch_ack_env": "GEOMACRO_COMMERCIAL_LAUNCH_ACK",
-  "policy": "The initial commercial launch is the bounded Geomacro pay-per-call product at the canonical launch price. The first 10,000 successful paid deliveries are an adoption milestone, not a pre-funded requirement. High-scale capacity certification and marketplace promotion remain separate evidence tracks.",
+  "policy": "The initial commercial launch is the bounded Geomacro pay-per-call product at the canonical launch price. The first 20,000 successful paid deliveries are an adoption milestone, not a pre-funded requirement. High-scale capacity certification and marketplace promotion remain separate evidence tracks.",
   "providers": {
     "coinbase_x402": {
       "status": "prelaunch_acceptance",
@@ -108,8 +108,8 @@
   ],
   "commercial_milestone": {
     "launch_price_usdc": "0.05",
-    "early_adoption_delivery_target": 10000,
-    "gross_usdc_if_10000_successful_deliveries": "500.00",
+    "early_adoption_delivery_target": 20000,
+    "gross_usdc_if_20000_successful_deliveries": "1000.00",
     "pre_funding_required": false,
     "milestone_is_post_launch_adoption_target": true
   }
