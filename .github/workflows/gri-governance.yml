@@ -35,9 +35,7 @@ on:
         required: false
         default: "24"
         type: string
-  schedule:
-    - cron: "35 3 * * *"
-    - cron: "41 4 * * 1"
+  # Emergency quota hold. Preserve workflow_dispatch for controlled recovery.
   pull_request:
     branches: [main]
     paths:
@@ -64,7 +62,6 @@ jobs:
     if: >-
       ${{
         github.event_name == 'pull_request' ||
-        (github.event_name == 'schedule' && github.event.schedule == '41 4 * * 1') ||
         (github.event_name == 'workflow_dispatch' && inputs.mode == 'calibration')
       }}
     runs-on: ubuntu-24.04
@@ -76,7 +73,7 @@ jobs:
       GRI_PROOF_VERSION: gri-proof-v1.2.0
       GRI_VALIDATION_VERSION: gri-validation-v1.1.0
       # Pull requests validate deterministic sensitivity mechanics on the latest public snapshot.
-      # Production scheduled runs keep the strict 3-hour freshness policy.
+      # Manual production runs keep the strict 3-hour freshness policy.
       GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"
       GRI_REQUIRE_PUBLIC_FRESHNESS: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
       GRI_SENSITIVITY_ARTIFACT: artifacts/gri-v12-sensitivity.json
@@ -296,7 +293,6 @@ jobs:
   validate:
     if: >-
       ${{
-        (github.event_name == 'schedule' && github.event.schedule == '35 3 * * *') ||
         (github.event_name == 'workflow_dispatch' && inputs.mode == 'validate')
       }}
     runs-on: ubuntu-latest
