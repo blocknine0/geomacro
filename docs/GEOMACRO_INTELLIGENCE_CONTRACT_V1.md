@@ -125,15 +125,15 @@ These identifiers allow a machine to persist the exact Geomacro state it last co
 
 ## Pricing phase
 
-Early-adoption price:
+Early-adoption launch price:
 
-**0.05 USDC per successful paid intelligence delivery for the first 10,000 deliveries**
+**0.05 USDC per successfully settled and delivered intelligence call for the first 20,000 successful paid deliveries**
 
-Initial launch target:
+Initial adoption milestone:
 
-**10,000 successful paid deliveries**
+**20,000 successful paid deliveries = 1,000 USDC gross at the launch price, before provider/network/hosting costs, refunds or disputes.**
 
-This is a traction/adoption phase. The intended later reference price is **0.10 USDC** after adoption evidence supports the transition. The price transition is an operator-controlled commercial change, not an automatic assumption inside the intelligence calculation.
+Failed, stale, unavailable, replayed, refunded, internal, testnet and unpaid requests do not count as successful paid deliveries. The post-cohort price is an operator-controlled commercial change and must be published explicitly before it takes effect; there is no automatic price increase inside the intelligence calculation.
 
 ## Product boundary
 
