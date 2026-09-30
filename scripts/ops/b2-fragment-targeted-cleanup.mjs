@@ -35,7 +35,7 @@ async function getManifest() {
   const expectedBytes = Number(data.compressed_bytes ?? -1);
   const itemCount = Number(data.item_count ?? -1);
   const periodEnd = Date.parse(String(data.period_end ?? ""));
-  if (data.storage_bucket !== SOURCE_BUCKET || !/^live\/v1\/[A-Za-z0-9_./-]+\.ndjson\.gz$/.test(sourcePath) ||
+  if (data.storage_bucket !== SOURCE_BUCKET || !/^(?:live|fragments)\/v1\/[A-Za-z0-9_./-]+\.ndjson\.gz$/.test(sourcePath) ||
       sourcePath.includes("..") || !/^[a-f0-9]{64}$/.test(expectedHash) || !Number.isInteger(expectedBytes) ||
       expectedBytes < 0 || expectedBytes > MAX_OBJECT_BYTES || !Number.isInteger(itemCount) || itemCount < 0 ||
       !Number.isFinite(periodEnd) || Date.now() - periodEnd < minAgeHours * 3600_000)
