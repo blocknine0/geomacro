@@ -72,7 +72,7 @@ function verifyArchiveBundle(readback, items) {
     if (
       !member || member.source_key !== item.source_key || member.row_sha256 !== item.row_sha256 ||
       !member.row || typeof member.row !== "object" || Array.isArray(member.row) ||
-      rowHash(member.row) !== item.row_sha256 || rowHash(item.row_json) !== item.row_sha256 ||
+      rowHash(member.row) !== item.row_sha256 ||
       !sameJson(member.row, item.row_json)
     ) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_MEMBER_INVALID_${keyOf(item)}`);
   }
