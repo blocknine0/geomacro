@@ -1,0 +1,27 @@
+name: One-shot Free Tier Recovery Dispatch 2026-10-01
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/one-shot-free-tier-recovery-dispatch-20261001.yml
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch-fixed-recovery:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch fixed recovery from canonical main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run free-tier-final-recovery.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            --field confirmation=I_ACCEPT_VERIFIED_EVIDENCE_COLD_DELETE
