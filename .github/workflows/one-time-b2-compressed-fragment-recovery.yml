@@ -1,0 +1,116 @@
+name: One-time B2 Compressed Fragment Recovery
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/one-time-b2-compressed-fragment-recovery.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: one-time-b2-compressed-fragment-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_REQUEST_BUDGET: "30"
+      STRUCTURED_EVIDENCE_ARCHIVE_OLDER_DAYS: "7"
+      STRUCTURED_EVIDENCE_ARCHIVE_LIMIT: "100"
+      STRUCTURED_EVIDENCE_PHASE_B_ACK: I_ACCEPT_VERIFIED_EVIDENCE_COLD_DELETE
+      STRUCTURED_EVIDENCE_PHASE_B_BATCH_LIMIT: "500"
+      STRUCTURED_EVIDENCE_PHASE_B_ROUNDS: "10"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify fixed production target and fail-closed scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_SUPABASE_URL" = "https://ldpwajisioljyjtojvfx.supabase.co"
+          test -n "$APP_SUPABASE_SERVICE_ROLE_KEY"
+          test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com"
+          test -n "$B2_KEY_ID"
+          test -n "$B2_APPLICATION_KEY"
+          test "$STRUCTURED_EVIDENCE_PHASE_B_ACK" = "I_ACCEPT_VERIFIED_EVIDENCE_COLD_DELETE"
+          node --check scripts/ops/b2-archive-structured-evidence-bundle.mjs
+          node --check scripts/ops/b2-delete-verified-structured-evidence-bundles.mjs
+
+      - name: Archive remaining cold-eligible evidence as verified gzip bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > structured-evidence-archive.jsonl
+          for pass in $(seq 1 5); do
+            echo "archive_pass=$pass"
+            node scripts/ops/b2-archive-structured-evidence-bundle.mjs | tee -a structured-evidence-archive.jsonl
+          done
+
+      - name: Delete only exact B2-verified hot evidence and compact pointers
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > structured-evidence-phase-b.jsonl
+          for pass in $(seq 1 90); do
+            echo "phase_b_pass=$pass"
+            node scripts/ops/b2-delete-verified-structured-evidence-bundles.mjs | tee -a structured-evidence-phase-b.jsonl
+          done
+
+      - name: Require Phase-B backlog to be empty
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+          const db = createClient(
+            process.env.APP_SUPABASE_URL,
+            process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+            { auth: { persistSession: false, autoRefreshToken: false } },
+          );
+          const { data, error } = await db.rpc('geomacro_structured_evidence_delete_candidates', { p_limit: 1 });
+          if (error) throw new Error(`PHASE_B_VERIFY_FAILED_${error.code ?? 'unknown'}: ${error.message ?? 'unknown'}`);
+          const remaining = Array.isArray(data) ? data.length : 0;
+          console.log(JSON.stringify({ ok: remaining === 0, remaining_phase_b_candidate_rows: remaining }));
+          if (remaining !== 0) process.exit(78);
+          NODE
+
+      - name: Report Supabase free-tier state after logical cleanup
+        env:
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/ops/supabase-free-tier-budget.mjs
+
+      - name: Upload recovery proofs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: one-time-b2-compressed-fragment-recovery-${{ github.run_id }}
+          path: |
+            structured-evidence-archive.jsonl
+            structured-evidence-phase-b.jsonl
+          if-no-files-found: warn
+          retention-days: 14
