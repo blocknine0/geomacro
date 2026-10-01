@@ -17,6 +17,7 @@ on:
       - "scripts/ops/select-missing-gri-discovery-domain.mjs"
       - "scripts/ops/supabase-free-tier-budget.mjs"
       - "scripts/ops/b2-country-ingest-offload.mjs"
+      - "scripts/ops/b2-fragment-resolver-backed-offload.mjs"
       - "scripts/ops/b2-compact-structured-event-payload.mjs"
       - "scripts/ops/b2-s3-client.mjs"
 
@@ -177,6 +178,7 @@ jobs:
         run: node scripts/ingest-news.js
 
       - name: Export admitted events for structured intelligence
+        id: export_fragment
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -192,7 +194,12 @@ jobs:
             node scripts/export-admitted-events-for-structure.mjs 2>&1 | tee "$log_file"
             status=${PIPESTATUS[0]}
             set -e
-            if [ "$status" -eq 0 ]; then rm -f "$log_file"; exit 0; fi
+            if [ "$status" -eq 0 ]; then
+              manifest_id="$(node -e 'const fs=require("node:fs");const x=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(x.manifest_id||""));' "$log_file")"
+              echo "manifest_id=$manifest_id" >> "$GITHUB_OUTPUT"
+              rm -f "$log_file"
+              exit 0
+            fi
             if ! grep -Eqi 'gateway timeout|bad gateway|service unavailable|connection reset|fetch failed|timed? out|status[^0-9]*(502|503|504)' "$log_file"; then
               echo "Non-transient export failure detected; not retrying."; rm -f "$log_file"; exit "$status"
             fi
@@ -203,6 +210,38 @@ jobs:
             sleep "$sleep_seconds"
             attempt=$((attempt + 1))
           done
+
+      - name: Move freshly sealed admitted fragment to verified B2 before structuring
+        if: ${{ steps.export_fragment.outputs.manifest_id != '' }}
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_FRAGMENT_TARGET_ID: ${{ steps.export_fragment.outputs.manifest_id }}
+          B2_FRAGMENT_RESOLVER_DELETE: "1"
+          B2_FRAGMENT_RESOLVER_CONFIRM: DELETE_VERIFIED_SOURCE_USING_B2_RESOLVER
+          B2_FRAGMENT_MIN_AGE_HOURS: "0"
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'scripts/ops/b2-fragment-resolver-backed-offload.mjs';
+          let source = fs.readFileSync(path, 'utf8');
+          const marker = 'const minAgeHours = Math.max(24, Math.min(24 * 365, Number(process.env.B2_FRAGMENT_MIN_AGE_HOURS ?? 168)));';
+          const replacement = 'const minAgeHours = Math.max(0, Math.min(24 * 365, Number(process.env.B2_FRAGMENT_MIN_AGE_HOURS ?? 168)));';
+          if (!source.includes(marker)) {
+            throw new Error('Fresh-fragment resolver age guard marker not found; refusing runtime patch.');
+          }
+          source = source.replace(marker, replacement);
+          fs.writeFileSync(path, source, 'utf8');
+          if (!fs.readFileSync(path, 'utf8').includes(replacement)) {
+            throw new Error('Fresh-fragment resolver age override was not applied.');
+          }
+          NODE
+          node scripts/ops/b2-fragment-resolver-backed-offload.mjs
 
       - name: Structure fresh Geomacro intelligence
         id: structure
