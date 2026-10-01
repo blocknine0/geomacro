@@ -143,19 +143,19 @@ async function insertMissingBridges(items) {
   for (const item of items) unique.set(bridgeKey(item.event_id, item.source_key), { event_id: item.event_id, source_key: item.source_key });
   const missing = [...unique.entries()].filter(([key]) => !existing.has(key)).map(([, row]) => row);
   if (!missing.length) return [];
-  for (const part of chunks(missing, DB_CHUNK)) {
-    const { error } = await db.from("live_structured_event_archived_sources").insert(part);
-    if (error) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_BRIDGE_INSERT_FAILED_${error.code ?? "unknown"}`);
-  }
+  const { error } = await db.from("live_structured_event_archived_sources").insert(missing);
+  if (error) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_BRIDGE_INSERT_FAILED_${error.code ?? "unknown"}`);
   return missing;
 }
 
 async function removeOwnedBridges(bridges) {
-  for (const part of chunks(bridges, DELETE_CHUNK)) {
-    const filter = part.map((row) => `and(event_id.eq.${row.event_id},source_key.eq.${row.source_key})`).join(",");
+  for (const bridge of bridges) {
     const { data, error } = await db.from("live_structured_event_archived_sources")
-      .delete().or(filter).select("event_id,source_key");
-    if (error || (data ?? []).length !== part.length) {
+      .delete()
+      .eq("event_id", bridge.event_id)
+      .eq("source_key", bridge.source_key)
+      .select("event_id,source_key");
+    if (error || (data ?? []).length !== 1) {
       throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_BRIDGE_ROLLBACK_FAILED_${error?.code ?? "count"}`);
     }
   }
@@ -253,8 +253,10 @@ for (; completedRounds < rounds; completedRounds += 1) {
       }
     }
 
-    await deleteExactEvidence(candidates);
+    // Delete is chunked. Mark mutation intent first so a later chunk failure
+    // restores any earlier chunk that already committed.
     mutationStarted = true;
+    await deleteExactEvidence(candidates);
     if (await countPresent(candidates) !== 0) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_SOURCE_STILL_PRESENT");
 
     const afterRights = await rightsSnapshot(candidates);
@@ -262,6 +264,14 @@ for (; completedRounds < rounds; completedRounds += 1) {
 
     const secondReadback = await b2.get(bundleKey);
     verifyArchiveBundle(secondReadback, candidates);
+
+    const rpcItems = candidates.map(({ event_id, fingerprint, source_key, bundle_key, bundle_sha256, row_sha256 }) => ({
+      event_id, fingerprint, source_key, bundle_key, bundle_sha256, row_sha256,
+    }));
+    const { data: finalizedCount, error: finalizeError } = await db.rpc("geomacro_finalize_verified_structured_evidence", { p_items: rpcItems });
+    if (finalizeError) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_FINALIZE_FAILED_${finalizeError.code ?? "unknown"}`);
+    if (Number(finalizedCount) !== candidates.length) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_FINALIZE_COUNT_UNEXPECTED");
+    finalized = true;
 
     const proofKey = `geomacro-evidence/v1/index/structured-event-evidence-phase-b/${candidates[0].bundle_sha256}-${candidates[0].fingerprint}.json`;
     await b2.put(proofKey, Buffer.from(JSON.stringify({
@@ -274,18 +284,10 @@ for (; completedRounds < rounds; completedRounds += 1) {
       full_b2_readback_verified_before_delete: true,
       full_b2_readback_verified_after_delete: true,
       exact_hot_rows_verified_before_delete: true,
-      rollback_copy_retained_until_finalize: true,
+      archive_index_finalized: true,
       verified_at: new Date().toISOString(),
       members: candidates.map(({ event_id, fingerprint, source_key, row_sha256 }) => ({ event_id, fingerprint, source_key, row_sha256 })),
     })));
-
-    const rpcItems = candidates.map(({ event_id, fingerprint, source_key, bundle_key, bundle_sha256, row_sha256 }) => ({
-      event_id, fingerprint, source_key, bundle_key, bundle_sha256, row_sha256,
-    }));
-    const { data: finalizedCount, error: finalizeError } = await db.rpc("geomacro_finalize_verified_structured_evidence", { p_items: rpcItems });
-    if (finalizeError) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_FINALIZE_FAILED_${finalizeError.code ?? "unknown"}`);
-    if (Number(finalizedCount) !== candidates.length) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_FINALIZE_COUNT_UNEXPECTED");
-    finalized = true;
 
     totalDeleted += candidates.length;
     console.log(JSON.stringify({
