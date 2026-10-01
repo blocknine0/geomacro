@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/b2-country-gro-continuity.yml"
       - "scripts/ops/publish-b2-country-gro-continuity.ts"
+      - "scripts/ops/verify-b2-country-gro-direct-read.ts"
       - "src/lib/b2-country-gro.server.ts"
       - "src/lib/country-gro-resolver.server.ts"
       - "src/lib/agent-query-external-modules.server.ts"
@@ -50,3 +51,5 @@ jobs:
         run: node scripts/db/assert-authoritative-supabase.mjs
       - name: Publish current verified canonical country GROs to private B2
         run: bun scripts/ops/publish-b2-country-gro-continuity.ts
+      - name: Prove runtime GRO read works after removing Supabase credentials
+        run: bun scripts/ops/verify-b2-country-gro-direct-read.ts
