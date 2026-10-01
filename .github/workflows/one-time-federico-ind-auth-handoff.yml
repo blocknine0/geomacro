@@ -76,27 +76,42 @@ jobs:
           })().catch((error) => { console.error(error); process.exit(1); });
           NODE
 
-      - name: Authenticate exact GRO and obtain live Federico signed proof
+      - name: Verify exact GRO and attempt live Federico review
         shell: bash
         run: |
           set -euo pipefail
           bun scripts/invinoveritas-signed-gro-authentication.ts /tmp/federico-auth-risk-object.json | tee /tmp/federico-auth-summary.json
           jq -e --arg object_id "$FEDERICO_GRO_OBJECT_ID" '
             .ok == true and
+            .handoff_ready == true and
             .object.object_id == $object_id and
             .object.schema_version == "gro-1.1" and
             .object.subject.id == "IND" and
             .object.signing_key_id == "geomacro-risk-2026-03" and
-            .gates.deployed_original_verification == "PASS" and
-            .gates.deployed_tamper_rejection == "PASS" and
-            .gates.local_payload_hash == "PASS" and
-            .gates.local_ed25519_signature == "PASS" and
-            .gates.freshness == "PASS" and
-            .gates.partner_review_http == "PASS" and
-            .gates.partner_signed_proof == "PASS" and
-            .gates.partner_proof_verification == "PASS" and
-            .live_review.proof_present == true and
-            .live_review.proof_verified == true
+            .local_gates.deployed_original_verification == "PASS" and
+            .local_gates.deployed_tamper_rejection == "PASS" and
+            .local_gates.local_payload_hash == "PASS" and
+            .local_gates.local_ed25519_signature == "PASS" and
+            .local_gates.freshness == "PASS" and
+            (
+              (
+                .partner_review_completed == true and
+                .partner_gates.partner_review_http == "PASS" and
+                .partner_gates.partner_signed_proof == "PASS" and
+                .partner_gates.partner_proof_verification == "PASS" and
+                .live_review.proof_present == true and
+                .live_review.proof_verified == true
+              ) or
+              (
+                .partner_review_completed == false and
+                .partner_gates.partner_review_http == "PAYMENT_REQUIRED" and
+                .partner_gates.partner_signed_proof == "NOT_RUN" and
+                .partner_gates.partner_proof_verification == "NOT_RUN" and
+                .live_review.http_status == 402 and
+                .live_review.required_sats > 0 and
+                .live_review.proof_present == false
+              )
+            )
           ' /tmp/federico-auth-summary.json >/dev/null
 
       - name: Build proof-sealed handoff artifact
@@ -133,7 +148,8 @@ jobs:
           {
             echo "## Federico fresh production GRO authentication handoff"
             echo
-            jq '{object, gates, live_review: {http_status, verdict, confidence, issue_count, proof_present, proof_verified}}' /tmp/federico-auth-summary.json
+            jq '{object, local_gates, partner_gates, live_review}' /tmp/federico-auth-summary.json
             echo
+            echo "The fresh signed GRO handoff is complete. If live review is PAYMENT_REQUIRED, no payment was made automatically and partner proof remains pending."
             echo "No payment or irreversible execution is authorized by this authentication-only handoff."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -7,15 +7,25 @@ import {
 import { readFile, writeFile } from "node:fs/promises";
 
 const file = process.argv[2];
-if (!file) throw new Error("Usage: bun scripts/invinoveritas-signed-gro-authentication.ts <risk-object.json>");
+if (!file) {
+  throw new Error(
+    "Usage: bun scripts/invinoveritas-signed-gro-authentication.ts <risk-object.json>",
+  );
+}
 
-const geomacroOrigin = (process.env.GEOMACRO_ORIGIN ?? "https://geomacro.live").replace(/\/$/, "");
-const invinoOrigin = (process.env.INVINO_ORIGIN ?? "https://api.babyblueviper.com").replace(/\/$/, "");
+const geomacroOrigin = (
+  process.env.GEOMACRO_ORIGIN ?? "https://geomacro.live"
+).replace(/\/$/, "");
+const invinoOrigin = (
+  process.env.INVINO_ORIGIN ?? "https://api.babyblueviper.com"
+).replace(/\/$/, "");
 const invinoApiKey = process.env.INVINO_API_KEY?.trim() ?? "";
 const requestOut = process.env.INVINO_REQUEST_OUT?.trim() ?? "";
 const reviewOut = process.env.INVINO_REVIEW_OUT?.trim() ?? "";
 
-if (!invinoApiKey) throw new Error("INVINO_API_KEY is required for live Federico authentication handoff");
+if (!invinoApiKey) {
+  throw new Error("INVINO_API_KEY is required for live Federico authentication handoff");
+}
 
 const riskObject = JSON.parse(await readFile(file, "utf8"));
 
@@ -73,14 +83,21 @@ if (
   original.body?.verification?.contract_valid !== true ||
   original.body?.verification?.fresh !== true
 ) {
-  throw new Error(`Deployed Geomacro verification failed: ${JSON.stringify(original.body)}`);
+  throw new Error(
+    `Deployed Geomacro verification failed: ${JSON.stringify(original.body)}`,
+  );
 }
 
 const tampered = structuredClone(riskObject);
-if (typeof tampered?.risk?.score !== "number") throw new Error("Risk Object has no numeric risk.score");
+if (typeof tampered?.risk?.score !== "number") {
+  throw new Error("Risk Object has no numeric risk.score");
+}
 tampered.risk.score = Number((tampered.risk.score + 1).toFixed(6));
 const tamperResult = await deployedVerify(tampered);
-if (tamperResult.body?.verification?.valid === true || tamperResult.body?.verification?.status === "VERIFIED") {
+if (
+  tamperResult.body?.verification?.valid === true ||
+  tamperResult.body?.verification?.status === "VERIFIED"
+) {
   throw new Error("Tampered Risk Object was incorrectly accepted by deployed verifier");
 }
 
@@ -97,7 +114,10 @@ if (recomputedPayloadHash !== riskObject?.integrity?.payload_hash) {
 }
 
 const publicKey = createPublicKey({
-  key: Buffer.from(String(riskObject?.integrity?.public_key_spki_b64 ?? ""), "base64"),
+  key: Buffer.from(
+    String(riskObject?.integrity?.public_key_spki_b64 ?? ""),
+    "base64",
+  ),
   format: "der",
   type: "spki",
 });
@@ -107,7 +127,9 @@ const signatureValid = verifySignatureBytes(
   publicKey,
   Buffer.from(String(riskObject?.integrity?.signature ?? ""), "base64"),
 );
-if (!signatureValid) throw new Error("Local Ed25519 signature verification failed");
+if (!signatureValid) {
+  throw new Error("Local Ed25519 signature verification failed");
+}
 
 const signedRiskObjectRecord = JSON.stringify(canonicalize(riskObject));
 const recordSha256 = sha256Text(signedRiskObjectRecord);
@@ -175,7 +197,9 @@ if (Buffer.byteLength(reviewRequest.artifact, "utf8") > 20_000) {
 }
 
 if (requestOut) {
-  await writeFile(requestOut, JSON.stringify(reviewRequest, null, 2) + "\n", { mode: 0o600 });
+  await writeFile(requestOut, JSON.stringify(reviewRequest, null, 2) + "\n", {
+    mode: 0o600,
+  });
 }
 
 const response = await fetch(`${invinoOrigin}/review`, {
@@ -187,13 +211,73 @@ const response = await fetch(`${invinoOrigin}/review`, {
   body: JSON.stringify(reviewRequest),
 });
 const body = await response.json().catch(() => null);
-if (!response.ok) {
-  throw new Error(`Federico /review failed HTTP ${response.status}: ${JSON.stringify(body)}`);
-}
-if (!body?.proof) throw new Error("Federico /review returned no signed proof");
 
 if (reviewOut) {
-  await writeFile(reviewOut, JSON.stringify(body, null, 2) + "\n", { mode: 0o600 });
+  await writeFile(reviewOut, JSON.stringify(body, null, 2) + "\n", {
+    mode: 0o600,
+  });
+}
+
+const baseSummary = {
+  object: {
+    object_id: riskObject.object_id,
+    schema_version: riskObject.schema_version,
+    subject: riskObject.subject,
+    generated_at: riskObject.generated_at,
+    expires_at: riskObject.expires_at,
+    record_sha256: recordSha256,
+    payload_hash: riskObject.integrity.payload_hash,
+    signing_key_id: riskObject.integrity.signing_key_id,
+  },
+  local_gates: {
+    deployed_original_verification: "PASS",
+    deployed_tamper_rejection: "PASS",
+    local_payload_hash: "PASS",
+    local_ed25519_signature: "PASS",
+    freshness: "PASS",
+  },
+} as const;
+
+if (response.status === 402) {
+  const detail = body?.detail ?? body ?? {};
+  const requiredSats = Number(detail?.required_sats ?? 0);
+  if (!Number.isFinite(requiredSats) || requiredSats <= 0) {
+    throw new Error(
+      `Federico /review returned HTTP 402 without a valid required_sats contract: ${JSON.stringify(body)}`,
+    );
+  }
+
+  console.log(JSON.stringify({
+    ok: true,
+    handoff_ready: true,
+    partner_review_completed: false,
+    ...baseSummary,
+    partner_gates: {
+      partner_review_http: "PAYMENT_REQUIRED",
+      partner_signed_proof: "NOT_RUN",
+      partner_proof_verification: "NOT_RUN",
+    },
+    live_review: {
+      http_status: 402,
+      status: "PAYMENT_REQUIRED",
+      required_sats: requiredSats,
+      message: detail?.message ?? null,
+      topup_url: detail?.topup_url ?? null,
+      other_rails: detail?.other_rails ?? null,
+      proof_present: false,
+      proof_verified: false,
+    },
+  }, null, 2));
+  process.exit(0);
+}
+
+if (!response.ok) {
+  throw new Error(
+    `Federico /review failed HTTP ${response.status}: ${JSON.stringify(body)}`,
+  );
+}
+if (!body?.proof) {
+  throw new Error("Federico /review returned no signed proof");
 }
 
 let proofVerified = false;
@@ -208,37 +292,30 @@ if (signedEvent && verifyUrl) {
   });
   const verifyBody = await verifyResponse.json().catch(() => null);
   if (!verifyResponse.ok || verifyBody?.valid !== true) {
-    throw new Error(`Federico proof verification failed: ${JSON.stringify(verifyBody)}`);
+    throw new Error(
+      `Federico proof verification failed: ${JSON.stringify(verifyBody)}`,
+    );
   }
   proofVerified = true;
 }
-if (!proofVerified) throw new Error("Federico signed proof could not be independently verified");
+if (!proofVerified) {
+  throw new Error("Federico signed proof could not be independently verified");
+}
 
 const issues = Array.isArray(body?.issues) ? body.issues : [];
 console.log(JSON.stringify({
   ok: true,
-  object: {
-    object_id: riskObject.object_id,
-    schema_version: riskObject.schema_version,
-    subject: riskObject.subject,
-    generated_at: riskObject.generated_at,
-    expires_at: riskObject.expires_at,
-    record_sha256: recordSha256,
-    payload_hash: riskObject.integrity.payload_hash,
-    signing_key_id: riskObject.integrity.signing_key_id,
-  },
-  gates: {
-    deployed_original_verification: "PASS",
-    deployed_tamper_rejection: "PASS",
-    local_payload_hash: "PASS",
-    local_ed25519_signature: "PASS",
-    freshness: "PASS",
+  handoff_ready: true,
+  partner_review_completed: true,
+  ...baseSummary,
+  partner_gates: {
     partner_review_http: "PASS",
     partner_signed_proof: "PASS",
     partner_proof_verification: "PASS",
   },
   live_review: {
     http_status: response.status,
+    status: "COMPLETE",
     verdict: body?.verdict ?? null,
     confidence: body?.confidence ?? null,
     issue_count: issues.length,
