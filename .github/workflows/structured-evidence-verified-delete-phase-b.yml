@@ -30,7 +30,7 @@ jobs:
       B2_REQUEST_BUDGET: "30"
       STRUCTURED_EVIDENCE_PHASE_B_ACK: ${{ inputs.confirmation }}
       STRUCTURED_EVIDENCE_PHASE_B_BATCH_LIMIT: "500"
-      STRUCTURED_EVIDENCE_PHASE_B_ROUNDS: "10"
+      STRUCTURED_EVIDENCE_PHASE_B_ROUNDS: "1"
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -53,14 +53,23 @@ jobs:
           test "$B2_REQUEST_BUDGET" = "30"
           test "$STRUCTURED_EVIDENCE_PHASE_B_ACK" = "I_ACCEPT_VERIFIED_EVIDENCE_COLD_DELETE"
           test "$STRUCTURED_EVIDENCE_PHASE_B_BATCH_LIMIT" = "500"
-          test "$STRUCTURED_EVIDENCE_PHASE_B_ROUNDS" = "10"
+          test "$STRUCTURED_EVIDENCE_PHASE_B_ROUNDS" = "1"
+          node --check scripts/ops/reconcile-structured-evidence-rights-cache.mjs
           node --check scripts/ops/b2-delete-verified-structured-evidence-bundles.mjs
 
       - name: Delete only exact B2-verified evidence and compact the hot archive index
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ops/b2-delete-verified-structured-evidence-bundles.mjs | tee structured-evidence-phase-b.jsonl
+          : > structured-evidence-phase-b.jsonl
+          for pass in $(seq 1 10); do
+            echo "phase_b_pass=$pass"
+            node scripts/ops/reconcile-structured-evidence-rights-cache.mjs | tee -a structured-evidence-phase-b.jsonl
+            node scripts/ops/b2-delete-verified-structured-evidence-bundles.mjs | tee -a structured-evidence-phase-b.jsonl
+            if tail -n 1 structured-evidence-phase-b.jsonl | grep -q '"status":"complete"'; then
+              break
+            fi
+          done
           tail -n 1 structured-evidence-phase-b.jsonl | jq -e '.ok == true' >/dev/null
 
       - name: Upload Phase B evidence
