@@ -1,6 +1,6 @@
 # Supabase-Independent Commerce Ledger
 
-Status: **implementation branch; production activation not yet authorized**
+Status: **implementation complete in repository; Cloudflare production deployment and runtime activation remain separately gated**
 
 ## Purpose
 
@@ -64,18 +64,27 @@ The worker stores payment and request fingerprints, response payload/hash, bound
 
 ## Deployment
 
-From `workers/commerce-ledger` with an authenticated Cloudflare account:
+Repository deployment is intentionally manual and fail-closed through `.github/workflows/deploy-commerce-ledger-worker.yml`.
 
-1. create a random shared secret of at least 32 bytes;
-2. set it as Worker secret `LEDGER_SHARED_TOKEN`;
-3. deploy the Worker using `wrangler.jsonc`;
-4. record the HTTPS Worker origin;
-5. probe `/health`;
-6. configure the Geomacro server runtime with the Worker origin and matching secret while leaving `GEOMACRO_COMMERCE_LEDGER_BACKEND=supabase`;
-7. run the independent-ledger acceptance/chaos tests;
-8. only after those pass, switch `GEOMACRO_COMMERCE_LEDGER_BACKEND=durable_object`;
-9. run real-provider prelaunch checks again with real funds still disabled;
-10. production activation remains separately owner-authorized.
+The workflow requires these GitHub production-environment secrets:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `GEOMACRO_COMMERCE_LEDGER_TOKEN` — at least 32 characters; injected into the Worker as `LEDGER_SHARED_TOKEN`
+
+The workflow pins Cloudflare Wrangler Action v4.1.3 to its exact commit and pins Wrangler `4.136.3`. It:
+
+1. validates that all deployment secrets are present without printing them;
+2. deploys `workers/commerce-ledger/wrangler.jsonc`;
+3. injects only `LEDGER_SHARED_TOKEN` into the Worker;
+4. requires a returned HTTPS Worker origin;
+5. probes `/health`;
+6. runs `scripts/ops/verify-commerce-ledger-worker.mjs` against the deployed Durable Object using synthetic, no-funds provider scope;
+7. verifies claim/conflict/concurrency/prepare/complete/replay/duplicate-settlement/reclaim semantics;
+8. performs no Circle, Coinbase, Nevermined or other external settlement;
+9. leaves `GEOMACRO_COMMERCE_LEDGER_BACKEND` activation as a separate gate.
+
+After this workflow passes, configure the Geomacro server runtime with the Worker origin and matching token while leaving `GEOMACRO_COMMERCE_LEDGER_BACKEND=supabase`. Then run Supabase-off paid-route acceptance. Only after that acceptance passes should the backend be switched to `durable_object`. Real-funds authorization remains separate again.
 
 ## Required acceptance before Supabase can be treated as optional for money flow
 
