@@ -1,5 +1,9 @@
 import process from "node:process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  readB2StructuralServingSnapshot,
+  type B2StructuralServingSnapshot,
+} from "./b2-structural.server";
 
 export const STRUCTURAL_METHODOLOGY_STATUS =
   "EVIDENCE_ONLY_NOT_IN_GRI_V1_2" as const;
@@ -7,10 +11,7 @@ export const STRUCTURAL_WAREHOUSE_METHODOLOGY_STATUS =
   "EVIDENCE_ONLY_NOT_IN_GRO_V02" as const;
 
 export type StructuralSubject =
-  | {
-      type: "country";
-      country_iso3: string;
-    }
+  | { type: "country"; country_iso3: string }
   | {
       type: "corridor";
       origin_country_iso3: string;
@@ -77,29 +78,11 @@ export type StructuralContext = {
 
 type CountryProfileRow = {
   country_iso3: string;
-  subject_type: string;
-  methodology_status: string;
-  latest_observation_count: number;
-  dimension_count: number;
-  source_count: number;
-  dimensions_present: string[] | null;
-  source_ids: string[] | null;
-  earliest_latest_observation_at: string | null;
-  latest_observed_at: string | null;
-  latest_retrieved_at: string | null;
   latest_observations: unknown;
 };
 
 type CorridorProfileRow = {
-  origin_country_iso3: string;
-  destination_country_iso3: string;
-  subject_type: string;
-  methodology_status: string;
-  composition_method: string;
-  route_modeling_status: string;
-  direct_observation_count: number;
   direct_evidence_status: string;
-  latest_observed_at: string | null;
   origin_profile: unknown;
   destination_profile: unknown;
   direct_observations: unknown;
@@ -107,28 +90,14 @@ type CorridorProfileRow = {
 
 let cachedHistoricalClient: SupabaseClient | null = null;
 
-/**
- * Historical data is a separate private warehouse.
- *
- * IMPORTANT: never memoise a missing runtime configuration. Cloudflare-style
- * request environments can bind secrets after module evaluation. Only cache a
- * successfully-created client, mirroring the main app Supabase client rule.
- */
 function getHistoricalClient(): SupabaseClient | null {
   if (cachedHistoricalClient) return cachedHistoricalClient;
-
   const url = process.env.HISTORICAL_SUPABASE_URL;
   const serviceKey = process.env.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY;
-
   if (!url || !serviceKey) return null;
-
   cachedHistoricalClient = createClient(url, serviceKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+    auth: { persistSession: false, autoRefreshToken: false },
   });
-
   return cachedHistoricalClient;
 }
 
@@ -178,18 +147,13 @@ function normalizeIso3(value: string): string {
 
 function normalizeSubject(subject: StructuralSubject): StructuralSubject {
   if (subject.type === "country") {
-    return {
-      type: "country",
-      country_iso3: normalizeIso3(subject.country_iso3),
-    };
+    return { type: "country", country_iso3: normalizeIso3(subject.country_iso3) };
   }
-
   const origin = normalizeIso3(subject.origin_country_iso3);
   const destination = normalizeIso3(subject.destination_country_iso3);
   if (origin === destination) {
     throw new Error("Structural corridor endpoints must be different countries");
   }
-
   return {
     type: "corridor",
     origin_country_iso3: origin,
@@ -204,11 +168,6 @@ function rowTime(row: StructuralObservation): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-/**
- * Keep the newest observation for the same dimension/metric/country pair.
- * This is presentation/query compaction only; it is not scoring, weighting,
- * normalization or a GRI/GRO methodology step.
- */
 export function latestStructuralObservations(
   rows: StructuralObservation[],
   limit = 12,
@@ -216,7 +175,6 @@ export function latestStructuralObservations(
   const sorted = [...rows].sort((a, b) => rowTime(b) - rowTime(a));
   const seen = new Set<string>();
   const output: StructuralObservation[] = [];
-
   for (const row of sorted) {
     const key = [
       row.dimension,
@@ -229,7 +187,6 @@ export function latestStructuralObservations(
     output.push(row);
     if (output.length >= limit) break;
   }
-
   return output;
 }
 
@@ -252,17 +209,9 @@ function observationsFromJson(value: unknown): StructuralObservation[] {
 
 function countryProfileObservations(value: unknown): StructuralObservation[] {
   if (!value || typeof value !== "object") return [];
-  const profile = value as { latest_observations?: unknown };
-  return observationsFromJson(profile.latest_observations);
+  return observationsFromJson((value as { latest_observations?: unknown }).latest_observations);
 }
 
-/**
- * During the one-time production rollout, the historical DB may not yet have
- * the serving migration while application code is already deployed. Fallback
- * is permitted ONLY for a genuinely missing serving relation/schema-cache
- * entry. Any other database error fails closed and never silently broadens the
- * data contract.
- */
 export function isMissingStructuralServingRelation(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const record = error as { code?: unknown; message?: unknown; details?: unknown };
@@ -271,13 +220,12 @@ export function isMissingStructuralServingRelation(error: unknown): boolean {
     .filter((item): item is string => typeof item === "string")
     .join(" ")
     .toLowerCase();
-
   return (
     code === "42P01" ||
     code === "PGRST205" ||
     text.includes("could not find the table") ||
     text.includes("could not find the relation") ||
-    text.includes("schema cache") && text.includes("commercial_structural_")
+    (text.includes("schema cache") && text.includes("commercial_structural_"))
   );
 }
 
@@ -292,7 +240,6 @@ async function fetchCountryCoverage(
     .order("dimension", { ascending: true })
     .order("source_id", { ascending: true })
     .limit(80);
-
   if (result.error) throw result.error;
   return (result.data ?? []) as unknown as StructuralCoverage[];
 }
@@ -304,17 +251,13 @@ async function fetchCountryProfile(
   const [profileResult, coverage] = await Promise.all([
     db
       .from("commercial_structural_country_profiles")
-      .select(
-        "country_iso3,subject_type,methodology_status,latest_observation_count,dimension_count,source_count,dimensions_present,source_ids,earliest_latest_observation_at,latest_observed_at,latest_retrieved_at,latest_observations",
-      )
+      .select("country_iso3,latest_observations")
       .eq("country_iso3", iso3)
       .maybeSingle(),
     fetchCountryCoverage(db, iso3),
   ]);
-
   if (profileResult.error) throw profileResult.error;
   const profile = profileResult.data as unknown as CountryProfileRow | null;
-
   return {
     observations: profile
       ? latestStructuralObservations(observationsFromJson(profile.latest_observations), 12)
@@ -337,19 +280,15 @@ async function fetchCorridorProfile(
   const [corridorResult, originCoverage, destinationCoverage] = await Promise.all([
     db
       .from("commercial_structural_corridor_latest")
-      .select(
-        "origin_country_iso3,destination_country_iso3,subject_type,methodology_status,composition_method,route_modeling_status,direct_observation_count,direct_evidence_status,latest_observed_at,origin_profile,destination_profile,direct_observations",
-      )
+      .select("direct_evidence_status,origin_profile,destination_profile,direct_observations")
       .eq("origin_country_iso3", origin)
       .eq("destination_country_iso3", destination)
       .maybeSingle(),
     fetchCountryCoverage(db, origin),
     fetchCountryCoverage(db, destination),
   ]);
-
   if (corridorResult.error) throw corridorResult.error;
   const corridor = corridorResult.data as unknown as CorridorProfileRow | null;
-
   if (!corridor) {
     return {
       observations: [],
@@ -359,13 +298,11 @@ async function fetchCorridorProfile(
       directEvidenceStatus: "NO_DIRECT_BILATERAL_EVIDENCE",
     };
   }
-
   const rows = [
     ...observationsFromJson(corridor.direct_observations),
     ...countryProfileObservations(corridor.origin_profile),
     ...countryProfileObservations(corridor.destination_profile),
   ];
-
   return {
     observations: latestStructuralObservations(rows, 12),
     coverage: [...originCoverage, ...destinationCoverage],
@@ -378,9 +315,6 @@ async function fetchCorridorProfile(
   };
 }
 
-// Temporary rollout fallback. The governed base commercial view remains a
-// valid curated interface, but it is no longer the preferred subject-serving
-// interface once migration 20260909001400 is present in production.
 async function fetchCountryRowsFallback(
   db: SupabaseClient,
   iso3: string,
@@ -391,7 +325,6 @@ async function fetchCountryRowsFallback(
     .eq("country_iso3", iso3)
     .order("observed_at", { ascending: false, nullsFirst: false })
     .limit(80);
-
   if (result.error) throw result.error;
   return (result.data ?? []) as unknown as StructuralObservation[];
 }
@@ -417,10 +350,8 @@ async function fetchDirectCorridorRowsFallback(
       .order("observed_at", { ascending: false, nullsFirst: false })
       .limit(40),
   ]);
-
   if (forward.error) throw forward.error;
   if (reverse.error) throw reverse.error;
-
   return [
     ...((forward.data ?? []) as unknown as StructuralObservation[]),
     ...((reverse.data ?? []) as unknown as StructuralObservation[]),
@@ -437,7 +368,6 @@ async function fetchRolloutFallback(
       12,
     );
   }
-
   const [originRows, destinationRows, directRows] = await Promise.all([
     fetchCountryRowsFallback(db, subject.origin_country_iso3),
     fetchCountryRowsFallback(db, subject.destination_country_iso3),
@@ -447,7 +377,6 @@ async function fetchRolloutFallback(
       subject.destination_country_iso3,
     ),
   ]);
-
   return latestStructuralObservations(
     [...directRows, ...originRows, ...destinationRows],
     12,
@@ -473,6 +402,96 @@ function metadata(
   };
 }
 
+function countryFromB2(snapshot: B2StructuralServingSnapshot, iso3: string) {
+  const profile = snapshot.country_profiles.find((row) => row.country_iso3 === iso3);
+  const observations = profile
+    ? latestStructuralObservations(profile.latest_observations, 12)
+    : [];
+  const coverage = snapshot.coverage.filter((row) => row.country_iso3 === iso3);
+  return { observations, coverage };
+}
+
+function directFromB2(
+  snapshot: B2StructuralServingSnapshot,
+  origin: string,
+  destination: string,
+) {
+  return snapshot.direct_observations.filter(
+    (row) =>
+      (row.country_iso3 === origin && row.partner_country_iso3 === destination) ||
+      (row.country_iso3 === destination && row.partner_country_iso3 === origin),
+  );
+}
+
+async function loadB2StructuralContext(
+  subject: StructuralSubject,
+): Promise<StructuralContext | null> {
+  const snapshot = await readB2StructuralServingSnapshot();
+  if (!snapshot) return null;
+  if (subject.type === "country") {
+    const result = countryFromB2(snapshot, subject.country_iso3);
+    return {
+      status: result.observations.length > 0 ? "AVAILABLE" : "UNAVAILABLE",
+      methodology_status: STRUCTURAL_METHODOLOGY_STATUS,
+      subject,
+      observations: result.observations,
+      metadata: metadata("COUNTRY_PROFILE_V1", { coverage: result.coverage }),
+      note:
+        result.observations.length > 0
+          ? "Historical structural serving is temporarily using a verified private B2 snapshot of the governed country profile. It remains evidence-only context and does not alter GRI v1.2, GRO v0.2, or Risk Gate weights."
+          : "The verified private B2 structural snapshot has no eligible observations for this country. Missing structural data is disclosed and never interpreted as zero risk.",
+    };
+  }
+
+  const origin = countryFromB2(snapshot, subject.origin_country_iso3);
+  const destination = countryFromB2(snapshot, subject.destination_country_iso3);
+  const direct = directFromB2(
+    snapshot,
+    subject.origin_country_iso3,
+    subject.destination_country_iso3,
+  );
+  const observations = latestStructuralObservations(
+    [...direct, ...origin.observations, ...destination.observations],
+    12,
+  );
+  return {
+    status: observations.length > 0 ? "AVAILABLE" : "UNAVAILABLE",
+    methodology_status: STRUCTURAL_METHODOLOGY_STATUS,
+    subject,
+    observations,
+    metadata: metadata("CORRIDOR_ENDPOINT_COMPOSED_V1", {
+      coverage: [...origin.coverage, ...destination.coverage],
+      compositionMethod: "ENDPOINT_COMPOSED_V0_1",
+      routeModelingStatus: "NOT_MODELED",
+      directEvidenceStatus: direct.length > 0 ? "AVAILABLE" : "NO_DIRECT_BILATERAL_EVIDENCE",
+    }),
+    note:
+      observations.length > 0
+        ? "Historical structural serving is temporarily using a verified private B2 snapshot and the same ENDPOINT_COMPOSED_V0_1 country-plus-direct-evidence contract. Route, maritime, logistics, counterparty and payment-path modelling remain NOT_MODELED."
+        : "The verified private B2 structural snapshot has no eligible profile for both corridor endpoints. Missing structural data is disclosed and never interpreted as zero risk.",
+  };
+}
+
+function unavailableContext(subject: StructuralSubject): StructuralContext {
+  return {
+    status: "UNAVAILABLE",
+    methodology_status: STRUCTURAL_METHODOLOGY_STATUS,
+    subject,
+    observations: [],
+    metadata: metadata(
+      subject.type === "country"
+        ? "COUNTRY_PROFILE_V1"
+        : "CORRIDOR_ENDPOINT_COMPOSED_V1",
+      {
+        compositionMethod: subject.type === "corridor" ? "ENDPOINT_COMPOSED_V0_1" : null,
+        routeModelingStatus: subject.type === "corridor" ? "NOT_MODELED" : null,
+      },
+    ),
+    note:
+      "Structural evidence could not be loaded from either the curated historical interface or its verified private B2 continuity snapshot. Geomacro does not substitute fabricated, stale, raw, or zero-valued structural data.",
+  };
+}
+
 export async function loadStructuralContext(
   requestedSubject: StructuralSubject,
 ): Promise<StructuralContext> {
@@ -480,6 +499,8 @@ export async function loadStructuralContext(
   const db = getHistoricalClient();
 
   if (!db) {
+    const b2 = await loadB2StructuralContext(subject);
+    if (b2) return b2;
     return {
       status: "NOT_CONFIGURED",
       methodology_status: STRUCTURAL_METHODOLOGY_STATUS,
@@ -487,7 +508,7 @@ export async function loadStructuralContext(
       observations: [],
       metadata: metadata("NOT_CONFIGURED"),
       note:
-        "Structural evidence is not configured in this runtime. Missing historical context is never converted to zero risk and does not alter GRI v1.2.",
+        "Structural evidence is not configured in this runtime and no fresh verified private B2 continuity snapshot is available. Missing historical context is never converted to zero risk and does not alter GRI v1.2.",
     };
   }
 
@@ -538,8 +559,7 @@ export async function loadStructuralContext(
           subject,
           observations,
           metadata: metadata("BASE_COMMERCIAL_VIEW_ROLLOUT_FALLBACK", {
-            compositionMethod:
-              subject.type === "corridor" ? "ENDPOINT_COMPOSED_V0_1" : null,
+            compositionMethod: subject.type === "corridor" ? "ENDPOINT_COMPOSED_V0_1" : null,
             routeModelingStatus: subject.type === "corridor" ? "NOT_MODELED" : null,
           }),
           note:
@@ -548,31 +568,13 @@ export async function loadStructuralContext(
               : "The structural serving migration is not present and the governed base commercial view has no eligible observations for this subject. Missing data is never interpreted as zero risk.",
         };
       } catch (fallbackError) {
-        console.error(
-          "[structural-context] rollout fallback query failed",
-          fallbackError,
-        );
+        console.error("[structural-context] rollout fallback query failed", fallbackError);
       }
     }
 
     console.error("[structural-context] curated historical query failed", error);
-    return {
-      status: "UNAVAILABLE",
-      methodology_status: STRUCTURAL_METHODOLOGY_STATUS,
-      subject,
-      observations: [],
-      metadata: metadata(
-        subject.type === "country"
-          ? "COUNTRY_PROFILE_V1"
-          : "CORRIDOR_ENDPOINT_COMPOSED_V1",
-        {
-          compositionMethod:
-            subject.type === "corridor" ? "ENDPOINT_COMPOSED_V0_1" : null,
-          routeModelingStatus: subject.type === "corridor" ? "NOT_MODELED" : null,
-        },
-      ),
-      note:
-        "Structural evidence could not be loaded from the curated historical interface. Geomacro does not substitute fabricated, stale, raw, or zero-valued structural data.",
-    };
+    const b2 = await loadB2StructuralContext(subject);
+    if (b2) return b2;
+    return unavailableContext(subject);
   }
 }
