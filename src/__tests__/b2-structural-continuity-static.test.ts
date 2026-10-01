@@ -14,13 +14,16 @@ describe("verified B2 structural serving continuity", () => {
     expect(source).toContain("No commercially eligible structural observations were found");
   });
 
-  it("never snapshots the cross-joined corridor view", () => {
+  it("avoids heavy aggregate/corridor snapshots and reproduces canonical latest-per-key locally", () => {
     const publisher = read("scripts/ops/publish-b2-structural-serving-snapshot.ts");
-    expect(publisher).toContain('"commercial_structural_country_profiles"');
+    expect(publisher).toContain('"commercial_structural_geopolitical_observations"');
     expect(publisher).toContain('"commercial_structural_country_coverage_latest"');
-    expect(publisher).toContain('"commercial_structural_country_latest"');
-    expect(publisher).toContain('.not("partner_country_iso3", "is", null)');
+    expect(publisher).not.toContain('paged(\n  "commercial_structural_country_profiles"');
     expect(publisher).not.toContain('paged(\n  "commercial_structural_corridor_latest"');
+    expect(publisher).toContain("latestByKey");
+    expect(publisher).toContain("latestKey(row)");
+    expect(publisher).toContain("newer(row, current)");
+    expect(publisher).toContain("B2_STRUCTURAL_KEYSET_PROGRESS_INVALID");
     expect(publisher).toContain("B2_STRUCTURAL_TRUNCATION_GUARD");
   });
 
