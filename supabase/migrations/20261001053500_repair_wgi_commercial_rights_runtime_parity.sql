@@ -1,9 +1,15 @@
 begin;
 
--- Repair runtime drift back to the already reviewed commercial-rights contract.
--- This does not enable a new source, new ingestion path, payment rail, or broader
--- rights boundary. It only restores the WGI flag and notes previously locked by
--- migration 936 and scripts/commercial-source-rights-evidence.mjs.
+-- Repair runtime drift back to the already reviewed WGI commercial-rights contract.
+-- This does not enable a source, change ingestion/commercial-signal state, activate
+-- payments, or broaden the approved dataset boundary. It restores only the WGI
+-- raw-redistribution flag and reviewed notes previously locked by migration 936
+-- and scripts/commercial-source-rights-evidence.mjs.
+--
+-- Keep this replay-compatible with the repository's legacy zero-from-scratch
+-- migration chain: older baseline migrations may leave this source disabled until
+-- later production-only legacy migrations run. This repair must never change those
+-- enablement flags.
 do $$
 begin
   if not exists (
@@ -12,10 +18,8 @@ begin
     where source_id = 'world_bank_wgi_political_stability'
       and commercial_usage_status = 'COMMERCIAL_OK'
       and attribution_required = true
-      and enabled_for_ingestion = true
-      and enabled_for_commercial_signals = true
   ) then
-    raise exception 'world_bank_wgi_political_stability runtime contract is missing or unexpectedly changed';
+    raise exception 'world_bank_wgi_political_stability rights contract is missing or unexpectedly changed';
   end if;
 end
 $$;
@@ -40,23 +44,8 @@ begin
       and commercial_usage_status = 'COMMERCIAL_OK'
       and raw_redistribution_allowed = true
       and attribution_required = true
-      and enabled_for_ingestion = true
-      and enabled_for_commercial_signals = true
   ) then
     raise exception 'world_bank_wgi_political_stability rights parity repair failed';
-  end if;
-
-  if not exists (
-    select 1
-    from public.live_external_sources
-    where source_id = 'usgs_mcs'
-      and commercial_usage_status = 'COMMERCIAL_OK'
-      and raw_redistribution_allowed = false
-      and attribution_required = true
-      and enabled_for_ingestion = true
-      and enabled_for_commercial_signals = true
-  ) then
-    raise exception 'usgs_mcs reviewed rights boundary unexpectedly changed';
   end if;
 end
 $$;
