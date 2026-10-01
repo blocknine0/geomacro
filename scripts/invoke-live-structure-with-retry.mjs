@@ -1,5 +1,6 @@
 const baseUrl = (process.env.SUPABASE_URL || process.env.APP_SUPABASE_URL || "").replace(/\/$/, "");
 const token = process.env.LIVE_STRUCTURE_TOKEN || "";
+const requestedFragmentId = String(process.env.LIVE_STRUCTURE_FRAGMENT_ID || "").trim();
 
 const maxAttempts = Number.parseInt(process.env.LIVE_STRUCTURE_MAX_ATTEMPTS || "4", 10);
 const timeoutMs = Number.parseInt(process.env.LIVE_STRUCTURE_ATTEMPT_TIMEOUT_MS || "90000", 10);
@@ -8,6 +9,11 @@ const backoffMs = [0, 2000, 5000, 10000];
 
 if (!baseUrl || !token) {
   console.error("Live structure invocation requires SUPABASE_URL/APP_SUPABASE_URL and LIVE_STRUCTURE_TOKEN.");
+  process.exit(2);
+}
+
+if (requestedFragmentId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedFragmentId)) {
+  console.error("LIVE_STRUCTURE_FRAGMENT_ID must be a UUID when provided.");
   process.exit(2);
 }
 
@@ -22,6 +28,9 @@ if (!Number.isInteger(timeoutMs) || timeoutMs < 5000 || timeoutMs > 180000) {
 }
 
 const endpoint = `${baseUrl}/functions/v1/live-structure-intelligence`;
+const requestBody = requestedFragmentId
+  ? JSON.stringify({ fragment_id: requestedFragmentId })
+  : "{}";
 
 function compactPublicBody(value) {
   return String(value ?? "")
@@ -51,7 +60,7 @@ for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
         "content-type": "application/json",
         "x-geomacro-structure-token": token,
       },
-      body: "{}",
+      body: requestBody,
       signal: controller.signal,
     });
 
@@ -65,16 +74,44 @@ for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
 
     if (response.ok) {
       if (payload?.ok === true) {
+        const returnedFragmentId = typeof payload.fragment_id === "string"
+          ? payload.fragment_id.trim()
+          : "";
+
+        if (
+          requestedFragmentId &&
+          payload.status !== "nothing_new" &&
+          returnedFragmentId !== requestedFragmentId
+        ) {
+          console.error(
+            `Structured-intelligence target mismatch: requested ${requestedFragmentId}, returned ${returnedFragmentId || "missing"}.`,
+          );
+          process.exit(8);
+        }
+
+        if (requestedFragmentId && payload.has_more === true) {
+          console.error(
+            `Targeted structured-intelligence fragment ${requestedFragmentId} still has unprocessed records after one bounded batch.`,
+          );
+          process.exit(9);
+        }
+
         console.log(JSON.stringify({
           ok: true,
           status: response.status,
+          structure_status: payload.status ?? null,
           attempt,
-          fragments_considered: payload.fragments_considered ?? null,
-          fragments_processed: payload.fragments_processed ?? null,
-          evidence_rows: payload.evidence_rows ?? null,
-          event_rows: payload.event_rows ?? null,
+          requested_fragment_id: requestedFragmentId || null,
+          fragment_id: returnedFragmentId || null,
+          evidence_structured: payload.evidence_structured ?? null,
+          evidence_excluded: payload.evidence_excluded ?? null,
           events_created: payload.events_created ?? null,
           events_updated: payload.events_updated ?? null,
+          handled_before: payload.handled_before ?? null,
+          handled_after: payload.handled_after ?? null,
+          fragment_total: payload.fragment_total ?? null,
+          remaining: payload.remaining ?? null,
+          has_more: payload.has_more ?? null,
         }));
         process.exit(0);
       }

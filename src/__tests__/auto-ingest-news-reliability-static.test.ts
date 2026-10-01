@@ -4,9 +4,11 @@ import { spawnSync } from "node:child_process";
 
 const workflowPath = ".github/workflows/auto-ingest-news.yml";
 const helperPath = "scripts/invoke-live-structure-with-retry.mjs";
+const runtimePath = "supabase/functions/live-structure-intelligence/index.ts";
 
 const workflow = fs.readFileSync(workflowPath, "utf8");
 const helper = fs.readFileSync(helperPath, "utf8");
+const runtime = fs.readFileSync(runtimePath, "utf8");
 
 describe("Auto Ingest News reliability contract", () => {
   it("keeps ingestion fail-closed while using a bounded structured-intelligence handoff", () => {
@@ -16,6 +18,19 @@ describe("Auto Ingest News reliability contract", () => {
     expect(workflow).toContain('LIVE_STRUCTURE_MAX_ATTEMPTS: "4"');
     expect(workflow).toContain('LIVE_STRUCTURE_ATTEMPT_TIMEOUT_MS: "90000"');
     expect(workflow).not.toContain("--retry-all-errors");
+  });
+
+  it("targets the exact freshly exported manifest after verified B2 offload", () => {
+    expect(workflow).toContain("B2_FRAGMENT_TARGET_ID: ${{ steps.export_fragment.outputs.manifest_id }}");
+    expect(workflow).toContain("LIVE_STRUCTURE_FRAGMENT_ID: ${{ steps.export_fragment.outputs.manifest_id }}");
+    expect(helper).toContain("LIVE_STRUCTURE_FRAGMENT_ID");
+    expect(helper).toContain("JSON.stringify({ fragment_id: requestedFragmentId })");
+    expect(helper).toContain("Structured-intelligence target mismatch");
+    expect(helper).toContain("payload.has_more === true");
+    expect(runtime).toContain("parsed.fragment_id");
+    expect(runtime).toContain('"resolved_live_fragment_locations"');
+    expect(runtime).toContain("requestedFragmentId");
+    expect(runtime).toContain("downloadVerifiedB2Fragment(manifest.object_path, manifest.compressed_sha256)");
   });
 
   it("runs safe private diagnostics only when the structure handoff fails", () => {
