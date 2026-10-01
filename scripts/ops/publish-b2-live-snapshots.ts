@@ -13,7 +13,19 @@ const RISK_KEY = "geomacro-evidence/v1/live/risk-indices/latest.json.gz";
 const SOURCE_NETWORK_KEY = "geomacro-evidence/v1/live/source-network-status/latest.json.gz";
 const SOURCE_RIGHTS_KEY = "geomacro-evidence/v1/live/commercial-source-rights/latest.json.gz";
 const PROOF_KEY = "geomacro-evidence/v1/live/live-snapshot-proof.json";
+const SOURCE_RIGHTS_PAGE_SIZE = 1000;
+const SOURCE_RIGHTS_MAX_ROWS = 2000;
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+
+type SourceRightsRow = {
+  source_id: string | null;
+  commercial_usage_status: string | null;
+  enabled_for_ingestion: boolean | null;
+  enabled_for_commercial_signals: boolean | null;
+  raw_redistribution_allowed: boolean | null;
+  attribution_required: boolean | null;
+  licence_name: string | null;
+};
 
 if (
   process.env.APP_SUPABASE_URL !== "https://ldpwajisioljyjtojvfx.supabase.co" ||
@@ -65,17 +77,24 @@ if (
   typeof sourceNetworkStatus.source_network_launch_complete !== "boolean"
 ) throw new Error("B2_LIVE_SOURCE_NETWORK_STATUS_INVALID");
 
-const { data: sourceRights, error: sourceRightsError } = await supabase
-  .from("live_external_sources")
-  .select("source_id,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required,licence_name")
-  .order("source_id", { ascending: true })
-  .limit(2000);
-if (
-  sourceRightsError ||
-  !Array.isArray(sourceRights) ||
-  sourceRights.length === 0 ||
-  sourceRights.length >= 2000
-) throw new Error("B2_LIVE_SOURCE_RIGHTS_INVALID");
+const sourceRights: SourceRightsRow[] = [];
+for (let offset = 0; offset < SOURCE_RIGHTS_MAX_ROWS; offset += SOURCE_RIGHTS_PAGE_SIZE) {
+  const { data, error } = await supabase
+    .from("live_external_sources")
+    .select("source_id,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required,licence_name")
+    .order("source_id", { ascending: true })
+    .range(offset, offset + SOURCE_RIGHTS_PAGE_SIZE - 1);
+  if (error || !Array.isArray(data)) throw new Error("B2_LIVE_SOURCE_RIGHTS_INVALID");
+  const page = data as unknown as SourceRightsRow[];
+  sourceRights.push(...page);
+  if (page.length < SOURCE_RIGHTS_PAGE_SIZE) break;
+  if (sourceRights.length >= SOURCE_RIGHTS_MAX_ROWS) {
+    throw new Error("B2_LIVE_SOURCE_RIGHTS_TRUNCATION_GUARD");
+  }
+}
+if (sourceRights.length === 0 || sourceRights.length >= SOURCE_RIGHTS_MAX_ROWS) {
+  throw new Error("B2_LIVE_SOURCE_RIGHTS_INVALID");
+}
 const sourceIds = new Set<string>();
 for (const row of sourceRights) {
   const sourceId = String(row.source_id ?? "").trim();
