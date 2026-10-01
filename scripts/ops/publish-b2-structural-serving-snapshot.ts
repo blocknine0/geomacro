@@ -11,9 +11,9 @@ const BUCKET = "geomacro-private-archive";
 const SNAPSHOT_KEY = "geomacro-evidence/v1/structural/serving/latest.json.gz";
 const PROOF_KEY = "geomacro-evidence/v1/structural/serving/latest-proof.json";
 const PAGE_SIZE = 500;
-const MAX_SOURCES = 5_000;
-const MAX_BASE_ROWS = 100_000;
-const MAX_COVERAGE_SOURCE_ROWS = 20_000;
+const MAX_COUNTRIES = 500;
+const MAX_LATEST_PER_COUNTRY = 5_000;
+const MAX_COVERAGE_PER_COUNTRY = 5_000;
 const MAX_PROFILES = 500;
 const MAX_COVERAGE = 20_000;
 const MAX_DIRECT = 20_000;
@@ -79,198 +79,118 @@ const coverageColumns = [
   "updated_at",
 ].join(",");
 
-async function readEligibleSourceIds(): Promise<string[]> {
+function validIso3(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Z]{3}$/.test(value);
+}
+
+async function discoverCountryCodes(
+  table: "structural_geopolitical_observations" | "structural_geopolitical_coverage",
+): Promise<string[]> {
   const output: string[] = [];
-  for (let offset = 0; offset < MAX_SOURCES; offset += PAGE_SIZE) {
+  let after = "";
+  for (let attempt = 0; attempt <= MAX_COUNTRIES; attempt += 1) {
+    let query: any = db
+      .from(table)
+      .select("country_iso3")
+      .not("country_iso3", "is", null)
+      .order("country_iso3", { ascending: true })
+      .limit(1);
+    if (table === "structural_geopolitical_observations") {
+      query = query
+        .eq("commercial_eligibility_status", "VERIFIED")
+        .eq("quality_status", "VERIFIED");
+    }
+    if (after) query = query.gt("country_iso3", after);
+    const { data, error } = await query;
+    if (error || !Array.isArray(data)) {
+      throw new Error(`B2_STRUCTURAL_COUNTRY_DISCOVERY_FAILED_${table}_${error?.code ?? "unknown"}`);
+    }
+    if (data.length === 0) return output;
+    const current = String(data[0]?.country_iso3 ?? "");
+    if (!current || current <= after) throw new Error("B2_STRUCTURAL_COUNTRY_KEYSET_PROGRESS_INVALID");
+    after = current;
+    if (validIso3(current)) output.push(current);
+  }
+  throw new Error(`B2_STRUCTURAL_TRUNCATION_GUARD_country_discovery_${table}`);
+}
+
+async function readCountryLatest(country: string): Promise<AnyRow[]> {
+  const output: AnyRow[] = [];
+  for (let offset = 0; offset < MAX_LATEST_PER_COUNTRY; offset += PAGE_SIZE) {
     const { data, error } = await db
-      .from("data_sources")
-      .select("source_id")
-      .eq("registry_active", true)
-      .eq("status", "PRODUCTION_APPROVED")
-      .eq("commercial_use", true)
+      .from("commercial_structural_country_latest")
+      .select(observationColumns)
+      .eq("country_iso3", country)
+      .order("source_id", { ascending: true })
+      .order("dimension", { ascending: true })
+      .order("metric", { ascending: true })
+      .order("partner_country_iso3", { ascending: true, nullsFirst: true })
+      .order("observation_id", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error || !Array.isArray(data)) {
+      throw new Error(`B2_STRUCTURAL_COUNTRY_LATEST_FAILED_${country}_${error?.code ?? "unknown"}`);
+    }
+    output.push(...(data as AnyRow[]));
+    if (data.length < PAGE_SIZE) return output;
+    if (output.length >= MAX_LATEST_PER_COUNTRY) {
+      throw new Error(`B2_STRUCTURAL_TRUNCATION_GUARD_country_latest_${country}`);
+    }
+  }
+  throw new Error(`B2_STRUCTURAL_TRUNCATION_GUARD_country_latest_${country}`);
+}
+
+async function readCountryCoverage(country: string): Promise<AnyRow[]> {
+  const output: AnyRow[] = [];
+  for (let offset = 0; offset < MAX_COVERAGE_PER_COUNTRY; offset += PAGE_SIZE) {
+    const { data, error } = await db
+      .from("commercial_structural_country_coverage_latest")
+      .select(coverageColumns)
+      .eq("country_iso3", country)
+      .order("dimension", { ascending: true })
       .order("source_id", { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
     if (error || !Array.isArray(data)) {
-      throw new Error(`B2_STRUCTURAL_QUERY_FAILED_data_sources_${error?.code ?? "unknown"}`);
+      throw new Error(`B2_STRUCTURAL_COUNTRY_COVERAGE_FAILED_${country}_${error?.code ?? "unknown"}`);
     }
-    for (const row of data) {
-      const sourceId = String(row.source_id ?? "").trim();
-      if (!sourceId) throw new Error("B2_STRUCTURAL_SOURCE_ID_INVALID");
-      output.push(sourceId);
-    }
-    if (data.length < PAGE_SIZE) break;
-    if (output.length >= MAX_SOURCES) {
-      throw new Error("B2_STRUCTURAL_TRUNCATION_GUARD_data_sources");
+    output.push(...(data as AnyRow[]));
+    if (data.length < PAGE_SIZE) return output;
+    if (output.length >= MAX_COVERAGE_PER_COUNTRY) {
+      throw new Error(`B2_STRUCTURAL_TRUNCATION_GUARD_country_coverage_${country}`);
     }
   }
-  const unique = [...new Set(output)].sort();
-  if (unique.length === 0 || unique.length !== output.length) {
-    throw new Error("B2_STRUCTURAL_ELIGIBLE_SOURCE_SET_INVALID");
-  }
-  return unique;
+  throw new Error(`B2_STRUCTURAL_TRUNCATION_GUARD_country_coverage_${country}`);
 }
 
-async function readCommercialBaseRows(
-  cutoff: string,
-  eligibleSourceIds: string[],
-): Promise<AnyRow[]> {
-  const output: AnyRow[] = [];
-  for (const sourceId of eligibleSourceIds) {
-    let afterHash = "";
-    while (true) {
-      let query: any = db
-        .from("structural_geopolitical_observations")
-        .select(observationColumns)
-        .eq("source_id", sourceId)
-        .eq("commercial_eligibility_status", "VERIFIED")
-        .eq("quality_status", "VERIFIED")
-        .lte("retrieved_at", cutoff)
-        .order("normalized_hash", { ascending: true })
-        .limit(PAGE_SIZE);
-      if (afterHash) query = query.gt("normalized_hash", afterHash);
-      const { data, error } = await query;
-      if (error || !Array.isArray(data)) {
-        throw new Error(
-          `B2_STRUCTURAL_QUERY_FAILED_structural_geopolitical_observations_${error?.code ?? "unknown"}`,
-        );
-      }
-      if (data.length === 0) break;
-      output.push(...(data as AnyRow[]));
-      if (output.length > MAX_BASE_ROWS) {
-        throw new Error("B2_STRUCTURAL_TRUNCATION_GUARD_structural_geopolitical_observations");
-      }
-      const last = String(data[data.length - 1]?.normalized_hash ?? "");
-      if (!/^[a-f0-9]{64}$/i.test(last) || last === afterHash) {
-        throw new Error("B2_STRUCTURAL_KEYSET_PROGRESS_INVALID");
-      }
-      afterHash = last;
-      if (data.length < PAGE_SIZE) break;
-    }
-  }
-  return output;
-}
-
-async function readCommercialCoverageRows(
-  cutoff: string,
-  eligibleSourceIds: string[],
-): Promise<AnyRow[]> {
-  const latest = new Map<string, AnyRow>();
-  for (const sourceId of eligibleSourceIds) {
-    let sourceRows = 0;
-    for (let offset = 0; offset < MAX_COVERAGE_SOURCE_ROWS; offset += PAGE_SIZE) {
-      const { data, error } = await db
-        .from("structural_geopolitical_coverage")
-        .select(coverageColumns)
-        .eq("source_id", sourceId)
-        .lte("updated_at", cutoff)
-        .order("dimension", { ascending: true })
-        .order("country_iso3", { ascending: true })
-        .order("coverage_year", { ascending: false })
-        .order("updated_at", { ascending: false })
-        .range(offset, offset + PAGE_SIZE - 1);
-      if (error || !Array.isArray(data)) {
-        throw new Error(
-          `B2_STRUCTURAL_QUERY_FAILED_structural_geopolitical_coverage_${error?.code ?? "unknown"}`,
-        );
-      }
-      sourceRows += data.length;
-      for (const row of data as AnyRow[]) {
-        const key = [
-          String(row.source_id ?? ""),
-          String(row.dimension ?? ""),
-          String(row.country_iso3 ?? ""),
-        ].join("\u001f");
-        const current = latest.get(key);
-        const year = Number(row.coverage_year);
-        const currentYear = Number(current?.coverage_year);
-        if (
-          !current ||
-          year > currentYear ||
-          (year === currentYear && isoTime(row.updated_at) > isoTime(current.updated_at))
-        ) {
-          latest.set(key, row);
-        }
-      }
-      if (data.length < PAGE_SIZE) break;
-      if (sourceRows >= MAX_COVERAGE_SOURCE_ROWS) {
-        throw new Error(`B2_STRUCTURAL_TRUNCATION_GUARD_structural_geopolitical_coverage_${sourceId}`);
-      }
-    }
-  }
-  const rows = [...latest.values()].sort((a, b) =>
-    String(a.country_iso3).localeCompare(String(b.country_iso3)) ||
-    String(a.dimension).localeCompare(String(b.dimension)) ||
-    String(a.source_id).localeCompare(String(b.source_id)),
-  );
-  if (rows.length > MAX_COVERAGE) {
-    throw new Error("B2_STRUCTURAL_TRUNCATION_GUARD_country_coverage");
-  }
-  return rows;
-}
-
-function isoTime(value: unknown): number {
+function rowTime(row: AnyRow): number {
+  const value = row.observed_at ?? row.published_at ?? row.retrieved_at;
   const parsed = Date.parse(String(value ?? ""));
-  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function coalescedObservationTime(row: AnyRow): number {
-  for (const value of [row.observed_at, row.published_at, row.retrieved_at]) {
-    const parsed = isoTime(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return Number.NEGATIVE_INFINITY;
+const observationCountries = await discoverCountryCodes("structural_geopolitical_observations");
+const coverageCountries = await discoverCountryCodes("structural_geopolitical_coverage");
+const countries = [...new Set([...observationCountries, ...coverageCountries])].sort();
+if (countries.length === 0 || countries.length > MAX_COUNTRIES) {
+  throw new Error("B2_STRUCTURAL_COUNTRY_SET_INVALID");
 }
 
-function observationRank(row: AnyRow): [number, number, string] {
-  return [
-    coalescedObservationTime(row),
-    isoTime(row.retrieved_at),
-    String(row.observation_id ?? ""),
-  ];
+const latestRows: AnyRow[] = [];
+const coverage: AnyRow[] = [];
+for (const country of countries) {
+  const [latest, countryCoverage] = await Promise.all([
+    readCountryLatest(country),
+    readCountryCoverage(country),
+  ]);
+  latestRows.push(...latest);
+  coverage.push(...countryCoverage);
+  if (coverage.length > MAX_COVERAGE) throw new Error("B2_STRUCTURAL_TRUNCATION_GUARD_country_coverage");
 }
-
-function newer(a: AnyRow, b: AnyRow): boolean {
-  const ar = observationRank(a);
-  const br = observationRank(b);
-  if (ar[0] !== br[0]) return ar[0] > br[0];
-  if (ar[1] !== br[1]) return ar[1] > br[1];
-  return ar[2] > br[2];
-}
-
-function latestKey(row: AnyRow): string {
-  return [
-    String(row.country_iso3 ?? ""),
-    String(row.source_id ?? ""),
-    String(row.dimension ?? ""),
-    String(row.metric ?? ""),
-    String(row.partner_country_iso3 ?? ""),
-  ].join("\u001f");
-}
-
-const generatedAt = new Date().toISOString();
-const eligibleSourceIds = await readEligibleSourceIds();
-const eligibleSourceSet = new Set(eligibleSourceIds);
-const baseRows = await readCommercialBaseRows(generatedAt, eligibleSourceIds);
-if (baseRows.length === 0) throw new Error("B2_STRUCTURAL_BASE_SET_EMPTY");
-
-const latestByKey = new Map<string, AnyRow>();
-for (const row of baseRows) {
-  const country = String(row.country_iso3 ?? "");
-  const sourceId = String(row.source_id ?? "");
-  if (!/^[A-Z]{3}$/.test(country)) continue;
-  if (!eligibleSourceSet.has(sourceId) || row.quality_status !== "VERIFIED") {
-    throw new Error("B2_STRUCTURAL_COMMERCIAL_BOUNDARY_INVALID");
-  }
-  const key = latestKey(row);
-  const current = latestByKey.get(key);
-  if (!current || newer(row, current)) latestByKey.set(key, row);
-}
-const latestRows = [...latestByKey.values()];
 if (latestRows.length === 0) throw new Error("B2_STRUCTURAL_LATEST_SET_EMPTY");
 
 const byCountry = new Map<string, AnyRow[]>();
 for (const row of latestRows) {
-  const country = String(row.country_iso3);
+  const country = String(row.country_iso3 ?? "");
+  if (!validIso3(country)) throw new Error("B2_STRUCTURAL_LATEST_COUNTRY_INVALID");
   const rows = byCountry.get(country) ?? [];
   rows.push(row);
   byCountry.set(country, rows);
@@ -281,17 +201,13 @@ const profiles = [...byCountry.entries()]
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([country_iso3, rows]) => ({
     country_iso3,
-    latest_observations: [...rows].sort((a, b) => {
-      const ar = observationRank(a);
-      const br = observationRank(b);
-      return br[0] - ar[0] ||
-        String(a.dimension).localeCompare(String(b.dimension)) ||
-        String(a.metric).localeCompare(String(b.metric)) ||
-        String(a.source_id).localeCompare(String(b.source_id));
-    }),
+    latest_observations: [...rows].sort((a, b) =>
+      rowTime(b) - rowTime(a) ||
+      String(a.dimension).localeCompare(String(b.dimension)) ||
+      String(a.metric).localeCompare(String(b.metric)) ||
+      String(a.source_id).localeCompare(String(b.source_id)),
+    ),
   }));
-
-const coverage = await readCommercialCoverageRows(generatedAt, eligibleSourceIds);
 
 const direct = latestRows
   .filter((row) => row.partner_country_iso3 !== null && row.partner_country_iso3 !== undefined)
@@ -307,29 +223,32 @@ if (direct.length > MAX_DIRECT) throw new Error("B2_STRUCTURAL_TRUNCATION_GUARD_
 
 for (const row of coverage) {
   if (
-    !eligibleSourceSet.has(String(row.source_id ?? "")) ||
-    !/^[A-Z]{3}$/.test(String(row.country_iso3 ?? "")) ||
+    !validIso3(row.country_iso3) ||
     typeof row.source_id !== "string" ||
     typeof row.dimension !== "string" ||
     typeof row.coverage_status !== "string" ||
     !Number.isFinite(Number(row.observation_count))
   ) throw new Error("B2_STRUCTURAL_COVERAGE_INVALID");
 }
-for (const row of direct) {
-  const country = String(row.country_iso3 ?? "");
-  const partner = String(row.partner_country_iso3 ?? "");
+for (const row of latestRows) {
   if (
-    !/^[A-Z]{3}$/.test(country) ||
-    !/^[A-Z]{3}$/.test(partner) ||
-    country === partner ||
     typeof row.observation_id !== "string" ||
     typeof row.source_id !== "string" ||
     typeof row.dimension !== "string" ||
     typeof row.metric !== "string" ||
+    row.quality_status !== "VERIFIED" ||
     !/^[a-f0-9]{64}$/i.test(String(row.normalized_hash ?? ""))
-  ) throw new Error("B2_STRUCTURAL_DIRECT_INVALID");
+  ) throw new Error("B2_STRUCTURAL_LATEST_INVALID");
+}
+for (const row of direct) {
+  const country = String(row.country_iso3 ?? "");
+  const partner = String(row.partner_country_iso3 ?? "");
+  if (!validIso3(country) || !validIso3(partner) || country === partner) {
+    throw new Error("B2_STRUCTURAL_DIRECT_INVALID");
+  }
 }
 
+const generatedAt = new Date().toISOString();
 const payload = {
   schema: "geomacro.structural-serving-snapshot.v1",
   generated_at: generatedAt,
@@ -372,14 +291,12 @@ const proof = Buffer.from(JSON.stringify({
   compressed_sha256: digest,
   compressed_bytes: packed.length,
   raw_bytes: raw.length,
-  eligible_sources: eligibleSourceIds.length,
-  source_rows_scanned: baseRows.length,
+  discovered_countries: countries.length,
   latest_rows: latestRows.length,
   country_profiles: profiles.length,
   coverage_rows: coverage.length,
   direct_observations: direct.length,
-  commercial_boundary: "registry_active+production_approved+commercial_use+row_verified+quality_verified",
-  verification: "indexed-private-base-read+exact-commercial-gates+canonical-latest-per-key+full-b2-readback-sha256-plus-gzip-json-restore",
+  verification: "country-keyset-discovery+country-scoped-canonical-commercial-views+full-b2-readback-sha256-plus-gzip-json-restore",
 }));
 await b2.put(PROOF_KEY, proof);
 const proofReadback = await b2.get(PROOF_KEY);
@@ -388,8 +305,7 @@ if (sha256(proofReadback) !== sha256(proof)) throw new Error("B2_STRUCTURAL_PROO
 console.log(JSON.stringify({
   ok: true,
   generated_at: generatedAt,
-  eligible_sources: eligibleSourceIds.length,
-  source_rows_scanned: baseRows.length,
+  discovered_countries: countries.length,
   latest_rows: latestRows.length,
   country_profiles: profiles.length,
   coverage_rows: coverage.length,
