@@ -1,0 +1,135 @@
+name: One-time B2 Raw Storage Recovery
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/one-time-b2-raw-storage-recovery.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: one-time-b2-raw-storage-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify fixed production target and worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_SUPABASE_URL" = "https://ldpwajisioljyjtojvfx.supabase.co"
+          test -n "$APP_SUPABASE_SERVICE_ROLE_KEY"
+          test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com"
+          test -n "$B2_KEY_ID"
+          test -n "$B2_APPLICATION_KEY"
+          node --check scripts/ops/b2-raw-storage-bundle-maintenance.mjs
+      - name: Prove one exact verified raw Storage canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          verified=0
+          for suffix in 0 1 2 3 4 5 6 7 8 9 a b c d e f; do
+            log_file="$(mktemp)"
+            B2_RAW_MAINTENANCE_SUFFIX="$suffix" B2_RAW_BUNDLE_LIMIT=1 node scripts/ops/b2-raw-storage-bundle-maintenance.mjs 2>&1 | tee "$log_file"
+            if jq -se --arg suffix "$suffix" '.[-1] | .ok == true and .status == "progress" and .processed == 1 and .b2_full_gets == 1 and .supabase_sources_absent == true and .storage_deletion_via_api_only == true and .shard_suffix == $suffix and .verification_mode == "one-full-bundle-readback-before-storage-api-cleanup"' "$log_file" >/dev/null; then
+              verified=1
+              rm -f "$log_file"
+              break
+            fi
+            if jq -se --arg suffix "$suffix" '.[-1] | .ok == true and .status == "complete" and .processed == 0 and .shard_suffix == $suffix' "$log_file" >/dev/null; then
+              rm -f "$log_file"
+              continue
+            fi
+            rm -f "$log_file"
+            echo "Canary did not prove B2 readback, restore, and Storage API cleanup" >&2
+            exit 1
+          done
+          if [ "$verified" -eq 0 ]; then
+            echo "No eligible raw Storage candidates remain."
+          fi
+      - name: Drain all eligible raw Storage shards through verified bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > raw-storage-recovery.jsonl
+          for suffix in 0 1 2 3 4 5 6 7 8 9 a b c d e f; do
+            for round in $(seq 1 12); do
+              echo "suffix=$suffix round=$round"
+              log_file="$(mktemp)"
+              success=0
+              persistent_timeout=0
+              for attempt in 1 2 3; do
+                set +e
+                B2_RAW_MAINTENANCE_SUFFIX="$suffix" B2_RAW_BUNDLE_LIMIT=100 node scripts/ops/b2-raw-storage-bundle-maintenance.mjs 2>&1 | tee "$log_file"
+                status=${PIPESTATUS[0]}
+                set -e
+                cat "$log_file" >> raw-storage-recovery.jsonl
+                if [ "$status" -eq 0 ]; then success=1; break; fi
+                if ! grep -Eqi "statement timeout|canceling statement due to statement timeout|code: ['\"]57014['\"]|429|502|503|504" "$log_file"; then
+                  cat "$log_file" >&2
+                  rm -f "$log_file"
+                  exit "$status"
+                fi
+                if [ "$attempt" -eq 3 ]; then persistent_timeout=1; break; fi
+                sleep $((attempt * 5))
+              done
+              if [ "$persistent_timeout" -eq 1 ]; then
+                echo "Persistent transient failure on shard $suffix" >&2
+                rm -f "$log_file"
+                exit 75
+              fi
+              test "$success" -eq 1
+              if tail -n 1 "$log_file" | grep -q '"status":"complete"'; then
+                rm -f "$log_file"
+                break
+              fi
+              rm -f "$log_file"
+              sleep 2
+            done
+          done
+      - name: Require raw Storage archive backlog to be empty
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+          const db = createClient(process.env.APP_SUPABASE_URL, process.env.APP_SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          let remaining = 0;
+          for (const suffix of '0123456789abcdef') {
+            const { data, error } = await db.rpc('geomacro_next_raw_storage_candidates_shard', { p_suffix: suffix, p_limit: 1 });
+            if (error) throw error;
+            remaining += Array.isArray(data) ? data.length : 0;
+          }
+          console.log(JSON.stringify({ ok: remaining === 0, remaining_raw_storage_shards_with_candidates: remaining }));
+          if (remaining !== 0) process.exit(78);
+          NODE
+      - name: Upload recovery proof log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: one-time-b2-raw-storage-recovery-${{ github.run_id }}
+          path: raw-storage-recovery.jsonl
+          if-no-files-found: warn
+          retention-days: 14
