@@ -48,9 +48,12 @@ describe("commercial source-rights B2 outage fallback", () => {
     expect(source).toContain("seen.has(sourceId)");
   });
 
-  it("publishes only bounded rights fields and verifies B2 readback", () => {
+  it("publishes every registry page, only bounded rights fields, and verifies B2 readback", () => {
     const publisher = read("scripts/ops/publish-b2-live-snapshots.ts");
     expect(publisher).toContain('.from("live_external_sources")');
+    expect(publisher).toContain("SOURCE_RIGHTS_PAGE_SIZE = 1000");
+    expect(publisher).toContain(".range(offset, offset + SOURCE_RIGHTS_PAGE_SIZE - 1)");
+    expect(publisher).toContain("B2_LIVE_SOURCE_RIGHTS_TRUNCATION_GUARD");
     expect(publisher).toContain("source_id,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required,licence_name");
     expect(publisher).toContain("geomacro.commercial-source-rights-live.v1");
     expect(publisher).toContain("await b2.get(item.key)");
