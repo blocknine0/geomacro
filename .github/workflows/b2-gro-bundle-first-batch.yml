@@ -5,10 +5,6 @@ name: B2 GRO cold archive maintenance
 # payload cleanup. Routine runs serialize DB pressure and pause a shard cleanly
 # after persistent free-tier statement timeout; the next cycle resumes it.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/b2-gro-bundle-first-batch.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -94,4 +90,4 @@ jobs:
       - name: Archive verified GRO payloads signed by retired keys
         run: bun scripts/ops/b2-archive-gro-retired-keys.ts
 
-# One-shot self-trigger for verified aged backlog drain: 2026-10-01
+# Manual verified drain trigger: 2026-09-29
