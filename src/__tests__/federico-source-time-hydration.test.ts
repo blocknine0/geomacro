@@ -80,4 +80,11 @@ describe("Federico trusted source publication-time hydration", () => {
     expect(script).toContain(".is(\"published_at\", null)");
     expect(script).toContain("trusted_publisher_metadata_only");
   });
+
+  it("keeps stdout as exactly one readiness JSON document", () => {
+    const script = readFileSync("scripts/check-federico-publication.ts", "utf8");
+    expect(script.match(/console\.log\(/g) ?? []).toHaveLength(1);
+    expect(script.match(/console\.error\(/g) ?? []).toHaveLength(2);
+    expect(script).toContain("stdout is intentionally exactly one JSON document");
+  });
 });
