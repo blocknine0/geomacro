@@ -40,9 +40,13 @@ function parseMetaAttributes(tag: string) {
   return attrs;
 }
 
+function hasExplicitTimeOfDay(value: string) {
+  return /(?:T|\s)\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?/.test(value);
+}
+
 function normalizeTimestampCandidate(raw: string, sourceUrl: string) {
   const value = raw.trim();
-  if (!value) return null;
+  if (!value || !hasExplicitTimeOfDay(value)) return null;
 
   // Xinhua's English pages emit their visible publication timestamp as a local
   // China wall clock. Convert that source-specific form explicitly instead of
@@ -109,7 +113,7 @@ export function extractTrustedPublishedAt(
   }
 
   // Xinhua's rendered article header visibly carries a timestamp such as
-  // "2026-10-01 19:21:31" even when the fallback index entry has no RSS date.
+  // "2026-10-01 19:21:31" even when generic metadata contains only the date.
   // Search only the bounded leading document region so body/archive dates do
   // not become publication evidence.
   const leadingHtml = html.slice(0, 120_000);
