@@ -1,0 +1,82 @@
+name: One-time B2 Structuring Run History Recovery
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/one-time-b2-structuring-run-history-recovery.yml"
+      - "scripts/ops/b2-archive-structuring-run-history.mjs"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: one-time-b2-structuring-run-history-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_REQUEST_BUDGET: "12"
+      STRUCTURING_RUN_ARCHIVE_OLDER_HOURS: "72"
+      STRUCTURING_RUN_ARCHIVE_LIMIT: "500"
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify fixed production target and bounded worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_SUPABASE_URL" = "https://ldpwajisioljyjtojvfx.supabase.co"
+          test -n "$APP_SUPABASE_SERVICE_ROLE_KEY"
+          test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com"
+          test -n "$B2_KEY_ID"
+          test -n "$B2_APPLICATION_KEY"
+          test "$B2_REQUEST_BUDGET" = "12"
+          test "$STRUCTURING_RUN_ARCHIVE_OLDER_HOURS" = "72"
+          test "$STRUCTURING_RUN_ARCHIVE_LIMIT" = "500"
+          node --check scripts/ops/b2-archive-structuring-run-history.mjs
+      - name: Archive and remove only verified old terminal operational history
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > structuring-run-history-recovery.jsonl
+          complete=0
+          for pass in $(seq 1 32); do
+            log_file="$(mktemp)"
+            node scripts/ops/b2-archive-structuring-run-history.mjs 2>&1 | tee "$log_file"
+            cat "$log_file" >> structuring-run-history-recovery.jsonl
+            if tail -n 1 "$log_file" | jq -e '.ok == true and .status == "complete"' >/dev/null; then
+              complete=1
+              rm -f "$log_file"
+              break
+            fi
+            tail -n 1 "$log_file" | jq -e '.ok == true and .status == "progress" and .full_b2_readback_verified_after_delete == true and .rollback_available == true' >/dev/null
+            rm -f "$log_file"
+          done
+          test "$complete" -eq 1
+      - name: Upload recovery proof log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: structuring-run-history-recovery-${{ github.run_id }}
+          path: structuring-run-history-recovery.jsonl
+          if-no-files-found: warn
+          retention-days: 14
