@@ -205,6 +205,19 @@ const runtimeDeleteAllowlist =
         'public.risk_gate_idempotency_keys',
       ]),
     ],
+    [
+      // Reviewed B2 retention exception. The stored function may remove only
+      // node/edge detail for a 7+ day fully-blocked certification run after an
+      // exact verified archive index exists. The companion worker performs B2
+      // upload + full readback/restore before invoking the function, verifies
+      // source counts again inside the transaction, confirms source absence,
+      // then performs another full B2 readback. The run summary is retained.
+      '20261001073500_source_cert_evidence_b2_archive_cleanup.sql',
+      new Set([
+        'public.live_source_certification_evidence_edges',
+        'public.live_source_certification_evidence_nodes',
+      ]),
+    ],
   ]);
 
 
@@ -472,10 +485,7 @@ for (const file of files) {
   }
 
 
-  for (
-    const dropped
-    of droppedConstraints
-  ) {
+  for (const dropped of droppedConstraints) {
     if (
       !addedKeys.has(
         dropped.key,
