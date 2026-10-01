@@ -28,8 +28,10 @@ jobs:
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_FRAGMENT_TARGET_ID: a59a0f82-9deb-4d33-b537-f0d4d9b48a7f
+      B2_FRAGMENT_RESTORE_ID: a59a0f82-9deb-4d33-b537-f0d4d9b48a7f
       B2_FRAGMENT_TARGET_DELETE: "1"
       B2_FRAGMENT_MIN_AGE_HOURS: "168"
+      B2_REQUEST_BUDGET: "20"
       EXPECTED_SOURCE_PATH: live/v1/2026/09/21/05/gdelt-gal/20260921051700-6b4315aaa8ff1e74.ndjson.gz
 
     steps:
@@ -41,7 +43,7 @@ jobs:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Require exact production target and source absence before reconciliation
+      - name: Require exact production target and determinate source state
         shell: bash
         run: |
           set -euo pipefail
@@ -51,6 +53,7 @@ jobs:
           test -n "$B2_KEY_ID"
           test -n "$B2_APPLICATION_KEY"
           test "$B2_FRAGMENT_TARGET_ID" = "a59a0f82-9deb-4d33-b537-f0d4d9b48a7f"
+          test "$B2_FRAGMENT_RESTORE_ID" = "$B2_FRAGMENT_TARGET_ID"
           test "$EXPECTED_SOURCE_PATH" = "live/v1/2026/09/21/05/gdelt-gal/20260921051700-6b4315aaa8ff1e74.ndjson.gz"
           node --input-type=module <<'NODE'
           const base = String(process.env.APP_SUPABASE_URL).replace(/\/$/, '');
@@ -62,15 +65,21 @@ jobs:
             headers: { apikey: role, authorization: `Bearer ${role}` },
             signal: AbortSignal.timeout(15000),
           });
-          if (response.ok) throw new Error('SOURCE_REAPPEARED_REFUSING_RECONCILIATION');
+          if (response.ok) {
+            console.log(JSON.stringify({ ok: true, source_state: 'present', fragment_id: process.env.B2_FRAGMENT_TARGET_ID }));
+            process.exit(0);
+          }
           const body = await response.json().catch(() => null);
           const structuredStatus = String(body?.statusCode ?? '');
           const structuredError = String(body?.error ?? body?.message ?? '');
           const absent = response.status === 404 ||
             (response.status === 400 && structuredStatus === '404' && /not.?found|no.?such.?key/i.test(structuredError));
-          if (!absent) throw new Error(`SOURCE_ABSENCE_INDETERMINATE_${response.status}_${structuredStatus || 'none'}`);
-          console.log(JSON.stringify({ ok: true, source_absence_verified: true, fragment_id: process.env.B2_FRAGMENT_TARGET_ID }));
+          if (!absent) throw new Error(`SOURCE_STATE_INDETERMINATE_${response.status}_${structuredStatus || 'none'}`);
+          console.log(JSON.stringify({ ok: true, source_state: 'absent', fragment_id: process.env.B2_FRAGMENT_TARGET_ID }));
           NODE
 
-      - name: Reconcile only through permanent audited resolver-backed path
+      - name: Restore or verify exact source bytes from B2
+        run: node scripts/ops/b2-fragment-restore.mjs
+
+      - name: Run normal audited targeted cleanup after verified restore
         run: node scripts/ops/b2-fragment-targeted-cleanup.mjs
