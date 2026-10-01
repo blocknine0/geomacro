@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 const PROJECT_URL = "https://ldpwajisioljyjtojvfx.supabase.co";
 const BATCH_LIMIT = 500;
+const DB_CHUNK = 100;
+const MAX_ATTEMPTS = 4;
 
 const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
 const role = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
@@ -15,22 +17,53 @@ const db = createClient(url, role, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const chunks = (values, size) =>
+  Array.from(
+    { length: Math.ceil(values.length / size) },
+    (_, index) => values.slice(index * size, (index + 1) * size),
+  );
+
 const normalizeList = (value) =>
   Array.isArray(value) ? value.map(String).sort() : [];
 
 const sameList = (a, b) =>
   JSON.stringify(normalizeList(a)) === JSON.stringify(normalizeList(b));
 
-async function candidateEventIds() {
-  const { data, error } = await db.rpc(
-    "geomacro_structured_evidence_delete_candidates",
-    { p_limit: BATCH_LIMIT },
+function transient(error) {
+  const code = String(error?.code ?? "");
+  const message = String(error?.message ?? error ?? "");
+  return (
+    code === "57014" ||
+    /(?:502|503|504|timeout|timed out|fetch failed|connection reset|bad gateway|service unavailable)/i.test(
+      `${code} ${message}`,
+    )
   );
-  if (error) {
-    throw new Error(
-      `STRUCTURED_EVIDENCE_RIGHTS_RECONCILE_CANDIDATES_FAILED_${error.code ?? "unknown"}`,
-    );
+}
+
+async function queryWithRetry(label, operation) {
+  let lastError;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    const result = await operation();
+    if (!result?.error) return result;
+    lastError = result.error;
+    if (!transient(lastError) || attempt === MAX_ATTEMPTS) break;
+    await sleep(attempt * 1000);
   }
+  throw new Error(
+    `${label}_${lastError?.code ?? "unknown"}: ${lastError?.message ?? "unknown"}`,
+  );
+}
+
+async function candidateEventIds() {
+  const { data } = await queryWithRetry(
+    "STRUCTURED_EVIDENCE_RIGHTS_RECONCILE_CANDIDATES_FAILED",
+    () =>
+      db.rpc("geomacro_structured_evidence_delete_candidates", {
+        p_limit: BATCH_LIMIT,
+      }),
+  );
+
   return [
     ...new Set(
       (Array.isArray(data) ? data : [])
@@ -43,27 +76,37 @@ async function candidateEventIds() {
 async function snapshots(eventIds) {
   if (!eventIds.length) return { stale: [] };
 
-  const [{ data: rights, error: rightsError }, { data: events, error: eventsError }] =
-    await Promise.all([
-      db
-        .from("live_structured_event_commercial_rights_evaluation")
-        .select("event_id,evaluated_status,reason_codes")
-        .in("event_id", eventIds),
-      db
-        .from("live_structured_events")
-        .select("id,commercial_eligibility_status,commercial_eligibility_reason_codes")
-        .in("id", eventIds),
+  const rightsRows = [];
+  const eventRows = [];
+  for (const part of chunks(eventIds, DB_CHUNK)) {
+    const [{ data: rights }, { data: events }] = await Promise.all([
+      queryWithRetry(
+        "STRUCTURED_EVIDENCE_RIGHTS_RECONCILE_RIGHTS_READ_FAILED",
+        () =>
+          db.rpc("geomacro_structured_event_rights_snapshot", {
+            p_event_ids: part,
+          }),
+      ),
+      queryWithRetry(
+        "STRUCTURED_EVIDENCE_RIGHTS_RECONCILE_EVENT_READ_FAILED",
+        () =>
+          db
+            .from("live_structured_events")
+            .select(
+              "id,commercial_eligibility_status,commercial_eligibility_reason_codes",
+            )
+            .in("id", part),
+      ),
     ]);
-
-  if (rightsError || eventsError) {
-    throw new Error("STRUCTURED_EVIDENCE_RIGHTS_RECONCILE_READ_FAILED");
+    rightsRows.push(...(rights ?? []));
+    eventRows.push(...(events ?? []));
   }
 
   const rightsById = new Map(
-    (rights ?? []).map((row) => [String(row.event_id), row]),
+    rightsRows.map((row) => [String(row.event_id), row]),
   );
   const eventsById = new Map(
-    (events ?? []).map((row) => [String(row.id), row]),
+    eventRows.map((row) => [String(row.id), row]),
   );
 
   if (rightsById.size !== eventIds.length || eventsById.size !== eventIds.length) {
@@ -101,15 +144,13 @@ if (!eventIds.length) {
 
 const before = await snapshots(eventIds);
 for (const eventId of before.stale) {
-  const { error } = await db.rpc(
-    "recompute_structured_event_commercial_eligibility",
-    { p_event_id: eventId },
+  await queryWithRetry(
+    "STRUCTURED_EVIDENCE_RIGHTS_RECONCILE_WRITE_FAILED",
+    () =>
+      db.rpc("recompute_structured_event_commercial_eligibility", {
+        p_event_id: eventId,
+      }),
   );
-  if (error) {
-    throw new Error(
-      `STRUCTURED_EVIDENCE_RIGHTS_RECONCILE_WRITE_FAILED_${error.code ?? "unknown"}`,
-    );
-  }
 }
 
 const after = await snapshots(eventIds);
@@ -124,5 +165,6 @@ console.log(
     candidate_events: eventIds.length,
     reconciled_events: before.stale.length,
     stale_after: after.stale.length,
+    rights_source: "targeted_rpc",
   }),
 );
