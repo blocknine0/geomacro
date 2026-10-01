@@ -2,6 +2,13 @@ name: B2 live public snapshot maintenance
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/b2-live-snapshot-maintenance.yml"
+      - "scripts/ops/publish-b2-live-snapshots.ts"
+      - "src/lib/b2-live.server.ts"
+      - "src/lib/commercial-source-eligibility.server.ts"
 
 permissions:
   contents: read
