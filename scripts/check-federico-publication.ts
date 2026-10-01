@@ -79,7 +79,7 @@ async function hydrateTrustedSourceTimes() {
     }
   }
 
-  console.log(JSON.stringify({
+  console.error(JSON.stringify({
     source_time_hydration: {
       source_id: SOURCE_ID,
       attempted,
@@ -162,7 +162,7 @@ async function recorroborateCountry() {
     offset = Number(next);
   }
 
-  console.log(JSON.stringify({
+  console.error(JSON.stringify({
     recorroboration: {
       country_iso3: COUNTRY_ISO3,
       processed,
@@ -182,7 +182,8 @@ const { object, context } = await dryRunCountryRiskObject({
   delivery_profile: "FEDERICO_STRICT",
 });
 
-// Only counts and policy outcomes: no keys, raw articles or signed payloads.
+// stdout is intentionally exactly one JSON document because the workflow
+// persists it as evidence-readiness.json. Operational diagnostics go to stderr.
 console.log(JSON.stringify({
   published: false,
   evidence_summary: object.evidence_summary,
