@@ -1,0 +1,4 @@
+-- Production migration history alignment marker.
+-- The first GDELT DOC fingerprint-bridge deployment landed under this generated
+-- version. The complete idempotent schema is restated in the canonical split
+-- migrations that follow so fresh environments reproduce the same end state.
