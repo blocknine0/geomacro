@@ -12,6 +12,15 @@ const DELETE_CHUNK = 25;
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 const rowHash = (row) => sha256(Buffer.from(JSON.stringify(row)));
 
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+const sameJson = (a, b) => stableJson(a) === stableJson(b);
+
 const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
 const role = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
 const ack = String(process.env.STRUCTURED_EVIDENCE_PHASE_B_ACK ?? "").trim();
@@ -37,7 +46,6 @@ const bridgeKey = (eventId, sourceKey) => `${eventId}\u0000${sourceKey}`;
 const chunks = (values, size) => Array.from({ length: Math.ceil(values.length / size) }, (_, i) => values.slice(i * size, (i + 1) * size));
 const normalizeList = (value) => Array.isArray(value) ? value.map(String).sort() : [];
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-const pairOrFilter = (items, left, right) => items.map((item) => `and(${left}.eq.${item[left]},${right}.eq.${item[right]})`).join(",");
 
 function verifyArchiveBundle(readback, items) {
   if (!items.length) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_EMPTY_BATCH");
@@ -65,7 +73,7 @@ function verifyArchiveBundle(readback, items) {
       !member || member.source_key !== item.source_key || member.row_sha256 !== item.row_sha256 ||
       !member.row || typeof member.row !== "object" || Array.isArray(member.row) ||
       rowHash(member.row) !== item.row_sha256 || rowHash(item.row_json) !== item.row_sha256 ||
-      JSON.stringify(member.row) !== JSON.stringify(item.row_json)
+      !sameJson(member.row, item.row_json)
     ) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_MEMBER_INVALID_${keyOf(item)}`);
   }
 }
@@ -182,7 +190,7 @@ async function restoreEvidence(items) {
   const currentByKey = new Map(current.map((row) => [keyOf(row), row]));
   for (const row of current) {
     const wanted = items.find((item) => keyOf(item) === keyOf(row));
-    if (!wanted || JSON.stringify(row) !== JSON.stringify(wanted.row_json)) {
+    if (!wanted || !sameJson(row, wanted.row_json)) {
       throw new Error("STRUCTURED_EVIDENCE_PHASE_B_ROLLBACK_SOURCE_CHANGED");
     }
   }
@@ -240,7 +248,7 @@ for (; completedRounds < rounds; completedRounds += 1) {
     const wantedByKey = new Map(candidates.map((item) => [keyOf(item), item]));
     for (const row of currentRows) {
       const wanted = wantedByKey.get(keyOf(row));
-      if (!wanted || JSON.stringify(row) !== JSON.stringify(wanted.row_json)) {
+      if (!wanted || !sameJson(row, wanted.row_json)) {
         throw new Error("STRUCTURED_EVIDENCE_PHASE_B_SOURCE_CHANGED");
       }
     }
