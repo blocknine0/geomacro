@@ -15,6 +15,9 @@ const MAX_DECOMPRESSED_BYTES = 40_000_000;
 // project does not turn an otherwise valid public archive into a page outage.
 const PUBLIC_INTELLIGENCE_FALLBACK_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const SOURCE_NETWORK_FALLBACK_MAX_AGE_MS = 90 * 60 * 1000;
+// Commercial rights can change independently of evidence freshness. A B2 copy
+// is outage continuity only, never an indefinite authorization cache.
+export const COMMERCIAL_SOURCE_RIGHTS_FALLBACK_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -24,11 +27,23 @@ export const B2_PUBLIC_RISK_KEY =
   "geomacro-evidence/v1/live/risk-indices/latest.json.gz";
 export const B2_SOURCE_NETWORK_STATUS_KEY =
   "geomacro-evidence/v1/live/source-network-status/latest.json.gz";
+export const B2_COMMERCIAL_SOURCE_RIGHTS_KEY =
+  "geomacro-evidence/v1/live/commercial-source-rights/latest.json.gz";
 
 export type B2SourceNetworkStatus = {
   source_network_100_complete: boolean;
   gdelt_gal_freshness_complete: boolean;
   source_network_launch_complete: boolean;
+};
+
+export type B2CommercialSourceRight = {
+  source_id: string;
+  commercial_usage_status: string | null;
+  enabled_for_ingestion: boolean;
+  enabled_for_commercial_signals: boolean;
+  raw_redistribution_allowed: boolean;
+  attribution_required: boolean;
+  licence_name: string | null;
 };
 
 type B2Config = { accessKey: string; secretKey: string };
@@ -235,4 +250,52 @@ export async function readB2SourceNetworkStatus(): Promise<B2SourceNetworkStatus
     gdelt_gal_freshness_complete: payload.data.gdelt_gal_freshness_complete,
     source_network_launch_complete: payload.data.source_network_launch_complete,
   };
+}
+
+export async function readB2CommercialSourceRights(): Promise<B2CommercialSourceRight[] | null> {
+  const payload = await readJsonGzip<{
+    schema?: string;
+    generated_at?: string;
+    source_project?: string;
+    rows?: unknown[];
+  }>(B2_COMMERCIAL_SOURCE_RIGHTS_KEY);
+  if (
+    payload?.schema !== "geomacro.commercial-source-rights-live.v1" ||
+    payload.source_project !== "ldpwajisioljyjtojvfx" ||
+    !recentEnough(payload.generated_at, COMMERCIAL_SOURCE_RIGHTS_FALLBACK_MAX_AGE_MS) ||
+    !Array.isArray(payload.rows) ||
+    payload.rows.length === 0 ||
+    payload.rows.length > 2_000
+  ) return null;
+
+  const output: B2CommercialSourceRight[] = [];
+  const seen = new Set<string>();
+  for (const value of payload.rows) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const row = value as Record<string, unknown>;
+    const sourceId = typeof row.source_id === "string" ? row.source_id.trim() : "";
+    const status = row.commercial_usage_status;
+    const licence = row.licence_name;
+    if (
+      !/^[A-Za-z0-9_.:-]{1,160}$/.test(sourceId) ||
+      seen.has(sourceId) ||
+      !(status === null || (typeof status === "string" && status.length <= 80)) ||
+      typeof row.enabled_for_ingestion !== "boolean" ||
+      typeof row.enabled_for_commercial_signals !== "boolean" ||
+      typeof row.raw_redistribution_allowed !== "boolean" ||
+      typeof row.attribution_required !== "boolean" ||
+      !(licence === null || (typeof licence === "string" && licence.length <= 300))
+    ) return null;
+    seen.add(sourceId);
+    output.push({
+      source_id: sourceId,
+      commercial_usage_status: status as string | null,
+      enabled_for_ingestion: row.enabled_for_ingestion,
+      enabled_for_commercial_signals: row.enabled_for_commercial_signals,
+      raw_redistribution_allowed: row.raw_redistribution_allowed,
+      attribution_required: row.attribution_required,
+      licence_name: licence as string | null,
+    });
+  }
+  return output;
 }
