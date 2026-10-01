@@ -1,11 +1,19 @@
--- Compatibility placeholder retained because this migration version may already
--- exist in remote migration history.
---
--- Fresh local replays sort this timestamped migration before the later 9xx
--- source-certification schema series. The original body referenced
--- public.live_source_certification_evidence_runs before 961 creates it, so a
--- zero-database replay failed before reaching the canonical schema migration.
---
--- The original idempotent archive table/function DDL now lives in
--- 973_source_cert_evidence_b2_archive_cleanup.sql, after the source evidence
--- graph exists. Do not add schema dependencies here.
+-- Archive index for old, fully blocked source-certification evidence graphs.
+-- This timestamped recovery migration sorts before the legacy 961 source-evidence
+-- graph migration during zero-to-current replay, so the run-id foreign key is
+-- added later after both tables exist. Destructive cleanup is intentionally not
+-- implemented in a stored function.
+
+create table if not exists public.live_source_certification_evidence_archives (
+  run_id text primary key,
+  archive_key text not null,
+  archive_sha256 text not null check (archive_sha256 ~ '^[0-9a-f]{64}$'),
+  node_count integer not null check (node_count >= 0),
+  edge_count integer not null check (edge_count >= 0),
+  verified_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.live_source_certification_evidence_archives enable row level security;
+revoke all on table public.live_source_certification_evidence_archives from public, anon, authenticated;
+grant select, insert, update on table public.live_source_certification_evidence_archives to service_role;
