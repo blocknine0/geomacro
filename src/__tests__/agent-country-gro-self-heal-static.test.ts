@@ -5,7 +5,8 @@ const source = readFileSync("src/lib/agent-query-external-modules.server.ts", "u
 
 describe("adaptive country GRO self-heal", () => {
   it("remains cache-first and publishes only a missing or expired current country GRO", () => {
-    const cacheRead = source.indexOf("getLatestCompatibleCountryRiskObjectAtOrBefore");
+    expect(source).toContain('from "./country-gro-resolver.server"');
+    const cacheRead = source.indexOf("resolveCountryGroAtOrBefore");
     const cachedReturn = source.indexOf("if (cached) return cached");
     const publish = source.indexOf("publishCountryRiskObject({");
     expect(cacheRead).toBeGreaterThanOrEqual(0);
