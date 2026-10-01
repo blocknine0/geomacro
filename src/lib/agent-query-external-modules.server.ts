@@ -111,7 +111,7 @@ export async function checkAgentQueryExternalModule(input: {
         gri.snapshotAsOf &&
         gri.calculationHash &&
         gri.evidenceHash &&
-        gri.verificationStatus === "VERIFIED",
+        String(gri.verificationStatus ?? "").toLowerCase() === "verified",
       );
     } catch {
       return false;
