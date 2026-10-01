@@ -4,8 +4,10 @@ import { spawnSync } from "node:child_process";
 
 const workflowPath = ".github/workflows/deploy-commerce-ledger-worker.yml";
 const acceptancePath = "scripts/ops/verify-commerce-ledger-worker.mjs";
+const workerPackagePath = "workers/commerce-ledger/package.json";
 const workflow = readFileSync(workflowPath, "utf8");
 const acceptance = readFileSync(acceptancePath, "utf8");
+const workerPackage = JSON.parse(readFileSync(workerPackagePath, "utf8"));
 
 describe("commerce ledger deployment safety", () => {
   it("is manual-only, production-scoped and pinned", () => {
@@ -16,6 +18,9 @@ describe("commerce ledger deployment safety", () => {
     expect(workflow).toContain("cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0");
     expect(workflow).toContain('wranglerVersion: "4.136.3"');
     expect(workflow).toContain("workingDirectory: workers/commerce-ledger");
+    expect(workflow).toContain("packageManager: yarn");
+    expect(workerPackage.private).toBe(true);
+    expect(workerPackage.name).toBe("geomacro-commerce-ledger-worker");
   });
 
   it("injects only the dedicated shared ledger token into the Worker", () => {
