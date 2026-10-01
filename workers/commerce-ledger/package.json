@@ -2,5 +2,6 @@
   "name": "geomacro-commerce-ledger-worker",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "description": "Isolated package boundary for deterministic Cloudflare Wrangler deployment."
 }
