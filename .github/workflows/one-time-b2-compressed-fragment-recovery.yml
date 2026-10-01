@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/one-time-b2-compressed-fragment-recovery.yml"
+      - "scripts/ops/reconcile-structured-evidence-rights-cache.mjs"
   workflow_dispatch: {}
 
 permissions:
@@ -32,7 +33,7 @@ jobs:
       STRUCTURED_EVIDENCE_ARCHIVE_LIMIT: "100"
       STRUCTURED_EVIDENCE_PHASE_B_ACK: I_ACCEPT_VERIFIED_EVIDENCE_COLD_DELETE
       STRUCTURED_EVIDENCE_PHASE_B_BATCH_LIMIT: "500"
-      STRUCTURED_EVIDENCE_PHASE_B_ROUNDS: "10"
+      STRUCTURED_EVIDENCE_PHASE_B_ROUNDS: "1"
 
     steps:
       - name: Checkout repository
@@ -58,7 +59,9 @@ jobs:
           test -n "$B2_KEY_ID"
           test -n "$B2_APPLICATION_KEY"
           test "$STRUCTURED_EVIDENCE_PHASE_B_ACK" = "I_ACCEPT_VERIFIED_EVIDENCE_COLD_DELETE"
+          test "$STRUCTURED_EVIDENCE_PHASE_B_ROUNDS" = "1"
           node --check scripts/ops/b2-archive-structured-evidence-bundle.mjs
+          node --check scripts/ops/reconcile-structured-evidence-rights-cache.mjs
           node --check scripts/ops/b2-delete-verified-structured-evidence-bundles.mjs
 
       - name: Archive remaining cold-eligible evidence as verified gzip bundles
@@ -78,7 +81,11 @@ jobs:
           : > structured-evidence-phase-b.jsonl
           for pass in $(seq 1 90); do
             echo "phase_b_pass=$pass"
+            node scripts/ops/reconcile-structured-evidence-rights-cache.mjs | tee -a structured-evidence-phase-b.jsonl
             node scripts/ops/b2-delete-verified-structured-evidence-bundles.mjs | tee -a structured-evidence-phase-b.jsonl
+            if tail -n 1 structured-evidence-phase-b.jsonl | grep -q '"status":"complete"'; then
+              break
+            fi
           done
 
       - name: Require Phase-B backlog to be empty
