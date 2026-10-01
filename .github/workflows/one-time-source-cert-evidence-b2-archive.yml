@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - ".github/workflows/one-time-source-cert-evidence-b2-archive.yml"
+      - "scripts/ops/b2-archive-source-certification-evidence-run.mjs"
+      - "supabase/migrations/20261001073500_source_cert_evidence_b2_archive_cleanup.sql"
   workflow_dispatch: {}
 
 permissions:
