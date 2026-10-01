@@ -1,4 +1,5 @@
 import type { AgentQueryPlan } from "./agent-query-plan";
+import { readB2AgentGovernedModule, type B2AgentGovernedRiskState } from "./b2-agent-governed-modules.server";
 import { checkCommercialSourceEligibility } from "./commercial-source-eligibility.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 import { generateRiskGateV2PoliticalGovernanceModuleState } from "./risk-gate-v2-political-governance-module-state.server";
@@ -64,6 +65,64 @@ function unavailable(
   };
 }
 
+function publicState(state: B2AgentGovernedRiskState): NonNullable<AgentPoliticalGovernanceModule["state"]> {
+  return {
+    module: "political_governance",
+    score: state.score,
+    previous_score: state.previous_score,
+    delta: state.delta,
+    confidence: state.confidence,
+    coverage: state.coverage,
+    commercial_eligibility_status: state.commercial_eligibility_status,
+    generated_at: state.generated_at,
+    expires_at: state.expires_at,
+    methodology_version: state.methodology_version,
+    drivers: state.drivers.map((driver) => ({ ...driver })),
+  };
+}
+
+async function b2Fallback(
+  input: {
+    subject: Extract<AgentQueryPlan["subjects"][number], { type: "country" }>;
+    as_of: string;
+    max_age_seconds: number;
+  },
+  sourceContract: NonNullable<AgentPoliticalGovernanceModule["source_contract"]>,
+): Promise<AgentPoliticalGovernanceModule | null> {
+  const entry = await readB2AgentGovernedModule(
+    input.subject.country_iso3,
+    "political_governance",
+  );
+  if (!entry || !("score" in entry.state) || entry.state.module !== "political_governance") return null;
+  const asOfMs = Date.parse(input.as_of);
+  const observedMs = Date.parse(entry.source_observed_at);
+  const normalizedHash = entry.source_normalized_hashes[0] ?? null;
+  if (!Number.isFinite(asOfMs) || !Number.isFinite(observedMs) || observedMs > asOfMs) return null;
+  if (
+    !Number.isFinite(input.max_age_seconds) ||
+    input.max_age_seconds <= 0 ||
+    asOfMs - observedMs > input.max_age_seconds * 1_000
+  ) {
+    return unavailable(
+      input.subject,
+      "OBSERVATION_STALE",
+      sourceContract,
+      entry.source_observed_at,
+      normalizedHash,
+    );
+  }
+  return {
+    deliverable: true,
+    code: "AVAILABLE",
+    subject: input.subject,
+    source_id: AGENT_POLITICAL_GOVERNANCE_SOURCE_ID,
+    source_observed_at: entry.source_observed_at,
+    source_normalized_hash: normalizedHash,
+    source_contract: sourceContract,
+    state: publicState(entry.state as B2AgentGovernedRiskState),
+  };
+}
+
 export async function loadAgentPoliticalGovernanceModule(input: {
   subject: AgentQueryPlan["subjects"][number];
   as_of: string;
@@ -86,107 +145,116 @@ export async function loadAgentPoliticalGovernanceModule(input: {
     return unavailable(input.subject, "SOURCE_NOT_ELIGIBLE", sourceContract);
   }
 
-  const db = requireRiskSupabase();
-  const observation = await db
-    .from("live_external_observations")
-    .select("observed_at,normalized_hash,commercial_eligibility_status")
-    .eq("source_id", AGENT_POLITICAL_GOVERNANCE_SOURCE_ID)
-    .eq("metric", "political_stability_absolute_score")
-    .eq("country_iso3", input.subject.country_iso3)
-    .eq("quality_status", "VERIFIED")
-    .lte("observed_at", input.as_of)
-    .order("observed_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  try {
+    const db = requireRiskSupabase();
+    const observation = await db
+      .from("live_external_observations")
+      .select("observed_at,normalized_hash,commercial_eligibility_status")
+      .eq("source_id", AGENT_POLITICAL_GOVERNANCE_SOURCE_ID)
+      .eq("metric", "political_stability_absolute_score")
+      .eq("country_iso3", input.subject.country_iso3)
+      .eq("quality_status", "VERIFIED")
+      .lte("observed_at", input.as_of)
+      .order("observed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (observation.error) throw observation.error;
-  const observedAt =
-    typeof observation.data?.observed_at === "string"
-      ? observation.data.observed_at
-      : null;
-  const normalizedHash =
-    typeof observation.data?.normalized_hash === "string"
-      ? observation.data.normalized_hash
-      : null;
+    if (observation.error) throw observation.error;
+    const observedAt =
+      typeof observation.data?.observed_at === "string"
+        ? observation.data.observed_at
+        : null;
+    const normalizedHash =
+      typeof observation.data?.normalized_hash === "string"
+        ? observation.data.normalized_hash
+        : null;
 
-  if (!observedAt) {
-    return unavailable(
-      input.subject,
-      "OBSERVATION_NOT_AVAILABLE",
-      sourceContract,
-      null,
-      normalizedHash,
-    );
+    if (!observedAt) {
+      return unavailable(
+        input.subject,
+        "OBSERVATION_NOT_AVAILABLE",
+        sourceContract,
+        null,
+        normalizedHash,
+      );
+    }
+
+    const asOfMs = Date.parse(input.as_of);
+    const observedMs = Date.parse(observedAt);
+    if (
+      !Number.isFinite(asOfMs) ||
+      !Number.isFinite(observedMs) ||
+      !Number.isFinite(input.max_age_seconds) ||
+      input.max_age_seconds <= 0 ||
+      asOfMs - observedMs > input.max_age_seconds * 1_000
+    ) {
+      return unavailable(
+        input.subject,
+        "OBSERVATION_STALE",
+        sourceContract,
+        observedAt,
+        normalizedHash,
+      );
+    }
+
+    if (observation.data?.commercial_eligibility_status !== "VERIFIED") {
+      return unavailable(
+        input.subject,
+        "MODULE_NOT_VERIFIED",
+        sourceContract,
+        observedAt,
+        normalizedHash,
+      );
+    }
+
+    const state = await generateRiskGateV2PoliticalGovernanceModuleState({
+      country_iso3: input.subject.country_iso3,
+      as_of: input.as_of,
+      generated_at: new Date().toISOString(),
+    });
+    if (!state || state.commercial_eligibility_status !== "VERIFIED") {
+      return unavailable(
+        input.subject,
+        "MODULE_NOT_VERIFIED",
+        sourceContract,
+        observedAt,
+        normalizedHash,
+      );
+    }
+
+    return {
+      deliverable: true,
+      code: "AVAILABLE",
+      subject: input.subject,
+      source_id: AGENT_POLITICAL_GOVERNANCE_SOURCE_ID,
+      source_observed_at: observedAt,
+      source_normalized_hash: normalizedHash,
+      source_contract: sourceContract,
+      state: {
+        module: "political_governance",
+        score: state.score,
+        previous_score: state.previous_score,
+        delta: state.delta,
+        confidence: state.confidence,
+        coverage: state.coverage,
+        commercial_eligibility_status: state.commercial_eligibility_status,
+        generated_at: state.generated_at,
+        expires_at: state.expires_at,
+        methodology_version: state.methodology_version,
+        drivers: state.drivers.map((driver) => ({
+          driver: driver.driver,
+          score_contribution: driver.score_contribution,
+          delta_contribution: driver.delta_contribution,
+          confidence: driver.confidence,
+        })),
+      },
+    };
+  } catch (primaryError) {
+    const fallback = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
+    if (fallback) {
+      console.warn("[agent-wgi] primary governed store unavailable; using fresh verified B2 derived state");
+      return fallback;
+    }
+    throw primaryError;
   }
-
-  const asOfMs = Date.parse(input.as_of);
-  const observedMs = Date.parse(observedAt);
-  if (
-    !Number.isFinite(asOfMs) ||
-    !Number.isFinite(observedMs) ||
-    !Number.isFinite(input.max_age_seconds) ||
-    input.max_age_seconds <= 0 ||
-    asOfMs - observedMs > input.max_age_seconds * 1_000
-  ) {
-    return unavailable(
-      input.subject,
-      "OBSERVATION_STALE",
-      sourceContract,
-      observedAt,
-      normalizedHash,
-    );
-  }
-
-  if (observation.data?.commercial_eligibility_status !== "VERIFIED") {
-    return unavailable(
-      input.subject,
-      "MODULE_NOT_VERIFIED",
-      sourceContract,
-      observedAt,
-      normalizedHash,
-    );
-  }
-
-  const state = await generateRiskGateV2PoliticalGovernanceModuleState({
-    country_iso3: input.subject.country_iso3,
-    as_of: input.as_of,
-    generated_at: new Date().toISOString(),
-  });
-  if (!state || state.commercial_eligibility_status !== "VERIFIED") {
-    return unavailable(
-      input.subject,
-      "MODULE_NOT_VERIFIED",
-      sourceContract,
-      observedAt,
-      normalizedHash,
-    );
-  }
-
-  return {
-    deliverable: true,
-    code: "AVAILABLE",
-    subject: input.subject,
-    source_id: AGENT_POLITICAL_GOVERNANCE_SOURCE_ID,
-    source_observed_at: observedAt,
-    source_normalized_hash: normalizedHash,
-    source_contract: sourceContract,
-    state: {
-      module: "political_governance",
-      score: state.score,
-      previous_score: state.previous_score,
-      delta: state.delta,
-      confidence: state.confidence,
-      coverage: state.coverage,
-      commercial_eligibility_status: state.commercial_eligibility_status,
-      generated_at: state.generated_at,
-      expires_at: state.expires_at,
-      methodology_version: state.methodology_version,
-      drivers: state.drivers.map((driver) => ({
-        driver: driver.driver,
-        score_contribution: driver.score_contribution,
-        delta_contribution: driver.delta_contribution,
-        confidence: driver.confidence,
-      })),
-    },
-  };
 }
