@@ -21,6 +21,7 @@ describe("commerce ledger deployment safety", () => {
     expect(workflow).toContain("packageManager: yarn");
     expect(workerPackage.private).toBe(true);
     expect(workerPackage.name).toBe("geomacro-commerce-ledger-worker");
+    expect(workerPackage.packageManager).toBe("yarn@1.22.22");
   });
 
   it("injects only the dedicated shared ledger token into the Worker", () => {
