@@ -43,7 +43,7 @@ jobs:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Require exact production target and pre-existing source absence
+      - name: Require exact production target and determinate source state
         shell: bash
         run: |
           set -euo pipefail
@@ -65,17 +65,20 @@ jobs:
             headers: { apikey: role, authorization: `Bearer ${role}` },
             signal: AbortSignal.timeout(15000),
           });
-          if (response.ok) throw new Error('SOURCE_REAPPEARED_REFUSING_RECOVERY');
+          if (response.ok) {
+            console.log(JSON.stringify({ ok: true, source_state: 'present', fragment_id: process.env.B2_FRAGMENT_TARGET_ID }));
+            process.exit(0);
+          }
           const body = await response.json().catch(() => null);
           const structuredStatus = String(body?.statusCode ?? '');
           const structuredError = String(body?.error ?? body?.message ?? '');
           const absent = response.status === 404 ||
             (response.status === 400 && structuredStatus === '404' && /not.?found|no.?such.?key/i.test(structuredError));
-          if (!absent) throw new Error(`SOURCE_ABSENCE_INDETERMINATE_${response.status}_${structuredStatus || 'none'}`);
-          console.log(JSON.stringify({ ok: true, source_absence_verified: true, fragment_id: process.env.B2_FRAGMENT_TARGET_ID }));
+          if (!absent) throw new Error(`SOURCE_STATE_INDETERMINATE_${response.status}_${structuredStatus || 'none'}`);
+          console.log(JSON.stringify({ ok: true, source_state: 'absent', fragment_id: process.env.B2_FRAGMENT_TARGET_ID }));
           NODE
 
-      - name: Restore exact verified source bytes from B2
+      - name: Restore or verify exact source bytes from B2
         run: node scripts/ops/b2-fragment-restore.mjs
 
       - name: Run normal audited targeted cleanup after verified restore
