@@ -37,6 +37,18 @@ describe("Federico trusted source publication-time hydration", () => {
     );
   });
 
+  it("ignores date-only metadata and prefers a precise visible publication time", () => {
+    const html = '<html><head><meta itemprop="datePublished" content="2026-10-01"></head><body><div>2026-10-01 19:21:31</div></body></html>';
+    expect(extractTrustedPublishedAt(html, SOURCE_URL, AS_OF)).toBe(
+      "2026-10-01T11:21:31.000Z",
+    );
+  });
+
+  it("rejects date-only metadata when no precise publication time exists", () => {
+    const html = '<meta itemprop="datePublished" content="2026-10-01">';
+    expect(extractTrustedPublishedAt(html, SOURCE_URL, AS_OF)).toBeNull();
+  });
+
   it("rejects untrusted hosts, stale timestamps, and future timestamps", () => {
     expect(isTrustedFedericoTimestampUrl(SOURCE_URL)).toBe(true);
     expect(isTrustedFedericoTimestampUrl("https://example.com/article")).toBe(false);
