@@ -1,0 +1,45 @@
+name: B2 structural serving snapshot maintenance
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/b2-structural.server.ts"
+      - "src/lib/structural-context.server.ts"
+      - "scripts/ops/publish-b2-structural-serving-snapshot.ts"
+      - ".github/workflows/b2-structural-serving-snapshot.yml"
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-b2-structural-serving
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: production
+    env:
+      HISTORICAL_SUPABASE_URL: https://nqvpcbnnvjsrlvyxxevk.supabase.co
+      HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with: { bun-version: "1.4.2" }
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Publish and fully read back structural serving snapshot
+        run: bun scripts/ops/publish-b2-structural-serving-snapshot.ts

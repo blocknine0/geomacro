@@ -78,7 +78,7 @@ describe("structured-commerce industry-readiness invariants", () => {
     expect(structuralContext).toContain('from("commercial_structural_country_profiles")');
     expect(structuralContext).toContain('from("commercial_structural_country_coverage_latest")');
     expect(structuralContext).toContain('from("commercial_structural_corridor_latest")');
-    expect(structuralContext).toContain("private warehouse");
+    expect(structuralContext).toContain("verified private B2 snapshot");
   });
 
   it("requires commercial eligibility and embedded verification in addition to signature validity", () => {
