@@ -18,8 +18,8 @@ import {
  */
 
 import {
-  getLatestCompatibleCountryRiskObjectAtOrBefore,
-} from "./risk-object-store.server";
+  resolveCountryGroAtOrBefore,
+} from "./country-gro-resolver.server";
 
 import {
   evaluateRiskGate,
@@ -156,7 +156,10 @@ function normalizeEvaluationTime(
  * Evaluate the latest persisted country GRO
  * against a caller-supplied policy.
  *
- * No execution capability exists here.
+ * Supabase is authoritative while healthy. Canonical requests may continue
+ * from the separately verified private-B2 continuity copy when the primary
+ * read path is unavailable. Public-demo/profile boundaries never fall back
+ * across profiles. No execution capability exists here.
  */
 export async function
 evaluateCountryRiskGate(
@@ -181,7 +184,7 @@ evaluateCountryRiskGate(
     );
 
   const riskObject =
-    await getLatestCompatibleCountryRiskObjectAtOrBefore(
+    await resolveCountryGroAtOrBefore(
       countryIso3,
       evaluatedAt.toISOString(),
       input.risk_object_profile ??
