@@ -103,7 +103,17 @@ const { data: fragment, error: fragmentError } = await db.from("live_fragment_ma
 if (fragmentError || fragment?.id !== row.fragment_id || !String(fragment?.source_key ?? "").trim()) {
   throw new Error("STRUCTURED_EVIDENCE_DELETE_SOURCE_KEY_UNRESOLVED");
 }
-const sourceKey = String(fragment.source_key).trim();
+const { data: effectiveSourceKey, error: effectiveSourceError } = await db.rpc(
+  "geomacro_effective_structured_evidence_source_key",
+  {
+    p_manifest_source_key: String(fragment.source_key).trim(),
+    p_source_domain: String(row.source_domain ?? "").trim() || null,
+  },
+);
+if (effectiveSourceError || !String(effectiveSourceKey ?? "").trim()) {
+  throw new Error("STRUCTURED_EVIDENCE_DELETE_EFFECTIVE_SOURCE_KEY_UNRESOLVED");
+}
+const sourceKey = String(effectiveSourceKey).trim();
 
 const { data: existingBridge, error: bridgeReadError } = await db
   .from("live_structured_event_archived_sources")
