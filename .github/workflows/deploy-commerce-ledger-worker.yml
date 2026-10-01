@@ -62,6 +62,11 @@ jobs:
           esac
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
+      - name: Wait for deployed Worker health propagation
+        env:
+          GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
+        run: node scripts/ops/wait-commerce-ledger-health.mjs
+
       - name: Run no-funds production ledger acceptance
         env:
           GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
