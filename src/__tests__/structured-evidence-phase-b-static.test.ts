@@ -20,42 +20,45 @@ describe("structured evidence verified delete Phase B", () => {
 
   it("verifies the archived B2 bundle before delete and again before finalize", () => {
     const firstGet = script.indexOf("const firstReadback = await b2.get(bundleKey)");
-    const deleteRpc = script.indexOf('db.rpc("geomacro_delete_verified_structured_evidence"');
+    const deleteCall = script.indexOf("await deleteExactEvidence(candidates)");
     const secondGet = script.indexOf("const secondReadback = await b2.get(bundleKey)");
     const finalizeRpc = script.indexOf('db.rpc("geomacro_finalize_verified_structured_evidence"');
     expect(firstGet).toBeGreaterThanOrEqual(0);
-    expect(deleteRpc).toBeGreaterThan(firstGet);
-    expect(secondGet).toBeGreaterThan(deleteRpc);
+    expect(deleteCall).toBeGreaterThan(firstGet);
+    expect(secondGet).toBeGreaterThan(deleteCall);
     expect(finalizeRpc).toBeGreaterThan(secondGet);
     expect(script).toContain("verifyArchiveBundle(firstReadback, candidates)");
     expect(script).toContain("verifyArchiveBundle(secondReadback, candidates)");
   });
 
-  it("retains an exact rollback path until finalization", () => {
-    expect(script).toContain('db.rpc("geomacro_restore_verified_structured_evidence"');
-    expect(script).toContain("await rollback(rpcItems, insertedBridges)");
-    expect(migration).toContain("to_jsonb(e) = a.row_json");
-    expect(migration).toContain("STRUCTURED_EVIDENCE_DELETE_RIGHTS_CHANGED");
-    expect(migration).toContain("STRUCTURED_EVIDENCE_RESTORE_RIGHTS_CHANGED");
+  it("uses application-side exact-pair deletion and exact rollback", () => {
+    expect(script).toContain('.delete().or(filter).select("event_id,fingerprint")');
+    expect(script).toContain("await restoreEvidence(items)");
+    expect(script).toContain("await removeOwnedBridges(insertedBridges)");
+    expect(script).toContain("STRUCTURED_EVIDENCE_PHASE_B_ROLLBACK_RIGHTS_FAILED");
+    expect(migration).not.toMatch(/delete\s+from\s+public\.live_structured_event_evidence/i);
+    expect(migration).not.toMatch(/delete\s+from\s+public\.live_structured_event_archived_sources/i);
   });
 
-  it("preserves source identity and compacts index payload only after verified deletion", () => {
-    expect(migration).toContain("live_structured_event_archived_sources");
+  it("preserves rights before delete and compacts index only after verification", () => {
+    expect(script).toContain("const beforeRights = await rightsSnapshot(candidates)");
+    expect(script).toContain("STRUCTURED_EVIDENCE_PHASE_B_DELETE_RIGHTS_CHANGED");
     expect(migration).toContain("geomacro_finalize_verified_structured_evidence");
     expect(migration).toContain("'t', 'b2-evidence-bundle'");
     expect(migration).toContain("STRUCTURED_EVIDENCE_FINALIZE_SOURCE_STILL_PRESENT");
   });
 
-  it("never touches Supabase Storage deletion paths", () => {
+  it("never touches Supabase Storage object deletion", () => {
     expect(script).not.toContain("storage.remove");
     expect(script).not.toContain("storage.objects");
     expect(migration).not.toContain("storage.objects");
   });
 
-  it("keeps all Phase B RPCs service-role only", () => {
-    expect(migration).toContain("revoke all on function public.geomacro_delete_verified_structured_evidence(jsonb) from public, anon, authenticated");
-    expect(migration).toContain("grant execute on function public.geomacro_delete_verified_structured_evidence(jsonb) to service_role");
-    expect(migration).toContain("grant execute on function public.geomacro_restore_verified_structured_evidence(jsonb, jsonb) to service_role");
+  it("keeps helper RPCs service-role only", () => {
+    expect(migration).toContain("revoke all on function public.geomacro_count_structured_evidence_present(jsonb) from public, anon, authenticated");
+    expect(migration).toContain("grant execute on function public.geomacro_count_structured_evidence_present(jsonb) to service_role");
     expect(migration).toContain("grant execute on function public.geomacro_finalize_verified_structured_evidence(jsonb) to service_role");
+    expect(migration).not.toContain("geomacro_delete_verified_structured_evidence");
+    expect(migration).not.toContain("geomacro_restore_verified_structured_evidence");
   });
 });
