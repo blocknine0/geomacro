@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-policy";
 import { publishCountryRiskObject } from "./country-risk-publisher.server";
+import { resolveCountryGroAtOrBefore } from "./country-gro-resolver.server";
 import { corridorSubjectId } from "./corridor-risk-engine";
 import { publishCorridorRiskObject } from "./corridor-risk-publisher.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
@@ -9,14 +10,14 @@ import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
 import {
-  getLatestCompatibleCountryRiskObjectAtOrBefore,
   getLatestCompatibleCorridorRiskObjectAtOrBefore,
 } from "./risk-object-store.server";
+import type { GeomacroRiskObject } from "./risk-object-contract";
 import type { AgentQueryPlan } from "./agent-query-plan";
 
 const LIVE_COUNTRY_SELF_HEAL_MAX_CLOCK_SKEW_MS = 5 * 60 * 1_000;
 
-function commerciallyDeliverable(object: Awaited<ReturnType<typeof getLatestCompatibleCountryRiskObjectAtOrBefore>>, asOf: string) {
+function commerciallyDeliverable(object: GeomacroRiskObject | null, asOf: string) {
   if (!object) return null;
   return verifyCommercialRiskObjectArtifact(object, { now: new Date(asOf) }).deliverable
     ? object
@@ -32,11 +33,13 @@ function liveSelfHealAllowed(asOf: string, now = new Date()) {
 /**
  * Resolve the signed CANONICAL Risk Object used by adaptive agent queries.
  *
- * Country objects are cache-first. The former global refresh is quota-held on
- * free-tier infrastructure, so a current paid/live request may regenerate only
- * its requested country when the cached canonical object is absent/expired.
- * Historical requests never mutate production state: self-heal is allowed only
- * inside a five-minute server-clock window.
+ * Country objects are cache-first. Supabase remains authoritative while it is
+ * healthy; verified private B2 is used only on a primary read failure. The
+ * former global refresh is quota-held on free-tier infrastructure, so a
+ * current paid/live request may regenerate only its requested country when the
+ * cached canonical object is absent/expired. Historical requests never mutate
+ * production state: self-heal is allowed only inside a five-minute
+ * server-clock window.
  *
  * Corridor objects remain endpoint-composed and the theoretical country-pair
  * universe is too large to pre-materialize safely. For a corridor request we
@@ -53,7 +56,7 @@ export async function loadCommercialRiskObjectForAgentQuery(
 ) {
   if (subject.type === "country") {
     const cached = commerciallyDeliverable(
-      await getLatestCompatibleCountryRiskObjectAtOrBefore(subject.country_iso3, asOf),
+      await resolveCountryGroAtOrBefore(subject.country_iso3, asOf),
       asOf,
     );
     if (cached) return cached;
