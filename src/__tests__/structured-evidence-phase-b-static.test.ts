@@ -14,7 +14,8 @@ describe("structured evidence verified delete Phase B", () => {
     expect(workflow).toContain("I_ACCEPT_VERIFIED_EVIDENCE_COLD_DELETE");
     expect(workflow).toContain('B2_REQUEST_BUDGET: "30"');
     expect(workflow).toContain('STRUCTURED_EVIDENCE_PHASE_B_BATCH_LIMIT: "500"');
-    expect(workflow).toContain('STRUCTURED_EVIDENCE_PHASE_B_ROUNDS: "10"');
+    expect(workflow).toContain('STRUCTURED_EVIDENCE_PHASE_B_ROUNDS: "1"');
+    expect(workflow).toContain("for pass in $(seq 1 10)");
     expect(workflow).toContain("persist-credentials: false");
   });
 
