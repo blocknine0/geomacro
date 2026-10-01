@@ -31,7 +31,7 @@ values
     'Admitted Events Reviewed Derived Discovery Lane',
     'Geomacro',
     'news_discovery',
-    'https://geomacro.live/intelligence',
+    'urn:geomacro:rights-lane:admitted-events-derived',
     false,
     86400,
     'prohibited',
@@ -40,7 +40,7 @@ values
     true,
     'Internal rights identity only. Represents the reviewed GDELT/ReliefWeb derived-intelligence lane. It never grants raw publisher redistribution rights.',
     'DERIVED_ONLY',
-    'https://github.com/blocknine0/geomacro/blob/main/docs/COMMERCIAL_DISCOVERY_PROVIDER_POLICY.md',
+    'internal-policy:commercial-discovery-provider-policy',
     '2026-09-10T00:00:00Z'::timestamptz
   ),
   (
@@ -48,7 +48,7 @@ values
     'Admitted Events Guardian Ineligible Lane',
     'Geomacro',
     'news_discovery',
-    'https://open-platform.theguardian.com/',
+    'urn:geomacro:rights-lane:admitted-events-guardian-ineligible',
     false,
     86400,
     'prohibited',
@@ -57,7 +57,7 @@ values
     true,
     'Internal rights identity only. Direct Guardian Open Platform evidence remains excluded from the current automated commercial intelligence path.',
     'INELIGIBLE',
-    'https://www.theguardian.com/open-platform/terms-and-conditions',
+    'internal-policy:guardian-open-platform-terms-reviewed-2026-09-10',
     '2026-09-10T00:00:00Z'::timestamptz
   ),
   (
@@ -65,7 +65,7 @@ values
     'Admitted Events GDACS Review Lane',
     'Geomacro',
     'news_discovery',
-    'https://www.gdacs.org/',
+    'urn:geomacro:rights-lane:admitted-events-gdacs-review',
     false,
     86400,
     'prohibited',
@@ -74,7 +74,7 @@ values
     true,
     'Internal rights identity only. GDACS evidence remains review-gated for paid machine delivery until an explicit commercial reuse review is closed.',
     'REVIEW_REQUIRED',
-    'https://data.gdacs.org/About/termofuse.aspx',
+    'internal-policy:gdacs-terms-reviewed-2026-09-10',
     '2026-09-10T00:00:00Z'::timestamptz
   )
 on conflict (source_key) do update
