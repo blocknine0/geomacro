@@ -44,9 +44,9 @@ function normalizeTimestampCandidate(raw: string, sourceUrl: string) {
   const value = raw.trim();
   if (!value) return null;
 
-  // Xinhua's English pages can emit a local wall-clock timestamp without a
-  // timezone. Treat that source-specific form as China Standard Time instead
-  // of relying on the runner's locale.
+  // Xinhua's English pages emit their visible publication timestamp as a local
+  // China wall clock. Convert that source-specific form explicitly instead of
+  // relying on the runner locale.
   if (
     /^(?:\d{4}-\d{2}-\d{2})[ T]\d{2}:\d{2}(?::\d{2})?$/.test(value) &&
     isTrustedFedericoTimestampUrl(sourceUrl)
@@ -105,6 +105,15 @@ export function extractTrustedPublishedAt(
   }
 
   for (const match of html.matchAll(/"datePublished"\s*:\s*"([^"]+)"/gi)) {
+    if (match[1]) candidates.push(match[1]);
+  }
+
+  // Xinhua's rendered article header visibly carries a timestamp such as
+  // "2026-10-01 19:21:31" even when the fallback index entry has no RSS date.
+  // Search only the bounded leading document region so body/archive dates do
+  // not become publication evidence.
+  const leadingHtml = html.slice(0, 120_000);
+  for (const match of leadingHtml.matchAll(/\b(20\d{2}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})\b/g)) {
     if (match[1]) candidates.push(match[1]);
   }
 
