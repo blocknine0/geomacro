@@ -7,6 +7,8 @@ import { createB2Client } from "./b2-s3-client.mjs";
 const PROJECT_URL = "https://ldpwajisioljyjtojvfx.supabase.co";
 const ARCHIVE_BUCKET = "geomacro-private-archive";
 const REQUIRED_ACK = "I_ACCEPT_VERIFIED_EVIDENCE_COLD_DELETE";
+const DB_CHUNK = 100;
+const DELETE_CHUNK = 25;
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 const rowHash = (row) => sha256(Buffer.from(JSON.stringify(row)));
 
@@ -31,6 +33,11 @@ const b2 = createB2Client({
 });
 
 const keyOf = (item) => `${item.event_id}:${item.fingerprint}`;
+const bridgeKey = (eventId, sourceKey) => `${eventId}\u0000${sourceKey}`;
+const chunks = (values, size) => Array.from({ length: Math.ceil(values.length / size) }, (_, i) => values.slice(i * size, (i + 1) * size));
+const normalizeList = (value) => Array.isArray(value) ? value.map(String).sort() : [];
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const pairOrFilter = (items, left, right) => items.map((item) => `and(${left}.eq.${item[left]},${right}.eq.${item[right]})`).join(",");
 
 function verifyArchiveBundle(readback, items) {
   if (!items.length) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_EMPTY_BATCH");
@@ -77,17 +84,121 @@ async function countPresent(items) {
   return Number(data);
 }
 
-async function rollback(items, insertedBridges) {
-  const { data, error } = await db.rpc("geomacro_restore_verified_structured_evidence", {
-    p_items: items.map(({ event_id, fingerprint, source_key, bundle_key, bundle_sha256, row_sha256 }) => ({
-      event_id, fingerprint, source_key, bundle_key, bundle_sha256, row_sha256,
-    })),
-    p_inserted_bridges: insertedBridges,
+async function rightsSnapshot(items) {
+  const eventIds = [...new Set(items.map((item) => String(item.event_id)))].sort();
+  const rightsRows = [];
+  const eventRows = [];
+  for (const part of chunks(eventIds, DB_CHUNK)) {
+    const [{ data: rights, error: rightsError }, { data: events, error: eventError }] = await Promise.all([
+      db.from("live_structured_event_commercial_rights_evaluation")
+        .select("event_id,evaluated_status,reason_codes,source_keys").in("event_id", part),
+      db.from("live_structured_events")
+        .select("id,commercial_eligibility_status,commercial_eligibility_reason_codes").in("id", part),
+    ]);
+    if (rightsError || eventError) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_RIGHTS_READ_FAILED");
+    rightsRows.push(...(rights ?? []));
+    eventRows.push(...(events ?? []));
+  }
+  if (rightsRows.length !== eventIds.length || eventRows.length !== eventIds.length) {
+    throw new Error("STRUCTURED_EVIDENCE_PHASE_B_RIGHTS_INCOMPLETE");
+  }
+  const rightsById = new Map(rightsRows.map((row) => [String(row.event_id), row]));
+  const eventsById = new Map(eventRows.map((row) => [String(row.id), row]));
+  return eventIds.map((id) => {
+    const rights = rightsById.get(id);
+    const event = eventsById.get(id);
+    return [id, {
+      evaluated_status: String(rights?.evaluated_status ?? ""),
+      reason_codes: normalizeList(rights?.reason_codes),
+      source_keys: normalizeList(rights?.source_keys),
+      event_status: String(event?.commercial_eligibility_status ?? ""),
+      event_reason_codes: normalizeList(event?.commercial_eligibility_reason_codes),
+    }];
   });
-  if (error || Number(data) !== items.length) {
-    throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_ROLLBACK_FAILED_${error?.code ?? "count"}`);
+}
+
+async function currentBridges(items) {
+  const eventIds = [...new Set(items.map((item) => String(item.event_id)))];
+  const found = [];
+  for (const part of chunks(eventIds, DB_CHUNK)) {
+    const { data, error } = await db.from("live_structured_event_archived_sources")
+      .select("event_id,source_key").in("event_id", part);
+    if (error) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_BRIDGE_READ_FAILED_${error.code ?? "unknown"}`);
+    found.push(...(data ?? []));
+  }
+  return new Set(found.map((row) => bridgeKey(String(row.event_id), String(row.source_key))));
+}
+
+async function insertMissingBridges(items) {
+  const existing = await currentBridges(items);
+  const unique = new Map();
+  for (const item of items) unique.set(bridgeKey(item.event_id, item.source_key), { event_id: item.event_id, source_key: item.source_key });
+  const missing = [...unique.entries()].filter(([key]) => !existing.has(key)).map(([, row]) => row);
+  if (!missing.length) return [];
+  for (const part of chunks(missing, DB_CHUNK)) {
+    const { error } = await db.from("live_structured_event_archived_sources").insert(part);
+    if (error) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_BRIDGE_INSERT_FAILED_${error.code ?? "unknown"}`);
+  }
+  return missing;
+}
+
+async function removeOwnedBridges(bridges) {
+  for (const part of chunks(bridges, DELETE_CHUNK)) {
+    const filter = part.map((row) => `and(event_id.eq.${row.event_id},source_key.eq.${row.source_key})`).join(",");
+    const { data, error } = await db.from("live_structured_event_archived_sources")
+      .delete().or(filter).select("event_id,source_key");
+    if (error || (data ?? []).length !== part.length) {
+      throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_BRIDGE_ROLLBACK_FAILED_${error?.code ?? "count"}`);
+    }
+  }
+}
+
+async function readCurrentEvidence(items) {
+  const rows = [];
+  for (const part of chunks(items, DELETE_CHUNK)) {
+    const filter = part.map((item) => `and(event_id.eq.${item.event_id},fingerprint.eq.${item.fingerprint})`).join(",");
+    const { data, error } = await db.from("live_structured_event_evidence").select("*").or(filter);
+    if (error) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_SOURCE_READ_FAILED_${error.code ?? "unknown"}`);
+    rows.push(...(data ?? []));
+  }
+  return rows;
+}
+
+async function deleteExactEvidence(items) {
+  const deleted = [];
+  for (const part of chunks(items, DELETE_CHUNK)) {
+    const filter = part.map((item) => `and(event_id.eq.${item.event_id},fingerprint.eq.${item.fingerprint})`).join(",");
+    const { data, error } = await db.from("live_structured_event_evidence")
+      .delete().or(filter).select("event_id,fingerprint");
+    if (error) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_DELETE_FAILED_${error.code ?? "unknown"}`);
+    deleted.push(...(data ?? []));
+  }
+  if (deleted.length !== items.length) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_DELETE_COUNT_MISMATCH");
+  return deleted;
+}
+
+async function restoreEvidence(items) {
+  const current = await readCurrentEvidence(items);
+  const currentByKey = new Map(current.map((row) => [keyOf(row), row]));
+  for (const row of current) {
+    const wanted = items.find((item) => keyOf(item) === keyOf(row));
+    if (!wanted || JSON.stringify(row) !== JSON.stringify(wanted.row_json)) {
+      throw new Error("STRUCTURED_EVIDENCE_PHASE_B_ROLLBACK_SOURCE_CHANGED");
+    }
+  }
+  const missingRows = items.filter((item) => !currentByKey.has(keyOf(item))).map((item) => item.row_json);
+  for (const part of chunks(missingRows, DB_CHUNK)) {
+    const { error } = await db.from("live_structured_event_evidence").insert(part);
+    if (error) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_ROLLBACK_INSERT_FAILED_${error.code ?? "unknown"}`);
   }
   if (await countPresent(items) !== items.length) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_ROLLBACK_VERIFY_FAILED");
+}
+
+async function rollback(items, insertedBridges, beforeRights) {
+  await restoreEvidence(items);
+  if (insertedBridges.length) await removeOwnedBridges(insertedBridges);
+  const restoredRights = await rightsSnapshot(items);
+  if (!same(beforeRights, restoredRights)) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_ROLLBACK_RIGHTS_FAILED");
 }
 
 let totalDeleted = 0;
@@ -112,23 +223,34 @@ for (; completedRounds < rounds; completedRounds += 1) {
   const firstReadback = await b2.get(bundleKey);
   verifyArchiveBundle(firstReadback, candidates);
 
-  const rpcItems = candidates.map(({ event_id, fingerprint, source_key, bundle_key, bundle_sha256, row_sha256 }) => ({
-    event_id, fingerprint, source_key, bundle_key, bundle_sha256, row_sha256,
-  }));
-  let sourceDeleted = false;
+  const beforeRights = await rightsSnapshot(candidates);
   let insertedBridges = [];
+  let mutationStarted = false;
+  let finalized = false;
 
   try {
-    const { data: deleted, error: deleteError } = await db.rpc("geomacro_delete_verified_structured_evidence", {
-      p_items: rpcItems,
-    });
-    if (deleteError || Number(deleted?.deleted) !== candidates.length || deleted?.rights_unchanged !== true || !Array.isArray(deleted?.inserted_bridges)) {
-      throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_DELETE_FAILED_${deleteError?.code ?? "count"}`);
-    }
-    sourceDeleted = true;
-    insertedBridges = deleted.inserted_bridges;
+    insertedBridges = await insertMissingBridges(candidates);
+    mutationStarted = insertedBridges.length > 0;
 
+    const rightsWithBridges = await rightsSnapshot(candidates);
+    if (!same(beforeRights, rightsWithBridges)) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_BRIDGE_RIGHTS_CHANGED");
+
+    const currentRows = await readCurrentEvidence(candidates);
+    if (currentRows.length !== candidates.length) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_SOURCE_COUNT_CHANGED");
+    const wantedByKey = new Map(candidates.map((item) => [keyOf(item), item]));
+    for (const row of currentRows) {
+      const wanted = wantedByKey.get(keyOf(row));
+      if (!wanted || JSON.stringify(row) !== JSON.stringify(wanted.row_json)) {
+        throw new Error("STRUCTURED_EVIDENCE_PHASE_B_SOURCE_CHANGED");
+      }
+    }
+
+    await deleteExactEvidence(candidates);
+    mutationStarted = true;
     if (await countPresent(candidates) !== 0) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_SOURCE_STILL_PRESENT");
+
+    const afterRights = await rightsSnapshot(candidates);
+    if (!same(beforeRights, afterRights)) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_DELETE_RIGHTS_CHANGED");
 
     const secondReadback = await b2.get(bundleKey);
     verifyArchiveBundle(secondReadback, candidates);
@@ -143,17 +265,19 @@ for (; completedRounds < rounds; completedRounds += 1) {
       rights_unchanged: true,
       full_b2_readback_verified_before_delete: true,
       full_b2_readback_verified_after_delete: true,
+      exact_hot_rows_verified_before_delete: true,
       rollback_copy_retained_until_finalize: true,
       verified_at: new Date().toISOString(),
       members: candidates.map(({ event_id, fingerprint, source_key, row_sha256 }) => ({ event_id, fingerprint, source_key, row_sha256 })),
     })));
 
-    const { data: finalized, error: finalizeError } = await db.rpc("geomacro_finalize_verified_structured_evidence", {
-      p_items: rpcItems,
-    });
-    if (finalizeError || Number(finalized) !== candidates.length) {
-      throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_FINALIZE_FAILED_${finalizeError?.code ?? "count"}`);
-    }
+    const rpcItems = candidates.map(({ event_id, fingerprint, source_key, bundle_key, bundle_sha256, row_sha256 }) => ({
+      event_id, fingerprint, source_key, bundle_key, bundle_sha256, row_sha256,
+    }));
+    const { data: finalizedCount, error: finalizeError } = await db.rpc("geomacro_finalize_verified_structured_evidence", { p_items: rpcItems });
+    if (finalizeError) throw new Error(`STRUCTURED_EVIDENCE_PHASE_B_FINALIZE_FAILED_${finalizeError.code ?? "unknown"}`);
+    if (Number(finalizedCount) !== candidates.length) throw new Error("STRUCTURED_EVIDENCE_PHASE_B_FINALIZE_COUNT_UNEXPECTED");
+    finalized = true;
 
     totalDeleted += candidates.length;
     console.log(JSON.stringify({
@@ -162,17 +286,17 @@ for (; completedRounds < rounds; completedRounds += 1) {
       deleted: candidates.length,
       total_deleted: totalDeleted,
       bundle_key: bundleKey,
+      inserted_source_bridges: insertedBridges.length,
       full_b2_readback_verified_before_delete: true,
       full_b2_readback_verified_after_delete: true,
       rights_unchanged: true,
       archive_index_compacted_after_verification: true,
       b2: b2.usage(),
     }));
-    sourceDeleted = false;
   } catch (cause) {
-    if (sourceDeleted) {
+    if (mutationStarted && !finalized) {
       try {
-        await rollback(rpcItems, insertedBridges);
+        await rollback(candidates, insertedBridges, beforeRights);
       } catch (rollbackCause) {
         throw new Error("STRUCTURED_EVIDENCE_PHASE_B_ROLLBACK_FATAL", { cause: rollbackCause });
       }
