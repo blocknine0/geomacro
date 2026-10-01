@@ -1,0 +1,85 @@
+name: One-time Source Certification Evidence B2 Archive
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/one-time-source-cert-evidence-b2-archive.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: one-time-source-cert-evidence-b2-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_REQUEST_BUDGET: "12"
+      SOURCE_CERT_EVIDENCE_ARCHIVE_ACK: I_ACCEPT_VERIFIED_SOURCE_CERT_EVIDENCE_ARCHIVE_DELETE
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify fixed production target and archive worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_SUPABASE_URL" = "https://ldpwajisioljyjtojvfx.supabase.co"
+          test -n "$APP_SUPABASE_SERVICE_ROLE_KEY"
+          test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com"
+          test -n "$B2_KEY_ID"
+          test -n "$B2_APPLICATION_KEY"
+          test "$SOURCE_CERT_EVIDENCE_ARCHIVE_ACK" = "I_ACCEPT_VERIFIED_SOURCE_CERT_EVIDENCE_ARCHIVE_DELETE"
+          node --check scripts/ops/b2-archive-source-certification-evidence-run.mjs
+      - name: Archive and transactionally clean one safe old evidence graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/b2-archive-source-certification-evidence-run.mjs | tee source-cert-evidence-archive.jsonl
+          jq -se '.[-1] | .ok == true and (.status == "progress" or .status == "complete")' source-cert-evidence-archive.jsonl >/dev/null
+      - name: Verify archived run source graph is absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+          const db = createClient(process.env.APP_SUPABASE_URL, process.env.APP_SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          const { data: archives, error: aerr } = await db.from('live_source_certification_evidence_archives').select('run_id,node_count,edge_count,archive_key,archive_sha256');
+          if (aerr) throw aerr;
+          let remaining = 0;
+          for (const archive of archives ?? []) {
+            const [{ count: nodes, error: nerr }, { count: edges, error: eerr }] = await Promise.all([
+              db.from('live_source_certification_evidence_nodes').select('*', { count: 'exact', head: true }).eq('run_id', archive.run_id),
+              db.from('live_source_certification_evidence_edges').select('*', { count: 'exact', head: true }).eq('run_id', archive.run_id),
+            ]);
+            if (nerr || eerr) throw nerr ?? eerr;
+            remaining += Number(nodes ?? 0) + Number(edges ?? 0);
+          }
+          console.log(JSON.stringify({ ok: remaining === 0, archived_runs: (archives ?? []).length, remaining_archived_run_graph_rows: remaining }));
+          if (remaining !== 0) process.exit(78);
+          NODE
+      - name: Upload archive proof log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: source-cert-evidence-b2-archive-${{ github.run_id }}
+          path: source-cert-evidence-archive.jsonl
+          if-no-files-found: warn
+          retention-days: 14
