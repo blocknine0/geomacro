@@ -1,0 +1,58 @@
+name: B2 governed agent modules snapshot maintenance
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/publish-b2-agent-governed-modules.ts"
+      - "src/lib/b2-agent-governed-modules.server.ts"
+      - "src/lib/agent-query-political-governance.server.ts"
+      - "src/lib/agent-query-world-bank-modules.server.ts"
+      - "src/lib/agent-query-critical-minerals.server.ts"
+      - "src/lib/commercial-source-eligibility.server.ts"
+      - "src/lib/early-warning-source-eligibility.server.ts"
+      - "src/lib/risk-gate-v2-*.ts"
+      - "src/lib/risk-gate-v2-*.server.ts"
+      - "src/lib/country-risk-v02-*.ts"
+      - "src/lib/country-risk-v02-*.server.ts"
+      - ".github/workflows/b2-agent-governed-modules-snapshot.yml"
+  schedule:
+    - cron: "37 4 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-b2-governed-agent-modules
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      APP_SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Publish and fully read back governed derived module snapshot
+        run: bun scripts/ops/publish-b2-agent-governed-modules.ts
