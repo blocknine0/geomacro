@@ -1,10 +1,6 @@
 name: B2 observation raw payload maintenance
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/b2-observation-payload-maintenance.yml"
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -115,7 +111,8 @@ jobs:
             fi
             test "$success" -eq 1
             if printf '%s\n' "$output" | grep -q '"status":"complete"'; then break; fi
+            # Give free-tier Disk IO a recovery window between verified bundles.
             sleep 15
           done
 
-# One-shot self-trigger for verified aged backlog drain: 2026-10-01
+# Manual verified observation drain trigger: 2026-09-29
