@@ -18,26 +18,36 @@ describe("structured evidence verified delete Phase B", () => {
     expect(workflow).toContain("persist-credentials: false");
   });
 
-  it("verifies the archived B2 bundle before delete and again before finalize", () => {
+  it("verifies B2 before delete and again before finalize, then writes final proof", () => {
     const firstGet = script.indexOf("const firstReadback = await b2.get(bundleKey)");
     const deleteCall = script.indexOf("await deleteExactEvidence(candidates)");
     const secondGet = script.indexOf("const secondReadback = await b2.get(bundleKey)");
     const finalizeRpc = script.indexOf('db.rpc("geomacro_finalize_verified_structured_evidence"');
+    const proofPut = script.indexOf("await b2.put(proofKey");
     expect(firstGet).toBeGreaterThanOrEqual(0);
     expect(deleteCall).toBeGreaterThan(firstGet);
     expect(secondGet).toBeGreaterThan(deleteCall);
     expect(finalizeRpc).toBeGreaterThan(secondGet);
+    expect(proofPut).toBeGreaterThan(finalizeRpc);
     expect(script).toContain("verifyArchiveBundle(firstReadback, candidates)");
     expect(script).toContain("verifyArchiveBundle(secondReadback, candidates)");
+    expect(script).toContain("archive_index_finalized: true");
   });
 
   it("uses application-side exact-pair deletion and exact rollback", () => {
     expect(script).toContain('.delete().or(filter).select("event_id,fingerprint")');
+    expect(script).toContain("mutationStarted = true;\n    await deleteExactEvidence(candidates)");
     expect(script).toContain("await restoreEvidence(items)");
     expect(script).toContain("await removeOwnedBridges(insertedBridges)");
     expect(script).toContain("STRUCTURED_EVIDENCE_PHASE_B_ROLLBACK_RIGHTS_FAILED");
     expect(migration).not.toMatch(/delete\s+from\s+public\.live_structured_event_evidence/i);
     expect(migration).not.toMatch(/delete\s+from\s+public\.live_structured_event_archived_sources/i);
+  });
+
+  it("inserts missing rights bridges atomically and removes owned bridges with exact filters", () => {
+    expect(script).toContain('.from("live_structured_event_archived_sources").insert(missing)');
+    expect(script).toContain('.eq("event_id", bridge.event_id)');
+    expect(script).toContain('.eq("source_key", bridge.source_key)');
   });
 
   it("uses semantic canonical equality for JSONB rows while keeping B2 member hashes authoritative", () => {
