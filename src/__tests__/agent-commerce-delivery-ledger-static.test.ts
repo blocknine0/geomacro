@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 const migration = readFileSync("supabase/migrations/934_agent_commerce_delivery_ledger.sql", "utf8");
 const service = readFileSync("src/lib/agent-commerce-delivery.server.ts", "utf8");
+const durableWorker = readFileSync("workers/commerce-ledger/src/index.mjs", "utf8");
+const durableConfig = readFileSync("workers/commerce-ledger/wrangler.jsonc", "utf8");
 const neverminedRoute = readFileSync("src/routes/api.x402.nevermined_.intelligence.ts", "utf8");
 const coinbaseRoute = readFileSync("src/routes/api.x402.intelligence.ts", "utf8");
 const circleRoute = readFileSync("src/routes/api.x402.circle_.intelligence.ts", "utf8");
@@ -27,16 +29,48 @@ describe("provider-neutral agent commerce delivery ledger", () => {
     expect(migration).toContain("d.state = 'prepared'");
     expect(migration).toContain("d.response_payload is not null");
     expect(migration).toContain("d.response_sha256 is not null");
+    expect(durableWorker).toContain("PREPARED_LEASE_EXPIRED_RECONCILIATION_REQUIRED");
+    expect(durableWorker).toContain('state: "manual_review"');
   });
 
   it("hashes payer/recipient/payment references instead of persisting raw authorization material", () => {
     expect(service).toContain("commerceReferenceHash");
     expect(service).toContain("p_recipient_hash: commerceReferenceHash(input.recipientReference)");
     expect(service).toContain("p_payer_hash: commerceReferenceHash(input.payerReference)");
+    expect(service).toContain("recipientHash");
+    expect(service).toContain("payerHash");
     expect(migration).not.toMatch(/payment_signature\s+text/i);
     expect(migration).not.toMatch(/access_token\s+text/i);
     expect(migration).not.toMatch(/private_key\s+text/i);
     expect(migration).not.toMatch(/api_key\s+text/i);
+    expect(durableWorker).not.toMatch(/paymentToken|payment_signature|private_key|seed_phrase/i);
+  });
+
+  it("can run the paid delivery state machine without Supabase when explicitly selected", () => {
+    expect(service).toContain('type CommerceLedgerBackend = "supabase" | "durable_object"');
+    expect(service).toContain("GEOMACRO_COMMERCE_LEDGER_BACKEND");
+    expect(service).toContain("GEOMACRO_COMMERCE_LEDGER_URL");
+    expect(service).toContain("GEOMACRO_COMMERCE_LEDGER_TOKEN");
+    expect(service).toContain('commerceLedgerBackend() === "durable_object"');
+    expect(service).toContain("AGENT_COMMERCE_DURABLE_LEDGER_CONFIG_REQUIRED");
+    expect(service).toContain("AGENT_COMMERCE_DURABLE_LEDGER_HTTPS_REQUIRED");
+    expect(durableConfig).toContain('"new_sqlite_classes": ["CommerceLedger"]');
+    expect(durableWorker).toContain("this.ctx.storage.transaction");
+    expect(durableWorker).toContain("payment:");
+    expect(durableWorker).toContain("settlement:");
+    expect(durableWorker).toContain('state: "delivered"');
+    expect(durableWorker).toContain('state: manualReview ? "manual_review" : "failed"');
+    expect(durableWorker).not.toContain("SUPABASE");
+  });
+
+  it("fails closed instead of silently falling back to Supabase when durable mode is selected", () => {
+    const durableBranch = service.indexOf('commerceLedgerBackend() === "durable_object"');
+    const firstSupabaseCall = service.indexOf("const db = requireRiskSupabase();", durableBranch);
+    const durableCall = service.indexOf('callDurableLedger<unknown>("claim"', durableBranch);
+    expect(durableBranch).toBeGreaterThan(-1);
+    expect(durableCall).toBeGreaterThan(durableBranch);
+    expect(firstSupabaseCall).toBeGreaterThan(durableCall);
+    expect(service).not.toContain("catch (error) {\n      const db = requireRiskSupabase()");
   });
 });
 
