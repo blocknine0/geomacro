@@ -452,7 +452,7 @@ set
   commercial_eligibility_reason_codes = rights.reason_codes
 from public.live_structured_event_commercial_rights_evaluation rights
 where rights.event_id = ev.id
-  and ev.last_observed_at >= now() - interval '7 days'
+  and ev.last_seen_at >= now() - interval '7 days'
   and exists (
     select 1
     from public.live_structured_event_evidence e
