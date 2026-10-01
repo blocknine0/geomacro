@@ -16,6 +16,7 @@ const role = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
 const lookbackHours = Math.max(1, Math.min(72, Number(process.env.B2_INGEST_LOOKBACK_HOURS ?? 72)));
 const rawBundleLimit = Math.max(1, Math.min(100, Number(process.env.B2_INGEST_RAW_BUNDLE_LIMIT ?? 25)));
 const rawRounds = Math.max(1, Math.min(80, Number(process.env.B2_INGEST_RAW_ROUNDS ?? 40)));
+const historicalDrain = String(process.env.B2_INGEST_HISTORICAL_DRAIN ?? "0") === "1";
 
 if (!url || !role || projectRef(url) !== PROJECT_REF) throw new Error("B2_INGEST_SUPABASE_CONFIG_INVALID");
 
@@ -42,16 +43,24 @@ function fragmentDisposition() {
   };
 }
 
-async function loadRecentRawCandidates() {
-  const { data: rows, error } = await db.from("live_raw_source_snapshots")
+async function loadRawCandidates() {
+  let query = db.from("live_raw_source_snapshots")
     .select("snapshot_id,storage_bucket,object_path,byte_count,content_sha256,fetched_at,archive_bundle_key")
     .eq("storage_bucket", SOURCE_BUCKET)
     .like("object_path", "raw/v1/%")
     .is("archive_bundle_key", null)
-    .gte("fetched_at", cutoff)
     .lte("fetched_at", settleBefore)
     .order("fetched_at", { ascending: true })
     .limit(rawBundleLimit * 4);
+
+  // Default production mode remains the bounded recent post-ingest window.
+  // Historical drain is explicit and selects only rows older than that window,
+  // so the two modes cannot race over the same snapshots.
+  query = historicalDrain
+    ? query.lt("fetched_at", cutoff)
+    : query.gte("fetched_at", cutoff);
+
+  const { data: rows, error } = await query;
   if (error) throw new Error(`B2_RECENT_RAW_QUERY_FAILED_${error.code ?? "unknown"}: ${error.message ?? "unknown"}`);
 
   const members = [];
@@ -89,7 +98,7 @@ async function loadRecentRawCandidates() {
 }
 
 async function archiveOneRawBundle() {
-  const members = await loadRecentRawCandidates();
+  const members = await loadRawCandidates();
   if (!members.length) return { status: "complete", processed: 0, compressed_bytes: 0 };
 
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
@@ -97,6 +106,7 @@ async function archiveOneRawBundle() {
   const bundleKey = `geomacro-evidence/v1/raw-bundles/${bundleId}.json.gz`;
   const proofKey = `geomacro-evidence/v1/index/raw-bundles/${bundleId}.json`;
   const deletionKey = `geomacro-evidence/v1/index/raw-bundles-deleted/${bundleId}.json`;
+  const preflightKey = `geomacro-evidence/v1/health/raw-read-preflight/${bundleId}.missing`;
 
   let selected = members;
   let bundle;
@@ -108,6 +118,10 @@ async function archiveOneRawBundle() {
     selected = selected.slice(0, -1);
   }
   if (!selected.length || !bundle || !packed) throw new Error("B2_RECENT_RAW_BUNDLE_CANNOT_FIT");
+
+  // Fail closed before any new archive write if B2 read capability is blocked.
+  const preflight = await b2.getOptional(preflightKey);
+  if (preflight !== null) throw new Error("B2_RECENT_RAW_READ_PREFLIGHT_COLLISION");
 
   await b2.put(bundleKey, packed);
   const readback = await b2.get(bundleKey);
@@ -132,6 +146,7 @@ async function archiveOneRawBundle() {
   await b2.put(proofKey, Buffer.from(JSON.stringify({
     schema: "geomacro.raw-storage-bundle-proof.v1", bundle_id: bundleId, archive_bucket: ARCHIVE_BUCKET,
     archive_key: bundleKey, bundle_sha256: bundleHash, bundle_bytes: packed.length, member_count: selected.length,
+    pre_write_b2_read_preflight_verified: true,
     verified_at: new Date().toISOString(), members: selected.map(({ snapshot_id, object_path, fetched_at, payload_bytes, payload_sha256, member_compressed_sha256 }) => ({ snapshot_id, object_path, fetched_at, payload_bytes, payload_sha256, member_compressed_sha256 })),
   })));
 
@@ -152,7 +167,7 @@ async function archiveOneRawBundle() {
 
   await b2.put(deletionKey, Buffer.from(JSON.stringify({
     schema: "geomacro.raw-storage-bundle-source-deletion.v1", bundle_id: bundleId, archive_key: bundleKey,
-    archive_proof_key: proofKey, deleted_paths: paths, deleted_at: new Date().toISOString(), reason: "post-ingest-b2-primary-offload",
+    archive_proof_key: proofKey, deleted_paths: paths, deleted_at: new Date().toISOString(), reason: historicalDrain ? "historical-b2-primary-drain" : "post-ingest-b2-primary-offload",
   })));
 
   return { status: "progress", processed: selected.length, compressed_bytes: packed.length };
@@ -171,13 +186,16 @@ async function main() {
   }
   console.log(JSON.stringify({
     ok: true,
-    mode: "post-ingest-b2-primary-offload",
+    mode: historicalDrain ? "historical-b2-primary-drain" : "post-ingest-b2-primary-offload",
+    historical_drain: historicalDrain,
     cutoff,
     settle_before: settleBefore,
     fragments,
     raw: { processed: rawProcessed, compressed_bytes: rawCompressedBytes, rounds },
     verification: "full-b2-readback-before-pointer-update-and-source-delete",
+    pre_write_b2_read_preflight_verified: true,
     supabase_storage_retention_target: "ephemeral-raw-ingest-buffer; immutable fragments retained until sidecar resolver exists",
+    b2: b2.usage(),
   }));
 }
 
