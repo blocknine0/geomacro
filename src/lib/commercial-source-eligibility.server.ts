@@ -13,7 +13,7 @@ export type CommercialSourceEligibility = {
   reason: string | null;
 };
 
-type SourceRightsRow = B2CommercialSourceRight;
+export type SourceRightsRow = B2CommercialSourceRight;
 
 function unavailableSource(sourceId: string, reason: string): CommercialSourceEligibility {
   return {
@@ -64,7 +64,11 @@ export function commercialSourceEligibilityFromRow(
   };
 }
 
-async function readSourceRightsRow(normalized: string): Promise<SourceRightsRow | null> {
+export async function readCommercialSourceRightsRow(
+  sourceId: string,
+): Promise<SourceRightsRow | null> {
+  const normalized = sourceId.trim();
+  if (!normalized) return null;
   try {
     const db = requireRiskSupabase();
     const result = await db
@@ -98,7 +102,7 @@ async function readSourceRightsRow(normalized: string): Promise<SourceRightsRow 
 export async function checkCommercialSourceEligibility(sourceId: string): Promise<CommercialSourceEligibility> {
   const normalized = sourceId.trim();
   if (!normalized) return unavailableSource(sourceId, "SOURCE_ID_MISSING");
-  const row = await readSourceRightsRow(normalized);
+  const row = await readCommercialSourceRightsRow(normalized);
   return commercialSourceEligibilityFromRow(normalized, row);
 }
 

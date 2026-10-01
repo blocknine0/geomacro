@@ -1,4 +1,5 @@
 import type { AgentQueryPlan } from "./agent-query-plan";
+import { readB2AgentGovernedModule, type B2AgentGovernedRiskState } from "./b2-agent-governed-modules.server";
 import { checkCommercialSourceEligibility } from "./commercial-source-eligibility.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 import { generateCountryRiskGateV2WdiMacroModuleStates } from "./risk-gate-v2-macro-module-state.server";
@@ -120,6 +121,52 @@ function publicState(state: {
   };
 }
 
+async function b2Fallback(
+  input: {
+    module: AgentWorldBankModuleName;
+    subject: Extract<AgentQueryPlan["subjects"][number], { type: "country" }>;
+    as_of: string;
+    max_age_seconds: number;
+  },
+  sourceContract: NonNullable<AgentWorldBankModuleResult["source_contract"]>,
+): Promise<AgentWorldBankModuleResult | null> {
+  const entry = await readB2AgentGovernedModule(
+    input.subject.country_iso3,
+    input.module,
+  );
+  if (!entry || !("score" in entry.state)) return null;
+  const expectedStateModule = input.module === "external_fx" ? "currency_capital_mobility" : input.module;
+  if (entry.state.module !== expectedStateModule) return null;
+  const asOfMs = Date.parse(input.as_of);
+  const observedMs = Date.parse(entry.source_observed_at);
+  if (!Number.isFinite(asOfMs) || !Number.isFinite(observedMs) || observedMs > asOfMs) return null;
+  if (
+    !Number.isFinite(input.max_age_seconds) ||
+    input.max_age_seconds <= 0 ||
+    asOfMs - observedMs > input.max_age_seconds * 1_000
+  ) {
+    return unavailable(
+      input.module,
+      input.subject,
+      "OBSERVATION_STALE",
+      sourceContract,
+      entry.source_observed_at,
+      entry.source_normalized_hashes,
+    );
+  }
+  return {
+    deliverable: true,
+    code: "AVAILABLE",
+    module: input.module,
+    subject: input.subject,
+    source_id: AGENT_WORLD_BANK_SOURCE_ID,
+    source_observed_at: entry.source_observed_at,
+    source_normalized_hashes: [...entry.source_normalized_hashes],
+    source_contract: sourceContract,
+    state: publicState(entry.state as B2AgentGovernedRiskState),
+  };
+}
+
 export async function loadAgentWorldBankModule(input: {
   module: AgentWorldBankModuleName;
   subject: AgentQueryPlan["subjects"][number];
@@ -141,101 +188,110 @@ export async function loadAgentWorldBankModule(input: {
     return unavailable(input.module, input.subject, "SOURCE_NOT_ELIGIBLE", sourceContract);
   }
 
-  const db = requireRiskSupabase();
-  const observations = await db
-    .from("live_external_observations")
-    .select("metric,observed_at,normalized_hash,commercial_eligibility_status")
-    .eq("source_id", AGENT_WORLD_BANK_SOURCE_ID)
-    .eq("country_iso3", input.subject.country_iso3)
-    .eq("quality_status", "VERIFIED")
-    .in("metric", [...METRICS[input.module]])
-    .lte("observed_at", input.as_of)
-    .order("observed_at", { ascending: false })
-    .limit(100);
-  if (observations.error) throw observations.error;
+  try {
+    const db = requireRiskSupabase();
+    const observations = await db
+      .from("live_external_observations")
+      .select("metric,observed_at,normalized_hash,commercial_eligibility_status")
+      .eq("source_id", AGENT_WORLD_BANK_SOURCE_ID)
+      .eq("country_iso3", input.subject.country_iso3)
+      .eq("quality_status", "VERIFIED")
+      .in("metric", [...METRICS[input.module]])
+      .lte("observed_at", input.as_of)
+      .order("observed_at", { ascending: false })
+      .limit(100);
+    if (observations.error) throw observations.error;
 
-  const rows = observations.data ?? [];
-  if (rows.length === 0) {
-    return unavailable(input.module, input.subject, "OBSERVATION_NOT_AVAILABLE", sourceContract);
-  }
+    const rows = observations.data ?? [];
+    if (rows.length === 0) {
+      return unavailable(input.module, input.subject, "OBSERVATION_NOT_AVAILABLE", sourceContract);
+    }
 
-  const asOfMs = Date.parse(input.as_of);
-  const latestMs = Math.max(
-    ...rows
-      .map((row) => Date.parse(String(row.observed_at ?? "")))
-      .filter(Number.isFinite),
-  );
-  const latestObservedAt = Number.isFinite(latestMs) ? new Date(latestMs).toISOString() : null;
-  const hashes = [...new Set(rows
-    .map((row) => typeof row.normalized_hash === "string" ? row.normalized_hash : null)
-    .filter((value): value is string => Boolean(value)))].sort();
-
-  if (
-    !Number.isFinite(asOfMs) ||
-    latestObservedAt === null ||
-    !Number.isFinite(input.max_age_seconds) ||
-    input.max_age_seconds <= 0 ||
-    asOfMs - latestMs > input.max_age_seconds * 1_000
-  ) {
-    return unavailable(
-      input.module,
-      input.subject,
-      "OBSERVATION_STALE",
-      sourceContract,
-      latestObservedAt,
-      hashes,
+    const asOfMs = Date.parse(input.as_of);
+    const latestMs = Math.max(
+      ...rows
+        .map((row) => Date.parse(String(row.observed_at ?? "")))
+        .filter(Number.isFinite),
     );
-  }
+    const latestObservedAt = Number.isFinite(latestMs) ? new Date(latestMs).toISOString() : null;
+    const hashes = [...new Set(rows
+      .map((row) => typeof row.normalized_hash === "string" ? row.normalized_hash : null)
+      .filter((value): value is string => Boolean(value)))].sort();
 
-  if (rows.some((row) => row.commercial_eligibility_status !== "VERIFIED")) {
-    return unavailable(
-      input.module,
-      input.subject,
-      "MODULE_NOT_VERIFIED",
-      sourceContract,
-      latestObservedAt,
-      hashes,
-    );
-  }
+    if (
+      !Number.isFinite(asOfMs) ||
+      latestObservedAt === null ||
+      !Number.isFinite(input.max_age_seconds) ||
+      input.max_age_seconds <= 0 ||
+      asOfMs - latestMs > input.max_age_seconds * 1_000
+    ) {
+      return unavailable(
+        input.module,
+        input.subject,
+        "OBSERVATION_STALE",
+        sourceContract,
+        latestObservedAt,
+        hashes,
+      );
+    }
 
-  const generatedAt = new Date().toISOString();
-  let state = null;
-  if (input.module === "external_fx") {
-    state = await generateRiskGateV2FinancialModuleState({
-      country_iso3: input.subject.country_iso3,
-      module: "currency_capital_mobility",
-      as_of: input.as_of,
-      generated_at: generatedAt,
-    });
-  } else {
-    const states = await generateCountryRiskGateV2WdiMacroModuleStates({
-      country_iso3: input.subject.country_iso3,
-      as_of: input.as_of,
-      generated_at: generatedAt,
-    });
-    state = states.find((candidate) => candidate.module === input.module) ?? null;
-  }
+    if (rows.some((row) => row.commercial_eligibility_status !== "VERIFIED")) {
+      return unavailable(
+        input.module,
+        input.subject,
+        "MODULE_NOT_VERIFIED",
+        sourceContract,
+        latestObservedAt,
+        hashes,
+      );
+    }
 
-  if (!state || state.commercial_eligibility_status !== "VERIFIED") {
-    return unavailable(
-      input.module,
-      input.subject,
-      "MODULE_NOT_VERIFIED",
-      sourceContract,
-      latestObservedAt,
-      hashes,
-    );
-  }
+    const generatedAt = new Date().toISOString();
+    let state = null;
+    if (input.module === "external_fx") {
+      state = await generateRiskGateV2FinancialModuleState({
+        country_iso3: input.subject.country_iso3,
+        module: "currency_capital_mobility",
+        as_of: input.as_of,
+        generated_at: generatedAt,
+      });
+    } else {
+      const states = await generateCountryRiskGateV2WdiMacroModuleStates({
+        country_iso3: input.subject.country_iso3,
+        as_of: input.as_of,
+        generated_at: generatedAt,
+      });
+      state = states.find((candidate) => candidate.module === input.module) ?? null;
+    }
 
-  return {
-    deliverable: true,
-    code: "AVAILABLE",
-    module: input.module,
-    subject: input.subject,
-    source_id: AGENT_WORLD_BANK_SOURCE_ID,
-    source_observed_at: latestObservedAt,
-    source_normalized_hashes: hashes,
-    source_contract: sourceContract,
-    state: publicState(state),
-  };
+    if (!state || state.commercial_eligibility_status !== "VERIFIED") {
+      return unavailable(
+        input.module,
+        input.subject,
+        "MODULE_NOT_VERIFIED",
+        sourceContract,
+        latestObservedAt,
+        hashes,
+      );
+    }
+
+    return {
+      deliverable: true,
+      code: "AVAILABLE",
+      module: input.module,
+      subject: input.subject,
+      source_id: AGENT_WORLD_BANK_SOURCE_ID,
+      source_observed_at: latestObservedAt,
+      source_normalized_hashes: hashes,
+      source_contract: sourceContract,
+      state: publicState(state),
+    };
+  } catch (primaryError) {
+    const fallback = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
+    if (fallback) {
+      console.warn("[agent-world-bank] primary governed store unavailable; using fresh verified B2 derived state");
+      return fallback;
+    }
+    throw primaryError;
+  }
 }
