@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-policy";
+import { publishCountryRiskObject } from "./country-risk-publisher.server";
 import { corridorSubjectId } from "./corridor-risk-engine";
 import { publishCorridorRiskObject } from "./corridor-risk-publisher.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
@@ -13,6 +14,8 @@ import {
 } from "./risk-object-store.server";
 import type { AgentQueryPlan } from "./agent-query-plan";
 
+const LIVE_COUNTRY_SELF_HEAL_MAX_CLOCK_SKEW_MS = 5 * 60 * 1_000;
+
 function commerciallyDeliverable(object: Awaited<ReturnType<typeof getLatestCompatibleCountryRiskObjectAtOrBefore>>, asOf: string) {
   if (!object) return null;
   return verifyCommercialRiskObjectArtifact(object, { now: new Date(asOf) }).deliverable
@@ -20,30 +23,56 @@ function commerciallyDeliverable(object: Awaited<ReturnType<typeof getLatestComp
     : null;
 }
 
+function liveSelfHealAllowed(asOf: string, now = new Date()) {
+  const requested = Date.parse(asOf);
+  if (!Number.isFinite(requested)) return false;
+  return Math.abs(requested - now.getTime()) <= LIVE_COUNTRY_SELF_HEAL_MAX_CLOCK_SKEW_MS;
+}
+
 /**
  * Resolve the signed CANONICAL Risk Object used by adaptive agent queries.
  *
- * Country objects are continuously refreshed by the global canonical refresh.
- * Corridor objects are endpoint-composed and the theoretical country-pair
+ * Country objects are cache-first. The former global refresh is quota-held on
+ * free-tier infrastructure, so a current paid/live request may regenerate only
+ * its requested country when the cached canonical object is absent/expired.
+ * Historical requests never mutate production state: self-heal is allowed only
+ * inside a five-minute server-clock window.
+ *
+ * Corridor objects remain endpoint-composed and the theoretical country-pair
  * universe is too large to pre-materialize safely. For a corridor request we
- * therefore read the cache first and, only when no commercially deliverable
- * object exists, materialize a CANONICAL signed corridor object from the
- * already-governed endpoint country objects.
+ * read the cache first and materialize only when no commercially deliverable
+ * object exists.
  *
  * Publication remains fail-closed: missing signing configuration, missing or
- * ineligible endpoint objects, invalid signatures, or persistence failures all
- * return null to the availability caller. No payment or execution is performed
- * here.
+ * ineligible evidence, invalid signatures, or persistence failures all return
+ * null to the availability caller. No payment or execution is performed here.
  */
 export async function loadCommercialRiskObjectForAgentQuery(
   subject: AgentQueryPlan["subjects"][number],
   asOf: string,
 ) {
   if (subject.type === "country") {
-    return commerciallyDeliverable(
+    const cached = commerciallyDeliverable(
       await getLatestCompatibleCountryRiskObjectAtOrBefore(subject.country_iso3, asOf),
       asOf,
     );
+    if (cached) return cached;
+    if (!liveSelfHealAllowed(asOf)) return null;
+
+    try {
+      const published = await publishCountryRiskObject({
+        country_iso3: subject.country_iso3,
+        as_of: asOf,
+        delivery_profile: "CANONICAL",
+      });
+      return verifyCommercialRiskObjectArtifact(published.object, {
+        now: new Date(asOf),
+      }).deliverable
+        ? published.object
+        : null;
+    } catch {
+      return null;
+    }
   }
 
   const corridorId = corridorSubjectId(
