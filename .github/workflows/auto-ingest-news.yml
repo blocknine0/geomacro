@@ -2,8 +2,8 @@ name: Auto Ingest News
 # Runs every 6 hours as the bounded low-write GRI freshness path.
 # Fresh admitted evidence is structured and can trigger a verified GRI publish
 # when canonical inputs change. Prediction-market creation is not part of this
-# scheduled pipeline. Recurring writes require the database to be below the
-# 400 MiB warning threshold; higher-volume adapters remain operator-only.
+# scheduled pipeline. Supabase is the compact hot control plane; verified raw
+# and cold payloads are drained to private B2 before they can accumulate.
 on:
   schedule:
     - cron: "17 */6 * * *"
@@ -16,6 +16,9 @@ on:
       - "scripts/ingest-news.js"
       - "scripts/ops/select-missing-gri-discovery-domain.mjs"
       - "scripts/ops/supabase-free-tier-budget.mjs"
+      - "scripts/ops/b2-country-ingest-offload.mjs"
+      - "scripts/ops/b2-compact-structured-event-payload.mjs"
+      - "scripts/ops/b2-s3-client.mjs"
 
 permissions:
   contents: read
@@ -48,6 +51,33 @@ jobs:
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
         run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Recover B2-backed headroom before recurring writes when needed
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_REQUEST_BUDGET: "24"
+          B2_INGEST_LOOKBACK_HOURS: "72"
+          B2_INGEST_RAW_BUNDLE_LIMIT: "25"
+          B2_INGEST_RAW_ROUNDS: "2"
+          B2_INGEST_HISTORICAL_DRAIN: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          state_file="$(mktemp)"
+          node scripts/ops/supabase-free-tier-budget.mjs | tee "$state_file"
+          mode="$(jq -r '.mode // "unknown"' "$state_file" | tail -n 1)"
+          rm -f "$state_file"
+          if [ "$mode" = "normal" ]; then
+            echo "Supabase already has normal recurring-write headroom; historical B2 drain not needed."
+            exit 0
+          fi
+          echo "Supabase mode is $mode; running bounded verified historical B2 drain before the recurring-write gate."
+          node scripts/ops/b2-country-ingest-offload.mjs
+
       - name: Require normal free-tier headroom before recurring writes
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -230,3 +260,35 @@ jobs:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/verify-gri-snapshot-v12.js
+
+      - name: Offload settled recent raw ingest buffer to verified B2
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_REQUEST_BUDGET: "32"
+          B2_INGEST_LOOKBACK_HOURS: "72"
+          B2_INGEST_RAW_BUNDLE_LIMIT: "25"
+          B2_INGEST_RAW_ROUNDS: "4"
+          B2_INGEST_HISTORICAL_DRAIN: "0"
+        run: node scripts/ops/b2-country-ingest-offload.mjs
+
+      - name: Compact bounded cold structured payloads to B2 pointers
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_REQUEST_BUDGET: "40"
+          STRUCTURED_EVENT_COMPACT_OLDER_DAYS: "7"
+          STRUCTURED_EVENT_COMPACT_LIMIT: "10"
+        run: node scripts/ops/b2-compact-structured-event-payload.mjs
+
+      - name: Report final free-tier budget state
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/ops/supabase-free-tier-budget.mjs
