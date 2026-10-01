@@ -25,6 +25,7 @@ const b2 = createB2Client({
 
 const EVIDENCE_COLUMNS = "event_id,fingerprint,fragment_id,fragment_ordinal,source_domain,source_url,evidence_title,evidence_published_at,country_iso3,country_confidence,country_method,created_at";
 const normalizeList = (value) => Array.isArray(value) ? [...value].map(String).sort() : [];
+const normalizeDomain = (value) => String(value ?? "").trim().toLowerCase();
 const stableRights = (value) => ({
   event_status: String(value?.event_status ?? ""),
   event_reasons: normalizeList(value?.event_reasons),
@@ -104,10 +105,15 @@ if (fragmentError || fragment?.id !== row.fragment_id || !String(fragment?.sourc
   throw new Error("STRUCTURED_EVIDENCE_DELETE_SOURCE_KEY_UNRESOLVED");
 }
 const sourceKey = String(fragment.source_key).trim();
+const sourceDomain = normalizeDomain(row.source_domain);
+const knownAdmittedDomain =
+  sourceKey === "admitted_events" && sourceDomain && sourceDomain !== "unknown"
+    ? sourceDomain
+    : null;
 
 const { data: existingBridge, error: bridgeReadError } = await db
   .from("live_structured_event_archived_sources")
-  .select("event_id,source_key,last_verified_at")
+  .select("event_id,source_key,source_domains,last_verified_at")
   .eq("event_id", row.event_id).eq("source_key", sourceKey).maybeSingle();
 if (bridgeReadError) throw new Error("STRUCTURED_EVIDENCE_DELETE_RIGHTS_BRIDGE_UNAVAILABLE");
 const bridgeExistedBefore = Boolean(existingBridge);
@@ -141,16 +147,48 @@ if (currentError || sha256(Buffer.from(JSON.stringify(current))) !== pointer.sou
 }
 
 let bridgeInserted = false;
+let bridgeUpdated = false;
 let sourceDeleted = false;
+let bridgeDomainsAfter = bridgeExistedBefore ? existingBridge?.source_domains ?? null : null;
+const bridgeDomainsBefore = bridgeExistedBefore ? existingBridge?.source_domains ?? null : null;
 try {
   if (!bridgeExistedBefore) {
+    bridgeDomainsAfter = knownAdmittedDomain ? [knownAdmittedDomain] : null;
     const { error: bridgeInsertError } = await db.from("live_structured_event_archived_sources").insert({
       event_id: row.event_id,
       source_key: sourceKey,
+      source_domains: bridgeDomainsAfter,
       last_verified_at: new Date().toISOString(),
     });
     if (bridgeInsertError) throw new Error("STRUCTURED_EVIDENCE_DELETE_RIGHTS_BRIDGE_WRITE_FAILED");
     bridgeInserted = true;
+  } else if (
+    sourceKey === "admitted_events" &&
+    Array.isArray(existingBridge?.source_domains) &&
+    knownAdmittedDomain
+  ) {
+    const nextDomains = [...new Set([
+      ...existingBridge.source_domains.map(normalizeDomain).filter(Boolean),
+      knownAdmittedDomain,
+    ])].sort();
+    const previousDomains = existingBridge.source_domains.map(normalizeDomain).filter(Boolean).sort();
+    if (JSON.stringify(nextDomains) !== JSON.stringify(previousDomains)) {
+      const { data: updatedBridge, error: bridgeUpdateError } = await db
+        .from("live_structured_event_archived_sources")
+        .update({
+          source_domains: nextDomains,
+          last_verified_at: new Date().toISOString(),
+        })
+        .eq("event_id", row.event_id)
+        .eq("source_key", sourceKey)
+        .select("event_id,source_key,source_domains")
+        .single();
+      if (bridgeUpdateError || !updatedBridge) {
+        throw new Error("STRUCTURED_EVIDENCE_DELETE_RIGHTS_BRIDGE_WRITE_FAILED");
+      }
+      bridgeDomainsAfter = updatedBridge.source_domains;
+      bridgeUpdated = true;
+    }
   }
 
   const afterBridgeRights = await readRights(row.event_id);
@@ -178,6 +216,7 @@ try {
     fingerprint: row.fingerprint,
     fragment_id: row.fragment_id,
     source_key: sourceKey,
+    archived_source_domains: sourceKey === "admitted_events" ? bridgeDomainsAfter : null,
     archive_bucket: ARCHIVE_BUCKET,
     archive_key: archiveKey,
     archive_sha256: pointer.archiveSha256,
@@ -202,6 +241,14 @@ try {
       const { error: bridgeDeleteError } = await db.from("live_structured_event_archived_sources")
         .delete().eq("event_id", row.event_id).eq("source_key", sourceKey);
       if (bridgeDeleteError) throw new Error("STRUCTURED_EVIDENCE_DELETE_ROLLBACK_BRIDGE_REMOVE_FAILED");
+    } else if (bridgeUpdated) {
+      const { error: bridgeRestoreError } = await db.from("live_structured_event_archived_sources")
+        .update({
+          source_domains: bridgeDomainsBefore,
+          last_verified_at: existingBridge.last_verified_at,
+        })
+        .eq("event_id", row.event_id).eq("source_key", sourceKey);
+      if (bridgeRestoreError) throw new Error("STRUCTURED_EVIDENCE_DELETE_ROLLBACK_BRIDGE_RESTORE_FAILED");
     }
     const { data: restoredSource, error: restoredSourceError } = await db.from("live_structured_event_evidence")
       .select(EVIDENCE_COLUMNS).eq("event_id", row.event_id).eq("fingerprint", row.fingerprint).single();
