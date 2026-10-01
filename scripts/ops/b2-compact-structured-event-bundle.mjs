@@ -8,6 +8,7 @@ const PROJECT_URL = "https://ldpwajisioljyjtojvfx.supabase.co";
 const ARCHIVE_BUCKET = "geomacro-private-archive";
 const MAX_BUNDLE_RAW_BYTES = 12_000_000;
 const MAX_BUNDLE_COMPRESSED_BYTES = 6_000_000;
+const VERIFY_READ_CHUNK_SIZE = 100;
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
 const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
@@ -93,6 +94,22 @@ function verifyBundle(readback, expectedBundleSha, expectedMembers) {
   return restored;
 }
 
+async function readEventRowsByIds(ids, failureCode) {
+  const allRows = [];
+  for (let offset = 0; offset < ids.length; offset += VERIFY_READ_CHUNK_SIZE) {
+    const chunk = ids.slice(offset, offset + VERIFY_READ_CHUNK_SIZE);
+    const { data, error } = await db
+      .from("live_structured_events")
+      .select("id,structured_payload,last_seen_at")
+      .in("id", chunk);
+    if (error || (data ?? []).length !== chunk.length) {
+      throw new Error(failureCode);
+    }
+    allRows.push(...(data ?? []));
+  }
+  return allRows;
+}
+
 async function rollback(updates) {
   const restoreUpdates = updates.map((item) => ({
     id: item.id,
@@ -107,16 +124,12 @@ async function rollback(updates) {
     throw new Error(`STRUCTURED_EVENT_BUNDLE_ROLLBACK_FAILED_${error?.code ?? "count"}`);
   }
 
-  const ids = restoreUpdates.map((item) => item.id);
-  const { data: restoredRows, error: readError } = await db
-    .from("live_structured_events")
-    .select("id,structured_payload,last_seen_at")
-    .in("id", ids);
-  if (readError || (restoredRows ?? []).length !== restoreUpdates.length) {
-    throw new Error("STRUCTURED_EVENT_BUNDLE_ROLLBACK_VERIFY_FAILED");
-  }
+  const restoredRows = await readEventRowsByIds(
+    restoreUpdates.map((item) => item.id),
+    "STRUCTURED_EVENT_BUNDLE_ROLLBACK_VERIFY_FAILED",
+  );
   const expectedById = new Map(restoreUpdates.map((item) => [item.id, item]));
-  for (const row of restoredRows ?? []) {
+  for (const row of restoredRows) {
     const wanted = expectedById.get(row.id);
     if (!wanted || row.last_seen_at !== wanted.last_seen_at || payloadHash(row.structured_payload) !== payloadHash(wanted.restore_payload)) {
       throw new Error("STRUCTURED_EVENT_BUNDLE_ROLLBACK_VERIFY_FAILED");
@@ -245,17 +258,18 @@ if (compactError || Number(compactedCount) !== rpcUpdates.length) {
   throw new Error(`STRUCTURED_EVENT_BUNDLE_COMPACT_RPC_FAILED_${compactError?.code ?? "count"}`);
 }
 
-const ids = updates.map((item) => item.id);
-const { data: updatedRows, error: verifyError } = await db
-  .from("live_structured_events")
-  .select("id,structured_payload,last_seen_at")
-  .in("id", ids);
-if (verifyError || (updatedRows ?? []).length !== updates.length) {
+let updatedRows;
+try {
+  updatedRows = await readEventRowsByIds(
+    updates.map((item) => item.id),
+    "STRUCTURED_EVENT_BUNDLE_UPDATE_VERIFY_FAILED",
+  );
+} catch (cause) {
   await rollback(updates);
-  throw new Error("STRUCTURED_EVENT_BUNDLE_UPDATE_VERIFY_FAILED");
+  throw cause;
 }
 const updateById = new Map(updates.map((item) => [item.id, item]));
-for (const row of updatedRows ?? []) {
+for (const row of updatedRows) {
   const wanted = updateById.get(row.id);
   if (
     !wanted ||

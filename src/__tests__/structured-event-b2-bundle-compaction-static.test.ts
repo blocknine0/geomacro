@@ -59,6 +59,16 @@ describe("structured event B2 bundle compaction", () => {
     expect(script).toContain("STRUCTURED_EVENT_BUNDLE_POST_UPDATE_RESTORE_FAILED");
   });
 
+  it("chunks database verification reads for the 1000-row upper bound", () => {
+    expect(script).toContain("const VERIFY_READ_CHUNK_SIZE = 100");
+    expect(script).toContain("async function readEventRowsByIds(ids, failureCode)");
+    expect(script).toContain("offset += VERIFY_READ_CHUNK_SIZE");
+    expect(script).toContain("ids.slice(offset, offset + VERIFY_READ_CHUNK_SIZE)");
+    expect(script).not.toContain('.in("id", ids)');
+    expect(script).toContain("restoreUpdates.map((item) => item.id)");
+    expect(script).toContain("updates.map((item) => item.id)");
+  });
+
   it("never deletes structured-event rows or Supabase Storage objects", () => {
     expect(script).not.toContain('.from("live_structured_events").delete(');
     expect(script).not.toContain("storage.objects");
