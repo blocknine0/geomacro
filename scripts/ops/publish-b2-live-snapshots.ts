@@ -11,6 +11,7 @@ const BUCKET = "geomacro-private-archive";
 const INTELLIGENCE_KEY = "geomacro-evidence/v1/live/public-intelligence/latest.json.gz";
 const RISK_KEY = "geomacro-evidence/v1/live/risk-indices/latest.json.gz";
 const SOURCE_NETWORK_KEY = "geomacro-evidence/v1/live/source-network-status/latest.json.gz";
+const SOURCE_RIGHTS_KEY = "geomacro-evidence/v1/live/commercial-source-rights/latest.json.gz";
 const PROOF_KEY = "geomacro-evidence/v1/live/live-snapshot-proof.json";
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 
@@ -64,6 +65,33 @@ if (
   typeof sourceNetworkStatus.source_network_launch_complete !== "boolean"
 ) throw new Error("B2_LIVE_SOURCE_NETWORK_STATUS_INVALID");
 
+const { data: sourceRights, error: sourceRightsError } = await supabase
+  .from("live_external_sources")
+  .select("source_id,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required,licence_name")
+  .order("source_id", { ascending: true })
+  .limit(2000);
+if (
+  sourceRightsError ||
+  !Array.isArray(sourceRights) ||
+  sourceRights.length === 0 ||
+  sourceRights.length >= 2000
+) throw new Error("B2_LIVE_SOURCE_RIGHTS_INVALID");
+const sourceIds = new Set<string>();
+for (const row of sourceRights) {
+  const sourceId = String(row.source_id ?? "").trim();
+  if (
+    !/^[A-Za-z0-9_.:-]{1,160}$/.test(sourceId) ||
+    sourceIds.has(sourceId) ||
+    typeof row.enabled_for_ingestion !== "boolean" ||
+    typeof row.enabled_for_commercial_signals !== "boolean" ||
+    typeof row.raw_redistribution_allowed !== "boolean" ||
+    typeof row.attribution_required !== "boolean" ||
+    !(row.commercial_usage_status === null || typeof row.commercial_usage_status === "string") ||
+    !(row.licence_name === null || typeof row.licence_name === "string")
+  ) throw new Error("B2_LIVE_SOURCE_RIGHTS_ROW_INVALID");
+  sourceIds.add(sourceId);
+}
+
 const payloads = [
   {
     key: INTELLIGENCE_KEY,
@@ -97,6 +125,16 @@ const payloads = [
         gdelt_gal_freshness_complete: sourceNetworkStatus.gdelt_gal_freshness_complete,
         source_network_launch_complete: sourceNetworkStatus.source_network_launch_complete,
       },
+    },
+  },
+  {
+    key: SOURCE_RIGHTS_KEY,
+    schema: "geomacro.commercial-source-rights-live.v1",
+    value: {
+      schema: "geomacro.commercial-source-rights-live.v1",
+      generated_at: generatedAt,
+      source_project: "ldpwajisioljyjtojvfx",
+      rows: sourceRights,
     },
   },
 ] as const;
@@ -133,5 +171,6 @@ console.log(JSON.stringify({
   intelligence_rows: intelligenceRows.length,
   risk_snapshot_id: risk.snapshotId,
   source_network_status: sourceNetworkStatus,
+  commercial_source_rights_rows: sourceRights.length,
   b2_objects_verified: proofEntries.length + 1,
 }));
