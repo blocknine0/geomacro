@@ -1,0 +1,73 @@
+name: Structured Evidence Verified Delete Phase B
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type I_ACCEPT_VERIFIED_EVIDENCE_COLD_DELETE to enable verified cold cleanup"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: structured-evidence-verified-delete-phase-b
+  cancel-in-progress: false
+
+jobs:
+  verified-delete:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_REQUEST_BUDGET: "30"
+      STRUCTURED_EVIDENCE_PHASE_B_ACK: ${{ inputs.confirmation }}
+      STRUCTURED_EVIDENCE_PHASE_B_BATCH_LIMIT: "500"
+      STRUCTURED_EVIDENCE_PHASE_B_ROUNDS: "10"
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify explicit owner acknowledgement and bounded configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$APP_SUPABASE_URL" = "https://ldpwajisioljyjtojvfx.supabase.co"
+          test -n "$APP_SUPABASE_SERVICE_ROLE_KEY"
+          test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com"
+          test -n "$B2_KEY_ID"
+          test -n "$B2_APPLICATION_KEY"
+          test "$B2_REQUEST_BUDGET" = "30"
+          test "$STRUCTURED_EVIDENCE_PHASE_B_ACK" = "I_ACCEPT_VERIFIED_EVIDENCE_COLD_DELETE"
+          test "$STRUCTURED_EVIDENCE_PHASE_B_BATCH_LIMIT" = "500"
+          test "$STRUCTURED_EVIDENCE_PHASE_B_ROUNDS" = "10"
+          node --check scripts/ops/b2-delete-verified-structured-evidence-bundles.mjs
+
+      - name: Delete only exact B2-verified evidence and compact the hot archive index
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/b2-delete-verified-structured-evidence-bundles.mjs | tee structured-evidence-phase-b.jsonl
+          tail -n 1 structured-evidence-phase-b.jsonl | jq -e '.ok == true' >/dev/null
+
+      - name: Upload Phase B evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: structured-evidence-phase-b-${{ github.run_id }}
+          path: structured-evidence-phase-b.jsonl
+          if-no-files-found: warn
+          retention-days: 14
