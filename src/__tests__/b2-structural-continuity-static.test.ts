@@ -14,29 +14,43 @@ describe("verified B2 structural serving continuity", () => {
     expect(source).toContain("No commercially eligible structural observations were found");
   });
 
-  it("discovers country keys cheaply and reads canonical commercial latest state country by country", () => {
+  it("reads indexed country slices and reproduces the exact commercial boundary locally", () => {
     const publisher = read("scripts/ops/publish-b2-structural-serving-snapshot.ts");
-    expect(publisher).toContain("discoverCountryCodes");
-    expect(publisher).toContain('.select("country_iso3")');
-    expect(publisher).toContain('.limit(1)');
-    expect(publisher).toContain('.gt("country_iso3", after)');
+    expect(publisher).toContain('.from("data_sources")');
+    expect(publisher).toContain('.eq("registry_active", true)');
+    expect(publisher).toContain('.eq("status", "PRODUCTION_APPROVED")');
+    expect(publisher).toContain('.eq("commercial_use", true)');
+    expect(publisher).toContain('.from("structural_geopolitical_observations")');
     expect(publisher).toContain('.eq("commercial_eligibility_status", "VERIFIED")');
     expect(publisher).toContain('.eq("quality_status", "VERIFIED")');
-    expect(publisher).toContain('.from("commercial_structural_country_latest")');
-    expect(publisher).toContain('.from("commercial_structural_country_coverage_latest")');
-    expect(publisher).toContain('.eq("country_iso3", country)');
-    expect(publisher).toContain("B2_STRUCTURAL_COUNTRY_KEYSET_PROGRESS_INVALID");
+    expect(publisher).toContain('.in("source_id", sourceBatch)');
+    expect(publisher).toContain("observationIsNewer");
+    expect(publisher).toContain("canonicalObservationTime");
+    expect(publisher).toContain('.from("structural_geopolitical_coverage")');
+    expect(publisher).not.toContain('.from("commercial_structural_country_latest")');
+    expect(publisher).not.toContain('.from("commercial_structural_country_coverage_latest")');
     expect(publisher).not.toContain("raw_payload");
     expect(publisher).not.toContain("raw_hash");
   });
 
-  it("never snapshots the cross-joined corridor view and keeps bounded per-country reads", () => {
+  it("uses paged discovery and bounded parallel country reads", () => {
+    const publisher = read("scripts/ops/publish-b2-structural-serving-snapshot.ts");
+    expect(publisher).toContain("DISCOVERY_PAGE_SIZE = 1000");
+    expect(publisher).toContain("COUNTRY_CONCURRENCY = 6");
+    expect(publisher).toContain("mapConcurrent");
+    expect(publisher).toContain('.gt("country_iso3", after)');
+    expect(publisher).toContain("MAX_RAW_OBSERVATION_ROWS_SCANNED");
+    expect(publisher).toContain("MAX_RAW_COVERAGE_ROWS_SCANNED");
+    expect(publisher).toContain("B2_STRUCTURAL_TRUNCATION_GUARD_raw_observation_scan");
+    expect(publisher).toContain("B2_STRUCTURAL_TRUNCATION_GUARD_raw_coverage_scan");
+  });
+
+  it("never snapshots the cross-joined corridor view", () => {
     const publisher = read("scripts/ops/publish-b2-structural-serving-snapshot.ts");
     expect(publisher).not.toContain('.from("commercial_structural_corridor_latest")');
     expect(publisher).toContain("MAX_LATEST_PER_COUNTRY");
     expect(publisher).toContain("MAX_COVERAGE_PER_COUNTRY");
-    expect(publisher).toContain("B2_STRUCTURAL_TRUNCATION_GUARD_country_latest_");
-    expect(publisher).toContain("B2_STRUCTURAL_TRUNCATION_GUARD_country_coverage_");
+    expect(publisher).toContain("MAX_DIRECT");
   });
 
   it("requires full B2 readback and restore before publishing continuity proof", () => {
