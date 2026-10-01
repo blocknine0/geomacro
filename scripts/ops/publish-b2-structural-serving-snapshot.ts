@@ -11,6 +11,7 @@ const BUCKET = "geomacro-private-archive";
 const SNAPSHOT_KEY = "geomacro-evidence/v1/structural/serving/latest.json.gz";
 const PROOF_KEY = "geomacro-evidence/v1/structural/serving/latest-proof.json";
 const PAGE_SIZE = 1000;
+const MAX_BASE_ROWS = 100_000;
 const MAX_PROFILES = 500;
 const MAX_COVERAGE = 20_000;
 const MAX_DIRECT = 20_000;
@@ -87,35 +88,120 @@ const observationColumns = [
   "retrieved_at",
 ].join(",");
 
-const profiles = await paged(
-  "commercial_structural_country_profiles",
-  "country_iso3,latest_observations",
-  MAX_PROFILES,
-  ["country_iso3"],
-);
+function isoTime(value: unknown): number {
+  const parsed = Date.parse(String(value ?? ""));
+  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+}
+
+function observationRank(row: AnyRow): [number, number, string] {
+  const primary = Math.max(
+    isoTime(row.observed_at),
+    isoTime(row.published_at),
+    isoTime(row.retrieved_at),
+  );
+  return [primary, isoTime(row.retrieved_at), String(row.observation_id ?? "")];
+}
+
+function newer(a: AnyRow, b: AnyRow): boolean {
+  const ar = observationRank(a);
+  const br = observationRank(b);
+  if (ar[0] !== br[0]) return ar[0] > br[0];
+  if (ar[1] !== br[1]) return ar[1] > br[1];
+  return ar[2] > br[2];
+}
+
+function latestKey(row: AnyRow): string {
+  return [
+    String(row.country_iso3 ?? ""),
+    String(row.source_id ?? ""),
+    String(row.dimension ?? ""),
+    String(row.metric ?? ""),
+    String(row.partner_country_iso3 ?? ""),
+  ].join("\u001f");
+}
+
+async function readCommercialBaseRows(cutoff: string): Promise<AnyRow[]> {
+  const output: AnyRow[] = [];
+  let after = "";
+  while (output.length < MAX_BASE_ROWS) {
+    let query: any = db
+      .from("commercial_structural_geopolitical_observations")
+      .select(observationColumns)
+      .lte("retrieved_at", cutoff)
+      .order("observation_id", { ascending: true })
+      .limit(PAGE_SIZE);
+    if (after) query = query.gt("observation_id", after);
+    const { data, error } = await query;
+    if (error || !Array.isArray(data)) {
+      throw new Error(
+        `B2_STRUCTURAL_QUERY_FAILED_commercial_structural_geopolitical_observations_${error?.code ?? "unknown"}`,
+      );
+    }
+    if (data.length === 0) return output;
+    output.push(...(data as AnyRow[]));
+    const last = String(data[data.length - 1]?.observation_id ?? "");
+    if (!last || last === after) throw new Error("B2_STRUCTURAL_KEYSET_PROGRESS_INVALID");
+    after = last;
+    if (data.length < PAGE_SIZE) return output;
+  }
+  throw new Error("B2_STRUCTURAL_TRUNCATION_GUARD_commercial_structural_geopolitical_observations");
+}
+
+const generatedAt = new Date().toISOString();
+const baseRows = await readCommercialBaseRows(generatedAt);
+if (baseRows.length === 0) throw new Error("B2_STRUCTURAL_BASE_SET_EMPTY");
+
+const latestByKey = new Map<string, AnyRow>();
+for (const row of baseRows) {
+  const country = String(row.country_iso3 ?? "");
+  if (!/^[A-Z]{3}$/.test(country)) continue;
+  const key = latestKey(row);
+  const current = latestByKey.get(key);
+  if (!current || newer(row, current)) latestByKey.set(key, row);
+}
+const latestRows = [...latestByKey.values()];
+if (latestRows.length === 0) throw new Error("B2_STRUCTURAL_LATEST_SET_EMPTY");
+
+const byCountry = new Map<string, AnyRow[]>();
+for (const row of latestRows) {
+  const country = String(row.country_iso3);
+  const rows = byCountry.get(country) ?? [];
+  rows.push(row);
+  byCountry.set(country, rows);
+}
+if (byCountry.size > MAX_PROFILES) throw new Error("B2_STRUCTURAL_TRUNCATION_GUARD_country_profiles");
+
+const profiles = [...byCountry.entries()]
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([country_iso3, rows]) => ({
+    country_iso3,
+    latest_observations: [...rows].sort((a, b) => {
+      const ar = observationRank(a);
+      const br = observationRank(b);
+      return br[0] - ar[0] || String(a.dimension).localeCompare(String(b.dimension)) || String(a.metric).localeCompare(String(b.metric)) || String(a.source_id).localeCompare(String(b.source_id));
+    }),
+  }));
+
 const coverage = await paged(
   "commercial_structural_country_coverage_latest",
   "source_id,dimension,country_iso3,coverage_year,coverage_status,observation_count,latest_observed_at,audit_metadata,updated_at",
   MAX_COVERAGE,
   ["country_iso3", "dimension", "source_id"],
-);
-const direct = await paged(
-  "commercial_structural_country_latest",
-  observationColumns,
-  MAX_DIRECT,
-  ["country_iso3", "partner_country_iso3", "source_id", "dimension", "metric", "observation_id"],
-  (query) => query.not("partner_country_iso3", "is", null),
+  (query) => query.lte("updated_at", generatedAt),
 );
 
-if (profiles.length === 0) throw new Error("B2_STRUCTURAL_PROFILE_SET_EMPTY");
-const countries = new Set<string>();
-for (const row of profiles) {
-  const country = String(row.country_iso3 ?? "");
-  if (!/^[A-Z]{3}$/.test(country) || countries.has(country) || !Array.isArray(row.latest_observations)) {
-    throw new Error("B2_STRUCTURAL_PROFILE_INVALID");
-  }
-  countries.add(country);
-}
+const direct = latestRows
+  .filter((row) => row.partner_country_iso3 !== null && row.partner_country_iso3 !== undefined)
+  .sort((a, b) =>
+    String(a.country_iso3).localeCompare(String(b.country_iso3)) ||
+    String(a.partner_country_iso3).localeCompare(String(b.partner_country_iso3)) ||
+    String(a.source_id).localeCompare(String(b.source_id)) ||
+    String(a.dimension).localeCompare(String(b.dimension)) ||
+    String(a.metric).localeCompare(String(b.metric)) ||
+    String(a.observation_id).localeCompare(String(b.observation_id)),
+  );
+if (direct.length > MAX_DIRECT) throw new Error("B2_STRUCTURAL_TRUNCATION_GUARD_direct_observations");
+
 for (const row of coverage) {
   if (
     !/^[A-Z]{3}$/.test(String(row.country_iso3 ?? "")) ||
@@ -140,7 +226,6 @@ for (const row of direct) {
   ) throw new Error("B2_STRUCTURAL_DIRECT_INVALID");
 }
 
-const generatedAt = new Date().toISOString();
 const payload = {
   schema: "geomacro.structural-serving-snapshot.v1",
   generated_at: generatedAt,
@@ -183,10 +268,12 @@ const proof = Buffer.from(JSON.stringify({
   compressed_sha256: digest,
   compressed_bytes: packed.length,
   raw_bytes: raw.length,
+  source_rows_scanned: baseRows.length,
+  latest_rows: latestRows.length,
   country_profiles: profiles.length,
   coverage_rows: coverage.length,
   direct_observations: direct.length,
-  verification: "full-b2-readback-sha256-plus-gzip-json-restore",
+  verification: "base-commercial-keyset+canonical-latest-per-key+full-b2-readback-sha256-plus-gzip-json-restore",
 }));
 await b2.put(PROOF_KEY, proof);
 const proofReadback = await b2.get(PROOF_KEY);
@@ -195,6 +282,8 @@ if (sha256(proofReadback) !== sha256(proof)) throw new Error("B2_STRUCTURAL_PROO
 console.log(JSON.stringify({
   ok: true,
   generated_at: generatedAt,
+  source_rows_scanned: baseRows.length,
+  latest_rows: latestRows.length,
   country_profiles: profiles.length,
   coverage_rows: coverage.length,
   direct_observations: direct.length,
