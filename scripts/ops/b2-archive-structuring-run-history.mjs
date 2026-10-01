@@ -158,8 +158,8 @@ try {
       throw new Error(`STRUCTURING_RUN_ARCHIVE_DELETE_FAILED_${deleteError?.code ?? "count"}`);
     }
     for (const row of deleted ?? []) {
-      if (expectedHashes.get(row.id) !== rowHash(row)) throw new Error("STRUCTURING_RUN_ARCHIVE_DELETE_ROW_MISMATCH");
       deletedRows.push(row);
+      if (expectedHashes.get(row.id) !== rowHash(row)) throw new Error("STRUCTURING_RUN_ARCHIVE_DELETE_ROW_MISMATCH");
     }
   }
 
