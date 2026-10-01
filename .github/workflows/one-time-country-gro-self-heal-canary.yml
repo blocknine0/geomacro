@@ -33,7 +33,7 @@ jobs:
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
       RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
       RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
-      GRO_SELF_HEAL_CANARY_COUNTRY: CHN
+      GRO_SELF_HEAL_CANARY_COUNTRY: IND
 
     steps:
       - name: Checkout canonical main
@@ -79,7 +79,7 @@ jobs:
 
       - name: Verify canary proof
         run: |
-          jq -e '.ok == true and .country_iso3 == "CHN" and .verification_status == "VERIFIED" and .commercial_eligibility_status == "VERIFIED" and .second_read_same_object == true and .payment_performed == false and .execution_authorized == false' country-gro-self-heal-canary.json >/dev/null
+          jq -e '.ok == true and .country_iso3 == "IND" and .verification_status == "VERIFIED" and .commercial_eligibility_status == "VERIFIED" and .second_read_same_object == true and .payment_performed == false and .execution_authorized == false' country-gro-self-heal-canary.json >/dev/null
 
       - name: Upload canary evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
