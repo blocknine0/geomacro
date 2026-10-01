@@ -63,6 +63,20 @@ async function countRows(table, runId) {
   return Number(count ?? 0);
 }
 
+async function upsertChunked(table, rows, conflictColumn) {
+  for (let offset = 0; offset < rows.length; offset += PAGE_SIZE) {
+    const chunk = rows.slice(offset, offset + PAGE_SIZE);
+    const { error } = await db.from(table).upsert(chunk, { onConflict: conflictColumn });
+    if (error) throw new Error(`SOURCE_CERT_EVIDENCE_RESTORE_FAILED_${table}_${error.code ?? "unknown"}`);
+  }
+}
+
+function idsMatch(deleted, expected, key) {
+  const got = (deleted ?? []).map((row) => String(row?.[key] ?? "")).sort();
+  const want = expected.map((row) => String(row?.[key] ?? "")).sort();
+  return got.length === want.length && got.every((value, index) => value === want[index]);
+}
+
 const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 const { data: runs, error: runError } = await db
   .from("live_source_certification_evidence_runs")
@@ -144,6 +158,27 @@ function verifyBundle(bytes) {
   return restored;
 }
 
+async function verifySourceMatchesExpected() {
+  const currentNodes = await readAll("live_source_certification_evidence_nodes", runId, "evidence_id");
+  const currentEdges = await readAll("live_source_certification_evidence_edges", runId, "edge_id");
+  if (
+    currentNodes.length !== expectedNodes ||
+    currentEdges.length !== expectedEdges ||
+    sha256(Buffer.from(stableJson(currentNodes))) !== nodesSha ||
+    sha256(Buffer.from(stableJson(currentEdges))) !== edgesSha
+  ) throw new Error("SOURCE_CERT_EVIDENCE_SOURCE_CHANGED");
+}
+
+async function restoreSourceRows(originalCause) {
+  try {
+    await upsertChunked("live_source_certification_evidence_nodes", nodes, "evidence_id");
+    await upsertChunked("live_source_certification_evidence_edges", edges, "edge_id");
+    await verifySourceMatchesExpected();
+  } catch (rollbackCause) {
+    throw new Error("SOURCE_CERT_EVIDENCE_ROLLBACK_FAILED", { cause: rollbackCause ?? originalCause });
+  }
+}
+
 await b2.put(archiveKey, compressed);
 verifyBundle(await b2.get(archiveKey));
 
@@ -161,31 +196,54 @@ const { error: indexError } = await db
 if (indexError) throw new Error(`SOURCE_CERT_EVIDENCE_ARCHIVE_INDEX_FAILED_${indexError.code ?? "unknown"}`);
 
 verifyBundle(await b2.get(archiveKey));
+await verifySourceMatchesExpected();
 
-const { data: finalized, error: finalizeError } = await db.rpc(
-  "geomacro_finalize_archived_source_cert_evidence_run",
-  {
-    p_run_id: runId,
-    p_archive_key: archiveKey,
-    p_archive_sha256: bundleSha,
-    p_node_count: expectedNodes,
-    p_edge_count: expectedEdges,
-    p_ack: REQUIRED_ACK,
-  },
-);
-if (finalizeError) throw new Error(`SOURCE_CERT_EVIDENCE_FINALIZE_FAILED_${finalizeError.code ?? "unknown"}`);
+const { data: indexed, error: indexedError } = await db
+  .from("live_source_certification_evidence_archives")
+  .select("run_id,archive_key,archive_sha256,node_count,edge_count")
+  .eq("run_id", runId)
+  .single();
 if (
-  Number(finalized?.deleted_nodes ?? -1) !== expectedNodes ||
-  Number(finalized?.deleted_edges ?? -1) !== expectedEdges
-) throw new Error("SOURCE_CERT_EVIDENCE_FINALIZE_COUNT_INVALID");
+  indexedError ||
+  indexed?.run_id !== runId ||
+  indexed?.archive_key !== archiveKey ||
+  indexed?.archive_sha256 !== bundleSha ||
+  Number(indexed?.node_count) !== expectedNodes ||
+  Number(indexed?.edge_count) !== expectedEdges
+) throw new Error("SOURCE_CERT_EVIDENCE_ARCHIVE_INDEX_MISMATCH");
 
-const [nodesAfter, edgesAfter] = await Promise.all([
-  countRows("live_source_certification_evidence_nodes", runId),
-  countRows("live_source_certification_evidence_edges", runId),
-]);
-if (nodesAfter !== 0 || edgesAfter !== 0) throw new Error("SOURCE_CERT_EVIDENCE_SOURCE_STILL_PRESENT");
+let cleanupStarted = false;
+try {
+  cleanupStarted = true;
+  const { data: deletedEdges, error: deleteEdgesError } = await db
+    .from("live_source_certification_evidence_edges")
+    .delete()
+    .eq("run_id", runId)
+    .select("edge_id");
+  if (deleteEdgesError || !idsMatch(deletedEdges, edges, "edge_id")) {
+    throw new Error(`SOURCE_CERT_EVIDENCE_EDGE_DELETE_UNCONFIRMED_${deleteEdgesError?.code ?? "count"}`);
+  }
 
-verifyBundle(await b2.get(archiveKey));
+  const { data: deletedNodes, error: deleteNodesError } = await db
+    .from("live_source_certification_evidence_nodes")
+    .delete()
+    .eq("run_id", runId)
+    .select("evidence_id");
+  if (deleteNodesError || !idsMatch(deletedNodes, nodes, "evidence_id")) {
+    throw new Error(`SOURCE_CERT_EVIDENCE_NODE_DELETE_UNCONFIRMED_${deleteNodesError?.code ?? "count"}`);
+  }
+
+  const [nodesAfter, edgesAfter] = await Promise.all([
+    countRows("live_source_certification_evidence_nodes", runId),
+    countRows("live_source_certification_evidence_edges", runId),
+  ]);
+  if (nodesAfter !== 0 || edgesAfter !== 0) throw new Error("SOURCE_CERT_EVIDENCE_SOURCE_STILL_PRESENT");
+
+  verifyBundle(await b2.get(archiveKey));
+} catch (cause) {
+  if (cleanupStarted) await restoreSourceRows(cause);
+  throw cause;
+}
 
 const proofKey = `geomacro-evidence/v1/index/source-certification-evidence-runs/${runId}-${bundleSha}.json`;
 const proof = {
@@ -202,7 +260,9 @@ const proof = {
   full_b2_readback_verified_before_delete: true,
   full_b2_readback_verified_after_delete: true,
   restore_and_member_set_verified: true,
-  db_source_rows_absent_after_transactional_cleanup: true,
+  db_source_rows_absent_after_cleanup: true,
+  cleanup_mode: "application-side-exact-member-delete-with-rollback",
+  rollback_member_set_retained_in_memory: true,
   run_summary_retained: true,
   verified_at: new Date().toISOString(),
 };
