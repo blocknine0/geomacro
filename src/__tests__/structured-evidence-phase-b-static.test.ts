@@ -40,6 +40,15 @@ describe("structured evidence verified delete Phase B", () => {
     expect(migration).not.toMatch(/delete\s+from\s+public\.live_structured_event_archived_sources/i);
   });
 
+  it("uses semantic canonical equality for JSONB rows while keeping B2 member hashes authoritative", () => {
+    expect(script).toContain("function stableJson(value)");
+    expect(script).toContain("const sameJson = (a, b) => stableJson(a) === stableJson(b)");
+    expect(script).toContain("rowHash(member.row) !== item.row_sha256");
+    expect(script).not.toContain("rowHash(item.row_json) !== item.row_sha256");
+    expect(script).toContain("!sameJson(member.row, item.row_json)");
+    expect(script).toContain("!sameJson(row, wanted.row_json)");
+  });
+
   it("preserves rights before delete and compacts index only after verification", () => {
     expect(script).toContain("const beforeRights = await rightsSnapshot(candidates)");
     expect(script).toContain("STRUCTURED_EVIDENCE_PHASE_B_DELETE_RIGHTS_CHANGED");
