@@ -30,6 +30,13 @@ describe("Federico trusted source publication-time hydration", () => {
     );
   });
 
+  it("uses the bounded visible Xinhua article timestamp when structured metadata is absent", () => {
+    const html = '<html><body><div>Source: Xinhua</div><div>Editor: huaxia</div><div>2026-10-01 19:21:31</div></body></html>';
+    expect(extractTrustedPublishedAt(html, SOURCE_URL, AS_OF)).toBe(
+      "2026-10-01T11:21:31.000Z",
+    );
+  });
+
   it("rejects untrusted hosts, stale timestamps, and future timestamps", () => {
     expect(isTrustedFedericoTimestampUrl(SOURCE_URL)).toBe(true);
     expect(isTrustedFedericoTimestampUrl("https://example.com/article")).toBe(false);
@@ -61,10 +68,10 @@ describe("Federico trusted source publication-time hydration", () => {
 
   it("keeps readiness fail-closed and re-corroborates only after trusted hydration", () => {
     const script = readFileSync("scripts/check-federico-publication.ts", "utf8");
-    const hydrate = script.indexOf("const hydrated = await hydrateTrustedSourceTimes()")
-    const recorroborate = script.indexOf("await recorroborateCountry()")
-    const dryRun = script.indexOf("await dryRunCountryRiskObject")
-    const strictAssert = script.indexOf("assertFedericoPublicationReady(object)")
+    const hydrate = script.indexOf("const hydrated = await hydrateTrustedSourceTimes()");
+    const recorroborate = script.indexOf("await recorroborateCountry()");
+    const dryRun = script.indexOf("await dryRunCountryRiskObject");
+    const strictAssert = script.indexOf("assertFedericoPublicationReady(object)");
 
     expect(hydrate).toBeGreaterThan(-1);
     expect(recorroborate).toBeGreaterThan(hydrate);
