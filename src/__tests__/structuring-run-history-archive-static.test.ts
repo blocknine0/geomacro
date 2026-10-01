@@ -2,17 +2,15 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const script = readFileSync("scripts/ops/b2-archive-structuring-run-history.mjs", "utf8");
-const workflow = readFileSync(".github/workflows/one-time-b2-structuring-run-history-recovery.yml", "utf8");
 
-describe("verified B2 structuring-run history recovery", () => {
+describe("verified B2 structuring-run history archival tool", () => {
   it("is fixed to production, old terminal history, and bounded batches", () => {
     expect(script).toContain('const PROJECT_URL = "https://ldpwajisioljyjtojvfx.supabase.co"');
     expect(script).toContain('new Set(["empty", "succeeded", "failed"])');
+    expect(script).toContain("process.env.STRUCTURING_RUN_ARCHIVE_OLDER_HOURS ?? 72");
+    expect(script).toContain("process.env.STRUCTURING_RUN_ARCHIVE_LIMIT ?? 500");
     expect(script).toContain("olderHours < 72");
     expect(script).toContain("limit > 500");
-    expect(workflow).toContain("environment: production");
-    expect(workflow).toContain('STRUCTURING_RUN_ARCHIVE_OLDER_HOURS: "72"');
-    expect(workflow).toContain('STRUCTURING_RUN_ARCHIVE_LIMIT: "500"');
   });
 
   it("requires B2 restore verification before and after exact source deletion", () => {
