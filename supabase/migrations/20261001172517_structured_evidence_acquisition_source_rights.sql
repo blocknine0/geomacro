@@ -1,0 +1,5 @@
+-- Production migration history alignment marker.
+-- The acquisition-source rights changes first landed in production under this
+-- generated version. The complete idempotent schema is restated in the
+-- immediately following canonical split migrations so fresh environments
+-- reproduce the same end state without depending on production-only history.
