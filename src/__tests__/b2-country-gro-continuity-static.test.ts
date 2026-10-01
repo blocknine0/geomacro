@@ -50,6 +50,20 @@ describe("B2 country GRO continuity", () => {
     expect(publisher).toContain("/latest.json.gz");
   });
 
+  it("proves the runtime reader works after Supabase credentials are removed", () => {
+    const canary = read("scripts/ops/verify-b2-country-gro-direct-read.ts");
+    const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
+    expect(canary).toContain("delete process.env.APP_SUPABASE_URL");
+    expect(canary).toContain("delete process.env.APP_SUPABASE_SERVICE_ROLE_KEY");
+    expect(canary).toContain("delete process.env.SUPABASE_URL");
+    expect(canary).toContain("delete process.env.SUPABASE_SERVICE_ROLE_KEY");
+    expect(canary).toContain("await import(");
+    expect(canary).toContain('"../../src/lib/b2-country-gro.server"');
+    expect(canary).toContain("readB2LatestCanonicalCountryGro(countryIso3, evaluatedAt)");
+    expect(canary).toContain("supabase_credentials_present: Boolean(");
+    expect(workflow).toContain("bun scripts/ops/verify-b2-country-gro-direct-read.ts");
+  });
+
   it("keeps production publication bounded and explicit", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     expect(workflow).toContain("environment: production");
