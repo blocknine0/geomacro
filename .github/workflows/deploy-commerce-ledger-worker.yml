@@ -2,6 +2,15 @@ name: Deploy Commerce Ledger Worker
 
 on:
   workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - "workers/commerce-ledger/**"
+      - "scripts/ops/wait-commerce-ledger-health.mjs"
+      - "scripts/ops/verify-commerce-ledger-worker.mjs"
+      - "scripts/ops/verify-commerce-control-plane-worker.mjs"
+      - ".github/workflows/deploy-commerce-ledger-worker.yml"
 
 permissions:
   contents: read
@@ -67,15 +76,21 @@ jobs:
           GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
         run: node scripts/ops/wait-commerce-ledger-health.mjs
 
-      - name: Run no-funds production ledger acceptance
+      - name: Run no-funds delivery-ledger acceptance
         env:
           GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: node scripts/ops/verify-commerce-ledger-worker.mjs
 
+      - name: Run no-funds usage and audit control-plane acceptance
+        env:
+          GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: node scripts/ops/verify-commerce-control-plane-worker.mjs
+
       - name: Confirm real-funds activation remains separate
         shell: bash
         run: |
           set -euo pipefail
-          echo "Commerce ledger deployment/acceptance completed without provider settlement."
-          echo "Do not set GEOMACRO_COMMERCE_LEDGER_BACKEND=durable_object or enable production funds solely because this workflow passed; app-runtime wiring and Supabase-off route acceptance remain separate gates."
+          echo "Commerce control-plane deployment/acceptance completed without provider settlement."
+          echo "This deploy proves durable delivery, usage limits, and audit state only. Coinbase/Circle mainnet payment activation remains separately gated by the existing launch authorization and acknowledgement controls."
