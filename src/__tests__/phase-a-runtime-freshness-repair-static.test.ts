@@ -29,12 +29,12 @@ describe("Phase A runtime freshness repair", () => {
     expect(repair).toContain("COMMERCIAL_SOURCE_RIGHTS_EVIDENCE[sourceId]");
   });
 
-  it("requires observed endpoint evidence and B2 readback before promotion or freshness writes", () => {
-    const probe = repair.indexOf("await fetchObserved(contract.endpoint");
-    const b2Put = repair.indexOf("await b2.put(key, evidencePayload)");
+  it("requires source probes and B2 readback before evidence promotion and set-based freshness writes", () => {
+    const probe = repair.indexOf("await fetchObserved(source.endpoint");
+    const b2Put = repair.indexOf("await b2.put(key, payload)");
     const b2Readback = repair.indexOf("const readback = await b2.get(key)");
-    const promotion = repair.indexOf("promote_source_certification_evidence_graph_run");
-    const targetWrite = repair.indexOf("await upsertFallbackTargets(countries, sourceEvidence)");
+    const promotion = repair.indexOf("const certifications = await promote(runId, observed, evidenceRef)");
+    const targetWrite = repair.indexOf("const targetRowsWritten = await refreshTargets(observed)");
     expect(probe).toBeGreaterThan(-1);
     expect(b2Put).toBeGreaterThan(probe);
     expect(b2Readback).toBeGreaterThan(b2Put);
@@ -42,23 +42,24 @@ describe("Phase A runtime freshness repair", () => {
     expect(targetWrite).toBeGreaterThan(promotion);
   });
 
+  it("uses a set-based registry x source-contract upsert instead of a giant client-side values list", () => {
+    expect(repair).toContain("from public.live_country_registry r cross join source_contract s where r.enabled=true");
+    expect(repair).toContain("on conflict(target_id) do update set");
+    expect(repair).not.toContain("rows.map((row)");
+  });
+
   it("promotes through the evidence graph instead of directly certifying records", () => {
     expect(repair).toContain("promote_source_certification_evidence_graph_run");
-    expect(repair).toContain('dimension: "REGISTRY"');
-    expect(repair).toContain('dimension: "ENDPOINT"');
-    expect(repair).toContain('dimension: "RIGHTS"');
-    expect(repair).toContain('dimension: "SCHEMA"');
-    expect(repair).toContain('dimension: "FRESHNESS"');
-    expect(repair).toContain('dimension: "PROVENANCE"');
-    expect(repair).toContain('dimension: "INDEPENDENCE"');
-    expect(repair).toContain('dimension: "ADAPTER"');
-    expect(repair).toContain('dimension: "RUNTIME"');
-    expect(repair).toContain('dimension: "FALLBACK"');
+    for (const dimension of ["REGISTRY", "ENDPOINT", "RIGHTS", "SCHEMA", "FRESHNESS", "PROVENANCE", "INDEPENDENCE", "ADAPTER", "RUNTIME", "FALLBACK"]) {
+      expect(repair).toContain(`\"${dimension}\"`);
+    }
     expect(repair).not.toContain("update public.live_source_certification_records");
   });
 
-  it("runs only through the production environment and never activates payment", () => {
+  it("requires the pgcrypto promotion repair and never activates payment", () => {
     expect(workflow).toContain("environment: production");
+    expect(workflow).toContain("20261002093748_fix_source_certification_promotion_pgcrypto_path.sql");
+    expect(workflow).toContain("search_path=public, extensions");
     expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
     expect(workflow).toContain("B2_KEY_ID: ${{ secrets.B2_KEY_ID }}");
     expect(workflow).toContain("B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}");
@@ -69,6 +70,7 @@ describe("Phase A runtime freshness repair", () => {
   it("fails unless every registry x domain cell is genuinely READY", () => {
     expect(repair).toContain("Number(status.production_ready_rows) !== expected");
     expect(repair).toContain("Number(status.unavailable_rows) !== 0");
+    expect(repair).toContain("targetRowsWritten !== expected");
     expect(workflow).toContain('test "$ready" = "$expected"');
     expect(workflow).toContain('test "$unavailable" = "0"');
   });
