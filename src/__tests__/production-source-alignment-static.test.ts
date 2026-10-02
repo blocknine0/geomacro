@@ -46,10 +46,12 @@ describe("production source alignment", () => {
     expect(script).toContain("Certification path accounting is incomplete");
   });
 
-  it("runs on exact main changes and at low recurring frequency", () => {
+  it("runs on exact governed revisions without recurring source-census churn", () => {
     expect(workflow).toContain("ref: ${{ github.sha }}");
     expect(workflow).toContain('- main');
-    expect(workflow).toContain('cron: "27 2 * * 0"');
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("schedule:");
+    expect(workflow).not.toContain("workflow_run:");
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
   });
