@@ -90,11 +90,13 @@ export function AgentCommerceStatus({ compact = false }: { compact?: boolean }) 
 
   const label = state.mode === "production"
     ? `x402 agent access · live${state.priceUsdc ? ` · ${state.priceUsdc} USDC/call` : ""}`
-    : state.mode === "checking"
-      ? "x402 agent access · checking status"
-      : state.mode === "unavailable"
-        ? "x402 agent access · status unavailable"
-        : "x402 agent access · controlled";
+    : state.mode === "testnet"
+      ? "x402 agent access · controlled testnet"
+      : state.mode === "checking"
+        ? "x402 agent access · checking status"
+        : state.mode === "unavailable"
+          ? "x402 agent access · status unavailable"
+          : "x402 agent access · controlled pre-launch";
 
   if (compact) {
     return (
@@ -118,11 +120,13 @@ export function AgentCommerceStatus({ compact = false }: { compact?: boolean }) 
       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
         {state.mode === "production"
           ? `The paid endpoint is advertising production x402 access${state.network ? ` on ${state.network}` : ""}. The live HTTP 402 challenge remains the payment authority.`
-          : state.mode === "unavailable"
-            ? "The status probe did not return a usable result in time. Commercial access is not inferred from a failed health check; the paid endpoint remains the payment authority."
-            : state.mode === "checking"
-              ? "Checking the deployment health surface for the current x402 runtime mode."
-              : "Machine access follows the current runtime policy. The live HTTP challenge and health contract remain the authority for payment and access state."}
+          : state.mode === "testnet"
+            ? "The current runtime reports a controlled testnet environment. Testnet settlement is not commercial revenue. The live HTTP challenge and health contract remain the authority for payment and access state."
+            : state.mode === "unavailable"
+              ? "The status probe did not return a usable result in time. Commercial access is not inferred from a failed health check; the paid endpoint remains the payment authority."
+              : state.mode === "checking"
+                ? "Checking the deployment health surface for the current x402 runtime mode."
+                : "Real-money x402 access remains controlled pre-launch and fail-closed until the production endpoint itself authorizes production. The live HTTP challenge and health contract remain the authority for payment and access state."}
       </p>
     </div>
   );
