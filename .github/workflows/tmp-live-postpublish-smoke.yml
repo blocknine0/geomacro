@@ -1,0 +1,133 @@
+name: Temporary Live Post-Publish Smoke
+
+on:
+  push:
+    branches:
+      - ops/live-postpublish-smoke-20261002
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tmp-live-postpublish-smoke-20261002
+  cancel-in-progress: true
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Verify live health and rendered routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_URL="https://geomacro.live"
+
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/health?deep=1")"
+          echo "deep health HTTP $code"
+          cat "$body"
+          echo
+          [[ "$code" == "200" ]]
+          for marker in \
+            '"ok":true' \
+            '"serving_authority":"backblaze-b2"' \
+            '"supabase_required_for_serving":false' \
+            '"b2_runtime_configured":true' \
+            '"intelligence_ready":true' \
+            '"risk_indices_ready":true' \
+            '"risk_verification_status":"verified"'
+          do
+            grep -Fq "$marker" "$body"
+          done
+
+          routes="$(cat <<'EOF'
+          /|Global risk intelligence
+          /pricing|Access & pricing
+          /ask-geomacro|Ask Geomacro
+          /global-risk|Geomacro Risk Indices
+          /intelligence|Risk Intelligence
+          /data-api|GOVERNED DATA
+          /institutional|COMMERCIAL RISK INTELLIGENCE
+          /risk-gate|Risk Gate
+          /contact|Bring the workflow.
+          EOF
+          )"
+
+          while IFS='|' read -r path marker; do
+            path="$(printf '%s' "$path" | xargs)"
+            marker="$(printf '%s' "$marker" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+            [[ -z "$path" ]] && continue
+            body="$(mktemp)"
+            code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL$path")"
+            [[ "$code" == "200" ]] || { echo "FAIL $path HTTP $code"; head -c 1200 "$body"; exit 1; }
+            ! grep -Fq "This page didn't load" "$body" || { echo "FAIL $path rendered root error"; exit 1; }
+            grep -Fq "$marker" "$body" || { echo "FAIL $path missing marker: $marker"; head -c 1600 "$body"; exit 1; }
+            echo "PASS $path -> $marker"
+          done <<< "$routes"
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/geomacro-live-smoke
+          cd /tmp/geomacro-live-smoke
+          npm init -y >/dev/null 2>&1
+          npm install --silent playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Verify Pricing navigation and Ask Geomacro end to end
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/geomacro-live-smoke
+          cat > smoke.mjs <<'EOF'
+          import { chromium } from 'playwright';
+
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
+          page.on('console', (msg) => console.log(`[browser:${msg.type()}] ${msg.text()}`));
+          page.on('pageerror', (err) => console.log(`[pageerror] ${err.message}`));
+
+          try {
+            let response = await page.goto('https://geomacro.live/pricing', { waitUntil: 'networkidle', timeout: 60000 });
+            if (!response || response.status() !== 200) throw new Error(`Pricing HTTP ${response?.status()}`);
+            if (new URL(page.url()).pathname !== '/pricing') throw new Error(`Pricing redirected unexpectedly to ${page.url()}`);
+            await page.getByRole('heading', { name: /Access & pricing/i }).waitFor({ timeout: 20000 });
+            console.log(`PASS pricing stayed on ${page.url()} and rendered Access & pricing`);
+
+            response = await page.goto('https://geomacro.live/ask-geomacro', { waitUntil: 'networkidle', timeout: 60000 });
+            if (!response || response.status() !== 200) throw new Error(`Ask page HTTP ${response?.status()}`);
+            await page.getByRole('heading', { name: 'Ask Geomacro' }).waitFor({ timeout: 20000 });
+            const input = page.locator('#ask-geomacro-input');
+            await input.fill('What changed today?');
+            await page.getByRole('button', { name: 'Ask', exact: true }).click();
+
+            const status = page.locator('[role="status"]');
+            let result = '';
+            for (let i = 0; i < 50; i += 1) {
+              result = await status.innerText();
+              if (result.includes('Research unavailable')) {
+                throw new Error(`Ask Geomacro returned Research unavailable: ${result}`);
+              }
+              if (result.includes('Geomacro answer') || result.includes('Evidence threshold not met')) {
+                console.log(`PASS Ask Geomacro completed: ${result.slice(0, 500)}`);
+                break;
+              }
+              await page.waitForTimeout(1000);
+            }
+            if (!result.includes('Geomacro answer') && !result.includes('Evidence threshold not met')) {
+              throw new Error(`Ask Geomacro did not complete within 50s. Last status: ${result}`);
+            }
+
+            response = await page.goto('https://geomacro.live/global-risk', { waitUntil: 'networkidle', timeout: 60000 });
+            if (!response || response.status() !== 200) throw new Error(`Risk Indices HTTP ${response?.status()}`);
+            const body = await page.locator('body').innerText();
+            if (body.includes("This page didn't load")) throw new Error('Risk Indices rendered root error page');
+            if (!body.includes('Geomacro Risk Indices')) throw new Error('Risk Indices expected marker missing');
+            console.log('PASS Risk Indices rendered normally');
+          } finally {
+            await browser.close();
+          }
+          EOF
+          node smoke.mjs
