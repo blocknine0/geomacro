@@ -1,5 +1,4 @@
 import { readB2PublicIntelligence } from "./b2-live.server";
-import { getAppSupabase } from "./supabase-app.server";
 import type { AskAnswer } from "./ask-intelligence.server";
 
 type PublicFinding = {
@@ -80,10 +79,6 @@ function termsOf(question: string) {
   )).slice(0, 6);
 }
 
-function safeFilterTerm(value: string) {
-  return value.replace(/[%,()]/g, " ").trim();
-}
-
 function eventText(row: StoredEvent) {
   return `${row.summary ?? ""} ${row.narrative ?? ""} ${row.category ?? ""}`.toLowerCase();
 }
@@ -121,10 +116,10 @@ function compactStoredAnswer(question: string, rows: StoredEvent[], terms: strin
     .at(-1) ?? new Date().toISOString();
 
   return {
-    summary: `Geomacro found ${selected.length} relevant internal intelligence records for your question${categories.length ? ` across ${categories.join(", ")}` : ""}.`,
+    summary: `Geomacro found ${selected.length} relevant verified intelligence records for your question${categories.length ? ` across ${categories.join(", ")}` : ""}.`,
     what_changed: statements.slice(0, 3).join(" "),
-    why_it_matters: `These findings come from Geomacro's compact current intelligence layer. The newest matched record is dated ${newest}.`,
-    geomacro_view: `The internal evidence is sufficiently relevant to answer this question without a new external retrieval.`,
+    why_it_matters: `These findings come from Geomacro's verified B2 intelligence continuity layer. The newest matched record is dated ${newest}.`,
+    geomacro_view: "The stored evidence is sufficiently relevant to answer this question without a new external retrieval.",
     evidence: selected.map(({ row, relevance }) => ({
       eventId: row.id,
       title: (row.summary ?? row.narrative ?? "Geomacro finding").slice(0, 180),
@@ -158,36 +153,12 @@ async function permanentReader(input: { question: string }) {
   const terms = termsOf(input.question);
   if (!terms.length) return { sufficient: false, data: null };
 
-  // Independent read path first. This lets non-fresh Ask queries keep working
-  // when Supabase is degraded or intentionally paused.
+  // Production permanent reads are B2-only. If the verified continuity package
+  // is missing or insufficient, the hybrid engine proceeds to its bounded live
+  // retrieval/insufficient-evidence path instead of contacting Supabase.
   const b2Rows = b2StoredRows(await readB2PublicIntelligence());
   const b2Answer = compactStoredAnswer(input.question, b2Rows, terms);
-  if (b2Answer) return { sufficient: true, data: b2Answer };
-
-  const db = getAppSupabase();
-  if (!db) return { sufficient: false, data: null };
-
-  const filters = terms.slice(0, 4).flatMap((term) => {
-    const safe = safeFilterTerm(term);
-    return [`summary.ilike.%${safe}%`, `narrative.ilike.%${safe}%`, `category.ilike.%${safe}%`];
-  });
-
-  const since = new Date(Date.now() - 90 * 24 * 3_600_000).toISOString();
-  const { data, error } = await db
-    .from("events")
-    .select("id,category,summary,narrative,severity,confidence,delta,published_at,created_at")
-    .gte("created_at", since)
-    .or(filters.join(","))
-    .order("published_at", { ascending: false, nullsFirst: false })
-    .limit(80);
-
-  if (error) {
-    console.error("[hybridAsk] permanent reader unavailable", error.message);
-    return { sufficient: false, data: null };
-  }
-
-  const answer = compactStoredAnswer(input.question, (data ?? []) as StoredEvent[], terms);
-  return answer ? { sufficient: true, data: answer } : { sufficient: false, data: null };
+  return b2Answer ? { sufficient: true, data: b2Answer } : { sufficient: false, data: null };
 }
 
 function findingSentence(finding: PublicFinding) {
@@ -257,9 +228,6 @@ function liveToAskAnswer(runtime: HybridRuntimeAnswer): HybridAskAnswer {
 }
 
 export async function answerQuestion(question: string): Promise<HybridAskAnswer> {
-  // JS runtime is intentionally shared with machine/API delivery so the storage,
-  // cache and source-redaction policy has one canonical implementation.
-  // @ts-expect-error The runtime is authored as ESM JavaScript and has no TS declaration file.
   const runtimeModule = await import("../../global-intelligence/engine/intelligence-engine.mjs") as {
     answerQuestion: (
       question: string,
