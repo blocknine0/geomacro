@@ -2,9 +2,11 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
+import { createClient } from "@supabase/supabase-js";
 import { createB2Client } from "./b2-s3-client.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
+const PROJECT_URL = `https://${PROJECT_REF}.supabase.co`;
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
 const LIVE_PROOF_KEY = "geomacro-evidence/v1/live/live-snapshot-proof.json";
@@ -12,6 +14,7 @@ const GOVERNED_SNAPSHOT_KEY = "geomacro-evidence/v1/live/agent-governed-modules/
 const GOVERNED_PROOF_KEY = "geomacro-evidence/v1/live/agent-governed-modules/latest-proof.json";
 const WGI_SOURCE = "world_bank_wgi_political_stability";
 const WDI_SOURCE = "world_bank_indicators";
+const GOVERNED_READ_FAILURE = /B2_AGENT_MODULE_(?:SOURCE_RIGHTS|WGI|WDI_LATEST|WDI_RAW)_READ_FAILED/;
 
 const LIVE_REQUIRED = new Map([
   ["geomacro-evidence/v1/live/public-intelligence/latest.json.gz", "geomacro.public-intelligence-live.v1"],
@@ -29,6 +32,31 @@ function quotaRestricted(output) {
   const text = String(output ?? "");
   return /exceed_egress_quota/i.test(text)
     && /service for this project is restricted|project owner must upgrade|remove spend caps/i.test(text);
+}
+
+async function confirmGovernedQuotaRestriction(output) {
+  if (!GOVERNED_READ_FAILURE.test(String(output ?? ""))) return false;
+  if (
+    process.env.APP_SUPABASE_URL !== PROJECT_URL ||
+    !process.env.APP_SUPABASE_SERVICE_ROLE_KEY
+  ) return false;
+
+  const db = createClient(
+    PROJECT_URL,
+    process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { persistSession: false, autoRefreshToken: false }, db: { retry: false } },
+  );
+  const { error } = await db
+    .from("live_external_sources")
+    .select("source_id")
+    .limit(1);
+  if (!error) return false;
+  return quotaRestricted([
+    error.message,
+    error.details,
+    error.hint,
+    error.code,
+  ].filter(Boolean).join(" "));
 }
 
 function assertB2Config() {
@@ -251,7 +279,11 @@ if (child.error) throw child.error;
 if (child.status === 0) process.exit(0);
 
 const combined = `${child.stdout ?? ""}\n${child.stderr ?? ""}`;
-if (!quotaRestricted(combined)) {
+let restrictionConfirmation = quotaRestricted(combined) ? "child_output" : null;
+if (!restrictionConfirmation && mode === "governed-modules") {
+  restrictionConfirmation = await confirmGovernedQuotaRestriction(combined) ? "direct_probe" : null;
+}
+if (!restrictionConfirmation) {
   process.exit(typeof child.status === "number" && child.status > 0 ? child.status : 1);
 }
 
@@ -263,6 +295,7 @@ console.log(JSON.stringify({
   ok: true,
   maintenance_mode: "verified_preserved_snapshot_noop",
   reason: "supabase_exceed_egress_quota",
+  restriction_confirmation: restrictionConfirmation,
   wrote_new_snapshot: false,
   freshness_advanced: false,
   ...preserved,
