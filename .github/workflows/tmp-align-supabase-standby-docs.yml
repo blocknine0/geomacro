@@ -1,0 +1,80 @@
+name: Temporary Supabase standby documentation alignment
+
+on:
+  push:
+    branches: [docs/supabase-standby-contract-20261002]
+    paths:
+      - ".github/workflows/tmp-align-supabase-standby-docs.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  align:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: docs/supabase-standby-contract-20261002
+          fetch-depth: 0
+
+      - name: Apply guarded exact replacements
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          function replaceExact(path, before, after) {
+            const input = fs.readFileSync(path, 'utf8');
+            const count = input.split(before).length - 1;
+            if (count !== 1) throw new Error(`${path}: expected exact block once, found ${count}`);
+            fs.writeFileSync(path, input.replace(before, after));
+          }
+
+          replaceExact(
+            '.env.example',
+            `# ---- Authoritative application Supabase ----\n# Production database authority is the external Geomacro Supabase project\n# ldpwajisioljyjtojvfx. Lovable/hosting-injected VITE_SUPABASE_* values are NOT\n# part of the production data contract and must never select the database.\n#\n# APP_* is the application-runtime naming used by the hosted SSR/API layer.\n# SUPABASE_* is retained for trusted ingestion/ops scripts and GitHub Actions.\n# In production both URL variables must identify the same authoritative project,\n# and both service-role variables should carry the same server-only service key.\nAPP_SUPABASE_URL=\nAPP_SUPABASE_ANON_KEY=\nAPP_SUPABASE_SERVICE_ROLE_KEY=\nSUPABASE_URL=\nSUPABASE_SERVICE_ROLE_KEY=`,
+            `# ---- Pinned Supabase recovery / ingestion project ----\n# Customer-facing production does NOT require Supabase as its primary runtime.\n# B2-backed intelligence continuity plus the Cloudflare Durable Object commerce\n# control plane are the serving/control path; production defaults Supabase to\n# standby. The pinned project below is retained for trusted ingestion, recovery\n# and explicitly authorized fallback operations only. Lovable/hosting-injected\n# VITE_SUPABASE_* values are NOT part of the production data contract.\n#\n# Runtime modes: standby (production default), standby_read (explicit read-only\n# recovery fallback), primary (explicit operator/CI/ingestion mode). Writes are\n# permitted only in primary mode.\nGEOMACRO_SUPABASE_RUNTIME_MODE=standby\n# APP_* is the hosted SSR/API naming; SUPABASE_* is retained for trusted ops.\n# Any enabled production Supabase path must remain pinned to ldpwajisioljyjtojvfx.\nAPP_SUPABASE_URL=\nAPP_SUPABASE_ANON_KEY=\nAPP_SUPABASE_SERVICE_ROLE_KEY=\nSUPABASE_URL=\nSUPABASE_SERVICE_ROLE_KEY=`
+          );
+
+          replaceExact(
+            'scripts/ops/verify-hosting-alignment.mjs',
+            `  "APP_SUPABASE_URL=",\n  "APP_SUPABASE_ANON_KEY=",`,
+            `  "GEOMACRO_SUPABASE_RUNTIME_MODE=standby",\n  "APP_SUPABASE_URL=",\n  "APP_SUPABASE_ANON_KEY=",`
+          );
+
+          replaceExact(
+            'scripts/ops/verify-hosting-alignment.mjs',
+            `pass("hosting documentation names the canonical repo, Lovable mirror and zero-credit publish path");`,
+            `for (const marker of [\n  "GEOMACRO_SUPABASE_RUNTIME_MODE=standby",\n  "B2 continuity during Supabase quota restriction",\n  "wrote_new_snapshot=false",\n  "freshness_advanced=false",\n]) {\n  if (!hostingDoc.includes(marker)) fail(\`HOSTING_ALIGNMENT.md is missing standby marker ${'${marker}'}\`);\n}\npass("hosting documentation names the canonical repo, Lovable mirror, standby runtime and proof-verified B2 continuity path");`
+          );
+
+          replaceExact(
+            'scripts/ops/verify-hosting-alignment.mjs',
+            `const riskDb = read("src/lib/risk-supabase.server.ts");`,
+            `const supabaseMode = read("src/lib/supabase-runtime-mode.server.ts");\nfor (const marker of [\n  'export type GeomacroSupabaseRuntimeMode = "primary" | "standby" | "standby_read"',\n  'return env.NODE_ENV === "production" ? "standby" : "primary"',\n  'return mode === "primary" || mode === "standby_read"',\n  'return geomacroSupabaseRuntimeMode(env) === "primary"',\n]) {\n  if (!supabaseMode.includes(marker)) fail(\`Supabase runtime mode is missing ${'${marker}'}\`);\n}\npass("customer-facing production defaults Supabase to standby and keeps read/write recovery explicit");\n\nconst riskDb = read("src/lib/risk-supabase.server.ts");`
+          );
+
+          replaceExact(
+            'scripts/ops/verify-hosting-alignment.mjs',
+            `console.log("\\nPASS: canonical GitHub source, one-way Lovable mirror, browser data boundary and authoritative Supabase/Testnet runtime contracts are aligned.");`,
+            `console.log("\\nPASS: canonical GitHub source, one-way Lovable mirror, browser boundary, Supabase standby policy, B2 continuity and Testnet runtime contracts are aligned.");`
+          );
+          NODE
+
+      - name: Verify alignment before committing
+        run: |
+          bun run hosting:verify
+          grep -F 'GEOMACRO_SUPABASE_RUNTIME_MODE=standby' .env.example
+          ! grep -F 'Production database authority is the external Geomacro Supabase project' .env.example
+          ! grep -F 'is the production application database authority' docs/HOSTING_ALIGNMENT.md
+
+      - name: Commit aligned contract and remove temporary workflow
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-align-supabase-standby-docs.yml
+          git add .env.example docs/HOSTING_ALIGNMENT.md scripts/ops/verify-hosting-alignment.mjs
+          git commit -m "Align Supabase standby production documentation"
+          git push origin HEAD:docs/supabase-standby-contract-20261002
