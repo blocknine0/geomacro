@@ -35,7 +35,8 @@ describe("production website runtime contract", () => {
     const intelligenceApi = read("server/api/public/intelligence.get.ts");
     const productionReader = read("src/lib/public-intelligence-production.server.ts");
     const askUi = read("src/components/ask/ask-workspace.tsx");
-    const askApi = read("server/api/public/ask.get.ts");
+    const askApi = read("server/api/public-ask.get.ts");
+    const askCore = read("src/lib/ask-geomacro-core.server.ts");
     const askEngine = read("src/lib/hybrid-ask-intelligence.server.ts");
 
     expect(intelligenceHook).toContain('/api/public/intelligence');
@@ -44,11 +45,11 @@ describe("production website runtime contract", () => {
     expect(productionReader).toContain("readB2PublicIntelligence");
     expect(productionReader).not.toContain("getAppSupabase");
 
-    expect(askUi).toContain('/api/public/ask');
-    expect(askUi).toContain('"X-Geomacro-Query"');
+    expect(askUi).toContain('/api/public-ask');
+    expect(askUi).toContain('"X-Geomacro-Question"');
     expect(askUi).not.toContain("useServerFn");
-    expect(askApi).toContain("answerQuestion");
-    expect(askApi).toContain("checkAskRateLimit");
+    expect(askApi).toContain("executeAskGeomacro");
+    expect(askCore).toContain("checkAskRateLimit(clientKey)");
     expect(askEngine).toContain("readB2PublicIntelligence");
     expect(askEngine).not.toContain("getAppSupabase");
   });
@@ -95,9 +96,13 @@ describe("production website runtime contract", () => {
     expect(intelligence).toContain("Risk Indices temporarily unavailable");
   });
 
-  it("checks rendered route content rather than accepting HTTP 200 alone", () => {
+  it("checks rendered route content plus functional public APIs", () => {
     const workflow = read(".github/workflows/production-website-health.yml");
-    expect(workflow).toContain("Verify rendered production page markers");
+    expect(workflow).toContain("Verify public production APIs and freshness");
+    expect(workflow).toContain('/api/public/intelligence');
+    expect(workflow).toContain('"current_within_24h":true');
+    expect(workflow).toContain('/api/public/risk-indices');
+    expect(workflow).toContain('/api/public-ask');
     expect(workflow).toContain("This page didn't load");
     expect(workflow).toContain("/intelligence|Risk Intelligence");
     expect(workflow).toContain("/global-risk|Geomacro Risk Indices");
