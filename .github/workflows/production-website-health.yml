@@ -101,7 +101,7 @@ jobs:
           echo "PASS: public Risk Indices API returned a verified package."
 
           ask="$(mktemp)"
-          ask_code="$(curl -L --retry 2 --retry-all-errors --retry-delay 2 -sS -H 'Accept: application/json' -H 'X-Geomacro-Query: What changed in the risk indices?' -o "$ask" -w '%{http_code}' "$BASE_URL/api/public/ask")"
+          ask_code="$(curl -L --retry 2 --retry-all-errors --retry-delay 2 -sS -H 'Accept: application/json' -H 'Origin: https://geomacro.live' -H 'X-Geomacro-Question: What changed in the risk indices?' -o "$ask" -w '%{http_code}' "$BASE_URL/api/public-ask")"
           if [[ "$ask_code" != "200" ]]; then
             echo "::error title=Ask Geomacro functional probe failed::Expected HTTP 200, got $ask_code."
             cat "$ask"
