@@ -7,6 +7,10 @@ import { checkAgentQueryDeliverability, publicAgentQueryAvailability } from "../
 import { checkAgentQueryExternalModule } from "../lib/agent-query-external-modules.server";
 import { assembleAgentQueryResponse } from "../lib/agent-query-response.server";
 import {
+  assertPublicPaidOutputBoundary,
+  sanitizeAndRehashPaidPreparedResponse,
+} from "../lib/public-paid-output-boundary";
+import {
   assertCoinbasePaymentBinding,
   bazaarExtensionOutcome,
   claimCoinbaseX402Delivery,
@@ -100,6 +104,9 @@ function adaptiveBazaarExtension(planHash: string) {
             schema_version: "geomacro.adaptive-intelligence-response.v1",
             product: PRODUCT_ID,
             query_plan_hash: planHash,
+            delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY",
+            raw_data_delivered: false,
+            source_identity_delivered: false,
             execution_authorized: false,
           },
         },
@@ -118,6 +125,9 @@ function adaptiveBazaarExtension(planHash: string) {
       info: {
         product: PRODUCT_ID,
         query_plan_hash: planHash,
+        delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY",
+        raw_data_delivered: false,
+        source_identity_delivered: false,
         execution_authorized: false,
       },
       schema: {
@@ -126,9 +136,12 @@ function adaptiveBazaarExtension(planHash: string) {
         properties: {
           product: { type: "string" },
           query_plan_hash: { type: "string" },
+          delivery_boundary: { type: "string", const: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY" },
+          raw_data_delivered: { type: "boolean", const: false },
+          source_identity_delivered: { type: "boolean", const: false },
           execution_authorized: { type: "boolean", const: false },
         },
-        required: ["product", "query_plan_hash", "execution_authorized"],
+        required: ["product", "query_plan_hash", "delivery_boundary", "raw_data_delivered", "source_identity_delivered", "execution_authorized"],
       },
     },
   };
@@ -141,10 +154,10 @@ function adaptivePaymentRequired(request: Request, config: CoinbaseX402Config, p
     resource: {
       url: resourceUrl,
       description:
-        "Question-adaptive, source-governed geopolitical and macro risk intelligence for autonomous agents. Payment is offered only after no-charge deliverability validation.",
+        "Question-adaptive Geomacro structured derived risk intelligence for autonomous agents. No raw source feed or source identity is sold or returned. Payment is offered only after no-charge deliverability validation.",
       mimeType: "application/json",
       serviceName: "Geomacro",
-      tags: ["geopolitical-risk", "macro-risk", "country-risk", "hot-topics", "risk-gate", "ai-agents"],
+      tags: ["geopolitical-risk", "macro-risk", "critical-minerals", "country-risk", "hot-topics", "risk-gate", "ai-agents"],
     },
     accepts: [coinbaseX402PaymentRequirements(config)],
     extensions: adaptiveBazaarExtension(planHash),
@@ -186,11 +199,19 @@ function finalResponse(
   config: CoinbaseX402Config,
   replayed = false,
 ) {
-  const previous = prepared.payment && typeof prepared.payment === "object" && !Array.isArray(prepared.payment)
-    ? prepared.payment as Record<string, unknown>
+  const safePrepared = sanitizeAndRehashPaidPreparedResponse(prepared);
+  const {
+    availability: _availability,
+    payment: _payment,
+    ...safeIntelligence
+  } = safePrepared;
+  assertGeomacroIntelligenceResponseContract(safeIntelligence);
+
+  const previous = safePrepared.payment && typeof safePrepared.payment === "object" && !Array.isArray(safePrepared.payment)
+    ? safePrepared.payment as Record<string, unknown>
     : {};
-  return {
-    ...prepared,
+  const response = {
+    ...safePrepared,
     payment: {
       ...previous,
       required: true,
@@ -206,6 +227,8 @@ function finalResponse(
       idempotent_replay: replayed,
     },
   };
+  assertPublicPaidOutputBoundary(response);
+  return response;
 }
 
 export const Route = createFileRoute("/api/x402/intelligence")({
@@ -231,6 +254,9 @@ export const Route = createFileRoute("/api/x402/intelligence")({
           exact_price_usdc: config.priceUsdc,
           topics: AGENT_QUERY_TOPICS,
           coverage: "data-driven; only currently deliverable subjects are payable",
+          delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY",
+          raw_data_delivered: false,
+          source_identity_delivered: false,
           execution_authorized: false,
         });
       },
@@ -350,11 +376,12 @@ export const Route = createFileRoute("/api/x402/intelligence")({
         let prepared: Record<string, unknown>;
         let preparedResponseSha256: string;
         try {
-          const intelligence = await assembleAgentQueryResponse({ plan, requestId, clientRequestId: parsed.client_request_id ?? null, priceUsdc: config.priceUsdc });
+          const assembled = await assembleAgentQueryResponse({ plan, requestId, clientRequestId: parsed.client_request_id ?? null, priceUsdc: config.priceUsdc });
+          const intelligence = sanitizeAndRehashPaidPreparedResponse(assembled as Record<string, unknown>);
           assertGeomacroIntelligenceResponseContract(intelligence);
           prepared = {
             ...intelligence,
-            availability: finalAvailability,
+            availability: publicAgentQueryAvailability(finalAvailability),
             payment: {
               required: true,
               provider: "coinbase_cdp_x402",
@@ -369,6 +396,7 @@ export const Route = createFileRoute("/api/x402/intelligence")({
               query_plan_bound: true,
             },
           };
+          assertPublicPaidOutputBoundary(prepared);
           const preparedResult = await prepareCoinbaseX402Delivery({
             paymentFingerprint,
             claimToken,
