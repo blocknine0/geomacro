@@ -6,6 +6,35 @@ Geomacro continuously evaluates every enabled sovereign country in `live_country
 
 The target universe is the full enabled sovereign registry. A country becomes paid-ready only when its current signed Risk Object is fresh, cryptographically valid, internally verified and commercially eligible under the existing commercial delivery policy.
 
+## Phase A global coverage engine
+
+Phase A adds a permanent registry-driven coverage layer underneath the signed Risk Object refresh.
+
+`live_country_category_coverage_matrix` is generated from every enabled canonical `live_country_registry` row crossed with exactly three domains:
+
+- `geopolitics` → existing source category `GEOPOLITICS`;
+- `macro` → existing source category `MACRO`;
+- `rare_earth` → existing source category `CRITICAL_MINERALS`.
+
+The coverage denominator is never a literal country count. At evaluation time:
+
+`expected_matrix_rows = enabled canonical registry rows × 3`
+
+The registry can expand or contract without a migration rewrite. The current source registry may include canonical ISO country/area rows used by ingestion, while the signed commercial refresh continues to apply the sovereign entity classifier described below. These are separate contracts and neither may substitute a historical `194` or `195` denominator for the live registry.
+
+Each matrix row exposes only sanitized operational state. It never exposes a raw source URL, provider payload, internal retrieval material or payment data. A row is `READY` only when:
+
+1. an enabled target has a successful observation inside the category freshness window; and
+2. at least one matching source path satisfies the full governed source-certification contract, including endpoint, rights, schema, freshness, provenance, independence, adapter, runtime and fallback evidence.
+
+A row that is not ready must carry an explicit `missing_reason`. A stale or missing primary path may become `FALLBACK_ELIGIBLE` only when a governed `GLOBAL_FALLBACK` path is itself fully certified. Fallback eligibility does not imply readiness and does not lower evidence or commercial-rights requirements.
+
+`live_country_category_coverage_matrix_status` is the invariant gate. It fails closed on wrong cardinality, an unexpected domain, a duplicate country/domain pair, a non-ready row without a reason, a false-ready row without certified evidence, or an invalid fallback row.
+
+The legacy `live_raw_source_runtime_100_status` and `live_raw_source_coverage_100_status` views remain backward-compatible, but their country denominator is now derived from the enabled registry rather than a fixed number.
+
+The production audit `bun run coverage:global:strict` independently verifies the same matrix invariants. Structural matrix completeness is not a claim that every row is commercially deliverable. “Any country” means the subject is requestable; insufficient, stale or uncertified evidence returns an unavailable/fail-closed state and must not be converted to zero risk.
+
 ## Safety invariant
 
 Continuous global coverage does not mean forced commercial availability.

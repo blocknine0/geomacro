@@ -7,9 +7,9 @@
  *   country + corridor + global shock/hot-topic coverage
  *   source certification + realtime pipeline freshness
  *
- * It never promotes a source and never charges/enables a product.
- * Unsupported, stale, uncertified or commercially ineligible coverage remains
- * fail-closed and must be reported as unavailable.
+ * Phase A additionally enforces a registry-driven country/area × three-domain
+ * matrix with explicit fail-closed missing reasons and certified fallback
+ * eligibility. It never promotes a source and never charges/enables a product.
  */
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -20,6 +20,7 @@ const EXPECTED_PROJECT =
 const OUTPUT =
   process.env.GLOBAL_COVERAGE_AUDIT_OUTPUT ??
   "artifacts/global-production-coverage/coverage.json";
+const PHASE_A_DOMAINS = ["geopolitics", "macro", "rare_earth"];
 
 function projectRef(url) {
   try {
@@ -82,6 +83,8 @@ const [
   network,
   launch,
   countries,
+  countryCategoryMatrix,
+  countryCategoryStatus,
   countryModules,
   regions,
   regionModules,
@@ -97,6 +100,12 @@ const [
   fetchSingle(db, "live_source_network_100_status"),
   fetchSingle(db, "live_source_network_launch_status"),
   fetchAll(db, "live_country_registry", "iso3,enabled", q => q.eq("enabled", true)),
+  fetchAll(
+    db,
+    "live_country_category_coverage_matrix",
+    "iso3,domain,raw_runtime_fresh,production_ready,realtime_fallback_eligible,certified_fresh_runtime_path_count,certified_fallback_path_count,availability_state,missing_reason",
+  ),
+  fetchSingle(db, "live_country_category_coverage_matrix_status"),
   fetchAll(db, "live_country_module_coverage_targets", "country_iso3,module_id,certification_state,coverage_state"),
   fetchAll(db, "live_region_zone_catalog", "zone_id"),
   fetchAll(db, "live_region_zone_module_coverage_targets", "zone_id,module_id,certification_state"),
@@ -118,6 +127,55 @@ const criticalMineralPaths = sourceUniverse.filter(
 const enabledCountries = countries.filter(r => bool(r.enabled));
 const unique = (rows, key) => new Set(rows.map(r => String(r[key] ?? ""))).size;
 const certified = rows => rows.filter(r => String(r.certification_state ?? "") === "CERTIFIED").length;
+
+const phaseAExpectedRows = enabledCountries.length * PHASE_A_DOMAINS.length;
+const phaseAExpectedDomains = new Set(PHASE_A_DOMAINS);
+const phaseAKeys = countryCategoryMatrix.map(
+  row => `${String(row.iso3 ?? "")}:${String(row.domain ?? "")}`,
+);
+const phaseAUniqueKeys = new Set(phaseAKeys);
+const phaseAUnknownDomains = countryCategoryMatrix.filter(
+  row => !phaseAExpectedDomains.has(String(row.domain ?? "")),
+);
+const phaseANonreadyMissingReason = countryCategoryMatrix.filter(
+  row => !bool(row.production_ready) && !String(row.missing_reason ?? "").trim(),
+);
+const phaseAInvalidReady = countryCategoryMatrix.filter(
+  row =>
+    bool(row.production_ready) &&
+    (!bool(row.raw_runtime_fresh) || Number(row.certified_fresh_runtime_path_count ?? 0) < 1),
+);
+const phaseAInvalidFallback = countryCategoryMatrix.filter(
+  row =>
+    bool(row.realtime_fallback_eligible) &&
+    (bool(row.production_ready) || Number(row.certified_fallback_path_count ?? 0) < 1),
+);
+const phaseACountryDomainCounts = new Map();
+for (const row of countryCategoryMatrix) {
+  const iso3 = String(row.iso3 ?? "");
+  if (!phaseACountryDomainCounts.has(iso3)) phaseACountryDomainCounts.set(iso3, new Set());
+  phaseACountryDomainCounts.get(iso3).add(String(row.domain ?? ""));
+}
+const phaseACountriesWithInvalidDomainSet = enabledCountries.filter(row => {
+  const observed = phaseACountryDomainCounts.get(String(row.iso3 ?? "")) ?? new Set();
+  return (
+    observed.size !== PHASE_A_DOMAINS.length ||
+    PHASE_A_DOMAINS.some(domain => !observed.has(domain))
+  );
+});
+const phaseAMatrixComplete =
+  countryCategoryMatrix.length === phaseAExpectedRows &&
+  phaseAUniqueKeys.size === phaseAExpectedRows &&
+  phaseAUnknownDomains.length === 0 &&
+  phaseANonreadyMissingReason.length === 0 &&
+  phaseAInvalidReady.length === 0 &&
+  phaseAInvalidFallback.length === 0 &&
+  phaseACountriesWithInvalidDomainSet.length === 0 &&
+  Number(countryCategoryStatus?.enabled_country_count ?? -1) === enabledCountries.length &&
+  Number(countryCategoryStatus?.required_domain_count ?? -1) === PHASE_A_DOMAINS.length &&
+  Number(countryCategoryStatus?.expected_matrix_rows ?? -1) === phaseAExpectedRows &&
+  Number(countryCategoryStatus?.actual_matrix_rows ?? -1) === countryCategoryMatrix.length &&
+  bool(countryCategoryStatus?.matrix_contract_complete);
 
 const countryExpected = enabledCountries.length * 16;
 const regionExpected = regions.length * 16;
@@ -176,11 +234,12 @@ const commercialSourceNetworkReady =
   bool(launch?.source_network_launch_complete);
 
 const result = {
-  schema_version: "geomacro-global-production-coverage-gate-1.0",
+  schema_version: "geomacro-global-production-coverage-gate-1.1",
   generated_at: generatedAt,
   authoritative_project_ref: EXPECTED_PROJECT,
   requested_scope: {
     categories: ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
+    canonical_domains: PHASE_A_DOMAINS,
     geographic_layers: ["COUNTRY", "CORRIDOR", "GLOBAL_SHOCK", "HOT_TOPIC"],
     realtime_backbone: "gdelt_gal/global-relevant",
   },
@@ -189,6 +248,17 @@ const result = {
     source_network_100: bool(network?.source_network_100_complete),
     source_network_launch: bool(launch?.source_network_launch_complete),
     enabled_country_count: enabledCountries.length,
+    phase_a_expected_matrix_rows: phaseAExpectedRows,
+    phase_a_actual_matrix_rows: countryCategoryMatrix.length,
+    phase_a_unique_matrix_rows: phaseAUniqueKeys.size,
+    phase_a_required_domain_count: PHASE_A_DOMAINS.length,
+    phase_a_unknown_domain_rows: phaseAUnknownDomains.length,
+    phase_a_nonready_rows_missing_reason: phaseANonreadyMissingReason.length,
+    phase_a_invalid_ready_rows: phaseAInvalidReady.length,
+    phase_a_invalid_fallback_rows: phaseAInvalidFallback.length,
+    phase_a_countries_with_invalid_domain_set: phaseACountriesWithInvalidDomainSet.length,
+    phase_a_matrix_contract_complete: phaseAMatrixComplete,
+    phase_a_status: countryCategoryStatus ?? null,
     country_module_expected: countryExpected,
     country_module_actual: countryModules.length,
     country_matrix_complete: countryMatrixComplete,
@@ -231,8 +301,11 @@ const result = {
   },
   claim_boundary: {
     "100_percent_inventory_is_not_100_percent_live_events": true,
+    "any_country_means_requestable_not_forced_deliverability": true,
     "no_current_signal_is_not_zero_risk": true,
+    "missing_evidence_never_implies_ready": true,
     "stale_or_unverified_source_is_not_deliverable": true,
+    "fallback_requires_certified_runtime_path": true,
     "commercial_rights_are_source_specific": true,
     "corridor_matrix_does_not_claim_vessel_level_or_route_path_modeling": true,
     "hot_topic_detection_does_not_claim_all_internet_events_are_observed": true,
@@ -250,6 +323,7 @@ const result = {
 
 result.ready_for_global_coverage_claim =
   result.structural.inventory_100 &&
+  result.structural.phase_a_matrix_contract_complete &&
   result.structural.country_matrix_complete &&
   result.structural.region_matrix_complete &&
   result.structural.corridor_matrix_complete &&
@@ -268,10 +342,10 @@ await fs.writeFile(OUTPUT, JSON.stringify(result, null, 2) + "\n", "utf8");
 console.log(JSON.stringify(result, null, 2));
 
 if (process.argv.includes("--strict") && !result.ready_for_global_coverage_claim) {
-  console.error("Global coverage strict gate failed: structural target coverage and/or realtime backbone is not currently healthy.");
+  console.error("Global coverage strict gate failed: Phase A matrix invariants, structural target coverage and/or realtime backbone are not currently healthy.");
   process.exit(1);
 }
 
 if (process.argv.includes("--strict")) {
-  console.log("PASS: structural global coverage is ready; commercial source certification remains separately fail-closed.");
+  console.log("PASS: Phase A matrix invariants and structural global coverage are ready; commercial source certification remains separately fail-closed.");
 }
