@@ -47,7 +47,7 @@ function AboutPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <StatusCard label="LIVE" title="Public intelligence" text="Risk Intelligence, separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices, and Ask Geomacro." />
           <StatusCard label="PRIVATE PILOT" title="Controlled machine context" text="Risk Gate, signed country/directional-corridor Risk Objects and scoped commercial delivery." />
-          <StatusCard label="TECHNICAL PROOF" title="Arc / Circle implementation" text="Testnet USDC, prediction-market and programmable-finance proof remains separate from the core commercial product." />
+          <StatusCard label="TECHNICAL PROOF" title="Programmable-finance implementation" text="Arc, Circle, prediction-market and programmable-finance proof remains separate from the core commercial product and is exposed only within its stated runtime boundary." />
         </div>
       </section>
 
@@ -77,7 +77,7 @@ function AboutPage() {
             "Not financial, legal, compliance or investment advice.",
             "Risk Gate does not authorize or execute customer transactions.",
             "No independent external security certification or production SLA is claimed unless actually completed or contracted.",
-            "Testnet USDC and Testnet market activity are not real-money production settlement.",
+            "Evaluation-network activity and technical proof are not represented as production settlement.",
             "Customer policy and final execution remain customer-controlled.",
             "Prediction Markets, Bridge and Swap are separate technical proof, not the commercial risk-intelligence product.",
           ].map((item) => (
@@ -93,7 +93,7 @@ function AboutPage() {
               <summary className="cursor-pointer list-none text-lg font-semibold">Privacy notice <span className="ml-2 text-xs font-normal text-muted-foreground">Open details</span></summary>
               <div className="mt-5 space-y-4 text-sm leading-7 text-muted-foreground">
                 <p>Public intelligence can be viewed without an account or wallet. Standard hosting, security and operational infrastructure may process ordinary request metadata needed to deliver and protect the service.</p>
-                <p>Interactive Testnet or pilot features can process information intentionally provided by the user, including verified wallet or credential metadata, usage records, payment references and structured feedback. Never send a seed phrase, private key or unnecessary confidential information.</p>
+                <p>Interactive evaluation or pilot features can process information intentionally provided by the user, including verified wallet or credential metadata, usage records, payment references and structured feedback. Never send a seed phrase, private key or unnecessary confidential information.</p>
                 <p>Private Pilot data minimization, retention, access and deletion requirements should be defined before sensitive business data is introduced.</p>
                 <p>Privacy questions: <a href="mailto:contact@geomacro.live" className="text-primary hover:underline">contact@geomacro.live</a>.</p>
               </div>
@@ -104,7 +104,7 @@ function AboutPage() {
               <div className="mt-5 space-y-4 text-sm leading-7 text-muted-foreground">
                 <p><span className="font-medium text-foreground">Public product:</span> informational risk intelligence that should be independently evaluated for the user&apos;s purpose.</p>
                 <p><span className="font-medium text-foreground">Private Pilot and APIs:</span> access is governed by the scope actually agreed with the customer, including permitted use, support, security and data handling.</p>
-                <p><span className="font-medium text-foreground">Technical proof:</span> Arc, Circle, CCTP, Bridge & Swap and prediction-market surfaces remain experimental or Testnet proof unless a page explicitly states otherwise.</p>
+                <p><span className="font-medium text-foreground">Technical proof:</span> Arc, Circle, CCTP, Bridge & Swap and prediction-market surfaces remain controlled technical proof unless a page and live runtime explicitly state otherwise.</p>
                 <p><span className="font-medium text-foreground">Acceptable use:</span> do not bypass authentication, entitlement, rate-limit or security controls, misuse credentials, submit secrets through public forms or represent Geomacro output as an authorization it did not issue.</p>
               </div>
             </details>
