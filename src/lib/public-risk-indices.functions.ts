@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { assertSameOrigin } from "./origin-guard";
-import { readPublicRiskIndicesFromEdge } from "./public-risk-edge.server";
+import { readB2PublicRisk } from "./b2-live.server";
+import { riskIndicesFromGlobalRisk } from "./risk-indices-from-global-risk";
 import type { PublicRiskIndices } from "./risk-indices.types";
 
 const EmptyInput = z.object({}).strict();
@@ -15,23 +16,28 @@ export type PublicRiskIndicesResponse =
       retryable: true;
     };
 
+/**
+ * Customer-facing production boundary.
+ *
+ * Risk Indices are served from the verified B2 continuity package. This path
+ * intentionally does not contact the Supabase Edge Function: Supabase is a
+ * recovery/ingestion system, not a customer-facing production dependency.
+ */
 export const getPublicRiskIndices = createServerFn({ method: "POST" })
   .validator((input: unknown) => EmptyInput.parse(input))
   .handler(async (): Promise<PublicRiskIndicesResponse> => {
     assertSameOrigin();
 
-    try {
-      return { ok: true, data: await readPublicRiskIndicesFromEdge() };
-    } catch (error) {
-      console.error(
-        "[public-risk-indices] authoritative edge read unavailable",
-        error instanceof Error ? error.message : "unknown error",
-      );
-      return {
-        ok: false,
-        code: "RISK_INDICES_UNAVAILABLE",
-        message: "The verified risk indices are temporarily unavailable. Please retry.",
-        retryable: true,
-      };
+    const risk = await readB2PublicRisk();
+    if (risk) {
+      return { ok: true, data: riskIndicesFromGlobalRisk(risk) };
     }
+
+    console.error("[public-risk-indices] verified B2 public risk snapshot unavailable");
+    return {
+      ok: false,
+      code: "RISK_INDICES_UNAVAILABLE",
+      message: "The latest verified risk package is temporarily unavailable. Please retry.",
+      retryable: true,
+    };
   });
