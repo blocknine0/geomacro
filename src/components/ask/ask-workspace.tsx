@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowRight,
   Loader2,
@@ -10,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/foundation/async-states";
-import { askGeomacro, type AskAnswer } from "@/lib/ask-geomacro.functions";
+import type { AskAnswer } from "@/lib/ask-geomacro.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
 import {
   PUBLIC_ASK_REQUEST_TIMEOUT_MS,
@@ -28,8 +27,34 @@ const SUGGESTIONS = [
 
 const MAX_LEN = 300;
 
+type PublicAskResponse =
+  | { ok: true; data: AskAnswer }
+  | { ok: false; error?: { code?: string; message?: string } };
+
+async function requestPublicAsk(question: string): Promise<AskAnswer> {
+  const response = await fetch("/api/public-ask", {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-Geomacro-Question": question.slice(0, MAX_LEN),
+    },
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+
+  const payload = (await response.json().catch(() => null)) as PublicAskResponse | null;
+  if (!response.ok || !payload || payload.ok !== true) {
+    const message =
+      payload && payload.ok === false && payload.error?.message
+        ? payload.error.message
+        : `Ask Geomacro request failed (${response.status}).`;
+    throw new Error(message);
+  }
+
+  return payload.data;
+}
+
 export function AskWorkspace() {
-  const run = useServerFn(askGeomacro);
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState<AskAnswer | null>(null);
   const [asked, setAsked] = useState<string | null>(null);
@@ -50,7 +75,7 @@ export function AskWorkspace() {
 
       try {
         const result = await withPublicRuntimeTimeout(
-          run({ data: { question: question.slice(0, MAX_LEN) } }),
+          requestPublicAsk(question),
           PUBLIC_ASK_REQUEST_TIMEOUT_MS,
           "Ask Geomacro request timed out.",
         );
@@ -63,7 +88,7 @@ export function AskWorkspace() {
         if (seq.current === id) setLoading(false);
       }
     },
-    [loading, run],
+    [loading],
   );
 
   const canSubmit = query.trim().length >= 4 && !loading;
