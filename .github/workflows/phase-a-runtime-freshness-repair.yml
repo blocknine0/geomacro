@@ -3,6 +3,7 @@ name: Phase A Runtime Freshness Repair
 on:
   push:
     branches:
+      - main
       - fix/phase-a-runtime-freshness-20261002
     paths:
       - "scripts/ops/phase-a-runtime-freshness-repair.mjs"
