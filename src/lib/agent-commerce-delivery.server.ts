@@ -54,7 +54,10 @@ function normalizeBounded(value: string | null | undefined, max: number) {
 }
 
 function commerceLedgerBackend(): CommerceLedgerBackend {
-  const raw = String(process.env.GEOMACRO_COMMERCE_LEDGER_BACKEND ?? "supabase")
+  const raw = String(
+    process.env.GEOMACRO_COMMERCE_LEDGER_BACKEND ??
+      (process.env.NODE_ENV === "production" ? "durable_object" : "supabase"),
+  )
     .trim()
     .toLowerCase();
   if (raw === "supabase" || raw === "durable_object") return raw;
