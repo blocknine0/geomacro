@@ -68,11 +68,9 @@ export function AgentCommerceStatus({ compact = false }: { compact?: boolean }) 
 
   const label = state.mode === "production"
     ? `x402 agent access · live${state.priceUsdc ? ` · ${state.priceUsdc} USDC/call` : ""}`
-    : state.mode === "testnet"
-      ? "x402 agent access · testnet proof"
-      : state.mode === "checking"
-        ? "x402 agent access · checking status"
-        : "x402 agent access · controlled pre-launch";
+    : state.mode === "checking"
+      ? "x402 agent access · checking status"
+      : "x402 agent access · controlled";
 
   if (compact) {
     return (
@@ -96,9 +94,7 @@ export function AgentCommerceStatus({ compact = false }: { compact?: boolean }) 
       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
         {state.mode === "production"
           ? `The paid endpoint is advertising production x402 access${state.network ? ` on ${state.network}` : ""}. The live HTTP 402 challenge remains the payment authority.`
-          : state.mode === "testnet"
-            ? "The machine-payment path is configured for testnet proof only. Testnet settlement is not commercial revenue."
-            : "Real-funds payment remains fail-closed until the coordinated production launch gates and owner authorization are satisfied."}
+          : "Machine access follows the current runtime policy. The live HTTP challenge and health contract remain the authority for payment and access state."}
       </p>
     </div>
   );
