@@ -97,7 +97,7 @@ function DocsIndexPage() {
             Geomacro is geopolitical and macro risk intelligence infrastructure. These documents explain how evidence becomes structured intelligence, how the separate public Risk Indices are produced and verified, how machine-readable Risk Objects and Risk Gate work, and which product surfaces are live, Private Pilot, technical proof or planned.
           </p>
           <p className="mt-4 leading-7 text-muted-foreground">
-            The current public indices preserve the versioned <span className="font-mono text-foreground">gri-v1.2.0</span> parent methodology and verified proof lineage. Historical GRI material therefore remains available as a methodology and proof reference rather than a second live headline product. Prediction markets, Arc Testnet, CCTP, Bridge & Swap and smart-contract execution remain secondary technical-proof layers.
+            The current public indices preserve the versioned <span className="font-mono text-foreground">gri-v1.2.0</span> parent methodology and verified proof lineage. Historical GRI material therefore remains available as a methodology and proof reference rather than a second live headline product. Prediction markets, programmable-finance adapters, bridge/swap flows and smart-contract execution remain secondary technical-proof layers.
           </p>
 
           <div className="mt-8 rounded-lg border border-border bg-card/30 p-4">
