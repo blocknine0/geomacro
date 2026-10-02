@@ -15,7 +15,7 @@ concurrency:
 jobs:
   public-production-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     env:
       BASE_URL: https://geomacro.live
     steps:
@@ -64,16 +64,56 @@ jobs:
             grep -Fq "$marker" "$body"
           done
 
-      - name: Verify core production pages respond
+      - name: Verify rendered production page markers
         shell: bash
         run: |
           set -euo pipefail
-          for path in / /intelligence /global-risk /ask-geomacro /data-api /institutional /contact; do
-            code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o /tmp/page -w '%{http_code}' "$BASE_URL$path")"
+          routes="$(cat <<'EOF'
+          /|Global risk intelligence
+          /intelligence|Risk Intelligence
+          /global-risk|Geomacro Risk Indices
+          /ask-geomacro|Ask Geomacro
+          /data-api|GOVERNED DATA
+          /institutional|COMMERCIAL RISK INTELLIGENCE
+          /risk-gate|Risk Gate
+          /ecosystem|Ecosystem & partnerships
+          /research|Research & methodology
+          /docs|Geomacro public documentation
+          /about|About & trust
+          /roadmap|What works today, and what comes next.
+          /contact|Bring the workflow.
+          /testnet-access|Geomacro Testnet Access
+          /demo|Agentic Commerce Demo
+          /pipeline|Intelligence Pipeline
+          /onchain|Arc / Onchain
+          EOF
+          )"
+
+          while IFS='|' read -r path marker; do
+            path="$(printf '%s' "$path" | xargs)"
+            marker="$(printf '%s' "$marker" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+            [[ -z "$path" ]] && continue
+
+            body="$(mktemp)"
+            code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL$path")"
             if [[ "$code" != "200" ]]; then
               echo "::error title=Production page unavailable::$path returned HTTP $code"
-              head -c 500 /tmp/page || true
+              head -c 1000 "$body" || true
               exit 1
             fi
-          done
-          echo "PASS: core production pages returned HTTP 200."
+
+            if grep -Fq "This page didn't load" "$body"; then
+              echo "::error title=Production route rendered error boundary::$path returned HTTP 200 but rendered the root error page."
+              head -c 1000 "$body" || true
+              exit 1
+            fi
+
+            if ! grep -Fq "$marker" "$body"; then
+              echo "::error title=Production route content missing::$path returned HTTP 200 but did not render expected marker: $marker"
+              head -c 1500 "$body" || true
+              exit 1
+            fi
+
+            rm -f "$body"
+            echo "PASS: $path rendered expected production content."
+          done <<< "$routes"

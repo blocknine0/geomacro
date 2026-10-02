@@ -34,7 +34,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { preferredNetwork } from "@/lib/arc";
 import { shortAddr } from "@/components/section-ui";
 
 function isWalletRoute(pathname: string) {
@@ -65,7 +64,7 @@ function ConnectButton() {
           className="gap-2 border border-border/50 px-3 text-muted-foreground hover:text-foreground sm:h-10 sm:px-4"
         >
           <Wallet className="h-4 w-4" />
-          <span className="hidden sm:inline">{connecting ? "Connecting…" : "Connect testnet wallet"}</span>
+          <span className="hidden sm:inline">{connecting ? "Connecting…" : "Connect wallet"}</span>
           <span className="sm:hidden">{connecting ? "…" : "Connect"}</span>
         </Button>
         {error && (
@@ -137,8 +136,8 @@ const EXPLORE_NAV = [
 ] as const;
 
 const TECHNICAL_NAV = [
-  { to: "/testnet-access", label: "Testnet API", description: "Wallet-first developer API and Testnet pay-per-call access" },
-  { to: "/demo", label: "Agentic Commerce Demo", description: "Test Risk Gate, machine output and x402 proof" },
+  { to: "/testnet-access", label: "Testnet API", description: "Credential, quote and settlement verification on the test environment" },
+  { to: "/demo", label: "Agentic Commerce Demo", description: "Inspect Risk Gate, machine output and x402 proof" },
   { to: "/pipeline", label: "Data Pipeline", description: "Technical data-processing surface" },
   { to: "/onchain", label: "Arc / Onchain", description: "Programmable-finance technical proof" },
 ] as const;
@@ -237,7 +236,7 @@ function TechnicalProofMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          Testable implementation proof
+          Implementation proof
         </DropdownMenuLabel>
         {TECHNICAL_NAV.map((item) => (
           <DropdownMenuItem key={item.to} asChild>
@@ -275,8 +274,7 @@ function MobileGroup({ title, items }: { title: string; items: ReadonlyArray<{ t
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { network, address } = useWallet();
-  const activeNet = network ?? preferredNetwork();
+  const { address } = useWallet();
   const exploreMobile = EXPLORE_NAV.map(({ to, label }) => ({ to, label }));
   const technicalMobile = TECHNICAL_NAV.map(({ to, label }) => ({ to, label }));
   const accountMobile = address ? [{ to: "/portfolio" as const, label: "Portfolio" }] : [];
@@ -423,11 +421,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-              <span>Public intelligence live · Risk Gate controlled Private Pilot · real-money x402 fail-closed until production activation</span>
-              <details>
-                <summary className="cursor-pointer">Arc technical context</summary>
-                <span className="mt-1 block">{activeNet.chainName} · Chain {activeNet.chainIdDec}</span>
-              </details>
+              <span>Public intelligence live · Risk Gate controlled Private Pilot · real-money x402 fail-closed until production activation · machine access follows live runtime policy</span>
+              <span>Production status is verified from live service contracts, not static marketing copy.</span>
             </div>
           </div>
         </footer>

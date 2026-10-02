@@ -12,6 +12,10 @@ import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/foundation/async-states";
 import { askGeomacro, type AskAnswer } from "@/lib/ask-geomacro.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
+import {
+  PUBLIC_ASK_REQUEST_TIMEOUT_MS,
+  withPublicRuntimeTimeout,
+} from "@/lib/public-runtime-timeout";
 
 const SUGGESTIONS = [
   "What changed today?",
@@ -45,7 +49,11 @@ export function AskWorkspace() {
       setAsked(question);
 
       try {
-        const result = await run({ data: { question: question.slice(0, MAX_LEN) } });
+        const result = await withPublicRuntimeTimeout(
+          run({ data: { question: question.slice(0, MAX_LEN) } }),
+          PUBLIC_ASK_REQUEST_TIMEOUT_MS,
+          "Ask Geomacro request timed out.",
+        );
         if (seq.current === id) setAnswer(result);
       } catch (err) {
         if (seq.current === id) {
