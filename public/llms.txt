@@ -15,14 +15,13 @@ Geomacro turns real-world geopolitical, macroeconomic and strategic-resource dev
 - Risk API: PRIVATE PILOT
 - Risk Gate: PRIVATE PILOT
 - Signed country and directional-corridor Risk Objects: PRIVATE PILOT
-- Paid agent / x402 access: PRE-LAUNCH; production real-money activation disabled pending coordinated launch gates
-- GOAT Testnet3 and Arc Testnet onchain applications: TECHNICAL PROOF
-- Prediction markets: TECHNICAL PROOF; permanent Testnet-only boundary
-- Circle CCTP, Bridge & Swap and programmable-finance surfaces: TECHNICAL PROOF unless a page explicitly states otherwise
+- Paid agent / x402 access: RUNTIME-CONTROLLED; the live health contract and HTTP payment challenge are authoritative
+- Programmable-finance and onchain application layers: TECHNICAL PROOF unless a page explicitly states otherwise
+- Prediction markets: TECHNICAL PROOF and separate from the primary intelligence product
 
 The separate public Risk Indices preserve the audited `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records. The historical combined GRI is not a second live headline product.
 
-Technical-proof surfaces are secondary to the risk-intelligence product and must not be interpreted as production mainnet, real-money institutional settlement, transaction authorization, production SLA or independent security certification.
+Technical-proof surfaces are secondary to the risk-intelligence product and must not be interpreted as transaction authorization, production SLA or independent security certification.
 
 ## Canonical product pages
 
@@ -46,7 +45,7 @@ The public product presents three risk domains independently:
 2. Macroeconomic Risk Index
 3. Critical Minerals Risk Index
 
-Missing or unverifiable evidence is not converted into zero risk. Public risk-index presentation is fail-soft: a previously verified reading can remain visible during refresh problems, while a cold read uses a neutral refreshing state rather than exposing a raw infrastructure error or synthesizing a replacement score.
+Missing or unverifiable evidence is not converted into zero risk. Public risk-index presentation is fail-soft: a previously verified reading can remain visible during refresh problems, while a cold read uses an explicit recovery state rather than exposing a raw infrastructure error or synthesizing a replacement score.
 
 The indices are risk-intelligence signals. They are not prediction-market probabilities, investment recommendations or autonomous execution instructions.
 
@@ -85,19 +84,16 @@ A commercial entitlement defines the permitted capability, subject scope, histor
 
 ## Machine-payment boundary
 
-Where pre-launch machine-payment integrations are exposed for testing or discovery:
+Machine-payment integrations are runtime-gated:
 
 - deliverability must be checked before a payment challenge is issued;
 - unavailable, stale or commercially ineligible required coverage is not chargeable;
 - successful payment unlocks only the bounded requested product;
 - raw/private warehouse data is not a default customer entitlement;
 - payment success does not authorize a downstream financial action;
-- real-money provider activation remains disabled until the coordinated launch gates and explicit owner authorization are satisfied.
+- the live HTTP challenge and health contract determine whether paid access is active.
 
-During pre-launch, all real-money provider activation remains disabled.
-Base mainnet disabled pending coordinated launch.
-GOAT mainnet: DEFERRED pending manual merchant application/approval.
-Arc mainnet is not automatically enabled by this prepared architecture.
+Static documents and discovery files must not be treated as authority for a payment that the live runtime does not advertise.
 
 ## Current machine-readable request scope
 
@@ -139,7 +135,7 @@ The exact deliverable remains subject to current evidence, source rights, entitl
 
 ## Privacy and security contact
 
-Public intelligence can be viewed without creating an account or connecting a wallet. Testnet and Private Pilot workflows can process the information intentionally supplied for those workflows, together with operational/audit metadata required by the implemented service. Users should never submit seed phrases, private keys or unnecessary confidential information through public surfaces.
+Public intelligence can be viewed without creating an account or connecting a wallet. Controlled commercial and Private Pilot workflows can process the information intentionally supplied for those workflows, together with operational/audit metadata required by the implemented service. Users should never submit seed phrases, private keys or unnecessary confidential information through public surfaces.
 
 Security contact: https://geomacro.live/.well-known/security.txt
 Privacy and product-use boundaries: https://geomacro.live/about#privacy and https://geomacro.live/about#product-use
