@@ -4,7 +4,7 @@ import {
 } from "./geomacro-intelligence-contract";
 
 const INTERNAL_KEY = /(^|_)(source|provider|licen[cs]e|provenance|retrieval)(_|$)/i;
-const CURRENT_PROVIDER_IDENTITY = /\b(?:world bank|gdelt|usgs|u\.s\. geological survey)\b/i;
+const CURRENT_PROVIDER_IDENTITY = /\b(?:world[\s_-]+bank|gdelt|usgs|u\.?s\.?[\s_-]+geological[\s_-]+survey)\b/i;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
