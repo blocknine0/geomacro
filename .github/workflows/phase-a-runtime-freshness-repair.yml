@@ -11,6 +11,8 @@ on:
       - "supabase/migrations/20261002093748_fix_source_certification_promotion_pgcrypto_path.sql"
       - ".github/workflows/phase-a-runtime-freshness-repair.yml"
       - "src/__tests__/phase-a-runtime-freshness-repair-static.test.ts"
+  schedule:
+    - cron: "*/15 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -78,7 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/phase-a-runtime-freshness-repair.mjs | tee phase-a-runtime-freshness-repair.json
-          jq -e '.ok == true and .payment_or_settlement_enabled == false and (.status.production_ready_rows|tonumber) == (.expected_matrix_rows|tonumber)' phase-a-runtime-freshness-repair.json >/dev/null
+          jq -e '.ok == true and .payment_or_settlement_enabled == false and (.status.production_ready_rows|tonumber) == (.expected_matrix_rows|tonumber) and (.target_rows_written|tonumber) == (.expected_matrix_rows|tonumber)' phase-a-runtime-freshness-repair.json >/dev/null
 
       - name: Independently verify registry x three-domain matrix contract
         shell: bash
