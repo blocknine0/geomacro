@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
+import { productionHistoryOnlyMigrationNames } from "./db/production-history-only.mjs";
 
 export async function collectMigrationEndpointManifest(root = process.cwd()) {
   const migrationsDir = path.join(root, "supabase", "migrations");
@@ -30,9 +31,14 @@ export async function collectMigrationEndpointManifest(root = process.cwd()) {
     "974_global_source_p0_expansion.sql",
     "981_three_category_source_candidates.sql",
   ]);
+  const productionHistoryOnly = productionHistoryOnlyMigrationNames(root);
   // Phase-B endpoint census remains frozen at 933. Later disabled source
-  // candidates have separate certification and must not silently alter it.
-  const sourceFiles = files.filter((file) => !excludedMigrationNames.has(path.basename(file)));
+  // candidates and exact production-history-only recovery files are not active
+  // endpoint-surface declarations and must not silently alter the census.
+  const sourceFiles = files.filter((file) => {
+    const name = path.basename(file);
+    return !excludedMigrationNames.has(name) && !productionHistoryOnly.has(name);
+  });
   const urlMap = new Map();
 
   for (const file of sourceFiles) {

@@ -23,7 +23,7 @@
     "gri:validate:v11": "node scripts/validate-gri.js",
     "gri:replay": "node scripts/replay-gri-history-v12.js",
     "gri:replay:v11": "node scripts/replay-gri-history.js",
-    "db:safety": "node scripts/db/check-migration-safety.mjs",
+    "db:safety": "node scripts/db/check-migration-safety-history-aware.mjs",
     "db:target": "node scripts/db/assert-authoritative-supabase.mjs",
     "db:verify-core": "node scripts/db/verify-core-schema.mjs",
     "hosting:verify": "node scripts/ops/verify-hosting-alignment.mjs",

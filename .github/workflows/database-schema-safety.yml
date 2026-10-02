@@ -5,6 +5,8 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'scripts/db/**'
+      - 'config/production-history-only-migrations.json'
+      - 'config/production-history-line-endings.json'
       - '.github/workflows/database-schema-safety.yml'
       - 'package.json'
   push:
@@ -12,7 +14,10 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'scripts/db/**'
+      - 'config/production-history-only-migrations.json'
+      - 'config/production-history-line-endings.json'
       - '.github/workflows/database-schema-safety.yml'
+      - 'package.json'
 
 permissions:
   contents: write
@@ -27,8 +32,8 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '22'
-      - name: Reject destructive migrations and missing baseline
-        run: node scripts/db/check-migration-safety.mjs
+      - name: Reject destructive canonical migrations and verify immutable production history
+        run: node scripts/db/check-migration-safety-history-aware.mjs
 
   disposable-migration-replay:
     runs-on: ubuntu-latest
@@ -47,11 +52,13 @@ jobs:
           echo "Replay revision: $(git rev-parse HEAD)"
           git show -s --format='Replay commit: %H %s' HEAD
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Verify and isolate production-history-only migrations
+        run: node scripts/db/production-history-only.mjs quarantine .ci-history-only-migrations
       - name: Start disposable local Supabase
         env:
           SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
         run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,kong,gotrue,realtime,postgrest,storage-api,postgres-meta,mailpit
-      - name: Replay the full migration chain from zero
+      - name: Replay the canonical migration chain from zero
         run: supabase db reset --local --no-seed
       - name: Stop disposable Supabase
         if: always()
@@ -71,7 +78,8 @@ jobs:
             "workflow": "${GITHUB_WORKFLOW}",
             "run_id": "${GITHUB_RUN_ID}",
             "cli_version": "2.117.0",
-            "replay_command": "supabase db reset --local --no-seed"
+            "replay_command": "supabase db reset --local --no-seed",
+            "production_history_only_manifest": "config/production-history-only-migrations.json"
           }
           EOF
           git config user.name "github-actions[bot]"
