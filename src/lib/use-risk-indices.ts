@@ -3,6 +3,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { getPublicRiskIndices } from "./public-risk-indices.functions";
 import type { PublicRiskIndices } from "./risk-indices.types";
 import { reportError, type UserError } from "./user-errors";
+import {
+  PUBLIC_DATA_REQUEST_TIMEOUT_MS,
+  withPublicRuntimeTimeout,
+} from "./public-runtime-timeout";
 
 export type RiskIndicesStatus = "loading" | "ready" | "updating" | "error";
 
@@ -22,7 +26,11 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
     async function load() {
       setStatus(hasData.current ? "updating" : "loading");
       try {
-        const response = await run({ data: {} });
+        const response = await withPublicRuntimeTimeout(
+          run({ data: {} }),
+          PUBLIC_DATA_REQUEST_TIMEOUT_MS,
+          "Risk Indices request timed out.",
+        );
         if (cancelled) return;
         if (!response.ok) throw new Error(response.message);
 
