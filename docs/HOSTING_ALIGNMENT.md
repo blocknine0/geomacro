@@ -2,13 +2,14 @@
 
 ## Source-of-truth contract
 
-Geomacro uses three deliberately separated layers:
+Geomacro uses four deliberately separated layers:
 
 1. **GitHub `blocknine0/geomacro` `main`** is the application source authority. Code, routes, UI, server handlers, tests and deployment contracts are changed through reviewed GitHub branches and pull requests.
-2. **External Supabase project `ldpwajisioljyjtojvfx`** is the production application database authority. Lovable Cloud or hosting-injected Supabase projects must never silently replace it.
-3. **Lovable hosting** is the frontend/SSR hosting surface. The existing Lovable project is linked to the Lovable-created GitHub repository `blocknine0/geomacro-160c8e56`, so canonical `main` is mirrored one way into that repository before Lovable picks up the change.
+2. **Backblaze B2 + the Cloudflare Durable Object commerce control plane** provide the primary continuity path for customer-facing production intelligence and durable commercial state. Production serving must not require a healthy Supabase project.
+3. **External Supabase project `ldpwajisioljyjtojvfx`** is the pinned Geomacro Supabase project for trusted ingestion, recovery and explicitly authorized fallback operations. Customer-facing production defaults to Supabase `standby`; it is not the mandatory primary runtime database.
+4. **Lovable hosting** is the frontend/SSR hosting surface. The existing Lovable project is linked to the Lovable-created GitHub repository `blocknine0/geomacro-160c8e56`, so canonical `main` is mirrored one way into that repository before Lovable picks up the change.
 
-GitHub `main` remains the application source authority; the Lovable-linked repository is a deployment mirror only.
+GitHub `main` remains the application source authority; the Lovable-linked repository is a deployment mirror only. B2/Durable Object continuity and the pinned Supabase recovery project are deliberately separate from the hosting layer.
 
 This separation keeps `blocknine0/geomacro` as the permanent engineering source of truth while preserving the existing Lovable-hosted frontend without spending Lovable chat credits for normal product development.
 
@@ -81,22 +82,38 @@ The strict live acceptance gate requires the portable `.json` resource, the comm
 
 During prelaunch, both committed x402 discovery representations remain fail-closed: no paid production resources are advertised and production funds remain unauthorized.
 
-## Supabase runtime contract
+## Supabase standby runtime contract
 
-Hosted SSR/API runtime:
+Customer-facing hosted SSR/API production defaults to:
+
+`GEOMACRO_SUPABASE_RUNTIME_MODE=standby`
+
+The allowed runtime modes are:
+
+- `standby`: production default. Application Supabase reads/writes are disabled so B2 and the durable commerce control plane remain the serving/control path.
+- `standby_read`: explicit recovery mode. Read fallback to the pinned Supabase project is allowed, but writes remain disabled.
+- `primary`: explicit operator/CI/ingestion mode. Supabase reads and writes are allowed where the calling code permits them.
+
+The runtime still recognizes these server-only credentials for recovery/ingestion or an explicitly enabled fallback:
 
 - `APP_SUPABASE_URL`
 - `APP_SUPABASE_ANON_KEY`
 - `APP_SUPABASE_SERVICE_ROLE_KEY`
-
-Trusted GitHub Actions / ingestion / operations:
-
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-The application and trusted-operation URLs must resolve to project ref `ldpwajisioljyjtojvfx` for production operations.
+Any application/trusted-operation Supabase URL used in production must resolve to project ref `ldpwajisioljyjtojvfx`. Lovable/hosting-injected Supabase projects must never silently replace it.
 
 `VITE_SUPABASE_*` is not a production database selector. Browser public reads use the same-origin `/api/public-data-proxy` and never rely on hosting-injected Supabase credentials.
+
+### B2 continuity during Supabase quota restriction
+
+If the pinned Supabase project is restricted specifically for `exceed_egress_quota`, B2 snapshot maintenance does not manufacture a new snapshot or new freshness. It re-verifies the last trusted B2 objects against their stored proof, byte length, SHA-256, gzip restore and schema/source/generated-at bindings, then records a preservation no-op with:
+
+- `wrote_new_snapshot=false`
+- `freshness_advanced=false`
+
+The public live snapshot and governed agent-module snapshot use this rule. Governed preservation additionally re-verifies the derived-state-only boundary and commercial eligibility of stored entries. Any unrelated authentication, schema, network, integrity or logic failure remains fail-closed.
 
 ## Frontend boundary
 
@@ -106,9 +123,10 @@ This keeps frontend behavior stable even if a host injects unrelated `VITE_SUPAB
 
 ## Backend boundary
 
-- `src/lib/supabase-app.server.ts` handles application server access.
-- `src/lib/risk-supabase.server.ts` is service-role-only, has a hard timeout, and accepts only the authoritative production project for Risk Object/Risk Gate infrastructure.
-- privileged diagnostic scripts use only server-side `SUPABASE_*` / `APP_SUPABASE_*` credentials.
+- `src/lib/supabase-runtime-mode.server.ts` owns the production `primary | standby | standby_read` policy and defaults customer-facing production to `standby`.
+- `src/lib/supabase-app.server.ts` returns no application Supabase client when the runtime mode does not permit a fallback.
+- `src/lib/risk-supabase.server.ts` remains service-role-only, project-pinned and bounded by the same recovery/operational safety contract for code paths that explicitly use it.
+- privileged diagnostic and ingestion scripts use only server-side `SUPABASE_*` / `APP_SUPABASE_*` credentials.
 
 No service-role key may be exposed in browser code or through the public read proxy.
 
@@ -127,10 +145,10 @@ The guard fails if the repository drifts back toward:
 - npm lockfile ambiguity;
 - missing Lovable-compatible Vite build configuration;
 - missing canonical-to-Lovable mirror contract;
-- incomplete hosted Supabase env documentation;
+- incomplete hosted/recovery Supabase env documentation;
 - browser-selected `VITE_SUPABASE_*` production data access;
 - service-role use in the public read proxy;
-- Risk Gate database access outside the authoritative Supabase project.
+- Supabase access outside the pinned Geomacro project when a recovery/operational path is explicitly enabled.
 
 ## Publishing incident rule
 
