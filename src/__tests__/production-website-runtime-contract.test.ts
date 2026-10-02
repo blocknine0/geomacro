@@ -21,6 +21,8 @@ describe("production website runtime contract", () => {
     const hook = read("src/lib/use-risk-indices.ts");
     const server = read("src/lib/public-risk-indices.functions.ts");
     expect(hook).toContain("useServerFn(getPublicRiskIndices)");
+    expect(hook).toContain("withPublicRuntimeTimeout");
+    expect(hook).toContain("PUBLIC_DATA_REQUEST_TIMEOUT_MS");
     expect(hook).not.toContain("supabase.co");
     expect(server).toContain("readB2PublicRisk");
     expect(server).not.toContain("readPublicRiskIndicesFromEdge");
@@ -34,6 +36,42 @@ describe("production website runtime contract", () => {
     expect(intel).not.toContain("getAppSupabase");
     expect(ask).toContain("readB2PublicIntelligence");
     expect(ask).not.toContain("getAppSupabase");
+  });
+
+  it("bounds every interactive public server-function wait so loading cannot hang forever", () => {
+    const timeout = read("src/lib/public-runtime-timeout.ts");
+    const intelligence = read("src/lib/use-intelligence.ts");
+    const risk = read("src/lib/use-risk-indices.ts");
+    const ask = read("src/components/ask/ask-workspace.tsx");
+    const event = read("src/components/intelligence/event-detail-workspace.tsx");
+
+    expect(timeout).toContain("PUBLIC_DATA_REQUEST_TIMEOUT_MS = 10_000");
+    expect(timeout).toContain("PUBLIC_ASK_REQUEST_TIMEOUT_MS = 25_000");
+    expect(timeout).toContain("Promise.race");
+    for (const surface of [intelligence, risk, ask, event]) {
+      expect(surface).toContain("withPublicRuntimeTimeout");
+    }
+  });
+
+  it("keeps route loaders fail-closed without collapsing the whole page", () => {
+    const intelligence = read("src/routes/intelligence.tsx");
+    const event = read("src/routes/event.$eventId.tsx");
+
+    expect(intelligence).toContain("[intelligence-route] preload failed; rendering fail-closed workspace");
+    expect(intelligence).toContain("return { rows: [], now }");
+    expect(event).toContain("[event-route] preload failed; rendering unavailable state");
+    expect(event).toContain("return null");
+    expect(intelligence).toContain("Risk Indices temporarily unavailable");
+  });
+
+  it("checks rendered route content rather than accepting HTTP 200 alone", () => {
+    const workflow = read(".github/workflows/production-website-health.yml");
+    expect(workflow).toContain("Verify rendered production page markers");
+    expect(workflow).toContain("This page didn't load");
+    expect(workflow).toContain("/intelligence|Risk Intelligence");
+    expect(workflow).toContain("/global-risk|Geomacro Risk Indices");
+    expect(workflow).toContain("/ask-geomacro|Ask Geomacro");
+    expect(workflow).toContain("/docs|Geomacro public documentation");
   });
 
   it("documents that hosted B2 secrets are separate from GitHub Actions secrets", () => {
