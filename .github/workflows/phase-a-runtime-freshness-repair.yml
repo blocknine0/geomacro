@@ -13,7 +13,7 @@ on:
       - ".github/workflows/phase-a-runtime-freshness-repair.yml"
       - "src/__tests__/phase-a-runtime-freshness-repair-static.test.ts"
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch: {}
 
 permissions:
