@@ -43,7 +43,7 @@ jobs:
 
           routes="$(cat <<'EOF'
           /|Global risk intelligence
-          /pricing|Access & pricing
+          /pricing|Free to explore. Pay only for successful commercial machine delivery.
           /ask-geomacro|Ask Geomacro
           /global-risk|Geomacro Risk Indices
           /intelligence|Risk Intelligence
@@ -93,8 +93,9 @@ jobs:
             let response = await page.goto('https://geomacro.live/pricing', { waitUntil: 'networkidle', timeout: 60000 });
             if (!response || response.status() !== 200) throw new Error(`Pricing HTTP ${response?.status()}`);
             if (new URL(page.url()).pathname !== '/pricing') throw new Error(`Pricing redirected unexpectedly to ${page.url()}`);
-            await page.getByRole('heading', { name: /Access & pricing/i }).waitFor({ timeout: 20000 });
-            console.log(`PASS pricing stayed on ${page.url()} and rendered Access & pricing`);
+            await page.getByRole('heading', { name: /Free to explore\. Pay only for successful commercial machine delivery\./i }).waitFor({ timeout: 20000 });
+            await page.getByText('Access & pricing', { exact: true }).waitFor({ timeout: 20000 });
+            console.log(`PASS pricing stayed on ${page.url()} and rendered the dedicated pricing page`);
 
             response = await page.goto('https://geomacro.live/ask-geomacro', { waitUntil: 'networkidle', timeout: 60000 });
             if (!response || response.status() !== 200) throw new Error(`Ask page HTTP ${response?.status()}`);
