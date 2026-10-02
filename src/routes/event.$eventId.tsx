@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { EventDetailWorkspace } from "@/components/intelligence/event-detail-workspace";
 import { getPublicEventSeoDetail } from "@/lib/public-event-seo.functions";
+import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
@@ -18,7 +19,21 @@ function eventPageTitle(value: string | null | undefined) {
 }
 
 export const Route = createFileRoute("/event/$eventId")({
-  loader: ({ params }) => getPublicEventSeoDetail({ data: { eventId: params.eventId } }),
+  loader: async ({ params }) => {
+    try {
+      return await withPublicRuntimeTimeout(
+        getPublicEventSeoDetail({ data: { eventId: params.eventId } }),
+        6_000,
+        "Event route preload timed out.",
+      );
+    } catch (error) {
+      console.error(
+        "[event-route] preload failed; rendering unavailable state",
+        error instanceof Error ? error.message : String(error),
+      );
+      return null;
+    }
+  },
   head: ({ params, loaderData }) => {
     const canonical = `https://geomacro.live/event/${encodeURIComponent(params.eventId)}`;
     if (!loaderData) {
