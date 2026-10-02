@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "8202afafc9163731df13be695d78a7968a862d48",
-  "published_baseline": "Founder-approved Geomacro Commercial V1 website redesign with a concise signal-to-decision buyer journey across desktop and mobile; live Intelligence, separate Risk Indices, Critical Minerals and Rare Earth Risk, Ask Geomacro, institutional workflows, governed API and agent access, and Risk Gate boundaries remain clearly separated from technical-proof surfaces. Homepage remains pricing-free; Free Explorer and the 0.05 USDC x402 first-20,000 successful paid-delivery offer are presented under API and Agents. Customer Care and contact@geomacro.live remain the human support escalation path. The Arc/onchain technical-proof surface explicitly states that Mainnet remains disabled until separate production completion, acceptance, and authorization.",
+  "baseline_sha": "51fbfc172dae64bd88f8886e2e5e3407881ef873",
+  "published_baseline": "Founder-approved Geomacro Commercial V1 website redesign with a concise signal-to-decision buyer journey across desktop and mobile; live Intelligence, separate Risk Indices, Critical Minerals and Rare Earth Risk, Ask Geomacro, institutional workflows, governed API and agent access, and Risk Gate boundaries remain clearly separated from technical-proof surfaces. Homepage remains pricing-free; Free Explorer and the 0.05 USDC x402 first-20,000 successful paid-delivery offer are presented under API and Agents. Customer Care and contact@geomacro.live remain the human support escalation path. The Arc/onchain technical-proof surface explicitly states that Mainnet remains disabled until separate production completion, acceptance, and authorization. Operational resilience update: the root error boundary now self-heals stale hashed client assets after a publish and the visible retry performs a full document reload; product presentation is otherwise unchanged.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
-  "locked_at_utc": "2026-10-02T06:30:00Z",
-  "published_source_sha": "8202afafc9163731df13be695d78a7968a862d48",
-  "lock_revision": "founder-approved-commercial-v1-onchain-boundary-20261002"
+  "locked_at_utc": "2026-10-02T06:52:00Z",
+  "published_source_sha": "51fbfc172dae64bd88f8886e2e5e3407881ef873",
+  "lock_revision": "founder-approved-commercial-v1-client-recovery-20261002"
 }
