@@ -101,6 +101,7 @@ function IntelligencePage() {
     [pool, category, query, activeSort],
   );
   const latestVerifiedFallback = Boolean(intel.data?.usedFallbackWindow);
+  const usesVerifiedContext = Boolean(intel.data?.usesVerifiedContext);
   const hasLiveObserved = Boolean(intel.data?.hasLiveObserved);
 
   return (
@@ -114,7 +115,9 @@ function IntelligencePage() {
             {intel.status === "updating"
               ? "Updating"
               : hasLiveObserved
-                ? "Fresh live observations + verified B2 continuity"
+                ? usesVerifiedContext
+                  ? "Fresh live observations + latest verified scored B2 context"
+                  : "Fresh live observations + verified B2 continuity"
                 : latestVerifiedFallback
                   ? "Live refresh pending · showing latest verified records"
                   : intel.updatedAt
@@ -186,7 +189,7 @@ function IntelligencePage() {
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                  {hasLiveObserved ? "Fresh observed + verified event set" : latestVerifiedFallback ? "Latest verified event set" : "Current event set"}
+                  {hasLiveObserved ? "Fresh observed event set" : latestVerifiedFallback ? "Latest verified event set" : "Current event set"}
                 </p>
                 <h2 className="mt-1 text-2xl font-semibold">
                   {query.trim() || category !== "all"
@@ -211,6 +214,24 @@ function IntelligencePage() {
                 <p className="mt-2 text-sm text-muted-foreground">Try a broader search or a different category.</p>
               </div>
             )}
+
+            {!query.trim() && category === "all" && intel.data.verifiedRiskContext.length > 0 ? (
+              <section className="mt-10 border-t border-border/60 pt-8" aria-labelledby="verified-risk-context-heading">
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Verified B2 continuity</p>
+                    <h2 id="verified-risk-context-heading" className="mt-1 text-2xl font-semibold">Latest verified scored context</h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                      Recent durable scored records are shown separately from today&apos;s live observations. Their original timestamps are preserved; they are context, not current-event claims.
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{intel.data.verifiedRiskContext.length} verified record{intel.data.verifiedRiskContext.length === 1 ? "" : "s"}</p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {intel.data.verifiedRiskContext.slice(0, 8).map((event) => <IntelCard key={`verified-context-${event.id}`} event={event} />)}
+                </div>
+              </section>
+            ) : null}
           </div>
 
           <aside className="space-y-4" aria-label="Intelligence context">

@@ -44,8 +44,12 @@ export type Intelligence = {
   /** Most recent available records used only when the current window is empty. */
   recent: IntelEvent[];
   usedFallbackWindow: boolean;
+  /** True when current live observations are supplemented with recent verified scored B2 context. */
+  usesVerifiedContext: boolean;
   hasLiveObserved: boolean;
   topRisks: IntelEvent[];
+  /** Latest scored verified B2 rows, kept separate from current-only topRisks. */
+  verifiedRiskContext: IntelEvent[];
   /** null when no row in the window carries a real severity change. */
   fastestMoving: IntelEvent[] | null;
   fading: IntelEvent[] | null;
@@ -132,11 +136,36 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .filter((r) => Number.isFinite(timeOf(r)) && timeOf(r) <= now)
     .sort((a, b) => timeOf(b) - timeOf(a))
     .slice(0, 24);
-  const domainRows = usedFallbackWindow ? recent : in24h;
 
+  // B2 continuity can be verified and scored while today's open-source overlay is
+  // intentionally unscored. Keep both visible: current observations preserve
+  // freshness, and the latest verified B2 rows preserve the rich scored context
+  // the Supabase-backed public workspace exposed before the production cutover.
+  // Never rewrite timestamps or synthesize scores to make stale evidence look current.
+  const currentDefault = [...in24h]
+    .sort((a, b) => timeOf(b) - timeOf(a))
+    .slice(0, 12);
+  const verifiedContext = [...markedRows]
+    .filter((r) => r.publicStatus === "verified_b2" && !r.isCurrent)
+    .sort((a, b) => timeOf(b) - timeOf(a));
+  const verifiedContextDefault = verifiedContext.slice(
+    0,
+    Math.max(0, 24 - currentDefault.length),
+  );
+  const usesVerifiedContext = currentDefault.length > 0 && verifiedContextDefault.length > 0;
+  const domainRows = usedFallbackWindow
+    ? recent
+    : [...currentDefault, ...verifiedContextDefault];
+
+  // Current risk topics remain strictly current-only. Older verified B2 rows
+  // are exposed separately as context and never promoted into a current claim.
   const currentScored = in24h.filter((r) => r.severity !== null);
   const topRisks = [...currentScored]
     .sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0))
+    .slice(0, 8);
+  const verifiedRiskContext = [...verifiedContext]
+    .filter((r) => r.severity !== null)
+    .sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0) || timeOf(b) - timeOf(a))
     .slice(0, 8);
 
   const moved = in24h.filter((r) => r.delta !== null && r.delta !== 0);
@@ -186,8 +215,10 @@ function build(rows: IntelEvent[], now: number): Intelligence {
       .slice(0, 12),
     recent,
     usedFallbackWindow,
+    usesVerifiedContext,
     hasLiveObserved: markedRows.some((row) => row.publicStatus === "live_observed"),
     topRisks,
+    verifiedRiskContext,
     fastestMoving: rising.length > 0 ? rising.slice(0, 5) : null,
     fading: falling.length > 0 ? falling.slice(0, 5) : null,
     emerging: emergingPool && emergingPool.length > 0 ? emergingPool.slice(0, 5) : null,
