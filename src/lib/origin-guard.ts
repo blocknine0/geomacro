@@ -1,49 +1,75 @@
 import { getRequestHeader } from "@tanstack/react-start/server";
 
-/**
- * Strict same-origin check for AI-gateway-backed server functions.
- *
- * Previously this allowed any *.lovable.app / *.lovable.dev host, which let
- * other Lovable projects (and trivially-spoofed Origin headers from
- * non-browser clients) burn this project's GROQ_API_KEY
- * quota. We now require an exact host match against the request's own Host
- * header, plus localhost for dev. Header spoofing from non-browser clients
- * still works in principle (Origin is client-set), but the guard no longer
- * grants free passage to the entire Lovable hosting fleet.
- */
-export function assertSameOrigin() {
-  const origin = getRequestHeader("origin") ?? getRequestHeader("referer") ?? "";
-  const host = getRequestHeader("host") ?? "";
-  if (!origin || !host) throw new Error("Forbidden");
-  let originHost = "";
+const DEFAULT_ALLOWED_ORIGINS = [
+  "geomacro.live",
+  "www.geomacro.live",
+  "geomacrooracle.lovable.app",
+  "id-preview--06310982-d80d-4d51-a786-7a015bd39be3.lovable.app",
+] as const;
+
+function normalizedRequestHost() {
+  const forwarded = getRequestHeader("x-forwarded-host") ?? "";
+  const direct = getRequestHeader("host") ?? "";
+  return (forwarded || direct)
+    .split(",")[0]
+    .trim()
+    .toLowerCase()
+    .split(":")[0];
+}
+
+function allowedOrigins() {
+  const configured = (process.env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
+}
+
+function parseOriginHost() {
+  const raw = getRequestHeader("origin") ?? getRequestHeader("referer") ?? "";
+  if (!raw) return null;
   try {
-    originHost = new URL(origin).hostname;
+    return new URL(raw).hostname.toLowerCase();
   } catch {
     throw new Error("Forbidden");
   }
-  const reqHost = host.split(":")[0];
-  if (originHost === reqHost) return;
-  // Dev only: vite preview on localhost / 127.0.0.1 (either side).
+}
+
+function assertOrigin(options: { allowMissingOrigin: boolean }) {
+  const originHost = parseOriginHost();
+  const requestHost = normalizedRequestHost();
+
+  // TanStack/Lovable can invoke a same-site public server function without
+  // forwarding browser Origin/Referer through the internal transport. Public
+  // read surfaces are safe to accept that transport shape; sensitive actions
+  // continue to require an explicit origin below via assertSameOrigin().
+  if (!originHost) {
+    if (options.allowMissingOrigin) return;
+    throw new Error("Forbidden");
+  }
+
+  if (requestHost && originHost === requestHost) return;
   if (originHost === "localhost" || originHost === "127.0.0.1") return;
-  if (reqHost === "localhost" || reqHost === "127.0.0.1") return;
-  // Allow this project's known public hosts (preview + published + custom
-  // domains). Configurable via the ALLOWED_ORIGINS env var (comma-separated
-  // hostnames) so new preview slugs / custom domains can be added without a
-  // code change; falls back to the hardcoded list when unset.
-  const envList = (process.env.ALLOWED_ORIGINS ?? "")
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-  const ALLOWED = new Set(
-    envList.length > 0
-      ? envList
-      : [
-          "geomacro.live",
-          "www.geomacro.live",
-          "geomacrooracle.lovable.app",
-          "id-preview--06310982-d80d-4d51-a786-7a015bd39be3.lovable.app",
-        ],
-  );
-  if (ALLOWED.has(originHost)) return;
+  if (requestHost === "localhost" || requestHost === "127.0.0.1") return;
+  if (allowedOrigins().has(originHost)) return;
+
   throw new Error("Forbidden");
+}
+
+/**
+ * Strict same-origin check for sensitive/authenticated or quota-bearing server
+ * functions. Missing Origin/Referer remains fail-closed.
+ */
+export function assertSameOrigin() {
+  assertOrigin({ allowMissingOrigin: false });
+}
+
+/**
+ * Browser-origin protection for public, rate-limited/read-only product
+ * surfaces. Cross-origin browser requests are rejected when Origin/Referer is
+ * present, while framework-internal same-site calls that omit those headers
+ * remain usable in production.
+ */
+export function assertPublicReadOrigin() {
+  assertOrigin({ allowMissingOrigin: true });
 }
