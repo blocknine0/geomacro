@@ -91,15 +91,17 @@ describe("commercial public surface v2", () => {
     expect(home).not.toContain("Official Circle Partner");
   });
 
-  it("keeps runtime agent-commerce status truthful without promoting paid x402 as homepage content", () => {
+  it("keeps runtime agent-commerce status truthful without legacy launch-state marketing", () => {
     const status = read("src/components/agent-commerce-status.tsx");
     const home = read("src/components/home/commercial-home.tsx");
     const dataApi = read("src/routes/data-api.tsx");
 
     expect(status).toContain('/api/x402/intelligence');
     expect(status).toContain('environment === "production"');
-    expect(status).toContain("controlled pre-launch");
-    expect(status).toContain("Testnet settlement is not commercial revenue");
+    expect(status).toContain("x402 agent access · controlled");
+    expect(status).toContain("The live HTTP challenge and health contract remain the authority");
+    expect(status).not.toContain("controlled pre-launch");
+    expect(status).not.toContain("Testnet settlement is not commercial revenue");
     expect(dataApi).toContain("AgentCommerceStatus");
     expect(dataApi).toContain("x402 pay per call");
     expect(dataApi).toContain("Real-money x402 access stays fail-closed");
@@ -121,12 +123,16 @@ describe("commercial public surface v2", () => {
   it("documents fail-soft public Risk Indices without synthetic fallback", () => {
     const availability = read("src/content/docs/12-data-availability.md");
     const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
+    const hook = read("src/lib/use-risk-indices.ts");
 
     expect(availability).toContain("a previously verified reading stays visible if a later refresh fails");
     expect(availability).toContain("neutral refreshing/loading state");
     expect(availability).toContain("does not receive a synthetic or zero-risk substitute");
     expect(workspace).toContain("Refreshing verified readings");
-    expect(workspace).not.toContain("risk.error?.message");
+    expect(workspace).toContain("Verified readings temporarily unavailable");
+    expect(workspace).toContain("risk.error?.message");
+    expect(hook).toContain("geomacro:risk-indices:last-verified:v1");
+    expect(hook).toContain("getPublicRiskIndices");
   });
 
   it("keeps machine discovery aligned with the same three-domain commercial identity", () => {
