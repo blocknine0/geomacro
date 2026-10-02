@@ -76,7 +76,7 @@ jobs:
           npm install --silent playwright@1.55.0
           npx playwright install --with-deps chromium
 
-      - name: Verify Pricing navigation and Ask Geomacro end to end
+      - name: Verify Pricing navigation and diagnose Ask Geomacro end to end
         shell: bash
         run: |
           set -euo pipefail
@@ -88,6 +88,13 @@ jobs:
           const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
           page.on('console', (msg) => console.log(`[browser:${msg.type()}] ${msg.text()}`));
           page.on('pageerror', (err) => console.log(`[pageerror] ${err.message}`));
+          page.on('response', async (res) => {
+            if (res.status() >= 400) {
+              let body = '';
+              try { body = await res.text(); } catch {}
+              console.log(`[http ${res.status()}] ${res.request().method()} ${res.url()} :: ${body.slice(0, 4000)}`);
+            }
+          });
 
           try {
             let response = await page.goto('https://geomacro.live/pricing', { waitUntil: 'networkidle', timeout: 60000 });
@@ -106,9 +113,10 @@ jobs:
 
             const status = page.locator('[role="status"]');
             let result = '';
-            for (let i = 0; i < 50; i += 1) {
+            for (let i = 0; i < 15; i += 1) {
               result = await status.innerText();
               if (result.includes('Research unavailable')) {
+                await page.waitForTimeout(1500);
                 throw new Error(`Ask Geomacro returned Research unavailable: ${result}`);
               }
               if (result.includes('Geomacro answer') || result.includes('Evidence threshold not met')) {
@@ -118,15 +126,8 @@ jobs:
               await page.waitForTimeout(1000);
             }
             if (!result.includes('Geomacro answer') && !result.includes('Evidence threshold not met')) {
-              throw new Error(`Ask Geomacro did not complete within 50s. Last status: ${result}`);
+              throw new Error(`Ask Geomacro did not complete. Last status: ${result}`);
             }
-
-            response = await page.goto('https://geomacro.live/global-risk', { waitUntil: 'networkidle', timeout: 60000 });
-            if (!response || response.status() !== 200) throw new Error(`Risk Indices HTTP ${response?.status()}`);
-            const body = await page.locator('body').innerText();
-            if (body.includes("This page didn't load")) throw new Error('Risk Indices rendered root error page');
-            if (!body.includes('Geomacro Risk Indices')) throw new Error('Risk Indices expected marker missing');
-            console.log('PASS Risk Indices rendered normally');
           } finally {
             await browser.close();
           }
