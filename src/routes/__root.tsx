@@ -3,7 +3,6 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
-  useRouter,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -11,6 +10,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportClientError } from "../lib/error-reporting";
+import { claimClientAssetReload } from "../lib/client-asset-recovery";
 import { installClipboardCompatibility } from "../lib/clipboard-compat";
 import { SiteShell } from "../components/site-shell";
 import { CustomerCare } from "../components/customer-care";
@@ -45,9 +45,16 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
-  const router = useRouter();
   useEffect(() => {
     reportClientError(error, { boundary: "tanstack_root_error_component" });
+
+    // A deployment can invalidate hashed route chunks for an already-open tab.
+    // Recover that known version-skew case once with a full document reload so
+    // the browser receives the current HTML + asset graph instead of remaining
+    // trapped in the root error boundary.
+    if (claimClientAssetReload(error)) {
+      window.location.reload();
+    }
   }, [error]);
 
   return (
@@ -62,8 +69,11 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
-              router.invalidate();
-              reset();
+              if (typeof window !== "undefined") {
+                window.location.reload();
+              } else {
+                reset();
+              }
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
