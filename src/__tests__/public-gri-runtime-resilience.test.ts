@@ -12,7 +12,7 @@ describe("public risk runtime resilience", () => {
 
     expect(server).toContain("readB2PublicRisk");
     expect(server).toContain('code: "RISK_INDEX_UNAVAILABLE"');
-    expect(server).toContain("assertSameOrigin();");
+    expect(server).toContain("assertPublicReadOrigin();");
     expect(server).toContain("verified B2 public risk snapshot unavailable");
     expect(server).not.toContain("readPublicGlobalRiskFromEdge");
     expect(server).not.toContain("readPublicGlobalRisk()");
