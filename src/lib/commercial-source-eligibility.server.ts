@@ -19,8 +19,6 @@ export type CommercialSourceEligibility = {
 
 export type SourceRightsRow = B2CommercialSourceRight;
 
-const DERIVED_COMMERCIAL_STATUSES = new Set(["COMMERCIAL_OK", "DERIVED_ONLY"]);
-
 function unavailableSource(sourceId: string, reason: string): CommercialSourceEligibility {
   return {
     eligible: false,
@@ -58,7 +56,7 @@ export function commercialSourceEligibilityFromRow(
   const ingestion = row.enabled_for_ingestion === true;
   const commercialSignals = row.enabled_for_commercial_signals === true;
   const rawRedistribution = row.raw_redistribution_allowed === true;
-  const derivedUseAllowed = DERIVED_COMMERCIAL_STATUSES.has(String(status ?? ""));
+  const derivedUseAllowed = status === "COMMERCIAL_OK" || status === "DERIVED_ONLY";
   const certified = certificationState === "CERTIFIED";
   const eligible = derivedUseAllowed && ingestion && commercialSignals && certified;
 
