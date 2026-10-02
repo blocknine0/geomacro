@@ -21,14 +21,17 @@ describe("Supabase pause public-read resilience", () => {
   it("keeps the Ask permanent reader B2-only", () => {
     const source = read("src/lib/hybrid-ask-intelligence.server.ts");
     expect(source).toContain("readB2PublicIntelligence");
+    expect(source).toContain("readB2PublicRisk");
     expect(source).toContain("Production permanent reads are B2-only");
     expect(source).not.toContain("getAppSupabase");
     expect(source).not.toContain('.from("events")');
   });
 
-  it("keeps fresh Ask queries on the ephemeral live path instead of forcing stored data", () => {
+  it("requires fresh B2 evidence before freshness-sensitive Ask queries avoid live retrieval", () => {
     const source = read("src/lib/hybrid-ask-intelligence.server.ts");
-    expect(source).toContain("forceLive: FRESHNESS_RE.test(question)");
+    expect(source).toContain("freshnessMaxAgeHours");
+    expect(source).toContain("forceLive: false");
+    expect(source).toContain("stale\n  // evidence falls through to bounded ephemeral retrieval instead");
     expect(source).toContain("durable_live_storage_write: false");
   });
 });
