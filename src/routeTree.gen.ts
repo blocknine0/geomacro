@@ -27,6 +27,7 @@ import { Route as IntelligenceRouteImport } from './routes/intelligence'
 import { Route as OnchainRouteImport } from './routes/onchain'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as RiskGateRouteImport } from './routes/risk-gate'
@@ -149,6 +150,11 @@ const PipelineRoute = PipelineRouteImport.update({
 const PortfolioRoute = PortfolioRouteImport.update({
   id: '/portfolio',
   path: '/portfolio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResearchRoute = ResearchRouteImport.update({
@@ -339,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
+  '/pricing': typeof PricingRoute
   '/research': typeof ResearchRoute
   '/review': typeof ReviewRoute
   '/risk-gate': typeof RiskGateRoute
@@ -392,6 +399,7 @@ export interface FileRoutesByTo {
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
+  '/pricing': typeof PricingRoute
   '/research': typeof ResearchRoute
   '/review': typeof ReviewRoute
   '/risk-gate': typeof RiskGateRoute
@@ -446,6 +454,7 @@ export interface FileRoutesById {
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
+  '/pricing': typeof PricingRoute
   '/research': typeof ResearchRoute
   '/review': typeof ReviewRoute
   '/risk-gate': typeof RiskGateRoute
@@ -501,6 +510,7 @@ export interface FileRouteTypes {
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
+    | '/pricing'
     | '/research'
     | '/review'
     | '/risk-gate'
@@ -554,6 +564,7 @@ export interface FileRouteTypes {
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
+    | '/pricing'
     | '/research'
     | '/review'
     | '/risk-gate'
@@ -607,6 +618,7 @@ export interface FileRouteTypes {
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
+    | '/pricing'
     | '/research'
     | '/review'
     | '/risk-gate'
@@ -661,6 +673,7 @@ export interface RootRouteChildren {
   OnchainRoute: typeof OnchainRoute
   PipelineRoute: typeof PipelineRoute
   PortfolioRoute: typeof PortfolioRoute
+  PricingRoute: typeof PricingRoute
   ResearchRoute: typeof ResearchRoute
   ReviewRoute: typeof ReviewRoute
   RiskGateRoute: typeof RiskGateRoute
@@ -822,6 +835,13 @@ declare module '@tanstack/react-router' {
       path: '/portfolio'
       fullPath: '/portfolio'
       preLoaderRoute: typeof PortfolioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/research': {
@@ -1077,6 +1097,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnchainRoute: OnchainRoute,
   PipelineRoute: PipelineRoute,
   PortfolioRoute: PortfolioRoute,
+  PricingRoute: PricingRoute,
   ResearchRoute: ResearchRoute,
   ReviewRoute: ReviewRoute,
   RiskGateRoute: RiskGateRoute,
