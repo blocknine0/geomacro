@@ -16,7 +16,7 @@ describe("Phase A runtime freshness repair", () => {
 
   it("derives the country denominator from the enabled canonical registry", () => {
     expect(repair).toContain("from public.live_country_registry where enabled=true order by iso3");
-    expect(repair).toContain("const expected = countries.length * 3");
+    expect(repair).toContain("const expected = countries.length * SOURCES.length");
     expect(repair).not.toMatch(/\b(?:194|195|585)\b/);
     expect(workflow).not.toMatch(/\b(?:194|195|585)\b/);
   });
@@ -29,22 +29,23 @@ describe("Phase A runtime freshness repair", () => {
     expect(repair).toContain("COMMERCIAL_SOURCE_RIGHTS_EVIDENCE[sourceId]");
   });
 
-  it("requires source probes and B2 readback before evidence promotion and set-based freshness writes", () => {
+  it("requires source probes and B2 readback before certification decisions and freshness writes", () => {
     const probe = repair.indexOf("await fetchObserved(source.endpoint");
     const b2Put = repair.indexOf("await b2.put(key, payload)");
     const b2Readback = repair.indexOf("const readback = await b2.get(key)");
-    const promotion = repair.indexOf("const certifications = await promote(runId, observed, evidenceRef)");
+    const certificationDecision = repair.indexOf("let certifications = await currentCertifications()");
     const targetWrite = repair.indexOf("const targetRowsWritten = await refreshTargets(observed)");
     expect(probe).toBeGreaterThan(-1);
     expect(b2Put).toBeGreaterThan(probe);
     expect(b2Readback).toBeGreaterThan(b2Put);
-    expect(promotion).toBeGreaterThan(b2Readback);
-    expect(targetWrite).toBeGreaterThan(promotion);
+    expect(certificationDecision).toBeGreaterThan(b2Readback);
+    expect(targetWrite).toBeGreaterThan(certificationDecision);
   });
 
-  it("uses a set-based registry x source-contract upsert instead of a giant client-side values list", () => {
+  it("uses a set-based registry x source-contract upsert and canonical target-id count", () => {
     expect(repair).toContain("from public.live_country_registry r cross join source_contract s where r.enabled=true");
     expect(repair).toContain("on conflict(target_id) do update set");
+    expect(repair).toContain("on t.target_id=s.prefix || r.iso3");
     expect(repair).not.toContain("rows.map((row)");
   });
 
@@ -54,6 +55,13 @@ describe("Phase A runtime freshness repair", () => {
       expect(repair).toContain(`\"${dimension}\"`);
     }
     expect(repair).not.toContain("update public.live_source_certification_records");
+  });
+
+  it("reuses recent eligible certification to prevent evidence-node growth on every refresh", () => {
+    expect(repair).toContain("const CERTIFICATION_MAX_AGE_HOURS = 24");
+    expect(repair).toContain("recentEligibleCertification");
+    expect(repair).toContain('certificationMode = "reused_recent_evidence_graph_certification"');
+    expect(repair).toContain('certificationMode = "evidence_graph_promoted"');
   });
 
   it("requires the pgcrypto promotion repair and never activates payment", () => {
