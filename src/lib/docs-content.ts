@@ -17,10 +17,14 @@ const TITLE_OVERRIDES: Record<string, string> = {
   "40-middle-east-validation": "Regional Validation",
 };
 
-// Historical evaluation-network documentation remains in the repository for
-// engineering/audit continuity, but it is intentionally not published through
-// the buyer-facing documentation experience.
-const PUBLIC_DOCS_EXCLUDED_SLUGS = new Set(["36-arc-testnet"]);
+// Historical programmable-finance/evaluation documentation remains in the
+// repository for engineering/audit continuity, but it is intentionally not
+// published through the buyer-facing documentation experience.
+const PUBLIC_DOCS_EXCLUDED_SLUGS = new Set([
+  "34-prediction-markets",
+  "35-cctp-bridge-and-swap",
+  "36-arc-testnet",
+]);
 
 export const DOCS_MANIFEST = (manifestJson as DocsManifestEntry[])
   .filter((entry) => !PUBLIC_DOCS_EXCLUDED_SLUGS.has(entry.slug))
