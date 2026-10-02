@@ -8,11 +8,15 @@ Available in the current public product.
 
 ## PRIVATE PILOT
 
-Implemented capability available only through controlled pilot access, with validation/operations still being hardened.
+Implemented capability available only through controlled entitlement or customer scope.
 
 ## TECHNICAL PROOF
 
-Working secondary implementation, often Testnet-based, that demonstrates engineering capability but is not represented as a production commercial service.
+Working secondary implementation that demonstrates engineering capability but is not represented as an active production settlement or execution service.
+
+## RUNTIME-CONTROLLED
+
+Implemented capability whose live availability is determined by the current service contract, entitlement and provider state rather than static website copy.
 
 ## PLANNED
 
