@@ -65,13 +65,23 @@ describe("Risk Gate staging evidence contract", () => {
     expect(reportValidator).toContain("redirect_policy !== 'error'");
   });
 
-  it("keeps Final Non-Mainnet staging evidence on the same fail-closed harness", () => {
+  it("keeps Final Non-Mainnet staging evidence on the same fail-closed harness without permanent staging credentials", () => {
     expect(finalAcceptanceWorkflow).toContain("RISK_GATE_LOAD_TEST_ACK: STAGING_ONLY");
     expect(finalAcceptanceWorkflow).toContain(
       "bun x tsx scripts/load-test-risk-gate-staging.ts",
     );
-    expect(finalAcceptanceWorkflow).toContain("environment: staging");
+    expect(finalAcceptanceWorkflow).toContain(
+      "bun x tsx scripts/ops/provision-ephemeral-risk-gate-staging.ts",
+    );
+    expect(finalAcceptanceWorkflow).toContain(
+      "supabase db reset --local --no-seed",
+    );
+    expect(finalAcceptanceWorkflow).toContain(
+      "http://127.0.0.1:3000/",
+    );
     expect(finalAcceptanceWorkflow).toContain("RISK_GATE_LOAD_TEST_ALLOW_429: 'false'");
+    expect(finalAcceptanceWorkflow).not.toContain("RISK_GATE_STAGING_BASE_URL");
+    expect(finalAcceptanceWorkflow).not.toContain("RISK_GATE_STAGING_API_KEY");
   });
 
   it("keeps the new staging evidence contracts inside the P0 security gate", () => {
