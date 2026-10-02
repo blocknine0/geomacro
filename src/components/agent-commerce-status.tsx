@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export type AgentCommerceMode = "checking" | "prelaunch" | "testnet" | "production";
+export type AgentCommerceMode = "checking" | "unavailable" | "prelaunch" | "testnet" | "production";
 
 type AgentCommerceState = {
   mode: AgentCommerceMode;
@@ -14,11 +14,25 @@ const DEFAULT_STATE: AgentCommerceState = {
   network: null,
 };
 
+const UNAVAILABLE_STATE: AgentCommerceState = {
+  mode: "unavailable",
+  priceUsdc: null,
+  network: null,
+};
+
+const STATUS_TIMEOUT_MS = 6000;
+
 export function useAgentCommerceStatus() {
   const [state, setState] = useState<AgentCommerceState>(DEFAULT_STATE);
 
   useEffect(() => {
     const controller = new AbortController();
+    let active = true;
+    const timeoutId = window.setTimeout(() => {
+      if (!active) return;
+      setState(UNAVAILABLE_STATE);
+      controller.abort();
+    }, STATUS_TIMEOUT_MS);
 
     void (async () => {
       try {
@@ -30,12 +44,15 @@ export function useAgentCommerceStatus() {
           signal: controller.signal,
         });
 
+        if (!active) return;
         if (!response.ok) {
-          setState({ mode: "prelaunch", priceUsdc: null, network: null });
+          setState(UNAVAILABLE_STATE);
           return;
         }
 
         const payload = (await response.json()) as Record<string, unknown>;
+        if (!active) return;
+
         const x402 = payload.x402 && typeof payload.x402 === "object" && !Array.isArray(payload.x402)
           ? payload.x402 as Record<string, unknown>
           : null;
@@ -51,13 +68,18 @@ export function useAgentCommerceStatus() {
           priceUsdc,
           network,
         });
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setState({ mode: "prelaunch", priceUsdc: null, network: null });
+      } catch {
+        if (active) setState(UNAVAILABLE_STATE);
+      } finally {
+        window.clearTimeout(timeoutId);
       }
     })();
 
-    return () => controller.abort();
+    return () => {
+      active = false;
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, []);
 
   return state;
@@ -72,7 +94,9 @@ export function AgentCommerceStatus({ compact = false }: { compact?: boolean }) 
       ? "x402 agent access · testnet proof"
       : state.mode === "checking"
         ? "x402 agent access · checking status"
-        : "x402 agent access · controlled pre-launch";
+        : state.mode === "unavailable"
+          ? "x402 agent access · status unavailable"
+          : "x402 agent access · controlled pre-launch";
 
   if (compact) {
     return (
@@ -98,7 +122,11 @@ export function AgentCommerceStatus({ compact = false }: { compact?: boolean }) 
           ? `The paid endpoint is advertising production x402 access${state.network ? ` on ${state.network}` : ""}. The live HTTP 402 challenge remains the payment authority.`
           : state.mode === "testnet"
             ? "The machine-payment path is configured for testnet proof only. Testnet settlement is not commercial revenue."
-            : "Real-funds payment remains fail-closed until the coordinated production launch gates and owner authorization are satisfied."}
+            : state.mode === "unavailable"
+              ? "The status probe did not return a usable result in time. Commercial access is not inferred from a failed health check; the paid endpoint remains the payment authority."
+              : state.mode === "checking"
+                ? "Checking the deployment health surface for the current x402 runtime mode."
+                : "Real-funds payment remains fail-closed until the coordinated production launch gates and owner authorization are satisfied."}
       </p>
     </div>
   );
