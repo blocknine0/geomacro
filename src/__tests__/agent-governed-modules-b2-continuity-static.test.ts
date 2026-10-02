@@ -11,20 +11,22 @@ const rights = read("src/lib/commercial-source-eligibility.server.ts");
 const workflow = read(".github/workflows/b2-agent-governed-modules-snapshot.yml");
 
 describe("verified B2 governed agent module continuity", () => {
-  it("publishes only currently authorized WGI/WDI derived governed state", () => {
+  it("publishes certified WDI and USGS derived state and keeps WGI outside while uncertified", () => {
     for (const token of [
-      "world_bank_wgi_political_stability",
       "world_bank_indicators",
+      "usgs_mcs",
+      "world_bank_wgi_political_stability",
       "commercialSourceEligibilityFromRow",
       'delivery_boundary: "DERIVED_STATE_ONLY_NO_RAW_SOURCE_MATERIAL"',
-      "included_source_ids: [WGI_SOURCE, WDI_SOURCE]",
-      "excluded_source_gates",
-      "CURRENT_COMMERCIAL_SIGNALS_GATE_NOT_ENABLED",
+      "REQUIRED_SOURCES = [WDI_SOURCE, USGS_SOURCE]",
+      "live_source_certification_records",
+      "buildUsgsEntries",
+      'eq("category", "CRITICAL_MINERALS")',
+      'schema: "geomacro.agent-governed-modules-live.v2"',
     ]) expect(publisher).toContain(token);
     expect(publisher).toContain('.from("live_world_bank_indicator_latest")');
     expect(publisher).toContain('.from("live_external_observations")');
-    expect(publisher).not.toContain("buildUsgsEntries");
-    expect(publisher).not.toContain('eq("category", "CRITICAL_MINERALS")');
+    expect(publisher).toContain("B2_AGENT_MODULE_USGS_ENTRIES_MISSING");
     expect(publisher).not.toContain("raw_payload");
     expect(publisher).not.toContain("raw_hash");
     expect(publisher).not.toContain("source_url");
@@ -45,13 +47,15 @@ describe("verified B2 governed agent module continuity", () => {
     expect(publisher).not.toContain(".delete(");
   });
 
-  it("keeps the runtime archive private, bounded, recent and server-only", () => {
+  it("keeps the runtime archive private, bounded, recent, v2 and server-only", () => {
     expect(reader).toContain('const B2_KEY = "geomacro-evidence/v1/live/agent-governed-modules/latest.json.gz"');
     expect(reader).toContain("AGENT_GOVERNED_MODULES_B2_MAX_AGE_MS = 24 * 60 * 60 * 1000");
     expect(reader).toContain("process.env.B2_KEY_ID");
     expect(reader).toContain("process.env.B2_APPLICATION_KEY");
+    expect(reader).toContain('payload.schema !== "geomacro.agent-governed-modules-live.v2"');
     expect(reader).toContain('payload.source_project !== SOURCE_PROJECT');
     expect(reader).toContain('payload.delivery_boundary !== "DERIVED_STATE_ONLY_NO_RAW_SOURCE_MATERIAL"');
+    expect(reader).toContain('critical_minerals: "usgs_mcs"');
     expect(reader).not.toContain("VITE_B2");
   });
 
@@ -66,14 +70,15 @@ describe("verified B2 governed agent module continuity", () => {
     expect(wdi).toContain("readB2AgentGovernedModule");
     expect(wdi).toContain("primary governed store unavailable; using fresh verified B2 derived state");
     expect(rights).toContain("export async function readCommercialSourceRightsRow");
+    expect(rights).toContain('certificationState === "CERTIFIED"');
   });
 
-  it("keeps USGS critical-minerals delivery fail-closed behind its existing commercial-signals gate", () => {
-    expect(usgs).toContain("readCommercialSourceRightsRow");
-    expect(usgs).toContain("evaluateEarlyWarningDerivedEligibility");
+  it("supports USGS critical-minerals continuity only after the same paid-source gate", () => {
+    expect(usgs).toContain("readB2AgentGovernedModule");
     expect(usgs).toContain('return unavailable(input.subject, "SOURCE_NOT_ELIGIBLE", sourceContract)');
-    expect(publisher).toContain('source_id: "usgs_mcs"');
-    expect(publisher).toContain('reason: "CURRENT_COMMERCIAL_SIGNALS_GATE_NOT_ENABLED"');
+    expect(publisher).toContain("USGS_SOURCE = \"usgs_mcs\"");
+    expect(publisher).toContain("buildUsgsEntries");
+    expect(publisher).toContain("CRITICAL_MINERALS_METHOD_VERSION");
   });
 
   it("never uses a current snapshot to answer a historical request before the source observation", () => {
