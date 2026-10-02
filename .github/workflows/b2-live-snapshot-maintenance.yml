@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/b2-live-snapshot-maintenance.yml"
       - "scripts/ops/publish-b2-live-snapshots.ts"
+      - "scripts/ops/run-b2-snapshot-maintenance-with-preservation.mjs"
       - "src/lib/b2-live.server.ts"
       - "src/lib/commercial-source-eligibility.server.ts"
 
@@ -39,5 +40,5 @@ jobs:
         with: { bun-version: "1.4.2" }
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Publish and read back verified B2 live snapshots
-        run: bun scripts/ops/publish-b2-live-snapshots.ts
+      - name: Publish or preserve verified B2 live snapshots
+        run: bun scripts/ops/run-b2-snapshot-maintenance-with-preservation.mjs live-public
