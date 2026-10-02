@@ -5,11 +5,13 @@ import { spawnSync } from "node:child_process";
 const workflowPath = ".github/workflows/auto-ingest-news.yml";
 const helperPath = "scripts/invoke-live-structure-with-retry.mjs";
 const freshnessProbePath = "scripts/ops/probe-public-intelligence-live-fallback.ts";
+const productionReaderPath = "src/lib/public-intelligence-production.server.ts";
 const runtimePath = "supabase/functions/live-structure-intelligence/index.ts";
 
 const workflow = fs.readFileSync(workflowPath, "utf8");
 const helper = fs.readFileSync(helperPath, "utf8");
 const freshnessProbe = fs.readFileSync(freshnessProbePath, "utf8");
+const productionReader = fs.readFileSync(productionReaderPath, "utf8");
 const runtime = fs.readFileSync(runtimePath, "utf8");
 
 describe("Auto Ingest News reliability contract", () => {
@@ -36,13 +38,25 @@ describe("Auto Ingest News reliability contract", () => {
 
   it("proves public freshness without bypassing verified scoring or introducing a Supabase serving dependency", () => {
     expect(freshnessProbe).toContain("readProductionPublicIntelligence");
-    expect(freshnessProbe).toContain("payload.current_within_24h !== true");
+    expect(freshnessProbe).toContain("payload.current_within_24h === true");
     expect(freshnessProbe).toContain('row.public_status === "live_observed"');
-    expect(freshnessProbe).toContain("row.severity !== null || row.delta !== null");
-    expect(freshnessProbe).toContain('payload.mode !== "live_observed_only"');
+    expect(freshnessProbe).toContain("row.severity === null && row.delta === null");
+    expect(freshnessProbe).toContain('payload.mode === "live_observed_only"');
     expect(freshnessProbe).toContain("delete process.env.B2_KEY_ID");
+    expect(freshnessProbe).toContain("artifacts/public-intelligence-live-fallback.json");
     expect(freshnessProbe).not.toContain("getAppSupabase");
     expect(freshnessProbe).not.toContain("createClient(");
+  });
+
+  it("uses multiple independent open sources for the live-observed continuity overlay", () => {
+    expect(productionReader).toContain("api.gdeltproject.org");
+    expect(productionReader).toContain("earthquake.usgs.gov");
+    expect(productionReader).toContain("api.reliefweb.int");
+    expect(productionReader).toContain("Promise.allSettled");
+    expect(productionReader).toContain('public_status: "live_observed"');
+    expect(productionReader).toContain("severity: null");
+    expect(productionReader).toContain("delta: null");
+    expect(productionReader).not.toContain("getAppSupabase");
   });
 
   it("targets the exact freshly exported manifest after verified B2 offload", () => {
