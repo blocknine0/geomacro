@@ -75,8 +75,9 @@ describe("Phase A runtime freshness repair", () => {
     expect(repair).not.toMatch(/mainnet.*(?:enable|activate)/i);
   });
 
-  it("keeps the refresh sustainable and pins third-party actions", () => {
-    expect(workflow).toContain('cron: "*/15 * * * *"');
+  it("keeps the refresh sustainable, avoids quarter-hour schedule congestion and pins third-party actions", () => {
+    expect(workflow).toContain('cron: "7,22,37,52 * * * *"');
+    expect(workflow).not.toContain('cron: "*/15 * * * *"');
     expect(workflow).toContain("uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
   });
 
