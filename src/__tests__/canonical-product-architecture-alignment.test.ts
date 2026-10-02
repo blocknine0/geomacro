@@ -168,7 +168,8 @@ describe("canonical product architecture alignment", () => {
     const root = read("src/routes/index.tsx");
 
     expect(root).toContain('import { CommercialHome } from "@/components/home/commercial-home"');
-    expect(root).toContain("component: CommercialHome");
+    expect(root).toContain("component: HomePage");
+    expect(root).toContain("<CommercialHome />");
     expect(root).not.toContain("HeroSection");
     expect(root).toContain("Global Risk Intelligence Infrastructure");
   });
