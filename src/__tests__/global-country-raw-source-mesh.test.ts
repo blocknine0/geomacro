@@ -10,16 +10,25 @@ const snapshot = fs.readFileSync("supabase/migrations/968_country_raw_web_snapsh
 const corroborate = fs.readFileSync("supabase/functions/live-flash-corroborate/index.ts","utf8");
 
 describe("global country raw source mesh",()=>{
-  it("defines all three categories and a 195-country contract",()=>{
+  it("defines all three categories and derives the audit country denominator from the canonical registry intersection",()=>{
     for(const value of ["GEOPOLITICS","MACRO","CRITICAL_MINERALS","195","13","raw_source_coverage_100_complete"]){
       expect(migration).toContain(value);
     }
-    expect(audit).toContain("canonicalIso3.length!==195");
     expect(audit).toContain("live_country_primary_source_directory");
-    expect(audit).toContain("expected_total_targets:195*(3+4+6)");
+    expect(audit).toContain("resolveCanonicalCountries");
+    expect(audit).toContain("unmappedDirectoryIso2");
+    expect(audit).toContain("expected_total_targets:countries.length*targetsPerCountry");
+    expect(audit).not.toContain("canonicalIso3.length!==195");
+    expect(audit).not.toContain("expected_total_targets:195*(3+4+6)");
     expect(audit).toContain("for(let from=0;;from+=1000)");
     expect(worker).toContain("for (const country of countries)");
     expect(runtimeAudit).toContain("for(const iso of canonicalIso3)");
+    expect(runtimeAudit).toContain("resolveCanonicalCountries");
+    expect(runtimeAudit).toContain("unmappedDirectoryIso2");
+    expect(runtimeAudit).toContain("expected_country_category_cells:countryCount*Object.keys(WINDOWS_SECONDS).length");
+    expect(runtimeAudit).toContain("countries_with_complete_fresh_three_category_runtime:countryCount-missingCountries");
+    expect(runtimeAudit).not.toContain("canonicalIso3.length!==195");
+    expect(runtimeAudit).not.toContain("countryCount===195");
   });
 
   it("keeps commercial promotion separate from raw capture",()=>{
