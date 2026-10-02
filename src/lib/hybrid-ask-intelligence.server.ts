@@ -1,4 +1,5 @@
-import { readB2PublicIntelligence } from "./b2-live.server";
+import { readB2PublicIntelligence, readB2PublicRisk } from "./b2-live.server";
+import { riskIndicesFromGlobalRisk } from "./risk-indices-from-global-risk";
 import type { AskAnswer } from "./ask-intelligence.server";
 
 type PublicFinding = {
@@ -68,6 +69,7 @@ const STOPWORDS = new Set([
 ]);
 
 const FRESHNESS_RE = /\b(now|today|latest|current|currently|real[ -]?time|breaking|recent|recently|last\s+\d+\s*(minute|minutes|hour|hours|day|days)|past\s+\d+\s*(minute|minutes|hour|hours|day|days))\b/i;
+const RISK_INDEX_RE = /\b(risk\s+indices?|risk\s+index|geopolitical\s+risk|macro(?:economic)?\s+risk|critical[- ]minerals?\s+risk)\b/i;
 
 function termsOf(question: string) {
   return Array.from(new Set(
@@ -83,15 +85,34 @@ function eventText(row: StoredEvent) {
   return `${row.summary ?? ""} ${row.narrative ?? ""} ${row.category ?? ""}`.toLowerCase();
 }
 
-function compactStoredAnswer(question: string, rows: StoredEvent[], terms: string[]): AskAnswer | null {
-  if (!rows.length) return null;
+function freshnessMaxAgeHours(question: string): number | null {
+  if (!FRESHNESS_RE.test(question)) return null;
+  if (/\b(now|latest|current|currently|real[ -]?time|breaking)\b/i.test(question)) return 6;
+  return 24;
+}
 
-  const ranked = rows
+function compactStoredAnswer(
+  question: string,
+  rows: StoredEvent[],
+  terms: string[],
+  maxAgeHours: number | null,
+): AskAnswer | null {
+  if (!rows.length) return null;
+  const now = Date.now();
+  const eligible = maxAgeHours === null
+    ? rows
+    : rows.filter((row) => {
+        const at = Date.parse(row.published_at ?? row.created_at);
+        return Number.isFinite(at) && at <= now + 5 * 60_000 && now - at <= maxAgeHours * 3_600_000;
+      });
+  if (!eligible.length) return null;
+
+  const ranked = eligible
     .map((row) => {
       const hay = eventText(row);
       const matches = terms.length ? terms.filter((term) => hay.includes(term)).length : 0;
       const coverage = terms.length ? matches / terms.length : 0;
-      const ageHours = Math.max(0, (Date.now() - Date.parse(row.published_at ?? row.created_at)) / 3_600_000);
+      const ageHours = Math.max(0, (now - Date.parse(row.published_at ?? row.created_at)) / 3_600_000);
       const recency = Math.max(0, 1 - ageHours / (24 * 90));
       const confidence = typeof row.confidence === "number" ? row.confidence : 0.5;
       return { row, relevance: Math.min(1, coverage * 0.7 + recency * 0.2 + confidence * 0.1) };
@@ -147,17 +168,68 @@ function b2StoredRows(rows: Awaited<ReturnType<typeof readB2PublicIntelligence>>
   }));
 }
 
+async function riskIndexAnswer(question: string): Promise<AskAnswer | null> {
+  if (!RISK_INDEX_RE.test(question)) return null;
+  const risk = await readB2PublicRisk();
+  if (!risk) return null;
+
+  const projected = riskIndicesFromGlobalRisk(risk);
+  const q = question.toLowerCase();
+  const requested = projected.indices.filter((index) => {
+    if (/geopolit/.test(q)) return index.key === "geopolitics";
+    if (/macro/.test(q)) return index.key === "macro";
+    if (/critical|minerals?/.test(q)) return index.key === "critical_minerals";
+    return true;
+  });
+  const available = requested.filter((index) => index.status === "available" && index.score !== null);
+  if (!available.length) return null;
+
+  const levels = available.map((index) =>
+    `${index.name}: ${index.score}/100${index.readingStatus === "last_verified" ? " (last verified)" : ""}`,
+  );
+  const leadingEvents = available
+    .map((index) => index.topEvent?.title)
+    .filter((value): value is string => Boolean(value));
+
+  return {
+    summary: `Geomacro's latest verified Risk Indices package shows ${levels.join("; ")}.`,
+    what_changed: /\b(changed|change|movement|moved)\b/i.test(question)
+      ? "The B2 continuity package preserves the verified current category levels but does not contain standalone per-index score-to-score change history. Geomacro therefore does not infer a movement from the historical combined-index attribution."
+      : `Verified category levels: ${levels.join("; ")}.`,
+    why_it_matters: leadingEvents.length
+      ? `Leading verified context includes: ${leadingEvents.slice(0, 3).join("; ")}.`
+      : "The category readings remain independently visible so geopolitical, macroeconomic and critical-mineral risk are not compressed into one headline score.",
+    geomacro_view: projected.indices.some((index) => index.readingStatus === "last_verified")
+      ? `This is a last-verified continuity reading from ${projected.snapshotAsOf}, not a claim of live freshness.`
+      : `The package is verified as of ${projected.snapshotAsOf}.`,
+    evidence: [],
+    insufficient_evidence: false,
+    mean_relevance: 1,
+    low_confidence: false,
+    gri: null,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 async function permanentReader(input: { question: string }) {
-  if (FRESHNESS_RE.test(input.question)) return { sufficient: false, data: null };
+  // Risk-index questions have their own verified B2 package and should never be
+  // forced through keyword matching over event rows.
+  const riskAnswer = await riskIndexAnswer(input.question);
+  if (riskAnswer) return { sufficient: true, data: riskAnswer };
 
   const terms = termsOf(input.question);
   if (!terms.length) return { sufficient: false, data: null };
 
-  // Production permanent reads are B2-only. If the verified continuity package
-  // is missing or insufficient, the hybrid engine proceeds to its bounded live
-  // retrieval/insufficient-evidence path instead of contacting Supabase.
+  // Production permanent reads are B2-only. Freshness-sensitive questions may
+  // use stored evidence only when the matched rows are themselves recent; stale
+  // evidence falls through to bounded ephemeral retrieval instead.
   const b2Rows = b2StoredRows(await readB2PublicIntelligence());
-  const b2Answer = compactStoredAnswer(input.question, b2Rows, terms);
+  const b2Answer = compactStoredAnswer(
+    input.question,
+    b2Rows,
+    terms,
+    freshnessMaxAgeHours(input.question),
+  );
   return b2Answer ? { sufficient: true, data: b2Answer } : { sufficient: false, data: null };
 }
 
@@ -241,7 +313,9 @@ export async function answerQuestion(question: string): Promise<HybridAskAnswer>
   const runtime = await runtimeModule.answerQuestion(question, {
     permanentReader,
     options: {
-      forceLive: FRESHNESS_RE.test(question),
+      // Let the permanent reader first prove that any B2 match satisfies the
+      // freshness window. If it cannot, the engine proceeds to live retrieval.
+      forceLive: false,
       cacheTtlMs: 5 * 60 * 1000,
       cacheMaxEntries: 128,
       maxFindingsPerGroup: 3,
