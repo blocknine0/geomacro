@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getCoinbaseX402Config } from "../lib/coinbase-x402.server";
+import { geomacroSupabaseRuntimeMode } from "../lib/supabase-runtime-mode.server";
 
 type X402RuntimeStatus = {
   state: "controlled_prelaunch" | "testnet" | "production" | "configuration_invalid";
@@ -40,6 +41,14 @@ function getX402RuntimeStatus(): X402RuntimeStatus {
   }
 }
 
+function b2RuntimeConfigured() {
+  if (typeof process === "undefined") return false;
+  return Boolean(
+    String(process.env.B2_KEY_ID ?? "").trim() &&
+    String(process.env.B2_APPLICATION_KEY ?? "").trim(),
+  );
+}
+
 export const Route = createFileRoute("/api/health")({
   server: {
     handlers: {
@@ -48,10 +57,13 @@ export const Route = createFileRoute("/api/health")({
           {
             ok: true,
             service: "geomacro",
-            alignment_contract: "github-main-external-supabase-lovable-v1",
+            alignment_contract: "github-main-b2-primary-supabase-standby-lovable-v2",
             source_authority: "github-main",
-            database_authority: "external-supabase",
-            supabase_project_ref: "ldpwajisioljyjtojvfx",
+            production_data_authority: "backblaze-b2",
+            production_data_runtime_configured: b2RuntimeConfigured(),
+            commerce_control_plane: "cloudflare-durable-objects",
+            supabase_role: "ingestion-recovery-standby",
+            supabase_runtime_mode: geomacroSupabaseRuntimeMode(),
             x402: getX402RuntimeStatus(),
           },
           {
