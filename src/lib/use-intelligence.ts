@@ -323,18 +323,11 @@ export function applyIntelFilters(
 ): IntelEvent[] {
   const q = query.trim().toLowerCase();
   const explicitResearch = Boolean(q) || category !== "all";
-  const current = [...rows]
-    .filter((r) => r.isCurrent)
-    .sort((a, b) => timeOf(b) - timeOf(a))
-    .slice(0, 12);
-  const latestVerifiedContext = [...rows]
-    .filter((r) => !r.isCurrent && r.publicStatus === "verified_b2")
-    .sort((a, b) => timeOf(b) - timeOf(a))
-    .slice(0, 12);
+  const current = rows.filter((r) => r.isCurrent);
   let out = explicitResearch
     ? rows
     : current.length > 0
-      ? [...current, ...latestVerifiedContext]
+      ? current
       : [...rows]
           .filter((r) => Number.isFinite(timeOf(r)))
           .sort((a, b) => timeOf(b) - timeOf(a))
