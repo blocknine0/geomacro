@@ -147,6 +147,7 @@ jobs:
             [[ -z "$path" ]] && continue
 
             body="$(mktemp)"
+            decoded="$(mktemp)"
             code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL$path")"
             if [[ "$code" != "200" ]]; then
               echo "::error title=Production page unavailable::$path returned HTTP $code"
@@ -160,12 +161,21 @@ jobs:
               exit 1
             fi
 
-            if ! grep -Fq "$marker" "$body"; then
+            python - "$body" "$decoded" <<'PY'
+          import html
+          import pathlib
+          import sys
+
+          source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+          pathlib.Path(sys.argv[2]).write_text(html.unescape(source), encoding="utf-8")
+          PY
+
+            if ! grep -Fq "$marker" "$decoded"; then
               echo "::error title=Production route content missing::$path returned HTTP 200 but did not render expected marker: $marker"
               head -c 1500 "$body" || true
               exit 1
             fi
 
-            rm -f "$body"
+            rm -f "$body" "$decoded"
             echo "PASS: $path rendered expected production content."
           done <<< "$routes"
