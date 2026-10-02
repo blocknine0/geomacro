@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { CheckCircle2, Fingerprint, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Fingerprint, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RiskBadge, RiskTrend } from "@/components/foundation/risk";
 import { RiskChart } from "@/components/home/risk-chart";
@@ -14,6 +14,7 @@ export function RiskIndicesWorkspace() {
   const [timeframe, setTimeframe] = useState<Timeframe>("7D");
 
   if (!risk.data) {
+    const unavailable = risk.status === "error";
     return (
       <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 md:py-16">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -22,26 +23,44 @@ export function RiskIndicesWorkspace() {
               Geomacro Risk Indices
             </p>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Refreshing verified readings
+              {unavailable ? "Verified risk package temporarily unavailable" : "Refreshing verified readings"}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-              Geomacro is checking the verified public data path. No zero-risk or synthetic substitute is shown while a current reading is being recovered.
+              {unavailable
+                ? risk.error?.message ?? "Geomacro could not read the verified B2 public risk package. No zero-risk or synthetic substitute is shown."
+                : "Geomacro is checking the verified B2 public data path. No zero-risk or synthetic substitute is shown while a reading is being recovered."}
             </p>
           </div>
           <Button type="button" variant="outline" onClick={risk.retry} className="gap-2">
-            <RefreshCw className="h-4 w-4" /> Refresh
+            <RefreshCw className="h-4 w-4" /> Retry
           </Button>
         </div>
-        <div className="mt-8 grid gap-4 lg:grid-cols-3" aria-label="Refreshing verified risk indices">
-          {[0, 1, 2].map((item) => (
-            <div key={item} className="h-56 animate-pulse rounded-2xl border border-border/60 bg-card/30" />
-          ))}
-        </div>
+
+        {unavailable ? (
+          <div className="mt-8 rounded-2xl border border-border/70 bg-card/40 p-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+              <div>
+                <p className="font-medium text-foreground">No unverified fallback is being displayed.</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Production serving is fail-closed. Retry after the verified B2 continuity package becomes readable again.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-8 grid gap-4 lg:grid-cols-3" aria-label="Refreshing verified risk indices">
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="h-56 animate-pulse rounded-2xl border border-border/60 bg-card/30" />
+            ))}
+          </div>
+        )}
       </main>
     );
   }
 
   const data = risk.data;
+  const hasLastVerified = data.indices.some((index) => index.readingStatus === "last_verified");
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 pb-20 pt-10 sm:px-6 md:pt-14">
@@ -54,6 +73,11 @@ export function RiskIndicesWorkspace() {
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {data.contractVersion}
             </span>
+            {hasLastVerified ? (
+              <span className="rounded-full border border-border/70 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                Last verified continuity
+              </span>
+            ) : null}
           </div>
           <Button type="button" variant="ghost" size="sm" onClick={risk.retry} className="gap-2 text-muted-foreground">
             <RefreshCw className="h-4 w-4" /> Refresh
@@ -67,6 +91,11 @@ export function RiskIndicesWorkspace() {
           <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
             Geopolitical, macroeconomic and critical-mineral risk are presented separately instead of being compressed into one combined headline score. Each index remains tied to the verified evidence, source controls and proof lineage behind the current versioned methodology.
           </p>
+          {hasLastVerified ? (
+            <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">
+              The newest verified continuity package is older than the current-reading window. Geomacro is showing it as last verified rather than presenting stale data as live.
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-3">
@@ -79,7 +108,7 @@ export function RiskIndicesWorkspace() {
       <Section
         eyebrow="History"
         title="Compare each risk domain on its own scale"
-        copy="Each chart uses the stored category score from comparable verified snapshots. A missing domain has no current verified reading and is never converted into a zero-risk value."
+        copy="Each chart uses stored comparable category scores when they are present in the verified public package. Missing history is left unavailable rather than reconstructed from the old combined index."
       >
         <div className="mb-5 flex w-fit gap-1 rounded-lg border border-border/70 p-1">
           {TIMEFRAMES.map((item) => (
@@ -178,13 +207,16 @@ function IndexCard({ index }: { index: PublicRiskIndex }) {
     return (
       <article className="rounded-2xl border border-border/70 bg-card/45 p-6">
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{index.name}</p>
-        <p className="mt-5 text-2xl font-semibold">Refreshing verified reading</p>
+        <p className="mt-5 text-2xl font-semibold">Verified reading unavailable</p>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          A current verified domain score is not present in this package. Geomacro does not substitute zero or a synthetic estimate.
+          A verified domain score is not present in this package. Geomacro does not substitute zero or a synthetic estimate.
         </p>
       </article>
     );
   }
+
+  const countsAvailable = index.eventCount > 0 || index.sourceCount > 0 || index.independentStoryCount > 0;
+  const readingAge = index.readingAgeHours === null ? null : Math.max(0, Math.round(index.readingAgeHours));
 
   return (
     <article className="rounded-2xl border border-border/70 bg-card/55 p-6">
@@ -200,15 +232,27 @@ function IndexCard({ index }: { index: PublicRiskIndex }) {
         </div>
         <CheckCircle2 className="h-5 w-5 text-primary" />
       </div>
-      <div className="mt-3"><RiskBadge score={index.score} /></div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <RiskBadge score={index.score} />
+        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+          {index.readingStatus === "current"
+            ? "Current verified"
+            : `Last verified${readingAge === null ? "" : ` · ${readingAge}h old`}`}
+        </span>
+      </div>
       <dl className="mt-6 grid grid-cols-2 gap-4">
         <Metric label="Exact raw" value={index.rawScore === null ? "—" : fmt(index.rawScore, 6)} />
         <Metric label="Previous" value={index.previousScore === null ? "—" : fmt(index.previousScore, 1)} />
-        <Metric label="Evidence" value={String(index.eventCount)} />
-        <Metric label="Stories" value={String(index.independentStoryCount)} />
-        <Metric label="Sources" value={String(index.sourceCount)} />
+        <Metric label="Evidence" value={countsAvailable ? String(index.eventCount) : "—"} />
+        <Metric label="Stories" value={countsAvailable ? String(index.independentStoryCount) : "—"} />
+        <Metric label="Sources" value={countsAvailable ? String(index.sourceCount) : "—"} />
         <Metric label="Confidence" value={index.confidence === null ? "—" : `${Math.round(index.confidence)}%`} />
       </dl>
+      {!countsAvailable ? (
+        <p className="mt-4 text-xs leading-5 text-muted-foreground">
+          Per-domain evidence counts are not present in this continuity package; no zero count is inferred.
+        </p>
+      ) : null}
       {index.topEvent ? (
         <div className="mt-5 border-t border-border/60 pt-4">
           <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">Leading verified event</p>
