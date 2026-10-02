@@ -35,19 +35,27 @@ describe("commercial structural API", () => {
     expect(route).toContain("policy.product.raw_data_included");
     expect(route).toContain("policy.product.private_warehouse_access");
     expect(route).toContain("policy.product.execution_authorized");
+    expect(route).toContain("COMMERCIAL_PRODUCT_BOUNDARY_INVALID");
   });
 
-  it("serves governed structural context without raw warehouse fields", () => {
+  it("serves Geomacro-derived structural context without source or internal warehouse fields", () => {
     expect(route).toContain("loadStructuralContext");
     expect(route).toContain("response_sha256");
     expect(route).toContain("structured_delivery_only: true");
+    expect(route).toContain('delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY"');
+    expect(route).toContain("source_identity_included: false");
+    expect(route).toContain("internal_provenance_included: false");
     expect(route).not.toContain("provenance: row.provenance");
     expect(route).not.toContain("source_url: row.source_url");
+    expect(route).not.toContain("source_id: row.source_id");
+    expect(route).not.toContain("normalized_hash: row.normalized_hash");
+    expect(route).not.toContain("parser_version: row.parser_version");
   });
 
   it("fails closed for missing data and never authorizes execution", () => {
     expect(route).toContain("STRUCTURAL_DATA_NOT_CONFIGURED");
     expect(route).toContain("STRUCTURAL_DATA_UNAVAILABLE");
     expect(route).toContain("structural_data_is_gri_v1_2_input");
+    expect(route).toContain("execution_authorized: false");
   });
 });

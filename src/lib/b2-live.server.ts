@@ -38,6 +38,8 @@ export type B2SourceNetworkStatus = {
 
 export type B2CommercialSourceRight = {
   source_id: string;
+  category: string | null;
+  certification_state: string | null;
   commercial_usage_status: string | null;
   enabled_for_ingestion: boolean;
   enabled_for_commercial_signals: boolean;
@@ -260,7 +262,7 @@ export async function readB2CommercialSourceRights(): Promise<B2CommercialSource
     rows?: unknown[];
   }>(B2_COMMERCIAL_SOURCE_RIGHTS_KEY);
   if (
-    payload?.schema !== "geomacro.commercial-source-rights-live.v1" ||
+    payload?.schema !== "geomacro.commercial-source-rights-live.v2" ||
     payload.source_project !== "ldpwajisioljyjtojvfx" ||
     !recentEnough(payload.generated_at, COMMERCIAL_SOURCE_RIGHTS_FALLBACK_MAX_AGE_MS) ||
     !Array.isArray(payload.rows) ||
@@ -274,11 +276,15 @@ export async function readB2CommercialSourceRights(): Promise<B2CommercialSource
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
     const row = value as Record<string, unknown>;
     const sourceId = typeof row.source_id === "string" ? row.source_id.trim() : "";
+    const category = row.category;
+    const certificationState = row.certification_state;
     const status = row.commercial_usage_status;
     const licence = row.licence_name;
     if (
       !/^[A-Za-z0-9_.:-]{1,160}$/.test(sourceId) ||
       seen.has(sourceId) ||
+      !(category === null || (typeof category === "string" && category.length <= 80)) ||
+      !(certificationState === null || (typeof certificationState === "string" && certificationState.length <= 80)) ||
       !(status === null || (typeof status === "string" && status.length <= 80)) ||
       typeof row.enabled_for_ingestion !== "boolean" ||
       typeof row.enabled_for_commercial_signals !== "boolean" ||
@@ -289,6 +295,8 @@ export async function readB2CommercialSourceRights(): Promise<B2CommercialSource
     seen.add(sourceId);
     output.push({
       source_id: sourceId,
+      category: category as string | null,
+      certification_state: certificationState as string | null,
       commercial_usage_status: status as string | null,
       enabled_for_ingestion: row.enabled_for_ingestion,
       enabled_for_commercial_signals: row.enabled_for_commercial_signals,

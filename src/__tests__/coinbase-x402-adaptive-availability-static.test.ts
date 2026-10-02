@@ -27,11 +27,14 @@ describe("Coinbase x402 adaptive availability boundary", () => {
     expect(availabilityRoute).toContain("chargeable: availability.deliverable");
   });
 
-  it("advertises a standards-shaped Geomacro query-binding extension", () => {
+  it("advertises a standards-shaped Geomacro query-binding extension with the source-free delivery boundary", () => {
     expect(paidRoute).toContain("geomacro: {");
     expect(paidRoute).toContain("info: {");
     expect(paidRoute).toContain("schema: {");
-    expect(paidRoute).toContain('required: ["product", "query_plan_hash", "execution_authorized"]');
+    expect(paidRoute).toContain('required: ["product", "query_plan_hash", "delivery_boundary", "raw_data_delivered", "source_identity_delivered", "execution_authorized"]');
+    expect(paidRoute).toContain('delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY"');
+    expect(paidRoute).toContain("raw_data_delivered: false");
+    expect(paidRoute).toContain("source_identity_delivered: false");
     expect(paidRoute).toContain("const info = extension.info");
     expect(paidRoute).toContain("PAYMENT_QUERY_PLAN_MISMATCH");
   });

@@ -17,18 +17,36 @@ describe("public upstream source privacy", () => {
     }
   });
 
-  it("recursively strips upstream publisher identity from generic public data proxy JSON", () => {
+  it("recursively strips upstream identity, rights and internal provenance from generic public data proxy JSON", () => {
     const proxy = read("src/routes/api.public-data-proxy.ts");
     for (const key of [
+      "source_id",
+      "source_ids",
+      "source_record_id",
+      "source_record_ids",
       "source_name",
       "source_domain",
       "source_url",
+      "source_urls",
       "sourceName",
       "sourceDomain",
       "sourceUrl",
       "publisher",
       "publisher_name",
       "publisherName",
+      "provider",
+      "provider_name",
+      "providerName",
+      "licence",
+      "license",
+      "licence_name",
+      "license_name",
+      "provenance",
+      "retrieval_metadata",
+      "raw_payload",
+      "raw_content",
+      "parser_version",
+      "normalized_hash",
     ]) {
       expect(proxy).toContain(`\"${key}\"`);
     }
@@ -48,5 +66,13 @@ describe("public upstream source privacy", () => {
     const model = read("src/lib/use-intelligence.ts");
     expect(model).toContain("sourceName: null");
     expect(model).not.toContain("r.source_name");
+  });
+
+  it("keeps the free structural digest source-free", () => {
+    const digest = read("src/lib/public-structural-digest.server.ts");
+    expect(digest).toContain('delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY"');
+    expect(digest).toContain("source_identity_included: false");
+    expect(digest).not.toContain("source_id: row.source_id");
+    expect(digest).not.toContain("source_url: row.source_url");
   });
 });

@@ -71,9 +71,17 @@ describe("structured-commerce industry-readiness invariants", () => {
     expect(structuralRoute).toContain("raw_provider_payloads_included: false");
     expect(structuralRoute).not.toContain("source_id: row.source_id");
     expect(structuralRoute).not.toContain("source_record_id: row.source_record_id");
-    expect(structuralRoute).toContain("raw_data_included: policy.product.raw_data_included");
-    expect(structuralRoute).toContain("private_warehouse_access: policy.product.private_warehouse_access");
-    expect(structuralRoute).toContain("execution_authorized: policy.product.execution_authorized");
+    expect(structuralRoute).not.toContain("source_url: row.source_url");
+    expect(structuralRoute).not.toContain("normalized_hash: row.normalized_hash");
+    expect(structuralRoute).not.toContain("parser_version: row.parser_version");
+    expect(structuralRoute).toContain("policy.product.raw_data_included");
+    expect(structuralRoute).toContain("policy.product.private_warehouse_access");
+    expect(structuralRoute).toContain("policy.product.execution_authorized");
+    expect(structuralRoute).toContain("COMMERCIAL_PRODUCT_BOUNDARY_INVALID");
+    expect(structuralRoute).toContain("raw_data_included: false");
+    expect(structuralRoute).toContain("source_identity_included: false");
+    expect(structuralRoute).toContain("private_warehouse_access: false");
+    expect(structuralRoute).toContain("execution_authorized: false");
 
     expect(structuralContext).toContain('from("commercial_structural_country_profiles")');
     expect(structuralContext).toContain('from("commercial_structural_country_coverage_latest")');

@@ -89,10 +89,8 @@ function publicObservation(row: StructuralObservation) {
     unit: row.unit,
     event_type: row.event_type,
     signal_type: row.signal_type,
-    parser_version: row.parser_version,
     methodology_status: row.methodology_status,
     quality_status: row.quality_status,
-    normalized_hash: row.normalized_hash,
     retrieved_at: row.retrieved_at,
   };
 }
@@ -121,6 +119,7 @@ function commercialPayload(
     status: context.status,
     methodology_status: context.methodology_status,
     subject: context.subject,
+    delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY" as const,
     observations,
     coverage: coverage.slice(0, evidenceLimit),
     serving: {
@@ -131,6 +130,8 @@ function commercialPayload(
       direct_evidence_status: context.metadata.direct_evidence_status,
       commercially_eligible_source_rows_only: true,
       raw_provider_payloads_included: false,
+      source_identity_included: false,
+      internal_provenance_included: false,
     },
     note: context.note,
   };
@@ -172,6 +173,7 @@ function errorPayload(error: unknown) {
         error: { code: error.code, message: error.message },
         boundaries: {
           raw_data_included: false,
+          source_identity_included: false,
           private_warehouse_access: false,
           execution_authorized: false,
         },
@@ -194,6 +196,7 @@ function errorPayload(error: unknown) {
         },
         boundaries: {
           raw_data_included: false,
+          source_identity_included: false,
           private_warehouse_access: false,
           execution_authorized: false,
         },
@@ -212,6 +215,7 @@ function errorPayload(error: unknown) {
       },
       boundaries: {
         raw_data_included: false,
+        source_identity_included: false,
         private_warehouse_access: false,
         execution_authorized: false,
       },
@@ -281,6 +285,17 @@ export default defineEventHandler(async (event) => {
         "The requested capability is not included in this Geomacro commercial API entitlement.",
       );
     }
+    if (
+      policy.product.raw_data_included ||
+      policy.product.private_warehouse_access ||
+      policy.product.execution_authorized
+    ) {
+      throw new CommercialAccessError(
+        503,
+        "COMMERCIAL_PRODUCT_BOUNDARY_INVALID",
+        "Commercial structural product boundary is not safe for delivery.",
+      );
+    }
     if (!policy.product.subject_types.includes(input.subject.type)) {
       throw new CommercialAccessError(
         400,
@@ -331,6 +346,7 @@ export default defineEventHandler(async (event) => {
           payment: settlement.quote,
           boundaries: {
             raw_data_included: false,
+            source_identity_included: false,
             private_warehouse_access: false,
             execution_authorized: false,
           },
@@ -431,10 +447,11 @@ export default defineEventHandler(async (event) => {
         generated_at: new Date().toISOString(),
       },
       boundaries: {
-        raw_data_included: policy.product.raw_data_included,
-        private_warehouse_access: policy.product.private_warehouse_access,
+        raw_data_included: false,
+        source_identity_included: false,
+        private_warehouse_access: false,
         structured_delivery_only: true,
-        execution_authorized: policy.product.execution_authorized,
+        execution_authorized: false,
         structural_data_is_gri_v1_2_input: policy.product.structural_data_is_gri_v1_2_input,
       },
     };
