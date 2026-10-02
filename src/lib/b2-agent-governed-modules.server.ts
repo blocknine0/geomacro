@@ -289,7 +289,7 @@ export async function readB2AgentGovernedModulesSnapshot(): Promise<{
     const raw = await gunzip(compressed);
     const payload = JSON.parse(decoder.decode(raw)) as Record<string, unknown>;
     if (
-      payload.schema !== "geomacro.agent-governed-modules-live.v1" ||
+      payload.schema !== "geomacro.agent-governed-modules-live.v2" ||
       payload.source_project !== SOURCE_PROJECT ||
       !recentEnough(payload.generated_at) ||
       payload.delivery_boundary !== "DERIVED_STATE_ONLY_NO_RAW_SOURCE_MATERIAL" ||
