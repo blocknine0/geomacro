@@ -13,7 +13,7 @@ export function OnchainSection() {
       <SectionHeader
         eyebrow="Onchain"
         title="Arc technical proof"
-        desc="Arc mainnet: coming soon. Geomacro keeps mainnet transaction features disabled until full production completion and acceptance."
+        desc="Mainnet remains disabled. Arc mainnet: coming soon. Geomacro keeps mainnet transaction features disabled until full production completion and acceptance."
       />
       <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="space-y-4">
