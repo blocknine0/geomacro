@@ -1,5 +1,6 @@
 import { readB2CommercialSourceRights, type B2CommercialSourceRight } from "./b2-live.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
+import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
 
 export type CommercialSourceEligibility = {
   eligible: boolean;
@@ -64,38 +65,49 @@ export function commercialSourceEligibilityFromRow(
   };
 }
 
+async function readSupabaseSourceRightsRow(
+  sourceId: string,
+): Promise<SourceRightsRow | null> {
+  const db = requireRiskSupabase();
+  const result = await db
+    .from("live_external_sources")
+    .select("source_id,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required,licence_name")
+    .eq("source_id", sourceId)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  if (!result.data) return null;
+  return {
+    source_id: String(result.data.source_id ?? sourceId),
+    commercial_usage_status: result.data.commercial_usage_status ?? null,
+    enabled_for_ingestion: result.data.enabled_for_ingestion === true,
+    enabled_for_commercial_signals: result.data.enabled_for_commercial_signals === true,
+    raw_redistribution_allowed: result.data.raw_redistribution_allowed === true,
+    attribution_required: result.data.attribution_required === true,
+    licence_name: result.data.licence_name ?? null,
+  };
+}
+
 export async function readCommercialSourceRightsRow(
   sourceId: string,
 ): Promise<SourceRightsRow | null> {
   const normalized = sourceId.trim();
   if (!normalized) return null;
+
+  const b2 = await readB2CommercialSourceRights();
+  if (b2) {
+    return b2.find((row) => row.source_id === normalized) ?? null;
+  }
+
+  if (!supabaseReadFallbackAllowed()) {
+    throw new Error("COMMERCIAL_SOURCE_RIGHTS_B2_UNAVAILABLE_SUPABASE_STANDBY");
+  }
+
   try {
-    const db = requireRiskSupabase();
-    const result = await db
-      .from("live_external_sources")
-      .select("source_id,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required,licence_name")
-      .eq("source_id", normalized)
-      .maybeSingle();
-    if (result.error) throw result.error;
-    if (!result.data) return null;
-    return {
-      source_id: String(result.data.source_id ?? normalized),
-      commercial_usage_status: result.data.commercial_usage_status ?? null,
-      enabled_for_ingestion: result.data.enabled_for_ingestion === true,
-      enabled_for_commercial_signals: result.data.enabled_for_commercial_signals === true,
-      raw_redistribution_allowed: result.data.raw_redistribution_allowed === true,
-      attribution_required: result.data.attribution_required === true,
-      licence_name: result.data.licence_name ?? null,
-    };
+    return await readSupabaseSourceRightsRow(normalized);
   } catch (primaryError) {
-    const fallback = await readB2CommercialSourceRights();
-    if (!fallback) {
-      const error = new Error("COMMERCIAL_SOURCE_RIGHTS_UNAVAILABLE");
-      (error as Error & { cause?: unknown }).cause = primaryError;
-      throw error;
-    }
-    console.warn("[commercial-source-rights] primary registry unavailable; using fresh verified B2 snapshot");
-    return fallback.find((row) => row.source_id === normalized) ?? null;
+    const error = new Error("COMMERCIAL_SOURCE_RIGHTS_UNAVAILABLE");
+    (error as Error & { cause?: unknown }).cause = primaryError;
+    throw error;
   }
 }
 
