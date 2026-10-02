@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { assertSameOrigin } from "./origin-guard";
+import { assertPublicReadOrigin } from "./origin-guard";
 import { readB2PublicRisk } from "./b2-live.server";
 import { riskIndicesFromGlobalRisk } from "./risk-indices-from-global-risk";
 import type { PublicRiskIndices } from "./risk-indices.types";
@@ -26,7 +26,7 @@ export type PublicRiskIndicesResponse =
 export const getPublicRiskIndices = createServerFn({ method: "POST" })
   .validator((input: unknown) => EmptyInput.parse(input))
   .handler(async (): Promise<PublicRiskIndicesResponse> => {
-    assertSameOrigin();
+    assertPublicReadOrigin();
 
     const risk = await readB2PublicRisk();
     if (risk) {

@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { assertSameOrigin } from "./origin-guard";
+import { assertPublicReadOrigin } from "./origin-guard";
 import { readB2PublicIntelligence } from "./b2-live.server";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 
@@ -20,6 +20,6 @@ export async function readPublicIntelligenceRowsFromB2(): Promise<PublicIntellig
 export const getPublicIntelligenceFromB2 = createServerFn({ method: "POST" })
   .validator((input: unknown) => EmptyInput.parse(input))
   .handler(async (): Promise<PublicIntelligenceRow[]> => {
-    assertSameOrigin();
+    assertPublicReadOrigin();
     return readPublicIntelligenceRowsFromB2();
   });

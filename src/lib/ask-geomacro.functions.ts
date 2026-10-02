@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { toCommercialAskBrief } from "./ask-commercial-brief";
-import { assertSameOrigin } from "./origin-guard";
+import { assertPublicReadOrigin } from "./origin-guard";
 import { answerQuestion, type HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 import { checkAskRateLimit } from "./ask-rate-limit.server";
 
@@ -23,7 +23,7 @@ export type AskAnswer = HybridAskAnswer;
 export const askGeomacro = createServerFn({ method: "POST" })
   .validator((input: unknown) => AskInput.parse(input))
   .handler(async ({ data }): Promise<AskAnswer> => {
-    assertSameOrigin();
+    assertPublicReadOrigin();
     const ip = getRequestIP({ xForwardedFor: true }) ?? "unknown";
     if (!checkAskRateLimit(ip)) {
       throw new Error("Too many requests. Please wait a moment.");

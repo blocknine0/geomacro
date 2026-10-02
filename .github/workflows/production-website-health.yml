@@ -74,6 +74,7 @@ jobs:
           /global-risk|Geomacro Risk Indices
           /ask-geomacro|Ask Geomacro
           /data-api|GOVERNED DATA
+          /pricing|Access & pricing
           /institutional|COMMERCIAL RISK INTELLIGENCE
           /risk-gate|Risk Gate
           /ecosystem|Ecosystem & partnerships
