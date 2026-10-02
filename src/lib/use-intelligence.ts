@@ -1,17 +1,17 @@
 /**
  * Read model for the /intelligence workspace.
  *
- * Public browser surfaces deliberately read through a same-origin server
- * function. That keeps production independent of stale hosting VITE_* values
- * while preserving the existing events table as the internal source of truth.
+ * Public browser surfaces deliberately read through a same-origin B2-backed
+ * server function. Supabase remains an ingestion/recovery system and is not a
+ * customer-facing production dependency.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  getPublicIntelligence,
   PUBLIC_INTELLIGENCE_CATEGORIES,
   type PublicIntelligenceRow,
 } from "@/lib/public-intelligence.functions";
+import { getPublicIntelligenceFromB2 } from "@/lib/public-intelligence-b2.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
 
 export type IntelEvent = {
@@ -102,10 +102,6 @@ function mapPublicRows(rows: PublicIntelligenceRow[]): IntelEvent[] {
 }
 
 function build(rows: IntelEvent[], now: number): Intelligence {
-  // Publication time is the primary "current" clock. Ingestion-created_at is
-  // only the fallback for records that genuinely have no publication timestamp.
-  // This prevents a newly imported historical article from masquerading as a
-  // current development merely because the row was inserted today.
   const markedRows = rows.map((row) => ({
     ...row,
     isCurrent: timeOf(row) >= now - DAY && timeOf(row) <= now,
@@ -117,11 +113,7 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .sort((a, b) => timeOf(b) - timeOf(a))
     .slice(0, 24);
   const domainRows = usedFallbackWindow ? recent : in24h;
-  // Current risk ranking and movement metrics remain current-only. Domain counts
-  // may describe the clearly labeled latest-verified fallback on a quiet day.
 
-  // "Current risk topics" must never use the quiet-day fallback. A historical
-  // record is useful for research, but it is not a current risk topic.
   const currentScored = in24h.filter((r) => r.severity !== null);
   const topRisks = [...currentScored]
     .sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0))
@@ -168,10 +160,6 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .sort((a, b) => b.avgSeverity - a.avgSeverity || b.count - a.count);
 
   return {
-    // Keep the complete 30-day read set so explicit search can still inspect
-    // historical records. The default view uses current rows when available and
-    // otherwise falls back to the newest verified records instead of rendering
-    // an empty/broken page during a quiet day or a paused upstream database.
     all: markedRows,
     today: [...in24h]
       .sort((a, b) => timeOf(b) - timeOf(a))
@@ -183,8 +171,6 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     fading: falling.length > 0 ? falling.slice(0, 5) : null,
     emerging: emergingPool && emergingPool.length > 0 ? emergingPool.slice(0, 5) : null,
     emergingMedian: med === null ? null : Math.round(med),
-    // The public taxonomy is fixed even when a source category has no current
-    // rows. Counts remain evidence-driven and only include observed categories.
     categories: [...PUBLIC_INTELLIGENCE_CATEGORIES],
     categoryCounts,
     latest: [...markedRows].sort((a, b) => timeOf(b) - timeOf(a)).slice(0, 6),
@@ -200,7 +186,7 @@ export function useIntelligence(
   initialData: Intelligence | null = null,
   refreshMs = 5 * 60 * 1000,
 ) {
-  const loadPublicIntelligence = useServerFn(getPublicIntelligence);
+  const loadPublicIntelligence = useServerFn(getPublicIntelligenceFromB2);
   const [data, setData] = useState<Intelligence | null>(initialData);
   const [status, setStatus] = useState<IntelStatus>(initialData ? "ready" : "loading");
   const [error, setError] = useState<UserError | null>(null);
@@ -223,9 +209,6 @@ export function useIntelligence(
         const mapped = mapPublicRows(rows);
 
         if (mapped.length === 0) {
-          // A transient refresh failure must not erase an already-rendered
-          // verified snapshot. Keep the last good data on screen and surface a
-          // retryable refresh error; only a cold start with no data becomes empty.
           if (hasData.current) {
             setStatus("error");
             setError({ message: "Live refresh is temporarily unavailable. Showing the latest verified intelligence.", retryable: true });
