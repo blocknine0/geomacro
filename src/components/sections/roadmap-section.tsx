@@ -5,7 +5,7 @@ const PHASES = [
     status: "LIVE NOW",
     tone: "text-emerald-300",
     title: "Public risk intelligence",
-    body: "These are the product surfaces a visitor can use today without treating roadmap work as already launched.",
+    body: "These are the product surfaces visitors can use today with explicit evidence and availability boundaries.",
     items: [
       "Live event intelligence",
       "Separate geopolitical, macroeconomic and critical-mineral Risk Indices",
@@ -15,37 +15,37 @@ const PHASES = [
     ],
   },
   {
-    status: "ROADMAP · IN PROGRESS",
+    status: "CONTROLLED COMMERCIAL",
     tone: "text-amber-300",
-    title: "Commercial hardening",
-    body: "These capabilities are being hardened for controlled commercial use. They are not presented as generally available production services yet.",
+    title: "Governed machine delivery",
+    body: "These capabilities are implemented behind controlled entitlements, Private Pilot scope and runtime-authoritative availability checks.",
     items: [
       "Risk Gate Private Pilot",
       "Signed Risk Objects",
       "Commercial API delivery",
       "Source-rights controls",
       "Security and resilience evidence",
-      "Website and repository source of truth",
+      "Machine-payment runtime gates",
     ],
   },
   {
-    status: "ROADMAP · NEXT",
+    status: "EXPANSION",
     tone: "text-sky-300",
-    title: "Institutional Early Access",
-    body: "Controlled design-partner pilots will validate usefulness, integration fit, operational friction and willingness to pay before broader commercial availability.",
+    title: "Institutional deployment",
+    body: "Controlled design-partner and institutional deployments validate integration fit, operational requirements and service scope before wider availability.",
     items: [
       "Design partners",
-      "Scoped staging evidence",
-      "Pilot package and terms",
+      "Scoped deployment evidence",
+      "Commercial package and terms",
       "Buyer onboarding workflow",
-      "First paid pilot",
+      "Institutional integrations",
     ],
   },
   {
-    status: "ROADMAP · LATER",
+    status: "SCALE",
     tone: "text-muted-foreground",
     title: "Production expansion",
-    body: "Broader production availability comes only after security, reliability, legal, source-rights and customer-validation gates are met.",
+    body: "Broader availability expands only when security, reliability, legal, source-rights and customer-specific operating gates are satisfied.",
     items: [
       "Production operations",
       "Broader governed coverage",
@@ -61,19 +61,19 @@ export function RoadmapSection() {
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
       <div className="max-w-4xl">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Live product + roadmap</p>
+        <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Live product + expansion plan</p>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-          What works today, and what comes next.
+          What works today, and how production expands.
         </h1>
         <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Geomacro separates currently usable product surfaces from planned or gated commercial capabilities. Nothing in the roadmap should be read as already launched, generally available, production-ready or covered by a service commitment.
+          Geomacro separates live public intelligence, controlled commercial capabilities and future scale-out work. Runtime contracts, entitlements and evidence determine what is available for any specific machine or institutional request.
         </p>
       </div>
 
       <div className="mt-8 grid gap-3 sm:grid-cols-3">
-        <StatusCard label="Use today" value="Public intelligence, Risk Indices, Ask Geomacro" />
-        <StatusCard label="Controlled roadmap" value="Risk Gate, signed Risk Objects, commercial API" />
-        <StatusCard label="Later production" value="Enterprise scale, mainnet and autonomous commerce" />
+        <StatusCard label="Live public product" value="Risk Intelligence, Risk Indices, Ask Geomacro" />
+        <StatusCard label="Controlled commercial" value="Risk Gate, signed Risk Objects, commercial API" />
+        <StatusCard label="Production scale" value="Enterprise operations, governed coverage and runtime-gated commerce" />
       </div>
 
       <div className="mt-12 grid gap-5 lg:grid-cols-2">
@@ -103,7 +103,7 @@ export function RoadmapSection() {
       </div>
 
       <div className="mt-10 rounded-2xl border border-border/70 bg-card/40 p-6 text-sm leading-relaxed text-muted-foreground">
-        <span className="font-medium text-foreground">Commercial availability boundary:</span> Risk Gate, signed Risk Objects and commercial API delivery remain roadmap / controlled Private Pilot capabilities. Broader Early Access remains conditional on scoped security and resilience validation, remediation of critical/high findings, source-rights review for paid delivery, controlled staging evidence and an agreed customer-use boundary. Mainnet, real-money agent commerce, production SLAs and autonomous execution are not live.
+        <span className="font-medium text-foreground">Availability boundary:</span> Risk Gate, signed Risk Objects and commercial API delivery remain controlled Private Pilot or entitlement-scoped capabilities. Payment and mainnet integrations are shown as active only when the corresponding live runtime contract confirms that state. Geomacro does not convert a configured integration into a production-availability claim.
       </div>
     </section>
   );
