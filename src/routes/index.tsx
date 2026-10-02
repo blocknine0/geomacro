@@ -45,5 +45,13 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  component: CommercialHome,
+  component: HomePage,
 });
+
+function HomePage() {
+  return (
+    <main>
+      <CommercialHome />
+    </main>
+  );
+}
