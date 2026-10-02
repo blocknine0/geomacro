@@ -4,20 +4,18 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("Supabase pause public-read resilience", () => {
-  it("serves public event detail from B2 before consulting optional recovery storage", () => {
+  it("serves public event detail from B2 only", () => {
     const source = read("src/lib/public-event.functions.ts");
     expect(source).toContain("readB2PublicIntelligence");
-    expect(source.indexOf("const b2Rows = await readB2PublicIntelligence()"))
-      .toBeLessThan(source.indexOf("const supabase = getAppSupabase()"));
-    expect(source).toContain("if (!supabase) return null;");
+    expect(source).not.toContain("getAppSupabase");
+    expect(source).not.toContain("supabase.co");
   });
 
-  it("serves event SEO metadata from B2 before consulting optional recovery storage", () => {
+  it("serves event SEO metadata from B2 only", () => {
     const source = read("src/lib/public-event-seo.functions.ts");
     expect(source).toContain("readB2PublicIntelligence");
-    expect(source.indexOf("const b2Rows = await readB2PublicIntelligence()"))
-      .toBeLessThan(source.indexOf("const supabase = getAppSupabase()"));
-    expect(source).toContain("if (!supabase) return null;");
+    expect(source).not.toContain("getAppSupabase");
+    expect(source).not.toContain("supabase.co");
   });
 
   it("keeps the Ask permanent reader B2-only", () => {
