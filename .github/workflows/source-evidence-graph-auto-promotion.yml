@@ -2,7 +2,18 @@ name: Source Evidence Graph and Automated Certification Promotion
 
 on:
   workflow_dispatch: {}
-
+  push:
+    branches:
+      - main
+      - fix/production-source-alignment-20261002
+    paths:
+      - "scripts/source-certification-evidence-graph.mjs"
+      - "scripts/commercial-source-rights-evidence.mjs"
+      - "scripts/ops/reconcile-production-source-certification.mjs"
+      - ".github/workflows/source-evidence-graph-auto-promotion.yml"
+      - "src/__tests__/source-evidence-graph-contract.test.ts"
+  schedule:
+    - cron: "27 2 * * *"
 
 concurrency:
   group: geomacro-intelligence-orchestrator
@@ -13,7 +24,11 @@ permissions:
 
 jobs:
   source-evidence-promotion:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: >-
+      ${{
+        github.repository == 'blocknine0/geomacro' &&
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/production-source-alignment-20261002')
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: production
@@ -29,10 +44,10 @@ jobs:
       SOURCE_EVIDENCE_TIMEOUT_MS: "12000"
       SOURCE_EVIDENCE_MAX_BODY_BYTES: "65536"
     steps:
-      - name: Checkout canonical main
+      - name: Checkout exact source-alignment revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Setup Bun
@@ -49,10 +64,26 @@ jobs:
           set -euo pipefail
           test -n "${APP_SUPABASE_URL:-}"
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}"
+          test -n "${SUPABASE_DB_URL:-}"
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "${EXPECTED_SUPABASE_PROJECT_REF}"
+          node --input-type=module <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const username = decodeURIComponent(db.username);
+          const direct = db.hostname === `db.${ref}.supabase.co` && username === "postgres";
+          const pooled = db.hostname.endsWith(".pooler.supabase.com") && username === `postgres.${ref}`;
+          if (!["postgres:", "postgresql:"].includes(db.protocol) || (!direct && !pooled)) {
+            throw new Error("SUPABASE_DB_URL is not the authoritative production database");
+          }
+          if (!db.password || db.pathname !== "/postgres") throw new Error("Invalid production database URL");
+          NODE
 
       - name: Build evidence graph and run guarded promotion
         run: bun run source:certification:evidence-graph
+
+      - name: Reconcile every required source into an explicit production state
+        if: hashFiles('scripts/ops/reconcile-production-source-certification.mjs') != ''
+        run: node scripts/ops/reconcile-production-source-certification.mjs
 
       - name: Upload permanent evidence graph
         if: always()
