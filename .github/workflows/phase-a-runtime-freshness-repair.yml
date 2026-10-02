@@ -1,4 +1,5 @@
 name: Phase A Runtime Freshness Repair
+# Exact-main freshness repair remains fail-closed; workflow changes trigger a production proof run on main.
 
 on:
   push:
