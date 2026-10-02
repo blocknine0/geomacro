@@ -1,0 +1,4 @@
+revoke all on public.live_country_category_coverage_matrix from service_role;
+revoke all on public.live_country_category_coverage_matrix_status from service_role;
+grant select on public.live_country_category_coverage_matrix to service_role;
+grant select on public.live_country_category_coverage_matrix_status to service_role;
