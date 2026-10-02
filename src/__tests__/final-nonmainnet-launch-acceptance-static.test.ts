@@ -10,6 +10,7 @@ describe("final non-mainnet launch acceptance contract", () => {
     const live = read("scripts/ops/live-launch-surface-smoke.mjs");
     const security = read("scripts/ops/external-surface-security-smoke.mjs");
     const rollback = read("scripts/ops/nonproduction-rollback-incident-drill.mjs");
+    const stagingProvision = read("scripts/ops/provision-ephemeral-risk-gate-staging.ts");
 
     expect(workflow).toContain("Final Non-Mainnet Launch Acceptance");
     expect(workflow).toContain("Replay migrations and perform disposable backup/restore drill");
@@ -46,6 +47,38 @@ describe("final non-mainnet launch acceptance contract", () => {
     expect(rollback).toContain("NONPRODUCTION_ONLY");
     expect(rollback).toContain('manifest.production_funds_authorized === false');
     expect(rollback).toContain("production_activation_performed: false");
+
+    expect(stagingProvision).toContain("production_data_used: false");
+    expect(stagingProvision).toContain("production_funds_used: false");
+    expect(stagingProvision).toContain("permanent_credential_used: false");
+    expect(stagingProvision).toContain('process.env.NODE_ENV === "production"');
+    expect(stagingProvision).toContain('"127.0.0.1", "localhost", "::1"');
+  });
+
+  it("uses a self-contained disposable Risk Gate staging stack", () => {
+    const workflow = read(".github/workflows/final-nonmainnet-launch-acceptance.yml");
+    const riskSupabase = read("src/lib/risk-supabase.server.ts");
+
+    expect(workflow).toContain("Start disposable local Supabase and replay migrations");
+    expect(workflow).toContain("supabase db reset --local --no-seed");
+    expect(workflow).toContain("supabase status -o env");
+    expect(workflow).toContain("GEOMACRO_SUPABASE_RUNTIME_MODE=primary");
+    expect(workflow).toContain("scripts/ops/provision-ephemeral-risk-gate-staging.ts");
+    expect(workflow).toContain("bun run dev -- --host 127.0.0.1 --port 3000");
+    expect(workflow).toContain("RISK_GATE_LOAD_TEST_ACK: STAGING_ONLY");
+    expect(workflow).toContain("RISK_GATE_LOAD_TEST_REQUESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.staging_requests || '24' }}");
+    expect(workflow).toContain("RISK_GATE_LOAD_TEST_CONCURRENCY: ${{ github.event_name == 'workflow_dispatch' && inputs.staging_concurrency || '4' }}");
+    expect(workflow).toContain("RISK_GATE_LOAD_TEST_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.staging_mode || 'mixed' }}");
+    expect(workflow).not.toContain("RISK_GATE_STAGING_BASE_URL: ${{ vars.RISK_GATE_STAGING_BASE_URL }}");
+    expect(workflow).not.toContain("RISK_GATE_STAGING_API_KEY: ${{ secrets.RISK_GATE_STAGING_API_KEY }}");
+    expect(workflow).not.toContain("environment: staging");
+    expect(workflow).toContain("artifacts/ephemeral-risk-gate-staging-provision.json");
+    expect(workflow).toContain("supabase stop --no-backup");
+
+    expect(riskSupabase).toContain('env.NODE_ENV === "production"');
+    expect(riskSupabase).toContain('parsed.hostname === "127.0.0.1"');
+    expect(riskSupabase).toContain('parsed.hostname === "localhost"');
+    expect(riskSupabase).toContain("AUTHORITATIVE_RISK_PROJECT_REF");
   });
 
   it("treats Early Warning distribution as a launch-critical prelaunch surface", () => {
