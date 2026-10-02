@@ -26,6 +26,7 @@ describe("commercial source-rights B2 outage fallback", () => {
   it("uses the structured-derived paid-output eligibility predicate", () => {
     const derivedOnlyRawBlocked = commercialSourceEligibilityFromRow("example", row());
     expect(derivedOnlyRawBlocked.eligible).toBe(true);
+    expect(derivedOnlyRawBlocked.certification_state).toBe("CERTIFIED");
     expect(derivedOnlyRawBlocked.raw_redistribution_allowed).toBe(false);
     expect(derivedOnlyRawBlocked.delivery_boundary).toBe("DERIVED_ONLY");
     expect(derivedOnlyRawBlocked.raw_payload_allowed).toBe(false);
@@ -50,12 +51,20 @@ describe("commercial source-rights B2 outage fallback", () => {
     );
     expect(rightsPending.eligible).toBe(false);
     expect(rightsPending.reason).toBe("SOURCE_COMMERCIAL_STATUS_REVIEW_REQUIRED");
+
+    const uncertified = commercialSourceEligibilityFromRow(
+      "example",
+      row({ certification_state: "IN_REVIEW" }),
+    );
+    expect(uncertified.eligible).toBe(false);
+    expect(uncertified.reason).toBe("SOURCE_CERTIFICATION_IN_REVIEW");
   });
 
   it("uses B2 first and keeps Supabase as an explicitly allowed standby read", () => {
     const source = read("src/lib/commercial-source-eligibility.server.ts");
     expect(source).toContain("await readB2CommercialSourceRights()");
     expect(source).toContain("supabaseReadFallbackAllowed()");
+    expect(source).toContain("live_source_certification_records");
     expect(source).toContain("COMMERCIAL_SOURCE_RIGHTS_B2_UNAVAILABLE_SUPABASE_STANDBY");
     expect(source).toContain("COMMERCIAL_SOURCE_RIGHTS_UNAVAILABLE");
   });
