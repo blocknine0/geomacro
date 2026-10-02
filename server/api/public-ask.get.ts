@@ -64,7 +64,9 @@ function assertBrowserOrigin(event: H3Event) {
 }
 
 function clientKey(event: H3Event) {
-  const edgeIp = normalizedHost(getRequestHeader(event, "cf-connecting-ip")) || "unknown";
+  const edgeIp = String(getRequestHeader(event, "cf-connecting-ip") ?? "")
+    .trim()
+    .slice(0, 128) || "unknown";
   return createHash("sha256")
     .update("geomacro-public-ask-client-v1\0", "utf8")
     .update(edgeIp, "utf8")
