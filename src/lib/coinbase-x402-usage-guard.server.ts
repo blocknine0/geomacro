@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import process from "node:process";
 import type { CoinbaseX402Config } from "./coinbase-x402.server";
+import {
+  callCommerceControlPlane,
+  durableCommerceControlPlaneEnabled,
+} from "./commerce-control-plane.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 const DEFAULT_MAINNET_MAX_PRICE_USDC = "0.05";
@@ -69,6 +73,33 @@ export async function reserveCoinbaseX402AgentUsage(input: {
 
   const payerHash = sha256(payer);
   const requests = dailyRequestLimit();
+
+  if (durableCommerceControlPlaneEnabled()) {
+    const result = await callCommerceControlPlane<{ disposition?: unknown }>(
+      "/v1/usage/reserve",
+      {
+        provider: "coinbase_x402",
+        providerEnvironment: input.config.commercialEnvironment,
+        paymentFingerprint: input.paymentFingerprint,
+        payerHash,
+        amountAtomic: input.config.amountAtomic,
+        maxDailyAmountAtomic: maxDailyAtomic.toString(),
+        maxDailyRequests: requests,
+      },
+    );
+    const disposition = String(result?.disposition ?? "") as CoinbaseX402UsageReservation["disposition"];
+    if (!["RESERVED", "SPEND_LIMIT", "REQUEST_LIMIT", "CONFLICT", "MANUAL_REVIEW"].includes(disposition)) {
+      throw new Error("X402_USAGE_GUARD_INVALID_RESPONSE");
+    }
+    return {
+      enforced: true,
+      disposition,
+      payer_hash: payerHash,
+      max_daily_amount_atomic: maxDailyAtomic.toString(),
+      max_daily_requests: requests,
+    };
+  }
+
   const db = requireRiskSupabase();
   const { data, error } = await db.rpc("reserve_coinbase_x402_usage", {
     p_payment_fingerprint: input.paymentFingerprint,
@@ -93,6 +124,19 @@ export async function reserveCoinbaseX402AgentUsage(input: {
 }
 
 export async function finalizeCoinbaseX402AgentUsage(paymentFingerprint: string) {
+  if (durableCommerceControlPlaneEnabled()) {
+    const result = await callCommerceControlPlane<{ ok?: unknown }>(
+      "/v1/usage/finalize",
+      {
+        provider: "coinbase_x402",
+        providerEnvironment: "mainnet",
+        paymentFingerprint,
+      },
+    );
+    if (result?.ok !== true) throw new Error("X402_USAGE_RESERVATION_FINALIZE_FAILED");
+    return;
+  }
+
   const db = requireRiskSupabase();
   const { data, error } = await db.rpc("finalize_coinbase_x402_usage", {
     p_payment_fingerprint: paymentFingerprint,
@@ -105,6 +149,23 @@ export async function releaseCoinbaseX402AgentUsage(
   paymentFingerprint: string,
   manualReview = false,
 ) {
+  if (durableCommerceControlPlaneEnabled()) {
+    try {
+      await callCommerceControlPlane<{ ok?: unknown }>(
+        "/v1/usage/release",
+        {
+          provider: "coinbase_x402",
+          providerEnvironment: "mainnet",
+          paymentFingerprint,
+          manualReview,
+        },
+      );
+    } catch (error) {
+      console.error("[coinbase-x402] durable usage reservation release failed", error);
+    }
+    return;
+  }
+
   const db = requireRiskSupabase();
   const { error } = await db.rpc("release_coinbase_x402_usage", {
     p_payment_fingerprint: paymentFingerprint,

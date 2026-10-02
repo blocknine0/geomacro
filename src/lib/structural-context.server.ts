@@ -4,6 +4,7 @@ import {
   readB2StructuralServingSnapshot,
   type B2StructuralServingSnapshot,
 } from "./b2-structural.server";
+import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
 
 export const STRUCTURAL_METHODOLOGY_STATUS =
   "EVIDENCE_ONLY_NOT_IN_GRI_V1_2" as const;
@@ -91,6 +92,7 @@ type CorridorProfileRow = {
 let cachedHistoricalClient: SupabaseClient | null = null;
 
 function getHistoricalClient(): SupabaseClient | null {
+  if (!supabaseReadFallbackAllowed()) return null;
   if (cachedHistoricalClient) return cachedHistoricalClient;
   const url = process.env.HISTORICAL_SUPABASE_URL;
   const serviceKey = process.env.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY;

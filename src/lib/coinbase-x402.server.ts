@@ -5,6 +5,12 @@ import { SignJWT, importJWK, importPKCS8 } from "jose";
 import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";
 import { recordCommercialPaymentEvent, recordCommercialUsageEvent } from "./commercial-ops.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
+import {
+  claimAgentCommerceDelivery,
+  completeAgentCommerceDelivery,
+  prepareAgentCommerceDelivery,
+  releaseAgentCommerceDelivery,
+} from "./agent-commerce-delivery.server";
 
 const CDP_HOST = "api.cdp.coinbase.com" as const;
 const CDP_ORIGIN = `https://${CDP_HOST}` as const;
@@ -500,6 +506,13 @@ export function bazaarExtensionOutcome(
   return { status, rejectedReason };
 }
 
+function configuredCoinbaseCommercialEnvironment(): "testnet" | "mainnet" {
+  const raw = String(process.env.COINBASE_X402_ENVIRONMENT ?? "").trim().toLowerCase();
+  if (raw === "testnet") return "testnet";
+  if (raw === "production") return "mainnet";
+  throw new Error("COINBASE_X402_ENVIRONMENT_REQUIRED_FOR_DURABLE_LEDGER");
+}
+
 function payerTelemetryId(payer: string | null | undefined) {
   const normalized = String(payer ?? "").trim().toLowerCase();
   return normalized ? `coinbase-x402:sha256:${sha256(normalized)}` : "coinbase-x402:unknown";
@@ -511,26 +524,26 @@ export async function claimCoinbaseX402Delivery(input: {
   clientRequestId?: string | null;
   config: CoinbaseX402Config;
 }) {
-  const db = requireRiskSupabase();
-  const { data, error } = await db.rpc("claim_coinbase_x402_delivery", {
-    p_payment_fingerprint: input.paymentFingerprint,
-    p_request_fingerprint: input.requestFingerprint,
-    p_client_request_id: input.clientRequestId ?? null,
-    p_environment: input.config.commercialEnvironment,
-    p_network: input.config.network,
-    p_asset: input.config.asset,
-    p_amount_atomic: input.config.amountAtomic,
-    p_pay_to_hash: sha256(input.config.payTo.toLowerCase()),
+  const row = await claimAgentCommerceDelivery({
+    provider: "coinbase_x402",
+    providerEnvironment: input.config.commercialEnvironment,
+    paymentFingerprint: input.paymentFingerprint,
+    requestFingerprint: input.requestFingerprint,
+    productId: "geomacro_coinbase_x402_v1",
+    clientRequestId: input.clientRequestId ?? null,
+    sourceChannel: "coinbase_x402",
+    rail: "coinbase_cdp_exact",
+    network: input.config.network,
+    asset: input.config.asset,
+    amountAtomic: input.config.amountAtomic,
+    recipientReference: input.config.payTo,
   });
-  if (error) throw error;
-  const row = Array.isArray(data) ? data[0] : data;
-  if (!row) throw new Error("COINBASE_X402_DELIVERY_CLAIM_EMPTY");
-  return row as {
-    disposition: "CLAIMED" | "REPLAY" | "IN_PROGRESS" | "CONFLICT" | "MANUAL_REVIEW";
-    claim_token: string | null;
-    response_payload: unknown | null;
-    settlement_tx: string | null;
-    settlement_network: string | null;
+  return {
+    disposition: row.disposition,
+    claim_token: row.claim_token,
+    response_payload: row.response_payload,
+    settlement_tx: row.settlement_reference,
+    settlement_network: row.settlement_network,
   };
 }
 
@@ -539,17 +552,13 @@ export async function prepareCoinbaseX402Delivery(input: {
   claimToken: string;
   responsePayload: unknown;
 }) {
-  const db = requireRiskSupabase();
-  const responseSha256 = sha256(stableJson(input.responsePayload));
-  const { data, error } = await db.rpc("prepare_coinbase_x402_delivery", {
-    p_payment_fingerprint: input.paymentFingerprint,
-    p_claim_token: input.claimToken,
-    p_response_payload: input.responsePayload,
-    p_response_sha256: responseSha256,
+  return prepareAgentCommerceDelivery({
+    provider: "coinbase_x402",
+    providerEnvironment: configuredCoinbaseCommercialEnvironment(),
+    paymentFingerprint: input.paymentFingerprint,
+    claimToken: input.claimToken,
+    responsePayload: input.responsePayload,
   });
-  if (error) throw error;
-  if (data !== true) throw new Error("COINBASE_X402_DELIVERY_PREPARE_LOST_CLAIM");
-  return { responseSha256 };
 }
 
 export async function completeCoinbaseX402Delivery(input: {
@@ -559,16 +568,16 @@ export async function completeCoinbaseX402Delivery(input: {
   settlementTx: string | null;
   settlementNetwork: string | null;
 }) {
-  const db = requireRiskSupabase();
-  const { data, error } = await db.rpc("complete_coinbase_x402_delivery", {
-    p_payment_fingerprint: input.paymentFingerprint,
-    p_claim_token: input.claimToken,
-    p_payer_hash: input.payer ? sha256(input.payer.toLowerCase()) : null,
-    p_settlement_tx: input.settlementTx,
-    p_settlement_network: input.settlementNetwork,
+  if (!input.settlementTx) throw new Error("COINBASE_X402_SETTLEMENT_REFERENCE_REQUIRED");
+  return completeAgentCommerceDelivery({
+    provider: "coinbase_x402",
+    providerEnvironment: configuredCoinbaseCommercialEnvironment(),
+    paymentFingerprint: input.paymentFingerprint,
+    claimToken: input.claimToken,
+    payerReference: input.payer,
+    settlementReference: input.settlementTx,
+    settlementNetwork: input.settlementNetwork,
   });
-  if (error) throw error;
-  if (data !== true) throw new Error("COINBASE_X402_DELIVERY_COMPLETE_LOST_CLAIM");
 }
 
 export async function releaseCoinbaseX402DeliveryForRetry(input: {
@@ -577,14 +586,18 @@ export async function releaseCoinbaseX402DeliveryForRetry(input: {
   failureCode: string;
   manualReview?: boolean;
 }) {
-  const db = requireRiskSupabase();
-  const { error } = await db.rpc("release_coinbase_x402_delivery", {
-    p_payment_fingerprint: input.paymentFingerprint,
-    p_claim_token: input.claimToken,
-    p_failure_code: input.failureCode.slice(0, 160),
-    p_manual_review: input.manualReview ?? false,
-  });
-  if (error) console.error("[coinbase-x402] delivery release failed", error);
+  try {
+    await releaseAgentCommerceDelivery({
+      provider: "coinbase_x402",
+      providerEnvironment: configuredCoinbaseCommercialEnvironment(),
+      paymentFingerprint: input.paymentFingerprint,
+      claimToken: input.claimToken,
+      failureCode: input.failureCode,
+      manualReview: input.manualReview ?? false,
+    });
+  } catch (error) {
+    console.error("[coinbase-x402] delivery release failed", error);
+  }
 }
 
 export async function persistCoinbaseSettlementTelemetry(input: {

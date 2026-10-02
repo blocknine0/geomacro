@@ -113,6 +113,10 @@ export class CommerceLedger {
       if (action === "prepare") return json({ ok: await this.prepare(body) });
       if (action === "complete") return json({ ok: await this.complete(body) });
       if (action === "release") return json({ ok: await this.release(body) });
+      if (action === "usage-reserve") return json(await this.usageReserve(body));
+      if (action === "usage-finalize") return json({ ok: await this.usageFinalize(body) });
+      if (action === "usage-release") return json({ ok: await this.usageRelease(body) });
+      if (action === "audit-upsert") return json({ ok: await this.auditUpsert(body) });
       return json({ ok: false, error: "UNKNOWN_ACTION" }, 404);
     } catch (error) {
       console.error("[commerce-ledger-do] transition failed", error instanceof Error ? error.message : "unknown");
@@ -309,15 +313,121 @@ export class CommerceLedger {
       return true;
     });
   }
+
+  async usageReserve(body) {
+    const paymentFingerprint = validatePaymentFingerprint(body.paymentFingerprint);
+    const payerHash = String(body.payerHash ?? "").trim().toLowerCase();
+    const amountAtomic = String(body.amountAtomic ?? "").trim();
+    const maxDailyAmountAtomic = String(body.maxDailyAmountAtomic ?? "").trim();
+    const maxDailyRequests = Number(body.maxDailyRequests);
+    if (!PAYMENT_HASH_RE.test(payerHash)) throw new Error("INVALID_PAYER_HASH");
+    if (!/^[0-9]+$/.test(amountAtomic) || BigInt(amountAtomic) <= 0n) throw new Error("INVALID_USAGE_AMOUNT");
+    if (!/^[0-9]+$/.test(maxDailyAmountAtomic) || BigInt(maxDailyAmountAtomic) < BigInt(amountAtomic)) throw new Error("INVALID_DAILY_AMOUNT_LIMIT");
+    if (!Number.isInteger(maxDailyRequests) || maxDailyRequests < 1 || maxDailyRequests > 100000) throw new Error("INVALID_DAILY_REQUEST_LIMIT");
+
+    const day = new Date().toISOString().slice(0, 10);
+    const reservationKey = `usage:${paymentFingerprint}`;
+    const dailyKey = `usage-day:${day}:${payerHash}`;
+    const now = Date.now();
+    return this.ctx.storage.transaction(async (txn) => {
+      const existing = await txn.get(reservationKey);
+      if (existing) {
+        const conflict = existing.payerHash !== payerHash || existing.amountAtomic !== amountAtomic || existing.maxDailyAmountAtomic !== maxDailyAmountAtomic || existing.maxDailyRequests !== maxDailyRequests;
+        if (conflict) return { disposition: "CONFLICT" };
+        if (existing.state === "manual_review") return { disposition: "MANUAL_REVIEW" };
+        if (["reserved", "finalized"].includes(existing.state)) return { disposition: "RESERVED" };
+      }
+
+      const daily = (await txn.get(dailyKey)) ?? { amountAtomic: "0", requests: 0 };
+      const nextAmount = BigInt(String(daily.amountAtomic ?? "0")) + BigInt(amountAtomic);
+      const nextRequests = Number(daily.requests ?? 0) + 1;
+      if (nextAmount > BigInt(maxDailyAmountAtomic)) return { disposition: "SPEND_LIMIT" };
+      if (nextRequests > maxDailyRequests) return { disposition: "REQUEST_LIMIT" };
+
+      await txn.put(dailyKey, { amountAtomic: nextAmount.toString(), requests: nextRequests, updatedAt: now });
+      await txn.put(reservationKey, {
+        paymentFingerprint,
+        payerHash,
+        amountAtomic,
+        maxDailyAmountAtomic,
+        maxDailyRequests,
+        day,
+        state: "reserved",
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      });
+      return { disposition: "RESERVED" };
+    });
+  }
+
+  async usageFinalize(body) {
+    const paymentFingerprint = validatePaymentFingerprint(body.paymentFingerprint);
+    const key = `usage:${paymentFingerprint}`;
+    const now = Date.now();
+    return this.ctx.storage.transaction(async (txn) => {
+      const record = await txn.get(key);
+      if (!record) return false;
+      if (record.state === "finalized") return true;
+      if (record.state !== "reserved") return false;
+      await txn.put(key, { ...record, state: "finalized", updatedAt: now, finalizedAt: now });
+      return true;
+    });
+  }
+
+  async usageRelease(body) {
+    const paymentFingerprint = validatePaymentFingerprint(body.paymentFingerprint);
+    const manualReview = body.manualReview === true;
+    const key = `usage:${paymentFingerprint}`;
+    const now = Date.now();
+    return this.ctx.storage.transaction(async (txn) => {
+      const record = await txn.get(key);
+      if (!record) return false;
+      if (record.state === "released") return true;
+      if (record.state === "manual_review") return manualReview;
+      if (manualReview) {
+        await txn.put(key, { ...record, state: "manual_review", updatedAt: now });
+        return true;
+      }
+      if (record.state !== "reserved") return false;
+      const dailyKey = `usage-day:${record.day}:${record.payerHash}`;
+      const daily = (await txn.get(dailyKey)) ?? { amountAtomic: "0", requests: 0 };
+      const remainingAmount = BigInt(String(daily.amountAtomic ?? "0")) - BigInt(record.amountAtomic);
+      const remainingRequests = Number(daily.requests ?? 0) - 1;
+      if (remainingAmount < 0n || remainingRequests < 0) throw new Error("USAGE_COUNTER_UNDERFLOW");
+      await txn.put(dailyKey, { amountAtomic: remainingAmount.toString(), requests: remainingRequests, updatedAt: now });
+      await txn.put(key, { ...record, state: "released", updatedAt: now, releasedAt: now });
+      return true;
+    });
+  }
+
+  async auditUpsert(body) {
+    const paymentFingerprint = validatePaymentFingerprint(body.paymentFingerprint);
+    const audit = body.audit;
+    if (!audit || typeof audit !== "object" || Array.isArray(audit)) throw new Error("INVALID_AUDIT");
+    if (String(audit.payment_fingerprint_sha256 ?? "").toLowerCase() !== paymentFingerprint) throw new Error("AUDIT_PAYMENT_FINGERPRINT_MISMATCH");
+    const status = String(audit.status ?? "");
+    if (!["prepared", "settled", "delivered", "manual_review", "failed"].includes(status)) throw new Error("INVALID_AUDIT_STATUS");
+    const encoded = JSON.stringify(audit);
+    if (new TextEncoder().encode(encoded).byteLength > 64 * 1024) throw new Error("AUDIT_TOO_LARGE");
+    const key = `audit:${paymentFingerprint}`;
+    const now = Date.now();
+    return this.ctx.storage.transaction(async (txn) => {
+      const existing = await txn.get(key);
+      if (existing?.audit?.query_plan_hash && existing.audit.query_plan_hash !== audit.query_plan_hash) return false;
+      await txn.put(key, { audit, updatedAt: now, createdAt: existing?.createdAt ?? now });
+      return true;
+    });
+  }
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") {
-      return json({ ok: true, service: "geomacro-commerce-ledger", storage: "durable_objects_sqlite" });
+      return json({ ok: true, service: "geomacro-commerce-ledger", storage: "durable_objects_sqlite", capabilities: ["delivery", "usage_guard", "product_audit"] });
     }
-    if (request.method !== "POST" || !url.pathname.startsWith("/v1/delivery/")) {
+    const route = url.pathname.match(/^\/v1\/(delivery|usage|audit)\/([a-z-]+)$/);
+    if (request.method !== "POST" || !route) {
       return json({ ok: false, error: "NOT_FOUND" }, 404);
     }
 
@@ -331,7 +441,9 @@ export default {
       const scope = validateScope(body);
       const id = env.COMMERCE_LEDGER.idFromName(`${scope.provider}:${scope.providerEnvironment}`);
       const stub = env.COMMERCE_LEDGER.get(id);
-      const action = url.pathname.split("/").filter(Boolean).at(-1);
+      const section = route[1];
+      const routeAction = route[2];
+      const action = section === "delivery" ? routeAction : `${section}-${routeAction}`;
       return stub.fetch(`https://ledger.internal/${action}`, {
         method: "POST",
         headers: { "content-type": "application/json" },

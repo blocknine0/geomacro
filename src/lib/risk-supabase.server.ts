@@ -4,6 +4,7 @@ import {
   createClient,
   type SupabaseClient,
 } from "@supabase/supabase-js";
+import { supabasePrimaryTrafficAllowed } from "./supabase-runtime-mode.server";
 
 let cachedRiskClient: SupabaseClient | null = null;
 
@@ -118,6 +119,12 @@ function projectRefOf(url: string): string | null {
 /**
  * Dedicated privileged Supabase client for Geomacro Risk Object / Risk Gate.
  *
+ * Production serving defaults to Supabase cold-standby. Runtime traffic is
+ * permitted only when GEOMACRO_SUPABASE_RUNTIME_MODE=primary (or in a
+ * non-production runtime where primary remains the default). This makes the
+ * existing verified B2 continuity paths the normal production serving path and
+ * prevents an egress-quota incident from becoming a customer-path dependency.
+ *
  * Security and continuity rules:
  * - server-only, service-role only, authoritative project only;
  * - never falls back to anon and never exposes credentials to browser code;
@@ -128,6 +135,7 @@ function projectRefOf(url: string): string | null {
  *   cannot exhaust request workers or connection capacity.
  */
 export function getRiskSupabase(): SupabaseClient | null {
+  if (!supabasePrimaryTrafficAllowed()) return null;
   if (cachedRiskClient) return cachedRiskClient;
 
   const candidates = [
@@ -165,7 +173,7 @@ export function requireRiskSupabase(): SupabaseClient {
   const db = getRiskSupabase();
   if (!db) {
     throw new Error(
-      "Risk Supabase service-role client is not configured for the authoritative project",
+      "Risk Supabase is in standby or is not configured for the authoritative project",
     );
   }
   return db;

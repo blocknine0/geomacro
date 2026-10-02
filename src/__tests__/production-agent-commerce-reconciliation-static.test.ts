@@ -6,6 +6,14 @@ const migration = readFileSync(
   "utf8",
 );
 const coinbase = readFileSync("src/lib/coinbase-x402.server.ts", "utf8");
+const deliveryLedger = readFileSync(
+  "src/lib/agent-commerce-delivery.server.ts",
+  "utf8",
+);
+const commerceWorker = readFileSync(
+  "workers/commerce-ledger/src/index.mjs",
+  "utf8",
+);
 const adaptive = readFileSync("src/routes/api.x402.intelligence.ts", "utf8");
 const legacy = readFileSync("src/routes/api.x402.risk.ts", "utf8");
 const reconcile = readFileSync(
@@ -47,9 +55,15 @@ describe("production agent-commerce reconciliation contract", () => {
     expect(migration).toContain("agent-commerce revenue promotion requires matched external delivery evidence");
   });
 
-  it("persists Coinbase response hashes before settlement and links payment to usage", () => {
-    expect(coinbase).toContain('p_response_sha256: responseSha256');
-    expect(coinbase).toContain("return { responseSha256 }");
+  it("binds Coinbase response hashes in the durable ledger before settlement and links payment to usage", () => {
+    expect(coinbase).toContain("prepareAgentCommerceDelivery({");
+    expect(deliveryLedger).toContain("const responseSha256 = commerceFingerprint(input.responsePayload)");
+    expect(deliveryLedger).toContain("responsePayload: input.responsePayload");
+    expect(deliveryLedger).toContain("responseSha256,");
+    expect(deliveryLedger).toContain("return { responseSha256 }");
+    expect(commerceWorker).toContain('state: "prepared"');
+    expect(commerceWorker).toContain("responsePayload: body.responsePayload");
+    expect(commerceWorker).toContain("responseSha256,");
     expect(coinbase).toContain("const paymentEventId = await recordCommercialPaymentEvent");
     expect(coinbase).toContain("await recordCommercialUsageEvent({");
     expect(coinbase).toContain("payment_event_id: paymentEventId");

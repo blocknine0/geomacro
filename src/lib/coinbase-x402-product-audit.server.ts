@@ -1,4 +1,8 @@
 import type { CoinbaseX402Config } from "./coinbase-x402.server";
+import {
+  callCommerceControlPlane,
+  durableCommerceControlPlaneEnabled,
+} from "./commerce-control-plane.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 export async function upsertCoinbaseX402ProductAudit(input: {
@@ -13,7 +17,6 @@ export async function upsertCoinbaseX402ProductAudit(input: {
   reconciliationStatus?: string;
   config: CoinbaseX402Config;
 }) {
-  const db = requireRiskSupabase();
   const now = new Date().toISOString();
   const row = {
     request_id: input.requestId,
@@ -37,6 +40,21 @@ export async function upsertCoinbaseX402ProductAudit(input: {
     updated_at: now,
   };
 
+  if (durableCommerceControlPlaneEnabled()) {
+    const result = await callCommerceControlPlane<{ ok?: unknown }>(
+      "/v1/audit/upsert",
+      {
+        provider: "coinbase_x402",
+        providerEnvironment: input.config.commercialEnvironment,
+        paymentFingerprint: input.paymentFingerprint,
+        audit: row,
+      },
+    );
+    if (result?.ok !== true) throw new Error("COINBASE_X402_PRODUCT_AUDIT_DURABLE_UPSERT_FAILED");
+    return;
+  }
+
+  const db = requireRiskSupabase();
   // A payment fingerprint is the durable idempotency key. Retrying the same
   // verified proof after a safe pre-settlement failure must update the same
   // audit projection rather than collide with its unique fingerprint.
