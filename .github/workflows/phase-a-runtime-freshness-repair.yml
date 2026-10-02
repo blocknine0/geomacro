@@ -1,0 +1,121 @@
+name: Phase A Runtime Freshness Repair
+
+on:
+  push:
+    branches:
+      - fix/phase-a-runtime-freshness-20261002
+    paths:
+      - "scripts/ops/phase-a-runtime-freshness-repair.mjs"
+      - "scripts/commercial-source-rights-evidence.mjs"
+      - "scripts/ops/b2-s3-client.mjs"
+      - ".github/workflows/phase-a-runtime-freshness-repair.yml"
+      - "src/__tests__/phase-a-runtime-freshness-repair-static.test.ts"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase-a-runtime-freshness-production-repair
+  cancel-in-progress: true
+
+jobs:
+  repair:
+    if: ${{ github.repository == 'blocknine0/geomacro' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_REQUEST_BUDGET: "20"
+      PHASE_A_SOURCE_TIMEOUT_MS: "25000"
+      PHASE_A_SOURCE_ATTEMPTS: "3"
+
+    steps:
+      - name: Checkout exact repair revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify production target and direct DB path
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${SUPABASE_PROJECT_ID}" = "ldpwajisioljyjtojvfx"
+          test -n "${SUPABASE_DB_URL}"
+          test -n "${B2_KEY_ID}"
+          test -n "${B2_APPLICATION_KEY}"
+          psql --version
+          ref="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -Atqc "select current_setting('app.settings.jwt_secret', true) is not null, current_database()")"
+          test -n "$ref"
+          echo "PASS: direct production Postgres path reachable without Supabase REST"
+
+      - name: Repair Phase A runtime freshness with verified evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/phase-a-runtime-freshness-repair.mjs | tee phase-a-runtime-freshness-repair.json
+          jq -e '.ok == true and .payment_or_settlement_enabled == false and (.status.production_ready_rows|tonumber) == (.expected_matrix_rows|tonumber)' phase-a-runtime-freshness-repair.json >/dev/null
+
+      - name: Independently verify 250x3 matrix contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -AtF '|' <<'SQL' | tee phase-a-runtime-final.txt
+          with s as (
+            select * from public.live_country_category_coverage_matrix_status
+          )
+          select
+            enabled_country_count,
+            required_domain_count,
+            expected_matrix_rows,
+            actual_matrix_rows,
+            production_ready_rows,
+            unavailable_rows,
+            nonready_rows_missing_reason,
+            invalid_ready_rows,
+            invalid_fallback_rows,
+            duplicate_matrix_rows,
+            matrix_contract_complete
+          from s;
+          SQL
+          IFS='|' read -r countries domains expected actual ready unavailable missing_reason invalid_ready invalid_fallback duplicates complete < phase-a-runtime-final.txt
+          test "$domains" = "3"
+          test "$expected" = "$actual"
+          test "$ready" = "$expected"
+          test "$unavailable" = "0"
+          test "$missing_reason" = "0"
+          test "$invalid_ready" = "0"
+          test "$invalid_fallback" = "0"
+          test "$duplicates" = "0"
+          test "$complete" = "t"
+
+      - name: Verify source certifications are evidence-graph promoted
+        shell: bash
+        run: |
+          set -euo pipefail
+          count="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_source_certification_records where source_id in ('gdelt_v2_events','world_bank_indicators','usgs_mcs') and certification_state='CERTIFIED' and endpoint_status='PASS' and rights_status in ('COMMERCIAL_OK','DERIVED_ONLY') and schema_status in ('PASS','NOT_APPLICABLE') and freshness_status in ('FRESH','VARIABLE','NOT_APPLICABLE') and provenance_status in ('PASS','NOT_APPLICABLE') and independence_status in ('PASS','NOT_APPLICABLE') and adapter_status in ('TESTED','NOT_APPLICABLE') and runtime_status in ('PASS','NOT_APPLICABLE') and fallback_status in ('READY','NOT_REQUIRED') and certification_evidence_ref like 'evidence-graph:%' and certification_hash ~ '^[0-9a-f]{64}$'")"
+          test "$count" = "3"
+
+      - name: Upload Phase A runtime proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-a-runtime-freshness-${{ github.sha }}
+          path: |
+            phase-a-runtime-freshness-repair.json
+            phase-a-runtime-final.txt
+          if-no-files-found: warn
+          retention-days: 14
