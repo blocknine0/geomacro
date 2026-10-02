@@ -9,8 +9,15 @@ const coverageContract = readFileSync(
   "supabase/migrations/055_global_coverage_contract.sql",
   "utf8",
 );
-const phaseAGlobalCoverage = readFileSync(
-  "supabase/migrations/20261002083000_phase_a_global_coverage_engine.sql",
+const phaseAGlobalCoverage = [
+  "supabase/migrations/20261002083529_phase_a_global_coverage_matrix.sql",
+  "supabase/migrations/20261002083546_phase_a_dynamic_raw_source_status.sql",
+  "supabase/migrations/20261002083621_phase_a_restrict_coverage_views.sql",
+]
+  .map((file) => readFileSync(file, "utf8"))
+  .join("\n");
+const databaseSchemaSafetyWorkflow = readFileSync(
+  ".github/workflows/database-schema-safety.yml",
   "utf8",
 );
 const globalCoverageAudit = readFileSync(
@@ -157,6 +164,21 @@ describe("global source coverage migration integrity", () => {
 });
 
 describe("Phase A global coverage engine", () => {
+  it("matches the production migration versions and keeps zero replay explicit", () => {
+    expect(phaseAGlobalCoverage).toContain(
+      "create or replace view public.live_country_category_coverage_matrix",
+    );
+    expect(databaseSchemaSafetyWorkflow).toContain(
+      "20261002083500_phase_a_zero_replay_substrate.sql",
+    );
+    expect(databaseSchemaSafetyWorkflow).toContain(
+      "create table if not exists public.live_raw_source_targets",
+    );
+    expect(databaseSchemaSafetyWorkflow).toContain(
+      "PASS: injected CI-only Phase A substrate before production-exact migration versions",
+    );
+  });
+
   it("derives the matrix denominator from the enabled canonical registry", () => {
     expect(phaseAGlobalCoverage).toContain(
       "from public.live_country_registry r\n  cross join category_contract c\n  where r.enabled = true",
@@ -198,7 +220,7 @@ describe("Phase A global coverage engine", () => {
       expect(phaseAGlobalCoverage).toContain(clause);
     }
     expect(phaseAGlobalCoverage).toContain(
-      "fresh_target_count > 0\n      and certified_fresh_runtime_path_count > 0",
+      "fresh_target_count > 0 and certified_fresh_runtime_path_count > 0",
     );
   });
 
