@@ -15,6 +15,7 @@ import {
 } from "@/lib/use-intelligence";
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
 import { useRiskIndices } from "@/lib/use-risk-indices";
+import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 
 const TITLE = "Live Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
 const DESCRIPTION =
@@ -24,8 +25,21 @@ const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
 export const Route = createFileRoute("/intelligence")({
   loader: async () => {
-    const rows = await getPublicIntelligenceSeo({ data: {} });
-    return { rows, now: Date.now() };
+    const now = Date.now();
+    try {
+      const rows = await withPublicRuntimeTimeout(
+        getPublicIntelligenceSeo({ data: {} }),
+        6_000,
+        "Intelligence route preload timed out.",
+      );
+      return { rows, now };
+    } catch (error) {
+      console.error(
+        "[intelligence-route] preload failed; rendering fail-closed workspace",
+        error instanceof Error ? error.message : String(error),
+      );
+      return { rows: [], now };
+    }
   },
   head: () => ({
     meta: [
@@ -222,6 +236,12 @@ function IntelligencePage() {
                       ) : null}
                     </div>
                   ))}
+                </div>
+              ) : riskIndices.status === "error" ? (
+                <div className="mt-4 rounded-lg border border-dashed border-border/70 p-4">
+                  <p className="text-xs font-medium text-foreground">Risk Indices temporarily unavailable</p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">No synthetic reading is shown while the verified package is unavailable.</p>
+                  <Button type="button" variant="ghost" size="sm" onClick={riskIndices.retry} className="mt-2 h-8 px-2 text-xs">Retry</Button>
                 </div>
               ) : (
                 <div className="mt-4 space-y-3" aria-label="Refreshing verified risk indices">
