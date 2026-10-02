@@ -1,6 +1,6 @@
 # Geomacro × Nevermined
 
-Status: **PRE-LAUNCH ACCEPTANCE. SANDBOX ONLY. PRODUCTION DISABLED.**
+Status: **RUNTIME-CONTROLLED INTEGRATION.** Production availability is determined by the live Geomacro activation contract and Nevermined provider state.
 
 Geomacro exposes the same source-governed adaptive geopolitical and macro risk intelligence through a Nevermined x402 adapter without forking the underlying intelligence methodology or delivery semantics.
 
@@ -12,12 +12,12 @@ POST https://geomacro.live/api/x402/nevermined/intelligence
 
 The request body uses the canonical Geomacro adaptive-intelligence query contract. The exact requested intelligence is checked for deliverability, freshness and commercial-source eligibility before any payment challenge is issued.
 
-## Pre-launch payment flow
+## Payment flow
 
 1. Submit the adaptive intelligence request without a payment proof.
-2. If the request is fully deliverable and commercially eligible, Geomacro returns HTTP `402` with Nevermined payment requirements.
+2. If the request is fully deliverable and commercially eligible, Geomacro returns HTTP `402` with Nevermined payment requirements when the provider is active.
 3. The client obtains a valid Nevermined x402 payment proof and retries with the `payment-signature` header.
-4. Geomacro verifies the proof against the pinned Nevermined sandbox x402 backend contract.
+4. Geomacro verifies the proof against the configured Nevermined backend contract.
 5. Geomacro re-checks deliverability and source eligibility.
 6. The exact response is assembled, hashed and durably prepared in the provider-neutral delivery ledger before settlement.
 7. Nevermined settlement is attempted once.
@@ -29,14 +29,13 @@ Ambiguous settlement is locked for reconciliation. Geomacro does not automatical
 
 The adapter is pinned to the Nevermined backend API contract targeted by Payments SDK `1.13.0`:
 
-- sandbox backend: `https://api.sandbox.nevermined.app/`
-- live backend: `https://api.live.nevermined.app/`
-- verify: `POST /api/v1/x402/verify`
-- settle: `POST /api/v1/x402/settle`
-- backend version header: `Nevermined-Version: 1.1`
-- crypto network mapping: Base Sepolia in sandbox and Base mainnet in live
+- verification and settlement use the provider backend selected by runtime configuration;
+- verify: `POST /api/v1/x402/verify`;
+- settle: `POST /api/v1/x402/settle`;
+- backend version header: `Nevermined-Version: 1.1`;
+- production crypto settlement maps to the provider's supported live network contract.
 
-Geomacro does **not** currently install `@nevermined-io/payments` in the production dependency graph. During pre-launch hardening, the SDK introduced transitive high/moderate dependency advisories that violated Geomacro's security gate. Rather than weakening that gate, Geomacro uses a small server-only HTTP adapter matching the pinned official wire contract. Reintroducing the SDK requires the dependency graph to satisfy the same advisory policy.
+Geomacro does **not** currently install `@nevermined-io/payments` in the production dependency graph. The SDK introduced transitive dependency advisories that violated Geomacro's security gate. Rather than weakening that gate, Geomacro uses a small server-only HTTP adapter matching the pinned official wire contract. Reintroducing the SDK requires the dependency graph to satisfy the same advisory policy.
 
 The adapter fails closed on redirects, oversized/non-JSON backend responses, environment/API-key mismatch, malformed result fields and unsupported card networks. Verify and settle calls are bounded by timeouts, and settlement is never automatically retried after an ambiguous network outcome.
 
@@ -64,6 +63,6 @@ Geomacro supplies risk intelligence and decision context. It does not authorize 
 
 ## Production boundary
 
-Nevermined `live` configuration is hard-blocked by the same global coordinated-launch gate used for Geomacro's other production payment rails. Sandbox readiness does not authorize production funds, count as commercial revenue or permit a partial marketplace launch.
+Nevermined production configuration remains governed by the same coordinated activation and safety controls used for Geomacro's other payment rails. Integration readiness by itself does not authorize production funds or prove commercial settlement.
 
-Production activation will occur only as part of the single owner-authorized Geomacro official launch after the frozen release candidate passes the required security, source-rights, database, resilience, reconciliation and cross-provider acceptance gates.
+The live Geomacro health contract and provider payment challenge are authoritative for whether production settlement is active for a request.
