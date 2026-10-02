@@ -13,6 +13,10 @@ import {
 } from "@/lib/public-intelligence.functions";
 import { getPublicIntelligenceFromB2 } from "@/lib/public-intelligence-b2.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
+import {
+  PUBLIC_DATA_REQUEST_TIMEOUT_MS,
+  withPublicRuntimeTimeout,
+} from "@/lib/public-runtime-timeout";
 
 export type IntelEvent = {
   id: string;
@@ -203,14 +207,18 @@ export function useIntelligence(
       setStatus(hasData.current ? "updating" : "loading");
       try {
         const now = Date.now();
-        const rows = await loadPublicIntelligence({ data: {} });
+        const rows = await withPublicRuntimeTimeout(
+          loadPublicIntelligence({ data: {} }),
+          PUBLIC_DATA_REQUEST_TIMEOUT_MS,
+          "Intelligence feed request timed out.",
+        );
         if (cancelled) return;
 
         const mapped = mapPublicRows(rows);
 
         if (mapped.length === 0) {
           if (hasData.current) {
-            setStatus("error");
+            setStatus("ready");
             setError({ message: "Live refresh is temporarily unavailable. Showing the latest verified intelligence.", retryable: true });
             return;
           }
@@ -229,15 +237,15 @@ export function useIntelligence(
       } catch (e) {
         if (cancelled) return;
         setError(reportError("useIntelligence", e, "loading the intelligence feed"));
-        setStatus("error");
+        setStatus(hasData.current ? "ready" : "error");
       }
     }
 
     void load();
-    const id = setInterval(() => void load(), refreshMs);
+    const id = window.setInterval(() => void load(), refreshMs);
     return () => {
       cancelled = true;
-      clearInterval(id);
+      window.clearInterval(id);
     };
   }, [loadPublicIntelligence, reloadKey, refreshMs]);
 
