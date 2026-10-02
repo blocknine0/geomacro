@@ -11,8 +11,6 @@ on:
       - "scripts/commercial-source-rights-evidence.mjs"
       - ".github/workflows/source-evidence-graph-auto-promotion.yml"
       - "src/__tests__/production-source-alignment-static.test.ts"
-  schedule:
-    - cron: "27 2 * * 0"
 
 concurrency:
   group: geomacro-intelligence-orchestrator
@@ -26,7 +24,7 @@ jobs:
     if: >-
       ${{
         github.repository == 'blocknine0/geomacro' &&
-        (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'workflow_dispatch' ||
          github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/production-source-alignment-20261002')
       }}
     runs-on: ubuntu-latest
