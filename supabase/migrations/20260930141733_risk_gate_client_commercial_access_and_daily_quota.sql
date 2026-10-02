@@ -3,16 +3,42 @@ alter table public.risk_gate_api_clients
   add column if not exists quota_class text not null default 'limited_free_quota',
   add column if not exists daily_request_limit integer null;
 
-alter table public.risk_gate_api_clients
-  drop constraint if exists risk_gate_api_clients_access_tier_check,
-  add constraint risk_gate_api_clients_access_tier_check
-    check (access_tier in ('design_partner_pilot','private_pilot','paid_x402')),
-  drop constraint if exists risk_gate_api_clients_quota_class_check,
-  add constraint risk_gate_api_clients_quota_class_check
-    check (quota_class in ('limited_free_quota','commercial')),
-  drop constraint if exists risk_gate_api_clients_daily_request_limit_check,
-  add constraint risk_gate_api_clients_daily_request_limit_check
-    check (daily_request_limit is null or daily_request_limit between 1 and 1000000);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'risk_gate_api_clients_access_tier_check'
+      and conrelid = 'public.risk_gate_api_clients'::regclass
+  ) then
+    alter table public.risk_gate_api_clients
+      add constraint risk_gate_api_clients_access_tier_check
+        check (access_tier in ('design_partner_pilot','private_pilot','paid_x402'));
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'risk_gate_api_clients_quota_class_check'
+      and conrelid = 'public.risk_gate_api_clients'::regclass
+  ) then
+    alter table public.risk_gate_api_clients
+      add constraint risk_gate_api_clients_quota_class_check
+        check (quota_class in ('limited_free_quota','commercial'));
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'risk_gate_api_clients_daily_request_limit_check'
+      and conrelid = 'public.risk_gate_api_clients'::regclass
+  ) then
+    alter table public.risk_gate_api_clients
+      add constraint risk_gate_api_clients_daily_request_limit_check
+        check (daily_request_limit is null or daily_request_limit between 1 and 1000000);
+  end if;
+end
+$$;
 
 create table if not exists public.risk_gate_daily_usage (
   client_id text not null references public.risk_gate_api_clients(client_id) on delete cascade,
