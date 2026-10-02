@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createB2Client } from "./b2-s3-client.mjs";
 import { readPublicIntelligenceRowsFromSupabase } from "../../src/lib/public-intelligence.functions";
 import { readPublicGlobalRisk } from "../../src/lib/global-risk-read.server";
+import { evaluatePaidOutputSourceReadiness } from "../../src/lib/paid-output-source-readiness";
 
 const ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const BUCKET = "geomacro-private-archive";
@@ -19,12 +20,22 @@ const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex
 
 type SourceRightsRow = {
   source_id: string | null;
+  category: string | null;
   commercial_usage_status: string | null;
   enabled_for_ingestion: boolean | null;
   enabled_for_commercial_signals: boolean | null;
   raw_redistribution_allowed: boolean | null;
   attribution_required: boolean | null;
   licence_name: string | null;
+};
+
+type SourceCertificationRow = {
+  source_id: string | null;
+  certification_state: string | null;
+};
+
+type SourceRightsSnapshotRow = SourceRightsRow & {
+  certification_state: string | null;
 };
 
 if (
@@ -81,7 +92,7 @@ const sourceRights: SourceRightsRow[] = [];
 for (let offset = 0; offset < SOURCE_RIGHTS_MAX_ROWS; offset += SOURCE_RIGHTS_PAGE_SIZE) {
   const { data, error } = await supabase
     .from("live_external_sources")
-    .select("source_id,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required,licence_name")
+    .select("source_id,category,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required,licence_name")
     .order("source_id", { ascending: true })
     .range(offset, offset + SOURCE_RIGHTS_PAGE_SIZE - 1);
   if (error || !Array.isArray(data)) throw new Error("B2_LIVE_SOURCE_RIGHTS_INVALID");
@@ -95,12 +106,41 @@ for (let offset = 0; offset < SOURCE_RIGHTS_MAX_ROWS; offset += SOURCE_RIGHTS_PA
 if (sourceRights.length === 0 || sourceRights.length >= SOURCE_RIGHTS_MAX_ROWS) {
   throw new Error("B2_LIVE_SOURCE_RIGHTS_INVALID");
 }
+
+const sourceCertifications: SourceCertificationRow[] = [];
+for (let offset = 0; offset < SOURCE_RIGHTS_MAX_ROWS; offset += SOURCE_RIGHTS_PAGE_SIZE) {
+  const { data, error } = await supabase
+    .from("live_source_certification_records")
+    .select("source_id,certification_state")
+    .order("source_id", { ascending: true })
+    .range(offset, offset + SOURCE_RIGHTS_PAGE_SIZE - 1);
+  if (error || !Array.isArray(data)) throw new Error("B2_LIVE_SOURCE_CERTIFICATION_INVALID");
+  const page = data as unknown as SourceCertificationRow[];
+  sourceCertifications.push(...page);
+  if (page.length < SOURCE_RIGHTS_PAGE_SIZE) break;
+  if (sourceCertifications.length >= SOURCE_RIGHTS_MAX_ROWS) {
+    throw new Error("B2_LIVE_SOURCE_CERTIFICATION_TRUNCATION_GUARD");
+  }
+}
+const certificationBySource = new Map(
+  sourceCertifications
+    .map((row) => [String(row.source_id ?? "").trim(), row.certification_state ?? null] as const)
+    .filter(([sourceId]) => sourceId.length > 0),
+);
+
+const sourceRightsSnapshot: SourceRightsSnapshotRow[] = sourceRights.map((row) => ({
+  ...row,
+  certification_state: certificationBySource.get(String(row.source_id ?? "").trim()) ?? null,
+}));
+
 const sourceIds = new Set<string>();
-for (const row of sourceRights) {
+for (const row of sourceRightsSnapshot) {
   const sourceId = String(row.source_id ?? "").trim();
   if (
     !/^[A-Za-z0-9_.:-]{1,160}$/.test(sourceId) ||
     sourceIds.has(sourceId) ||
+    !(row.category === null || typeof row.category === "string") ||
+    !(row.certification_state === null || typeof row.certification_state === "string") ||
     typeof row.enabled_for_ingestion !== "boolean" ||
     typeof row.enabled_for_commercial_signals !== "boolean" ||
     typeof row.raw_redistribution_allowed !== "boolean" ||
@@ -109,6 +149,20 @@ for (const row of sourceRights) {
     !(row.licence_name === null || typeof row.licence_name === "string")
   ) throw new Error("B2_LIVE_SOURCE_RIGHTS_ROW_INVALID");
   sourceIds.add(sourceId);
+}
+
+const paidOutputReadiness = evaluatePaidOutputSourceReadiness(
+  sourceRightsSnapshot.map((row) => ({
+    source_id: String(row.source_id ?? ""),
+    category: row.category,
+    certification_state: row.certification_state,
+    commercial_usage_status: row.commercial_usage_status,
+    enabled_for_ingestion: row.enabled_for_ingestion === true,
+    enabled_for_commercial_signals: row.enabled_for_commercial_signals === true,
+  })),
+);
+if (!paidOutputReadiness.ready) {
+  throw new Error(`B2_LIVE_PAID_OUTPUT_SOURCE_SET_NOT_READY:${JSON.stringify(paidOutputReadiness)}`);
 }
 
 const payloads = [
@@ -148,12 +202,13 @@ const payloads = [
   },
   {
     key: SOURCE_RIGHTS_KEY,
-    schema: "geomacro.commercial-source-rights-live.v1",
+    schema: "geomacro.commercial-source-rights-live.v2",
     value: {
-      schema: "geomacro.commercial-source-rights-live.v1",
+      schema: "geomacro.commercial-source-rights-live.v2",
       generated_at: generatedAt,
       source_project: "ldpwajisioljyjtojvfx",
-      rows: sourceRights,
+      paid_output_readiness: paidOutputReadiness,
+      rows: sourceRightsSnapshot,
     },
   },
 ] as const;
@@ -190,6 +245,7 @@ console.log(JSON.stringify({
   intelligence_rows: intelligenceRows.length,
   risk_snapshot_id: risk.snapshotId,
   source_network_status: sourceNetworkStatus,
-  commercial_source_rights_rows: sourceRights.length,
+  paid_output_readiness: paidOutputReadiness,
+  commercial_source_rights_rows: sourceRightsSnapshot.length,
   b2_objects_verified: proofEntries.length + 1,
 }));
