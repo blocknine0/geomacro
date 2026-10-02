@@ -1,0 +1,79 @@
+name: Production Website Health
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "11 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-production-website-health
+  cancel-in-progress: true
+
+jobs:
+  public-production-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_URL: https://geomacro.live
+    steps:
+      - name: Verify B2 production serving health
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/public-production-health")"
+          cat "$body"
+          echo
+          if [[ "$code" != "200" ]]; then
+            echo "::error title=Production data serving unavailable::Expected HTTP 200 from /api/public-production-health, got $code."
+            exit 1
+          fi
+          for marker in \
+            '"ok":true' \
+            '"serving_authority":"backblaze-b2"' \
+            '"supabase_required_for_serving":false' \
+            '"b2_runtime_configured":true' \
+            '"intelligence_ready":true' \
+            '"risk_indices_ready":true' \
+            '"risk_verification_status":"verified"'
+          do
+            grep -Fq "$marker" "$body"
+          done
+
+      - name: Verify production alignment contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/health")"
+          if [[ "$code" != "200" ]]; then
+            echo "::error title=Health endpoint unavailable::Expected HTTP 200 from /api/health, got $code."
+            cat "$body"
+            exit 1
+          fi
+          for marker in \
+            '"alignment_contract":"github-main-b2-primary-supabase-standby-lovable-v2"' \
+            '"production_data_authority":"backblaze-b2"' \
+            '"production_data_runtime_configured":true' \
+            '"commerce_control_plane":"cloudflare-durable-objects"' \
+            '"supabase_role":"ingestion-recovery-standby"'
+          do
+            grep -Fq "$marker" "$body"
+          done
+
+      - name: Verify core production pages respond
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in / /intelligence /global-risk /ask-geomacro /data-api /institutional /contact; do
+            code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o /tmp/page -w '%{http_code}' "$BASE_URL$path")"
+            if [[ "$code" != "200" ]]; then
+              echo "::error title=Production page unavailable::$path returned HTTP $code"
+              head -c 500 /tmp/page || true
+              exit 1
+            fi
+          done
+          echo "PASS: core production pages returned HTTP 200."
