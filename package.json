@@ -23,7 +23,7 @@
     "gri:validate:v11": "node scripts/validate-gri.js",
     "gri:replay": "node scripts/replay-gri-history-v12.js",
     "gri:replay:v11": "node scripts/replay-gri-history.js",
-    "db:safety": "node scripts/db/check-migration-safety.mjs",
+    "db:safety": "node scripts/db/check-migration-safety-history-aware.mjs",
     "db:target": "node scripts/db/assert-authoritative-supabase.mjs",
     "db:verify-core": "node scripts/db/verify-core-schema.mjs",
     "hosting:verify": "node scripts/ops/verify-hosting-alignment.mjs",
@@ -126,28 +126,13 @@
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.20",
-    "globals": "^15.15.0",
-    "nitro": "3.0.260603-beta",
-    "prettier": "^3.7.3",
-    "supabase": "^2.116.0",
-    "tsx": "^4.23.13",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.56.1",
-    "vite": "7.3.6",
-    "vitest": "4.1.11"
-  },
-  "overrides": {
-    "js-yaml": "^5.0.0",
-    "uuid": "^11.1.0",
-    "stream-json": "3.5.0",
-    "toml": "4.2.0"
-  },
-  "resolutions": {
-    "js-yaml": "^5.0.0",
-    "uuid": "^11.1.0",
-    "stream-json": "3.5.0",
-    "toml": "4.2.0"
+    "eslint-plugin-react-hooks": "^6.1.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.1",
+    "vite": "^7.1.12",
+    "vitest": "^3.2.4"
   }
 }
