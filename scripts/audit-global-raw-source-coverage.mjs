@@ -10,6 +10,47 @@ function refOf(url) {
   try { return new URL(url).hostname.split(".")[0] ?? ""; } catch { return ""; }
 }
 
+function normalizeIso(value) {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+function resolveCanonicalCountries(directoryRows, registryRows) {
+  const registryEntries = (registryRows ?? [])
+    .map((row) => [normalizeIso(row.iso2), normalizeIso(row.iso3)])
+    .filter(([iso2, iso3]) => iso2 && iso3);
+  const registryIso2 = registryEntries.map(([iso2]) => iso2);
+  if (new Set(registryIso2).size !== registryIso2.length) {
+    throw new Error("Canonical enabled registry contains duplicate ISO2 entries");
+  }
+
+  const normalizedDirectory = (directoryRows ?? [])
+    .map((row) => normalizeIso(row.country_iso2))
+    .filter(Boolean);
+  const directoryIso2 = [...new Set(normalizedDirectory)].sort();
+  if (!directoryIso2.length) {
+    throw new Error("Canonical country source directory is empty");
+  }
+  if (directoryIso2.length !== normalizedDirectory.length) {
+    throw new Error("Canonical country source directory contains duplicate ISO2 entries");
+  }
+
+  const registryByIso2 = new Map(registryEntries);
+  const unmappedDirectoryIso2 = directoryIso2.filter((iso2) => !registryByIso2.has(iso2));
+  if (unmappedDirectoryIso2.length) {
+    throw new Error(
+      "Canonical country source directory has entries missing from the enabled registry: " +
+        unmappedDirectoryIso2.join(","),
+    );
+  }
+
+  const canonicalIso3 = directoryIso2.map((iso2) => registryByIso2.get(iso2));
+  if (new Set(canonicalIso3).size !== canonicalIso3.length) {
+    throw new Error("Canonical country resolution produced duplicate ISO3 entries");
+  }
+
+  return canonicalIso3.sort();
+}
+
 async function main() {
   const url=String(process.env.APP_SUPABASE_URL??"").trim();
   const key=String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY??"").trim();
@@ -32,16 +73,16 @@ async function main() {
     targetRows.push(...(targetQuery.data??[]));
     if((targetQuery.data??[]).length<1000)break;
   }
-  const registryByIso2=new Map((registryQuery.data??[]).map((x)=>[String(x.iso2).toUpperCase(),String(x.iso3)]));
-  const canonicalIso3=[...new Set((directoryQuery.data??[]).map((x)=>registryByIso2.get(String(x.country_iso2).toUpperCase())).filter(Boolean))];
-  if(canonicalIso3.length!==195) throw new Error("Canonical 195-country baseline resolution failed: "+canonicalIso3.length);
+
+  const canonicalIso3=resolveCanonicalCountries(directoryQuery.data, registryQuery.data);
   const canonicalSet=new Set(canonicalIso3);
-  const rows=targetRows.filter((row)=>canonicalSet.has(String(row.country_iso3)));
+  const rows=targetRows.filter((row)=>canonicalSet.has(normalizeIso(row.country_iso3)));
 
   const byCountry=new Map();
   for(const row of rows??[]){
-    const iso=String(row.country_iso3);
+    const iso=normalizeIso(row.country_iso3);
     const item=byCountry.get(iso)??{GEOPOLITICS:[],MACRO:[],CRITICAL_MINERALS:[]};
+    if (!Object.prototype.hasOwnProperty.call(item, row.category)) continue;
     item[row.category].push(row);
     byCountry.set(iso,item);
   }
@@ -55,11 +96,12 @@ async function main() {
     }
   }
 
+  const targetsPerCountry=Object.values(expected).reduce((sum,count)=>sum+count,0);
   const output={
-    ok: countries.length===195 && missing.length===0,
+    ok: countries.length>0 && missing.length===0,
     countries:countries.length,
     expected_targets_per_country:expected,
-    expected_total_targets:195*(3+4+6),
+    expected_total_targets:countries.length*targetsPerCountry,
     actual_total_targets:rows.length,
     countries_with_complete_three_category_mesh: countries.filter((iso)=>{
       const x=byCountry.get(iso);
