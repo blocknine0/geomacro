@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { readB2PublicIntelligence } from "./b2-live.server";
-import { assertSameOrigin } from "./origin-guard";
+import { assertPublicReadOrigin } from "./origin-guard";
 
 const EventInput = z.object({
   eventId: z.string().trim().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
@@ -39,7 +39,7 @@ function fromB2Row(row: NonNullable<Awaited<ReturnType<typeof readB2PublicIntell
 export const getPublicEventDetail = createServerFn({ method: "POST" })
   .validator((input: unknown) => EventInput.parse(input))
   .handler(async ({ data }): Promise<PublicEventDetail | null> => {
-    assertSameOrigin();
+    assertPublicReadOrigin();
 
     const b2Rows = await readB2PublicIntelligence();
     const b2Row = b2Rows?.find((row) => row.id === data.eventId);
