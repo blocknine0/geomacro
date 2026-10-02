@@ -14,12 +14,13 @@ describe("canonical one-data multi-delivery architecture", () => {
     expect(machine).toContain("answerQuestion");
   });
 
-  it("keeps public GRI and machine GRI on the same canonical read service", () => {
+  it("keeps public risk on the verified B2 projection while machine paths retain the canonical risk service", () => {
     const publicRisk = read("src/lib/public-risk.functions.ts");
     const machine = read("src/lib/testnet-intelligence-capability.server.ts");
     const agentic = read("src/lib/agentic-demo-service.server.ts");
 
-    expect(publicRisk).toContain("readPublicGlobalRisk");
+    expect(publicRisk).toContain("readB2PublicRisk");
+    expect(publicRisk).not.toContain("readPublicGlobalRiskFromEdge");
     expect(machine).toContain("readPublicGlobalRisk");
     expect(agentic).toContain("readPublicGlobalRisk");
   });
