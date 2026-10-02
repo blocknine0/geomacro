@@ -13,6 +13,7 @@ on:
       - "scripts/sync-country-raw-source-mesh.mjs"
       - "scripts/drain-live-structure.mjs"
       - "scripts/intelligence-orchestrator.mjs"
+      - "scripts/classify-realtime-corroborate-health.mjs"
       - "supabase/functions/live-flash-ingest/index.ts"
       - "supabase/functions/live-flash-corroborate/index.ts"
       - "supabase/migrations/920_multi_source_commercial_registry.sql"
@@ -153,37 +154,70 @@ jobs:
           echo "::add-mask::${token}"
           printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\n" "${token}" >> "${GITHUB_ENV}"
 
-      - name: Inspect scoped OIDC claims
+      - name: Validate scoped OIDC claims
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import base64, json, os
+          import base64, json, os, re
+
           token = os.environ["GEOMACRO_FLASH_OIDC_TOKEN"]
           payload = token.split(".", 2)[1]
           payload += "=" * (-len(payload) % 4)
           claims = json.loads(base64.urlsafe_b64decode(payload.encode()))
-          print(json.dumps({
-            "repository": claims.get("repository"),
-            "ref": claims.get("ref"),
-            "event_name": claims.get("event_name"),
-            "workflow": claims.get("workflow"),
-            "workflow_ref": claims.get("workflow_ref"),
-            "job_workflow_ref": claims.get("job_workflow_ref"),
-            "head_ref": claims.get("head_ref"),
-            "base_ref": claims.get("base_ref")
-          }, indent=2, sort_keys=True))
+
+          ref = str(claims.get("ref") or "")
+          workflow = str(claims.get("workflow") or "")
+          workflow_ref = str(claims.get("workflow_ref") or "")
+          job_workflow_ref = str(claims.get("job_workflow_ref") or "")
+          expected_prefix = "blocknine0/geomacro/.github/workflows/global-realtime-source-proof.yml@"
+
+          contract_valid = all([
+              claims.get("repository") == "blocknine0/geomacro",
+              claims.get("event_name") == "pull_request",
+              re.fullmatch(r"refs/pull/\d+/merge", ref) is not None,
+              claims.get("base_ref") == "main",
+              workflow in {"Global Realtime Source Proof", "global-realtime-source-proof.yml"},
+              workflow_ref == expected_prefix + ref or job_workflow_ref == expected_prefix + ref,
+          ])
+
+          summary = {
+              "repository": claims.get("repository"),
+              "ref": claims.get("ref"),
+              "event_name": claims.get("event_name"),
+              "workflow": claims.get("workflow"),
+              "workflow_ref": claims.get("workflow_ref"),
+              "job_workflow_ref": claims.get("job_workflow_ref"),
+              "head_ref": claims.get("head_ref"),
+              "base_ref": claims.get("base_ref"),
+              "contract_valid": contract_valid,
+          }
+
+          with open("oidc-claims-summary.json", "w", encoding="utf-8") as fh:
+              json.dump(summary, fh, indent=2, sort_keys=True)
+              fh.write("\n")
+
+          print(json.dumps(summary, indent=2, sort_keys=True))
+          if not contract_valid:
+              raise SystemExit("OIDC_CLAIM_CONTRACT_MISMATCH")
           PY
 
-      - name: Smoke-check realtime corroboration OIDC
+      - name: Verify realtime corroboration auth and service health
         shell: bash
         run: |
           set -euo pipefail
           test -n "${GEOMACRO_FLASH_OIDC_TOKEN}"
-          code="$(curl --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 --output /tmp/realtime-corroborate-health.json --write-out '%{http_code}' -X POST -H "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" -H "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" -H 'Content-Type: application/json' "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-corroborate?mode=health")"
-          cat /tmp/realtime-corroborate-health.json
-          test "${code}" = "200"
-          grep -q '"authenticated":true' /tmp/realtime-corroborate-health.json
+          set +e
+          code="$(curl --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 --output realtime-corroborate-health.json --write-out '%{http_code}' -X POST -H "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" -H "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" -H 'Content-Type: application/json' "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-corroborate?mode=health")"
+          curl_status=$?
+          set -e
+          test -f realtime-corroborate-health.json || printf '{}\n' > realtime-corroborate-health.json
+          cat realtime-corroborate-health.json
+          node scripts/classify-realtime-corroborate-health.mjs \
+            --status "${code:-000}" \
+            --transport-status "${curl_status}" \
+            --input realtime-corroborate-health.json \
+            --output realtime-corroborate-health-classification.json
 
       - name: Refresh all three raw runtime categories
         shell: bash
@@ -324,6 +358,9 @@ jobs:
         with:
           name: global-realtime-intelligence-100-${{ github.event.pull_request.head.sha }}
           path: |
+            oidc-claims-summary.json
+            realtime-corroborate-health.json
+            realtime-corroborate-health-classification.json
             country-raw-source-acceptance-GEOPOLITICS.json
             country-raw-source-acceptance-MACRO.json
             country-raw-source-acceptance-CRITICAL_MINERALS.json
