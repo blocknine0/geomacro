@@ -105,7 +105,9 @@ describe("commercial runtime security baseline", () => {
     const ingest = read(".github/workflows/auto-ingest-news.yml");
     expect(ingest).toContain("github.repository == 'blocknine0/geomacro'");
     expect(ingest).toContain("bun install --frozen-lockfile --ignore-scripts");
-    expect(ingest).toContain("Prediction-market creation is not part of this");
+    expect(ingest).toContain("Durable verified ingestion remains fail-closed");
+    expect(ingest).toContain("public-live-freshness-fallback:");
+    expect(ingest).not.toContain("auto-create-markets");
 
     const reliefWeb = read(".github/workflows/ingest-reliefweb-live.yml");
     expect(reliefWeb).toContain("SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}");
