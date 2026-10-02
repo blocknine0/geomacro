@@ -118,15 +118,15 @@ describe("commercial public surface v2", () => {
     expect(contact).toContain("The fastest conversation starts with the decision you are trying to improve");
   });
 
-  it("documents fail-soft public Risk Indices without synthetic fallback", () => {
+  it("documents fail-closed public Risk Indices without synthetic fallback or infinite loading", () => {
     const availability = read("src/content/docs/12-data-availability.md");
     const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
 
     expect(availability).toContain("a previously verified reading stays visible if a later refresh fails");
-    expect(availability).toContain("neutral refreshing/loading state");
     expect(availability).toContain("does not receive a synthetic or zero-risk substitute");
     expect(workspace).toContain("Refreshing verified readings");
-    expect(workspace).not.toContain("risk.error?.message");
+    expect(workspace).toContain("Verified risk package temporarily unavailable");
+    expect(workspace).toContain("No unverified fallback is being displayed.");
   });
 
   it("keeps machine discovery aligned with the same three-domain commercial identity", () => {

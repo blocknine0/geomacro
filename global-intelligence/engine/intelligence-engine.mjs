@@ -130,16 +130,12 @@ export async function answerQuestion(
         };
       }
     } catch (error) {
-      // The permanent reader is an optimization, not a single point of failure.
-      // A Supabase outage/timeout must not prevent Geomacro from continuing to
-      // the independent live-adapter path. Transactional/durable operations keep
-      // their own fail-closed boundaries elsewhere.
+      // Permanent storage is an optimization, not a single point of failure.
+      // Its outage must not prevent the independent live-adapter path.
       console.error("[intelligence-engine] permanent reader unavailable; continuing live", error);
     }
   }
 
-  // Freshness-sensitive questions skip the permanent reader but still benefit
-  // from the short in-memory cache. Use bypassCache only for explicit operator/test refreshes.
   if (cacheTtlMs > 0 && options.bypassCache !== true) {
     const cached = runtimeCache.get(key);
     if (cached && cached.expires_at_ms > now) {
@@ -157,15 +153,40 @@ export async function answerQuestion(
 
   for (const category of categories) {
     const adapter = activeAdapters[category];
-    if (!adapter) continue;
+    if (!adapter) {
+      adapterResults[category] = {
+        observation_count: 0,
+        requested: null,
+        unavailable: true
+      };
+      continue;
+    }
 
-    const result = await adapter({question: normalizedQuestion, countryIso3});
-    const rows = unwrapRows(result);
-    adapterResults[category] = {
-      observation_count: rows.length,
-      requested: result?.requested_indicators ?? null
-    };
-    observations.push(...rows);
+    try {
+      const result = await adapter({question: normalizedQuestion, countryIso3});
+      const rows = unwrapRows(result);
+      adapterResults[category] = {
+        observation_count: rows.length,
+        requested: result?.requested_indicators ?? null,
+        unavailable: false
+      };
+      observations.push(...rows);
+    } catch (error) {
+      // A single free/public upstream must never turn the whole Ask workspace
+      // into a page-level failure. Keep provider details server-side, continue
+      // with independent categories, and return insufficient evidence if the
+      // remaining adapters cannot support a grounded answer.
+      console.error(
+        "[intelligence-engine] live adapter unavailable; continuing",
+        category,
+        error instanceof Error ? error.message : "unknown error"
+      );
+      adapterResults[category] = {
+        observation_count: 0,
+        requested: null,
+        unavailable: true
+      };
+    }
   }
 
   const verified = verifyObservations(observations);

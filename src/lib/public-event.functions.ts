@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { readB2PublicIntelligence } from "./b2-live.server";
 import { assertSameOrigin } from "./origin-guard";
-import { getAppSupabase } from "./supabase-app.server";
 
 const EventInput = z.object({
   eventId: z.string().trim().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
@@ -44,46 +43,5 @@ export const getPublicEventDetail = createServerFn({ method: "POST" })
 
     const b2Rows = await readB2PublicIntelligence();
     const b2Row = b2Rows?.find((row) => row.id === data.eventId);
-    if (b2Row) return fromB2Row(b2Row);
-
-    const supabase = getAppSupabase();
-    if (!supabase) return null;
-
-    const result = await supabase
-      .from("events")
-      .select(
-        "id,source_title,summary,narrative,category,severity,confidence,delta,published_at,created_at",
-      )
-      .eq("id", data.eventId)
-      .maybeSingle();
-
-    if (result.error) {
-      console.error("[public-event] canonical read failed", result.error.message);
-      return null;
-    }
-
-    if (result.data) return result.data as PublicEventDetail;
-
-    const structured = await supabase
-      .from("live_structured_events")
-      .select("id,title,summary,domain,severity,confidence,last_seen_at,first_seen_at,created_at")
-      .eq("id", data.eventId)
-      .maybeSingle();
-
-    if (structured.error || !structured.data) {
-      return null;
-    }
-
-    return {
-      id: String(structured.data.id),
-      source_title: structured.data.title ? String(structured.data.title) : null,
-      summary: structured.data.summary ? String(structured.data.summary) : null,
-      narrative: null,
-      category: String(structured.data.domain),
-      severity: Number.isFinite(Number(structured.data.severity)) ? Number(structured.data.severity) : null,
-      confidence: Number.isFinite(Number(structured.data.confidence)) ? Number(structured.data.confidence) : null,
-      delta: null,
-      published_at: structured.data.last_seen_at ? String(structured.data.last_seen_at) : null,
-      created_at: String(structured.data.created_at ?? structured.data.first_seen_at ?? structured.data.last_seen_at),
-    };
+    return b2Row ? fromB2Row(b2Row) : null;
   });

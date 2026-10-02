@@ -12,8 +12,6 @@ function assertPublicFindings(answer) {
   const findings = answer.findings.flatMap(group => group.findings);
   assert.ok(findings.length > 0, "privacy checks must inspect actual findings");
   for (const finding of findings) {
-    // Check the complete public schema, not a domain substring in serialized JSON.
-    // Any source URL, identity, domain or raw-payload field must fail this assertion.
     assert.deepEqual(Object.keys(finding).sort(), publicFields);
   }
 }
@@ -152,7 +150,7 @@ test("permanent store failure falls through to independent live adapters", async
     countryIso3: "IND",
     adapters: verifiedAdapters(counter),
     permanentReader: async () => {
-      throw new Error("simulated Supabase outage");
+      throw new Error("simulated permanent-store outage");
     },
     options: {cacheTtlMs: 0}
   });
@@ -163,4 +161,26 @@ test("permanent store failure falls through to independent live adapters", async
   assert.equal(result.durable_live_storage_write, false);
   assert.equal(result.insufficient_evidence, false);
   assert.equal(counter.calls, 1);
+});
+
+test("one failed live adapter does not crash the entire Ask request", async () => {
+  const result = await answerQuestion(`shipping macro adapter partial outage ${Date.now()}`, {
+    countryIso3: "IND",
+    adapters: {
+      GEOPOLITICS: async () => {
+        throw new Error("upstream unavailable: private detail");
+      },
+      MACRO: async () => []
+    },
+    options: {cacheTtlMs: 0}
+  });
+
+  assert.equal(result.data_mode, "ephemeral_live");
+  assert.equal(result.cache_status, "miss");
+  assert.equal(result.source_identity_exposed, false);
+  assert.equal(result.durable_live_storage_write, false);
+  assert.equal(result.insufficient_evidence, true);
+  assert.equal(result.adapter_results.GEOPOLITICS.unavailable, true);
+  assert.equal(result.adapter_results.MACRO.unavailable, false);
+  assert.equal(JSON.stringify(result).includes("private detail"), false);
 });

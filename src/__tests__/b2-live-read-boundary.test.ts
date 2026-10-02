@@ -13,10 +13,11 @@ describe("non-destructive B2 live read boundary", () => {
     expect(source).toContain("CIRCUIT_OPEN_MS = 30_000");
   });
 
-  it("preserves the verified B2 public read fallbacks", () => {
-    expect(read("src/lib/public-intelligence.functions.ts")).toContain("readB2PublicIntelligence");
+  it("serves the public website through verified B2 boundaries", () => {
+    expect(read("src/lib/public-intelligence-b2.functions.ts")).toContain("readB2PublicIntelligence");
     expect(read("src/lib/public-risk.functions.ts")).toContain("readB2PublicRisk");
-    expect(read("src/lib/global-risk-read.server.ts")).toContain("readVerifiedB2GlobalRiskOrThrow");
+    expect(read("src/lib/public-risk-indices.functions.ts")).toContain("readB2PublicRisk");
+    expect(read("src/lib/use-risk-indices.ts")).not.toContain("supabase.co");
   });
 
   it("keeps publisher verification but quota-holds automatic publishing while B2 GET is AccessDenied", () => {

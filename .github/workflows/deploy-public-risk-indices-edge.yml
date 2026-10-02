@@ -1,20 +1,10 @@
-name: Deploy public risk indices edge
+name: Validate legacy public risk indices recovery edge
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/deploy-public-risk-indices-edge.yml"
-      - "supabase/functions/public-risk-indices/**"
-      - "src/lib/public-risk-edge.server.ts"
-      - "src/lib/public-risk-indices.functions.ts"
-      - "src/lib/public-risk.functions.ts"
-      - "src/lib/risk-indices.types.ts"
   workflow_dispatch:
     inputs:
       mode:
-        description: "Plan validates the target only; apply deploys the read-only public risk indices Edge Function and runs a live smoke check."
+        description: "Plan validates the recovery target only; apply explicitly deploys the read-only legacy Supabase recovery Edge Function."
         required: true
         default: plan
         type: choice
@@ -26,8 +16,6 @@ on:
       - ".github/workflows/deploy-public-risk-indices-edge.yml"
       - "supabase/functions/public-risk-indices/**"
       - "src/lib/public-risk-edge.server.ts"
-      - "src/lib/public-risk-indices.functions.ts"
-      - "src/lib/public-risk.functions.ts"
       - "src/lib/risk-indices.types.ts"
 
 permissions:
@@ -44,14 +32,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Validate deployment guardrails
+      - name: Validate recovery guardrails
         shell: bash
         run: |
           set -euo pipefail
           file=".github/workflows/deploy-public-risk-indices-edge.yml"
           function="supabase/functions/public-risk-indices/index.ts"
 
-          grep -q 'push:' "$file"
           grep -q 'workflow_dispatch:' "$file"
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'ldpwajisioljyjtojvfx' "$file"
@@ -64,19 +51,24 @@ jobs:
           grep -q 'verified-category-projection' "$function"
 
           if grep -Eq '\.(insert|upsert|update|delete)\(' "$function"; then
-            echo "::error title=Read-only boundary violated::Public risk indices Edge Function contains a database mutation call."
+            echo "::error title=Read-only boundary violated::Recovery Edge Function contains a database mutation call."
             exit 1
           fi
 
-          echo "Public risk indices deployment guardrails are present."
+          if grep -q '^  push:' "$file"; then
+            echo "::error title=Production boundary violated::Legacy Supabase recovery edge must never auto-deploy from a push."
+            exit 1
+          fi
+
+          echo "Legacy public risk edge is manual recovery only."
 
   deploy:
-    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
     concurrency:
-      group: deploy-public-risk-indices-production
+      group: deploy-public-risk-indices-recovery
       cancel-in-progress: false
     env:
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
@@ -89,33 +81,33 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Validate production target
+      - name: Validate recovery target
         shell: bash
         run: |
           set -euo pipefail
           if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" || -z "${SUPABASE_PROJECT_ID:-}" ]]; then
-            echo "::error title=Missing production secret::SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_ID are required."
+            echo "::error title=Missing recovery secret::SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_ID are required."
             exit 1
           fi
           if [[ "$SUPABASE_PROJECT_ID" != "$EXPECTED_SUPABASE_PROJECT_REF" ]]; then
-            echo "::error title=Wrong production target::Refusing to deploy outside the authoritative Geomacro Supabase project."
+            echo "::error title=Wrong recovery target::Refusing to deploy outside the pinned Geomacro Supabase project."
             exit 1
           fi
-          echo "PASS: authoritative production project confirmed."
+          echo "PASS: pinned recovery project confirmed."
 
       - name: Install pinned Supabase CLI
         uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
         with:
           version: 2.117.0
 
-      - name: Stop after manual deployment plan
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'plan' }}
+      - name: Stop after recovery deployment plan
+        if: ${{ inputs.mode == 'plan' }}
         shell: bash
         run: |
-          echo "Plan completed. No production function was deployed."
+          echo "Plan completed. No recovery function was deployed."
 
-      - name: Deploy read-only public risk indices function
-        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+      - name: Deploy read-only recovery function
+        if: ${{ inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -123,8 +115,8 @@ jobs:
             --project-ref "$SUPABASE_PROJECT_ID" \
             --no-verify-jwt
 
-      - name: Smoke-check three verified public indices
-        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+      - name: Smoke-check recovery function
+        if: ${{ inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -139,7 +131,7 @@ jobs:
           echo
 
           if [[ "$code" != "200" ]]; then
-            echo "::error title=Public risk indices smoke failed::Expected HTTP 200 from the authoritative Edge Function."
+            echo "::error title=Recovery risk indices smoke failed::Expected HTTP 200 from the explicitly deployed recovery function."
             exit 1
           fi
 
@@ -155,8 +147,5 @@ jobs:
           if (!Array.isArray(indices) || indices.length !== 3) throw new Error('expected exactly three indices');
           const keys = indices.map((item) => item.key).sort().join(',');
           if (keys !== 'critical_minerals,geopolitics,macro') throw new Error(`unexpected index keys: ${keys}`);
-          if (!body?.legacyGlobalRisk || body.legacyGlobalRisk.verificationStatus !== 'verified') {
-            throw new Error('legacy compatibility payload missing or unverified');
-          }
-          console.log('PASS: authoritative three-index public payload verified.');
+          console.log('PASS: explicit recovery three-index payload verified.');
           NODE

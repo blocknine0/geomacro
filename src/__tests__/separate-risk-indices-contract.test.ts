@@ -9,6 +9,7 @@ describe("separate public risk indices contract", () => {
   it("publishes exactly three stable public index identities", () => {
     const types = read("src/lib/risk-indices.types.ts");
     const edge = read("supabase/functions/public-risk-indices/index.ts");
+    const projection = read("src/lib/risk-indices-from-global-risk.ts");
 
     expect(types).toContain('"geopolitics"');
     expect(types).toContain('"macro"');
@@ -16,43 +17,49 @@ describe("separate public risk indices contract", () => {
     expect(edge).toContain('name: "Geopolitical Risk Index"');
     expect(edge).toContain('name: "Macroeconomic Risk Index"');
     expect(edge).toContain('name: "Critical Minerals Risk Index"');
-    expect(edge).toContain('sourceCategory: "rare_earth"');
+    expect(projection).toContain('name: "Geopolitical Risk Index"');
+    expect(projection).toContain('name: "Macroeconomic Risk Index"');
+    expect(projection).toContain('name: "Critical Minerals Risk Index"');
+    expect(projection).toContain('sourceCategory: "rare_earth"');
   });
 
   it("keeps the v1.2 proof lineage instead of inventing a new historical calculation", () => {
     const edge = read("supabase/functions/public-risk-indices/index.ts");
     const types = read("src/lib/risk-indices.types.ts");
+    const projection = read("src/lib/risk-indices-from-global-risk.ts");
 
     expect(edge).toContain('const METHOD_VERSION = "gri-v1.2.0"');
     expect(edge).toContain('const PROOF_VERSION = "gri-proof-v1.2.0"');
     expect(edge).toContain('proofScope: "verified-category-projection"');
     expect(types).toContain('proofScope: "verified-category-projection"');
-    expect(edge).toContain('snapshot.verification_status !== "verified"');
-    expect(edge).toContain("reconciliation_residual_invalid");
-    expect(edge).toContain("change_residual_invalid");
-    expect(edge).toContain("Prefer the newest fully verified published snapshot");
-    expect(edge).toContain("no_verified_published_snapshot");
-    expect(edge).toContain("const verifiedSnapshots = snapshots.filter");
+    expect(projection).toContain('proofScope: "verified-category-projection"');
+    expect(projection).toContain("risk.proofHash");
+    expect(projection).toContain("risk.calculationHash");
   });
 
-  it("uses score-to-score change for standalone indices, not old combined contribution-point change", () => {
+  it("never reuses the old combined contribution-point change as a standalone index delta", () => {
     const edge = read("supabase/functions/public-risk-indices/index.ts");
+    const projection = read("src/lib/risk-indices-from-global-risk.ts");
 
     expect(edge).toContain("currentForChange - previousScore");
     expect(edge).toContain("A standalone index delta is score-to-score");
+    expect(projection).toContain("changePoints: null");
+    expect(projection).toContain("previousScore: null");
   });
 
   it("never creates a synthetic or zero fallback for an unavailable domain", () => {
     const edge = read("supabase/functions/public-risk-indices/index.ts");
+    const projection = read("src/lib/risk-indices-from-global-risk.ts");
     const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
 
     expect(edge).toContain('status: rawScore === null ? "unavailable" : "available"');
-    expect(edge).toContain("score: rawScore === null ? null : Math.round(rawScore)");
+    expect(projection).toContain('status: score === null ? "unavailable" : "available"');
+    expect(projection).toContain("score: score === null ? null : Math.round(score)");
     expect(workspace).toContain("does not substitute zero or a synthetic estimate");
     expect(workspace).toContain("No zero-risk or synthetic substitute");
   });
 
-  it("keeps the Supabase Edge Function read-only and public-data bounded", () => {
+  it("keeps the legacy Supabase Edge Function read-only and bounded for explicit recovery only", () => {
     const edge = read("supabase/functions/public-risk-indices/index.ts");
 
     expect(edge).toContain('request.method !== "GET"');
@@ -65,25 +72,27 @@ describe("separate public risk indices contract", () => {
     expect(edge).toContain("source_url: null");
   });
 
-  it("removes Lovable runtime database bindings as the sole public-read dependency", () => {
+  it("uses B2 as the customer-facing production authority", () => {
     const publicRisk = read("src/lib/public-risk.functions.ts");
-    const edgeReader = read("src/lib/public-risk-edge.server.ts");
+    const publicIndices = read("src/lib/public-risk-indices.functions.ts");
+    const hook = read("src/lib/use-risk-indices.ts");
 
-    expect(publicRisk).toContain("readPublicGlobalRiskFromEdge");
-    expect(publicRisk).toContain("hosted canonical read unavailable; trying authoritative edge");
-    expect(edgeReader).toContain("ldpwajisioljyjtojvfx");
-    expect(edgeReader).toContain("/functions/v1/public-risk-indices");
-    expect(edgeReader).not.toContain("APP_SUPABASE_URL");
-    expect(edgeReader).not.toContain("VITE_SUPABASE_URL");
+    expect(publicRisk).toContain("readB2PublicRisk");
+    expect(publicRisk).not.toContain("readPublicGlobalRiskFromEdge");
+    expect(publicIndices).toContain("readB2PublicRisk");
+    expect(publicIndices).toContain("riskIndicesFromGlobalRisk");
+    expect(hook).toContain("getPublicRiskIndices");
+    expect(hook).not.toContain("supabase.co");
   });
 
-  it("automatically deploys the read-only recovery path from exact main", () => {
+  it("keeps the legacy Supabase edge manual recovery only", () => {
     const workflow = read(".github/workflows/deploy-public-risk-indices-edge.yml");
 
-    expect(workflow).toContain("push:");
-    expect(workflow).toContain("branches:\n      - main");
-    expect(workflow).toContain("github.event_name == 'push'");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("\n  push:\n");
+    expect(workflow).toContain("github.ref == 'refs/heads/main'");
     expect(workflow).toContain("supabase functions deploy public-risk-indices");
+    expect(workflow).toContain("manual recovery only");
     expect(workflow).toContain("ldpwajisioljyjtojvfx");
     expect(workflow).not.toContain("supabase db push");
     expect(workflow).not.toContain("supabase migration");
@@ -109,7 +118,7 @@ describe("separate public risk indices contract", () => {
     expect(homeSection).not.toContain("GlobalRiskIndexSection");
   });
 
-  it("never renders a public risk-index unavailable error on primary or buyer-facing website surfaces", () => {
+  it("keeps public surfaces fail-closed without synthetic risk values", () => {
     const publicSurfaces = [
       read("src/components/home/risk-indices-preview.tsx"),
       read("src/components/risk-indices/risk-indices-workspace.tsx"),
@@ -119,16 +128,10 @@ describe("separate public risk indices contract", () => {
 
     for (const surface of publicSurfaces) {
       expect(surface).not.toContain("Verified GRI snapshot unavailable");
-      expect(surface).not.toContain("Verified snapshot unavailable");
       expect(surface).not.toContain("Risk index store unavailable");
     }
 
-    const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
-    const institutional = read("src/routes/institutional.tsx");
-    expect(workspace).not.toContain("risk.error?.message");
-    expect(workspace).not.toContain("Verified risk indices unavailable");
     expect(read("src/routes/intelligence.tsx")).toContain("useRiskIndices");
-    expect(institutional).toContain("Separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
-    expect(institutional).not.toContain("useRiskIndices");
+    expect(read("src/routes/institutional.tsx")).toContain("Separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
   });
 });
