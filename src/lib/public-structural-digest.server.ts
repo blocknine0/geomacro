@@ -25,8 +25,6 @@ function publicObservation(row: StructuralObservation) {
     partner_country_iso3: row.partner_country_iso3,
     observed_at: row.observed_at,
     published_at: row.published_at,
-    source_id: row.source_id,
-    source_url: row.source_url,
     quality_status: row.quality_status,
     methodology_status: row.methodology_status,
   };
@@ -51,7 +49,7 @@ function coverageSummary(context: StructuralContext) {
 
   return {
     dimensions,
-    source_count: sources.length,
+    corroborating_source_count: sources.length,
     coverage_year_min: years.length ? Math.min(...years) : null,
     coverage_year_max: years.length ? Math.max(...years) : null,
     latest_observed_at: latestObserved,
@@ -66,7 +64,8 @@ export async function loadPublicStructuralDigest(input: AgentStructuralQuery) {
     status: context.status,
     methodology_status: context.methodology_status,
     subject: context.subject,
-    data_format: "governed_structured_digest_v1" as const,
+    data_format: "geomacro_structured_digest_v1" as const,
+    delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY" as const,
     observations: context.observations.slice(0, FREE_LIMIT).map(publicObservation),
     coverage_summary: coverageSummary(context),
     composition: {
@@ -81,6 +80,7 @@ export async function loadPublicStructuralDigest(input: AgentStructuralQuery) {
       latest_snapshot_only: true,
       max_structural_observations: FREE_LIMIT,
       raw_data_included: false,
+      source_identity_included: false,
       private_warehouse_access: false,
     },
     credits: {
