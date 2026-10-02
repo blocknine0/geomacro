@@ -24,11 +24,11 @@ jobs:
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/public-production-health")"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/health?deep=1")"
           cat "$body"
           echo
           if [[ "$code" != "200" ]]; then
-            echo "::error title=Production data serving unavailable::Expected HTTP 200 from /api/public-production-health, got $code."
+            echo "::error title=Production data serving unavailable::Expected HTTP 200 from canonical /api/health?deep=1 B2 readiness check, got $code."
             exit 1
           fi
           for marker in \
