@@ -29,7 +29,7 @@
     "hosting:verify": "node scripts/ops/verify-hosting-alignment.mjs",
     "agentic:x402:e2e": "node scripts/agentic/x402-e2e.mjs",
     "agentic:resilience": "node scripts/agentic/staging-resilience.mjs",
-    "test:app": "vitest run src",
+    "test:app": "node scripts/ops/run-app-tests.mjs",
     "gri:replay-published": "node scripts/replay-published-gri-v11.js",
     "gri:source-diversity": "node scripts/check-gri-source-diversity.js",
     "gri:source-diversity:enforce": "node scripts/check-gri-source-diversity.js --enforce",
