@@ -59,9 +59,6 @@ const runId = `production-source-alignment:${new Date().toISOString()}:${CODE_RE
 const alignmentEvidencePrefix = `${runId}:`;
 
 const transactionSql = `
-\\set ON_ERROR_STOP on
-\\pset tuples_only on
-\\pset format unaligned
 begin;
 
 create temp table tmp_required_sources(source_id text primary key) on commit drop;
