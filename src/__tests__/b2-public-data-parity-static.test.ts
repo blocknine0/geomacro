@@ -8,7 +8,8 @@ describe("B2 public data parity", () => {
     const source = read("src/lib/use-intelligence.ts");
     expect(source).toContain("usesVerifiedContext");
     expect(source).toContain('r.publicStatus === "verified_b2" && !r.isCurrent');
-    expect(source).toContain("latestVerifiedScored");
+    expect(source).toContain("verifiedRiskContext");
+    expect(source).toContain("const topRisks = [...currentScored]");
     expect(source).toContain("[...current, ...latestVerifiedContext]");
     expect(source).not.toContain("publishedAt: new Date().toISOString()");
   });

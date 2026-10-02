@@ -95,18 +95,22 @@ export function InstitutionalWorkspace({ risk, intel }: { risk: RiskFeed; intel:
         </div>
 
         <div className="min-w-0 rounded-[var(--radius-card)] border border-border/70 bg-card/40 p-5">
-          <h3 className="type-meta text-muted-foreground">Top verified risk context</h3>
+          <h3 className="type-meta text-muted-foreground">
+            {intel.data?.topRisks.length ? "Top current risks" : "Latest verified risk context"}
+          </h3>
           <div className="mt-3">
             {intel.status === "loading" ? (
-              <SectionLoadingState label="Loading top risks" />
+              <SectionLoadingState label="Loading risk context" />
             ) : intel.status === "error" ? (
               <ErrorState error={intel.error ?? undefined} onRetry={intel.retry} />
             ) : intel.data && intel.data.topRisks.length > 0 ? (
               <RankedPanel events={intel.data.topRisks.slice(0, 6)} />
+            ) : intel.data && intel.data.verifiedRiskContext.length > 0 ? (
+              <RankedPanel events={intel.data.verifiedRiskContext.slice(0, 6)} />
             ) : (
               <UnavailableSurface
-                title="No scored events yet"
-                description="Verified risk context appears once the durable pipeline has scored events."
+                title="No verified scored context yet"
+                description="Scored context appears once the durable verified pipeline has eligible events."
               />
             )}
           </div>
