@@ -16,14 +16,20 @@ describe("Intelligence verified fallback contract", () => {
     expect(source).toContain('["geopolitics", "macro", "rare_earth"]');
   });
 
-  it("keeps customer-facing intelligence B2-only while publisher access stays explicit", () => {
-    const serving = read("src/lib/public-intelligence-b2.functions.ts");
+  it("keeps durable customer-facing Intelligence B2 authoritative while allowing an unscored ephemeral freshness overlay", () => {
+    const productionReader = read("src/lib/public-intelligence-production.server.ts");
+    const api = read("server/api/public/intelligence.get.ts");
     const hook = read("src/lib/use-intelligence.ts");
     const publisher = read("scripts/ops/publish-b2-live-snapshots.ts");
 
-    expect(serving).toContain("readB2PublicIntelligence");
-    expect(serving).not.toContain("getAppSupabase");
-    expect(hook).toContain("getPublicIntelligenceFromB2");
+    expect(productionReader).toContain("readB2PublicIntelligence");
+    expect(productionReader).not.toContain("getAppSupabase");
+    expect(productionReader).toContain('public_status: "verified_b2" | "live_observed"');
+    expect(productionReader).toContain("severity: null");
+    expect(productionReader).toContain("delta: null");
+    expect(api).toContain("readProductionPublicIntelligence");
+    expect(hook).toContain('/api/public/intelligence');
+    expect(hook).not.toContain("useServerFn");
     expect(publisher).toContain("readPublicIntelligenceRowsFromSupabase");
   });
 });

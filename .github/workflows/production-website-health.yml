@@ -64,6 +64,52 @@ jobs:
             grep -Fq "$marker" "$body"
           done
 
+      - name: Verify public production APIs and freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          intel="$(mktemp)"
+          intel_code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$intel" -w '%{http_code}' "$BASE_URL/api/public/intelligence")"
+          if [[ "$intel_code" != "200" ]]; then
+            echo "::error title=Public intelligence API unavailable::Expected HTTP 200, got $intel_code."
+            cat "$intel"
+            exit 1
+          fi
+          grep -Fq '"ok":true' "$intel"
+          grep -Fq '"current_within_24h":true' "$intel" || {
+            echo "::error title=Production intelligence is stale::The public Intelligence API has no observation within the current 24-hour window."
+            cat "$intel"
+            exit 1
+          }
+          newest="$(jq -r '.newest_at // empty' "$intel")"
+          if [[ -z "$newest" ]]; then
+            echo "::error title=Production intelligence timestamp missing::newest_at is empty."
+            exit 1
+          fi
+          echo "PASS: public Intelligence is current; newest_at=$newest"
+
+          risk="$(mktemp)"
+          risk_code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$risk" -w '%{http_code}' "$BASE_URL/api/public/risk-indices")"
+          if [[ "$risk_code" != "200" ]]; then
+            echo "::error title=Public Risk Indices API unavailable::Expected HTTP 200, got $risk_code."
+            cat "$risk"
+            exit 1
+          fi
+          grep -Fq '"ok":true' "$risk"
+          grep -Fq '"verificationStatus":"verified"' "$risk"
+          echo "PASS: public Risk Indices API returned a verified package."
+
+          ask="$(mktemp)"
+          ask_code="$(curl -L --retry 2 --retry-all-errors --retry-delay 2 -sS -H 'Accept: application/json' -H 'Origin: https://geomacro.live' -H 'X-Geomacro-Question: What changed in the risk indices?' -o "$ask" -w '%{http_code}' "$BASE_URL/api/public-ask")"
+          if [[ "$ask_code" != "200" ]]; then
+            echo "::error title=Ask Geomacro functional probe failed::Expected HTTP 200, got $ask_code."
+            cat "$ask"
+            exit 1
+          fi
+          grep -Fq '"ok":true' "$ask"
+          echo "PASS: Ask Geomacro completed through the explicit public API."
+
       - name: Verify rendered production page markers
         shell: bash
         run: |

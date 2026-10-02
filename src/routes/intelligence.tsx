@@ -19,7 +19,7 @@ import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 
 const TITLE = "Live Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
 const DESCRIPTION =
-  "Follow current geopolitical, macroeconomic and critical-mineral risk through scored events, evidence context, timestamps and Geomacro's verified separate Risk Indices for professional research.";
+  "Follow current geopolitical, macroeconomic and critical-mineral risk through scored verified events plus clearly labelled live observations, evidence context, timestamps and Geomacro's separate Risk Indices.";
 const URL = "https://geomacro.live/intelligence";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
@@ -101,27 +101,30 @@ function IntelligencePage() {
     [pool, category, query, activeSort],
   );
   const latestVerifiedFallback = Boolean(intel.data?.usedFallbackWindow);
+  const hasLiveObserved = Boolean(intel.data?.hasLiveObserved);
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 md:py-12">
       <header className="max-w-4xl">
         <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em]">
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-primary">
-            <Radio className="h-3 w-3" aria-hidden /> {latestVerifiedFallback ? "LATEST VERIFIED" : "LIVE INTELLIGENCE"}
+            <Radio className="h-3 w-3" aria-hidden /> {hasLiveObserved ? "LIVE OBSERVED + VERIFIED" : latestVerifiedFallback ? "LATEST VERIFIED" : "LIVE INTELLIGENCE"}
           </span>
           <span className="text-muted-foreground">
             {intel.status === "updating"
               ? "Updating"
-              : latestVerifiedFallback
-                ? "Live refresh pending · showing latest verified records"
-                : intel.updatedAt
-                  ? `Updated ${formatTime(intel.updatedAt)}`
-                  : "Current feed"}
+              : hasLiveObserved
+                ? "Fresh live observations + verified B2 continuity"
+                : latestVerifiedFallback
+                  ? "Live refresh pending · showing latest verified records"
+                  : intel.updatedAt
+                    ? `Updated ${formatTime(intel.updatedAt)}`
+                    : "Current feed"}
           </span>
         </div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Follow the geopolitical, macroeconomic and critical-mineral developments currently shaping risk. Each event keeps its recorded score, movement, evidence context and timestamp so you can inspect the underlying record rather than a separate display-only ranking.
+          Follow the geopolitical, macroeconomic and critical-mineral developments currently shaping risk. Verified stored events retain their recorded score and movement; fresh live observations are shown unscored until they pass the durable verification pipeline.
         </p>
         <p className="mt-3 text-sm text-muted-foreground">You do not need a wallet to read or research this intelligence.</p>
       </header>
@@ -183,14 +186,16 @@ function IntelligencePage() {
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                  {latestVerifiedFallback ? "Latest verified event set" : "Current event set"}
+                  {hasLiveObserved ? "Fresh observed + verified event set" : latestVerifiedFallback ? "Latest verified event set" : "Current event set"}
                 </p>
                 <h2 className="mt-1 text-2xl font-semibold">
                   {query.trim() || category !== "all"
                     ? "Matching intelligence"
-                    : latestVerifiedFallback
-                      ? "Latest verified intelligence"
-                      : "Highest-priority intelligence"}
+                    : hasLiveObserved
+                      ? "Current intelligence"
+                      : latestVerifiedFallback
+                        ? "Latest verified intelligence"
+                        : "Highest-priority intelligence"}
                 </h2>
               </div>
               <p className="text-sm text-muted-foreground">{filtered.length} matching event{filtered.length === 1 ? "" : "s"}</p>
@@ -261,7 +266,11 @@ function IntelligencePage() {
                       <p className="text-sm font-medium">{prettyCategory(item.category)}</p>
                       <p className="text-xs text-muted-foreground">{item.count} event{item.count === 1 ? "" : "s"}</p>
                     </div>
-                    <RiskBadge score={item.avgSeverity} showScore />
+                    {item.avgSeverity !== null ? (
+                      <RiskBadge score={item.avgSeverity} showScore />
+                    ) : (
+                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Unscored</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -270,7 +279,7 @@ function IntelligencePage() {
             <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Ask Geomacro</p>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Ask a question using the same stored intelligence and current verified risk indices shown here.
+                Ask a question using verified stored intelligence, current Risk Indices and bounded live retrieval when freshness is required.
               </p>
               <Button asChild variant="outline" className="mt-4 w-full gap-2">
                 <Link to="/ask-geomacro">Ask a question <ArrowRight className="h-4 w-4" /></Link>
@@ -284,22 +293,36 @@ function IntelligencePage() {
 }
 
 function IntelCard({ event }: { event: IntelEvent }) {
+  const liveObserved = event.publicStatus === "live_observed";
   return (
     <article className="flex min-h-[230px] flex-col rounded-2xl border border-border/70 bg-card/40 p-5 transition hover:border-primary/30">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-          {event.category ? prettyCategory(event.category) : "Uncategorised"}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            {event.category ? prettyCategory(event.category) : "Uncategorised"}
+          </span>
+          {liveObserved ? (
+            <span className="rounded-full border border-primary/25 bg-primary/5 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-primary">
+              Live observed · unscored
+            </span>
+          ) : null}
+        </div>
         {event.severity !== null ? <RiskBadge score={event.severity} showScore /> : null}
       </div>
       <h3 className="mt-4 text-base font-semibold leading-snug">
-        <Link to="/event/$eventId" params={{ eventId: event.id }} className="hover:text-primary">
-          {event.title}
-        </Link>
+        {liveObserved ? (
+          <span>{event.title}</span>
+        ) : (
+          <Link to="/event/$eventId" params={{ eventId: event.id }} className="hover:text-primary">
+            {event.title}
+          </Link>
+        )}
       </h3>
-      {event.summary ? <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{event.summary}</p> : null}
+      {event.summary && event.summary !== event.title ? (
+        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{event.summary}</p>
+      ) : null}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5 text-xs text-muted-foreground">
-        <span>{event.sourceName ?? "Source recorded"} · {formatDate(event.publishedAt ?? event.createdAt)}</span>
+        <span>{liveObserved ? "Live discovery" : "Verified record"} · {formatDate(event.publishedAt ?? event.createdAt)}</span>
         {event.delta !== null && event.delta !== 0 ? <RiskTrend delta={Math.round(event.delta)} /> : null}
       </div>
     </article>

@@ -17,30 +17,60 @@ describe("production website runtime contract", () => {
     expect(health).not.toContain("supabase.co/functions");
   });
 
-  it("keeps Risk Indices on the framework-safe B2 server boundary", () => {
+  it("keeps Risk Indices on an explicit B2-backed public API boundary", () => {
     const hook = read("src/lib/use-risk-indices.ts");
-    const server = read("src/lib/public-risk-indices.functions.ts");
-    expect(hook).toContain("useServerFn(getPublicRiskIndices)");
+    const api = read("server/api/public/risk-indices.get.ts");
+    expect(hook).toContain('/api/public/risk-indices');
+    expect(hook).not.toContain("useServerFn");
     expect(hook).toContain("withPublicRuntimeTimeout");
     expect(hook).toContain("PUBLIC_DATA_REQUEST_TIMEOUT_MS");
     expect(hook).not.toContain("supabase.co");
-    expect(server).toContain("readB2PublicRisk");
-    expect(server).toContain("assertPublicReadOrigin");
-    expect(server).not.toContain("readPublicRiskIndicesFromEdge");
-    expect(server).not.toContain("supabase.co");
+    expect(api).toContain("readB2PublicRisk");
+    expect(api).toContain("riskIndicesFromGlobalRisk");
+    expect(api).not.toContain("Supabase");
   });
 
-  it("keeps Intelligence and Ask production reads independent of Supabase", () => {
-    const intel = read("src/lib/public-intelligence-b2.functions.ts");
-    const ask = read("src/lib/hybrid-ask-intelligence.server.ts");
-    expect(intel).toContain("readB2PublicIntelligence");
-    expect(intel).toContain("assertPublicReadOrigin");
-    expect(intel).not.toContain("getAppSupabase");
-    expect(ask).toContain("readB2PublicIntelligence");
-    expect(ask).not.toContain("getAppSupabase");
+  it("keeps Intelligence and Ask customer reads independent of Supabase serving", () => {
+    const intelligenceHook = read("src/lib/use-intelligence.ts");
+    const intelligenceApi = read("server/api/public/intelligence.get.ts");
+    const productionReader = read("src/lib/public-intelligence-production.server.ts");
+    const askUi = read("src/components/ask/ask-workspace.tsx");
+    const askApi = read("server/api/public-ask.get.ts");
+    const askCore = read("src/lib/ask-geomacro-core.server.ts");
+    const askEngine = read("src/lib/hybrid-ask-intelligence.server.ts");
+
+    expect(intelligenceHook).toContain('/api/public/intelligence');
+    expect(intelligenceHook).not.toContain("useServerFn");
+    expect(intelligenceApi).toContain("readProductionPublicIntelligence");
+    expect(productionReader).toContain("readB2PublicIntelligence");
+    expect(productionReader).not.toContain("getAppSupabase");
+
+    expect(askUi).toContain('/api/public-ask');
+    expect(askUi).toContain('"X-Geomacro-Question"');
+    expect(askUi).not.toContain("useServerFn");
+    expect(askApi).toContain("executeAskGeomacro");
+    expect(askCore).toContain("checkAskRateLimit(clientKey)");
+    expect(askEngine).toContain("readB2PublicIntelligence");
+    expect(askEngine).not.toContain("getAppSupabase");
   });
 
-  it("bounds every interactive public server-function wait so loading cannot hang forever", () => {
+  it("keeps live freshness explicitly observed and unscored", () => {
+    const reader = read("src/lib/public-intelligence-production.server.ts");
+    const hook = read("src/lib/use-intelligence.ts");
+    const route = read("src/routes/intelligence.tsx");
+
+    expect(reader).toContain('public_status: "verified_b2" | "live_observed"');
+    expect(reader).toContain('sort", "DateDesc"');
+    expect(reader).toContain("severity: null");
+    expect(reader).toContain("delta: null");
+    expect(reader).toContain("LIVE_OVERLAY_TRIGGER_AGE_MS");
+    expect(reader).toContain("LIVE_MAX_AGE_MS");
+    expect(hook).toContain('publicStatus: "verified_b2" | "live_observed"');
+    expect(route).toContain("Live observed · unscored");
+    expect(route).toContain("live observations are shown unscored");
+  });
+
+  it("bounds every interactive public wait so loading cannot hang forever", () => {
     const timeout = read("src/lib/public-runtime-timeout.ts");
     const intelligence = read("src/lib/use-intelligence.ts");
     const risk = read("src/lib/use-risk-indices.ts");
@@ -66,9 +96,13 @@ describe("production website runtime contract", () => {
     expect(intelligence).toContain("Risk Indices temporarily unavailable");
   });
 
-  it("checks rendered route content rather than accepting HTTP 200 alone", () => {
+  it("checks rendered route content plus functional public APIs", () => {
     const workflow = read(".github/workflows/production-website-health.yml");
-    expect(workflow).toContain("Verify rendered production page markers");
+    expect(workflow).toContain("Verify public production APIs and freshness");
+    expect(workflow).toContain('/api/public/intelligence');
+    expect(workflow).toContain('"current_within_24h":true');
+    expect(workflow).toContain('/api/public/risk-indices');
+    expect(workflow).toContain('/api/public-ask');
     expect(workflow).toContain("This page didn't load");
     expect(workflow).toContain("/intelligence|Risk Intelligence");
     expect(workflow).toContain("/global-risk|Geomacro Risk Indices");

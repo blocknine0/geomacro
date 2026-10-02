@@ -1,17 +1,16 @@
 /**
  * Read model for the /intelligence workspace.
  *
- * Public browser surfaces deliberately read through a same-origin B2-backed
- * server function. Supabase remains an ingestion/recovery system and is not a
- * customer-facing production dependency.
+ * Public browser surfaces deliberately read through an explicit same-origin
+ * /api/public boundary. Durable verified continuity comes from B2; when that
+ * package is older than the live window the server may add a clearly-labelled
+ * ephemeral live-observed overlay without writing it to B2 or Supabase.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import {
   PUBLIC_INTELLIGENCE_CATEGORIES,
   type PublicIntelligenceRow,
 } from "@/lib/public-intelligence.functions";
-import { getPublicIntelligenceFromB2 } from "@/lib/public-intelligence-b2.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
 import {
   PUBLIC_DATA_REQUEST_TIMEOUT_MS,
@@ -24,7 +23,7 @@ export type IntelEvent = {
   summary: string | null;
   category: string | null;
   severity: number | null;
-  /** Severity change written by the pipeline. null when never scored. */
+  /** Severity change written by the verified pipeline. null when never scored. */
   delta: number | null;
   /** Public compatibility field. Upstream publisher identity is never populated. */
   sourceName: null;
@@ -32,6 +31,8 @@ export type IntelEvent = {
   publishedAt: string | null;
   /** True only when published/recorded time falls inside the current 24h window. */
   isCurrent: boolean;
+  /** Durable verified B2 record or ephemeral current observation. */
+  publicStatus: "verified_b2" | "live_observed";
 };
 
 export type IntelStatus = "loading" | "ready" | "updating" | "error";
@@ -43,6 +44,7 @@ export type Intelligence = {
   /** Most recent available records used only when the current window is empty. */
   recent: IntelEvent[];
   usedFallbackWindow: boolean;
+  hasLiveObserved: boolean;
   topRisks: IntelEvent[];
   /** null when no row in the window carries a real severity change. */
   fastestMoving: IntelEvent[] | null;
@@ -51,8 +53,21 @@ export type Intelligence = {
   emerging: IntelEvent[] | null;
   emergingMedian: number | null;
   categories: string[];
-  categoryCounts: { category: string; count: number; avgSeverity: number }[];
+  categoryCounts: { category: string; count: number; avgSeverity: number | null }[];
   latest: IntelEvent[];
+};
+
+type PublicIntelligenceApiRow = PublicIntelligenceRow & {
+  public_status?: "verified_b2" | "live_observed";
+};
+
+type PublicIntelligenceApiResponse = {
+  ok: boolean;
+  rows?: PublicIntelligenceApiRow[];
+  mode?: "verified_b2" | "verified_b2_plus_live_observed" | "live_observed_only";
+  newest_at?: string | null;
+  current_within_24h?: boolean;
+  error?: string;
 };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -90,7 +105,7 @@ function timeOf(e: IntelEvent) {
   return Number.isFinite(created) ? created : -Infinity;
 }
 
-function mapPublicRows(rows: PublicIntelligenceRow[]): IntelEvent[] {
+function mapPublicRows(rows: PublicIntelligenceApiRow[]): IntelEvent[] {
   return rows.map((r) => ({
     id: String(r.id),
     title: r.source_title ?? "Untitled event",
@@ -102,6 +117,7 @@ function mapPublicRows(rows: PublicIntelligenceRow[]): IntelEvent[] {
     createdAt: String(r.created_at),
     publishedAt: r.published_at ?? null,
     isCurrent: false,
+    publicStatus: r.public_status === "live_observed" ? "live_observed" : "verified_b2",
   }));
 }
 
@@ -159,9 +175,9 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .map(([category, c]) => ({
       category,
       count: c.count,
-      avgSeverity: c.scored > 0 ? Math.round(c.sum / c.scored) : 0,
+      avgSeverity: c.scored > 0 ? Math.round(c.sum / c.scored) : null,
     }))
-    .sort((a, b) => b.avgSeverity - a.avgSeverity || b.count - a.count);
+    .sort((a, b) => (b.avgSeverity ?? -1) - (a.avgSeverity ?? -1) || b.count - a.count);
 
   return {
     all: markedRows,
@@ -170,6 +186,7 @@ function build(rows: IntelEvent[], now: number): Intelligence {
       .slice(0, 12),
     recent,
     usedFallbackWindow,
+    hasLiveObserved: markedRows.some((row) => row.publicStatus === "live_observed"),
     topRisks,
     fastestMoving: rising.length > 0 ? rising.slice(0, 5) : null,
     fading: falling.length > 0 ? falling.slice(0, 5) : null,
@@ -186,11 +203,24 @@ export function buildPublicIntelligence(rows: PublicIntelligenceRow[], now: numb
   return build(mapPublicRows(rows), now);
 }
 
+async function fetchPublicIntelligence(): Promise<PublicIntelligenceApiRow[]> {
+  const response = await fetch("/api/public/intelligence", {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  const payload = (await response.json()) as PublicIntelligenceApiResponse;
+  if (!response.ok || !payload.ok || !Array.isArray(payload.rows)) {
+    throw new Error(payload.error ?? "Intelligence feed unavailable.");
+  }
+  return payload.rows;
+}
+
 export function useIntelligence(
   initialData: Intelligence | null = null,
   refreshMs = 5 * 60 * 1000,
 ) {
-  const loadPublicIntelligence = useServerFn(getPublicIntelligenceFromB2);
   const [data, setData] = useState<Intelligence | null>(initialData);
   const [status, setStatus] = useState<IntelStatus>(initialData ? "ready" : "loading");
   const [error, setError] = useState<UserError | null>(null);
@@ -208,7 +238,7 @@ export function useIntelligence(
       try {
         const now = Date.now();
         const rows = await withPublicRuntimeTimeout(
-          loadPublicIntelligence({ data: {} }),
+          fetchPublicIntelligence(),
           PUBLIC_DATA_REQUEST_TIMEOUT_MS,
           "Intelligence feed request timed out.",
         );
@@ -247,7 +277,7 @@ export function useIntelligence(
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [loadPublicIntelligence, reloadKey, refreshMs]);
+  }, [reloadKey, refreshMs]);
 
   return useMemo(
     () => ({ data, status, error, updatedAt, retry }),
