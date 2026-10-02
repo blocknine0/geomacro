@@ -61,8 +61,9 @@ describe("production agent-commerce reconciliation contract", () => {
     expect(deliveryLedger).toContain("responsePayload: input.responsePayload");
     expect(deliveryLedger).toContain("responseSha256,");
     expect(deliveryLedger).toContain("return { responseSha256 }");
-    expect(commerceWorker).toContain("record.responseSha256 = responseSha256");
-    expect(commerceWorker).toContain('record.state = "prepared"');
+    expect(commerceWorker).toContain('state: "prepared"');
+    expect(commerceWorker).toContain("responsePayload: body.responsePayload");
+    expect(commerceWorker).toContain("responseSha256,");
     expect(coinbase).toContain("const paymentEventId = await recordCommercialPaymentEvent");
     expect(coinbase).toContain("await recordCommercialUsageEvent({");
     expect(coinbase).toContain("payment_event_id: paymentEventId");
