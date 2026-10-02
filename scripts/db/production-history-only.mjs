@@ -12,6 +12,16 @@ function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
 }
 
+function productionStatementBytes(fileBuffer) {
+  // Git text files conventionally carry one terminal LF; Supabase stores the
+  // migration statement text without that file terminator. Strip exactly one
+  // terminal LF and normalize nothing else, so SQL body bytes remain pinned.
+  if (fileBuffer.length > 0 && fileBuffer[fileBuffer.length - 1] === 0x0a) {
+    return fileBuffer.subarray(0, fileBuffer.length - 1);
+  }
+  return fileBuffer;
+}
+
 export function loadProductionHistoryOnlyManifest(root = process.cwd()) {
   const manifestPath = path.resolve(root, MANIFEST_RELATIVE_PATH);
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -50,7 +60,7 @@ export function verifyProductionHistoryOnlyMigrations(root = process.cwd()) {
     if (!fs.existsSync(migrationPath)) {
       throw new Error(`Missing production-history migration: ${entry.file}`);
     }
-    const actual = sha256(fs.readFileSync(migrationPath));
+    const actual = sha256(productionStatementBytes(fs.readFileSync(migrationPath)));
     if (actual !== entry.sha256) {
       throw new Error(`Production-history migration hash mismatch: ${entry.file}; expected=${entry.sha256}; actual=${actual}`);
     }
