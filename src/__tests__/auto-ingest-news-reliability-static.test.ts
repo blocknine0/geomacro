@@ -4,10 +4,12 @@ import { spawnSync } from "node:child_process";
 
 const workflowPath = ".github/workflows/auto-ingest-news.yml";
 const helperPath = "scripts/invoke-live-structure-with-retry.mjs";
+const freshnessProbePath = "scripts/ops/public-intelligence-freshness-probe.mjs";
 const runtimePath = "supabase/functions/live-structure-intelligence/index.ts";
 
 const workflow = fs.readFileSync(workflowPath, "utf8");
 const helper = fs.readFileSync(helperPath, "utf8");
+const freshnessProbe = fs.readFileSync(freshnessProbePath, "utf8");
 const runtime = fs.readFileSync(runtimePath, "utf8");
 
 describe("Auto Ingest News reliability contract", () => {
@@ -18,6 +20,32 @@ describe("Auto Ingest News reliability contract", () => {
     expect(workflow).toContain('LIVE_STRUCTURE_MAX_ATTEMPTS: "4"');
     expect(workflow).toContain('LIVE_STRUCTURE_ATTEMPT_TIMEOUT_MS: "90000"');
     expect(workflow).not.toContain("--retry-all-errors");
+  });
+
+  it("routes only an explicit Supabase service restriction to the read-only public freshness fallback", () => {
+    expect(workflow).toContain("id: preflight");
+    expect(workflow).toContain("supabase_write_path_available");
+    expect(workflow).toContain("exceed_egress_quota");
+    expect(workflow).toContain("Service for this project is restricted");
+    expect(workflow).toContain("needs: preflight");
+    expect(workflow).toContain("needs.preflight.outputs.supabase_write_path_available == 'true'");
+    expect(workflow).toContain("public-freshness-fallback:");
+    expect(workflow).toContain("needs.preflight.outputs.supabase_write_path_available == 'false'");
+    expect(workflow).toContain("node scripts/ops/public-intelligence-freshness-probe.mjs");
+  });
+
+  it("proves public freshness without bypassing verified scoring or introducing a Supabase serving dependency", () => {
+    expect(freshnessProbe).toContain("readProductionPublicIntelligence");
+    expect(freshnessProbe).toContain("current_within_24h");
+    expect(freshnessProbe).toContain('row.public_status === "live_observed"');
+    expect(freshnessProbe).toContain("row.severity !== null || row.delta !== null");
+    expect(freshnessProbe).not.toContain("getAppSupabase");
+    expect(freshnessProbe).not.toContain("createClient(");
+
+    const result = spawnSync(process.execPath, ["--check", freshnessProbePath], {
+      encoding: "utf8",
+    });
+    expect(result.status, result.stderr || result.stdout).toBe(0);
   });
 
   it("targets the exact freshly exported manifest after verified B2 offload", () => {
