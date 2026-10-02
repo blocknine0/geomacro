@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "51fbfc172dae64bd88f8886e2e5e3407881ef873",
-  "published_baseline": "Founder-approved Geomacro Commercial V1 website redesign with a concise signal-to-decision buyer journey across desktop and mobile; live Intelligence, separate Risk Indices, Critical Minerals and Rare Earth Risk, Ask Geomacro, institutional workflows, governed API and agent access, and Risk Gate boundaries remain clearly separated from technical-proof surfaces. Homepage remains pricing-free; Free Explorer and the 0.05 USDC x402 first-20,000 successful paid-delivery offer are presented under API and Agents. Customer Care and contact@geomacro.live remain the human support escalation path. The Arc/onchain technical-proof surface explicitly states that Mainnet remains disabled until separate production completion, acceptance, and authorization. Operational resilience update: the root error boundary now self-heals stale hashed client assets after a publish and the visible retry performs a full document reload; product presentation is otherwise unchanged.",
+  "baseline_sha": "f28a23a29a20f6cb34b354e77fe408109c93e3bb",
+  "published_baseline": "Founder-approved production-facing Geomacro website baseline. Legacy evaluation-network pages are retired from public navigation and redirect to API & Agents; buyer-facing documentation no longer presents evaluation-network, early-stage, pre-revenue or pre-launch language; Arc/onchain is presented as an isolated runtime-authoritative technical architecture; public Risk Indices use a same-origin read path with last-verified browser recovery and an explicit fail-closed error state instead of infinite loading; stale hashed client assets continue to self-heal after publish. Live payment/execution truth remains determined by runtime health and payment contracts rather than static marketing copy.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
   "locked_at_utc": "2026-10-02T06:52:00Z",
   "published_source_sha": "51fbfc172dae64bd88f8886e2e5e3407881ef873",
-  "lock_revision": "founder-approved-commercial-v1-client-recovery-20261002"
+  "lock_revision": "founder-approved-production-surface-resilience-20261002"
 }
