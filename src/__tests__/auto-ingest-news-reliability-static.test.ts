@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 
 const workflowPath = ".github/workflows/auto-ingest-news.yml";
 const helperPath = "scripts/invoke-live-structure-with-retry.mjs";
-const freshnessProbePath = "scripts/ops/public-intelligence-freshness-probe.mjs";
+const freshnessProbePath = "scripts/ops/probe-public-intelligence-live-fallback.ts";
 const runtimePath = "supabase/functions/live-structure-intelligence/index.ts";
 
 const workflow = fs.readFileSync(workflowPath, "utf8");
@@ -22,30 +22,27 @@ describe("Auto Ingest News reliability contract", () => {
     expect(workflow).not.toContain("--retry-all-errors");
   });
 
-  it("routes only an explicit Supabase service restriction to the read-only public freshness fallback", () => {
-    expect(workflow).toContain("id: preflight");
-    expect(workflow).toContain("supabase_write_path_available");
+  it("routes only the explicit Supabase egress restriction to the read-only public freshness fallback", () => {
+    expect(workflow).toContain("supabase-preflight:");
+    expect(workflow).toContain("available: ${{ steps.classify.outputs.available }}");
     expect(workflow).toContain("exceed_egress_quota");
-    expect(workflow).toContain("Service for this project is restricted");
-    expect(workflow).toContain("needs: preflight");
-    expect(workflow).toContain("needs.preflight.outputs.supabase_write_path_available == 'true'");
-    expect(workflow).toContain("public-freshness-fallback:");
-    expect(workflow).toContain("needs.preflight.outputs.supabase_write_path_available == 'false'");
-    expect(workflow).toContain("node scripts/ops/public-intelligence-freshness-probe.mjs");
+    expect(workflow).toContain("mode=egress_restricted");
+    expect(workflow).toContain("needs: supabase-preflight");
+    expect(workflow).toContain("needs.supabase-preflight.outputs.available == 'true'");
+    expect(workflow).toContain("public-live-freshness-fallback:");
+    expect(workflow).toContain("needs.supabase-preflight.outputs.available == 'false'");
+    expect(workflow).toContain("bun scripts/ops/probe-public-intelligence-live-fallback.ts");
   });
 
   it("proves public freshness without bypassing verified scoring or introducing a Supabase serving dependency", () => {
     expect(freshnessProbe).toContain("readProductionPublicIntelligence");
-    expect(freshnessProbe).toContain("current_within_24h");
+    expect(freshnessProbe).toContain("payload.current_within_24h !== true");
     expect(freshnessProbe).toContain('row.public_status === "live_observed"');
     expect(freshnessProbe).toContain("row.severity !== null || row.delta !== null");
+    expect(freshnessProbe).toContain('payload.mode !== "live_observed_only"');
+    expect(freshnessProbe).toContain("delete process.env.B2_KEY_ID");
     expect(freshnessProbe).not.toContain("getAppSupabase");
     expect(freshnessProbe).not.toContain("createClient(");
-
-    const result = spawnSync(process.execPath, ["--check", freshnessProbePath], {
-      encoding: "utf8",
-    });
-    expect(result.status, result.stderr || result.stdout).toBe(0);
   });
 
   it("targets the exact freshly exported manifest after verified B2 offload", () => {
