@@ -9,6 +9,51 @@
 
 begin;
 
+-- Canonical zero-replay does not execute the legacy 967 migration that first
+-- created this table. Re-declare the exact compatibility substrate here so the
+-- timestamped migration chain is self-contained. On production this is a no-op;
+-- on a clean replay the empty table is deliberately fail-closed until governed
+-- targets are populated by the existing ingestion/source program.
+create table if not exists public.live_raw_source_targets (
+  target_id text primary key,
+  country_iso3 text not null
+    references public.live_country_registry(iso3),
+  category text not null
+    check (category in ('GEOPOLITICS','MACRO','CRITICAL_MINERALS')),
+  transport text not null
+    check (transport in ('WEB','RSS','API','TELEGRAM_DISCOVERY','GLOBAL_FALLBACK')),
+  source_id text references public.live_external_sources(source_id),
+  target_url text,
+  telegram_query text,
+  display_name text not null,
+  enabled boolean not null default true,
+  raw_storage_allowed boolean not null default true,
+  commercial_promotion_allowed boolean not null default false,
+  cadence_seconds integer not null default 300
+    check (cadence_seconds between 60 and 86400),
+  priority integer not null default 50
+    check (priority between 1 and 1000),
+  discovery_state text not null default 'DISCOVERED'
+    check (discovery_state in ('DISCOVERED','REACHABLE','UNREACHABLE','STALE','BLOCKED')),
+  last_attempt_at timestamptz,
+  last_success_at timestamptz,
+  last_observed_at timestamptz,
+  consecutive_failures integer not null default 0,
+  last_error text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists live_raw_source_targets_due_idx
+  on public.live_raw_source_targets(enabled, last_attempt_at);
+
+create index if not exists live_raw_source_targets_country_category_idx
+  on public.live_raw_source_targets(country_iso3, category);
+
+create index if not exists live_raw_source_targets_transport_idx
+  on public.live_raw_source_targets(transport, enabled);
+
 create or replace view public.live_country_category_coverage_matrix
 with (security_invoker=true)
 as
