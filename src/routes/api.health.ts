@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getCoinbaseX402Config } from "../lib/coinbase-x402.server";
 import { geomacroSupabaseRuntimeMode } from "../lib/supabase-runtime-mode.server";
 
+const SUPABASE_RECOVERY_PROJECT_REF = "ldpwajisioljyjtojvfx";
+
 type X402RuntimeStatus = {
   state: "controlled_prelaunch" | "testnet" | "production" | "configuration_invalid";
   configured: boolean;
@@ -63,6 +65,7 @@ export const Route = createFileRoute("/api/health")({
             production_data_runtime_configured: b2RuntimeConfigured(),
             commerce_control_plane: "cloudflare-durable-objects",
             supabase_role: "ingestion-recovery-standby",
+            supabase_recovery_project_ref: SUPABASE_RECOVERY_PROJECT_REF,
             supabase_runtime_mode: geomacroSupabaseRuntimeMode(),
             x402: getX402RuntimeStatus(),
           },
