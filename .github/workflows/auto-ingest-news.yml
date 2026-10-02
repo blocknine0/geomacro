@@ -1,9 +1,8 @@
 name: Auto Ingest News
 # Runs every 6 hours as the bounded low-write GRI freshness path.
-# Fresh admitted evidence is structured and can trigger a verified GRI publish
-# when canonical inputs change. Prediction-market creation is not part of this
-# scheduled pipeline. Supabase is the compact hot control plane; verified raw
-# and cold payloads are drained to private B2 before they can accumulate.
+# Durable verified ingestion remains fail-closed. When Supabase is explicitly
+# restricted by its egress quota, a separate no-write job proves the exact
+# production public reader can still supply current live-observed intelligence.
 on:
   schedule:
     - cron: "17 */6 * * *"
@@ -14,12 +13,14 @@ on:
     paths:
       - ".github/workflows/auto-ingest-news.yml"
       - "scripts/ingest-news.js"
+      - "scripts/ops/probe-public-intelligence-live-fallback.ts"
       - "scripts/ops/select-missing-gri-discovery-domain.mjs"
       - "scripts/ops/supabase-free-tier-budget.mjs"
       - "scripts/ops/b2-country-ingest-offload.mjs"
       - "scripts/ops/b2-fragment-resolver-backed-offload.mjs"
       - "scripts/ops/b2-compact-structured-event-payload.mjs"
       - "scripts/ops/b2-s3-client.mjs"
+      - "src/lib/public-intelligence-production.server.ts"
 
 permissions:
   contents: read
@@ -29,8 +30,79 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  ingest-news:
+  supabase-preflight:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      available: ${{ steps.classify.outputs.available }}
+      mode: ${{ steps.classify.outputs.mode }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify authoritative Supabase target
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+        run: node scripts/db/assert-authoritative-supabase.mjs
+      - name: Classify recurring-write availability
+        id: classify
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          state_file="$(mktemp)"
+          error_file="$(mktemp)"
+          set +e
+          node scripts/ops/supabase-free-tier-budget.mjs >"$state_file" 2>"$error_file"
+          status=$?
+          set -e
+          cat "$state_file"
+          cat "$error_file" >&2
+
+          # A reachable project may intentionally return exit 78 because this
+          # workflow is a recurring writer. Its JSON state is still sufficient
+          # to route into the normal B2-headroom recovery path.
+          if jq -e '.ok == true and (.mode | type == "string")' "$state_file" >/dev/null 2>&1; then
+            mode="$(jq -r '.mode' "$state_file")"
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "mode=$mode" >> "$GITHUB_OUTPUT"
+            rm -f "$state_file" "$error_file"
+            exit 0
+          fi
+
+          # This is the one remote condition that should not take current public
+          # Intelligence offline. Durable writes stay stopped; the fallback job
+          # below exercises only the read-time live-observed path.
+          if grep -Fq 'exceed_egress_quota' "$error_file"; then
+            echo "::warning title=Supabase egress restricted::Durable ingestion is paused; validating Supabase-independent public freshness instead."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "mode=egress_restricted" >> "$GITHUB_OUTPUT"
+            rm -f "$state_file" "$error_file"
+            exit 0
+          fi
+
+          echo "::error title=Supabase preflight failed unexpectedly::Refusing to downgrade an unknown control-plane failure into a freshness fallback."
+          rm -f "$state_file" "$error_file"
+          if [ "$status" -eq 0 ]; then exit 1; fi
+          exit "$status"
+
+  ingest-news:
+    needs: supabase-preflight
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.supabase-preflight.outputs.available == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -332,3 +404,30 @@ jobs:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/ops/supabase-free-tier-budget.mjs
+
+  public-live-freshness-fallback:
+    needs: supabase-preflight
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.supabase-preflight.outputs.available == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Prove current public Intelligence without Supabase or durable writes
+        run: bun scripts/ops/probe-public-intelligence-live-fallback.ts
+      - name: Upload bounded fallback freshness evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: public-intelligence-live-fallback
+          path: artifacts/public-intelligence-live-fallback.json
+          if-no-files-found: error
+          retention-days: 30
