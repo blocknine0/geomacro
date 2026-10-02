@@ -24,6 +24,6 @@ The public indices preserve the versioned GRI v1.2 parent methodology and verifi
 
 Country/corridor Risk Objects and Risk Gate are **Private Pilot** infrastructure.
 
-Prediction markets, Arc Testnet, USDC/Circle/CCTP and Bridge & Swap remain valuable **Technical Proof**, but they are not the primary company identity.
+Programmable-finance, USDC/Circle/CCTP, Bridge & Swap and prediction-market implementations remain secondary **Technical Proof / Runtime-Controlled** layers. They are not the primary company identity and are not represented as active production settlement unless the live runtime explicitly confirms that state.
 
 Geomacro's commercial thesis is to make geopolitical, macroeconomic and critical-mineral risk explainable, reproducible and usable by professionals, APIs and autonomous systems before consequential actions are taken, while leaving authorization and execution under customer control.
