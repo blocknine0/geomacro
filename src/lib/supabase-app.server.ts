@@ -1,5 +1,6 @@
 import process from "node:process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
 
 export const AUTHORITATIVE_APP_SUPABASE_PROJECT_REF = "ldpwajisioljyjtojvfx";
 export const APP_SUPABASE_REQUEST_TIMEOUT_MS = 8_000;
@@ -47,6 +48,8 @@ function isExplicitLocalDevelopmentUrl(url: string, env: NodeJS.ProcessEnv): boo
 export function resolveAppSupabaseConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): AppSupabaseConfig | null {
+  if (!supabaseReadFallbackAllowed(env)) return null;
+
   const appUrl = normalized(env.APP_SUPABASE_URL);
   const trustedUrl = normalized(env.SUPABASE_URL);
   const appService = normalized(env.APP_SUPABASE_SERVICE_ROLE_KEY);
@@ -200,6 +203,11 @@ let cachedIdentity: string | null = null;
 
 /**
  * App-owned Supabase client (separate from any Lovable Cloud project).
+ *
+ * Production serving defaults to cold-standby. A caller receives no client in
+ * standby mode, so existing verified B2 continuity readers become the normal
+ * production path. Operators may explicitly select standby_read or primary for
+ * controlled recovery/backup work.
  *
  * Continuity rules:
  * - never consumes browser VITE_SUPABASE_* values;
