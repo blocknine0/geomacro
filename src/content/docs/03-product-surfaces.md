@@ -1,6 +1,6 @@
 # 3. Product Surfaces
 
-Every public Geomacro capability carries a stage label so technical proof is not confused with commercial availability.
+Every public Geomacro capability carries an explicit availability label so technical proof is not confused with commercial delivery.
 
 ## 3.1 Risk Intelligence
 
@@ -36,7 +36,7 @@ Ask Geomacro is a grounded query interface over stored Geomacro intelligence. Th
 
 Machine-readable risk objects package subject-specific risk context, evidence, confidence, freshness and verification metadata for downstream systems.
 
-Current Private Pilot work includes signed country and directional corridor Geomacro Risk Objects and verification infrastructure. Availability and schema guarantees remain subject to pilot-stage change. Event-specific Risk Objects are not part of the current Private Pilot contract.
+Current Private Pilot work includes signed country and directional corridor Geomacro Risk Objects and verification infrastructure. Availability and schema guarantees remain subject to the agreed pilot scope. Event-specific Risk Objects are not part of the current Private Pilot contract.
 
 ## 3.5 Risk Gate
 
@@ -57,20 +57,20 @@ Geomacro does not autonomously execute or authorize the customer's transaction. 
 
 ## 3.6 Data & API
 
-**Status: PUBLIC DATA SURFACES + PRIVATE PILOT MACHINE ACCESS**
+**Status: PUBLIC DATA SURFACES + CONTROLLED MACHINE ACCESS**
 
-Public intelligence, Risk Indices and proof surfaces are available today. Governed machine-readable delivery, signed Risk Objects and Risk Gate remain controlled Private Pilot capabilities rather than generally available production APIs.
+Public intelligence, Risk Indices and proof surfaces are available today. Governed machine-readable delivery, signed Risk Objects and Risk Gate remain entitlement- or Private Pilot-scoped capabilities rather than anonymous public APIs.
 
 Free Explorer is the public website/dashboard experience, not an anonymous free structured API.
 
 ## 3.7 Institutional Intelligence
 
-**Status: EARLY ACCESS / PRIVATE PILOT CONVERSATIONS**
+**Status: CONTROLLED COMMERCIAL / PRIVATE PILOT**
 
-Geomacro is preparing institution-oriented workflows for treasury, payments, risk, strategy, supply chain, research and automated financial systems. Geomacro does not claim institutional deployment where none exists.
+Geomacro supports scoped institution-oriented conversations and workflows for treasury, payments, risk, strategy, supply chain, research and automated financial systems. Customer-specific delivery scope, quotas and service commitments are defined only where supported by the live operating evidence and agreement.
 
 ## 3.8 Technical Proof
 
 **Status: TECHNICAL PROOF**
 
-Arc Testnet contracts, prediction markets, USDC, CCTP and Bridge & Swap remain accessible as evidence of programmable-finance implementation. They are secondary to the intelligence product and do not imply production mainnet or real-money availability.
+Programmable-finance, prediction-market, USDC, CCTP and Bridge & Swap implementations are secondary engineering proof. They do not imply that a payment, settlement or execution rail is active unless the corresponding live runtime contract explicitly advertises that state.
