@@ -19,6 +19,10 @@ const script = fs.readFileSync(
   path.join(root, "scripts/source-certification-evidence-graph.mjs"),
   "utf8",
 );
+const reconciler = fs.readFileSync(
+  path.join(root, "scripts/ops/reconcile-production-source-certification.mjs"),
+  "utf8",
+);
 const workflow = fs.readFileSync(
   path.join(root, ".github/workflows/source-evidence-graph-auto-promotion.yml"),
   "utf8",
@@ -64,13 +68,17 @@ describe("permanent source evidence graph", () => {
     expect(script).not.toContain("enabled_for_ingestion = true");
   });
 
-  it("runs permanently against authoritative production after successful DB deploy", () => {
+  it("keeps production alignment authoritative, direct-DB, operator-controlled, and fail-closed", () => {
     expect(workflow).not.toContain("schedule:");
     expect(workflow).not.toContain("workflow_run:");
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx");
-    expect(workflow).toContain("bun run source:certification:evidence-graph");
+    expect(workflow).toContain("node scripts/ops/reconcile-production-source-certification.mjs");
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("SUPABASE_DB_URL");
+    expect(workflow).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(reconciler).toContain("set certification_state='IN_REVIEW'");
+    expect(reconciler).not.toContain("set certification_state='CERTIFIED'");
+    expect(reconciler).toContain("Only the guarded evidence-graph promotion function may set CERTIFIED");
   });
 });

@@ -1,8 +1,17 @@
-name: Source Evidence Graph and Automated Certification Promotion
+name: Production Source Alignment and Guarded Certification
 
 on:
   workflow_dispatch: {}
-
+  push:
+    branches:
+      - main
+      - fix/production-source-alignment-20261002
+    paths:
+      - "scripts/ops/reconcile-production-source-certification.mjs"
+      - "scripts/commercial-source-rights-evidence.mjs"
+      - ".github/workflows/source-evidence-graph-auto-promotion.yml"
+      - "src/__tests__/production-source-alignment-static.test.ts"
+      - "src/__tests__/source-evidence-graph-contract.test.ts"
 
 concurrency:
   group: geomacro-intelligence-orchestrator
@@ -12,53 +21,77 @@ permissions:
   contents: read
 
 jobs:
-  source-evidence-promotion:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+  production-source-alignment:
+    if: >-
+      ${{
+        github.repository == 'blocknine0/geomacro' &&
+        (github.event_name == 'workflow_dispatch' ||
+         github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/production-source-alignment-20261002')
+      }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 35
     environment: production
     env:
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-      APP_SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co
-      SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
-      SOURCE_EVIDENCE_CONCURRENCY: "24"
-      SOURCE_EVIDENCE_TIMEOUT_MS: "12000"
-      SOURCE_EVIDENCE_MAX_BODY_BYTES: "65536"
+      SOURCE_ALIGNMENT_PROBE_TIMEOUT_MS: "12000"
     steps:
-      - name: Checkout canonical main
+      - name: Checkout exact source-alignment revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          bun-version: "1.4.2"
+          node-version: "22"
 
-      - name: Install locked dependencies
-        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      - name: Validate authoritative production identity
+      - name: Validate authoritative production direct-DB target
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${APP_SUPABASE_URL:-}"
-          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}"
-          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "${EXPECTED_SUPABASE_PROJECT_REF}"
+          test -n "${SUPABASE_DB_URL:-}"
+          test -n "${SUPABASE_PROJECT_ID:-}"
+          test "${SUPABASE_PROJECT_ID}" = "${EXPECTED_SUPABASE_PROJECT_REF}"
+          node --input-type=module <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const username = decodeURIComponent(db.username);
+          const direct = db.hostname === `db.${ref}.supabase.co` && username === "postgres";
+          const pooled = db.hostname.endsWith(".pooler.supabase.com") && username === `postgres.${ref}`;
+          if (!["postgres:", "postgresql:"].includes(db.protocol) || (!direct && !pooled)) {
+            throw new Error("SUPABASE_DB_URL is not the authoritative production database");
+          }
+          if (!db.password || db.pathname !== "/postgres") throw new Error("Invalid production database URL");
+          NODE
 
-      - name: Build evidence graph and run guarded promotion
-        run: bun run source:certification:evidence-graph
+      - name: Reconcile every required source into an explicit production state
+        run: node scripts/ops/reconcile-production-source-certification.mjs
 
-      - name: Upload permanent evidence graph
+      - name: Verify production source alignment independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c "with required as (select distinct source_id from public.live_global_source_universe where required=true union select source_id from public.live_external_sources where enabled_for_ingestion=true or enabled_for_commercial_signals=true), sc as (select count(*) required_count,count(c.source_id) record_count,count(*) filter(where c.certification_state='NOT_STARTED') not_started from required r left join public.live_source_certification_records c using(source_id)), ac as (select count(*) active_count,count(*) filter(where c.endpoint_disposition is null or c.endpoint_disposition='UNCLASSIFIED') active_unclassified from public.live_external_sources s left join public.live_source_certification_records c using(source_id) where s.enabled_for_ingestion=true or s.enabled_for_commercial_signals=true), pc as (select count(*) path_count,count(*) filter(where (certification_state='CERTIFIED' and fail_closed=false) or (certification_state in ('QUEUED','REJECTED') and fail_closed=true)) valid_paths from public.live_source_certification_queue) select sc.required_count,sc.record_count,sc.not_started,ac.active_count,ac.active_unclassified,pc.path_count,pc.valid_paths from sc cross join ac cross join pc")"
+          echo "${row}"
+          IFS='|' read -r required_count record_count not_started active_count active_unclassified path_count valid_paths <<< "${row}"
+          test "${required_count}" = "${record_count}"
+          test "${not_started}" = "0"
+          test "${active_count}" -gt "0"
+          test "${active_unclassified}" = "0"
+          test "${path_count}" = "${valid_paths}"
+          echo "PASS: every required source and certification path is explicitly production-aligned."
+
+      - name: Upload production source alignment evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: source-certification-evidence-graph-${{ github.run_id }}
-          path: artifacts/source-certification-evidence-graph
+          name: production-source-alignment-${{ github.run_id }}
+          path: artifacts/production-source-alignment
           if-no-files-found: error
           retention-days: 30
