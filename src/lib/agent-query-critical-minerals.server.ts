@@ -2,11 +2,7 @@ import { createHash } from "node:crypto";
 
 import type { AgentQueryPlan } from "./agent-query-plan";
 import { readB2AgentGovernedModule, type B2AgentCriticalMineralsState } from "./b2-agent-governed-modules.server";
-import { readCommercialSourceRightsRow } from "./commercial-source-eligibility.server";
-import {
-  evaluateEarlyWarningDerivedEligibility,
-  type EarlyWarningSourcePolicyRow,
-} from "./early-warning-source-eligibility.server";
+import { checkCommercialSourceEligibility } from "./commercial-source-eligibility.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 export const AGENT_CRITICAL_MINERALS_SOURCE_ID = "usgs_mcs" as const;
@@ -27,6 +23,7 @@ export type AgentCriticalMineralsModuleResult = {
   source_observed_at: string | null;
   source_normalized_hashes: string[];
   source_contract: {
+    certification_state: string | null;
     commercial_usage_status: string | null;
     enabled_for_ingestion: boolean;
     enabled_for_commercial_signals: boolean;
@@ -133,16 +130,17 @@ export async function loadAgentCriticalMineralsModule(input: {
     return unavailable(input.subject, "NOT_COUNTRY_SUBJECT");
   }
 
-  const source = await readCommercialSourceRightsRow(AGENT_CRITICAL_MINERALS_SOURCE_ID);
-  const sourcePolicy = (source as EarlyWarningSourcePolicyRow | null) ?? null;
-  const eligibility = evaluateEarlyWarningDerivedEligibility({ source: sourcePolicy });
+  const eligibility = await checkCommercialSourceEligibility(
+    AGENT_CRITICAL_MINERALS_SOURCE_ID,
+  );
   const sourceContract = {
-    commercial_usage_status: sourcePolicy?.commercial_usage_status ?? null,
-    enabled_for_ingestion: sourcePolicy?.enabled_for_ingestion === true,
-    enabled_for_commercial_signals: sourcePolicy?.enabled_for_commercial_signals === true,
-    raw_redistribution_allowed: sourcePolicy?.raw_redistribution_allowed === true,
+    certification_state: eligibility.certification_state,
+    commercial_usage_status: eligibility.commercial_usage_status,
+    enabled_for_ingestion: eligibility.enabled_for_ingestion,
+    enabled_for_commercial_signals: eligibility.enabled_for_commercial_signals,
+    raw_redistribution_allowed: eligibility.raw_redistribution_allowed,
     delivery_boundary: eligibility.delivery_boundary,
-    raw_payload_allowed: false as const,
+    raw_payload_allowed: eligibility.raw_payload_allowed,
     attribution_required: eligibility.attribution_required,
     licence_name: eligibility.licence_name,
   };
