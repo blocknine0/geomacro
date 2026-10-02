@@ -28,15 +28,33 @@ const SAFE_RESPONSE_HEADERS = [
 ] as const;
 
 const PRIVATE_SOURCE_KEYS = new Set([
+  "source_id",
+  "source_ids",
+  "source_record_id",
+  "source_record_ids",
   "source_name",
   "source_domain",
   "source_url",
+  "source_urls",
   "sourceName",
   "sourceDomain",
   "sourceUrl",
   "publisher",
   "publisher_name",
   "publisherName",
+  "provider",
+  "provider_name",
+  "providerName",
+  "licence",
+  "license",
+  "licence_name",
+  "license_name",
+  "provenance",
+  "retrieval_metadata",
+  "raw_payload",
+  "raw_content",
+  "parser_version",
+  "normalized_hash",
 ]);
 
 function redactPrivateSourceIdentity(value: unknown): unknown {
