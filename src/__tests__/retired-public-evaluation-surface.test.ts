@@ -27,8 +27,10 @@ describe("retired public evaluation surfaces", () => {
     expect(shell).not.toContain('label: "Testnet API"');
   });
 
-  it("keeps the historical evaluation document out of public docs", () => {
+  it("keeps historical programmable-finance evaluation documents out of public docs", () => {
     const docs = read("src/lib/docs-content.ts");
-    expect(docs).toContain('PUBLIC_DOCS_EXCLUDED_SLUGS = new Set(["36-arc-testnet"])');
+    for (const slug of ["34-prediction-markets", "35-cctp-bridge-and-swap", "36-arc-testnet"]) {
+      expect(docs).toContain(`"${slug}"`);
+    }
   });
 });
