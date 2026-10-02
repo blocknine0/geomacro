@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { getPublicRiskIndices } from "./public-risk-indices.functions";
 import type { PublicRiskIndices } from "./risk-indices.types";
 import { PUBLIC_RISK_INDICES_CONTRACT_VERSION } from "./risk-indices.types";
 import { reportError, type UserError } from "./user-errors";
 
-const PUBLIC_RISK_EDGE_URL =
-  "https://ldpwajisioljyjtojvfx.supabase.co/functions/v1/public-risk-indices";
+const CACHE_KEY = "geomacro:risk-indices:last-verified:v1";
 
-export type RiskIndicesStatus = "loading" | "ready" | "updating";
+export type RiskIndicesStatus = "loading" | "ready" | "updating" | "error";
 
 function isValidPayload(value: unknown): value is { ok: true; data: PublicRiskIndices } {
   if (!value || typeof value !== "object") return false;
@@ -27,26 +28,29 @@ function isValidPayload(value: unknown): value is { ok: true; data: PublicRiskIn
   return keys === "critical_minerals,geopolitics,macro";
 }
 
-async function readPublicRiskIndices(): Promise<PublicRiskIndices> {
-  const response = await fetch(PUBLIC_RISK_EDGE_URL, {
-    method: "GET",
-    headers: { accept: "application/json" },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(`Authoritative public risk edge returned HTTP ${response.status}`);
+function readCachedVerifiedPayload(): PublicRiskIndices | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return isValidPayload(parsed) ? parsed.data : null;
+  } catch {
+    return null;
   }
+}
 
-  const payload: unknown = await response.json();
-  if (!isValidPayload(payload)) {
-    throw new Error("Authoritative public risk edge returned an invalid verified payload");
+function storeVerifiedPayload(data: PublicRiskIndices) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ok: true, data }));
+  } catch {
+    // Storage may be blocked or quota-limited. The live response remains usable.
   }
-
-  return payload.data;
 }
 
 export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
+  const loadPublicRiskIndices = useServerFn(getPublicRiskIndices);
   const [data, setData] = useState<PublicRiskIndices | null>(null);
   const [status, setStatus] = useState<RiskIndicesStatus>("loading");
   const [error, setError] = useState<UserError | null>(null);
@@ -61,22 +65,44 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
     async function load() {
       setStatus(hasData.current ? "updating" : "loading");
       try {
-        const response = await readPublicRiskIndices();
+        const response = await loadPublicRiskIndices({ data: {} });
         if (cancelled) return;
 
+        if (!isValidPayload(response)) {
+          throw new Error(
+            response && typeof response === "object" && "message" in response && typeof response.message === "string"
+              ? response.message
+              : "Verified risk indices are temporarily unavailable.",
+          );
+        }
+
         hasData.current = true;
-        setData(response);
+        setData(response.data);
+        storeVerifiedPayload(response.data);
         setError(null);
         setStatus("ready");
       } catch (caught) {
         if (cancelled) return;
-        reportError(
+
+        const reported = reportError(
           "useRiskIndices",
           caught,
           "refreshing the verified public risk indices",
         );
-        setError(null);
-        setStatus(hasData.current ? "ready" : "loading");
+        const cached = readCachedVerifiedPayload();
+        if (cached) {
+          hasData.current = true;
+          setData(cached);
+          setError({
+            message: "Live refresh is temporarily unavailable. Showing the latest verified reading stored on this device.",
+            retryable: true,
+          });
+          setStatus("ready");
+          return;
+        }
+
+        setError(reported);
+        setStatus(hasData.current ? "ready" : "error");
       }
     }
 
@@ -86,7 +112,7 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [refreshMs, reloadKey]);
+  }, [loadPublicRiskIndices, refreshMs, reloadKey]);
 
   return useMemo(
     () => ({ data, status, error, retry }),
