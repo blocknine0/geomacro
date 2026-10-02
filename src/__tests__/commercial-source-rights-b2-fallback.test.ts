@@ -1,10 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { commercialSourceEligibilityFromRow } from "../lib/commercial-source-eligibility.server";
+import {
+  commercialSourceEligibilityFromRow,
+  type SourceRightsRow,
+} from "../lib/commercial-source-eligibility.server";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
-function row(overrides: Partial<Parameters<typeof commercialSourceEligibilityFromRow>[1]> = {}) {
+function row(overrides: Partial<SourceRightsRow> = {}): SourceRightsRow {
   return {
     source_id: "example",
     category: "GEOPOLITICS",
@@ -16,7 +19,7 @@ function row(overrides: Partial<Parameters<typeof commercialSourceEligibilityFro
     attribution_required: true,
     licence_name: "Example",
     ...overrides,
-  } as NonNullable<Parameters<typeof commercialSourceEligibilityFromRow>[1]>;
+  };
 }
 
 describe("commercial source-rights B2 outage fallback", () => {
