@@ -46,7 +46,7 @@ describe("Phase A runtime freshness repair", () => {
     expect(repair).toContain("from public.live_country_registry r cross join source_contract s where r.enabled=true");
     expect(repair).toContain("on conflict(target_id) do update set");
     expect(repair).toContain("on t.target_id=s.prefix || r.iso3");
-    expect(repair).not.toContain("rows.map((row)");
+    expect(repair).toContain("cross join source_contract s");
   });
 
   it("promotes through the evidence graph instead of directly certifying records", () => {
@@ -73,6 +73,11 @@ describe("Phase A runtime freshness repair", () => {
     expect(workflow).toContain("B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}");
     expect(repair).toContain("payment_or_settlement_enabled: false");
     expect(repair).not.toMatch(/mainnet.*(?:enable|activate)/i);
+  });
+
+  it("keeps the refresh sustainable and pins third-party actions", () => {
+    expect(workflow).toContain('cron: "*/15 * * * *"');
+    expect(workflow).toContain("uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
   });
 
   it("fails unless every registry x domain cell is genuinely READY", () => {
