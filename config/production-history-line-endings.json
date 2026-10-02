@@ -1,0 +1,13 @@
+{
+  "schema_version": "geomacro.production-history-line-endings.v1",
+  "production_project_ref": "ldpwajisioljyjtojvfx",
+  "migration_count": 46,
+  "ends_with_lf": [
+    "20260929032543",
+    "20260929042402",
+    "20260929043057",
+    "20260930110643",
+    "20261001064504",
+    "20261001171057"
+  ]
+}
