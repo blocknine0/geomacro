@@ -22,19 +22,21 @@ const LIVE_MAX_AGE_MS = 30 * 60 * 60 * 1000;
 const MAX_ROWS_PER_CATEGORY = 6;
 const MAX_TOTAL_ROWS = 300;
 const GDELT_TIMEOUT_MS = 7_000;
+const OPEN_SOURCE_TIMEOUT_MS = 6_000;
+const RELIEFWEB_APPNAME = "geomacro.live";
 
 const GDELT_QUERIES = [
   {
     category: "geopolitics",
-    query: "(conflict OR sanctions OR diplomacy OR election OR military OR ceasefire)",
+    query: "(conflict OR sanctions OR diplomacy)",
   },
   {
     category: "macro",
-    query: "(inflation OR \"central bank\" OR recession OR GDP OR tariffs OR trade)",
+    query: "(inflation OR \"central bank\" OR tariffs)",
   },
   {
     category: "rare_earth",
-    query: "(\"rare earth\" OR \"critical minerals\" OR lithium OR cobalt OR nickel OR copper)",
+    query: "(\"rare earth\" OR \"critical minerals\" OR lithium)",
   },
 ] as const;
 
@@ -61,6 +63,17 @@ function cleanTitle(value: unknown): string | null {
   return title;
 }
 
+function liveDate(value: unknown): string | null {
+  const parsed =
+    typeof value === "number" && Number.isFinite(value)
+      ? value
+      : Date.parse(String(value ?? ""));
+  if (!Number.isFinite(parsed)) return null;
+  const now = Date.now();
+  if (parsed > now + 5 * 60_000 || now - parsed > LIVE_MAX_AGE_MS) return null;
+  return new Date(parsed).toISOString();
+}
+
 function gdeltDate(value: unknown): string | null {
   const raw = String(value ?? "").trim();
   if (!raw) return null;
@@ -68,11 +81,7 @@ function gdeltDate(value: unknown): string | null {
   const normalized = compact
     ? `${compact[1]}-${compact[2]}-${compact[3]}T${compact[4]}:${compact[5]}:${compact[6]}Z`
     : raw;
-  const parsed = Date.parse(normalized);
-  if (!Number.isFinite(parsed)) return null;
-  const now = Date.now();
-  if (parsed > now + 5 * 60_000 || now - parsed > LIVE_MAX_AGE_MS) return null;
-  return new Date(parsed).toISOString();
+  return liveDate(normalized);
 }
 
 function stableLiveId(category: string, title: string, publishedAt: string): string {
@@ -80,6 +89,26 @@ function stableLiveId(category: string, title: string, publishedAt: string): str
     .update(`${category}\0${title}\0${publishedAt}`)
     .digest("hex")
     .slice(0, 28)}`;
+}
+
+function liveRow(
+  category: "geopolitics" | "macro" | "rare_earth",
+  title: string,
+  publishedAt: string,
+  sourceLabel?: string,
+): ProductionPublicIntelligenceRow {
+  const sourceTitle = sourceLabel ? `${sourceLabel} · ${title}` : title;
+  return {
+    id: stableLiveId(category, sourceTitle, publishedAt),
+    source_title: sourceTitle,
+    summary: title,
+    category,
+    severity: null,
+    delta: null,
+    created_at: new Date().toISOString(),
+    published_at: publishedAt,
+    public_status: "live_observed",
+  };
 }
 
 async function fetchGdeltCategory(
@@ -90,8 +119,9 @@ async function fetchGdeltCategory(
   url.searchParams.set("query", query);
   url.searchParams.set("mode", "ArtList");
   url.searchParams.set("format", "json");
-  url.searchParams.set("maxrecords", "25");
+  url.searchParams.set("maxrecords", "10");
   url.searchParams.set("sort", "DateDesc");
+  url.searchParams.set("timespan", "1d");
 
   const response = await fetch(url, {
     headers: { Accept: "application/json" },
@@ -100,7 +130,6 @@ async function fetchGdeltCategory(
   if (!response.ok) throw new Error(`GDELT_${response.status}`);
 
   const payload = (await response.json()) as { articles?: Array<Record<string, unknown>> };
-  const nowIso = new Date().toISOString();
   const rows: ProductionPublicIntelligenceRow[] = [];
   const seen = new Set<string>();
 
@@ -111,17 +140,98 @@ async function fetchGdeltCategory(
     const normalizedTitle = title.toLowerCase();
     if (seen.has(normalizedTitle)) continue;
     seen.add(normalizedTitle);
-    rows.push({
-      id: stableLiveId(category, title, publishedAt),
-      source_title: title,
-      summary: title,
-      category,
-      severity: null,
-      delta: null,
-      created_at: nowIso,
-      published_at: publishedAt,
-      public_status: "live_observed",
-    });
+    rows.push(liveRow(category, title, publishedAt));
+    if (rows.length >= MAX_ROWS_PER_CATEGORY) break;
+  }
+
+  return rows;
+}
+
+/**
+ * USGS is an official, keyless near-real-time feed already admitted by the
+ * Geomacro open source mesh. Natural-hazard observations are mapped to the
+ * macro domain there because they can create immediate economic disruption.
+ * These rows remain observations only and never receive synthetic scores.
+ */
+async function fetchUsgsMacro(): Promise<ProductionPublicIntelligenceRow[]> {
+  const response = await fetch(
+    "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson",
+    {
+      headers: { Accept: "application/geo+json, application/json" },
+      signal: AbortSignal.timeout(OPEN_SOURCE_TIMEOUT_MS),
+    },
+  );
+  if (!response.ok) throw new Error(`USGS_${response.status}`);
+
+  const payload = (await response.json()) as {
+    features?: Array<{
+      properties?: Record<string, unknown>;
+    }>;
+  };
+  const rows: ProductionPublicIntelligenceRow[] = [];
+  const seen = new Set<string>();
+
+  for (const feature of payload.features ?? []) {
+    const properties = feature?.properties ?? {};
+    const title = cleanTitle(properties.title);
+    const publishedAt = liveDate(properties.updated ?? properties.time);
+    if (!title || !publishedAt) continue;
+    const normalizedTitle = title.toLowerCase();
+    if (seen.has(normalizedTitle)) continue;
+    seen.add(normalizedTitle);
+    rows.push(liveRow("macro", title, publishedAt, "USGS"));
+    if (rows.length >= MAX_ROWS_PER_CATEGORY) break;
+  }
+
+  return rows;
+}
+
+/**
+ * ReliefWeb is a UN OCHA public metadata API. The appname parameter identifies
+ * the caller; it is not a credential. Latest report metadata gives a second
+ * independent geopolitical continuity source when GDELT is slow or unavailable.
+ */
+async function fetchReliefWebGeopolitics(): Promise<ProductionPublicIntelligenceRow[]> {
+  const url = new URL("https://api.reliefweb.int/v2/reports");
+  url.searchParams.set("appname", RELIEFWEB_APPNAME);
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      preset: "latest",
+      profile: "list",
+      limit: 12,
+      fields: {
+        include: ["title", "date.original", "date.created"],
+      },
+    }),
+    signal: AbortSignal.timeout(OPEN_SOURCE_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`RELIEFWEB_${response.status}`);
+
+  const payload = (await response.json()) as {
+    data?: Array<{
+      fields?: {
+        title?: unknown;
+        date?: { original?: unknown; created?: unknown };
+      };
+    }>;
+  };
+  const rows: ProductionPublicIntelligenceRow[] = [];
+  const seen = new Set<string>();
+
+  for (const item of payload.data ?? []) {
+    const title = cleanTitle(item?.fields?.title);
+    const publishedAt = liveDate(item?.fields?.date?.original ?? item?.fields?.date?.created);
+    if (!title || !publishedAt) continue;
+    const normalizedTitle = title.toLowerCase();
+    if (seen.has(normalizedTitle)) continue;
+    seen.add(normalizedTitle);
+    rows.push(liveRow("geopolitics", title, publishedAt, "UN OCHA ReliefWeb"));
     if (rows.length >= MAX_ROWS_PER_CATEGORY) break;
   }
 
@@ -131,9 +241,11 @@ async function fetchGdeltCategory(
 async function liveOverlay(): Promise<ProductionPublicIntelligenceRow[]> {
   if (overlayCache && overlayCache.expiresAt > Date.now()) return overlayCache.rows;
 
-  const settled = await Promise.allSettled(
-    GDELT_QUERIES.map(({ category, query }) => fetchGdeltCategory(category, query)),
-  );
+  const settled = await Promise.allSettled([
+    ...GDELT_QUERIES.map(({ category, query }) => fetchGdeltCategory(category, query)),
+    fetchUsgsMacro(),
+    fetchReliefWebGeopolitics(),
+  ]);
   const rows = settled.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
   overlayCache = { expiresAt: Date.now() + LIVE_OVERLAY_TTL_MS, rows };
   return rows;
