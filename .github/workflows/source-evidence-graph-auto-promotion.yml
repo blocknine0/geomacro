@@ -11,6 +11,7 @@ on:
       - "scripts/commercial-source-rights-evidence.mjs"
       - ".github/workflows/source-evidence-graph-auto-promotion.yml"
       - "src/__tests__/production-source-alignment-static.test.ts"
+      - "src/__tests__/source-evidence-graph-contract.test.ts"
 
 concurrency:
   group: geomacro-intelligence-orchestrator
