@@ -14,6 +14,7 @@ export function RiskIndicesWorkspace() {
   const [timeframe, setTimeframe] = useState<Timeframe>("7D");
 
   if (!risk.data) {
+    const unavailable = risk.status === "error";
     return (
       <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 md:py-16">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -22,21 +23,29 @@ export function RiskIndicesWorkspace() {
               Geomacro Risk Indices
             </p>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Refreshing verified readings
+              {unavailable ? "Verified readings temporarily unavailable" : "Refreshing verified readings"}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-              Geomacro is checking the verified public data path. No zero-risk or synthetic substitute is shown while a current reading is being recovered.
+              {unavailable
+                ? risk.error?.message ?? "The verified public data path could not be reached. No zero-risk or synthetic substitute is shown."
+                : "Geomacro is checking the verified public data path. No zero-risk or synthetic substitute is shown while a current reading is being recovered."}
             </p>
           </div>
           <Button type="button" variant="outline" onClick={risk.retry} className="gap-2">
-            <RefreshCw className="h-4 w-4" /> Refresh
+            <RefreshCw className="h-4 w-4" /> Retry
           </Button>
         </div>
-        <div className="mt-8 grid gap-4 lg:grid-cols-3" aria-label="Refreshing verified risk indices">
-          {[0, 1, 2].map((item) => (
-            <div key={item} className="h-56 animate-pulse rounded-2xl border border-border/60 bg-card/30" />
-          ))}
-        </div>
+        {unavailable ? (
+          <div className="mt-8 rounded-2xl border border-border/70 bg-card/40 p-6 text-sm leading-7 text-muted-foreground">
+            The rest of Geomacro remains available. This surface fails closed rather than presenting stale or invented risk scores without a verified snapshot.
+          </div>
+        ) : (
+          <div className="mt-8 grid gap-4 lg:grid-cols-3" aria-label="Refreshing verified risk indices">
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="h-56 animate-pulse rounded-2xl border border-border/60 bg-card/30" />
+            ))}
+          </div>
+        )}
       </main>
     );
   }
@@ -59,6 +68,12 @@ export function RiskIndicesWorkspace() {
             <RefreshCw className="h-4 w-4" /> Refresh
           </Button>
         </div>
+
+        {risk.error ? (
+          <div className="mt-5 rounded-xl border border-border/70 bg-muted/15 px-4 py-3 text-xs leading-6 text-muted-foreground" role="status">
+            {risk.error.message}
+          </div>
+        ) : null}
 
         <div className="mt-7 max-w-4xl">
           <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
