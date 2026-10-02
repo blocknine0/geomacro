@@ -506,6 +506,13 @@ export function bazaarExtensionOutcome(
   return { status, rejectedReason };
 }
 
+function configuredCoinbaseCommercialEnvironment(): "testnet" | "mainnet" {
+  const raw = String(process.env.COINBASE_X402_ENVIRONMENT ?? "").trim().toLowerCase();
+  if (raw === "testnet") return "testnet";
+  if (raw === "production") return "mainnet";
+  throw new Error("COINBASE_X402_ENVIRONMENT_REQUIRED_FOR_DURABLE_LEDGER");
+}
+
 function payerTelemetryId(payer: string | null | undefined) {
   const normalized = String(payer ?? "").trim().toLowerCase();
   return normalized ? `coinbase-x402:sha256:${sha256(normalized)}` : "coinbase-x402:unknown";
@@ -547,7 +554,7 @@ export async function prepareCoinbaseX402Delivery(input: {
 }) {
   return prepareAgentCommerceDelivery({
     provider: "coinbase_x402",
-    providerEnvironment: "mainnet",
+    providerEnvironment: configuredCoinbaseCommercialEnvironment(),
     paymentFingerprint: input.paymentFingerprint,
     claimToken: input.claimToken,
     responsePayload: input.responsePayload,
@@ -564,7 +571,7 @@ export async function completeCoinbaseX402Delivery(input: {
   if (!input.settlementTx) throw new Error("COINBASE_X402_SETTLEMENT_REFERENCE_REQUIRED");
   return completeAgentCommerceDelivery({
     provider: "coinbase_x402",
-    providerEnvironment: "mainnet",
+    providerEnvironment: configuredCoinbaseCommercialEnvironment(),
     paymentFingerprint: input.paymentFingerprint,
     claimToken: input.claimToken,
     payerReference: input.payer,
@@ -582,7 +589,7 @@ export async function releaseCoinbaseX402DeliveryForRetry(input: {
   try {
     await releaseAgentCommerceDelivery({
       provider: "coinbase_x402",
-      providerEnvironment: "mainnet",
+      providerEnvironment: configuredCoinbaseCommercialEnvironment(),
       paymentFingerprint: input.paymentFingerprint,
       claimToken: input.claimToken,
       failureCode: input.failureCode,
