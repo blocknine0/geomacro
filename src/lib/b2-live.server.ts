@@ -9,11 +9,12 @@ const CIRCUIT_OPEN_MS = 30_000;
 const REQUEST_TIMEOUT_MS = 3_500;
 const MAX_COMPRESSED_BYTES = 12_000_000;
 const MAX_DECOMPRESSED_BYTES = 40_000_000;
-// Intelligence rows carry their own timestamps and the UI distinguishes the
-// current 24h window from a latest-verified fallback. Keep the verified B2
-// snapshot readable for a bounded 30-day recovery window so a paused Supabase
-// project does not turn an otherwise valid public archive into a page outage.
+// Public records carry their own event/snapshot timestamps and the UI labels
+// stale-but-verified recovery data explicitly. Keep the last verified public
+// package readable for a bounded 30-day continuity window so a paused/restricted
+// ingestion database cannot become a customer-facing website outage.
 const PUBLIC_INTELLIGENCE_FALLBACK_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+export const PUBLIC_RISK_FALLBACK_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const SOURCE_NETWORK_FALLBACK_MAX_AGE_MS = 90 * 60 * 1000;
 // Commercial rights can change independently of evidence freshness. A B2 copy
 // is outage continuity only, never an indefinite authorization cache.
@@ -86,6 +87,10 @@ function config(): B2Config | null {
   const secretKey = String(process.env.B2_APPLICATION_KEY ?? "").trim();
   if (endpoint !== B2_ENDPOINT || !accessKey || !secretKey) return null;
   return { accessKey, secretKey };
+}
+
+export function b2PublicRuntimeConfigured(): boolean {
+  return config() !== null;
 }
 
 function allowedKey(key: string): boolean {
@@ -223,7 +228,7 @@ export async function readB2PublicRisk(): Promise<GlobalRisk | null> {
   }>(B2_PUBLIC_RISK_KEY);
   if (
     payload?.schema !== "geomacro.public-risk-live.v1" ||
-    !recentEnough(payload.generated_at, 12 * 60 * 60 * 1000) ||
+    !recentEnough(payload.generated_at, PUBLIC_RISK_FALLBACK_MAX_AGE_MS) ||
     !payload.data ||
     payload.data.verificationStatus !== "verified" ||
     !/^[a-f0-9]{64}$/.test(String(payload.data.proofHash ?? "")) ||
