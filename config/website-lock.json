@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "f28a23a29a20f6cb34b354e77fe408109c93e3bb",
+  "baseline_sha": "87c1de04348be47e5b68fcf91115643608f14a4b",
   "published_baseline": "Founder-approved production-facing Geomacro website baseline. Legacy evaluation-network pages are retired from public navigation and redirect to API & Agents; buyer-facing documentation no longer presents evaluation-network, early-stage, pre-revenue or pre-launch language; Arc/onchain is presented as an isolated runtime-authoritative technical architecture; public Risk Indices use a same-origin read path with last-verified browser recovery and an explicit fail-closed error state instead of infinite loading; stale hashed client assets continue to self-heal after publish. Live payment/execution truth remains determined by runtime health and payment contracts rather than static marketing copy.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
   "locked_at_utc": "2026-10-02T06:52:00Z",
   "published_source_sha": "51fbfc172dae64bd88f8886e2e5e3407881ef873",
-  "lock_revision": "founder-approved-production-surface-resilience-20261002"
+  "lock_revision": "founder-approved-production-surface-resilience-20261002-r2"
 }
