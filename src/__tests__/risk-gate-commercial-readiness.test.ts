@@ -1,6 +1,34 @@
 import { describe, expect, it } from "vitest";
+import { evaluatePaidOutputSourceReadiness } from "../lib/paid-output-source-readiness";
 
-describe("Risk Gate commercial source-network gate", () => {
+const launchRows = [
+  {
+    source_id: "geopolitics",
+    category: "GEOPOLITICS",
+    certification_state: "CERTIFIED",
+    commercial_usage_status: "COMMERCIAL_OK",
+    enabled_for_ingestion: true,
+    enabled_for_commercial_signals: true,
+  },
+  {
+    source_id: "macro",
+    category: "MACRO",
+    certification_state: "CERTIFIED",
+    commercial_usage_status: "COMMERCIAL_OK",
+    enabled_for_ingestion: true,
+    enabled_for_commercial_signals: true,
+  },
+  {
+    source_id: "minerals",
+    category: "CRITICAL_MINERALS",
+    certification_state: "CERTIFIED",
+    commercial_usage_status: "DERIVED_ONLY",
+    enabled_for_ingestion: true,
+    enabled_for_commercial_signals: true,
+  },
+] as const;
+
+describe("Risk Gate paid-output source gate", () => {
   it("uses an explicit environment switch so testnet/private-pilot is not silently converted into commercial mode", async () => {
     const mod = await import("../lib/risk-gate-commercial-readiness.server");
     expect(mod.RISK_GATE_COMMERCIAL_MODE_ENV).toBe(
@@ -15,29 +43,42 @@ describe("Risk Gate commercial source-network gate", () => {
     expect(error.code).toBe("RISK_GATE_SOURCE_NETWORK_NOT_READY");
   });
 
-  it("requires every commercial source-network prerequisite", async () => {
+  it("requires certified paid-output sources across all three launch domains", async () => {
     const mod = await import("../lib/risk-gate-commercial-readiness.server");
-    expect(mod.isCommercialSourceNetworkReady({
-      source_network_100_complete: true,
-      gdelt_gal_freshness_complete: true,
-      source_network_launch_complete: true,
-    })).toBe(true);
-    expect(mod.isCommercialSourceNetworkReady({
-      source_network_100_complete: true,
-      gdelt_gal_freshness_complete: true,
-      source_network_launch_complete: false,
-    })).toBe(false);
+    expect(evaluatePaidOutputSourceReadiness(launchRows).ready).toBe(true);
+    expect(mod.isCommercialPaidOutputReady(launchRows, true)).toBe(true);
+    expect(mod.isCommercialPaidOutputReady(launchRows, false)).toBe(false);
+
+    const missingMinerals = launchRows.filter((row) => row.category !== "CRITICAL_MINERALS");
+    expect(evaluatePaidOutputSourceReadiness(missingMinerals).ready).toBe(false);
+
+    const uncertified = launchRows.map((row) =>
+      row.category === "GEOPOLITICS"
+        ? { ...row, certification_state: "IN_REVIEW" }
+        : row,
+    );
+    expect(evaluatePaidOutputSourceReadiness(uncertified).ready).toBe(false);
   });
 
-  it("keeps B2 as outage-only fallback and never overrides a healthy false Supabase gate", async () => {
+  it("does not make the full ingestion universe a paid-delivery prerequisite", async () => {
     const fs = await import("node:fs/promises");
     const source = await fs.readFile(
       "src/lib/risk-gate-commercial-readiness.server.ts",
       "utf8",
     );
-    expect(source).toContain("if (error)");
+    expect(source).toContain('.eq("enabled_for_commercial_signals", true)');
+    expect(source).toContain("evaluatePaidOutputSourceReadiness");
+    expect(source).not.toContain("source_network_100_complete &&");
+  });
+
+  it("keeps B2 as outage-only fallback and never overrides a healthy false paid-output gate", async () => {
+    const fs = await import("node:fs/promises");
+    const source = await fs.readFile(
+      "src/lib/risk-gate-commercial-readiness.server.ts",
+      "utf8",
+    );
     expect(source).toContain("await assertVerifiedB2Fallback();");
-    expect(source).toContain("if (!isCommercialSourceNetworkReady(data))");
+    expect(source).toContain("if (!paidReadiness.ready)");
     expect(source).toContain("throw new RiskGateCommercialReadinessError();");
   });
 });
@@ -54,7 +95,7 @@ describe("Risk Gate API commercial wiring", () => {
   });
 });
 
-describe("B2 source-network continuity snapshot", () => {
+describe("B2 paid-output continuity snapshot", () => {
   it("stays bounded and verified while automatic publishing is quota-held during AccessDenied", async () => {
     const fs = await import("node:fs/promises");
     const b2Source = await fs.readFile("src/lib/b2-live.server.ts", "utf8");
@@ -62,9 +103,9 @@ describe("B2 source-network continuity snapshot", () => {
     const workflow = await fs.readFile(".github/workflows/b2-live-snapshot-maintenance.yml", "utf8");
 
     expect(b2Source).toContain("SOURCE_NETWORK_FALLBACK_MAX_AGE_MS = 90 * 60 * 1000");
-    expect(b2Source).toContain("geomacro.source-network-live.v1");
+    expect(b2Source).toContain("geomacro.commercial-source-rights-live.v2");
     expect(b2Source).toContain("source_project !== \"ldpwajisioljyjtojvfx\"");
-    expect(publisher).toContain("live_source_network_launch_status");
+    expect(publisher).toContain("evaluatePaidOutputSourceReadiness");
     expect(publisher).toContain("B2_LIVE_READBACK_HASH_INVALID");
     expect(publisher).toContain("B2_LIVE_RESTORE_INVALID");
     expect(workflow).toContain("workflow_dispatch:");
