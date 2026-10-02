@@ -67,6 +67,14 @@ export const Route = createFileRoute("/api/health")({
             supabase_role: "ingestion-recovery-standby",
             supabase_recovery_project_ref: SUPABASE_RECOVERY_PROJECT_REF,
             supabase_runtime_mode: geomacroSupabaseRuntimeMode(),
+            // Temporary compatibility for the isolated legacy Testnet monitor.
+            // This does not describe or select the customer-facing production
+            // data authority; the top-level v2 contract above is authoritative.
+            legacy_testnet_alignment: {
+              alignment_contract: "github-main-external-supabase-lovable-v1",
+              database_authority: "external-supabase",
+              supabase_project_ref: SUPABASE_RECOVERY_PROJECT_REF,
+            },
             x402: getX402RuntimeStatus(),
           },
           {
