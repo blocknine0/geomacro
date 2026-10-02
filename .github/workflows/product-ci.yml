@@ -59,6 +59,9 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Verify buyer-facing production surface
+        run: node scripts/ops/verify-public-production-surface.mjs
+
       - name: Risk Gate phase-1 static contract
         run: node scripts/test-risk-gate-phase1.mjs
 
