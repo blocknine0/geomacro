@@ -86,6 +86,16 @@ jobs:
           create index if not exists live_raw_source_targets_due_idx on public.live_raw_source_targets(enabled, last_attempt_at);
           create index if not exists live_raw_source_targets_country_category_idx on public.live_raw_source_targets(country_iso3, category);
           create index if not exists live_raw_source_targets_transport_idx on public.live_raw_source_targets(transport, enabled);
+
+          -- The real promotion function is restored from immutable production-history-only
+          -- migrations in production. Those files are intentionally quarantined during
+          -- canonical zero-replay, so provide only the signature needed by the later
+          -- production-exact search_path hardening migration. This CI-only stub is never
+          -- shipped to production and is never used for certification decisions.
+          create or replace function public.promote_source_certification_evidence_graph_run(text, text)
+          returns jsonb
+          language sql
+          as $$ select '{}'::jsonb $$;
           SQL
           echo "PASS: injected CI-only Phase A substrate before production-exact migration versions"
       - name: Start disposable local Supabase
