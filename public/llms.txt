@@ -95,6 +95,8 @@ Machine-payment integrations are runtime-gated:
 
 Static documents and discovery files must not be treated as authority for a payment that the live runtime does not advertise.
 
+GOAT mainnet: DEFERRED pending manual merchant application/approval.
+
 ## Current machine-readable request scope
 
 Supported Private Pilot subject types include:
