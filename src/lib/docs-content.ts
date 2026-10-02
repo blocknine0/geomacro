@@ -17,10 +17,17 @@ const TITLE_OVERRIDES: Record<string, string> = {
   "40-middle-east-validation": "Regional Validation",
 };
 
-export const DOCS_MANIFEST = (manifestJson as DocsManifestEntry[]).map((entry) => ({
-  ...entry,
-  title: TITLE_OVERRIDES[entry.slug] ?? entry.title,
-}));
+// Historical evaluation-network documentation remains in the repository for
+// engineering/audit continuity, but it is intentionally not published through
+// the buyer-facing documentation experience.
+const PUBLIC_DOCS_EXCLUDED_SLUGS = new Set(["36-arc-testnet"]);
+
+export const DOCS_MANIFEST = (manifestJson as DocsManifestEntry[])
+  .filter((entry) => !PUBLIC_DOCS_EXCLUDED_SLUGS.has(entry.slug))
+  .map((entry) => ({
+    ...entry,
+    title: TITLE_OVERRIDES[entry.slug] ?? entry.title,
+  }));
 export const DOCS_PAGE_COUNT = DOCS_MANIFEST.length;
 
 const rawFiles = import.meta.glob("../content/docs/*.md", {
@@ -118,12 +125,13 @@ export function getDocsPage(slug: string): DocsPage | null {
   const raw = bySlug[slug];
   if (!entry || !raw) return null;
   const markdown = cleanMarkdown(raw);
+  const index = DOCS_MANIFEST.findIndex((item) => item.slug === slug);
   return {
     ...entry,
     markdown,
     headings: extractHeadings(markdown),
-    previousEntry: entry.previous ? getDocsEntry(entry.previous) : null,
-    nextEntry: entry.next ? getDocsEntry(entry.next) : null,
+    previousEntry: index > 0 ? DOCS_MANIFEST[index - 1] : null,
+    nextEntry: index >= 0 && index < DOCS_MANIFEST.length - 1 ? DOCS_MANIFEST[index + 1] : null,
   };
 }
 
