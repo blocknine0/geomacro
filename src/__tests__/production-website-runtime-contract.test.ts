@@ -4,13 +4,15 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("production website runtime contract", () => {
-  it("keeps the public production health route B2 authoritative", () => {
-    const health = read("src/routes/api.public-production-health.ts");
+  it("keeps canonical health deep readiness B2 authoritative", () => {
+    const health = read("src/routes/api.health.ts");
+    expect(health).toContain('searchParams.get("deep") === "1"');
     expect(health).toContain('serving_authority: "backblaze-b2"');
     expect(health).toContain("supabase_required_for_serving: false");
-    expect(health).toContain("b2_runtime_configured: configured");
+    expect(health).toContain("b2PublicRuntimeConfigured");
     expect(health).toContain("readB2PublicIntelligence");
     expect(health).toContain("readB2PublicRisk");
+    expect(health).toContain("status: deepReady ? 200 : 503");
     expect(health).not.toContain("getAppSupabase");
     expect(health).not.toContain("supabase.co/functions");
   });
