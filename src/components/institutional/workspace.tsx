@@ -95,7 +95,7 @@ export function InstitutionalWorkspace({ risk, intel }: { risk: RiskFeed; intel:
         </div>
 
         <div className="min-w-0 rounded-[var(--radius-card)] border border-border/70 bg-card/40 p-5">
-          <h3 className="type-meta text-muted-foreground">Top risks</h3>
+          <h3 className="type-meta text-muted-foreground">Top verified risk context</h3>
           <div className="mt-3">
             {intel.status === "loading" ? (
               <SectionLoadingState label="Loading top risks" />
@@ -106,7 +106,7 @@ export function InstitutionalWorkspace({ risk, intel }: { risk: RiskFeed; intel:
             ) : (
               <UnavailableSurface
                 title="No scored events yet"
-                description="Top risks appear once the pipeline scores new events."
+                description="Verified risk context appears once the durable pipeline has scored events."
               />
             )}
           </div>

@@ -101,6 +101,7 @@ function IntelligencePage() {
     [pool, category, query, activeSort],
   );
   const latestVerifiedFallback = Boolean(intel.data?.usedFallbackWindow);
+  const usesVerifiedContext = Boolean(intel.data?.usesVerifiedContext);
   const hasLiveObserved = Boolean(intel.data?.hasLiveObserved);
 
   return (
@@ -114,7 +115,9 @@ function IntelligencePage() {
             {intel.status === "updating"
               ? "Updating"
               : hasLiveObserved
-                ? "Fresh live observations + verified B2 continuity"
+                ? usesVerifiedContext
+                  ? "Fresh live observations + latest verified scored B2 context"
+                  : "Fresh live observations + verified B2 continuity"
                 : latestVerifiedFallback
                   ? "Live refresh pending · showing latest verified records"
                   : intel.updatedAt
@@ -186,13 +189,15 @@ function IntelligencePage() {
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                  {hasLiveObserved ? "Fresh observed + verified event set" : latestVerifiedFallback ? "Latest verified event set" : "Current event set"}
+                  {hasLiveObserved && usesVerifiedContext ? "Fresh observed + latest verified scored set" : hasLiveObserved ? "Fresh observed + verified event set" : latestVerifiedFallback ? "Latest verified event set" : "Current event set"}
                 </p>
                 <h2 className="mt-1 text-2xl font-semibold">
                   {query.trim() || category !== "all"
                     ? "Matching intelligence"
-                    : hasLiveObserved
-                      ? "Current intelligence"
+                    : hasLiveObserved && usesVerifiedContext
+                      ? "Current + latest verified intelligence"
+                      : hasLiveObserved
+                        ? "Current intelligence"
                       : latestVerifiedFallback
                         ? "Latest verified intelligence"
                         : "Highest-priority intelligence"}

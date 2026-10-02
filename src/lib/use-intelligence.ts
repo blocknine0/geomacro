@@ -44,6 +44,8 @@ export type Intelligence = {
   /** Most recent available records used only when the current window is empty. */
   recent: IntelEvent[];
   usedFallbackWindow: boolean;
+  /** True when current live observations are supplemented with recent verified scored B2 context. */
+  usesVerifiedContext: boolean;
   hasLiveObserved: boolean;
   topRisks: IntelEvent[];
   /** null when no row in the window carries a real severity change. */
@@ -132,10 +134,33 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .filter((r) => Number.isFinite(timeOf(r)) && timeOf(r) <= now)
     .sort((a, b) => timeOf(b) - timeOf(a))
     .slice(0, 24);
-  const domainRows = usedFallbackWindow ? recent : in24h;
+
+  // B2 continuity can be verified and scored while today's open-source overlay is
+  // intentionally unscored. Keep both visible: current observations preserve
+  // freshness, and the latest verified B2 rows preserve the rich scored context
+  // the Supabase-backed public workspace exposed before the production cutover.
+  // Never rewrite timestamps or synthesize scores to make stale evidence look current.
+  const currentDefault = [...in24h]
+    .sort((a, b) => timeOf(b) - timeOf(a))
+    .slice(0, 12);
+  const verifiedContext = [...markedRows]
+    .filter((r) => r.publicStatus === "verified_b2" && !r.isCurrent)
+    .sort((a, b) => timeOf(b) - timeOf(a));
+  const verifiedContextDefault = verifiedContext.slice(
+    0,
+    Math.max(0, 24 - currentDefault.length),
+  );
+  const usesVerifiedContext = currentDefault.length > 0 && verifiedContextDefault.length > 0;
+  const domainRows = usedFallbackWindow
+    ? recent
+    : [...currentDefault, ...verifiedContextDefault];
 
   const currentScored = in24h.filter((r) => r.severity !== null);
-  const topRisks = [...currentScored]
+  const latestVerifiedScored = verifiedContext.filter((r) => r.severity !== null).slice(0, 24);
+  const riskRankingPool = [...currentScored, ...latestVerifiedScored].filter(
+    (row, index, rows) => rows.findIndex((candidate) => candidate.id === row.id) === index,
+  );
+  const topRisks = [...riskRankingPool]
     .sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0))
     .slice(0, 8);
 
@@ -186,6 +211,7 @@ function build(rows: IntelEvent[], now: number): Intelligence {
       .slice(0, 12),
     recent,
     usedFallbackWindow,
+    usesVerifiedContext,
     hasLiveObserved: markedRows.some((row) => row.publicStatus === "live_observed"),
     topRisks,
     fastestMoving: rising.length > 0 ? rising.slice(0, 5) : null,
@@ -292,11 +318,18 @@ export function applyIntelFilters(
 ): IntelEvent[] {
   const q = query.trim().toLowerCase();
   const explicitResearch = Boolean(q) || category !== "all";
-  const current = rows.filter((r) => r.isCurrent);
+  const current = [...rows]
+    .filter((r) => r.isCurrent)
+    .sort((a, b) => timeOf(b) - timeOf(a))
+    .slice(0, 12);
+  const latestVerifiedContext = [...rows]
+    .filter((r) => !r.isCurrent && r.publicStatus === "verified_b2")
+    .sort((a, b) => timeOf(b) - timeOf(a))
+    .slice(0, 12);
   let out = explicitResearch
     ? rows
     : current.length > 0
-      ? current
+      ? [...current, ...latestVerifiedContext]
       : [...rows]
           .filter((r) => Number.isFinite(timeOf(r)))
           .sort((a, b) => timeOf(b) - timeOf(a))
