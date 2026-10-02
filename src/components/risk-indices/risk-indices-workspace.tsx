@@ -27,7 +27,7 @@ export function RiskIndicesWorkspace() {
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
               {unavailable
-                ? risk.error?.message ?? "Geomacro could not read the verified B2 public risk package. No zero-risk or synthetic substitute is shown."
+                ? "Geomacro could not read the verified B2 public risk package. No zero-risk or synthetic substitute is shown."
                 : "Geomacro is checking the verified B2 public data path. No zero-risk or synthetic substitute is shown while a reading is being recovered."}
             </p>
           </div>
