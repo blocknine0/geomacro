@@ -26,19 +26,20 @@ describe("production public serving boundary", () => {
 
   it("keeps B2 as the explicit production data authority", () => {
     const health = read("src/routes/api.health.ts");
-    const productionHealth = read("src/routes/api.public-production-health.ts");
 
     expect(health).toContain('alignment_contract: "github-main-b2-primary-supabase-standby-lovable-v2"');
     expect(health).toContain('production_data_authority: "backblaze-b2"');
     expect(health).toContain('supabase_role: "ingestion-recovery-standby"');
     expect(health).toContain("supabase_recovery_project_ref");
-    expect(productionHealth).toContain('serving_authority: "backblaze-b2"');
-    expect(productionHealth).toContain("supabase_required_for_serving: false");
+    expect(health).toContain('serving_authority: "backblaze-b2"');
+    expect(health).toContain("supabase_required_for_serving: false");
+    expect(health).toContain("readB2PublicIntelligence");
+    expect(health).toContain("readB2PublicRisk");
   });
 
   it("continuously monitors the core production website", () => {
     const workflow = read(".github/workflows/production-website-health.yml");
-    expect(workflow).toContain("/api/public-production-health");
+    expect(workflow).toContain("/api/health?deep=1");
     expect(workflow).toContain("/intelligence");
     expect(workflow).toContain("/global-risk");
     expect(workflow).toContain("/ask-geomacro");
