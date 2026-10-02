@@ -15,13 +15,25 @@ const governedWorkflow = readFileSync(
 );
 
 describe("B2 snapshot maintenance quota preservation", () => {
-  it("only converts the explicit Supabase egress restriction into a preservation no-op", () => {
+  it("only converts a confirmed Supabase egress restriction into a preservation no-op", () => {
     expect(wrapper).toContain("/exceed_egress_quota/i");
     expect(wrapper).toContain("service for this project is restricted");
-    expect(wrapper).toContain("if (!quotaRestricted(combined))");
+    expect(wrapper).toContain("if (!restrictionConfirmation)");
     expect(wrapper).toContain("process.exit(typeof child.status === \"number\" && child.status > 0 ? child.status : 1)");
     expect(wrapper).toContain('reason: "supabase_exceed_egress_quota"');
     expect(wrapper).toContain('maintenance_mode: "verified_preserved_snapshot_noop"');
+  });
+
+  it("uses the direct Supabase probe only for known governed read-failure markers", () => {
+    expect(wrapper).toContain(
+      "const GOVERNED_READ_FAILURE = /B2_AGENT_MODULE_(?:SOURCE_RIGHTS|WGI|WDI_LATEST|WDI_RAW)_READ_FAILED/;",
+    );
+    expect(wrapper).toContain("if (!GOVERNED_READ_FAILURE.test(String(output ?? \"\"))) return false");
+    expect(wrapper).toContain("async function confirmGovernedQuotaRestriction(output)");
+    expect(wrapper).toContain('.from("live_external_sources")');
+    expect(wrapper).toContain('.select("source_id")');
+    expect(wrapper).toContain('restrictionConfirmation = await confirmGovernedQuotaRestriction(combined) ? "direct_probe" : null');
+    expect(wrapper).toContain('process.env.APP_SUPABASE_URL !== PROJECT_URL');
   });
 
   it("never writes or advances freshness in preservation mode", () => {
