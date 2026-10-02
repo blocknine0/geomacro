@@ -22,6 +22,7 @@ on:
       - "src/routes/testnet-access.tsx"
       - "src/routes/api/testnet-tester/**"
       - "src/__tests__/testnet-*.test.ts"
+      - "src/__tests__/retired-public-evaluation-surface.test.ts"
       - "src/__tests__/live-performance-slo-static.test.ts"
       - "supabase/migrations/909_testnet_fixed_500_credit_quota.sql"
       - "supabase/migrations/910_testnet_wallet_only_access.sql"
@@ -56,32 +57,20 @@ jobs:
       - name: Install dependencies
         run: timeout 5m bun install --frozen-lockfile
 
-      - name: Tester contract and end-to-end trial tests
+      - name: Current backend contracts and retired public-surface regression
         run: >-
           timeout 6m bunx vitest run
+          src/__tests__/retired-public-evaluation-surface.test.ts
           src/__tests__/testnet-console-payment-recovery.test.ts
           src/__tests__/testnet-access-browser-errors.test.ts
-          src/__tests__/testnet-api-v12-alignment.test.ts
           src/__tests__/testnet-intelligence-capability-parity.test.ts
           src/__tests__/testnet-usdc-access-contract.test.ts
           src/__tests__/testnet-usdc-payment-verification.test.ts
           src/__tests__/testnet-tester-payment-activation-static.test.ts
-          src/__tests__/testnet-tester-registration-static.test.ts
-          src/__tests__/testnet-wallet-only-registration-static.test.ts
-          src/__tests__/testnet-wallet-first-auth-static.test.ts
-          src/__tests__/testnet-oauth-browser-wiring-static.test.ts
-          src/__tests__/testnet-avatar-storage-static.test.ts
           src/__tests__/testnet-share-flow-static.test.ts
-          src/__tests__/testnet-feedback-e2e-static.test.ts
-          src/__tests__/testnet-tester-e2e-contract.test.ts
-          src/__tests__/testnet-structural-severity-console-static.test.ts
-          src/__tests__/testnet-developer-access-static.test.ts
           src/__tests__/testnet-developer-scopes.test.ts
           src/__tests__/testnet-tester-account-runtime-static.test.ts
-          src/__tests__/testnet-credential-payment-e2e.test.ts
           src/__tests__/testnet-credential-bridge-runtime.test.ts
-          src/__tests__/testnet-access-market-standard-static.test.ts
-          src/__tests__/testnet-access-ux-social-static.test.ts
           src/__tests__/testnet-public-protection.test.ts
           src/__tests__/testnet-data-delivery-alignment.test.ts
           src/__tests__/testnet-session-performance-static.test.ts
