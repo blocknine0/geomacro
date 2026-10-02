@@ -8,6 +8,10 @@ import {
   getPublicEventDetail,
   type PublicEventDetail,
 } from "@/lib/public-event.functions";
+import {
+  PUBLIC_DATA_REQUEST_TIMEOUT_MS,
+  withPublicRuntimeTimeout,
+} from "@/lib/public-runtime-timeout";
 
 export function EventDetailWorkspace({
   eventId,
@@ -37,7 +41,11 @@ export function EventDetailWorkspace({
       setLoading(true);
       setError(null);
       try {
-        const result = await loadEvent({ data: { eventId } });
+        const result = await withPublicRuntimeTimeout(
+          loadEvent({ data: { eventId } }),
+          PUBLIC_DATA_REQUEST_TIMEOUT_MS,
+          "Intelligence event request timed out.",
+        );
         if (cancelled) return;
         if (!result) {
           setEvent(null);
