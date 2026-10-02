@@ -14,7 +14,7 @@ Geomacro exposes bounded geopolitical and macro risk intelligence to software an
 - Nevermined adaptive intelligence: `POST /api/x402/nevermined/intelligence`
 - Human-readable product documentation: `/data-api` and `/risk-gate`
 
-The payment challenge or provider plan is the authoritative source for price and accepted payment terms. A static discovery document is never authoritative pricing or proof that settlement is active.
+The payment challenge or provider plan is the authoritative source for the price and accepted payment terms. A static discovery document is never authoritative pricing or proof that settlement is active.
 
 ## Activation rule
 
