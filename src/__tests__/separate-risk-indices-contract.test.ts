@@ -72,16 +72,17 @@ describe("separate public risk indices contract", () => {
     expect(edge).toContain("source_url: null");
   });
 
-  it("uses B2 as the customer-facing production authority", () => {
+  it("uses B2 as the customer-facing production authority through an explicit public API", () => {
     const publicRisk = read("src/lib/public-risk.functions.ts");
-    const publicIndices = read("src/lib/public-risk-indices.functions.ts");
+    const publicIndices = read("server/api/public/risk-indices.get.ts");
     const hook = read("src/lib/use-risk-indices.ts");
 
     expect(publicRisk).toContain("readB2PublicRisk");
     expect(publicRisk).not.toContain("readPublicGlobalRiskFromEdge");
     expect(publicIndices).toContain("readB2PublicRisk");
     expect(publicIndices).toContain("riskIndicesFromGlobalRisk");
-    expect(hook).toContain("getPublicRiskIndices");
+    expect(hook).toContain('/api/public/risk-indices');
+    expect(hook).not.toContain("useServerFn");
     expect(hook).not.toContain("supabase.co");
   });
 
