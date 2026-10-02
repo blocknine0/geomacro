@@ -13,8 +13,8 @@ User-facing responses and payloads MUST NOT expose:
 1. raw source URLs;
 2. raw article, document, feed or source content;
 3. internal search or retrieval payloads;
-4. source/provider names, source IDs, provider/API implementation details or internal search infrastructure details;
-5. source-contract, licence or rights-review metadata;
+4. provider names, provider/API implementation details or internal search infrastructure details;
+5. source/provider IDs, source-contract, licence or rights-review metadata;
 6. internal provenance, retrieval metadata, source-normalized hashes, scoring metadata or other internal implementation metadata that is not part of the approved public product contract.
 
 User-facing output MUST be:
