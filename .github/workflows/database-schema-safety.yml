@@ -6,6 +6,7 @@ on:
       - 'supabase/migrations/**'
       - 'scripts/db/**'
       - 'config/production-history-only-migrations.json'
+      - 'config/production-history-line-endings.json'
       - '.github/workflows/database-schema-safety.yml'
       - 'package.json'
   push:
@@ -14,6 +15,7 @@ on:
       - 'supabase/migrations/**'
       - 'scripts/db/**'
       - 'config/production-history-only-migrations.json'
+      - 'config/production-history-line-endings.json'
       - '.github/workflows/database-schema-safety.yml'
       - 'package.json'
 
