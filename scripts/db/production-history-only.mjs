@@ -6,20 +6,17 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const MANIFEST_RELATIVE_PATH = 'config/production-history-only-migrations.json';
+const LINE_ENDINGS_RELATIVE_PATH = 'config/production-history-line-endings.json';
 const MIGRATIONS_RELATIVE_DIR = 'supabase/migrations';
 
 function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
 }
 
-function productionStatementBytes(fileBuffer) {
-  // Git text files conventionally carry one terminal LF; Supabase stores the
-  // migration statement text without that file terminator. Strip exactly one
-  // terminal LF and normalize nothing else, so SQL body bytes remain pinned.
-  if (fileBuffer.length > 0 && fileBuffer[fileBuffer.length - 1] === 0x0a) {
-    return fileBuffer.subarray(0, fileBuffer.length - 1);
-  }
-  return fileBuffer;
+function migrationVersion(file) {
+  const match = file.match(/^(\d+)_/);
+  if (!match) throw new Error(`Invalid production-history migration filename: ${file}`);
+  return match[1];
 }
 
 export function loadProductionHistoryOnlyManifest(root = process.cwd()) {
@@ -38,6 +35,7 @@ export function loadProductionHistoryOnlyManifest(root = process.cwd()) {
     if (!entry || typeof entry.file !== 'string' || !entry.file.endsWith('.sql')) {
       throw new Error('Invalid production-history migration filename');
     }
+    migrationVersion(entry.file);
     if (!/^[a-f0-9]{64}$/.test(entry.sha256 ?? '')) {
       throw new Error(`Invalid production-history SHA-256 for ${entry.file}`);
     }
@@ -50,17 +48,63 @@ export function loadProductionHistoryOnlyManifest(root = process.cwd()) {
   return manifest;
 }
 
+export function loadProductionHistoryLineEndings(root = process.cwd()) {
+  const metadataPath = path.resolve(root, LINE_ENDINGS_RELATIVE_PATH);
+  const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+  if (metadata.schema_version !== 'geomacro.production-history-line-endings.v1') {
+    throw new Error(`Unexpected production-history line-ending schema: ${metadata.schema_version}`);
+  }
+  if (metadata.production_project_ref !== 'ldpwajisioljyjtojvfx') {
+    throw new Error('Production-history line-ending metadata targets the wrong Supabase project');
+  }
+  if (metadata.migration_count !== 46 || !Array.isArray(metadata.ends_with_lf)) {
+    throw new Error('Production-history line-ending metadata must describe the 46 restored migrations');
+  }
+  const endsWithLf = new Set(metadata.ends_with_lf);
+  if (endsWithLf.size !== metadata.ends_with_lf.length) {
+    throw new Error('Duplicate version in production-history line-ending metadata');
+  }
+  return endsWithLf;
+}
+
+function productionStatementBytes(fileBuffer, productionEndsWithLf) {
+  const gitEndsWithLf = fileBuffer.length > 0 && fileBuffer[fileBuffer.length - 1] === 0x0a;
+
+  if (productionEndsWithLf) {
+    if (!gitEndsWithLf) {
+      throw new Error('Production statement requires a terminal LF but the Git recovery file does not contain one');
+    }
+    return fileBuffer;
+  }
+
+  // Git text files conventionally carry one terminal LF while Supabase may
+  // store the statement without that file terminator. Strip exactly one LF
+  // only when authoritative production metadata says the statement lacked it.
+  if (gitEndsWithLf) return fileBuffer.subarray(0, fileBuffer.length - 1);
+  return fileBuffer;
+}
+
 export function verifyProductionHistoryOnlyMigrations(root = process.cwd()) {
   const manifest = loadProductionHistoryOnlyManifest(root);
+  const endsWithLf = loadProductionHistoryLineEndings(root);
   const migrationsDir = path.resolve(root, MIGRATIONS_RELATIVE_DIR);
   const verified = new Map();
+  const manifestVersions = new Set(manifest.migrations.map((entry) => migrationVersion(entry.file)));
+
+  for (const version of endsWithLf) {
+    if (!manifestVersions.has(version)) {
+      throw new Error(`Line-ending metadata references a non-restored migration: ${version}`);
+    }
+  }
 
   for (const entry of manifest.migrations) {
     const migrationPath = path.join(migrationsDir, entry.file);
     if (!fs.existsSync(migrationPath)) {
       throw new Error(`Missing production-history migration: ${entry.file}`);
     }
-    const actual = sha256(productionStatementBytes(fs.readFileSync(migrationPath)));
+    const version = migrationVersion(entry.file);
+    const bytes = productionStatementBytes(fs.readFileSync(migrationPath), endsWithLf.has(version));
+    const actual = sha256(bytes);
     if (actual !== entry.sha256) {
       throw new Error(`Production-history migration hash mismatch: ${entry.file}; expected=${entry.sha256}; actual=${actual}`);
     }
