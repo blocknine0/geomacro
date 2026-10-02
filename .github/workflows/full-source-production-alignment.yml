@@ -1,0 +1,62 @@
+name: Full Source Production Alignment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/ops/full-source-production-alignment.mjs"
+      - "scripts/commercial-source-rights-evidence.mjs"
+      - ".github/workflows/full-source-production-alignment.yml"
+      - "src/__tests__/full-source-production-alignment-static.test.ts"
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-full-source-production-alignment
+  cancel-in-progress: true
+
+jobs:
+  align:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+
+      - name: Validate production target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL:-}"
+          test "${EXPECTED_SUPABASE_PROJECT_REF}" = "ldpwajisioljyjtojvfx"
+          node --check scripts/ops/full-source-production-alignment.mjs
+
+      - name: Align every required and active source fail-closed
+        run: node scripts/ops/full-source-production-alignment.mjs --strict
+
+      - name: Upload alignment evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: full-source-production-alignment-${{ github.run_id }}
+          path: artifacts/full-source-production-alignment
+          if-no-files-found: warn
+          retention-days: 30
