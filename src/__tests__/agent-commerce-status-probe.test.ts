@@ -11,12 +11,14 @@ describe("agent commerce status probe", () => {
     expect(statusComponent).not.toContain('fetch("/api/x402/intelligence"');
   });
 
-  it("exposes x402 runtime state through a 200-only health response", () => {
+  it("keeps the normal x402 health probe 200-only while deep production readiness may fail closed", () => {
     expect(healthRoute).toContain("getCoinbaseX402Config");
     expect(healthRoute).toContain('state: "controlled_prelaunch"');
     expect(healthRoute).toContain('state: "configuration_invalid"');
     expect(healthRoute).toContain("configured: false");
-    expect(healthRoute).toContain("status: 200");
+    expect(healthRoute).toContain('searchParams.get("deep") === "1"');
+    expect(healthRoute).toContain("!deep ||");
+    expect(healthRoute).toContain("status: deepReady ? 200 : 503");
     expect(healthRoute).not.toContain("error.message");
   });
 
