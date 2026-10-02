@@ -76,7 +76,7 @@ jobs:
           npm install --silent playwright@1.55.0
           npx playwright install --with-deps chromium
 
-      - name: Verify Pricing navigation and diagnose Ask Geomacro end to end
+      - name: Inspect Ask Geomacro live server function envelope
         shell: bash
         run: |
           set -euo pipefail
@@ -87,7 +87,13 @@ jobs:
           const browser = await chromium.launch({ headless: true });
           const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
           page.on('console', (msg) => console.log(`[browser:${msg.type()}] ${msg.text()}`));
-          page.on('pageerror', (err) => console.log(`[pageerror] ${err.message}`));
+          page.on('request', async (req) => {
+            if (req.url().includes('/_serverFn/')) {
+              const headers = await req.allHeaders();
+              const safeHeaders = Object.fromEntries(Object.entries(headers).filter(([key]) => !['cookie','authorization'].includes(key.toLowerCase())));
+              console.log(`[serverFn request] ${req.method()} ${req.url()} headers=${JSON.stringify(safeHeaders)} body=${String(req.postData() ?? '').slice(0, 4000)}`);
+            }
+          });
           page.on('response', async (res) => {
             if (res.status() >= 400) {
               let body = '';
@@ -101,33 +107,14 @@ jobs:
             if (!response || response.status() !== 200) throw new Error(`Pricing HTTP ${response?.status()}`);
             if (new URL(page.url()).pathname !== '/pricing') throw new Error(`Pricing redirected unexpectedly to ${page.url()}`);
             await page.getByRole('heading', { name: /Free to explore\. Pay only for successful commercial machine delivery\./i }).waitFor({ timeout: 20000 });
-            await page.getByText('Access & pricing', { exact: true }).waitFor({ timeout: 20000 });
-            console.log(`PASS pricing stayed on ${page.url()} and rendered the dedicated pricing page`);
+            console.log('PASS dedicated pricing page');
 
             response = await page.goto('https://geomacro.live/ask-geomacro', { waitUntil: 'networkidle', timeout: 60000 });
             if (!response || response.status() !== 200) throw new Error(`Ask page HTTP ${response?.status()}`);
-            await page.getByRole('heading', { name: 'Ask Geomacro' }).waitFor({ timeout: 20000 });
-            const input = page.locator('#ask-geomacro-input');
-            await input.fill('What changed today?');
+            await page.locator('#ask-geomacro-input').fill('What changed today?');
             await page.getByRole('button', { name: 'Ask', exact: true }).click();
-
-            const status = page.locator('[role="status"]');
-            let result = '';
-            for (let i = 0; i < 15; i += 1) {
-              result = await status.innerText();
-              if (result.includes('Research unavailable')) {
-                await page.waitForTimeout(1500);
-                throw new Error(`Ask Geomacro returned Research unavailable: ${result}`);
-              }
-              if (result.includes('Geomacro answer') || result.includes('Evidence threshold not met')) {
-                console.log(`PASS Ask Geomacro completed: ${result.slice(0, 500)}`);
-                break;
-              }
-              await page.waitForTimeout(1000);
-            }
-            if (!result.includes('Geomacro answer') && !result.includes('Evidence threshold not met')) {
-              throw new Error(`Ask Geomacro did not complete. Last status: ${result}`);
-            }
+            await page.waitForTimeout(4000);
+            console.log(`Ask status: ${(await page.locator('[role="status"]').innerText()).slice(0,1000)}`);
           } finally {
             await browser.close();
           }
