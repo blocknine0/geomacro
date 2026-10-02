@@ -17,7 +17,7 @@ describe("production website runtime contract", () => {
     expect(health).not.toContain("supabase.co/functions");
   });
 
-  it("keeps Risk Indices on the same-origin B2 server boundary", () => {
+  it("keeps Risk Indices on the framework-safe B2 server boundary", () => {
     const hook = read("src/lib/use-risk-indices.ts");
     const server = read("src/lib/public-risk-indices.functions.ts");
     expect(hook).toContain("useServerFn(getPublicRiskIndices)");
@@ -25,6 +25,7 @@ describe("production website runtime contract", () => {
     expect(hook).toContain("PUBLIC_DATA_REQUEST_TIMEOUT_MS");
     expect(hook).not.toContain("supabase.co");
     expect(server).toContain("readB2PublicRisk");
+    expect(server).toContain("assertPublicReadOrigin");
     expect(server).not.toContain("readPublicRiskIndicesFromEdge");
     expect(server).not.toContain("supabase.co");
   });
@@ -33,6 +34,7 @@ describe("production website runtime contract", () => {
     const intel = read("src/lib/public-intelligence-b2.functions.ts");
     const ask = read("src/lib/hybrid-ask-intelligence.server.ts");
     expect(intel).toContain("readB2PublicIntelligence");
+    expect(intel).toContain("assertPublicReadOrigin");
     expect(intel).not.toContain("getAppSupabase");
     expect(ask).toContain("readB2PublicIntelligence");
     expect(ask).not.toContain("getAppSupabase");
@@ -71,6 +73,7 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain("/intelligence|Risk Intelligence");
     expect(workflow).toContain("/global-risk|Geomacro Risk Indices");
     expect(workflow).toContain("/ask-geomacro|Ask Geomacro");
+    expect(workflow).toContain("/pricing|Access & pricing");
     expect(workflow).toContain("/docs|Geomacro public documentation");
   });
 
