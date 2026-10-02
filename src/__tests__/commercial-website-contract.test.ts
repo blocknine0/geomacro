@@ -26,6 +26,7 @@ const COMMERCIAL_PUBLIC_SURFACES = [
   "src/routes/institutional.tsx",
   "src/routes/risk-gate.tsx",
   "src/routes/data-api.tsx",
+  "src/routes/pricing.tsx",
   "src/routes/ecosystem.tsx",
 ] as const;
 
@@ -84,7 +85,8 @@ describe("commercial website source-of-truth contract", () => {
     expect(shell).toContain('label: "Risk Indices"');
     expect(shell).toContain('label: "API & Agents"');
     expect(shell).toContain('label: "Institutions"');
-    expect(shell).toContain('/data-api#pricing');
+    expect(shell).toContain('{ to: "/pricing", label: "Pricing" }');
+    expect(shell).not.toContain('/data-api#pricing');
     expect(shell).toContain('Risk Gate · Private Pilot');
     expect(shell).toContain("Product, evidence and company");
     expect(shell).toContain("Technical Proof");
@@ -154,17 +156,20 @@ describe("commercial website source-of-truth contract", () => {
     expect(route).not.toContain("PUBLIC · GEOMACRO AGENT V1");
   });
 
-  it("keeps pricing off the homepage and exposes only Free Explorer plus x402 pay per call", () => {
+  it("keeps pricing off the homepage and exposes a dedicated Free Explorer plus x402 pay-per-call page", () => {
     const home = read("src/components/home/commercial-home.tsx");
-    const route = read("src/routes/data-api.tsx");
+    const dataApi = read("src/routes/data-api.tsx");
+    const pricing = read("src/routes/pricing.tsx");
     expect(home).not.toContain("0.05 USDC");
-    expect(route).toContain('id="pricing"');
-    expect(route).toContain("Free Explorer");
-    expect(route).toContain("x402 pay per call");
-    expect(route).toContain("0.05");
-    expect(route).toContain("first 20,000");
-    expect(route).toContain("No subscription tier is required");
-    expect(route).not.toContain("0.10 USDC");
+    expect(dataApi).toContain('id="pricing"');
+    expect(pricing).toContain('createFileRoute("/pricing")');
+    expect(pricing).toContain("Free Explorer");
+    expect(pricing).toContain("x402 pay per call");
+    expect(pricing).toContain("0.05");
+    expect(pricing).toContain("first 20,000");
+    expect(pricing).toContain("no subscription requirement");
+    expect(pricing).toContain("AgentCommerceStatus");
+    expect(pricing).not.toContain("0.10 USDC");
   });
 
   it("keeps Circle Alliance membership verifiable without implying endorsement", () => {
@@ -226,6 +231,7 @@ describe("commercial website source-of-truth contract", () => {
     expect(sitemap).toContain("https://geomacro.live/risk-gate");
     expect(sitemap).toContain("https://geomacro.live/ask-geomacro");
     expect(sitemap).toContain("https://geomacro.live/data-api");
+    expect(sitemap).toContain("https://geomacro.live/pricing");
     expect(sitemap).toContain("https://geomacro.live/ecosystem");
     expect(sitemap).toContain("https://geomacro.live/docs/51-summary");
     expect(sitemap).not.toContain("https://geomacro.live/feed</loc>");
