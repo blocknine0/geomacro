@@ -8,6 +8,11 @@ import {
   GRI_SENSITIVITY_VERSION,
   calculateGriCounterfactual,
 } from "./lib/gri-sensitivity-v12.js";
+import {
+  GRI_PR_CALIBRATION_FIXTURE_VERSION,
+  GRI_PR_SENSITIVITY_CONTRIBUTIONS,
+  GRI_PR_SENSITIVITY_SNAPSHOT,
+} from "./fixtures/gri-pr-calibration-fixture.mjs";
 
 const SUPABASE_URL = process.env.APP_SUPABASE_URL || process.env.SUPABASE_URL;
 const ANON_KEY = process.env.APP_SUPABASE_ANON_KEY;
@@ -24,6 +29,11 @@ const OUTPUT =
   "artifacts/gri-v12-sensitivity.json";
 const HASH_RE = /^[a-f0-9]{64}$/i;
 const SCORE_TOLERANCE = 0.00001;
+const PR_FIXTURE_FALLBACK_ALLOWED =
+  process.env.GITHUB_EVENT_NAME === "pull_request";
+
+let fixtureFallbackUsed = false;
+let liveReadSucceeded = false;
 
 if (!SUPABASE_URL || !ANON_KEY) {
   throw new Error("APP_SUPABASE_URL and APP_SUPABASE_ANON_KEY are required");
@@ -40,7 +50,23 @@ function headers() {
   };
 }
 
+function fixtureRows(table, params = {}) {
+  if (table === "gri_snapshots") {
+    return [GRI_PR_SENSITIVITY_SNAPSHOT];
+  }
+  if (table === "gri_contributions") {
+    const expectedSnapshot = `eq.${GRI_PR_SENSITIVITY_SNAPSHOT.id}`;
+    if (params.snapshot_id !== expectedSnapshot) {
+      throw new Error("Pinned GRI sensitivity fixture snapshot id mismatch");
+    }
+    return GRI_PR_SENSITIVITY_CONTRIBUTIONS;
+  }
+  throw new Error(`Pinned GRI sensitivity fixture does not cover ${table}`);
+}
+
 async function rest(table, params) {
+  if (fixtureFallbackUsed) return fixtureRows(table, params);
+
   const url = new URL(`/rest/v1/${table}`, SUPABASE_URL);
   for (const [key, value] of Object.entries(params)) {
     if (value !== null && value !== undefined) url.searchParams.set(key, value);
@@ -50,7 +76,21 @@ async function rest(table, params) {
     headers: headers(),
     redirect: "error",
   });
-  if (!response.ok) throw new Error(`${table} read failed with HTTP ${response.status}`);
+  if (!response.ok) {
+    if (
+      response.status === 402 &&
+      PR_FIXTURE_FALLBACK_ALLOWED &&
+      !liveReadSucceeded
+    ) {
+      fixtureFallbackUsed = true;
+      console.warn(
+        `GRI PR sensitivity audit: public Supabase read returned HTTP 402; using ${GRI_PR_CALIBRATION_FIXTURE_VERSION}.`,
+      );
+      return fixtureRows(table, params);
+    }
+    throw new Error(`${table} read failed with HTTP ${response.status}`);
+  }
+  liveReadSucceeded = true;
   const body = await response.json();
   if (!Array.isArray(body)) throw new Error(`${table} returned a non-array response`);
   return body;
@@ -191,6 +231,10 @@ async function main() {
   const evidence = {
     evidenceVersion: GRI_SENSITIVITY_VERSION,
     auditedAt: new Date().toISOString(),
+    dataSource: fixtureFallbackUsed ? "pinned_pr_fixture" : "live_public_read",
+    fixtureVersion: fixtureFallbackUsed
+      ? GRI_PR_CALIBRATION_FIXTURE_VERSION
+      : null,
     methodologyVersion: snapshot.methodology_version,
     proofVersion: snapshot.proof_version,
     snapshotId: snapshot.id,
@@ -223,10 +267,11 @@ async function main() {
       predictiveAccuracyClaimAuthorized: false,
       institutionalGradeAccuracyClaimAuthorized: false,
       interpretation:
-        "This report measures how the current published eligible event set changes under predeclared counterfactual parameter perturbations. It does not define a pass/fail robustness threshold and does not establish predictive accuracy.",
+        "This report measures how the audited eligible event set changes under predeclared counterfactual parameter perturbations. It does not define a pass/fail robustness threshold and does not establish predictive accuracy.",
     },
-    scope:
-      "Read-only sensitivity evidence over the current published v1.2 eligible contribution universe. Lookback perturbations are only shorter than the canonical 72-hour window so the stored published universe remains complete. Longer-lookback sensitivity requires a separately governed candidate-event dataset and is intentionally not inferred here.",
+    scope: fixtureFallbackUsed
+      ? "Pull-request-only deterministic sensitivity audit of a pinned, previously verified GRI v1.2 snapshot after the public Supabase read path returned HTTP 402. This fixture validates scoring mechanics and stored-score parity only; it is not current production evidence and cannot authorize production claims."
+      : "Read-only sensitivity evidence over the current published v1.2 eligible contribution universe. Lookback perturbations are only shorter than the canonical 72-hour window so the stored published universe remains complete. Longer-lookback sensitivity requires a separately governed candidate-event dataset and is intentionally not inferred here.",
   };
 
   await writeEvidence(evidence);
