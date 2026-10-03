@@ -104,7 +104,7 @@ describe("production website runtime contract", () => {
 
   it("checks rendered route content plus functional public APIs", () => {
     const workflow = read(".github/workflows/production-website-health.yml");
-    expect(workflow).toContain("Verify public production APIs and freshness");
+    expect(workflow).toContain("Verify public production APIs and scored Intelligence contract");
     expect(workflow).toContain('/api/public/intelligence');
     expect(workflow).toContain('/api/public/risk-indices');
     expect(workflow).toContain('/api/public-ask');
