@@ -21,7 +21,7 @@ on:
       - "src/lib/country-risk-v02-*.server.ts"
       - ".github/workflows/b2-agent-governed-modules-snapshot.yml"
   schedule:
-    - cron: "37 4 * * *"
+    - cron: "37 4,16 * * *"
 
 permissions:
   contents: read
