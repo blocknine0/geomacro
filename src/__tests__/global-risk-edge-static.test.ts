@@ -67,11 +67,11 @@ describe("verified Global Risk edge serving boundary", () => {
     expect(publicIndicesApi).not.toContain("b2-live.server");
   });
 
-  it("uses same-origin transport first and requires the verified edge authority on fallback responses", () => {
+  it("uses verified edge transport first and keeps same-origin as compatibility fallback", () => {
     const appTarget = browserReader.indexOf('{ kind: "app", url: GLOBAL_RISK_APP_URL }');
     const edgeTarget = browserReader.indexOf('{ kind: "edge", url: GLOBAL_RISK_EDGE_URL }');
-    expect(appTarget).toBeGreaterThan(-1);
-    expect(edgeTarget).toBeGreaterThan(appTarget);
+    expect(edgeTarget).toBeGreaterThan(-1);
+    expect(appTarget).toBeGreaterThan(edgeTarget);
     expect(browserReader).toContain('const EDGE_AUTHORITY = "backblaze-b2-verified-edge"');
     expect(browserReader).toContain("body.meta?.authority !== EDGE_AUTHORITY");
     expect(browserReader).not.toContain('body.meta?.authority !== "backblaze-b2"');
