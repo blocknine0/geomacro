@@ -8,8 +8,6 @@ for (const key of [
   "SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
   "SUPABASE_DB_URL",
-  "VITE_SUPABASE_URL",
-  "VITE_SUPABASE_ANON_KEY",
 ]) {
   delete process.env[key];
 }
@@ -79,9 +77,7 @@ const supabaseCredentialsPresent = Boolean(
   process.env.SUPABASE_URL ||
   process.env.SUPABASE_ANON_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_DB_URL ||
-  process.env.VITE_SUPABASE_URL ||
-  process.env.VITE_SUPABASE_ANON_KEY
+  process.env.SUPABASE_DB_URL
 );
 if (supabaseCredentialsPresent) {
   throw new Error("NO_SUPABASE_B2_CREDENTIAL_REAPPEARED");
