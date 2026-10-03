@@ -1,39 +1,179 @@
 name: Governed production source ingestion
+
 on:
   workflow_dispatch:
-  # Emergency Supabase free-tier quota hold. Keep governed ingestion manually
-  # runnable and change-triggered while recurring normalized writes are paused.
+  # Emergency free-tier hold remains in place. Keep this bounded path manual
+  # and change-triggered until Day 4 freshness recovery is accepted.
   push:
     branches: [main]
     paths:
       - "scripts/ingest-certified-sources.mjs"
-      - "supabase/migrations/975_enable_governed_source_ingestion.sql"
+      - "scripts/test-governed-source-ingestion.mjs"
+      - "scripts/ops/b2-s3-client.mjs"
+      - "workers/control-plane/**"
       - ".github/workflows/governed-source-ingestion.yml"
+
 permissions: {contents: read}
 concurrency: {group: governed-source-ingestion, cancel-in-progress: false}
+
 jobs:
   ingest:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
       NOAA_NCEI_TOKEN: ${{ secrets.NOAA_NCEI_TOKEN }}
+      B2_S3_ENDPOINT: ${{ secrets.B2_S3_ENDPOINT }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_REQUEST_BUDGET: "20"
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      D1_CONFIG: workers/control-plane/wrangler.runtime.jsonc
+      WRANGLER_VERSION: "4.136.3"
       SOURCE_INGESTION_SOURCES: eia_api_v2,noaa_ncei_cdo_api
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: {persist-credentials: false}
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.2
+
       - run: bun install --frozen-lockfile
-      - name: Validate production secrets
+
+      - name: Validate bounded production credentials
+        shell: bash
         run: |
           set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY EIA_API_KEY NOAA_NCEI_TOKEN; do test -n "${!name:-}" || { echo "::error::Missing ${name}"; exit 1; }; done
-      - name: Run governed normalized ingestion
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY EIA_API_KEY NOAA_NCEI_TOKEN B2_S3_ENDPOINT B2_KEY_ID B2_APPLICATION_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            test -n "${!name:-}" || { echo "::error::Missing ${name}"; exit 1; }
+          done
+          test "$APP_SUPABASE_URL" = "https://ldpwajisioljyjtojvfx.supabase.co" || { echo "::error::Unexpected Supabase project"; exit 1; }
+          test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com" || { echo "::error::Unexpected B2 endpoint"; exit 1; }
+
+      - name: Resolve existing D1 control plane
+        id: d1
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              const rows = JSON.parse(s);
+              const row = rows.find(x => x.name === process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid ?? row?.id ?? "");
+            });
+          ')"
+          test -n "$DB_ID" || { echo "::error::geomacro-control-plane D1 database is not bootstrapped"; exit 2; }
+          echo "database_id=$DB_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Build ephemeral D1 config
+        env:
+          D1_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const source = fs.readFileSync('workers/control-plane/wrangler.example.jsonc', 'utf8');
+          const id = String(process.env.D1_DATABASE_ID || '').trim();
+          if (!/^[0-9a-f-]{20,}$/i.test(id)) throw new Error('INVALID_D1_DATABASE_ID');
+          const output = source.replace('REPLACE_WITH_D1_DATABASE_ID', id);
+          if (output.includes('REPLACE_WITH_D1_DATABASE_ID')) throw new Error('D1_ID_REPLACEMENT_FAILED');
+          fs.writeFileSync(process.env.D1_CONFIG, output);
+          NODE
+
+      - name: Require D1 schema v1 before source writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT version FROM schema_meta WHERE name='control-plane';")"
+          printf '%s' "$OUT" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              const parsed = JSON.parse(s);
+              const envelopes = Array.isArray(parsed) ? parsed : [parsed];
+              const rows = envelopes.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+              if (!rows.some(row => Number(row?.version) === 1)) process.exit(3);
+            });
+          '
+
+      - name: Verify B2-first ingestion static contract
+        run: node scripts/test-governed-source-ingestion.mjs
+
+      - name: Run governed B2-first ingestion
         run: bun run scripts/ingest-certified-sources.mjs
-      - name: Replay governed normalized ingestion
-        run: bun run scripts/ingest-certified-sources.mjs
+
+      - name: Require sealed local verification summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s artifacts/governed-source-ingestion/verification-summary.json
+          test -s artifacts/governed-source-ingestion/d1-checkpoints.sql
+          grep -q '"durable_payload_store": "backblaze-b2"' artifacts/governed-source-ingestion/verification-summary.json
+          grep -q '"supabase_raw_payload_written": false' artifacts/governed-source-ingestion/verification-summary.json
+          grep -q '"destructive_change": false' artifacts/governed-source-ingestion/verification-summary.json
+
+      - name: Write compact D1 ingestion checkpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config "$D1_CONFIG" --file artifacts/governed-source-ingestion/d1-checkpoints.sql
+
+      - name: Replay compact D1 checkpoint upsert
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config "$D1_CONFIG" --file artifacts/governed-source-ingestion/d1-checkpoints.sql
+
+      - name: Verify D1 checkpoint readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT pipeline,scope,status,cursor,metadata_json FROM pipeline_checkpoint WHERE pipeline='governed_source_ingestion' AND scope IN ('eia_api_v2','noaa_ncei_cdo_api') ORDER BY scope;")"
+          printf '%s' "$OUT" > artifacts/governed-source-ingestion/d1-readback.json
+          printf '%s' "$OUT" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              const parsed = JSON.parse(s);
+              const envelopes = Array.isArray(parsed) ? parsed : [parsed];
+              const rows = envelopes.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+              const expected = new Set(["eia_api_v2", "noaa_ncei_cdo_api"]);
+              if (rows.length !== 2) throw new Error("D1_CHECKPOINT_COUNT_MISMATCH");
+              for (const row of rows) {
+                if (row.pipeline !== "governed_source_ingestion" || row.status !== "PASS" || !expected.delete(row.scope) || !/^[a-f0-9]{64}$/.test(String(row.cursor ?? ""))) throw new Error("D1_CHECKPOINT_INVALID");
+                const metadata = JSON.parse(row.metadata_json);
+                if (metadata?.durable_payload_store !== "backblaze-b2" || metadata?.b2_readback_verified !== true || metadata?.supabase_raw_payload_written !== false) throw new Error("D1_CHECKPOINT_METADATA_INVALID");
+              }
+              if (expected.size) throw new Error("D1_CHECKPOINT_SCOPE_MISSING");
+            });
+          '
+
+      - name: Upload bounded ingestion evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: governed-b2-first-ingestion-${{ github.run_id }}
+          path: |
+            artifacts/governed-source-ingestion/verification-summary.json
+            artifacts/governed-source-ingestion/d1-readback.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Confirm no destructive or commercial activation occurred
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Verified raw payloads were written to B2 before compact Supabase mirror updates and D1 checkpoints. No x402 payment, execution authorization, Supabase deletion, storage.objects SQL deletion, or B2 deletion occurred."
