@@ -83,6 +83,7 @@ function readSnapshots(dbUrl) {
           change_attribution,explanation,status
         from public.gri_snapshots
         where status = 'published'
+          and verification_status = 'verified'
           and methodology_version = ${sqlLiteral(METHODOLOGY)}
           and as_of >= now() - interval '31 days'
         order by as_of desc
@@ -134,6 +135,9 @@ const dbUrl = authoritativeDbUrl();
 assertB2Config();
 const snapshots = readSnapshots(dbUrl);
 if (snapshots.length < 2) throw new Error("GLOBAL_RISK_HISTORY_INSUFFICIENT");
+if (snapshots.some((snapshot) => snapshot.verification_status !== "verified")) {
+  throw new Error("GLOBAL_RISK_HISTORY_UNVERIFIED_ROW");
+}
 const latestSnapshot = snapshots[0];
 const recentEvents = readRecentEvents(dbUrl, latestSnapshot.as_of);
 const risk = assemblePublicGlobalRisk(snapshots, recentEvents);
@@ -147,8 +151,10 @@ const b2 = createB2Client({
   bucket: B2_BUCKET,
 });
 
-// Immutable archive: one exact verified continuity package per snapshot. An
-// existing object is never overwritten; exact restored JSON must match.
+// Immutable archive: one exact verified continuity package per snapshot. The
+// package includes every verified same-methodology snapshot row used to build
+// the chart, so B2 preserves the auditable historical source material rather
+// than only the projected buckets. Existing objects are never overwritten.
 const snapshotId = safeSnapshotId(risk.snapshotId);
 const historyKey = `${HISTORY_PREFIX}/${snapshotId}.json.gz`;
 const historyValue = {
@@ -157,6 +163,7 @@ const historyValue = {
   methodology_version: risk.methodologyVersion,
   snapshot_id: risk.snapshotId,
   snapshot_as_of: risk.snapshotAsOf,
+  verified_snapshot_rows: snapshots,
   data: risk,
 };
 const historyRaw = JSON.stringify(historyValue);
@@ -220,6 +227,7 @@ const proof = Buffer.from(JSON.stringify({
   methodology_version: risk.methodologyVersion,
   snapshot_id: risk.snapshotId,
   snapshot_as_of: risk.snapshotAsOf,
+  verified_snapshot_rows: snapshots.length,
   compressed_sha256: liveDigest,
   compressed_bytes: packedLive.length,
   full_b2_readback_verified: true,
@@ -239,7 +247,7 @@ console.log(JSON.stringify({
   methodology_version: risk.methodologyVersion,
   snapshot_id: risk.snapshotId,
   snapshot_as_of: risk.snapshotAsOf,
-  snapshot_rows_read: snapshots.length,
+  verified_snapshot_rows_read: snapshots.length,
   recent_events_read: recentEvents.length,
   history_key: historyKey,
   history_existing: Boolean(existingHistory),
