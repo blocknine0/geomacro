@@ -2,6 +2,16 @@ name: No-Supabase Commerce Acceptance
 
 on:
   workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/no-supabase-commerce-acceptance.yml"
+      - "scripts/ops/verify-commerce-no-supabase.ts"
+      - "src/lib/agent-commerce-delivery.server.ts"
+      - "workers/commerce-ledger/**"
+      - "src/__tests__/agent-commerce-delivery-ledger-static.test.ts"
+      - "src/__tests__/commerce-ledger-no-supabase-acceptance-static.test.ts"
 
 permissions:
   contents: read
