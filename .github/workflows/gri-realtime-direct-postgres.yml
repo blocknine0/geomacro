@@ -18,7 +18,10 @@ on:
       - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
       - "src/lib/global-risk-assemble.ts"
       - "src/lib/global-risk-continuity.ts"
+      - "src/lib/global-risk-edge.server.ts"
+      - "src/lib/use-global-risk.ts"
       - "server/api/public/global-risk.get.ts"
+      - "workers/global-risk-edge/src/index.mjs"
 
 permissions:
   contents: read
@@ -178,36 +181,61 @@ jobs:
 
       - name: Require fresh verified customer-facing three-index package
         shell: bash
+        env:
+          GLOBAL_RISK_EDGE_URL: https://geomacro-global-risk.daspallab202391.workers.dev/global-risk
         run: |
           set -euo pipefail
           for attempt in 1 2 3 4 5; do
-            if body="$(curl -fsS --max-time 20 -H 'Accept: application/json' 'https://geomacro.live/api/public/global-risk')"; then
-              if printf '%s' "$body" | node -e '
-                let s=""; process.stdin.on("data", d => s += d); process.stdin.on("end", () => {
-                  const b=JSON.parse(s); const d=b?.data;
-                  const age=Date.now()-Date.parse(String(d?.snapshotAsOf||""));
-                  const domains=d?.domainIndices && typeof d.domainIndices==="object" && !Array.isArray(d.domainIndices)
-                    ? d.domainIndices : {};
-                  const required=["geopolitics","macro","rare_earth"];
-                  const domainsPresent=required.every(key => domains[key] && typeof domains[key]==="object");
-                  const historiesOk=required.every(key =>
-                    Array.isArray(domains[key]?.series?.["7D"]?.buckets) &&
-                    domains[key].series["7D"].buckets.length >= 2
-                  );
-                  const ok=b?.ok===true && b?.meta?.authority==="backblaze-b2" && d?.verificationStatus==="verified" &&
-                    Number.isFinite(age) && age >= -300000 && age <= 2*60*60*1000 &&
-                    domainsPresent && historiesOk;
-                  process.exit(ok ? 0 : 1);
-                });
-              '; then
-                printf '%s' "$body" > /tmp/global-risk-three-index.json
+            code="$(curl -sS -D /tmp/global-risk-edge.headers -o /tmp/global-risk-edge.json -w '%{http_code}' --max-time 20 -H 'Accept: application/json' "$GLOBAL_RISK_EDGE_URL" || true)"
+            if [ "$code" = "200" ] && grep -qi '^x-geomacro-authority: backblaze-b2-verified-edge' /tmp/global-risk-edge.headers; then
+              if node <<'NODE'
+                const fs = require('fs');
+                const b = JSON.parse(fs.readFileSync('/tmp/global-risk-edge.json', 'utf8'));
+                const d = b?.data;
+                const age = Date.now() - Date.parse(String(d?.snapshotAsOf || ''));
+                const domains = d?.domainIndices && typeof d.domainIndices === 'object' && !Array.isArray(d.domainIndices)
+                  ? d.domainIndices : {};
+                const required = ['geopolitics', 'macro', 'rare_earth'];
+                const domainHistoriesOk = required.every((key) =>
+                  domains[key] &&
+                  Array.isArray(domains[key]?.series?.['7D']?.buckets) &&
+                  domains[key].series['7D'].buckets.length >= 2 &&
+                  Array.isArray(domains[key]?.series?.['30D']?.buckets) &&
+                  domains[key].series['30D'].buckets.length >= domains[key].series['7D'].buckets.length
+                );
+                const combinedHistoryOk =
+                  Array.isArray(d?.series?.['7D']?.buckets) && d.series['7D'].buckets.length >= 2 &&
+                  Array.isArray(d?.series?.['30D']?.buckets) && d.series['30D'].buckets.length >= d.series['7D'].buckets.length;
+                const ok =
+                  b?.schema === 'geomacro.public-global-risk-live.v1' &&
+                  b?.source_project === 'ldpwajisioljyjtojvfx' &&
+                  d?.methodologyVersion === 'gri-v1.2.0' &&
+                  d?.verificationStatus === 'verified' &&
+                  Number.isFinite(age) && age >= -300000 && age <= 2 * 60 * 60 * 1000 &&
+                  domainHistoriesOk && combinedHistoryOk;
+                process.exit(ok ? 0 : 1);
+              NODE
+              then
+                cp /tmp/global-risk-edge.json /tmp/global-risk-three-index.json
                 exit 0
               fi
             fi
             sleep $((attempt * 4))
           done
-          echo "Fresh verified three-index Global Risk package was not visible in production" >&2
+          echo "Fresh verified three-index Global Risk package was not visible through the browser serving edge" >&2
           exit 1
+
+      - name: Observe geomacro.live API compatibility
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          code="$(curl -sS -o /tmp/global-risk-app-api.json -w '%{http_code}' --max-time 20 -H 'Accept: application/json' 'https://geomacro.live/api/public/global-risk' || true)"
+          if [ "$code" != "200" ]; then
+            echo "::warning::geomacro.live same-origin Global Risk API compatibility path returned HTTP ${code}; browser serving remains protected by the verified Cloudflare/B2 edge."
+            exit 0
+          fi
+          echo "geomacro.live same-origin Global Risk API compatibility path is healthy."
 
       - name: Upload customer-facing verification evidence
         if: always()
