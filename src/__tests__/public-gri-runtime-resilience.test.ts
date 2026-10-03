@@ -17,7 +17,9 @@ describe("public risk runtime resilience", () => {
     expect(server).not.toContain("readPublicGlobalRiskFromEdge");
     expect(server).not.toContain("readPublicGlobalRisk()");
     expect(server).not.toContain("supabase.co");
+    expect(b2).toContain("B2_PUBLIC_GLOBAL_RISK_KEY");
     expect(b2).toContain("B2_PUBLIC_RISK_KEY");
+    expect(b2).toContain("validateGlobalRiskContinuity");
     expect(b2).toContain("PUBLIC_RISK_FALLBACK_MAX_AGE_MS");
   });
 
@@ -35,8 +37,9 @@ describe("public risk runtime resilience", () => {
     const legacyHook = read("src/lib/use-global-risk.ts");
     const indicesHook = read("src/lib/use-risk-indices.ts");
 
-    expect(legacyHook).toContain("if (!response.ok)");
-    expect(legacyHook).toContain("throw new Error(response.message)");
+    expect(legacyHook).toContain('fetch("/api/public/global-risk"');
+    expect(legacyHook).toContain("if (!response.ok || !body.ok)");
+    expect(legacyHook).toContain('setStatus("error")');
     expect(indicesHook).toContain('setStatus(hasData.current ? "ready" : "error")');
     expect(indicesHook).toContain('RiskIndicesStatus = "loading" | "ready" | "updating" | "error"');
   });
@@ -53,12 +56,15 @@ describe("public risk runtime resilience", () => {
 
   it("does not add a synthetic score or browser database fallback", () => {
     const server = read("src/lib/public-risk.functions.ts");
-    const hook = read("src/lib/use-risk-indices.ts");
+    const globalHook = read("src/lib/use-global-risk.ts");
+    const indicesHook = read("src/lib/use-risk-indices.ts");
     const resolver = read("src/lib/supabase-app.server.ts");
 
     expect(server).not.toContain("synthetic");
-    expect(hook).not.toContain("supabase.co");
-    expect(hook).not.toContain("VITE_SUPABASE_URL");
+    expect(globalHook).not.toContain("supabase.co");
+    expect(globalHook).not.toContain("VITE_SUPABASE_URL");
+    expect(indicesHook).not.toContain("supabase.co");
+    expect(indicesHook).not.toContain("VITE_SUPABASE_URL");
     expect(resolver).not.toContain("import.meta.env");
   });
 });
