@@ -1,0 +1,31 @@
+{
+  "schema": "geomacro.historical-producer-link.v1",
+  "producer_repository": "blocknine0/geomacro-historical-data",
+  "producer_main_commit": "4f77f3afa84f1d7c613a653993104af0652855ac",
+  "producer_contract": "docs/HISTORICAL_INTEGRATION_CONTRACT.md",
+  "producer_consumer_manifest": "config/geomacro_main_consumer.v1.json",
+  "consumer_repository": "blocknine0/geomacro",
+  "domains": [
+    "GEOPOLITICS",
+    "MACRO",
+    "CRITICAL_MINERALS"
+  ],
+  "serving_interfaces": {
+    "geopolitics_base": "commercial_structural_geopolitical_observations",
+    "geopolitics_country_latest": "commercial_structural_country_latest",
+    "geopolitics_country_profiles": "commercial_structural_country_profiles",
+    "geopolitics_country_coverage": "commercial_structural_country_coverage_latest",
+    "geopolitics_corridors": "commercial_structural_corridor_latest",
+    "macro": "commercial_macro_observations",
+    "rare_earths": "rare_earth_canonical_observations"
+  },
+  "runtime_path": {
+    "primary": "server-only curated historical Supabase views",
+    "continuity": "verified private B2 structural snapshot",
+    "raw_private_repository_fetch": false,
+    "browser_fetch": false
+  },
+  "methodology_boundary": "EVIDENCE_ONLY_NOT_IN_GRI_OR_GRO_UNTIL_SEPARATELY_VERSIONED",
+  "missing_data_semantics": "MISSING_IS_NOT_ZERO",
+  "current_source_override": false
+}
