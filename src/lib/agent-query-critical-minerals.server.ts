@@ -148,6 +148,18 @@ export async function loadAgentCriticalMineralsModule(input: {
     return unavailable(input.subject, "SOURCE_NOT_ELIGIBLE", sourceContract);
   }
 
+  // B2 is the production serving authority for this verified derived state.
+  // Supabase remains bounded standby/recovery only.
+  try {
+    const primary = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
+    if (primary?.deliverable) {
+      console.warn("[agent-critical-minerals] using fresh verified B2 governed derived state");
+      return primary;
+    }
+  } catch {
+    // Never widen delivery on B2 failure; continue to the bounded standby path.
+  }
+
   try {
     const db = requireRiskSupabase();
     const result = await db
@@ -274,8 +286,8 @@ export async function loadAgentCriticalMineralsModule(input: {
     };
   } catch (primaryError) {
     const fallback = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
-    if (fallback) {
-      console.warn("[agent-critical-minerals] primary governed store unavailable; using fresh verified B2 derived state");
+    if (fallback?.deliverable) {
+      console.warn("[agent-critical-minerals] standby governed store unavailable; using fresh verified B2 derived state");
       return fallback;
     }
     throw primaryError;
