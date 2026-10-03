@@ -1,36 +1,29 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const page = readFileSync("src/routes/testnet-access.tsx", "utf8");
+const retiredRoute = readFileSync("src/routes/testnet-access.tsx", "utf8");
+const consoleRoute = readFileSync("src/routes/testnet-console.tsx", "utf8");
+const wildcard = readFileSync("src/routes/api/testnet-tester/$.tsx", "utf8");
+const logout = readFileSync("server/api/testnet-tester/logout.post.ts", "utf8");
+const feedback = readFileSync("server/api/demo/feedback.post.ts", "utf8");
 
-describe("permanent Testnet access UX", () => {
-  it("offers disconnect even for a wallet that is connected before the Geomacro session is active", () => {
-    expect(page).toContain('method: "eth_accounts"');
-    expect(page).toContain('method: "wallet_revokePermissions"');
-    expect(page).toContain('"/api/testnet-tester/logout"');
-    expect(page).toContain("walletConnected");
-    expect(page).toContain("Disconnect wallet");
-    expect(page).toContain("wallet extension's Disconnect site action");
+describe("retired public Testnet UX", () => {
+  it("sends legacy public Testnet visitors to the production API surface", () => {
+    expect(retiredRoute).toContain('redirect({ to: "/data-api", replace: true })');
+    expect(consoleRoute).toContain('new URL("/data-api", request.url)');
+    expect(consoleRoute).toContain("308");
   });
 
-  it("keeps public testing primary and moves advanced access behind compact disclosures", () => {
-    expect(page).toContain("Public Testnet access");
-    expect(page).toContain("Normal users");
-    expect(page).toContain("TESTNET_PUBLIC_API_KEYS");
-    expect(page).toContain("Three public API keys");
-    expect(page).toContain("Developer integrations (optional)");
-    expect(page).toContain("<details>");
-    expect(page).toContain("INTEGRATION DETAILS");
+  it("keeps wallet-session logout available as an internal fail-closed API", () => {
+    expect(wildcard).toContain("logoutPost");
+    expect(logout).toContain("revokeTestnetTesterSession");
+    expect(logout).toContain("clearTesterSessionCookie");
+    expect(logout).toContain("execution_authorized: false");
   });
 
-  it("keeps feedback optional and provides X distribution actions", () => {
-    expect(page).toContain("OPTIONAL FEEDBACK + X");
-    expect(page).toContain("Give feedback (optional)");
-    expect(page).toContain('"/api/demo/feedback"');
-    expect(page).toContain("https://x.com/intent/post");
-    expect(page).toContain("@GeomacroLive");
-    expect(page).toContain("https://x.com/intent/follow?screen_name=");
-    expect(page).toContain("I followed @GeomacroLive");
-    expect(page).toContain("X requires you to confirm the follow there.");
+  it("keeps the existing optional feedback endpoint without promoting Testnet UX on the production website", () => {
+    expect(feedback).toContain("execution_authorized: false");
+    expect(retiredRoute).not.toContain("OPTIONAL FEEDBACK + X");
+    expect(retiredRoute).not.toContain("Public Testnet access");
   });
 });
