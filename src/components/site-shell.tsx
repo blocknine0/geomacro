@@ -39,7 +39,6 @@ import { shortAddr } from "@/components/section-ui";
 function isWalletRoute(pathname: string) {
   return (
     pathname === "/arena" ||
-    pathname === "/onchain" ||
     pathname === "/bridge-swap" ||
     pathname === "/portfolio"
   );
@@ -123,7 +122,6 @@ const PRIMARY_NAV = [
   { to: "/global-risk", label: "Risk Indices" },
   { to: "/data-api", label: "API & Agents" },
   { to: "/institutional", label: "Institutions" },
-  { to: "/pricing", label: "Pricing" },
 ] as const;
 
 const EXPLORE_NAV = [
@@ -137,7 +135,6 @@ const EXPLORE_NAV = [
 ] as const;
 
 const TECHNICAL_NAV = [
-  { to: "/testnet-access", label: "Testnet API", description: "Credential, quote and settlement verification on the test environment" },
   { to: "/demo", label: "Agentic Commerce Demo", description: "Inspect Risk Gate, machine output and x402 proof" },
   { to: "/pipeline", label: "Data Pipeline", description: "Technical data-processing surface" },
   { to: "/onchain", label: "Arc / Onchain", description: "Programmable-finance technical proof" },
@@ -305,7 +302,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
                     <SheetTitle><Wordmark height={28} /></SheetTitle>
                   </SheetHeader>
                   <nav className="mt-7 space-y-6 pb-8" aria-label="Mobile navigation">
-                    <MobileGroup title="Core" items={PRIMARY_NAV} />
+                    <div>
+                      <MobileGroup title="Core" items={PRIMARY_NAV} />
+                      <SheetClose asChild>
+                        <a href="/data-api#pricing" className="mt-0.5 block rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground">Pricing</a>
+                      </SheetClose>
+                    </div>
                     <MobileGroup title="Explore" items={exploreMobile} />
                     <MobileGroup title="Reference" items={REFERENCE_NAV} />
                     <MobileGroup title="Technical proof" items={technicalMobile} />
@@ -329,6 +331,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   {item.label}
                 </Link>
               ))}
+              <a href="/data-api#pricing" className="whitespace-nowrap py-2 transition hover:text-foreground">Pricing</a>
               <ExploreMenu />
               <TechnicalProofMenu />
               <Button asChild size="sm" className="ml-1 h-9 px-4 text-xs">
@@ -354,7 +357,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
         {showProductionEvidence ? <ProductionCoverageProof /> : null}
 
-        <div id="main-content" className="flex-1">{children}</div>
+        <main id="main-content" className="flex-1">{children}</main>
 
         <footer className="border-t border-border/60 bg-background/45 backdrop-blur-sm">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 text-sm text-muted-foreground sm:px-6 lg:grid-cols-[1.15fr_2fr] lg:py-14">
@@ -374,7 +377,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
                   <Link to="/global-risk" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
-                  <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
+                  <a href="/data-api#pricing" className="hover:text-foreground">Pricing</a>
                 </div>
               </div>
               <div>
@@ -389,7 +392,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <div>
                 <p className="font-medium text-foreground">Technical Proof</p>
                 <div className="mt-3 flex flex-col gap-2.5">
-                  <Link to="/testnet-access" className="hover:text-foreground">Testnet API</Link>
                   <Link to="/demo" className="hover:text-foreground">Agentic Commerce Demo</Link>
                   <Link to="/pipeline" className="hover:text-foreground">Data Pipeline</Link>
                   <Link to="/onchain" className="hover:text-foreground">Arc / Onchain</Link>
@@ -416,7 +418,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-              <span>Public intelligence live · Risk Gate controlled Private Pilot · real-money x402 fail-closed until production activation · machine access follows live runtime policy</span>
+              <span>Public intelligence live · Risk Gate controlled Private Pilot · machine access follows live runtime policy</span>
               <span>Production status is verified from live service contracts, not static marketing copy.</span>
             </div>
           </div>
