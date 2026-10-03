@@ -20,6 +20,9 @@ const preflightPath = "scripts/invinoveritas-risk-object-preflight.ts";
 const docsPath = "docs/PARTNER_VERIFICATION_AND_COMMERCIAL_INTEGRATION.md";
 const positiveControlWorkflow = ".github/workflows/federico-strict-positive-control.yml";
 const partnerWorkflow = ".github/workflows/partner-commercial-readiness.yml";
+const assuranceConfigPath = "config/partner-assurance.v1.json";
+const assuranceAdapterPath = "scripts/partner-assurance-adapter.ts";
+const finalGateCorePath = "scripts/ops/final-launch-gate-core.mjs";
 
 for (const path of [
   discoveryPath,
@@ -28,15 +31,21 @@ for (const path of [
   docsPath,
   positiveControlWorkflow,
   partnerWorkflow,
+  assuranceConfigPath,
+  assuranceAdapterPath,
+  finalGateCorePath,
 ]) {
   if (!existsSync(path)) fail(`missing required partner artifact: ${path}`);
 }
 
 const discovery = readJson(discoveryPath);
 const positiveControl = readJson(positiveControlPath);
+const assurance = readJson(assuranceConfigPath);
 const preflight = readFileSync(preflightPath, "utf8");
 const docs = readFileSync(docsPath, "utf8");
 const positiveWorkflow = readFileSync(positiveControlWorkflow, "utf8");
+const adapter = readFileSync(assuranceAdapterPath, "utf8");
+const finalGateCore = readFileSync(finalGateCorePath, "utf8");
 
 if (discovery.schema_version !== "geomacro-partner-verification-v1") {
   fail("unexpected partner discovery schema_version");
@@ -76,6 +85,42 @@ if (!Array.isArray(positiveControl?.events) || positiveControl.events.length < 1
   fail("positive control contains no events");
 }
 
+if (assurance?.schema !== "geomacro.partner-assurance.v1") {
+  fail("generic partner assurance schema mismatch");
+}
+if (Number(assurance?.core_gates?.minimum_independent_source_families ?? 0) < 2) {
+  fail("generic assurance weakens independent-source threshold");
+}
+if (Number(assurance?.core_gates?.max_live_reviews_per_run ?? 0) !== 1) {
+  fail("generic assurance must cap live partner review to one per run");
+}
+if (assurance?.core_gates?.live_review_after_local_gates_only !== true) {
+  fail("generic assurance must sequence live review after local gates");
+}
+if (assurance?.core_gates?.execution_authorized !== false) {
+  fail("generic assurance must never authorize execution");
+}
+
+const federico = assurance?.partners?.federico;
+if (
+  federico?.delivery_profile !== "FEDERICO_STRICT" ||
+  federico?.calculation_namespace !== "federico_strict_evidence_v1" ||
+  federico?.signed_partner_proof_required !== true ||
+  federico?.independent_proof_verification_required !== true ||
+  Number(federico?.live_review_allowance_per_run ?? 0) !== 1
+) {
+  fail("Federico generic assurance contract is incomplete");
+}
+
+const secondPartner = assurance?.partners?.goat;
+if (
+  secondPartner?.status !== "MAPPED_NOT_ACTIVATED" ||
+  secondPartner?.live_review_allowed !== false ||
+  Number(secondPartner?.live_review_allowance_per_run ?? -1) !== 0
+) {
+  fail("second partner must be mapped without activation or threshold bypass");
+}
+
 for (const required of [
   "external_evidence",
   "record_sha256",
@@ -97,6 +142,34 @@ for (const required of [
   if (!docs.includes(required)) fail(`commercial partner docs missing section/guardrail: ${required}`);
 }
 
+for (const required of [
+  "PARTNER_ASSURANCE_ALLOW_LIVE_REVIEW",
+  "LIVE_REVIEW_ALLOWANCE_NOT_EXPLICITLY_GRANTED",
+  "PARTNER_ALLOWANCE_EXCEEDS_CORE",
+  "LOCAL_SIGNATURE_VERIFICATION_FAILED",
+  "DEPLOYED_VERIFIER_REJECTED_ORIGINAL",
+  "TAMPER_NOT_REJECTED",
+  "SIGNED_PARTNER_PROOF_MISSING",
+  "INDEPENDENT_PARTNER_PROOF_VERIFICATION_FAILED",
+  "canonicalRiskObjectJson",
+]) {
+  if (!adapter.includes(required)) fail(`generic assurance adapter missing guardrail: ${required}`);
+}
+
+for (const required of [
+  "d1_primary_control_plane",
+  "b2_durable_authority",
+  "durable_object_commerce",
+  "supabase_cold_standby",
+  "partner_assurance",
+  "signing_trust",
+  "scheduler_health",
+  "exact_head_gates",
+  "real_funds_authorized: false",
+]) {
+  if (!finalGateCore.includes(required)) fail(`final launch gate missing authority/gate: ${required}`);
+}
+
 if (!positiveWorkflow.includes("persist-credentials: false")) {
   fail("positive-control workflow must disable persisted Git credentials");
 }
@@ -106,10 +179,13 @@ if (!positiveWorkflow.includes("check-federico-positive-control.ts")) {
 
 console.log(JSON.stringify({
   ok: true,
-  contract: "geomacro-partner-commercial-readiness-v1",
+  contract: "geomacro-partner-commercial-readiness-v2",
   risk_object_schema: discovery.risk_object.schema,
   federation_profile: discovery.federation.supported_profile,
   positive_control: "present",
+  generic_partner_assurance: "present",
+  federico_live_review_allowance_per_run: federico.live_review_allowance_per_run,
+  second_partner_mapping: "goat:MAPPED_NOT_ACTIVATED",
   external_review_binding: discovery.partner_handoff.external_evidence_binding,
   independent_proof_verification_required:
     discovery.partner_handoff.independent_proof_verification_required,
