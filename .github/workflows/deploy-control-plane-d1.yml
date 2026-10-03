@@ -125,7 +125,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/control-plane
-          packageManager: yarn
+          packageManager: npm
           wranglerVersion: "4.136.3"
           command: deploy --config wrangler.runtime.jsonc
           secrets: |
