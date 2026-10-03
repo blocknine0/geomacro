@@ -12,6 +12,7 @@ on:
   workflow_run:
     workflows:
       - Deploy D1 Control Plane
+      - Phase A Runtime Freshness Repair
     types:
       - completed
 
