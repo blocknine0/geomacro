@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "6c48479453bdd70927d38df27b6e1eb16019344e",
-  "published_baseline": "Founder-approved Geomacro Commercial V1 website with the canonical /global-risk verification workspace restored: latest verified Global Risk reading, same-methodology 24H/7D/30D history, change attribution, evidence quality, methodology and integrity fingerprints are shown from the verified B2 continuity package. Stale verified snapshots are explicitly labeled Latest verified GRI with their exact as-of time; missing intervals are never extrapolated, zero-filled or fabricated. The separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices remain available on their own /risk-indices surface. Production public Global Risk serving remains B2-authoritative, with direct read-only Postgres used only to verify and promote immutable B2 recovery packages when Supabase REST egress is restricted. No payment, execution authorization, source-rights threshold or x402 safety gate is weakened.",
+  "baseline_sha": "3c6fb13083478f0a155efffe71532f6a3dfe9364",
+  "published_baseline": "Founder-approved Geomacro Commercial V1 Global Risk presentation with three separate public indices restored on /global-risk: Geopolitical Risk Index, Macroeconomic Risk Index and Critical Minerals Risk Index. Each index uses only persisted category_breakdown scores from verified, published gri-v1.2.0 snapshots and exposes same-methodology 24H/7D/30D history when present; missing intervals or unavailable domains are never interpolated, zero-filled or fabricated. The legacy combined GRI remains proof lineage/input context rather than the customer-facing headline. Production serving remains B2-authoritative, verified snapshots are explicitly labelled current or last verified by age, and the bounded six-hour freshness path publishes a newly verified GRI continuity package to B2 immediately after independent proof verification. No payment, execution authorization, source-rights threshold or x402 safety gate is weakened.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
-  "locked_at_utc": "2026-10-03T17:14:00Z",
+  "locked_at_utc": "2026-10-03T18:34:00Z",
   "published_source_sha": "5bc4f66d91d0c92c4fce6bd20e6b3b4907453381",
-  "lock_revision": "founder-approved-global-risk-history-recovery-20261003"
+  "lock_revision": "founder-approved-three-risk-indices-freshness-recovery-20261003"
 }
