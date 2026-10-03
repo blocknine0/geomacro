@@ -8,10 +8,15 @@ on:
       - "docs/PARTNER_VERIFICATION_AND_COMMERCIAL_INTEGRATION.md"
       - "scripts/check-partner-commercial-readiness.mjs"
       - "scripts/invinoveritas-risk-object-preflight.ts"
+      - "scripts/partner-assurance-adapter.ts"
+      - "scripts/ops/final-launch-gate-core.mjs"
+      - "scripts/ops/simulate-final-launch-failures.mjs"
+      - "config/partner-assurance.v1.json"
       - "test-vectors/federico-strict-positive-control-v1.json"
       - ".github/workflows/federico-strict-positive-control.yml"
       - ".github/workflows/partner-commercial-readiness.yml"
       - "src/__tests__/partner-commercial-readiness-static.test.ts"
+      - "src/__tests__/day6-day7-final-assurance-static.test.ts"
   push:
     branches: [main]
     paths:
@@ -19,10 +24,15 @@ on:
       - "docs/PARTNER_VERIFICATION_AND_COMMERCIAL_INTEGRATION.md"
       - "scripts/check-partner-commercial-readiness.mjs"
       - "scripts/invinoveritas-risk-object-preflight.ts"
+      - "scripts/partner-assurance-adapter.ts"
+      - "scripts/ops/final-launch-gate-core.mjs"
+      - "scripts/ops/simulate-final-launch-failures.mjs"
+      - "config/partner-assurance.v1.json"
       - "test-vectors/federico-strict-positive-control-v1.json"
       - ".github/workflows/federico-strict-positive-control.yml"
       - ".github/workflows/partner-commercial-readiness.yml"
       - "src/__tests__/partner-commercial-readiness-static.test.ts"
+      - "src/__tests__/day6-day7-final-assurance-static.test.ts"
 
 permissions:
   contents: read
@@ -49,7 +59,12 @@ jobs:
         run: node scripts/check-partner-commercial-readiness.mjs
 
       - name: Run partner static tests
-        run: bunx vitest run src/__tests__/partner-commercial-readiness-static.test.ts
+        run: |
+          bunx vitest run src/__tests__/partner-commercial-readiness-static.test.ts
+          bunx vitest run src/__tests__/day6-day7-final-assurance-static.test.ts
+
+      - name: Simulate final launch failure classes
+        run: node scripts/ops/simulate-final-launch-failures.mjs
 
       - name: Verify Federico strict positive control
         run: bun scripts/check-federico-positive-control.ts
