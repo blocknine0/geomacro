@@ -137,7 +137,6 @@ const EXPLORE_NAV = [
 ] as const;
 
 const TECHNICAL_NAV = [
-  { to: "/testnet-access", label: "Testnet API", description: "Credential, quote and settlement verification on the test environment" },
   { to: "/demo", label: "Agentic Commerce Demo", description: "Inspect Risk Gate, machine output and x402 proof" },
   { to: "/pipeline", label: "Data Pipeline", description: "Technical data-processing surface" },
   { to: "/onchain", label: "Arc / Onchain", description: "Programmable-finance technical proof" },
@@ -389,7 +388,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <div>
                 <p className="font-medium text-foreground">Technical Proof</p>
                 <div className="mt-3 flex flex-col gap-2.5">
-                  <Link to="/testnet-access" className="hover:text-foreground">Testnet API</Link>
                   <Link to="/demo" className="hover:text-foreground">Agentic Commerce Demo</Link>
                   <Link to="/pipeline" className="hover:text-foreground">Data Pipeline</Link>
                   <Link to="/onchain" className="hover:text-foreground">Arc / Onchain</Link>
