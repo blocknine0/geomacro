@@ -29,6 +29,28 @@ describe("public product surface failure-domain isolation", () => {
     expect(workflow).not.toContain("src/lib/use-global-risk.ts");
   });
 
+  it("gives external source discovery and classifier quotas to one canonical ingestion owner only", () => {
+    const canonicalIngest = read(".github/workflows/auto-ingest-news.yml");
+    const intelligence = read(".github/workflows/intelligence-scored-refresh.yml");
+    const globalRisk = read(".github/workflows/gri-realtime-direct-postgres.yml");
+
+    expect(canonicalIngest).toContain("node scripts/ingest-news.js");
+
+    for (const publisher of [intelligence, globalRisk]) {
+      expect(publisher).not.toContain("node scripts/ingest-news.js");
+      expect(publisher).not.toContain("GUARDIAN_QUERY_BUDGET_PER_CATEGORY");
+      expect(publisher).not.toContain("GDACS_ENABLED");
+      expect(publisher).not.toContain("RELIEFWEB_ENABLED");
+      expect(publisher).not.toContain("GEMINI_API_KEY");
+      expect(publisher).not.toContain("MISTRAL_API_KEY");
+    }
+
+    expect(intelligence).not.toContain("GROQ_API_KEY");
+    expect(intelligence).not.toContain("CEREBRAS_API_KEY");
+    expect(intelligence).not.toContain("scripts/ingest-news.js");
+    expect(globalRisk).not.toContain("scripts/ingest-news.js");
+  });
+
   it("keeps each browser surface on its own public API contract", () => {
     const intelligence = read("src/lib/use-intelligence.ts");
     const globalRisk = read("src/lib/use-global-risk.ts");

@@ -6,12 +6,15 @@ const shim = readFileSync("scripts/lib/gri-db-client.mjs", "utf8");
 const loader = readFileSync("scripts/lib/direct-postgres-supabase-loader.mjs", "utf8");
 
 describe("GRI realtime direct Postgres freshness", () => {
-  it("runs a bounded verified refresh every hour without depending on PostgREST availability", () => {
+  it("runs a bounded verified refresh every hour from canonical evidence without re-owning source ingestion", () => {
     expect(workflow).toContain('cron: "23 * * * *"');
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
     expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
-    expect(workflow).toContain("node scripts/ingest-news.js");
+    expect(workflow).not.toContain("node scripts/ingest-news.js");
+    expect(workflow).not.toContain("GUARDIAN_QUERY_BUDGET_PER_CATEGORY");
+    expect(workflow).not.toContain("GDACS_ENABLED");
+    expect(workflow).not.toContain("RELIEFWEB_ENABLED");
     expect(workflow).toContain("node scripts/cluster-gri-stories-v12.js");
     expect(workflow).toContain("node scripts/compute-gri-v12.js");
     expect(workflow).toContain("node scripts/verify-gri-snapshot-v12.js");

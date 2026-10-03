@@ -11,8 +11,6 @@ on:
       - ".github/workflows/gri-realtime-direct-postgres.yml"
       - "scripts/lib/gri-db-client.mjs"
       - "scripts/lib/direct-postgres-supabase-loader.mjs"
-      - "scripts/lib/no-guardian-node-fetch.mjs"
-      - "scripts/ingest-news.js"
       - "scripts/cluster-gri-stories-v12.js"
       - "scripts/compute-gri-v12.js"
       - "scripts/verify-gri-snapshot-v12.js"
@@ -35,11 +33,10 @@ jobs:
   refresh-three-domain-gri:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 30
     environment: production
     env:
       GRI_DB_MODE: direct_postgres
-      GEOMACRO_DISABLE_GUARDIAN: "true"
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -47,7 +44,6 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -72,7 +68,6 @@ jobs:
         run: |
           set -euo pipefail
           test "$EXPECTED_SUPABASE_PROJECT_REF" = "ldpwajisioljyjtojvfx"
-          test "$GEOMACRO_DISABLE_GUARDIAN" = "true"
           test -n "${SUPABASE_DB_URL:-}" || { echo "SUPABASE_DB_URL is required"; exit 2; }
           test -n "${B2_KEY_ID:-}" || { echo "B2_KEY_ID is required"; exit 2; }
           test -n "${B2_APPLICATION_KEY:-}" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
@@ -125,39 +120,8 @@ jobs:
               throw new Error(`PRODUCTION_SOURCE_NOT_ENABLED:${sourceId}`);
             }
           }
-          console.log(JSON.stringify({ ok: true, required_sources: Object.keys(required), guardian_commercial_dependency: false }));
+          console.log(JSON.stringify({ ok: true, required_sources: Object.keys(required), source_discovery_owner: 'auto-ingest-news' }));
           NODE
-
-      - name: Ingest bounded current evidence through direct PostgreSQL
-        env:
-          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
-          GROQ_MODEL: ${{ vars.GROQ_INGEST_MODEL }}
-          GEMINI_MODEL: ${{ vars.GEMINI_INGEST_MODEL }}
-          GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
-          MISTRAL_MODEL: ${{ vars.MISTRAL_INGEST_MODEL }}
-          CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
-          CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
-          GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
-          GROQ_MAX_REQUESTS_PER_RUN: "12"
-          GROQ_MIN_REMAINING_REQUESTS: ${{ vars.GROQ_MIN_REMAINING_REQUESTS }}
-          GROQ_MIN_REMAINING_TOKENS: ${{ vars.GROQ_MIN_REMAINING_TOKENS }}
-          GROQ_MAX_WAIT_MS: "180000"
-          GROQ_BATCH_SIZE: "2"
-          MAX_CANDIDATES_PER_CATEGORY: "4"
-          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "1"
-          GUARDIAN_QUERY_ROTATION_HOURS: "1"
-          NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
-          NEWS_MAX_RETRIES: "2"
-          MAX_ARTICLE_AGE_MS: ${{ vars.MAX_ARTICLE_AGE_MS }}
-          MIN_CONFIDENCE: ${{ vars.MIN_CONFIDENCE }}
-          MIN_SEVERITY: ${{ vars.MIN_SEVERITY }}
-          RELIEFWEB_ENABLED: "true"
-          GDACS_ENABLED: "true"
-        run: node scripts/ingest-news.js
 
       - name: Correlate current canonical evidence through direct PostgreSQL
         env:
