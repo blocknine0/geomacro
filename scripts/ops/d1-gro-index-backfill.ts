@@ -16,6 +16,7 @@ const D1_CONFIG = String(process.env.D1_CONFIG ?? "workers/control-plane/wrangle
 const WRANGLER_VERSION = String(process.env.WRANGLER_VERSION ?? "4.136.3").trim();
 const limitRaw = Number(process.env.D1_GRO_INDEX_LIMIT ?? 128);
 const LIMIT = Number.isInteger(limitRaw) ? Math.max(1, Math.min(512, limitRaw)) : 128;
+const D1_WRITE_BATCH_SIZE = 12;
 const DB_URL = String(process.env.SUPABASE_DB_URL ?? "").trim();
 
 if (!DB_URL) throw new Error("D1_GRO_INDEX_DB_URL_REQUIRED");
@@ -59,6 +60,18 @@ function wrangler(args: string[]) {
     maxBuffer: 32 * 1024 * 1024,
     env: process.env,
   });
+}
+function executeD1Statements(statements: string[]): number {
+  let batches = 0;
+  for (let offset = 0; offset < statements.length; offset += D1_WRITE_BATCH_SIZE) {
+    const batch = statements.slice(offset, offset + D1_WRITE_BATCH_SIZE);
+    wrangler([
+      "d1", "execute", "DB", "--remote", "--yes", "--config", D1_CONFIG,
+      "--command", batch.join("\n"),
+    ]);
+    batches += 1;
+  }
+  return batches;
 }
 function parseD1(raw: string) {
   const parsed = JSON.parse(raw);
@@ -170,7 +183,7 @@ verified.sort((a, b) => a.object_id.localeCompare(b.object_id));
 const sourceChecksum = checksum(verified);
 const now = new Date().toISOString();
 const statements = verified.map((row) => `INSERT INTO risk_object_index (object_id,schema_version,subject_type,subject_id,generated_at,expires_at,verification_status,commercial_eligibility_status,signing_key_id,payload_hash,record_sha256,archive_key,archive_sha256,updated_at) VALUES (${sqlText(row.object_id)},${sqlText(row.schema_version)},${sqlText(row.subject_type)},${sqlText(row.subject_id)},${sqlText(row.generated_at)},${sqlText(row.expires_at)},${sqlText(row.verification_status)},${sqlText(row.commercial_eligibility_status)},${sqlText(row.signing_key_id)},${sqlText(row.payload_hash)},${sqlText(row.record_sha256)},${sqlText(row.archive_key)},${sqlText(row.archive_sha256)},${sqlText(now)}) ON CONFLICT(object_id) DO UPDATE SET schema_version=excluded.schema_version,subject_type=excluded.subject_type,subject_id=excluded.subject_id,generated_at=excluded.generated_at,expires_at=excluded.expires_at,verification_status=excluded.verification_status,commercial_eligibility_status=excluded.commercial_eligibility_status,signing_key_id=excluded.signing_key_id,payload_hash=excluded.payload_hash,record_sha256=excluded.record_sha256,archive_key=excluded.archive_key,archive_sha256=excluded.archive_sha256,updated_at=excluded.updated_at;`);
-wrangler(["d1", "execute", "DB", "--remote", "--yes", "--config", D1_CONFIG, "--command", statements.join("\n")]);
+const writeBatches = executeD1Statements(statements);
 
 const readbackRaw = wrangler([
   "d1", "execute", "DB", "--remote", "--json", "--config", D1_CONFIG,
@@ -194,6 +207,8 @@ console.log(JSON.stringify({
   ok: true,
   mode: "verified_b2_gro_index_backfill",
   rows: verified.length,
+  write_batches: writeBatches,
+  d1_write_batch_size: D1_WRITE_BATCH_SIZE,
   source_checksum: sourceChecksum,
   target_checksum: targetChecksum,
   metadata_source: "direct_postgres_export",
