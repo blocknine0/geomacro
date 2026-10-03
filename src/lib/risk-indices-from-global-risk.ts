@@ -1,4 +1,4 @@
-import type { GlobalRisk, Timeframe, TimeframeSeries } from "./global-risk.types";
+import type { GlobalRisk, RiskDomainKey } from "./global-risk.types";
 import {
   PUBLIC_RISK_INDICES_CONTRACT_VERSION,
   type PublicRiskIndex,
@@ -12,16 +12,12 @@ const CURRENT_READING_MAX_AGE_HOURS = 6;
 const SPECS: ReadonlyArray<{
   key: PublicRiskIndexKey;
   name: string;
-  sourceCategory: "geopolitics" | "macro" | "rare_earth";
+  sourceCategory: RiskDomainKey;
 }> = [
   { key: "geopolitics", name: "Geopolitical Risk Index", sourceCategory: "geopolitics" },
   { key: "macro", name: "Macroeconomic Risk Index", sourceCategory: "macro" },
   { key: "critical_minerals", name: "Critical Minerals Risk Index", sourceCategory: "rare_earth" },
 ];
-
-function emptySeries(timeframe: Timeframe): TimeframeSeries {
-  return { timeframe, buckets: null, low: null, high: null };
-}
 
 function ageHours(value: string, now = Date.now()): number | null {
   const parsed = Date.parse(value);
@@ -30,14 +26,11 @@ function ageHours(value: string, now = Date.now()): number | null {
 }
 
 /**
- * Projects the already-verified category scores carried by the canonical B2
- * GlobalRisk package into the public three-index contract.
- *
- * The archived GlobalRisk package does not contain per-category historical
- * series or score-to-score deltas, so this adapter deliberately leaves those
- * fields unavailable rather than reusing the old combined-GRI contribution
- * delta or fabricating history. This makes the public website available from
- * B2 without weakening the proof boundary.
+ * Projects the three verified domain readings carried by the canonical B2
+ * GlobalRisk continuity package into the public three-index contract. The
+ * category histories are assembled from persisted category_breakdown values on
+ * same-methodology verified snapshots; no blended-GRI history or interpolation
+ * is substituted for missing domain data.
  */
 export function riskIndicesFromGlobalRisk(
   risk: GlobalRisk,
@@ -54,31 +47,54 @@ export function riskIndicesFromGlobalRisk(
   );
 
   const indices: PublicRiskIndex[] = SPECS.map((spec) => {
+    const domain = risk.domainIndices?.[spec.sourceCategory] ?? null;
     const driver = driverByCategory.get(spec.sourceCategory);
-    const score = driver && Number.isFinite(driver.score) ? driver.score : null;
+
+    if (!domain) {
+      return {
+        key: spec.key,
+        name: spec.name,
+        sourceCategory: spec.sourceCategory,
+        status: "unavailable",
+        readingStatus,
+        readingSnapshotId: null,
+        readingAsOf: null,
+        readingAgeHours: null,
+        score: null,
+        rawScore: null,
+        previousScore: null,
+        changePoints: null,
+        confidence: null,
+        eventCount: 0,
+        sourceCount: 0,
+        independentStoryCount: 0,
+        series: {
+          "24H": { timeframe: "24H", buckets: null, low: null, high: null },
+          "7D": { timeframe: "7D", buckets: null, low: null, high: null },
+          "30D": { timeframe: "30D", buckets: null, low: null, high: null },
+        },
+        topEvent: driver?.topEvent ?? null,
+      };
+    }
 
     return {
       key: spec.key,
       name: spec.name,
       sourceCategory: spec.sourceCategory,
-      status: score === null ? "unavailable" : "available",
+      status: "available",
       readingStatus,
-      readingSnapshotId: score === null ? null : risk.snapshotId,
-      readingAsOf: score === null ? null : risk.snapshotAsOf,
-      readingAgeHours: score === null ? null : snapshotAgeHours,
-      score: score === null ? null : Math.round(score),
-      rawScore: score,
-      previousScore: null,
-      changePoints: null,
-      confidence: null,
-      eventCount: 0,
-      sourceCount: 0,
-      independentStoryCount: 0,
-      series: {
-        "24H": emptySeries("24H"),
-        "7D": emptySeries("7D"),
-        "30D": emptySeries("30D"),
-      },
+      readingSnapshotId: risk.snapshotId,
+      readingAsOf: risk.snapshotAsOf,
+      readingAgeHours: snapshotAgeHours,
+      score: domain.score,
+      rawScore: domain.rawScore,
+      previousScore: domain.previousScore,
+      changePoints: domain.changePoints,
+      confidence: domain.confidence,
+      eventCount: domain.eventCount,
+      sourceCount: domain.sourceCount,
+      independentStoryCount: domain.independentStoryCount,
+      series: domain.series,
       topEvent: driver?.topEvent ?? null,
     };
   });

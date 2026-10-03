@@ -1,0 +1,133 @@
+import { describe, expect, it } from "vitest";
+import {
+  GRI_METHOD_VERSION,
+  GRI_PROOF_VERSION,
+  GRI_STORY_CORRELATION_PROMPT_VERSION,
+  GRI_STORY_CORRELATION_VERSION,
+} from "../lib/gri-current-contract";
+import {
+  assemblePublicGlobalRisk,
+  type SnapshotRow,
+} from "../lib/global-risk-assemble";
+import { validateGlobalRiskContinuity } from "../lib/global-risk-continuity";
+import { riskIndicesFromGlobalRisk } from "../lib/risk-indices-from-global-risk";
+
+const H = "a".repeat(64);
+
+function snapshot(
+  id: string,
+  asOf: string,
+  scores: { geopolitics: number; macro: number; rare_earth: number },
+): SnapshotRow {
+  return {
+    id,
+    as_of: asOf,
+    methodology_version: GRI_METHOD_VERSION,
+    methodology_hash: H,
+    input_hash: H,
+    evidence_hash: H,
+    calculation_hash: H,
+    disposition_hash: H,
+    candidate_event_count: 12,
+    proof_version: GRI_PROOF_VERSION,
+    proof_hash: H,
+    verification_status: "verified",
+    reconciliation_residual: 0,
+    change_residual: 0,
+    raw_score: 67,
+    display_score: 67,
+    coverage: 1,
+    weighted_confidence: 80,
+    active_categories: ["geopolitics", "macro", "rare_earth"],
+    event_count: 9,
+    source_count: 6,
+    independent_story_count: 8,
+    story_correlation_version: GRI_STORY_CORRELATION_VERSION,
+    story_correlation_prompt_version: GRI_STORY_CORRELATION_PROMPT_VERSION,
+    category_breakdown: [
+      {
+        category: "geopolitics",
+        score: scores.geopolitics,
+        confidence: 82,
+        eventCount: 3,
+        sourceCount: 2,
+        storyCount: 3,
+        normalizedWeight: 1 / 3,
+      },
+      {
+        category: "macro",
+        score: scores.macro,
+        confidence: 78,
+        eventCount: 4,
+        sourceCount: 3,
+        storyCount: 3,
+        normalizedWeight: 1 / 3,
+      },
+      {
+        category: "rare_earth",
+        score: scores.rare_earth,
+        confidence: 76,
+        eventCount: 2,
+        sourceCount: 2,
+        storyCount: 2,
+        normalizedWeight: 1 / 3,
+      },
+    ],
+    previous_as_of: null,
+    previous_raw_score: null,
+    previous_display_score: null,
+    change_points: null,
+    change_hash: null,
+    change_attribution: { categoryChanges: [] },
+    explanation: { how: { topCurrentEvents: [] } },
+    status: "published",
+  };
+}
+
+describe("verified Global Risk domain history", () => {
+  it("derives three separate histories from stored category_breakdown snapshots", () => {
+    const previousAt = "2026-10-01T11:00:00.000Z";
+    const latestAt = "2026-10-01T12:00:00.000Z";
+    const risk = assemblePublicGlobalRisk(
+      [
+        snapshot("latest", latestAt, { geopolitics: 72, macro: 64, rare_earth: 68 }),
+        snapshot("previous", previousAt, { geopolitics: 70, macro: 65, rare_earth: 66 }),
+      ],
+      [],
+      Date.parse(latestAt) + 10 * 60 * 1000,
+    );
+
+    expect(risk.domainIndices.geopolitics?.rawScore).toBe(72);
+    expect(risk.domainIndices.macro?.rawScore).toBe(64);
+    expect(risk.domainIndices.rare_earth?.rawScore).toBe(68);
+    expect(risk.domainIndices.geopolitics?.previousScore).toBe(70);
+    expect(risk.domainIndices.geopolitics?.changePoints).toBe(2);
+    expect(risk.domainIndices.macro?.series["24H"].buckets?.map((b) => b.avg)).toEqual([65, 64]);
+    expect(risk.domainIndices.rare_earth?.series["30D"].buckets?.map((b) => b.avg)).toEqual([66, 68]);
+
+    const indices = riskIndicesFromGlobalRisk(risk, Date.parse(latestAt) + 10 * 60 * 1000);
+    expect(indices.indices).toHaveLength(3);
+    expect(indices.indices.every((index) => index.status === "available")).toBe(true);
+    expect(indices.indices.every((index) => (index.series["7D"].buckets?.length ?? 0) === 2)).toBe(true);
+    expect(validateGlobalRiskContinuity(risk, Date.parse(latestAt) + 10 * 60 * 1000)).toEqual({ ok: true });
+  });
+
+  it("fails closed if a current domain still exists but its verified history is stripped", () => {
+    const latestAt = "2026-10-01T12:00:00.000Z";
+    const risk = assemblePublicGlobalRisk(
+      [
+        snapshot("latest", latestAt, { geopolitics: 72, macro: 64, rare_earth: 68 }),
+        snapshot("previous", "2026-10-01T11:00:00.000Z", { geopolitics: 70, macro: 65, rare_earth: 66 }),
+      ],
+      [],
+      Date.parse(latestAt) + 10 * 60 * 1000,
+    );
+    const broken = structuredClone(risk);
+    broken.domainIndices.macro = null;
+
+    expect(validateGlobalRiskContinuity(broken, Date.parse(latestAt) + 10 * 60 * 1000)).toEqual({
+      ok: false,
+      code: "RISK_DOMAIN_MACRO_HISTORY_MISSING",
+    });
+  });
+});

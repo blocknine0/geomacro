@@ -20,6 +20,9 @@ on:
       - "scripts/ops/b2-fragment-resolver-backed-offload.mjs"
       - "scripts/ops/b2-compact-structured-event-payload.mjs"
       - "scripts/ops/b2-s3-client.mjs"
+      - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
+      - "src/lib/global-risk-assemble.ts"
+      - "src/lib/global-risk-continuity.ts"
       - "src/lib/public-intelligence-production.server.ts"
 
 permissions:
@@ -372,6 +375,15 @@ jobs:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/verify-gri-snapshot-v12.js
+
+      - name: Publish verified GRI continuity package to B2
+        if: ${{ steps.gri_change.outputs.changed == 'true' }}
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+        run: bun scripts/ops/publish-b2-global-risk-direct-postgres.mjs
 
       - name: Offload settled recent raw ingest buffer to verified B2
         env:

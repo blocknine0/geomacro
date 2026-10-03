@@ -34,6 +34,25 @@ export type TimeframeSeries = {
   high: number | null;
 };
 
+export type RiskDomainKey = "geopolitics" | "macro" | "rare_earth";
+
+/**
+ * A domain reading is derived only from the persisted category_breakdown on
+ * verified, published snapshots of the same GRI methodology. It is not a
+ * reconstructed or independently recalculated score.
+ */
+export type RiskDomainReading = {
+  score: number;
+  rawScore: number;
+  previousScore: number | null;
+  changePoints: number | null;
+  confidence: number | null;
+  eventCount: number;
+  sourceCount: number;
+  independentStoryCount: number;
+  series: Record<Timeframe, TimeframeSeries>;
+};
+
 export type RiskDriver = {
   category: string;
   score: number;
@@ -81,6 +100,12 @@ export type GlobalRisk = {
   snapshotAsOf: string;
   usedFallbackWindow: false;
   series: Record<Timeframe, TimeframeSeries>;
+  /**
+   * Three independently displayable public domain readings, all projected from
+   * the same verified snapshot lineage. Missing domains stay null; they are
+   * never replaced with zero or a synthetic estimate.
+   */
+  domainIndices: Record<RiskDomainKey, RiskDomainReading | null>;
   drivers: RiskDriver[];
   topDriver: RiskDriver | null;
   recentEvents: RiskRow[];
