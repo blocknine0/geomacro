@@ -7,19 +7,9 @@ export const DOMAIN_INDEX_SPECS = [
   { key: "rare_earth", name: "Critical Minerals Risk Index" },
 ] as const;
 
-const FRESH_SNAPSHOT_MS = 6 * 60 * 60 * 1000;
-
 export function GlobalRiskDomainIndices() {
   const risk = useGlobalRisk();
   const data = risk.data;
-  const snapshotAt = data ? Date.parse(data.snapshotAsOf) : Number.NaN;
-  const snapshotAgeMs = Number.isFinite(snapshotAt)
-    ? Date.now() - snapshotAt
-    : Number.POSITIVE_INFINITY;
-  const readingLabel =
-    snapshotAgeMs >= 0 && snapshotAgeMs <= FRESH_SNAPSHOT_MS
-      ? "Current verified"
-      : "Last verified";
 
   return (
     <section
@@ -38,19 +28,15 @@ export function GlobalRiskDomainIndices() {
             Three risk indices, always visible
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
-            Geopolitical, macroeconomic and critical-minerals risk remain separate verified readings. The combined GRI below is a headline aggregate, not a replacement for these three indices.
+            A newer verified domain result replaces its previous reading automatically. If no newer verified result exists, Geomacro keeps showing that domain&apos;s last verified reading. The combined GRI below is a headline aggregate, not a replacement for these three indices.
           </p>
         </div>
-        {data ? (
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            {readingLabel} · {formatDate(data.snapshotAsOf)}
-          </p>
-        ) : null}
       </div>
 
       <div className="mt-7 grid gap-4 lg:grid-cols-3">
         {DOMAIN_INDEX_SPECS.map((spec) => {
           const domain = data?.domainIndices[spec.key] ?? null;
+          const statusLabel = domain?.readingStatus === "current" ? "Current verified" : "Last verified";
           return (
             <article
               key={spec.key}
@@ -74,7 +60,7 @@ export function GlobalRiskDomainIndices() {
                   </div>
                 </div>
                 <span className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-primary">
-                  {domain ? readingLabel : risk.status === "loading" ? "Loading" : "Unavailable"}
+                  {domain ? statusLabel : "Loading verified history"}
                 </span>
               </div>
 
@@ -95,9 +81,9 @@ export function GlobalRiskDomainIndices() {
                 />
               </dl>
 
-              {!domain ? (
-                <p className="mt-5 border-t border-border/60 pt-4 text-xs leading-5 text-muted-foreground">
-                  No verified reading is available for this domain in the current snapshot. Geomacro does not substitute zero or a synthetic score.
+              {domain ? (
+                <p className="mt-5 border-t border-border/60 pt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                  {statusLabel} · {formatDate(domain.readingAsOf)}
                 </p>
               ) : null}
             </article>
@@ -125,7 +111,7 @@ function fmt(value: number, digits = 2) {
 
 function formatDate(value: string) {
   const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Unavailable";
+  if (!Number.isFinite(date.getTime())) return "Unknown verified time";
   return new Intl.DateTimeFormat("en", {
     year: "numeric",
     month: "short",
