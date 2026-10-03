@@ -1,0 +1,97 @@
+name: Deploy Global Risk Edge
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - "workers/global-risk-edge/**"
+      - ".github/workflows/deploy-global-risk-edge.yml"
+      - "src/__tests__/global-risk-edge-static.test.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-global-risk-edge-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-accept:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      WRANGLER_VERSION: "4.136.3"
+      EXPECTED_URL: https://geomacro-global-risk.daspallab202391.workers.dev
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Require existing production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
+          test -n "$B2_KEY_ID" || { echo "B2_KEY_ID is required"; exit 2; }
+          test -n "$B2_APPLICATION_KEY" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
+
+      - name: Deploy read-only Global Risk Worker with pinned Wrangler
+        id: deploy
+        working-directory: workers/global-risk-edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_LOG="$(mktemp)"
+          npx -y "wrangler@${WRANGLER_VERSION}" deploy --config wrangler.jsonc 2>&1 | tee "$DEPLOY_LOG"
+          DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
+          test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev URL"; exit 3; }
+          test "$DEPLOYMENT_URL" = "$EXPECTED_URL" || { echo "Unexpected worker URL: $DEPLOYMENT_URL"; exit 3; }
+          printf '%s' "$B2_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_KEY_ID --config wrangler.jsonc >/tmp/global-risk-edge-b2-key.log
+          printf '%s' "$B2_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.jsonc >/tmp/global-risk-edge-b2-secret.log
+          echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Require verified B2 package through public-safe edge
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=''
+          for attempt in 1 2 3 4 5 6; do
+            CODE="$(curl -sS -D /tmp/global-risk-edge.headers -o /tmp/global-risk-edge.json -w '%{http_code}' --max-time 15 "$DEPLOYMENT_URL/global-risk" || true)"
+            if [ "$CODE" = "200" ]; then break; fi
+            sleep $((attempt * 2))
+          done
+          test "$CODE" = "200" || { echo "Global Risk edge acceptance failed: HTTP $CODE"; cat /tmp/global-risk-edge.json || true; exit 4; }
+          grep -qi '^x-geomacro-authority: backblaze-b2-verified-edge' /tmp/global-risk-edge.headers || { echo "Verified edge authority header missing"; exit 4; }
+          node <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/global-risk-edge.json', 'utf8'));
+          const d = body?.data;
+          if (body?.schema !== 'geomacro.public-global-risk-live.v1') throw new Error('EDGE_SCHEMA_INVALID');
+          if (body?.source_project !== 'ldpwajisioljyjtojvfx') throw new Error('EDGE_PROJECT_INVALID');
+          if (d?.verificationStatus !== 'verified' || d?.methodologyVersion !== 'gri-v1.2.0') throw new Error('EDGE_RISK_NOT_VERIFIED');
+          for (const key of ['geopolitics','macro','rare_earth']) {
+            const buckets = d?.domainIndices?.[key]?.series?.['7D']?.buckets;
+            if (!Array.isArray(buckets) || buckets.length < 2) throw new Error(`EDGE_DOMAIN_HISTORY_INVALID:${key}`);
+          }
+          console.log(JSON.stringify({ ok: true, snapshot_id: d.snapshotId, snapshot_as_of: d.snapshotAsOf }));
+          NODE
+
+      - name: Confirm narrow non-destructive serving boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="$(curl -sS -o /tmp/global-risk-edge-deny.json -w '%{http_code}' --max-time 10 "$EXPECTED_URL/not-allowed" || true)"
+          test "$CODE" = "404" || { echo "Unexpected generic read surface: HTTP $CODE"; exit 5; }
+          echo "Global Risk edge exposes one read-only verified public package; no B2 delete/write, Supabase mutation, or payment action occurred."
