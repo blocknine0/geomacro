@@ -55,7 +55,7 @@ describe("B2 snapshot maintenance quota preservation", () => {
     expect(wrapper).toContain('["geopolitics", "macro", "rare_earth"]');
   });
 
-  it("re-verifies the governed module snapshot and its no-raw-material boundary", () => {
+  it("retains legacy governed preservation validation but does not use it as current production freshness", () => {
     expect(wrapper).toContain('"geomacro.agent-governed-modules-proof.v1"');
     expect(wrapper).toContain('"geomacro.agent-governed-modules-live.v1"');
     expect(wrapper).toContain('"DERIVED_STATE_ONLY_NO_RAW_SOURCE_MATERIAL"');
@@ -63,16 +63,19 @@ describe("B2 snapshot maintenance quota preservation", () => {
     expect(wrapper).toContain("record.exact_gzip_restore_verified !== true");
     expect(wrapper).toContain("record.raw_source_material_in_snapshot !== false");
     expect(wrapper).toContain('state.commercial_eligibility_status !== "VERIFIED"');
+    expect(governedWorkflow).not.toContain(
+      "run: bun scripts/ops/run-b2-snapshot-maintenance-with-preservation.mjs governed-modules",
+    );
   });
 
-  it("routes both production maintenance workflows through the preservation wrapper", () => {
+  it("keeps public snapshot preservation while governed modules fail closed and refresh via direct Postgres", () => {
     expect(liveWorkflow).toContain(
       "run: bun scripts/ops/run-b2-snapshot-maintenance-with-preservation.mjs live-public",
     );
-    expect(governedWorkflow).toContain(
-      "run: bun scripts/ops/run-b2-snapshot-maintenance-with-preservation.mjs governed-modules",
-    );
     expect(liveWorkflow).toContain('"scripts/ops/run-b2-snapshot-maintenance-with-preservation.mjs"');
-    expect(governedWorkflow).toContain('"scripts/ops/run-b2-snapshot-maintenance-with-preservation.mjs"');
+    expect(governedWorkflow).toContain("run: bun scripts/ops/run-b2-governed-direct-postgres.mjs");
+    expect(governedWorkflow).toContain("run: bun scripts/ops/verify-b2-agent-governed-runtime.ts");
+    expect(governedWorkflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
+    expect(governedWorkflow).not.toContain("APP_SUPABASE_SERVICE_ROLE_KEY");
   });
 });
