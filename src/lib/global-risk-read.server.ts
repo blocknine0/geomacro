@@ -62,6 +62,7 @@ export async function readPublicGlobalRisk(): Promise<GlobalRisk> {
       "id,as_of,methodology_version,methodology_hash,input_hash,evidence_hash,calculation_hash,disposition_hash,candidate_event_count,proof_version,proof_hash,verification_status,reconciliation_residual,change_residual,raw_score,display_score,coverage,weighted_confidence,active_categories,event_count,source_count,independent_story_count,story_correlation_version,story_correlation_prompt_version,category_breakdown,previous_as_of,previous_raw_score,previous_display_score,change_points,change_hash,change_attribution,explanation,status",
     )
     .eq("status", "published")
+    .eq("verification_status", "verified")
     .eq("methodology_version", GRI_METHOD_VERSION)
     .gte("as_of", snapshotSince)
     .order("as_of", { ascending: false })
