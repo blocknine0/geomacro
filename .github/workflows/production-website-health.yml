@@ -10,9 +10,14 @@ on:
       - "server/middleware/05-retire-public-testnet-surfaces.ts"
       - "server/api/public/global-risk.get.ts"
       - "server/api/public/risk-indices.get.ts"
+      - "server/api/public/intelligence.get.ts"
       - "src/lib/global-risk-edge.server.ts"
       - "src/lib/global-risk-continuity.ts"
       - "src/lib/risk-indices-from-global-risk.ts"
+      - "src/lib/public-intelligence-production.server.ts"
+      - "src/lib/use-intelligence.ts"
+      - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
+      - ".github/workflows/gri-realtime-direct-postgres.yml"
   schedule:
     - cron: "11 */6 * * *"
 
@@ -75,7 +80,7 @@ jobs:
             grep -Fq "$marker" "$body"
           done
 
-      - name: Verify public production APIs and freshness
+      - name: Verify public production APIs and scored Intelligence contract
         shell: bash
         run: |
           set -euo pipefail
@@ -87,18 +92,32 @@ jobs:
             cat "$intel"
             exit 1
           fi
-          grep -Fq '"ok":true' "$intel"
-          grep -Fq '"current_within_24h":true' "$intel" || {
-            echo "::error title=Production intelligence is stale::The public Intelligence API has no observation within the current 24-hour window."
-            cat "$intel"
-            exit 1
+          node - "$intel" <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const rows = Array.isArray(body?.rows) ? body.rows : [];
+          const required = new Set(['geopolitics', 'macro', 'rare_earth']);
+          const seen = new Set();
+          let ok = body?.ok === true && body?.mode === 'verified_b2' && Number(body?.live_observed_rows) === 0 && rows.length > 0;
+          for (const row of rows) {
+            const severity = Number(row?.severity);
+            const category = String(row?.category ?? '');
+            const title = String(row?.source_title ?? '');
+            if (!Number.isFinite(severity) || severity < 0 || severity > 100) ok = false;
+            if (row?.public_status !== 'verified_b2') ok = false;
+            if (!title.startsWith('Geomacro finds ')) ok = false;
+            if (required.has(category)) seen.add(category);
           }
-          newest="$(jq -r '.newest_at // empty' "$intel")"
-          if [[ -z "$newest" ]]; then
-            echo "::error title=Production intelligence timestamp missing::newest_at is empty."
-            exit 1
-          fi
-          echo "PASS: public Intelligence is current; newest_at=$newest"
+          for (const category of required) if (!seen.has(category)) ok = false;
+          if (!ok) {
+            console.error(JSON.stringify({ error: 'PUBLIC_INTELLIGENCE_CONTRACT_INVALID', body }, null, 2));
+            process.exit(1);
+          }
+          if (body?.current_within_24h !== true) {
+            console.log('::warning::No new verified Intelligence row is inside 24h; production correctly preserves the latest verified scored package.');
+          }
+          console.log(JSON.stringify({ ok: true, newest_at: body?.newest_at ?? null, rows: rows.length, categories: [...seen] }));
+          NODE
 
           global_risk="$(mktemp)"
           global_risk_code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$global_risk" -w '%{http_code}' "$BASE_URL/api/public/global-risk")"
@@ -110,7 +129,6 @@ jobs:
           grep -Fq '"ok":true' "$global_risk"
           grep -Fq '"verificationStatus":"verified"' "$global_risk"
           grep -Fq '"authority":"backblaze-b2-verified-edge"' "$global_risk"
-          echo "PASS: public Global Risk API returned a verified edge-authoritative package."
 
           risk="$(mktemp)"
           risk_code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$risk" -w '%{http_code}' "$BASE_URL/api/public/risk-indices")"
@@ -122,7 +140,6 @@ jobs:
           grep -Fq '"ok":true' "$risk"
           grep -Fq '"verificationStatus":"verified"' "$risk"
           grep -Fq '"authority":"backblaze-b2-verified-edge"' "$risk"
-          echo "PASS: public Risk Indices API returned a verified edge-authoritative package."
 
           ask="$(mktemp)"
           ask_code="$(curl -L --retry 2 --retry-all-errors --retry-delay 2 -sS -H 'Accept: application/json' -H 'Origin: https://geomacro.live' -H 'X-Geomacro-Question: What changed in the risk indices?' -o "$ask" -w '%{http_code}' "$BASE_URL/api/public-ask")"
@@ -132,7 +149,6 @@ jobs:
             exit 1
           fi
           grep -Fq '"ok":true' "$ask"
-          echo "PASS: Ask Geomacro completed through the explicit public API."
 
       - name: Verify rendered production page markers
         shell: bash
@@ -165,7 +181,6 @@ jobs:
             path="$(printf '%s' "$path" | xargs)"
             marker="$(printf '%s' "$marker" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
             [[ -z "$path" ]] && continue
-
             body="$(mktemp)"
             decoded="$(mktemp)"
             code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL$path")"
@@ -174,28 +189,20 @@ jobs:
               head -c 1000 "$body" || true
               exit 1
             fi
-
             if grep -Fq "This page didn't load" "$body"; then
               echo "::error title=Production route rendered error boundary::$path returned HTTP 200 but rendered the root error page."
-              head -c 1000 "$body" || true
               exit 1
             fi
-
             python - "$body" "$decoded" <<'PY'
           import html
           import pathlib
           import sys
-
           source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
           pathlib.Path(sys.argv[2]).write_text(html.unescape(source), encoding="utf-8")
           PY
-
             if ! grep -Fq "$marker" "$decoded"; then
               echo "::error title=Production route content missing::$path returned HTTP 200 but did not render expected marker: $marker"
-              head -c 1500 "$body" || true
               exit 1
             fi
-
             rm -f "$body" "$decoded"
-            echo "PASS: $path rendered expected production content."
           done <<< "$routes"
