@@ -9,6 +9,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const PUBLIC_INTELLIGENCE_QUERY_TIMEOUT_MS = 3_500;
 const STRUCTURED_LIMIT = 180;
 const FALLBACK_LIMIT = 120;
+const MAX_ROWS = 300;
 
 export const PUBLIC_INTELLIGENCE_CATEGORIES = [
   "geopolitics",
@@ -42,6 +43,7 @@ export type PublicIntelligenceRow = {
 };
 
 function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -60,12 +62,29 @@ function rowTime(row: PublicIntelligenceRow): number {
   return Number.isFinite(created) ? created : -Infinity;
 }
 
+function normalizeScoredRow(row: PublicIntelligenceRow): PublicIntelligenceRow | null {
+  const category = normalizeCategory(row.category);
+  const severity = numberOrNull(row.severity);
+  const title = String(row.source_title ?? "").trim();
+  if (!category || !title || severity === null || severity < 0 || severity > 100) return null;
+  const delta = numberOrNull(row.delta);
+  return {
+    ...row,
+    source_title: title,
+    category,
+    severity,
+    delta,
+  };
+}
+
 function missingCurrentCategories(
   rows: PublicIntelligenceRow[],
   now: number,
 ): PublicIntelligenceCategory[] {
   const present = new Set(
     rows
+      .map(normalizeScoredRow)
+      .filter((row): row is PublicIntelligenceRow => Boolean(row))
       .filter((row) => {
         const at = rowTime(row);
         return at >= now - DAY_MS && at <= now;
@@ -78,31 +97,28 @@ function missingCurrentCategories(
 
 function sortAndDedupe(rows: PublicIntelligenceRow[]): PublicIntelligenceRow[] {
   const dedupe = new Map<string, PublicIntelligenceRow>();
-  for (const row of rows) {
-    const category = normalizeCategory(row.category);
-    if (!category) continue;
+  for (const raw of rows) {
+    const row = normalizeScoredRow(raw);
+    if (!row) continue;
     const key = [
-      category,
+      row.category,
       String(row.source_title ?? "").trim().toLowerCase().replace(/\s+/g, " "),
     ].join("|");
-    if (!dedupe.has(key)) dedupe.set(key, { ...row, category });
+    if (!dedupe.has(key)) dedupe.set(key, row);
   }
 
   return [...dedupe.values()]
     .sort((a, b) => rowTime(b) - rowTime(a))
-    .slice(0, 300);
+    .slice(0, MAX_ROWS);
 }
 
 /**
- * Canonical Supabase Intelligence read used to publish the independent B2 live
- * snapshot and as a bounded fallback if the B2 snapshot is unavailable.
+ * Canonical Supabase Intelligence read used by snapshot publishers/recovery.
  *
- * The canonical structured feed is the fast path. Fallback tables are queried
- * for domains that do not have a current (<24h) row. Older structured rows are
- * retained for explicit research but never suppress a fresher fallback path.
- * Every Data API request has its own short abort deadline so /intelligence
- * cannot hang behind a slow Supabase read. A partial verified feed is preferable
- * to a page-level outage.
+ * This boundary is permanently scored-only. A row without a real 0..100
+ * severity can never be returned, can never enter the B2 public package and
+ * can never replace a previously verified scored reading. Missing current
+ * categories are filled only from other verified/scored durable lanes.
  */
 export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIntelligenceRow[]> {
   const supabase = getAppSupabase();
@@ -122,6 +138,7 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
     )
     .in("domain", [...PUBLIC_INTELLIGENCE_CATEGORIES])
     .in("status", ["active", "monitoring"])
+    .not("severity", "is", null)
     .gte("last_seen_at", since30d)
     .lte("last_seen_at", nowIso)
     .order("last_seen_at", { ascending: false })
@@ -134,7 +151,8 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
   } else {
     for (const row of structuredResult.data ?? []) {
       const category = normalizeCategory(row.domain);
-      if (!category) continue;
+      const severity = numberOrNull(row.severity);
+      if (!category || severity === null || severity < 0 || severity > 100) continue;
       const observedAt =
         row.last_observed_at ??
         row.last_seen_at ??
@@ -145,7 +163,7 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
         source_title: row.title ? String(row.title) : null,
         summary: row.summary ? String(row.summary) : null,
         category,
-        severity: numberOrNull(row.severity),
+        severity,
         delta: null,
         created_at: String(row.created_at ?? observedAt),
         published_at: observedAt ? String(observedAt) : null,
@@ -180,6 +198,7 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
           .in("event_family_id", familyIds)
           .eq("verification_status", "VERIFIED")
           .in("signal_category", missing)
+          .not("severity", "is", null)
           .gte("ingested_at", since24h)
           .order("ingested_at", { ascending: false })
           .limit(FALLBACK_LIMIT * 2)
@@ -192,19 +211,27 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
           const flashByFamily = new Map<string, VerifiedFlashRow>();
           for (const flash of (flashResult.data ?? []) as VerifiedFlashRow[]) {
             const familyId = String(flash.event_family_id ?? "");
-            if (familyId && !flashByFamily.has(familyId)) flashByFamily.set(familyId, flash);
+            const severity = numberOrNull(flash.severity);
+            if (
+              familyId &&
+              severity !== null &&
+              severity >= 0 &&
+              severity <= 100 &&
+              !flashByFamily.has(familyId)
+            ) flashByFamily.set(familyId, flash);
           }
           for (const family of familyResult.data ?? []) {
             const category = normalizeCategory(family.signal_category);
             const flash = flashByFamily.get(String(family.family_id));
-            if (!category || !flash) continue;
+            const severity = numberOrNull(flash?.severity);
+            if (!category || !flash || severity === null || severity < 0 || severity > 100) continue;
             const observedAt = flash.published_at ?? flash.ingested_at ?? family.last_seen_at;
             rows.push({
               id: String(flash.flash_id),
-              source_title: String(family.canonical_headline || flash.headline || "Verified live intelligence"),
+              source_title: String(family.canonical_headline || flash.headline || "Verified intelligence"),
               summary: null,
               category,
-              severity: numberOrNull(flash.severity),
+              severity,
               delta: null,
               created_at: String(flash.ingested_at ?? observedAt),
               published_at: observedAt ? String(observedAt) : null,
@@ -221,6 +248,7 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
       .from("events")
       .select("id,source_title,summary,category,severity,delta,created_at,published_at")
       .in("category", missing)
+      .not("severity", "is", null)
       .gte("created_at", since30d)
       .lte("created_at", nowIso)
       .order("created_at", { ascending: false })
@@ -237,15 +265,15 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
 
   const result = sortAndDedupe(rows);
   if (result.length === 0 && failures.length > 0) {
-    console.error("[public-intelligence] all read paths degraded", failures.join(","));
+    console.error("[public-intelligence] all scored read paths degraded", failures.join(","));
   }
   return result;
 }
 
 /**
  * Public read boundary: private B2 snapshot first. Missing B2 credentials,
- * timeout, stale/corrupt snapshot, or any B2 error fails soft to the existing
- * bounded Supabase path without changing the public response contract.
+ * timeout, stale/corrupt snapshot, or any B2 error fails soft to the bounded
+ * scored-only recovery path without changing the public response contract.
  */
 export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRow[]> {
   const b2Rows = await readB2PublicIntelligence();
