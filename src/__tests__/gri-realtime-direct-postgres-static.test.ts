@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 
 const workflow = readFileSync(".github/workflows/gri-realtime-direct-postgres.yml", "utf8");
 const shim = readFileSync("scripts/lib/gri-db-client.mjs", "utf8");
