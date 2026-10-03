@@ -161,10 +161,30 @@ jobs:
           printf '%s' "$HEALTH" | grep -q '"durable_payload_store":"b2"' || { echo "B2 authority contract missing"; exit 7; }
           printf '%s' "$HEALTH" | grep -q '"commerce_ledger":"durable_object"' || { echo "Commerce authority contract missing"; exit 7; }
 
-          CODE="$(curl -sS -o /tmp/unauth.json -w '%{http_code}' --max-time 10 -X PUT "$CONTROL_PLANE_URL/v1/control/bootstrap_smoke" -H 'content-type: application/json' --data '{"value":{"probe":true},"version":1}')"
+          CODE=''
+          for attempt in 1 2 3 4 5 6; do
+            CODE="$(curl -sS -o /tmp/unauth.json -w '%{http_code}' --max-time 10 -X PUT "$CONTROL_PLANE_URL/v1/control/bootstrap_smoke" -H 'content-type: application/json' --data '{"value":{"probe":true},"version":1}' || true)"
+            if [ "$CODE" = "401" ]; then break; fi
+            if [ "$CODE" = "404" ] && grep -q 'error code: 1042' /tmp/unauth.json; then
+              echo "workers.dev route is still propagating for unauthenticated write probe; retry $attempt/6"
+              sleep $((attempt * 2))
+              continue
+            fi
+            break
+          done
           test "$CODE" = "401" || { echo "Unauthenticated control-plane write did not fail closed: HTTP $CODE"; cat /tmp/unauth.json; exit 8; }
 
-          CODE="$(curl -sS -o /tmp/auth.json -w '%{http_code}' --max-time 10 -X PUT "$CONTROL_PLANE_URL/v1/control/bootstrap_smoke" -H "authorization: Bearer $CONTROL_PLANE_TOKEN" -H 'content-type: application/json' --data '{"value":{"probe":true},"version":1}')"
+          CODE=''
+          for attempt in 1 2 3 4 5 6; do
+            CODE="$(curl -sS -o /tmp/auth.json -w '%{http_code}' --max-time 10 -X PUT "$CONTROL_PLANE_URL/v1/control/bootstrap_smoke" -H "authorization: Bearer $CONTROL_PLANE_TOKEN" -H 'content-type: application/json' --data '{"value":{"probe":true},"version":1}' || true)"
+            if [ "$CODE" = "200" ]; then break; fi
+            if [ "$CODE" = "404" ] && grep -q 'error code: 1042' /tmp/auth.json; then
+              echo "workers.dev route is still propagating for authenticated write probe; retry $attempt/6"
+              sleep $((attempt * 2))
+              continue
+            fi
+            break
+          done
           test "$CODE" = "200" || { echo "Authenticated control-plane write failed: HTTP $CODE"; cat /tmp/auth.json; exit 9; }
           grep -q '"ok":true' /tmp/auth.json || { echo "Authenticated response missing ok=true"; exit 9; }
 
