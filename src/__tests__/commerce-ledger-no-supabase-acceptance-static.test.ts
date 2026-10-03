@@ -5,10 +5,13 @@ const workflow = readFileSync(".github/workflows/no-supabase-commerce-acceptance
 const acceptance = readFileSync("scripts/ops/verify-commerce-no-supabase.ts", "utf8");
 
 describe("no-Supabase commerce acceptance safety", () => {
-  it("is manual-only, production-scoped and pinned", () => {
+  it("is production-scoped, pinned, and reruns on relevant canonical main changes", () => {
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).not.toContain("schedule:");
-    expect(workflow).not.toContain("push:");
+    expect(workflow).toContain("push:");
+    expect(workflow).toContain('branches:\n      - main');
+    expect(workflow).toContain('"src/lib/agent-commerce-delivery.server.ts"');
+    expect(workflow).toContain('"workers/commerce-ledger/**"');
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1");
     expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
