@@ -1,0 +1,107 @@
+name: Risk Indices Realtime Direct Postgres
+
+on:
+  schedule:
+    - cron: "38 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-risk-indices-realtime
+  cancel-in-progress: false
+
+jobs:
+  publish-three-risk-indices:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      RISK_INDICES_EDGE_URL: https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked runtime dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Require independent production credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL:-}" || { echo "SUPABASE_DB_URL is required"; exit 2; }
+          test -n "${B2_KEY_ID:-}" || { echo "B2_KEY_ID is required"; exit 2; }
+          test -n "${B2_APPLICATION_KEY:-}" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
+
+      - name: Publish verified Risk Indices package to isolated B2 namespace
+        run: bun scripts/ops/publish-b2-risk-indices-direct-postgres.mjs | tee /tmp/risk-indices-publish.json
+
+      - name: Require verified dedicated Risk Indices edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=''
+          for attempt in 1 2 3 4 5; do
+            CODE="$(curl -sS -D /tmp/risk-indices-edge.headers -o /tmp/risk-indices-edge.json -w '%{http_code}' --max-time 20 -H 'Accept: application/json' "$RISK_INDICES_EDGE_URL" || true)"
+            if [ "$CODE" = "200" ] && grep -qi '^x-geomacro-authority: backblaze-b2-risk-indices-edge' /tmp/risk-indices-edge.headers; then
+              break
+            fi
+            sleep $((attempt * 3))
+          done
+          test "$CODE" = "200" || { echo "Risk Indices edge acceptance failed: HTTP $CODE"; cat /tmp/risk-indices-edge.json || true; exit 4; }
+          grep -qi '^x-geomacro-authority: backblaze-b2-risk-indices-edge' /tmp/risk-indices-edge.headers || { echo "Risk Indices edge authority missing"; exit 4; }
+          node <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/risk-indices-edge.json', 'utf8'));
+          const data = body?.data;
+          if (body?.schema !== 'geomacro.public-risk-indices-live.v1') throw new Error('RISK_INDICES_EDGE_SCHEMA_INVALID');
+          if (body?.source_project !== 'ldpwajisioljyjtojvfx') throw new Error('RISK_INDICES_EDGE_PROJECT_INVALID');
+          if (data?.contractVersion !== 'risk-indices-v1.1.0' || data?.parentMethodologyVersion !== 'gri-v1.2.0' || data?.verificationStatus !== 'verified') {
+            throw new Error('RISK_INDICES_EDGE_CONTRACT_INVALID');
+          }
+          const expected = new Set(['geopolitics','macro','critical_minerals']);
+          for (const index of data?.indices ?? []) {
+            if (!expected.delete(index?.key) || index?.status !== 'available') throw new Error('RISK_INDICES_EDGE_DOMAIN_INVALID');
+            if (!Array.isArray(index?.series?.['7D']?.buckets) || index.series['7D'].buckets.length < 2) throw new Error('RISK_INDICES_EDGE_7D_HISTORY_INVALID');
+            if (!Array.isArray(index?.series?.['30D']?.buckets) || index.series['30D'].buckets.length < index.series['7D'].buckets.length) throw new Error('RISK_INDICES_EDGE_30D_HISTORY_INVALID');
+          }
+          if (expected.size) throw new Error('RISK_INDICES_EDGE_DOMAIN_MISSING');
+          console.log(JSON.stringify({ ok: true, snapshot_id: data.snapshotId, snapshot_as_of: data.snapshotAsOf }));
+          NODE
+
+      - name: Observe geomacro.live Risk Indices compatibility API
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          code="$(curl -sS -o /tmp/risk-indices-app-api.json -w '%{http_code}' --max-time 20 -H 'Accept: application/json' 'https://geomacro.live/api/public/risk-indices' || true)"
+          if [ "$code" != "200" ]; then
+            echo "::warning::geomacro.live Risk Indices compatibility API returned HTTP ${code}; browser serving remains protected by the dedicated verified edge."
+            exit 0
+          fi
+          echo "geomacro.live Risk Indices compatibility API is healthy."
+
+      - name: Upload Risk Indices verification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: risk-indices-realtime-${{ github.run_id }}
+          path: |
+            /tmp/risk-indices-publish.json
+            /tmp/risk-indices-edge.json
+          if-no-files-found: warn
+          retention-days: 30
