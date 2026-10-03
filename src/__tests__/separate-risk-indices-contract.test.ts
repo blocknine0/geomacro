@@ -47,7 +47,7 @@ describe("separate public risk indices contract", () => {
 
     expect(edge).toContain("currentForChange - previousScore");
     expect(edge).toContain("A standalone index delta is score-to-score");
-    expect(assembler).toContain("current.score - previous.score");
+    expect(assembler).toContain("current.score - previousEntry.reading.score");
     expect(projection).toContain("previousScore: domain.previousScore");
     expect(projection).toContain("changePoints: domain.changePoints");
     expect(projection).not.toContain("driver.change");
