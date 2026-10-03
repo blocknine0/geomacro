@@ -1,0 +1,89 @@
+name: B2 canonical Global Risk maintenance
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17 */2 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/b2-global-risk-maintenance.yml"
+      - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
+      - "scripts/ops/b2-s3-client.mjs"
+      - "src/lib/global-risk-assemble.ts"
+      - "src/lib/global-risk-continuity.ts"
+      - "src/lib/b2-live.server.ts"
+      - "server/api/public/global-risk.get.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-b2-global-risk-maintenance
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    if: ${{ github.repository == 'blocknine0/geomacro' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify required production credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SUPABASE_PROJECT_REF" = "ldpwajisioljyjtojvfx"
+          test -n "${SUPABASE_DB_URL:-}"
+          test -n "${B2_KEY_ID:-}"
+          test -n "${B2_APPLICATION_KEY:-}"
+
+      - name: Publish latest verified Global Risk continuity package
+        run: bun scripts/ops/publish-b2-global-risk-direct-postgres.mjs
+
+      - name: Verify customer-facing Global Risk API
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if body="$(curl -fsS --max-time 20 -H 'Accept: application/json' 'https://geomacro.live/api/public/global-risk')"; then
+              if printf '%s' "$body" | node -e '
+                let s=""; process.stdin.on("data", d => s += d); process.stdin.on("end", () => {
+                  const b=JSON.parse(s);
+                  const d=b?.data;
+                  const s7=d?.series?.["7D"]?.buckets;
+                  const s30=d?.series?.["30D"]?.buckets;
+                  const ok=b?.ok===true && b?.meta?.authority==="backblaze-b2" &&
+                    d?.verificationStatus==="verified" && Array.isArray(s7) && s7.length>=2 &&
+                    Array.isArray(s30) && s30.length>=s7.length &&
+                    typeof d?.snapshotAsOf==="string";
+                  process.exit(ok ? 0 : 1);
+                });
+              '; then
+                printf '%s' "$body" > /tmp/global-risk-api.json
+                exit 0
+              fi
+            fi
+            sleep $((attempt * 3))
+          done
+          echo "Global Risk production API did not expose verified historical continuity" >&2
+          exit 1
