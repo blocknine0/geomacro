@@ -32,6 +32,14 @@ describe("Day 3 D1/B2 serving migration", () => {
     expect(workflow).not.toContain("APP_SUPABASE_URL:");
   });
 
+  it("writes the bounded D1 batch through a file instead of one oversized argv", () => {
+    const script = read("scripts/ops/d1-gro-index-backfill.ts");
+    expect(script).toContain("writeFileSync(SQL_FILE");
+    expect(script).toContain('"--file", SQL_FILE');
+    expect(script).toContain('d1_write_transport: "wrangler_file"');
+    expect(script).not.toContain('"--command", statements.join("\\n")');
+  });
+
   it("requires exact D1 checksum parity and remains non-destructive", () => {
     const workflow = read(".github/workflows/d1-gro-index-backfill.yml");
     expect(workflow).toContain("source_checksum !== p.target_checksum");
