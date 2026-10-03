@@ -52,7 +52,7 @@ describe("public intelligence routing contract", () => {
     expect(walletRouteBlock).not.toContain("/tx-history");
   });
 
-  it("restores the historical Global Risk workspace without removing separate risk indices", () => {
+  it("keeps three separate Global Risk indices on the customer route while retaining legacy proof workspace code", () => {
     const globalRiskRoute = read("src/routes/global-risk.tsx");
     const globalRiskWorkspace = read("src/components/gri/global-risk-workspace.tsx");
     const riskIndicesRoute = read("src/routes/risk-indices.tsx");
@@ -61,7 +61,8 @@ describe("public intelligence routing contract", () => {
     const askEngine = read("src/lib/ask-intelligence.server.ts");
     const askWorkspace = read("src/components/ask/ask-workspace.tsx");
 
-    expect(globalRiskRoute).toContain("GlobalRiskWorkspace");
+    expect(globalRiskRoute).toContain("RiskIndicesWorkspace");
+    expect(globalRiskRoute).not.toContain("GlobalRiskWorkspace");
     expect(globalRiskWorkspace).toContain("How global risk is moving");
     expect(globalRiskWorkspace).toContain('const TIMEFRAMES: Timeframe[] = ["24H", "7D", "30D"]');
     expect(riskIndicesRoute).toContain("RiskIndicesWorkspace");
