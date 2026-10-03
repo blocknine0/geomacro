@@ -16,20 +16,31 @@ describe("Intelligence verified fallback contract", () => {
     expect(source).toContain('["geopolitics", "macro", "rare_earth"]');
   });
 
-  it("keeps durable customer-facing Intelligence B2 authoritative while allowing an unscored ephemeral freshness overlay", () => {
+  it("keeps customer-facing Intelligence scored-only and preserves last verified B2 continuity", () => {
     const productionReader = read("src/lib/public-intelligence-production.server.ts");
+    const recoveryReader = read("src/lib/public-intelligence.functions.ts");
     const api = read("server/api/public/intelligence.get.ts");
     const hook = read("src/lib/use-intelligence.ts");
     const publisher = read("scripts/ops/publish-b2-live-snapshots.ts");
+    const directPublisher = read("scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs");
 
     expect(productionReader).toContain("readB2PublicIntelligence");
     expect(productionReader).not.toContain("getAppSupabase");
-    expect(productionReader).toContain('public_status: "verified_b2" | "live_observed"');
-    expect(productionReader).toContain("severity: null");
-    expect(productionReader).toContain("delta: null");
+    expect(productionReader).toContain('public_status: "verified_b2"');
+    expect(productionReader).toContain("INTELLIGENCE_SCORED_PACKAGE_EMPTY");
+    expect(productionReader).toContain("assertThreeDomainCoverage");
+    expect(productionReader).not.toContain('public_status: "live_observed"');
+
+    expect(recoveryReader).toContain("normalizeScoredRow");
+    expect(recoveryReader).toContain('.not("severity", "is", null)');
+    expect(recoveryReader).toContain("can never enter the B2 public package");
+
     expect(api).toContain("readProductionPublicIntelligence");
     expect(hook).toContain('/api/public/intelligence');
     expect(hook).not.toContain("useServerFn");
+
     expect(publisher).toContain("readPublicIntelligenceRowsFromSupabase");
+    expect(directPublisher).toContain("PUBLIC_INTELLIGENCE_UNSCORED_ROW_REJECTED");
+    expect(directPublisher).toContain('scoring_policy: "canonical-classifier-scored-only"');
   });
 });
