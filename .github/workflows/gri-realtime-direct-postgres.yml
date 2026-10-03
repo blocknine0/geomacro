@@ -17,7 +17,6 @@ on:
       - "scripts/compute-gri-v12.js"
       - "scripts/verify-gri-snapshot-v12.js"
       - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
-      - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
       - "src/lib/global-risk-assemble.ts"
       - "src/lib/global-risk-continuity.ts"
       - "src/lib/global-risk-edge.server.ts"
@@ -29,7 +28,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: geomacro-intelligence-orchestrator
+  group: geomacro-global-risk-realtime
   cancel-in-progress: false
 
 jobs:
@@ -181,9 +180,6 @@ jobs:
 
       - name: Publish verified Global Risk continuity package to B2
         run: bun scripts/ops/publish-b2-global-risk-direct-postgres.mjs
-
-      - name: Publish scored verified Intelligence package to B2
-        run: bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs
 
       - name: Require fresh verified three-domain database snapshot
         shell: bash
