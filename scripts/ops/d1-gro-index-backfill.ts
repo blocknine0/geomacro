@@ -2,7 +2,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
-import { createClient } from "@supabase/supabase-js";
 import { createB2Client } from "./b2-s3-client.mjs";
 import {
   canonicalRiskObjectJson,
@@ -10,17 +9,28 @@ import {
   type RiskObjectVerificationKeys,
 } from "../../src/lib/risk-object-signing.server";
 
-const PROJECT_URL = "https://ldpwajisioljyjtojvfx.supabase.co";
+const PROJECT = "ldpwajisioljyjtojvfx";
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
 const D1_CONFIG = String(process.env.D1_CONFIG ?? "workers/control-plane/wrangler.runtime.jsonc").trim();
 const WRANGLER_VERSION = String(process.env.WRANGLER_VERSION ?? "4.136.3").trim();
 const limitRaw = Number(process.env.D1_GRO_INDEX_LIMIT ?? 128);
 const LIMIT = Number.isInteger(limitRaw) ? Math.max(1, Math.min(512, limitRaw)) : 128;
+const DB_URL = String(process.env.SUPABASE_DB_URL ?? "").trim();
 
-const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
-const role = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
-if (url !== PROJECT_URL || !role) throw new Error("D1_GRO_INDEX_SUPABASE_CONFIG_INVALID");
+if (!DB_URL) throw new Error("D1_GRO_INDEX_DB_URL_REQUIRED");
+let parsedDb: URL;
+try {
+  parsedDb = new URL(DB_URL);
+} catch {
+  throw new Error("D1_GRO_INDEX_DB_URL_INVALID");
+}
+if (!["postgres:", "postgresql:"].includes(parsedDb.protocol) || !parsedDb.password || parsedDb.pathname !== "/postgres") {
+  throw new Error("D1_GRO_INDEX_DB_URL_INVALID");
+}
+const directDb = parsedDb.hostname === `db.${PROJECT}.supabase.co` && parsedDb.username === "postgres";
+const poolerDb = parsedDb.hostname.endsWith(".pooler.supabase.com") && parsedDb.username === `postgres.${PROJECT}`;
+if (!directDb && !poolerDb) throw new Error("D1_GRO_INDEX_DB_TARGET_INVALID");
 if (String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
     !process.env.B2_KEY_ID || !process.env.B2_APPLICATION_KEY) {
   throw new Error("D1_GRO_INDEX_B2_CONFIG_INVALID");
@@ -56,6 +66,14 @@ function parseD1(raw: string) {
   const rows = envelopes.flatMap((entry) => Array.isArray(entry?.results) ? entry.results : []);
   return rows as Array<Record<string, unknown>>;
 }
+function psqlJson(sql: string) {
+  const stdout = execFileSync("psql", [DB_URL, "-X", "-qAt", "-v", "ON_ERROR_STOP=1", "-c", sql], {
+    encoding: "utf8",
+    maxBuffer: 32 * 1024 * 1024,
+    env: process.env,
+  });
+  return stdout.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line)) as Array<Record<string, unknown>>;
+}
 
 const keyResponse = await fetch("https://geomacro.live/api/risk-object-keys", {
   headers: { Accept: "application/json" },
@@ -76,10 +94,6 @@ const keys: RiskObjectVerificationKeys = Object.fromEntries(
 );
 if (!Object.keys(keys).length) throw new Error("D1_GRO_INDEX_TRUST_REGISTRY_EMPTY");
 
-const db = createClient(url, role, {
-  auth: { persistSession: false, autoRefreshToken: false },
-  db: { retry: false },
-});
 const b2 = createB2Client({
   endpointUrl: B2_ENDPOINT,
   accessKey: process.env.B2_KEY_ID,
@@ -87,19 +101,23 @@ const b2 = createB2Client({
   bucket: B2_BUCKET,
 });
 
-const { data, error } = await db
-  .from("geomacro_risk_objects")
-  .select("object_id,schema_version,subject_type,subject_id,generated_at,expires_at,verification_status,commercial_eligibility_status,signing_key_id,payload_hash,archive_key,archive_sha256,archive_bundle_key")
-  .eq("verification_status", "VERIFIED")
-  .eq("commercial_eligibility_status", "VERIFIED")
-  .not("archive_key", "is", null)
-  .is("archive_bundle_key", null)
-  .order("generated_at", { ascending: false })
-  .limit(LIMIT);
-if (error) throw error;
+const data = psqlJson(`
+  SELECT row_to_json(x)::text FROM (
+    SELECT object_id,schema_version,subject_type,subject_id,generated_at,expires_at,
+           verification_status,commercial_eligibility_status,signing_key_id,payload_hash,
+           archive_key,archive_sha256,archive_bundle_key
+      FROM public.geomacro_risk_objects
+     WHERE verification_status='VERIFIED'
+       AND commercial_eligibility_status='VERIFIED'
+       AND archive_key IS NOT NULL
+       AND archive_bundle_key IS NULL
+     ORDER BY generated_at DESC
+     LIMIT ${LIMIT}
+  ) x;
+`);
 
 const verified: Array<Record<string, string>> = [];
-for (const row of data ?? []) {
+for (const row of data) {
   const id = String(row.object_id ?? "");
   if (!OBJECT_RE.test(id)) throw new Error(`D1_GRO_INDEX_OBJECT_ID_INVALID:${id}`);
   const pointer = `risk-object-archive/v1/${id}.json.gz`;
@@ -178,6 +196,8 @@ console.log(JSON.stringify({
   rows: verified.length,
   source_checksum: sourceChecksum,
   target_checksum: targetChecksum,
+  metadata_source: "direct_postgres_export",
+  supabase_rest_used: false,
   record_sha256_source: "canonical_verified_b2_readback",
   supabase_payload_used_for_record_hash: false,
   destructive_changes: false,
