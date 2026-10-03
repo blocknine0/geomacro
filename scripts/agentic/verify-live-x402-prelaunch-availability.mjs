@@ -7,10 +7,20 @@ const SAFE_FAIL_CLOSED_CODES = new Set([
   "INSUFFICIENT_COVERAGE",
   "COMMERCIAL_SOURCE_NOT_ELIGIBLE",
 ]);
+const REQUIRED_REGIONS = new Set([
+  "north_america",
+  "latin_america",
+  "europe",
+  "africa",
+  "middle_east",
+  "south_asia",
+  "east_asia",
+]);
 
 const cases = [
   {
     id: "usa-risk-gate",
+    region: "north_america",
     body: {
       schema_version: "geomacro.agent-query.v1",
       question: "Should a treasury payment involving the United States proceed based on the current Geomacro Risk Gate?",
@@ -26,7 +36,56 @@ const cases = [
     },
   },
   {
+    id: "brazil-macro-fx",
+    region: "latin_america",
+    body: {
+      schema_version: "geomacro.agent-query.v1",
+      question: "What are the current macro and FX risks for Brazil?",
+      subjects: [{ type: "country", country_iso3: "BRA" }],
+      topics: ["macro_risk", "fx_external_risk"],
+      evidence: "required",
+      detail: "standard",
+    },
+  },
+  {
+    id: "germany-geopolitical",
+    region: "europe",
+    body: {
+      schema_version: "geomacro.agent-query.v1",
+      question: "What verified geopolitical risk intelligence is currently available for Germany?",
+      subjects: [{ type: "country", country_iso3: "DEU" }],
+      topics: ["conflict_geopolitics"],
+      evidence: "required",
+      detail: "standard",
+    },
+  },
+  {
+    id: "south-africa-critical-minerals",
+    region: "africa",
+    body: {
+      schema_version: "geomacro.agent-query.v1",
+      question: "What verified critical-minerals intelligence is currently available for South Africa?",
+      subjects: [{ type: "country", country_iso3: "ZAF" }],
+      topics: ["critical_minerals"],
+      evidence: "required",
+      detail: "standard",
+    },
+  },
+  {
+    id: "uae-risk-object",
+    region: "middle_east",
+    body: {
+      schema_version: "geomacro.agent-query.v1",
+      question: "Give me the current signed Risk Object for the United Arab Emirates.",
+      subjects: [{ type: "country", country_iso3: "ARE" }],
+      topics: ["risk_object"],
+      evidence: "required",
+      detail: "standard",
+    },
+  },
+  {
     id: "india-macro-fx",
+    region: "south_asia",
     body: {
       schema_version: "geomacro.agent-query.v1",
       question: "What are the current macro and FX risks for India?",
@@ -38,6 +97,7 @@ const cases = [
   },
   {
     id: "china-critical-minerals",
+    region: "east_asia",
     body: {
       schema_version: "geomacro.agent-query.v1",
       question: "What verified critical-minerals intelligence is currently available for China?",
@@ -49,6 +109,7 @@ const cases = [
   },
   {
     id: "usa-china-corridor",
+    region: "cross_region_corridor",
     body: {
       schema_version: "geomacro.agent-query.v1",
       question: "What are the current trade and geopolitical risks for the United States to China corridor?",
@@ -60,6 +121,7 @@ const cases = [
   },
   {
     id: "china-risk-object",
+    region: "east_asia",
     body: {
       schema_version: "geomacro.agent-query.v1",
       question: "Give me the current signed Risk Object for China.",
@@ -72,6 +134,12 @@ const cases = [
 ];
 
 async function main() {
+  const coveredRegions = new Set(cases.map((testCase) => testCase.region));
+  const missingRegions = [...REQUIRED_REGIONS].filter((region) => !coveredRegions.has(region));
+  if (missingRegions.length > 0) {
+    throw new Error(`representative global x402 preflight is missing regions: ${missingRegions.join(",")}`);
+  }
+
   const discoveryResponse = await fetch(`${BASE}/.well-known/x402.json`, {
     method: "GET",
     headers: { accept: "application/json" },
@@ -113,6 +181,7 @@ async function main() {
 
     const result = {
       id: testCase.id,
+      region: testCase.region,
       status: response.status,
       product: body.product ?? null,
       network: body.exact_price?.network ?? null,
@@ -164,7 +233,7 @@ async function main() {
   }
 
   console.log(JSON.stringify({
-    schema_version: "geomacro.live-x402-prelaunch-availability.v3",
+    schema_version: "geomacro.live-x402-prelaunch-availability.v4",
     checked_at: new Date().toISOString(),
     host: BASE,
     payment_performed: false,
@@ -172,6 +241,8 @@ async function main() {
     discovery_prelaunch: true,
     production_funds_authorized: false,
     payable_production_resources_advertised: 0,
+    representative_regions: [...REQUIRED_REGIONS].sort(),
+    representative_case_count: cases.length,
     all_representative_cases_fail_closed: allFailClosed,
     all_representative_cases_safe_prelaunch: allSafePrelaunch,
     all_available_cases_testnet_only: allAvailableCasesTestnetOnly,
