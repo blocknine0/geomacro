@@ -150,13 +150,14 @@ function seriesForDomain(
   rows: SnapshotRow[],
   domain: RiskDomainKey,
   timeframe: Timeframe,
-  latestAt: number,
+  readingAt: number,
 ): TimeframeSeries {
-  const start = timeframeStart(timeframe, latestAt);
+  const start = timeframeStart(timeframe, readingAt);
   const buckets: Bucket[] = [];
   for (const row of rows) {
+    if (row.verification_status !== "verified") continue;
     const t = new Date(row.as_of).getTime();
-    if (!Number.isFinite(t) || t < start || t > latestAt) continue;
+    if (!Number.isFinite(t) || t < start || t > readingAt) continue;
     const reading = categoryReading(row, domain);
     if (!reading) continue;
     buckets.push({ t, avg: reading.score, count: reading.eventCount });
@@ -170,26 +171,40 @@ function domainReading(
   domain: RiskDomainKey,
   latestAt: number,
 ): RiskDomainReading | null {
-  const current = categoryReading(snapshots[0], domain);
+  const currentIndex = snapshots.findIndex(
+    (snapshot) =>
+      snapshot.verification_status === "verified" && categoryReading(snapshot, domain) !== null,
+  );
+  if (currentIndex < 0) return null;
+
+  const currentSnapshot = snapshots[currentIndex];
+  const current = categoryReading(currentSnapshot, domain);
   if (!current) return null;
-  const previous = snapshots
-    .slice(1)
-    .map((snapshot) => categoryReading(snapshot, domain))
-    .find((reading): reading is CategoryReading => reading !== null) ?? null;
+  const readingAt = new Date(currentSnapshot.as_of).getTime();
+  if (!Number.isFinite(readingAt) || readingAt > latestAt + 1_000) return null;
+
+  const previousEntry = snapshots
+    .slice(currentIndex + 1)
+    .filter((snapshot) => snapshot.verification_status === "verified")
+    .map((snapshot) => ({ snapshot, reading: categoryReading(snapshot, domain) }))
+    .find((entry): entry is { snapshot: SnapshotRow; reading: CategoryReading } => entry.reading !== null) ?? null;
 
   return {
     score: Math.round(current.score),
     rawScore: current.score,
-    previousScore: previous?.score ?? null,
-    changePoints: previous ? current.score - previous.score : null,
+    previousScore: previousEntry?.reading.score ?? null,
+    changePoints: previousEntry ? current.score - previousEntry.reading.score : null,
     confidence: current.confidence,
     eventCount: current.eventCount,
     sourceCount: current.sourceCount,
     independentStoryCount: current.storyCount,
+    readingSnapshotId: currentSnapshot.id,
+    readingAsOf: currentSnapshot.as_of,
+    readingStatus: currentIndex === 0 ? "current" : "last_verified",
     series: {
-      "24H": seriesForDomain(snapshots, domain, "24H", latestAt),
-      "7D": seriesForDomain(snapshots, domain, "7D", latestAt),
-      "30D": seriesForDomain(snapshots, domain, "30D", latestAt),
+      "24H": seriesForDomain(snapshots, domain, "24H", readingAt),
+      "7D": seriesForDomain(snapshots, domain, "7D", readingAt),
+      "30D": seriesForDomain(snapshots, domain, "30D", readingAt),
     },
   };
 }
