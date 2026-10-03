@@ -13,21 +13,35 @@ describe("Day 3 D1/B2 serving migration", () => {
     expect(script).toContain("canonicalRiskObjectJson(object)");
     expect(script).toContain('record_sha256_source: "canonical_verified_b2_readback"');
     expect(script).toContain("supabase_payload_used_for_record_hash: false");
-    expect(script).toContain('.is("archive_bundle_key", null)');
+    expect(script).toContain("archive_bundle_key IS NULL");
     expect(script).not.toContain('select("payload,');
     expect(script).not.toContain("delete(");
+  });
+
+  it("uses a bounded direct-Postgres migration export instead of restricted Supabase REST", () => {
+    const script = read("scripts/ops/d1-gro-index-backfill.ts");
+    const workflow = read(".github/workflows/d1-gro-index-backfill.yml");
+    expect(script).toContain('process.env.SUPABASE_DB_URL');
+    expect(script).toContain('execFileSync("psql"');
+    expect(script).toContain('metadata_source: "direct_postgres_export"');
+    expect(script).toContain("supabase_rest_used: false");
+    expect(script).not.toContain('@supabase/supabase-js');
+    expect(script).not.toContain("createClient(");
+    expect(workflow).toContain('SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}');
+    expect(workflow).not.toContain("APP_SUPABASE_SERVICE_ROLE_KEY:");
+    expect(workflow).not.toContain("APP_SUPABASE_URL:");
   });
 
   it("requires exact D1 checksum parity and remains non-destructive", () => {
     const workflow = read(".github/workflows/d1-gro-index-backfill.yml");
     expect(workflow).toContain("source_checksum !== p.target_checksum");
+    expect(workflow).toContain("p.metadata_source !== 'direct_postgres_export'");
+    expect(workflow).toContain("p.supabase_rest_used !== false");
     expect(workflow).toContain("p.destructive_changes !== false");
     expect(workflow).toContain("p.production_cutover !== false");
     expect(workflow).toContain("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1");
     expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
     expect(workflow).toContain("actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
-    expect(workflow).toContain('APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}');
-    expect(workflow).not.toContain('APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}');
     expect(workflow).not.toContain("schedule:");
   });
 
