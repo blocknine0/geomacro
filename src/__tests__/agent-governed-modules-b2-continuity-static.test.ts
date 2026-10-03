@@ -70,8 +70,9 @@ describe("verified B2 governed agent module continuity", () => {
       expect(authorization).toBeGreaterThanOrEqual(0);
       expect(b2Read).toBeGreaterThan(authorization);
       expect(standby).toBeGreaterThan(b2Read);
-      expect(source).toContain("B2 is the production serving authority");
     }
+    expect(wdi).toContain("Production serving is B2-primary");
+    expect(usgs).toContain("B2 is the production serving authority");
     expect(wdi).toContain("using fresh verified B2 governed derived state");
     expect(usgs).toContain("using fresh verified B2 governed derived state");
     expect(rights).toContain("export async function readCommercialSourceRightsRow");
