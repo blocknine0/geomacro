@@ -12,7 +12,6 @@ import {
 import type { GlobalRisk, RiskRow } from "./global-risk.types";
 
 const HOUR = 60 * 60 * 1000;
-const DAY = 24 * HOUR;
 const LOOKBACK = GRI_LOOKBACK_HOURS * HOUR;
 
 async function loadRecentEvents(
@@ -49,13 +48,17 @@ async function readVerifiedB2GlobalRiskOrThrow(reason: string): Promise<GlobalRi
  * Read the canonical public GRI through Supabase when it is available. The
  * exact same pure assembler is used by the direct-Postgres B2 recovery path,
  * so a quota/outage recovery cannot change proof rules or historical windows.
+ *
+ * History is intentionally NOT filtered relative to wall-clock `now`. A stale
+ * publisher must not make old verified points disappear merely because time
+ * passed. The assembler clips the newest verified rows relative to the latest
+ * verified snapshot for its 24H/7D/30D windows.
  */
 export async function readPublicGlobalRisk(): Promise<GlobalRisk> {
   const supabase = getAppSupabase();
   if (!supabase) return readVerifiedB2GlobalRiskOrThrow("Risk index store unavailable");
 
   const now = Date.now();
-  const snapshotSince = new Date(now - 31 * DAY).toISOString();
   const snapshotResult = await supabase
     .from("gri_snapshots")
     .select(
@@ -64,7 +67,6 @@ export async function readPublicGlobalRisk(): Promise<GlobalRisk> {
     .eq("status", "published")
     .eq("verification_status", "verified")
     .eq("methodology_version", GRI_METHOD_VERSION)
-    .gte("as_of", snapshotSince)
     .order("as_of", { ascending: false })
     .limit(1000);
 
