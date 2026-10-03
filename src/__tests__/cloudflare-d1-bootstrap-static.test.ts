@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 const workflow = readFileSync(".github/workflows/deploy-control-plane-d1.yml", "utf8");
+const wrangler = readFileSync("workers/control-plane/wrangler.example.jsonc", "utf8");
 
 describe("D1 control-plane bootstrap", () => {
   it("reuses one named D1 database and applies the committed schema remotely", () => {
@@ -10,6 +11,14 @@ describe("D1 control-plane bootstrap", () => {
     expect(workflow).toContain('d1 create "$D1_DATABASE_NAME" --location apac');
     expect(workflow).toContain("d1 migrations apply DB --remote");
     expect(workflow).toContain("SELECT version FROM schema_meta");
+  });
+
+  it("uses direct pinned Wrangler rather than a repository package-manager installer", () => {
+    expect(workflow).toContain('npx -y "wrangler@${WRANGLER_VERSION}" deploy');
+    expect(workflow).toContain('secret put CONTROL_PLANE_TOKEN');
+    expect(workflow).not.toContain("cloudflare/wrangler-action@");
+    expect(workflow).not.toContain("packageManager:");
+    expect(wrangler).toContain('"workers_dev": true');
   });
 
   it("keeps production secrets server-only and domain separates the control token", () => {
