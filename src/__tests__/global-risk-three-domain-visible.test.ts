@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const route = readFileSync("src/routes/global-risk.tsx", "utf8");
 const cards = readFileSync("src/components/gri/global-risk-domain-indices.tsx", "utf8");
+const assembler = readFileSync("src/lib/global-risk-assemble.ts", "utf8");
 
 describe("Global Risk three-domain visibility", () => {
   it("keeps the fixed three-domain cards on the Global Risk route in addition to the combined GRI workspace", () => {
@@ -22,7 +23,16 @@ describe("Global Risk three-domain visibility", () => {
     expect(cards).toContain("DOMAIN_INDEX_SPECS.map");
     expect(cards).toContain("data?.domainIndices[spec.key]");
     expect(cards).toContain("Three risk indices, always visible");
-    expect(cards).toContain("does not substitute zero or a synthetic score");
+    expect(cards).toContain("keeps showing that domain&apos;s last verified reading");
     expect(cards).not.toContain("data.drivers.map");
+    expect(cards).not.toContain('"Unavailable"');
+  });
+
+  it("retains the newest verified reading for each domain instead of dropping a missing current-domain update", () => {
+    expect(assembler).toContain("snapshots.findIndex");
+    expect(assembler).toContain('snapshot.verification_status === "verified"');
+    expect(assembler).toContain('readingStatus: currentIndex === 0 ? "current" : "last_verified"');
+    expect(assembler).toContain("readingSnapshotId: currentSnapshot.id");
+    expect(assembler).toContain("readingAsOf: currentSnapshot.as_of");
   });
 });
