@@ -1,0 +1,207 @@
+name: GRI Realtime Direct Postgres
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/gri-realtime-direct-postgres.yml"
+      - "scripts/lib/gri-db-client.mjs"
+      - "scripts/lib/direct-postgres-supabase-loader.mjs"
+      - "scripts/ingest-news.js"
+      - "scripts/cluster-gri-stories-v12.js"
+      - "scripts/compute-gri-v12.js"
+      - "scripts/verify-gri-snapshot-v12.js"
+      - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
+      - "src/lib/global-risk-assemble.ts"
+      - "src/lib/global-risk-continuity.ts"
+      - "server/api/public/global-risk.get.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-intelligence-orchestrator
+  cancel-in-progress: false
+
+jobs:
+  refresh-three-domain-gri:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: production
+    env:
+      GRI_DB_MODE: direct_postgres
+      NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Require direct production credentials without printing them
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SUPABASE_PROJECT_REF" = "ldpwajisioljyjtojvfx"
+          test -n "${SUPABASE_DB_URL:-}" || { echo "SUPABASE_DB_URL is required"; exit 2; }
+          test -n "${B2_KEY_ID:-}" || { echo "B2_KEY_ID is required"; exit 2; }
+          test -n "${B2_APPLICATION_KEY:-}" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
+
+      - name: Prove authoritative direct PostgreSQL read path
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createGriDbClient } from './scripts/lib/gri-db-client.mjs';
+          const db = createGriDbClient();
+          const { data, error } = await db
+            .from('gri_snapshots')
+            .select('id,as_of,methodology_version,verification_status')
+            .eq('status', 'published')
+            .eq('verification_status', 'verified')
+            .eq('methodology_version', 'gri-v1.2.0')
+            .order('as_of', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (error) throw new Error(error.message);
+          if (!data?.id) throw new Error('NO_VERIFIED_GRI_V12_BASELINE');
+          console.log(JSON.stringify({ ok: true, baseline_as_of: data.as_of }));
+          NODE
+
+      - name: Ingest bounded current evidence through direct PostgreSQL
+        env:
+          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_INGEST_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_INGEST_MODEL }}
+          GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
+          MISTRAL_MODEL: ${{ vars.MISTRAL_INGEST_MODEL }}
+          CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
+          CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+          GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
+          GROQ_MAX_REQUESTS_PER_RUN: "12"
+          GROQ_MIN_REMAINING_REQUESTS: ${{ vars.GROQ_MIN_REMAINING_REQUESTS }}
+          GROQ_MIN_REMAINING_TOKENS: ${{ vars.GROQ_MIN_REMAINING_TOKENS }}
+          GROQ_MAX_WAIT_MS: "180000"
+          GROQ_BATCH_SIZE: "2"
+          MAX_CANDIDATES_PER_CATEGORY: "4"
+          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "3"
+          GUARDIAN_QUERY_ROTATION_HOURS: "1"
+          NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
+          NEWS_MAX_RETRIES: "2"
+          MAX_ARTICLE_AGE_MS: ${{ vars.MAX_ARTICLE_AGE_MS }}
+          MIN_CONFIDENCE: ${{ vars.MIN_CONFIDENCE }}
+          MIN_SEVERITY: ${{ vars.MIN_SEVERITY }}
+          RELIEFWEB_ENABLED: "true"
+          GDACS_ENABLED: "true"
+        run: node scripts/ingest-news.js
+
+      - name: Correlate current canonical evidence through direct PostgreSQL
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+        run: node scripts/cluster-gri-stories-v12.js
+
+      - name: Compute current verified three-domain GRI
+        run: node scripts/compute-gri-v12.js
+
+      - name: Independently verify current GRI proof package
+        run: node scripts/verify-gri-snapshot-v12.js
+
+      - name: Publish verified continuity package to B2
+        run: bun scripts/ops/publish-b2-global-risk-direct-postgres.mjs
+
+      - name: Require fresh verified three-domain database snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createGriDbClient } from './scripts/lib/gri-db-client.mjs';
+          const db = createGriDbClient();
+          const { data, error } = await db
+            .from('gri_snapshots')
+            .select('id,as_of,category_breakdown,verification_status,methodology_version')
+            .eq('status', 'published')
+            .eq('verification_status', 'verified')
+            .eq('methodology_version', 'gri-v1.2.0')
+            .order('as_of', { ascending: false })
+            .limit(1)
+            .single();
+          if (error) throw new Error(error.message);
+          const ageMs = Date.now() - Date.parse(data.as_of);
+          if (!Number.isFinite(ageMs) || ageMs < -5 * 60_000 || ageMs > 90 * 60_000) {
+            throw new Error(`LATEST_GRI_NOT_FRESH:${data.as_of}`);
+          }
+          const categories = Array.isArray(data.category_breakdown)
+            ? data.category_breakdown.map((row) => String(row?.category ?? '')).filter(Boolean)
+            : [];
+          for (const required of ['geopolitics', 'macro', 'rare_earth']) {
+            if (!categories.includes(required)) throw new Error(`MISSING_GRI_DOMAIN:${required}`);
+          }
+          console.log(JSON.stringify({ ok: true, snapshot_id: data.id, as_of: data.as_of, categories }));
+          NODE
+
+      - name: Require fresh verified customer-facing three-index package
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if body="$(curl -fsS --max-time 20 -H 'Accept: application/json' 'https://geomacro.live/api/public/global-risk')"; then
+              if printf '%s' "$body" | node -e '
+                let s=""; process.stdin.on("data", d => s += d); process.stdin.on("end", () => {
+                  const b=JSON.parse(s); const d=b?.data;
+                  const age=Date.now()-Date.parse(String(d?.snapshotAsOf||""));
+                  const domains=Array.isArray(d?.domainIndices) ? d.domainIndices : [];
+                  const keys=new Set(domains.map(x=>x?.key));
+                  const historiesOk=domains.every(x => Array.isArray(x?.series?.["7D"]?.buckets) && x.series["7D"].buckets.length >= 2);
+                  const ok=b?.ok===true && b?.meta?.authority==="backblaze-b2" && d?.verificationStatus==="verified" &&
+                    Number.isFinite(age) && age >= -300000 && age <= 2*60*60*1000 &&
+                    keys.has("geopolitics") && keys.has("macro") && keys.has("rare_earth") && historiesOk;
+                  process.exit(ok ? 0 : 1);
+                });
+              '; then
+                printf '%s' "$body" > /tmp/global-risk-three-index.json
+                exit 0
+              fi
+            fi
+            sleep $((attempt * 4))
+          done
+          echo "Fresh verified three-index Global Risk package was not visible in production" >&2
+          exit 1
+
+      - name: Upload customer-facing verification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: gri-realtime-direct-postgres-${{ github.run_id }}
+          path: /tmp/global-risk-three-index.json
+          if-no-files-found: warn
+          retention-days: 30
