@@ -27,6 +27,7 @@ describe("separate public risk indices contract", () => {
     const edge = read("supabase/functions/public-risk-indices/index.ts");
     const types = read("src/lib/risk-indices.types.ts");
     const projection = read("src/lib/risk-indices-from-global-risk.ts");
+    const assembler = read("src/lib/global-risk-assemble.ts");
 
     expect(edge).toContain('const METHOD_VERSION = "gri-v1.2.0"');
     expect(edge).toContain('const PROOF_VERSION = "gri-proof-v1.2.0"');
@@ -35,16 +36,21 @@ describe("separate public risk indices contract", () => {
     expect(projection).toContain('proofScope: "verified-category-projection"');
     expect(projection).toContain("risk.proofHash");
     expect(projection).toContain("risk.calculationHash");
+    expect(assembler).toContain("category_breakdown");
+    expect(assembler).toContain("seriesForDomain");
   });
 
-  it("never reuses the old combined contribution-point change as a standalone index delta", () => {
+  it("derives standalone index deltas score-to-score without reusing combined contribution deltas", () => {
     const edge = read("supabase/functions/public-risk-indices/index.ts");
+    const assembler = read("src/lib/global-risk-assemble.ts");
     const projection = read("src/lib/risk-indices-from-global-risk.ts");
 
     expect(edge).toContain("currentForChange - previousScore");
     expect(edge).toContain("A standalone index delta is score-to-score");
-    expect(projection).toContain("changePoints: null");
-    expect(projection).toContain("previousScore: null");
+    expect(assembler).toContain("current.score - previous.score");
+    expect(projection).toContain("previousScore: domain.previousScore");
+    expect(projection).toContain("changePoints: domain.changePoints");
+    expect(projection).not.toContain("driver.change");
   });
 
   it("never creates a synthetic or zero fallback for an unavailable domain", () => {
@@ -53,8 +59,8 @@ describe("separate public risk indices contract", () => {
     const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
 
     expect(edge).toContain('status: rawScore === null ? "unavailable" : "available"');
-    expect(projection).toContain('status: score === null ? "unavailable" : "available"');
-    expect(projection).toContain("score: score === null ? null : Math.round(score)");
+    expect(projection).toContain('status: "unavailable"');
+    expect(projection).toContain("score: null");
     expect(workspace).toContain("does not substitute zero or a synthetic estimate");
     expect(workspace).toContain("No zero-risk or synthetic substitute");
   });
@@ -104,19 +110,20 @@ describe("separate public risk indices contract", () => {
     expect(workflow).not.toContain("supabase migration");
   });
 
-  it("restores /global-risk historical continuity while preserving the three-index workspace separately", () => {
+  it("keeps /global-risk on the three-index product and forbids a composite-only route regression", () => {
     const globalRiskRoute = read("src/routes/global-risk.tsx");
-    const globalRiskWorkspace = read("src/components/gri/global-risk-workspace.tsx");
     const riskIndicesRoute = read("src/routes/risk-indices.tsx");
     const riskIndicesWorkspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
+    const continuity = read("src/lib/global-risk-continuity.ts");
 
-    expect(globalRiskRoute).toContain("GlobalRiskWorkspace");
-    expect(globalRiskRoute).toContain("History, Evidence & Integrity");
-    expect(globalRiskWorkspace).toContain("How global risk is moving");
-    expect(globalRiskWorkspace).toContain("Only comparable verified snapshots from the same current methodology");
+    expect(globalRiskRoute).toContain("RiskIndicesWorkspace");
+    expect(globalRiskRoute).not.toContain("GlobalRiskWorkspace");
+    expect(globalRiskRoute).toContain("Geopolitics, Macro & Critical Minerals");
     expect(riskIndicesRoute).toContain("RiskIndicesWorkspace");
     expect(riskIndicesWorkspace).toContain("Three risks. Three separate indices.");
     expect(riskIndicesWorkspace).toContain("instead of being compressed into one combined headline score");
+    expect(continuity).toContain("RISK_DOMAIN_HISTORY_CONTAINER_MISSING");
+    expect(continuity).toContain("RISK_DOMAIN_${domain.toUpperCase()}_HISTORY_MISSING");
   });
 
   it("keeps public surfaces fail-closed without synthetic risk values", () => {
