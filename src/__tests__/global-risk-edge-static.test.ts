@@ -7,6 +7,7 @@ const workflow = readFileSync(".github/workflows/deploy-global-risk-edge.yml", "
 const serverReader = readFileSync("src/lib/global-risk-edge.server.ts", "utf8");
 const publicApi = readFileSync("server/api/public/global-risk.get.ts", "utf8");
 const publicIndicesApi = readFileSync("server/api/public/risk-indices.get.ts", "utf8");
+const browserReader = readFileSync("src/lib/use-global-risk.ts", "utf8");
 
 describe("verified Global Risk edge serving boundary", () => {
   it("exposes exactly one read-only public risk route from private B2", () => {
@@ -64,5 +65,15 @@ describe("verified Global Risk edge serving boundary", () => {
     expect(publicIndicesApi).toContain('authority: "backblaze-b2-verified-edge"');
     expect(publicIndicesApi).not.toContain("readB2PublicRisk");
     expect(publicIndicesApi).not.toContain("b2-live.server");
+  });
+
+  it("uses same-origin transport first and requires the verified edge authority on fallback responses", () => {
+    const appTarget = browserReader.indexOf('{ kind: "app", url: GLOBAL_RISK_APP_URL }');
+    const edgeTarget = browserReader.indexOf('{ kind: "edge", url: GLOBAL_RISK_EDGE_URL }');
+    expect(appTarget).toBeGreaterThan(-1);
+    expect(edgeTarget).toBeGreaterThan(appTarget);
+    expect(browserReader).toContain('const EDGE_AUTHORITY = "backblaze-b2-verified-edge"');
+    expect(browserReader).toContain("body.meta?.authority !== EDGE_AUTHORITY");
+    expect(browserReader).not.toContain('body.meta?.authority !== "backblaze-b2"');
   });
 });
