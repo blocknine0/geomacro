@@ -37,6 +37,8 @@ jobs:
       GRI_DB_MODE: direct_postgres
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
