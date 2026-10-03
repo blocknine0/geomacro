@@ -65,7 +65,9 @@ describe("testnet canonical intelligence console", () => {
   it("preflights fulfillment prerequisites before either paid API surface can quote or settle", () => {
     expect(preflight).toContain("loadStructuralContext");
     expect(preflight).toContain("assertCommercialRiskObjectDeliverable");
-    expect(preflight).toContain("readPublicGlobalRisk");
+    expect(preflight).toContain("readProductionGlobalRisk");
+    expect(preflight).toContain('from "./production-global-risk.server"');
+    expect(preflight).not.toContain('from "./global-risk-read.server"');
     expect(preflight).toContain("SIGNED_RISK_OBJECT_NOT_COMMERCIALLY_DELIVERABLE");
     expect(preflight).toContain("STRUCTURAL_DATA_UNAVAILABLE");
 
