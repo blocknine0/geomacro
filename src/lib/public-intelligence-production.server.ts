@@ -18,6 +18,7 @@ export type ProductionPublicIntelligence = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REQUIRED_CATEGORIES = ["geopolitics", "macro", "rare_earth"] as const;
 const MAX_TOTAL_ROWS = 300;
+const DERIVED_TITLE_PREFIX = "Geomacro finds ";
 
 function rowTime(row: Pick<PublicIntelligenceRow, "published_at" | "created_at">): number {
   const published = Date.parse(String(row.published_at ?? ""));
@@ -38,11 +39,13 @@ function scoredVerifiedRows(rows: PublicIntelligenceRow[]): ProductionPublicInte
     const severity = Number(row.severity);
     const title = String(row.source_title ?? "").trim();
     if (!(REQUIRED_CATEGORIES as readonly string[]).includes(category)) continue;
-    if (!title || !Number.isFinite(severity) || severity < 0 || severity > 100) continue;
+    if (!title.startsWith(DERIVED_TITLE_PREFIX)) continue;
+    if (!Number.isFinite(severity) || severity < 0 || severity > 100) continue;
     const key = `${category}|${title.toLowerCase().replace(/\s+/g, " ")}`;
     if (dedupe.has(key)) continue;
     dedupe.set(key, {
       ...row,
+      source_title: title,
       category,
       severity,
       delta: row.delta === null || row.delta === undefined || !Number.isFinite(Number(row.delta))
@@ -63,14 +66,14 @@ function assertThreeDomainCoverage(rows: ProductionPublicIntelligenceRow[]) {
 }
 
 /**
- * Production Intelligence is deliberately scored-only.
+ * Production Intelligence is deliberately scored-only and derived-only.
  *
- * Fresh source discovery is handled by the bounded ingestion/classification
- * workflow. Customer-facing rows are published only after a real classifier
- * severity is persisted and copied into the verified B2 continuity package.
- * If no new row qualifies, the prior verified scored package remains visible.
- * We never manufacture a score and never replace a scored reading with an
- * ephemeral unscored observation.
+ * Fresh discovery is handled by the bounded ingestion/classification workflow.
+ * Customer-facing rows are published only after a real classifier severity is
+ * persisted and the derived English title has been written to the verified B2
+ * continuity package. Raw publisher headlines, source identities and unscored
+ * observations never cross this boundary. If no new row qualifies, the prior
+ * verified scored package remains visible.
  */
 export async function readProductionPublicIntelligence(): Promise<ProductionPublicIntelligence> {
   const generatedAt = new Date().toISOString();
