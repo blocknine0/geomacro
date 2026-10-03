@@ -175,7 +175,15 @@ const recentEvents = readRecentEvents(dbUrl, latestSnapshot.as_of);
 const canonicalRisk = assemblePublicGlobalRisk(snapshots, recentEvents);
 const continuity = validateGlobalRiskContinuity(canonicalRisk);
 if (!continuity.ok) throw new Error(`RISK_INDICES_CANONICAL_CONTINUITY_REJECTED_${continuity.code}`);
+
+// The immutable archive must not change merely because wall-clock age changed.
+// Anchor its projection to the verified snapshot timestamp. The live projection
+// remains wall-clock aware so it can label old evidence as last_verified.
+const immutableProjectionAt = Date.parse(canonicalRisk.snapshotAsOf);
+if (!Number.isFinite(immutableProjectionAt)) throw new Error("RISK_INDICES_SNAPSHOT_TIME_INVALID");
+const immutableIndices = riskIndicesFromGlobalRisk(canonicalRisk, immutableProjectionAt);
 const indices = riskIndicesFromGlobalRisk(canonicalRisk);
+assertIndices(immutableIndices);
 assertIndices(indices);
 
 const b2 = createB2Client({
@@ -190,12 +198,12 @@ const historyKey = `${HISTORY_PREFIX}/${snapshotId}.json.gz`;
 const historyValue = {
   schema: "geomacro.public-risk-indices-history.v1",
   source_project: PROJECT_REF,
-  contract_version: indices.contractVersion,
-  parent_methodology_version: indices.parentMethodologyVersion,
-  snapshot_id: indices.snapshotId,
-  snapshot_as_of: indices.snapshotAsOf,
+  contract_version: immutableIndices.contractVersion,
+  parent_methodology_version: immutableIndices.parentMethodologyVersion,
+  snapshot_id: immutableIndices.snapshotId,
+  snapshot_as_of: immutableIndices.snapshotAsOf,
   verified_snapshot_rows: snapshots,
-  data: indices,
+  data: immutableIndices,
 };
 const historyRaw = JSON.stringify(historyValue);
 const existingHistory = await b2.getOptional(historyKey);
@@ -271,6 +279,7 @@ console.log(JSON.stringify({
   authority_read: "direct-postgres-read-only",
   authority_serve: "backblaze-b2-risk-indices-edge",
   source_discovery_owner: "auto-ingest-news",
+  history_projection_anchor: "snapshot-as-of",
   contract_version: indices.contractVersion,
   parent_methodology_version: indices.parentMethodologyVersion,
   snapshot_id: indices.snapshotId,
