@@ -85,7 +85,6 @@ function readSnapshots(dbUrl) {
         where status = 'published'
           and verification_status = 'verified'
           and methodology_version = ${sqlLiteral(METHODOLOGY)}
-          and as_of >= now() - interval '31 days'
         order by as_of desc
         limit ${SNAPSHOT_LIMIT}
       ) t
@@ -244,6 +243,7 @@ console.log(JSON.stringify({
   schema: "geomacro.public-global-risk-direct-postgres-publish.v1",
   authority_read: "direct-postgres-read-only",
   authority_serve: "backblaze-b2",
+  history_anchor: "latest-verified-snapshot",
   methodology_version: risk.methodologyVersion,
   snapshot_id: risk.snapshotId,
   snapshot_as_of: risk.snapshotAsOf,
