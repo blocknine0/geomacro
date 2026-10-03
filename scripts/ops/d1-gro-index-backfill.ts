@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { createB2Client } from "./b2-s3-client.mjs";
 import {
@@ -17,6 +19,8 @@ const WRANGLER_VERSION = String(process.env.WRANGLER_VERSION ?? "4.136.3").trim(
 const limitRaw = Number(process.env.D1_GRO_INDEX_LIMIT ?? 128);
 const LIMIT = Number.isInteger(limitRaw) ? Math.max(1, Math.min(512, limitRaw)) : 128;
 const DB_URL = String(process.env.SUPABASE_DB_URL ?? "").trim();
+const OUT_DIR = join(process.cwd(), "artifacts", "d1-gro-index");
+const SQL_FILE = join(OUT_DIR, "verified-gro-index.sql");
 
 if (!DB_URL) throw new Error("D1_GRO_INDEX_DB_URL_REQUIRED");
 let parsedDb: URL;
@@ -170,7 +174,9 @@ verified.sort((a, b) => a.object_id.localeCompare(b.object_id));
 const sourceChecksum = checksum(verified);
 const now = new Date().toISOString();
 const statements = verified.map((row) => `INSERT INTO risk_object_index (object_id,schema_version,subject_type,subject_id,generated_at,expires_at,verification_status,commercial_eligibility_status,signing_key_id,payload_hash,record_sha256,archive_key,archive_sha256,updated_at) VALUES (${sqlText(row.object_id)},${sqlText(row.schema_version)},${sqlText(row.subject_type)},${sqlText(row.subject_id)},${sqlText(row.generated_at)},${sqlText(row.expires_at)},${sqlText(row.verification_status)},${sqlText(row.commercial_eligibility_status)},${sqlText(row.signing_key_id)},${sqlText(row.payload_hash)},${sqlText(row.record_sha256)},${sqlText(row.archive_key)},${sqlText(row.archive_sha256)},${sqlText(now)}) ON CONFLICT(object_id) DO UPDATE SET schema_version=excluded.schema_version,subject_type=excluded.subject_type,subject_id=excluded.subject_id,generated_at=excluded.generated_at,expires_at=excluded.expires_at,verification_status=excluded.verification_status,commercial_eligibility_status=excluded.commercial_eligibility_status,signing_key_id=excluded.signing_key_id,payload_hash=excluded.payload_hash,record_sha256=excluded.record_sha256,archive_key=excluded.archive_key,archive_sha256=excluded.archive_sha256,updated_at=excluded.updated_at;`);
-wrangler(["d1", "execute", "DB", "--remote", "--yes", "--config", D1_CONFIG, "--command", statements.join("\n")]);
+mkdirSync(OUT_DIR, { recursive: true });
+writeFileSync(SQL_FILE, `${statements.join("\n")}\n`, { encoding: "utf8", mode: 0o600 });
+wrangler(["d1", "execute", "DB", "--remote", "--yes", "--config", D1_CONFIG, "--file", SQL_FILE]);
 
 const readbackRaw = wrangler([
   "d1", "execute", "DB", "--remote", "--json", "--config", D1_CONFIG,
@@ -199,6 +205,7 @@ console.log(JSON.stringify({
   metadata_source: "direct_postgres_export",
   supabase_rest_used: false,
   record_sha256_source: "canonical_verified_b2_readback",
+  d1_write_transport: "wrangler_file",
   supabase_payload_used_for_record_hash: false,
   destructive_changes: false,
   production_cutover: false,
