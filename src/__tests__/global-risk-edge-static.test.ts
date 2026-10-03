@@ -17,6 +17,7 @@ describe("verified Global Risk edge serving boundary", () => {
     expect(worker).toContain('B2_BUCKET = "geomacro-private-archive"');
     expect(worker).toContain('LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz"');
     expect(worker).toContain('PROOF_KEY = "geomacro-evidence/v1/live/global-risk/latest-proof.json"');
+    expect(worker).not.toContain("risk-indices-independent");
     expect(worker).not.toContain("request.json()");
     expect(worker).not.toContain("PUT\"");
     expect(worker).not.toContain("DELETE\"");
@@ -50,7 +51,7 @@ describe("verified Global Risk edge serving boundary", () => {
     expect(workflow).toContain("EDGE_DOMAIN_HISTORY_INVALID");
   });
 
-  it("keeps Lovable API routes as pure compatibility transports without private B2 runtime imports", () => {
+  it("keeps Lovable Global Risk API as a pure compatibility transport and excludes Risk Indices", () => {
     expect(serverReader).toContain("https://geomacro-global-risk.daspallab202391.workers.dev/global-risk");
     expect(serverReader).toContain('response.headers.get("x-geomacro-authority") !== "backblaze-b2-verified-edge"');
     expect(serverReader).toContain("validateGlobalRiskContinuity(payload.data).ok");
@@ -60,20 +61,19 @@ describe("verified Global Risk edge serving boundary", () => {
     expect(publicApi).not.toContain("readB2PublicRisk");
     expect(publicApi).not.toContain("b2-live.server");
 
-    expect(publicIndicesApi).toContain("await readGlobalRiskEdge()");
-    expect(publicIndicesApi).toContain("riskIndicesFromGlobalRisk(risk)");
-    expect(publicIndicesApi).toContain('authority: "backblaze-b2-verified-edge"');
-    expect(publicIndicesApi).not.toContain("readB2PublicRisk");
-    expect(publicIndicesApi).not.toContain("b2-live.server");
+    expect(publicIndicesApi).toContain("readRiskIndicesEdge");
+    expect(publicIndicesApi).not.toContain("readGlobalRiskEdge");
+    expect(publicIndicesApi).not.toContain("riskIndicesFromGlobalRisk");
+    expect(publicIndicesApi).not.toContain('authority: "backblaze-b2-verified-edge"');
   });
 
-  it("uses verified edge transport first and keeps same-origin as compatibility fallback", () => {
+  it("uses verified Global Risk edge transport first and keeps same-origin as compatibility fallback", () => {
     const appTarget = browserReader.indexOf('{ kind: "app", url: GLOBAL_RISK_APP_URL }');
     const edgeTarget = browserReader.indexOf('{ kind: "edge", url: GLOBAL_RISK_EDGE_URL }');
     expect(edgeTarget).toBeGreaterThan(-1);
     expect(appTarget).toBeGreaterThan(edgeTarget);
     expect(browserReader).toContain('const EDGE_AUTHORITY = "backblaze-b2-verified-edge"');
     expect(browserReader).toContain("body.meta?.authority !== EDGE_AUTHORITY");
-    expect(browserReader).not.toContain('body.meta?.authority !== "backblaze-b2"');
+    expect(browserReader).not.toContain("RISK_INDICES_EDGE_URL");
   });
 });
