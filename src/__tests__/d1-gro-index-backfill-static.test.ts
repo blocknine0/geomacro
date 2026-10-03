@@ -34,6 +34,7 @@ describe("Day 3 D1/B2 serving migration", () => {
 
   it("batches D1 writes so verified GRO migrations cannot exceed process argument limits", () => {
     const script = read("scripts/ops/d1-gro-index-backfill.ts");
+    const workflow = read(".github/workflows/d1-gro-index-backfill.yml");
     expect(script).toContain("const D1_WRITE_BATCH_SIZE = 12");
     expect(script).toContain("function executeD1Statements(statements: string[]): number");
     expect(script).toContain("offset += D1_WRITE_BATCH_SIZE");
@@ -42,6 +43,8 @@ describe("Day 3 D1/B2 serving migration", () => {
     expect(script).not.toContain('"--command", statements.join("\\n")');
     expect(script).toContain("write_batches: writeBatches");
     expect(script).toContain("d1_write_batch_size: D1_WRITE_BATCH_SIZE");
+    expect(workflow).toContain("p.write_batches");
+    expect(workflow).toContain("p.d1_write_batch_size !== 12");
   });
 
   it("requires exact D1 checksum parity and remains non-destructive", () => {
