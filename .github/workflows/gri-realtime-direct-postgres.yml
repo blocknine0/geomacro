@@ -11,11 +11,13 @@ on:
       - ".github/workflows/gri-realtime-direct-postgres.yml"
       - "scripts/lib/gri-db-client.mjs"
       - "scripts/lib/direct-postgres-supabase-loader.mjs"
+      - "scripts/lib/no-guardian-node-fetch.mjs"
       - "scripts/ingest-news.js"
       - "scripts/cluster-gri-stories-v12.js"
       - "scripts/compute-gri-v12.js"
       - "scripts/verify-gri-snapshot-v12.js"
       - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
+      - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
       - "src/lib/global-risk-assemble.ts"
       - "src/lib/global-risk-continuity.ts"
       - "src/lib/global-risk-edge.server.ts"
@@ -38,6 +40,7 @@ jobs:
     environment: production
     env:
       GRI_DB_MODE: direct_postgres
+      GEOMACRO_DISABLE_GUARDIAN: "true"
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -70,6 +73,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$EXPECTED_SUPABASE_PROJECT_REF" = "ldpwajisioljyjtojvfx"
+          test "$GEOMACRO_DISABLE_GUARDIAN" = "true"
           test -n "${SUPABASE_DB_URL:-}" || { echo "SUPABASE_DB_URL is required"; exit 2; }
           test -n "${B2_KEY_ID:-}" || { echo "B2_KEY_ID is required"; exit 2; }
           test -n "${B2_APPLICATION_KEY:-}" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
@@ -95,10 +99,39 @@ jobs:
           console.log(JSON.stringify({ ok: true, baseline_as_of: data.as_of }));
           NODE
 
+      - name: Require permanent production source anchors
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createGriDbClient } from './scripts/lib/gri-db-client.mjs';
+          const db = createGriDbClient();
+          const required = {
+            gdelt_v2_events: 'GEOPOLITICS',
+            world_bank_indicators: 'MACRO',
+            usgs_mcs: 'CRITICAL_MINERALS',
+          };
+          const { data, error } = await db
+            .from('live_external_sources')
+            .select('source_id,category,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals')
+            .in('source_id', Object.keys(required));
+          if (error) throw new Error(error.message);
+          const byId = new Map((data ?? []).map((row) => [row.source_id, row]));
+          for (const [sourceId, category] of Object.entries(required)) {
+            const row = byId.get(sourceId);
+            if (!row) throw new Error(`PRODUCTION_SOURCE_MISSING:${sourceId}`);
+            if (row.category !== category) throw new Error(`PRODUCTION_SOURCE_CATEGORY_MISMATCH:${sourceId}`);
+            if (row.commercial_usage_status !== 'COMMERCIAL_OK') throw new Error(`PRODUCTION_SOURCE_RIGHTS_NOT_OK:${sourceId}`);
+            if (!row.enabled_for_ingestion || !row.enabled_for_commercial_signals) {
+              throw new Error(`PRODUCTION_SOURCE_NOT_ENABLED:${sourceId}`);
+            }
+          }
+          console.log(JSON.stringify({ ok: true, required_sources: Object.keys(required), guardian_commercial_dependency: false }));
+          NODE
+
       - name: Ingest bounded current evidence through direct PostgreSQL
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
-          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
@@ -116,7 +149,7 @@ jobs:
           GROQ_MAX_WAIT_MS: "180000"
           GROQ_BATCH_SIZE: "2"
           MAX_CANDIDATES_PER_CATEGORY: "4"
-          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "3"
+          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "1"
           GUARDIAN_QUERY_ROTATION_HOURS: "1"
           NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
           NEWS_MAX_RETRIES: "2"
@@ -146,8 +179,11 @@ jobs:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         run: node scripts/verify-gri-snapshot-v12.js
 
-      - name: Publish verified continuity package to B2
+      - name: Publish verified Global Risk continuity package to B2
         run: bun scripts/ops/publish-b2-global-risk-direct-postgres.mjs
+
+      - name: Publish scored verified Intelligence package to B2
+        run: bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs
 
       - name: Require fresh verified three-domain database snapshot
         shell: bash
