@@ -6,7 +6,9 @@ on:
     branches: [main]
     paths:
       - "scripts/ops/publish-b2-agent-governed-modules.ts"
-      - "scripts/ops/run-b2-snapshot-maintenance-with-preservation.mjs"
+      - "scripts/ops/direct-postgres-supabase-lite.ts"
+      - "scripts/ops/run-b2-governed-direct-postgres.mjs"
+      - "scripts/ops/verify-b2-agent-governed-runtime.ts"
       - "src/lib/b2-agent-governed-modules.server.ts"
       - "src/lib/agent-query-political-governance.server.ts"
       - "src/lib/agent-query-world-bank-modules.server.ts"
@@ -19,7 +21,7 @@ on:
       - "src/lib/country-risk-v02-*.server.ts"
       - ".github/workflows/b2-agent-governed-modules-snapshot.yml"
   schedule:
-    - cron: "37 4 * * *"
+    - cron: "37 4,16 * * *"
 
 permissions:
   contents: read
@@ -35,8 +37,7 @@ jobs:
     timeout-minutes: 10
     environment: production
     env:
-      APP_SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
@@ -55,5 +56,17 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Publish or preserve verified governed derived module snapshot
-        run: bun scripts/ops/run-b2-snapshot-maintenance-with-preservation.mjs governed-modules
+      - name: Require direct Postgres and B2 credentials without printing them
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY; do
+            test -n "${!name:-}" || { echo "$name is required"; exit 2; }
+          done
+          command -v psql >/dev/null || { echo "psql is required"; exit 2; }
+
+      - name: Publish fresh governed derived module snapshot via bounded direct Postgres export
+        run: bun scripts/ops/run-b2-governed-direct-postgres.mjs
+
+      - name: Require current production runtime reader to accept the new B2 snapshot
+        run: bun scripts/ops/verify-b2-agent-governed-runtime.ts
