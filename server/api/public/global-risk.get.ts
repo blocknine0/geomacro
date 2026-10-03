@@ -4,6 +4,7 @@ import {
   setResponseStatus,
 } from "h3";
 import { readB2PublicRisk } from "../../../src/lib/b2-live.server";
+import { readGlobalRiskEdge } from "../../../src/lib/global-risk-edge.server";
 import { validateGlobalRiskContinuity } from "../../../src/lib/global-risk-continuity";
 
 export default defineEventHandler(async (event) => {
@@ -15,7 +16,11 @@ export default defineEventHandler(async (event) => {
   });
 
   try {
-    const risk = await readB2PublicRisk();
+    // Prefer a direct signed B2 read when this runtime has server-only B2
+    // credentials. Lovable production intentionally does not need those
+    // secrets: the read-only Cloudflare edge validates the exact B2 live
+    // package + proof binding and exposes only this public risk object.
+    const risk = (await readB2PublicRisk()) ?? (await readGlobalRiskEdge());
     if (!risk) {
       setResponseStatus(event, 503);
       return {
@@ -41,6 +46,7 @@ export default defineEventHandler(async (event) => {
       data: risk,
       meta: {
         authority: "backblaze-b2",
+        transport: "direct-or-verified-cloudflare-edge",
         history: "same-methodology-verified",
         snapshot_as_of: risk.snapshotAsOf,
       },
