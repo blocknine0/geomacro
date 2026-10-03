@@ -8,6 +8,11 @@ on:
     paths:
       - ".github/workflows/production-website-health.yml"
       - "server/middleware/05-retire-public-testnet-surfaces.ts"
+      - "server/api/public/global-risk.get.ts"
+      - "server/api/public/risk-indices.get.ts"
+      - "src/lib/global-risk-edge.server.ts"
+      - "src/lib/global-risk-continuity.ts"
+      - "src/lib/risk-indices-from-global-risk.ts"
   schedule:
     - cron: "11 */6 * * *"
 
@@ -95,6 +100,18 @@ jobs:
           fi
           echo "PASS: public Intelligence is current; newest_at=$newest"
 
+          global_risk="$(mktemp)"
+          global_risk_code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$global_risk" -w '%{http_code}' "$BASE_URL/api/public/global-risk")"
+          if [[ "$global_risk_code" != "200" ]]; then
+            echo "::error title=Public Global Risk API unavailable::Expected HTTP 200, got $global_risk_code."
+            cat "$global_risk"
+            exit 1
+          fi
+          grep -Fq '"ok":true' "$global_risk"
+          grep -Fq '"verificationStatus":"verified"' "$global_risk"
+          grep -Fq '"authority":"backblaze-b2-verified-edge"' "$global_risk"
+          echo "PASS: public Global Risk API returned a verified edge-authoritative package."
+
           risk="$(mktemp)"
           risk_code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$risk" -w '%{http_code}' "$BASE_URL/api/public/risk-indices")"
           if [[ "$risk_code" != "200" ]]; then
@@ -104,7 +121,8 @@ jobs:
           fi
           grep -Fq '"ok":true' "$risk"
           grep -Fq '"verificationStatus":"verified"' "$risk"
-          echo "PASS: public Risk Indices API returned a verified package."
+          grep -Fq '"authority":"backblaze-b2-verified-edge"' "$risk"
+          echo "PASS: public Risk Indices API returned a verified edge-authoritative package."
 
           ask="$(mktemp)"
           ask_code="$(curl -L --retry 2 --retry-all-errors --retry-delay 2 -sS -H 'Accept: application/json' -H 'Origin: https://geomacro.live' -H 'X-Geomacro-Question: What changed in the risk indices?' -o "$ask" -w '%{http_code}' "$BASE_URL/api/public-ask")"
