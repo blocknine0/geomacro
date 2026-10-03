@@ -71,11 +71,34 @@ function readScoredRows(dbUrl) {
     `
       select row_to_json(t)::text
       from (
-        with ranked as (
+        with candidates as (
           select
             id,
-            source_title,
-            summary,
+            category,
+            severity,
+            delta,
+            created_at,
+            published_at,
+            trim(regexp_replace(coalesce(narrative, ''), '\\s+', ' ', 'g')) as narrative_en,
+            trim(regexp_replace(coalesce(summary, ''), '\\s+', ' ', 'g')) as summary_en
+          from public.events
+          where category in ('geopolitics','macro','rare_earth')
+            and severity is not null
+            and severity between 0 and 100
+            and classification_version = '${CLASSIFICATION_VERSION}'
+            and btrim(coalesce(narrative, '')) <> ''
+            and lower(coalesce(source_name, '')) not like '%guardian%'
+            and lower(coalesce(source_domain, '')) not in ('theguardian.com','www.theguardian.com')
+            and coalesce(published_at, created_at) <= now() + interval '5 minutes'
+            and created_at >= now() - interval '30 days'
+        ), ranked as (
+          select
+            id,
+            case
+              when lower(narrative_en) like 'geomacro finds %' then narrative_en
+              else 'Geomacro finds ' || regexp_replace(narrative_en, '[.!?]+$', '')
+            end as source_title,
+            nullif(summary_en, '') as summary,
             category,
             severity,
             delta,
@@ -85,13 +108,7 @@ function readScoredRows(dbUrl) {
               partition by category
               order by coalesce(published_at, created_at) desc, created_at desc, id desc
             ) as rn
-          from public.events
-          where category in ('geopolitics','macro','rare_earth')
-            and severity is not null
-            and severity between 0 and 100
-            and classification_version = '${CLASSIFICATION_VERSION}'
-            and coalesce(published_at, created_at) <= now() + interval '5 minutes'
-            and created_at >= now() - interval '30 days'
+          from candidates
         )
         select id,source_title,summary,category,severity,delta,created_at,published_at
         from ranked
@@ -124,6 +141,9 @@ function validateRows(rows) {
     if (!id || !title || !REQUIRED_CATEGORIES.includes(category)) {
       throw new Error("PUBLIC_INTELLIGENCE_ROW_SHAPE_INVALID");
     }
+    if (!title.startsWith("Geomacro finds ")) {
+      throw new Error("PUBLIC_INTELLIGENCE_DERIVED_TITLE_INVALID");
+    }
     if (!Number.isFinite(severity) || severity < 0 || severity > 100) {
       throw new Error("PUBLIC_INTELLIGENCE_UNSCORED_ROW_REJECTED");
     }
@@ -147,8 +167,11 @@ const value = {
   schema: "geomacro.public-intelligence-live.v1",
   generated_at: generatedAt,
   source_project: PROJECT_REF,
-  scoring_policy: "canonical-classifier-scored-only",
+  scoring_policy: "canonical-classifier-scored-only-derived-english",
   classification_version: CLASSIFICATION_VERSION,
+  public_language: "en",
+  raw_source_headlines_exposed: false,
+  provider_identity_exposed: false,
   rows,
 };
 const raw = Buffer.from(JSON.stringify(value));
@@ -179,7 +202,10 @@ if (
   restored?.generated_at !== generatedAt ||
   restored?.source_project !== PROJECT_REF ||
   restored?.scoring_policy !== value.scoring_policy ||
-  restored?.classification_version !== CLASSIFICATION_VERSION
+  restored?.classification_version !== CLASSIFICATION_VERSION ||
+  restored?.public_language !== "en" ||
+  restored?.raw_source_headlines_exposed !== false ||
+  restored?.provider_identity_exposed !== false
 ) throw new Error("B2_PUBLIC_INTELLIGENCE_BINDING_INVALID");
 
 const proof = Buffer.from(JSON.stringify({
@@ -193,6 +219,11 @@ const proof = Buffer.from(JSON.stringify({
   compressed_sha256: digest,
   compressed_bytes: packed.length,
   scored_only: true,
+  public_language: "en",
+  derived_titles_only: true,
+  guardian_commercial_dependency: false,
+  raw_source_headlines_exposed: false,
+  provider_identity_exposed: false,
   full_b2_readback_verified: true,
   exact_gzip_restore_verified: true,
 }));
@@ -214,6 +245,9 @@ console.log(JSON.stringify({
   authority_serve: "backblaze-b2",
   classification_version: CLASSIFICATION_VERSION,
   scored_only: true,
+  public_language: "en",
+  derived_titles_only: true,
+  guardian_commercial_dependency: false,
   categories: REQUIRED_CATEGORIES,
   rows_published: rows.length,
   newest_row_at: Number.isFinite(newest) ? new Date(newest).toISOString() : null,
