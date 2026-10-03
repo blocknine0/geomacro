@@ -2,6 +2,13 @@ name: D1 Shadow Backfill
 
 on:
   workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/d1-shadow-backfill.yml"
+      - "scripts/ops/d1-shadow-backfill.mjs"
+      - "src/__tests__/d1-shadow-backfill-workflow-static.test.ts"
   workflow_run:
     workflows:
       - Deploy D1 Control Plane
@@ -20,6 +27,7 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       (github.event_name == 'workflow_dispatch' ||
+       github.event_name == 'push' ||
        (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
