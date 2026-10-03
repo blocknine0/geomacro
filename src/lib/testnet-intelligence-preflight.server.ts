@@ -1,6 +1,6 @@
 import { assertCommercialRiskObjectDeliverable } from "./commercial-risk-object-policy";
 import { corridorSubjectId } from "./corridor-risk-engine";
-import { readPublicGlobalRisk } from "./global-risk-read.server";
+import { readProductionGlobalRisk } from "./production-global-risk.server";
 import {
   getLatestCompatibleCorridorRiskObject,
   getLatestCompatibleCountryRiskObject,
@@ -67,7 +67,7 @@ export async function preflightTestnetIntelligenceAvailability(
   if (request.capability === "intelligence_query") return;
 
   if (request.capability === "gri_read") {
-    await readPublicGlobalRisk();
+    await readProductionGlobalRisk();
     return;
   }
 
@@ -87,7 +87,7 @@ export async function preflightTestnetIntelligenceAvailability(
     await Promise.all([
       requireStructuralAvailability(subject),
       requireVerifiedRiskObject(subject),
-      readPublicGlobalRisk(),
+      readProductionGlobalRisk(),
     ]);
   }
 }

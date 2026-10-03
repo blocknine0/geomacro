@@ -4,16 +4,24 @@ import { getLatestCompatibleCountryRiskObjectAtOrBefore } from "./risk-object-st
 import { readB2LatestCanonicalCountryGro } from "./b2-country-gro.server";
 
 /**
- * Resolve a country GRO from the authoritative Supabase store while it is
- * healthy. A verified private-B2 copy is outage continuity only: an explicit
- * healthy-store miss is never overridden by B2, and non-canonical profiles
- * never fall back across profile boundaries.
+ * Canonical commercial country-GRO reads are B2-first so customer/runtime
+ * delivery does not wait on or require Supabase. The private B2 continuity
+ * package is independently verified before it is returned.
+ *
+ * Non-canonical profiles remain on the original profile-aware store path. For
+ * canonical reads, Supabase is retained only as an explicit recovery source
+ * when the verified B2 continuity package is unavailable.
  */
 export async function resolveCountryGroAtOrBefore(
   countryIso3: string,
   atOrBefore: string,
   deliveryProfile: RiskObjectDeliveryProfile = "CANONICAL",
 ): Promise<GeomacroRiskObject | null> {
+  if (deliveryProfile === "CANONICAL") {
+    const b2 = await readB2LatestCanonicalCountryGro(countryIso3, atOrBefore);
+    if (b2) return b2;
+  }
+
   try {
     return await getLatestCompatibleCountryRiskObjectAtOrBefore(
       countryIso3,
@@ -21,7 +29,6 @@ export async function resolveCountryGroAtOrBefore(
       deliveryProfile,
     );
   } catch {
-    if (deliveryProfile !== "CANONICAL") return null;
-    return await readB2LatestCanonicalCountryGro(countryIso3, atOrBefore);
+    return null;
   }
 }
