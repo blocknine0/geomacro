@@ -7,9 +7,9 @@ import { getAppSupabase } from "./supabase-app.server";
 const EmptyInput = z.object({}).strict();
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PUBLIC_INTELLIGENCE_QUERY_TIMEOUT_MS = 3_500;
-const STRUCTURED_LIMIT = 180;
-const FALLBACK_LIMIT = 120;
 const MAX_ROWS = 300;
+const CLASSIFICATION_VERSION = "event-severity-v1.0.5";
+const DERIVED_TITLE_PREFIX = "Geomacro finds ";
 
 export const PUBLIC_INTELLIGENCE_CATEGORIES = [
   "geopolitics",
@@ -20,17 +20,6 @@ export const PUBLIC_INTELLIGENCE_CATEGORIES = [
 type PublicIntelligenceCategory =
   (typeof PUBLIC_INTELLIGENCE_CATEGORIES)[number];
 
-type VerifiedFlashRow = {
-  flash_id: string;
-  event_family_id: string | null;
-  headline: string | null;
-  published_at: string | null;
-  ingested_at: string;
-  severity: number | null;
-  verification_status: string;
-  signal_category: string;
-};
-
 export type PublicIntelligenceRow = {
   id: string;
   source_title: string | null;
@@ -40,6 +29,20 @@ export type PublicIntelligenceRow = {
   delta: number | null;
   created_at: string;
   published_at: string | null;
+};
+
+type CanonicalEventRow = {
+  id: string;
+  narrative: string | null;
+  summary: string | null;
+  category: string | null;
+  severity: number | null;
+  delta: number | null;
+  created_at: string;
+  published_at: string | null;
+  source_name: string | null;
+  source_domain: string | null;
+  classification_version: string | null;
 };
 
 function numberOrNull(value: unknown): number | null {
@@ -62,37 +65,45 @@ function rowTime(row: PublicIntelligenceRow): number {
   return Number.isFinite(created) ? created : -Infinity;
 }
 
+function normalizeWhitespace(value: unknown): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function derivedEnglishTitle(narrative: unknown): string | null {
+  const value = normalizeWhitespace(narrative).replace(/[.!?]+$/u, "");
+  if (!value) return null;
+  const title = value.toLowerCase().startsWith(DERIVED_TITLE_PREFIX.toLowerCase())
+    ? `${DERIVED_TITLE_PREFIX}${value.slice(DERIVED_TITLE_PREFIX.length).trim()}`
+    : `${DERIVED_TITLE_PREFIX}${value}`;
+  if (title.length < DERIVED_TITLE_PREFIX.length + 8 || title.length > 280) return null;
+  // Fail closed on scripts that cannot be English. Classifier prompts require
+  // English narrative/summary output, so any such script indicates raw/source
+  // wording leaked through the classifier boundary.
+  if (/\p{Script=Arabic}|\p{Script=Cyrillic}|\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul}|\p{Script=Devanagari}/u.test(title)) return null;
+  return title;
+}
+
+function isGuardian(row: Pick<CanonicalEventRow, "source_name" | "source_domain">): boolean {
+  const name = String(row.source_name ?? "").trim().toLowerCase();
+  const domain = String(row.source_domain ?? "").trim().toLowerCase().replace(/^www\./, "");
+  return name.includes("guardian") || domain === "theguardian.com";
+}
+
 function normalizeScoredRow(row: PublicIntelligenceRow): PublicIntelligenceRow | null {
   const category = normalizeCategory(row.category);
   const severity = numberOrNull(row.severity);
-  const title = String(row.source_title ?? "").trim();
-  if (!category || !title || severity === null || severity < 0 || severity > 100) return null;
-  const delta = numberOrNull(row.delta);
+  const title = normalizeWhitespace(row.source_title);
+  if (!category || !title.startsWith(DERIVED_TITLE_PREFIX) || severity === null || severity < 0 || severity > 100) {
+    return null;
+  }
   return {
     ...row,
     source_title: title,
+    summary: row.summary ? normalizeWhitespace(row.summary) : null,
     category,
     severity,
-    delta,
+    delta: numberOrNull(row.delta),
   };
-}
-
-function missingCurrentCategories(
-  rows: PublicIntelligenceRow[],
-  now: number,
-): PublicIntelligenceCategory[] {
-  const present = new Set(
-    rows
-      .map(normalizeScoredRow)
-      .filter((row): row is PublicIntelligenceRow => Boolean(row))
-      .filter((row) => {
-        const at = rowTime(row);
-        return at >= now - DAY_MS && at <= now;
-      })
-      .map((row) => normalizeCategory(row.category))
-      .filter((category): category is PublicIntelligenceCategory => Boolean(category)),
-  );
-  return PUBLIC_INTELLIGENCE_CATEGORIES.filter((category) => !present.has(category));
 }
 
 function sortAndDedupe(rows: PublicIntelligenceRow[]): PublicIntelligenceRow[] {
@@ -100,181 +111,70 @@ function sortAndDedupe(rows: PublicIntelligenceRow[]): PublicIntelligenceRow[] {
   for (const raw of rows) {
     const row = normalizeScoredRow(raw);
     if (!row) continue;
-    const key = [
-      row.category,
-      String(row.source_title ?? "").trim().toLowerCase().replace(/\s+/g, " "),
-    ].join("|");
+    const key = `${row.category}|${String(row.source_title).toLowerCase().replace(/\s+/g, " ")}`;
     if (!dedupe.has(key)) dedupe.set(key, row);
   }
-
   return [...dedupe.values()]
     .sort((a, b) => rowTime(b) - rowTime(a))
     .slice(0, MAX_ROWS);
 }
 
 /**
- * Canonical Supabase Intelligence read used by snapshot publishers/recovery.
+ * Recovery/snapshot read boundary for public Intelligence.
  *
- * This boundary is permanently scored-only. A row without a real 0..100
- * severity can never be returned, can never enter the B2 public package and
- * can never replace a previously verified scored reading. Missing current
- * categories are filled only from other verified/scored durable lanes.
+ * Only canonical classifier-scored event rows are eligible. Raw upstream
+ * headlines, publisher identity, Guardian-derived rows and unscored live
+ * observations are excluded. Public titles are reconstructed from the
+ * classifier-owned English narrative as `Geomacro finds ...`.
  */
 export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIntelligenceRow[]> {
   const supabase = getAppSupabase();
   if (!supabase) return [];
 
   const now = Date.now();
-  const nowIso = new Date(now).toISOString();
+  const nowIso = new Date(now + 5 * 60_000).toISOString();
   const since30d = new Date(now - 30 * DAY_MS).toISOString();
-  const since24h = new Date(now - DAY_MS).toISOString();
-  const failures: string[] = [];
-  const rows: PublicIntelligenceRow[] = [];
 
-  const structuredResult = await supabase
-    .from("live_structured_events")
-    .select(
-      "id,title,summary,domain,severity,confidence,first_seen_at,last_seen_at,last_observed_at,created_at,status",
-    )
-    .in("domain", [...PUBLIC_INTELLIGENCE_CATEGORIES])
-    .in("status", ["active", "monitoring"])
+  const result = await supabase
+    .from("events")
+    .select("id,narrative,summary,category,severity,delta,created_at,published_at,source_name,source_domain,classification_version")
+    .in("category", [...PUBLIC_INTELLIGENCE_CATEGORIES])
+    .eq("classification_version", CLASSIFICATION_VERSION)
     .not("severity", "is", null)
-    .gte("last_seen_at", since30d)
-    .lte("last_seen_at", nowIso)
-    .order("last_seen_at", { ascending: false })
-    .limit(STRUCTURED_LIMIT)
+    .gte("created_at", since30d)
+    .lte("created_at", nowIso)
+    .order("created_at", { ascending: false })
+    .limit(MAX_ROWS)
     .abortSignal(AbortSignal.timeout(PUBLIC_INTELLIGENCE_QUERY_TIMEOUT_MS));
 
-  if (structuredResult.error) {
-    failures.push(`structured:${structuredResult.error.code ?? "unknown"}`);
-    console.error("[public-intelligence] structured read failed", structuredResult.error);
-  } else {
-    for (const row of structuredResult.data ?? []) {
-      const category = normalizeCategory(row.domain);
-      const severity = numberOrNull(row.severity);
-      if (!category || severity === null || severity < 0 || severity > 100) continue;
-      const observedAt =
-        row.last_observed_at ??
-        row.last_seen_at ??
-        row.first_seen_at ??
-        row.created_at;
-      rows.push({
-        id: String(row.id),
-        source_title: row.title ? String(row.title) : null,
-        summary: row.summary ? String(row.summary) : null,
-        category,
-        severity,
-        delta: null,
-        created_at: String(row.created_at ?? observedAt),
-        published_at: observedAt ? String(observedAt) : null,
-      });
-    }
+  if (result.error) {
+    console.error("[public-intelligence] canonical scored recovery read failed", result.error);
+    return [];
   }
 
-  let missing = missingCurrentCategories(rows, now);
-  if (rows.length > 0 && missing.length === 0) return sortAndDedupe(rows);
-
-  if (missing.length > 0) {
-    const familyResult = await supabase
-      .from("live_flash_event_families")
-      .select("family_id,signal_category,canonical_headline,last_seen_at,current_status")
-      .eq("current_status", "ACTIVE")
-      .in("signal_category", missing)
-      .gte("last_seen_at", since24h)
-      .lte("last_seen_at", nowIso)
-      .order("last_seen_at", { ascending: false })
-      .limit(FALLBACK_LIMIT)
-      .abortSignal(AbortSignal.timeout(PUBLIC_INTELLIGENCE_QUERY_TIMEOUT_MS));
-
-    if (familyResult.error) {
-      failures.push(`family:${familyResult.error.code ?? "unknown"}`);
-      console.error("[public-intelligence] live-family read failed", familyResult.error);
-    } else {
-      const familyIds = (familyResult.data ?? []).map((row) => String(row.family_id));
-      if (familyIds.length > 0) {
-        const flashResult = await supabase
-          .from("live_flash_events")
-          .select("flash_id,event_family_id,headline,published_at,ingested_at,severity,verification_status,signal_category")
-          .in("event_family_id", familyIds)
-          .eq("verification_status", "VERIFIED")
-          .in("signal_category", missing)
-          .not("severity", "is", null)
-          .gte("ingested_at", since24h)
-          .order("ingested_at", { ascending: false })
-          .limit(FALLBACK_LIMIT * 2)
-          .abortSignal(AbortSignal.timeout(PUBLIC_INTELLIGENCE_QUERY_TIMEOUT_MS));
-
-        if (flashResult.error) {
-          failures.push(`flash:${flashResult.error.code ?? "unknown"}`);
-          console.error("[public-intelligence] verified flash read failed", flashResult.error);
-        } else {
-          const flashByFamily = new Map<string, VerifiedFlashRow>();
-          for (const flash of (flashResult.data ?? []) as VerifiedFlashRow[]) {
-            const familyId = String(flash.event_family_id ?? "");
-            const severity = numberOrNull(flash.severity);
-            if (
-              familyId &&
-              severity !== null &&
-              severity >= 0 &&
-              severity <= 100 &&
-              !flashByFamily.has(familyId)
-            ) flashByFamily.set(familyId, flash);
-          }
-          for (const family of familyResult.data ?? []) {
-            const category = normalizeCategory(family.signal_category);
-            const flash = flashByFamily.get(String(family.family_id));
-            const severity = numberOrNull(flash?.severity);
-            if (!category || !flash || severity === null || severity < 0 || severity > 100) continue;
-            const observedAt = flash.published_at ?? flash.ingested_at ?? family.last_seen_at;
-            rows.push({
-              id: String(flash.flash_id),
-              source_title: String(family.canonical_headline || flash.headline || "Verified intelligence"),
-              summary: null,
-              category,
-              severity,
-              delta: null,
-              created_at: String(flash.ingested_at ?? observedAt),
-              published_at: observedAt ? String(observedAt) : null,
-            });
-          }
-        }
-      }
-    }
+  const rows: PublicIntelligenceRow[] = [];
+  for (const raw of (result.data ?? []) as CanonicalEventRow[]) {
+    if (raw.classification_version !== CLASSIFICATION_VERSION || isGuardian(raw)) continue;
+    const category = normalizeCategory(raw.category);
+    const severity = numberOrNull(raw.severity);
+    const title = derivedEnglishTitle(raw.narrative);
+    if (!category || severity === null || severity < 0 || severity > 100 || !title) continue;
+    rows.push({
+      id: String(raw.id),
+      source_title: title,
+      summary: raw.summary ? normalizeWhitespace(raw.summary) : null,
+      category,
+      severity,
+      delta: numberOrNull(raw.delta),
+      created_at: String(raw.created_at),
+      published_at: raw.published_at ? String(raw.published_at) : null,
+    });
   }
 
-  missing = missingCurrentCategories(rows, now);
-  if (missing.length > 0) {
-    const legacyResult = await supabase
-      .from("events")
-      .select("id,source_title,summary,category,severity,delta,created_at,published_at")
-      .in("category", missing)
-      .not("severity", "is", null)
-      .gte("created_at", since30d)
-      .lte("created_at", nowIso)
-      .order("created_at", { ascending: false })
-      .limit(FALLBACK_LIMIT)
-      .abortSignal(AbortSignal.timeout(PUBLIC_INTELLIGENCE_QUERY_TIMEOUT_MS));
-
-    if (legacyResult.error) {
-      failures.push(`legacy:${legacyResult.error.code ?? "unknown"}`);
-      console.error("[public-intelligence] legacy read failed", legacyResult.error);
-    } else {
-      rows.push(...((legacyResult.data ?? []) as PublicIntelligenceRow[]));
-    }
-  }
-
-  const result = sortAndDedupe(rows);
-  if (result.length === 0 && failures.length > 0) {
-    console.error("[public-intelligence] all scored read paths degraded", failures.join(","));
-  }
-  return result;
+  return sortAndDedupe(rows);
 }
 
-/**
- * Public read boundary: private B2 snapshot first. Missing B2 credentials,
- * timeout, stale/corrupt snapshot, or any B2 error fails soft to the bounded
- * scored-only recovery path without changing the public response contract.
- */
+/** Public serving is B2-first; bounded Supabase recovery is scored/derived only. */
 export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRow[]> {
   const b2Rows = await readB2PublicIntelligence();
   if (b2Rows?.length) return sortAndDedupe(b2Rows);
