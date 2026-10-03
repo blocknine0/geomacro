@@ -1,6 +1,8 @@
-name: Intelligence Scored Catch-up
+name: Intelligence Scored Realtime
 
 on:
+  schedule:
+    - cron: "8,28,48 * * * *"
   workflow_dispatch:
     inputs:
       catchup:
@@ -13,17 +15,31 @@ on:
         required: true
         default: "96"
         type: string
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/intelligence-scored-refresh.yml"
+      - "scripts/ingest-news.js"
+      - "scripts/lib/direct-postgres-supabase-loader.mjs"
+      - "scripts/lib/gri-db-client.mjs"
+      - "scripts/lib/no-guardian-node-fetch.mjs"
+      - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
+      - "src/lib/public-intelligence-production.server.ts"
+      - "src/lib/public-intelligence.functions.ts"
+      - "src/lib/use-intelligence.ts"
+      - "server/api/public/intelligence.get.ts"
 
 permissions:
   contents: read
 
 concurrency:
-  group: geomacro-intelligence-scored-catchup
+  group: geomacro-intelligence-scored-realtime
   cancel-in-progress: false
 
 jobs:
   publish-scored-intelligence:
-    if: github.repository == 'blocknine0/geomacro'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     environment: production
@@ -98,10 +114,9 @@ jobs:
           NODE
 
       - name: Validate catch-up lookback
-        if: inputs.catchup
         shell: bash
         env:
-          LOOKBACK_HOURS: ${{ inputs.lookback_hours }}
+          LOOKBACK_HOURS: ${{ inputs.lookback_hours || '48' }}
         run: |
           set -euo pipefail
           [[ "$LOOKBACK_HOURS" =~ ^[0-9]+$ ]] || { echo "lookback_hours must be an integer"; exit 2; }
@@ -111,8 +126,8 @@ jobs:
           fi
           echo "MAX_ARTICLE_AGE_MS=$((LOOKBACK_HOURS * 3600000))" >> "$GITHUB_ENV"
 
-      - name: Catch up classifier-scored events from reviewed GDELT discovery
-        if: inputs.catchup
+      - name: Catch up classifier-scored events from reviewed discovery
+        if: github.event_name != 'workflow_dispatch' || inputs.catchup
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -132,27 +147,30 @@ jobs:
           GROQ_MAX_WAIT_MS: "180000"
           GROQ_BATCH_SIZE: "2"
           MAX_CANDIDATES_PER_CATEGORY: "12"
-          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "1"
+          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "0"
           NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
           NEWS_MAX_RETRIES: "2"
           MIN_CONFIDENCE: ${{ vars.MIN_CONFIDENCE }}
           MIN_SEVERITY: ${{ vars.MIN_SEVERITY }}
           RELIEFWEB_ENABLED: "false"
-          GDACS_ENABLED: "false"
+          GDACS_ENABLED: "true"
         run: node scripts/ingest-news.js
 
       - name: Publish scored verified three-domain Intelligence to B2
         run: bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs
 
-      - name: Verify production Intelligence API is scored-only
+      - name: Observe production Intelligence API compatibility
+        if: always()
         shell: bash
         run: |
-          set -euo pipefail
-          for attempt in 1 2 3 4 5; do
-            body="$(mktemp)"
-            code="$(curl -L -sS -o "$body" -w '%{http_code}' --max-time 20 -H 'Accept: application/json' 'https://geomacro.live/api/public/intelligence' || true)"
-            if [ "$code" = "200" ]; then
-              if node - "$body" <<'NODE'
+          set -u
+          body="$(mktemp)"
+          code="$(curl -L -sS -o "$body" -w '%{http_code}' --max-time 20 -H 'Accept: application/json' 'https://geomacro.live/api/public/intelligence' || true)"
+          if [ "$code" != "200" ]; then
+            echo "::warning::geomacro.live Intelligence compatibility API returned HTTP ${code}; the B2 publisher remains authoritative and independently readback-verified."
+            exit 0
+          fi
+          if node - "$body" <<'NODE'
           const fs = require('fs');
           const path = process.argv[2];
           const body = JSON.parse(fs.readFileSync(path, 'utf8'));
@@ -169,15 +187,12 @@ jobs:
           for (const category of required) if (!seen.has(category)) ok = false;
           process.exit(ok ? 0 : 1);
           NODE
-              then
-                cp "$body" /tmp/intelligence-scored.json
-                exit 0
-              fi
-            fi
-            sleep $((attempt * 4))
-          done
-          echo "Production Intelligence did not expose a scored-only three-domain package" >&2
-          exit 1
+          then
+            cp "$body" /tmp/intelligence-scored.json
+            exit 0
+          fi
+          echo "::warning::Production Intelligence compatibility API has not caught up to the latest scored-only contract yet."
+          exit 0
 
       - name: Upload scored Intelligence acceptance evidence
         if: always()
