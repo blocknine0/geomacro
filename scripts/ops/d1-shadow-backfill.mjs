@@ -52,8 +52,7 @@ function status(value, label) {
   return out;
 }
 async function psqlJson(sql) {
-  const copy = `COPY (${sql}) TO STDOUT`;
-  const { stdout } = await execFileAsync("psql", [DB_URL, "-X", "-qAt", "-v", "ON_ERROR_STOP=1", "-c", copy], { maxBuffer: 32 * 1024 * 1024 });
+  const { stdout } = await execFileAsync("psql", [DB_URL, "-X", "-qAt", "-v", "ON_ERROR_STOP=1", "-c", sql], { maxBuffer: 32 * 1024 * 1024 });
   return stdout.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
 }
 async function wrangler(args) {
@@ -100,7 +99,7 @@ const sourceRaw = await psqlJson(`
       )) AS metadata
     FROM public.live_source_certification_records c
     ORDER BY c.source_id
-  ) x
+  ) x;
 `);
 
 const matrixRaw = await psqlJson(`
@@ -133,7 +132,7 @@ const matrixRaw = await psqlJson(`
       )) AS metadata
     FROM public.live_country_category_coverage_matrix m
     ORDER BY m.iso3, m.domain
-  ) x
+  ) x;
 `);
 
 const statusRows = await psqlJson(`
@@ -143,7 +142,7 @@ const statusRows = await psqlJson(`
            unavailable_rows::int, matrix_contract_complete
     FROM public.live_country_category_coverage_matrix_status
     LIMIT 1
-  ) x
+  ) x;
 `);
 if (statusRows.length !== 1) throw new Error("MATRIX_STATUS_MISSING");
 const matrixStatus = statusRows[0];
@@ -191,20 +190,19 @@ if (matrix.length !== Number(matrixStatus.expected_matrix_rows)) throw new Error
 const sourceChecksum = checksum(sources);
 const matrixChecksum = checksum(matrix);
 const now = new Date().toISOString();
-const statements = ["BEGIN;"];
+const statements = [];
 for (const row of sources) {
   statements.push(`INSERT INTO source_state (source_key,enabled,certification_status,rights_status,endpoint_status,schema_status,freshness_status,provenance_status,independence_status,runtime_status,fallback_status,last_checked_at,next_check_at,metadata_json,updated_at) VALUES (${sqlText(row.source_key)},${boolInt(row.enabled)},${sqlText(row.certification_status)},${sqlText(row.rights_status)},${sqlText(row.endpoint_status)},${sqlText(row.schema_status)},${sqlText(row.freshness_status)},${sqlText(row.provenance_status)},${sqlText(row.independence_status)},${sqlText(row.runtime_status)},${sqlText(row.fallback_status)},${sqlText(row.last_checked_at)},NULL,${sqlText(JSON.stringify(row.metadata))},${sqlText(now)}) ON CONFLICT(source_key) DO UPDATE SET enabled=excluded.enabled,certification_status=excluded.certification_status,rights_status=excluded.rights_status,endpoint_status=excluded.endpoint_status,schema_status=excluded.schema_status,freshness_status=excluded.freshness_status,provenance_status=excluded.provenance_status,independence_status=excluded.independence_status,runtime_status=excluded.runtime_status,fallback_status=excluded.fallback_status,last_checked_at=excluded.last_checked_at,next_check_at=excluded.next_check_at,metadata_json=excluded.metadata_json,updated_at=excluded.updated_at;`);
 }
 for (const row of matrix) {
   statements.push(`INSERT INTO country_domain_state (country_code,domain,readiness_status,certified_source_count,review_source_count,unavailable_source_count,last_verified_at,metadata_json,updated_at) VALUES (${sqlText(row.country_code)},${sqlText(row.domain)},${sqlText(row.readiness_status)},${row.certified_source_count},${row.review_source_count},${row.unavailable_source_count},${sqlText(row.last_verified_at)},${sqlText(JSON.stringify(row.metadata))},${sqlText(now)}) ON CONFLICT(country_code,domain) DO UPDATE SET readiness_status=excluded.readiness_status,certified_source_count=excluded.certified_source_count,review_source_count=excluded.review_source_count,unavailable_source_count=excluded.unavailable_source_count,last_verified_at=excluded.last_verified_at,metadata_json=excluded.metadata_json,updated_at=excluded.updated_at;`);
 }
-statements.push("COMMIT;");
 const sqlPath = path.join(OUT_DIR, "shadow-backfill.sql");
 await fs.writeFile(sqlPath, statements.join("\n"));
 
-await wrangler(["d1", "execute", "DB", "--remote", "--config", D1_CONFIG, "--file", sqlPath]);
+await wrangler(["d1", "execute", "DB", "--remote", "--yes", "--config", D1_CONFIG, "--file", sqlPath]);
 
-const sourceReadback = parseD1Json(await wrangler(["d1", "execute", "DB", "--remote", "--config", D1_CONFIG, "--json", "--command", "SELECT source_key,enabled,certification_status,rights_status,endpoint_status,schema_status,freshness_status,provenance_status,independence_status,runtime_status,fallback_status,last_checked_at,next_check_at,metadata_json FROM source_state ORDER BY source_key;"])).map((row) => ({
+const sourceReadback = parseD1Json(await wrangler(["d1", "execute", "DB", "--remote", "--json", "--config", D1_CONFIG, "--command", "SELECT source_key,enabled,certification_status,rights_status,endpoint_status,schema_status,freshness_status,provenance_status,independence_status,runtime_status,fallback_status,last_checked_at,next_check_at,metadata_json FROM source_state ORDER BY source_key;"])).map((row) => ({
   source_key: row.source_key,
   enabled: Number(row.enabled) === 1,
   certification_status: row.certification_status,
@@ -220,7 +218,7 @@ const sourceReadback = parseD1Json(await wrangler(["d1", "execute", "DB", "--rem
   next_check_at: row.next_check_at,
   metadata: JSON.parse(row.metadata_json || "{}"),
 }));
-const matrixReadback = parseD1Json(await wrangler(["d1", "execute", "DB", "--remote", "--config", D1_CONFIG, "--json", "--command", "SELECT country_code,domain,readiness_status,certified_source_count,review_source_count,unavailable_source_count,last_verified_at,metadata_json FROM country_domain_state ORDER BY country_code,domain;"])).map((row) => ({
+const matrixReadback = parseD1Json(await wrangler(["d1", "execute", "DB", "--remote", "--json", "--config", D1_CONFIG, "--command", "SELECT country_code,domain,readiness_status,certified_source_count,review_source_count,unavailable_source_count,last_verified_at,metadata_json FROM country_domain_state ORDER BY country_code,domain;"])).map((row) => ({
   country_code: row.country_code,
   domain: row.domain,
   readiness_status: row.readiness_status,
@@ -244,7 +242,7 @@ INSERT INTO migration_cursor(dataset,source_system,cursor,rows_migrated,source_c
 VALUES ('country_domain_state','supabase','full',${matrix.length},${sqlText(matrixChecksum)},${sqlText(targetMatrixChecksum)},1,${sqlText(now)})
 ON CONFLICT(dataset) DO UPDATE SET source_system=excluded.source_system,cursor=excluded.cursor,rows_migrated=excluded.rows_migrated,source_checksum=excluded.source_checksum,target_checksum=excluded.target_checksum,verified=1,updated_at=excluded.updated_at;
 `;
-await wrangler(["d1", "execute", "DB", "--remote", "--config", D1_CONFIG, "--command", cursorSql]);
+await wrangler(["d1", "execute", "DB", "--remote", "--yes", "--config", D1_CONFIG, "--command", cursorSql]);
 
 const summary = {
   ok: true,
