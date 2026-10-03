@@ -10,6 +10,14 @@ describe("D1 shadow backfill workflow", () => {
     expect(workflow).not.toContain("grep -q '\"version\":1'");
   });
 
+  it("self-triggers parity after its migration implementation changes on canonical main", () => {
+    expect(workflow).toContain("push:");
+    expect(workflow).toContain('branches:\n      - main');
+    expect(workflow).toContain('".github/workflows/d1-shadow-backfill.yml"');
+    expect(workflow).toContain('"scripts/ops/d1-shadow-backfill.mjs"');
+    expect(workflow).toContain("github.event_name == 'push'");
+  });
+
   it("requires verified parity evidence only after the backfill succeeds", () => {
     expect(workflow).toContain("Run checksum-verified shadow backfill");
     expect(workflow).toContain("Require parity evidence before upload");
