@@ -1,10 +1,16 @@
 const DEFAULT_TABLES = {
-  macro: "commercial_macro_observations",
+  macro: "commercial_historical_macro_observations",
   geopolitical: "commercial_structural_geopolitical_observations",
   geopoliticalCountryLatest: "commercial_structural_country_latest",
   geopoliticalProfiles: "commercial_structural_country_profiles",
   geopoliticalCorridors: "commercial_structural_corridor_latest",
   rareEarth: "rare_earth_canonical_observations"
+};
+
+const DEFAULT_ORDERS = {
+  macro: "observation_year.desc,retrieved_at.desc",
+  geopolitical: "observed_at.desc.nullslast,retrieved_at.desc",
+  rareEarth: "observation_year.desc,last_seen_at.desc"
 };
 
 function requireEnv(name) {
@@ -45,6 +51,7 @@ export async function fetchHistoricalMacro(options = {}) {
   return fetchHistoricalEvidence({
     table: options.table ?? DEFAULT_TABLES.macro,
     source_id: "geomacro_historical_macro",
+    order: options.order ?? DEFAULT_ORDERS.macro,
     ...options
   });
 }
@@ -53,6 +60,7 @@ export async function fetchHistoricalGeopolitics(options = {}) {
   return fetchHistoricalEvidence({
     table: options.table ?? DEFAULT_TABLES.geopoliticalCountryLatest,
     source_id: "geomacro_historical_geopolitics",
+    order: options.order ?? DEFAULT_ORDERS.geopolitical,
     ...options
   });
 }
@@ -61,6 +69,7 @@ export async function fetchHistoricalRareEarths(options = {}) {
   return fetchHistoricalEvidence({
     table: options.table ?? DEFAULT_TABLES.rareEarth,
     source_id: "geomacro_historical_rare_earths",
+    order: options.order ?? DEFAULT_ORDERS.rareEarth,
     ...options
   });
 }
@@ -71,7 +80,7 @@ export async function fetchHistoricalEvidence({
   select="*",
   filters={},
   limit=1000,
-  order="observed_at.desc"
+  order
 } = {}) {
   const rows = await queryTable({table, select, filters, limit, order});
   return {
@@ -101,7 +110,8 @@ export const historicalDataSourcePolicy = {
     "browser_exposure_of_historical_service_role",
     "silent_zero_fill",
     "automatic_GRI_GRO_score_changes",
-    "unversioned_methodology_changes"
+    "unversioned_methodology_changes",
+    "rare_earth_source_level_redistribution_without_rights_gate"
   ],
   source_terms_review_required: true
 };

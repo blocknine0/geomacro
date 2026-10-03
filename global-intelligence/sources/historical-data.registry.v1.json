@@ -1,7 +1,7 @@
 {
   "source_id":"geomacro_historical_data",
   "repository":"blocknine0/geomacro-historical-data",
-  "repository_main_commit":"88c93f98b6cac5d5596f623d3f846b529d54d289",
+  "repository_main_commit":"aaf70e319edbb7e74e194a92372ec498b6825261",
   "repository_contract":"docs/HISTORICAL_INTEGRATION_CONTRACT.md",
   "repository_consumer_manifest":"config/geomacro_main_consumer.v1.json",
   "consumer_contract":"config/historical-data-producer.v1.json",
@@ -14,7 +14,12 @@
     "geopolitics_coverage":"commercial_structural_country_coverage_latest",
     "geopolitics_corridors":"commercial_structural_corridor_latest",
     "rare_earths":"rare_earth_canonical_observations",
-    "macro":"commercial_macro_observations"
+    "macro":"commercial_historical_macro_observations"
+  },
+  "interface_policies":{
+    "geopolitics":"COMMERCIAL_CURATED_EVIDENCE_ONLY",
+    "macro":"COMMERCIAL_APPROVED_ROWS_ONLY",
+    "rare_earths":"PRIVATE_INTERNAL_EVIDENCE_ONLY_SOURCE_RIGHTS_GATE_REQUIRED"
   },
   "runtime_path":{
     "primary":"server-only curated historical Supabase views",
