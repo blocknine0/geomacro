@@ -78,19 +78,23 @@ describe("separate public risk indices contract", () => {
     expect(edge).toContain("source_url: null");
   });
 
-  it("uses B2 as the customer-facing production authority through explicit APIs", () => {
+  it("uses the verified B2 Cloudflare edge as the Lovable customer-facing authority", () => {
     const publicRisk = read("src/lib/public-risk.functions.ts");
     const publicIndices = read("server/api/public/risk-indices.get.ts");
     const publicGlobalRisk = read("server/api/public/global-risk.get.ts");
+    const edgeReader = read("src/lib/global-risk-edge.server.ts");
     const indicesHook = read("src/lib/use-risk-indices.ts");
     const globalRiskHook = read("src/lib/use-global-risk.ts");
 
     expect(publicRisk).toContain("readB2PublicRisk");
     expect(publicRisk).not.toContain("readPublicGlobalRiskFromEdge");
-    expect(publicIndices).toContain("readB2PublicRisk");
+    expect(edgeReader).toContain("backblaze-b2-verified-edge");
+    expect(publicIndices).toContain("readGlobalRiskEdge");
     expect(publicIndices).toContain("riskIndicesFromGlobalRisk");
-    expect(publicGlobalRisk).toContain("readB2PublicRisk");
+    expect(publicIndices).not.toContain("readB2PublicRisk");
+    expect(publicGlobalRisk).toContain("readGlobalRiskEdge");
     expect(publicGlobalRisk).toContain("validateGlobalRiskContinuity");
+    expect(publicGlobalRisk).not.toContain("readB2PublicRisk");
     expect(indicesHook).toContain('/api/public/risk-indices');
     expect(globalRiskHook).toContain('/api/public/global-risk');
     expect(globalRiskHook).not.toContain("useServerFn");
