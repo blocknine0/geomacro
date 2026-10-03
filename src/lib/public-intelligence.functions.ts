@@ -40,8 +40,6 @@ type CanonicalEventRow = {
   delta: number | null;
   created_at: string;
   published_at: string | null;
-  source_name: string | null;
-  source_domain: string | null;
   classification_version: string | null;
 };
 
@@ -76,17 +74,8 @@ function derivedEnglishTitle(narrative: unknown): string | null {
     ? `${DERIVED_TITLE_PREFIX}${value.slice(DERIVED_TITLE_PREFIX.length).trim()}`
     : `${DERIVED_TITLE_PREFIX}${value}`;
   if (title.length < DERIVED_TITLE_PREFIX.length + 8 || title.length > 280) return null;
-  // Fail closed on scripts that cannot be English. Classifier prompts require
-  // English narrative/summary output, so any such script indicates raw/source
-  // wording leaked through the classifier boundary.
   if (/\p{Script=Arabic}|\p{Script=Cyrillic}|\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul}|\p{Script=Devanagari}/u.test(title)) return null;
   return title;
-}
-
-function isGuardian(row: Pick<CanonicalEventRow, "source_name" | "source_domain">): boolean {
-  const name = String(row.source_name ?? "").trim().toLowerCase();
-  const domain = String(row.source_domain ?? "").trim().toLowerCase().replace(/^www\./, "");
-  return name.includes("guardian") || domain === "theguardian.com";
 }
 
 function normalizeScoredRow(row: PublicIntelligenceRow): PublicIntelligenceRow | null {
@@ -124,8 +113,9 @@ function sortAndDedupe(rows: PublicIntelligenceRow[]): PublicIntelligenceRow[] {
  *
  * Only canonical classifier-scored event rows are eligible. Raw upstream
  * headlines, publisher identity, Guardian-derived rows and unscored live
- * observations are excluded. Public titles are reconstructed from the
- * classifier-owned English narrative as `Geomacro finds ...`.
+ * observations are excluded. Source identity is filtered in the database and
+ * is never selected into this public-facing process. Public titles are rebuilt
+ * from the classifier-owned English narrative as `Geomacro finds ...`.
  */
 export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIntelligenceRow[]> {
   const supabase = getAppSupabase();
@@ -137,10 +127,12 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
 
   const result = await supabase
     .from("events")
-    .select("id,narrative,summary,category,severity,delta,created_at,published_at,source_name,source_domain,classification_version")
+    .select("id,narrative,summary,category,severity,delta,created_at,published_at,classification_version")
     .in("category", [...PUBLIC_INTELLIGENCE_CATEGORIES])
     .eq("classification_version", CLASSIFICATION_VERSION)
     .not("severity", "is", null)
+    .or("source_name.is.null,source_name.not.ilike.%guardian%")
+    .or("source_domain.is.null,source_domain.not.in.(theguardian.com,www.theguardian.com)")
     .gte("created_at", since30d)
     .lte("created_at", nowIso)
     .order("created_at", { ascending: false })
@@ -154,7 +146,7 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
 
   const rows: PublicIntelligenceRow[] = [];
   for (const raw of (result.data ?? []) as CanonicalEventRow[]) {
-    if (raw.classification_version !== CLASSIFICATION_VERSION || isGuardian(raw)) continue;
+    if (raw.classification_version !== CLASSIFICATION_VERSION) continue;
     const category = normalizeCategory(raw.category);
     const severity = numberOrNull(raw.severity);
     const title = derivedEnglishTitle(raw.narrative);
