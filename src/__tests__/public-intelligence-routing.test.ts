@@ -38,8 +38,6 @@ describe("public intelligence routing contract", () => {
     expect(eventRoute).toContain("EventDetailWorkspace");
     expect(eventWorkspace).toContain("No wallet is required to read this page");
     expect(eventWorkspace).toContain("Event severity is not a market probability");
-    expect(eventWorkspace).toContain("Open Risk Indices");
-    expect(eventWorkspace).not.toContain("Open the Global Risk Index");
   });
 
   it("keeps research and event reading out of wallet execution context", () => {
@@ -54,26 +52,24 @@ describe("public intelligence routing contract", () => {
     expect(walletRouteBlock).not.toContain("/tx-history");
   });
 
-  it("keeps separate risk-index and Ask Geomacro truth boundaries explicit while the homepage stays lightweight", () => {
-    const riskRoute = read("src/routes/global-risk.tsx");
-    const riskWorkspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
+  it("restores the historical Global Risk workspace without removing separate risk indices", () => {
+    const globalRiskRoute = read("src/routes/global-risk.tsx");
+    const globalRiskWorkspace = read("src/components/gri/global-risk-workspace.tsx");
+    const riskIndicesRoute = read("src/routes/risk-indices.tsx");
+    const riskIndicesWorkspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
     const home = read("src/components/home/commercial-home.tsx");
-    const homeRisk = read("src/components/home/gri-section.tsx");
     const askEngine = read("src/lib/ask-intelligence.server.ts");
     const askWorkspace = read("src/components/ask/ask-workspace.tsx");
 
-    expect(riskRoute).toContain("RiskIndicesWorkspace");
-    expect(riskWorkspace).toContain("Three risks. Three separate indices.");
-    expect(riskWorkspace).toContain("not market probabilities");
-    expect(riskWorkspace).toContain("does not substitute zero or a synthetic estimate");
+    expect(globalRiskRoute).toContain("GlobalRiskWorkspace");
+    expect(globalRiskWorkspace).toContain("How global risk is moving");
+    expect(globalRiskWorkspace).toContain('const TIMEFRAMES: Timeframe[] = ["24H", "7D", "30D"]');
+    expect(riskIndicesRoute).toContain("RiskIndicesWorkspace");
+    expect(riskIndicesWorkspace).toContain("Three risks. Three separate indices.");
+    expect(riskIndicesWorkspace).toContain("does not substitute zero or a synthetic estimate");
     expect(home).toContain('to="/global-risk"');
-    expect(home).not.toContain("RiskIndicesSection");
-    expect(homeRisk).toContain("Lightweight homepage introduction");
-    expect(homeRisk).toContain("three public Risk Indices");
     expect(askEngine).toContain("Current public-web grounding takes precedence for user questions");
     expect(askWorkspace).toContain("Raw source content, provider details and internal retrieval payloads are not exposed in the answer.");
-    expect(askWorkspace).toContain("Current verified Risk Indices context");
-    expect(askWorkspace).not.toContain("Open Global Risk Index");
   });
 
   it("keeps the historical v1.2 three-domain calculation separate from broader pipeline streams", () => {
@@ -82,7 +78,6 @@ describe("public intelligence routing contract", () => {
 
     expect(pipeline).toContain("versioned GRI v1.2 three-domain methodology");
     expect(pipeline).toContain("geopolitics, macro and rare-earth / critical-mineral risk");
-    expect(pipeline).toContain("public product presents three separate Risk Indices");
     expect(architecture).toContain("Historical GRI v1.2 remains immutable audit evidence");
     expect(architecture).toContain("three independently presented indices");
   });

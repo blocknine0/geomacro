@@ -1,5 +1,6 @@
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 import type { GlobalRisk } from "./global-risk.types";
+import { validateGlobalRiskContinuity } from "./global-risk-continuity";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
@@ -24,6 +25,17 @@ const decoder = new TextDecoder();
 
 export const B2_PUBLIC_INTELLIGENCE_KEY =
   "geomacro-evidence/v1/live/public-intelligence/latest.json.gz";
+/**
+ * Dedicated canonical Global Risk continuity object. Unlike the legacy
+ * risk-indices object below, this key is not coupled to the four-object live
+ * snapshot proof and can therefore be promoted independently from direct
+ * Postgres during a Supabase REST egress restriction.
+ */
+export const B2_PUBLIC_GLOBAL_RISK_KEY =
+  "geomacro-evidence/v1/live/global-risk/latest.json.gz";
+export const B2_PUBLIC_GLOBAL_RISK_PROOF_KEY =
+  "geomacro-evidence/v1/live/global-risk/latest-proof.json";
+/** Legacy compatibility key retained until every consumer has migrated. */
 export const B2_PUBLIC_RISK_KEY =
   "geomacro-evidence/v1/live/risk-indices/latest.json.gz";
 export const B2_SOURCE_NETWORK_STATUS_KEY =
@@ -220,21 +232,41 @@ export async function readB2PublicIntelligence(): Promise<PublicIntelligenceRow[
   return payload.rows;
 }
 
-export async function readB2PublicRisk(): Promise<GlobalRisk | null> {
-  const payload = await readJsonGzip<{
-    schema?: string;
-    generated_at?: string;
-    data?: GlobalRisk;
-  }>(B2_PUBLIC_RISK_KEY);
+function validatedGlobalRiskPayload(
+  payload: { schema?: string; generated_at?: string; data?: GlobalRisk } | null,
+  expectedSchema: string,
+): GlobalRisk | null {
   if (
-    payload?.schema !== "geomacro.public-risk-live.v1" ||
+    payload?.schema !== expectedSchema ||
     !recentEnough(payload.generated_at, PUBLIC_RISK_FALLBACK_MAX_AGE_MS) ||
     !payload.data ||
-    payload.data.verificationStatus !== "verified" ||
-    !/^[a-f0-9]{64}$/.test(String(payload.data.proofHash ?? "")) ||
-    !/^[a-f0-9]{64}$/.test(String(payload.data.calculationHash ?? ""))
+    !validateGlobalRiskContinuity(payload.data).ok
   ) return null;
   return payload.data;
+}
+
+export async function readB2PublicRisk(): Promise<GlobalRisk | null> {
+  const dedicated = validatedGlobalRiskPayload(
+    await readJsonGzip<{
+      schema?: string;
+      generated_at?: string;
+      data?: GlobalRisk;
+    }>(B2_PUBLIC_GLOBAL_RISK_KEY),
+    "geomacro.public-global-risk-live.v1",
+  );
+  if (dedicated) return dedicated;
+
+  // Backward-compatible fail-closed fallback while the dedicated object is
+  // being rolled out. This legacy object is accepted only if its historical
+  // continuity still passes the same validator.
+  return validatedGlobalRiskPayload(
+    await readJsonGzip<{
+      schema?: string;
+      generated_at?: string;
+      data?: GlobalRisk;
+    }>(B2_PUBLIC_RISK_KEY),
+    "geomacro.public-risk-live.v1",
+  );
 }
 
 export async function readB2SourceNetworkStatus(): Promise<B2SourceNetworkStatus | null> {

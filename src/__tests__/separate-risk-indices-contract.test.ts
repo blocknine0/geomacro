@@ -72,18 +72,23 @@ describe("separate public risk indices contract", () => {
     expect(edge).toContain("source_url: null");
   });
 
-  it("uses B2 as the customer-facing production authority through an explicit public API", () => {
+  it("uses B2 as the customer-facing production authority through explicit APIs", () => {
     const publicRisk = read("src/lib/public-risk.functions.ts");
     const publicIndices = read("server/api/public/risk-indices.get.ts");
-    const hook = read("src/lib/use-risk-indices.ts");
+    const publicGlobalRisk = read("server/api/public/global-risk.get.ts");
+    const indicesHook = read("src/lib/use-risk-indices.ts");
+    const globalRiskHook = read("src/lib/use-global-risk.ts");
 
     expect(publicRisk).toContain("readB2PublicRisk");
     expect(publicRisk).not.toContain("readPublicGlobalRiskFromEdge");
     expect(publicIndices).toContain("readB2PublicRisk");
     expect(publicIndices).toContain("riskIndicesFromGlobalRisk");
-    expect(hook).toContain('/api/public/risk-indices');
-    expect(hook).not.toContain("useServerFn");
-    expect(hook).not.toContain("supabase.co");
+    expect(publicGlobalRisk).toContain("readB2PublicRisk");
+    expect(publicGlobalRisk).toContain("validateGlobalRiskContinuity");
+    expect(indicesHook).toContain('/api/public/risk-indices');
+    expect(globalRiskHook).toContain('/api/public/global-risk');
+    expect(globalRiskHook).not.toContain("useServerFn");
+    expect(globalRiskHook).not.toContain("supabase.co");
   });
 
   it("keeps the legacy Supabase edge manual recovery only", () => {
@@ -99,24 +104,19 @@ describe("separate public risk indices contract", () => {
     expect(workflow).not.toContain("supabase migration");
   });
 
-  it("keeps /global-risk as the detailed three-index workspace while the homepage links to it without rendering live index data", () => {
-    const route = read("src/routes/global-risk.tsx");
-    const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
-    const commercialHome = read("src/components/home/commercial-home.tsx");
-    const homeSection = read("src/components/home/gri-section.tsx");
+  it("restores /global-risk historical continuity while preserving the three-index workspace separately", () => {
+    const globalRiskRoute = read("src/routes/global-risk.tsx");
+    const globalRiskWorkspace = read("src/components/gri/global-risk-workspace.tsx");
+    const riskIndicesRoute = read("src/routes/risk-indices.tsx");
+    const riskIndicesWorkspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
 
-    expect(route).toContain("RiskIndicesWorkspace");
-    expect(route).toContain("Geopolitical, Macro & Critical Minerals");
-    expect(workspace).toContain("Three risks. Three separate indices.");
-    expect(workspace).toContain("instead of being compressed into one combined headline score");
-    expect(commercialHome).toContain('to="/global-risk"');
-    expect(commercialHome).toContain("View Risk Indices");
-    expect(commercialHome).toContain("Critical minerals & rare earths");
-    expect(commercialHome).not.toContain("View Global Risk Index");
-    expect(commercialHome).not.toContain("useGlobalRisk");
-    expect(commercialHome).not.toContain("RiskIndicesSection");
-    expect(homeSection).toContain("RiskIndicesSection");
-    expect(homeSection).not.toContain("GlobalRiskIndexSection");
+    expect(globalRiskRoute).toContain("GlobalRiskWorkspace");
+    expect(globalRiskRoute).toContain("History, Evidence & Integrity");
+    expect(globalRiskWorkspace).toContain("How global risk is moving");
+    expect(globalRiskWorkspace).toContain("Only comparable verified snapshots from the same current methodology");
+    expect(riskIndicesRoute).toContain("RiskIndicesWorkspace");
+    expect(riskIndicesWorkspace).toContain("Three risks. Three separate indices.");
+    expect(riskIndicesWorkspace).toContain("instead of being compressed into one combined headline score");
   });
 
   it("keeps public surfaces fail-closed without synthetic risk values", () => {

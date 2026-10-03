@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RiskIndicesWorkspace } from "@/components/risk-indices/risk-indices-workspace";
+import { GlobalRiskWorkspace } from "@/components/gri/global-risk-workspace";
 
-const TITLE = "Risk Indices | Geopolitical, Macro & Critical Minerals | Geomacro";
+const TITLE = "Global Risk Index | History, Evidence & Integrity | Geomacro";
 const DESCRIPTION =
-  "Inspect Geomacro's separate verified Geopolitical Risk Index, Macroeconomic Risk Index and Critical Minerals Risk Index with history and integrity proof.";
+  "Inspect Geomacro's verified Global Risk Index with same-methodology history, change attribution, evidence quality, methodology and integrity fingerprints.";
 const URL = "https://geomacro.live/global-risk";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
@@ -21,12 +21,12 @@ export const Route = createFileRoute("/global-risk")({
       { property: "og:image:secure_url", content: IMAGE },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "Geomacro geopolitical, macroeconomic and critical-minerals risk indices" },
+      { property: "og:image:alt", content: "Geomacro Global Risk Index historical verification workspace" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: TITLE },
       { name: "twitter:description", content: DESCRIPTION },
       { name: "twitter:image", content: IMAGE },
-      { name: "twitter:image:alt", content: "Geomacro geopolitical, macroeconomic and critical-minerals risk indices" },
+      { name: "twitter:image:alt", content: "Geomacro Global Risk Index historical verification workspace" },
     ],
     links: [{ rel: "canonical", href: URL }],
     scripts: [
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/global-risk")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebPage",
-          name: "Geomacro Risk Indices",
+          name: "Geomacro Global Risk Index",
           url: URL,
           description: DESCRIPTION,
           inLanguage: "en",
@@ -50,5 +50,5 @@ export const Route = createFileRoute("/global-risk")({
       },
     ],
   }),
-  component: RiskIndicesWorkspace,
+  component: GlobalRiskWorkspace,
 });
