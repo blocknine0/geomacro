@@ -1,5 +1,6 @@
 // Service-side restore for a Supabase raw snapshot whose Storage object moved to B2.
-// New bundle pointers restore with one B2 GET; legacy per-object proofs remain supported.
+// Bundle pointers restore with one B2 GET. Both legacy nested-gzip v1 and the
+// adaptive single-compression v2 format remain supported.
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 const hex = (bytes: Uint8Array) => Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
@@ -43,6 +44,24 @@ function decodeBase64(value: string): Uint8Array {
   for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
   return out;
 }
+
+type RawBundleEntry = {
+  snapshot_id?: string;
+  object_path?: string;
+  payload_bytes?: number;
+  payload_sha256?: string;
+  member_compressed_sha256?: string;
+  source_compressed_sha256?: string;
+  compressed_b64?: string;
+  payload_b64?: string;
+};
+type RawBundle = {
+  schema?: string;
+  storage_encoding?: string;
+  compression?: string;
+  entries?: RawBundleEntry[];
+};
+
 Deno.serve(async request => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
   const token = request.headers.get("authorization")?.replace(/^Bearer /, "");
@@ -70,13 +89,22 @@ Deno.serve(async request => {
       if (!/^geomacro-evidence\/v1\/raw-bundles\/[0-9]{8}T[0-9]{6}Z-[0-9a-f]-[0-9a-f-]{36}\.json\.gz$/.test(row.archive_bundle_key) || !/^[a-f0-9]{64}$/.test(row.archive_bundle_sha256 ?? "") || !/^[a-f0-9]{64}$/.test(row.archive_member_sha256 ?? "")) throw Error("RAW_BUNDLE_POINTER_INVALID");
       const bundlePacked = await readB2(row.archive_bundle_key, access, secret);
       if (await sha(bundlePacked) !== row.archive_bundle_sha256) throw Error("RAW_BUNDLE_HASH_MISMATCH");
-      const bundle = JSON.parse(dec.decode(await gunzip(bundlePacked))) as { schema?: string; entries?: Array<{ snapshot_id?: string; object_path?: string; payload_bytes?: number; payload_sha256?: string; member_compressed_sha256?: string; compressed_b64?: string }> };
-      if (bundle.schema !== "geomacro.raw-storage-bundle.v1" || !Array.isArray(bundle.entries)) throw Error("RAW_BUNDLE_SHAPE_INVALID");
+      const bundleRaw = await gunzip(bundlePacked);
+      if (bundleRaw.length > 80_000_000) throw Error("RAW_BUNDLE_EXPANDED_TOO_LARGE");
+      const bundle = JSON.parse(dec.decode(bundleRaw)) as RawBundle;
+      if (!["geomacro.raw-storage-bundle.v1", "geomacro.raw-storage-bundle.v2"].includes(bundle.schema ?? "") || !Array.isArray(bundle.entries)) throw Error("RAW_BUNDLE_SHAPE_INVALID");
+      if (bundle.schema === "geomacro.raw-storage-bundle.v2" && (bundle.storage_encoding !== "single-gzip-raw-members" || bundle.compression !== "gzip-9")) throw Error("RAW_BUNDLE_V2_ENCODING_INVALID");
       const entry = bundle.entries.find(item => item.snapshot_id === id);
-      if (!entry || entry.object_path !== row.object_path || entry.payload_bytes !== row.byte_count || entry.payload_sha256 !== row.content_sha256 || entry.member_compressed_sha256 !== row.archive_member_sha256 || typeof entry.compressed_b64 !== "string") throw Error("RAW_BUNDLE_MEMBER_INVALID");
-      const compressed = decodeBase64(entry.compressed_b64);
-      if (await sha(compressed) !== row.archive_member_sha256) throw Error("RAW_BUNDLE_MEMBER_HASH_MISMATCH");
-      raw = await gunzip(compressed);
+      if (!entry || entry.object_path !== row.object_path || entry.payload_bytes !== row.byte_count || entry.payload_sha256 !== row.content_sha256 || entry.member_compressed_sha256 !== row.archive_member_sha256) throw Error("RAW_BUNDLE_MEMBER_INVALID");
+      if (bundle.schema === "geomacro.raw-storage-bundle.v1") {
+        if (typeof entry.compressed_b64 !== "string") throw Error("RAW_BUNDLE_MEMBER_INVALID");
+        const compressed = decodeBase64(entry.compressed_b64);
+        if (await sha(compressed) !== row.archive_member_sha256) throw Error("RAW_BUNDLE_MEMBER_HASH_MISMATCH");
+        raw = await gunzip(compressed);
+      } else {
+        if (entry.source_compressed_sha256 !== row.archive_member_sha256 || typeof entry.payload_b64 !== "string") throw Error("RAW_BUNDLE_V2_MEMBER_INVALID");
+        raw = decodeBase64(entry.payload_b64);
+      }
     } else {
       const archiveKey = `geomacro-evidence/v1/${row.object_path}`;
       const proof = JSON.parse(dec.decode(await readB2(`geomacro-evidence/v1/index/raw/${id}.json`, access, secret)));

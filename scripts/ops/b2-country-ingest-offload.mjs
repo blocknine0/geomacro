@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 import { createHash, randomUUID } from "node:crypto";
-import { gzipSync, gunzipSync } from "node:zlib";
+import { gunzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 import { createB2Client } from "./b2-s3-client.mjs";
+import { packAdaptiveRawStorageBundle, verifyRawStorageBundle } from "./raw-storage-bundle-codec.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const SOURCE_BUCKET = "geomacro-live-intelligence";
 const ARCHIVE_BUCKET = "geomacro-private-archive";
 const MAX_BUNDLE_BYTES = 18_000_000;
+const MAX_SOURCE_RAW_BYTES = 30_000_000;
 const sha = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const projectRef = (url) => { try { return new URL(url).hostname.split(".")[0] ?? ""; } catch { return ""; } };
 
@@ -64,6 +66,7 @@ async function loadRawCandidates() {
   if (error) throw new Error(`B2_RECENT_RAW_QUERY_FAILED_${error.code ?? "unknown"}: ${error.message ?? "unknown"}`);
 
   const members = [];
+  let rawBytes = 0;
   for (const row of rows ?? []) {
     if (members.length >= rawBundleLimit) break;
     const id = String(row.snapshot_id ?? "");
@@ -74,6 +77,7 @@ async function loadRawCandidates() {
         !/^[a-f0-9]{64}$/.test(payloadHash) || !Number.isInteger(payloadBytes) || payloadBytes < 0 || payloadBytes > 20_000_000) {
       throw new Error(`B2_RECENT_RAW_METADATA_INVALID_${id || "unknown"}`);
     }
+    if (members.length > 0 && rawBytes + payloadBytes > MAX_SOURCE_RAW_BYTES) break;
 
     const { data: blob, error: downloadError } = await storage.download(sourcePath);
     if (downloadError || !blob) {
@@ -81,25 +85,27 @@ async function loadRawCandidates() {
       if (status === 400 || status === 404) continue;
       throw new Error(`B2_RECENT_RAW_SOURCE_DOWNLOAD_FAILED_${id}_${status || "unknown"}`);
     }
-    const compressed = Buffer.from(await blob.arrayBuffer());
-    const raw = gunzipSync(compressed);
-    if (raw.length !== payloadBytes || sha(raw) !== payloadHash) throw new Error(`B2_RECENT_RAW_PAYLOAD_INVALID_${id}`);
+    const sourceCompressed = Buffer.from(await blob.arrayBuffer());
+    const payload = gunzipSync(sourceCompressed, { maxOutputLength: payloadBytes + 1 });
+    if (payload.length !== payloadBytes || sha(payload) !== payloadHash) throw new Error(`B2_RECENT_RAW_PAYLOAD_INVALID_${id}`);
     members.push({
       snapshot_id: id,
       object_path: sourcePath,
       fetched_at: String(row.fetched_at),
       payload_bytes: payloadBytes,
       payload_sha256: payloadHash,
-      member_compressed_sha256: sha(compressed),
-      compressed_b64: compressed.toString("base64"),
+      member_compressed_sha256: sha(sourceCompressed),
+      payload,
+      source_compressed: sourceCompressed,
     });
+    rawBytes += payloadBytes;
   }
   return members;
 }
 
 async function archiveOneRawBundle() {
   const members = await loadRawCandidates();
-  if (!members.length) return { status: "complete", processed: 0, compressed_bytes: 0 };
+  if (!members.length) return { status: "complete", processed: 0, compressed_bytes: 0, bytes_saved_vs_v1: 0 };
 
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   const bundleId = `${stamp}-0-${randomUUID()}`;
@@ -109,44 +115,42 @@ async function archiveOneRawBundle() {
   const preflightKey = `geomacro-evidence/v1/health/raw-read-preflight/${bundleId}.missing`;
 
   let selected = members;
-  let bundle;
-  let packed;
+  let packedBundle;
+  const createdAt = new Date().toISOString();
   while (selected.length) {
-    bundle = { schema: "geomacro.raw-storage-bundle.v1", bundle_id: bundleId, shard_suffix: "0", created_at: new Date().toISOString(), entries: selected };
-    packed = gzipSync(Buffer.from(JSON.stringify(bundle)), { level: 9 });
-    if (packed.length <= MAX_BUNDLE_BYTES) break;
+    packedBundle = packAdaptiveRawStorageBundle({ bundleId, shardSuffix: "0", createdAt, members: selected });
+    if (packedBundle.packed.length <= MAX_BUNDLE_BYTES) break;
     selected = selected.slice(0, -1);
   }
-  if (!selected.length || !bundle || !packed) throw new Error("B2_RECENT_RAW_BUNDLE_CANNOT_FIT");
+  if (!selected.length || !packedBundle || packedBundle.packed.length > MAX_BUNDLE_BYTES) throw new Error("B2_RECENT_RAW_BUNDLE_CANNOT_FIT");
 
   // Fail closed before any new archive write if B2 read capability is blocked.
   const preflight = await b2.getOptional(preflightKey);
   if (preflight !== null) throw new Error("B2_RECENT_RAW_READ_PREFLIGHT_COLLISION");
 
-  await b2.put(bundleKey, packed);
+  await b2.put(bundleKey, packedBundle.packed);
   const readback = await b2.get(bundleKey);
-  const bundleHash = sha(packed);
-  if (readback.length !== packed.length || sha(readback) !== bundleHash) throw new Error("B2_RECENT_RAW_BUNDLE_READBACK_HASH_INVALID");
-  const restored = JSON.parse(gunzipSync(readback).toString("utf8"));
-  if (restored?.schema !== "geomacro.raw-storage-bundle.v1" || restored?.bundle_id !== bundleId || !Array.isArray(restored?.entries) || restored.entries.length !== selected.length) {
-    throw new Error("B2_RECENT_RAW_BUNDLE_RESTORE_INVALID");
-  }
-  const restoredById = new Map(restored.entries.map((entry) => [entry.snapshot_id, entry]));
-  for (const source of selected) {
-    const entry = restoredById.get(source.snapshot_id);
-    if (!entry || entry.object_path !== source.object_path || entry.payload_bytes !== source.payload_bytes || entry.payload_sha256 !== source.payload_sha256 || entry.member_compressed_sha256 !== source.member_compressed_sha256) {
-      throw new Error(`B2_RECENT_RAW_MEMBER_METADATA_INVALID_${source.snapshot_id}`);
-    }
-    const compressed = Buffer.from(entry.compressed_b64, "base64");
-    if (sha(compressed) !== source.member_compressed_sha256) throw new Error(`B2_RECENT_RAW_MEMBER_COMPRESSED_HASH_INVALID_${source.snapshot_id}`);
-    const raw = gunzipSync(compressed);
-    if (raw.length !== source.payload_bytes || sha(raw) !== source.payload_sha256) throw new Error(`B2_RECENT_RAW_MEMBER_RESTORE_INVALID_${source.snapshot_id}`);
+  const bundleHash = sha(packedBundle.packed);
+  if (readback.length !== packedBundle.packed.length || sha(readback) !== bundleHash) throw new Error("B2_RECENT_RAW_BUNDLE_READBACK_HASH_INVALID");
+  try {
+    verifyRawStorageBundle({
+      bytes: readback,
+      expectedSha256: bundleHash,
+      expectedBundleId: bundleId,
+      expectedShardSuffix: "0",
+      expectedMembers: selected,
+    });
+  } catch (cause) {
+    throw new Error("B2_RECENT_RAW_BUNDLE_RESTORE_INVALID", { cause });
   }
 
   await b2.put(proofKey, Buffer.from(JSON.stringify({
-    schema: "geomacro.raw-storage-bundle-proof.v1", bundle_id: bundleId, archive_bucket: ARCHIVE_BUCKET,
-    archive_key: bundleKey, bundle_sha256: bundleHash, bundle_bytes: packed.length, member_count: selected.length,
-    pre_write_b2_read_preflight_verified: true,
+    schema: "geomacro.raw-storage-bundle-proof.v2", bundle_id: bundleId, archive_bucket: ARCHIVE_BUCKET,
+    archive_key: bundleKey, bundle_schema: packedBundle.schema, storage_encoding: packedBundle.storage_encoding,
+    bundle_sha256: bundleHash, bundle_bytes: packedBundle.packed.length, member_count: selected.length,
+    baseline_v1_bytes: packedBundle.baseline_v1_bytes, candidate_v2_bytes: packedBundle.candidate_v2_bytes,
+    bytes_saved_vs_v1: packedBundle.bytes_saved_vs_v1, saving_ratio_vs_v1: packedBundle.saving_ratio_vs_v1,
+    pre_write_b2_read_preflight_verified: true, full_b2_readback_verified: true,
     verified_at: new Date().toISOString(), members: selected.map(({ snapshot_id, object_path, fetched_at, payload_bytes, payload_sha256, member_compressed_sha256 }) => ({ snapshot_id, object_path, fetched_at, payload_bytes, payload_sha256, member_compressed_sha256 })),
   })));
 
@@ -167,21 +171,36 @@ async function archiveOneRawBundle() {
 
   await b2.put(deletionKey, Buffer.from(JSON.stringify({
     schema: "geomacro.raw-storage-bundle-source-deletion.v1", bundle_id: bundleId, archive_key: bundleKey,
-    archive_proof_key: proofKey, deleted_paths: paths, deleted_at: new Date().toISOString(), reason: historicalDrain ? "historical-b2-primary-drain" : "post-ingest-b2-primary-offload",
+    archive_proof_key: proofKey, bundle_schema: packedBundle.schema, deleted_paths: paths,
+    deleted_at: new Date().toISOString(), reason: historicalDrain ? "historical-b2-primary-drain" : "post-ingest-b2-primary-offload",
   })));
 
-  return { status: "progress", processed: selected.length, compressed_bytes: packed.length };
+  return {
+    status: "progress",
+    processed: selected.length,
+    compressed_bytes: packedBundle.packed.length,
+    bundle_schema: packedBundle.schema,
+    storage_encoding: packedBundle.storage_encoding,
+    baseline_v1_bytes: packedBundle.baseline_v1_bytes,
+    candidate_v2_bytes: packedBundle.candidate_v2_bytes,
+    bytes_saved_vs_v1: packedBundle.bytes_saved_vs_v1,
+    saving_ratio_vs_v1: packedBundle.saving_ratio_vs_v1,
+  };
 }
 
 async function main() {
   const fragments = fragmentDisposition();
   let rawProcessed = 0;
   let rawCompressedBytes = 0;
+  let rawSavedVsV1 = 0;
+  let v2Bundles = 0;
   let rounds = 0;
   for (; rounds < rawRounds; rounds += 1) {
     const result = await archiveOneRawBundle();
     rawProcessed += result.processed;
     rawCompressedBytes += result.compressed_bytes;
+    rawSavedVsV1 += result.bytes_saved_vs_v1 ?? 0;
+    if (result.bundle_schema === "geomacro.raw-storage-bundle.v2") v2Bundles += 1;
     if (result.status === "complete") break;
   }
   console.log(JSON.stringify({
@@ -191,7 +210,7 @@ async function main() {
     cutoff,
     settle_before: settleBefore,
     fragments,
-    raw: { processed: rawProcessed, compressed_bytes: rawCompressedBytes, rounds },
+    raw: { processed: rawProcessed, compressed_bytes: rawCompressedBytes, bytes_saved_vs_v1: rawSavedVsV1, adaptive_v2_bundles: v2Bundles, rounds },
     verification: "full-b2-readback-before-pointer-update-and-source-delete",
     pre_write_b2_read_preflight_verified: true,
     supabase_storage_retention_target: "ephemeral-raw-ingest-buffer; immutable fragments retained until sidecar resolver exists",

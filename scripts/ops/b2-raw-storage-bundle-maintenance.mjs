@@ -3,15 +3,17 @@
 // full B2 readback for the entire bundle, verify every member, then mark DB
 // archive pointers and remove only those verified Storage objects via Storage API.
 import { createHash, randomUUID } from "node:crypto";
-import { gzipSync, gunzipSync } from "node:zlib";
+import { gunzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 import { createB2Client } from "./b2-s3-client.mjs";
+import { packAdaptiveRawStorageBundle, verifyRawStorageBundle } from "./raw-storage-bundle-codec.mjs";
 
 const sha = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const TRANSIENT_READ_STATUSES = new Set([429, 500, 502, 503, 504]);
 const READ_ATTEMPTS = 4;
 const MAX_BUNDLE_BYTES = 18_000_000;
+const MAX_SOURCE_RAW_BYTES = 30_000_000;
 const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
 const role = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
 const limit = Number(process.env.B2_RAW_BUNDLE_LIMIT ?? 100);
@@ -82,6 +84,7 @@ if (!candidates?.length) {
 }
 
 const members = [];
+let sourceRawBytes = 0;
 for (const row of candidates) {
   const id = String(row.snapshot_id ?? "");
   const path = String(row.object_path ?? "");
@@ -94,72 +97,70 @@ for (const row of candidates) {
       !Number.isFinite(Date.parse(fetchedAt)) || Date.now() - Date.parse(fetchedAt) < 72 * 3_600_000) {
     throw new Error(`B2_RAW_BUNDLE_CANDIDATE_INVALID_${id || "unknown"}`);
   }
+  if (members.length > 0 && sourceRawBytes + payloadBytes > MAX_SOURCE_RAW_BYTES) break;
 
   const { data: blob, error: downloadError } = await storage.download(path);
   if (downloadError || !blob) throw new Error(`B2_RAW_BUNDLE_SOURCE_DOWNLOAD_FAILED_${id}`, { cause: downloadError });
-  const compressed = Buffer.from(await blob.arrayBuffer());
-  const raw = gunzipSync(compressed);
-  if (raw.length !== payloadBytes || sha(raw) !== payloadHash) throw new Error(`B2_RAW_BUNDLE_SOURCE_PAYLOAD_MISMATCH_${id}`);
+  const sourceCompressed = Buffer.from(await blob.arrayBuffer());
+  const payload = gunzipSync(sourceCompressed, { maxOutputLength: payloadBytes + 1 });
+  if (payload.length !== payloadBytes || sha(payload) !== payloadHash) throw new Error(`B2_RAW_BUNDLE_SOURCE_PAYLOAD_MISMATCH_${id}`);
   members.push({
     snapshot_id: id,
     object_path: path,
     fetched_at: fetchedAt,
     payload_bytes: payloadBytes,
     payload_sha256: payloadHash,
-    member_compressed_sha256: sha(compressed),
-    compressed_b64: compressed.toString("base64"),
+    member_compressed_sha256: sha(sourceCompressed),
+    payload,
+    source_compressed: sourceCompressed,
   });
+  sourceRawBytes += payloadBytes;
 }
+if (!members.length) throw new Error("B2_RAW_BUNDLE_EMPTY");
 
 let selected = members;
-let bundle;
-let packed;
+let packedBundle;
+const createdAt = new Date().toISOString();
 while (selected.length) {
-  bundle = {
-    schema: "geomacro.raw-storage-bundle.v1",
-    bundle_id: bundleId,
-    shard_suffix: suffix,
-    created_at: new Date().toISOString(),
-    entries: selected,
-  };
-  packed = gzipSync(Buffer.from(JSON.stringify(bundle)), { level: 9 });
-  if (packed.length <= MAX_BUNDLE_BYTES) break;
+  packedBundle = packAdaptiveRawStorageBundle({ bundleId, shardSuffix: suffix, createdAt, members: selected });
+  if (packedBundle.packed.length <= MAX_BUNDLE_BYTES) break;
   selected = selected.slice(0, -1);
 }
-if (!selected.length || !bundle || !packed) throw new Error("B2_RAW_BUNDLE_CANNOT_FIT");
+if (!selected.length || !packedBundle || packedBundle.packed.length > MAX_BUNDLE_BYTES) throw new Error("B2_RAW_BUNDLE_CANNOT_FIT");
 
-await b2.put(bundleKey, packed);
+await b2.put(bundleKey, packedBundle.packed);
 const readback = await archiveRead();
-const bundleSha = sha(packed);
-if (readback.length !== packed.length || sha(readback) !== bundleSha) throw new Error("B2_RAW_BUNDLE_READBACK_HASH_INVALID");
-const restored = JSON.parse(gunzipSync(readback).toString("utf8"));
-if (restored?.schema !== "geomacro.raw-storage-bundle.v1" || restored?.bundle_id !== bundleId ||
-    restored?.shard_suffix !== suffix || !Array.isArray(restored?.entries) || restored.entries.length !== selected.length) {
-  throw new Error("B2_RAW_BUNDLE_RESTORE_INVALID");
-}
-const restoredById = new Map(restored.entries.map((entry) => [entry.snapshot_id, entry]));
-for (const source of selected) {
-  const entry = restoredById.get(source.snapshot_id);
-  if (!entry || entry.object_path !== source.object_path || entry.payload_bytes !== source.payload_bytes ||
-      entry.payload_sha256 !== source.payload_sha256 || entry.member_compressed_sha256 !== source.member_compressed_sha256) {
-    throw new Error(`B2_RAW_BUNDLE_MEMBER_METADATA_INVALID_${source.snapshot_id}`);
-  }
-  const memberCompressed = Buffer.from(entry.compressed_b64, "base64");
-  if (sha(memberCompressed) !== source.member_compressed_sha256) throw new Error(`B2_RAW_BUNDLE_MEMBER_COMPRESSED_HASH_INVALID_${source.snapshot_id}`);
-  const memberRaw = gunzipSync(memberCompressed);
-  if (memberRaw.length !== source.payload_bytes || sha(memberRaw) !== source.payload_sha256) {
-    throw new Error(`B2_RAW_BUNDLE_MEMBER_RESTORE_INVALID_${source.snapshot_id}`);
-  }
+const bundleSha = sha(packedBundle.packed);
+if (readback.length !== packedBundle.packed.length || sha(readback) !== bundleSha) throw new Error("B2_RAW_BUNDLE_READBACK_HASH_INVALID");
+let verifiedBundle;
+try {
+  verifiedBundle = verifyRawStorageBundle({
+    bytes: readback,
+    expectedSha256: bundleSha,
+    expectedBundleId: bundleId,
+    expectedShardSuffix: suffix,
+    expectedMembers: selected,
+  });
+} catch (cause) {
+  throw new Error("B2_RAW_BUNDLE_MEMBER_RESTORE_INVALID_bundle", { cause });
 }
 
 const proof = {
-  schema: "geomacro.raw-storage-bundle-proof.v1",
+  schema: "geomacro.raw-storage-bundle-proof.v2",
   bundle_id: bundleId,
   archive_bucket: "geomacro-private-archive",
   archive_key: bundleKey,
+  bundle_schema: packedBundle.schema,
+  storage_encoding: packedBundle.storage_encoding,
   bundle_sha256: bundleSha,
-  bundle_bytes: packed.length,
+  bundle_bytes: packedBundle.packed.length,
+  baseline_v1_bytes: packedBundle.baseline_v1_bytes,
+  candidate_v2_bytes: packedBundle.candidate_v2_bytes,
+  bytes_saved_vs_v1: packedBundle.bytes_saved_vs_v1,
+  saving_ratio_vs_v1: packedBundle.saving_ratio_vs_v1,
   member_count: selected.length,
+  full_b2_readback_verified: true,
+  member_payload_restore_verified: true,
   verified_at: new Date().toISOString(),
   members: selected.map(({ snapshot_id, object_path, fetched_at, payload_bytes, payload_sha256, member_compressed_sha256 }) => ({
     snapshot_id, object_path, fetched_at, payload_bytes, payload_sha256, member_compressed_sha256,
@@ -194,6 +195,7 @@ await b2.put(deletionKey, Buffer.from(JSON.stringify({
   bundle_id: bundleId,
   archive_key: bundleKey,
   archive_proof_key: proofKey,
+  bundle_schema: verifiedBundle.schema,
   deleted_paths: paths,
   deleted_at: new Date().toISOString(),
 })));
@@ -203,7 +205,13 @@ console.log(JSON.stringify({
   status: "progress",
   bundle_id: bundleId,
   processed: selected.length,
-  archived_compressed_bytes: packed.length,
+  bundle_schema: packedBundle.schema,
+  storage_encoding: packedBundle.storage_encoding,
+  archived_compressed_bytes: packedBundle.packed.length,
+  baseline_v1_bytes: packedBundle.baseline_v1_bytes,
+  candidate_v2_bytes: packedBundle.candidate_v2_bytes,
+  bytes_saved_vs_v1: packedBundle.bytes_saved_vs_v1,
+  saving_ratio_vs_v1: packedBundle.saving_ratio_vs_v1,
   b2_full_gets: 1,
   raw_objects_per_b2_get: selected.length,
   supabase_sources_absent: true,

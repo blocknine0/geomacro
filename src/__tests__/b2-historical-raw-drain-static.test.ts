@@ -26,7 +26,7 @@ describe("historical raw B2 drain", () => {
 
   it("preflights B2 read capability before any new bundle write", () => {
     const preflight = script.indexOf("const preflight = await b2.getOptional(preflightKey)");
-    const put = script.indexOf("await b2.put(bundleKey, packed)");
+    const put = script.indexOf("await b2.put(bundleKey, packedBundle.packed)");
     expect(preflight).toBeGreaterThanOrEqual(0);
     expect(put).toBeGreaterThan(preflight);
     expect(script).toContain("B2_RECENT_RAW_READ_PREFLIGHT_COLLISION");
