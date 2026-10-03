@@ -16,20 +16,19 @@ describe("B2 country GRO continuity", () => {
     expect(source).not.toContain("supabase-js");
   });
 
-  it("uses B2 only as canonical outage continuity and never overrides a healthy primary miss", () => {
+  it("uses verified B2 as the canonical commercial serving authority before Supabase recovery", () => {
     const source = read("src/lib/country-gro-resolver.server.ts");
+    expect(source).toContain('if (deliveryProfile === "CANONICAL")');
+    expect(source).toContain("const b2 = await readB2LatestCanonicalCountryGro(countryIso3, atOrBefore)");
+    expect(source).toContain("if (b2) return b2");
     expect(source).toContain("return await getLatestCompatibleCountryRiskObjectAtOrBefore");
-    expect(source).toContain('if (deliveryProfile !== "CANONICAL") return null');
-    expect(source).toContain("return await readB2LatestCanonicalCountryGro");
-    const tryIndex = source.indexOf("try {");
-    const catchIndex = source.indexOf("} catch {");
-    const b2Index = source.indexOf("readB2LatestCanonicalCountryGro", catchIndex);
-    expect(tryIndex).toBeGreaterThanOrEqual(0);
-    expect(catchIndex).toBeGreaterThan(tryIndex);
-    expect(b2Index).toBeGreaterThan(catchIndex);
+    const b2Index = source.indexOf("const b2 = await readB2LatestCanonicalCountryGro(countryIso3, atOrBefore)");
+    const recoveryIndex = source.indexOf("return await getLatestCompatibleCountryRiskObjectAtOrBefore");
+    expect(b2Index).toBeGreaterThanOrEqual(0);
+    expect(recoveryIndex).toBeGreaterThan(b2Index);
   });
 
-  it("wires both paid country module resolution and Risk Gate through the outage-safe resolver", () => {
+  it("wires both paid country module resolution and Risk Gate through the B2-first resolver", () => {
     const modules = read("src/lib/agent-query-external-modules.server.ts");
     const gate = read("src/lib/risk-gate-service.server.ts");
     expect(modules).toContain('from "./country-gro-resolver.server"');
