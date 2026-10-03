@@ -3,8 +3,7 @@ import {
   setResponseHeaders,
   setResponseStatus,
 } from "h3";
-import { readGlobalRiskEdge } from "../../../src/lib/global-risk-edge.server";
-import { riskIndicesFromGlobalRisk } from "../../../src/lib/risk-indices-from-global-risk";
+import { readRiskIndicesEdge } from "../../../src/lib/risk-indices-edge.server";
 
 export default defineEventHandler(async (event) => {
   setResponseHeaders(event, {
@@ -15,27 +14,23 @@ export default defineEventHandler(async (event) => {
   });
 
   try {
-    // Keep Lovable free of private B2 credentials and gzip/decompression
-    // runtime requirements. The proof-validating Cloudflare edge is the
-    // canonical public read boundary; this route only projects its verified
-    // Global Risk package into the stable three-index contract.
-    const risk = await readGlobalRiskEdge();
-    if (!risk) {
+    const data = await readRiskIndicesEdge();
+    if (!data) {
       setResponseStatus(event, 503);
       return {
         ok: false,
         code: "RISK_INDICES_UNAVAILABLE",
-        message: "The latest verified risk package is temporarily unavailable.",
+        message: "The latest verified risk indices package is temporarily unavailable.",
       };
     }
 
     return {
       ok: true,
-      data: riskIndicesFromGlobalRisk(risk),
+      data,
       meta: {
-        authority: "backblaze-b2-verified-edge",
-        transport: "verified-cloudflare-edge",
-        snapshot_as_of: risk.snapshotAsOf,
+        authority: "backblaze-b2-risk-indices-edge",
+        transport: "verified-risk-indices-cloudflare-edge",
+        snapshot_as_of: data.snapshotAsOf,
       },
     };
   } catch (error) {
@@ -47,7 +42,7 @@ export default defineEventHandler(async (event) => {
     return {
       ok: false,
       code: "RISK_INDICES_UNAVAILABLE",
-      message: "The latest verified risk package is temporarily unavailable.",
+      message: "The latest verified risk indices package is temporarily unavailable.",
     };
   }
 });
