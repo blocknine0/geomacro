@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 import { createB2Client } from "./b2-s3-client.mjs";
+import { verifyRawStorageBundle } from "./raw-storage-bundle-codec.mjs";
 
 const PROJECT_URL = "https://ldpwajisioljyjtojvfx.supabase.co";
 const SOURCE_BUCKET = "geomacro-live-intelligence";
@@ -49,40 +50,49 @@ for (const row of rows) {
   }
   const group = groups.get(bundleKey) ?? { bundleSha, rows: [] };
   if (group.bundleSha !== bundleSha) throw new Error("B2_RAW_ORPHAN_BUNDLE_SHA_CONFLICT");
-  group.rows.push({ id, path, memberSha, payloadSha, payloadBytes });
+  group.rows.push({ snapshot_id: id, object_path: path, member_compressed_sha256: memberSha, payload_sha256: payloadSha, payload_bytes: payloadBytes });
   groups.set(bundleKey, group);
 }
 
 let cleaned = 0;
 let sourceBytesRemoved = 0;
+let v2BundlesVerified = 0;
 for (const [bundleKey, group] of groups) {
   const archived = await b2.get(bundleKey);
   if (sha(archived) !== group.bundleSha) throw new Error(`B2_RAW_ORPHAN_BUNDLE_HASH_INVALID_${bundleKey}`);
-  const restored = JSON.parse(gunzipSync(archived).toString("utf8"));
-  if (restored?.schema !== "geomacro.raw-storage-bundle.v1" || !Array.isArray(restored?.entries)) {
-    throw new Error(`B2_RAW_ORPHAN_BUNDLE_SCHEMA_INVALID_${bundleKey}`);
+  const bundleId = bundleKey.split("/").at(-1).replace(/\.json\.gz$/, "");
+  const shardSuffix = bundleId.split("-")[1] ?? "";
+  let verified;
+  try {
+    verified = verifyRawStorageBundle({
+      bytes: archived,
+      expectedSha256: group.bundleSha,
+      expectedBundleId: bundleId,
+      expectedShardSuffix: shardSuffix,
+      expectedMembers: group.rows,
+    });
+  } catch (cause) {
+    throw new Error(`B2_RAW_ORPHAN_BUNDLE_SCHEMA_INVALID_${bundleKey}`, { cause });
   }
-  const restoredById = new Map(restored.entries.map((entry) => [String(entry.snapshot_id), entry]));
+  if (verified.schema === "geomacro.raw-storage-bundle.v2") v2BundlesVerified += 1;
+
   const paths = [];
   for (const row of group.rows) {
-    const entry = restoredById.get(row.id);
-    if (!entry || String(entry.object_path) !== row.path || Number(entry.payload_bytes) !== row.payloadBytes ||
-        String(entry.payload_sha256) !== row.payloadSha || String(entry.member_compressed_sha256) !== row.memberSha) {
-      throw new Error(`B2_RAW_ORPHAN_MEMBER_METADATA_INVALID_${row.id}`);
+    const payload = verified.payloadById.get(row.snapshot_id);
+    if (!payload || payload.length !== row.payload_bytes || sha(payload) !== row.payload_sha256) {
+      throw new Error(`B2_RAW_ORPHAN_PAYLOAD_INVALID_${row.snapshot_id}`);
     }
-    const memberCompressed = Buffer.from(String(entry.compressed_b64 ?? ""), "base64");
-    if (sha(memberCompressed) !== row.memberSha) throw new Error(`B2_RAW_ORPHAN_MEMBER_HASH_INVALID_${row.id}`);
-    const payload = gunzipSync(memberCompressed);
-    if (payload.length !== row.payloadBytes || sha(payload) !== row.payloadSha) {
-      throw new Error(`B2_RAW_ORPHAN_PAYLOAD_INVALID_${row.id}`);
-    }
-    const { data: source, error: sourceError } = await storage.download(row.path);
-    if (sourceError || !source) throw new Error(`B2_RAW_ORPHAN_SOURCE_DOWNLOAD_FAILED_${row.id}`, { cause: sourceError });
+    const { data: source, error: sourceError } = await storage.download(row.object_path);
+    if (sourceError || !source) throw new Error(`B2_RAW_ORPHAN_SOURCE_DOWNLOAD_FAILED_${row.snapshot_id}`, { cause: sourceError });
     const sourceCompressed = Buffer.from(await source.arrayBuffer());
-    if (sourceCompressed.length !== memberCompressed.length || sha(sourceCompressed) !== row.memberSha || !sourceCompressed.equals(memberCompressed)) {
-      throw new Error(`B2_RAW_ORPHAN_SOURCE_BYTES_MISMATCH_${row.id}`);
+    if (sha(sourceCompressed) !== row.member_compressed_sha256) {
+      throw new Error(`B2_RAW_ORPHAN_SOURCE_GZIP_HASH_MISMATCH_${row.snapshot_id}`);
     }
-    paths.push(row.path);
+    const sourcePayload = gunzipSync(sourceCompressed, { maxOutputLength: row.payload_bytes + 1 });
+    if (sourcePayload.length !== row.payload_bytes || sha(sourcePayload) !== row.payload_sha256 || !sourcePayload.equals(payload)) {
+      throw new Error(`B2_RAW_ORPHAN_SOURCE_BYTES_MISMATCH_${row.snapshot_id}`);
+    }
+    paths.push(row.object_path);
     sourceBytesRemoved += sourceCompressed.length;
   }
 
@@ -95,17 +105,17 @@ for (const [bundleKey, group] of groups) {
     throw new Error(`B2_RAW_ORPHAN_SOURCE_STILL_PRESENT_${bundleKey}`);
   }
 
-  const bundleId = bundleKey.split("/").at(-1).replace(/\.json\.gz$/, "");
   const proofKey = `geomacro-evidence/v1/index/raw-bundle-orphan-cleanup/${bundleId}.json`;
   const proof = Buffer.from(JSON.stringify({
-    schema: "geomacro.raw-storage-orphan-cleanup.v1",
+    schema: "geomacro.raw-storage-orphan-cleanup.v2",
     bundle_id: bundleId,
+    bundle_schema: verified.schema,
     archive_bucket: ARCHIVE_BUCKET,
     archive_key: bundleKey,
     archive_sha256: group.bundleSha,
     deleted_paths: paths,
     cleaned_at: new Date().toISOString(),
-    verification: "bundle-sha-member-sha-payload-sha-and-source-byte-equality",
+    verification: "bundle-sha+source-gzip-sha+payload-sha+raw-byte-equality",
   }));
   await b2.put(proofKey, proof);
   const proofReadback = await b2.get(proofKey);
@@ -119,6 +129,7 @@ console.log(JSON.stringify({
   cleaned,
   source_bytes_removed: sourceBytesRemoved,
   bundles_verified: groups.size,
+  adaptive_v2_bundles_verified: v2BundlesVerified,
   database_rows_deleted: 0,
-  verification: "bundle-sha-member-sha-payload-sha-and-source-byte-equality-before-storage-api-delete",
+  verification: "bundle-sha+source-gzip-sha+payload-sha+raw-byte-equality-before-storage-api-delete",
 }));
