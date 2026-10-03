@@ -16,11 +16,13 @@ let source = readFileSync(sourcePath, "utf8");
 const importNeedle = 'import { createClient } from "@supabase/supabase-js";';
 const configNeedle = `  process.env.APP_SUPABASE_URL !== PROJECT_URL ||\n  !process.env.APP_SUPABASE_SERVICE_ROLE_KEY ||\n`;
 const clientNeedle = `const db = createClient(\n  PROJECT_URL,\n  process.env.APP_SUPABASE_SERVICE_ROLE_KEY,\n  { auth: { persistSession: false, autoRefreshToken: false }, db: { retry: false } },\n);`;
+const provenanceNeedle = "      source_normalized_hashes: hashes,\n      state: {\n        methodology_version: CRITICAL_MINERALS_METHOD_VERSION,";
 
 for (const [label, needle] of [
   ["import", importNeedle],
   ["config", configNeedle],
   ["client", clientNeedle],
+  ["critical_provenance", provenanceNeedle],
 ]) {
   if (!source.includes(needle)) throw new Error(`B2_AGENT_MODULE_DIRECT_PATCH_${label.toUpperCase()}_DRIFT`);
   if (source.indexOf(needle) !== source.lastIndexOf(needle)) throw new Error(`B2_AGENT_MODULE_DIRECT_PATCH_${label.toUpperCase()}_AMBIGUOUS`);
@@ -29,7 +31,11 @@ for (const [label, needle] of [
 source = source
   .replace(importNeedle, 'import { createDirectPostgresClient } from "./direct-postgres-supabase-lite";')
   .replace(configNeedle, `  !process.env.SUPABASE_DB_URL ||\n`)
-  .replace(clientNeedle, 'const db = createDirectPostgresClient(String(process.env.SUPABASE_DB_URL));');
+  .replace(clientNeedle, 'const db = createDirectPostgresClient(String(process.env.SUPABASE_DB_URL));')
+  .replace(
+    provenanceNeedle,
+    "      source_normalized_hashes: hashes.slice(0, 100),\n      state: {\n        methodology_version: CRITICAL_MINERALS_METHOD_VERSION,",
+  );
 
 writeFileSync(tempPath, source, { encoding: "utf8", mode: 0o600 });
 try {

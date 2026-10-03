@@ -5,6 +5,7 @@ const workflow = readFileSync(".github/workflows/b2-agent-governed-modules-snaps
 const adapter = readFileSync("scripts/ops/direct-postgres-supabase-lite.ts", "utf8");
 const runner = readFileSync("scripts/ops/run-b2-governed-direct-postgres.mjs", "utf8");
 const verifier = readFileSync("scripts/ops/verify-b2-agent-governed-runtime.ts", "utf8");
+const publisher = readFileSync("scripts/ops/publish-b2-agent-governed-modules.ts", "utf8");
 
 describe("B2 governed module permanent refresh path", () => {
   it("uses bounded direct Postgres instead of Supabase REST for maintenance", () => {
@@ -17,6 +18,13 @@ describe("B2 governed module permanent refresh path", () => {
     expect(adapter).toContain("ALLOWED_TABLES");
     expect(runner).toContain("createDirectPostgresClient");
     expect(runner).toContain("B2_AGENT_MODULE_DIRECT_PATCH");
+  });
+
+  it("keeps critical-mineral provenance within the runtime structural bound while committing all evidence hashes", () => {
+    expect(runner).toContain("source_normalized_hashes: hashes.slice(0, 100)");
+    expect(runner).toContain("critical_provenance");
+    expect(publisher).toContain('evidence_hash: sha256(hashes.join("\\n"))');
+    expect(publisher).toContain("observation_count: currentRows.length");
   });
 
   it("fails unless the production runtime reader accepts a freshly published v2 snapshot", () => {
