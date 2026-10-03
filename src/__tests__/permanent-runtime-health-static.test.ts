@@ -33,7 +33,8 @@ describe("permanent runtime health acceptance", () => {
   });
 
   it("blocks Supabase network access during direct B2 serving verification", () => {
-    expect(b2Canary).toContain('delete process.env.SUPABASE_DB_URL');
+    expect(b2Canary).toContain('"SUPABASE_DB_URL"');
+    expect(b2Canary).toContain("delete process.env[key]");
     expect(b2Canary).toContain('host.endsWith(".supabase.co")');
     expect(b2Canary).toContain('host.endsWith(".pooler.supabase.com")');
     expect(b2Canary).toContain("readB2PublicIntelligence()");
