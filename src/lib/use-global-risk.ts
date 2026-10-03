@@ -1,12 +1,14 @@
 /**
  * Canonical public read model for the Global Risk Index workspace.
  *
- * The browser reads the proof-validated Cloudflare/B2 edge first so a Lovable
- * SSR/API outage cannot take the verified Global Risk workspace offline. The
- * same-origin API remains a compatibility fallback. Every accepted package is
- * revalidated client-side for methodology, proof fields, combined history and
- * all persisted domain histories. A refresh failure never destroys an already
- * verified reading and never creates a synthetic replacement.
+ * The browser reads the same-origin compatibility API first so Lovable preview
+ * and production are not dependent on cross-origin browser policy. That API is
+ * only a transport for the proof-validated Cloudflare/B2 edge. If the hosting
+ * API is unavailable, the browser can still fall back directly to the verified
+ * edge. Every accepted package is revalidated client-side for methodology,
+ * proof fields, combined history and all persisted domain histories. A refresh
+ * failure never destroys an already verified reading and never creates a
+ * synthetic replacement.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { validateGlobalRiskContinuity } from "@/lib/global-risk-continuity";
@@ -69,8 +71,8 @@ export const GLOBAL_RISK_EDGE_URL =
 const GLOBAL_RISK_APP_URL = "/api/public/global-risk";
 
 const READ_TARGETS: RiskReadTarget[] = [
-  { kind: "edge", url: GLOBAL_RISK_EDGE_URL },
   { kind: "app", url: GLOBAL_RISK_APP_URL },
+  { kind: "edge", url: GLOBAL_RISK_EDGE_URL },
 ];
 
 async function readVerifiedRisk(target: RiskReadTarget): Promise<GlobalRisk> {
@@ -99,8 +101,8 @@ async function readVerifiedRisk(target: RiskReadTarget): Promise<GlobalRisk> {
     if (!body.ok) {
       throw new Error(body.message || "Global Risk app API returned an invalid package");
     }
-    if (body.meta?.authority && body.meta.authority !== "backblaze-b2") {
-      throw new Error("Global Risk app API authority is invalid");
+    if (body.meta?.authority !== EDGE_AUTHORITY) {
+      throw new Error("Global Risk app API authority is missing or invalid");
     }
     next = body.data;
   }
