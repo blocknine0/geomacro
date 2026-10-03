@@ -1,0 +1,105 @@
+name: D1 Shadow Backfill
+
+on:
+  workflow_dispatch: {}
+  workflow_run:
+    workflows:
+      - Deploy D1 Control Plane
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-d1-shadow-backfill
+  cancel-in-progress: false
+
+jobs:
+  verified-shadow-backfill:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
+      D1_CONFIG: workers/control-plane/wrangler.runtime.jsonc
+    steps:
+      - name: Checkout current canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Require migration credentials without printing them
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
+          test -n "$SUPABASE_DB_URL" || { echo "SUPABASE_DB_URL is required"; exit 2; }
+
+      - name: Resolve the already-bootstrapped D1 database
+        id: d1
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              const rows=JSON.parse(s);
+              const row=rows.find(x => x.name === process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid ?? row?.id ?? "");
+            });
+          ')"
+          test -n "$DB_ID" || { echo "geomacro-control-plane D1 database is not bootstrapped"; exit 3; }
+          echo "database_id=$DB_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Build ephemeral D1 config
+        env:
+          D1_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const source = fs.readFileSync('workers/control-plane/wrangler.example.jsonc', 'utf8');
+          const id = String(process.env.D1_DATABASE_ID || '').trim();
+          if (!/^[0-9a-f-]{20,}$/i.test(id)) throw new Error('INVALID_D1_DATABASE_ID');
+          fs.writeFileSync(process.env.D1_CONFIG, source.replace('REPLACE_WITH_D1_DATABASE_ID', id));
+          NODE
+
+      - name: Require D1 schema v1 before copying anything
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT version FROM schema_meta WHERE name='control-plane';")"
+          printf '%s' "$OUT" | grep -q '"version":1' || { echo "D1 schema v1 is not ready"; exit 4; }
+
+      - name: Run checksum-verified shadow backfill
+        run: node scripts/ops/d1-shadow-backfill.mjs
+
+      - name: Upload parity evidence only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: d1-shadow-backfill-${{ github.run_id }}
+          path: artifacts/d1-shadow-backfill/verification-summary.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Confirm this is not a production cutover
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "D1 shadow parity verified. Customer serving remains B2-authoritative and Supabase is not deleted or disabled by this workflow."
