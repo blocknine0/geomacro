@@ -32,7 +32,9 @@ describe("Intelligence verified fallback contract", () => {
 
     expect(recoveryReader).toContain("normalizeScoredRow");
     expect(recoveryReader).toContain('.not("severity", "is", null)');
-    expect(recoveryReader).toContain("can never enter the B2 public package");
+    expect(recoveryReader).toContain("isGuardian");
+    expect(recoveryReader).toContain("derivedEnglishTitle");
+    expect(recoveryReader).toContain("Raw upstream");
 
     expect(api).toContain("readProductionPublicIntelligence");
     expect(hook).toContain('/api/public/intelligence');
