@@ -41,8 +41,8 @@ describe("public risk runtime resilience", () => {
     expect(legacyHook).toContain('const GLOBAL_RISK_APP_URL = "/api/public/global-risk"');
     expect(legacyHook).toContain('{ kind: "edge", url: GLOBAL_RISK_EDGE_URL }');
     expect(legacyHook).toContain('{ kind: "app", url: GLOBAL_RISK_APP_URL }');
-    expect(legacyHook.indexOf('{ kind: "app", url: GLOBAL_RISK_APP_URL }')).toBeLessThan(
-      legacyHook.indexOf('{ kind: "edge", url: GLOBAL_RISK_EDGE_URL }'),
+    expect(legacyHook.indexOf('{ kind: "edge", url: GLOBAL_RISK_EDGE_URL }')).toBeLessThan(
+      legacyHook.indexOf('{ kind: "app", url: GLOBAL_RISK_APP_URL }'),
     );
     expect(legacyHook).toContain('const EDGE_AUTHORITY = "backblaze-b2-verified-edge"');
     expect(legacyHook).toContain("body.meta?.authority !== EDGE_AUTHORITY");
