@@ -1,0 +1,79 @@
+name: Day 6 Fresh Evidence Probe
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: day6-fresh-evidence-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Check whether exact-head Day 6 is already complete or running
+        id: day6
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          HEAD_SHA="$(git rev-parse HEAD)"
+          RUNS="$(gh api -H 'Accept: application/vnd.github+json' "/repos/${GITHUB_REPOSITORY}/actions/workflows/day6-partner-assurance-final.yml/runs?branch=main&per_page=30")"
+          SUCCESS="$(printf '%s' "$RUNS" | jq --arg sha "$HEAD_SHA" '[.workflow_runs[] | select(.head_sha == $sha and .conclusion == "success")] | length')"
+          ACTIVE="$(printf '%s' "$RUNS" | jq --arg sha "$HEAD_SHA" '[.workflow_runs[] | select(.head_sha == $sha and (.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending"))] | length')"
+          if [ "$SUCCESS" -gt 0 ]; then
+            echo "already_complete=true" >> "$GITHUB_OUTPUT"
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "Exact-head Day 6 already has a successful run; no further partner allowance will be requested."
+          elif [ "$ACTIVE" -gt 0 ]; then
+            echo "already_complete=false" >> "$GITHUB_OUTPUT"
+            echo "active=true" >> "$GITHUB_OUTPUT"
+            echo "Exact-head Day 6 is already running; no duplicate dispatch."
+          else
+            echo "already_complete=false" >> "$GITHUB_OUTPUT"
+            echo "active=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Probe current strict CHN evidence without secrets
+        id: evidence
+        if: steps.day6.outputs.already_complete != 'true' && steps.day6.outputs.active != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/probe-day6-federico-live-evidence.ts | tee /tmp/day6-live-evidence-probe.json
+          jq -e '.ok == true and .secrets_required == false and .supabase_required == false and .partner_allowance_spent == false and .execution_authorized == false' /tmp/day6-live-evidence-probe.json >/dev/null
+          READY="$(jq -r '.ready' /tmp/day6-live-evidence-probe.json)"
+          test "$READY" = "true" || test "$READY" = "false"
+          echo "ready=$READY" >> "$GITHUB_OUTPUT"
+          if [ "$READY" != "true" ]; then
+            echo "No qualifying live CHN pair yet; strict Day 6 remains fail-closed and no review allowance is spent."
+          fi
+
+      - name: Dispatch Day 6 only after the strict probe is positive
+        if: steps.evidence.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run day6-partner-assurance-final.yml --ref main --repo "$GITHUB_REPOSITORY"
+          echo "Fresh qualifying evidence detected; dispatched the canonical Day 6 assurance workflow exactly once."
