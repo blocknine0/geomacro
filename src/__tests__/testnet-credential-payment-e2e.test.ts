@@ -13,6 +13,8 @@ const binding = read("src/lib/testnet-request-binding.server.ts");
 const commercialAccess = read("src/lib/commercial-access.server.ts");
 const migration = read("supabase/migrations/914_testnet_exact_request_binding.sql");
 const siteShell = read("src/components/site-shell.tsx");
+const publicTestnetAccess = read("src/routes/testnet-access.tsx");
+const publicTestnetConsole = read("src/routes/testnet-console.tsx");
 
 describe("Testnet credential -> 402 -> same transaction -> intelligence E2E", () => {
   it("keeps public browser access and private developer authentication as separate surfaces", () => {
@@ -73,8 +75,13 @@ describe("Testnet credential -> 402 -> same transaction -> intelligence E2E", ()
     expect(migration).toContain("grant all on table public.testnet_api_request_bindings to service_role");
   });
 
-  it("surfaces Testnet API under Technical Proof for live deployment verification", () => {
-    expect(siteShell).toContain('{ to: "/testnet-access", label: "Testnet API"');
-    expect(siteShell).toContain('<Link to="/testnet-access" className="hover:text-foreground">Testnet API</Link>');
+  it("retires public testnet navigation without deleting the internal verification implementation", () => {
+    expect(siteShell).not.toContain('{ to: "/testnet-access", label: "Testnet API"');
+    expect(siteShell).not.toContain('<Link to="/testnet-access"');
+    expect(publicTestnetAccess).toContain('redirect({ to: "/data-api", replace: true })');
+    expect(publicTestnetConsole).toContain('new URL("/data-api", request.url)');
+    expect(publicTestnetConsole).toContain("308");
+    expect(developerRoute).toContain("authenticateCommercialApiRequest");
+    expect(testerRoute).toContain("bindTestnetIntelligenceRequest");
   });
 });
