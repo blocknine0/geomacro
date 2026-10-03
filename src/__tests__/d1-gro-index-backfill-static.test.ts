@@ -32,6 +32,18 @@ describe("Day 3 D1/B2 serving migration", () => {
     expect(workflow).not.toContain("APP_SUPABASE_URL:");
   });
 
+  it("batches D1 writes so verified GRO migrations cannot exceed process argument limits", () => {
+    const script = read("scripts/ops/d1-gro-index-backfill.ts");
+    expect(script).toContain("const D1_WRITE_BATCH_SIZE = 12");
+    expect(script).toContain("function executeD1Statements(statements: string[]): number");
+    expect(script).toContain("offset += D1_WRITE_BATCH_SIZE");
+    expect(script).toContain("statements.slice(offset, offset + D1_WRITE_BATCH_SIZE)");
+    expect(script).toContain("const writeBatches = executeD1Statements(statements)");
+    expect(script).not.toContain('"--command", statements.join("\\n")');
+    expect(script).toContain("write_batches: writeBatches");
+    expect(script).toContain("d1_write_batch_size: D1_WRITE_BATCH_SIZE");
+  });
+
   it("requires exact D1 checksum parity and remains non-destructive", () => {
     const workflow = read(".github/workflows/d1-gro-index-backfill.yml");
     expect(workflow).toContain("source_checksum !== p.target_checksum");
