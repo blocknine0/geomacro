@@ -7,6 +7,10 @@ on:
       - main
     paths:
       - ".github/workflows/production-website-health.yml"
+      - "src/components/site-shell.tsx"
+      - "src/routes/testnet-access.tsx"
+      - "src/routes/testnet-console.tsx"
+      - "src/routes/data-api.tsx"
   schedule:
     - cron: "11 */6 * * *"
 
@@ -134,7 +138,7 @@ jobs:
           /about|About & trust
           /roadmap|What works today, and what comes next.
           /contact|Bring the workflow.
-          /testnet-access|Geomacro Testnet Access
+          /testnet-access|GOVERNED DATA
           /demo|Agentic Commerce Demo
           /pipeline|Intelligence Pipeline
           /onchain|Arc / Onchain
