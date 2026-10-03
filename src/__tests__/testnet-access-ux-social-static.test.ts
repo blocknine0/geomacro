@@ -5,7 +5,7 @@ const retiredRoute = readFileSync("src/routes/testnet-access.tsx", "utf8");
 const consoleRoute = readFileSync("src/routes/testnet-console.tsx", "utf8");
 const wildcard = readFileSync("src/routes/api/testnet-tester/$.tsx", "utf8");
 const logout = readFileSync("server/api/testnet-tester/logout.post.ts", "utf8");
-const feedback = readFileSync("server/api/demo/feedback.post.ts", "utf8");
+const feedback = readFileSync("src/routes/api.demo.feedback.ts", "utf8");
 
 describe("retired public Testnet UX", () => {
   it("sends legacy public Testnet visitors to the production API surface", () => {
@@ -22,7 +22,9 @@ describe("retired public Testnet UX", () => {
   });
 
   it("keeps the existing optional feedback endpoint without promoting Testnet UX on the production website", () => {
-    expect(feedback).toContain("execution_authorized: false");
+    expect(feedback).toContain('createFileRoute("/api/demo/feedback")');
+    expect(feedback).toContain("allowPublicDemoRequest");
+    expect(feedback).toContain('url.origin === "https://geomacro.live"');
     expect(retiredRoute).not.toContain("OPTIONAL FEEDBACK + X");
     expect(retiredRoute).not.toContain("Public Testnet access");
   });
