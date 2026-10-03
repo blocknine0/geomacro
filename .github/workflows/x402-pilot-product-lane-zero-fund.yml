@@ -1,0 +1,36 @@
+name: x402 Pilot Product Lane Zero-Fund Acceptance
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-x402-pilot-product-lane-zero-fund
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GEOMACRO_LIVE_HOST: https://geomacro.live
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Require first structural pilot products to be chargeable without paying
+        run: node scripts/agentic/verify-live-x402-pilot-product-lane.mjs
+
+      - name: Record zero-fund boundary
+        if: always()
+        run: |
+          echo "Payment performed: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Real funds touched: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Production activation changed: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Realtime/current queries: excluded from first paid pilot until fresh pipeline is restored" >> "$GITHUB_STEP_SUMMARY"
+          echo "Risk Gate/signed GRO: excluded from first paid pilot until fresh signed continuity is restored" >> "$GITHUB_STEP_SUMMARY"
