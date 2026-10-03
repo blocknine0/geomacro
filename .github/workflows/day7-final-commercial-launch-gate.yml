@@ -1,0 +1,342 @@
+name: Day 7 Final Commercial Launch Gate
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "config/partner-assurance.v1.json"
+      - "scripts/partner-assurance-adapter.ts"
+      - "scripts/ops/final-launch-gate-core.mjs"
+      - "scripts/ops/simulate-final-launch-failures.mjs"
+      - "workers/control-plane/**"
+      - ".github/workflows/day6-partner-assurance-final.yml"
+      - ".github/workflows/day7-final-commercial-launch-gate.yml"
+      - "src/__tests__/day6-day7-final-assurance-static.test.ts"
+  workflow_run:
+    workflows:
+      - Day 6 Partner Assurance Final
+    types:
+      - completed
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
+jobs:
+  static-fail-closed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify generic assurance contract
+        run: node scripts/check-partner-commercial-readiness.mjs
+
+      - name: Simulate D1 B2 partner payment signing scheduler failures
+        run: node scripts/ops/simulate-final-launch-failures.mjs
+
+      - name: Run Day 6 Day 7 static contract tests
+        run: bunx vitest run src/__tests__/day6-day7-final-assurance-static.test.ts
+
+  final-live-acknowledgement:
+    needs: static-fail-closed
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
+      GH_TOKEN: ${{ github.token }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
+      GEOMACRO_ORIGIN: https://geomacro.live
+    steps:
+      - name: Checkout exact Day 6 proven SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Prove Supabase credentials are absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          if env | grep -E '^((APP_)?SUPABASE_|VITE_SUPABASE_)' >/dev/null; then
+            echo "::error::Final launch gate must not receive Supabase credentials"
+            exit 2
+          fi
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$B2_KEY_ID"
+          test -n "$B2_APPLICATION_KEY"
+          test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32
+
+      - name: Resolve D1 and verify primary compact authority marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIST="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST" | node -e '
+            let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
+              const rows=JSON.parse(s); const row=rows.find(x=>x.name===process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid ?? row?.id ?? "");
+            });
+          ')"
+          test -n "$DB_ID" || { echo "::error::D1 control-plane database missing"; exit 3; }
+          D1_DATABASE_ID="$DB_ID" node <<'NODE'
+          const fs=require('fs');
+          const source=fs.readFileSync('workers/control-plane/wrangler.example.jsonc','utf8');
+          const id=process.env.D1_DATABASE_ID;
+          if (!/^[0-9a-f-]{20,}$/i.test(id)) throw new Error('INVALID_D1_DATABASE_ID');
+          fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', source.replace('REPLACE_WITH_D1_DATABASE_ID', id));
+          NODE
+          cd workers/control-plane
+          SQL="SELECT CASE WHEN json_extract(value_json,'$.role')='primary' AND json_extract(value_json,'$.compact_metadata_only')=1 AND json_extract(value_json,'$.durable_payload_authority')='backblaze-b2' AND json_extract(value_json,'$.commerce_authority')='cloudflare-durable-objects' AND json_extract(value_json,'$.supabase_runtime_mode')='standby' AND json_extract(value_json,'$.supabase_required_for_serving')=0 THEN 'DAY7_D1_PRIMARY_PASS' ELSE 'DAY7_D1_PRIMARY_FAIL' END AS verdict FROM control_state WHERE key='runtime_authority';"
+          PASS=false
+          for attempt in $(seq 1 20); do
+            OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "$SQL" 2>&1 || true)"
+            if printf '%s' "$OUT" | grep -q 'DAY7_D1_PRIMARY_PASS'; then PASS=true; break; fi
+            echo "Waiting for D1 primary-authority migration/deploy: attempt $attempt/20"
+            sleep 15
+          done
+          test "$PASS" = "true" || { printf '%s\n' "$OUT"; echo "::error::D1 primary compact authority marker not verified"; exit 3; }
+          printf '{"ok":true,"store":"d1","control_plane_role":"primary","schema_version":1}\n' > /tmp/day7-d1.json
+
+      - name: Verify fresh D1 scheduler checkpoint
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          SQL="SELECT CASE WHEN EXISTS (SELECT 1 FROM pipeline_checkpoint WHERE pipeline='governed_source_ingestion' AND status='PASS' AND datetime(last_success_at) >= datetime('now','-6 hours')) THEN 'DAY7_SCHEDULER_PASS' ELSE 'DAY7_SCHEDULER_FAIL' END AS verdict;"
+          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "$SQL")"
+          printf '%s' "$OUT" | grep -q 'DAY7_SCHEDULER_PASS' || { printf '%s\n' "$OUT"; echo "::error::No fresh successful governed ingestion checkpoint"; exit 4; }
+          printf '{"ok":true,"fresh":true,"fail_closed_on_stale":true}\n' > /tmp/day7-scheduler.json
+
+      - name: Verify B2 directly with Supabase absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/verify-b2-public-no-supabase.ts | tee /tmp/day7-b2.json
+          node -e '
+            const fs=require("fs"); const b=JSON.parse(fs.readFileSync("/tmp/day7-b2.json","utf8"));
+            if (b?.ok!==true || b?.authority!=="backblaze-b2" || b?.supabase_credentials_present!==false || b?.supabase_network_attempts!==0) process.exit(5);
+            if (b?.risk_verification_status!=="verified") process.exit(5);
+          '
+
+      - name: Verify deployed public boundary is B2 authoritative and Supabase standby
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(curl -fsS --max-time 20 'https://geomacro.live/api/health?deep=1')"
+          printf '%s' "$BODY" | tee /tmp/day7-public-health.json | node -e '
+            let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
+              const b=JSON.parse(s); const p=b?.public_production ?? {};
+              if (b?.ok!==true || b?.production_data_authority!=="backblaze-b2" || p?.serving_authority!=="backblaze-b2") process.exit(6);
+              if (b?.supabase_runtime_mode!=="standby" || p?.supabase_required_for_serving!==false) process.exit(6);
+              if (b?.commerce_control_plane!=="cloudflare-durable-objects") process.exit(6);
+            });
+          '
+
+      - name: Resolve and verify Durable Object commerce authority
+        id: origins
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESPONSE="$(curl -fsS --max-time 15 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain")"
+          SUBDOMAIN="$(printf '%s' "$RESPONSE" | node -e '
+            let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
+              const b=JSON.parse(s); const v=b?.result?.subdomain; if (b?.success!==true || typeof v!=="string" || !/^[a-z0-9-]+$/i.test(v)) process.exit(1); process.stdout.write(v);
+            });
+          ')"
+          URL="https://geomacro-commerce-ledger.${SUBDOMAIN}.workers.dev"
+          echo "ledger_url=$URL" >> "$GITHUB_OUTPUT"
+          BODY="$(curl -fsS --max-time 15 "$URL/health")"
+          printf '%s' "$BODY" > /tmp/day7-commerce-health.json
+          printf '%s' "$BODY" | node -e '
+            let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{
+              const b=JSON.parse(s); const c=Array.isArray(b?.capabilities)?b.capabilities:[];
+              if(b?.ok!==true||b?.storage!=="durable_objects_sqlite")process.exit(7);
+              for(const x of ["delivery","usage_guard","product_audit"])if(!c.includes(x))process.exit(7);
+            });
+          '
+
+      - name: Verify commerce adapter replay and outage behavior without Supabase
+        env:
+          GEOMACRO_COMMERCE_LEDGER_BACKEND: durable_object
+          GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origins.outputs.ledger_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/verify-commerce-no-supabase.ts | tee /tmp/day7-commerce-acceptance.json
+          node -e '
+            const fs=require("fs");const b=JSON.parse(fs.readFileSync("/tmp/day7-commerce-acceptance.json","utf8"));
+            if(b?.ok!==true||b?.backend!=="durable_object"||b?.supabase_credentials_present!==false||b?.supabase_network_attempts!==0)process.exit(8);
+            if(b?.exact_response_replay!==true||b?.duplicate_settlement_rejected!==true||b?.worker_outage_fails_closed!==true)process.exit(8);
+            if(b?.external_payment_performed!==false||b?.execution_authorized!==false)process.exit(8);
+          '
+
+      - name: Download exact Day 6 signed proof artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/day6-proof
+          mkdir -p /tmp/day6-proof
+          gh run download "$UPSTREAM_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "day6-partner-assurance-${UPSTREAM_RUN_ID}" --dir /tmp/day6-proof
+          test -s /tmp/day6-proof/risk-object.json
+          test -s /tmp/day6-proof/local-assurance.json
+          test -s /tmp/day6-proof/live-assurance.json
+          test -s /tmp/day6-proof/review-response.json
+          sha256sum -c /tmp/day6-proof/SHA256SUMS.txt --ignore-missing
+
+      - name: Reverify signed GRO locally and deployed without spending another partner allowance
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/partner-assurance-adapter.ts --partner federico --risk-object /tmp/day6-proof/risk-object.json --mode local | tee /tmp/day7-local-assurance.json
+          jq -e '.ok == true and .live_review.allowance_used == 0 and ([.local_gates[]] | all(. == "PASS"))' /tmp/day7-local-assurance.json >/dev/null
+          jq -e '
+            .ok == true and
+            .live_review.allowance_used == 1 and
+            .live_review.allowance_max == 1 and
+            .live_review.signed_proof_present == true and
+            .live_review.independent_proof_verification == "PASS"
+          ' /tmp/day6-proof/live-assurance.json >/dev/null
+
+      - name: Require exact-head Product CI CodeQL Website Lock Hosting x402 trust gates green
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUIRED='["Product CI","CodeQL Security Scan","Website Lock","Hosting Alignment","Live x402 Prelaunch Safety","Partner Commercial Readiness"]'
+          PASS=false
+          for attempt in $(seq 1 30); do
+            JSON="$(gh api -H 'Accept: application/vnd.github+json' "/repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?per_page=100")"
+            if REQUIRED="$REQUIRED" CHECKS="$JSON" node <<'NODE'
+          const required=JSON.parse(process.env.REQUIRED);
+          const checks=JSON.parse(process.env.CHECKS).check_runs ?? [];
+          const state=Object.fromEntries(required.map(name=>{
+            const rows=checks.filter(x=>x.name===name).sort((a,b)=>String(b.started_at??"").localeCompare(String(a.started_at??"")));
+            return [name, rows[0]?.conclusion ?? rows[0]?.status ?? "missing"];
+          }));
+          console.log(JSON.stringify(state));
+          process.exit(required.every(name=>state[name]==="success") ? 0 : 1);
+          NODE
+            then PASS=true; break; fi
+            echo "Exact-head checks not all green yet: attempt $attempt/30"
+            sleep 20
+          done
+          test "$PASS" = "true" || { echo "::error::Exact-head required checks are not all successful"; exit 9; }
+          printf '{"product_ci":true,"codeql":true,"website_lock":true,"hosting":true,"x402":true,"trust":true}\n' > /tmp/day7-exact-head.json
+
+      - name: Seal final no-funds commercial launch readiness acknowledgement
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/day7-final-launch-gate
+          node <<'NODE'
+          const fs=require('fs');
+          const crypto=require('crypto');
+          (async()=>{
+            const { evaluateFinalLaunchGate }=await import('./scripts/ops/final-launch-gate-core.mjs');
+            const d1=JSON.parse(fs.readFileSync('/tmp/day7-d1.json','utf8'));
+            const b2=JSON.parse(fs.readFileSync('/tmp/day7-b2.json','utf8'));
+            const publicHealth=JSON.parse(fs.readFileSync('/tmp/day7-public-health.json','utf8'));
+            const commerceHealth=JSON.parse(fs.readFileSync('/tmp/day7-commerce-health.json','utf8'));
+            const commerce=JSON.parse(fs.readFileSync('/tmp/day7-commerce-acceptance.json','utf8'));
+            const partnerLocal=JSON.parse(fs.readFileSync('/tmp/day7-local-assurance.json','utf8'));
+            const partnerLive=JSON.parse(fs.readFileSync('/tmp/day6-proof/live-assurance.json','utf8'));
+            const scheduler=JSON.parse(fs.readFileSync('/tmp/day7-scheduler.json','utf8'));
+            const exactHead=JSON.parse(fs.readFileSync('/tmp/day7-exact-head.json','utf8'));
+            const state={
+              d1,
+              b2,
+              commerce:{
+                ok:commerceHealth.ok===true && commerce.ok===true,
+                storage:commerceHealth.storage,
+                exact_response_replay:commerce.exact_response_replay,
+                duplicate_settlement_rejected:commerce.duplicate_settlement_rejected,
+                worker_outage_fails_closed:commerce.worker_outage_fails_closed,
+              },
+              supabase:{
+                runtime_mode:publicHealth.supabase_runtime_mode,
+                required_for_serving:publicHealth.public_production?.supabase_required_for_serving,
+                network_attempts:(b2.supabase_network_attempts===0 && commerce.supabase_network_attempts===0) ? 0 : 1,
+              },
+              partner:{
+                ok:partnerLive.ok===true,
+                local_gates_passed:Object.values(partnerLocal.local_gates??{}).every(v=>v==='PASS'),
+                signed_proof_present:partnerLive.live_review?.signed_proof_present===true,
+                independent_proof_verification:partnerLive.live_review?.independent_proof_verification==='PASS',
+                allowance_used:partnerLive.live_review?.allowance_used,
+                allowance_max:partnerLive.live_review?.allowance_max,
+              },
+              signing:{
+                signature_valid:partnerLocal.local_gates?.local_signature==='PASS',
+                active_key:partnerLocal.local_gates?.active_key==='PASS',
+                fresh:partnerLocal.local_gates?.freshness==='PASS',
+                tamper_rejected:partnerLocal.local_gates?.tamper_rejection==='PASS',
+                record_sha256:partnerLocal.record_sha256,
+              },
+              scheduler,
+              exact_head:exactHead,
+            };
+            const result=evaluateFinalLaunchGate(state);
+            const evidence={
+              ...result,
+              schema:'geomacro.final-commercial-launch-acknowledgement.v1',
+              head_sha:process.env.HEAD_SHA,
+              day6_run_id:process.env.UPSTREAM_RUN_ID,
+              acknowledged_at:new Date().toISOString(),
+              owner_real_funds_ack_required_before_first_usdc:true,
+              first_real_money_transaction_authorized:false,
+              destructive_supabase_retirement_authorized:false,
+            };
+            if(!result.ready) throw new Error(`FINAL_LAUNCH_GATE_BLOCKED:${result.failed.join(',')}`);
+            const canonical=JSON.stringify(evidence);
+            evidence.evidence_sha256=crypto.createHash('sha256').update(canonical).digest('hex');
+            fs.writeFileSync('artifacts/day7-final-launch-gate/acknowledgement.json',JSON.stringify(evidence,null,2)+'\n');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          cat artifacts/day7-final-launch-gate/acknowledgement.json
+
+      - name: Upload final launch acknowledgement
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: day7-final-commercial-launch-gate-${{ github.run_id }}
+          path: artifacts/day7-final-launch-gate/acknowledgement.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Confirm no-funds launch gate only
+        run: |
+          echo "Final commercial launch readiness is acknowledged for this exact head. This gate does not authorize real funds; explicit owner real-money ACK remains mandatory before any first USDC transaction."
