@@ -107,7 +107,7 @@ jobs:
           console.log('PASS: signer matches deployed active Ed25519 key');
           NODE
 
-      - name: Re-poll governed RSS once
+      - name: Re-poll governed RSS once with scoped OIDC
         env:
           GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
           GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
@@ -119,7 +119,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${GEOMACRO_FLASH_INGEST_TOKEN:-}" || { echo "::error::FLASH_INGEST_TOKEN is required"; exit 3; }
+          test -n "${GEOMACRO_FLASH_OIDC_TOKEN:-}" || { echo "::error::scoped GitHub OIDC token is required"; exit 3; }
           python -m pip install --disable-pip-version-check --retries 4 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/day6-rss-deps.log
           (cd workers/telegram-flash && python worker.py) 2>&1 | tee /tmp/day6-rss.log
 
