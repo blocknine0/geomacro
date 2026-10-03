@@ -17,4 +17,28 @@ describe("live x402 prelaunch safety probe", () => {
     expect(source).toContain("all_available_cases_testnet_only");
     expect(source).toContain("payable_production_resources_advertised: 0");
   });
+
+  it("covers representative regions without widening payment or execution", () => {
+    const source = readFileSync("scripts/agentic/verify-live-x402-prelaunch-availability.mjs", "utf8");
+
+    for (const region of [
+      "north_america",
+      "latin_america",
+      "europe",
+      "africa",
+      "middle_east",
+      "south_asia",
+      "east_asia",
+    ]) {
+      expect(source).toContain(`\"${region}\"`);
+    }
+    for (const iso3 of ["USA", "BRA", "DEU", "ZAF", "ARE", "IND", "CHN"]) {
+      expect(source).toContain(`country_iso3: \"${iso3}\"`);
+    }
+    expect(source).toContain('schema_version: "geomacro.live-x402-prelaunch-availability.v4"');
+    expect(source).toContain("representative_regions: [...REQUIRED_REGIONS].sort()");
+    expect(source).toContain("representative_case_count: cases.length");
+    expect(source).toContain("payment_performed: false");
+    expect(source).toContain("real_funds_touched: false");
+  });
 });
