@@ -1,12 +1,15 @@
 /**
  * Canonical public read model for the Global Risk Index workspace.
  *
- * The browser reads one app-owned API boundary. That endpoint accepts only the
- * verified B2 continuity package and rejects missing/truncated history. A
- * refresh failure never destroys an already verified reading and never creates
- * a synthetic replacement.
+ * The browser reads the proof-validated Cloudflare/B2 edge first so a Lovable
+ * SSR/API outage cannot take the verified Global Risk workspace offline. The
+ * same-origin API remains a compatibility fallback. Every accepted package is
+ * revalidated client-side for methodology, proof fields, combined history and
+ * all persisted domain histories. A refresh failure never destroys an already
+ * verified reading and never creates a synthetic replacement.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { validateGlobalRiskContinuity } from "@/lib/global-risk-continuity";
 import { reportError, toUserError, type UserError } from "@/lib/user-errors";
 import {
   GRI_METHODOLOGY,
@@ -30,7 +33,7 @@ export {
   type TimeframeSeries,
 };
 
-type PublicGlobalRiskResponse =
+type AppGlobalRiskResponse =
   | {
       ok: true;
       data: GlobalRisk;
@@ -46,7 +49,81 @@ type PublicGlobalRiskResponse =
       message?: string;
     };
 
+type EdgeGlobalRiskResponse = {
+  schema?: string;
+  source_project?: string;
+  generated_at?: string;
+  data?: GlobalRisk;
+};
+
+type RiskReadTarget =
+  | { kind: "edge"; url: string }
+  | { kind: "app"; url: string };
+
 const REQUEST_TIMEOUT_MS = 8_000;
+const EDGE_AUTHORITY = "backblaze-b2-verified-edge";
+const EDGE_SCHEMA = "geomacro.public-global-risk-live.v1";
+const EDGE_PROJECT = "ldpwajisioljyjtojvfx";
+export const GLOBAL_RISK_EDGE_URL =
+  "https://geomacro-global-risk.daspallab202391.workers.dev/global-risk";
+const GLOBAL_RISK_APP_URL = "/api/public/global-risk";
+
+const READ_TARGETS: RiskReadTarget[] = [
+  { kind: "edge", url: GLOBAL_RISK_EDGE_URL },
+  { kind: "app", url: GLOBAL_RISK_APP_URL },
+];
+
+async function readVerifiedRisk(target: RiskReadTarget): Promise<GlobalRisk> {
+  const response = await fetch(target.url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Global Risk ${target.kind} read failed with HTTP ${response.status}`);
+  }
+
+  let next: GlobalRisk | undefined;
+  if (target.kind === "edge") {
+    if (response.headers.get("x-geomacro-authority") !== EDGE_AUTHORITY) {
+      throw new Error("Global Risk edge authority header is missing or invalid");
+    }
+    const body = (await response.json()) as EdgeGlobalRiskResponse;
+    if (body.schema !== EDGE_SCHEMA || body.source_project !== EDGE_PROJECT) {
+      throw new Error("Global Risk edge envelope is invalid");
+    }
+    next = body.data;
+  } else {
+    const body = (await response.json()) as AppGlobalRiskResponse;
+    if (!body.ok) {
+      throw new Error(body.message || "Global Risk app API returned an invalid package");
+    }
+    if (body.meta?.authority && body.meta.authority !== "backblaze-b2") {
+      throw new Error("Global Risk app API authority is invalid");
+    }
+    next = body.data;
+  }
+
+  if (!next) throw new Error("Global Risk package is missing data");
+  const continuity = validateGlobalRiskContinuity(next);
+  if (!continuity.ok) {
+    throw new Error(`Global Risk continuity rejected: ${continuity.code}`);
+  }
+  return next;
+}
+
+async function readWithFailover(): Promise<GlobalRisk> {
+  let lastError: unknown = new Error("Global Risk read targets are unavailable");
+  for (const target of READ_TARGETS) {
+    try {
+      return await readVerifiedRisk(target);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
 
 export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
   const [data, setData] = useState<GlobalRisk | null>(null);
@@ -64,23 +141,9 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
     async function load() {
       setStatus(hasData.current ? "updating" : "loading");
       try {
-        const response = await fetch("/api/public/global-risk", {
-          method: "GET",
-          headers: { Accept: "application/json" },
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-        });
-        const body = (await response.json()) as PublicGlobalRiskResponse;
+        const next = await readWithFailover();
         if (cancelled) return;
 
-        if (!response.ok || !body.ok) {
-          throw new Error(
-            !body.ok && body.message
-              ? body.message
-              : `Global Risk read failed with HTTP ${response.status}`,
-          );
-        }
-
-        const next = body.data;
         hasData.current = true;
         setData(next);
         const asOf = new Date(next.snapshotAsOf).getTime();
