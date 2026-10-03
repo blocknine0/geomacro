@@ -37,8 +37,14 @@ describe("public risk runtime resilience", () => {
     const legacyHook = read("src/lib/use-global-risk.ts");
     const indicesHook = read("src/lib/use-risk-indices.ts");
 
-    expect(legacyHook).toContain('fetch("/api/public/global-risk"');
-    expect(legacyHook).toContain("if (!response.ok || !body.ok)");
+    expect(legacyHook).toContain("GLOBAL_RISK_EDGE_URL");
+    expect(legacyHook).toContain('const GLOBAL_RISK_APP_URL = "/api/public/global-risk"');
+    expect(legacyHook).toContain('{ kind: "edge", url: GLOBAL_RISK_EDGE_URL }');
+    expect(legacyHook).toContain('{ kind: "app", url: GLOBAL_RISK_APP_URL }');
+    expect(legacyHook.indexOf('{ kind: "edge", url: GLOBAL_RISK_EDGE_URL }')).toBeLessThan(
+      legacyHook.indexOf('{ kind: "app", url: GLOBAL_RISK_APP_URL }'),
+    );
+    expect(legacyHook).toContain("validateGlobalRiskContinuity(next)");
     expect(legacyHook).toContain('setStatus("error")');
     expect(indicesHook).toContain('setStatus(hasData.current ? "ready" : "error")');
     expect(indicesHook).toContain('RiskIndicesStatus = "loading" | "ready" | "updating" | "error"');

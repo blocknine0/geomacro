@@ -103,6 +103,8 @@ function unavailable(status = 503) {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
       "x-content-type-options": "nosniff",
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "x-geomacro-authority",
     },
   });
 }
@@ -148,6 +150,7 @@ async function buildResponse(env) {
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-verified-edge",
       "access-control-allow-origin": "*",
+      "access-control-expose-headers": "x-geomacro-authority",
     },
   });
 }

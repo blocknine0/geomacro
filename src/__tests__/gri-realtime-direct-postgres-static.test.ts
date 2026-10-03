@@ -34,11 +34,19 @@ describe("GRI realtime direct Postgres freshness", () => {
     expect(workflow).not.toContain("synthetic score");
   });
 
-  it("requires all three verified customer-facing indices and their real history", () => {
-    expect(workflow).toContain('const required=["geopolitics","macro","rare_earth"]');
-    expect(workflow).toContain('domains[key] && typeof domains[key]==="object"');
+  it("requires all three verified customer-facing indices and their real history through the browser edge", () => {
+    expect(workflow).toContain(
+      "GLOBAL_RISK_EDGE_URL: https://geomacro-global-risk.daspallab202391.workers.dev/global-risk",
+    );
+    expect(workflow).toContain('const required = ["geopolitics", "macro", "rare_earth"]');
     expect(workflow).toContain('domains[key]?.series?.["7D"]?.buckets');
-    expect(workflow).toContain('b?.meta?.authority==="backblaze-b2"');
-    expect(workflow).not.toContain("Array.isArray(d?.domainIndices)");
+    expect(workflow).toContain('domains[key]?.series?.["30D"]?.buckets');
+    expect(workflow).toContain('d?.series?.["7D"]?.buckets');
+    expect(workflow).toContain('d?.series?.["30D"]?.buckets');
+    expect(workflow).toContain("x-geomacro-authority: backblaze-b2-verified-edge");
+    expect(workflow).toContain("Observe geomacro.live API compatibility");
+    expect(workflow).toContain(
+      "::warning::geomacro.live same-origin Global Risk API compatibility path returned HTTP",
+    );
   });
 });
