@@ -5,7 +5,7 @@ import {
   readB2PublicRisk,
 } from "../lib/b2-live.server";
 import { getCoinbaseX402Config } from "../lib/coinbase-x402.server";
-import { riskIndicesFromGlobalRisk } from "../lib/risk-indices-from-global-risk";
+import { readRiskIndicesEdge } from "../lib/risk-indices-edge.server";
 import { geomacroSupabaseRuntimeMode } from "../lib/supabase-runtime-mode.server";
 
 const SUPABASE_RECOVERY_PROJECT_REF = "ldpwajisioljyjtojvfx";
@@ -58,15 +58,20 @@ async function getPublicProductionReadiness(deep: boolean) {
       supabase_required_for_serving: false,
       b2_runtime_configured: configured,
       intelligence_ready: null,
+      global_risk_ready: null,
       risk_indices_ready: null,
+      risk_indices_authority: null,
       risk_verification_status: null,
       risk_snapshot_as_of: null,
+      risk_indices_snapshot_as_of: null,
     };
   }
 
-  const [intelligence, risk] = configured
-    ? await Promise.all([readB2PublicIntelligence(), readB2PublicRisk()])
-    : [null, null] as const;
+  const [intelligence, globalRisk, riskIndices] = await Promise.all([
+    configured ? readB2PublicIntelligence() : Promise.resolve(null),
+    configured ? readB2PublicRisk() : Promise.resolve(null),
+    readRiskIndicesEdge(),
+  ]);
 
   const categories = new Set(
     (intelligence ?? []).map((row) => String(row.category ?? "").toLowerCase()),
@@ -75,12 +80,11 @@ async function getPublicProductionReadiness(deep: boolean) {
     Boolean(intelligence?.length) &&
     ["geopolitics", "macro", "rare_earth"].every((category) => categories.has(category));
 
-  const indices = risk ? riskIndicesFromGlobalRisk(risk) : null;
-  const riskReady =
-    Boolean(risk) &&
-    indices?.verificationStatus === "verified" &&
-    indices.indices.length === 3 &&
-    indices.indices.every((index) => ["available", "unavailable"].includes(index.status));
+  const globalRiskReady = globalRisk?.verificationStatus === "verified";
+  const riskIndicesReady =
+    riskIndices?.verificationStatus === "verified" &&
+    riskIndices.indices.length === 3 &&
+    riskIndices.indices.every((index) => index.status === "available");
 
   return {
     deep_checked: true,
@@ -88,9 +92,12 @@ async function getPublicProductionReadiness(deep: boolean) {
     supabase_required_for_serving: false,
     b2_runtime_configured: configured,
     intelligence_ready: intelligenceReady,
-    risk_indices_ready: riskReady,
-    risk_verification_status: risk?.verificationStatus ?? null,
-    risk_snapshot_as_of: risk?.snapshotAsOf ?? null,
+    global_risk_ready: globalRiskReady,
+    risk_indices_ready: riskIndicesReady,
+    risk_indices_authority: riskIndicesReady ? "backblaze-b2-risk-indices-edge" : null,
+    risk_verification_status: globalRisk?.verificationStatus ?? null,
+    risk_snapshot_as_of: globalRisk?.snapshotAsOf ?? null,
+    risk_indices_snapshot_as_of: riskIndices?.snapshotAsOf ?? null,
   };
 }
 
@@ -104,6 +111,7 @@ export const Route = createFileRoute("/api/health")({
           !deep ||
           (publicProduction.b2_runtime_configured &&
             publicProduction.intelligence_ready === true &&
+            publicProduction.global_risk_ready === true &&
             publicProduction.risk_indices_ready === true &&
             publicProduction.risk_verification_status === "verified");
 
@@ -120,9 +128,6 @@ export const Route = createFileRoute("/api/health")({
             supabase_role: "ingestion-recovery-standby",
             supabase_recovery_project_ref: SUPABASE_RECOVERY_PROJECT_REF,
             supabase_runtime_mode: geomacroSupabaseRuntimeMode(),
-            // Temporary compatibility for the isolated legacy Testnet monitor.
-            // This does not describe or select the customer-facing production
-            // data authority; the top-level v2 contract above is authoritative.
             legacy_testnet_alignment: {
               alignment_contract: "github-main-external-supabase-lovable-v1",
               database_authority: "external-supabase",

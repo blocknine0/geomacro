@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "3c6fb13083478f0a155efffe71532f6a3dfe9364",
-  "published_baseline": "Founder-approved Geomacro Commercial V1 Global Risk presentation with three separate public indices restored on /global-risk: Geopolitical Risk Index, Macroeconomic Risk Index and Critical Minerals Risk Index. Each index uses only persisted category_breakdown scores from verified, published gri-v1.2.0 snapshots and exposes same-methodology 24H/7D/30D history when present; missing intervals or unavailable domains are never interpolated, zero-filled or fabricated. The legacy combined GRI remains proof lineage/input context rather than the customer-facing headline. Production serving remains B2-authoritative, verified snapshots are explicitly labelled current or last verified by age, and the bounded six-hour freshness path publishes a newly verified GRI continuity package to B2 immediately after independent proof verification. No payment, execution authorization, source-rights threshold or x402 safety gate is weakened.",
+  "baseline_sha": "65aaa9165b859e01a81692db55193a17306a3a25",
+  "published_baseline": "Founder-approved public-surface isolation recovery. /global-risk is restored to its dedicated Global Risk workspace and reads the proof-validated Global Risk Cloudflare/B2 edge; /risk-indices remains the separate three-index product and reads its own independently published, proof-bound Risk Indices Cloudflare/B2 edge. Intelligence and Ask keep their own API/runtime contracts. Shared canonical verified evidence may be read by publishers, but customer-serving state, B2 live/proof objects, workers, browser hooks, schedules and compatibility APIs are isolated so repairing one product surface does not replace or overwrite another. Missing or stale verified data remains explicit; no synthetic score, zero fallback, history interpolation, payment weakening or source-rights bypass is allowed.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
-  "locked_at_utc": "2026-10-03T18:34:00Z",
+  "locked_at_utc": "2026-10-03T22:30:00Z",
   "published_source_sha": "5bc4f66d91d0c92c4fce6bd20e6b3b4907453381",
-  "lock_revision": "founder-approved-three-risk-indices-freshness-recovery-20261003"
+  "lock_revision": "founder-approved-independent-public-surface-recovery-20261004"
 }

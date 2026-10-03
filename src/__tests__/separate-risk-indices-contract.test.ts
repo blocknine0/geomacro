@@ -78,27 +78,27 @@ describe("separate public risk indices contract", () => {
     expect(edge).toContain("source_url: null");
   });
 
-  it("uses the verified B2 Cloudflare edge as the Lovable customer-facing authority", () => {
-    const publicRisk = read("src/lib/public-risk.functions.ts");
+  it("gives Risk Indices a dedicated B2/Cloudflare serving authority independent from Global Risk", () => {
     const publicIndices = read("server/api/public/risk-indices.get.ts");
-    const publicGlobalRisk = read("server/api/public/global-risk.get.ts");
-    const edgeReader = read("src/lib/global-risk-edge.server.ts");
+    const indicesEdgeReader = read("src/lib/risk-indices-edge.server.ts");
+    const globalEdgeReader = read("src/lib/global-risk-edge.server.ts");
     const indicesHook = read("src/lib/use-risk-indices.ts");
     const globalRiskHook = read("src/lib/use-global-risk.ts");
+    const publisher = read("scripts/ops/publish-b2-risk-indices-direct-postgres.mjs");
 
-    expect(publicRisk).toContain("readB2PublicRisk");
-    expect(publicRisk).not.toContain("readPublicGlobalRiskFromEdge");
-    expect(edgeReader).toContain("backblaze-b2-verified-edge");
-    expect(publicIndices).toContain("readGlobalRiskEdge");
-    expect(publicIndices).toContain("riskIndicesFromGlobalRisk");
-    expect(publicIndices).not.toContain("readB2PublicRisk");
-    expect(publicGlobalRisk).toContain("readGlobalRiskEdge");
-    expect(publicGlobalRisk).toContain("validateGlobalRiskContinuity");
-    expect(publicGlobalRisk).not.toContain("readB2PublicRisk");
-    expect(indicesHook).toContain('/api/public/risk-indices');
-    expect(globalRiskHook).toContain('/api/public/global-risk');
-    expect(globalRiskHook).not.toContain("useServerFn");
-    expect(globalRiskHook).not.toContain("supabase.co");
+    expect(indicesEdgeReader).toContain("geomacro-risk-indices.daspallab202391.workers.dev/risk-indices");
+    expect(indicesEdgeReader).toContain("backblaze-b2-risk-indices-edge");
+    expect(publicIndices).toContain("readRiskIndicesEdge");
+    expect(publicIndices).not.toContain("readGlobalRiskEdge");
+    expect(publicIndices).not.toContain("riskIndicesFromGlobalRisk");
+    expect(indicesHook).toContain("RISK_INDICES_EDGE_URL");
+    expect(indicesHook).toContain('const RISK_INDICES_APP_URL = "/api/public/risk-indices"');
+    expect(indicesHook).not.toContain("GLOBAL_RISK_EDGE_URL");
+    expect(globalRiskHook).toContain("GLOBAL_RISK_EDGE_URL");
+    expect(globalRiskHook).not.toContain("RISK_INDICES_EDGE_URL");
+    expect(globalEdgeReader).toContain("backblaze-b2-verified-edge");
+    expect(publisher).toContain("risk-indices-independent/latest.json.gz");
+    expect(publisher).not.toContain('const LIVE_KEY = "geomacro-evidence/v1/live/global-risk/');
   });
 
   it("keeps the legacy Supabase edge manual recovery only", () => {
@@ -114,18 +114,20 @@ describe("separate public risk indices contract", () => {
     expect(workflow).not.toContain("supabase migration");
   });
 
-  it("keeps /global-risk on the three-index product and forbids a composite-only route regression", () => {
+  it("keeps /global-risk and /risk-indices on separate workspaces and read paths", () => {
     const globalRiskRoute = read("src/routes/global-risk.tsx");
     const riskIndicesRoute = read("src/routes/risk-indices.tsx");
+    const globalRiskWorkspace = read("src/components/gri/global-risk-workspace.tsx");
     const riskIndicesWorkspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
     const continuity = read("src/lib/global-risk-continuity.ts");
 
-    expect(globalRiskRoute).toContain("RiskIndicesWorkspace");
-    expect(globalRiskRoute).not.toContain("GlobalRiskWorkspace");
-    expect(globalRiskRoute).toContain("Geopolitics, Macro & Critical Minerals");
+    expect(globalRiskRoute).toContain("GlobalRiskWorkspace");
+    expect(globalRiskRoute).not.toContain("RiskIndicesWorkspace");
     expect(riskIndicesRoute).toContain("RiskIndicesWorkspace");
+    expect(riskIndicesRoute).not.toContain("GlobalRiskWorkspace");
+    expect(globalRiskWorkspace).toContain("useGlobalRisk");
+    expect(riskIndicesWorkspace).toContain("useRiskIndices");
     expect(riskIndicesWorkspace).toContain("Three risks. Three separate indices.");
-    expect(riskIndicesWorkspace).toContain("instead of being compressed into one combined headline score");
     expect(continuity).toContain("RISK_DOMAIN_HISTORY_CONTAINER_MISSING");
     expect(continuity).toContain("RISK_DOMAIN_${domain.toUpperCase()}_HISTORY_MISSING");
   });

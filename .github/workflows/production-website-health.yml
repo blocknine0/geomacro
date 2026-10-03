@@ -12,12 +12,18 @@ on:
       - "server/api/public/risk-indices.get.ts"
       - "server/api/public/intelligence.get.ts"
       - "src/lib/global-risk-edge.server.ts"
+      - "src/lib/risk-indices-edge.server.ts"
       - "src/lib/global-risk-continuity.ts"
       - "src/lib/risk-indices-from-global-risk.ts"
       - "src/lib/public-intelligence-production.server.ts"
+      - "src/lib/use-global-risk.ts"
+      - "src/lib/use-risk-indices.ts"
       - "src/lib/use-intelligence.ts"
       - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
+      - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
+      - "scripts/ops/publish-b2-risk-indices-direct-postgres.mjs"
       - ".github/workflows/gri-realtime-direct-postgres.yml"
+      - ".github/workflows/risk-indices-realtime-direct-postgres.yml"
   schedule:
     - cron: "11 */6 * * *"
 
@@ -34,6 +40,8 @@ jobs:
     timeout-minutes: 12
     env:
       BASE_URL: https://geomacro.live
+      GLOBAL_RISK_EDGE_URL: https://geomacro-global-risk.daspallab202391.workers.dev/global-risk
+      RISK_INDICES_EDGE_URL: https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices
     steps:
       - name: Verify B2 production serving health
         shell: bash
@@ -79,6 +87,30 @@ jobs:
           do
             grep -Fq "$marker" "$body"
           done
+
+      - name: Verify independent Global Risk and Risk Indices edges
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          global_edge="$(mktemp)"
+          global_headers="$(mktemp)"
+          global_code="$(curl -sS -D "$global_headers" -o "$global_edge" -w '%{http_code}' --max-time 20 "$GLOBAL_RISK_EDGE_URL")"
+          test "$global_code" = "200" || { echo "Global Risk edge HTTP $global_code"; cat "$global_edge"; exit 1; }
+          grep -qi '^x-geomacro-authority: backblaze-b2-verified-edge' "$global_headers"
+          grep -Fq '"schema":"geomacro.public-global-risk-live.v1"' "$global_edge"
+
+          indices_edge="$(mktemp)"
+          indices_headers="$(mktemp)"
+          indices_code="$(curl -sS -D "$indices_headers" -o "$indices_edge" -w '%{http_code}' --max-time 20 "$RISK_INDICES_EDGE_URL")"
+          test "$indices_code" = "200" || { echo "Risk Indices edge HTTP $indices_code"; cat "$indices_edge"; exit 1; }
+          grep -qi '^x-geomacro-authority: backblaze-b2-risk-indices-edge' "$indices_headers"
+          grep -Fq '"schema":"geomacro.public-risk-indices-live.v1"' "$indices_edge"
+
+          if cmp -s "$global_edge" "$indices_edge"; then
+            echo "::error::Global Risk and Risk Indices edges unexpectedly returned the same serving package."
+            exit 1
+          fi
 
       - name: Verify public production APIs and scored Intelligence contract
         shell: bash
@@ -139,7 +171,7 @@ jobs:
           fi
           grep -Fq '"ok":true' "$risk"
           grep -Fq '"verificationStatus":"verified"' "$risk"
-          grep -Fq '"authority":"backblaze-b2-verified-edge"' "$risk"
+          grep -Fq '"authority":"backblaze-b2-risk-indices-edge"' "$risk"
 
           ask="$(mktemp)"
           ask_code="$(curl -L --retry 2 --retry-all-errors --retry-delay 2 -sS -H 'Accept: application/json' -H 'Origin: https://geomacro.live' -H 'X-Geomacro-Question: What changed in the risk indices?' -o "$ask" -w '%{http_code}' "$BASE_URL/api/public-ask")"
@@ -157,7 +189,8 @@ jobs:
           routes="$(cat <<'EOF'
           /|Global risk intelligence
           /intelligence|Risk Intelligence
-          /global-risk|Geomacro Risk Indices
+          /global-risk|How global risk is moving
+          /risk-indices|Three risks. Three separate indices.
           /ask-geomacro|Ask Geomacro
           /data-api|GOVERNED DATA
           /pricing|Access & pricing

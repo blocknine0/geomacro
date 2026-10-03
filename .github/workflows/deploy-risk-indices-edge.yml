@@ -1,0 +1,122 @@
+name: Deploy Risk Indices Edge
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - "workers/risk-indices-edge/**"
+      - ".github/workflows/deploy-risk-indices-edge.yml"
+      - "scripts/ops/publish-b2-risk-indices-direct-postgres.mjs"
+      - "src/lib/risk-indices-edge.server.ts"
+      - "src/lib/use-risk-indices.ts"
+      - "server/api/public/risk-indices.get.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-risk-indices-edge-production
+  cancel-in-progress: false
+
+jobs:
+  publish-deploy-accept:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      WRANGLER_VERSION: "4.136.3"
+      EXPECTED_URL: https://geomacro-risk-indices.daspallab202391.workers.dev
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked runtime dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Require existing production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
+          test -n "$SUPABASE_DB_URL" || { echo "SUPABASE_DB_URL is required"; exit 2; }
+          test -n "$B2_KEY_ID" || { echo "B2_KEY_ID is required"; exit 2; }
+          test -n "$B2_APPLICATION_KEY" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
+
+      - name: Bootstrap isolated verified Risk Indices package
+        run: bun scripts/ops/publish-b2-risk-indices-direct-postgres.mjs | tee /tmp/risk-indices-bootstrap.json
+
+      - name: Deploy read-only Risk Indices Worker with pinned Wrangler
+        id: deploy
+        working-directory: workers/risk-indices-edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_LOG="$(mktemp)"
+          npx -y "wrangler@${WRANGLER_VERSION}" deploy --config wrangler.jsonc 2>&1 | tee "$DEPLOY_LOG"
+          DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
+          test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev URL"; exit 3; }
+          test "$DEPLOYMENT_URL" = "$EXPECTED_URL" || { echo "Unexpected worker URL: $DEPLOYMENT_URL"; exit 3; }
+          printf '%s' "$B2_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_KEY_ID --config wrangler.jsonc >/tmp/risk-indices-edge-b2-key.log
+          printf '%s' "$B2_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.jsonc >/tmp/risk-indices-edge-b2-secret.log
+          echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Require isolated verified package through Risk Indices edge
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=''
+          for attempt in 1 2 3 4 5 6; do
+            CODE="$(curl -sS -D /tmp/risk-indices-edge.headers -o /tmp/risk-indices-edge.json -w '%{http_code}' --max-time 15 "$DEPLOYMENT_URL/risk-indices" || true)"
+            if [ "$CODE" = "200" ]; then break; fi
+            sleep $((attempt * 2))
+          done
+          test "$CODE" = "200" || { echo "Risk Indices edge acceptance failed: HTTP $CODE"; cat /tmp/risk-indices-edge.json || true; exit 4; }
+          grep -qi '^x-geomacro-authority: backblaze-b2-risk-indices-edge' /tmp/risk-indices-edge.headers || { echo "Risk Indices verified authority header missing"; exit 4; }
+          node <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/risk-indices-edge.json', 'utf8'));
+          const data = body?.data;
+          if (body?.schema !== 'geomacro.public-risk-indices-live.v1') throw new Error('EDGE_SCHEMA_INVALID');
+          if (body?.source_project !== 'ldpwajisioljyjtojvfx') throw new Error('EDGE_PROJECT_INVALID');
+          if (data?.contractVersion !== 'risk-indices-v1.1.0' || data?.parentMethodologyVersion !== 'gri-v1.2.0' || data?.verificationStatus !== 'verified') {
+            throw new Error('EDGE_RISK_INDICES_NOT_VERIFIED');
+          }
+          const required = new Set(['geopolitics','macro','critical_minerals']);
+          for (const index of data?.indices ?? []) {
+            if (!required.delete(index?.key) || index?.status !== 'available') throw new Error('EDGE_RISK_INDEX_INVALID');
+            if (!Array.isArray(index?.series?.['7D']?.buckets) || index.series['7D'].buckets.length < 2) throw new Error(`EDGE_7D_HISTORY_INVALID:${index?.key}`);
+            if (!Array.isArray(index?.series?.['30D']?.buckets) || index.series['30D'].buckets.length < index.series['7D'].buckets.length) throw new Error(`EDGE_30D_HISTORY_INVALID:${index?.key}`);
+          }
+          if (required.size) throw new Error('EDGE_RISK_INDEX_MISSING');
+          console.log(JSON.stringify({ ok: true, snapshot_id: data.snapshotId, snapshot_as_of: data.snapshotAsOf }));
+          NODE
+
+      - name: Confirm narrow non-destructive serving boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="$(curl -sS -o /tmp/risk-indices-edge-deny.json -w '%{http_code}' --max-time 10 "$EXPECTED_URL/not-allowed" || true)"
+          test "$CODE" = "404" || { echo "Unexpected generic read surface: HTTP $CODE"; exit 5; }
+          CODE="$(curl -sS -X POST -o /tmp/risk-indices-edge-post.json -w '%{http_code}' --max-time 10 "$EXPECTED_URL/risk-indices" || true)"
+          test "$CODE" = "405" || { echo "Unexpected write surface: HTTP $CODE"; exit 5; }
+          echo "Risk Indices edge exposes one isolated read-only verified package; no B2 delete/write from the public edge, Supabase mutation, or payment action occurred."
