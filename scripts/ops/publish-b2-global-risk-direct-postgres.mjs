@@ -41,12 +41,18 @@ function sqlLiteral(value) {
   return `'${String(value).replaceAll("'", "''")}'`;
 }
 
+function terminateSqlStatement(sql) {
+  const statement = String(sql ?? "").trim().replace(/;+\s*$/u, "");
+  if (!statement) throw new Error("GLOBAL_RISK_SQL_EMPTY");
+  return `${statement};`;
+}
+
 function psqlRows(dbUrl, sql) {
   const wrapped = `
     begin read only;
     set local statement_timeout = '20s';
     set local lock_timeout = '5s';
-    ${sql}
+    ${terminateSqlStatement(sql)}
     commit;
   `;
   const stdout = execFileSync(
