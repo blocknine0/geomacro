@@ -59,16 +59,22 @@ describe("verified B2 governed agent module continuity", () => {
     expect(reader).not.toContain("VITE_B2");
   });
 
-  it("uses B2 only after source authorization and only when the primary governed store throws", () => {
+  it("authorizes the source first, then prefers verified B2 derived state before Supabase standby", () => {
     expect(wgi).toContain("checkCommercialSourceEligibility");
-    expect(wgi).toContain("catch (primaryError)");
     expect(wgi).toContain("readB2AgentGovernedModule");
-    expect(wgi).toContain("primary governed store unavailable; using fresh verified B2 derived state");
 
-    expect(wdi).toContain("checkCommercialSourceEligibility");
-    expect(wdi).toContain("catch (primaryError)");
-    expect(wdi).toContain("readB2AgentGovernedModule");
-    expect(wdi).toContain("primary governed store unavailable; using fresh verified B2 derived state");
+    for (const source of [wdi, usgs]) {
+      const authorization = source.indexOf("checkCommercialSourceEligibility");
+      const b2Read = source.indexOf("const primary = await b2Fallback");
+      const standby = source.indexOf("const db = requireRiskSupabase()");
+      expect(authorization).toBeGreaterThanOrEqual(0);
+      expect(b2Read).toBeGreaterThan(authorization);
+      expect(standby).toBeGreaterThan(b2Read);
+    }
+    expect(wdi).toContain("Production serving is B2-primary");
+    expect(usgs).toContain("B2 is the production serving authority");
+    expect(wdi).toContain("using fresh verified B2 governed derived state");
+    expect(usgs).toContain("using fresh verified B2 governed derived state");
     expect(rights).toContain("export async function readCommercialSourceRightsRow");
     expect(rights).toContain('certificationState === "CERTIFIED"');
   });
