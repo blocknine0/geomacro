@@ -8,6 +8,8 @@ import {
 import type {
   Bucket,
   GlobalRisk,
+  RiskDomainKey,
+  RiskDomainReading,
   RiskDriver,
   RiskRow,
   Timeframe,
@@ -16,6 +18,7 @@ import type {
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
+const DOMAIN_KEYS: RiskDomainKey[] = ["geopolitics", "macro", "rare_earth"];
 
 export type SnapshotRow = {
   id: string;
@@ -53,6 +56,14 @@ export type SnapshotRow = {
   status: string;
 };
 
+type CategoryReading = {
+  score: number;
+  confidence: number | null;
+  eventCount: number;
+  sourceCount: number;
+  storyCount: number;
+};
+
 function n(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined) return null;
   const x = Number(value);
@@ -65,17 +76,21 @@ function finishSeries(timeframe: Timeframe, buckets: Bucket[]): TimeframeSeries 
   return { timeframe, buckets, low: Math.min(...values), high: Math.max(...values) };
 }
 
-function seriesForSnapshots(
-  rows: SnapshotRow[],
-  timeframe: Timeframe,
-  latestAt: number,
-): TimeframeSeries {
+function timeframeStart(timeframe: Timeframe, latestAt: number): number {
   const windows: Record<Timeframe, number> = {
     "24H": DAY,
     "7D": 7 * DAY,
     "30D": 30 * DAY,
   };
-  const start = latestAt - windows[timeframe];
+  return latestAt - windows[timeframe];
+}
+
+function seriesForSnapshots(
+  rows: SnapshotRow[],
+  timeframe: Timeframe,
+  latestAt: number,
+): TimeframeSeries {
+  const start = timeframeStart(timeframe, latestAt);
   const buckets = rows
     .filter((row) => {
       const t = new Date(row.as_of).getTime();
@@ -93,6 +108,90 @@ function seriesForSnapshots(
     }))
     .sort((a, b) => a.t - b.t);
   return finishSeries(timeframe, buckets);
+}
+
+function categoryReading(snapshot: SnapshotRow, domain: RiskDomainKey): CategoryReading | null {
+  if (!Array.isArray(snapshot.category_breakdown)) return null;
+  const record = (snapshot.category_breakdown as Array<Record<string, unknown>>).find(
+    (category) => String(category.category ?? "") === domain,
+  );
+  if (!record) return null;
+
+  const score = n(record.score as number | string | null);
+  const confidence = n(record.confidence as number | string | null);
+  const eventCount = Number(record.eventCount);
+  const sourceCount = Number(record.sourceCount);
+  const storyCount = Number(record.storyCount);
+  if (
+    score === null ||
+    score < 0 ||
+    score > 100 ||
+    !Number.isInteger(eventCount) ||
+    eventCount < 1 ||
+    !Number.isInteger(sourceCount) ||
+    sourceCount < 1 ||
+    !Number.isInteger(storyCount) ||
+    storyCount < 1 ||
+    storyCount > eventCount
+  ) {
+    return null;
+  }
+  return {
+    score,
+    confidence:
+      confidence !== null && confidence >= 0 && confidence <= 100 ? confidence : null,
+    eventCount,
+    sourceCount,
+    storyCount,
+  };
+}
+
+function seriesForDomain(
+  rows: SnapshotRow[],
+  domain: RiskDomainKey,
+  timeframe: Timeframe,
+  latestAt: number,
+): TimeframeSeries {
+  const start = timeframeStart(timeframe, latestAt);
+  const buckets: Bucket[] = [];
+  for (const row of rows) {
+    const t = new Date(row.as_of).getTime();
+    if (!Number.isFinite(t) || t < start || t > latestAt) continue;
+    const reading = categoryReading(row, domain);
+    if (!reading) continue;
+    buckets.push({ t, avg: reading.score, count: reading.eventCount });
+  }
+  buckets.sort((a, b) => a.t - b.t);
+  return finishSeries(timeframe, buckets);
+}
+
+function domainReading(
+  snapshots: SnapshotRow[],
+  domain: RiskDomainKey,
+  latestAt: number,
+): RiskDomainReading | null {
+  const current = categoryReading(snapshots[0], domain);
+  if (!current) return null;
+  const previous = snapshots
+    .slice(1)
+    .map((snapshot) => categoryReading(snapshot, domain))
+    .find((reading): reading is CategoryReading => reading !== null) ?? null;
+
+  return {
+    score: Math.round(current.score),
+    rawScore: current.score,
+    previousScore: previous?.score ?? null,
+    changePoints: previous ? current.score - previous.score : null,
+    confidence: current.confidence,
+    eventCount: current.eventCount,
+    sourceCount: current.sourceCount,
+    independentStoryCount: current.storyCount,
+    series: {
+      "24H": seriesForDomain(snapshots, domain, "24H", latestAt),
+      "7D": seriesForDomain(snapshots, domain, "7D", latestAt),
+      "30D": seriesForDomain(snapshots, domain, "30D", latestAt),
+    },
+  };
 }
 
 function snapshotDrivers(snapshot: SnapshotRow): RiskDriver[] {
@@ -232,6 +331,9 @@ export function assemblePublicGlobalRisk(
     "7D": seriesForSnapshots(snapshots, "7D", latestAt),
     "30D": seriesForSnapshots(snapshots, "30D", latestAt),
   };
+  const domainIndices = Object.fromEntries(
+    DOMAIN_KEYS.map((domain) => [domain, domainReading(snapshots, domain, latestAt)]),
+  ) as Record<RiskDomainKey, RiskDomainReading | null>;
   const active = series["24H"].buckets ? series["24H"] : series["7D"];
   const drivers = snapshotDrivers(latest);
 
@@ -268,6 +370,7 @@ export function assemblePublicGlobalRisk(
     snapshotAsOf: latest.as_of,
     usedFallbackWindow: false,
     series,
+    domainIndices,
     drivers,
     topDriver: drivers[0] ?? null,
     recentEvents,
