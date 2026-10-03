@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.historical-producer-link.v1",
   "producer_repository": "blocknine0/geomacro-historical-data",
-  "producer_main_commit": "4f77f3afa84f1d7c613a653993104af0652855ac",
+  "producer_main_commit": "88c93f98b6cac5d5596f623d3f846b529d54d289",
   "producer_contract": "docs/HISTORICAL_INTEGRATION_CONTRACT.md",
   "producer_consumer_manifest": "config/geomacro_main_consumer.v1.json",
   "consumer_repository": "blocknine0/geomacro",
