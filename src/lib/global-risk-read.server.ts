@@ -18,6 +18,7 @@ const LOOKBACK = GRI_LOOKBACK_HOURS * HOUR;
 async function loadRecentEvents(
   supabase: SupabaseClient,
   since: string,
+  through: string,
   limit = 24,
 ): Promise<RiskRow[]> {
   const { data, error } = await supabase
@@ -27,6 +28,7 @@ async function loadRecentEvents(
     )
     .in("category", ["geopolitics", "macro", "rare_earth"])
     .gte("created_at", since)
+    .lte("created_at", through)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -75,14 +77,18 @@ export async function readPublicGlobalRisk(): Promise<GlobalRisk> {
     );
   }
 
+  const snapshots = snapshotResult.data as SnapshotRow[];
+  const latestAsOf = snapshots[0].as_of;
+  const latestAt = Date.parse(latestAsOf);
+  if (!Number.isFinite(latestAt)) {
+    return readVerifiedB2GlobalRiskOrThrow("Newest Global Risk snapshot timestamp is invalid");
+  }
+
   const recentEvents = await loadRecentEvents(
     supabase,
-    new Date(now - LOOKBACK).toISOString(),
+    new Date(latestAt - LOOKBACK).toISOString(),
+    latestAsOf,
   );
 
-  return assemblePublicGlobalRisk(
-    snapshotResult.data as SnapshotRow[],
-    recentEvents,
-    now,
-  );
+  return assemblePublicGlobalRisk(snapshots, recentEvents, now);
 }
