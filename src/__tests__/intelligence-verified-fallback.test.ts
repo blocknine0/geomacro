@@ -32,7 +32,10 @@ describe("Intelligence verified fallback contract", () => {
 
     expect(recoveryReader).toContain("normalizeScoredRow");
     expect(recoveryReader).toContain('.not("severity", "is", null)');
-    expect(recoveryReader).toContain("isGuardian");
+    expect(recoveryReader).toContain('.or("source_name.is.null,source_name.not.ilike.%guardian%")');
+    expect(recoveryReader).toContain('.or("source_domain.is.null,source_domain.not.in.(theguardian.com,www.theguardian.com)")');
+    expect(recoveryReader).not.toMatch(/\.select\([^)]*source_name/s);
+    expect(recoveryReader).not.toMatch(/\.select\([^)]*source_domain/s);
     expect(recoveryReader).toContain("derivedEnglishTitle");
     expect(recoveryReader).toContain("Raw upstream");
 
