@@ -3,7 +3,6 @@ import {
   setResponseHeaders,
   setResponseStatus,
 } from "h3";
-import { readB2PublicRisk } from "../../../src/lib/b2-live.server";
 import { readGlobalRiskEdge } from "../../../src/lib/global-risk-edge.server";
 import { validateGlobalRiskContinuity } from "../../../src/lib/global-risk-continuity";
 
@@ -16,17 +15,17 @@ export default defineEventHandler(async (event) => {
   });
 
   try {
-    // Prefer a direct signed B2 read when this runtime has server-only B2
-    // credentials. Lovable production intentionally does not need those
-    // secrets: the read-only Cloudflare edge validates the exact B2 live
-    // package + proof binding and exposes only this public risk object.
-    const risk = (await readB2PublicRisk()) ?? (await readGlobalRiskEdge());
+    // Lovable is a public compatibility transport only. Do not import or
+    // initialize the signed/private B2 client in this runtime: the Cloudflare
+    // edge already performs the proof-bound B2 read and exposes only the
+    // verified canonical Global Risk object.
+    const risk = await readGlobalRiskEdge();
     if (!risk) {
       setResponseStatus(event, 503);
       return {
         ok: false,
         code: "GLOBAL_RISK_UNAVAILABLE",
-        message: "The latest verified B2 Global Risk continuity package is temporarily unavailable.",
+        message: "The latest verified Global Risk continuity package is temporarily unavailable.",
       };
     }
 
@@ -45,8 +44,8 @@ export default defineEventHandler(async (event) => {
       ok: true,
       data: risk,
       meta: {
-        authority: "backblaze-b2",
-        transport: "direct-or-verified-cloudflare-edge",
+        authority: "backblaze-b2-verified-edge",
+        transport: "verified-cloudflare-edge",
         history: "same-methodology-verified",
         snapshot_as_of: risk.snapshotAsOf,
       },
@@ -60,7 +59,7 @@ export default defineEventHandler(async (event) => {
     return {
       ok: false,
       code: "GLOBAL_RISK_UNAVAILABLE",
-      message: "The latest verified B2 Global Risk continuity package is temporarily unavailable.",
+      message: "The latest verified Global Risk continuity package is temporarily unavailable.",
     };
   }
 });

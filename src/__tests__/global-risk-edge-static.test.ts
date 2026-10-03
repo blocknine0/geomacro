@@ -6,6 +6,7 @@ const wrangler = readFileSync("workers/global-risk-edge/wrangler.jsonc", "utf8")
 const workflow = readFileSync(".github/workflows/deploy-global-risk-edge.yml", "utf8");
 const serverReader = readFileSync("src/lib/global-risk-edge.server.ts", "utf8");
 const publicApi = readFileSync("server/api/public/global-risk.get.ts", "utf8");
+const publicIndicesApi = readFileSync("server/api/public/risk-indices.get.ts", "utf8");
 
 describe("verified Global Risk edge serving boundary", () => {
   it("exposes exactly one read-only public risk route from private B2", () => {
@@ -48,11 +49,20 @@ describe("verified Global Risk edge serving boundary", () => {
     expect(workflow).toContain("EDGE_DOMAIN_HISTORY_INVALID");
   });
 
-  it("keeps geomacro.live as the customer-facing API while removing Lovable B2-secret dependency", () => {
+  it("keeps Lovable API routes as pure compatibility transports without private B2 runtime imports", () => {
     expect(serverReader).toContain("https://geomacro-global-risk.daspallab202391.workers.dev/global-risk");
     expect(serverReader).toContain('response.headers.get("x-geomacro-authority") !== "backblaze-b2-verified-edge"');
     expect(serverReader).toContain("validateGlobalRiskContinuity(payload.data).ok");
-    expect(publicApi).toContain("(await readB2PublicRisk()) ?? (await readGlobalRiskEdge())");
-    expect(publicApi).toContain('authority: "backblaze-b2"');
+
+    expect(publicApi).toContain("await readGlobalRiskEdge()");
+    expect(publicApi).toContain('authority: "backblaze-b2-verified-edge"');
+    expect(publicApi).not.toContain("readB2PublicRisk");
+    expect(publicApi).not.toContain("b2-live.server");
+
+    expect(publicIndicesApi).toContain("await readGlobalRiskEdge()");
+    expect(publicIndicesApi).toContain("riskIndicesFromGlobalRisk(risk)");
+    expect(publicIndicesApi).toContain('authority: "backblaze-b2-verified-edge"');
+    expect(publicIndicesApi).not.toContain("readB2PublicRisk");
+    expect(publicIndicesApi).not.toContain("b2-live.server");
   });
 });
