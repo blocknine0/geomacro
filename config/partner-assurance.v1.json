@@ -1,0 +1,49 @@
+{
+  "schema": "geomacro.partner-assurance.v1",
+  "core_gates": {
+    "risk_object_schema": "gro-1.1",
+    "signature_scheme": "Ed25519",
+    "canonicalization": "geomacro-canonical-json-v1",
+    "commercial_eligibility_status": "VERIFIED",
+    "verification_status": "VERIFIED",
+    "require_active_deployed_key": true,
+    "require_local_signature_verification": true,
+    "require_deployed_verifier": true,
+    "require_freshness": true,
+    "require_tamper_rejection": true,
+    "require_exact_record_sha256": true,
+    "minimum_independent_source_families": 2,
+    "live_review_after_local_gates_only": true,
+    "max_live_reviews_per_run": 1,
+    "execution_authorized": false
+  },
+  "partners": {
+    "federico": {
+      "status": "ACTIVE_EVALUATION",
+      "delivery_profile": "FEDERICO_STRICT",
+      "calculation_namespace": "federico_strict_evidence_v1",
+      "subject_type": "country",
+      "subject_id": "CHN",
+      "provider": "invinoveritas",
+      "provider_preflight": "scripts/invinoveritas-risk-object-preflight.ts",
+      "live_review_allowed": true,
+      "signed_partner_proof_required": true,
+      "independent_proof_verification_required": true,
+      "live_review_allowance_per_run": 1
+    },
+    "goat": {
+      "status": "MAPPED_NOT_ACTIVATED",
+      "delivery_profile": "CANONICAL",
+      "calculation_namespace": null,
+      "subject_type": "country",
+      "subject_id": null,
+      "provider": "local_receiver_verification",
+      "provider_preflight": null,
+      "live_review_allowed": false,
+      "signed_partner_proof_required": false,
+      "independent_proof_verification_required": false,
+      "live_review_allowance_per_run": 0,
+      "note": "Second-partner mapping reuses the same cryptographic, freshness, tamper and commercial-eligibility gates. Activation requires a separate reviewed provider/proof contract; core thresholds may not be lowered."
+    }
+  }
+}
