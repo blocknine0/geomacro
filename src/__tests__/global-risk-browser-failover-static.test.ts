@@ -8,13 +8,13 @@ const workflow = readFileSync(".github/workflows/gri-realtime-direct-postgres.ym
 const edgeUrl = "https://geomacro-global-risk.daspallab202391.workers.dev/global-risk";
 
 describe("Global Risk browser failover contract", () => {
-  it("keeps the Lovable same-origin verified transport first and preserves direct edge failover", () => {
+  it("keeps the verified B2 edge primary and preserves Lovable same-origin fallback", () => {
     expect(hook).toContain(edgeUrl);
     expect(hook).toContain('const GLOBAL_RISK_APP_URL = "/api/public/global-risk"');
     expect(hook).toContain('{ kind: "edge", url: GLOBAL_RISK_EDGE_URL }');
     expect(hook).toContain('{ kind: "app", url: GLOBAL_RISK_APP_URL }');
-    expect(hook.indexOf('{ kind: "app", url: GLOBAL_RISK_APP_URL }')).toBeLessThan(
-      hook.indexOf('{ kind: "edge", url: GLOBAL_RISK_EDGE_URL }'),
+    expect(hook.indexOf('{ kind: "edge", url: GLOBAL_RISK_EDGE_URL }')).toBeLessThan(
+      hook.indexOf('{ kind: "app", url: GLOBAL_RISK_APP_URL }'),
     );
   });
 

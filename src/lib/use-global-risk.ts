@@ -1,14 +1,13 @@
 /**
  * Canonical public read model for the Global Risk Index workspace.
  *
- * The browser reads the same-origin compatibility API first so Lovable preview
- * and production are not dependent on cross-origin browser policy. That API is
- * only a transport for the proof-validated Cloudflare/B2 edge. If the hosting
- * API is unavailable, the browser can still fall back directly to the verified
- * edge. Every accepted package is revalidated client-side for methodology,
- * proof fields, combined history and all persisted domain histories. A refresh
- * failure never destroys an already verified reading and never creates a
- * synthetic replacement.
+ * Global Risk has its own serving failure domain. The browser reads the
+ * proof-validated Cloudflare/B2 edge first; the Lovable same-origin API is only
+ * a compatibility fallback. Intelligence, Ask Geomacro, or website API changes
+ * cannot become the primary dependency for this workspace. Every accepted
+ * package is revalidated client-side for methodology, proof fields, combined
+ * history and all persisted domain histories. A refresh failure never destroys
+ * an already verified reading and never creates a synthetic replacement.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { validateGlobalRiskContinuity } from "@/lib/global-risk-continuity";
@@ -71,14 +70,16 @@ export const GLOBAL_RISK_EDGE_URL =
 const GLOBAL_RISK_APP_URL = "/api/public/global-risk";
 
 const READ_TARGETS: RiskReadTarget[] = [
-  { kind: "app", url: GLOBAL_RISK_APP_URL },
   { kind: "edge", url: GLOBAL_RISK_EDGE_URL },
+  { kind: "app", url: GLOBAL_RISK_APP_URL },
 ];
 
 async function readVerifiedRisk(target: RiskReadTarget): Promise<GlobalRisk> {
   const response = await fetch(target.url, {
     method: "GET",
     headers: { Accept: "application/json" },
+    cache: "no-store",
+    credentials: target.kind === "app" ? "same-origin" : "omit",
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
