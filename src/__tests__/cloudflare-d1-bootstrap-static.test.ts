@@ -31,9 +31,11 @@ describe("D1 control-plane bootstrap", () => {
     expect(workflow).not.toContain("VITE_");
   });
 
-  it("requires fail-closed live acceptance without activating payments or deleting legacy data", () => {
+  it("requires fail-closed live acceptance and retries only the bounded workers.dev 1042 propagation case", () => {
     expect(workflow).toContain('test "$CODE" = "401"');
     expect(workflow).toContain('test "$CODE" = "200"');
+    expect(workflow).toContain("error code: 1042");
+    expect(workflow).toContain("retry $attempt/6");
     expect(workflow).toContain('"durable_payload_store":"b2"');
     expect(workflow).toContain('"commerce_ledger":"durable_object"');
     expect(workflow).toContain("without touching x402 settlement");
