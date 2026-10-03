@@ -188,6 +188,20 @@ export async function loadAgentWorldBankModule(input: {
     return unavailable(input.module, input.subject, "SOURCE_NOT_ELIGIBLE", sourceContract);
   }
 
+  // Production serving is B2-primary. Only verified, source-authorized, fresh
+  // derived state can satisfy this path. Supabase is a standby/recovery source,
+  // not the customer-facing authority.
+  try {
+    const primary = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
+    if (primary?.deliverable) {
+      console.warn("[agent-world-bank] using fresh verified B2 governed derived state");
+      return primary;
+    }
+  } catch {
+    // A B2 read problem never broadens delivery. Continue to the bounded
+    // standby path, which remains fail-closed under standby runtime mode.
+  }
+
   try {
     const db = requireRiskSupabase();
     const observations = await db
@@ -287,9 +301,11 @@ export async function loadAgentWorldBankModule(input: {
       state: publicState(state),
     };
   } catch (primaryError) {
+    // Retry B2 once for transient first-read failures. This retry is still
+    // fully source-gated and freshness-bounded.
     const fallback = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
-    if (fallback) {
-      console.warn("[agent-world-bank] primary governed store unavailable; using fresh verified B2 derived state");
+    if (fallback?.deliverable) {
+      console.warn("[agent-world-bank] standby governed store unavailable; using fresh verified B2 derived state");
       return fallback;
     }
     throw primaryError;
