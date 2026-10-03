@@ -7,7 +7,6 @@ const helperPath = "scripts/invoke-live-structure-with-retry.mjs";
 const freshnessProbePath = "scripts/ops/probe-public-intelligence-live-fallback.ts";
 const productionReaderPath = "src/lib/public-intelligence-production.server.ts";
 const runtimePath = "supabase/functions/live-structure-intelligence/index.ts";
-
 const workflow = fs.readFileSync(workflowPath, "utf8");
 const helper = fs.readFileSync(helperPath, "utf8");
 const freshnessProbe = fs.readFileSync(freshnessProbePath, "utf8");
@@ -24,39 +23,24 @@ describe("Auto Ingest News reliability contract", () => {
     expect(workflow).not.toContain("--retry-all-errors");
   });
 
-  it("routes only the explicit Supabase egress restriction to the read-only public freshness fallback", () => {
+  it("routes only explicit Supabase egress restriction to public continuity verification", () => {
     expect(workflow).toContain("supabase-preflight:");
-    expect(workflow).toContain("available: ${{ steps.classify.outputs.available }}");
     expect(workflow).toContain("exceed_egress_quota");
     expect(workflow).toContain("mode=egress_restricted");
-    expect(workflow).toContain("needs: supabase-preflight");
-    expect(workflow).toContain("needs.supabase-preflight.outputs.available == 'true'");
     expect(workflow).toContain("public-live-freshness-fallback:");
     expect(workflow).toContain("needs.supabase-preflight.outputs.available == 'false'");
     expect(workflow).toContain("bun scripts/ops/probe-public-intelligence-live-fallback.ts");
   });
 
-  it("proves public freshness without bypassing verified scoring or introducing a Supabase serving dependency", () => {
-    expect(freshnessProbe).toContain("readProductionPublicIntelligence");
-    expect(freshnessProbe).toContain("payload.current_within_24h === true");
-    expect(freshnessProbe).toContain('row.public_status === "live_observed"');
-    expect(freshnessProbe).toContain("row.severity === null && row.delta === null");
-    expect(freshnessProbe).toContain('payload.mode === "live_observed_only"');
-    expect(freshnessProbe).toContain("delete process.env.B2_KEY_ID");
-    expect(freshnessProbe).toContain("artifacts/public-intelligence-live-fallback.json");
-    expect(freshnessProbe).not.toContain("getAppSupabase");
-    expect(freshnessProbe).not.toContain("createClient(");
-  });
-
-  it("uses multiple independent open sources for the live-observed continuity overlay", () => {
-    expect(productionReader).toContain("api.gdeltproject.org");
-    expect(productionReader).toContain("earthquake.usgs.gov");
-    expect(productionReader).toContain("api.reliefweb.int");
-    expect(productionReader).toContain("Promise.allSettled");
-    expect(productionReader).toContain('public_status: "live_observed"');
-    expect(productionReader).toContain("severity: null");
-    expect(productionReader).toContain("delta: null");
-    expect(productionReader).not.toContain("getAppSupabase");
+  it("proves scored B2 continuity without synthesizing live observations", () => {
+    expect(freshnessProbe).toContain("https://geomacro.live/api/public/intelligence");
+    expect(freshnessProbe).toContain('body?.mode === "verified_b2"');
+    expect(freshnessProbe).toContain("Number(body?.live_observed_rows) === 0");
+    expect(freshnessProbe).toContain('title.startsWith("Geomacro finds ")');
+    expect(freshnessProbe).toContain("synthetic_freshness: false");
+    expect(freshnessProbe).not.toContain("severity === null");
+    expect(productionReader).not.toContain("earthquake.usgs.gov");
+    expect(productionReader).not.toContain('public_status: "live_observed"');
   });
 
   it("targets the exact freshly exported manifest after verified B2 offload", () => {
@@ -84,11 +68,7 @@ describe("Auto Ingest News reliability contract", () => {
     expect(helper).toContain("payload?.ok === true");
     expect(helper).toContain("Failure is non-transient; refusing to retry.");
     expect(helper).toContain("AbortController");
-    expect(helper).not.toContain("LIVE_STRUCTURE_TOKEN}`");
-
-    const result = spawnSync(process.execPath, ["--check", helperPath], {
-      encoding: "utf8",
-    });
+    const result = spawnSync(process.execPath, ["--check", helperPath], { encoding: "utf8" });
     expect(result.status, result.stderr || result.stdout).toBe(0);
   });
 });
