@@ -14,21 +14,37 @@ describe("non-destructive B2 live read boundary", () => {
   });
 
   it("serves the public website through verified B2 boundaries", () => {
+    const b2 = read("src/lib/b2-live.server.ts");
     expect(read("src/lib/public-intelligence-b2.functions.ts")).toContain("readB2PublicIntelligence");
     expect(read("src/lib/public-risk.functions.ts")).toContain("readB2PublicRisk");
     expect(read("src/lib/public-risk-indices.functions.ts")).toContain("readB2PublicRisk");
     expect(read("src/lib/use-risk-indices.ts")).not.toContain("supabase.co");
+    expect(read("src/lib/use-global-risk.ts")).not.toContain("supabase.co");
+    expect(b2).toContain("B2_PUBLIC_GLOBAL_RISK_KEY");
+    expect(b2).toContain("geomacro.public-global-risk-live.v1");
+    expect(b2).toContain("validateGlobalRiskContinuity");
   });
 
-  it("keeps publisher verification but quota-holds automatic publishing while B2 GET is AccessDenied", () => {
+  it("keeps the old bundled publisher verified while Global Risk has an independent permanent refresh path", () => {
     const publisher = read("scripts/ops/publish-b2-live-snapshots.ts");
-    const workflow = read(".github/workflows/b2-live-snapshot-maintenance.yml");
+    const oldWorkflow = read(".github/workflows/b2-live-snapshot-maintenance.yml");
+    const globalPublisher = read("scripts/ops/publish-b2-global-risk-direct-postgres.mjs");
+    const globalWorkflow = read(".github/workflows/b2-global-risk-maintenance.yml");
+
     expect(publisher).toContain("await b2.put(item.key, packed)");
     expect(publisher).toContain("const readback = await b2.get(item.key)");
     expect(publisher).toContain("B2_LIVE_READBACK_HASH_INVALID");
     expect(publisher).not.toContain(".delete(");
-    expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).not.toContain("schedule:");
-    expect(workflow).toContain("cancel-in-progress: true");
+    expect(oldWorkflow).toContain("workflow_dispatch:");
+    expect(oldWorkflow).not.toContain("schedule:");
+    expect(oldWorkflow).toContain("cancel-in-progress: true");
+
+    expect(globalPublisher).toContain("begin read only");
+    expect(globalPublisher).toContain("assemblePublicGlobalRisk");
+    expect(globalPublisher).toContain("validateGlobalRiskContinuity");
+    expect(globalPublisher).toContain("B2_GLOBAL_RISK_HISTORY_IMMUTABILITY_VIOLATION");
+    expect(globalPublisher).not.toContain(".delete(");
+    expect(globalWorkflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
+    expect(globalWorkflow).toContain('cron: "17 */2 * * *"');
   });
 });

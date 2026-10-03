@@ -17,6 +17,7 @@ import {
 } from "@/lib/use-global-risk";
 
 const TIMEFRAMES: Timeframe[] = ["24H", "7D", "30D"];
+const FRESH_SNAPSHOT_MS = 6 * 60 * 60 * 1000;
 
 export function GlobalRiskWorkspace() {
   const risk = useGlobalRisk();
@@ -40,7 +41,7 @@ export function GlobalRiskWorkspace() {
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
           Global Risk Index
         </p>
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight">Current verified GRI unavailable</h1>
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight">Verified GRI unavailable</h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
           {risk.error?.message ?? "Geomacro could not load the canonical verified GRI reading."}
         </p>
@@ -54,6 +55,9 @@ export function GlobalRiskWorkspace() {
   const data = risk.data;
   const delta = data.previous !== null ? data.score - data.previous : null;
   const series = data.series[timeframe];
+  const snapshotAt = Date.parse(data.snapshotAsOf);
+  const snapshotAgeMs = Number.isFinite(snapshotAt) ? Date.now() - snapshotAt : Number.POSITIVE_INFINITY;
+  const isFresh = snapshotAgeMs >= 0 && snapshotAgeMs <= FRESH_SNAPSHOT_MS;
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 pb-20 pt-10 sm:px-6 md:pt-14">
@@ -78,13 +82,13 @@ export function GlobalRiskWorkspace() {
               Global Risk Index
             </h1>
             <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-              The canonical Geomacro index for current geopolitical, macro and critical-mineral risk. This page is the full verification workspace: current reading, history, exact change attribution, evidence quality, methodology and integrity fingerprints.
+              The canonical Geomacro index for geopolitical, macro and critical-mineral risk. This page is the full verification workspace: latest verified reading, history, exact change attribution, evidence quality, methodology and integrity fingerprints.
             </p>
           </div>
 
           <div className="rounded-2xl border border-border/70 bg-card/55 p-6">
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              Current verified GRI
+              {isFresh ? "Current verified GRI" : "Latest verified GRI"}
             </p>
             <div className="mt-2 flex flex-wrap items-end gap-3">
               <span className="text-6xl font-semibold tabular-nums text-foreground">
@@ -99,6 +103,14 @@ export function GlobalRiskWorkspace() {
               <Metric label="As of" value={formatDate(data.snapshotAsOf)} />
               <Metric label="Snapshot" value={shortHash(data.snapshotId)} mono />
             </dl>
+            {!isFresh ? (
+              <div className="mt-5 rounded-xl border border-border/70 bg-muted/20 px-4 py-3">
+                <p className="text-xs font-medium text-foreground">Latest verified snapshot · {formatAge(snapshotAgeMs)} old</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  No newer verified GRI publication is available. Geomacro preserves this verified reading and does not extrapolate, zero-fill or fabricate the missing interval.
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -120,7 +132,7 @@ export function GlobalRiskWorkspace() {
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Current window: {series.low === null ? "—" : `${series.low} low`} · {series.high === null ? "—" : `${series.high} high`}
+            Verified window: {series.low === null ? "—" : `${series.low} low`} · {series.high === null ? "—" : `${series.high} high`}
           </p>
         </div>
         <div className="mt-5 rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5">
@@ -128,7 +140,7 @@ export function GlobalRiskWorkspace() {
             <RiskChart buckets={series.buckets} label={`Verified GRI, ${timeframe}`} height={300} />
           ) : (
             <div className="grid min-h-56 place-items-center text-center text-sm text-muted-foreground">
-              Comparable {timeframe} history is still building.
+              Comparable {timeframe} history is unavailable; Geomacro will not fill the gap with synthetic values.
             </div>
           )}
         </div>
@@ -195,7 +207,7 @@ export function GlobalRiskWorkspace() {
               <Metric label="Confidence" value={event.confidence === null ? "—" : `${Math.round(event.confidence)}%`} />
             </article>
           )) : (
-            <div className="p-5"><Unavailable text="No current evidence rows are available for this verified window." /></div>
+            <div className="p-5"><Unavailable text="No evidence rows are stored for this verified snapshot window." /></div>
           )}
         </div>
         <p className="mt-3 text-xs leading-6 text-muted-foreground">
@@ -203,7 +215,7 @@ export function GlobalRiskWorkspace() {
         </p>
       </Section>
 
-      <Section eyebrow="Methodology" title="How this index is calculated" copy="The live score is deterministic and versioned. Repeated reporting of one development cannot create unlimited influence.">
+      <Section eyebrow="Methodology" title="How this index is calculated" copy="The published score is deterministic and versioned. Repeated reporting of one development cannot create unlimited influence.">
         <div className="grid gap-4 lg:grid-cols-4">
           <MethodStep number="01" title="Eligible evidence" body="Only current-contract geopolitical, macro and critical-mineral evidence enters GRI v1.2." />
           <MethodStep number="02" title="Confidence + decay" body="Event influence reflects stored confidence and exponential recency decay over the production lookback." />
@@ -341,6 +353,15 @@ function formatDate(value: string) {
     timeZone: "UTC",
     timeZoneName: "short",
   }).format(date);
+}
+
+function formatAge(value: number) {
+  if (!Number.isFinite(value) || value < 0) return "unknown age";
+  const hours = Math.floor(value / (60 * 60 * 1000));
+  if (hours < 24) return `${Math.max(1, hours)}h`;
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  return remainingHours ? `${days}d ${remainingHours}h` : `${days}d`;
 }
 
 function prettyDomain(value: string) {

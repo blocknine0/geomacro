@@ -75,12 +75,15 @@ describe("Agentic Commerce public demo contract", () => {
   it("uses the exact canonical verified public GRI contract for optional demo context", () => {
     const service = read("src/lib/agentic-demo-service.server.ts");
     const publicGri = read("src/lib/global-risk-read.server.ts");
+    const assembler = read("src/lib/global-risk-assemble.ts");
 
     expect(service).toContain("readPublicGlobalRisk");
     expect(service).not.toContain('.from("gri_snapshots")');
-    expect(publicGri).toContain('latest.verification_status === "verified"');
-    expect(publicGri).toContain("GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS");
-    expect(publicGri).toContain("GRI_PROOF_VERSION");
+    expect(publicGri).toContain('.eq("verification_status", "verified")');
+    expect(publicGri).toContain("assemblePublicGlobalRisk");
+    expect(assembler).toContain('latest.verification_status === "verified"');
+    expect(assembler).toContain("GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS");
+    expect(assembler).toContain("GRI_PROOF_VERSION");
   });
 
   it("uses the governed current structural serving layer without changing GRI v1.2", () => {
