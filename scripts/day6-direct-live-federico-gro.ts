@@ -11,6 +11,7 @@ import {
   type StructuredEventCommercialEligibility,
 } from "../src/lib/country-risk-commercial-eligibility";
 import { assertFedericoPublicationReady } from "../src/lib/federico-publication-policy";
+import { withRiskObjectObservationTimestamp } from "../src/lib/risk-object-observation";
 import {
   FEDERICO_STRICT_CALCULATION_NAMESPACE,
   FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS,
@@ -171,7 +172,10 @@ async function fetchText(url: string) {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const response = await fetch(url, {
-        headers: { accept: "application/rss+xml,application/atom+xml,application/xml,text/xml,*/*;q=0.5", "user-agent": USER_AGENT },
+        headers: {
+          accept: "application/rss+xml,application/atom+xml,application/xml,text/xml,*/*;q=0.5",
+          "user-agent": USER_AGENT,
+        },
         signal: AbortSignal.timeout(15_000),
       });
       if (!response.ok) throw new Error(`HTTP_${response.status}`);
@@ -200,7 +204,7 @@ function classify(text: string) {
   if (/\b(rare earth|critical mineral|critical minerals|lithium|cobalt|graphite)\b/.test(value)) {
     return { domain: "rare_earth" as const, event_type: "critical_mineral_update", severity: 60 };
   }
-  if (/\b(pbo[c]?|yuan|renminbi|interest rate|rates|inflation|monetary)\b/.test(value)) {
+  if (/\b(pboc|yuan|renminbi|interest rate|rates|inflation|monetary)\b/.test(value)) {
     return { domain: "macro" as const, event_type: "monetary_policy_update", severity: 55 };
   }
   return { domain: "geopolitics" as const, event_type: "geopolitical_development", severity: 50 };
@@ -225,7 +229,14 @@ await Promise.all(FEEDS.map(async (feed) => {
   }
 }));
 
-const candidates: Array<{ left: Article; right: Article; similarity: number; verification_score: number; delta_seconds: number }> = [];
+const candidates: Array<{
+  left: Article;
+  right: Article;
+  similarity: number;
+  verification_score: number;
+  delta_seconds: number;
+}> = [];
+const observedPairs: Array<{ source_ids: string[]; similarity: number; delta_seconds: number }> = [];
 for (let i = 0; i < articles.length; i++) {
   for (let j = i + 1; j < articles.length; j++) {
     const left = articles[i];
@@ -234,6 +245,11 @@ for (let i = 0; i < articles.length; i++) {
     const deltaSeconds = Math.round(Math.abs(Date.parse(left.published_at) - Date.parse(right.published_at)) / 1000);
     if (!Number.isFinite(deltaSeconds) || deltaSeconds > MAX_PEER_DELTA_SECONDS) continue;
     const score = similarity(left.title, right.title);
+    observedPairs.push({
+      source_ids: [left.source_id, right.source_id].sort(),
+      similarity: Number(score.toFixed(5)),
+      delta_seconds: deltaSeconds,
+    });
     if (score < FEDERICO_STRICT_MULTI_SOURCE_MIN_SIMILARITY) continue;
     const primaryReliability = Math.max(left.reliability, right.reliability);
     const verificationScore = Math.max(
@@ -251,10 +267,11 @@ candidates.sort((a, b) =>
   Math.max(Date.parse(b.left.published_at), Date.parse(b.right.published_at)) -
     Math.max(Date.parse(a.left.published_at), Date.parse(a.right.published_at)),
 );
+observedPairs.sort((a, b) => b.similarity - a.similarity || a.delta_seconds - b.delta_seconds);
 
 const selected = candidates[0];
 if (!selected) {
-  await writeFile(EVIDENCE_OUT, JSON.stringify({
+  const failure = {
     ok: false,
     schema: "geomacro.day6-direct-live-evidence.v1",
     evaluated_at: now.toISOString(),
@@ -267,8 +284,11 @@ if (!selected) {
     },
     fresh_candidate_count: articles.length,
     matching_pair_count: 0,
-    sources: diagnostics,
-  }, null, 2) + "\n", { mode: 0o600 });
+    best_observed_pairs: observedPairs.slice(0, 5),
+    sources: diagnostics.sort((a, b) => String(a.source_id).localeCompare(String(b.source_id))),
+  };
+  await writeFile(EVIDENCE_OUT, JSON.stringify(failure, null, 2) + "\n", { mode: 0o600 });
+  console.error(JSON.stringify(failure));
   throw new Error("DAY6_NO_FRESH_CORROBORATED_LIVE_PAIR");
 }
 
@@ -350,7 +370,8 @@ const built = await buildCountryRiskObject({
 });
 const eligible = applyCountryRiskCommercialEligibility(built, commercialEligibility);
 assertFedericoPublicationReady(eligible);
-const signed = signRiskObject(eligible);
+const observationBound = withRiskObjectObservationTimestamp(eligible, now.toISOString());
+const signed = signRiskObject(observationBound);
 const localVerification = verifyRiskObjectSignature(signed);
 if (!localVerification.valid) throw new Error(`DAY6_LOCAL_SIGNATURE_FAILED:${localVerification.reason}`);
 
@@ -382,6 +403,7 @@ const proof = {
   canonical_record_sha256: sha256(canonicalRiskObjectJson(signed)),
   compressed_sha256: sha256(compressed),
   generated_at: signed.generated_at,
+  observed_at: signed.observed_at,
   expires_at: signed.expires_at,
   verified_at: new Date().toISOString(),
   b2_readback_verified: true,
@@ -412,7 +434,7 @@ await writeFile(EVIDENCE_OUT, JSON.stringify({
   b2_archive_key: archiveKey,
   b2_proof_key: proofKey,
   b2_readback_verified: true,
-  sources: diagnostics,
+  sources: diagnostics.sort((a, b) => String(a.source_id).localeCompare(String(b.source_id))),
 }, null, 2) + "\n", { mode: 0o600 });
 
 console.log(JSON.stringify({
