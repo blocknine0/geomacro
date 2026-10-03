@@ -1,0 +1,47 @@
+name: Historical Data Connection
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - "global-intelligence/adapters/historical-data.mjs"
+      - "global-intelligence/scripts/probe-historical-data.mjs"
+      - "global-intelligence/sources/historical-data.registry.v1.json"
+      - "config/historical-data-producer.v1.json"
+      - ".github/workflows/historical-data-connection.yml"
+  schedule:
+    - cron: "37 4 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-historical-data-connection
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    if: ${{ github.repository == 'blocknine0/geomacro' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    env:
+      HISTORICAL_SUPABASE_URL: https://nqvpcbnnvjsrlvyxxevk.supabase.co
+      HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Probe governed historical interfaces
+        run: node global-intelligence/scripts/probe-historical-data.mjs | tee /tmp/historical-probe.json
+      - name: Require all historical domains connected
+        run: |
+          set -euo pipefail
+          jq -e '
+            .geopolitics.status == "PASS" and
+            .macro.status == "PASS" and
+            .rare_earths.status == "PASS"
+          ' /tmp/historical-probe.json >/dev/null
