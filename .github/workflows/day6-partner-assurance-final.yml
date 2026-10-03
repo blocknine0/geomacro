@@ -1,0 +1,274 @@
+name: Day 6 Partner Assurance Final
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "config/partner-assurance.v1.json"
+      - "scripts/partner-assurance-adapter.ts"
+      - "scripts/check-partner-commercial-readiness.mjs"
+      - "scripts/invinoveritas-risk-object-preflight.ts"
+      - "scripts/check-federico-publication.ts"
+      - "src/lib/federico-publication-policy.ts"
+      - "src/lib/public-demo-risk-profile.ts"
+      - ".github/workflows/day6-partner-assurance-final.yml"
+      - "src/__tests__/day6-day7-final-assurance-static.test.ts"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GEOMACRO_ORIGIN: https://geomacro.live
+
+jobs:
+  assurance:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      B2_GDELT_PRIMARY: "1"
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
+      INVINO_REQUEST_OUT: /tmp/federico-review-request.json
+      INVINO_REVIEW_OUT: /tmp/federico-review-response.json
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      GITHUB_OIDC_AUDIENCE: https://geomacro.live/actions/live-flash-rss
+
+    steps:
+      - name: Checkout exact canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Require production assurance configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY SUPABASE_PROJECT_ID RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 INVINO_API_KEY; do
+            test -n "${!name:-}" || { echo "::error::$name is required"; exit 2; }
+          done
+          node scripts/check-partner-commercial-readiness.mjs
+          node scripts/ops/simulate-final-launch-failures.mjs
+
+      - name: Acquire scoped GitHub Actions OIDC token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 2; }
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 2; }
+          response="$(curl --fail-with-body -sS --retry 4 --retry-all-errors --retry-delay 2 --retry-max-time 90 \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
+          token="$(printf '%s' "$response" | jq -er '.value')"
+          test -n "$token"
+          echo "::add-mask::$token"
+          printf 'GEOMACRO_FLASH_OIDC_TOKEN=%s\n' "$token" >> "$GITHUB_ENV"
+
+      - name: Verify configured signer is active in deployed trust registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 4 --retry-all-errors --retry-delay 2 --retry-max-time 90 \
+            https://geomacro.live/api/risk-object-keys > /tmp/geomacro-keys.json
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+          const registry = JSON.parse(fs.readFileSync('/tmp/geomacro-keys.json', 'utf8'));
+          const privateKey = createPrivateKey({
+            key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'),
+            format: 'der',
+            type: 'pkcs8',
+          });
+          if (privateKey.asymmetricKeyType !== 'ed25519') throw new Error('SIGNING_KEY_NOT_ED25519');
+          const publicKey = Buffer.from(createPublicKey(privateKey).export({ format: 'der', type: 'spki' })).toString('base64');
+          const active = Array.isArray(registry?.keys)
+            ? registry.keys.find((item) => item?.key_id === process.env.RISK_OBJECT_SIGNING_KEY_ID)
+            : null;
+          if (!active || active.status !== 'active') throw new Error('SIGNING_KEY_NOT_ACTIVE');
+          if (active.public_key_spki_b64 !== publicKey) throw new Error('SIGNING_KEY_REGISTRY_MISMATCH');
+          console.log('PASS: signer matches deployed active Ed25519 key');
+          NODE
+
+      - name: Re-poll governed RSS once
+        env:
+          GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
+          GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
+          TELEGRAM_ENABLED: "false"
+          BREAKING_RSS_ENABLED: "true"
+          BREAKING_RSS_RUN_ONCE: "true"
+          BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
+          BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${GEOMACRO_FLASH_INGEST_TOKEN:-}" || { echo "::error::FLASH_INGEST_TOKEN is required"; exit 3; }
+          python -m pip install --disable-pip-version-check --retries 4 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/day6-rss-deps.log
+          (cd workers/telegram-flash && python worker.py) 2>&1 | tee /tmp/day6-rss.log
+
+      - name: Corroborate bounded fresh CHN evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${APP_SUPABASE_URL%/}/functions/v1"
+          offset=0
+          as_of="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          : > /tmp/day6-corroboration.ndjson
+          while true; do
+            oidc_response="$(curl --fail-with-body -sS --retry 4 --retry-all-errors --retry-delay 2 --retry-max-time 90 \
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
+            token="$(printf '%s' "$oidc_response" | jq -er '.value')"
+            echo "::add-mask::$token"
+            code="$(curl --silent --show-error --output /tmp/day6-corroborate.json --write-out '%{http_code}' \
+              --retry 4 --retry-all-errors --retry-delay 2 --retry-max-time 90 \
+              --request POST \
+              --header "x-geomacro-github-oidc-token: ${token}" \
+              --header "Authorization: Bearer ${token}" \
+              --header 'Content-Type: application/json' \
+              --data "$(jq -nc --arg as_of "$as_of" --argjson offset "$offset" '{country_iso3:"CHN",as_of:$as_of,candidate_offset:$offset}')" \
+              "${base}/live-flash-corroborate")"
+            test "$code" = "200" || { cat /tmp/day6-corroborate.json; exit 4; }
+            jq -e '.ok == true and has("next_candidate_offset")' /tmp/day6-corroborate.json >/dev/null
+            jq -c . /tmp/day6-corroborate.json >> /tmp/day6-corroboration.ndjson
+            next="$(jq -r '.next_candidate_offset' /tmp/day6-corroborate.json)"
+            [[ "$next" != "null" ]] || break
+            [[ "$next" =~ ^[0-9]+$ && "$next" -gt "$offset" && "$next" -lt 600 ]] || exit 4
+            offset="$next"
+          done
+
+      - name: Require fresh strict evidence before any publication or partner review
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! bun scripts/check-federico-publication.ts > /tmp/day6-readiness.json 2> /tmp/day6-readiness.err; then
+            cat /tmp/day6-readiness.json || true
+            sed -n '1,80p' /tmp/day6-readiness.err || true
+            echo "::error::Strict fresh evidence gate is not satisfied; publication and partner review remain blocked."
+            exit 5
+          fi
+          jq -e '
+            (.decision_readiness.status == "READY" or .decision_readiness.status == "DEGRADED") and
+            .commercial_eligibility.status == "VERIFIED" and
+            .verification.status == "VERIFIED"
+          ' /tmp/day6-readiness.json >/dev/null
+
+      - name: Generate fresh commercially eligible signed GRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/publish-country-risk-object.ts CHN FEDERICO_STRICT | tee /tmp/day6-publish.json
+          jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
+            .published == true and
+            .schema_version == "gro-1.1" and
+            .delivery_profile == "FEDERICO_STRICT" and
+            (.decision_readiness.status == "READY" or .decision_readiness.status == "DEGRADED") and
+            .commercial_eligibility.status == "VERIFIED" and
+            .verification.status == "VERIFIED" and
+            .integrity.signature_present == true and
+            .integrity.signature_valid == true and
+            .integrity.signing_key_id == $key_id
+          ' /tmp/day6-publish.json >/dev/null
+
+      - name: Export exact persisted signed GRO
+        shell: bash
+        run: |
+          set -euo pipefail
+          OBJECT_ID="$(jq -r '.object_id' /tmp/day6-publish.json)"
+          export OBJECT_ID
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { createClient } = require('@supabase/supabase-js');
+          (async () => {
+            const db = createClient(process.env.APP_SUPABASE_URL, process.env.APP_SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+            const { data, error } = await db.from('geomacro_risk_objects').select('payload').eq('object_id', process.env.OBJECT_ID).maybeSingle();
+            if (error) throw error;
+            if (!data?.payload) throw new Error('PERSISTED_SIGNED_GRO_UNAVAILABLE');
+            fs.writeFileSync('/tmp/day6-risk-object.json', JSON.stringify(data.payload, null, 2) + '\n', { mode: 0o600 });
+          })().catch((error) => { console.error(error); process.exit(1); });
+          NODE
+
+      - name: Pass all generic local assurance gates before allowance
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/partner-assurance-adapter.ts \
+            --partner federico \
+            --risk-object /tmp/day6-risk-object.json \
+            --mode local | tee /tmp/day6-local-assurance.json
+          jq -e '
+            .ok == true and
+            .live_review.attempted == false and
+            .live_review.allowance_used == 0 and
+            .live_review.allowance_max == 1 and
+            ([.local_gates[]] | all(. == "PASS"))
+          ' /tmp/day6-local-assurance.json >/dev/null
+
+      - name: Spend exactly one Federico review allowance after local gates
+        env:
+          PARTNER_ASSURANCE_ALLOW_LIVE_REVIEW: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/partner-assurance-adapter.ts \
+            --partner federico \
+            --risk-object /tmp/day6-risk-object.json \
+            --mode live | tee /tmp/day6-live-assurance.json
+          jq -e '
+            .ok == true and
+            .live_review.attempted == true and
+            .live_review.allowance_used == 1 and
+            .live_review.allowance_max == 1 and
+            .live_review.review_status == "PASS" and
+            .live_review.signed_proof_present == true and
+            .live_review.independent_proof_verification == "PASS" and
+            .execution_authorized == false
+          ' /tmp/day6-live-assurance.json >/dev/null
+          test -s /tmp/federico-review-request.json
+          test -s /tmp/federico-review-response.json
+
+      - name: Seal Day 6 assurance evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/day6-partner-assurance
+          cp /tmp/day6-risk-object.json artifacts/day6-partner-assurance/risk-object.json
+          cp /tmp/day6-local-assurance.json artifacts/day6-partner-assurance/local-assurance.json
+          cp /tmp/day6-live-assurance.json artifacts/day6-partner-assurance/live-assurance.json
+          cp /tmp/federico-review-request.json artifacts/day6-partner-assurance/review-request.json
+          cp /tmp/federico-review-response.json artifacts/day6-partner-assurance/review-response.json
+          cp /tmp/day6-corroboration.ndjson artifacts/day6-partner-assurance/corroboration.ndjson
+          (
+            cd artifacts/day6-partner-assurance
+            sha256sum risk-object.json local-assurance.json live-assurance.json review-request.json review-response.json corroboration.ndjson > SHA256SUMS.txt
+            sha256sum -c SHA256SUMS.txt
+          )
+
+      - name: Upload Day 6 partner assurance artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: day6-partner-assurance-${{ github.run_id }}
+          path: artifacts/day6-partner-assurance/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Record bounded success only
+        run: |
+          echo "Day 6 partner assurance passed: fresh signed GRO, local/deployed canonical trust gates, one Federico review allowance, signed proof, independent proof verification. No funds or execution authorization."
