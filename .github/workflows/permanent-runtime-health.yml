@@ -1,0 +1,170 @@
+name: Permanent Runtime Health
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/permanent-runtime-health.yml"
+      - "workers/control-plane/**"
+      - "workers/commerce-ledger/**"
+      - "src/routes/api.health.ts"
+      - "src/lib/b2-live.server.ts"
+      - "src/lib/supabase-runtime-mode.server.ts"
+      - "src/__tests__/permanent-runtime-health-static.test.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-permanent-runtime-health
+  cancel-in-progress: true
+
+jobs:
+  supabase-free-health:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GEOMACRO_COMMERCE_LEDGER_URL: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_URL }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prove no Supabase credential is injected
+        shell: bash
+        run: |
+          set -euo pipefail
+          if env | grep -E '^((APP_)?SUPABASE_|VITE_SUPABASE_)' >/dev/null; then
+            echo "Permanent runtime health must not receive Supabase credentials"
+            exit 2
+          fi
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
+          case "$GEOMACRO_COMMERCE_LEDGER_URL" in
+            https://*) ;;
+            *) echo "GEOMACRO_COMMERCE_LEDGER_URL must be HTTPS"; exit 2 ;;
+          esac
+
+      - name: Resolve deployed D1 control-plane origin
+        id: d1_origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESPONSE="$(curl -fsS --max-time 15 \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain")"
+          SUBDOMAIN="$(printf '%s' "$RESPONSE" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              const body=JSON.parse(s);
+              if (body?.success !== true || typeof body?.result?.subdomain !== "string") process.exit(3);
+              const value=body.result.subdomain.trim();
+              if (!/^[a-z0-9-]+$/i.test(value)) process.exit(3);
+              process.stdout.write(value);
+            });
+          ')"
+          test -n "$SUBDOMAIN" || { echo "Unable to resolve workers.dev subdomain"; exit 3; }
+          echo "url=https://geomacro-control-plane.${SUBDOMAIN}.workers.dev" >> "$GITHUB_OUTPUT"
+
+      - name: Verify live D1 control plane
+        env:
+          CONTROL_PLANE_URL: ${{ steps.d1_origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY=''
+          for attempt in 1 2 3 4 5; do
+            BODY="$(curl -fsS --max-time 10 "$CONTROL_PLANE_URL/health" || true)"
+            if printf '%s' "$BODY" | node -e '
+              let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
+                try { const b=JSON.parse(s); process.exit(b?.ok===true && b?.store==="d1" && Number(b?.schema_version)>=1 && b?.durable_payload_store==="b2" && b?.commerce_ledger==="durable_object" ? 0 : 1); } catch { process.exit(1); }
+              });
+            '; then break; fi
+            sleep $((attempt * 2))
+          done
+          printf '%s' "$BODY" | node -e '
+            let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
+              const b=JSON.parse(s);
+              if (b?.ok!==true || b?.store!=="d1" || Number(b?.schema_version)<1 || b?.durable_payload_store!=="b2" || b?.commerce_ledger!=="durable_object") process.exit(4);
+            });
+          '
+          printf '%s' "$BODY" > /tmp/d1-health.json
+
+      - name: Verify B2-authoritative public production with Supabase standby
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(curl -fsS --max-time 20 'https://geomacro.live/api/health?deep=1')"
+          printf '%s' "$BODY" | node -e '
+            let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
+              const b=JSON.parse(s);
+              const p=b?.public_production ?? {};
+              if (b?.ok!==true || b?.production_data_authority!=="backblaze-b2" || p?.serving_authority!=="backblaze-b2") process.exit(5);
+              if (p?.supabase_required_for_serving!==false || b?.supabase_runtime_mode!=="standby") process.exit(5);
+              if (p?.b2_runtime_configured!==true || p?.intelligence_ready!==true || p?.risk_indices_ready!==true || p?.risk_verification_status!=="verified") process.exit(5);
+              if (b?.commerce_control_plane!=="cloudflare-durable-objects") process.exit(5);
+            });
+          '
+          printf '%s' "$BODY" > /tmp/b2-health.json
+
+      - name: Verify Durable Object commerce ledger without payment
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${GEOMACRO_COMMERCE_LEDGER_URL%/}"
+          BODY="$(curl -fsS --max-time 15 "$BASE/health")"
+          printf '%s' "$BODY" | node -e '
+            let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
+              const b=JSON.parse(s);
+              const caps=Array.isArray(b?.capabilities) ? b.capabilities : [];
+              if (b?.ok!==true || b?.service!=="geomacro-commerce-ledger" || b?.storage!=="durable_objects_sqlite") process.exit(6);
+              for (const cap of ["delivery","usage_guard","product_audit"]) if (!caps.includes(cap)) process.exit(6);
+            });
+          '
+          printf '%s' "$BODY" > /tmp/commerce-health.json
+
+      - name: Seal no-funds runtime evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/permanent-runtime-health
+          node <<'NODE'
+          const fs=require('fs');
+          const crypto=require('crypto');
+          const d1=JSON.parse(fs.readFileSync('/tmp/d1-health.json','utf8'));
+          const b2=JSON.parse(fs.readFileSync('/tmp/b2-health.json','utf8'));
+          const commerce=JSON.parse(fs.readFileSync('/tmp/commerce-health.json','utf8'));
+          const evidence={
+            schema:'geomacro.permanent-runtime-health.v1',
+            verified_at:new Date().toISOString(),
+            supabase_credentials_injected:false,
+            supabase_required_for_serving:false,
+            b2:{ok:b2.ok===true,authority:b2.production_data_authority,intelligence_ready:b2.public_production?.intelligence_ready,risk_indices_ready:b2.public_production?.risk_indices_ready},
+            d1:{ok:d1.ok===true,store:d1.store,schema_version:d1.schema_version},
+            commerce:{ok:commerce.ok===true,storage:commerce.storage,capabilities:commerce.capabilities},
+            payment_performed:false,
+            destructive_change:false,
+          };
+          const canonical=JSON.stringify(evidence);
+          evidence.evidence_sha256=crypto.createHash('sha256').update(canonical).digest('hex');
+          fs.writeFileSync('artifacts/permanent-runtime-health/verification-summary.json',JSON.stringify(evidence,null,2)+'\n');
+          NODE
+
+      - name: Upload runtime health evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: permanent-runtime-health-${{ github.run_id }}
+          path: artifacts/permanent-runtime-health/verification-summary.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Confirm bounded acceptance only
+        run: echo "B2 + D1 + Durable Objects verified with no Supabase credentials, no payment, and no destructive action."
