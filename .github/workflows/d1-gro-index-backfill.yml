@@ -123,6 +123,8 @@ jobs:
           const p=JSON.parse(fs.readFileSync('artifacts/d1-gro-index/verification-summary.json','utf8'));
           if (p.ok !== true || p.mode !== 'verified_b2_gro_index_backfill') process.exit(10);
           if (!Number.isInteger(p.rows) || p.rows < 1) process.exit(10);
+          if (!Number.isInteger(p.write_batches) || p.write_batches < 1 || p.write_batches > p.rows) process.exit(10);
+          if (p.d1_write_batch_size !== 12) process.exit(10);
           if (p.source_checksum !== p.target_checksum) process.exit(10);
           if (p.metadata_source !== 'direct_postgres_export' || p.supabase_rest_used !== false) process.exit(10);
           if (p.record_sha256_source !== 'canonical_verified_b2_readback') process.exit(10);
@@ -139,4 +141,4 @@ jobs:
           retention-days: 7
 
       - name: Confirm non-destructive migration
-        run: echo "Verified B2 GRO indexes copied to D1 using a direct-Postgres migration export. No Supabase REST call, payload deletion, or production cutover occurred."
+        run: echo "Verified B2 GRO indexes copied to D1 using bounded write batches after a direct-Postgres migration export. No Supabase REST call, payload deletion, or production cutover occurred."
