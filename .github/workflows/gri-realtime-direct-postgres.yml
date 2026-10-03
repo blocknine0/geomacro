@@ -188,34 +188,18 @@ jobs:
           for attempt in 1 2 3 4 5; do
             code="$(curl -sS -D /tmp/global-risk-edge.headers -o /tmp/global-risk-edge.json -w '%{http_code}' --max-time 20 -H 'Accept: application/json' "$GLOBAL_RISK_EDGE_URL" || true)"
             if [ "$code" = "200" ] && grep -qi '^x-geomacro-authority: backblaze-b2-verified-edge' /tmp/global-risk-edge.headers; then
-              if node <<'NODE'
-                const fs = require('fs');
-                const b = JSON.parse(fs.readFileSync('/tmp/global-risk-edge.json', 'utf8'));
+              if node -e '
+                const fs = require("fs");
+                const b = JSON.parse(fs.readFileSync("/tmp/global-risk-edge.json", "utf8"));
                 const d = b?.data;
-                const age = Date.now() - Date.parse(String(d?.snapshotAsOf || ''));
-                const domains = d?.domainIndices && typeof d.domainIndices === 'object' && !Array.isArray(d.domainIndices)
-                  ? d.domainIndices : {};
-                const required = ['geopolitics', 'macro', 'rare_earth'];
-                const domainHistoriesOk = required.every((key) =>
-                  domains[key] &&
-                  Array.isArray(domains[key]?.series?.['7D']?.buckets) &&
-                  domains[key].series['7D'].buckets.length >= 2 &&
-                  Array.isArray(domains[key]?.series?.['30D']?.buckets) &&
-                  domains[key].series['30D'].buckets.length >= domains[key].series['7D'].buckets.length
-                );
-                const combinedHistoryOk =
-                  Array.isArray(d?.series?.['7D']?.buckets) && d.series['7D'].buckets.length >= 2 &&
-                  Array.isArray(d?.series?.['30D']?.buckets) && d.series['30D'].buckets.length >= d.series['7D'].buckets.length;
-                const ok =
-                  b?.schema === 'geomacro.public-global-risk-live.v1' &&
-                  b?.source_project === 'ldpwajisioljyjtojvfx' &&
-                  d?.methodologyVersion === 'gri-v1.2.0' &&
-                  d?.verificationStatus === 'verified' &&
-                  Number.isFinite(age) && age >= -300000 && age <= 2 * 60 * 60 * 1000 &&
-                  domainHistoriesOk && combinedHistoryOk;
+                const age = Date.now() - Date.parse(String(d?.snapshotAsOf || ""));
+                const domains = d?.domainIndices && typeof d.domainIndices === "object" && !Array.isArray(d.domainIndices) ? d.domainIndices : {};
+                const required = ["geopolitics", "macro", "rare_earth"];
+                const domainHistoriesOk = required.every((key) => domains[key] && Array.isArray(domains[key]?.series?.["7D"]?.buckets) && domains[key].series["7D"].buckets.length >= 2 && Array.isArray(domains[key]?.series?.["30D"]?.buckets) && domains[key].series["30D"].buckets.length >= domains[key].series["7D"].buckets.length);
+                const combinedHistoryOk = Array.isArray(d?.series?.["7D"]?.buckets) && d.series["7D"].buckets.length >= 2 && Array.isArray(d?.series?.["30D"]?.buckets) && d.series["30D"].buckets.length >= d.series["7D"].buckets.length;
+                const ok = b?.schema === "geomacro.public-global-risk-live.v1" && b?.source_project === "ldpwajisioljyjtojvfx" && d?.methodologyVersion === "gri-v1.2.0" && d?.verificationStatus === "verified" && Number.isFinite(age) && age >= -300000 && age <= 2 * 60 * 60 * 1000 && domainHistoriesOk && combinedHistoryOk;
                 process.exit(ok ? 0 : 1);
-              NODE
-              then
+              '; then
                 cp /tmp/global-risk-edge.json /tmp/global-risk-three-index.json
                 exit 0
               fi
