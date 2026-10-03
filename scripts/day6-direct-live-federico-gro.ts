@@ -111,15 +111,31 @@ function similarity(left: unknown, right: unknown) {
 }
 
 function decodeXml(value: string) {
-  return value
+  const stripped = value
     .replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/i, "$1")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&#(\d+);/g, (_match, value) => String.fromCodePoint(Number(value)))
+    .replace(/<[^>]+>/g, " ");
+
+  return stripped
+    .replace(/&(amp|quot|apos|lt|gt|#39|#\d+);/gi, (entity, token: string) => {
+      const normalizedToken = token.toLowerCase();
+      if (normalizedToken === "amp") return "&";
+      if (normalizedToken === "quot") return '"';
+      if (normalizedToken === "apos" || normalizedToken === "#39") return "'";
+      if (normalizedToken === "lt") return "<";
+      if (normalizedToken === "gt") return ">";
+      if (/^#\d+$/.test(normalizedToken)) {
+        const codePoint = Number(normalizedToken.slice(1));
+        if (
+          Number.isInteger(codePoint) &&
+          codePoint >= 0 &&
+          codePoint <= 0x10ffff &&
+          !(codePoint >= 0xd800 && codePoint <= 0xdfff)
+        ) {
+          return String.fromCodePoint(codePoint);
+        }
+      }
+      return entity;
+    })
     .replace(/\s+/g, " ")
     .trim();
 }
