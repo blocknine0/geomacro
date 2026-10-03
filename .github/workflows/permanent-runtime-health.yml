@@ -7,6 +7,8 @@ on:
       - main
     paths:
       - ".github/workflows/permanent-runtime-health.yml"
+      - "scripts/ops/verify-b2-public-no-supabase.ts"
+      - "scripts/ops/verify-commerce-no-supabase.ts"
       - "workers/control-plane/**"
       - "workers/commerce-ledger/**"
       - "src/routes/api.health.ts"
@@ -25,17 +27,28 @@ jobs:
   supabase-free-health:
     if: github.repository == 'blocknine0/geomacro'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     environment: production
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      GEOMACRO_COMMERCE_LEDGER_URL: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_URL }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
     steps:
       - name: Checkout exact candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked runtime dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Prove no Supabase credential is injected
         shell: bash
@@ -47,13 +60,12 @@ jobs:
           fi
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
-          case "$GEOMACRO_COMMERCE_LEDGER_URL" in
-            https://*) ;;
-            *) echo "GEOMACRO_COMMERCE_LEDGER_URL must be HTTPS"; exit 2 ;;
-          esac
+          test -n "$B2_KEY_ID" || { echo "B2_KEY_ID is required"; exit 2; }
+          test -n "$B2_APPLICATION_KEY" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
+          test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || { echo "GEOMACRO_COMMERCE_LEDGER_TOKEN must be at least 32 characters"; exit 2; }
 
-      - name: Resolve deployed D1 control-plane origin
-        id: d1_origin
+      - name: Resolve deployed Cloudflare origins
+        id: origins
         shell: bash
         run: |
           set -euo pipefail
@@ -72,11 +84,12 @@ jobs:
             });
           ')"
           test -n "$SUBDOMAIN" || { echo "Unable to resolve workers.dev subdomain"; exit 3; }
-          echo "url=https://geomacro-control-plane.${SUBDOMAIN}.workers.dev" >> "$GITHUB_OUTPUT"
+          echo "control_url=https://geomacro-control-plane.${SUBDOMAIN}.workers.dev" >> "$GITHUB_OUTPUT"
+          echo "ledger_url=https://geomacro-commerce-ledger.${SUBDOMAIN}.workers.dev" >> "$GITHUB_OUTPUT"
 
       - name: Verify live D1 control plane
         env:
-          CONTROL_PLANE_URL: ${{ steps.d1_origin.outputs.url }}
+          CONTROL_PLANE_URL: ${{ steps.origins.outputs.control_url }}
         shell: bash
         run: |
           set -euo pipefail
@@ -98,7 +111,19 @@ jobs:
           '
           printf '%s' "$BODY" > /tmp/d1-health.json
 
-      - name: Verify B2-authoritative public production with Supabase standby
+      - name: Verify B2 directly with Supabase network blocked
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/verify-b2-public-no-supabase.ts | tee /tmp/b2-direct.json
+          node -e '
+            const fs=require("fs");
+            const b=JSON.parse(fs.readFileSync("/tmp/b2-direct.json","utf8"));
+            if (b?.ok!==true || b?.authority!=="backblaze-b2" || b?.supabase_credentials_present!==false || b?.supabase_network_attempts!==0) process.exit(5);
+            if (b?.risk_verification_status!=="verified" || b?.proof_hash_present!==true || b?.calculation_hash_present!==true) process.exit(5);
+          '
+
+      - name: Verify public production boundary remains B2-authoritative
         shell: bash
         run: |
           set -euo pipefail
@@ -107,15 +132,17 @@ jobs:
             let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
               const b=JSON.parse(s);
               const p=b?.public_production ?? {};
-              if (b?.ok!==true || b?.production_data_authority!=="backblaze-b2" || p?.serving_authority!=="backblaze-b2") process.exit(5);
-              if (p?.supabase_required_for_serving!==false || b?.supabase_runtime_mode!=="standby") process.exit(5);
-              if (p?.b2_runtime_configured!==true || p?.intelligence_ready!==true || p?.risk_indices_ready!==true || p?.risk_verification_status!=="verified") process.exit(5);
-              if (b?.commerce_control_plane!=="cloudflare-durable-objects") process.exit(5);
+              if (b?.ok!==true || b?.production_data_authority!=="backblaze-b2" || p?.serving_authority!=="backblaze-b2") process.exit(6);
+              if (p?.supabase_required_for_serving!==false || b?.supabase_runtime_mode!=="standby") process.exit(6);
+              if (p?.b2_runtime_configured!==true || p?.intelligence_ready!==true || p?.risk_indices_ready!==true || p?.risk_verification_status!=="verified") process.exit(6);
+              if (b?.commerce_control_plane!=="cloudflare-durable-objects") process.exit(6);
             });
           '
-          printf '%s' "$BODY" > /tmp/b2-health.json
+          printf '%s' "$BODY" > /tmp/public-health.json
 
-      - name: Verify Durable Object commerce ledger without payment
+      - name: Verify Durable Object commerce ledger health
+        env:
+          GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origins.outputs.ledger_url }}
         shell: bash
         run: |
           set -euo pipefail
@@ -125,13 +152,31 @@ jobs:
             let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
               const b=JSON.parse(s);
               const caps=Array.isArray(b?.capabilities) ? b.capabilities : [];
-              if (b?.ok!==true || b?.service!=="geomacro-commerce-ledger" || b?.storage!=="durable_objects_sqlite") process.exit(6);
-              for (const cap of ["delivery","usage_guard","product_audit"]) if (!caps.includes(cap)) process.exit(6);
+              if (b?.ok!==true || b?.service!=="geomacro-commerce-ledger" || b?.storage!=="durable_objects_sqlite") process.exit(7);
+              for (const cap of ["delivery","usage_guard","product_audit"]) if (!caps.includes(cap)) process.exit(7);
             });
           '
           printf '%s' "$BODY" > /tmp/commerce-health.json
 
-      - name: Seal no-funds runtime evidence
+      - name: Execute actual commerce adapter with Supabase absent
+        env:
+          GEOMACRO_COMMERCE_LEDGER_BACKEND: durable_object
+          GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origins.outputs.ledger_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/verify-commerce-no-supabase.ts | tee /tmp/commerce-acceptance.json
+          node -e '
+            const fs=require("fs");
+            const b=JSON.parse(fs.readFileSync("/tmp/commerce-acceptance.json","utf8"));
+            if (b?.ok!==true || b?.backend!=="durable_object") process.exit(8);
+            if (b?.supabase_credentials_present!==false || b?.supabase_network_attempts!==0) process.exit(8);
+            if (b?.prepare!==true || b?.complete!==true || b?.replay!=="REPLAY" || b?.exact_response_replay!==true) process.exit(8);
+            if (b?.duplicate_settlement_rejected!==true || b?.worker_outage_fails_closed!==true) process.exit(8);
+            if (b?.external_payment_performed!==false || b?.execution_authorized!==false) process.exit(8);
+          '
+
+      - name: Seal no-funds permanent runtime evidence
         shell: bash
         run: |
           set -euo pipefail
@@ -140,19 +185,46 @@ jobs:
           const fs=require('fs');
           const crypto=require('crypto');
           const d1=JSON.parse(fs.readFileSync('/tmp/d1-health.json','utf8'));
-          const b2=JSON.parse(fs.readFileSync('/tmp/b2-health.json','utf8'));
+          const b2=JSON.parse(fs.readFileSync('/tmp/b2-direct.json','utf8'));
+          const publicHealth=JSON.parse(fs.readFileSync('/tmp/public-health.json','utf8'));
           const commerce=JSON.parse(fs.readFileSync('/tmp/commerce-health.json','utf8'));
+          const acceptance=JSON.parse(fs.readFileSync('/tmp/commerce-acceptance.json','utf8'));
           const evidence={
-            schema:'geomacro.permanent-runtime-health.v1',
+            schema:'geomacro.permanent-runtime-health.v2',
             verified_at:new Date().toISOString(),
             supabase_credentials_injected:false,
             supabase_required_for_serving:false,
-            b2:{ok:b2.ok===true,authority:b2.production_data_authority,intelligence_ready:b2.public_production?.intelligence_ready,risk_indices_ready:b2.public_production?.risk_indices_ready},
+            supabase_network_attempts:{b2:b2.supabase_network_attempts,commerce:acceptance.supabase_network_attempts},
+            b2:{
+              ok:b2.ok===true,
+              authority:b2.authority,
+              intelligence_rows:b2.intelligence_rows,
+              categories:b2.categories,
+              risk_verification_status:b2.risk_verification_status,
+              risk_snapshot_as_of:b2.risk_snapshot_as_of,
+            },
             d1:{ok:d1.ok===true,store:d1.store,schema_version:d1.schema_version},
-            commerce:{ok:commerce.ok===true,storage:commerce.storage,capabilities:commerce.capabilities},
+            public_boundary:{
+              ok:publicHealth.ok===true,
+              authority:publicHealth.production_data_authority,
+              supabase_runtime_mode:publicHealth.supabase_runtime_mode,
+            },
+            commerce:{
+              ok:commerce.ok===true,
+              storage:commerce.storage,
+              capabilities:commerce.capabilities,
+              adapter_executed:true,
+              exact_response_replay:acceptance.exact_response_replay,
+              duplicate_settlement_rejected:acceptance.duplicate_settlement_rejected,
+              worker_outage_fails_closed:acceptance.worker_outage_fails_closed,
+            },
             payment_performed:false,
+            external_payment_performed:false,
+            execution_authorized:false,
             destructive_change:false,
+            production_cutover:false,
           };
+          if (evidence.supabase_network_attempts.b2!==0 || evidence.supabase_network_attempts.commerce!==0) throw new Error('SUPABASE_NETWORK_ATTEMPTED');
           const canonical=JSON.stringify(evidence);
           evidence.evidence_sha256=crypto.createHash('sha256').update(canonical).digest('hex');
           fs.writeFileSync('artifacts/permanent-runtime-health/verification-summary.json',JSON.stringify(evidence,null,2)+'\n');
@@ -167,4 +239,4 @@ jobs:
           retention-days: 7
 
       - name: Confirm bounded acceptance only
-        run: echo "B2 + D1 + Durable Objects verified with no Supabase credentials, no payment, and no destructive action."
+        run: echo "D1 + B2 + Durable Objects verified with Supabase blocked, no external payment, no execution authorization, and no destructive action."
