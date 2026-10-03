@@ -1,9 +1,6 @@
-name: Intelligence Scored Refresh
+name: Intelligence Scored Catch-up
 
 on:
-  workflow_run:
-    workflows: ["GRI Realtime Direct Postgres"]
-    types: [completed]
   workflow_dispatch:
     inputs:
       catchup:
@@ -21,19 +18,18 @@ permissions:
   contents: read
 
 concurrency:
-  group: geomacro-intelligence-scored-refresh
+  group: geomacro-intelligence-scored-catchup
   cancel-in-progress: false
 
 jobs:
   publish-scored-intelligence:
-    if: >-
-      github.repository == 'blocknine0/geomacro' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    if: github.repository == 'blocknine0/geomacro'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     environment: production
     env:
       GRI_DB_MODE: direct_postgres
+      GEOMACRO_DISABLE_GUARDIAN: "true"
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -61,11 +57,12 @@ jobs:
       - name: Install locked runtime dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Require production credentials
+      - name: Require production credentials and Guardian-disabled boundary
         shell: bash
         run: |
           set -euo pipefail
           test "$EXPECTED_SUPABASE_PROJECT_REF" = "ldpwajisioljyjtojvfx"
+          test "$GEOMACRO_DISABLE_GUARDIAN" = "true"
           test -n "${SUPABASE_DB_URL:-}" || { echo "SUPABASE_DB_URL is required"; exit 2; }
           test -n "${B2_KEY_ID:-}" || { echo "B2_KEY_ID is required"; exit 2; }
           test -n "${B2_APPLICATION_KEY:-}" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
@@ -97,11 +94,25 @@ jobs:
               throw new Error(`PRODUCTION_SOURCE_NOT_ENABLED:${sourceId}`);
             }
           }
-          console.log(JSON.stringify({ ok: true, required_sources: Object.keys(required) }));
+          console.log(JSON.stringify({ ok: true, required_sources: Object.keys(required), guardian_commercial_dependency: false }));
           NODE
 
-      - name: Catch up classifier-scored events from reviewed discovery lane
-        if: github.event_name == 'workflow_dispatch' && inputs.catchup
+      - name: Validate catch-up lookback
+        if: inputs.catchup
+        shell: bash
+        env:
+          LOOKBACK_HOURS: ${{ inputs.lookback_hours }}
+        run: |
+          set -euo pipefail
+          [[ "$LOOKBACK_HOURS" =~ ^[0-9]+$ ]] || { echo "lookback_hours must be an integer"; exit 2; }
+          if (( LOOKBACK_HOURS < 1 || LOOKBACK_HOURS > 168 )); then
+            echo "lookback_hours must be between 1 and 168" >&2
+            exit 2
+          fi
+          echo "MAX_ARTICLE_AGE_MS=$((LOOKBACK_HOURS * 3600000))" >> "$GITHUB_ENV"
+
+      - name: Catch up classifier-scored events from reviewed GDELT discovery
+        if: inputs.catchup
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -121,10 +132,9 @@ jobs:
           GROQ_MAX_WAIT_MS: "180000"
           GROQ_BATCH_SIZE: "2"
           MAX_CANDIDATES_PER_CATEGORY: "12"
-          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "0"
+          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "1"
           NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
           NEWS_MAX_RETRIES: "2"
-          MAX_ARTICLE_AGE_MS: ${{ fromJSON(inputs.lookback_hours) * 3600000 }}
           MIN_CONFIDENCE: ${{ vars.MIN_CONFIDENCE }}
           MIN_SEVERITY: ${{ vars.MIN_SEVERITY }}
           RELIEFWEB_ENABLED: "false"
