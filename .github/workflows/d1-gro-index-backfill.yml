@@ -1,0 +1,142 @@
+name: D1 Verified GRO Index Backfill
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/d1-gro-index-backfill.yml"
+      - "scripts/ops/d1-gro-index-backfill.ts"
+      - "src/lib/country-gro-resolver.server.ts"
+      - "src/lib/production-global-risk.server.ts"
+      - "src/__tests__/d1-gro-index-backfill-static.test.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-d1-gro-index-backfill
+  cancel-in-progress: false
+
+jobs:
+  verified-gro-index-backfill:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      APP_SUPABASE_URL: https://ldpwajisioljyjtojvfx.supabase.co
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
+      D1_CONFIG: workers/control-plane/wrangler.runtime.jsonc
+      D1_GRO_INDEX_LIMIT: "128"
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked runtime dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Require credentials without printing them
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID APP_SUPABASE_SERVICE_ROLE_KEY B2_KEY_ID B2_APPLICATION_KEY; do
+            test -n "${!name:-}" || { echo "$name is required"; exit 2; }
+          done
+
+      - name: Resolve existing D1 database
+        id: d1
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              const rows=JSON.parse(s);
+              const row=rows.find(x => x.name === process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid ?? row?.id ?? "");
+            });
+          ')"
+          test -n "$DB_ID" || { echo "geomacro-control-plane D1 database is not bootstrapped"; exit 3; }
+          echo "database_id=$DB_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Build ephemeral D1 config
+        env:
+          D1_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const source = fs.readFileSync('workers/control-plane/wrangler.example.jsonc', 'utf8');
+          const id = String(process.env.D1_DATABASE_ID || '').trim();
+          if (!/^[0-9a-f-]{20,}$/i.test(id)) throw new Error('INVALID_D1_DATABASE_ID');
+          fs.writeFileSync(process.env.D1_CONFIG, source.replace('REPLACE_WITH_D1_DATABASE_ID', id));
+          NODE
+
+      - name: Require D1 schema v1
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT version FROM schema_meta WHERE name='control-plane';")"
+          printf '%s' "$OUT" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              const parsed=JSON.parse(s);
+              const envelopes=Array.isArray(parsed) ? parsed : [parsed];
+              const rows=envelopes.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+              if (!rows.some(row => Number(row?.version) >= 1)) process.exit(4);
+            });
+          '
+
+      - name: Backfill only independently verified B2 GRO indexes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/d1-gro-index
+          bun scripts/ops/d1-gro-index-backfill.ts | tee artifacts/d1-gro-index/verification-summary.json
+
+      - name: Require exact parity evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('artifacts/d1-gro-index/verification-summary.json','utf8'));
+          if (p.ok !== true || p.mode !== 'verified_b2_gro_index_backfill') process.exit(10);
+          if (!Number.isInteger(p.rows) || p.rows < 1) process.exit(10);
+          if (p.source_checksum !== p.target_checksum) process.exit(10);
+          if (p.record_sha256_source !== 'canonical_verified_b2_readback') process.exit(10);
+          if (p.supabase_payload_used_for_record_hash !== false) process.exit(10);
+          if (p.destructive_changes !== false || p.production_cutover !== false) process.exit(10);
+          NODE
+
+      - name: Upload verification evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: d1-gro-index-${{ github.run_id }}
+          path: artifacts/d1-gro-index/verification-summary.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Confirm non-destructive migration
+        run: echo "Verified B2 GRO indexes copied to D1. No Supabase or B2 payload was deleted and no production cutover occurred."
