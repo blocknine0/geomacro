@@ -1,9 +1,17 @@
 import { GRI_METHOD_VERSION } from "./gri-current-contract";
-import type { Bucket, GlobalRisk, Timeframe, TimeframeSeries } from "./global-risk.types";
+import type {
+  Bucket,
+  GlobalRisk,
+  RiskDomainKey,
+  RiskDomainReading,
+  Timeframe,
+  TimeframeSeries,
+} from "./global-risk.types";
 
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 const REQUIRED_HISTORY_FRAMES: Timeframe[] = ["7D", "30D"];
 const ALL_FRAMES: Timeframe[] = ["24H", "7D", "30D"];
+const DOMAIN_KEYS: RiskDomainKey[] = ["geopolitics", "macro", "rare_earth"];
 
 export type GlobalRiskContinuityResult =
   | { ok: true }
@@ -71,13 +79,68 @@ function validateSeries(
   return { ok: true };
 }
 
+function validateDomainReading(
+  domain: RiskDomainKey,
+  reading: RiskDomainReading,
+  snapshotMs: number,
+): GlobalRiskContinuityResult {
+  if (
+    !finiteInRange(reading.score, 0, 100) ||
+    !finiteInRange(reading.rawScore, 0, 100) ||
+    !Number.isInteger(reading.eventCount) ||
+    reading.eventCount < 1 ||
+    !Number.isInteger(reading.sourceCount) ||
+    reading.sourceCount < 1 ||
+    !Number.isInteger(reading.independentStoryCount) ||
+    reading.independentStoryCount < 1 ||
+    reading.independentStoryCount > reading.eventCount
+  ) {
+    return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_READING_INVALID` };
+  }
+  if (
+    reading.confidence !== null &&
+    !finiteInRange(reading.confidence, 0, 100)
+  ) {
+    return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_CONFIDENCE_INVALID` };
+  }
+  if (
+    reading.previousScore !== null &&
+    !finiteInRange(reading.previousScore, 0, 100)
+  ) {
+    return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_PREVIOUS_INVALID` };
+  }
+  if (
+    reading.changePoints !== null &&
+    !Number.isFinite(reading.changePoints)
+  ) {
+    return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_CHANGE_INVALID` };
+  }
+
+  for (const key of ALL_FRAMES) {
+    const result = validateSeries(key, reading.series?.[key], snapshotMs);
+    if (!result.ok) {
+      return {
+        ok: false,
+        code: `RISK_DOMAIN_${domain.toUpperCase()}_${result.code}`,
+      };
+    }
+  }
+  const sevenDay = reading.series["7D"].buckets;
+  const thirtyDay = reading.series["30D"].buckets;
+  if (!sevenDay || sevenDay.length < 2 || !thirtyDay || thirtyDay.length < sevenDay.length) {
+    return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_HISTORY_INSUFFICIENT` };
+  }
+  return { ok: true };
+}
+
 /**
  * Fail-closed validator for the public Global Risk continuity package.
  *
- * This deliberately verifies that the customer-facing object still contains
- * same-methodology historical series. It prevents a future projection-only
- * refactor from silently replacing the historical Global Risk experience with
- * a current-only payload. It never creates or interpolates missing history.
+ * This verifies both the legacy combined same-methodology history and the
+ * independently displayable domain histories projected from persisted
+ * category_breakdown values. It prevents a projection-only refactor from
+ * silently replacing verified history with current-only scores and never
+ * creates or interpolates missing history.
  */
 export function validateGlobalRiskContinuity(
   risk: GlobalRisk,
@@ -117,6 +180,23 @@ export function validateGlobalRiskContinuity(
   const thirtyDay = risk.series["30D"].buckets;
   if (!sevenDay || sevenDay.length < 2 || !thirtyDay || thirtyDay.length < sevenDay.length) {
     return { ok: false, code: "RISK_HISTORY_CONTINUITY_INSUFFICIENT" };
+  }
+
+  if (!risk.domainIndices || typeof risk.domainIndices !== "object") {
+    return { ok: false, code: "RISK_DOMAIN_HISTORY_CONTAINER_MISSING" };
+  }
+
+  for (const domain of DOMAIN_KEYS) {
+    const reading = risk.domainIndices[domain];
+    const hasCurrentDriver = risk.drivers.some((driver) => driver.category === domain);
+    if (!reading) {
+      if (hasCurrentDriver) {
+        return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_HISTORY_MISSING` };
+      }
+      continue;
+    }
+    const result = validateDomainReading(domain, reading, snapshotMs);
+    if (!result.ok) return result;
   }
 
   return { ok: true };
