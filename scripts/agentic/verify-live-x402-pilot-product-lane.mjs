@@ -76,11 +76,18 @@ async function check(testCase) {
   if (payload?.payment_required_now !== false || payload?.execution_authorized !== false) {
     throw new Error(`${testCase.id}: zero-fund acceptance boundary was not preserved`);
   }
-  const required = Array.isArray(payload?.availability?.required_modules)
-    ? payload.availability.required_modules
-    : testCase.expected_modules;
+
+  const availableModules = payload?.availability?.subjects?.[0]?.available_modules;
+  if (!Array.isArray(availableModules)) {
+    throw new Error(`${testCase.id}: availability omitted subject module evidence`);
+  }
+  for (const moduleName of testCase.expected_modules) {
+    if (!availableModules.includes(moduleName)) {
+      throw new Error(`${testCase.id}: expected module ${moduleName} was not available`);
+    }
+  }
   for (const forbidden of ["hot_topics", "signed_risk_object", "risk_gate"]) {
-    if (required.includes(forbidden)) {
+    if (availableModules.includes(forbidden)) {
       throw new Error(`${testCase.id}: structural pilot unexpectedly depends on ${forbidden}`);
     }
   }
@@ -94,7 +101,7 @@ async function check(testCase) {
     network: payload?.exact_price?.network ?? null,
     amount_usdc: payload?.exact_price?.amount_usdc ?? null,
     query_plan_hash: payload?.query_plan_hash ?? null,
-    available_modules: payload?.availability?.subjects?.[0]?.available_modules ?? [],
+    available_modules: availableModules,
     governed_fallback_modules: payload?.availability?.subjects?.[0]?.governed_fallback_modules ?? [],
   };
 }
