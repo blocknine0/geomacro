@@ -84,13 +84,28 @@ jobs:
         run: |
           set -euo pipefail
           OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT version FROM schema_meta WHERE name='control-plane';")"
-          printf '%s' "$OUT" | grep -q '"version":1' || { echo "D1 schema v1 is not ready"; exit 4; }
+          printf '%s' "$OUT" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              let parsed;
+              try { parsed = JSON.parse(s); } catch { process.exit(4); }
+              const envelopes = Array.isArray(parsed) ? parsed : [parsed];
+              const rows = envelopes.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+              if (!rows.some(row => Number(row?.version) === 1)) process.exit(4);
+            });
+          ' || { echo "D1 schema v1 is not ready"; exit 4; }
 
       - name: Run checksum-verified shadow backfill
         run: node scripts/ops/d1-shadow-backfill.mjs
 
+      - name: Require parity evidence before upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s artifacts/d1-shadow-backfill/verification-summary.json || { echo "Verified shadow backfill did not produce its parity summary"; exit 10; }
+
       - name: Upload parity evidence only
-        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
         with:
           name: d1-shadow-backfill-${{ github.run_id }}
