@@ -18,6 +18,13 @@ describe("D1 shadow backfill workflow", () => {
     expect(workflow).toContain("github.event_name == 'push'");
   });
 
+  it("refreshes D1 parity after a successful production freshness repair", () => {
+    expect(workflow).toContain("workflow_run:");
+    expect(workflow).toContain("- Phase A Runtime Freshness Repair");
+    expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(workflow).toContain("github.event.workflow_run.head_branch == 'main'");
+  });
+
   it("requires verified parity evidence only after the backfill succeeds", () => {
     expect(workflow).toContain("Run checksum-verified shadow backfill");
     expect(workflow).toContain("Require parity evidence before upload");
