@@ -12,12 +12,21 @@ for (const marker of [
   "commercial_eligibility_status",
   "createB2Client",
   "geomacro.observation-raw-bundle.v1",
+  "gzip-fragment-bundle",
+  "gzip-fragment-bundles",
+  "compression: \"gzip-9\"",
+  "MAX_FRAGMENT_MEMBERS",
+  "MAX_FRAGMENT_COMPRESSED_BYTES",
+  "MAX_FRAGMENTS_PER_SOURCE",
   "b2.put",
   "b2.get",
+  "readback_verified: true",
   "raw_payload: null",
   "archive_bundle_key",
   "archive_bundle_sha256",
   "archive_member_sha256",
+  "fragment_set_sha256",
+  "compression_ratio",
   "d1-checkpoints.sql",
   "published_at: null",
   "supabase_raw_payload_written: false",
@@ -49,4 +58,4 @@ if (workflow.includes("Replay governed normalized ingestion")) {
   throw new Error("source fetch/B2 upload must not be duplicated just to prove checkpoint idempotency");
 }
 
-console.log("PASS: governed B2-first ingestion contract");
+console.log("PASS: governed compressed B2-fragment ingestion contract");
