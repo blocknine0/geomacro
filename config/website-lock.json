@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "65aaa9165b859e01a81692db55193a17306a3a25",
-  "published_baseline": "Founder-approved public-surface isolation recovery. /global-risk is restored to its dedicated Global Risk workspace and reads the proof-validated Global Risk Cloudflare/B2 edge; /risk-indices remains the separate three-index product and reads its own independently published, proof-bound Risk Indices Cloudflare/B2 edge. Intelligence and Ask keep their own API/runtime contracts. Shared canonical verified evidence may be read by publishers, but customer-serving state, B2 live/proof objects, workers, browser hooks, schedules and compatibility APIs are isolated so repairing one product surface does not replace or overwrite another. Missing or stale verified data remains explicit; no synthetic score, zero fallback, history interpolation, payment weakening or source-rights bypass is allowed.",
+  "baseline_sha": "f223ba84f8ba8a31903414fadcf8bf2fed930d0d",
+  "published_baseline": "Founder-approved permanent three-domain Global Risk recovery. /global-risk always presents Geopolitical, Macroeconomic and Critical Minerals risk as three fixed verified domain indices in addition to the combined GRI. Each domain retains its own last verified reading until a newer verified reading for that domain arrives; newer verified results replace only that domain. The canonical assembler scans verified same-methodology history per domain and carries the domain's own reading snapshot/timestamp/status. No domain may disappear merely because the newest combined snapshot lacks a fresh reading for it. No synthetic score, zero fallback, interpolation, payment weakening or source-rights bypass is allowed. Intelligence, Ask and Risk Indices remain separate serving failure domains.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
-  "locked_at_utc": "2026-10-03T22:30:00Z",
+  "locked_at_utc": "2026-10-03T23:14:00Z",
   "published_source_sha": "5bc4f66d91d0c92c4fce6bd20e6b3b4907453381",
-  "lock_revision": "founder-approved-independent-public-surface-recovery-20261004"
+  "lock_revision": "founder-approved-three-domain-last-verified-lock-20261004"
 }
