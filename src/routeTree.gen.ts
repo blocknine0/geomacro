@@ -31,6 +31,7 @@ import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as RiskGateRouteImport } from './routes/risk-gate'
+import { Route as RiskIndicesRouteImport } from './routes/risk-indices'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as TameionRouteImport } from './routes/tameion'
 import { Route as TestnetAccessRouteImport } from './routes/testnet-access'
@@ -170,6 +171,11 @@ const ReviewRoute = ReviewRouteImport.update({
 const RiskGateRoute = RiskGateRouteImport.update({
   id: '/risk-gate',
   path: '/risk-gate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RiskIndicesRoute = RiskIndicesRouteImport.update({
+  id: '/risk-indices',
+  path: '/risk-indices',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RoadmapRoute = RoadmapRouteImport.update({
@@ -349,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/research': typeof ResearchRoute
   '/review': typeof ReviewRoute
   '/risk-gate': typeof RiskGateRoute
+  '/risk-indices': typeof RiskIndicesRoute
   '/roadmap': typeof RoadmapRoute
   '/tameion': typeof TameionRoute
   '/testnet-access': typeof TestnetAccessRoute
@@ -403,6 +410,7 @@ export interface FileRoutesByTo {
   '/research': typeof ResearchRoute
   '/review': typeof ReviewRoute
   '/risk-gate': typeof RiskGateRoute
+  '/risk-indices': typeof RiskIndicesRoute
   '/roadmap': typeof RoadmapRoute
   '/tameion': typeof TameionRoute
   '/testnet-access': typeof TestnetAccessRoute
@@ -458,6 +466,7 @@ export interface FileRoutesById {
   '/research': typeof ResearchRoute
   '/review': typeof ReviewRoute
   '/risk-gate': typeof RiskGateRoute
+  '/risk-indices': typeof RiskIndicesRoute
   '/roadmap': typeof RoadmapRoute
   '/tameion': typeof TameionRoute
   '/testnet-access': typeof TestnetAccessRoute
@@ -514,6 +523,7 @@ export interface FileRouteTypes {
     | '/research'
     | '/review'
     | '/risk-gate'
+    | '/risk-indices'
     | '/roadmap'
     | '/tameion'
     | '/testnet-access'
@@ -568,6 +578,7 @@ export interface FileRouteTypes {
     | '/research'
     | '/review'
     | '/risk-gate'
+    | '/risk-indices'
     | '/roadmap'
     | '/tameion'
     | '/testnet-access'
@@ -622,6 +633,7 @@ export interface FileRouteTypes {
     | '/research'
     | '/review'
     | '/risk-gate'
+    | '/risk-indices'
     | '/roadmap'
     | '/tameion'
     | '/testnet-access'
@@ -677,6 +689,7 @@ export interface RootRouteChildren {
   ResearchRoute: typeof ResearchRoute
   ReviewRoute: typeof ReviewRoute
   RiskGateRoute: typeof RiskGateRoute
+  RiskIndicesRoute: typeof RiskIndicesRoute
   RoadmapRoute: typeof RoadmapRoute
   TameionRoute: typeof TameionRoute
   TestnetAccessRoute: typeof TestnetAccessRoute
@@ -863,6 +876,13 @@ declare module '@tanstack/react-router' {
       path: '/risk-gate'
       fullPath: '/risk-gate'
       preLoaderRoute: typeof RiskGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/risk-indices': {
+      id: '/risk-indices'
+      path: '/risk-indices'
+      fullPath: '/risk-indices'
+      preLoaderRoute: typeof RiskIndicesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/roadmap': {
@@ -1101,6 +1121,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResearchRoute: ResearchRoute,
   ReviewRoute: ReviewRoute,
   RiskGateRoute: RiskGateRoute,
+  RiskIndicesRoute: RiskIndicesRoute,
   RoadmapRoute: RoadmapRoute,
   TameionRoute: TameionRoute,
   TestnetAccessRoute: TestnetAccessRoute,
