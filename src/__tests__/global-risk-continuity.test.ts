@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validateGlobalRiskContinuity } from "@/lib/global-risk-continuity";
 import type { GlobalRisk } from "@/lib/global-risk.types";
@@ -5,6 +7,8 @@ import type { GlobalRisk } from "@/lib/global-risk.types";
 const HOUR = 60 * 60 * 1000;
 const AS_OF = Date.parse("2026-10-01T16:30:47.667Z");
 const HEX = "a".repeat(64);
+const ROOT = process.cwd();
+const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 function buckets(hours: number[]) {
   return hours.map((ago, index) => ({
@@ -100,6 +104,18 @@ describe("Global Risk historical continuity", () => {
       ok: false,
       code: "RISK_HISTORY_7D_LATEST_MISMATCH",
     });
+  });
+
+  it("anchors source history to the latest verified snapshot instead of wall-clock time", () => {
+    const supabaseReader = read("src/lib/global-risk-read.server.ts");
+    const directPublisher = read("scripts/ops/publish-b2-global-risk-direct-postgres.mjs");
+
+    expect(supabaseReader).toContain('.eq("verification_status", "verified")');
+    expect(supabaseReader).not.toContain('.gte("as_of"');
+    expect(supabaseReader).toContain("assembler clips the newest verified rows relative to the latest");
+    expect(directPublisher).toContain("history_anchor: \"latest-verified-snapshot\"");
+    expect(directPublisher).not.toContain("as_of >= now()");
+    expect(directPublisher).toContain("verified_snapshot_rows: snapshots");
   });
 
   it("never accepts a fabricated future snapshot", () => {
