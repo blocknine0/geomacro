@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 const read = (path: string) => readFileSync(path, "utf8");
 const assurance = JSON.parse(read("config/partner-assurance.v1.json"));
 const adapter = read("scripts/partner-assurance-adapter.ts");
+const directDay6 = read("scripts/day6-direct-live-federico-gro.ts");
+const day6Workflow = read(".github/workflows/day6-partner-assurance-final.yml");
 const migration = read("workers/control-plane/migrations/0002_primary_runtime_authority.sql");
 const finalGate = read("scripts/ops/final-launch-gate-core.mjs");
 const simulations = read("scripts/ops/simulate-final-launch-failures.mjs");
@@ -41,6 +43,24 @@ describe("Day 6 generic partner assurance", () => {
     expect(adapter).toContain("SIGNED_PARTNER_PROOF_MISSING");
     expect(adapter).toContain("INDEPENDENT_PARTNER_PROOF_VERIFICATION_FAILED");
     expect(adapter).toContain("TAMPER_NOT_REJECTED");
+  });
+
+  it("generates the final Day 6 canary without a Supabase serving dependency", () => {
+    expect(day6Workflow).toContain("day6-direct-live-federico-gro.ts");
+    expect(day6Workflow).toContain("Day 6 final assurance must not inject Supabase runtime credentials");
+    expect(day6Workflow).not.toContain("secrets.APP_SUPABASE_URL");
+    expect(day6Workflow).not.toContain("secrets.SUPABASE_SERVICE_ROLE_KEY");
+    expect(day6Workflow).not.toContain("secrets.SUPABASE_PROJECT_ID");
+    expect(directDay6).not.toContain("@supabase/supabase-js");
+    expect(directDay6).not.toContain("check-federico-publication.ts");
+    expect(directDay6).toContain("FEDERICO_STRICT_MULTI_SOURCE_MIN_SIMILARITY");
+    expect(directDay6).toContain("MAX_PEER_DELTA_SECONDS = 3600");
+    expect(directDay6).toContain("FEDERICO_STRICT_VERIFICATION_SCORE_THRESHOLD");
+    expect(directDay6).toContain("withRiskObjectObservationTimestamp");
+    expect(directDay6).toContain("assertFedericoPublicationReady(eligible)");
+    expect(directDay6).toContain("signRiskObject(observationBound)");
+    expect(directDay6).toContain("b2_readback_verified: true");
+    expect(directDay6).toContain("raw_source_payload_stored: false");
   });
 });
 
