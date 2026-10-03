@@ -58,20 +58,23 @@ describe("production website runtime contract", () => {
     expect(askEngine).not.toContain("getAppSupabase");
   });
 
-  it("keeps live freshness explicitly observed and unscored", () => {
+  it("forbids unscored observations on the public Intelligence surface", () => {
     const reader = read("src/lib/public-intelligence-production.server.ts");
     const hook = read("src/lib/use-intelligence.ts");
-    const route = read("src/routes/intelligence.tsx");
+    const publisher = read("scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs");
 
-    expect(reader).toContain('public_status: "verified_b2" | "live_observed"');
-    expect(reader).toContain('sort", "DateDesc"');
-    expect(reader).toContain("severity: null");
-    expect(reader).toContain("delta: null");
-    expect(reader).toContain("LIVE_OVERLAY_TRIGGER_AGE_MS");
-    expect(reader).toContain("LIVE_MAX_AGE_MS");
-    expect(hook).toContain('publicStatus: "verified_b2" | "live_observed"');
-    expect(route).toContain("Live observed · unscored");
-    expect(route).toContain("live observations are shown unscored");
+    expect(reader).toContain('public_status: "verified_b2"');
+    expect(reader).toContain('const DERIVED_TITLE_PREFIX = "Geomacro finds "');
+    expect(reader).not.toContain("fetchUsgsMacro");
+    expect(reader).not.toContain("LIVE_OVERLAY_TRIGGER_AGE_MS");
+    expect(hook).toContain('r.public_status === "live_observed"');
+    expect(hook).toContain('payload.mode !== "verified_b2"');
+    expect(hook).toContain('Number(payload.live_observed_rows ?? 0) !== 0');
+    expect(hook).toContain('hasLiveObserved: false');
+    expect(publisher).toContain("PUBLIC_INTELLIGENCE_UNSCORED_ROW_REJECTED");
+    expect(publisher).toContain('title.startsWith("Geomacro finds ")');
+    expect(publisher).toContain("guardian_commercial_dependency: false");
+    expect(publisher).toContain("raw_source_headlines_exposed: false");
   });
 
   it("bounds every interactive public wait so loading cannot hang forever", () => {
@@ -92,7 +95,6 @@ describe("production website runtime contract", () => {
   it("keeps route loaders fail-closed without collapsing the whole page", () => {
     const intelligence = read("src/routes/intelligence.tsx");
     const event = read("src/routes/event.$eventId.tsx");
-
     expect(intelligence).toContain("[intelligence-route] preload failed; rendering fail-closed workspace");
     expect(intelligence).toContain("return { rows: [], now }");
     expect(event).toContain("[event-route] preload failed; rendering unavailable state");
@@ -102,9 +104,8 @@ describe("production website runtime contract", () => {
 
   it("checks rendered route content plus functional public APIs", () => {
     const workflow = read(".github/workflows/production-website-health.yml");
-    expect(workflow).toContain("Verify public production APIs and freshness");
+    expect(workflow).toContain("Verify public production APIs and scored Intelligence contract");
     expect(workflow).toContain('/api/public/intelligence');
-    expect(workflow).toContain('"current_within_24h":true');
     expect(workflow).toContain('/api/public/risk-indices');
     expect(workflow).toContain('/api/public-ask');
     expect(workflow).toContain("This page didn't load");

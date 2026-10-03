@@ -1,10 +1,10 @@
 /**
  * Read model for the /intelligence workspace.
  *
- * Public browser surfaces deliberately read through an explicit same-origin
- * /api/public boundary. Durable verified continuity comes from B2; when that
- * package is older than the live window the server may add a clearly-labelled
- * ephemeral live-observed overlay without writing it to B2 or Supabase.
+ * Public Intelligence is scored-only and derived-only. The browser accepts
+ * only verified B2 rows with a real 0..100 severity and a Geomacro-derived
+ * English-facing title. A stale server must never be able to reintroduce an
+ * unscored live observation into the customer UI.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -23,15 +23,11 @@ export type IntelEvent = {
   summary: string | null;
   category: string | null;
   severity: number | null;
-  /** Severity change written by the verified pipeline. null when never scored. */
   delta: number | null;
-  /** Public compatibility field. Upstream publisher identity is never populated. */
   sourceName: null;
   createdAt: string;
   publishedAt: string | null;
-  /** True only when published/recorded time falls inside the current 24h window. */
   isCurrent: boolean;
-  /** Durable verified B2 record or ephemeral current observation. */
   publicStatus: "verified_b2" | "live_observed";
 };
 
@@ -39,21 +35,15 @@ export type IntelStatus = "loading" | "ready" | "updating" | "error";
 
 export type Intelligence = {
   all: IntelEvent[];
-  /** Events whose published/recorded time falls inside the current 24h window. */
   today: IntelEvent[];
-  /** Most recent available records used only when the current window is empty. */
   recent: IntelEvent[];
   usedFallbackWindow: boolean;
-  /** True when current live observations are supplemented with recent verified scored B2 context. */
   usesVerifiedContext: boolean;
   hasLiveObserved: boolean;
   topRisks: IntelEvent[];
-  /** Latest scored verified B2 rows, kept separate from current-only topRisks. */
   verifiedRiskContext: IntelEvent[];
-  /** null when no row in the window carries a real severity change. */
   fastestMoving: IntelEvent[] | null;
   fading: IntelEvent[] | null;
-  /** New rows scoring at or above the window median. null when unavailable. */
   emerging: IntelEvent[] | null;
   emergingMedian: number | null;
   categories: string[];
@@ -69,6 +59,8 @@ type PublicIntelligenceApiResponse = {
   ok: boolean;
   rows?: PublicIntelligenceApiRow[];
   mode?: "verified_b2" | "verified_b2_plus_live_observed" | "live_observed_only";
+  verified_rows?: number;
+  live_observed_rows?: number;
   newest_at?: string | null;
   current_within_24h?: boolean;
   error?: string;
@@ -76,6 +68,7 @@ type PublicIntelligenceApiResponse = {
 
 const DAY = 24 * 60 * 60 * 1000;
 const EMERGING_WINDOW = 12 * 60 * 60 * 1000;
+const DERIVED_TITLE_PREFIX = "Geomacro finds ";
 
 export const SORTS = ["risk", "newest", "moving"] as const;
 export type IntelSort = (typeof SORTS)[number];
@@ -110,61 +103,53 @@ function timeOf(e: IntelEvent) {
 }
 
 function mapPublicRows(rows: PublicIntelligenceApiRow[]): IntelEvent[] {
-  return rows.map((r) => ({
-    id: String(r.id),
-    title: r.source_title ?? "Untitled event",
-    summary: r.summary ?? null,
-    category: r.category ?? null,
-    severity: num(r.severity),
-    delta: num(r.delta),
-    sourceName: null,
-    createdAt: String(r.created_at),
-    publishedAt: r.published_at ?? null,
-    isCurrent: false,
-    publicStatus: r.public_status === "live_observed" ? "live_observed" : "verified_b2",
-  }));
+  const allowed = new Set<string>(PUBLIC_INTELLIGENCE_CATEGORIES);
+  return rows.flatMap((r) => {
+    const title = String(r.source_title ?? "").trim();
+    const category = String(r.category ?? "").trim();
+    const severity = num(r.severity);
+    if (r.public_status === "live_observed") return [];
+    if (!allowed.has(category)) return [];
+    if (!title.startsWith(DERIVED_TITLE_PREFIX)) return [];
+    if (severity === null || severity < 0 || severity > 100) return [];
+    return [{
+      id: String(r.id),
+      title,
+      summary: r.summary ?? null,
+      category,
+      severity,
+      delta: num(r.delta),
+      sourceName: null,
+      createdAt: String(r.created_at),
+      publishedAt: r.published_at ?? null,
+      isCurrent: false,
+      publicStatus: "verified_b2" as const,
+    }];
+  });
 }
 
 function build(rows: IntelEvent[], now: number): Intelligence {
-  const markedRows = rows.map((row) => ({
-    ...row,
-    isCurrent: timeOf(row) >= now - DAY && timeOf(row) <= now,
-  }));
+  const markedRows = rows
+    .filter((row) => row.publicStatus === "verified_b2" && row.severity !== null)
+    .map((row) => ({
+      ...row,
+      isCurrent: timeOf(row) >= now - DAY && timeOf(row) <= now,
+    }));
   const in24h = markedRows.filter((r) => r.isCurrent);
   const usedFallbackWindow = in24h.length === 0;
   const recent = [...markedRows]
     .filter((r) => Number.isFinite(timeOf(r)) && timeOf(r) <= now)
     .sort((a, b) => timeOf(b) - timeOf(a))
     .slice(0, 24);
-
-  // B2 continuity can be verified and scored while today's open-source overlay is
-  // intentionally unscored. Keep both visible: current observations preserve
-  // freshness, and the latest verified B2 rows preserve the rich scored context
-  // the Supabase-backed public workspace exposed before the production cutover.
-  // Never rewrite timestamps or synthesize scores to make stale evidence look current.
-  const currentDefault = [...in24h]
-    .sort((a, b) => timeOf(b) - timeOf(a))
-    .slice(0, 12);
   const verifiedContext = [...markedRows]
-    .filter((r) => r.publicStatus === "verified_b2" && !r.isCurrent)
+    .filter((r) => !r.isCurrent)
     .sort((a, b) => timeOf(b) - timeOf(a));
-  const verifiedContextDefault = verifiedContext.slice(
-    0,
-    Math.max(0, 24 - currentDefault.length),
-  );
-  const usesVerifiedContext = currentDefault.length > 0 && verifiedContextDefault.length > 0;
-  const domainRows = usedFallbackWindow
-    ? recent
-    : [...currentDefault, ...verifiedContextDefault];
+  const domainRows = usedFallbackWindow ? recent : [...in24h, ...verifiedContext.slice(0, Math.max(0, 24 - in24h.length))];
 
-  // Current risk topics remain strictly current-only. Older verified B2 rows
-  // are exposed separately as context and never promoted into a current claim.
-  const currentScored = in24h.filter((r) => r.severity !== null);
-  const topRisks = [...currentScored]
+  const topRisks = [...in24h]
     .sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0))
     .slice(0, 8);
   const verifiedRiskContext = [...verifiedContext]
-    .filter((r) => r.severity !== null)
     .sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0) || timeOf(b) - timeOf(a))
     .slice(0, 8);
 
@@ -176,47 +161,40 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .filter((r) => (r.delta ?? 0) < 0)
     .sort((a, b) => (a.delta ?? 0) - (b.delta ?? 0));
 
-  const med = median(currentScored.map((r) => r.severity as number));
-  const emergingPool =
-    med === null
-      ? null
-      : in24h.filter(
-          (r) =>
-            r.severity !== null &&
-            r.severity >= med &&
-            timeOf(r) >= now - EMERGING_WINDOW &&
-            timeOf(r) <= now,
-        );
+  const med = median(in24h.map((r) => r.severity as number));
+  const emergingPool = med === null
+    ? null
+    : in24h.filter(
+        (r) =>
+          (r.severity as number) >= med &&
+          timeOf(r) >= now - EMERGING_WINDOW &&
+          timeOf(r) <= now,
+      );
 
-  const counts = new Map<string, { count: number; sum: number; scored: number }>();
+  const counts = new Map<string, { count: number; sum: number }>();
   for (const r of domainRows) {
     const key = (r.category ?? "").trim();
-    if (!key) continue;
-    const c = counts.get(key) ?? { count: 0, sum: 0, scored: 0 };
+    if (!key || r.severity === null) continue;
+    const c = counts.get(key) ?? { count: 0, sum: 0 };
     c.count += 1;
-    if (r.severity !== null) {
-      c.sum += r.severity;
-      c.scored += 1;
-    }
+    c.sum += r.severity;
     counts.set(key, c);
   }
   const categoryCounts = [...counts.entries()]
     .map(([category, c]) => ({
       category,
       count: c.count,
-      avgSeverity: c.scored > 0 ? Math.round(c.sum / c.scored) : null,
+      avgSeverity: Math.round(c.sum / c.count),
     }))
-    .sort((a, b) => (b.avgSeverity ?? -1) - (a.avgSeverity ?? -1) || b.count - a.count);
+    .sort((a, b) => b.avgSeverity - a.avgSeverity || b.count - a.count);
 
   return {
     all: markedRows,
-    today: [...in24h]
-      .sort((a, b) => timeOf(b) - timeOf(a))
-      .slice(0, 12),
+    today: [...in24h].sort((a, b) => timeOf(b) - timeOf(a)).slice(0, 12),
     recent,
     usedFallbackWindow,
-    usesVerifiedContext,
-    hasLiveObserved: markedRows.some((row) => row.publicStatus === "live_observed"),
+    usesVerifiedContext: in24h.length > 0 && verifiedContext.length > 0,
+    hasLiveObserved: false,
     topRisks,
     verifiedRiskContext,
     fastestMoving: rising.length > 0 ? rising.slice(0, 5) : null,
@@ -229,7 +207,6 @@ function build(rows: IntelEvent[], now: number): Intelligence {
   };
 }
 
-/** Build the exact public intelligence read model from canonical public rows. */
 export function buildPublicIntelligence(rows: PublicIntelligenceRow[], now: number): Intelligence {
   return build(mapPublicRows(rows), now);
 }
@@ -242,8 +219,14 @@ async function fetchPublicIntelligence(): Promise<PublicIntelligenceApiRow[]> {
     credentials: "same-origin",
   });
   const payload = (await response.json()) as PublicIntelligenceApiResponse;
-  if (!response.ok || !payload.ok || !Array.isArray(payload.rows)) {
-    throw new Error(payload.error ?? "Intelligence feed unavailable.");
+  if (
+    !response.ok ||
+    !payload.ok ||
+    payload.mode !== "verified_b2" ||
+    Number(payload.live_observed_rows ?? 0) !== 0 ||
+    !Array.isArray(payload.rows)
+  ) {
+    throw new Error(payload.error ?? "Verified intelligence feed unavailable.");
   }
   return payload.rows;
 }
@@ -276,17 +259,16 @@ export function useIntelligence(
         if (cancelled) return;
 
         const mapped = mapPublicRows(rows);
-
         if (mapped.length === 0) {
           if (hasData.current) {
             setStatus("ready");
-            setError({ message: "Live refresh is temporarily unavailable. Showing the latest verified intelligence.", retryable: true });
+            setError({ message: "Refresh is temporarily unavailable. Showing the latest verified intelligence.", retryable: true });
             return;
           }
           hasData.current = false;
           setData(null);
           setStatus("error");
-          setError({ message: "Intelligence feed unavailable.", retryable: true });
+          setError({ message: "Verified intelligence feed unavailable.", retryable: true });
           return;
         }
 
@@ -316,7 +298,6 @@ export function useIntelligence(
   );
 }
 
-/** Client-side filter + search + sort over already-loaded rows. */
 export function applyIntelFilters(
   rows: IntelEvent[],
   { category, query, sort }: { category: string; query: string; sort: IntelSort },
@@ -348,7 +329,6 @@ export function applyIntelFilters(
   return sorted;
 }
 
-/** Fastest-moving sort is only offered when real severity changes exist. */
 export function availableSorts(rows: IntelEvent[]): IntelSort[] {
   const hasMovement = rows.some((r) => r.isCurrent && r.delta !== null && r.delta !== 0);
   return hasMovement ? ["risk", "newest", "moving"] : ["risk", "newest"];

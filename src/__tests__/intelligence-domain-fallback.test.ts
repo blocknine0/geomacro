@@ -7,7 +7,7 @@ const NOW = Date.parse("2026-09-22T12:00:00.000Z");
 function row(id: string, severity: number, publishedAt: string): PublicIntelligenceRow {
   return {
     id,
-    source_title: id,
+    source_title: `Geomacro finds ${id} verified geopolitical risk`,
     summary: null,
     category: "geopolitics",
     severity,
@@ -26,7 +26,6 @@ describe("Intelligence fallback domain context", () => {
       ],
       NOW,
     );
-
     expect(result.usedFallbackWindow).toBe(true);
     expect(result.today).toHaveLength(0);
     expect(result.topRisks).toHaveLength(0);
