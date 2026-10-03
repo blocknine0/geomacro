@@ -5,6 +5,12 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { createB2Client } from "./ops/b2-s3-client.mjs";
 
+const MAX_SOURCE_ROWS = 250;
+const MAX_FRAGMENT_MEMBERS = 25;
+const MAX_FRAGMENT_UNCOMPRESSED_BYTES = 8_000_000;
+const MAX_FRAGMENT_COMPRESSED_BYTES = 1_500_000;
+const MAX_FRAGMENTS_PER_SOURCE = 12;
+
 const env = (name) => {
   const value = String(process.env[name] ?? "").trim();
   if (!value) throw new Error(`Missing ${name}`);
@@ -147,8 +153,7 @@ function uuidFromHash(value) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
-async function archiveSourceBatch(sourceId, rows) {
-  if (!rows.length || rows.length > 250) throw new Error(`Unsafe bundle row count: ${sourceId}`);
+function buildFragment(sourceId, rows) {
   const entries = rows.map((row) => {
     const memberBytes = Buffer.from(JSON.stringify(row._raw_payload));
     if (memberBytes.length > 2_000_000) throw new Error(`Raw payload too large: ${row.observation_id}`);
@@ -163,36 +168,86 @@ async function archiveSourceBatch(sourceId, rows) {
   const key = `geomacro-evidence/v1/observation-bundles/${bundleTimestamp(rows)}-${fingerprint[0]}-${uuidFromHash(fingerprint)}.json.gz`;
   const bundle = {
     schema: "geomacro.observation-raw-bundle.v1",
+    storage_mode: "gzip-fragment-bundle",
+    compression: "gzip-9",
     source_id: sourceId,
     created_at: rows.map((row) => row.observed_at).sort().at(-1),
     bundle_fingerprint: fingerprint,
     entries,
   };
   const bundleBytes = Buffer.from(JSON.stringify(bundle));
-  if (bundleBytes.length > 8_000_000) throw new Error(`Bundle too large: ${sourceId}`);
   const compressed = gzipSync(bundleBytes, { level: 9 });
-  await b2.put(key, compressed);
-  const readback = await b2.get(key);
-  if (sha(readback) !== sha(compressed)) throw new Error(`B2 readback hash mismatch: ${sourceId}`);
-  const restoredBytes = gunzipSync(readback, { maxOutputLength: 10_000_000 });
-  if (sha(restoredBytes) !== sha(bundleBytes)) throw new Error(`B2 restored bundle mismatch: ${sourceId}`);
+  return { rows, entries, fingerprint, key, bundle, bundleBytes, compressed };
+}
+
+async function archiveVerifiedFragment(sourceId, rows) {
+  let selected = rows.slice(0, Math.min(MAX_FRAGMENT_MEMBERS, rows.length));
+  let fragment = null;
+  while (selected.length) {
+    const candidate = buildFragment(sourceId, selected);
+    if (candidate.bundleBytes.length <= MAX_FRAGMENT_UNCOMPRESSED_BYTES && candidate.compressed.length <= MAX_FRAGMENT_COMPRESSED_BYTES) {
+      fragment = candidate;
+      break;
+    }
+    selected = selected.slice(0, -1);
+  }
+  if (!fragment || !selected.length) throw new Error(`No safe fragment size: ${sourceId}`);
+
+  await b2.put(fragment.key, fragment.compressed);
+  const readback = await b2.get(fragment.key);
+  if (readback.length !== fragment.compressed.length || sha(readback) !== sha(fragment.compressed)) {
+    throw new Error(`B2 fragment readback hash mismatch: ${sourceId}`);
+  }
+  const restoredBytes = gunzipSync(readback, { maxOutputLength: MAX_FRAGMENT_UNCOMPRESSED_BYTES + 1 });
+  if (sha(restoredBytes) !== sha(fragment.bundleBytes)) throw new Error(`B2 restored fragment mismatch: ${sourceId}`);
   const restored = JSON.parse(restoredBytes.toString("utf8"));
-  if (restored?.schema !== bundle.schema || restored?.bundle_fingerprint !== fingerprint || restored?.entries?.length !== entries.length) {
-    throw new Error(`B2 restored bundle shape mismatch: ${sourceId}`);
+  if (restored?.schema !== fragment.bundle.schema || restored?.storage_mode !== "gzip-fragment-bundle" || restored?.bundle_fingerprint !== fragment.fingerprint || restored?.entries?.length !== fragment.entries.length) {
+    throw new Error(`B2 restored fragment shape mismatch: ${sourceId}`);
   }
 
-  const memberById = new Map(entries.map((entry) => [entry.observation_id, entry]));
-  const compactRows = rows.map(({ _raw_payload, ...row }) => {
+  const memberById = new Map(fragment.entries.map((entry) => [entry.observation_id, entry]));
+  const compactRows = selected.map(({ _raw_payload, ...row }) => {
     const member = memberById.get(row.observation_id);
     if (!member) throw new Error(`Missing archived member: ${row.observation_id}`);
     return {
       ...row,
       raw_payload: null,
-      archive_bundle_key: key,
-      archive_bundle_sha256: sha(compressed),
+      archive_bundle_key: fragment.key,
+      archive_bundle_sha256: sha(fragment.compressed),
       archive_member_sha256: member.payload_sha256,
     };
   });
+
+  return {
+    consumed: selected.length,
+    compactRows,
+    fragment: {
+      key: fragment.key,
+      sha256: sha(fragment.compressed),
+      fingerprint: fragment.fingerprint,
+      members: selected.length,
+      uncompressed_bytes: fragment.bundleBytes.length,
+      compressed_bytes: fragment.compressed.length,
+      compression_ratio: Number((fragment.compressed.length / Math.max(1, fragment.bundleBytes.length)).toFixed(6)),
+      readback_verified: true,
+    },
+  };
+}
+
+async function archiveSourceBatch(sourceId, rows) {
+  if (!rows.length || rows.length > MAX_SOURCE_ROWS) throw new Error(`Unsafe source row count: ${sourceId}`);
+  let pending = [...rows].sort((a, b) => a.observation_id.localeCompare(b.observation_id));
+  const compactRows = [];
+  const fragments = [];
+
+  // Verify every compressed B2 fragment before writing any row pointer to the compact mirror.
+  while (pending.length) {
+    if (fragments.length >= MAX_FRAGMENTS_PER_SOURCE) throw new Error(`Too many fragments required: ${sourceId}`);
+    const archived = await archiveVerifiedFragment(sourceId, pending);
+    fragments.push(archived.fragment);
+    compactRows.push(...archived.compactRows);
+    pending = pending.slice(archived.consumed);
+  }
 
   for (let offset = 0; offset < compactRows.length; offset += 100) {
     const chunk = compactRows.slice(offset, offset + 100);
@@ -212,18 +267,25 @@ async function archiveSourceBatch(sourceId, rows) {
   const expectedById = new Map(compactRows.map((row) => [row.observation_id, row]));
   for (const row of persisted ?? []) {
     const expected = expectedById.get(row.observation_id);
-    if (!expected || row.raw_payload !== null || row.raw_hash !== expected.raw_hash || row.archive_bundle_key !== key ||
+    if (!expected || row.raw_payload !== null || row.raw_hash !== expected.raw_hash || row.archive_bundle_key !== expected.archive_bundle_key ||
         row.archive_bundle_sha256 !== expected.archive_bundle_sha256 || row.archive_member_sha256 !== expected.archive_member_sha256) {
       throw new Error(`Compact mirror verification failed: ${row.observation_id}`);
     }
   }
 
+  const fragmentSetSha256 = hash(fragments.map(({ key, sha256, fingerprint, members }) => ({ key, sha256, fingerprint, members })));
+  const uncompressedBytes = fragments.reduce((sum, fragment) => sum + fragment.uncompressed_bytes, 0);
+  const compressedBytes = fragments.reduce((sum, fragment) => sum + fragment.compressed_bytes, 0);
   return {
     source_id: sourceId,
     normalized_observations: compactRows.length,
-    bundle_key: key,
-    bundle_sha256: sha(compressed),
-    bundle_fingerprint: fingerprint,
+    storage_mode: "gzip-fragment-bundles",
+    fragment_count: fragments.length,
+    fragment_set_sha256: fragmentSetSha256,
+    fragments,
+    uncompressed_bytes: uncompressedBytes,
+    compressed_bytes: compressedBytes,
+    compression_ratio: Number((compressedBytes / Math.max(1, uncompressedBytes)).toFixed(6)),
     b2_readback_verified: true,
     supabase_raw_payload_written: false,
     supabase_compact_mirror_verified: true,
@@ -247,13 +309,18 @@ const checkpointSql = summaries.map((summary) => {
     source_id: summary.source_id,
     normalized_observations: summary.normalized_observations,
     durable_payload_store: "backblaze-b2",
-    bundle_key: summary.bundle_key,
-    bundle_sha256: summary.bundle_sha256,
+    storage_mode: summary.storage_mode,
+    compression: "gzip-9",
+    fragment_count: summary.fragment_count,
+    fragment_set_sha256: summary.fragment_set_sha256,
+    uncompressed_bytes: summary.uncompressed_bytes,
+    compressed_bytes: summary.compressed_bytes,
+    compression_ratio: summary.compression_ratio,
     b2_readback_verified: true,
     supabase_raw_payload_written: false,
     supabase_compact_mirror_verified: true,
   });
-  return `INSERT INTO pipeline_checkpoint (pipeline,scope,status,last_attempt_at,last_success_at,cursor,metadata_json,updated_at) VALUES ('governed_source_ingestion',${sqlText(summary.source_id)},'PASS',${sqlText(now)},${sqlText(now)},${sqlText(summary.bundle_fingerprint)},${sqlText(metadata)},${sqlText(now)}) ON CONFLICT(pipeline,scope) DO UPDATE SET status=excluded.status,last_attempt_at=excluded.last_attempt_at,last_success_at=excluded.last_success_at,cursor=excluded.cursor,metadata_json=excluded.metadata_json,updated_at=excluded.updated_at;`;
+  return `INSERT INTO pipeline_checkpoint (pipeline,scope,status,last_attempt_at,last_success_at,cursor,metadata_json,updated_at) VALUES ('governed_source_ingestion',${sqlText(summary.source_id)},'PASS',${sqlText(now)},${sqlText(now)},${sqlText(summary.fragment_set_sha256)},${sqlText(metadata)},${sqlText(now)}) ON CONFLICT(pipeline,scope) DO UPDATE SET status=excluded.status,last_attempt_at=excluded.last_attempt_at,last_success_at=excluded.last_success_at,cursor=excluded.cursor,metadata_json=excluded.metadata_json,updated_at=excluded.updated_at;`;
 }).join("\n");
 writeFileSync(`${artifactDir}/d1-checkpoints.sql`, `${checkpointSql}\n`);
 
@@ -262,8 +329,13 @@ const result = {
   status: "PASS",
   ingested_at: now,
   durable_payload_store: "backblaze-b2",
+  storage_mode: "gzip-fragment-bundles",
+  compression: "gzip-9",
   compact_control_store: "cloudflare-d1",
   normalized_observations: summaries.reduce((sum, item) => sum + item.normalized_observations, 0),
+  fragment_count: summaries.reduce((sum, item) => sum + item.fragment_count, 0),
+  uncompressed_bytes: summaries.reduce((sum, item) => sum + item.uncompressed_bytes, 0),
+  compressed_bytes: summaries.reduce((sum, item) => sum + item.compressed_bytes, 0),
   sources: summaries,
   b2_usage: b2.usage(),
   supabase_raw_payload_written: false,
@@ -271,5 +343,6 @@ const result = {
   payment_performed: false,
   destructive_change: false,
 };
+result.compression_ratio = Number((result.compressed_bytes / Math.max(1, result.uncompressed_bytes)).toFixed(6));
 writeFileSync(`${artifactDir}/verification-summary.json`, `${JSON.stringify(result, null, 2)}\n`);
 console.log(JSON.stringify(result));
