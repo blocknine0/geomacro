@@ -124,12 +124,12 @@ class DirectPostgresQuery implements PromiseLike<QueryResult> {
       });
       const data = output.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
       return { data, error: null };
-    } catch (error) {
+    } catch {
       return {
         data: null,
         error: {
           code: "DIRECT_POSTGRES_QUERY_FAILED",
-          message: error instanceof Error ? error.message.split("\n")[0].slice(0, 240) : "direct postgres query failed",
+          message: "direct postgres query failed",
         },
       };
     }
