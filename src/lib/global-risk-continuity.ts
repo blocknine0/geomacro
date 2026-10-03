@@ -33,7 +33,7 @@ function validBucket(bucket: Bucket): boolean {
 function validateSeries(
   key: Timeframe,
   series: TimeframeSeries | undefined,
-  snapshotMs: number,
+  anchorMs: number,
 ): GlobalRiskContinuityResult {
   if (!series || series.timeframe !== key) {
     return { ok: false, code: `RISK_HISTORY_${key}_CONTRACT_INVALID` };
@@ -60,7 +60,7 @@ function validateSeries(
   }
 
   const last = series.buckets.at(-1);
-  if (!last || Math.abs(last.t - snapshotMs) > 1_000) {
+  if (!last || Math.abs(last.t - anchorMs) > 1_000) {
     return { ok: false, code: `RISK_HISTORY_${key}_LATEST_MISMATCH` };
   }
 
@@ -83,6 +83,7 @@ function validateDomainReading(
   domain: RiskDomainKey,
   reading: RiskDomainReading,
   snapshotMs: number,
+  now: number,
 ): GlobalRiskContinuityResult {
   if (
     !finiteInRange(reading.score, 0, 100) ||
@@ -115,9 +116,31 @@ function validateDomainReading(
   ) {
     return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_CHANGE_INVALID` };
   }
+  if (!reading.readingSnapshotId || typeof reading.readingSnapshotId !== "string") {
+    return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_SNAPSHOT_ID_INVALID` };
+  }
+  if (reading.readingStatus !== "current" && reading.readingStatus !== "last_verified") {
+    return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_STATUS_INVALID` };
+  }
+
+  const readingMs = Date.parse(reading.readingAsOf);
+  if (
+    !Number.isFinite(readingMs) ||
+    readingMs > snapshotMs + 1_000 ||
+    readingMs > now + FUTURE_TOLERANCE_MS
+  ) {
+    return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_TIME_INVALID` };
+  }
+  const shouldBeCurrent = Math.abs(readingMs - snapshotMs) <= 1_000;
+  if (
+    (shouldBeCurrent && reading.readingStatus !== "current") ||
+    (!shouldBeCurrent && reading.readingStatus !== "last_verified")
+  ) {
+    return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_STATUS_TIME_MISMATCH` };
+  }
 
   for (const key of ALL_FRAMES) {
-    const result = validateSeries(key, reading.series?.[key], snapshotMs);
+    const result = validateSeries(key, reading.series?.[key], readingMs);
     if (!result.ok) {
       return {
         ok: false,
@@ -138,9 +161,10 @@ function validateDomainReading(
  *
  * This verifies both the legacy combined same-methodology history and the
  * independently displayable domain histories projected from persisted
- * category_breakdown values. It prevents a projection-only refactor from
- * silently replacing verified history with current-only scores and never
- * creates or interpolates missing history.
+ * category_breakdown values. Each domain may retain its own most recent
+ * verified reading when a newer combined snapshot has no qualifying update for
+ * that domain. The retained reading must carry its original timestamp and
+ * history; no interpolation, zero-fill or synthetic value is accepted.
  */
 export function validateGlobalRiskContinuity(
   risk: GlobalRisk,
@@ -195,7 +219,7 @@ export function validateGlobalRiskContinuity(
       }
       continue;
     }
-    const result = validateDomainReading(domain, reading, snapshotMs);
+    const result = validateDomainReading(domain, reading, snapshotMs, now);
     if (!result.ok) return result;
   }
 
