@@ -17,16 +17,20 @@ describe("production website runtime contract", () => {
     expect(health).not.toContain("supabase.co/functions");
   });
 
-  it("keeps Risk Indices on an explicit B2-backed public API boundary", () => {
+  it("keeps Risk Indices on the proof-validated B2 edge without Lovable private B2 initialization", () => {
     const hook = read("src/lib/use-risk-indices.ts");
     const api = read("server/api/public/risk-indices.get.ts");
+    const edgeReader = read("src/lib/global-risk-edge.server.ts");
     expect(hook).toContain('/api/public/risk-indices');
     expect(hook).not.toContain("useServerFn");
     expect(hook).toContain("withPublicRuntimeTimeout");
     expect(hook).toContain("PUBLIC_DATA_REQUEST_TIMEOUT_MS");
     expect(hook).not.toContain("supabase.co");
-    expect(api).toContain("readB2PublicRisk");
+    expect(edgeReader).toContain("backblaze-b2-verified-edge");
+    expect(api).toContain("readGlobalRiskEdge");
     expect(api).toContain("riskIndicesFromGlobalRisk");
+    expect(api).not.toContain("readB2PublicRisk");
+    expect(api).not.toContain("b2-live.server");
     expect(api).not.toContain("Supabase");
   });
 
