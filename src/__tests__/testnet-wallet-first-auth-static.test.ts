@@ -7,7 +7,7 @@ const auth = read("src/lib/testnet-wallet-first-auth.server.ts");
 const originGuard = read("src/lib/testnet-origin-guard.server.ts");
 const challenge = read("server/api/testnet-tester/auth-challenge.post.ts");
 const verify = read("server/api/testnet-tester/auth-verify.post.ts");
-const mountedRoute = read("src/routes/testnet-access.tsx");
+const retiredRoute = read("src/routes/testnet-access.tsx");
 const wildcard = read("src/routes/api/testnet-tester/$.tsx");
 const siweMigration = read("supabase/migrations/034_siwe_single_use_nonce.sql");
 
@@ -26,8 +26,6 @@ describe("wallet-first Testnet onboarding", () => {
     expect(auth).toContain('Expiration Time: ${expiresAtIso}');
     expect(challenge).toContain("body?.chain_id");
     expect(verify).toContain("chainId: body?.chain_id");
-    expect(mountedRoute).toContain('method: "eth_chainId"');
-    expect(mountedRoute).toContain("chain_id: chainId");
     expect(siweMigration).toContain("consumed_at is null");
     expect(siweMigration).toContain("expires_at > now()");
   });
@@ -59,25 +57,15 @@ describe("wallet-first Testnet onboarding", () => {
     expect(verify).not.toContain("session_token: result.session_token");
   });
 
-  it("renders permanent public plus optional developer onboarding from the normal React route", () => {
+  it("keeps wallet-first developer auth available through internal APIs while retiring public onboarding", () => {
     expect(wildcard).toContain('"auth-challenge": authChallengePost');
     expect(wildcard).toContain('"auth-verify": authVerifyPost');
-    expect(mountedRoute).toContain('AUTH_FLOW = "client-wallet-first-v4-public-developer"');
-    expect(mountedRoute).toContain("PUBLIC TESTER + DEVELOPER API");
-    expect(mountedRoute).toContain("Sign in with wallet");
-    expect(mountedRoute).toContain("Disconnect wallet");
-    expect(mountedRoute).toContain("Public Testnet access");
-    expect(mountedRoute).toContain("Developer integrations (optional)");
-    expect(mountedRoute).toContain('api<{');
-    expect(mountedRoute).toContain('"/api/testnet-tester/auth-challenge"');
-    expect(mountedRoute).toContain('"/api/testnet-tester/auth-verify"');
-    expect(mountedRoute).toContain('"/api/testnet-tester/developer-key"');
-    expect(mountedRoute).toContain('"/api/testnet-tester/developer-keys"');
-    expect(mountedRoute).toContain('"/api/testnet-tester/logout"');
-    expect(mountedRoute).not.toContain("runH3Handler");
-    expect(mountedRoute).not.toContain("testnet-access-canonical-wallet-first.get");
-    expect(mountedRoute).not.toContain("Connect & verify wallet");
-    expect(mountedRoute).not.toContain("TESTNET_WALLET_ALREADY_REGISTERED");
+    expect(wildcard).toContain('"developer-key": developerKeyPost');
+    expect(wildcard).toContain('"developer-keys": developerKeysGet');
+    expect(wildcard).toContain('logout: logoutPost');
+    expect(retiredRoute).toContain('redirect({ to: "/data-api", replace: true })');
+    expect(retiredRoute).not.toContain("PUBLIC TESTER + DEVELOPER API");
+    expect(retiredRoute).not.toContain("Public Testnet access");
   });
 
   it("keeps challenge and verification responses fail-closed and non-executing", () => {
