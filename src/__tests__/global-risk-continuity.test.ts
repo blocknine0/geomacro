@@ -14,9 +14,9 @@ const HEX = "a".repeat(64);
 const ROOT = process.cwd();
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
-function buckets(hours: number[]) {
+function buckets(hours: number[], anchor = AS_OF) {
   return hours.map((ago, index) => ({
-    t: AS_OF - ago * HOUR,
+    t: anchor - ago * HOUR,
     avg: 40 + index,
     count: 12 + index,
   }));
@@ -39,6 +39,8 @@ function domainReading(
   h24: ReturnType<typeof buckets>,
   d7: ReturnType<typeof buckets>,
   d30: ReturnType<typeof buckets>,
+  readingAsOf = new Date(AS_OF).toISOString(),
+  readingStatus: "current" | "last_verified" = "current",
 ): RiskDomainReading {
   return {
     score: Math.round(rawScore),
@@ -49,6 +51,9 @@ function domainReading(
     eventCount: 7,
     sourceCount: 5,
     independentStoryCount: 6,
+    readingSnapshotId: "22222222-2222-4222-8222-222222222222",
+    readingAsOf,
+    readingStatus,
     series: {
       "24H": series("24H", h24),
       "7D": series("7D", d7),
@@ -112,6 +117,24 @@ function fixture(): GlobalRisk {
 describe("Global Risk historical continuity", () => {
   it("accepts verified same-methodology history whose latest bucket binds to the snapshot", () => {
     expect(validateGlobalRiskContinuity(fixture(), AS_OF + HOUR)).toEqual({ ok: true });
+  });
+
+  it("accepts a retained domain reading anchored to its own last verified timestamp", () => {
+    const risk = fixture();
+    const retainedAt = AS_OF - 2 * HOUR;
+    const h24 = buckets([20, 8, 0], retainedAt);
+    const d7 = buckets([6 * 24, 5 * 24, 4 * 24, 3 * 24, 2 * 24, 24, 0], retainedAt);
+    const d30 = buckets([28 * 24, 21 * 24, 14 * 24, 7 * 24, 5 * 24, 3 * 24, 24, 0], retainedAt);
+    risk.domainIndices.macro = domainReading(
+      44,
+      45,
+      h24,
+      d7,
+      d30,
+      new Date(retainedAt).toISOString(),
+      "last_verified",
+    );
+    expect(validateGlobalRiskContinuity(risk, AS_OF + HOUR)).toEqual({ ok: true });
   });
 
   it("fails closed when the 7D historical timeline disappears", () => {

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { GlobalRiskDomainIndices } from "@/components/gri/global-risk-domain-indices";
 import { GlobalRiskWorkspace } from "@/components/gri/global-risk-workspace";
 
 const TITLE = "Global Risk Index | Verified Global Risk Continuity | Geomacro";
@@ -6,6 +7,15 @@ const DESCRIPTION =
   "Inspect Geomacro's verified Global Risk Index with auditable methodology, evidence, integrity checks and same-methodology 24H, 7D and 30D continuity.";
 const URL = "https://geomacro.live/global-risk";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
+
+function GlobalRiskPage() {
+  return (
+    <>
+      <GlobalRiskDomainIndices />
+      <GlobalRiskWorkspace />
+    </>
+  );
+}
 
 export const Route = createFileRoute("/global-risk")({
   head: () => ({
@@ -46,5 +56,5 @@ export const Route = createFileRoute("/global-risk")({
       },
     ],
   }),
-  component: GlobalRiskWorkspace,
+  component: GlobalRiskPage,
 });

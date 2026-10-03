@@ -37,9 +37,11 @@ export type TimeframeSeries = {
 export type RiskDomainKey = "geopolitics" | "macro" | "rare_earth";
 
 /**
- * A domain reading is derived only from the persisted category_breakdown on
- * verified, published snapshots of the same GRI methodology. It is not a
- * reconstructed or independently recalculated score.
+ * A domain reading is derived only from persisted category_breakdown values on
+ * verified, published snapshots of the same GRI methodology. When the newest
+ * combined snapshot has no fresh reading for one domain, the most recent prior
+ * verified reading for that domain is retained and explicitly timestamped.
+ * No zero, interpolation or synthetic estimate is created.
  */
 export type RiskDomainReading = {
   score: number;
@@ -50,6 +52,9 @@ export type RiskDomainReading = {
   eventCount: number;
   sourceCount: number;
   independentStoryCount: number;
+  readingSnapshotId: string;
+  readingAsOf: string;
+  readingStatus: "current" | "last_verified";
   series: Record<Timeframe, TimeframeSeries>;
 };
 
@@ -101,9 +106,10 @@ export type GlobalRisk = {
   usedFallbackWindow: false;
   series: Record<Timeframe, TimeframeSeries>;
   /**
-   * Three independently displayable public domain readings, all projected from
-   * the same verified snapshot lineage. Missing domains stay null; they are
-   * never replaced with zero or a synthetic estimate.
+   * Three independently displayable public domain readings. Each domain keeps
+   * its own most recent verified reading until a newer verified reading for
+   * that domain arrives. Null is permitted only when no verified reading for
+   * that domain exists anywhere in the bounded same-methodology history.
    */
   domainIndices: Record<RiskDomainKey, RiskDomainReading | null>;
   drivers: RiskDriver[];

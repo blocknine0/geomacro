@@ -7,7 +7,6 @@ import {
 } from "./risk-indices.types";
 
 const HOUR_MS = 60 * 60 * 1000;
-const CURRENT_READING_MAX_AGE_HOURS = 6;
 
 const SPECS: ReadonlyArray<{
   key: PublicRiskIndexKey;
@@ -26,22 +25,16 @@ function ageHours(value: string, now = Date.now()): number | null {
 }
 
 /**
- * Projects the three verified domain readings carried by the canonical B2
- * GlobalRisk continuity package into the public three-index contract. The
- * category histories are assembled from persisted category_breakdown values on
- * same-methodology verified snapshots; no blended-GRI history or interpolation
- * is substituted for missing domain data.
+ * Projects the three canonical domain readings into the public three-index
+ * contract. Each domain carries its own last verified timestamp, so a new
+ * combined snapshot cannot erase a domain merely because that domain had no
+ * newer qualifying evidence. A newer verified domain reading replaces the old
+ * one; otherwise the previous verified reading remains visible.
  */
 export function riskIndicesFromGlobalRisk(
   risk: GlobalRisk,
   now = Date.now(),
 ): PublicRiskIndices {
-  const snapshotAgeHours = ageHours(risk.snapshotAsOf, now);
-  const readingStatus =
-    snapshotAgeHours !== null && snapshotAgeHours <= CURRENT_READING_MAX_AGE_HOURS
-      ? "current"
-      : "last_verified";
-
   const driverByCategory = new Map(
     risk.drivers.map((driver) => [driver.category, driver] as const),
   );
@@ -56,7 +49,7 @@ export function riskIndicesFromGlobalRisk(
         name: spec.name,
         sourceCategory: spec.sourceCategory,
         status: "unavailable",
-        readingStatus,
+        readingStatus: "last_verified",
         readingSnapshotId: null,
         readingAsOf: null,
         readingAgeHours: null,
@@ -82,10 +75,10 @@ export function riskIndicesFromGlobalRisk(
       name: spec.name,
       sourceCategory: spec.sourceCategory,
       status: "available",
-      readingStatus,
-      readingSnapshotId: risk.snapshotId,
-      readingAsOf: risk.snapshotAsOf,
-      readingAgeHours: snapshotAgeHours,
+      readingStatus: domain.readingStatus,
+      readingSnapshotId: domain.readingSnapshotId,
+      readingAsOf: domain.readingAsOf,
+      readingAgeHours: ageHours(domain.readingAsOf, now),
       score: domain.score,
       rawScore: domain.rawScore,
       previousScore: domain.previousScore,
