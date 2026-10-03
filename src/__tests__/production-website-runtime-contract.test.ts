@@ -17,18 +17,21 @@ describe("production website runtime contract", () => {
     expect(health).not.toContain("supabase.co/functions");
   });
 
-  it("keeps Risk Indices on the proof-validated B2 edge without Lovable private B2 initialization", () => {
+  it("keeps Risk Indices on its own proof-validated edge without Global Risk or Lovable private B2 coupling", () => {
     const hook = read("src/lib/use-risk-indices.ts");
     const api = read("server/api/public/risk-indices.get.ts");
-    const edgeReader = read("src/lib/global-risk-edge.server.ts");
+    const edgeReader = read("src/lib/risk-indices-edge.server.ts");
     expect(hook).toContain('/api/public/risk-indices');
+    expect(hook).toContain("RISK_INDICES_EDGE_URL");
+    expect(hook).toContain("AbortSignal.timeout(REQUEST_TIMEOUT_MS)");
     expect(hook).not.toContain("useServerFn");
-    expect(hook).toContain("withPublicRuntimeTimeout");
-    expect(hook).toContain("PUBLIC_DATA_REQUEST_TIMEOUT_MS");
     expect(hook).not.toContain("supabase.co");
-    expect(edgeReader).toContain("backblaze-b2-verified-edge");
-    expect(api).toContain("readGlobalRiskEdge");
-    expect(api).toContain("riskIndicesFromGlobalRisk");
+    expect(hook).not.toContain("GLOBAL_RISK_EDGE_URL");
+    expect(edgeReader).toContain("backblaze-b2-risk-indices-edge");
+    expect(edgeReader).toContain("geomacro-risk-indices.daspallab202391.workers.dev/risk-indices");
+    expect(api).toContain("readRiskIndicesEdge");
+    expect(api).not.toContain("readGlobalRiskEdge");
+    expect(api).not.toContain("riskIndicesFromGlobalRisk");
     expect(api).not.toContain("readB2PublicRisk");
     expect(api).not.toContain("b2-live.server");
     expect(api).not.toContain("Supabase");
@@ -87,9 +90,11 @@ describe("production website runtime contract", () => {
     expect(timeout).toContain("PUBLIC_DATA_REQUEST_TIMEOUT_MS = 10_000");
     expect(timeout).toContain("PUBLIC_ASK_REQUEST_TIMEOUT_MS = 25_000");
     expect(timeout).toContain("Promise.race");
-    for (const surface of [intelligence, risk, ask, event]) {
+    for (const surface of [intelligence, ask, event]) {
       expect(surface).toContain("withPublicRuntimeTimeout");
     }
+    expect(risk).toContain("AbortSignal.timeout(REQUEST_TIMEOUT_MS)");
+    expect(risk).toContain("const REQUEST_TIMEOUT_MS = 8_000");
   });
 
   it("keeps route loaders fail-closed without collapsing the whole page", () => {
@@ -110,7 +115,7 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain('/api/public-ask');
     expect(workflow).toContain("This page didn't load");
     expect(workflow).toContain("/intelligence|Risk Intelligence");
-    expect(workflow).toContain("/global-risk|Geomacro Risk Indices");
+    expect(workflow).toContain("/global-risk|");
     expect(workflow).toContain("/ask-geomacro|Ask Geomacro");
     expect(workflow).toContain("/pricing|Access & pricing");
     expect(workflow).toContain("/docs|Geomacro public documentation");
