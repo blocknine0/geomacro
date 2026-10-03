@@ -35,10 +35,10 @@ describe("GRI realtime direct Postgres freshness", () => {
   });
 
   it("requires all three verified customer-facing indices and their real history", () => {
-    expect(workflow).toContain('keys.has("geopolitics")');
-    expect(workflow).toContain('keys.has("macro")');
-    expect(workflow).toContain('keys.has("rare_earth")');
-    expect(workflow).toContain('x?.series?.["7D"]?.buckets');
+    expect(workflow).toContain('const required=["geopolitics","macro","rare_earth"]');
+    expect(workflow).toContain('domains[key] && typeof domains[key]==="object"');
+    expect(workflow).toContain('domains[key]?.series?.["7D"]?.buckets');
     expect(workflow).toContain('b?.meta?.authority==="backblaze-b2"');
+    expect(workflow).not.toContain("Array.isArray(d?.domainIndices)");
   });
 });

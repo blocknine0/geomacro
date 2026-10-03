@@ -186,12 +186,17 @@ jobs:
                 let s=""; process.stdin.on("data", d => s += d); process.stdin.on("end", () => {
                   const b=JSON.parse(s); const d=b?.data;
                   const age=Date.now()-Date.parse(String(d?.snapshotAsOf||""));
-                  const domains=Array.isArray(d?.domainIndices) ? d.domainIndices : [];
-                  const keys=new Set(domains.map(x=>x?.key));
-                  const historiesOk=domains.every(x => Array.isArray(x?.series?.["7D"]?.buckets) && x.series["7D"].buckets.length >= 2);
+                  const domains=d?.domainIndices && typeof d.domainIndices==="object" && !Array.isArray(d.domainIndices)
+                    ? d.domainIndices : {};
+                  const required=["geopolitics","macro","rare_earth"];
+                  const domainsPresent=required.every(key => domains[key] && typeof domains[key]==="object");
+                  const historiesOk=required.every(key =>
+                    Array.isArray(domains[key]?.series?.["7D"]?.buckets) &&
+                    domains[key].series["7D"].buckets.length >= 2
+                  );
                   const ok=b?.ok===true && b?.meta?.authority==="backblaze-b2" && d?.verificationStatus==="verified" &&
                     Number.isFinite(age) && age >= -300000 && age <= 2*60*60*1000 &&
-                    keys.has("geopolitics") && keys.has("macro") && keys.has("rare_earth") && historiesOk;
+                    domainsPresent && historiesOk;
                   process.exit(ok ? 0 : 1);
                 });
               '; then
