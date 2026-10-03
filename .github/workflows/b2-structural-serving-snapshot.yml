@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
     paths:
+      - "config/historical-data-producer.v1.json"
+      - "global-intelligence/sources/historical-data.registry.v1.json"
+      - "global-intelligence/adapters/historical-data.mjs"
       - "src/lib/b2-structural.server.ts"
       - "src/lib/structural-context.server.ts"
       - "scripts/ops/publish-b2-structural-serving-snapshot.ts"
