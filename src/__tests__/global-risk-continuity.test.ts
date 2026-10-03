@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validateGlobalRiskContinuity } from "@/lib/global-risk-continuity";
-import type { GlobalRisk } from "@/lib/global-risk.types";
+import type {
+  GlobalRisk,
+  RiskDomainReading,
+  Timeframe,
+} from "@/lib/global-risk.types";
 
 const HOUR = 60 * 60 * 1000;
 const AS_OF = Date.parse("2026-10-01T16:30:47.667Z");
@@ -18,7 +22,7 @@ function buckets(hours: number[]) {
   }));
 }
 
-function series(timeframe: "24H" | "7D" | "30D", values: ReturnType<typeof buckets>) {
+function series(timeframe: Timeframe, values: ReturnType<typeof buckets>) {
   const sorted = [...values].sort((a, b) => a.t - b.t);
   const scores = sorted.map((value) => value.avg);
   return {
@@ -26,6 +30,30 @@ function series(timeframe: "24H" | "7D" | "30D", values: ReturnType<typeof bucke
     buckets: sorted,
     low: Math.min(...scores),
     high: Math.max(...scores),
+  };
+}
+
+function domainReading(
+  rawScore: number,
+  previousScore: number,
+  h24: ReturnType<typeof buckets>,
+  d7: ReturnType<typeof buckets>,
+  d30: ReturnType<typeof buckets>,
+): RiskDomainReading {
+  return {
+    score: Math.round(rawScore),
+    rawScore,
+    previousScore,
+    changePoints: rawScore - previousScore,
+    confidence: 82,
+    eventCount: 7,
+    sourceCount: 5,
+    independentStoryCount: 6,
+    series: {
+      "24H": series("24H", h24),
+      "7D": series("7D", d7),
+      "30D": series("30D", d30),
+    },
   };
 }
 
@@ -69,6 +97,11 @@ function fixture(): GlobalRisk {
       "24H": series("24H", h24),
       "7D": series("7D", d7),
       "30D": series("30D", d30),
+    },
+    domainIndices: {
+      geopolitics: domainReading(51, 49, h24, d7, d30),
+      macro: domainReading(44, 45, h24, d7, d30),
+      rare_earth: domainReading(46, 44, h24, d7, d30),
     },
     drivers: [],
     topDriver: null,
