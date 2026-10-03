@@ -1,0 +1,13 @@
+{
+  "name": "geomacro-control-plane",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-10-03",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "geomacro-control-plane",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
