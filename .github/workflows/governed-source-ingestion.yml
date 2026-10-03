@@ -2,8 +2,8 @@ name: Governed production source ingestion
 
 on:
   workflow_dispatch:
-  # Emergency free-tier hold remains in place. Keep this bounded path manual
-  # and change-triggered until Day 4 freshness recovery is accepted.
+  # Keep this bounded path manual and change-triggered until Day 4 freshness
+  # recovery is accepted. The runtime itself is Supabase-free.
   push:
     branches: [main]
     paths:
@@ -23,8 +23,6 @@ jobs:
     timeout-minutes: 20
     environment: production
     env:
-      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
       NOAA_NCEI_TOKEN: ${{ secrets.NOAA_NCEI_TOKEN }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
@@ -35,6 +33,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       D1_DATABASE_NAME: geomacro-control-plane
       D1_CONFIG: workers/control-plane/wrangler.runtime.jsonc
+      D1_SOURCE_STATE_FILE: artifacts/governed-source-ingestion/d1-source-state.json
       WRANGLER_VERSION: "4.136.3"
       SOURCE_INGESTION_SOURCES: eia_api_v2,noaa_ncei_cdo_api
     steps:
@@ -54,11 +53,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY EIA_API_KEY NOAA_NCEI_TOKEN B2_S3_ENDPOINT B2_KEY_ID B2_APPLICATION_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+          for name in EIA_API_KEY NOAA_NCEI_TOKEN B2_S3_ENDPOINT B2_KEY_ID B2_APPLICATION_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
             test -n "${!name:-}" || { echo "::error::Missing ${name}"; exit 1; }
           done
-          test "$APP_SUPABASE_URL" = "https://ldpwajisioljyjtojvfx.supabase.co" || { echo "::error::Unexpected Supabase project"; exit 1; }
           test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com" || { echo "::error::Unexpected B2 endpoint"; exit 1; }
+          test -z "${APP_SUPABASE_URL:-}" || { echo "::error::Supabase URL must not be injected into governed ingestion"; exit 1; }
+          test -z "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Supabase service key must not be injected into governed ingestion"; exit 1; }
 
       - name: Resolve existing D1 control plane
         id: d1
@@ -94,7 +94,7 @@ jobs:
           fs.writeFileSync(process.env.D1_CONFIG, output);
           NODE
 
-      - name: Require D1 schema v1 before source writes
+      - name: Require D1 schema v1 before source reads
         shell: bash
         run: |
           set -euo pipefail
@@ -110,7 +110,31 @@ jobs:
             });
           '
 
-      - name: Verify B2-first ingestion static contract
+      - name: Export governed source admission state from D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/governed-source-ingestion
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT source_key,enabled,certification_status,rights_status,endpoint_status,schema_status,freshness_status,provenance_status,independence_status,runtime_status,fallback_status,last_checked_at,metadata_json FROM source_state WHERE source_key IN ('eia_api_v2','noaa_ncei_cdo_api') ORDER BY source_key;" > /tmp/d1-governed-sources.json
+          node <<'NODE'
+          const fs = require('fs');
+          const parsed = JSON.parse(fs.readFileSync('/tmp/d1-governed-sources.json', 'utf8'));
+          const envelopes = Array.isArray(parsed) ? parsed : [parsed];
+          const rows = envelopes.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+          if (rows.length !== 2) throw new Error('D1_GOVERNED_SOURCE_COUNT_MISMATCH');
+          const expected = new Set(['eia_api_v2', 'noaa_ncei_cdo_api']);
+          for (const row of rows) {
+            if (!expected.delete(row.source_key) || Number(row.enabled) !== 1) throw new Error('D1_GOVERNED_SOURCE_NOT_ENABLED');
+            for (const key of ['certification_status','rights_status','endpoint_status','schema_status','freshness_status','provenance_status','independence_status','runtime_status','fallback_status']) {
+              const value = String(row[key] ?? '').trim().toUpperCase();
+              if (!value || value === 'UNTESTED' || value === 'UNREVIEWED') throw new Error(`D1_GOVERNED_SOURCE_STATE_NOT_EXPLICIT:${row.source_key}:${key}`);
+            }
+          }
+          if (expected.size) throw new Error('D1_GOVERNED_SOURCE_MISSING');
+          fs.writeFileSync(process.env.D1_SOURCE_STATE_FILE, JSON.stringify({ schema: 'geomacro.d1-governed-source-state.v1', sources: rows }, null, 2) + '\n');
+          NODE
+
+      - name: Verify Supabase-free B2-first ingestion static contract
         run: node scripts/test-governed-source-ingestion.mjs
 
       - name: Run governed B2-first ingestion
@@ -125,17 +149,19 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const summary = JSON.parse(fs.readFileSync('artifacts/governed-source-ingestion/verification-summary.json', 'utf8'));
-          if (summary?.durable_payload_store !== 'backblaze-b2') throw new Error('B2_AUTHORITY_MISSING');
+          if (summary?.durable_payload_store !== 'backblaze-b2' || summary?.normalized_data_store !== 'backblaze-b2') throw new Error('B2_AUTHORITY_MISSING');
+          if (summary?.compact_control_store !== 'cloudflare-d1') throw new Error('D1_CONTROL_AUTHORITY_MISSING');
           if (summary?.storage_mode !== 'gzip-fragment-bundles' || summary?.compression !== 'gzip-9') throw new Error('COMPRESSED_FRAGMENT_MODE_MISSING');
           if (!Number.isInteger(summary?.fragment_count) || summary.fragment_count < 1) throw new Error('FRAGMENT_COUNT_INVALID');
           if (!Number.isFinite(summary?.uncompressed_bytes) || !Number.isFinite(summary?.compressed_bytes) || summary.uncompressed_bytes < 1 || summary.compressed_bytes < 1) throw new Error('COMPRESSION_BYTES_INVALID');
           if (!Number.isFinite(summary?.compression_ratio) || summary.compression_ratio <= 0 || summary.compression_ratio > 1.05) throw new Error('COMPRESSION_RATIO_INVALID');
-          if (summary?.supabase_raw_payload_written !== false || summary?.destructive_change !== false || summary?.payment_performed !== false) throw new Error('SAFETY_FLAG_INVALID');
+          if (summary?.supabase_dependency !== false || summary?.supabase_mirror_attempted !== false || summary?.supabase_raw_payload_written !== false) throw new Error('SUPABASE_INDEPENDENCE_INVALID');
+          if (summary?.destructive_change !== false || summary?.payment_performed !== false) throw new Error('SAFETY_FLAG_INVALID');
           for (const source of summary?.sources ?? []) {
-            if (source?.storage_mode !== 'gzip-fragment-bundles' || source?.b2_readback_verified !== true || source?.supabase_raw_payload_written !== false) throw new Error('SOURCE_FRAGMENT_EVIDENCE_INVALID');
+            if (source?.storage_mode !== 'gzip-fragment-bundles' || source?.b2_readback_verified !== true || source?.normalized_observations_durable_in_b2 !== true || source?.supabase_dependency !== false) throw new Error('SOURCE_FRAGMENT_EVIDENCE_INVALID');
             if (!Array.isArray(source?.fragments) || source.fragments.length !== source.fragment_count) throw new Error('SOURCE_FRAGMENT_COUNT_MISMATCH');
             for (const fragment of source.fragments) {
-              if (fragment?.readback_verified !== true || !/^[a-f0-9]{64}$/.test(String(fragment?.sha256 ?? '')) || !String(fragment?.key ?? '').endsWith('.json.gz')) throw new Error('FRAGMENT_PROOF_INVALID');
+              if (fragment?.readback_verified !== true || fragment?.contains_normalized_observations !== true || !/^[a-f0-9]{64}$/.test(String(fragment?.sha256 ?? '')) || !String(fragment?.key ?? '').endsWith('.json.gz')) throw new Error('FRAGMENT_PROOF_INVALID');
             }
           }
           NODE
@@ -170,7 +196,7 @@ jobs:
               for (const row of rows) {
                 if (row.pipeline !== "governed_source_ingestion" || row.status !== "PASS" || !expected.delete(row.scope) || !/^[a-f0-9]{64}$/.test(String(row.cursor ?? ""))) throw new Error("D1_CHECKPOINT_INVALID");
                 const metadata = JSON.parse(row.metadata_json);
-                if (metadata?.durable_payload_store !== "backblaze-b2" || metadata?.storage_mode !== "gzip-fragment-bundles" || metadata?.compression !== "gzip-9" || !Number.isInteger(metadata?.fragment_count) || metadata.fragment_count < 1 || metadata?.b2_readback_verified !== true || metadata?.supabase_raw_payload_written !== false) throw new Error("D1_CHECKPOINT_METADATA_INVALID");
+                if (metadata?.durable_payload_store !== "backblaze-b2" || metadata?.normalized_data_store !== "backblaze-b2" || metadata?.compact_control_store !== "cloudflare-d1" || metadata?.storage_mode !== "gzip-fragment-bundles" || metadata?.compression !== "gzip-9" || !Number.isInteger(metadata?.fragment_count) || metadata.fragment_count < 1 || metadata?.b2_readback_verified !== true || metadata?.supabase_dependency !== false) throw new Error("D1_CHECKPOINT_METADATA_INVALID");
               }
               if (expected.size) throw new Error("D1_CHECKPOINT_SCOPE_MISSING");
             });
@@ -183,11 +209,12 @@ jobs:
           path: |
             artifacts/governed-source-ingestion/verification-summary.json
             artifacts/governed-source-ingestion/d1-readback.json
+            artifacts/governed-source-ingestion/d1-source-state.json
           if-no-files-found: error
           retention-days: 7
 
-      - name: Confirm no destructive or commercial activation occurred
+      - name: Confirm no Supabase, destructive, or commercial activation occurred
         shell: bash
         run: |
           set -euo pipefail
-          echo "Verified raw payloads were gzip-compressed into bounded B2 fragments and fully read back before compact Supabase mirror updates and D1 checkpoints. No x402 payment, execution authorization, Supabase deletion, storage.objects SQL deletion, or B2 deletion occurred."
+          echo "Governed ingestion used D1 admission state and verified gzip-compressed B2 fragments only. No Supabase dependency, x402 payment, execution authorization, storage.objects SQL deletion, or B2 deletion occurred."
