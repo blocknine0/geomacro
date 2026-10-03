@@ -38,7 +38,9 @@ for (const marker of [
 if (script.includes("published_at: observed ?? now") || script.includes("published_at:observed??now")) {
   throw new Error("ingestion time must not be substituted for unknown publication time");
 }
-if (script.includes("raw_payload: raw") || script.includes("raw_payload:raw")) {
+// `_raw_payload` is the in-memory/B2 archive field. Reject only an actual
+// object property named `raw_payload` whose value is the unarchived source body.
+if (/(?:^|[,{]\s*)raw_payload\s*:\s*raw\b/m.test(script)) {
   throw new Error("raw source payload must not be written directly to Supabase");
 }
 
