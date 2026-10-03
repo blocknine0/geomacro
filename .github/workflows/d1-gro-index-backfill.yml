@@ -28,8 +28,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      APP_SUPABASE_URL: https://ldpwajisioljyjtojvfx.supabase.co
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
@@ -52,11 +51,11 @@ jobs:
       - name: Install locked runtime dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Require credentials without printing them
+      - name: Require migration credentials without printing them
         shell: bash
         run: |
           set -euo pipefail
-          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID APP_SUPABASE_SERVICE_ROLE_KEY B2_KEY_ID B2_APPLICATION_KEY; do
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY; do
             test -n "${!name:-}" || { echo "$name is required"; exit 2; }
           done
 
@@ -125,6 +124,7 @@ jobs:
           if (p.ok !== true || p.mode !== 'verified_b2_gro_index_backfill') process.exit(10);
           if (!Number.isInteger(p.rows) || p.rows < 1) process.exit(10);
           if (p.source_checksum !== p.target_checksum) process.exit(10);
+          if (p.metadata_source !== 'direct_postgres_export' || p.supabase_rest_used !== false) process.exit(10);
           if (p.record_sha256_source !== 'canonical_verified_b2_readback') process.exit(10);
           if (p.supabase_payload_used_for_record_hash !== false) process.exit(10);
           if (p.destructive_changes !== false || p.production_cutover !== false) process.exit(10);
@@ -139,4 +139,4 @@ jobs:
           retention-days: 7
 
       - name: Confirm non-destructive migration
-        run: echo "Verified B2 GRO indexes copied to D1. No Supabase or B2 payload was deleted and no production cutover occurred."
+        run: echo "Verified B2 GRO indexes copied to D1 using a direct-Postgres migration export. No Supabase REST call, payload deletion, or production cutover occurred."
