@@ -91,11 +91,11 @@ function IntelligencePage() {
   const riskIndices = useRiskIndices();
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<IntelSort>("risk");
+  const [sort, setSort] = useState<IntelSort>("newest");
 
   const pool = intel.data?.all ?? [];
   const available = useMemo(() => availableSorts(pool), [pool]);
-  const activeSort = available.includes(sort) ? sort : "risk";
+  const activeSort = available.includes(sort) ? sort : "newest";
   const filtered = useMemo(
     () => applyIntelFilters(pool, { category, query, sort: activeSort }),
     [pool, category, query, activeSort],
@@ -103,6 +103,20 @@ function IntelligencePage() {
   const latestVerifiedFallback = Boolean(intel.data?.usedFallbackWindow);
   const usesVerifiedContext = Boolean(intel.data?.usesVerifiedContext);
   const hasLiveObserved = Boolean(intel.data?.hasLiveObserved);
+  const latestScoredByCategory = useMemo(() => {
+    const latest = new Map<string, IntelEvent>();
+    for (const event of pool) {
+      if (event.publicStatus !== "verified_b2" || event.severity === null || !event.category) continue;
+      const eventTime = Date.parse(event.publishedAt ?? event.createdAt);
+      if (!Number.isFinite(eventTime)) continue;
+      const existing = latest.get(event.category);
+      const existingTime = existing ? Date.parse(existing.publishedAt ?? existing.createdAt) : -Infinity;
+      if (!existing || !Number.isFinite(existingTime) || eventTime > existingTime) {
+        latest.set(event.category, event);
+      }
+    }
+    return latest;
+  }, [pool]);
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 md:py-12">
@@ -163,8 +177,8 @@ function IntelligencePage() {
             onChange={(event) => setSort(event.target.value as IntelSort)}
             className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
           >
-            <option value="risk">Highest risk</option>
             <option value="newest">Newest</option>
+            <option value="risk">Highest risk</option>
             {available.includes("moving") ? <option value="moving">Fastest moving</option> : null}
           </select>
         </label>
@@ -198,7 +212,7 @@ function IntelligencePage() {
                       ? "Current intelligence"
                       : latestVerifiedFallback
                         ? "Latest verified intelligence"
-                        : "Highest-priority intelligence"}
+                        : "Latest intelligence"}
                 </h2>
               </div>
               <p className="text-sm text-muted-foreground">{filtered.length} matching event{filtered.length === 1 ? "" : "s"}</p>
@@ -281,20 +295,36 @@ function IntelligencePage() {
             <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Risk domains</p>
               <div className="mt-4 space-y-3">
-                {intel.data.categoryCounts.map((item) => (
-                  <div key={item.category} className="flex items-center justify-between gap-3 border-b border-border/50 pb-3 last:border-0 last:pb-0">
-                    <div>
-                      <p className="text-sm font-medium">{prettyCategory(item.category)}</p>
-                      <p className="text-xs text-muted-foreground">{item.count} event{item.count === 1 ? "" : "s"}</p>
+                {intel.data.categories.map((domain) => {
+                  const latest = latestScoredByCategory.get(domain) ?? null;
+                  const visibleCount = intel.data.categoryCounts.find((item) => item.category === domain)?.count ?? 0;
+                  return (
+                    <div key={domain} className="flex items-start justify-between gap-3 border-b border-border/50 pb-3 last:border-0 last:pb-0">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{prettyCategory(domain)}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {latest
+                            ? `${latest.isCurrent ? "Latest verified score" : "Last verified score"} · ${formatDate(latest.publishedAt ?? latest.createdAt)}`
+                            : "No verified score available"}
+                        </p>
+                        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                          {visibleCount} visible event{visibleCount === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                      {latest?.severity !== null && latest?.severity !== undefined ? (
+                        <RiskBadge score={latest.severity} showScore />
+                      ) : (
+                        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Unscored</span>
+                      )}
                     </div>
-                    {item.avgSeverity !== null ? (
-                      <RiskBadge score={item.avgSeverity} showScore />
-                    ) : (
-                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Unscored</span>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+              {intel.updatedAt ? (
+                <p className="mt-4 border-t border-border/50 pt-3 text-xs leading-5 text-muted-foreground">
+                  Feed refreshed {formatTime(intel.updatedAt)}. Score dates remain the original verified evidence times.
+                </p>
+              ) : null}
             </div>
 
             <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
@@ -343,7 +373,7 @@ function IntelCard({ event }: { event: IntelEvent }) {
         <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{event.summary}</p>
       ) : null}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5 text-xs text-muted-foreground">
-        <span>{liveObserved ? "Live discovery" : "Verified record"} · {formatDate(event.publishedAt ?? event.createdAt)}</span>
+        <span>{liveObserved ? "Live discovery" : event.isCurrent ? "Verified current score" : "Last verified score"} · {formatDate(event.publishedAt ?? event.createdAt)}</span>
         {event.delta !== null && event.delta !== 0 ? <RiskTrend delta={Math.round(event.delta)} /> : null}
       </div>
     </article>
