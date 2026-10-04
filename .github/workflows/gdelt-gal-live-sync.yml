@@ -88,7 +88,7 @@ jobs:
           node --check scripts/sync-gdelt-gal-production.mjs
           node --check scripts/run-gdelt-gal-cycle.mjs
           node --check scripts/verify-gdelt-gal-cycle.mjs
-          node --import tsx --eval "import './scripts/run-live-structure-local.ts'" 2>/dev/null && exit 1 || true
+          bun build scripts/run-live-structure-local.ts --target=node --outfile=/tmp/run-live-structure-local.mjs >/dev/null
 
       - name: Run canonical GDELT GAL fresh cycle
         env:
