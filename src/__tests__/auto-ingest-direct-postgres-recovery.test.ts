@@ -36,7 +36,9 @@ describe("canonical Auto Ingest News recovery", () => {
   });
 
   it("publishes scored Intelligence and verified Global Risk from the same canonical truth in recovery mode", () => {
-    expect(workflow).toContain("bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs");
+    expect(workflow).toContain("node scripts/ops/run-b2-public-intelligence-publisher.mjs");
+    expect(workflow).not.toContain("run: bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs");
+    expect(workflow).toContain("DIRECT_POSTGRES_GUARDIAN_PLAN_DISABLED");
     expect(workflow).toContain("node scripts/cluster-gri-stories-v12.js");
     expect(workflow).toContain("node scripts/compute-gri-v12.js");
     expect(workflow).toContain("node scripts/verify-gri-snapshot-v12.js");
