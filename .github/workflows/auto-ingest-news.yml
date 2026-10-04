@@ -284,6 +284,7 @@ jobs:
           NODE_OPTIONS: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && '--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs' || '' }}
           GEOMACRO_DISABLE_GUARDIAN: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && 'true' || 'false' }}
           GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
+          RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
@@ -308,7 +309,7 @@ jobs:
           MAX_ARTICLE_AGE_MS: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && '345600000' || vars.MAX_ARTICLE_AGE_MS }}
           MIN_CONFIDENCE: ${{ vars.MIN_CONFIDENCE }}
           MIN_SEVERITY: ${{ vars.MIN_SEVERITY }}
-          RELIEFWEB_ENABLED: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && 'false' || 'true' }}
+          RELIEFWEB_ENABLED: "true"
           GDACS_ENABLED: "true"
         run: node scripts/ingest-news.js
 
