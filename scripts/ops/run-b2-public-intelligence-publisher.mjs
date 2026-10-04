@@ -2,6 +2,7 @@
 import { spawnSync } from "node:child_process";
 
 const PUBLISHER = "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs";
+const COVERAGE_REFRESHER = "scripts/ops/refresh-gdelt-coverage-runtime-after-b2.mjs";
 const RETRYABLE_AVAILABILITY_ERROR = "CURRENT_GDELT_EXPORT_UNAVAILABLE";
 const DEFAULT_MAX_WAIT_MS = 8 * 60 * 1000;
 const DEFAULT_POLL_MS = 10_000;
@@ -39,12 +40,25 @@ while (true) {
   if (result.stderr) process.stderr.write(result.stderr);
 
   if (result.status === 0) {
+    const refresh = spawnSync("bun", [COVERAGE_REFRESHER], {
+      encoding: "utf8",
+      env: process.env,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    if (refresh.stdout) process.stdout.write(refresh.stdout);
+    if (refresh.stderr) process.stderr.write(refresh.stderr);
+    if (refresh.status !== 0) {
+      console.error("GDELT_COVERAGE_RUNTIME_REFRESH_FAILED");
+      process.exit(refresh.status ?? 1);
+    }
+
     console.log(JSON.stringify({
       ok: true,
       schema: "geomacro.public-intelligence-publisher-availability.v1",
       attempts: attempt,
       bounded_wait: true,
       retry_reason: RETRYABLE_AVAILABILITY_ERROR,
+      coverage_runtime_refreshed: true,
     }));
     process.exit(0);
   }
