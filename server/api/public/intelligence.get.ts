@@ -6,9 +6,15 @@ import {
 import { readProductionPublicIntelligence } from "../../../src/lib/public-intelligence-production.server";
 
 export default defineEventHandler(async (event) => {
+  // Freshness is a correctness property for this endpoint. Do not let an
+  // intermediary/CDN retain a scored-only package after the canonical B2
+  // object has advanced. The B2 reader keeps its own bounded 120-second
+  // in-process cache, so this does not turn each public request into a B2 GET.
   setResponseHeaders(event, {
     "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+    "Cache-Control": "no-store, max-age=0",
+    "CDN-Cache-Control": "no-store",
+    "Surrogate-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
     "X-Robots-Tag": "noindex, nofollow",
   });
