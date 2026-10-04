@@ -34,15 +34,19 @@ describe("Auto Ingest News reliability contract", () => {
     expect(workflow).not.toContain("needs.supabase-preflight.outputs.available == 'false'");
   });
 
-  it("proves scored B2 continuity without synthesizing live observations", () => {
+  it("proves scored B2 continuity while allowing only explicitly unscored current observations", () => {
     expect(freshnessProbe).toContain("https://geomacro.live/api/public/intelligence");
-    expect(freshnessProbe).toContain('body?.mode === "verified_b2"');
-    expect(freshnessProbe).toContain("Number(body?.live_observed_rows) === 0");
+    expect(freshnessProbe).toContain('mode === "verified_b2"');
+    expect(freshnessProbe).toContain('mode === "verified_b2_plus_live_observed"');
+    expect(freshnessProbe).toContain('status === "live_observed"');
     expect(freshnessProbe).toContain('title.startsWith("Geomacro finds ")');
+    expect(freshnessProbe).toContain('title.startsWith("Geomacro observes ")');
+    expect(freshnessProbe).toContain("row?.severity !== null");
+    expect(freshnessProbe).toContain("row?.delta !== null");
     expect(freshnessProbe).toContain("synthetic_freshness: false");
-    expect(freshnessProbe).not.toContain("severity === null");
+    expect(freshnessProbe).toContain("raw_source_score_inference: false");
     expect(productionReader).not.toContain("earthquake.usgs.gov");
-    expect(productionReader).not.toContain('public_status: "live_observed"');
+    expect(productionReader).toContain('public_status: "verified_b2" | "live_observed"');
   });
 
   it("targets the exact freshly exported manifest after verified B2 offload", () => {
