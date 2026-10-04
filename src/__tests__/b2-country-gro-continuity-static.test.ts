@@ -63,11 +63,34 @@ describe("B2 country GRO continuity", () => {
     expect(workflow).toContain("bun scripts/ops/verify-b2-country-gro-direct-read.ts");
   });
 
+  it("keeps one bounded fresh commercial GRO alive without restoring bulk global refresh", () => {
+    const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
+    expect(workflow).toContain('cron: "41 * * * *"');
+    expect(workflow).toContain("bun scripts/publish-country-risk-object.ts USA CANONICAL");
+    expect(workflow).toContain("GRO_CONTINUITY_COUNTRY_ISO3: USA");
+    expect(workflow).not.toContain("refresh-global-canonical-risk-objects.ts");
+    expect(workflow).not.toContain("refresh-public-demo-risk-objects.ts");
+  });
+
+  it("derives the D1 current index only from independently verified B2 bytes", () => {
+    const sync = read("scripts/ops/sync-current-country-gro-to-d1.ts");
+    const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
+    expect(sync).toContain("country-gro/by-id/");
+    expect(sync).toContain("canonicalRiskObjectJson(byIdEnvelope.object) !== canonicalRiskObjectJson(riskObject)");
+    expect(sync).toContain("CURRENT_GRO_GENERIC_B2_HASH_MISMATCH");
+    expect(sync).toContain("CURRENT_GRO_GENERIC_B2_RESTORE_INVALID");
+    expect(sync).toContain("CURRENT_GRO_D1_READBACK_INVALID");
+    expect(sync).toContain("supabase_payload_used_for_d1_record: false");
+    expect(sync).toContain("external_payment_performed: false");
+    expect(workflow).toContain("bun scripts/ops/sync-current-country-gro-to-d1.ts");
+  });
+
   it("keeps production publication bounded and explicit", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("scripts/db/assert-authoritative-supabase.mjs");
     expect(workflow).toContain("publish-b2-country-gro-continuity.ts");
-    expect(workflow).not.toContain("schedule:");
+    expect(workflow).toContain("sync-current-country-gro-to-d1.ts");
+    expect(workflow).toContain('cron: "41 * * * *"');
   });
 });
