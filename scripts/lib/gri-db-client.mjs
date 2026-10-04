@@ -167,6 +167,28 @@ class DirectQueryBuilder {
     throw new Error(`UNSUPPORTED_DIRECT_POSTGRES_NOT_OPERATOR:${operator}`);
   }
 
+  filter(column, operator, value) {
+    identifier(column, "filter_column");
+    const op = String(operator ?? "").trim().toLowerCase();
+    if (op === "cs" || op === "not.cs") {
+      let parsed = value;
+      if (typeof value === "string") {
+        try {
+          parsed = JSON.parse(value);
+        } catch {
+          throw new Error("DIRECT_POSTGRES_CS_FILTER_REQUIRES_JSON");
+        }
+      }
+      if (parsed === null || typeof parsed !== "object") {
+        throw new Error("DIRECT_POSTGRES_CS_FILTER_REQUIRES_JSON");
+      }
+      const predicate = `${identifier(column)} @> ${quoteString(JSON.stringify(parsed))}::jsonb`;
+      this.filters.push(op === "not.cs" ? `NOT (${predicate})` : predicate);
+      return this;
+    }
+    throw new Error(`UNSUPPORTED_DIRECT_POSTGRES_FILTER_OPERATOR:${operator}`);
+  }
+
   order(column, options = {}) {
     identifier(column, "order_column");
     this.orders.push(`${identifier(column)} ${options?.ascending === false ? "DESC" : "ASC"}`);
