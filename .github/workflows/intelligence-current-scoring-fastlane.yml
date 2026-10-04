@@ -39,6 +39,7 @@ jobs:
       CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
       # Current fast lane: one GDELT discovery request, one category, no
       # Guardian/GDACS/ReliefWeb expansion, and at most two classifier inputs.
+      GEOMACRO_GDELT_ONLY: "true"
       GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "0"
       GDACS_ENABLED: "false"
       RELIEFWEB_ENABLED: "false"
@@ -102,7 +103,7 @@ jobs:
           echo "FASTLANE_DOMAIN=$domain" >> "$GITHUB_ENV"
           echo "Current scoring domain: $domain"
 
-      - name: Enable bounded forced-domain selector in canonical scorer
+      - name: Enable bounded GDELT-only mode in canonical scorer
         shell: bash
         run: |
           set -euo pipefail
@@ -110,15 +111,26 @@ jobs:
           const fs = require('node:fs');
           const path = 'scripts/ingest-news.js';
           let source = fs.readFileSync(path, 'utf8');
-          const marker = "function gdeltCategoryForCurrentRun(now = new Date()) {\n";
-          const injection = marker +
+
+          const categoryMarker = "function gdeltCategoryForCurrentRun(now = new Date()) {\n";
+          const categoryInjection = categoryMarker +
             "  const forcedCategory = String(process.env.GDELT_FORCE_CATEGORY || '').trim();\n" +
             "  if (GDELT_DISCOVERY_CATEGORY_ORDER.includes(forcedCategory)) return forcedCategory;\n\n";
-          if (!source.includes(marker)) throw new Error('GDELT_SELECTOR_MARKER_MISSING');
-          if (!source.includes('GDELT_FORCE_CATEGORY')) source = source.replace(marker, injection);
+          if (!source.includes(categoryMarker)) throw new Error('GDELT_SELECTOR_MARKER_MISSING');
+          if (!source.includes('GDELT_FORCE_CATEGORY')) source = source.replace(categoryMarker, categoryInjection);
+
+          const guardianMarker = "function guardianQueryPlan(\n  queries,\n  priorityQueries = [],\n) {\n";
+          const guardianInjection = guardianMarker +
+            "  if (String(process.env.GEOMACRO_GDELT_ONLY || '').toLowerCase() === 'true') {\n" +
+            "    return { queries: [], totalQueries: Array.isArray(queries) ? queries.length : 0, budget: 0, totalChunks: 0, chunkIndex: 0, startIndex: 0, endIndex: 0, priorityQueries: [] };\n" +
+            "  }\n\n";
+          if (!source.includes(guardianMarker)) throw new Error('GUARDIAN_PLAN_MARKER_MISSING');
+          if (!source.includes('GEOMACRO_GDELT_ONLY')) source = source.replace(guardianMarker, guardianInjection);
+
           fs.writeFileSync(path, source, 'utf8');
-          if (!fs.readFileSync(path, 'utf8').includes('GDELT_FORCE_CATEGORY')) {
-            throw new Error('GDELT_FORCED_DOMAIN_PATCH_FAILED');
+          const verified = fs.readFileSync(path, 'utf8');
+          for (const marker of ['GDELT_FORCE_CATEGORY', 'GEOMACRO_GDELT_ONLY']) {
+            if (!verified.includes(marker)) throw new Error(`FASTLANE_PATCH_MISSING:${marker}`);
           }
           NODE
 
@@ -133,6 +145,9 @@ jobs:
           const matches = [...log.matchAll(/\{"discovery_candidates_classified":(\d+),"events_inserted":(\d+),"candidates_rejected":(\d+)\}/g)];
           if (!matches.length) throw new Error('FASTLANE_SCORER_SUMMARY_MISSING');
           const [, classified, inserted, rejected] = matches.at(-1);
+          if (/Guardian discovery:|GDACS discovery:|ReliefWeb discovery:/.test(log)) {
+            throw new Error('FASTLANE_NON_GDELT_DISCOVERY_USED');
+          }
           const proof = {
             schema: 'geomacro.current-scoring-fastlane.v1',
             ok: true,
