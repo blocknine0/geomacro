@@ -6,12 +6,15 @@ const ROOT = process.cwd();
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 describe("canonical one-data multi-delivery architecture", () => {
-  it("keeps human Ask and pay-per-call Ask on the same answer engine", () => {
+  it("keeps human Ask and pay-per-call Ask on the same answer orchestrator", () => {
     const humanAsk = read("src/lib/ask-geomacro.functions.ts");
-    const machine = read("src/lib/testnet-intelligence-capability.server.ts");
+    const machine = read("src/lib/testnet-intelligence-capability-hybrid.server.ts");
+    const orchestrator = read("src/lib/ask-answer.server.ts");
 
-    expect(humanAsk).toContain("answerQuestion");
-    expect(machine).toContain("answerQuestion");
+    expect(humanAsk).toContain("answerAskQuestion");
+    expect(machine).toContain("answerAskQuestion");
+    expect(orchestrator).toContain("answerHybridQuestion(question)");
+    expect(orchestrator).toContain("realtimeSearchAnswer(question, primary)");
   });
 
   it("keeps public risk on the verified B2 projection while machine paths retain the canonical risk service", () => {
