@@ -7,7 +7,7 @@ const MAX_PARALLEL_PROBES = 6;
 const DEFAULT_LOOKBACK_MINUTES = 300;
 const DEFAULT_TIMEOUT_MS = 8_000;
 const HEARTBEAT_MINUTES = 15;
-const HEARTBEAT_OFFSETS = Object.freeze([1, 3, 5]);
+const HEARTBEAT_OFFSETS = Object.freeze([1, 2, 3, 4, 5]);
 const MIN_TOPIC_SCORE = 3;
 
 const STRONG_TOPIC_PATTERNS = Object.freeze({
@@ -100,7 +100,7 @@ export function candidateStamps(now = new Date(), lookbackMinutes = DEFAULT_LOOK
     }
   };
 
-  // Cover the immediate edge first, then the known GDELT 15-minute heartbeat clusters.
+  // Cover the immediate edge first, then every minute in the known GDELT post-heartbeat cluster.
   for (let minuteAgo = 1; minuteAgo <= 6; minuteAgo += 1) {
     add(new Date(nowMs - minuteAgo * 60_000));
   }
