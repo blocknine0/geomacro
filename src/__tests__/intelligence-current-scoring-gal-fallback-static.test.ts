@@ -12,7 +12,7 @@ describe('#1414 current scoring GAL fallback', () => {
     expect(helper).toContain('storage.googleapis.com/data.gdeltproject.org/gdeltv3/gal');
     expect(helper).toContain('MAX_PROBE_REQUESTS = 60');
     expect(helper).toContain('MAX_PARALLEL_PROBES = 6');
-    expect(helper).toContain('HEARTBEAT_OFFSETS = Object.freeze([1, 3, 5])');
+    expect(helper).toContain('HEARTBEAT_OFFSETS = Object.freeze([1, 2, 3, 4, 5])');
   });
 
   it('preserves real upstream time and never promotes source features to severity', () => {
