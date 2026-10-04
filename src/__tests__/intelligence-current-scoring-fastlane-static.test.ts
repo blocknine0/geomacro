@@ -15,9 +15,11 @@ describe("current Intelligence scoring fastlane", () => {
     expect(workflow).toContain("raw_feature_score_promotion: false");
   });
 
-  it("rotates one domain per bounded GDELT run and holds expensive discovery lanes", () => {
+  it("rotates one domain per bounded GDELT-only run and holds expensive discovery lanes", () => {
     expect(workflow).toContain('cron: "3,23,43 * * * *"');
     expect(workflow).toContain("GDELT_FORCE_CATEGORY=$domain");
+    expect(workflow).toContain('GEOMACRO_GDELT_ONLY: "true"');
+    expect(workflow).toContain("FASTLANE_NON_GDELT_DISCOVERY_USED");
     expect(workflow).toContain('GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "0"');
     expect(workflow).toContain('GDACS_ENABLED: "false"');
     expect(workflow).toContain('RELIEFWEB_ENABLED: "false"');
