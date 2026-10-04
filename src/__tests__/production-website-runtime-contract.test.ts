@@ -75,7 +75,7 @@ describe("production website runtime contract", () => {
     expect(hook).toContain('r.public_status === "live_observed"');
     expect(hook).toContain('payload.mode === "verified_b2_plus_live_observed"');
     expect(hook).toContain('hasLiveObserved: liveRows.length > 0');
-    expect(hook).toContain('row.publicStatus === "verified_b2"');
+    expect(hook).toContain('r.publicStatus === "verified_b2"');
     expect(publisher).toContain("PUBLIC_INTELLIGENCE_LIVE_OBSERVED_ROW_INVALID");
     expect(publisher).toContain('title.startsWith("Geomacro finds ")');
     expect(publisher).toContain('title.startsWith("Geomacro observes ")');
