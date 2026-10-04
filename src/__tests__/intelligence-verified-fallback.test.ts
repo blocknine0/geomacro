@@ -41,7 +41,9 @@ describe("Intelligence verified fallback contract", () => {
     expect(recoveryReader).not.toMatch(/\.select\([^)]*source_name/s);
     expect(recoveryReader).not.toMatch(/\.select\([^)]*source_domain/s);
     expect(recoveryReader).toContain("derivedEnglishTitle");
-    expect(recoveryReader).toContain("Live observations cannot be converted into scored rows here");
+    expect(recoveryReader).toContain('row.public_status !== "live_observed"');
+    expect(recoveryReader).toContain("row.severity !== null");
+    expect(recoveryReader).toContain("row.delta !== null");
 
     expect(api).toContain("readProductionPublicIntelligence");
     expect(hook).toContain('/api/public/intelligence');
