@@ -230,7 +230,7 @@ jobs:
           routes="$(cat <<'EOF'
           /|Global risk intelligence
           /intelligence|Risk Intelligence
-          /global-risk|Three risks. Three separate indices.
+          /global-risk|Geomacro Global Risk
           /risk-indices|Three risks. Three separate indices.
           /ask-geomacro|Ask Geomacro
           /data-api|GOVERNED DATA
