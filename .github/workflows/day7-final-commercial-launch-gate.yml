@@ -140,10 +140,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          JSON="$(gh api -H 'Accept: application/vnd.github+json' "/repos/${GITHUB_REPOSITORY}/actions/workflows/intelligence-scored-refresh.yml/runs?branch=main&per_page=20")"
-          RUNS="$JSON" node <<'NODE'
+          gh api -H 'Accept: application/vnd.github+json' \
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/intelligence-scored-refresh.yml/runs?branch=main&per_page=20" \
+            > /tmp/final-intelligence-runs.json
+          node <<'NODE'
           const fs=require('fs');
-          const parsed=JSON.parse(process.env.RUNS || '{}');
+          const parsed=JSON.parse(fs.readFileSync('/tmp/final-intelligence-runs.json','utf8'));
           const runs=(parsed.workflow_runs ?? []).filter(run =>
             run?.head_branch === 'main' && ['schedule','workflow_dispatch','push'].includes(run?.event)
           );
@@ -266,10 +268,13 @@ jobs:
           REQUIRED='["Product CI","CodeQL Security Scan","Website Lock","Hosting Alignment","Live x402 Prelaunch Safety","Global Intelligence V1 CI","Exact-Head Commercial Launch Readiness"]'
           PASS=false
           for attempt in $(seq 1 30); do
-            JSON="$(gh api -H 'Accept: application/vnd.github+json' "/repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${HEAD_SHA}&per_page=100")"
-            if REQUIRED="$REQUIRED" RUNS="$JSON" node <<'NODE'
+            gh api -H 'Accept: application/vnd.github+json' \
+              "/repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${HEAD_SHA}&per_page=100" \
+              > /tmp/final-exact-head-runs.json
+            if REQUIRED="$REQUIRED" node <<'NODE'
+          const fs=require('fs');
           const required=JSON.parse(process.env.REQUIRED);
-          const runs=JSON.parse(process.env.RUNS).workflow_runs ?? [];
+          const runs=JSON.parse(fs.readFileSync('/tmp/final-exact-head-runs.json','utf8')).workflow_runs ?? [];
           const state=Object.fromEntries(required.map(name=>{
             const rows=runs.filter(x=>x.name===name).sort((a,b)=>String(b.created_at??"").localeCompare(String(a.created_at??"")));
             return [name, rows[0]?.conclusion ?? rows[0]?.status ?? "missing"];

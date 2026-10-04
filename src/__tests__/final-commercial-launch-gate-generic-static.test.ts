@@ -37,6 +37,14 @@ describe("#1414 partner-independent final commercial launch gate", () => {
     expect(finalWorkflow).not.toContain("No fresh successful governed ingestion checkpoint");
   });
 
+  it("streams workflow-run API payloads through files instead of oversized environment variables", () => {
+    expect(finalWorkflow).toContain("/tmp/final-intelligence-runs.json");
+    expect(finalWorkflow).toContain("/tmp/final-exact-head-runs.json");
+    expect(finalWorkflow).toContain("fs.readFileSync('/tmp/final-intelligence-runs.json','utf8')");
+    expect(finalWorkflow).toContain("fs.readFileSync('/tmp/final-exact-head-runs.json','utf8')");
+    expect(finalWorkflow).not.toContain('RUNS="$JSON"');
+  });
+
   it("requires generic public Risk Object trust and remains no-funds/fail-closed", () => {
     for (const marker of [
       "d1_primary_control_plane",
