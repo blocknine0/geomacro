@@ -6,6 +6,7 @@ const loader = readFileSync("scripts/lib/direct-postgres-supabase-loader.mjs", "
 const db = readFileSync("scripts/lib/gri-db-client.mjs", "utf8");
 const ingest = readFileSync("scripts/ingest-news.js", "utf8");
 const rights = readFileSync("scripts/commercial-source-rights-evidence.mjs", "utf8");
+const publisherWrapper = readFileSync("scripts/ops/run-b2-public-intelligence-publisher.mjs", "utf8");
 
 describe("canonical Auto Ingest News recovery", () => {
   it("keeps one ingestion owner and switches transport when Supabase REST egress is restricted", () => {
@@ -35,12 +36,28 @@ describe("canonical Auto Ingest News recovery", () => {
     expect(workflow).toContain("Offload settled recent raw ingest buffer to verified B2");
   });
 
-  it("publishes scored Intelligence and verified Global Risk from the same canonical truth in recovery mode", () => {
-    expect(workflow).toContain("bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs");
+  it("publishes scored Intelligence through the shared bounded GDELT-availability wrapper", () => {
+    expect(workflow).toContain('"scripts/ops/run-b2-public-intelligence-publisher.mjs"');
+    expect(workflow).toContain("run: node scripts/ops/run-b2-public-intelligence-publisher.mjs");
+    expect(workflow).not.toContain("run: bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs");
+    expect(workflow).toContain('GEOMACRO_B2_INTELLIGENCE_MAX_WAIT_MS: "480000"');
+    expect(workflow).toContain('GEOMACRO_B2_INTELLIGENCE_POLL_MS: "10000"');
+    expect(publisherWrapper).toContain('RETRYABLE_AVAILABILITY_ERROR = "CURRENT_GDELT_EXPORT_UNAVAILABLE"');
+    expect(publisherWrapper).toContain("DEFAULT_MAX_WAIT_MS = 8 * 60 * 1000");
+    expect(publisherWrapper).toContain("if (!combined.includes(RETRYABLE_AVAILABILITY_ERROR))");
+  });
+
+  it("publishes verified Global Risk from the same canonical truth in recovery mode", () => {
     expect(workflow).toContain("node scripts/cluster-gri-stories-v12.js");
     expect(workflow).toContain("node scripts/compute-gri-v12.js");
     expect(workflow).toContain("node scripts/verify-gri-snapshot-v12.js");
     expect(workflow).toContain("bun scripts/ops/publish-b2-global-risk-direct-postgres.mjs");
+  });
+
+  it("keeps Guardian external requests blocked during direct-Postgres recovery", () => {
+    expect(workflow).toContain("GEOMACRO_DISABLE_GUARDIAN: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && 'true' || 'false' }}");
+    expect(loader).toContain('specifier === "node-fetch"');
+    expect(loader).toContain("NO_GUARDIAN_FETCH_URL");
   });
 
   it("keeps the direct database path production-bound and synthetic-free", () => {
