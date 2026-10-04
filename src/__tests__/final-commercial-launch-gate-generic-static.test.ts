@@ -27,6 +27,16 @@ describe("#1414 partner-independent final commercial launch gate", () => {
     expect(finalWorkflow).toContain("verify-generic-production-risk-object.ts");
   });
 
+  it("anchors scheduler health to the production Intelligence owner instead of the non-commercial governed-source canary", () => {
+    expect(finalWorkflow).toContain("actions/workflows/intelligence-scored-refresh.yml/runs");
+    expect(finalWorkflow).toContain("Intelligence Scored + Current Evidence");
+    expect(finalWorkflow).toContain("intelligence-scored-refresh");
+    expect(finalWorkflow).toContain("latest.conclusion !== 'success'");
+    expect(finalWorkflow).toContain("6 * 60 * 60 * 1000");
+    expect(finalWorkflow).not.toContain("pipeline='governed_source_ingestion'");
+    expect(finalWorkflow).not.toContain("No fresh successful governed ingestion checkpoint");
+  });
+
   it("requires generic public Risk Object trust and remains no-funds/fail-closed", () => {
     for (const marker of [
       "d1_primary_control_plane",
