@@ -61,23 +61,29 @@ describe("production website runtime contract", () => {
     expect(askEngine).not.toContain("getAppSupabase");
   });
 
-  it("forbids unscored observations on the public Intelligence surface", () => {
+  it("keeps current observations public only as certified, derived and explicitly unscored evidence", () => {
     const reader = read("src/lib/public-intelligence-production.server.ts");
     const hook = read("src/lib/use-intelligence.ts");
     const publisher = read("scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs");
 
-    expect(reader).toContain('public_status: "verified_b2"');
-    expect(reader).toContain('const DERIVED_TITLE_PREFIX = "Geomacro finds "');
+    expect(reader).toContain('public_status: "verified_b2" | "live_observed"');
+    expect(reader).toContain('SCORED_TITLE_PREFIX = "Geomacro finds "');
+    expect(reader).toContain('LIVE_TITLE_PREFIX = "Geomacro observes "');
+    expect(reader).toContain("normalizedLiveObservedRow");
     expect(reader).not.toContain("fetchUsgsMacro");
     expect(reader).not.toContain("LIVE_OVERLAY_TRIGGER_AGE_MS");
     expect(hook).toContain('r.public_status === "live_observed"');
-    expect(hook).toContain('payload.mode !== "verified_b2"');
-    expect(hook).toContain('Number(payload.live_observed_rows ?? 0) !== 0');
-    expect(hook).toContain('hasLiveObserved: false');
-    expect(publisher).toContain("PUBLIC_INTELLIGENCE_UNSCORED_ROW_REJECTED");
+    expect(hook).toContain('payload.mode === "verified_b2_plus_live_observed"');
+    expect(hook).toContain('hasLiveObserved: liveRows.length > 0');
+    expect(hook).toContain('row.publicStatus === "verified_b2"');
+    expect(publisher).toContain("PUBLIC_INTELLIGENCE_LIVE_OBSERVED_ROW_INVALID");
     expect(publisher).toContain('title.startsWith("Geomacro finds ")');
+    expect(publisher).toContain('title.startsWith("Geomacro observes ")');
+    expect(publisher).toContain('live_observed_unscored: true');
+    expect(publisher).toContain('synthetic_score: false');
     expect(publisher).toContain("guardian_commercial_dependency: false");
     expect(publisher).toContain("raw_source_headlines_exposed: false");
+    expect(publisher).toContain("provider_identity_exposed: false");
   });
 
   it("bounds every interactive public wait so loading cannot hang forever", () => {
