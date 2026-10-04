@@ -1,10 +1,9 @@
 /**
  * Read model for the /intelligence workspace.
  *
- * Public Intelligence is scored-only and derived-only. The browser accepts
- * only verified B2 rows with a real 0..100 severity and a Geomacro-derived
- * English-facing title. A stale server must never be able to reintroduce an
- * unscored live observation into the customer UI.
+ * Public Intelligence combines canonical scored/derived records with certified
+ * current observations that remain explicitly unscored. Raw upstream headlines,
+ * source identity and source-derived numeric features never become public scores.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -58,7 +57,7 @@ type PublicIntelligenceApiRow = PublicIntelligenceRow & {
 type PublicIntelligenceApiResponse = {
   ok: boolean;
   rows?: PublicIntelligenceApiRow[];
-  mode?: "verified_b2" | "verified_b2_plus_live_observed" | "live_observed_only";
+  mode?: "verified_b2" | "verified_b2_plus_live_observed";
   verified_rows?: number;
   live_observed_rows?: number;
   newest_at?: string | null;
@@ -68,7 +67,8 @@ type PublicIntelligenceApiResponse = {
 
 const DAY = 24 * 60 * 60 * 1000;
 const EMERGING_WINDOW = 12 * 60 * 60 * 1000;
-const DERIVED_TITLE_PREFIX = "Geomacro finds ";
+const SCORED_TITLE_PREFIX = "Geomacro finds ";
+const LIVE_TITLE_PREFIX = "Geomacro observes ";
 
 export const SORTS = ["risk", "newest", "moving"] as const;
 export type IntelSort = (typeof SORTS)[number];
@@ -95,7 +95,7 @@ function median(values: number[]): number | null {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
-function timeOf(e: IntelEvent) {
+function timeOf(e: Pick<IntelEvent, "publishedAt" | "createdAt">) {
   const published = e.publishedAt ? new Date(e.publishedAt).getTime() : NaN;
   if (Number.isFinite(published)) return published;
   const created = new Date(e.createdAt).getTime();
@@ -105,12 +105,37 @@ function timeOf(e: IntelEvent) {
 function mapPublicRows(rows: PublicIntelligenceApiRow[]): IntelEvent[] {
   const allowed = new Set<string>(PUBLIC_INTELLIGENCE_CATEGORIES);
   return rows.flatMap((r) => {
-    const title = String(r.source_title ?? "").trim();
-    const category = String(r.category ?? "").trim();
+    const title = String(r.source_title ?? "").replace(/\s+/g, " ").trim();
+    const category = String(r.category ?? "").trim().toLowerCase();
+    const createdAt = String(r.created_at ?? "");
+    const publishedAt = r.published_at ?? null;
+    const timestamp = timeOf({ createdAt, publishedAt });
+    if (!allowed.has(category) || !Number.isFinite(timestamp)) return [];
+
+    if (r.public_status === "live_observed") {
+      if (
+        category !== "geopolitics" ||
+        !title.startsWith(LIVE_TITLE_PREFIX) ||
+        r.severity !== null ||
+        r.delta !== null
+      ) return [];
+      return [{
+        id: String(r.id),
+        title,
+        summary: r.summary ?? null,
+        category,
+        severity: null,
+        delta: null,
+        sourceName: null,
+        createdAt,
+        publishedAt,
+        isCurrent: false,
+        publicStatus: "live_observed" as const,
+      }];
+    }
+
     const severity = num(r.severity);
-    if (r.public_status === "live_observed") return [];
-    if (!allowed.has(category)) return [];
-    if (!title.startsWith(DERIVED_TITLE_PREFIX)) return [];
+    if (!title.startsWith(SCORED_TITLE_PREFIX)) return [];
     if (severity === null || severity < 0 || severity > 100) return [];
     return [{
       id: String(r.id),
@@ -120,8 +145,8 @@ function mapPublicRows(rows: PublicIntelligenceApiRow[]): IntelEvent[] {
       severity,
       delta: num(r.delta),
       sourceName: null,
-      createdAt: String(r.created_at),
-      publishedAt: r.published_at ?? null,
+      createdAt,
+      publishedAt,
       isCurrent: false,
       publicStatus: "verified_b2" as const,
     }];
@@ -130,30 +155,38 @@ function mapPublicRows(rows: PublicIntelligenceApiRow[]): IntelEvent[] {
 
 function build(rows: IntelEvent[], now: number): Intelligence {
   const markedRows = rows
-    .filter((row) => row.publicStatus === "verified_b2" && row.severity !== null)
+    .filter((row) => Number.isFinite(timeOf(row)) && timeOf(row) <= now + 5 * 60_000)
     .map((row) => ({
       ...row,
-      isCurrent: timeOf(row) >= now - DAY && timeOf(row) <= now,
-    }));
-  const in24h = markedRows.filter((r) => r.isCurrent);
-  const usedFallbackWindow = in24h.length === 0;
-  const recent = [...markedRows]
-    .filter((r) => Number.isFinite(timeOf(r)) && timeOf(r) <= now)
-    .sort((a, b) => timeOf(b) - timeOf(a))
-    .slice(0, 24);
-  const verifiedContext = [...markedRows]
+      isCurrent: timeOf(row) >= now - DAY && timeOf(row) <= now + 5 * 60_000,
+    }))
+    .sort((a, b) => timeOf(b) - timeOf(a));
+
+  const currentRows = markedRows.filter((r) => r.isCurrent);
+  const scoredRows = markedRows.filter(
+    (r) => r.publicStatus === "verified_b2" && r.severity !== null,
+  );
+  const currentScored = scoredRows.filter((r) => r.isCurrent);
+  const liveRows = markedRows.filter(
+    (r) => r.publicStatus === "live_observed" && r.severity === null,
+  );
+  const usedFallbackWindow = currentRows.length === 0;
+  const recent = [...markedRows].slice(0, 24);
+  const verifiedContext = scoredRows
     .filter((r) => !r.isCurrent)
     .sort((a, b) => timeOf(b) - timeOf(a));
-  const domainRows = usedFallbackWindow ? recent : [...in24h, ...verifiedContext.slice(0, Math.max(0, 24 - in24h.length))];
+  const domainRows = usedFallbackWindow
+    ? recent
+    : [...currentRows, ...verifiedContext.slice(0, Math.max(0, 24 - currentRows.length))];
 
-  const topRisks = [...in24h]
+  const topRisks = [...currentScored]
     .sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0))
     .slice(0, 8);
   const verifiedRiskContext = [...verifiedContext]
     .sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0) || timeOf(b) - timeOf(a))
     .slice(0, 8);
 
-  const moved = in24h.filter((r) => r.delta !== null && r.delta !== 0);
+  const moved = currentScored.filter((r) => r.delta !== null && r.delta !== 0);
   const rising = moved
     .filter((r) => (r.delta ?? 0) > 0)
     .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0));
@@ -161,40 +194,45 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .filter((r) => (r.delta ?? 0) < 0)
     .sort((a, b) => (a.delta ?? 0) - (b.delta ?? 0));
 
-  const med = median(in24h.map((r) => r.severity as number));
+  const med = median(currentScored.map((r) => r.severity as number));
   const emergingPool = med === null
     ? null
-    : in24h.filter(
+    : currentScored.filter(
         (r) =>
           (r.severity as number) >= med &&
           timeOf(r) >= now - EMERGING_WINDOW &&
-          timeOf(r) <= now,
+          timeOf(r) <= now + 5 * 60_000,
       );
 
-  const counts = new Map<string, { count: number; sum: number }>();
+  const counts = new Map<string, { count: number; scoredCount: number; sum: number }>();
   for (const r of domainRows) {
     const key = (r.category ?? "").trim();
-    if (!key || r.severity === null) continue;
-    const c = counts.get(key) ?? { count: 0, sum: 0 };
+    if (!key) continue;
+    const c = counts.get(key) ?? { count: 0, scoredCount: 0, sum: 0 };
     c.count += 1;
-    c.sum += r.severity;
+    if (r.severity !== null) {
+      c.scoredCount += 1;
+      c.sum += r.severity;
+    }
     counts.set(key, c);
   }
   const categoryCounts = [...counts.entries()]
     .map(([category, c]) => ({
       category,
       count: c.count,
-      avgSeverity: Math.round(c.sum / c.count),
+      avgSeverity: c.scoredCount > 0 ? Math.round(c.sum / c.scoredCount) : null,
     }))
-    .sort((a, b) => b.avgSeverity - a.avgSeverity || b.count - a.count);
+    .sort((a, b) =>
+      (b.avgSeverity ?? -1) - (a.avgSeverity ?? -1) || b.count - a.count,
+    );
 
   return {
     all: markedRows,
-    today: [...in24h].sort((a, b) => timeOf(b) - timeOf(a)).slice(0, 12),
+    today: [...currentRows].sort((a, b) => timeOf(b) - timeOf(a)).slice(0, 12),
     recent,
     usedFallbackWindow,
-    usesVerifiedContext: in24h.length > 0 && verifiedContext.length > 0,
-    hasLiveObserved: false,
+    usesVerifiedContext: currentRows.length > 0 && verifiedContext.length > 0,
+    hasLiveObserved: liveRows.length > 0,
     topRisks,
     verifiedRiskContext,
     fastestMoving: rising.length > 0 ? rising.slice(0, 5) : null,
@@ -203,7 +241,7 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     emergingMedian: med === null ? null : Math.round(med),
     categories: [...PUBLIC_INTELLIGENCE_CATEGORIES],
     categoryCounts,
-    latest: [...markedRows].sort((a, b) => timeOf(b) - timeOf(a)).slice(0, 6),
+    latest: [...markedRows].slice(0, 6),
   };
 }
 
@@ -219,11 +257,18 @@ async function fetchPublicIntelligence(): Promise<PublicIntelligenceApiRow[]> {
     credentials: "same-origin",
   });
   const payload = (await response.json()) as PublicIntelligenceApiResponse;
+  const liveCount = Number(payload.live_observed_rows ?? 0);
+  const validMode =
+    payload.mode === "verified_b2" ||
+    payload.mode === "verified_b2_plus_live_observed";
+  const modeCountsAgree =
+    (payload.mode === "verified_b2" && liveCount === 0) ||
+    (payload.mode === "verified_b2_plus_live_observed" && liveCount > 0);
   if (
     !response.ok ||
     !payload.ok ||
-    payload.mode !== "verified_b2" ||
-    Number(payload.live_observed_rows ?? 0) !== 0 ||
+    !validMode ||
+    !modeCountsAgree ||
     !Array.isArray(payload.rows)
   ) {
     throw new Error(payload.error ?? "Verified intelligence feed unavailable.");
@@ -330,7 +375,9 @@ export function applyIntelFilters(
 }
 
 export function availableSorts(rows: IntelEvent[]): IntelSort[] {
-  const hasMovement = rows.some((r) => r.isCurrent && r.delta !== null && r.delta !== 0);
+  const hasMovement = rows.some(
+    (r) => r.publicStatus === "verified_b2" && r.isCurrent && r.delta !== null && r.delta !== 0,
+  );
   return hasMovement ? ["risk", "newest", "moving"] : ["risk", "newest"];
 }
 

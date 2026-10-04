@@ -9,7 +9,7 @@ describe("public intelligence availability contract", () => {
     expect(source).toContain(".abortSignal(AbortSignal.timeout(PUBLIC_INTELLIGENCE_QUERY_TIMEOUT_MS))");
   });
 
-  it("uses only canonical scored events for bounded recovery", () => {
+  it("uses only canonical scored events for bounded Supabase recovery", () => {
     expect(source).toContain('from("events")');
     expect(source).toContain('.eq("classification_version", CLASSIFICATION_VERSION)');
     expect(source).toContain('.not("severity", "is", null)');
@@ -19,10 +19,14 @@ describe("public intelligence availability contract", () => {
     expect(source).not.toContain('from("live_flash_events")');
   });
 
-  it("fails soft to the existing verified B2 package instead of inventing data", () => {
+  it("fails soft to verified B2 data without converting live observations into scores", () => {
     expect(source).toContain("readB2PublicIntelligence");
     expect(source).toContain("if (b2Rows?.length) return sortAndDedupe(b2Rows)");
+    expect(source).toContain("normalizeLiveObservedRow");
+    expect(source).toContain('row.public_status !== "live_observed"');
+    expect(source).toContain("row.severity !== null");
+    expect(source).toContain("row.delta !== null");
+    expect(source).toContain('public_status: "live_observed"');
     expect(source).toContain("return []");
-    expect(source).not.toContain("severity: null");
   });
 });
