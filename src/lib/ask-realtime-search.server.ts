@@ -70,6 +70,22 @@ function hostname(value: unknown): string {
   }
 }
 
+function categoryLabel(value: string) {
+  if (value === "CRITICAL_MINERALS") return "critical minerals";
+  return value.toLowerCase().replace(/_/g, " ");
+}
+
+function shortUtcDate(value: string | null) {
+  if (!value) return "current";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "current";
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 async function searchGdelt(query: string, category: string, timespan: string): Promise<SearchHit[]> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
@@ -118,8 +134,6 @@ function dedupeAndRank(hits: SearchHit[], maxAgeHours: number): SearchHit[] {
     Date.parse(b.publishedAt ?? "") - Date.parse(a.publishedAt ?? ""),
   );
 
-  // Keep current coverage broad where possible instead of letting one publisher
-  // or one risk domain dominate a broad realtime answer.
   const selected: SearchHit[] = [];
   const domains = new Set<string>();
   const categories = new Set<string>();
@@ -164,16 +178,23 @@ async function currentSearch(question: string): Promise<SearchHit[]> {
 }
 
 function deterministicStructuredAnswer(hits: SearchHit[]): GroundedShape {
-  const selected = hits.slice(0, 3);
-  const points = selected.map((hit, index) => `${index + 1}) ${hit.title}`);
+  const grouped = new Map<string, SearchHit[]>();
+  for (const hit of hits) {
+    const rows = grouped.get(hit.category) ?? [];
+    rows.push(hit);
+    grouped.set(hit.category, rows);
+  }
+  const points = [...grouped.entries()].slice(0, 3).map(([category, rows], index) => {
+    const newest = rows[0]?.publishedAt ?? null;
+    return `${index + 1}) ${categoryLabel(category)}: ${rows.length} current observations, latest ${shortUtcDate(newest)} UTC`;
+  });
   const domains = new Set(hits.map((hit) => hit.domain).filter((domain) => domain !== "unknown"));
-  const categories = new Set(hits.map((hit) => hit.category));
   return {
-    summary: points.join("; "),
+    summary: `Current search found activity across ${grouped.size} Geomacro risk ${grouped.size === 1 ? "domain" : "domains"}.`,
     what_changed: points.join("; "),
-    why_it_matters: `Current public evidence spans ${categories.size} risk ${categories.size === 1 ? "domain" : "domains"}${domains.size ? ` across ${domains.size} independent publication paths` : ""}.`,
+    why_it_matters: `${hits.length} current observations were checked${domains.size ? ` across ${domains.size} independent publication paths` : ""}; raw source headlines and provider identity remain private.`,
     geomacro_view: "This is a current-evidence brief, not a synthetic risk score or forecast.",
-    source_indexes: selected.map((_, index) => index),
+    source_indexes: Array.from({ length: Math.min(3, hits.length) }, (_, index) => index),
   };
 }
 
@@ -183,6 +204,7 @@ async function structureWithGroundedModel(question: string, hits: SearchHit[]): 
       system:
         "You are Ask Geomacro's realtime evidence formatter. Answer ONLY from the supplied current search findings. " +
         "Do not invent facts, dates, numbers, causes, sources or URLs. Do not name publishers or search providers. " +
+        "Paraphrase the findings; do not reproduce source headlines verbatim. " +
         "For broad current-change questions, put the 2 to 4 most material supported developments in what_changed using compact '1) ...; 2) ...' form. " +
         "Keep summary to one short sentence. Keep why_it_matters and geomacro_view concise and analytical, not generic. " +
         "If support is thin, phrase cautiously rather than fabricating certainty. Return JSON with summary, what_changed, why_it_matters, geomacro_view, source_indexes.",
@@ -222,6 +244,10 @@ function fallbackId(hit: SearchHit, index: number) {
     .slice(0, 16)}`;
 }
 
+function publicEvidenceLabel(hit: SearchHit, index: number) {
+  return `Geomacro realtime finding ${index + 1} · ${categoryLabel(hit.category)} · ${shortUtcDate(hit.publishedAt)} UTC`;
+}
+
 export async function realtimeSearchAnswer(
   question: string,
   prior: HybridAskAnswer,
@@ -233,7 +259,7 @@ export async function realtimeSearchAnswer(
   const indexes = safeIndexes(grounded.source_indexes, hits.length);
   const evidence = indexes.map((index) => ({
     eventId: fallbackId(hits[index], index),
-    title: hits[index].title.slice(0, 180),
+    title: publicEvidenceLabel(hits[index], index),
     relevance: Math.max(70, 100 - index * 5),
   }));
   if (!evidence.length) return null;
