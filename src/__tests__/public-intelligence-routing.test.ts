@@ -46,9 +46,9 @@ describe("public intelligence routing contract", () => {
     expect(walletRouteBlock).not.toContain("/tx-history");
   });
 
-  it("keeps Global Risk and the three public Risk Indices on independent customer routes", () => {
+  it("keeps Global Risk and the standalone Risk Indices product on independent customer read paths", () => {
     const globalRiskRoute = read("src/routes/global-risk.tsx");
-    const globalRiskWorkspace = read("src/components/gri/global-risk-workspace.tsx");
+    const globalRiskWorkspace = read("src/components/gri/global-risk-domain-indices.tsx");
     const riskIndicesRoute = read("src/routes/risk-indices.tsx");
     const riskIndicesWorkspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
     const globalHook = read("src/lib/use-global-risk.ts");
@@ -57,15 +57,17 @@ describe("public intelligence routing contract", () => {
     const askEngine = read("src/lib/ask-intelligence.server.ts");
     const askWorkspace = read("src/components/ask/ask-workspace.tsx");
 
-    expect(globalRiskRoute).toContain("GlobalRiskWorkspace");
+    expect(globalRiskRoute).toContain("GlobalRiskDomainIndices");
+    expect(globalRiskRoute).not.toContain("GlobalRiskWorkspace");
     expect(globalRiskRoute).not.toContain("RiskIndicesWorkspace");
-    expect(globalRiskWorkspace).toContain("How global risk is moving");
-    expect(globalRiskWorkspace).toContain('const TIMEFRAMES: Timeframe[] = ["24H", "7D", "30D"]');
+    expect(globalRiskWorkspace).toContain("useGlobalRisk");
+    expect(globalRiskWorkspace).toContain("Three risks. Three separate indices.");
+    expect(globalRiskWorkspace).toContain("Compare each risk domain on its own scale");
     expect(globalHook).toContain("GLOBAL_RISK_EDGE_URL");
     expect(globalHook).not.toContain("RISK_INDICES_EDGE_URL");
 
     expect(riskIndicesRoute).toContain("RiskIndicesWorkspace");
-    expect(riskIndicesRoute).not.toContain("GlobalRiskWorkspace");
+    expect(riskIndicesRoute).not.toContain("GlobalRiskDomainIndices");
     expect(riskIndicesWorkspace).toContain("Three risks. Three separate indices.");
     expect(riskIndicesWorkspace).toContain("does not substitute zero or a synthetic estimate");
     expect(indicesHook).toContain("RISK_INDICES_EDGE_URL");
