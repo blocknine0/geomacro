@@ -7,12 +7,15 @@ on:
     paths:
       - ".github/workflows/gdelt-gal-live-sync.yml"
       - "scripts/run-gdelt-gal-cycle.mjs"
+      - "scripts/run-live-structure-local.ts"
+      - "scripts/drain-live-structure.mjs"
       - "scripts/sync-gdelt-gal-production.mjs"
       - "scripts/reconcile-structured-event-commercial-rights.mjs"
       - "scripts/verify-gdelt-gal-cycle.mjs"
       - "scripts/audit-agent-hot-topic-readiness.ts"
       - "scripts/lib/gri-db-client.mjs"
       - "scripts/lib/direct-postgres-supabase-loader.mjs"
+      - "supabase/functions/live-structure-intelligence/index.ts"
 
 # The recurring scheduler remains quota-held. This self-scoped push trigger gives
 # #1414 one deterministic recovery/proof run when the canonical recovery path changes.
@@ -40,6 +43,9 @@ jobs:
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres
+      LIVE_STRUCTURE_DRAIN_CONCURRENCY: "1"
+      LIVE_STRUCTURE_MAX_CYCLES: "12"
       GDELT_GAL_CYCLE_OUTPUT_DIR: gdelt-gal-cycle
       GDELT_GAL_CYCLE_MAX_ATTEMPTS: "3"
       GDELT_GAL_CYCLE_BACKOFF_SECONDS: "30"
@@ -62,7 +68,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL LIVE_STRUCTURE_TOKEN; do
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL LIVE_STRUCTURE_TOKEN B2_KEY_ID B2_APPLICATION_KEY; do
             test -n "${!name:-}" || { echo "::error::$name missing"; exit 1; }
           done
           node scripts/db/assert-authoritative-supabase.mjs
@@ -82,6 +88,7 @@ jobs:
           node --check scripts/sync-gdelt-gal-production.mjs
           node --check scripts/run-gdelt-gal-cycle.mjs
           node --check scripts/verify-gdelt-gal-cycle.mjs
+          node --import tsx --eval "import './scripts/run-live-structure-local.ts'" 2>/dev/null && exit 1 || true
 
       - name: Run canonical GDELT GAL fresh cycle
         env:
@@ -101,6 +108,7 @@ jobs:
           jq -e '.verification.acceptance.hot_topic_claim_boundary_safe == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
           jq -e '.verification.acceptance.hot_topic_report_read_only == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
           jq -e '.verification.acceptance.writes_performed_by_verifier == false' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
+          grep -q 'local_canonical_source_direct_postgres' gdelt-gal-cycle/structure.log
 
       - name: Upload sanitized GDELT GAL cycle evidence
         if: always()
