@@ -50,7 +50,7 @@ describe("Intelligence verified fallback contract", () => {
     expect(hook).not.toContain("useServerFn");
     expect(hook).toContain('r.public_status === "live_observed"');
     expect(hook).toContain('hasLiveObserved: liveRows.length > 0');
-    expect(hook).toContain('row.publicStatus === "verified_b2"');
+    expect(hook).toContain('r.publicStatus === "verified_b2"');
 
     expect(directPublisher).toContain('GDELT_LAST_UPDATE_URL = "https://data.gdeltproject.org/gdeltv2/lastupdate.txt"');
     expect(directPublisher).toContain("GDELT_EXPECTED_COLUMNS = 61");
