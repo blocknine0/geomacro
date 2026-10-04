@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const workflow = readFileSync(".github/workflows/gri-realtime-direct-postgres.yml", "utf8");
 const shim = readFileSync("scripts/lib/gri-db-client.mjs", "utf8");
 const loader = readFileSync("scripts/lib/direct-postgres-supabase-loader.mjs", "utf8");
+const cluster = readFileSync("scripts/cluster-gri-stories-v12.js", "utf8");
 
 describe("GRI realtime direct Postgres freshness", () => {
   it("runs a bounded verified refresh every hour from canonical evidence without re-owning source ingestion", () => {
@@ -26,6 +27,15 @@ describe("GRI realtime direct Postgres freshness", () => {
     expect(loader).toContain('=== "direct_postgres"');
     expect(loader).toContain("createGriDbClient");
     expect(loader).toContain("nextResolve(specifier, context)");
+  });
+
+  it("lets legacy REST preflights pass only inside the direct-Postgres virtual shim", () => {
+    expect(cluster).toContain('throw new Error("Supabase URL and service-role key are required")');
+    expect(loader).toContain('process.env.SUPABASE_URL ||= "https://direct-postgres.invalid"');
+    expect(loader).toContain('process.env.SUPABASE_SERVICE_ROLE_KEY ||= "direct-postgres-no-rest"');
+    expect(loader).toContain("createClient() { return createGriDbClient(); }");
+    expect(shim).toContain("new DirectPostgresClient(process.env.SUPABASE_DB_URL)");
+    expect(shim).toContain("Refusing direct GRI access outside the authoritative Supabase project");
   });
 
   it("fails closed to the authoritative production database and does not invent index data", () => {
