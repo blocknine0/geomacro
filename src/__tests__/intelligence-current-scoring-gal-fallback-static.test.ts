@@ -22,10 +22,12 @@ describe('#1414 current scoring GAL fallback', () => {
     expect(workflow).toContain("classification_version: 'event-severity-v1.0.5'");
   });
 
-  it('runs a bounded all-domain catch-up only on the rare self-file push event', () => {
+  it('keeps recurring load bounded while catch-up is serialized on self-file push', () => {
     expect(workflow).toContain('GITHUB_EVENT_NAME');
-    expect(workflow).toContain('macro,rare_earth,geopolitics');
-    expect(workflow).toContain('13,33,53 * * * *');
+    expect(workflow).toContain('domain=macro');
+    expect(workflow).toContain('recover-rare-earth-after-fastlane-change');
+    expect(workflow).toContain('needs: score-current-domain');
+    expect(workflow).toContain('cron: "13,33,53 * * * *"');
     expect(workflow).toContain('geomacro-intelligence-orchestrator');
     expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "2"');
   });
