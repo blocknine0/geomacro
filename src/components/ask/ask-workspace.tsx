@@ -1,13 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  Loader2,
-  Search,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowUp, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/foundation/async-states";
 import type { AskAnswer } from "@/lib/ask-geomacro.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
@@ -18,18 +12,23 @@ import {
 
 const SUGGESTIONS = [
   "What changed today?",
-  "What changed in the risk indices?",
-  "What are the biggest emerging risks?",
   "What is driving geopolitical risk?",
   "What is driving macro risk?",
   "What is changing in critical minerals?",
 ] as const;
 
 const MAX_LEN = 300;
+const MAX_VISIBLE_TURNS = 12;
 
 type PublicAskResponse =
   | { ok: true; data: AskAnswer }
   | { ok: false; error?: { code?: string; message?: string } };
+
+type ChatTurn = {
+  id: number;
+  question: string;
+  answer: AskAnswer;
+};
 
 async function requestPublicAsk(question: string): Promise<AskAnswer> {
   const response = await fetch("/api/public-ask", {
@@ -56,8 +55,9 @@ async function requestPublicAsk(question: string): Promise<AskAnswer> {
 
 export function AskWorkspace() {
   const [query, setQuery] = useState("");
-  const [answer, setAnswer] = useState<AskAnswer | null>(null);
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [asked, setAsked] = useState<string | null>(null);
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<UserError | null>(null);
   const seq = useRef(0);
@@ -70,8 +70,9 @@ export function AskWorkspace() {
       const id = ++seq.current;
       setLoading(true);
       setError(null);
-      setAnswer(null);
       setAsked(question);
+      setPendingQuestion(question);
+      setQuery("");
 
       try {
         const result = await withPublicRuntimeTimeout(
@@ -79,13 +80,21 @@ export function AskWorkspace() {
           PUBLIC_ASK_REQUEST_TIMEOUT_MS,
           "Ask Geomacro request timed out.",
         );
-        if (seq.current === id) setAnswer(result);
+        if (seq.current === id) {
+          setTurns((current) => [
+            ...current.slice(-(MAX_VISIBLE_TURNS - 1)),
+            { id, question, answer: result },
+          ]);
+        }
       } catch (err) {
         if (seq.current === id) {
           setError(reportError("ask-geomacro", err, "research query"));
         }
       } finally {
-        if (seq.current === id) setLoading(false);
+        if (seq.current === id) {
+          setPendingQuestion(null);
+          setLoading(false);
+        }
       }
     },
     [loading],
@@ -94,216 +103,180 @@ export function AskWorkspace() {
   const canSubmit = query.trim().length >= 4 && !loading;
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 pb-20 pt-10 sm:px-6 md:pt-14">
-      <header className="max-w-4xl">
-        <div className="flex flex-wrap items-center gap-3">
+    <main className="mx-auto w-full max-w-5xl px-4 pb-20 pt-8 sm:px-6 md:pt-12">
+      <header className="mx-auto max-w-3xl text-center">
+        <div className="flex justify-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-            <Search className="h-3.5 w-3.5" /> Grounded research · Live
-          </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            Stored evidence + verified Risk Indices
+            <ShieldCheck className="h-3.5 w-3.5" /> Verified risk intelligence
           </span>
         </div>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">Ask Geomacro</h1>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Ask about current geopolitical, macroeconomic and critical-mineral risk. Geomacro returns a concise structured answer from verified risk context and approved intelligence evidence.
-        </p>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Raw source content, provider details and internal retrieval payloads are not exposed in the answer.
+        <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+          Ask one clear question. Geomacro answers the point you asked, using verified risk context and approved intelligence evidence.
         </p>
       </header>
 
-      <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="min-w-0 rounded-2xl border border-border/70 bg-card/50 p-5 sm:p-6">
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void ask(query);
-            }}
-            className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]"
-          >
-            <div className="min-w-0">
-              <label htmlFor="ask-geomacro-input" className="sr-only">
-                Ask a question about global risk
-              </label>
-              <Input
-                id="ask-geomacro-input"
-                value={query}
-                maxLength={MAX_LEN}
-                disabled={loading}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Ask about current risk, a domain, or what changed"
-                className="h-12"
-              />
-            </div>
-            <Button type="submit" className="h-12 gap-2" disabled={!canSubmit}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              {loading ? "Checking evidence" : "Ask"}
-            </Button>
-          </form>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {SUGGESTIONS.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                disabled={loading}
-                onClick={() => {
-                  setQuery(suggestion);
-                  void ask(suggestion);
-                }}
-                className="min-h-10 rounded-full border border-border/70 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-
-          <div role="status" aria-live="polite" className="mt-6 border-t border-border/60 pt-6">
-            {loading ? (
-              <div className="rounded-xl border border-border/60 bg-background/25 p-5">
-                <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Checking stored intelligence and verified risk context…
-                </p>
+      <section className="mx-auto mt-8 max-w-3xl">
+        <div role="log" aria-live="polite" className="space-y-7">
+          {turns.length === 0 && !pendingQuestion && !error ? (
+            <div className="rounded-2xl border border-border/70 bg-card/35 p-5 sm:p-6">
+              <p className="text-sm font-medium text-foreground">Ask about geopolitical, macroeconomic or critical-mineral risk.</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => void ask(suggestion)}
+                    className="rounded-full border border-border/70 px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
               </div>
-            ) : error ? (
+            </div>
+          ) : null}
+
+          {turns.map((turn) => (
+            <div key={turn.id} className="space-y-4">
+              <UserBubble>{turn.question}</UserBubble>
+              <AssistantAnswer answer={turn.answer} />
+            </div>
+          ))}
+
+          {pendingQuestion ? (
+            <div className="space-y-4">
+              <UserBubble>{pendingQuestion}</UserBubble>
+              <div className="flex items-center gap-2 px-1 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Checking verified evidence…
+              </div>
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="space-y-3">
+              {asked && !pendingQuestion ? <UserBubble>{asked}</UserBubble> : null}
               <ErrorState
-                title="Research unavailable"
+                title="Ask Geomacro unavailable"
                 error={error}
                 onRetry={asked ? () => void ask(asked) : undefined}
               />
-            ) : answer ? (
-              <AnswerView answer={answer} question={asked} />
-            ) : (
-              <div className="rounded-xl border border-dashed border-border/70 p-6">
-                <p className="font-medium text-foreground">Start with a real risk question.</p>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Broad current-risk questions, risk-movement questions and domain-specific questions are handled differently so a general prompt is not forced through a narrow keyword match.
-                </p>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : null}
         </div>
 
-        <aside className="space-y-4">
-          <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">What it uses</p>
-            <ul className="mt-4 space-y-3 text-sm leading-6 text-muted-foreground">
-              <li>Stored Geomacro intelligence events</li>
-              <li>Current verified Risk Indices context</li>
-              <li>Stored severity, confidence and movement</li>
-              <li>Structured evidence references</li>
-            </ul>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void ask(query);
+          }}
+          className="mt-8 rounded-2xl border border-border/80 bg-card/70 p-2 shadow-sm"
+        >
+          <label htmlFor="ask-geomacro-input" className="sr-only">
+            Ask Geomacro a question
+          </label>
+          <div className="flex items-end gap-2">
+            <textarea
+              id="ask-geomacro-input"
+              value={query}
+              maxLength={MAX_LEN}
+              disabled={loading}
+              rows={1}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  if (canSubmit) void ask(query);
+                }
+              }}
+              placeholder="Ask Geomacro…"
+              className="min-h-12 max-h-40 flex-1 resize-y bg-transparent px-3 py-3 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-60"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              className="mb-0.5 h-10 w-10 shrink-0 rounded-xl"
+              disabled={!canSubmit}
+              aria-label="Send question"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
+            </Button>
           </div>
-          <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
-            <div className="flex items-start gap-2">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Grounded by design</p>
-                <p className="mt-2 text-xs leading-6 text-muted-foreground">
-                  Weak evidence stays weak evidence. Geomacro can withhold interpretation instead of filling gaps with uncited claims.
-                </p>
-              </div>
-            </div>
-          </div>
-          <Button asChild variant="outline" className="w-full gap-2">
-            <Link to="/intelligence">Browse Risk Intelligence <ArrowRight className="h-4 w-4" /></Link>
-          </Button>
-          <Button asChild variant="outline" className="w-full gap-2">
-            <Link to="/global-risk">Open Risk Indices <ArrowRight className="h-4 w-4" /></Link>
-          </Button>
-        </aside>
+        </form>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] leading-5 text-muted-foreground">
+          <span>Direct answers only · Shift+Enter for a new line</span>
+          <span>
+            <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
+            {" · "}
+            <Link to="/global-risk" className="hover:text-foreground">Risk Indices</Link>
+          </span>
+        </div>
+        <p className="mt-2 px-1 text-[11px] leading-5 text-muted-foreground">
+          Raw source content, provider details and internal retrieval payloads are not exposed in the answer.
+        </p>
       </section>
     </main>
   );
 }
 
-function AnswerView({ answer, question }: { answer: AskAnswer; question: string | null }) {
-  if (answer.insufficient_evidence && answer.evidence.length === 0) {
-    return (
-      <div className="rounded-xl border border-border/70 bg-background/25 p-5">
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Evidence threshold not met</p>
-        <p className="mt-3 text-base font-medium text-foreground">
-          Geomacro does not have enough relevant stored evidence to answer this confidently.
-        </p>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">{answer.what_changed}</p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Button asChild variant="outline" size="sm">
-            <Link to="/intelligence">Open Risk Intelligence</Link>
-          </Button>
-          {question ? (
-            <span className="self-center text-xs text-muted-foreground">Question: {question}</span>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
-  const meanPct = answer.mean_relevance !== null ? Math.round(answer.mean_relevance * 100) : null;
-
+function UserBubble({ children }: { children: string }) {
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-primary">Geomacro answer</p>
-        <p className="mt-2 text-lg leading-7 text-foreground">{answer.summary}</p>
+    <div className="flex justify-end">
+      <div className="max-w-[88%] rounded-2xl rounded-br-md bg-muted px-4 py-3 text-sm leading-6 text-foreground sm:max-w-[78%]">
+        {children}
       </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Block label="What changed" body={answer.what_changed} />
-        <Block label="Why it matters" body={answer.why_it_matters} />
-      </div>
-
-      {answer.low_confidence ? (
-        <div className="rounded-xl border border-dashed border-border/70 p-4">
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Interpretation withheld</p>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">{answer.geomacro_view}</p>
-        </div>
-      ) : (
-        <Block label="Geomacro view · interpretation" body={answer.geomacro_view} />
-      )}
-
-      {answer.evidence.length > 0 ? (
-        <div>
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Evidence</p>
-              <p className="mt-1 text-sm font-medium">Records supporting this answer</p>
-            </div>
-            {meanPct !== null ? <span className="text-xs text-muted-foreground">Mean relevance {meanPct}%</span> : null}
-          </div>
-          <ul className="mt-3 space-y-3">
-            {answer.evidence.map((evidence) => (
-              <li key={evidence.eventId} className="rounded-xl border border-border/60 bg-background/25 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <Link
-                    to="/event/$eventId"
-                    params={{ eventId: evidence.eventId }}
-                    className="min-w-0 flex-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    {evidence.title}
-                  </Link>
-                  <span className="rounded-full border border-border/70 px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                    {evidence.relevance}% relevance
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      <p className="border-t border-border/60 pt-4 text-xs leading-6 text-muted-foreground">
-        Stored Geomacro evidence only{answer.gri !== null ? ` · Parent GRI v1.2 context ${answer.gri}` : ""}. Current public product readings are the separate Risk Indices. This is risk intelligence, not financial advice.
-      </p>
     </div>
   );
 }
 
-function Block({ label, body }: { label: string; body: string }) {
+function AssistantAnswer({ answer }: { answer: AskAnswer }) {
+  const evidence = answer.evidence.slice(0, 5);
+  const evidenceLabel = answer.data_mode === "permanent" ? "Verified context" : "Live checked";
+
   return (
-    <div className="rounded-xl border border-border/60 bg-background/20 p-4">
-      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-      <p className="mt-2 text-sm leading-7 text-foreground/90">{body}</p>
+    <div className="max-w-2xl px-1">
+      <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">
+        <span>Geomacro</span>
+        <span className="text-muted-foreground">· {evidenceLabel}</span>
+        {answer.low_confidence ? <span className="text-muted-foreground">· Limited confidence</span> : null}
+      </div>
+      <p className="mt-2 text-[15px] leading-7 text-foreground sm:text-base">{answer.summary}</p>
+
+      {evidence.length > 0 ? (
+        <details className="mt-3 rounded-xl border border-border/60 bg-card/25 px-3 py-2">
+          <summary className="cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground">
+            Evidence ({evidence.length})
+          </summary>
+          <ul className="mt-3 space-y-2 border-t border-border/60 pt-3">
+            {evidence.map((item) => (
+              <li key={item.eventId} className="text-xs leading-5 text-muted-foreground">
+                {isNavigableEvidence(item.eventId) ? (
+                  <Link
+                    to="/event/$eventId"
+                    params={{ eventId: item.eventId }}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    {item.title}
+                  </Link>
+                ) : (
+                  <span>{item.title}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+
+      {answer.insufficient_evidence ? (
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+          Geomacro will not fill an evidence gap with a synthetic claim.
+        </p>
+      ) : null}
     </div>
   );
+}
+
+function isNavigableEvidence(eventId: string) {
+  return !eventId.startsWith("live:") && !eventId.startsWith("web:");
 }
