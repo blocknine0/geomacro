@@ -20,6 +20,7 @@ import {
   resolveCommercialEntitlementForCapability,
 } from "../../../src/lib/commercial-access.server";
 import { recordCommercialUsageEvent } from "../../../src/lib/commercial-ops.server";
+import { commercialCorridorDescriptor } from "../../../src/lib/commercial-corridor-registry";
 import {
   structuredDeliveryPolicy,
 } from "../../../src/lib/structured-data-entitlement-registry";
@@ -113,12 +114,16 @@ function commercialPayload(
     latest_observed_at: row.latest_observed_at,
     updated_at: row.updated_at,
   }));
+  const corridorRegistry = context.subject.type === "corridor"
+    ? commercialCorridorDescriptor(context.subject)
+    : null;
 
   return {
     schema_version: STRUCTURAL_RESPONSE_SCHEMA_VERSION,
     status: context.status,
     methodology_status: context.methodology_status,
     subject: context.subject,
+    corridor_registry: corridorRegistry,
     delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY" as const,
     observations,
     coverage: coverage.slice(0, evidenceLimit),
