@@ -136,15 +136,39 @@ jobs:
           test "$PASS" = "true" || { printf '%s\n' "$OUT"; echo "::error::D1 primary compact authority marker not verified"; exit 3; }
           printf '{"ok":true,"store":"d1","control_plane_role":"primary","schema_version":1}\n' > /tmp/final-d1.json
 
-      - name: Verify fresh D1 scheduler checkpoint
-        working-directory: workers/control-plane
+      - name: Verify fresh production Intelligence scheduler
         shell: bash
         run: |
           set -euo pipefail
-          SQL="SELECT CASE WHEN EXISTS (SELECT 1 FROM pipeline_checkpoint WHERE pipeline='governed_source_ingestion' AND status='PASS' AND datetime(last_success_at) >= datetime('now','-6 hours')) THEN 'FINAL_SCHEDULER_PASS' ELSE 'FINAL_SCHEDULER_FAIL' END AS verdict;"
-          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "$SQL")"
-          printf '%s' "$OUT" | grep -q 'FINAL_SCHEDULER_PASS' || { printf '%s\n' "$OUT"; echo "::error::No fresh successful governed ingestion checkpoint"; exit 4; }
-          printf '{"ok":true,"fresh":true,"fail_closed_on_stale":true}\n' > /tmp/final-scheduler.json
+          JSON="$(gh api -H 'Accept: application/vnd.github+json' "/repos/${GITHUB_REPOSITORY}/actions/workflows/intelligence-scored-refresh.yml/runs?branch=main&per_page=20")"
+          RUNS="$JSON" node <<'NODE'
+          const fs=require('fs');
+          const parsed=JSON.parse(process.env.RUNS || '{}');
+          const runs=(parsed.workflow_runs ?? []).filter(run =>
+            run?.head_branch === 'main' && ['schedule','workflow_dispatch','push'].includes(run?.event)
+          );
+          const latest=runs[0];
+          if (!latest) throw new Error('PRODUCTION_INTELLIGENCE_RUN_MISSING');
+          const startedAt=Date.parse(String(latest.run_started_at ?? latest.created_at ?? ''));
+          const ageMs=Date.now()-startedAt;
+          if (latest.status !== 'completed' || latest.conclusion !== 'success') {
+            throw new Error(`PRODUCTION_INTELLIGENCE_LATEST_RUN_NOT_SUCCESS:${latest.id}:${latest.status}:${latest.conclusion}`);
+          }
+          if (!Number.isFinite(startedAt) || ageMs < -5 * 60 * 1000 || ageMs > 6 * 60 * 60 * 1000) {
+            throw new Error(`PRODUCTION_INTELLIGENCE_LATEST_RUN_STALE:${latest.id}:${latest.run_started_at ?? latest.created_at ?? 'missing'}`);
+          }
+          fs.writeFileSync('/tmp/final-scheduler.json', JSON.stringify({
+            ok:true,
+            fresh:true,
+            fail_closed_on_stale:true,
+            owner:'intelligence-scored-refresh',
+            workflow:'Intelligence Scored + Current Evidence',
+            workflow_run_id:latest.id,
+            workflow_event:latest.event,
+            workflow_head_sha:latest.head_sha,
+            workflow_started_at:latest.run_started_at ?? latest.created_at ?? null,
+          })+'\n');
+          NODE
 
       - name: Verify B2 directly with Supabase absent
         shell: bash
