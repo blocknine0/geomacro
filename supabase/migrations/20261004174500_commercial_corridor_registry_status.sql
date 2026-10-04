@@ -15,7 +15,7 @@ as
 with country_census as (
   select
     count(*) filter (where enabled)::bigint as enabled_country_count,
-    count(*) filter (where enabled and country_iso3 !~ '^[A-Z]{3}$')::bigint as invalid_enabled_iso3_rows
+    count(*) filter (where enabled and iso3 !~ '^[A-Z]{3}$')::bigint as invalid_enabled_iso3_rows
   from public.live_country_registry
 ), strategic_census as (
   select
