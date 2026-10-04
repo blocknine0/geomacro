@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { answerAskQuestion } from "./ask-answer.server";
 import { toCommercialAskBrief } from "./ask-commercial-brief";
 import { assertPublicReadOrigin } from "./origin-guard";
-import { answerQuestion, type HybridAskAnswer } from "./hybrid-ask-intelligence.server";
+import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 import { checkAskRateLimit } from "./ask-rate-limit.server";
 
 const INJECTION_RE =
@@ -28,5 +29,5 @@ export const askGeomacro = createServerFn({ method: "POST" })
     if (!checkAskRateLimit(ip)) {
       throw new Error("Too many requests. Please wait a moment.");
     }
-    return toCommercialAskBrief(await answerQuestion(data.question), data.question) as AskAnswer;
+    return toCommercialAskBrief(await answerAskQuestion(data.question), data.question) as AskAnswer;
   });
