@@ -49,6 +49,22 @@ describe("GDELT GAL production freshness workflow", () => {
     expect(directSync).toContain("APP_SUPABASE_SERVICE_ROLE_KEY");
   });
 
+  it("runs the exact canonical structuring source locally when the Supabase Edge runtime is quota-restricted", () => {
+    const runner = readFileSync(join(process.cwd(), "scripts/run-live-structure-local.ts"), "utf8");
+    const drain = readFileSync(join(process.cwd(), "scripts/drain-live-structure.mjs"), "utf8");
+    expect(workflow).toContain("LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres");
+    expect(workflow).toContain("bun build scripts/run-live-structure-local.ts --target=node");
+    expect(workflow).toContain("grep -q 'local_canonical_source_direct_postgres' gdelt-gal-cycle/structure.log");
+    expect(runner).toContain('supabase/functions/live-structure-intelligence/index.ts');
+    expect(runner).toContain('const STRUCTURE_VERSION = \\"live-structure-v1.4.9\\"');
+    expect(runner).toContain('import { createGriDbClient } from \\"./scripts/lib/gri-db-client.mjs\\";');
+    expect(runner).toContain("LOCAL_STRUCTURER_TRANSFORM_ALIAS_MISMATCH");
+    expect(runner).toContain("handleLiveStructureRequest");
+    expect(drain).toContain('EXECUTION_MODE === "local_direct_postgres"');
+    expect(drain).toContain('scripts/run-live-structure-local.ts');
+    expect(drain).toContain("LIVE_STRUCTURE_LOCAL_FRAGMENT_INCOMPLETE");
+  });
+
   it("keeps every database stage in the canonical cycle loader-compatible", () => {
     const cycle = readFileSync(join(process.cwd(), "scripts/run-gdelt-gal-cycle.mjs"), "utf8");
     const shim = readFileSync(join(process.cwd(), "scripts/lib/gri-db-client.mjs"), "utf8");
