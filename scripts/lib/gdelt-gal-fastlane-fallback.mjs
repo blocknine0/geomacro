@@ -2,12 +2,15 @@ import fetch from 'node-fetch';
 import { gunzipSync } from 'node:zlib';
 
 const GAL_BASE = 'https://storage.googleapis.com/data.gdeltproject.org/gdeltv3/gal';
-const MAX_PROBE_MINUTES = 12;
-const MAX_SOURCE_FILES = 3;
-const DEFAULT_LOOKBACK_MINUTES = 35;
-const DEFAULT_TIMEOUT_MS = 20_000;
+const MAX_PROBE_REQUESTS = 60;
+const MAX_PARALLEL_PROBES = 6;
+const DEFAULT_LOOKBACK_MINUTES = 300;
+const DEFAULT_TIMEOUT_MS = 8_000;
+const HEARTBEAT_MINUTES = 15;
+const HEARTBEAT_OFFSETS = Object.freeze([1, 3, 5]);
+const MIN_TOPIC_SCORE = 3;
 
-const TOPIC_PATTERNS = Object.freeze({
+const STRONG_TOPIC_PATTERNS = Object.freeze({
   geopolitics: [
     /\bwar\b/i, /\bconflict\b/i, /\bmilitary\b/i, /\bmissile/i, /\bdrone/i,
     /\battack/i, /\bstrike/i, /\binvasion/i, /\bceasefire/i, /\bsanction/i,
@@ -16,27 +19,39 @@ const TOPIC_PATTERNS = Object.freeze({
   ],
   macro: [
     /\binflation\b/i, /\bcpi\b/i, /\bppi\b/i, /\bgdp\b/i,
-    /\bgross domestic product\b/i, /\binterest rate/i, /\brate cut/i,
-    /\brate hike/i, /\bcentral bank/i, /\bmonetary policy/i,
+    /\bgross domestic product\b/i, /\binterest rates?\b/i, /\brate cuts?\b/i,
+    /\brate hikes?\b/i, /\bcentral banks?\b/i, /\bmonetary policy\b/i,
     /\bfederal reserve\b/i, /\becb\b/i, /\bbank of england\b/i,
     /\bbank of japan\b/i, /\brbi\b/i, /\bunemployment\b/i, /\bpayroll/i,
     /\bjobs report\b/i, /\bpmi\b/i, /\brecession\b/i, /\bsovereign debt\b/i,
-    /\bbond yield/i, /\bfiscal\b/i, /\bbudget\b/i, /\btrade balance\b/i,
-    /\bcurrent account\b/i, /\bcurrency\b/i, /\bforeign exchange\b/i,
-    /\bforex\b/i, /\bcapital control/i, /\bbanking crisis\b/i, /\bdefault\b/i,
-    /\btariff/i,
+    /\bbond yields?\b/i, /\btrade balance\b/i, /\bcurrent account\b/i,
+    /\bforeign exchange\b/i, /\bforex\b/i, /\bcapital controls?\b/i,
+    /\bbanking crisis\b/i, /\bsovereign default\b/i, /\btariffs?\b/i,
+    /\bfiscal (?:policy|deficit|spending|balance|rules?|reform|risk|pressure)\b/i,
+    /\bbudget (?:deficit|surplus|spending|plan|bill|cuts?|gap)\b/i,
+    /\bcurrency (?:crisis|devaluation|intervention|reserve|weakness|strength)\b/i,
   ],
   rare_earth: [
-    /\brare earth/i, /\bcritical mineral/i, /\bneodymium\b/i,
+    /\brare[- ]earth/i, /\bcritical minerals?\b/i, /\bneodymium\b/i,
     /\bpraseodymium\b/i, /\bdysprosium\b/i, /\bterbium\b/i, /\byttrium\b/i,
     /\blanthanum\b/i, /\bcerium\b/i, /\bsamarium\b/i, /\beuropium\b/i,
-    /\bgadolinium\b/i, /\bndpr\b/i, /\bndfeb\b/i, /\bpermanent magnet/i,
-    /\brare-earth oxide/i, /\brare earth oxide/i, /\brare-earth metal/i,
-    /\brare earth metal/i, /\bmineral processing\b/i, /\bmineral refining\b/i,
-    /\bseparation plant\b/i, /\bstrategic mineral/i, /\bgallium\b/i,
-    /\bgermanium\b/i, /\blithium\b/i, /\bcobalt\b/i, /\bnickel\b/i,
+    /\bgadolinium\b/i, /\bndpr\b/i, /\bndfeb\b/i, /\bpermanent magnets?\b/i,
+    /\brare[- ]earth oxides?\b/i, /\brare[- ]earth metals?\b/i,
+    /\bmineral processing\b/i, /\bmineral refining\b/i, /\bseparation plants?\b/i,
+    /\bstrategic minerals?\b/i, /\bgallium\b/i, /\bgermanium\b/i,
   ],
 });
+
+const BROAD_RARE_EARTH_PATTERNS = Object.freeze([
+  /\blithium\b/i, /\bcobalt\b/i, /\bnickel\b/i, /\bgraphite\b/i,
+]);
+
+const MINERAL_CONTEXT_PATTERNS = Object.freeze([
+  /\bmine\b/i, /\bmining\b/i, /\bminerals?\b/i, /\bore\b/i, /\brefin/i,
+  /\bprocessing\b/i, /\bsmelt/i, /\bsupply chain\b/i, /\bexport/i,
+  /\bimport/i, /\bproduction\b/i, /\bproducer\b/i, /\breserves?\b/i,
+  /\bprices?\b/i, /\bdemand\b/i, /\bshortage\b/i, /\bproject\b/i,
+]);
 
 function utcMinuteStamp(date) {
   return [
@@ -61,12 +76,45 @@ function stampToIso(stamp) {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-function candidateStamps(now, lookbackMinutes) {
+function floorToHeartbeat(date) {
+  const floored = new Date(date);
+  floored.setUTCSeconds(0, 0);
+  floored.setUTCMinutes(Math.floor(floored.getUTCMinutes() / HEARTBEAT_MINUTES) * HEARTBEAT_MINUTES);
+  return floored;
+}
+
+export function candidateStamps(now = new Date(), lookbackMinutes = DEFAULT_LOOKBACK_MINUTES) {
+  const nowMs = now.getTime();
+  const boundedLookback = Math.max(15, Math.min(DEFAULT_LOOKBACK_MINUTES, Number(lookbackMinutes) || DEFAULT_LOOKBACK_MINUTES));
+  const oldestMs = nowMs - boundedLookback * 60_000;
   const out = [];
-  const boundedLookback = Math.max(1, Math.min(DEFAULT_LOOKBACK_MINUTES, Number(lookbackMinutes) || DEFAULT_LOOKBACK_MINUTES));
-  for (let i = 1; i <= boundedLookback && out.length < MAX_PROBE_MINUTES; i += 1) {
-    out.push(utcMinuteStamp(new Date(now.getTime() - i * 60_000)));
+  const seen = new Set();
+
+  const add = (date) => {
+    const ms = date.getTime();
+    if (ms >= nowMs || ms < oldestMs || out.length >= MAX_PROBE_REQUESTS) return;
+    const stamp = utcMinuteStamp(date);
+    if (!seen.has(stamp)) {
+      seen.add(stamp);
+      out.push(stamp);
+    }
+  };
+
+  // Cover the immediate edge first, then the known GDELT 15-minute heartbeat clusters.
+  for (let minuteAgo = 1; minuteAgo <= 6; minuteAgo += 1) {
+    add(new Date(nowMs - minuteAgo * 60_000));
   }
+
+  for (
+    let heartbeat = floorToHeartbeat(now);
+    heartbeat.getTime() >= oldestMs && out.length < MAX_PROBE_REQUESTS;
+    heartbeat = new Date(heartbeat.getTime() - HEARTBEAT_MINUTES * 60_000)
+  ) {
+    for (const offset of HEARTBEAT_OFFSETS) {
+      add(new Date(heartbeat.getTime() + offset * 60_000));
+    }
+  }
+
   return out;
 }
 
@@ -102,10 +150,28 @@ function publisherName(domain) {
   return parts.length >= 2 ? parts.at(-2).replace(/[-_]+/g, ' ') : String(domain || 'unknown');
 }
 
-function rowMatchesCategory(row, categoryName) {
-  const patterns = TOPIC_PATTERNS[categoryName] || [];
-  const text = [row?.title, row?.desc, row?.domain, row?.outletName].filter(Boolean).join(' ');
-  return patterns.some((pattern) => pattern.test(text));
+function countMatches(text, patterns) {
+  let count = 0;
+  for (const pattern of patterns) if (pattern.test(text)) count += 1;
+  return count;
+}
+
+export function scoreTopicEvidence(row, categoryName) {
+  const title = String(row?.title || '').trim();
+  const description = String(row?.desc || '').trim();
+  const strong = STRONG_TOPIC_PATTERNS[categoryName] || [];
+  let score = countMatches(title, strong) * 4 + countMatches(description, strong) * 2;
+
+  if (categoryName === 'rare_earth') {
+    const broadTitle = countMatches(title, BROAD_RARE_EARTH_PATTERNS);
+    const broadDescription = countMatches(description, BROAD_RARE_EARTH_PATTERNS);
+    const contextText = `${title} ${description}`;
+    const context = countMatches(contextText, MINERAL_CONTEXT_PATTERNS);
+    if (broadTitle > 0 && context > 0) score += broadTitle * 3 + Math.min(2, context);
+    if (broadDescription > 0 && context > 1) score += broadDescription + 1;
+  }
+
+  return score;
 }
 
 function realPublishedAt(row, sourceStamp) {
@@ -121,13 +187,45 @@ function realPublishedAt(row, sourceStamp) {
 async function fetchGalFile(stamp, timeoutMs) {
   const sourceUrl = `${GAL_BASE}/${stamp}.gal.json.gz`;
   const response = await fetch(sourceUrl, {
-    headers: { 'user-agent': 'Geomacro-Current-Scoring-Fastlane/1.0' },
+    headers: { 'user-agent': 'Geomacro-Current-Scoring-Fastlane/1.1' },
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`GDELT_GAL_HTTP_${response.status}`);
   const compressed = Buffer.from(await response.arrayBuffer());
   return { stamp, sourceUrl, text: gunzipSync(compressed).toString('utf8') };
+}
+
+function collectRelevantArticles(file, categoryName, now, freshnessMs, seen) {
+  const found = [];
+  for (const line of file.text.split('\n')) {
+    if (!line.trim()) continue;
+    let row;
+    try { row = JSON.parse(line); } catch { continue; }
+    if (!row?.url || !row?.title) continue;
+    const topicScore = scoreTopicEvidence(row, categoryName);
+    if (topicScore < MIN_TOPIC_SCORE) continue;
+    const url = normalizeUrl(row.url);
+    if (!url || seen.has(url)) continue;
+    const publishedAt = realPublishedAt(row, file.stamp);
+    const publishedMs = Date.parse(String(publishedAt || ''));
+    if (!Number.isFinite(publishedMs) || now.getTime() - publishedMs > freshnessMs || publishedMs - now.getTime() > 5 * 60_000) continue;
+    const sourceDomain = domainFromUrl(url) || String(row.domain || '').trim().toLowerCase();
+    if (!sourceDomain) continue;
+    seen.add(url);
+    found.push({
+      title: String(row.title).trim(),
+      description: String(row.desc || '').trim(),
+      url,
+      publishedAt,
+      source: String(row.outletName || '').trim() || publisherName(sourceDomain),
+      sourceDomain,
+      discoveryProvider: 'gdelt_gal',
+      gdeltGalSourceStamp: file.stamp,
+      topicScore,
+    });
+  }
+  return found;
 }
 
 export async function fetchGdeltGalFastlaneArticles({
@@ -138,47 +236,36 @@ export async function fetchGdeltGalFastlaneArticles({
   lookbackMinutes = DEFAULT_LOOKBACK_MINUTES,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 } = {}) {
-  if (!TOPIC_PATTERNS[categoryName]) throw new Error(`GDELT_GAL_CATEGORY_UNSUPPORTED:${categoryName}`);
+  if (!STRONG_TOPIC_PATTERNS[categoryName]) throw new Error(`GDELT_GAL_CATEGORY_UNSUPPORTED:${categoryName}`);
   const boundedMax = Math.max(1, Math.min(5, Number(maxCandidates) || 2));
-  const stamps = candidateStamps(now, lookbackMinutes);
-  const settled = await Promise.allSettled(stamps.map((stamp) => fetchGalFile(stamp, timeoutMs)));
-  const files = settled
-    .filter((result) => result.status === 'fulfilled' && result.value)
-    .map((result) => result.value)
-    .sort((a, b) => b.stamp.localeCompare(a.stamp))
-    .slice(0, MAX_SOURCE_FILES);
-
-  const seen = new Set();
-  const articles = [];
   const freshnessMs = Math.max(60_000, Number(maxArticleAgeMs) || 6 * 60 * 60 * 1000);
+  const effectiveLookbackMinutes = Math.min(
+    DEFAULT_LOOKBACK_MINUTES,
+    Math.max(15, Math.ceil(freshnessMs / 60_000), Number(lookbackMinutes) || DEFAULT_LOOKBACK_MINUTES),
+  );
+  const stamps = candidateStamps(now, effectiveLookbackMinutes);
+  const seen = new Set();
+  const candidates = [];
 
-  for (const file of files) {
-    for (const line of file.text.split('\n')) {
-      if (!line.trim()) continue;
-      let row;
-      try { row = JSON.parse(line); } catch { continue; }
-      if (!row?.url || !row?.title || !rowMatchesCategory(row, categoryName)) continue;
-      const url = normalizeUrl(row.url);
-      if (!url || seen.has(url)) continue;
-      const publishedAt = realPublishedAt(row, file.stamp);
-      const publishedMs = Date.parse(String(publishedAt || ''));
-      if (!Number.isFinite(publishedMs) || now.getTime() - publishedMs > freshnessMs || publishedMs - now.getTime() > 5 * 60_000) continue;
-      const sourceDomain = domainFromUrl(url) || String(row.domain || '').trim().toLowerCase();
-      if (!sourceDomain) continue;
-      seen.add(url);
-      articles.push({
-        title: String(row.title).trim(),
-        description: String(row.desc || '').trim(),
-        url,
-        publishedAt,
-        source: String(row.outletName || '').trim() || publisherName(sourceDomain),
-        sourceDomain,
-        discoveryProvider: 'gdelt_gal',
-        gdeltGalSourceStamp: file.stamp,
-      });
-      if (articles.length >= boundedMax) return articles;
+  for (let start = 0; start < stamps.length; start += MAX_PARALLEL_PROBES) {
+    const batch = stamps.slice(start, start + MAX_PARALLEL_PROBES);
+    const settled = await Promise.allSettled(batch.map((stamp) => fetchGalFile(stamp, timeoutMs)));
+    const files = settled
+      .filter((result) => result.status === 'fulfilled' && result.value)
+      .map((result) => result.value)
+      .sort((a, b) => b.stamp.localeCompare(a.stamp));
+
+    for (const file of files) {
+      candidates.push(...collectRelevantArticles(file, categoryName, now, freshnessMs, seen));
     }
+
+    if (candidates.length >= Math.max(boundedMax * 3, 6)) break;
   }
 
-  return articles;
+  candidates.sort((a, b) => {
+    if (b.topicScore !== a.topicScore) return b.topicScore - a.topicScore;
+    return Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
+  });
+
+  return candidates.slice(0, boundedMax).map(({ topicScore: _topicScore, ...article }) => article);
 }

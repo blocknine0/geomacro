@@ -10,8 +10,9 @@ describe('#1414 current scoring GAL fallback', () => {
     expect(workflow).toContain('fetchGdeltArticlesWithGalFallback');
     expect(workflow).toContain('gdelt-gal-fastlane-fallback.mjs');
     expect(helper).toContain('storage.googleapis.com/data.gdeltproject.org/gdeltv3/gal');
-    expect(helper).toContain('MAX_PROBE_MINUTES = 12');
-    expect(helper).toContain('MAX_SOURCE_FILES = 3');
+    expect(helper).toContain('MAX_PROBE_REQUESTS = 60');
+    expect(helper).toContain('MAX_PARALLEL_PROBES = 6');
+    expect(helper).toContain('HEARTBEAT_OFFSETS = Object.freeze([1, 3, 5])');
   });
 
   it('preserves real upstream time and never promotes source features to severity', () => {
@@ -22,7 +23,14 @@ describe('#1414 current scoring GAL fallback', () => {
     expect(workflow).toContain("classification_version: 'event-severity-v1.0.5'");
   });
 
-  it('keeps recurring load bounded while catch-up is serialized on self-file push', () => {
+  it('pre-filters on article evidence rather than publisher identity', () => {
+    expect(helper).toContain("const title = String(row?.title || '').trim()");
+    expect(helper).toContain("const description = String(row?.desc || '').trim()");
+    expect(helper).not.toContain("[row?.title, row?.desc, row?.domain, row?.outletName]");
+    expect(helper).toContain('topicScore');
+  });
+
+  it('keeps recurring load bounded while catch-up remains serialized', () => {
     expect(workflow).toContain('GITHUB_EVENT_NAME');
     expect(workflow).toContain('domain=macro');
     expect(workflow).toContain('recover-rare-earth-after-fastlane-change');
