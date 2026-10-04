@@ -76,7 +76,7 @@ function syncFailureIsRetryable(payload, result = null) {
 
 async function runSyncAttempt(attempt) {
   const responseFile = `${OUTPUT_DIR}/sync-${attempt}.json`;
-  const result = await run("bun", ["scripts/sync-gdelt-gal-production.mjs"], {
+  const result = await run("node", ["scripts/sync-gdelt-gal-production.mjs"], {
     GDELT_GAL_SYNC_OUTPUT: responseFile,
   });
   const payload = await readJson(responseFile);
@@ -234,8 +234,8 @@ async function main() {
 
   const hotTopicOutput = `${OUTPUT_DIR}/agent-hot-topic-readiness.json`;
   const audit = await run(
-    "bun",
-    ["scripts/audit-agent-hot-topic-readiness.ts", "--require-pipeline-healthy"],
+    "node",
+    ["--import", "tsx", "scripts/audit-agent-hot-topic-readiness.ts", "--require-pipeline-healthy"],
     { AGENT_HOT_TOPIC_READINESS_OUTPUT: hotTopicOutput },
   );
   await writeFile(`${OUTPUT_DIR}/hot-topic-audit.log`, audit.stdout + audit.stderr, "utf8");
