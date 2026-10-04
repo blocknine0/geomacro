@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toCommercialAskBrief } from "../lib/ask-commercial-brief";
+import { directAnswerForQuestion, toCommercialAskBrief } from "../lib/ask-commercial-brief";
 import type { AskAnswer } from "../lib/ask-intelligence.server";
 
 function answer(overrides: Partial<AskAnswer> = {}): AskAnswer {
@@ -65,5 +65,31 @@ describe("Ask Geomacro commercial brief", () => {
     expect(output.why_it_matters.length).toBeLessThanOrEqual(421);
     expect(output.geomacro_view.length).toBeLessThanOrEqual(421);
     expect(output.summary).toContain("Relevant stored evidence remains material");
+  });
+
+  it("answers change questions with the change itself instead of a generic report preface", () => {
+    const input = answer({
+      summary: "Geomacro found 4 relevant verified intelligence records for your question.",
+      what_changed: "Macro risk rose as inflation pressure and bond yields strengthened.",
+    });
+
+    expect(directAnswerForQuestion(input, "What changed today?")).toBe(
+      "Macro risk rose as inflation pressure and bond yields strengthened.",
+    );
+    expect(toCommercialAskBrief(input, "What changed today?").summary).toBe(
+      "Macro risk rose as inflation pressure and bond yields strengthened.",
+    );
+  });
+
+  it("answers driver questions with the supported driver statement", () => {
+    const input = answer({
+      summary: "Geomacro found 3 relevant verified intelligence records for your question.",
+      what_changed: "Sanctions escalation and cross-border military activity are the strongest matched geopolitical drivers.",
+      why_it_matters: "These findings come from Geomacro's verified B2 intelligence continuity layer.",
+    });
+
+    expect(toCommercialAskBrief(input, "What is driving geopolitical risk?").summary).toBe(
+      "Sanctions escalation and cross-border military activity are the strongest matched geopolitical drivers.",
+    );
   });
 });
