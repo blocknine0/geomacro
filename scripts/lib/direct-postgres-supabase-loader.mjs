@@ -28,6 +28,14 @@ export async function load(url, context, nextLoad) {
       format: "module",
       shortCircuit: true,
       source: `
+        // Some canonical GRI scripts still perform a legacy Supabase REST
+        // credential presence check before calling createClient(). In direct
+        // Postgres mode this virtual module is evaluated first, so bounded
+        // non-network sentinels let that obsolete guard pass without restoring
+        // a REST dependency or exposing a service-role secret. createClient()
+        // below ignores its arguments and always validates/uses SUPABASE_DB_URL.
+        process.env.SUPABASE_URL ||= "https://direct-postgres.invalid";
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||= "direct-postgres-no-rest";
         import { createGriDbClient } from ${JSON.stringify(helperUrl)};
         export function createClient() { return createGriDbClient(); }
       `,
