@@ -14,9 +14,6 @@ permissions:
   contents: read
 
 concurrency:
-  # Same writer lock as Auto Ingest News / legacy orchestrator. This is the
-  # canonical ingest-news scorer at a bounded current-evidence cadence, not a
-  # second scoring implementation.
   group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
@@ -41,9 +38,8 @@ jobs:
       MISTRAL_MODEL: ${{ vars.MISTRAL_MODEL }}
       CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
       CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
-      # Current fast lane: one GDELT discovery request, one category, no
-      # Guardian/GDACS/ReliefWeb expansion, and at most two classifier inputs.
       GEOMACRO_GDELT_ONLY: "true"
+      GDELT_GAL_FALLBACK_ENABLED: "true"
       GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "0"
       GDACS_ENABLED: "false"
       RELIEFWEB_ENABLED: "false"
@@ -56,18 +52,18 @@ jobs:
 
     steps:
       - name: Checkout canonical main
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: main
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "22"
 
       - name: Set up Bun 1.4.2
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
 
@@ -97,12 +93,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          slot=$(( $(date -u +%s) / 1200 % 3 ))
-          case "$slot" in
-            0) domain=geopolitics ;;
-            1) domain=macro ;;
-            2) domain=rare_earth ;;
-          esac
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            domain=macro
+          else
+            slot=$(( $(date -u +%s) / 1200 % 3 ))
+            case "$slot" in
+              0) domain=geopolitics ;;
+              1) domain=macro ;;
+              2) domain=rare_earth ;;
+            esac
+          fi
           echo "GDELT_FORCE_CATEGORY=$domain" >> "$GITHUB_ENV"
           echo "FASTLANE_DOMAIN=$domain" >> "$GITHUB_ENV"
           echo "Current scoring domain: $domain"
@@ -134,13 +134,44 @@ jobs:
           const historyMarker = ".select('source_url, source_title')\n        .range(from, from + PAGE_SIZE - 1);";
           const historyReplacement = ".select('source_url, source_title')\n        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())\n        .range(from, from + PAGE_SIZE - 1);";
           if (!source.includes(historyMarker)) throw new Error('FASTLANE_HISTORY_SCAN_MARKER_MISSING');
-          if (!source.includes("7 * 24 * 60 * 60 * 1000).toISOString()")) {
-            source = source.replace(historyMarker, historyReplacement);
+          if (!source.includes("7 * 24 * 60 * 60 * 1000).toISOString()")) source = source.replace(historyMarker, historyReplacement);
+
+          const apiMarker = 'async function fetchArticlesFromApis(query, categoryName) {';
+          const fallbackWrapper = `async function fetchGdeltArticlesWithGalFallback(query, categoryName) {
+            const enabled = String(process.env.GDELT_GAL_FALLBACK_ENABLED || '').toLowerCase() === 'true';
+            let primaryError = null;
+            try {
+              const primary = await fetchGdeltArticles(query);
+              if (primary.length > 0 || !enabled) return primary;
+              console.log('  GDELT DOC returned no current candidates; trying governed GAL fallback.');
+            } catch (error) {
+              primaryError = error;
+              const transient = /GDELT.*(?:rate limit|HTTP (?:429|5\\d\\d))|fetch|network|socket|timeout/i.test(String(error?.message || ''));
+              if (!enabled || !transient) throw error;
+              console.log('  GDELT DOC unavailable; trying governed GAL fallback.');
+            }
+            const { fetchGdeltGalFastlaneArticles } = await import('./lib/gdelt-gal-fastlane-fallback.mjs');
+            const fallback = await fetchGdeltGalFastlaneArticles({
+              categoryName,
+              maxArticleAgeMs: MAX_ARTICLE_AGE_MS,
+              maxCandidates: Math.max(1, Math.min(2, safeCandidatesPerCategory())),
+            });
+            console.log(\`  GDELT GAL fallback: \${fallback.length} current candidate(s) for \${categoryName}.\`);
+            if (fallback.length === 0 && primaryError) console.log(\`  Primary DOC error retained as diagnostic: \${primaryError.message}\`);
+            return fallback;
           }
+
+          `;
+          if (!source.includes(apiMarker)) throw new Error('GDELT_GAL_FALLBACK_INSERT_MARKER_MISSING');
+          if (!source.includes('fetchGdeltArticlesWithGalFallback')) source = source.replace(apiMarker, fallbackWrapper + apiMarker);
+
+          const callMarker = 'await fetchGdeltArticles(gdeltQuery);';
+          if (!source.includes(callMarker)) throw new Error('GDELT_CALL_MARKER_MISSING');
+          source = source.replace(callMarker, 'await fetchGdeltArticlesWithGalFallback(gdeltQuery, category.name);');
 
           fs.writeFileSync(path, source, 'utf8');
           const verified = fs.readFileSync(path, 'utf8');
-          for (const marker of ['GDELT_FORCE_CATEGORY', 'GEOMACRO_GDELT_ONLY', "7 * 24 * 60 * 60 * 1000).toISOString()"] ) {
+          for (const marker of ['GDELT_FORCE_CATEGORY', 'GEOMACRO_GDELT_ONLY', 'fetchGdeltArticlesWithGalFallback', 'gdelt-gal-fastlane-fallback.mjs', "7 * 24 * 60 * 60 * 1000).toISOString()"] ) {
             if (!verified.includes(marker)) throw new Error(`FASTLANE_PATCH_MISSING:${marker}`);
           }
           NODE
@@ -158,16 +189,14 @@ jobs:
           const matches = [...log.matchAll(/\{"discovery_candidates_classified":(\d+),"events_inserted":(\d+),"candidates_rejected":(\d+)\}/g)];
           if (!matches.length) throw new Error('FASTLANE_SCORER_SUMMARY_MISSING');
           const [, classified, inserted, rejected] = matches.at(-1);
-          if (/Guardian discovery:|GDACS discovery:|ReliefWeb discovery:/.test(log)) {
-            throw new Error('FASTLANE_NON_GDELT_DISCOVERY_USED');
-          }
+          if (/Guardian discovery:|GDACS discovery:|ReliefWeb discovery:/.test(log)) throw new Error('FASTLANE_NON_GDELT_DISCOVERY_USED');
           const proof = {
             schema: 'geomacro.current-scoring-fastlane.v1',
             ok: true,
             domain: process.env.FASTLANE_DOMAIN,
             classification_version: 'event-severity-v1.0.5',
             classification_prompt_version: 'risk-desk-filter-v1.0.5',
-            discovery_provider: 'gdelt',
+            discovery_provider: /GDELT GAL fallback: [1-9]/.test(log) ? 'gdelt_gal' : 'gdelt',
             raw_feature_score_promotion: false,
             recent_dedupe_window_days: 7,
             classified_candidates: Number(classified),
@@ -188,8 +217,7 @@ jobs:
           import fs from 'node:fs';
           const db = createGriDbClient();
           const domain = process.env.FASTLANE_DOMAIN;
-          const { data, error } = await db
-            .from('events')
+          const { data, error } = await db.from('events')
             .select('id,category,severity,confidence,classification_version,classification_prompt_version,published_at,created_at')
             .eq('category', domain)
             .eq('classification_version', 'event-severity-v1.0.5')
@@ -197,9 +225,7 @@ jobs:
             .limit(1);
           if (error) throw new Error(error.message);
           const latest = data?.[0] ?? null;
-          if (latest && (!Number.isFinite(Number(latest.severity)) || Number(latest.severity) < 0 || Number(latest.severity) > 100)) {
-            throw new Error('FASTLANE_LATEST_SEVERITY_INVALID');
-          }
+          if (latest && (!Number.isFinite(Number(latest.severity)) || Number(latest.severity) < 0 || Number(latest.severity) > 100)) throw new Error('FASTLANE_LATEST_SEVERITY_INVALID');
           const proof = JSON.parse(fs.readFileSync('/tmp/current-scoring-proof.json', 'utf8'));
           proof.latest_canonical_scored_event = latest;
           fs.writeFileSync('/tmp/current-scoring-proof.json', JSON.stringify(proof, null, 2) + '\n');
@@ -208,11 +234,163 @@ jobs:
 
       - name: Upload current scoring proof
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: current-scoring-fastlane-${{ github.run_id }}
           path: |
             /tmp/current-scoring-proof.json
             /tmp/current-scoring.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  recover-rare-earth-after-fastlane-change:
+    if: github.event_name == 'push' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    needs: score-current-domain
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      GRI_DB_MODE: direct_postgres
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+      GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
+      MISTRAL_MODEL: ${{ vars.MISTRAL_MODEL }}
+      CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+      CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
+      GEOMACRO_GDELT_ONLY: "true"
+      GDELT_GAL_FALLBACK_ENABLED: "true"
+      GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "0"
+      GDACS_ENABLED: "false"
+      RELIEFWEB_ENABLED: "false"
+      MAX_CANDIDATES_PER_CATEGORY: "2"
+      MAX_ARTICLE_AGE_MS: "21600000"
+      GROQ_BATCH_SIZE: "2"
+      GROQ_MAX_REQUESTS_PER_RUN: "4"
+      GROQ_MAX_WAIT_MS: "45000"
+      NEWS_QUERY_DELAY_MS: "0"
+      GDELT_FORCE_CATEGORY: rare_earth
+      FASTLANE_DOMAIN: rare_earth
+
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Require authoritative direct-Postgres and classifier path
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL:-}"
+          test -n "${GROQ_API_KEY:-}${GEMINI_API_KEY:-}${MISTRAL_API_KEY:-}${CEREBRAS_API_KEY:-}"
+      - name: Enable bounded GDELT-only mode in canonical scorer
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'scripts/ingest-news.js';
+          let source = fs.readFileSync(path, 'utf8');
+          const categoryMarker = "function gdeltCategoryForCurrentRun(now = new Date()) {\n";
+          const categoryInjection = categoryMarker + "  const forcedCategory = String(process.env.GDELT_FORCE_CATEGORY || '').trim();\n  if (GDELT_DISCOVERY_CATEGORY_ORDER.includes(forcedCategory)) return forcedCategory;\n\n";
+          if (!source.includes(categoryMarker)) throw new Error('GDELT_SELECTOR_MARKER_MISSING');
+          if (!source.includes('GDELT_FORCE_CATEGORY')) source = source.replace(categoryMarker, categoryInjection);
+          const guardianMarker = "function guardianQueryPlan(\n  queries,\n  priorityQueries = [],\n) {\n";
+          const guardianInjection = guardianMarker + "  if (String(process.env.GEOMACRO_GDELT_ONLY || '').toLowerCase() === 'true') {\n    return { queries: [], totalQueries: Array.isArray(queries) ? queries.length : 0, budget: 0, totalChunks: 0, chunkIndex: 0, startIndex: 0, endIndex: 0, priorityQueries: [] };\n  }\n\n";
+          if (!source.includes(guardianMarker)) throw new Error('GUARDIAN_PLAN_MARKER_MISSING');
+          if (!source.includes('GEOMACRO_GDELT_ONLY')) source = source.replace(guardianMarker, guardianInjection);
+          const historyMarker = ".select('source_url, source_title')\n        .range(from, from + PAGE_SIZE - 1);";
+          const historyReplacement = ".select('source_url, source_title')\n        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())\n        .range(from, from + PAGE_SIZE - 1);";
+          if (!source.includes(historyMarker)) throw new Error('FASTLANE_HISTORY_SCAN_MARKER_MISSING');
+          if (!source.includes("7 * 24 * 60 * 60 * 1000).toISOString()")) source = source.replace(historyMarker, historyReplacement);
+          const apiMarker = 'async function fetchArticlesFromApis(query, categoryName) {';
+          const fallbackWrapper = `async function fetchGdeltArticlesWithGalFallback(query, categoryName) {
+            const enabled = String(process.env.GDELT_GAL_FALLBACK_ENABLED || '').toLowerCase() === 'true';
+            let primaryError = null;
+            try {
+              const primary = await fetchGdeltArticles(query);
+              if (primary.length > 0 || !enabled) return primary;
+              console.log('  GDELT DOC returned no current candidates; trying governed GAL fallback.');
+            } catch (error) {
+              primaryError = error;
+              const transient = /GDELT.*(?:rate limit|HTTP (?:429|5\\d\\d))|fetch|network|socket|timeout/i.test(String(error?.message || ''));
+              if (!enabled || !transient) throw error;
+              console.log('  GDELT DOC unavailable; trying governed GAL fallback.');
+            }
+            const { fetchGdeltGalFastlaneArticles } = await import('./lib/gdelt-gal-fastlane-fallback.mjs');
+            const fallback = await fetchGdeltGalFastlaneArticles({ categoryName, maxArticleAgeMs: MAX_ARTICLE_AGE_MS, maxCandidates: Math.max(1, Math.min(2, safeCandidatesPerCategory())) });
+            console.log(\`  GDELT GAL fallback: \${fallback.length} current candidate(s) for \${categoryName}.\`);
+            if (fallback.length === 0 && primaryError) console.log(\`  Primary DOC error retained as diagnostic: \${primaryError.message}\`);
+            return fallback;
+          }
+
+          `;
+          if (!source.includes(apiMarker)) throw new Error('GDELT_GAL_FALLBACK_INSERT_MARKER_MISSING');
+          if (!source.includes('fetchGdeltArticlesWithGalFallback')) source = source.replace(apiMarker, fallbackWrapper + apiMarker);
+          const callMarker = 'await fetchGdeltArticles(gdeltQuery);';
+          if (!source.includes(callMarker)) throw new Error('GDELT_CALL_MARKER_MISSING');
+          source = source.replace(callMarker, 'await fetchGdeltArticlesWithGalFallback(gdeltQuery, category.name);');
+          fs.writeFileSync(path, source, 'utf8');
+          NODE
+      - name: Run bounded canonical current scorer
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ingest-news.js 2>&1 | tee /tmp/current-scoring-rare-earth.log
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const log = fs.readFileSync('/tmp/current-scoring-rare-earth.log', 'utf8');
+          const matches = [...log.matchAll(/\{"discovery_candidates_classified":(\d+),"events_inserted":(\d+),"candidates_rejected":(\d+)\}/g)];
+          if (!matches.length) throw new Error('FASTLANE_SCORER_SUMMARY_MISSING');
+          const [, classified, inserted, rejected] = matches.at(-1);
+          if (/Guardian discovery:|GDACS discovery:|ReliefWeb discovery:/.test(log)) throw new Error('FASTLANE_NON_GDELT_DISCOVERY_USED');
+          const proof = { schema: 'geomacro.current-scoring-fastlane.v1', ok: true, domain: 'rare_earth', classification_version: 'event-severity-v1.0.5', classification_prompt_version: 'risk-desk-filter-v1.0.5', discovery_provider: /GDELT GAL fallback: [1-9]/.test(log) ? 'gdelt_gal' : 'gdelt', raw_feature_score_promotion: false, recent_dedupe_window_days: 7, classified_candidates: Number(classified), inserted_events: Number(inserted), rejected_candidates: Number(rejected), completed_at: new Date().toISOString() };
+          fs.writeFileSync('/tmp/current-scoring-proof-rare-earth.json', JSON.stringify(proof, null, 2) + '\n');
+          console.log(JSON.stringify(proof));
+          NODE
+      - name: Verify latest canonical scored state
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createGriDbClient } from './scripts/lib/gri-db-client.mjs';
+          import fs from 'node:fs';
+          const db = createGriDbClient();
+          const { data, error } = await db.from('events').select('id,category,severity,confidence,classification_version,classification_prompt_version,published_at,created_at').eq('category', 'rare_earth').eq('classification_version', 'event-severity-v1.0.5').order('published_at', { ascending: false }).limit(1);
+          if (error) throw new Error(error.message);
+          const latest = data?.[0] ?? null;
+          if (latest && (!Number.isFinite(Number(latest.severity)) || Number(latest.severity) < 0 || Number(latest.severity) > 100)) throw new Error('FASTLANE_LATEST_SEVERITY_INVALID');
+          const proof = JSON.parse(fs.readFileSync('/tmp/current-scoring-proof-rare-earth.json', 'utf8'));
+          proof.latest_canonical_scored_event = latest;
+          fs.writeFileSync('/tmp/current-scoring-proof-rare-earth.json', JSON.stringify(proof, null, 2) + '\n');
+          console.log(JSON.stringify({ ok: true, domain: 'rare_earth', latest }));
+          NODE
+      - name: Upload current scoring proof
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: current-scoring-fastlane-rare-earth-${{ github.run_id }}
+          path: |
+            /tmp/current-scoring-proof-rare-earth.json
+            /tmp/current-scoring-rare-earth.log
           if-no-files-found: warn
           retention-days: 14

@@ -1,0 +1,1 @@
+CI scope: GDELT DOC transient/empty fallback to governed GAL; normal schedule unchanged; workflow self-file push performs serialized macro then rare-earth catch-up proof. No raw-source severity promotion and no real-money change.
