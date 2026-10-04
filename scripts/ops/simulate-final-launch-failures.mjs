@@ -12,20 +12,17 @@ const base = {
     worker_outage_fails_closed: true,
   },
   supabase: { runtime_mode: "standby", required_for_serving: false, network_attempts: 0 },
-  partner: {
+  risk_object_trust: {
     ok: true,
-    local_gates_passed: true,
-    signed_proof_present: true,
-    independent_proof_verification: true,
-    allowance_used: 1,
-    allowance_max: 1,
-  },
-  signing: {
-    signature_valid: true,
+    registry_live: true,
+    verification_endpoint_live: true,
     active_key: true,
-    fresh: true,
+    signature_scheme: "Ed25519",
+    canonicalization: "geomacro-canonical-json-v1",
+    local_verifier_contract: true,
     tamper_rejected: true,
-    record_sha256: "a".repeat(64),
+    b2_risk_verified: true,
+    registry_sha256: "a".repeat(64),
   },
   scheduler: { ok: true, fresh: true, fail_closed_on_stale: true },
   exact_head: {
@@ -43,13 +40,16 @@ if (!baseline.ready) throw new Error(`BASELINE_GATE_NOT_READY:${baseline.failed.
 if (baseline.real_funds_authorized !== false || baseline.execution_authorized !== false) {
   throw new Error("BASELINE_MUST_NOT_AUTHORIZE_FUNDS_OR_EXECUTION");
 }
+if (baseline.partner_specific_assurance_required !== false) {
+  throw new Error("PARTNER_SPECIFIC_ASSURANCE_MUST_BE_OUTSIDE_LAUNCH_SCOPE");
+}
 
 const scenarios = {
   d1_failure(state) { state.d1.ok = false; },
   b2_failure(state) { state.b2.ok = false; },
-  partner_failure(state) { state.partner.signed_proof_present = false; },
+  risk_object_trust_failure(state) { state.risk_object_trust.registry_live = false; },
   payment_failure(state) { state.commerce.worker_outage_fails_closed = false; },
-  signing_failure(state) { state.signing.signature_valid = false; },
+  signing_failure(state) { state.risk_object_trust.active_key = false; },
   scheduler_failure(state) { state.scheduler.fresh = false; },
 };
 
@@ -74,8 +74,9 @@ if (supabaseResult.ready || !supabaseResult.failed.includes("supabase_cold_stand
 
 console.log(JSON.stringify({
   ok: true,
-  schema: "geomacro.final-launch-failure-simulation.v1",
+  schema: "geomacro.final-launch-failure-simulation.v2",
   baseline_ready: baseline.ready,
+  partner_specific_assurance_required: false,
   simulated_failures: results,
   supabase_primary_rejected: true,
   payment_performed: false,
