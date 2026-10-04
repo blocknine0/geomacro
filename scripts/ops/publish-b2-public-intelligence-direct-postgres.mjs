@@ -305,7 +305,7 @@ function cleanPublicText(value, max = 160) {
     .trim();
 }
 
-function liveObservedRows(exportText, fipsLookup, now = Date.now()) {
+function buildLiveObservedRows(exportText, fipsLookup, now = Date.now()) {
   const lines = String(exportText).split(/\r?\n/u).filter(Boolean);
   if (!lines.length) throw new Error("CURRENT_GDELT_EXPORT_EMPTY");
   const malformed = [];
@@ -389,7 +389,7 @@ async function readCurrentGdeltRows() {
   }
   const md5 = createHash("md5").update(zip).digest("hex");
   if (md5 !== exportMeta.md5) throw new Error("CURRENT_GDELT_EXPORT_MD5_MISMATCH");
-  const rows = liveObservedRows(unzipUtf8(zip), fipsLookup);
+  const rows = buildLiveObservedRows(unzipUtf8(zip), fipsLookup);
   if (!rows.length) throw new Error("CURRENT_GDELT_NO_ELIGIBLE_LIVE_OBSERVATIONS");
   return {
     rows,
