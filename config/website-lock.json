@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "f223ba84f8ba8a31903414fadcf8bf2fed930d0d",
-  "published_baseline": "Founder-approved permanent three-domain Global Risk recovery. /global-risk always presents Geopolitical, Macroeconomic and Critical Minerals risk as three fixed verified domain indices in addition to the combined GRI. Each domain retains its own last verified reading until a newer verified reading for that domain arrives; newer verified results replace only that domain. The canonical assembler scans verified same-methodology history per domain and carries the domain's own reading snapshot/timestamp/status. No domain may disappear merely because the newest combined snapshot lacks a fresh reading for it. No synthetic score, zero fallback, interpolation, payment weakening or source-rights bypass is allowed. Intelligence, Ask and Risk Indices remain separate serving failure domains.",
+  "baseline_sha": "924e280874c95c23dfaf6ab765af16eaf41e1605",
+  "published_baseline": "Founder-approved Global Risk presentation restore. /global-risk presents Geopolitical, Macroeconomic and Critical Minerals risk once as three fixed verified domain indices, followed by three matching 24H/7D/30D history charts and one compact integrity section. The duplicate combined-GRI workspace is intentionally not rendered on this customer page. Each domain retains its own last verified reading until a newer verified reading for that domain arrives; newer verified results replace only that domain. Global Risk continues to use its dedicated proof-validated Cloudflare/B2 read path and remains isolated from the standalone Risk Indices serving path. No synthetic score, zero fallback, interpolation, payment weakening or source-rights bypass is allowed.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
-  "locked_at_utc": "2026-10-03T23:14:00Z",
+  "locked_at_utc": "2026-10-04T04:45:00Z",
   "published_source_sha": "5bc4f66d91d0c92c4fce6bd20e6b3b4907453381",
-  "lock_revision": "founder-approved-three-domain-last-verified-lock-20261004"
+  "lock_revision": "founder-approved-global-risk-old-three-index-ui-20261004"
 }
