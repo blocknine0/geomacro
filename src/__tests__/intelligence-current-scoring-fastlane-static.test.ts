@@ -16,7 +16,8 @@ describe("current Intelligence scoring fastlane", () => {
   });
 
   it("rotates one domain per bounded GDELT-only run and holds expensive discovery lanes", () => {
-    expect(workflow).toContain('cron: "3,23,43 * * * *"');
+    expect(workflow).toContain('cron: "13,33,53 * * * *"');
+    expect(workflow).toContain("timeout-minutes: 12");
     expect(workflow).toContain("GDELT_FORCE_CATEGORY=$domain");
     expect(workflow).toContain('GEOMACRO_GDELT_ONLY: "true"');
     expect(workflow).toContain("FASTLANE_NON_GDELT_DISCOVERY_USED");
