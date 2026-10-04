@@ -24,7 +24,8 @@ describe("Ask Geomacro direct chat surface", () => {
     expect(workspace).not.toContain("{answer.why_it_matters}");
     expect(workspace).not.toContain("{answer.geomacro_view}");
     expect(brief).toContain("directAnswerForQuestion");
-    expect(core).toContain("toCommercialAskBrief(await answerQuestion(data.question), data.question)");
+    expect(core).toContain('from "./ask-answer.server"');
+    expect(core).toContain("toCommercialAskBrief(await answerAskQuestion(data.question), data.question)");
   });
 
   it("keeps evidence compact and preserves the public data boundary", () => {
