@@ -127,9 +127,16 @@ jobs:
           if (!source.includes(guardianMarker)) throw new Error('GUARDIAN_PLAN_MARKER_MISSING');
           if (!source.includes('GEOMACRO_GDELT_ONLY')) source = source.replace(guardianMarker, guardianInjection);
 
+          const historyMarker = ".select('source_url, source_title')\n        .range(from, from + PAGE_SIZE - 1);";
+          const historyReplacement = ".select('source_url, source_title')\n        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())\n        .range(from, from + PAGE_SIZE - 1);";
+          if (!source.includes(historyMarker)) throw new Error('FASTLANE_HISTORY_SCAN_MARKER_MISSING');
+          if (!source.includes("7 * 24 * 60 * 60 * 1000).toISOString()")) {
+            source = source.replace(historyMarker, historyReplacement);
+          }
+
           fs.writeFileSync(path, source, 'utf8');
           const verified = fs.readFileSync(path, 'utf8');
-          for (const marker of ['GDELT_FORCE_CATEGORY', 'GEOMACRO_GDELT_ONLY']) {
+          for (const marker of ['GDELT_FORCE_CATEGORY', 'GEOMACRO_GDELT_ONLY', "7 * 24 * 60 * 60 * 1000).toISOString()"] ) {
             if (!verified.includes(marker)) throw new Error(`FASTLANE_PATCH_MISSING:${marker}`);
           }
           NODE
@@ -156,6 +163,7 @@ jobs:
             classification_prompt_version: 'risk-desk-filter-v1.0.5',
             discovery_provider: 'gdelt',
             raw_feature_score_promotion: false,
+            recent_dedupe_window_days: 7,
             classified_candidates: Number(classified),
             inserted_events: Number(inserted),
             rejected_candidates: Number(rejected),
