@@ -15,7 +15,7 @@ describe("Ask Geomacro realtime search fallback", () => {
   it("uses a bounded current-web path with broad three-domain coverage", () => {
     const fallback = read("src/lib/ask-realtime-search.server.ts");
     expect(fallback).toContain("api.gdeltproject.org/api/v2/doc/doc");
-    expect(fallback).toContain('timespan:');
+    expect(fallback).toContain("timespan,");
     expect(fallback).toContain('category: "GEOPOLITICS"');
     expect(fallback).toContain('category: "MACRO"');
     expect(fallback).toContain('category: "CRITICAL_MINERALS"');
@@ -27,17 +27,20 @@ describe("Ask Geomacro realtime search fallback", () => {
     const fallback = read("src/lib/ask-realtime-search.server.ts");
     expect(fallback).toContain("groqClassifyJson");
     expect(fallback).toContain("deterministicStructuredAnswer");
-    expect(fallback).toContain('`${index + 1}) ${hit.title}`');
+    expect(fallback).toContain("current observations, latest");
     expect(fallback).toContain("using deterministic structure");
   });
 
-  it("never exposes raw realtime URLs or provider identity in the public Ask answer", () => {
+  it("never exposes raw realtime URLs, headlines or provider identity in the public Ask evidence contract", () => {
     const fallback = read("src/lib/ask-realtime-search.server.ts");
     expect(fallback).toContain('source_identity_exposed: false');
     expect(fallback).toContain('durable_live_storage_write: false');
     expect(fallback).toContain('eventId: fallbackId');
+    expect(fallback).toContain("publicEvidenceLabel");
+    expect(fallback).toContain("do not reproduce source headlines verbatim");
     expect(fallback).not.toContain('sourceUrl:');
     expect(fallback).not.toContain('url: hits[index]');
+    expect(fallback).not.toContain('title: hits[index].title');
   });
 
   it("routes both public Ask transports through the same realtime-aware answer orchestrator", () => {
