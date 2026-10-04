@@ -28,5 +28,5 @@ export const askGeomacro = createServerFn({ method: "POST" })
     if (!checkAskRateLimit(ip)) {
       throw new Error("Too many requests. Please wait a moment.");
     }
-    return toCommercialAskBrief(await answerQuestion(data.question)) as AskAnswer;
+    return toCommercialAskBrief(await answerQuestion(data.question), data.question) as AskAnswer;
   });
