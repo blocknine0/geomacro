@@ -114,18 +114,21 @@ describe("separate public risk indices contract", () => {
     expect(workflow).not.toContain("supabase migration");
   });
 
-  it("keeps /global-risk and /risk-indices on separate workspaces and read paths", () => {
+  it("keeps /global-risk and /risk-indices on separate read paths while allowing the founder-approved three-index visual model", () => {
     const globalRiskRoute = read("src/routes/global-risk.tsx");
     const riskIndicesRoute = read("src/routes/risk-indices.tsx");
-    const globalRiskWorkspace = read("src/components/gri/global-risk-workspace.tsx");
+    const globalRiskWorkspace = read("src/components/gri/global-risk-domain-indices.tsx");
     const riskIndicesWorkspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
     const continuity = read("src/lib/global-risk-continuity.ts");
 
-    expect(globalRiskRoute).toContain("GlobalRiskWorkspace");
+    expect(globalRiskRoute).toContain("GlobalRiskDomainIndices");
+    expect(globalRiskRoute).not.toContain("GlobalRiskWorkspace");
     expect(globalRiskRoute).not.toContain("RiskIndicesWorkspace");
     expect(riskIndicesRoute).toContain("RiskIndicesWorkspace");
-    expect(riskIndicesRoute).not.toContain("GlobalRiskWorkspace");
+    expect(riskIndicesRoute).not.toContain("GlobalRiskDomainIndices");
     expect(globalRiskWorkspace).toContain("useGlobalRisk");
+    expect(globalRiskWorkspace).toContain("Three risks. Three separate indices.");
+    expect(globalRiskWorkspace).toContain("Compare each risk domain on its own scale");
     expect(riskIndicesWorkspace).toContain("useRiskIndices");
     expect(riskIndicesWorkspace).toContain("Three risks. Three separate indices.");
     expect(continuity).toContain("RISK_DOMAIN_HISTORY_CONTAINER_MISSING");
