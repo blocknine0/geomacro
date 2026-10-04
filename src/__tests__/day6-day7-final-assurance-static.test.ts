@@ -64,7 +64,7 @@ describe("Day 6 generic partner assurance", () => {
   });
 });
 
-describe("Day 7 authority cutover and disaster gate", () => {
+describe("Day 7 generic commercial authority cutover and disaster gate", () => {
   it("makes D1 primary only for compact metadata while preserving B2 and Durable Objects", () => {
     expect(migration).toContain("'runtime_authority'");
     expect(migration).toContain('"role":"primary"');
@@ -75,29 +75,31 @@ describe("Day 7 authority cutover and disaster gate", () => {
     expect(migration).toContain('"supabase_required_for_serving":false');
   });
 
-  it("requires every final launch authority and keeps real funds disabled", () => {
+  it("requires every generic launch authority, excludes partner-specific assurance, and keeps real funds disabled", () => {
     for (const marker of [
       "d1_primary_control_plane",
       "b2_durable_authority",
       "durable_object_commerce",
       "supabase_cold_standby",
-      "partner_assurance",
-      "signing_trust",
+      "risk_object_trust",
       "scheduler_health",
       "exact_head_gates",
     ]) {
       expect(finalGate).toContain(marker);
     }
+    expect(finalGate).toContain("partner_specific_assurance_required: false");
+    expect(finalGate).not.toContain("partner_assurance:");
     expect(finalGate).toContain("supabase_destructive_retirement_authorized: false");
+    expect(finalGate).toContain("payment_performed: false");
     expect(finalGate).toContain("real_funds_authorized: false");
     expect(finalGate).toContain("execution_authorized: false");
   });
 
-  it("simulates all requested failure classes and requires fail-closed behavior", () => {
+  it("simulates generic production failure classes and requires fail-closed behavior", () => {
     for (const marker of [
       "d1_failure",
       "b2_failure",
-      "partner_failure",
+      "risk_object_trust_failure",
       "payment_failure",
       "signing_failure",
       "scheduler_failure",
@@ -106,5 +108,6 @@ describe("Day 7 authority cutover and disaster gate", () => {
     ]) {
       expect(simulations).toContain(marker);
     }
+    expect(simulations).not.toContain("partner_failure");
   });
 });

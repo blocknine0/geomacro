@@ -48,7 +48,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             main_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
             test -n "$main_sha"
-            test "${CANDIDATE_SHA}" = "${main_sha}"
+            test "${CANDIDATE_SHA}" = "$main_sha"
           fi
 
       - name: Setup Bun 1.4.2
@@ -77,13 +77,10 @@ jobs:
           src/__tests__/gri-public-proof-consistency-static.test.ts
           src/__tests__/gri-public-proof-workflow-contract.test.js
           src/__tests__/risk-object-signing.test.ts
+          src/__tests__/risk-object-key-lifecycle.test.ts
           src/__tests__/risk-object-independent-trust.test.ts
           src/__tests__/risk-object-public-verification-route.test.ts
           src/__tests__/canonical-json-v1-test-vector.test.ts
-          src/__tests__/federico-strict-risk-object-policy-static.test.ts
-          src/__tests__/federico-publication-safety.test.ts
-          src/__tests__/federico-country-window.test.ts
-          src/__tests__/federico-refresh-contract.test.ts
 
       - name: Exact-head readiness gate
         env:
@@ -115,6 +112,7 @@ jobs:
             echo
             echo "- Candidate SHA: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}"
             echo "- Repository-side result: READY_FOR_OWNER_ACTIVATION when all steps pass"
+            echo "- Federico/partner-specific assurance: explicitly outside #1414 launch scope"
             echo "- Production funds: disabled"
             echo "- Official launch announcement: disabled"
             echo "- Real payment settlement: not performed by this workflow"
