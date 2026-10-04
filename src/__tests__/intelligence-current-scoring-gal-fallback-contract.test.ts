@@ -14,19 +14,23 @@ describe('current scoring GAL fallback contract', () => {
     expect(workflow).toContain('raw_feature_score_promotion: false');
   });
 
-  it('keeps GAL discovery bounded, heartbeat-aware and timestamp-truthful', () => {
+  it('keeps GAL discovery bounded, densely heartbeat-aware and timestamp-truthful', () => {
     expect(helper).toContain('MAX_PROBE_REQUESTS = 60');
     expect(helper).toContain('MAX_PARALLEL_PROBES = 6');
     expect(helper).toContain('HEARTBEAT_MINUTES = 15');
+    expect(helper).toContain('HEARTBEAT_OFFSETS = Object.freeze([1, 2, 3, 4, 5])');
     expect(helper).toContain('Fall back only to the real upstream GAL file minute');
     expect(helper).not.toMatch(/severity\s*:/i);
     expect(helper).not.toMatch(/confidence\s*:/i);
 
-    const now = new Date('2026-10-04T19:34:00.000Z');
+    const now = new Date('2026-10-04T19:44:00.000Z');
     const stamps = candidateStamps(now, 300);
     expect(stamps.length).toBeGreaterThan(20);
     expect(stamps.length).toBeLessThanOrEqual(60);
-    expect(stamps[0]).toBe('20261004193300');
+    expect(stamps[0]).toBe('20261004194300');
+    for (const minute of ['31', '32', '33', '34', '35']) {
+      expect(stamps).toContain(`2026100419${minute}00`);
+    }
     const oldest = stamps.at(-1)!;
     const oldestMs = Date.UTC(
       Number(oldest.slice(0, 4)), Number(oldest.slice(4, 6)) - 1, Number(oldest.slice(6, 8)),
