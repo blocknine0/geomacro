@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "6cc2410aba14a66b064391c93ed2aa1a3f1a63de",
-  "published_baseline": "Founder-approved website baseline after Ask Geomacro conversational redesign. /ask-geomacro uses a compact chatbot-style conversation surface: user question bubble, one question-specific direct answer, compact optional evidence, persistent visible turns, Enter-to-send and Shift+Enter newline. The richer structured Ask fields remain internal/public-contract compatible but are not repeated as fixed report sections in the UI. Ask continues to use verified B2/live intelligence, fail-closed evidence rules, rate limits, injection rejection and the existing user-facing data boundary; raw source content, provider details and internal retrieval payloads remain hidden. /global-risk remains independently hard-pinned by config/global-risk-final-lock.json and its dedicated fail-closed verifier.",
+  "baseline_sha": "c53a4c956748c1056bf15f7275fc4687227d2537",
+  "published_baseline": "Founder-approved website baseline after the #1414 Intelligence score-truth presentation fix. /intelligence defaults to Newest so newer verified evidence is not hidden behind an older higher-severity record; Highest risk remains explicitly selectable. Risk-domain summaries show each domain's latest verified score and original evidence date rather than an average that can obscure recency. Current scored rows are labelled Verified current score; quiet or historical scored rows remain Last verified score. Feed refresh time is shown separately from score evidence time, so a continuously checked domain is never falsely presented as having a newly changed score. Macro therefore exposes its verified 2026-10-04 score when present in the B2 package, while Rare Earth may truthfully retain its last verified 2026-10-01 score when bounded governed discovery finds no newer classifiable evidence. No score, timestamp, source eligibility or freshness is synthesized. Live observations remain separately labelled and unscored until canonical classification. Raw publisher content/provider details remain hidden. /global-risk remains independently hard-pinned by config/global-risk-final-lock.json and its dedicated fail-closed verifier.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock.",
-  "locked_at_utc": "2026-10-04T05:15:00Z",
-  "published_source_sha": "6cc2410aba14a66b064391c93ed2aa1a3f1a63de",
-  "lock_revision": "founder-approved-ask-direct-chat-20261004"
+  "locked_at_utc": "2026-10-04T20:54:00Z",
+  "published_source_sha": "c53a4c956748c1056bf15f7275fc4687227d2537",
+  "lock_revision": "founder-approved-intelligence-score-truth-20261005"
 }
