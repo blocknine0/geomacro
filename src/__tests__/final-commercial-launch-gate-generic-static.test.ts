@@ -49,7 +49,7 @@ describe("#1414 partner-independent final commercial launch gate", () => {
 
   it("verifies one fresh commercial GRO from D1/B2 against deployed public trust without Supabase", () => {
     expect(verifier).toContain("RISK_OBJECT_INDEX_FILE");
-    expect(verifier).toContain("geomacro-evidence/v1/gro/");
+    expect(verifier).toContain("geomacro-evidence\\/v1\\/gro\\/");
     expect(verifier).toContain("verifyRiskObjectSignature");
     expect(verifier).toContain("https://geomacro.live/api/risk-object-keys");
     expect(verifier).toContain("GENERIC_RISK_OBJECT_NOT_FRESH");
