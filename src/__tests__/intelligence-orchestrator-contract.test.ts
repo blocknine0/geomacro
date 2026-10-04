@@ -48,8 +48,6 @@ describe("permanent intelligence orchestration contract", () => {
     expect(script).toContain('key: "production_readiness"');
     expect(script).toContain('key: "public_demo_refresh"');
     expect(script).toContain("MAX_TASKS_PER_TICK");
-    expect(script).toContain('key: "production_readiness"');
-    expect(script).toContain('key: "public_demo_refresh"');
     expect(script).toContain("drain-live-structure.mjs");
     expect(script).toContain("scripts/run-gdelt-gal-cycle.mjs");
     expect(script).toContain("run-rss-live-cycle.mjs");
@@ -106,12 +104,14 @@ describe("permanent intelligence orchestration contract", () => {
     }
   });
 
-  it("keeps a bounded low-write GRI freshness path active during quota recovery", () => {
+  it("keeps the canonical low-write freshness path active across REST and egress-restricted direct-Postgres transport", () => {
     const workflow = read(".github/workflows/auto-ingest-news.yml");
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).toContain('cron: "17 */6 * * *"');
     expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
-    expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "4"');
+    expect(workflow).toContain("MAX_CANDIDATES_PER_CATEGORY: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && '6' || '4' }}");
+    expect(workflow).toContain("GRI_DB_MODE: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && 'direct_postgres' || '' }}");
+    expect(workflow).toContain("Publish scored verified Intelligence package to B2 through direct PostgreSQL");
     expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
     expect(workflow).toContain("check-gri-input-change.mjs");
     expect(workflow).toContain("compute-gri-v12.js");
