@@ -8,12 +8,14 @@ describe("locked Global Risk production health contract", () => {
     const route = read("src/routes/global-risk.tsx");
     const component = read("src/components/gri/global-risk-domain-indices.tsx");
     const workflow = read(".github/workflows/production-website-health.yml");
-    const marker = "Three risks. Three separate indices.";
+    const loadedMarker = "Three risks. Three separate indices.";
+    const ssrMarker = "Geomacro Global Risk";
 
     expect(route).toContain('import { GlobalRiskDomainIndices } from "@/components/gri/global-risk-domain-indices"');
     expect(route).toContain("component: GlobalRiskDomainIndices");
-    expect(component).toContain(marker);
-    expect(workflow).toContain(`/global-risk|${marker}`);
+    expect(component).toContain(loadedMarker);
+    expect(component).toContain(ssrMarker);
+    expect(workflow).toContain(`/global-risk|${ssrMarker}`);
     expect(workflow).not.toContain("/global-risk|How global risk is moving");
   });
 });
