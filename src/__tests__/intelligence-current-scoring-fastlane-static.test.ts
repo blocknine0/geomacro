@@ -27,6 +27,11 @@ describe("current Intelligence scoring fastlane", () => {
     expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
   });
 
+  it("bounds recurring history reads instead of scanning the full event table", () => {
+    expect(workflow).toContain("7 * 24 * 60 * 60 * 1000");
+    expect(workflow).toContain("recent_dedupe_window_days: 7");
+  });
+
   it("never maps GDELT numeric features directly into severity", () => {
     expect(workflow).not.toMatch(/Goldstein|AvgTone|NumMentions|NumSources.*severity|severity.*NumSources/i);
     expect(workflow).not.toContain("live_observed_unscored: false");
