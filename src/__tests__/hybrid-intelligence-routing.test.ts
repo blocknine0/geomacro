@@ -6,19 +6,25 @@ function read(path: string) {
 }
 
 describe("canonical hybrid intelligence routing", () => {
-  it("routes public Ask Geomacro through the hybrid server wrapper", () => {
+  it("routes public Ask Geomacro through the realtime-aware Ask orchestrator", () => {
     const ask = read("src/lib/ask-geomacro.functions.ts");
-    expect(ask).toContain('from "./hybrid-ask-intelligence.server"');
+    const orchestrator = read("src/lib/ask-answer.server.ts");
+    expect(ask).toContain('from "./ask-answer.server"');
+    expect(ask).toContain("answerAskQuestion(data.question)");
+    expect(orchestrator).toContain('from "./hybrid-ask-intelligence.server"');
+    expect(orchestrator).toContain("answerHybridQuestion(question)");
+    expect(orchestrator).toContain("realtimeSearchAnswer(question, primary)");
     expect(ask).not.toContain('answerQuestion, type AskAnswer } from "./ask-intelligence.server"');
   });
 
-  it("routes paid/testnet intelligence_query through the hybrid capability wrapper", () => {
+  it("routes paid/testnet intelligence_query through the same realtime-aware capability wrapper", () => {
     const service = read("src/lib/testnet-intelligence-service.server.ts");
     const capability = read("src/lib/testnet-intelligence-capability-hybrid.server.ts");
 
     expect(service).toContain('from "./testnet-intelligence-capability-hybrid.server"');
     expect(capability).toContain('request.capability !== "intelligence_query"');
-    expect(capability).toContain('answerQuestion(question)');
+    expect(capability).toContain('from "./ask-answer.server"');
+    expect(capability).toContain('answerAskQuestion(question)');
     expect(capability).toContain('durable_live_storage_write: false');
     expect(capability).toContain('upstream_source_identity_exposed: false');
   });
