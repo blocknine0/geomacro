@@ -9,7 +9,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const PUBLIC_INTELLIGENCE_QUERY_TIMEOUT_MS = 3_500;
 const MAX_ROWS = 300;
 const CLASSIFICATION_VERSION = "event-severity-v1.0.5";
-const DERIVED_TITLE_PREFIX = "Geomacro finds ";
+const SCORED_TITLE_PREFIX = "Geomacro finds ";
+const LIVE_TITLE_PREFIX = "Geomacro observes ";
 
 export const PUBLIC_INTELLIGENCE_CATEGORIES = [
   "geopolitics",
@@ -29,6 +30,7 @@ export type PublicIntelligenceRow = {
   delta: number | null;
   created_at: string;
   published_at: string | null;
+  public_status?: "verified_b2" | "live_observed";
 };
 
 type CanonicalEventRow = {
@@ -70,10 +72,10 @@ function normalizeWhitespace(value: unknown): string {
 function derivedEnglishTitle(narrative: unknown): string | null {
   const value = normalizeWhitespace(narrative).replace(/[.!?]+$/u, "");
   if (!value) return null;
-  const title = value.toLowerCase().startsWith(DERIVED_TITLE_PREFIX.toLowerCase())
-    ? `${DERIVED_TITLE_PREFIX}${value.slice(DERIVED_TITLE_PREFIX.length).trim()}`
-    : `${DERIVED_TITLE_PREFIX}${value}`;
-  if (title.length < DERIVED_TITLE_PREFIX.length + 8 || title.length > 280) return null;
+  const title = value.toLowerCase().startsWith(SCORED_TITLE_PREFIX.toLowerCase())
+    ? `${SCORED_TITLE_PREFIX}${value.slice(SCORED_TITLE_PREFIX.length).trim()}`
+    : `${SCORED_TITLE_PREFIX}${value}`;
+  if (title.length < SCORED_TITLE_PREFIX.length + 8 || title.length > 280) return null;
   if (/\p{Script=Arabic}|\p{Script=Cyrillic}|\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul}|\p{Script=Devanagari}/u.test(title)) return null;
   return title;
 }
@@ -82,7 +84,7 @@ function normalizeScoredRow(row: PublicIntelligenceRow): PublicIntelligenceRow |
   const category = normalizeCategory(row.category);
   const severity = numberOrNull(row.severity);
   const title = normalizeWhitespace(row.source_title);
-  if (!category || !title.startsWith(DERIVED_TITLE_PREFIX) || severity === null || severity < 0 || severity > 100) {
+  if (!category || !title.startsWith(SCORED_TITLE_PREFIX) || severity === null || severity < 0 || severity > 100) {
     return null;
   }
   return {
@@ -92,15 +94,44 @@ function normalizeScoredRow(row: PublicIntelligenceRow): PublicIntelligenceRow |
     category,
     severity,
     delta: numberOrNull(row.delta),
+    public_status: "verified_b2",
   };
+}
+
+function normalizeLiveObservedRow(row: PublicIntelligenceRow): PublicIntelligenceRow | null {
+  const category = normalizeCategory(row.category);
+  const title = normalizeWhitespace(row.source_title);
+  if (
+    row.public_status !== "live_observed" ||
+    category !== "geopolitics" ||
+    !title.startsWith(LIVE_TITLE_PREFIX) ||
+    row.severity !== null ||
+    row.delta !== null ||
+    !Number.isFinite(rowTime(row))
+  ) return null;
+  return {
+    ...row,
+    source_title: title,
+    summary: row.summary ? normalizeWhitespace(row.summary) : null,
+    category,
+    severity: null,
+    delta: null,
+    public_status: "live_observed",
+  };
+}
+
+function normalizePublicRow(row: PublicIntelligenceRow): PublicIntelligenceRow | null {
+  return row.public_status === "live_observed"
+    ? normalizeLiveObservedRow(row)
+    : normalizeScoredRow(row);
 }
 
 function sortAndDedupe(rows: PublicIntelligenceRow[]): PublicIntelligenceRow[] {
   const dedupe = new Map<string, PublicIntelligenceRow>();
   for (const raw of rows) {
-    const row = normalizeScoredRow(raw);
+    const row = normalizePublicRow(raw);
     if (!row) continue;
-    const key = `${row.category}|${String(row.source_title).toLowerCase().replace(/\s+/g, " ")}`;
+    const key = `${row.public_status}|${row.category}|${String(row.source_title).toLowerCase().replace(/\s+/g, " ")}`;
     if (!dedupe.has(key)) dedupe.set(key, row);
   }
   return [...dedupe.values()]
@@ -111,11 +142,11 @@ function sortAndDedupe(rows: PublicIntelligenceRow[]): PublicIntelligenceRow[] {
 /**
  * Recovery/snapshot read boundary for public Intelligence.
  *
- * Only canonical classifier-scored event rows are eligible. Raw upstream
- * headlines, publisher identity, Guardian-derived rows and unscored live
- * observations are excluded. Source identity is filtered in the database and
- * is never selected into this public-facing process. Public titles are rebuilt
- * from the classifier-owned English narrative as `Geomacro finds ...`.
+ * Canonical scored rows remain classifier-derived `Geomacro finds ...` records.
+ * B2 may additionally carry certified current GDELT Event observations as
+ * `Geomacro observes ...` rows with `severity=null` and `public_status=live_observed`.
+ * Raw upstream headlines, source URLs and publisher identity never cross this
+ * boundary, and live observations never become a Geomacro score here.
  */
 export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIntelligenceRow[]> {
   const supabase = getAppSupabase();
@@ -160,13 +191,14 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
       delta: numberOrNull(raw.delta),
       created_at: String(raw.created_at),
       published_at: raw.published_at ? String(raw.published_at) : null,
+      public_status: "verified_b2",
     });
   }
 
   return sortAndDedupe(rows);
 }
 
-/** Public serving is B2-first; bounded Supabase recovery is scored/derived only. */
+/** Public serving is B2-first; bounded Supabase recovery remains scored/derived only. */
 export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRow[]> {
   const b2Rows = await readB2PublicIntelligence();
   if (b2Rows?.length) return sortAndDedupe(b2Rows);
