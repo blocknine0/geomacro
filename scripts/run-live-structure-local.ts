@@ -49,6 +49,21 @@ async function buildHandler() {
     + "function admin() {\n  return createGriDbClient();\n}\n\n"
     + source.slice(normStart);
 
+  // PostgREST aliases are presentation-only. The direct PostgreSQL adapter
+  // returns the underlying view column names, so make the two manifest fields
+  // explicit in the locally generated handler. No structuring/scoring logic is
+  // changed by this transport rewrite.
+  const objectAliasCount = (source.match(/object_path:resolved_object_path/g) ?? []).length;
+  const bucketAliasCount = (source.match(/storage_bucket:resolved_storage_bucket/g) ?? []).length;
+  if (objectAliasCount !== 2 || bucketAliasCount !== 2) {
+    throw new Error(`LOCAL_STRUCTURER_TRANSFORM_ALIAS_MISMATCH:${objectAliasCount}:${bucketAliasCount}`);
+  }
+  source = source
+    .replaceAll("object_path:resolved_object_path", "resolved_object_path")
+    .replaceAll("storage_bucket:resolved_storage_bucket", "resolved_storage_bucket")
+    .replaceAll("manifest.object_path", "manifest.resolved_object_path")
+    .replaceAll("manifest.storage_bucket", "manifest.resolved_storage_bucket");
+
   source = source.replace(/Deno\.env\.get\(\s*"([A-Z0-9_]+)"\s*\)/g, (_match, name) => `process.env.${name}`);
   source = replaceExactlyOnce(
     source,
@@ -64,6 +79,9 @@ async function buildHandler() {
   if (source.includes("Deno.")) throw new Error("LOCAL_STRUCTURER_DENO_REFERENCE_REMAINS");
   if (!source.includes('const STRUCTURE_VERSION = "live-structure-v1.4.9"')) {
     throw new Error("LOCAL_STRUCTURER_CANONICAL_VERSION_MISSING");
+  }
+  if (source.includes("object_path:resolved_object_path") || source.includes("storage_bucket:resolved_storage_bucket")) {
+    throw new Error("LOCAL_STRUCTURER_POSTGREST_ALIAS_REMAINS");
   }
   await writeFile(GENERATED_PATH, source, "utf8");
 }
