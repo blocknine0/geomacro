@@ -112,6 +112,9 @@ describe("permanent intelligence orchestration contract", () => {
     expect(workflow).toContain("MAX_CANDIDATES_PER_CATEGORY: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && '6' || '4' }}");
     expect(workflow).toContain("GRI_DB_MODE: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && 'direct_postgres' || '' }}");
     expect(workflow).toContain("Publish scored verified Intelligence package to B2 through direct PostgreSQL");
+    expect(workflow).toContain("node scripts/ops/run-b2-public-intelligence-publisher.mjs");
+    expect(workflow).not.toContain("run: bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs");
+    expect(workflow).toContain("DIRECT_POSTGRES_GUARDIAN_PLAN_DISABLED");
     expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
     expect(workflow).toContain("check-gri-input-change.mjs");
     expect(workflow).toContain("compute-gri-v12.js");
