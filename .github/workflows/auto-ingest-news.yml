@@ -26,6 +26,7 @@ on:
       - "scripts/ops/b2-compact-structured-event-payload.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
+      - "scripts/ops/run-b2-public-intelligence-publisher.mjs"
       - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
       - "scripts/cluster-gri-stories-v12.js"
       - "scripts/compute-gri-v12.js"
@@ -320,7 +321,9 @@ jobs:
           B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
           B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
           B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-        run: bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs
+          GEOMACRO_B2_INTELLIGENCE_MAX_WAIT_MS: "480000"
+          GEOMACRO_B2_INTELLIGENCE_POLL_MS: "10000"
+        run: node scripts/ops/run-b2-public-intelligence-publisher.mjs
 
       - name: Export admitted events for structured intelligence
         if: ${{ needs.supabase-preflight.outputs.available == 'true' }}
