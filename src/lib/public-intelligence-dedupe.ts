@@ -76,6 +76,10 @@ function sameStory(a: PublicIntelligenceDedupeRow, b: PublicIntelligenceDedupeRo
   const titleB = normalizeText(b.source_title);
   if (titleA.length >= 32 && titleA === titleB) return true;
 
+  const liveA = String(a.public_status ?? "") === "live_observed";
+  const liveB = String(b.public_status ?? "") === "live_observed";
+  if (liveA || liveB) return false;
+
   const summaryOverlap = overlap(tokens(a.summary), tokens(b.summary));
   if (
     (summaryOverlap.minSize >= 5 && summaryOverlap.jaccard >= 0.82) ||
@@ -93,8 +97,10 @@ function sameStory(a: PublicIntelligenceDedupeRow, b: PublicIntelligenceDedupeRo
  * Customer-facing story dedupe.
  *
  * Rows are expected newest-first. We keep the first/newest representative and
- * suppress only near-identical evidence inside the same category and a bounded
- * 72-hour window. This does not mutate source history or scoring provenance.
+ * suppress only near-identical scored evidence inside the same category and a
+ * bounded 72-hour window. Template-based live observations use exact matching
+ * only so distinct locations/developments are never collapsed by fuzzy text.
+ * This does not mutate source history or scoring provenance.
  */
 export function dedupePublicIntelligenceRows<T extends PublicIntelligenceDedupeRow>(
   rows: T[],
