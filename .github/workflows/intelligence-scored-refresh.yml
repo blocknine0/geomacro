@@ -1,4 +1,4 @@
-name: Intelligence Scored Realtime
+name: Intelligence Scored + Current Evidence
 
 on:
   schedule:
@@ -11,6 +11,7 @@ on:
       - ".github/workflows/intelligence-scored-refresh.yml"
       - "scripts/lib/gri-db-client.mjs"
       - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
+      - "scripts/ops/probe-public-intelligence-live-fallback.ts"
       - "src/lib/public-intelligence-production.server.ts"
       - "src/lib/public-intelligence.functions.ts"
       - "src/lib/use-intelligence.ts"
@@ -64,6 +65,7 @@ jobs:
           test -n "${SUPABASE_DB_URL:-}" || { echo "SUPABASE_DB_URL is required"; exit 2; }
           test -n "${B2_KEY_ID:-}" || { echo "B2_KEY_ID is required"; exit 2; }
           test -n "${B2_APPLICATION_KEY:-}" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
+          command -v unzip >/dev/null
 
       - name: Require permanent production source anchors
         shell: bash
@@ -95,7 +97,7 @@ jobs:
           console.log(JSON.stringify({ ok: true, required_sources: Object.keys(required), source_discovery_owner: 'auto-ingest-news' }));
           NODE
 
-      - name: Publish scored verified three-domain Intelligence to B2
+      - name: Publish verified scored context plus certified current observations to B2
         run: bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs
 
       - name: Observe production Intelligence API compatibility
@@ -115,29 +117,43 @@ jobs:
           const body = JSON.parse(fs.readFileSync(path, 'utf8'));
           const rows = Array.isArray(body?.rows) ? body.rows : [];
           const required = new Set(['geopolitics','macro','rare_earth']);
-          const seen = new Set();
-          let ok = body?.ok === true && body?.mode === 'verified_b2' && Number(body?.live_observed_rows) === 0 && rows.length > 0;
+          const scored = new Set();
+          let verified = 0;
+          let live = 0;
+          let ok = body?.ok === true && ['verified_b2','verified_b2_plus_live_observed'].includes(body?.mode) && rows.length > 0;
           for (const row of rows) {
-            const severity = Number(row?.severity);
             const category = String(row?.category ?? '');
-            if (!Number.isFinite(severity) || severity < 0 || severity > 100 || row?.public_status !== 'verified_b2') ok = false;
-            if (required.has(category)) seen.add(category);
+            const title = String(row?.source_title ?? '');
+            if (row?.public_status === 'verified_b2') {
+              verified++;
+              const severity = Number(row?.severity);
+              if (!Number.isFinite(severity) || severity < 0 || severity > 100 || !title.startsWith('Geomacro finds ')) ok = false;
+              if (required.has(category)) scored.add(category);
+            } else if (row?.public_status === 'live_observed') {
+              live++;
+              if (category !== 'geopolitics' || row?.severity !== null || row?.delta !== null || !title.startsWith('Geomacro observes ')) ok = false;
+            } else {
+              ok = false;
+            }
           }
-          for (const category of required) if (!seen.has(category)) ok = false;
+          for (const category of required) if (!scored.has(category)) ok = false;
+          if (Number(body?.verified_rows) !== verified || Number(body?.live_observed_rows) !== live) ok = false;
+          if (body?.mode === 'verified_b2' && live !== 0) ok = false;
+          if (body?.mode === 'verified_b2_plus_live_observed' && live < 1) ok = false;
           process.exit(ok ? 0 : 1);
           NODE
           then
-            cp "$body" /tmp/intelligence-scored.json
+            cp "$body" /tmp/intelligence-current.json
             exit 0
           fi
-          echo "::warning::Production Intelligence compatibility API has not caught up to the latest scored-only contract yet."
+          echo "::warning::Production Intelligence compatibility API has not caught up to the latest scored-plus-current contract yet."
           exit 0
 
-      - name: Upload scored Intelligence acceptance evidence
+      - name: Upload Intelligence acceptance evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
         with:
-          name: intelligence-scored-${{ github.run_id }}
-          path: /tmp/intelligence-scored.json
+          name: intelligence-current-${{ github.run_id }}
+          path: /tmp/intelligence-current.json
           if-no-files-found: warn
           retention-days: 30
