@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { answerQuestion } from "./hybrid-ask-intelligence.server";
+import { answerAskQuestion } from "./ask-answer.server";
 import {
   runCanonicalTestnetIntelligence as runLegacyCanonicalTestnetIntelligence,
   type TestnetCapabilityDelivery,
@@ -14,9 +14,10 @@ function sha256Json(value: unknown) {
 /**
  * Canonical testnet/commercial capability router.
  *
- * Natural-language intelligence_query uses the same permanent -> short cache ->
- * ephemeral live engine as the website. Other signed/structural capabilities
- * retain the existing verified delivery implementation unchanged.
+ * Natural-language intelligence_query uses the same verified/B2 -> bounded live
+ * -> realtime current-public-evidence answer orchestrator as the human website.
+ * Other signed/structural capabilities retain the existing verified delivery
+ * implementation unchanged.
  */
 export async function runCanonicalTestnetIntelligence(input: {
   request: TestnetIntelligenceRequest;
@@ -30,7 +31,7 @@ export async function runCanonicalTestnetIntelligence(input: {
   }
 
   const question = request.question ?? "";
-  const answer = await answerQuestion(question);
+  const answer = await answerAskQuestion(question);
   const evidence = answer.evidence
     .slice(0, input.max_evidence_references)
     .map((row) => ({
