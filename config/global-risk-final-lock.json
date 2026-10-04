@@ -1,0 +1,14 @@
+{
+  "schema_version": "geomacro.global-risk-final-lock.v1",
+  "locked": true,
+  "scope": "presentation-only",
+  "route": "/global-risk",
+  "frozen_baseline_sha": "0270ab7876cabe372c246f76fbcf299ed1b0e1fc",
+  "frozen_paths": [
+    "src/routes/global-risk.tsx",
+    "src/components/gri/global-risk-domain-indices.tsx"
+  ],
+  "approved_presentation": "Three verified domain index cards followed by three matching 24H/7D/30D domain history charts and one compact integrity section. No duplicate combined-GRI workspace.",
+  "runtime_policy": "Verified data, archive, publisher and serving-path maintenance may continue without changing the frozen presentation files.",
+  "change_policy": "FINAL. Ordinary feature work, refactors, baseline refreshes and automated agents must not alter the frozen paths. The verifier is pinned to the frozen commit independently of the mutable general website baseline."
+}
