@@ -1,11 +1,9 @@
 import { z } from "zod";
 
+import { answerAskQuestion } from "./ask-answer.server";
 import { toCommercialAskBrief } from "./ask-commercial-brief";
 import { checkAskRateLimit } from "./ask-rate-limit.server";
-import {
-  answerQuestion,
-  type HybridAskAnswer,
-} from "./hybrid-ask-intelligence.server";
+import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 
 export const ASK_GEOMACRO_MAX_LENGTH = 300;
 
@@ -52,5 +50,5 @@ export async function executeAskGeomacro(
     throw new AskGeomacroRateLimitError();
   }
 
-  return toCommercialAskBrief(await answerQuestion(data.question), data.question) as AskAnswer;
+  return toCommercialAskBrief(await answerAskQuestion(data.question), data.question) as AskAnswer;
 }
