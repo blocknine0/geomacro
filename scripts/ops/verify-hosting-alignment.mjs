@@ -5,7 +5,7 @@ import { join, relative } from "node:path";
 
 const ROOT = process.cwd();
 const EXPECTED_SUPABASE_REF = "ldpwajisioljyjtojvfx";
-const ALIGNMENT_CONTRACT = "github-main-external-supabase-lovable-v1";
+const ALIGNMENT_CONTRACT = "github-main-b2-primary-supabase-standby-lovable-v2";
 const LOVABLE_MIRROR_REPO = "blocknine0/geomacro-160c8e56";
 const LOVABLE_MIRROR_WORKFLOW = ".github/workflows/sync-lovable-main.yml";
 const LOVABLE_MIRROR_SECRET = "LOVABLE_MIRROR_TOKEN";
@@ -255,5 +255,5 @@ requireText(".github/workflows/live-testnet-health.yml", ALIGNMENT_CONTRACT, "li
 requireText("docs/HOSTING_ALIGNMENT.md", "Publish changes", "zero-credit publish workflow");
 
 if (!process.exitCode) {
-  console.log("\nPASS: canonical GitHub source, one-way Lovable mirror, browser data boundary and authoritative Supabase/Testnet runtime contracts are aligned.");
+  console.log("\nPASS: canonical GitHub source, one-way Lovable mirror, B2-primary production serving, browser data boundary and Supabase recovery/Testnet runtime contracts are aligned.");
 }

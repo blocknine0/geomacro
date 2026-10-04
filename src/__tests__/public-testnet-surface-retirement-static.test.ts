@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(path, "utf8");
 const middleware = read("server/middleware/05-retire-public-testnet-surfaces.ts");
+const workflow = read(".github/workflows/live-testnet-health.yml");
 const reactAccess = read("src/routes/testnet-access.tsx");
 const reactConsole = read("src/routes/testnet-console.tsx");
 const serverAccess = read("server/routes/testnet-access.get.ts");
@@ -21,6 +22,20 @@ describe("public Testnet surface retirement", () => {
     expect(middleware).not.toContain('"/api/testnet');
     expect(middleware).not.toContain('startsWith("/testnet');
     expect(middleware).not.toContain('includes("/testnet');
+  });
+
+  it("keeps scheduled production health focused on the retirement boundary instead of obsolete public Testnet availability", () => {
+    expect(workflow).toContain("name: Production Testnet Retirement Health");
+    expect(workflow).toContain("Verify retired buyer-facing Testnet deep links");
+    expect(workflow).toContain('for path in /testnet-access /testnet-console');
+    expect(workflow).toContain('[[ "$code" != "308" ]]');
+    expect(workflow).toContain("/data-api");
+    expect(workflow).toContain('"production_data_authority":"backblaze-b2"');
+    expect(workflow).toContain('"commerce_control_plane":"cloudflare-durable-objects"');
+    expect(workflow).not.toContain("/api/testnet/manifest");
+    expect(workflow).not.toContain("/api/testnet/dashboard");
+    expect(workflow).not.toContain("developer-paid-e2e");
+    expect(workflow).not.toContain("authenticated-e2e");
   });
 
   it("preserves the source-level technical Testnet contracts for validation and recovery", () => {
