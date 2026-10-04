@@ -2,10 +2,20 @@ name: GDELT GAL Live Hot-Topic Sync
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/gdelt-gal-live-sync.yml"
+      - "scripts/run-gdelt-gal-cycle.mjs"
+      - "scripts/sync-gdelt-gal-production.mjs"
+      - "scripts/reconcile-structured-event-commercial-rights.mjs"
+      - "scripts/verify-gdelt-gal-cycle.mjs"
+      - "scripts/audit-agent-hot-topic-readiness.ts"
+      - "scripts/lib/gri-db-client.mjs"
+      - "scripts/lib/direct-postgres-supabase-loader.mjs"
 
-# The scheduled execution path is the canonical intelligence orchestrator.
-# This workflow is operator-only recovery/certification and invokes the exact
-# same end-to-end GDELT GAL cycle used by the orchestrator.
+# The recurring scheduler remains quota-held. This self-scoped push trigger gives
+# #1414 one deterministic recovery/proof run when the canonical recovery path changes.
 
 permissions:
   contents: read
@@ -23,6 +33,8 @@ jobs:
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      GRI_DB_MODE: direct_postgres
       B2_GDELT_PRIMARY: "1"
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
@@ -50,15 +62,30 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY LIVE_STRUCTURE_TOKEN; do
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL LIVE_STRUCTURE_TOKEN; do
             test -n "${!name:-}" || { echo "::error::$name missing"; exit 1; }
           done
           node scripts/db/assert-authoritative-supabase.mjs
+          node --input-type=module <<'NODE'
+          import { createGriDbClient } from './scripts/lib/gri-db-client.mjs';
+          const db = createGriDbClient();
+          const { data, error } = await db
+            .from('live_ingestion_cursors')
+            .select('source_key,stream_key')
+            .eq('source_key', 'gdelt_gal')
+            .eq('stream_key', 'global-relevant')
+            .maybeSingle();
+          if (error) throw new Error(error.message);
+          if (!data) throw new Error('GDELT_GAL_CURSOR_MISSING');
+          console.log(JSON.stringify({ ok: true, transport: 'direct_postgres', source_key: data.source_key }));
+          NODE
           node --check scripts/sync-gdelt-gal-production.mjs
           node --check scripts/run-gdelt-gal-cycle.mjs
           node --check scripts/verify-gdelt-gal-cycle.mjs
 
       - name: Run canonical GDELT GAL fresh cycle
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         shell: bash
         run: |
           set -euo pipefail
