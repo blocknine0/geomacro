@@ -52,5 +52,5 @@ export async function executeAskGeomacro(
     throw new AskGeomacroRateLimitError();
   }
 
-  return toCommercialAskBrief(await answerQuestion(data.question)) as AskAnswer;
+  return toCommercialAskBrief(await answerQuestion(data.question), data.question) as AskAnswer;
 }
