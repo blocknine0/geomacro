@@ -11,7 +11,7 @@ describe("B2 public data parity", () => {
     expect(source).toContain('payload.mode === "verified_b2_plus_live_observed"');
     expect(source).toContain("modeCountsAgree");
     expect(source).toContain("verifiedRiskContext");
-    expect(source).toContain('row.publicStatus === "verified_b2"');
+    expect(source).toContain('r.publicStatus === "verified_b2"');
     expect(source).toContain("hasLiveObserved: liveRows.length > 0");
     expect(source).not.toContain("publishedAt: new Date().toISOString()");
   });
