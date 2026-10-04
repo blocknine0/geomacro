@@ -9,6 +9,10 @@ on:
       - main
     paths:
       - ".github/workflows/intelligence-current-scoring-fastlane.yml"
+      - "scripts/ingest-news.js"
+      - "scripts/lib/gdelt-gal-fastlane-fallback.mjs"
+      - "src/__tests__/intelligence-current-scoring-fastlane-static.test.ts"
+      - "src/__tests__/intelligence-current-scoring-gal-fallback-static.test.ts"
 
 permissions:
   contents: read
