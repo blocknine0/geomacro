@@ -28,6 +28,21 @@ describe("current Intelligence scoring fastlane", () => {
     expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
   });
 
+  it("loads the direct-Postgres shim only after checkout", () => {
+    const jobEnv = workflow.slice(
+      workflow.indexOf("    env:"),
+      workflow.indexOf("    steps:"),
+    );
+    const scorerStep = workflow.slice(
+      workflow.indexOf("      - name: Run bounded canonical current scorer"),
+      workflow.indexOf("      - name: Verify latest canonical scored state"),
+    );
+    expect(jobEnv).not.toContain("NODE_OPTIONS");
+    expect(scorerStep).toContain(
+      "NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs",
+    );
+  });
+
   it("bounds recurring history reads instead of scanning the full event table", () => {
     expect(workflow).toContain("7 * 24 * 60 * 60 * 1000");
     expect(workflow).toContain("recent_dedupe_window_days: 7");
