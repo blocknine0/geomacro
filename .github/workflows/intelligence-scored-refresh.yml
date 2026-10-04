@@ -134,9 +134,12 @@ jobs:
         run: |
           set -euo pipefail
           body="$(mktemp)"
+          headers="$(mktemp)"
+          : > /tmp/intelligence-convergence-diagnostics.jsonl
           for attempt in $(seq 1 24); do
             nonce="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${attempt}-$(date +%s)"
-            code="$(curl -L -sS -o "$body" -w '%{http_code}' --max-time 20 \
+            : > "$headers"
+            code="$(curl -L -sS -D "$headers" -o "$body" -w '%{http_code}' --max-time 20 \
               -H 'Accept: application/json' \
               -H 'Cache-Control: no-cache' \
               -H 'Pragma: no-cache' \
@@ -185,6 +188,65 @@ jobs:
               echo "Production Intelligence API converged to the exact B2 publish proof on attempt ${attempt}."
               exit 0
             fi
+
+            node - "$body" "$headers" "$attempt" "$code" /tmp/intelligence-publish-proof.json <<'NODE' | tee -a /tmp/intelligence-convergence-diagnostics.jsonl
+          const fs = require('fs');
+          const [bodyPath, headerPath, attemptRaw, statusRaw, proofPath] = process.argv.slice(2);
+          let body = null;
+          let proof = null;
+          try { body = JSON.parse(fs.readFileSync(bodyPath, 'utf8')); } catch {}
+          try { proof = JSON.parse(fs.readFileSync(proofPath, 'utf8')); } catch {}
+          const headerText = fs.readFileSync(headerPath, 'utf8');
+          const responseHeaderBlocks = headerText.split(/\r?\n\r?\n/).filter(Boolean);
+          const finalHeaderBlock = responseHeaderBlocks.at(-1) ?? '';
+          const headerMap = new Map();
+          for (const line of finalHeaderBlock.split(/\r?\n/).slice(1)) {
+            const index = line.indexOf(':');
+            if (index > 0) headerMap.set(line.slice(0, index).trim().toLowerCase(), line.slice(index + 1).trim());
+          }
+          const rows = Array.isArray(body?.rows) ? body.rows : [];
+          const scoredCategories = [...new Set(rows
+            .filter((row) => row?.public_status === 'verified_b2')
+            .map((row) => String(row?.category ?? ''))
+            .filter(Boolean))].sort();
+          const liveRows = rows.filter((row) => row?.public_status === 'live_observed');
+          const liveTimes = liveRows
+            .map((row) => Date.parse(String(row?.published_at ?? row?.created_at ?? '')))
+            .filter(Number.isFinite);
+          const newestLiveMs = liveTimes.length > 0 ? Math.max(...liveTimes) : NaN;
+          const expectedBatchMs = Date.parse(String(proof?.current_source_batch_at ?? ''));
+          const diagnostic = {
+            schema: 'geomacro.intelligence-convergence-diagnostic.v1',
+            attempt: Number(attemptRaw),
+            http_status: Number(statusRaw) || 0,
+            expected_current_source_batch_at: proof?.current_source_batch_at ?? null,
+            response: {
+              ok: body?.ok ?? null,
+              mode: body?.mode ?? null,
+              row_count: rows.length,
+              verified_rows: body?.verified_rows ?? null,
+              live_observed_rows: body?.live_observed_rows ?? null,
+              current_within_24h: body?.current_within_24h ?? null,
+              newest_at: body?.newest_at ?? null,
+              newest_live_at: Number.isFinite(newestLiveMs) ? new Date(newestLiveMs).toISOString() : null,
+              scored_categories: scoredCategories,
+              expected_batch_visible: Number.isFinite(expectedBatchMs) && Number.isFinite(newestLiveMs)
+                ? newestLiveMs >= expectedBatchMs
+                : false,
+            },
+            cache_headers: {
+              cache_control: headerMap.get('cache-control') ?? null,
+              cdn_cache_control: headerMap.get('cdn-cache-control') ?? null,
+              age: headerMap.get('age') ?? null,
+              cf_cache_status: headerMap.get('cf-cache-status') ?? null,
+              etag: headerMap.get('etag') ?? null,
+              last_modified: headerMap.get('last-modified') ?? null,
+              server: headerMap.get('server') ?? null,
+            },
+          };
+          console.log(JSON.stringify(diagnostic));
+          NODE
+
             if [ "$attempt" -lt 24 ]; then sleep 10; fi
           done
           echo "::error::Production Intelligence API did not converge to the scored-plus-current B2 publish proof within the bounded acceptance window."
@@ -198,5 +260,6 @@ jobs:
           path: |
             /tmp/intelligence-current.json
             /tmp/intelligence-publish-proof.json
+            /tmp/intelligence-convergence-diagnostics.jsonl
           if-no-files-found: warn
           retention-days: 30
