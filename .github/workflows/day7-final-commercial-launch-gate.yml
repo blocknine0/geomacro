@@ -1,20 +1,19 @@
-name: Day 7 Final Commercial Launch Gate
+name: Final Commercial Launch Gate
 
 on:
   workflow_dispatch: {}
   pull_request:
     paths:
-      - "config/partner-assurance.v1.json"
-      - "scripts/partner-assurance-adapter.ts"
       - "scripts/ops/final-launch-gate-core.mjs"
       - "scripts/ops/simulate-final-launch-failures.mjs"
+      - "scripts/ops/verify-generic-production-risk-object.ts"
       - "workers/control-plane/**"
-      - ".github/workflows/day6-partner-assurance-final.yml"
+      - ".github/workflows/exact-head-commercial-launch-readiness.yml"
       - ".github/workflows/day7-final-commercial-launch-gate.yml"
-      - "src/__tests__/day6-day7-final-assurance-static.test.ts"
+      - "src/__tests__/final-commercial-launch-gate-generic-static.test.ts"
   workflow_run:
     workflows:
-      - Day 6 Partner Assurance Final
+      - Exact-Head Commercial Launch Readiness
     types:
       - completed
 
@@ -26,7 +25,7 @@ permissions:
 jobs:
   static-fail-closed:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Checkout exact candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -42,14 +41,18 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Verify generic assurance contract
-        run: node scripts/check-partner-commercial-readiness.mjs
-
-      - name: Simulate D1 B2 partner payment signing scheduler failures
+      - name: Simulate D1 B2 trust payment signing scheduler failures
         run: node scripts/ops/simulate-final-launch-failures.mjs
 
-      - name: Run Day 6 Day 7 static contract tests
-        run: bunx vitest run src/__tests__/day6-day7-final-assurance-static.test.ts
+      - name: Run generic final launch scope contracts
+        run: >-
+          bunx vitest run
+          src/__tests__/final-commercial-launch-gate-generic-static.test.ts
+          src/__tests__/risk-object-signing.test.ts
+          src/__tests__/risk-object-key-lifecycle.test.ts
+          src/__tests__/risk-object-independent-trust.test.ts
+          src/__tests__/risk-object-public-verification-route.test.ts
+          src/__tests__/canonical-json-v1-test-vector.test.ts
 
   final-live-acknowledgement:
     needs: static-fail-closed
@@ -58,7 +61,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     environment: production
     env:
       HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -74,7 +77,7 @@ jobs:
       WRANGLER_VERSION: "4.136.3"
       GEOMACRO_ORIGIN: https://geomacro.live
     steps:
-      - name: Checkout exact Day 6 proven SHA
+      - name: Checkout exact readiness-proven SHA
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ env.HEAD_SHA }}
@@ -122,36 +125,37 @@ jobs:
           fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', source.replace('REPLACE_WITH_D1_DATABASE_ID', id));
           NODE
           cd workers/control-plane
-          SQL="SELECT CASE WHEN json_extract(value_json,'$.role')='primary' AND json_extract(value_json,'$.compact_metadata_only')=1 AND json_extract(value_json,'$.durable_payload_authority')='backblaze-b2' AND json_extract(value_json,'$.commerce_authority')='cloudflare-durable-objects' AND json_extract(value_json,'$.supabase_runtime_mode')='standby' AND json_extract(value_json,'$.supabase_required_for_serving')=0 THEN 'DAY7_D1_PRIMARY_PASS' ELSE 'DAY7_D1_PRIMARY_FAIL' END AS verdict FROM control_state WHERE key='runtime_authority';"
+          SQL="SELECT CASE WHEN json_extract(value_json,'$.role')='primary' AND json_extract(value_json,'$.compact_metadata_only')=1 AND json_extract(value_json,'$.durable_payload_authority')='backblaze-b2' AND json_extract(value_json,'$.commerce_authority')='cloudflare-durable-objects' AND json_extract(value_json,'$.supabase_runtime_mode')='standby' AND json_extract(value_json,'$.supabase_required_for_serving')=0 THEN 'FINAL_D1_PRIMARY_PASS' ELSE 'FINAL_D1_PRIMARY_FAIL' END AS verdict FROM control_state WHERE key='runtime_authority';"
           PASS=false
           for attempt in $(seq 1 20); do
             OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "$SQL" 2>&1 || true)"
-            if printf '%s' "$OUT" | grep -q 'DAY7_D1_PRIMARY_PASS'; then PASS=true; break; fi
-            echo "Waiting for D1 primary-authority migration/deploy: attempt $attempt/20"
+            if printf '%s' "$OUT" | grep -q 'FINAL_D1_PRIMARY_PASS'; then PASS=true; break; fi
+            echo "Waiting for D1 primary-authority state: attempt $attempt/20"
             sleep 15
           done
           test "$PASS" = "true" || { printf '%s\n' "$OUT"; echo "::error::D1 primary compact authority marker not verified"; exit 3; }
-          printf '{"ok":true,"store":"d1","control_plane_role":"primary","schema_version":1}\n' > /tmp/day7-d1.json
+          printf '{"ok":true,"store":"d1","control_plane_role":"primary","schema_version":1}\n' > /tmp/final-d1.json
 
       - name: Verify fresh D1 scheduler checkpoint
         working-directory: workers/control-plane
         shell: bash
         run: |
           set -euo pipefail
-          SQL="SELECT CASE WHEN EXISTS (SELECT 1 FROM pipeline_checkpoint WHERE pipeline='governed_source_ingestion' AND status='PASS' AND datetime(last_success_at) >= datetime('now','-6 hours')) THEN 'DAY7_SCHEDULER_PASS' ELSE 'DAY7_SCHEDULER_FAIL' END AS verdict;"
+          SQL="SELECT CASE WHEN EXISTS (SELECT 1 FROM pipeline_checkpoint WHERE pipeline='governed_source_ingestion' AND status='PASS' AND datetime(last_success_at) >= datetime('now','-6 hours')) THEN 'FINAL_SCHEDULER_PASS' ELSE 'FINAL_SCHEDULER_FAIL' END AS verdict;"
           OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "$SQL")"
-          printf '%s' "$OUT" | grep -q 'DAY7_SCHEDULER_PASS' || { printf '%s\n' "$OUT"; echo "::error::No fresh successful governed ingestion checkpoint"; exit 4; }
-          printf '{"ok":true,"fresh":true,"fail_closed_on_stale":true}\n' > /tmp/day7-scheduler.json
+          printf '%s' "$OUT" | grep -q 'FINAL_SCHEDULER_PASS' || { printf '%s\n' "$OUT"; echo "::error::No fresh successful governed ingestion checkpoint"; exit 4; }
+          printf '{"ok":true,"fresh":true,"fail_closed_on_stale":true}\n' > /tmp/final-scheduler.json
 
       - name: Verify B2 directly with Supabase absent
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/ops/verify-b2-public-no-supabase.ts | tee /tmp/day7-b2.json
+          bun scripts/ops/verify-b2-public-no-supabase.ts | tee /tmp/final-b2.json
           node -e '
-            const fs=require("fs"); const b=JSON.parse(fs.readFileSync("/tmp/day7-b2.json","utf8"));
+            const fs=require("fs"); const b=JSON.parse(fs.readFileSync("/tmp/final-b2.json","utf8"));
             if (b?.ok!==true || b?.authority!=="backblaze-b2" || b?.supabase_credentials_present!==false || b?.supabase_network_attempts!==0) process.exit(5);
             if (b?.risk_verification_status!=="verified") process.exit(5);
+            for (const c of ["geopolitics","macro","rare_earth"]) if (!(b?.categories ?? []).includes(c)) process.exit(5);
           '
 
       - name: Verify deployed public boundary is B2 authoritative and Supabase standby
@@ -159,7 +163,7 @@ jobs:
         run: |
           set -euo pipefail
           BODY="$(curl -fsS --max-time 20 'https://geomacro.live/api/health?deep=1')"
-          printf '%s' "$BODY" | tee /tmp/day7-public-health.json | node -e '
+          printf '%s' "$BODY" | tee /tmp/final-public-health.json | node -e '
             let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
               const b=JSON.parse(s); const p=b?.public_production ?? {};
               if (b?.ok!==true || b?.production_data_authority!=="backblaze-b2" || p?.serving_authority!=="backblaze-b2") process.exit(6);
@@ -182,7 +186,7 @@ jobs:
           URL="https://geomacro-commerce-ledger.${SUBDOMAIN}.workers.dev"
           echo "ledger_url=$URL" >> "$GITHUB_OUTPUT"
           BODY="$(curl -fsS --max-time 15 "$URL/health")"
-          printf '%s' "$BODY" > /tmp/day7-commerce-health.json
+          printf '%s' "$BODY" > /tmp/final-commerce-health.json
           printf '%s' "$BODY" | node -e '
             let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{
               const b=JSON.parse(s); const c=Array.isArray(b?.capabilities)?b.capabilities:[];
@@ -198,85 +202,82 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/ops/verify-commerce-no-supabase.ts | tee /tmp/day7-commerce-acceptance.json
+          bun scripts/ops/verify-commerce-no-supabase.ts | tee /tmp/final-commerce-acceptance.json
           node -e '
-            const fs=require("fs");const b=JSON.parse(fs.readFileSync("/tmp/day7-commerce-acceptance.json","utf8"));
+            const fs=require("fs");const b=JSON.parse(fs.readFileSync("/tmp/final-commerce-acceptance.json","utf8"));
             if(b?.ok!==true||b?.backend!=="durable_object"||b?.supabase_credentials_present!==false||b?.supabase_network_attempts!==0)process.exit(8);
             if(b?.exact_response_replay!==true||b?.duplicate_settlement_rejected!==true||b?.worker_outage_fails_closed!==true)process.exit(8);
             if(b?.external_payment_performed!==false||b?.execution_authorized!==false)process.exit(8);
           '
 
-      - name: Download exact Day 6 signed proof artifact
+      - name: Resolve one fresh commercially verified GRO from D1
+        working-directory: workers/control-plane
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf /tmp/day6-proof
-          mkdir -p /tmp/day6-proof
-          gh run download "$UPSTREAM_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "day6-partner-assurance-${UPSTREAM_RUN_ID}" --dir /tmp/day6-proof
-          test -s /tmp/day6-proof/risk-object.json
-          test -s /tmp/day6-proof/local-assurance.json
-          test -s /tmp/day6-proof/live-assurance.json
-          test -s /tmp/day6-proof/review-response.json
-          sha256sum -c /tmp/day6-proof/SHA256SUMS.txt --ignore-missing
+          SQL="SELECT json_object('object_id',object_id,'verification_status',verification_status,'commercial_eligibility_status',commercial_eligibility_status,'archive_key',archive_key,'archive_sha256',archive_sha256,'record_sha256',record_sha256,'generated_at',generated_at,'expires_at',expires_at) AS payload FROM risk_object_index WHERE verification_status='VERIFIED' AND commercial_eligibility_status='VERIFIED' AND datetime(expires_at) > datetime('now','+5 minutes') ORDER BY datetime(generated_at) DESC LIMIT 1;"
+          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config wrangler.runtime.jsonc --command "$SQL")"
+          D1_OUT="$OUT" node <<'NODE'
+          const fs=require('fs');
+          const parsed=JSON.parse(process.env.D1_OUT || '[]');
+          const envelopes=Array.isArray(parsed)?parsed:[parsed];
+          const rows=envelopes.flatMap(x=>Array.isArray(x?.results)?x.results:[]);
+          if(!rows.length || !rows[0]?.payload) throw new Error('FINAL_FRESH_RISK_OBJECT_INDEX_MISSING');
+          const payload=typeof rows[0].payload==='string'?JSON.parse(rows[0].payload):rows[0].payload;
+          fs.writeFileSync('/tmp/final-risk-object-index.json',JSON.stringify(payload)+'\n',{mode:0o600});
+          NODE
 
-      - name: Reverify signed GRO locally and deployed without spending another partner allowance
+      - name: Verify generic production Risk Object trust from D1 B2 and deployed registry
+        env:
+          RISK_OBJECT_INDEX_FILE: /tmp/final-risk-object-index.json
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/partner-assurance-adapter.ts --partner federico --risk-object /tmp/day6-proof/risk-object.json --mode local | tee /tmp/day7-local-assurance.json
-          jq -e '.ok == true and .live_review.allowance_used == 0 and ([.local_gates[]] | all(. == "PASS"))' /tmp/day7-local-assurance.json >/dev/null
-          jq -e '
-            .ok == true and
-            .live_review.allowance_used == 1 and
-            .live_review.allowance_max == 1 and
-            .live_review.signed_proof_present == true and
-            .live_review.independent_proof_verification == "PASS"
-          ' /tmp/day6-proof/live-assurance.json >/dev/null
+          bun scripts/ops/verify-generic-production-risk-object.ts | tee /tmp/final-risk-object-trust.json
 
-      - name: Require exact-head Product CI CodeQL Website Lock Hosting x402 trust gates green
+      - name: Require exact-head launch workflows green
         shell: bash
         run: |
           set -euo pipefail
-          REQUIRED='["Product CI","CodeQL Security Scan","Website Lock","Hosting Alignment","Live x402 Prelaunch Safety","Partner Commercial Readiness"]'
+          REQUIRED='["Product CI","CodeQL Security Scan","Website Lock","Hosting Alignment","Live x402 Prelaunch Safety","Global Intelligence V1 CI","Exact-Head Commercial Launch Readiness"]'
           PASS=false
           for attempt in $(seq 1 30); do
-            JSON="$(gh api -H 'Accept: application/vnd.github+json' "/repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?per_page=100")"
-            if REQUIRED="$REQUIRED" CHECKS="$JSON" node <<'NODE'
+            JSON="$(gh api -H 'Accept: application/vnd.github+json' "/repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${HEAD_SHA}&per_page=100")"
+            if REQUIRED="$REQUIRED" RUNS="$JSON" node <<'NODE'
           const required=JSON.parse(process.env.REQUIRED);
-          const checks=JSON.parse(process.env.CHECKS).check_runs ?? [];
+          const runs=JSON.parse(process.env.RUNS).workflow_runs ?? [];
           const state=Object.fromEntries(required.map(name=>{
-            const rows=checks.filter(x=>x.name===name).sort((a,b)=>String(b.started_at??"").localeCompare(String(a.started_at??"")));
+            const rows=runs.filter(x=>x.name===name).sort((a,b)=>String(b.created_at??"").localeCompare(String(a.created_at??"")));
             return [name, rows[0]?.conclusion ?? rows[0]?.status ?? "missing"];
           }));
           console.log(JSON.stringify(state));
           process.exit(required.every(name=>state[name]==="success") ? 0 : 1);
           NODE
             then PASS=true; break; fi
-            echo "Exact-head checks not all green yet: attempt $attempt/30"
+            echo "Exact-head launch workflows not all green yet: attempt $attempt/30"
             sleep 20
           done
-          test "$PASS" = "true" || { echo "::error::Exact-head required checks are not all successful"; exit 9; }
-          printf '{"product_ci":true,"codeql":true,"website_lock":true,"hosting":true,"x402":true,"trust":true}\n' > /tmp/day7-exact-head.json
+          test "$PASS" = "true" || { echo "::error::Exact-head required launch workflows are not all successful"; exit 9; }
+          printf '{"product_ci":true,"codeql":true,"website_lock":true,"hosting":true,"x402":true,"trust":true}\n' > /tmp/final-exact-head.json
 
       - name: Seal final no-funds commercial launch readiness acknowledgement
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/day7-final-launch-gate
+          mkdir -p artifacts/final-commercial-launch-gate
           node <<'NODE'
           const fs=require('fs');
           const crypto=require('crypto');
           (async()=>{
             const { evaluateFinalLaunchGate }=await import('./scripts/ops/final-launch-gate-core.mjs');
-            const d1=JSON.parse(fs.readFileSync('/tmp/day7-d1.json','utf8'));
-            const b2=JSON.parse(fs.readFileSync('/tmp/day7-b2.json','utf8'));
-            const publicHealth=JSON.parse(fs.readFileSync('/tmp/day7-public-health.json','utf8'));
-            const commerceHealth=JSON.parse(fs.readFileSync('/tmp/day7-commerce-health.json','utf8'));
-            const commerce=JSON.parse(fs.readFileSync('/tmp/day7-commerce-acceptance.json','utf8'));
-            const partnerLocal=JSON.parse(fs.readFileSync('/tmp/day7-local-assurance.json','utf8'));
-            const partnerLive=JSON.parse(fs.readFileSync('/tmp/day6-proof/live-assurance.json','utf8'));
-            const scheduler=JSON.parse(fs.readFileSync('/tmp/day7-scheduler.json','utf8'));
-            const exactHead=JSON.parse(fs.readFileSync('/tmp/day7-exact-head.json','utf8'));
+            const d1=JSON.parse(fs.readFileSync('/tmp/final-d1.json','utf8'));
+            const b2=JSON.parse(fs.readFileSync('/tmp/final-b2.json','utf8'));
+            const publicHealth=JSON.parse(fs.readFileSync('/tmp/final-public-health.json','utf8'));
+            const commerceHealth=JSON.parse(fs.readFileSync('/tmp/final-commerce-health.json','utf8'));
+            const commerce=JSON.parse(fs.readFileSync('/tmp/final-commerce-acceptance.json','utf8'));
+            const riskObjectTrust=JSON.parse(fs.readFileSync('/tmp/final-risk-object-trust.json','utf8'));
+            const scheduler=JSON.parse(fs.readFileSync('/tmp/final-scheduler.json','utf8'));
+            const exactHead=JSON.parse(fs.readFileSync('/tmp/final-exact-head.json','utf8'));
             const state={
               d1,
               b2,
@@ -292,30 +293,16 @@ jobs:
                 required_for_serving:publicHealth.public_production?.supabase_required_for_serving,
                 network_attempts:(b2.supabase_network_attempts===0 && commerce.supabase_network_attempts===0) ? 0 : 1,
               },
-              partner:{
-                ok:partnerLive.ok===true,
-                local_gates_passed:Object.values(partnerLocal.local_gates??{}).every(v=>v==='PASS'),
-                signed_proof_present:partnerLive.live_review?.signed_proof_present===true,
-                independent_proof_verification:partnerLive.live_review?.independent_proof_verification==='PASS',
-                allowance_used:partnerLive.live_review?.allowance_used,
-                allowance_max:partnerLive.live_review?.allowance_max,
-              },
-              signing:{
-                signature_valid:partnerLocal.local_gates?.local_signature==='PASS',
-                active_key:partnerLocal.local_gates?.active_key==='PASS',
-                fresh:partnerLocal.local_gates?.freshness==='PASS',
-                tamper_rejected:partnerLocal.local_gates?.tamper_rejection==='PASS',
-                record_sha256:partnerLocal.record_sha256,
-              },
+              risk_object_trust:riskObjectTrust,
               scheduler,
               exact_head:exactHead,
             };
             const result=evaluateFinalLaunchGate(state);
             const evidence={
               ...result,
-              schema:'geomacro.final-commercial-launch-acknowledgement.v1',
+              schema:'geomacro.final-commercial-launch-acknowledgement.v2',
               head_sha:process.env.HEAD_SHA,
-              day6_run_id:process.env.UPSTREAM_RUN_ID,
+              exact_head_run_id:process.env.UPSTREAM_RUN_ID,
               acknowledged_at:new Date().toISOString(),
               owner_real_funds_ack_required_before_first_usdc:true,
               first_real_money_transaction_authorized:false,
@@ -324,19 +311,19 @@ jobs:
             if(!result.ready) throw new Error(`FINAL_LAUNCH_GATE_BLOCKED:${result.failed.join(',')}`);
             const canonical=JSON.stringify(evidence);
             evidence.evidence_sha256=crypto.createHash('sha256').update(canonical).digest('hex');
-            fs.writeFileSync('artifacts/day7-final-launch-gate/acknowledgement.json',JSON.stringify(evidence,null,2)+'\n');
+            fs.writeFileSync('artifacts/final-commercial-launch-gate/acknowledgement.json',JSON.stringify(evidence,null,2)+'\n');
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
-          cat artifacts/day7-final-launch-gate/acknowledgement.json
+          cat artifacts/final-commercial-launch-gate/acknowledgement.json
 
       - name: Upload final launch acknowledgement
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: day7-final-commercial-launch-gate-${{ github.run_id }}
-          path: artifacts/day7-final-launch-gate/acknowledgement.json
+          name: final-commercial-launch-gate-${{ github.run_id }}
+          path: artifacts/final-commercial-launch-gate/acknowledgement.json
           if-no-files-found: error
           retention-days: 30
 
       - name: Confirm no-funds launch gate only
         run: |
-          echo "Final commercial launch readiness is acknowledged for this exact head. This gate does not authorize real funds; explicit owner real-money ACK remains mandatory before any first USDC transaction."
+          echo "Generic final commercial launch readiness is acknowledged for this exact head. Federico/partner-specific assurance is outside #1414. This gate does not authorize real funds; explicit owner real-money ACK remains mandatory before the first USDC transaction."

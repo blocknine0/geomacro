@@ -19,19 +19,17 @@ export function evaluateFinalLaunchGate(state) {
       state?.supabase?.runtime_mode === "standby" &&
       state?.supabase?.required_for_serving === false &&
       state?.supabase?.network_attempts === 0,
-    partner_assurance:
-      state?.partner?.ok === true &&
-      state?.partner?.local_gates_passed === true &&
-      state?.partner?.signed_proof_present === true &&
-      state?.partner?.independent_proof_verification === true &&
-      state?.partner?.allowance_used === 1 &&
-      state?.partner?.allowance_max === 1,
-    signing_trust:
-      state?.signing?.signature_valid === true &&
-      state?.signing?.active_key === true &&
-      state?.signing?.fresh === true &&
-      state?.signing?.tamper_rejected === true &&
-      /^[0-9a-f]{64}$/.test(String(state?.signing?.record_sha256 ?? "")),
+    risk_object_trust:
+      state?.risk_object_trust?.ok === true &&
+      state?.risk_object_trust?.registry_live === true &&
+      state?.risk_object_trust?.verification_endpoint_live === true &&
+      state?.risk_object_trust?.active_key === true &&
+      state?.risk_object_trust?.signature_scheme === "Ed25519" &&
+      state?.risk_object_trust?.canonicalization === "geomacro-canonical-json-v1" &&
+      state?.risk_object_trust?.local_verifier_contract === true &&
+      state?.risk_object_trust?.tamper_rejected === true &&
+      state?.risk_object_trust?.b2_risk_verified === true &&
+      /^[0-9a-f]{64}$/.test(String(state?.risk_object_trust?.registry_sha256 ?? "")),
     scheduler_health:
       state?.scheduler?.ok === true &&
       state?.scheduler?.fresh === true &&
@@ -50,7 +48,7 @@ export function evaluateFinalLaunchGate(state) {
     .map(([name]) => name);
 
   return {
-    schema: "geomacro.final-commercial-launch-gate.v1",
+    schema: "geomacro.final-commercial-launch-gate.v2",
     ready: failed.length === 0,
     checks,
     failed,
@@ -58,6 +56,8 @@ export function evaluateFinalLaunchGate(state) {
     compact_control_plane: "cloudflare-d1",
     commerce_authority: "cloudflare-durable-objects",
     supabase_runtime_mode: "standby",
+    risk_object_trust_scope: "generic-public-production",
+    partner_specific_assurance_required: false,
     supabase_destructive_retirement_authorized: false,
     payment_performed: false,
     real_funds_authorized: false,
