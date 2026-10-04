@@ -24,6 +24,7 @@ on:
       - "scripts/ops/publish-b2-risk-indices-direct-postgres.mjs"
       - ".github/workflows/gri-realtime-direct-postgres.yml"
       - ".github/workflows/risk-indices-realtime-direct-postgres.yml"
+      - "src/__tests__/production-website-health-current-intelligence-static.test.ts"
   schedule:
     - cron: "11 */6 * * *"
 
@@ -36,7 +37,7 @@ concurrency:
 
 jobs:
   public-production-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
       BASE_URL: https://geomacro.live
@@ -92,7 +93,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           global_edge="$(mktemp)"
           global_headers="$(mktemp)"
           global_code="$(curl -sS -D "$global_headers" -o "$global_edge" -w '%{http_code}' --max-time 20 "$GLOBAL_RISK_EDGE_URL")"
@@ -112,13 +112,19 @@ jobs:
             exit 1
           fi
 
-      - name: Verify public production APIs and scored Intelligence contract
+      - name: Verify public production APIs and current Intelligence contract
         shell: bash
         run: |
           set -euo pipefail
-
-          intel="$(mktemp)"
-          intel_code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$intel" -w '%{http_code}' "$BASE_URL/api/public/intelligence")"
+          mkdir -p /tmp/production-website-health
+          intel="/tmp/production-website-health/intelligence.json"
+          nonce="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(date +%s)"
+          intel_code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS \
+            -H 'Accept: application/json' \
+            -H 'Cache-Control: no-cache' \
+            -H 'Pragma: no-cache' \
+            -o "$intel" -w '%{http_code}' \
+            "$BASE_URL/api/public/intelligence?production_health=${nonce}")"
           if [[ "$intel_code" != "200" ]]; then
             echo "::error title=Public intelligence API unavailable::Expected HTTP 200, got $intel_code."
             cat "$intel"
@@ -129,26 +135,52 @@ jobs:
           const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           const rows = Array.isArray(body?.rows) ? body.rows : [];
           const required = new Set(['geopolitics', 'macro', 'rare_earth']);
-          const seen = new Set();
-          let ok = body?.ok === true && body?.mode === 'verified_b2' && Number(body?.live_observed_rows) === 0 && rows.length > 0;
+          const scored = new Set();
+          let verified = 0;
+          let live = 0;
+          let newestLive = -Infinity;
+          let ok = body?.ok === true && body?.mode === 'verified_b2_plus_live_observed' && rows.length > 0;
           for (const row of rows) {
-            const severity = Number(row?.severity);
             const category = String(row?.category ?? '');
             const title = String(row?.source_title ?? '');
-            if (!Number.isFinite(severity) || severity < 0 || severity > 100) ok = false;
-            if (row?.public_status !== 'verified_b2') ok = false;
-            if (!title.startsWith('Geomacro finds ')) ok = false;
-            if (required.has(category)) seen.add(category);
+            if ('source_name' in row || 'source_domain' in row || 'source_url' in row) ok = false;
+            if (row?.public_status === 'verified_b2') {
+              verified++;
+              const severity = Number(row?.severity);
+              if (!Number.isFinite(severity) || severity < 0 || severity > 100 || !title.startsWith('Geomacro finds ')) ok = false;
+              if (required.has(category)) scored.add(category);
+            } else if (row?.public_status === 'live_observed') {
+              live++;
+              if (category !== 'geopolitics' || row?.severity !== null || row?.delta !== null || !title.startsWith('Geomacro observes ')) ok = false;
+              const timestamp = Date.parse(String(row?.published_at ?? row?.created_at ?? ''));
+              if (!Number.isFinite(timestamp)) ok = false;
+              else newestLive = Math.max(newestLive, timestamp);
+            } else {
+              ok = false;
+            }
           }
-          for (const category of required) if (!seen.has(category)) ok = false;
+          for (const category of required) if (!scored.has(category)) ok = false;
+          if (Number(body?.verified_rows) !== verified || Number(body?.live_observed_rows) !== live || live < 1) ok = false;
+          if (body?.current_within_24h !== true || !Number.isFinite(newestLive) || Date.now() - newestLive > 24 * 60 * 60 * 1000) ok = false;
           if (!ok) {
-            console.error(JSON.stringify({ error: 'PUBLIC_INTELLIGENCE_CONTRACT_INVALID', body }, null, 2));
+            console.error(JSON.stringify({
+              error: 'PUBLIC_INTELLIGENCE_CURRENT_CONTRACT_INVALID',
+              mode: body?.mode ?? null,
+              verified_rows: body?.verified_rows ?? null,
+              live_observed_rows: body?.live_observed_rows ?? null,
+              newest_at: body?.newest_at ?? null,
+              current_within_24h: body?.current_within_24h ?? null,
+            }, null, 2));
             process.exit(1);
           }
-          if (body?.current_within_24h !== true) {
-            console.log('::warning::No new verified Intelligence row is inside 24h; production correctly preserves the latest verified scored package.');
-          }
-          console.log(JSON.stringify({ ok: true, newest_at: body?.newest_at ?? null, rows: rows.length, categories: [...seen] }));
+          console.log(JSON.stringify({
+            ok: true,
+            mode: body.mode,
+            newest_at: body.newest_at ?? null,
+            verified_rows: verified,
+            live_observed_rows: live,
+            categories: [...scored],
+          }));
           NODE
 
           global_risk="$(mktemp)"
@@ -181,6 +213,15 @@ jobs:
             exit 1
           fi
           grep -Fq '"ok":true' "$ask"
+
+      - name: Upload production Intelligence diagnostic
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: production-intelligence-health-${{ github.run_id }}
+          path: /tmp/production-website-health/intelligence.json
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Verify rendered production page markers
         shell: bash
