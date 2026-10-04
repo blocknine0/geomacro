@@ -23,13 +23,15 @@ describe("Auto Ingest News reliability contract", () => {
     expect(workflow).not.toContain("--retry-all-errors");
   });
 
-  it("routes only explicit Supabase egress restriction to public continuity verification", () => {
+  it("routes only explicit Supabase egress restriction to direct recovery plus public continuity verification", () => {
     expect(workflow).toContain("supabase-preflight:");
     expect(workflow).toContain("exceed_egress_quota");
     expect(workflow).toContain("mode=egress_restricted");
     expect(workflow).toContain("public-live-freshness-fallback:");
-    expect(workflow).toContain("needs.supabase-preflight.outputs.available == 'false'");
+    expect(workflow).toContain("needs.supabase-preflight.outputs.mode == 'egress_restricted'");
+    expect(workflow).toContain("GRI_DB_MODE: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && 'direct_postgres' || '' }}");
     expect(workflow).toContain("bun scripts/ops/probe-public-intelligence-live-fallback.ts");
+    expect(workflow).not.toContain("needs.supabase-preflight.outputs.available == 'false'");
   });
 
   it("proves scored B2 continuity without synthesizing live observations", () => {
