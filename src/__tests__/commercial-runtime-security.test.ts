@@ -105,7 +105,10 @@ describe("commercial runtime security baseline", () => {
     const ingest = read(".github/workflows/auto-ingest-news.yml");
     expect(ingest).toContain("github.repository == 'blocknine0/geomacro'");
     expect(ingest).toContain("bun install --frozen-lockfile --ignore-scripts");
-    expect(ingest).toContain("Durable verified ingestion remains fail-closed");
+    expect(ingest).toContain("Unknown failures remain");
+    expect(ingest).toContain("needs.supabase-preflight.outputs.mode == 'egress_restricted'");
+    expect(ingest).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
+    expect(ingest).toContain("direct-postgres-supabase-loader.mjs");
     expect(ingest).toContain("public-live-freshness-fallback:");
     expect(ingest).not.toContain("auto-create-markets");
 
