@@ -66,10 +66,24 @@ describe("B2 country GRO continuity", () => {
   it("keeps one bounded fresh commercial GRO alive without restoring bulk global refresh", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     expect(workflow).toContain('cron: "41 * * * *"');
-    expect(workflow).toContain("bun scripts/publish-country-risk-object.ts USA CANONICAL");
+    expect(workflow).toContain("scripts/publish-country-risk-object.ts USA CANONICAL");
     expect(workflow).toContain("GRO_CONTINUITY_COUNTRY_ISO3: USA");
     expect(workflow).not.toContain("refresh-global-canonical-risk-objects.ts");
     expect(workflow).not.toContain("refresh-public-demo-risk-objects.ts");
+  });
+
+  it("keeps GRO continuity on the authoritative database while bypassing restricted REST egress", () => {
+    const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
+    const shim = read("scripts/lib/gri-db-client.mjs");
+    expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
+    expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
+    expect(workflow).toContain("--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs");
+    expect(workflow).toContain("node --import tsx scripts/publish-country-risk-object.ts USA CANONICAL");
+    expect(workflow).toContain("node --import tsx scripts/ops/publish-b2-country-gro-continuity.ts");
+    expect(shim).toContain("filter(column, operator, value)");
+    expect(shim).toContain('op === "cs" || op === "not.cs"');
+    expect(shim).toContain(" @> ");
+    expect(shim).toContain('op === "not.cs" ? `NOT (${predicate})` : predicate');
   });
 
   it("derives the D1 current index only from independently verified B2 bytes", () => {
