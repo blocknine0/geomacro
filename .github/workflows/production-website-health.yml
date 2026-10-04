@@ -25,6 +25,7 @@ on:
       - ".github/workflows/gri-realtime-direct-postgres.yml"
       - ".github/workflows/risk-indices-realtime-direct-postgres.yml"
       - "src/__tests__/production-website-health-current-intelligence-static.test.ts"
+      - "src/__tests__/global-risk-lock-production-health.test.ts"
   schedule:
     - cron: "11 */6 * * *"
 
@@ -231,7 +232,7 @@ jobs:
           /|Global risk intelligence
           /intelligence|Risk Intelligence
           /global-risk|Geomacro Global Risk
-          /risk-indices|Three risks. Three separate indices.
+          /risk-indices|Geomacro Risk Indices
           /ask-geomacro|Ask Geomacro
           /data-api|GOVERNED DATA
           /pricing|Access & pricing
