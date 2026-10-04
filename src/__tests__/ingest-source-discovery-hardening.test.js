@@ -120,7 +120,7 @@ describe('shared source discovery hardening', () => {
     );
   });
 
-  it('wires Guardian query budget into active ingestion workflows', () => {
+  it('wires bounded Guardian query policy into both normal and egress-recovery ingestion modes', () => {
     const envExample = readFileSync(
       new URL(
         '../../.env.example',
@@ -149,7 +149,11 @@ describe('shared source discovery hardening', () => {
       );
 
       expect(workflow).toContain(
-        'GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "3"'
+        "GUARDIAN_QUERY_BUDGET_PER_CATEGORY: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && '0' || '3' }}"
+      );
+
+      expect(workflow).toContain(
+        "GEOMACRO_DISABLE_GUARDIAN: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && 'true' || 'false' }}"
       );
 
       expect(workflow).toContain(
