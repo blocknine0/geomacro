@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout full history
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -30,7 +30,21 @@ jobs:
       - name: Verify published website lock
         run: node scripts/ops/verify-website-lock.mjs
 
-      - name: Prove website lock fails closed
+      - name: Prove final Global Risk lock fails closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '\n/* global-risk-final-lock-negative-self-test */\n' >> src/routes/global-risk.tsx
+
+          if node scripts/ops/verify-website-lock.mjs; then
+            echo "::error::Final Global Risk lock self-test failed: a frozen /global-risk presentation edit was not blocked."
+            exit 1
+          fi
+
+          git checkout -- src/routes/global-risk.tsx
+          node scripts/ops/verify-website-lock.mjs
+
+      - name: Prove general website lock fails closed
         shell: bash
         run: |
           set -euo pipefail

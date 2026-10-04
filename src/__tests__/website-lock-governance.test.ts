@@ -21,6 +21,20 @@ describe("website lock governance", () => {
     expect(verifier).not.toContain("lockInfrastructure.has(path)");
   });
 
+  it("keeps the finalized Global Risk presentation pinned to its immutable approved baseline", () => {
+    const workflow = read(".github/workflows/website-lock.yml");
+    const verifier = read("scripts/ops/verify-website-lock.mjs");
+
+    expect(verifier).toContain('const GLOBAL_RISK_FROZEN_BASELINE = "0270ab7876cabe372c246f76fbcf299ed1b0e1fc"');
+    expect(verifier).toContain('"src/routes/global-risk.tsx"');
+    expect(verifier).toContain('"src/components/gri/global-risk-domain-indices.tsx"');
+    expect(verifier).toContain("GEOMACRO GLOBAL RISK FINAL LOCK VIOLATION");
+    expect(verifier).toContain("byte-for-byte equivalent to its frozen baseline");
+    expect(workflow).toContain("Prove final Global Risk lock fails closed");
+    expect(workflow).toContain("global-risk-final-lock-negative-self-test");
+    expect(workflow).toContain("Final Global Risk lock self-test failed");
+  });
+
   it("keeps the published presentation baseline fail-closed", () => {
     const config = JSON.parse(read("config/website-lock.json"));
     expect(config.locked).toBe(true);

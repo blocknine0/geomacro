@@ -15,14 +15,74 @@ if (!/^[0-9a-f]{40}$/i.test(baseline)) {
   process.exit(1);
 }
 
+/**
+ * FINAL GLOBAL RISK PRESENTATION FREEZE
+ *
+ * This baseline is intentionally hard-coded instead of being read from the
+ * mutable website baseline config. Updating the general website baseline must
+ * never silently re-approve changes to the founder-finalized /global-risk UI.
+ *
+ * Data, publishers, archives and verified runtime reads may continue evolving;
+ * only these customer-facing presentation files are permanently pinned here.
+ */
+const GLOBAL_RISK_FROZEN_BASELINE = "0270ab7876cabe372c246f76fbcf299ed1b0e1fc";
+const GLOBAL_RISK_FROZEN_PATHS = [
+  "src/routes/global-risk.tsx",
+  "src/components/gri/global-risk-domain-indices.tsx",
+];
+
 function git(args) {
   return execFileSync("git", args, { encoding: "utf8" }).trim();
 }
 
-try {
-  git(["cat-file", "-e", `${baseline}^{commit}`]);
-} catch {
-  console.error(`::error::Website lock baseline ${baseline} is not available in this checkout. Use fetch-depth: 0.`);
+function requireCommit(commit, label) {
+  try {
+    git(["cat-file", "-e", `${commit}^{commit}`]);
+  } catch {
+    console.error(`::error::${label} ${commit} is not available in this checkout. Use fetch-depth: 0.`);
+    process.exit(1);
+  }
+}
+
+requireCommit(baseline, "Website lock baseline");
+requireCommit(GLOBAL_RISK_FROZEN_BASELINE, "Final Global Risk frozen baseline");
+
+function lines(value) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function globalRiskFrozenViolations() {
+  const committed = lines(
+    git([
+      "diff",
+      "--name-only",
+      "--diff-filter=ACDMRTUXB",
+      GLOBAL_RISK_FROZEN_BASELINE,
+      "HEAD",
+      "--",
+      ...GLOBAL_RISK_FROZEN_PATHS,
+    ]),
+  );
+  const working = lines(
+    git(["diff", "--name-only", "--diff-filter=ACDMRTUXB", "HEAD", "--", ...GLOBAL_RISK_FROZEN_PATHS]),
+  );
+  const staged = lines(
+    git(["diff", "--cached", "--name-only", "--diff-filter=ACDMRTUXB", "--", ...GLOBAL_RISK_FROZEN_PATHS]),
+  );
+  return [...new Set([...committed, ...working, ...staged])];
+}
+
+const globalRiskViolations = globalRiskFrozenViolations();
+if (globalRiskViolations.length > 0) {
+  console.error("::error::GEOMACRO GLOBAL RISK FINAL LOCK VIOLATION");
+  console.error(`Founder-finalized Global Risk baseline: ${GLOBAL_RISK_FROZEN_BASELINE}`);
+  console.error("The following permanently frozen /global-risk presentation files changed:");
+  for (const path of globalRiskViolations) console.error(` - ${path}`);
+  console.error("");
+  console.error("Other Geomacro work may continue, including verified data/runtime updates, but the finalized /global-risk presentation must remain byte-for-byte equivalent to its frozen baseline.");
   process.exit(1);
 }
 
@@ -57,13 +117,6 @@ function isProtectedWebsitePath(path) {
   return false;
 }
 
-function lines(value) {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
 const changed = new Set([
   ...lines(git(["diff", "--name-only", "--diff-filter=ACDMRTUXB", baseline, "HEAD"])),
   ...lines(git(["diff", "--name-only", "--diff-filter=ACDMRTUXB", "HEAD"])),
@@ -83,4 +136,5 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
+console.log(`Final Global Risk presentation lock verified at ${GLOBAL_RISK_FROZEN_BASELINE}.`);
 console.log(`Website lock verified. Published presentation still matches baseline ${baseline}.`);
