@@ -99,32 +99,63 @@ jobs:
           NODE
 
       - name: Publish verified scored context plus certified current observations to B2
-        run: node scripts/ops/run-b2-public-intelligence-publisher.mjs
-
-      - name: Observe production Intelligence API compatibility
-        if: always()
         shell: bash
         run: |
-          set -u
+          set -euo pipefail
+          node scripts/ops/run-b2-public-intelligence-publisher.mjs | tee /tmp/intelligence-publish.log
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const lines = fs.readFileSync('/tmp/intelligence-publish.log', 'utf8').split(/\r?\n/).filter(Boolean);
+          let proof = null;
+          for (const line of lines) {
+            try {
+              const value = JSON.parse(line);
+              if (value?.schema === 'geomacro.public-intelligence-direct-postgres-publish.v2') proof = value;
+            } catch {}
+          }
+          if (
+            !proof ||
+            proof.ok !== true ||
+            proof.authority_serve !== 'backblaze-b2' ||
+            proof.scored_only !== false ||
+            proof.live_observed_unscored !== true ||
+            Number(proof.live_observed_rows) < 1 ||
+            !proof.current_source_batch_at ||
+            proof.synthetic_score !== false ||
+            proof.b2_readback_verified !== true
+          ) {
+            throw new Error('PUBLIC_INTELLIGENCE_PUBLISH_PROOF_INVALID');
+          }
+          fs.writeFileSync('/tmp/intelligence-publish-proof.json', JSON.stringify(proof, null, 2) + '\n');
+          NODE
+
+      - name: Require production Intelligence API convergence
+        shell: bash
+        run: |
+          set -euo pipefail
           body="$(mktemp)"
-          code="$(curl -L -sS -o "$body" -w '%{http_code}' --max-time 20 -H 'Accept: application/json' 'https://geomacro.live/api/public/intelligence' || true)"
-          if [ "$code" != "200" ]; then
-            echo "::warning::geomacro.live Intelligence compatibility API returned HTTP ${code}; the B2 publisher remains authoritative and independently readback-verified."
-            exit 0
-          fi
-          if node - "$body" <<'NODE'
+          for attempt in $(seq 1 24); do
+            nonce="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${attempt}-$(date +%s)"
+            code="$(curl -L -sS -o "$body" -w '%{http_code}' --max-time 20 \
+              -H 'Accept: application/json' \
+              -H 'Cache-Control: no-cache' \
+              -H 'Pragma: no-cache' \
+              "https://geomacro.live/api/public/intelligence?freshness_proof=${nonce}" || true)"
+            if [ "$code" = "200" ] && node - "$body" /tmp/intelligence-publish-proof.json <<'NODE'
           const fs = require('fs');
-          const path = process.argv[2];
-          const body = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const proof = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
           const rows = Array.isArray(body?.rows) ? body.rows : [];
           const required = new Set(['geopolitics','macro','rare_earth']);
           const scored = new Set();
           let verified = 0;
           let live = 0;
-          let ok = body?.ok === true && ['verified_b2','verified_b2_plus_live_observed'].includes(body?.mode) && rows.length > 0;
+          let newestLive = -Infinity;
+          let ok = body?.ok === true && body?.mode === 'verified_b2_plus_live_observed' && rows.length > 0;
           for (const row of rows) {
             const category = String(row?.category ?? '');
             const title = String(row?.source_title ?? '');
+            if ('source_name' in row || 'source_domain' in row || 'source_url' in row) ok = false;
             if (row?.public_status === 'verified_b2') {
               verified++;
               const severity = Number(row?.severity);
@@ -133,28 +164,39 @@ jobs:
             } else if (row?.public_status === 'live_observed') {
               live++;
               if (category !== 'geopolitics' || row?.severity !== null || row?.delta !== null || !title.startsWith('Geomacro observes ')) ok = false;
+              const timestamp = Date.parse(String(row?.published_at ?? row?.created_at ?? ''));
+              if (Number.isFinite(timestamp)) newestLive = Math.max(newestLive, timestamp);
+              else ok = false;
             } else {
               ok = false;
             }
           }
           for (const category of required) if (!scored.has(category)) ok = false;
-          if (Number(body?.verified_rows) !== verified || Number(body?.live_observed_rows) !== live) ok = false;
-          if (body?.mode === 'verified_b2' && live !== 0) ok = false;
-          if (body?.mode === 'verified_b2_plus_live_observed' && live < 1) ok = false;
+          if (Number(body?.verified_rows) !== verified || Number(body?.live_observed_rows) !== live || live < 1) ok = false;
+          if (body?.current_within_24h !== true) ok = false;
+          const expectedBatch = Date.parse(String(proof?.current_source_batch_at ?? ''));
+          const responseNewest = Date.parse(String(body?.newest_at ?? ''));
+          if (!Number.isFinite(expectedBatch) || !Number.isFinite(responseNewest) || responseNewest < expectedBatch) ok = false;
+          if (!Number.isFinite(newestLive) || newestLive < expectedBatch) ok = false;
           process.exit(ok ? 0 : 1);
           NODE
-          then
-            cp "$body" /tmp/intelligence-current.json
-            exit 0
-          fi
-          echo "::warning::Production Intelligence compatibility API has not caught up to the latest scored-plus-current contract yet."
-          exit 0
+            then
+              cp "$body" /tmp/intelligence-current.json
+              echo "Production Intelligence API converged to the exact B2 publish proof on attempt ${attempt}."
+              exit 0
+            fi
+            if [ "$attempt" -lt 24 ]; then sleep 10; fi
+          done
+          echo "::error::Production Intelligence API did not converge to the scored-plus-current B2 publish proof within the bounded acceptance window."
+          exit 1
 
       - name: Upload Intelligence acceptance evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
         with:
           name: intelligence-current-${{ github.run_id }}
-          path: /tmp/intelligence-current.json
+          path: |
+            /tmp/intelligence-current.json
+            /tmp/intelligence-publish-proof.json
           if-no-files-found: warn
           retention-days: 30
