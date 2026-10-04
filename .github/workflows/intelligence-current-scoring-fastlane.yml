@@ -2,7 +2,7 @@ name: Intelligence Current Scoring Fastlane
 
 on:
   schedule:
-    - cron: "3,23,43 * * * *"
+    - cron: "13,33,53 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -19,7 +19,7 @@ jobs:
   score-current-domain:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 18
+    timeout-minutes: 12
     environment: production
     env:
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
