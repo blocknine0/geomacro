@@ -1,4 +1,5 @@
 import { readB2PublicIntelligence } from "./b2-live.server";
+import { dedupePublicIntelligenceRows } from "./public-intelligence-dedupe";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 
 export type ProductionPublicIntelligenceRow = PublicIntelligenceRow & {
@@ -81,19 +82,23 @@ function normalizedLiveObservedRow(
 }
 
 function normalizedRows(rows: PublicIntelligenceRow[]): ProductionPublicIntelligenceRow[] {
-  const dedupe = new Map<string, ProductionPublicIntelligenceRow>();
+  const normalized: ProductionPublicIntelligenceRow[] = [];
+  const exact = new Set<string>();
   const now = Date.now();
+
   for (const raw of [...rows].sort((a, b) => rowTime(b) - rowTime(a))) {
     const row = raw.public_status === "live_observed"
       ? normalizedLiveObservedRow(raw, now)
       : normalizedScoredRow(raw);
     if (!row) continue;
+
     const key = `${row.public_status}|${row.category}|${String(row.source_title).toLowerCase().replace(/\s+/g, " ")}`;
-    if (dedupe.has(key)) continue;
-    dedupe.set(key, row);
-    if (dedupe.size >= MAX_TOTAL_ROWS) break;
+    if (exact.has(key)) continue;
+    exact.add(key);
+    normalized.push(row);
   }
-  return [...dedupe.values()].sort((a, b) => rowTime(b) - rowTime(a));
+
+  return dedupePublicIntelligenceRows(normalized, MAX_TOTAL_ROWS);
 }
 
 function assertThreeDomainCoverage(rows: ProductionPublicIntelligenceRow[]) {
