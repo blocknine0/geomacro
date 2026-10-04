@@ -12,6 +12,8 @@ on:
       - "scripts/ops/verify-b2-country-gro-direct-read.ts"
       - "scripts/ops/sync-current-country-gro-to-d1.ts"
       - "scripts/publish-country-risk-object.ts"
+      - "scripts/lib/gri-db-client.mjs"
+      - "scripts/lib/direct-postgres-supabase-loader.mjs"
       - "src/lib/b2-country-gro.server.ts"
       - "src/lib/country-gro-resolver.server.ts"
       - "src/lib/agent-query-external-modules.server.ts"
@@ -34,6 +36,8 @@ jobs:
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      GRI_DB_MODE: direct_postgres
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
@@ -57,13 +61,34 @@ jobs:
           bun-version: "1.4.2"
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Verify authoritative Supabase source
-        run: node scripts/db/assert-authoritative-supabase.mjs
-      - name: Refresh one bounded commercially verified canonical GRO
+      - name: Verify authoritative direct PostgreSQL source
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/publish-country-risk-object.ts USA CANONICAL | tee /tmp/current-country-gro.json
+          node scripts/db/assert-authoritative-supabase.mjs
+          test -n "${SUPABASE_DB_URL:-}"
+          node --input-type=module <<'NODE'
+          import { createGriDbClient } from './scripts/lib/gri-db-client.mjs';
+          const db = createGriDbClient();
+          const { data, error } = await db
+            .from('live_country_registry')
+            .select('iso3,enabled')
+            .eq('iso3', process.env.GRO_CONTINUITY_COUNTRY_ISO3)
+            .eq('enabled', true)
+            .maybeSingle();
+          if (error) throw new Error(error.message);
+          if (!data || data.iso3 !== process.env.GRO_CONTINUITY_COUNTRY_ISO3 || data.enabled !== true) {
+            throw new Error('GRO_CONTINUITY_COUNTRY_NOT_ENABLED');
+          }
+          console.log(JSON.stringify({ ok: true, transport: 'direct_postgres', country_iso3: data.iso3 }));
+          NODE
+      - name: Refresh one bounded commercially verified canonical GRO
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx scripts/publish-country-risk-object.ts USA CANONICAL | tee /tmp/current-country-gro.json
           jq -e '
             .delivery_profile == "CANONICAL"
             and .subject.type == "country"
@@ -73,7 +98,9 @@ jobs:
             and .integrity.signature_valid == true
           ' /tmp/current-country-gro.json >/dev/null
       - name: Publish current verified canonical country GROs to private B2
-        run: bun scripts/ops/publish-b2-country-gro-continuity.ts
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+        run: node --import tsx scripts/ops/publish-b2-country-gro-continuity.ts
       - name: Prove runtime GRO read works after removing Supabase credentials
         run: bun scripts/ops/verify-b2-country-gro-direct-read.ts
       - name: Sync independently verified current country GRO to D1
