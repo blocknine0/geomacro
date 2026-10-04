@@ -5,6 +5,9 @@ const GAL_BASE = 'https://storage.googleapis.com/data.gdeltproject.org/gdeltv3/g
 const MAX_PROBE_REQUESTS = 60;
 const MAX_PARALLEL_PROBES = 6;
 const DEFAULT_LOOKBACK_MINUTES = 300;
+const RARE_EARTH_LOOKBACK_MINUTES = 24 * 60;
+const RARE_EARTH_DENSE_RECENT_MINUTES = 60;
+const RARE_EARTH_SPARSE_INTERVAL_MINUTES = 45;
 const DEFAULT_TIMEOUT_MS = 8_000;
 const HEARTBEAT_MINUTES = 15;
 const HEARTBEAT_OFFSETS = Object.freeze([1, 2, 3, 4, 5]);
@@ -39,6 +42,11 @@ const STRONG_TOPIC_PATTERNS = Object.freeze({
     /\brare[- ]earth oxides?\b/i, /\brare[- ]earth metals?\b/i,
     /\bmineral processing\b/i, /\bmineral refining\b/i, /\bseparation plants?\b/i,
     /\bstrategic minerals?\b/i, /\bgallium\b/i, /\bgermanium\b/i,
+    /\btierras raras\b/i, /\bminerales cr[ií]ticos\b/i,
+    /\bterres rares\b/i, /\bmin[eé]raux critiques\b/i,
+    /\bseltene erden\b/i, /\bkritische mineralien\b/i,
+    /\bterre rare\b/i, /\bterras raras\b/i, /\bminerais cr[ií]ticos\b/i,
+    /редкоземел/iu, /稀土/u, /レアアース/u, /희토류/u,
   ],
 });
 
@@ -51,6 +59,8 @@ const MINERAL_CONTEXT_PATTERNS = Object.freeze([
   /\bprocessing\b/i, /\bsmelt/i, /\bsupply chain\b/i, /\bexport/i,
   /\bimport/i, /\bproduction\b/i, /\bproducer\b/i, /\breserves?\b/i,
   /\bprices?\b/i, /\bdemand\b/i, /\bshortage\b/i, /\bproject\b/i,
+  /\bmina\b/i, /\bminer[ií]a\b/i, /\bmin[eé]raux?\b/i, /\bmineralien\b/i,
+  /\bexportaci[oó]n\b/i, /\bproducci[oó]n\b/i, /\bapprovisionnement\b/i,
 ]);
 
 function utcMinuteStamp(date) {
@@ -83,9 +93,10 @@ function floorToHeartbeat(date) {
   return floored;
 }
 
-export function candidateStamps(now = new Date(), lookbackMinutes = DEFAULT_LOOKBACK_MINUTES) {
+export function candidateStamps(now = new Date(), lookbackMinutes = DEFAULT_LOOKBACK_MINUTES, categoryName = null) {
   const nowMs = now.getTime();
-  const boundedLookback = Math.max(15, Math.min(DEFAULT_LOOKBACK_MINUTES, Number(lookbackMinutes) || DEFAULT_LOOKBACK_MINUTES));
+  const maxLookbackMinutes = categoryName === 'rare_earth' ? RARE_EARTH_LOOKBACK_MINUTES : DEFAULT_LOOKBACK_MINUTES;
+  const boundedLookback = Math.max(15, Math.min(maxLookbackMinutes, Number(lookbackMinutes) || maxLookbackMinutes));
   const oldestMs = nowMs - boundedLookback * 60_000;
   const out = [];
   const seen = new Set();
@@ -100,9 +111,31 @@ export function candidateStamps(now = new Date(), lookbackMinutes = DEFAULT_LOOK
     }
   };
 
-  // Cover the immediate edge first, then every minute in the known GDELT post-heartbeat cluster.
   for (let minuteAgo = 1; minuteAgo <= 6; minuteAgo += 1) {
     add(new Date(nowMs - minuteAgo * 60_000));
+  }
+
+  if (categoryName === 'rare_earth') {
+    const denseOldestMs = nowMs - Math.min(boundedLookback, RARE_EARTH_DENSE_RECENT_MINUTES) * 60_000;
+    for (
+      let heartbeat = floorToHeartbeat(now);
+      heartbeat.getTime() >= denseOldestMs && out.length < MAX_PROBE_REQUESTS;
+      heartbeat = new Date(heartbeat.getTime() - HEARTBEAT_MINUTES * 60_000)
+    ) {
+      for (const offset of HEARTBEAT_OFFSETS) add(new Date(heartbeat.getTime() + offset * 60_000));
+    }
+
+    let sparseIndex = 0;
+    for (
+      let heartbeat = new Date(floorToHeartbeat(now).getTime() - RARE_EARTH_DENSE_RECENT_MINUTES * 60_000);
+      heartbeat.getTime() >= oldestMs && out.length < MAX_PROBE_REQUESTS;
+      heartbeat = new Date(heartbeat.getTime() - RARE_EARTH_SPARSE_INTERVAL_MINUTES * 60_000)
+    ) {
+      const offset = HEARTBEAT_OFFSETS[sparseIndex % HEARTBEAT_OFFSETS.length];
+      add(new Date(heartbeat.getTime() + offset * 60_000));
+      sparseIndex += 1;
+    }
+    return out;
   }
 
   for (
@@ -187,7 +220,7 @@ function realPublishedAt(row, sourceStamp) {
 async function fetchGalFile(stamp, timeoutMs) {
   const sourceUrl = `${GAL_BASE}/${stamp}.gal.json.gz`;
   const response = await fetch(sourceUrl, {
-    headers: { 'user-agent': 'Geomacro-Current-Scoring-Fastlane/1.1' },
+    headers: { 'user-agent': 'Geomacro-Current-Scoring-Fastlane/1.2' },
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (response.status === 404) return null;
@@ -233,17 +266,21 @@ export async function fetchGdeltGalFastlaneArticles({
   maxArticleAgeMs,
   maxCandidates = 2,
   now = new Date(),
-  lookbackMinutes = DEFAULT_LOOKBACK_MINUTES,
+  lookbackMinutes = null,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 } = {}) {
   if (!STRONG_TOPIC_PATTERNS[categoryName]) throw new Error(`GDELT_GAL_CATEGORY_UNSUPPORTED:${categoryName}`);
   const boundedMax = Math.max(1, Math.min(5, Number(maxCandidates) || 2));
-  const freshnessMs = Math.max(60_000, Number(maxArticleAgeMs) || 6 * 60 * 60 * 1000);
+  const requestedFreshnessMs = Math.max(60_000, Number(maxArticleAgeMs) || 6 * 60 * 60 * 1000);
+  const freshnessMs = categoryName === 'rare_earth'
+    ? Math.max(requestedFreshnessMs, 24 * 60 * 60 * 1000)
+    : requestedFreshnessMs;
+  const maxLookbackMinutes = categoryName === 'rare_earth' ? RARE_EARTH_LOOKBACK_MINUTES : DEFAULT_LOOKBACK_MINUTES;
   const effectiveLookbackMinutes = Math.min(
-    DEFAULT_LOOKBACK_MINUTES,
-    Math.max(15, Math.ceil(freshnessMs / 60_000), Number(lookbackMinutes) || DEFAULT_LOOKBACK_MINUTES),
+    maxLookbackMinutes,
+    Math.max(15, Math.ceil(freshnessMs / 60_000), Number(lookbackMinutes) || maxLookbackMinutes),
   );
-  const stamps = candidateStamps(now, effectiveLookbackMinutes);
+  const stamps = candidateStamps(now, effectiveLookbackMinutes, categoryName);
   const seen = new Set();
   const candidates = [];
 
