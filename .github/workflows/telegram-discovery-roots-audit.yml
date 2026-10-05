@@ -1,0 +1,82 @@
+name: Telegram Discovery Roots Governance Audit
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17 4 * * 1"
+  pull_request:
+    branches: [main]
+    paths:
+      - "config/telegram-discovery-roots.json"
+      - "scripts/export-telegram-discovery-roots.mjs"
+      - "src/__tests__/telegram-discovery-roots-bridge.test.ts"
+      - ".github/workflows/telegram-discovery-roots-audit.yml"
+  push:
+    branches: [main]
+    paths:
+      - "config/telegram-discovery-roots.json"
+      - "scripts/export-telegram-discovery-roots.mjs"
+      - "src/__tests__/telegram-discovery-roots-bridge.test.ts"
+      - ".github/workflows/telegram-discovery-roots-audit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: telegram-discovery-roots-governance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bunx vitest run src/__tests__/telegram-discovery-roots-bridge.test.ts
+
+  production-drift:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    env:
+      GRI_DB_MODE: direct_postgres
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      TELEGRAM_DISCOVERY_ROOTS_OUT: artifacts/telegram-discovery-roots.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Export current governed production roots
+        run: node scripts/export-telegram-discovery-roots.mjs
+      - name: Require committed snapshot parity
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const committed = JSON.parse(fs.readFileSync("config/telegram-discovery-roots.json", "utf8"));
+          const current = JSON.parse(fs.readFileSync("artifacts/telegram-discovery-roots.json", "utf8"));
+          const stable = (rows) => JSON.stringify([...rows].sort((a,b) => `${a.category}:${a.source_id}`.localeCompare(`${b.category}:${b.source_id}`)));
+          if (stable(committed.roots) !== stable(current.roots)) {
+            console.error(JSON.stringify({ committed_count: committed.roots.length, current_count: current.roots.length }, null, 2));
+            throw new Error("TELEGRAM_DISCOVERY_ROOT_SNAPSHOT_DRIFT");
+          }
+          console.log(JSON.stringify({ pass: true, root_count: current.roots.length, roots_sha256: current.roots_sha256 }, null, 2));
+          NODE
+      - name: Upload governed roots evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: telegram-discovery-roots-${{ github.run_id }}
+          path: artifacts/telegram-discovery-roots.json
+          if-no-files-found: error
+          retention-days: 14
