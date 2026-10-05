@@ -223,7 +223,7 @@ export function AskWorkspace() {
 function UserBubble({ children }: { children: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[88%] rounded-2xl rounded-br-md bg-muted px-4 py-3 text-sm leading-6 text-foreground sm:max-w-[78%]">
+      <div className="max-w-[88%] break-words rounded-2xl rounded-br-md bg-muted px-4 py-3 text-sm leading-6 text-foreground sm:max-w-[78%]">
         {children}
       </div>
     </div>
@@ -235,7 +235,7 @@ function AssistantAnswer({ answer }: { answer: AskAnswer }) {
   const evidenceLabel = answer.data_mode === "permanent" ? "Verified context" : "Live checked";
 
   return (
-    <div className="max-w-2xl px-1">
+    <div className="max-w-2xl min-w-0 break-words px-1">
       <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">
         <span>Geomacro</span>
         <span className="text-muted-foreground">· {evidenceLabel}</span>
