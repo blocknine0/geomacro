@@ -7,6 +7,8 @@ const ANON_KEY = process.env.APP_SUPABASE_ANON_KEY;
 const SERVICE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
+const DIRECT_POSTGRES_MODE =
+  String(process.env.GRI_DB_MODE ?? "").trim().toLowerCase() === "direct_postgres";
 const METHOD_VERSION = process.env.GRI_METHOD_VERSION || "gri-v1.2.0";
 const PROOF_VERSION = process.env.GRI_PROOF_VERSION || "gri-proof-v1.2.0";
 const MAX_PUBLIC_SNAPSHOT_AGE_HOURS = Number(
@@ -20,9 +22,9 @@ const STORY_VERSION = "story-correlation-v1.0.0";
 const STORY_PROMPT_VERSION = "story-match-title-v1.0.0";
 const HASH_RE = /^[a-f0-9]{64}$/;
 
-if (!SUPABASE_URL || !ANON_KEY || !SERVICE_KEY) {
+if (!SUPABASE_URL || !SERVICE_KEY) {
   throw new Error(
-    "APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY and a service-role key are required",
+    "APP_SUPABASE_URL and a service-role key are required",
   );
 }
 if (
@@ -127,6 +129,32 @@ async function writeEvidence(evidence) {
 }
 
 async function main() {
+  // Public anon/RLS parity is a Data API health proof, not part of the
+  // cryptographic/direct-Postgres publication core. In the Supabase-independent
+  // scheduler, absence of an anon key must be explicit and observable but must
+  // not convert a successfully computed, persisted and verified GRI proof into
+  // a publication failure. The dedicated GRI governance workflow supplies an
+  // anon key and therefore continues to execute the strict parity audit below.
+  if (!ANON_KEY) {
+    if (!DIRECT_POSTGRES_MODE) {
+      throw new Error("APP_SUPABASE_ANON_KEY is required outside direct_postgres mode");
+    }
+    const evidence = {
+      evidenceVersion: "gri-public-proof-consistency-v1.0.0",
+      auditedAt: new Date().toISOString(),
+      verified: null,
+      skipped: true,
+      reason: "ANON_RLS_PARITY_REQUIRES_DATA_API",
+      directPostgresMode: true,
+      corePublicationUnaffected: true,
+      scope:
+        "Anon/RLS public-read parity was not executed because the direct-Postgres scheduler has no anon Data API credential. This artifact is not a parity pass. Strict parity remains mandatory in the dedicated GRI governance workflow.",
+    };
+    await writeEvidence(evidence);
+    console.log(JSON.stringify(evidence, null, 2));
+    return;
+  }
+
   const serviceSnapshots = await rest(SERVICE_KEY, "gri_snapshots", {
     select: snapshotFields.join(","),
     status: "eq.published",
