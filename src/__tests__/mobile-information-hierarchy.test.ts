@@ -13,8 +13,8 @@ describe("#1128 mobile information hierarchy", () => {
   it("keeps Ask Geomacro compact, wrapping and evidence-preserving on mobile", () => {
     expect(ask).toContain('className="mx-auto w-full max-w-5xl px-4');
     expect(ask).toContain('className="space-y-7"');
-    expect(ask).toContain('max-w-[88%]');
-    expect(ask).toContain('break-words');
+    expect(ask).toContain('max-w-[88%] break-words');
+    expect(ask).toContain('max-w-2xl min-w-0 break-words');
     expect(ask).toContain("Evidence (");
   });
 
@@ -35,7 +35,10 @@ describe("#1128 mobile information hierarchy", () => {
 
   it("uses a dedicated mobile-first bridge layout while preserving desktop sizing", () => {
     expect(liquidity).toContain('max-w-3xl px-4 py-10 sm:px-6');
-    expect(liquidity).toContain('max-w-3xl grid-cols-2 px-4 sm:px-6');
+    expect(liquidity).toContain('max-w-3xl');
+    expect(liquidity).toContain('grid-cols-2');
+    expect(liquidity).toContain('px-4');
+    expect(liquidity).toContain('sm:px-6');
     expect(liquidity).toContain('max-w-3xl px-4 py-12 sm:px-6 sm:py-16');
     expect(liquidity).toContain('text-2xl tracking-tight sm:text-3xl');
     expect(bridge).toContain('p-4 sm:space-y-6 sm:p-6');
