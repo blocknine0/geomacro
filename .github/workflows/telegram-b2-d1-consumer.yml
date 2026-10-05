@@ -13,6 +13,7 @@ on:
       - "scripts/ops/b2-s3-client.mjs"
       - "config/telegram-private-signal-bridge.json"
       - "workers/control-plane/migrations/0005_telegram_signal_producer_repin_79fb.sql"
+      - "workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql"
       - "src/__tests__/telegram-b2-d1-consumer-contract.test.ts"
   push:
     branches: [main]
@@ -24,6 +25,7 @@ on:
       - "scripts/ops/b2-s3-client.mjs"
       - "config/telegram-private-signal-bridge.json"
       - "workers/control-plane/migrations/0005_telegram_signal_producer_repin_79fb.sql"
+      - "workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql"
 
 permissions:
   contents: read
@@ -45,8 +47,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          grep -q 'telegram_signal_lead_queue' workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql
           grep -q 'allowedKeyPrefixes: \["telegram/leads/"\]' scripts/ops/drain-telegram-b2-leads.mjs
-          grep -q 'TELEGRAM_B2_CHECKPOINT_HASH_MISMATCH' scripts/ops/drain-telegram-b2-leads.mjs
+          grep -q 'TELEGRAM_B2_QUEUE_HASH_MISMATCH' scripts/ops/drain-telegram-b2-leads.mjs
           grep -q 'verifyTelegramLeadEnvelope' scripts/ops/drain-telegram-b2-leads.mjs
           grep -q 'LIVE_FLASH_LOCAL_REQUIRES_DIRECT_POSTGRES' scripts/run-live-flash-ingest-local.ts
           grep -q 'source_channel_key' scripts/run-live-flash-ingest-local.ts
@@ -117,12 +120,19 @@ jobs:
           if (output.includes('REPLACE_WITH_D1_DATABASE_ID')) throw new Error('D1_ID_REPLACEMENT_FAILED');
           fs.writeFileSync(process.env.D1_CONFIG,output);
           NODE
-      - name: Verify accepted private producer in D1
+      - name: Apply current main D1 migrations on push
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config "$D1_CONFIG"
+      - name: Verify accepted private producer and queue schema in D1
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts/telegram-lead-intake
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT schema_version,producer_repo,producer_commit,last_verified_b2_write_at,last_checkpoint_at,last_error_code,updated_at FROM telegram_signal_runtime_status WHERE id=1;" > artifacts/telegram-lead-intake/runtime-status.json
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT count(*) AS queue_rows FROM telegram_signal_lead_queue;" > artifacts/telegram-lead-intake/queue-schema.json
           node <<'NODE'
           const fs=require('fs');
           const parsed=JSON.parse(fs.readFileSync('artifacts/telegram-lead-intake/runtime-status.json','utf8'));
@@ -134,29 +144,39 @@ jobs:
           if (row.producer_repo!=='blocknine0/geomacro-telegram-signals') throw new Error('TELEGRAM_RUNTIME_PRODUCER_REPO_MISMATCH');
           if (row.producer_commit!=='79fb75cf342a652216cff4355448012c5bab8cbf') throw new Error('TELEGRAM_RUNTIME_PRODUCER_COMMIT_MISMATCH');
           NODE
-      - name: Export compact Telegram checkpoints from D1
+      - name: Export pending Telegram lead queue from D1
         shell: bash
         run: |
           set -euo pipefail
-          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT source_channel_key,last_message_id,last_published_at,last_b2_object_key,last_b2_sha256,last_signal_id,updated_at FROM telegram_signal_checkpoints ORDER BY updated_at DESC LIMIT 25;" > artifacts/telegram-lead-intake/d1-checkpoints.json
-      - name: Verify D1 pointers against B2 and sanitize leads
-        run: node scripts/ops/drain-telegram-b2-leads.mjs --checkpoint-file artifacts/telegram-lead-intake/d1-checkpoints.json --out-dir artifacts/telegram-lead-intake/verified --max 25
-      - name: Ingest verified leads through canonical direct-Postgres handler
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT signal_id,source_channel_key,source_record_id,published_at,b2_object_key,b2_sha256,state,created_at,attempt_count FROM telegram_signal_lead_queue WHERE state='PENDING' ORDER BY created_at ASC, signal_id ASC LIMIT 25;" > artifacts/telegram-lead-intake/d1-queue.json
+      - name: Verify D1 queue pointers against B2 and sanitize leads
+        run: node scripts/ops/drain-telegram-b2-leads.mjs --queue-file artifacts/telegram-lead-intake/d1-queue.json --out-dir artifacts/telegram-lead-intake/verified --max 25
+      - name: Ingest verified leads through canonical direct-Postgres handler and acknowledge queue
         shell: bash
         run: |
           set -euo pipefail
           SUMMARY=artifacts/telegram-lead-intake/verified/summary.json
           test -s "$SUMMARY"
-          node <<'NODE' > /tmp/telegram-payload-files.txt
+          node <<'NODE' > /tmp/telegram-queue-items.tsv
           const fs=require('fs');
           const s=JSON.parse(fs.readFileSync('artifacts/telegram-lead-intake/verified/summary.json','utf8'));
-          for (const item of s.accepted ?? []) console.log(item.payload_file);
+          for (const item of s.accepted ?? []) {
+            if (!/^tg_[a-f0-9]{32}$/.test(String(item.signal_id ?? ''))) throw new Error('TELEGRAM_SIGNAL_ID_INVALID');
+            if (String(item.payload_file ?? '').includes('\t') || String(item.payload_file ?? '').includes('\n')) throw new Error('TELEGRAM_PAYLOAD_PATH_INVALID');
+            console.log(`${item.signal_id}\t${item.payload_file}`);
+          }
           NODE
-          while IFS= read -r payload; do
-            [[ -n "$payload" ]] || continue
-            node scripts/run-live-flash-ingest-local.ts --payload-file "$payload"
-          done < /tmp/telegram-payload-files.txt
-      - name: Assert no Telegram pre-promotion occurred
+          while IFS=$'\t' read -r signal payload; do
+            [[ -n "$signal" ]] || continue
+            [[ "$signal" =~ ^tg_[a-f0-9]{32}$ ]] || { echo "invalid signal id"; exit 7; }
+            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET attempt_count=attempt_count+1,last_attempt_at=datetime('now'),last_error_code='CANONICAL_INGEST_IN_PROGRESS' WHERE signal_id='$signal' AND state='PENDING';" >/tmp/telegram-attempt.json
+            if ! node scripts/run-live-flash-ingest-local.ts --payload-file "$payload"; then
+              npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET last_error_code='CANONICAL_INGEST_FAILED',last_attempt_at=datetime('now') WHERE signal_id='$signal' AND state='PENDING';" >/tmp/telegram-failed.json || true
+              exit 8
+            fi
+            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET state='CONSUMED',consumed_at=datetime('now'),last_error_code=NULL,last_attempt_at=datetime('now') WHERE signal_id='$signal' AND state='PENDING';" >/tmp/telegram-consumed.json
+          done < /tmp/telegram-queue-items.tsv
+      - name: Assert no Telegram pre-promotion occurred and prune old consumed pointers
         shell: bash
         run: |
           set -euo pipefail
@@ -167,13 +187,15 @@ jobs:
             if (item.verification_status!=='UNVERIFIED' || item.scoring_eligible!==false || item.commercial_eligible!==false) throw new Error('TELEGRAM_PREPROMOTION_DETECTED');
           }
           NODE
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "DELETE FROM telegram_signal_lead_queue WHERE state='CONSUMED' AND consumed_at < datetime('now','-7 days');" >/tmp/telegram-prune.json
       - name: Upload bounded Telegram bridge evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: telegram-b2-d1-consumer-${{ github.run_id }}
           path: |
             artifacts/telegram-lead-intake/runtime-status.json
-            artifacts/telegram-lead-intake/d1-checkpoints.json
+            artifacts/telegram-lead-intake/queue-schema.json
+            artifacts/telegram-lead-intake/d1-queue.json
             artifacts/telegram-lead-intake/verified/summary.json
           if-no-files-found: error
           retention-days: 7
