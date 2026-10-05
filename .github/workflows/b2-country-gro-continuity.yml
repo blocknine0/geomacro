@@ -9,6 +9,7 @@ on:
     paths:
       - ".github/workflows/b2-country-gro-continuity.yml"
       - "scripts/ops/publish-b2-country-gro-continuity.ts"
+      - "scripts/ops/verify-b2-country-gro-preservation.ts"
       - "scripts/ops/verify-b2-country-gro-direct-read.ts"
       - "scripts/ops/sync-current-country-gro-to-d1.ts"
       - "scripts/publish-country-risk-object.ts"
@@ -83,25 +84,37 @@ jobs:
           console.log(JSON.stringify({ ok: true, transport: 'direct_postgres', country_iso3: data.iso3 }));
           NODE
       - name: Refresh one bounded commercially verified canonical GRO
+        id: refresh
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         shell: bash
         run: |
           set -euo pipefail
           node --import tsx scripts/publish-country-risk-object.ts USA CANONICAL | tee /tmp/current-country-gro.json
-          jq -e '
+          if jq -e '
             .delivery_profile == "CANONICAL"
             and .subject.type == "country"
             and .subject.id == "USA"
             and .verification.status == "VERIFIED"
             and .commercial_eligibility.status == "VERIFIED"
             and .integrity.signature_valid == true
-          ' /tmp/current-country-gro.json >/dev/null
+          ' /tmp/current-country-gro.json >/dev/null; then
+            echo "fresh=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
+            echo "No newly verified commercial USA GRO; preserving the last independently verified B2 continuity package without advancing freshness."
+          fi
       - name: Publish current verified canonical country GROs to private B2
+        if: steps.refresh.outputs.fresh == 'true'
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         run: node --import tsx scripts/ops/publish-b2-country-gro-continuity.ts
+      - name: Reverify last verified B2 country GRO package without advancing freshness
+        if: steps.refresh.outputs.fresh != 'true'
+        run: bun scripts/ops/verify-b2-country-gro-preservation.ts
       - name: Prove runtime GRO read works after removing Supabase credentials
+        if: steps.refresh.outputs.fresh == 'true'
         run: bun scripts/ops/verify-b2-country-gro-direct-read.ts
       - name: Sync independently verified current country GRO to D1
+        if: steps.refresh.outputs.fresh == 'true'
         run: bun scripts/ops/sync-current-country-gro-to-d1.ts
