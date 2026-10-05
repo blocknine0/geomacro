@@ -9,11 +9,13 @@ on:
     paths:
       - ".github/workflows/b2-global-risk-maintenance.yml"
       - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
+      - "scripts/ops/verify-global-risk-public-convergence.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "src/lib/global-risk-assemble.ts"
       - "src/lib/global-risk-continuity.ts"
       - "src/lib/b2-live.server.ts"
       - "server/api/public/global-risk.get.ts"
+      - "src/__tests__/global-risk-public-convergence-static.test.ts"
 
 permissions:
   contents: read
@@ -58,32 +60,41 @@ jobs:
           test -n "${B2_APPLICATION_KEY:-}"
 
       - name: Publish latest verified Global Risk continuity package
-        run: bun scripts/ops/publish-b2-global-risk-direct-postgres.mjs
-
-      - name: Verify customer-facing Global Risk API
+        id: publish
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in 1 2 3 4 5; do
-            if body="$(curl -fsS --max-time 20 -H 'Accept: application/json' 'https://geomacro.live/api/public/global-risk')"; then
-              if printf '%s' "$body" | node -e '
-                let s=""; process.stdin.on("data", d => s += d); process.stdin.on("end", () => {
-                  const b=JSON.parse(s);
-                  const d=b?.data;
-                  const s7=d?.series?.["7D"]?.buckets;
-                  const s30=d?.series?.["30D"]?.buckets;
-                  const ok=b?.ok===true && b?.meta?.authority==="backblaze-b2" &&
-                    d?.verificationStatus==="verified" && Array.isArray(s7) && s7.length>=2 &&
-                    Array.isArray(s30) && s30.length>=s7.length &&
-                    typeof d?.snapshotAsOf==="string";
-                  process.exit(ok ? 0 : 1);
-                });
-              '; then
-                printf '%s' "$body" > /tmp/global-risk-api.json
-                exit 0
-              fi
-            fi
-            sleep $((attempt * 3))
-          done
-          echo "Global Risk production API did not expose verified historical continuity" >&2
-          exit 1
+          mkdir -p artifacts
+          bun scripts/ops/publish-b2-global-risk-direct-postgres.mjs | tee artifacts/global-risk-b2-publish.jsonl
+          snapshot_as_of="$(node - <<'NODE'
+          const fs = require('fs');
+          const lines = fs.readFileSync('artifacts/global-risk-b2-publish.jsonl', 'utf8')
+            .split(/\r?\n/)
+            .filter(Boolean);
+          let result = null;
+          for (const line of lines) {
+            try {
+              const value = JSON.parse(line);
+              if (value?.schema === 'geomacro.public-global-risk-direct-postgres-publish.v1') result = value;
+            } catch {}
+          }
+          if (!result?.ok || !result?.b2_readback_verified || typeof result?.snapshot_as_of !== 'string') process.exit(1);
+          process.stdout.write(result.snapshot_as_of);
+          NODE
+          )"
+          test -n "$snapshot_as_of"
+          echo "snapshot_as_of=$snapshot_as_of" >> "$GITHUB_OUTPUT"
+
+      - name: Verify exact published Global Risk snapshot reaches customer API
+        env:
+          GEOMACRO_EXPECTED_GLOBAL_RISK_SNAPSHOT_AS_OF: ${{ steps.publish.outputs.snapshot_as_of }}
+        run: node scripts/ops/verify-global-risk-public-convergence.mjs
+
+      - name: Upload Global Risk maintenance evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: global-risk-maintenance-${{ github.run_id }}
+          path: artifacts/global-risk-b2-publish.jsonl
+          if-no-files-found: warn
+          retention-days: 30
