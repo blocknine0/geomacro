@@ -31,7 +31,6 @@ describe("#1414 Intelligence production convergence diagnostics", () => {
       "live_observed_rows",
       "verified_rows",
       "newest_live_at",
-      "scored_categories",
       "scored_current_across_all_domains",
       "expected_batch_visible",
       "cache_control",
@@ -42,6 +41,7 @@ describe("#1414 Intelligence production convergence diagnostics", () => {
     ]) {
       expect(workflow).toContain(marker);
     }
+    expect(workflow).not.toContain("scored_categories:");
   });
 
   it("does not serialize raw Intelligence rows into diagnostics", () => {
