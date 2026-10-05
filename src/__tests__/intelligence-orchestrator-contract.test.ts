@@ -17,7 +17,7 @@ function expectScheduledOrExplicitQuotaHold(workflow: string) {
 }
 
 describe("permanent intelligence orchestration contract", () => {
-  it("has exactly one scheduled intelligence heartbeat or an explicit quota-recovery hold", () => {
+  it("has exactly one scheduled master intelligence heartbeat or an explicit quota-recovery hold", () => {
     const workflow = read(".github/workflows/intelligence-orchestrator.yml");
     const orchestrator = read("scripts/intelligence-orchestrator.mjs");
     expectScheduledOrExplicitQuotaHold(workflow);
@@ -29,12 +29,13 @@ describe("permanent intelligence orchestration contract", () => {
     expect(orchestrator).toContain("const TASKS = [");
   });
 
-  it("keeps live intelligence adapters due-based and serial", () => {
+  it("keeps live intelligence adapters due-based, serial and includes bounded all-domain current scoring", () => {
     const script = read("scripts/intelligence-orchestrator.mjs");
     for (const task of [
       "gdelt_gal",
       "open_realtime_mesh",
       "gdelt_v2",
+      "current_scoring",
       "country_raw_mesh",
       "rss_live",
       "realtime_fanout",
@@ -51,6 +52,9 @@ describe("permanent intelligence orchestration contract", () => {
     expect(script).toContain("drain-live-structure.mjs");
     expect(script).toContain("scripts/run-gdelt-gal-cycle.mjs");
     expect(script).toContain("run-rss-live-cycle.mjs");
+    expect(script).toContain("scripts/ops/run-intelligence-current-scoring-cycle.mjs");
+    expect(script).toContain("cadenceSeconds: 1200");
+    expect(script).toContain("offsetSeconds: 780");
     const gdeltCycle = read("scripts/run-gdelt-gal-cycle.mjs");
     expect(gdeltCycle).toContain("reconcile-structured-event-commercial-rights.mjs");
     expect(script).toContain("RECONCILE_SOURCE_KEYS=country_raw_web_mesh");
@@ -70,6 +74,15 @@ describe("permanent intelligence orchestration contract", () => {
     expect(script).toContain("console.log(JSON.stringify(summary, null, 2));");
   });
 
+  it("enforces recovery task allowlists before scheduler state bootstrap or execution", () => {
+    const script = read("scripts/intelligence-orchestrator.mjs");
+    expect(script).toContain("const TASK_ALLOWLIST = new Set(");
+    expect(script).toContain("if (TASK_ALLOWLIST.size > 0 && !TASK_ALLOWLIST.has(task.key)) continue;");
+    expect(script).toContain("task_allowlist: [...TASK_ALLOWLIST].sort()");
+    expect(script.indexOf("TASK_ALLOWLIST.size > 0 && !TASK_ALLOWLIST.has(task.key)"))
+      .toBeLessThan(script.indexOf("const row = rows.get(taskKey(task))"));
+  });
+
   it("makes missing scheduler state immediately due without creating a first-run herd", () => {
     const script = read("scripts/intelligence-orchestrator.mjs");
     expect(script).toContain("function bootstrapStateForTask(task, nowMs)");
@@ -83,7 +96,7 @@ describe("permanent intelligence orchestration contract", () => {
     expect(script).toContain("bootstrap_seeds_are_immediately_due: true");
   });
 
-  it("moves high-frequency intelligence workflows to operator-only recovery mode", () => {
+  it("moves high-frequency legacy workflows to operator-only recovery mode", () => {
     for (const path of [
       ".github/workflows/global-country-raw-source-mesh.yml",
       ".github/workflows/gdelt-gal-live-sync.yml",
@@ -96,6 +109,8 @@ describe("permanent intelligence orchestration contract", () => {
       ".github/workflows/ingest-reliefweb-live.yml",
       ".github/workflows/global-realtime-source-proof.yml",
       ".github/workflows/production-intelligence-readiness.yml",
+      ".github/workflows/auto-ingest-news.yml",
+      ".github/workflows/intelligence-current-scoring-fastlane.yml",
     ]) {
       const source = read(path);
       expect(source, path).toContain("workflow_dispatch:");
@@ -104,22 +119,28 @@ describe("permanent intelligence orchestration contract", () => {
     }
   });
 
-  it("keeps the canonical low-write freshness path active across REST and egress-restricted direct-Postgres transport", () => {
+  it("keeps Auto Ingest as a one-task manual recovery through the master path", () => {
     const workflow = read(".github/workflows/auto-ingest-news.yml");
     expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).toContain('cron: "17 */6 * * *"');
+    expect(workflow).not.toContain("schedule:");
+    expect(workflow).not.toContain("\n  push:\n");
     expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
-    expect(workflow).toContain("MAX_CANDIDATES_PER_CATEGORY: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && '6' || '4' }}");
-    expect(workflow).toContain("GRI_DB_MODE: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && 'direct_postgres' || '' }}");
-    expect(workflow).toContain("Publish scored verified Intelligence package to B2 through direct PostgreSQL");
-    expect(workflow).toContain("node scripts/ops/run-b2-public-intelligence-publisher.mjs");
-    expect(workflow).not.toContain("run: bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs");
-    expect(workflow).toContain("DIRECT_POSTGRES_GUARDIAN_PLAN_DISABLED");
+    expect(workflow).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest");
+    expect(workflow).toContain("INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest");
     expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
-    expect(workflow).toContain("check-gri-input-change.mjs");
-    expect(workflow).toContain("compute-gri-v12.js");
-    expect(workflow).toContain("verify-gri-snapshot-v12.js");
-    expect(workflow).not.toContain("workflow_run:");
+    expect(workflow).toContain("node scripts/intelligence-orchestrator.mjs");
+  });
+
+  it("keeps current scoring recurring only inside the master and manual outside it", () => {
+    const workflow = read(".github/workflows/intelligence-current-scoring-fastlane.yml");
+    const script = read("scripts/intelligence-orchestrator.mjs");
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).not.toContain("schedule:");
+    expect(workflow).not.toContain("\n  push:\n");
+    expect(workflow).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: current_scoring");
+    expect(script).toContain('key: "current_scoring"');
+    expect(script).toContain("cadenceSeconds: 1200");
+    expect(script).toContain("offsetSeconds: 780");
   });
 
   it("allows the public demo Risk Object refresh to run on a bounded freshness schedule", () => {

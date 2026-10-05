@@ -47,6 +47,10 @@ const FORCE_TASKS = new Set(
     .filter(Boolean),
 );
 
+const edgeServiceAvailable = () =>
+  String(process.env.GEOMACRO_SUPABASE_EDGE_AVAILABLE ?? "false").trim().toLowerCase() === "true";
+const governedTelegramEnabled = () =>
+  String(process.env.TELEGRAM_ENABLED ?? "false").trim().toLowerCase() === "true";
 
 function fetchWithTimeout(input, init = {}) {
   const timeoutSignal = AbortSignal.timeout(DB_REQUEST_TIMEOUT_MS);
@@ -80,7 +84,7 @@ const TASKS = [
     offsetSeconds: 0,
     priority: 10,
     timeoutMs: 1_200_000,
-    requiredEnv: ["LIVE_STRUCTURE_TOKEN"],
+    requiredEnv: ["LIVE_STRUCTURE_TOKEN", "SUPABASE_DB_URL", "B2_KEY_ID", "B2_APPLICATION_KEY"],
     steps: [
       ["node", ["scripts/run-gdelt-gal-cycle.mjs"], "."],
     ],
@@ -91,7 +95,17 @@ const TASKS = [
     offsetSeconds: 180,
     priority: 11,
     timeoutMs: 900_000,
+    requiredEnv: ["SUPABASE_DB_URL"],
     steps: [["bun", ["scripts/ingest-gdelt-v2-events-live.mjs", "--write"], "."]],
+  },
+  {
+    key: "current_scoring",
+    cadenceSeconds: 1200,
+    offsetSeconds: 780,
+    priority: 12,
+    timeoutMs: 900_000,
+    requiredEnv: ["SUPABASE_DB_URL", "B2_KEY_ID", "B2_APPLICATION_KEY"],
+    steps: [["node", ["scripts/ops/run-intelligence-current-scoring-cycle.mjs"], "."]],
   },
   {
     key: "open_realtime_mesh",
@@ -100,6 +114,8 @@ const TASKS = [
     priority: 15,
     requiredEnv: ["LIVE_STRUCTURE_TOKEN"],
     timeoutMs: 1_200_000,
+    enabled: edgeServiceAvailable,
+    disabledReason: () => "supabase_edge_storage_service_unavailable",
     steps: [
       ["bun", ["scripts/sync-open-live-source-mesh.mjs"], "."],
       ["node", ["scripts/drain-live-structure.mjs", "--fragment-ids-file", "open-live-source-sync.json"], "."],
@@ -110,7 +126,7 @@ const TASKS = [
     cadenceSeconds: 900,
     offsetSeconds: 360,
     priority: 20,
-    requiredEnv: ["LIVE_STRUCTURE_TOKEN"],
+    requiredEnv: ["LIVE_STRUCTURE_TOKEN", "SUPABASE_DB_URL", "B2_KEY_ID", "B2_APPLICATION_KEY"],
     timeoutMs: 1_500_000,
     steps: [
       ["bash", ["-lc", "bun scripts/sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json"], "."],
@@ -130,6 +146,8 @@ const TASKS = [
     timeoutMs: 1_200_000,
     maxAttempts: 3,
     retryBackoffMs: 5000,
+    enabled: edgeServiceAvailable,
+    disabledReason: () => "supabase_edge_function_service_unavailable",
     steps: [["node", ["scripts/run-rss-live-cycle.mjs"], "."]],
   },
   {
@@ -149,6 +167,8 @@ const TASKS = [
     offsetSeconds: 900,
     priority: 50,
     requiredEnv: ["TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_SESSION"],
+    enabled: governedTelegramEnabled,
+    disabledReason: () => "governed_telegram_discovery_disabled",
     steps: [["python", ["workers/telegram-flash/global_discovery.py"], "."]],
   },
   {
@@ -158,6 +178,8 @@ const TASKS = [
     priority: 60,
     requiredEnv: ["GUARDIAN_API_KEY"],
     timeoutMs: 1_800_000,
+    enabled: edgeServiceAvailable,
+    disabledReason: () => "supabase_edge_storage_service_unavailable",
     steps: [
       ["node", ["scripts/ingest-news.js"], "."],
       ["node", ["scripts/export-admitted-events-for-structure.mjs"], "."],
@@ -169,8 +191,9 @@ const TASKS = [
     cadenceSeconds: 7200,
     offsetSeconds: 5400,
     priority: 70,
-    requiredEnv: ["SUPABASE_SERVICE_ROLE_KEY"],
+    requiredEnv: ["SUPABASE_DB_URL"],
     enabled: () => String(process.env.GRI_PUBLISH_ENABLED ?? "").trim().toLowerCase() === "true",
+    disabledReason: () => "gri_publish_disabled_by_configuration",
     steps: [
       ["node", ["scripts/cluster-gri-stories-v12.js"], "."],
       ["node", ["scripts/compute-gri-v12.js"], "."],
@@ -299,6 +322,7 @@ function shouldBootstrapState(row) {
   const cursor = row?.payload?.cursor;
   if (!cursor || typeof cursor !== "object" || Array.isArray(cursor)) return true;
   if (cursor.skipped_reason === "task_disabled_by_configuration") return false;
+  if (typeof cursor.skipped_reason === "string" && cursor.skipped_reason.length > 0) return false;
   return !Object.prototype.hasOwnProperty.call(cursor, "bootstrap_pending");
 }
 
@@ -403,7 +427,9 @@ async function main() {
   const startMs = Date.now();
   const rows = await loadStateRows();
   const due = [];
+  const disabled = [];
   for (const task of TASKS) {
+    if (TASK_ALLOWLIST.size > 0 && !TASK_ALLOWLIST.has(task.key)) continue;
     const row = rows.get(taskKey(task));
     const enabled = typeof task.enabled === "function" ? task.enabled() : true;
     let state;
@@ -414,12 +440,18 @@ async function main() {
       state = normalizeState(task, row, startMs);
     }
     if (!enabled) {
+      const skippedReason = typeof task.disabledReason === "function"
+        ? task.disabledReason()
+        : "task_disabled_by_configuration";
       state.cursor.next_due_at = new Date(alignedDueAt(task, startMs)).toISOString();
-      state.cursor.skipped_reason = "task_disabled_by_configuration";
+      state.cursor.skipped_reason = skippedReason;
       state.cursor.bootstrap_pending = false;
+      state.cursor.status = "degraded";
       await persistState(task, state, { cursor: state.cursor });
+      disabled.push({ task: task.key, reason: skippedReason });
       continue;
     }
+    state.cursor.skipped_reason = null;
     if (FORCE_TASKS.has(task.key) || isPast(state.cursor.next_due_at, startMs)) {
       due.push({ task, state, forced: FORCE_TASKS.has(task.key) });
     }
@@ -431,8 +463,12 @@ async function main() {
     project_ref: PROJECT_REF,
     started_at: new Date(startMs).toISOString(),
     selected: [],
-    skipped: [],
+    skipped: disabled,
     bootstrap_seeds_are_immediately_due: true,
+    task_allowlist: [...TASK_ALLOWLIST].sort(),
+    supabase_edge_available: edgeServiceAvailable(),
+    direct_postgres_mode: String(process.env.GRI_DB_MODE ?? "").trim().toLowerCase() === "direct_postgres",
+    raw_archive_mode: String(process.env.RAW_SOURCE_ARCHIVE_MODE ?? "").trim().toLowerCase(),
     scheduler_note: "MAX_TASKS_PER_TICK prevents the bootstrap from becoming a thundering herd",
   };
 
