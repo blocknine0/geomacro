@@ -1,5 +1,14 @@
 import { createD1ControlPlaneStateClient } from "./d1-control-plane-state.mjs";
 
+// The legacy orchestrator module still validates the historical Supabase
+// project-ref before createClient(). This D1 state shim is evaluated first, so
+// provide bounded non-network sentinels when those secrets are absent. The
+// values are never used for I/O: createClient() below is D1-backed only.
+process.env.APP_SUPABASE_URL ||= "https://ldpwajisioljyjtojvfx.supabase.co";
+process.env.SUPABASE_URL ||= process.env.APP_SUPABASE_URL;
+process.env.APP_SUPABASE_SERVICE_ROLE_KEY ||= "d1-control-state-no-supabase";
+process.env.SUPABASE_SERVICE_ROLE_KEY ||= process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
+
 const TABLE = "live_intelligence_scheduler_state";
 const PREFIX = "orchestrator:";
 
