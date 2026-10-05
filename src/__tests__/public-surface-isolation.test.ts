@@ -29,12 +29,23 @@ describe("public product surface failure-domain isolation", () => {
     expect(workflow).not.toContain("src/lib/use-global-risk.ts");
   });
 
-  it("gives external source discovery and classifier quotas to one canonical ingestion owner only", () => {
-    const canonicalIngest = read(".github/workflows/auto-ingest-news.yml");
+  it("gives external source discovery and classifier quotas to one canonical recurring owner only", () => {
+    const orchestrator = read(".github/workflows/intelligence-orchestrator.yml");
+    const recovery = read(".github/workflows/auto-ingest-news.yml");
     const intelligence = read(".github/workflows/intelligence-scored-refresh.yml");
     const globalRisk = read(".github/workflows/gri-realtime-direct-postgres.yml");
 
-    expect(canonicalIngest).toContain("node scripts/ingest-news.js");
+    expect(orchestrator).toContain("group: geomacro-intelligence-orchestrator");
+    expect(orchestrator).toContain('cron: "7,22,37,52 * * * *"');
+    expect(orchestrator).toContain("node scripts/intelligence-orchestrator.mjs");
+    expect(orchestrator).toContain("GUARDIAN_QUERY_BUDGET_PER_CATEGORY");
+    expect(orchestrator).toContain("GEMINI_API_KEY");
+    expect(orchestrator).toContain("MISTRAL_API_KEY");
+
+    expect(recovery).toContain("workflow_dispatch");
+    expect(recovery).not.toContain("schedule:");
+    expect(recovery).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest");
+    expect(recovery).toContain("INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest");
 
     for (const publisher of [intelligence, globalRisk]) {
       expect(publisher).not.toContain("node scripts/ingest-news.js");
@@ -47,7 +58,6 @@ describe("public product surface failure-domain isolation", () => {
 
     expect(intelligence).not.toContain("GROQ_API_KEY");
     expect(intelligence).not.toContain("CEREBRAS_API_KEY");
-    expect(intelligence).not.toContain("scripts/ingest-news.js");
     expect(globalRisk).not.toContain("scripts/ingest-news.js");
   });
 
