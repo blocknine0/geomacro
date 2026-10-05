@@ -32,14 +32,15 @@ describe("Intelligence GDELT availability contract", () => {
     expect(workflow).not.toContain('run: bun scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs');
   });
 
-  it("fails closed until the production API serves the exact scored-plus-current publish", () => {
+  it("fails closed until production serves current scored data, using live-observed only while scored coverage is incomplete", () => {
     expect(workflow).toContain("PUBLIC_INTELLIGENCE_PUBLISH_PROOF_INVALID");
     expect(workflow).toContain("proof.b2_readback_verified !== true");
     expect(workflow).toContain("for attempt in $(seq 1 24)");
     expect(workflow).toContain("freshness_proof=${nonce}");
     expect(workflow).toContain("-H 'Cache-Control: no-cache'");
-    expect(workflow).toContain("body?.mode === 'verified_b2_plus_live_observed'");
-    expect(workflow).toContain("live < 1");
+    expect(workflow).toContain("scoredCurrentAcrossAllDomains");
+    expect(workflow).toContain("body?.mode !== 'verified_b2' || live !== 0");
+    expect(workflow).toContain("body?.mode !== 'verified_b2_plus_live_observed' || live < 1");
     expect(workflow).toContain("responseNewest < expectedBatch");
     expect(workflow).toContain("newestLive < expectedBatch");
     expect(workflow).toContain("Production Intelligence API did not converge");
