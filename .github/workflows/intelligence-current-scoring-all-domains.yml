@@ -10,9 +10,11 @@ on:
       - ".github/workflows/intelligence-current-scoring-all-domains.yml"
       - "scripts/ops/run-intelligence-current-scoring-cycle.mjs"
       - "scripts/ops/sync-fastlane-scored-intelligence.mjs"
+      - "scripts/ops/republish-b2-public-intelligence-scored-only.mjs"
       - "src/lib/public-intelligence-production.server.ts"
       - "src/__tests__/intelligence-current-scoring-all-domains-static.test.ts"
       - "src/__tests__/intelligence-fastlane-publication-static.test.ts"
+      - "src/__tests__/intelligence-fastlane-scored-only-publication-static.test.ts"
       - "src/__tests__/public-intelligence-scored-priority-static.test.ts"
   workflow_dispatch: {}
 

@@ -10,8 +10,10 @@ on:
       - ".github/workflows/intelligence-fastlane-publication.yml"
       - "scripts/ops/sync-fastlane-scored-intelligence.mjs"
       - "scripts/ops/republish-b2-public-intelligence-preserve-live.mjs"
+      - "scripts/ops/republish-b2-public-intelligence-scored-only.mjs"
       - "src/__tests__/intelligence-fastlane-publication-static.test.ts"
       - "src/__tests__/intelligence-fastlane-preserve-live-publication-static.test.ts"
+      - "src/__tests__/intelligence-fastlane-scored-only-publication-static.test.ts"
   workflow_dispatch: {}
 
 permissions:

@@ -8,6 +8,7 @@ const CLASSIFICATION_VERSION = "event-severity-v1.0.5";
 const PUBLIC_URL = "https://geomacro.live/api/public/intelligence";
 const PUBLISHER = "scripts/ops/run-b2-public-intelligence-publisher.mjs";
 const PRESERVE_LIVE_REPUBLISHER = "scripts/ops/republish-b2-public-intelligence-preserve-live.mjs";
+const SCORED_ONLY_REPUBLISHER = "scripts/ops/republish-b2-public-intelligence-scored-only.mjs";
 const ARTIFACT = "artifacts/intelligence-fastlane-publication.json";
 const POLL_MS = 10_000;
 const MAX_POLLS = 18;
@@ -138,6 +139,26 @@ function writeProof({ canonicalLatest, before, after, publisherInvoked, publishe
   console.log(JSON.stringify(proof));
 }
 
+function runRepublisher(script, timeout) {
+  const child = spawnSync("node", [script], {
+    encoding: "utf8",
+    env: process.env,
+    maxBuffer: 32 * 1024 * 1024,
+    timeout,
+  });
+  if (child.stdout) process.stdout.write(child.stdout);
+  if (child.stderr) process.stderr.write(child.stderr);
+  if (child.error) throw child.error;
+  return child;
+}
+
+function runScoredOnlyRepublisher() {
+  const child = runRepublisher(SCORED_ONLY_REPUBLISHER, 120_000);
+  if (child.status !== 0) {
+    throw new Error(`FASTLANE_PUBLICATION_SCORED_ONLY_FAILED:${child.status ?? "unknown"}`);
+  }
+}
+
 const canonicalLatest = await latestCanonicalScored();
 let before = null;
 try {
@@ -178,20 +199,26 @@ if (publish.status !== 0) {
   if (!initialCombined.includes("CURRENT_GDELT_AVAILABILITY_WAIT_EXHAUSTED")) {
     throw new Error(`FASTLANE_PUBLICATION_B2_PUBLISH_FAILED:${publish.status ?? "unknown"}`);
   }
-  console.warn("FASTLANE_PUBLICATION_GDELT_UNAVAILABLE_USING_VERIFIED_LIVE_PRESERVATION");
-  publish = spawnSync("node", [PRESERVE_LIVE_REPUBLISHER], {
-    encoding: "utf8",
-    env: process.env,
-    maxBuffer: 32 * 1024 * 1024,
-    timeout: 120_000,
-  });
-  if (publish.stdout) process.stdout.write(publish.stdout);
-  if (publish.stderr) process.stderr.write(publish.stderr);
-  if (publish.error) throw publish.error;
-  if (publish.status !== 0) {
-    throw new Error(`FASTLANE_PUBLICATION_PRESERVE_LIVE_FAILED:${publish.status ?? "unknown"}`);
+
+  if (before?.mode === "verified_b2" && before.live_observed_rows === 0) {
+    console.warn("FASTLANE_PUBLICATION_GDELT_UNAVAILABLE_REPUBLISHING_FRESH_SCORED_ONLY");
+    runScoredOnlyRepublisher();
+    publicationMode = "fresh_scored_only_no_current_live_export";
+  } else {
+    console.warn("FASTLANE_PUBLICATION_GDELT_UNAVAILABLE_USING_VERIFIED_LIVE_PRESERVATION");
+    const preserved = runRepublisher(PRESERVE_LIVE_REPUBLISHER, 120_000);
+    if (preserved.status === 0) {
+      publicationMode = "preserved_verified_live_plus_fresh_scored";
+    } else {
+      const preserveCombined = `${preserved.stdout ?? ""}\n${preserved.stderr ?? ""}`;
+      if (!preserveCombined.includes("FASTLANE_PRESERVE_CURRENT_SOURCE_STALE")) {
+        throw new Error(`FASTLANE_PUBLICATION_PRESERVE_LIVE_FAILED:${preserved.status ?? "unknown"}`);
+      }
+      console.warn("FASTLANE_PUBLICATION_VERIFIED_LIVE_STALE_REPUBLISHING_FRESH_SCORED_ONLY");
+      runScoredOnlyRepublisher();
+      publicationMode = "fresh_scored_only_no_current_live_export";
+    }
   }
-  publicationMode = "preserved_verified_live_plus_fresh_scored";
 }
 
 let publisherAttempts = 1;
