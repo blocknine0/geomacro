@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto"
-import { createClient } from "@supabase/supabase-js"
+import {
+  createGriDbClient,
+} from "./lib/gri-db-client.mjs"
 import {
   assertCommercialEligibilityAllowed,
 } from "./commercial-source-policy.mjs"
@@ -18,18 +20,13 @@ export function requireEnv(name) {
 }
 
 export function createDb() {
-  return createClient(
-    requireEnv("SUPABASE_URL"),
-    requireEnv(
-      "SUPABASE_SERVICE_ROLE_KEY"
-    ),
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    },
-  )
+  // Live-source scripts must share the same canonical database transport as
+  // scoring/structuring. In direct-Postgres mode this avoids a silent fallback
+  // to quota-restricted PostgREST while preserving the identical table/RPC
+  // query contract. Outside direct mode createGriDbClient returns the normal
+  // service-role Supabase client, so this remains one data truth with two
+  // transport options rather than a second ingestion store.
+  return createGriDbClient()
 }
 
 export function canonicalize(value) {
