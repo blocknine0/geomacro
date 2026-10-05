@@ -19,6 +19,27 @@ describe("intelligence orchestrator scheduling fairness", () => {
     expect(taskFitsWithinBudget(40 * 60 * 1000, 44 * 60 * 1000)).toBe(false);
   });
 
+  it("accepts the object-shaped contract used by the production orchestrator", () => {
+    expect(taskFitsWithinBudget({
+      elapsedMs: 30_000,
+      timeoutMs: 20 * 60 * 1000,
+      budgetMs: 50 * 60 * 1000,
+      reserveMs: 5 * 60 * 1000,
+    })).toBe(true);
+
+    expect(taskFitsWithinBudget({
+      elapsedMs: 10 * 60 * 1000,
+      timeoutMs: 36 * 60 * 1000,
+      budgetMs: 50 * 60 * 1000,
+      reserveMs: 5 * 60 * 1000,
+    })).toBe(false);
+  });
+
+  it("rejects malformed object-shaped budget inputs instead of silently green-lighting them", () => {
+    expect(taskFitsWithinBudget({ timeoutMs: 60_000, budgetMs: 120_000 })).toBe(false);
+    expect(taskFitsWithinBudget({ elapsedMs: 0, timeoutMs: Number.NaN, budgetMs: 120_000 })).toBe(false);
+  });
+
   it("services the oldest overdue task before a newer higher-priority task", () => {
     const ordered = orderDueTasks([
       { task: { key: "gdelt_gal", priority: 10 }, state: { cursor: { next_due_at: "2026-09-22T08:53:00.000Z" } } },
