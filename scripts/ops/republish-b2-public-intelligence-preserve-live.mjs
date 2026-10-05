@@ -15,7 +15,6 @@ const REQUIRED_CATEGORIES = ["geopolitics", "macro", "rare_earth"];
 const ROWS_PER_CATEGORY = 40;
 const MAX_LIVE_OBSERVED_ROWS = 24;
 const LIVE_MAX_AGE_MS = 2 * 60 * 60 * 1000;
-const SCORED_ONLY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -54,9 +53,6 @@ function validateLiveRows(rows) {
     const id = String(row?.id ?? "").trim();
     const title = String(row?.source_title ?? "").trim();
     const timestamp = rowTime(row);
-    if (!Number.isFinite(timestamp) || timestamp > now + 5 * 60_000 || now - timestamp > LIVE_MAX_AGE_MS) {
-      throw new Error("FASTLANE_PRESERVE_LIVE_ROW_STALE");
-    }
     if (
       !id ||
       row?.public_status !== "live_observed" ||
@@ -64,6 +60,9 @@ function validateLiveRows(rows) {
       row?.severity !== null ||
       row?.delta !== null ||
       !title.startsWith("Geomacro observes ") ||
+      !Number.isFinite(timestamp) ||
+      timestamp > now + 5 * 60_000 ||
+      now - timestamp > LIVE_MAX_AGE_MS ||
       "source_name" in row ||
       "source_domain" in row ||
       "source_url" in row
@@ -167,31 +166,17 @@ async function readScoredRows() {
   }
 
   const output = [];
-  const latestByCategory = {};
   for (const category of REQUIRED_CATEGORIES) {
     const rows = grouped.get(category)
       .sort((a, b) => rowTime(b) - rowTime(a) || String(b.id).localeCompare(String(a.id)))
       .slice(0, ROWS_PER_CATEGORY);
     if (!rows.length) throw new Error(`FASTLANE_PRESERVE_SCORED_CATEGORY_MISSING:${category}`);
-    latestByCategory[category] = rowTime(rows[0]);
     output.push(...rows);
   }
-  return { rows: output, latestByCategory };
+  return output;
 }
 
-function assertScoredOnlyFreshness(latestByCategory) {
-  const now = Date.now();
-  for (const category of REQUIRED_CATEGORIES) {
-    const timestamp = Number(latestByCategory?.[category]);
-    if (
-      !Number.isFinite(timestamp) ||
-      timestamp > now + 5 * 60_000 ||
-      now - timestamp > SCORED_ONLY_MAX_AGE_MS
-    ) throw new Error(`FASTLANE_SCORED_ONLY_CATEGORY_STALE:${category}`);
-  }
-}
-
-function validateCombinedRows(rows, { requireLive }) {
+function validateCombinedRows(rows) {
   const scored = new Set();
   const seen = new Set();
   let live = 0;
@@ -218,8 +203,7 @@ function validateCombinedRows(rows, { requireLive }) {
     seen.add(key);
   }
   for (const category of REQUIRED_CATEGORIES) if (!scored.has(category)) throw new Error(`FASTLANE_PRESERVE_SCORED_CATEGORY_MISSING:${category}`);
-  if (requireLive && live < 1) throw new Error("FASTLANE_PRESERVE_LIVE_MISSING");
-  if (!requireLive && live !== 0) throw new Error("FASTLANE_SCORED_ONLY_LIVE_ROW_PRESENT");
+  if (live < 1) throw new Error("FASTLANE_PRESERVE_LIVE_MISSING");
 }
 
 assertConfig();
@@ -229,32 +213,19 @@ const b2 = createB2Client({
   secretKey: process.env.B2_APPLICATION_KEY,
   bucket: B2_BUCKET,
 });
-
-let preserved = null;
-let preserveFallbackReason = null;
-try {
-  preserved = await readVerifiedExistingLive(b2);
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  if (!["FASTLANE_PRESERVE_CURRENT_SOURCE_STALE", "FASTLANE_PRESERVE_LIVE_ROW_STALE"].includes(message)) throw error;
-  preserveFallbackReason = message;
-  console.warn(`FASTLANE_PRESERVE_LIVE_STALE_USING_CURRENT_CANONICAL_SCORES_ONLY:${message}`);
-}
-
-const scored = await readScoredRows();
-const scoredOnly = preserved === null;
-if (scoredOnly) assertScoredOnlyFreshness(scored.latestByCategory);
-const rows = [...(preserved?.rows ?? []), ...scored.rows].sort((a, b) => rowTime(b) - rowTime(a));
-validateCombinedRows(rows, { requireLive: !scoredOnly });
+const preserved = await readVerifiedExistingLive(b2);
+const scoredRows = await readScoredRows();
+const rows = [...preserved.rows, ...scoredRows].sort((a, b) => rowTime(b) - rowTime(a));
+validateCombinedRows(rows);
 
 const generatedAt = new Date().toISOString();
 const value = {
   schema: "geomacro.public-intelligence-live.v1",
   generated_at: generatedAt,
   source_project: PROJECT_REF,
-  scoring_policy: scoredOnly ? "canonical-scored-only-current" : "canonical-scored-plus-certified-current-unscored",
+  scoring_policy: "canonical-scored-plus-certified-current-unscored",
   classification_version: CLASSIFICATION_VERSION,
-  current_evidence_contract: scoredOnly ? null : CURRENT_EVIDENCE_CONTRACT,
+  current_evidence_contract: CURRENT_EVIDENCE_CONTRACT,
   public_language: "en",
   raw_source_headlines_exposed: false,
   provider_identity_exposed: false,
@@ -267,7 +238,7 @@ const readback = await b2.get(LIVE_KEY);
 if (readback.length !== packed.length || sha256(readback) !== digest) throw new Error("FASTLANE_PRESERVE_B2_HASH_INVALID");
 let restored;
 try { restored = JSON.parse(gunzipSync(readback).toString("utf8")); } catch { throw new Error("FASTLANE_PRESERVE_B2_RESTORE_INVALID"); }
-validateCombinedRows(restored?.rows, { requireLive: !scoredOnly });
+validateCombinedRows(restored?.rows);
 if (restored?.generated_at !== generatedAt || restored?.classification_version !== CLASSIFICATION_VERSION) {
   throw new Error("FASTLANE_PRESERVE_B2_BINDING_INVALID");
 }
@@ -280,12 +251,12 @@ const proofValue = {
   source_project: PROJECT_REF,
   live_key: LIVE_KEY,
   classification_version: CLASSIFICATION_VERSION,
-  current_evidence_contract: scoredOnly ? null : CURRENT_EVIDENCE_CONTRACT,
-  current_source_id: scoredOnly ? null : "gdelt_v2_events",
-  current_source_batch_at: preserved?.batchIso ?? null,
-  current_source_export_md5: preserved?.exportMd5 ?? null,
-  current_source_fips_sha256: preserved?.fipsSha256 ?? null,
-  current_source_reused: !scoredOnly,
+  current_evidence_contract: CURRENT_EVIDENCE_CONTRACT,
+  current_source_id: "gdelt_v2_events",
+  current_source_batch_at: preserved.batchIso,
+  current_source_export_md5: preserved.exportMd5,
+  current_source_fips_sha256: preserved.fipsSha256,
+  current_source_reused: true,
   current_source_freshness_advanced: false,
   categories: REQUIRED_CATEGORIES,
   row_count: rows.length,
@@ -293,8 +264,8 @@ const proofValue = {
   live_observed_rows: liveObservedRows,
   compressed_sha256: digest,
   compressed_bytes: packed.length,
-  scored_only: scoredOnly,
-  live_observed_unscored: !scoredOnly,
+  scored_only: false,
+  live_observed_unscored: true,
   real_event_timestamps_preserved: true,
   public_language: "en",
   derived_titles_only: true,
@@ -304,32 +275,23 @@ const proofValue = {
   synthetic_score: false,
   full_b2_readback_verified: true,
   exact_gzip_restore_verified: true,
-  scored_latest_at_by_category: Object.fromEntries(
-    REQUIRED_CATEGORIES.map((category) => [category, new Date(scored.latestByCategory[category]).toISOString()]),
-  ),
-  scored_only_max_age_ms: scoredOnly ? SCORED_ONLY_MAX_AGE_MS : null,
-  preserve_fallback_reason: preserveFallbackReason,
 };
 const proof = Buffer.from(JSON.stringify(proofValue));
 await b2.put(PROOF_KEY, proof);
 const proofReadback = await b2.get(PROOF_KEY);
 if (sha256(proofReadback) !== sha256(proof)) throw new Error("FASTLANE_PRESERVE_PROOF_READBACK_INVALID");
 
-const publicationMode = scoredOnly ? "canonical_scored_only_current" : "preserved_verified_live_plus_fresh_scored";
 console.log(JSON.stringify({
   ok: true,
   schema: "geomacro.public-intelligence-preserved-live-score-republish.v1",
-  authority_read: scoredOnly ? "direct-postgres-current-canonical-scored" : "direct-postgres-scored-plus-preserved-verified-b2-live",
+  authority_read: "direct-postgres-scored-plus-preserved-verified-b2-live",
   authority_serve: "backblaze-b2",
   classification_version: CLASSIFICATION_VERSION,
-  publication_mode: publicationMode,
-  current_source_batch_at: preserved?.batchIso ?? null,
-  current_source_reused: !scoredOnly,
+  current_source_batch_at: preserved.batchIso,
+  current_source_reused: true,
   current_source_freshness_advanced: false,
   verified_scored_rows: verifiedRows,
   live_observed_rows: liveObservedRows,
-  scored_only: scoredOnly,
-  live_observed_unscored: !scoredOnly,
   synthetic_score: false,
   raw_source_headlines_exposed: false,
   provider_identity_exposed: false,
