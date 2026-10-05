@@ -112,15 +112,17 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(groRestore).toContain("GRO_BUNDLE_MEMBER_HASH_INVALID");
   });
 
-  it("never auto-triggers heavy production coverage or intelligence refresh while frozen", () => {
+  it("never executes recurring production intelligence writes outside normal free-tier headroom", () => {
     expect(productionCoverageWorkflow).toContain("workflow_dispatch:");
     expect(productionCoverageWorkflow).not.toContain("branches: [main]");
     expect(productionCoverageWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write");
     expect(orchestratorWorkflow).toContain("workflow_dispatch:");
-    expect(orchestratorWorkflow).not.toContain("schedule:");
-    expect(orchestratorWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write");
+    expect(orchestratorWorkflow).toContain('cron: "7,22,37,52 * * * *"');
+    expect(orchestratorWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
+    expect(orchestratorWorkflow.indexOf("supabase-free-tier-budget.mjs --require-bulk-write --require-normal"))
+      .toBeLessThan(orchestratorWorkflow.indexOf("Run due intelligence tasks serially"));
     expect(autoIngestWorkflow).toContain('cron: "17 */6 * * *"');
     expect(autoIngestWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
-    expect(budget).toContain('process.env.GITHUB_WORKFLOW === "Auto Ingest News"');
+    expect(budget).toContain('recurring_ingest_allowed: data.mode === "normal"');
   });
 });
