@@ -29,31 +29,14 @@ describe('shared source discovery hardening', () => {
       '// Remove exact duplicate URLs'
     );
 
-    const statusCheck =
-      guardian.indexOf(
-        "guardianResponse?.status !== 'ok'"
-      );
-
-    const arrayCheck =
-      guardian.indexOf(
-        '!Array.isArray('
-      );
-
-    const successTelemetry =
-      guardian.indexOf(
-        "providerTelemetry('guardian', 'success')"
-      );
+    const statusCheck = guardian.indexOf("guardianResponse?.status !== 'ok'");
+    const arrayCheck = guardian.indexOf('!Array.isArray(');
+    const successTelemetry = guardian.indexOf("providerTelemetry('guardian', 'success')");
 
     expect(statusCheck).toBeGreaterThanOrEqual(0);
     expect(arrayCheck).toBeGreaterThanOrEqual(0);
-
-    expect(successTelemetry).toBeGreaterThan(
-      statusCheck
-    );
-
-    expect(successTelemetry).toBeGreaterThan(
-      arrayCheck
-    );
+    expect(successTelemetry).toBeGreaterThan(statusCheck);
+    expect(successTelemetry).toBeGreaterThan(arrayCheck);
   });
 
   it('uses GDELT relevance ranking inside the bounded discovery window', () => {
@@ -62,43 +45,18 @@ describe('shared source discovery hardening', () => {
       'async function fetchArticlesFromApis('
     );
 
-    expect(gdelt).toContain(
-      "sort: 'HybridRel'"
-    );
-
-    expect(gdelt).not.toContain(
-      "sort: 'DateDesc'"
-    );
-
-    expect(gdelt).toContain(
-      "discoveryProvider: 'gdelt'"
-    );
-
-    expect(gdelt).toContain(
-      'sourceDomain'
-    );
+    expect(gdelt).toContain("sort: 'HybridRel'");
+    expect(gdelt).not.toContain("sort: 'DateDesc'");
+    expect(gdelt).toContain("discoveryProvider: 'gdelt'");
+    expect(gdelt).toContain('sourceDomain');
   });
 
   it('bounds Guardian queries per category with deterministic rotation', () => {
-    expect(source).toContain(
-      'GUARDIAN_QUERY_BUDGET_PER_CATEGORY'
-    );
-
-    expect(source).toContain(
-      'GUARDIAN_QUERY_ROTATION_HOURS'
-    );
-
-    expect(source).toContain(
-      'GUARDIAN_ROTATION_RUN_MS'
-    );
-
-    expect(source).toContain(
-      'Math.ceil('
-    );
-
-    expect(source).toContain(
-      'allQueries.slice('
-    );
+    expect(source).toContain('GUARDIAN_QUERY_BUDGET_PER_CATEGORY');
+    expect(source).toContain('GUARDIAN_QUERY_ROTATION_HOURS');
+    expect(source).toContain('GUARDIAN_ROTATION_RUN_MS');
+    expect(source).toContain('Math.ceil(');
+    expect(source).toContain('allQueries.slice(');
   });
 
   it('executes only the selected Guardian query plan', () => {
@@ -107,59 +65,36 @@ describe('shared source discovery hardening', () => {
       '/*\n     * Bounded GDACS'
     );
 
-    expect(ingestionLoop).toContain(
-      'guardianQueryPlan('
-    );
-
-    expect(ingestionLoop).toContain(
-      'guardianPlan.queries.entries()'
-    );
-
-    expect(ingestionLoop).not.toContain(
-      'category.queries.entries()'
-    );
+    expect(ingestionLoop).toContain('guardianQueryPlan(');
+    expect(ingestionLoop).toContain('guardianPlan.queries.entries()');
+    expect(ingestionLoop).not.toContain('category.queries.entries()');
   });
 
-  it('wires bounded Guardian query policy into both normal and egress-recovery ingestion modes', () => {
-    const envExample = readFileSync(
-      new URL(
-        '../../.env.example',
-        import.meta.url
-      ),
+  it('wires the bounded Guardian policy through the canonical recurring owner and manual recovery wrapper', () => {
+    const envExample = readFileSync(new URL('../../.env.example', import.meta.url), 'utf8');
+    const orchestrator = readFileSync(
+      new URL('../../.github/workflows/intelligence-orchestrator.yml', import.meta.url),
+      'utf8'
+    );
+    const recovery = readFileSync(
+      new URL('../../.github/workflows/auto-ingest-news.yml', import.meta.url),
       'utf8'
     );
 
-    expect(envExample).toContain(
-      'GUARDIAN_QUERY_BUDGET_PER_CATEGORY=10'
-    );
+    expect(envExample).toContain('GUARDIAN_QUERY_BUDGET_PER_CATEGORY=10');
+    expect(envExample).toContain('GUARDIAN_QUERY_ROTATION_HOURS=2');
 
-    expect(envExample).toContain(
-      'GUARDIAN_QUERY_ROTATION_HOURS=2'
-    );
-
-    for (const workflowPath of [
-      '../../.github/workflows/auto-ingest-news.yml',
-    ]) {
-      const workflow = readFileSync(
-        new URL(
-          workflowPath,
-          import.meta.url
-        ),
-        'utf8'
-      );
-
-      expect(workflow).toContain(
-        "GUARDIAN_QUERY_BUDGET_PER_CATEGORY: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && '0' || '3' }}"
-      );
-
-      expect(workflow).toContain(
-        "GEOMACRO_DISABLE_GUARDIAN: ${{ needs.supabase-preflight.outputs.mode == 'egress_restricted' && 'true' || 'false' }}"
-      );
-
-      expect(workflow).toContain(
-        'GUARDIAN_QUERY_ROTATION_HOURS: "6"'
-      );
+    for (const workflow of [orchestrator, recovery]) {
+      expect(workflow).toContain('GUARDIAN_QUERY_BUDGET_PER_CATEGORY: ${{ vars.GUARDIAN_QUERY_BUDGET_PER_CATEGORY }}');
+      expect(workflow).toContain('GUARDIAN_QUERY_ROTATION_HOURS: ${{ vars.GUARDIAN_QUERY_ROTATION_HOURS }}');
     }
+
+    expect(orchestrator).toContain('group: geomacro-intelligence-orchestrator');
+    expect(orchestrator).toContain('cron: "7,22,37,52 * * * *"');
+    expect(recovery).toContain('workflow_dispatch');
+    expect(recovery).not.toContain('schedule:');
+    expect(recovery).toContain('INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest');
+    expect(recovery).toContain('INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest');
   });
 
   it('limits GDELT discovery to one deterministic category request per ingestion run', () => {
@@ -178,5 +113,4 @@ describe('shared source discovery hardening', () => {
     expect(ingestLoop).toContain('GDELT_DISCOVERY_QUERIES[category.name]');
     expect(ingestLoop).toContain('GDELT discovery skipped');
   });
-
 });

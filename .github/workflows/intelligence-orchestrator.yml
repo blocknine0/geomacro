@@ -11,8 +11,11 @@ on:
       - "scripts/intelligence-orchestrator.mjs"
       - "scripts/lib/intelligence-scheduler.mjs"
       - "scripts/lib/direct-postgres-supabase-loader.mjs"
+      - "scripts/lib/d1-control-plane-state.mjs"
+      - "scripts/lib/d1-orchestrator-supabase-shim.mjs"
       - "scripts/ops/supabase-free-tier-budget.mjs"
       - "scripts/sync-country-raw-source-mesh.mjs"
+      - "workers/control-plane/**"
 
 permissions:
   contents: read
@@ -29,22 +32,30 @@ jobs:
     timeout-minutes: 55
     environment: production
     env:
+      # Legacy Supabase values remain available only for tasks that have not yet
+      # been migrated. Scheduler/control-state authority is D1, not Supabase.
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
+
       B2_GDELT_PRIMARY: "1"
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       RAW_SOURCE_ARCHIVE_MODE: b2
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-      GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
-      GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       GRI_DB_MODE: direct_postgres
       LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
+      GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
       RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
@@ -110,42 +121,78 @@ jobs:
       - name: Install RSS/Telegram worker dependencies
         run: python -m pip install --disable-pip-version-check -r workers/telegram-flash/requirements.txt
 
-      - name: Validate scheduler runtime
+      - name: Resolve production D1 control-plane database
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${APP_SUPABASE_URL:-}"
-          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
-          test -n "${SUPABASE_DB_URL:-}"
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "CLOUDFLARE_API_TOKEN is required for D1 scheduler state"; exit 2; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "CLOUDFLARE_ACCOUNT_ID is required for D1 scheduler state"; exit 2; }
+          LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              const rows = JSON.parse(s);
+              const row = rows.find(x => x.name === process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid ?? row?.id ?? "");
+            });
+          ')"
+          test -n "$DB_ID" || { echo "Production D1 control-plane database not found"; exit 3; }
+          echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
+          echo "PASS: D1 scheduler state authority resolved."
+
+      - name: Validate Supabase-independent scheduler runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${D1_DATABASE_ID:-}"
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
           test -n "${B2_KEY_ID:-}"
           test -n "${B2_APPLICATION_KEY:-}"
           test "${GRI_DB_MODE:-}" = "direct_postgres"
           test "${RAW_SOURCE_ARCHIVE_MODE:-}" = "b2"
           test "${LIVE_STRUCTURE_EXECUTION_MODE:-}" = "local_direct_postgres"
-          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
+          node --check scripts/lib/d1-control-plane-state.mjs
+          node --check scripts/lib/d1-orchestrator-supabase-shim.mjs
           node --check scripts/intelligence-orchestrator.mjs
-          echo "PASS: authoritative direct-Postgres/B2 scheduler runtime validated."
+          echo "PASS: D1/B2 scheduler runtime validated without requiring Supabase availability."
 
-      - name: Resolve service transport and require normal free-tier headroom
+      - name: Probe optional Supabase data plane without blocking D1/B2 heartbeat
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal | tee supabase-budget.json
-          jq -e '.ok == true and .policy.recurring_ingest_allowed == true' supabase-budget.json >/dev/null
-          transport="$(jq -r '.transport' supabase-budget.json)"
-          case "${transport}" in
-            data_api)
-              echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=true" >> "$GITHUB_ENV"
-              ;;
-            direct_postgres_fallback)
-              echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=false" >> "$GITHUB_ENV"
-              echo "Supabase Data API is restricted/unavailable; continuing through canonical direct-Postgres + B2 path."
-              ;;
-            *)
-              echo "::error::Unknown Supabase budget transport: ${transport}"
-              exit 1
-              ;;
-          esac
+          rm -f supabase-budget.json
+          set +e
+          node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal > supabase-budget.json 2>supabase-budget.stderr
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ] && jq -e '.ok == true and .policy.recurring_ingest_allowed == true' supabase-budget.json >/dev/null 2>&1; then
+            transport="$(jq -r '.transport' supabase-budget.json)"
+            case "${transport}" in
+              data_api)
+                echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=true" >> "$GITHUB_ENV"
+                echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=true" >> "$GITHUB_ENV"
+                ;;
+              direct_postgres_fallback)
+                echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=false" >> "$GITHUB_ENV"
+                echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=true" >> "$GITHUB_ENV"
+                ;;
+              *)
+                echo "::error::Unknown Supabase budget transport: ${transport}"
+                exit 1
+                ;;
+            esac
+          else
+            # Supabase is optional for heartbeat and public serving. Until each
+            # remaining ingestion task is B2/D1-native, freeze those writers
+            # rather than fabricating freshness or failing the whole scheduler.
+            echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=false" >> "$GITHUB_ENV"
+            echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=false" >> "$GITHUB_ENV"
+            echo "INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only" >> "$GITHUB_ENV"
+            echo '{"ok":false,"transport":"unavailable","policy":{"recurring_ingest_allowed":false}}' > supabase-budget.json
+            echo "Supabase unavailable: D1/B2 heartbeat remains live; Supabase-backed writers are fail-closed."
+          fi
 
       - name: Derive current public verification key
         shell: bash
@@ -205,6 +252,7 @@ jobs:
           path: |
             intelligence-orchestrator.json
             supabase-budget.json
+            supabase-budget.stderr
             gdelt-gal-cycle/**
             country-raw-source-sync.json
             artifacts/intelligence-current-scoring-cycle/**

@@ -3,15 +3,18 @@ import { readFileSync } from 'node:fs';
 import { candidateStamps, scoreTopicEvidence } from '../../scripts/lib/gdelt-gal-fastlane-fallback.mjs';
 
 const workflow = readFileSync('.github/workflows/intelligence-current-scoring-fastlane.yml', 'utf8');
+const orchestrator = readFileSync('scripts/intelligence-orchestrator.mjs', 'utf8');
+const runner = readFileSync('scripts/ops/run-intelligence-current-scoring-cycle.mjs', 'utf8');
 const helper = readFileSync('scripts/lib/gdelt-gal-fastlane-fallback.mjs', 'utf8');
 
 describe('current scoring GAL fallback contract', () => {
   it('falls back from DOC to governed GAL without bypassing canonical scoring', () => {
-    expect(workflow).toContain('fetchGdeltArticlesWithGalFallback');
-    expect(workflow).toContain("await fetchGdeltArticlesWithGalFallback(gdeltQuery, category.name)");
-    expect(workflow).toContain('node scripts/ingest-news.js');
-    expect(workflow).toContain("classification_version: 'event-severity-v1.0.5'");
-    expect(workflow).toContain('raw_feature_score_promotion: false');
+    expect(runner).toContain('fetchGdeltArticlesWithGalFallback');
+    expect(runner).toContain('await fetchGdeltArticlesWithGalFallback(gdeltQuery, category.name);');
+    expect(runner).toContain('const SCORER = "scripts/ingest-news.js"');
+    expect(runner).toContain('const CLASSIFICATION_VERSION = "event-severity-v1.0.5"');
+    expect(runner).toContain('raw_feature_score_promotion: false');
+    expect(runner).toContain('GDELT_GAL_FALLBACK_ENABLED: "true"');
   });
 
   it('keeps normal GAL discovery bounded, densely heartbeat-aware and timestamp-truthful', () => {
@@ -100,11 +103,16 @@ describe('current scoring GAL fallback contract', () => {
     }, 'rare_earth')).toBeLessThan(3);
   });
 
-  it('runs one-time serialized macro and rare-earth catch-up on workflow deployment', () => {
-    expect(workflow).toContain('domain=macro');
-    expect(workflow).toContain('recover-rare-earth-after-fastlane-change');
-    expect(workflow).toContain('needs: score-current-domain');
-    expect(workflow).toContain('GDELT_FORCE_CATEGORY: rare_earth');
-    expect(workflow).toContain('cron: "13,33,53 * * * *"');
+  it('scores all three domains serially under the single recurring owner', () => {
+    expect(runner).toContain('const DOMAINS = ["geopolitics", "macro", "rare_earth"]');
+    expect(runner).toContain('for (const category of DOMAINS)');
+    expect(orchestrator).toContain('key: "current_scoring"');
+    expect(orchestrator).toContain('cadenceSeconds: 1200');
+    expect(orchestrator).toContain('scripts/ops/run-intelligence-current-scoring-cycle.mjs');
+    expect(workflow).toContain('workflow_dispatch');
+    expect(workflow).not.toContain('schedule:');
+    expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: current_scoring');
+    expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: current_scoring');
+    expect(workflow).toContain('group: geomacro-intelligence-orchestrator');
   });
 });

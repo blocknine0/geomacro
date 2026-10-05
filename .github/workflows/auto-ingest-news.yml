@@ -28,6 +28,10 @@ jobs:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       GRI_DB_MODE: direct_postgres
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
       INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
       RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
       NASA_FIRMS_MAP_KEY: ${{ secrets.NASA_FIRMS_MAP_KEY }}
@@ -73,10 +77,39 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Require normal free-tier headroom through authoritative direct PostgreSQL
+      - name: Resolve production D1 scheduler database
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              const rows = JSON.parse(s);
+              const row = rows.find(x => x.name === process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid ?? row?.id ?? "");
+            });
+          ')"
+          test -n "$DB_ID" || { echo "D1 scheduler database not found"; exit 3; }
+          echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
+
+      - name: Require normal free-tier headroom and Edge availability for this legacy recovery wrapper
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
-        run: node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal | tee supabase-budget.json
+          jq -e '.ok == true and .policy.recurring_ingest_allowed == true' supabase-budget.json >/dev/null
+          transport="$(jq -r '.transport' supabase-budget.json)"
+          test "$transport" = "data_api" || {
+            echo "Manual legacy news recovery still needs Supabase Edge structuring; use the D1/B2 orchestrator path while the Edge service is unavailable."
+            exit 12
+          }
+          echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=true" >> "$GITHUB_ENV"
 
       - name: Run exactly the canonical news_ingest recovery task
         env:
@@ -92,6 +125,8 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: auto-ingest-news-recovery-${{ github.run_id }}
-          path: auto-ingest-news-recovery.json
+          path: |
+            auto-ingest-news-recovery.json
+            supabase-budget.json
           if-no-files-found: warn
           retention-days: 14
