@@ -3,14 +3,21 @@ name: Issue 1414 Closure Guard
 on:
   issues:
     types: [closed]
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: issue-1414-closure-guard
+  cancel-in-progress: false
+
 jobs:
   enforce-master-acceptance:
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.event.issue.number == 1414 }}
+    if: ${{ github.repository == 'blocknine0/geomacro' && (github.event_name != 'issues' || github.event.issue.number == 1414) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -24,7 +31,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Reopen incomplete master tracker
+      - name: Reopen incomplete master tracker if required
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/ops/enforce-issue-1414-closure.mjs
