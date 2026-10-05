@@ -17,6 +17,7 @@ on:
       - "src/lib/public-intelligence.functions.ts"
       - "src/lib/use-intelligence.ts"
       - "server/api/public/intelligence.get.ts"
+      - "src/__tests__/intelligence-scored-convergence-policy.test.ts"
 
 permissions:
   contents: read
@@ -149,12 +150,16 @@ jobs:
           const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           const proof = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
           const rows = Array.isArray(body?.rows) ? body.rows : [];
-          const required = new Set(['geopolitics','macro','rare_earth']);
-          const scored = new Set();
+          const required = ['geopolitics','macro','rare_earth'];
+          const requiredSet = new Set(required);
+          const latestScored = new Map();
           let verified = 0;
           let live = 0;
           let newestLive = -Infinity;
-          let ok = body?.ok === true && body?.mode === 'verified_b2_plus_live_observed' && rows.length > 0;
+          let ok = body?.ok === true && rows.length > 0;
+          const now = Date.now();
+          const dayMs = 24 * 60 * 60 * 1000;
+          const futureToleranceMs = 5 * 60 * 1000;
           for (const row of rows) {
             const category = String(row?.category ?? '');
             const title = String(row?.source_title ?? '');
@@ -162,30 +167,44 @@ jobs:
             if (row?.public_status === 'verified_b2') {
               verified++;
               const severity = Number(row?.severity);
+              const timestamp = Date.parse(String(row?.published_at ?? row?.created_at ?? ''));
               if (!Number.isFinite(severity) || severity < 0 || severity > 100 || !title.startsWith('Geomacro finds ')) ok = false;
-              if (required.has(category)) scored.add(category);
+              if (!Number.isFinite(timestamp) || timestamp > now + futureToleranceMs) ok = false;
+              if (requiredSet.has(category) && Number.isFinite(timestamp)) {
+                latestScored.set(category, Math.max(latestScored.get(category) ?? -Infinity, timestamp));
+              }
             } else if (row?.public_status === 'live_observed') {
               live++;
               if (category !== 'geopolitics' || row?.severity !== null || row?.delta !== null || !title.startsWith('Geomacro observes ')) ok = false;
               const timestamp = Date.parse(String(row?.published_at ?? row?.created_at ?? ''));
-              if (Number.isFinite(timestamp)) newestLive = Math.max(newestLive, timestamp);
-              else ok = false;
+              if (!Number.isFinite(timestamp) || timestamp > now + futureToleranceMs) ok = false;
+              else newestLive = Math.max(newestLive, timestamp);
             } else {
               ok = false;
             }
           }
-          for (const category of required) if (!scored.has(category)) ok = false;
-          if (Number(body?.verified_rows) !== verified || Number(body?.live_observed_rows) !== live || live < 1) ok = false;
+          for (const category of required) if (!latestScored.has(category)) ok = false;
+          const scoredCurrentAcrossAllDomains = required.every((category) => {
+            const timestamp = latestScored.get(category) ?? -Infinity;
+            return Number.isFinite(timestamp) && timestamp <= now + futureToleranceMs && now - timestamp <= dayMs;
+          });
+          if (Number(body?.verified_rows) !== verified || Number(body?.live_observed_rows) !== live) ok = false;
           if (body?.current_within_24h !== true) ok = false;
           const expectedBatch = Date.parse(String(proof?.current_source_batch_at ?? ''));
-          const responseNewest = Date.parse(String(body?.newest_at ?? ''));
-          if (!Number.isFinite(expectedBatch) || !Number.isFinite(responseNewest) || responseNewest < expectedBatch) ok = false;
-          if (!Number.isFinite(newestLive) || newestLive < expectedBatch) ok = false;
+          if (!Number.isFinite(expectedBatch)) ok = false;
+          if (scoredCurrentAcrossAllDomains) {
+            if (body?.mode !== 'verified_b2' || live !== 0) ok = false;
+          } else {
+            if (body?.mode !== 'verified_b2_plus_live_observed' || live < 1) ok = false;
+            const responseNewest = Date.parse(String(body?.newest_at ?? ''));
+            if (!Number.isFinite(responseNewest) || responseNewest < expectedBatch) ok = false;
+            if (!Number.isFinite(newestLive) || newestLive < expectedBatch) ok = false;
+          }
           process.exit(ok ? 0 : 1);
           NODE
             then
               cp "$body" /tmp/intelligence-current.json
-              echo "Production Intelligence API converged to the exact B2 publish proof on attempt ${attempt}."
+              echo "Production Intelligence API converged under the canonical scored/current serving policy on attempt ${attempt}."
               exit 0
             fi
 
@@ -205,18 +224,28 @@ jobs:
             if (index > 0) headerMap.set(line.slice(0, index).trim().toLowerCase(), line.slice(index + 1).trim());
           }
           const rows = Array.isArray(body?.rows) ? body.rows : [];
-          const scoredCategories = [...new Set(rows
-            .filter((row) => row?.public_status === 'verified_b2')
-            .map((row) => String(row?.category ?? ''))
-            .filter(Boolean))].sort();
+          const required = ['geopolitics','macro','rare_earth'];
+          const latestScored = new Map();
           const liveRows = rows.filter((row) => row?.public_status === 'live_observed');
           const liveTimes = liveRows
             .map((row) => Date.parse(String(row?.published_at ?? row?.created_at ?? '')))
             .filter(Number.isFinite);
           const newestLiveMs = liveTimes.length > 0 ? Math.max(...liveTimes) : NaN;
+          for (const row of rows) {
+            if (row?.public_status !== 'verified_b2') continue;
+            const category = String(row?.category ?? '');
+            if (!required.includes(category)) continue;
+            const timestamp = Date.parse(String(row?.published_at ?? row?.created_at ?? ''));
+            if (Number.isFinite(timestamp)) latestScored.set(category, Math.max(latestScored.get(category) ?? -Infinity, timestamp));
+          }
+          const now = Date.now();
+          const scoredCurrentAcrossAllDomains = required.every((category) => {
+            const timestamp = latestScored.get(category) ?? -Infinity;
+            return Number.isFinite(timestamp) && timestamp <= now + 5 * 60_000 && now - timestamp <= 24 * 60 * 60 * 1000;
+          });
           const expectedBatchMs = Date.parse(String(proof?.current_source_batch_at ?? ''));
           const diagnostic = {
-            schema: 'geomacro.intelligence-convergence-diagnostic.v1',
+            schema: 'geomacro.intelligence-convergence-diagnostic.v2',
             attempt: Number(attemptRaw),
             http_status: Number(statusRaw) || 0,
             expected_current_source_batch_at: proof?.current_source_batch_at ?? null,
@@ -229,7 +258,7 @@ jobs:
               current_within_24h: body?.current_within_24h ?? null,
               newest_at: body?.newest_at ?? null,
               newest_live_at: Number.isFinite(newestLiveMs) ? new Date(newestLiveMs).toISOString() : null,
-              scored_categories: scoredCategories,
+              scored_current_across_all_domains: scoredCurrentAcrossAllDomains,
               expected_batch_visible: Number.isFinite(expectedBatchMs) && Number.isFinite(newestLiveMs)
                 ? newestLiveMs >= expectedBatchMs
                 : false,
@@ -249,7 +278,7 @@ jobs:
 
             if [ "$attempt" -lt 24 ]; then sleep 10; fi
           done
-          echo "::error::Production Intelligence API did not converge to the scored-plus-current B2 publish proof within the bounded acceptance window."
+          echo "::error::Production Intelligence API did not converge under the canonical scored/current serving policy within the bounded acceptance window."
           exit 1
 
       - name: Upload Intelligence acceptance evidence
