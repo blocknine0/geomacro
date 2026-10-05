@@ -43,13 +43,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Require fail-closed Telegram consumer contract
+      - name: Require fail-closed lossless Telegram consumer contract
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'telegram_signal_lead_queue' workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql
+          grep -q 'trg_telegram_checkpoint_enqueue_update' workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql
           grep -q 'allowedKeyPrefixes: \["telegram/leads/"\]' scripts/ops/drain-telegram-b2-leads.mjs
           grep -q 'TELEGRAM_B2_QUEUE_HASH_MISMATCH' scripts/ops/drain-telegram-b2-leads.mjs
+          grep -q 'TELEGRAM_QUEUE_DELIVERY_ID_MISMATCH' scripts/ops/drain-telegram-b2-leads.mjs
           grep -q 'verifyTelegramLeadEnvelope' scripts/ops/drain-telegram-b2-leads.mjs
           grep -q 'LIVE_FLASH_LOCAL_REQUIRES_DIRECT_POSTGRES' scripts/run-live-flash-ingest-local.ts
           grep -q 'source_channel_key' scripts/run-live-flash-ingest-local.ts
@@ -148,10 +150,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT signal_id,source_channel_key,source_record_id,published_at,b2_object_key,b2_sha256,state,created_at,attempt_count FROM telegram_signal_lead_queue WHERE state='PENDING' ORDER BY created_at ASC, signal_id ASC LIMIT 25;" > artifacts/telegram-lead-intake/d1-queue.json
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT delivery_id,signal_id,source_channel_key,source_record_id,published_at,b2_object_key,b2_sha256,state,created_at,attempt_count FROM telegram_signal_lead_queue WHERE state='PENDING' ORDER BY created_at ASC, delivery_id ASC LIMIT 25;" > artifacts/telegram-lead-intake/d1-queue.json
       - name: Verify D1 queue pointers against B2 and sanitize leads
         run: node scripts/ops/drain-telegram-b2-leads.mjs --queue-file artifacts/telegram-lead-intake/d1-queue.json --out-dir artifacts/telegram-lead-intake/verified --max 25
-      - name: Ingest verified leads through canonical direct-Postgres handler and acknowledge queue
+      - name: Ingest verified leads through canonical direct-Postgres handler and acknowledge exact delivery
         shell: bash
         run: |
           set -euo pipefail
@@ -161,20 +163,20 @@ jobs:
           const fs=require('fs');
           const s=JSON.parse(fs.readFileSync('artifacts/telegram-lead-intake/verified/summary.json','utf8'));
           for (const item of s.accepted ?? []) {
-            if (!/^tg_[a-f0-9]{32}$/.test(String(item.signal_id ?? ''))) throw new Error('TELEGRAM_SIGNAL_ID_INVALID');
+            if (!/^tg_[a-f0-9]{32}_[a-f0-9]{16}$/.test(String(item.delivery_id ?? ''))) throw new Error('TELEGRAM_DELIVERY_ID_INVALID');
             if (String(item.payload_file ?? '').includes('\t') || String(item.payload_file ?? '').includes('\n')) throw new Error('TELEGRAM_PAYLOAD_PATH_INVALID');
-            console.log(`${item.signal_id}\t${item.payload_file}`);
+            console.log(`${item.delivery_id}\t${item.payload_file}`);
           }
           NODE
-          while IFS=$'\t' read -r signal payload; do
-            [[ -n "$signal" ]] || continue
-            [[ "$signal" =~ ^tg_[a-f0-9]{32}$ ]] || { echo "invalid signal id"; exit 7; }
-            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET attempt_count=attempt_count+1,last_attempt_at=datetime('now'),last_error_code='CANONICAL_INGEST_IN_PROGRESS' WHERE signal_id='$signal' AND state='PENDING';" >/tmp/telegram-attempt.json
+          while IFS=$'\t' read -r delivery payload; do
+            [[ -n "$delivery" ]] || continue
+            [[ "$delivery" =~ ^tg_[a-f0-9]{32}_[a-f0-9]{16}$ ]] || { echo "invalid delivery id"; exit 7; }
+            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET attempt_count=attempt_count+1,last_attempt_at=datetime('now'),last_error_code='CANONICAL_INGEST_IN_PROGRESS' WHERE delivery_id='$delivery' AND state='PENDING';" >/tmp/telegram-attempt.json
             if ! node scripts/run-live-flash-ingest-local.ts --payload-file "$payload"; then
-              npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET last_error_code='CANONICAL_INGEST_FAILED',last_attempt_at=datetime('now') WHERE signal_id='$signal' AND state='PENDING';" >/tmp/telegram-failed.json || true
+              npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET last_error_code='CANONICAL_INGEST_FAILED',last_attempt_at=datetime('now') WHERE delivery_id='$delivery' AND state='PENDING';" >/tmp/telegram-failed.json || true
               exit 8
             fi
-            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET state='CONSUMED',consumed_at=datetime('now'),last_error_code=NULL,last_attempt_at=datetime('now') WHERE signal_id='$signal' AND state='PENDING';" >/tmp/telegram-consumed.json
+            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET state='CONSUMED',consumed_at=datetime('now'),last_error_code=NULL,last_attempt_at=datetime('now') WHERE delivery_id='$delivery' AND state='PENDING';" >/tmp/telegram-consumed.json
           done < /tmp/telegram-queue-items.tsv
       - name: Assert no Telegram pre-promotion occurred and prune old consumed pointers
         shell: bash
