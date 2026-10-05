@@ -2,11 +2,35 @@ export const DEFAULT_MAX_TASKS_PER_TICK = 8;
 export const DEFAULT_HEARTBEAT_BUDGET_MS = 50 * 60 * 1000;
 export const DEFAULT_HEARTBEAT_RESERVE_MS = 5 * 60 * 1000;
 
-export function taskFitsWithinBudget(taskTimeoutMs, remainingMs, reserveMs = DEFAULT_HEARTBEAT_RESERVE_MS) {
+export function taskFitsWithinBudget(
+  taskTimeoutOrOptions,
+  remainingMs,
+  reserveMs = DEFAULT_HEARTBEAT_RESERVE_MS,
+) {
+  let taskTimeoutMs = taskTimeoutOrOptions;
+  let availableMs = remainingMs;
+  let effectiveReserveMs = reserveMs;
+
+  if (
+    taskTimeoutOrOptions
+    && typeof taskTimeoutOrOptions === "object"
+    && !Array.isArray(taskTimeoutOrOptions)
+  ) {
+    const {
+      elapsedMs,
+      timeoutMs,
+      budgetMs,
+      reserveMs: objectReserveMs = DEFAULT_HEARTBEAT_RESERVE_MS,
+    } = taskTimeoutOrOptions;
+    taskTimeoutMs = timeoutMs;
+    availableMs = Number(budgetMs) - Number(elapsedMs);
+    effectiveReserveMs = objectReserveMs;
+  }
+
   return Number.isFinite(taskTimeoutMs)
-    && Number.isFinite(remainingMs)
-    && Number.isFinite(reserveMs)
-    && remainingMs >= taskTimeoutMs + reserveMs;
+    && Number.isFinite(availableMs)
+    && Number.isFinite(effectiveReserveMs)
+    && availableMs >= taskTimeoutMs + effectiveReserveMs;
 }
 
 export function orderDueTasks(dueItems) {
