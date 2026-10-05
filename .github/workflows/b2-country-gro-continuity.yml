@@ -4,22 +4,13 @@ on:
   schedule:
     - cron: "41 * * * *"
   workflow_dispatch: {}
+  # The final commercial gate is exact-head and may start immediately after a
+  # canonical merge. Start the bounded one-country continuity refresh on every
+  # main advance so D1 has a fresh verified commercial GRO before that gate
+  # reaches its trust-object check. The hourly schedule remains the steady-state
+  # freshness owner when main is quiet.
   push:
     branches: [main]
-    paths:
-      - ".github/workflows/b2-country-gro-continuity.yml"
-      - "scripts/ops/publish-b2-country-gro-continuity.ts"
-      - "scripts/ops/verify-b2-country-gro-preservation.ts"
-      - "scripts/ops/verify-b2-country-gro-direct-read.ts"
-      - "scripts/ops/sync-current-country-gro-to-d1.ts"
-      - "scripts/publish-country-risk-object.ts"
-      - "scripts/lib/gri-db-client.mjs"
-      - "scripts/lib/direct-postgres-supabase-loader.mjs"
-      - "src/lib/b2-country-gro.server.ts"
-      - "src/lib/country-gro-resolver.server.ts"
-      - "src/lib/agent-query-external-modules.server.ts"
-      - "src/lib/risk-gate-service.server.ts"
-      - "src/lib/country-risk-publisher.server.ts"
 
 permissions:
   contents: read
