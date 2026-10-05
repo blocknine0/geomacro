@@ -72,6 +72,13 @@ describe("B2 country GRO continuity", () => {
     expect(workflow).not.toContain("refresh-public-demo-risk-objects.ts");
   });
 
+  it("prewarms a fresh D1 GRO on every canonical main advance before the exact-head final gate", () => {
+    const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
+    expect(workflow).toContain("push:\n    branches: [main]");
+    expect(workflow).toContain("Start the bounded one-country continuity refresh on every");
+    expect(workflow).toContain("hourly schedule remains the steady-state");
+  });
+
   it("keeps GRO continuity on the authoritative database while bypassing restricted REST egress", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     const shim = read("scripts/lib/gri-db-client.mjs");
