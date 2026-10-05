@@ -67,6 +67,14 @@ function caughtUp(publicLatest, canonicalLatest) {
   );
 }
 
+function validPublicMode(body) {
+  const mode = body?.mode;
+  const live = Number(body?.live_observed_rows ?? 0);
+  if (mode === "verified_b2") return live === 0;
+  if (mode === "verified_b2_plus_live_observed") return live >= 1;
+  return false;
+}
+
 async function fetchPublic(attempt) {
   const nonce = `${Date.now()}-${process.pid}-${attempt}`;
   const response = await fetch(`${PUBLIC_URL}?fastlane_publication=${encodeURIComponent(nonce)}`, {
@@ -81,7 +89,7 @@ async function fetchPublic(attempt) {
   });
   if (!response.ok) throw new Error(`FASTLANE_PUBLICATION_PUBLIC_HTTP_${response.status}`);
   const body = await response.json();
-  if (body?.ok !== true || body?.mode !== "verified_b2_plus_live_observed") {
+  if (body?.ok !== true || !validPublicMode(body)) {
     throw new Error(`FASTLANE_PUBLICATION_PUBLIC_MODE_INVALID:${String(body?.mode ?? "missing")}`);
   }
   return {
@@ -205,7 +213,6 @@ for (let attempt = 1; attempt <= MAX_POLLS; attempt += 1) {
     after = await fetchPublic(attempt);
     if (
       after.current_within_24h === true &&
-      after.live_observed_rows >= 1 &&
       caughtUp(after.latest_scored_by_category, canonicalLatest)
     ) {
       writeProof({
