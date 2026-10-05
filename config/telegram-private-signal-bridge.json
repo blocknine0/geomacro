@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.telegram-main-bridge.v1",
   "producer_repo": "blocknine0/geomacro-telegram-signals",
-  "producer_commit": "f3ef91a8387e37843d1b9990bc011fd09035e43f",
+  "producer_commit": "42e6dce0a022f479528f86f665d743a6a64b4dcf",
   "payload_schema": "geomacro.telegram-lead-envelope.v1",
   "source_id": "telegram_authorized_publisher_feed",
   "storage": {
