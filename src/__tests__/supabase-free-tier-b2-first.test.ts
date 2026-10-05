@@ -34,6 +34,15 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(autoIngestWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
   });
 
+  it("keeps the canonical budget guard available when the Supabase Data API is egress-restricted", () => {
+    expect(budget).toContain('process.env.SUPABASE_DB_URL ?? ""');
+    expect(budget).toContain('"select public.geomacro_free_tier_budget_state()::text;"');
+    expect(budget).toContain('transport: "direct_postgres_fallback"');
+    expect(budget).toContain('const state = await readViaDataApi() ?? readViaDirectPostgres();');
+    expect(budget).toContain('"psql"');
+    expect(orchestratorWorkflow).toContain('SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}');
+  });
+
   it("keeps raw cleanup on the Storage API and never SQL-deletes storage.objects", () => {
     expect(rawWorker).toContain("storage.remove(paths)");
     expect(rawWorker).toContain("geomacro_raw_storage_paths_present");
