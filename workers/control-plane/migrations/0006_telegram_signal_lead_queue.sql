@@ -6,6 +6,11 @@
 -- A queue insert failure therefore prevents checkpoint advancement. Version
 -- identity uses the verified compressed B2 SHA so Telegram edits that reuse the
 -- same message/signal id remain distinct deliveries. D1 stores pointers only.
+--
+-- IMPORTANT: Cloudflare D1's remote migration splitter currently recognizes the
+-- trigger-body BEGIN token case-sensitively. Keep BEGIN uppercase and this file
+-- LF-only; lowercase/mixed-case BEGIN or CRLF can surface SQLITE_ERROR 7500
+-- "incomplete input" before SQLite receives the complete trigger statement.
 
 create table if not exists telegram_signal_lead_queue (
   delivery_id text primary key,
@@ -70,7 +75,7 @@ when new.last_signal_id is not null
  and new.last_b2_object_key is not null
  and new.last_b2_sha256 is not null
  and new.last_published_at is not null
-begin
+BEGIN
   insert or ignore into telegram_signal_lead_queue (
     delivery_id, signal_id, source_channel_key, source_record_id, published_at,
     b2_object_key, b2_sha256, state, created_at
@@ -85,7 +90,7 @@ begin
     'PENDING',
     new.updated_at
   );
-end;
+END;
 
 drop trigger if exists trg_telegram_checkpoint_enqueue_update;
 create trigger trg_telegram_checkpoint_enqueue_update
@@ -99,7 +104,7 @@ when new.last_signal_id is not null
    or old.last_b2_sha256 is not new.last_b2_sha256
    or old.last_signal_id is not new.last_signal_id
  )
-begin
+BEGIN
   insert or ignore into telegram_signal_lead_queue (
     delivery_id, signal_id, source_channel_key, source_record_id, published_at,
     b2_object_key, b2_sha256, state, created_at
@@ -114,4 +119,4 @@ begin
     'PENDING',
     new.updated_at
   );
-end;
+END;
