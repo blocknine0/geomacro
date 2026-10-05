@@ -149,12 +149,16 @@ jobs:
           const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           const proof = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
           const rows = Array.isArray(body?.rows) ? body.rows : [];
-          const required = new Set(['geopolitics','macro','rare_earth']);
-          const scored = new Set();
+          const required = ['geopolitics','macro','rare_earth'];
+          const requiredSet = new Set(required);
+          const latestScored = new Map();
           let verified = 0;
           let live = 0;
           let newestLive = -Infinity;
-          let ok = body?.ok === true && body?.mode === 'verified_b2_plus_live_observed' && rows.length > 0;
+          let ok = body?.ok === true && rows.length > 0;
+          const now = Date.now();
+          const dayMs = 24 * 60 * 60 * 1000;
+          const futureToleranceMs = 5 * 60 * 1000;
           for (const row of rows) {
             const category = String(row?.category ?? '');
             const title = String(row?.source_title ?? '');
@@ -162,30 +166,47 @@ jobs:
             if (row?.public_status === 'verified_b2') {
               verified++;
               const severity = Number(row?.severity);
+              const timestamp = Date.parse(String(row?.published_at ?? row?.created_at ?? ''));
               if (!Number.isFinite(severity) || severity < 0 || severity > 100 || !title.startsWith('Geomacro finds ')) ok = false;
-              if (required.has(category)) scored.add(category);
+              if (!Number.isFinite(timestamp) || timestamp > now + futureToleranceMs) ok = false;
+              if (requiredSet.has(category) && Number.isFinite(timestamp)) {
+                latestScored.set(category, Math.max(latestScored.get(category) ?? -Infinity, timestamp));
+              }
             } else if (row?.public_status === 'live_observed') {
               live++;
               if (category !== 'geopolitics' || row?.severity !== null || row?.delta !== null || !title.startsWith('Geomacro observes ')) ok = false;
               const timestamp = Date.parse(String(row?.published_at ?? row?.created_at ?? ''));
-              if (Number.isFinite(timestamp)) newestLive = Math.max(newestLive, timestamp);
-              else ok = false;
+              if (!Number.isFinite(timestamp) || timestamp > now + futureToleranceMs) ok = false;
+              else newestLive = Math.max(newestLive, timestamp);
             } else {
               ok = false;
             }
           }
-          for (const category of required) if (!scored.has(category)) ok = false;
-          if (Number(body?.verified_rows) !== verified || Number(body?.live_observed_rows) !== live || live < 1) ok = false;
+          for (const category of required) if (!latestScored.has(category)) ok = false;
+          const scoredCurrentAcrossAllDomains = required.every((category) => {
+            const timestamp = latestScored.get(category) ?? -Infinity;
+            return Number.isFinite(timestamp) && timestamp <= now + futureToleranceMs && now - timestamp <= dayMs;
+          });
+          if (Number(body?.verified_rows) !== verified || Number(body?.live_observed_rows) !== live) ok = false;
           if (body?.current_within_24h !== true) ok = false;
-          const expectedBatch = Date.parse(String(proof?.current_source_batch_at ?? ''));
           const responseNewest = Date.parse(String(body?.newest_at ?? ''));
-          if (!Number.isFinite(expectedBatch) || !Number.isFinite(responseNewest) || responseNewest < expectedBatch) ok = false;
-          if (!Number.isFinite(newestLive) || newestLive < expectedBatch) ok = false;
+          if (!Number.isFinite(responseNewest) || responseNewest > now + futureToleranceMs) ok = false;
+
+          if (scoredCurrentAcrossAllDomains) {
+            if (body?.mode !== 'verified_b2' || live !== 0) ok = false;
+            const newestScored = Math.max(...required.map((category) => latestScored.get(category) ?? -Infinity));
+            if (!Number.isFinite(newestScored) || responseNewest !== newestScored) ok = false;
+          } else {
+            if (body?.mode !== 'verified_b2_plus_live_observed' || live < 1) ok = false;
+            const expectedBatch = Date.parse(String(proof?.current_source_batch_at ?? ''));
+            if (!Number.isFinite(expectedBatch) || responseNewest < expectedBatch) ok = false;
+            if (!Number.isFinite(newestLive) || newestLive < expectedBatch) ok = false;
+          }
           process.exit(ok ? 0 : 1);
           NODE
             then
               cp "$body" /tmp/intelligence-current.json
-              echo "Production Intelligence API converged to the exact B2 publish proof on attempt ${attempt}."
+              echo "Production Intelligence API converged to the scored-first/fallback serving contract on attempt ${attempt}."
               exit 0
             fi
 
@@ -249,7 +270,7 @@ jobs:
 
             if [ "$attempt" -lt 24 ]; then sleep 10; fi
           done
-          echo "::error::Production Intelligence API did not converge to the scored-plus-current B2 publish proof within the bounded acceptance window."
+          echo "::error::Production Intelligence API did not converge to the scored-first/fallback serving contract within the bounded acceptance window."
           exit 1
 
       - name: Upload Intelligence acceptance evidence
