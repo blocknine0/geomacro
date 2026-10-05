@@ -55,13 +55,14 @@ describe("GDELT GAL canonical fresh-cycle contract", () => {
     expect(verify).toContain("writes_performed_by_verifier: false");
   });
 
-  it("keeps manual recovery on the exact same canonical cycle", () => {
+  it("keeps manual recovery on the exact same canonical cycle without calling the restricted Edge structurer", () => {
     const workflow = read(".github/workflows/gdelt-gal-live-sync.yml");
     expect(workflow).toContain("scripts/run-gdelt-gal-cycle.mjs");
     expect(workflow).not.toContain("bun scripts/sync-gdelt-gal-production.mjs");
     expect(workflow).not.toContain("node scripts/sync-gdelt-gal-production.mjs");
     expect(workflow).not.toContain("node scripts/reconcile-structured-event-commercial-rights.mjs");
-    expect(workflow).not.toContain("live-structure-intelligence");
+    expect(workflow).toContain("LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres");
+    expect(workflow).not.toContain("/functions/v1/live-structure-intelligence");
     expect(workflow).not.toContain("schedule:");
   });
 });
