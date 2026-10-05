@@ -22,13 +22,13 @@ export function LiquiditySection() {
 
   if (!mounted) {
     return (
-      <section className="mx-auto w-full max-w-3xl px-6 py-10" aria-label="Bridge and swap loading">
+      <section className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6" aria-label="Bridge and swap loading">
         <div className="mx-auto grid w-full grid-cols-2 rounded-lg border border-border/60 bg-card/30 p-1">
-          <div className="rounded-md bg-muted/40 px-4 py-2 text-center text-sm text-muted-foreground">Bridge</div>
-          <div className="px-4 py-2 text-center text-sm text-muted-foreground">Swap</div>
+          <div className="rounded-md bg-muted/40 px-3 py-2 text-center text-sm text-muted-foreground sm:px-4">Bridge</div>
+          <div className="px-3 py-2 text-center text-sm text-muted-foreground sm:px-4">Swap</div>
         </div>
         <div className="mt-8 space-y-4">
-          <div className="h-8 w-56 animate-pulse rounded bg-muted/40" />
+          <div className="h-8 w-48 max-w-full animate-pulse rounded bg-muted/40 sm:w-56" />
           <div className="h-4 w-full max-w-xl animate-pulse rounded bg-muted/25" />
           <div className="h-64 animate-pulse rounded-2xl border border-border/60 bg-card/25" />
         </div>
@@ -39,20 +39,22 @@ export function LiquiditySection() {
   return (
     <>
       <Tabs defaultValue="bridge">
-        <TabsList className="mx-auto mt-10 grid w-full max-w-3xl grid-cols-2 px-6">
+        <TabsList className="mx-auto mt-8 grid w-full max-w-3xl grid-cols-2 px-4 sm:mt-10 sm:px-6">
           <TabsTrigger value="bridge">Bridge</TabsTrigger>
           <TabsTrigger value="swap">Swap</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bridge">
-          <BridgeSection />
+          <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
+            <BridgeSection />
+          </main>
         </TabsContent>
 
         <TabsContent value="swap">
-          <main className="mx-auto max-w-3xl px-6 py-16">
+          <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
             <div className="max-w-xl">
-              <h1 className="font-mono text-3xl tracking-tight">Swap tokens on Arc</h1>
-              <p className="mt-3 text-sm text-muted-foreground">
+              <h1 className="font-mono text-2xl tracking-tight sm:text-3xl">Swap tokens on Arc</h1>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
                 Exchange USDC, EURC, and cirBTC directly on Arc Testnet — no bridging required,
                 powered by Circle's App Kit.
               </p>
