@@ -7,9 +7,11 @@ const workflow = readFileSync(
 );
 
 describe("#1414 Intelligence production convergence diagnostics", () => {
-  it("keeps the scored-plus-current fail-closed acceptance contract", () => {
+  it("keeps the scored-current first, live-fallback-only-when-needed fail-closed acceptance contract", () => {
     expect(workflow).toContain("body?.ok === true");
-    expect(workflow).toContain("body?.mode === 'verified_b2_plus_live_observed'");
+    expect(workflow).toContain("scoredCurrentAcrossAllDomains");
+    expect(workflow).toContain("body?.mode !== 'verified_b2' || live !== 0");
+    expect(workflow).toContain("body?.mode !== 'verified_b2_plus_live_observed' || live < 1");
     expect(workflow).toContain("['geopolitics','macro','rare_earth']");
     expect(workflow).toContain("row?.public_status === 'verified_b2'");
     expect(workflow).toContain("row?.public_status === 'live_observed'");
@@ -20,15 +22,16 @@ describe("#1414 Intelligence production convergence diagnostics", () => {
   });
 
   it("records only safe serving metadata when convergence fails", () => {
-    expect(workflow).toContain("geomacro.intelligence-convergence-diagnostic.v1");
+    expect(workflow).toContain("geomacro.intelligence-convergence-diagnostic.v2");
     expect(workflow).toContain("intelligence-convergence-diagnostics.jsonl");
     for (const marker of [
+      "attempt",
       "http_status",
       "expected_current_source_batch_at",
       "live_observed_rows",
       "verified_rows",
       "newest_live_at",
-      "scored_categories",
+      "scored_current_across_all_domains",
       "expected_batch_visible",
       "cache_control",
       "cdn_cache_control",
@@ -38,6 +41,7 @@ describe("#1414 Intelligence production convergence diagnostics", () => {
     ]) {
       expect(workflow).toContain(marker);
     }
+    expect(workflow).not.toContain("scored_categories:");
   });
 
   it("does not serialize raw Intelligence rows into diagnostics", () => {
