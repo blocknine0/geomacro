@@ -13,11 +13,23 @@ describe("Telegram B2/D1 governed consumer", () => {
     expect(client).toContain('normalizedKey.includes("..")');
   });
 
-  it("requires checkpoint hash verification before exposing a sanitized lead", () => {
+  it("uses an append-only pointer queue so multiple leads between polls cannot collapse to one checkpoint", () => {
+    const migration = read("workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql");
+    expect(migration).toContain("create table if not exists telegram_signal_lead_queue");
+    expect(migration).toContain("signal_id text primary key");
+    expect(migration).toContain("state text not null default 'PENDING'");
+    expect(migration).toContain("b2_object_key text not null");
+    expect(migration).toContain("b2_sha256 text not null");
+    expect(migration).not.toContain("raw_payload");
+    expect(migration).not.toContain("message_body");
+  });
+
+  it("requires queue hash verification before exposing a sanitized lead", () => {
     const drain = read("scripts/ops/drain-telegram-b2-leads.mjs");
     expect(drain).toContain('/^telegram\\/leads\\/\\d{4}\\/\\d{2}\\/\\d{2}\\/');
     expect(drain).toContain('allowedKeyPrefixes: ["telegram/leads/"]');
-    expect(drain).toContain("TELEGRAM_B2_CHECKPOINT_HASH_MISMATCH");
+    expect(drain).toContain("TELEGRAM_B2_QUEUE_HASH_MISMATCH");
+    expect(drain).toContain("TELEGRAM_SIGNAL_ID_QUEUE_MISMATCH");
     expect(drain).toContain("gunzipSync");
     expect(drain).toContain("verifyTelegramLeadEnvelope(envelope)");
     expect(drain).toContain('verification_status: "UNVERIFIED"');
@@ -32,6 +44,15 @@ describe("Telegram B2/D1 governed consumer", () => {
     expect(runner).toContain('source_channel_key:\\n      cleanString(payload.source_channel_key, 64)');
     expect(runner).toContain("LOCAL_FLASH_CHANNEL_KEY_TRANSPORT_MISSING");
     expect(runner).toContain("local_canonical_source_direct_postgres");
+  });
+
+  it("acknowledges a queue row only after canonical ingestion succeeds", () => {
+    const workflow = read(".github/workflows/telegram-b2-d1-consumer.yml");
+    expect(workflow).toContain("WHERE state='PENDING' ORDER BY created_at ASC, signal_id ASC LIMIT 25");
+    expect(workflow).toContain("CANONICAL_INGEST_IN_PROGRESS");
+    expect(workflow).toContain("CANONICAL_INGEST_FAILED");
+    expect(workflow).toContain("SET state='CONSUMED',consumed_at=datetime('now')");
+    expect(workflow).toContain("DELETE FROM telegram_signal_lead_queue WHERE state='CONSUMED'");
   });
 
   it("uses main-owned D1 plus B2 and never calls Supabase Edge for the bridge", () => {
