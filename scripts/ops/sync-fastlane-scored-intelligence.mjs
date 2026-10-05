@@ -7,9 +7,11 @@ const CATEGORIES = ["geopolitics", "macro", "rare_earth"];
 const CLASSIFICATION_VERSION = "event-severity-v1.0.5";
 const PUBLIC_URL = "https://geomacro.live/api/public/intelligence";
 const PUBLISHER = "scripts/ops/run-b2-public-intelligence-publisher.mjs";
+const PRESERVE_LIVE_REPUBLISHER = "scripts/ops/republish-b2-public-intelligence-preserve-live.mjs";
 const ARTIFACT = "artifacts/intelligence-fastlane-publication.json";
 const POLL_MS = 10_000;
 const MAX_POLLS = 18;
+const FASTLANE_GDELT_WAIT_MS = 30_000;
 
 function eventTime(row) {
   const value = row?.published_at ?? row?.created_at;
@@ -92,7 +94,7 @@ async function fetchPublic(attempt) {
   };
 }
 
-function writeProof({ canonicalLatest, before, after, publisherInvoked, publisherAttempts }) {
+function writeProof({ canonicalLatest, before, after, publisherInvoked, publisherAttempts, publicationMode }) {
   mkdirSync("artifacts", { recursive: true });
   const proof = {
     schema: "geomacro.fastlane-scored-publication.v1",
@@ -120,6 +122,7 @@ function writeProof({ canonicalLatest, before, after, publisherInvoked, publishe
     } : null,
     publisher_invoked: publisherInvoked,
     publisher_attempts: publisherAttempts,
+    publication_mode: publicationMode,
     raw_rows_serialized: false,
     completed_at: new Date().toISOString(),
   };
@@ -136,27 +139,61 @@ try {
 }
 
 if (before && caughtUp(before.latest_scored_by_category, canonicalLatest)) {
-  writeProof({ canonicalLatest, before, after: before, publisherInvoked: false, publisherAttempts: 0 });
+  writeProof({
+    canonicalLatest,
+    before,
+    after: before,
+    publisherInvoked: false,
+    publisherAttempts: 0,
+    publicationMode: "already_caught_up",
+  });
   process.exit(0);
 }
 
-const publish = spawnSync("node", [PUBLISHER], {
+const publishEnv = {
+  ...process.env,
+  GDELT_MAX_AVAILABILITY_WAIT_MS: String(FASTLANE_GDELT_WAIT_MS),
+};
+let publish = spawnSync("node", [PUBLISHER], {
   encoding: "utf8",
-  env: process.env,
+  env: publishEnv,
   maxBuffer: 32 * 1024 * 1024,
-  timeout: 9 * 60 * 1000,
+  timeout: 60_000,
 });
 if (publish.stdout) process.stdout.write(publish.stdout);
 if (publish.stderr) process.stderr.write(publish.stderr);
 if (publish.error) throw publish.error;
-if (publish.status !== 0) throw new Error(`FASTLANE_PUBLICATION_B2_PUBLISH_FAILED:${publish.status ?? "unknown"}`);
+
+let publicationMode = "fresh_gdelt_plus_scored";
+const initialCombined = `${publish.stdout ?? ""}\n${publish.stderr ?? ""}`;
+if (publish.status !== 0) {
+  if (!initialCombined.includes("CURRENT_GDELT_AVAILABILITY_WAIT_EXHAUSTED")) {
+    throw new Error(`FASTLANE_PUBLICATION_B2_PUBLISH_FAILED:${publish.status ?? "unknown"}`);
+  }
+  console.warn("FASTLANE_PUBLICATION_GDELT_UNAVAILABLE_USING_VERIFIED_LIVE_PRESERVATION");
+  publish = spawnSync("node", [PRESERVE_LIVE_REPUBLISHER], {
+    encoding: "utf8",
+    env: process.env,
+    maxBuffer: 32 * 1024 * 1024,
+    timeout: 120_000,
+  });
+  if (publish.stdout) process.stdout.write(publish.stdout);
+  if (publish.stderr) process.stderr.write(publish.stderr);
+  if (publish.error) throw publish.error;
+  if (publish.status !== 0) {
+    throw new Error(`FASTLANE_PUBLICATION_PRESERVE_LIVE_FAILED:${publish.status ?? "unknown"}`);
+  }
+  publicationMode = "preserved_verified_live_plus_fresh_scored";
+}
 
 let publisherAttempts = 1;
-for (const line of String(publish.stdout ?? "").split(/\r?\n/u)) {
+for (const line of initialCombined.split(/\r?\n/u)) {
   try {
     const value = JSON.parse(line);
     if (value?.schema === "geomacro.public-intelligence-publisher-availability.v1") {
       publisherAttempts = Number(value?.attempts ?? 1);
+    } else if (value?.retrying === true && Number.isFinite(Number(value?.attempt))) {
+      publisherAttempts = Math.max(publisherAttempts, Number(value.attempt));
     }
   } catch {}
 }
@@ -171,7 +208,14 @@ for (let attempt = 1; attempt <= MAX_POLLS; attempt += 1) {
       after.live_observed_rows >= 1 &&
       caughtUp(after.latest_scored_by_category, canonicalLatest)
     ) {
-      writeProof({ canonicalLatest, before, after, publisherInvoked: true, publisherAttempts });
+      writeProof({
+        canonicalLatest,
+        before,
+        after,
+        publisherInvoked: true,
+        publisherAttempts,
+        publicationMode,
+      });
       process.exit(0);
     }
     lastError = new Error("FASTLANE_PUBLICATION_PUBLIC_SCORE_NOT_CAUGHT_UP");
