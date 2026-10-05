@@ -3,6 +3,7 @@ name: Global Intelligence V1 CI
 on:
   push:
     branches:
+      - main
       - feature/global-intelligence-v1
   pull_request:
     branches:
