@@ -90,29 +90,44 @@ describe("commercial runtime security baseline", () => {
     }
   });
 
-  it("hardens scheduled production intelligence writes", () => {
+  it("hardens the single-owner intelligence runtime and legacy recovery wrappers", () => {
+    const orchestrator = read(".github/workflows/intelligence-orchestrator.yml");
+    const ingestRecovery = read(".github/workflows/auto-ingest-news.yml");
+    const reliefWeb = read(".github/workflows/ingest-reliefweb-live.yml");
+
     for (const path of [
+      ".github/workflows/intelligence-orchestrator.yml",
       ".github/workflows/auto-ingest-news.yml",
       ".github/workflows/ingest-reliefweb-live.yml",
     ]) {
       const source = read(path);
       expectPinnedActions(path);
       expect(source, path).toContain("github.ref == 'refs/heads/main'");
-      expect(source, path).toContain("assert-authoritative-supabase.mjs");
       expect(source, path).not.toMatch(/\bnpm install\b/);
     }
 
-    const ingest = read(".github/workflows/auto-ingest-news.yml");
-    expect(ingest).toContain("github.repository == 'blocknine0/geomacro'");
-    expect(ingest).toContain("bun install --frozen-lockfile --ignore-scripts");
-    expect(ingest).toContain("Unknown failures remain");
-    expect(ingest).toContain("needs.supabase-preflight.outputs.mode == 'egress_restricted'");
-    expect(ingest).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
-    expect(ingest).toContain("direct-postgres-supabase-loader.mjs");
-    expect(ingest).toContain("public-live-freshness-fallback:");
-    expect(ingest).not.toContain("auto-create-markets");
+    expect(orchestrator).toContain('cron: "7,22,37,52 * * * *"');
+    expect(orchestrator).toContain("group: geomacro-intelligence-orchestrator");
+    expect(orchestrator).toContain("Resolve production D1 control-plane database");
+    expect(orchestrator).toContain("Validate Supabase-independent scheduler runtime");
+    expect(orchestrator).toContain("Probe optional Supabase data plane without blocking D1/B2 heartbeat");
+    expect(orchestrator).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only");
+    expect(orchestrator).toContain("Supabase unavailable: D1/B2 heartbeat remains live; Supabase-backed writers are fail-closed.");
+    expect(orchestrator).toContain("Run due intelligence tasks serially");
 
-    const reliefWeb = read(".github/workflows/ingest-reliefweb-live.yml");
+    expect(ingestRecovery).toContain("workflow_dispatch");
+    expect(ingestRecovery).not.toContain("schedule:");
+    expect(ingestRecovery).toContain("github.repository == 'blocknine0/geomacro'");
+    expect(ingestRecovery).toContain("group: geomacro-intelligence-orchestrator");
+    expect(ingestRecovery).toContain("D1_DATABASE_NAME: geomacro-control-plane");
+    expect(ingestRecovery).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest");
+    expect(ingestRecovery).toContain("INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest");
+    expect(ingestRecovery).toContain('test "$transport" = "data_api"');
+    expect(ingestRecovery).toContain("node scripts/intelligence-orchestrator.mjs");
+    expect(ingestRecovery).toContain("bun install --frozen-lockfile --ignore-scripts");
+    expect(ingestRecovery).not.toContain("auto-create-markets");
+
+    expect(reliefWeb).toContain("assert-authoritative-supabase.mjs");
     expect(reliefWeb).toContain("SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}");
     expect(reliefWeb).toContain("bun install --frozen-lockfile --ignore-scripts");
   });
