@@ -10,6 +10,7 @@ on:
       - ".github/workflows/intelligence-orchestrator.yml"
       - "scripts/intelligence-orchestrator.mjs"
       - "scripts/lib/intelligence-scheduler.mjs"
+      - "scripts/lib/direct-postgres-supabase-loader.mjs"
       - "scripts/ops/supabase-free-tier-budget.mjs"
 
 permissions:
@@ -39,6 +40,7 @@ jobs:
       GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
       GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      GRI_DB_MODE: direct_postgres
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
@@ -111,11 +113,15 @@ jobs:
           set -euo pipefail
           test -n "${APP_SUPABASE_URL:-}"
           test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          test -n "${SUPABASE_DB_URL:-}"
+          test "${GRI_DB_MODE:-}" = "direct_postgres"
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
           node --check scripts/intelligence-orchestrator.mjs
-          echo "PASS: authoritative scheduler runtime validated."
+          echo "PASS: authoritative direct-Postgres scheduler runtime validated."
 
       - name: Require normal Supabase free-tier recurring-write budget
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         run: node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal
 
       - name: Derive current public verification key
@@ -143,6 +149,8 @@ jobs:
           NODE
 
       - name: Run due intelligence tasks serially
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         shell: bash
         run: |
           set -euo pipefail
