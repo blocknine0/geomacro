@@ -12,6 +12,7 @@ on:
       - "scripts/lib/intelligence-scheduler.mjs"
       - "scripts/lib/direct-postgres-supabase-loader.mjs"
       - "scripts/ops/supabase-free-tier-budget.mjs"
+      - "scripts/sync-country-raw-source-mesh.mjs"
 
 permissions:
   contents: read
@@ -35,12 +36,14 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      RAW_SOURCE_ARCHIVE_MODE: b2
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
       GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       GRI_DB_MODE: direct_postgres
+      LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
@@ -114,15 +117,35 @@ jobs:
           test -n "${APP_SUPABASE_URL:-}"
           test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
           test -n "${SUPABASE_DB_URL:-}"
+          test -n "${B2_KEY_ID:-}"
+          test -n "${B2_APPLICATION_KEY:-}"
           test "${GRI_DB_MODE:-}" = "direct_postgres"
+          test "${RAW_SOURCE_ARCHIVE_MODE:-}" = "b2"
+          test "${LIVE_STRUCTURE_EXECUTION_MODE:-}" = "local_direct_postgres"
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
           node --check scripts/intelligence-orchestrator.mjs
-          echo "PASS: authoritative direct-Postgres scheduler runtime validated."
+          echo "PASS: authoritative direct-Postgres/B2 scheduler runtime validated."
 
-      - name: Require normal Supabase free-tier recurring-write budget
-        env:
-          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
-        run: node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal
+      - name: Resolve service transport and require normal free-tier headroom
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal | tee supabase-budget.json
+          jq -e '.ok == true and .policy.recurring_ingest_allowed == true' supabase-budget.json >/dev/null
+          transport="$(jq -r '.transport' supabase-budget.json)"
+          case "${transport}" in
+            data_api)
+              echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=true" >> "$GITHUB_ENV"
+              ;;
+            direct_postgres_fallback)
+              echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=false" >> "$GITHUB_ENV"
+              echo "Supabase Data API is restricted/unavailable; continuing through canonical direct-Postgres + B2 path."
+              ;;
+            *)
+              echo "::error::Unknown Supabase budget transport: ${transport}"
+              exit 1
+              ;;
+          esac
 
       - name: Derive current public verification key
         shell: bash
@@ -179,6 +202,12 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: intelligence-orchestrator-${{ github.run_id }}
-          path: intelligence-orchestrator.json
+          path: |
+            intelligence-orchestrator.json
+            supabase-budget.json
+            gdelt-gal-cycle/**
+            country-raw-source-sync.json
+            artifacts/intelligence-current-scoring-cycle/**
+            artifacts/intelligence-fastlane-publication.json
           if-no-files-found: warn
           retention-days: 30
