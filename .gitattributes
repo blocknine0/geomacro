@@ -1,0 +1,2 @@
+# Cloudflare D1 remote migrations are sensitive to CRLF around trigger bodies.
+workers/control-plane/migrations/*.sql text eol=lf

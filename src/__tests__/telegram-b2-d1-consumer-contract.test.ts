@@ -27,6 +27,15 @@ describe("Telegram B2/D1 governed consumer", () => {
     expect(migration).not.toContain("message_body");
   });
 
+  it("keeps D1 trigger migrations compatible with the remote statement splitter", () => {
+    const migration = read("workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql");
+    const attributes = read(".gitattributes");
+    expect((migration.match(/\nBEGIN\n/g) ?? []).length).toBe(2);
+    expect(migration).not.toMatch(/\nbegin\n/);
+    expect(migration).toContain("END;");
+    expect(attributes).toContain("workers/control-plane/migrations/*.sql text eol=lf");
+  });
+
   it("requires queue B2 hash verification before exposing a sanitized lead", () => {
     const drain = read("scripts/ops/drain-telegram-b2-leads.mjs");
     expect(drain).toContain('/^telegram\\/leads\\/\\d{4}\\/\\d{2}\\/\\d{2}\\/');
