@@ -28,6 +28,9 @@ jobs:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       GRI_DB_MODE: direct_postgres
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
+      RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
+      NASA_FIRMS_MAP_KEY: ${{ secrets.NASA_FIRMS_MAP_KEY }}
       GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
