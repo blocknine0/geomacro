@@ -181,7 +181,7 @@ jobs:
         run: timeout 4m bun run scripts/stress-risk-gate-core.ts --iterations 50000
 
       - name: Setup pinned Supabase CLI
-        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520
+        uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359
         with:
           version: 2.117.0
       - name: Start disposable local Supabase
