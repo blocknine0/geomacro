@@ -1,0 +1,112 @@
+name: Commercial Corridor Census
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/commercial-corridor-census.yml"
+      - "scripts/audit-commercial-corridor-census.mjs"
+      - "scripts/lib/commercial-corridor-census.mjs"
+      - "src/__tests__/commercial-corridor-census-gate.test.ts"
+      - "src/__tests__/commercial-corridor-registry-contract.test.ts"
+      - "src/lib/commercial-corridor-registry.ts"
+      - "server/api/commercial/structural.post.ts"
+      - "supabase/migrations/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/commercial-corridor-census.yml"
+      - "scripts/audit-commercial-corridor-census.mjs"
+      - "scripts/lib/commercial-corridor-census.mjs"
+      - "src/__tests__/commercial-corridor-census-gate.test.ts"
+      - "src/__tests__/commercial-corridor-registry-contract.test.ts"
+      - "src/lib/commercial-corridor-registry.ts"
+      - "server/api/commercial/structural.post.ts"
+      - "supabase/migrations/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commercial-corridor-census-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  static-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify corridor registry and fail-closed census contracts
+        run: >-
+          bun x vitest run
+          src/__tests__/commercial-corridor-census-gate.test.ts
+          src/__tests__/commercial-corridor-registry-contract.test.ts
+
+  production-census:
+    if: ${{ github.ref == 'refs/heads/main' && github.repository == 'blocknine0/geomacro' }}
+    needs: static-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      GRI_DB_MODE: direct_postgres
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Checkout exact main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Require authoritative production direct-Postgres target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL:-}" || { echo "SUPABASE_DB_URL is required"; exit 2; }
+          node --input-type=module <<'NODE'
+          const u = new URL(process.env.SUPABASE_DB_URL);
+          const project = 'ldpwajisioljyjtojvfx';
+          const direct = u.hostname === `db.${project}.supabase.co` && u.username === 'postgres';
+          const pooler = u.hostname.endsWith('.pooler.supabase.com') && u.username === `postgres.${project}`;
+          if (!direct && !pooler) throw new Error('NON_AUTHORITATIVE_PRODUCTION_DB_TARGET');
+          NODE
+
+      - name: Audit live commercial corridor census
+        run: node scripts/audit-commercial-corridor-census.mjs
+
+      - name: Upload corridor census proof
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: commercial-corridor-census-${{ github.run_id }}
+          path: artifacts/commercial-corridor-census.json
+          if-no-files-found: error
+          retention-days: 30
