@@ -1,24 +1,91 @@
 #!/usr/bin/env node
+import { execFileSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 
+const PROJECT_REF = "ldpwajisioljyjtojvfx";
+const PROJECT_URL = `https://${PROJECT_REF}.supabase.co`;
 const url = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
 const role = String(
   process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
 ).trim();
+const dbUrl = String(process.env.SUPABASE_DB_URL ?? "").trim();
 
-if (url !== "https://ldpwajisioljyjtojvfx.supabase.co" || !role) {
+if ((url && url !== PROJECT_URL) || (!role && !dbUrl)) {
   throw new Error("SUPABASE_FREE_TIER_BUDGET_CONFIG_INVALID");
 }
 
-const db = createClient(url, role, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
-const { data, error } = await db.rpc("geomacro_free_tier_budget_state");
-if (error || !data) throw error ?? new Error("SUPABASE_FREE_TIER_BUDGET_UNAVAILABLE");
+function validateDatabaseUrl(raw) {
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error("SUPABASE_FREE_TIER_BUDGET_DB_URL_INVALID");
+  }
+  if (!["postgres:", "postgresql:"].includes(parsed.protocol) || !parsed.password || parsed.pathname !== "/postgres") {
+    throw new Error("SUPABASE_FREE_TIER_BUDGET_DB_URL_INVALID");
+  }
+  const direct = parsed.hostname === `db.${PROJECT_REF}.supabase.co` && parsed.username === "postgres";
+  const pooler = parsed.hostname.endsWith(".pooler.supabase.com") && parsed.username === `postgres.${PROJECT_REF}`;
+  if (!direct && !pooler) throw new Error("SUPABASE_FREE_TIER_BUDGET_DB_TARGET_INVALID");
+  return raw;
+}
+
+function validBudgetState(value) {
+  return value && typeof value === "object" &&
+    ["normal", "warning", "frozen"].includes(value.mode) &&
+    Number.isSafeInteger(Number(value.database_bytes)) &&
+    Number.isSafeInteger(Number(value.target_bytes)) &&
+    Number.isSafeInteger(Number(value.warn_bytes)) &&
+    Number.isSafeInteger(Number(value.freeze_bytes)) &&
+    typeof value.bulk_write_allowed === "boolean";
+}
+
+async function readViaDataApi() {
+  if (!url || !role) return null;
+  const db = createClient(url, role, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await db.rpc("geomacro_free_tier_budget_state");
+  if (error || !validBudgetState(data)) return null;
+  return { data, transport: "data_api" };
+}
+
+function readViaDirectPostgres() {
+  if (!dbUrl) return null;
+  const target = validateDatabaseUrl(dbUrl);
+  try {
+    const output = execFileSync(
+      "psql",
+      [target, "-X", "-qAt", "-v", "ON_ERROR_STOP=1", "-c", "select public.geomacro_free_tier_budget_state()::text;"],
+      {
+        encoding: "utf8",
+        maxBuffer: 1024 * 1024,
+        env: process.env,
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 15_000,
+      },
+    ).trim();
+    if (!output) return null;
+    const data = JSON.parse(output.split(/\r?\n/).filter(Boolean).at(-1));
+    if (!validBudgetState(data)) return null;
+    return { data, transport: "direct_postgres_fallback" };
+  } catch {
+    return null;
+  }
+}
+
+// Data API is the normal transport, but project-level egress restriction can
+// disable PostgREST while Postgres itself remains healthy. The budget state is
+// one canonical database function, so direct PostgreSQL is a transport fallback
+// only; it never creates a second source of truth.
+const state = await readViaDataApi() ?? readViaDirectPostgres();
+if (!state) throw new Error("SUPABASE_FREE_TIER_BUDGET_UNAVAILABLE");
+const { data, transport } = state;
 
 const result = {
   ok: true,
   ...data,
+  transport,
   policy: {
     supabase_role: "compact_operational_control_plane",
     b2_role: "raw_archive_historical_large_payloads",
