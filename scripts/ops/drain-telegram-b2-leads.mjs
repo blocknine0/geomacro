@@ -46,7 +46,6 @@ function parseQueue(file) {
     .map((row) => ({
       delivery_id: String(row.delivery_id ?? "").trim(),
       signal_id: String(row.signal_id ?? "").trim(),
-      content_hash: String(row.content_hash ?? "").trim().toLowerCase(),
       source_channel_key: String(row.source_channel_key ?? "").trim().toLowerCase(),
       source_record_id: Number(row.source_record_id ?? 0),
       published_at: String(row.published_at ?? "").trim(),
@@ -65,13 +64,12 @@ function parseQueue(file) {
 function validateQueueRow(row) {
   if (!DELIVERY_RE.test(row.delivery_id)) throw new Error("TELEGRAM_QUEUE_DELIVERY_ID_INVALID");
   if (!SIGNAL_RE.test(row.signal_id)) throw new Error("TELEGRAM_QUEUE_SIGNAL_ID_INVALID");
-  if (!SHA_RE.test(row.content_hash)) throw new Error("TELEGRAM_QUEUE_CONTENT_HASH_INVALID");
-  if (row.delivery_id !== `${row.signal_id}_${row.content_hash.slice(0, 16)}`) throw new Error("TELEGRAM_QUEUE_DELIVERY_ID_MISMATCH");
+  if (!SHA_RE.test(row.b2_sha256)) throw new Error("TELEGRAM_QUEUE_B2_SHA_INVALID");
+  if (row.delivery_id !== `${row.signal_id}_${row.b2_sha256.slice(0, 16)}`) throw new Error("TELEGRAM_QUEUE_DELIVERY_ID_MISMATCH");
   if (!/^[a-z0-9_]{5,32}$/.test(row.source_channel_key)) throw new Error("TELEGRAM_QUEUE_CHANNEL_INVALID");
   if (!Number.isSafeInteger(row.source_record_id) || row.source_record_id <= 0) throw new Error("TELEGRAM_QUEUE_MESSAGE_ID_INVALID");
   if (!row.published_at || !Number.isFinite(Date.parse(row.published_at))) throw new Error("TELEGRAM_QUEUE_PUBLISHED_AT_INVALID");
   if (!KEY_RE.test(row.b2_object_key) || row.b2_object_key.includes("..")) throw new Error("TELEGRAM_QUEUE_B2_KEY_INVALID");
-  if (!SHA_RE.test(row.b2_sha256)) throw new Error("TELEGRAM_QUEUE_B2_SHA_INVALID");
   if (row.state !== "PENDING") throw new Error("TELEGRAM_QUEUE_STATE_INVALID");
   if (!Number.isSafeInteger(row.attempt_count) || row.attempt_count < 0) throw new Error("TELEGRAM_QUEUE_ATTEMPT_COUNT_INVALID");
   const channelSegment = `/${row.source_channel_key}/`;
@@ -110,7 +108,6 @@ async function main() {
       throw new Error(`TELEGRAM_B2_PAYLOAD_DECODE_FAILED:${error instanceof Error ? error.message : String(error)}`);
     }
     if (String(envelope.signal_id ?? "") !== row.signal_id) throw new Error("TELEGRAM_SIGNAL_ID_QUEUE_MISMATCH");
-    if (String(envelope.content_hash ?? "").toLowerCase() !== row.content_hash) throw new Error("TELEGRAM_CONTENT_HASH_QUEUE_MISMATCH");
     if (String(envelope.source_channel_key ?? "") !== row.source_channel_key) throw new Error("TELEGRAM_CHANNEL_QUEUE_MISMATCH");
     if (Number(envelope.source_record_id ?? 0) !== row.source_record_id) throw new Error("TELEGRAM_MESSAGE_ID_QUEUE_MISMATCH");
     if (String(envelope.published_at ?? "") !== row.published_at) throw new Error("TELEGRAM_PUBLISHED_AT_QUEUE_MISMATCH");
@@ -120,7 +117,6 @@ async function main() {
     accepted.push({
       delivery_id: row.delivery_id,
       signal_id: row.signal_id,
-      content_hash: row.content_hash,
       source_channel_key: row.source_channel_key,
       source_record_id: sanitized.source_record_id,
       published_at: sanitized.published_at,
