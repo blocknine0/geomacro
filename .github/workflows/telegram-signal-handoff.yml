@@ -1,0 +1,101 @@
+name: Telegram Signal Handoff
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "11,26,41,56 * * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - "workers/control-plane/migrations/0006_telegram_signal_handoff_queue.sql"
+      - "scripts/ops/consume-telegram-signal-handoffs.mjs"
+      - "scripts/ops/telegram-b2-reader.mjs"
+      - "scripts/verify-telegram-lead-envelope.mjs"
+      - ".github/workflows/telegram-signal-handoff.yml"
+      - "src/__tests__/telegram-handoff-consumer-contract.test.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: telegram-signal-handoff-production
+  cancel-in-progress: false
+
+jobs:
+  consume:
+    if: github.repository == 'blocknine0/geomacro' && (github.event_name != 'push' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    env:
+      GRI_DB_MODE: direct_postgres
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.146.0"
+      TELEGRAM_HANDOFF_BATCH_SIZE: "25"
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Require governed storage and database credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in SUPABASE_DB_URL CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID B2_KEY_ID B2_APPLICATION_KEY; do
+            test -n "${!name:-}" || { echo "::error title=Missing Telegram handoff prerequisite::${name} is required"; exit 2; }
+          done
+
+      - name: Verify main-owned D1 queue schema exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              const rows=JSON.parse(s);
+              const row=rows.find(x => x.name === process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid ?? row?.id ?? "");
+            });
+          ')"
+          test -n "$DB_ID" || { echo "::error::geomacro-control-plane D1 database not found"; exit 3; }
+          node <<'NODE'
+          const fs=require('fs');
+          const source=fs.readFileSync('workers/control-plane/wrangler.example.jsonc','utf8');
+          const id=process.env.DB_ID;
+          if (!id) process.exit(4);
+          fs.mkdirSync('artifacts/telegram-handoff',{recursive:true});
+          fs.writeFileSync('artifacts/telegram-handoff/wrangler.schema-check.jsonc',source.replace('REPLACE_WITH_D1_DATABASE_ID',id));
+          NODE
+        env:
+          DB_ID: ${{ env.DB_ID }}
+
+      - name: Consume verified Telegram handoffs into canonical evidence
+        run: node scripts/ops/consume-telegram-signal-handoffs.mjs
+
+      - name: Upload fail-closed handoff proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telegram-handoff-proof
+          path: artifacts/telegram-handoff/consumer-proof.json
+          if-no-files-found: warn
+          retention-days: 14
