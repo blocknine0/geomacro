@@ -5,8 +5,8 @@ const read = (path: string) => readFileSync(path, "utf8");
 
 describe("#1414 Telegram production governance", () => {
   it("permanently disables public MTProto and direct Telegram commercial signals", () => {
-    const boundary = read("supabase/migrations/9982_telegram_authorized_publisher_boundary.sql");
-    const activation = read("supabase/migrations/9983_telegram_activation_guard.sql");
+    const boundary = read("supabase/migrations/9990_telegram_authorized_publisher_boundary.sql");
+    const activation = read("supabase/migrations/9991_telegram_activation_guard.sql");
 
     expect(boundary).toContain("where source_id = 'telegram_mtproto_flash'");
     expect(boundary).toContain("enabled_for_ingestion = false");
@@ -19,8 +19,8 @@ describe("#1414 Telegram production governance", () => {
   });
 
   it("requires explicit publisher authorization evidence before activation", () => {
-    const boundary = read("supabase/migrations/9982_telegram_authorized_publisher_boundary.sql");
-    const activation = read("supabase/migrations/9983_telegram_activation_guard.sql");
+    const boundary = read("supabase/migrations/9990_telegram_authorized_publisher_boundary.sql");
+    const activation = read("supabase/migrations/9991_telegram_activation_guard.sql");
 
     expect(boundary).toContain("publisher_authorized boolean not null default false");
     expect(boundary).toContain("authorization_scope");
@@ -33,7 +33,7 @@ describe("#1414 Telegram production governance", () => {
   });
 
   it("forces every Telegram content ingest back to unverified, scoreless and raw-stripped", () => {
-    const guard = read("supabase/migrations/9984_telegram_raw_event_insert_guard.sql");
+    const guard = read("supabase/migrations/9992_telegram_raw_event_ingest_guard.sql");
 
     expect(guard).toContain("new.content_hash is distinct from old.content_hash");
     expect(guard).toContain("new.verification_status := 'UNVERIFIED'");
