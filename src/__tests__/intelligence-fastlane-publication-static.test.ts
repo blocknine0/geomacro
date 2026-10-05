@@ -25,9 +25,11 @@ describe("#1414 fastlane scored Intelligence publication", () => {
     expect(script).toContain("publisherInvoked: false");
   });
 
-  it("fails closed until public serving exposes canonical scored timestamps for all three domains", () => {
-    expect(script).toContain('body?.mode !== "verified_b2_plus_live_observed"');
-    expect(script).toContain("after.live_observed_rows >= 1");
+  it("accepts scored-first serving while preserving verified live fallback compatibility", () => {
+    expect(script).toContain('mode === "verified_b2"');
+    expect(script).toContain('mode === "verified_b2_plus_live_observed"');
+    expect(script).toContain("live === 0");
+    expect(script).toContain("live >= 1");
     expect(script).toContain("caughtUp(after.latest_scored_by_category, canonicalLatest)");
     expect(script).toContain("FASTLANE_PUBLICATION_PUBLIC_SCORE_NOT_CAUGHT_UP");
   });
