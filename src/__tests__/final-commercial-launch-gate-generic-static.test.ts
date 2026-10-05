@@ -27,20 +27,27 @@ describe("#1414 partner-independent final commercial launch gate", () => {
     expect(finalWorkflow).toContain("verify-generic-production-risk-object.ts");
   });
 
-  it("anchors scheduler health to the production Intelligence owner instead of the non-commercial governed-source canary", () => {
+  it("accepts only fresh successful production Intelligence publication owners", () => {
     expect(finalWorkflow).toContain("actions/workflows/intelligence-scored-refresh.yml/runs");
+    expect(finalWorkflow).toContain("actions/workflows/intelligence-fastlane-publication.yml/runs");
     expect(finalWorkflow).toContain("Intelligence Scored + Current Evidence");
+    expect(finalWorkflow).toContain("Intelligence Fastlane Publication Sync");
     expect(finalWorkflow).toContain("intelligence-scored-refresh");
-    expect(finalWorkflow).toContain("latest.conclusion !== 'success'");
+    expect(finalWorkflow).toContain("intelligence-fastlane-publication");
+    expect(finalWorkflow).toContain("run.status === 'completed'");
+    expect(finalWorkflow).toContain("run.conclusion === 'success'");
+    expect(finalWorkflow).toContain("ageMs <= maxAgeMs");
     expect(finalWorkflow).toContain("6 * 60 * 60 * 1000");
+    expect(finalWorkflow).toContain("PRODUCTION_INTELLIGENCE_PUBLICATION_PROOF_MISSING");
     expect(finalWorkflow).not.toContain("pipeline='governed_source_ingestion'");
     expect(finalWorkflow).not.toContain("No fresh successful governed ingestion checkpoint");
   });
 
   it("streams workflow-run API payloads through files instead of oversized environment variables", () => {
     expect(finalWorkflow).toContain("/tmp/final-intelligence-runs.json");
+    expect(finalWorkflow).toContain("/tmp/final-fastlane-publication-runs.json");
     expect(finalWorkflow).toContain("/tmp/final-exact-head-runs.json");
-    expect(finalWorkflow).toContain("fs.readFileSync('/tmp/final-intelligence-runs.json','utf8')");
+    expect(finalWorkflow).toContain("fs.readFileSync(source.file,'utf8')");
     expect(finalWorkflow).toContain("fs.readFileSync('/tmp/final-exact-head-runs.json','utf8')");
     expect(finalWorkflow).not.toContain('RUNS="$JSON"');
   });
