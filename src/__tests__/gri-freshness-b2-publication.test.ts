@@ -5,12 +5,12 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 
 describe("GRI freshness publication boundary", () => {
-  it("keeps the bounded six-hour freshness cadence and only publishes after proof verification", () => {
-    const workflow = read(".github/workflows/auto-ingest-news.yml");
-    const verify = workflow.indexOf("Verify changed GRI proof package");
-    const publish = workflow.indexOf("Publish verified GRI continuity package to B2");
+  it("keeps the bounded hourly freshness cadence and only publishes after proof verification", () => {
+    const workflow = read(".github/workflows/gri-realtime-direct-postgres.yml");
+    const verify = workflow.indexOf("Independently verify current GRI proof package");
+    const publish = workflow.indexOf("Publish verified Global Risk continuity package to B2");
 
-    expect(workflow).toContain('cron: "17 */6 * * *"');
+    expect(workflow).toContain('cron: "23 * * * *"');
     expect(workflow).toContain("node scripts/verify-gri-snapshot-v12.js");
     expect(workflow).toContain("bun scripts/ops/publish-b2-global-risk-direct-postgres.mjs");
     expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
@@ -20,12 +20,17 @@ describe("GRI freshness publication boundary", () => {
     expect(publish).toBeGreaterThan(verify);
   });
 
-  it("does not turn the quota fallback into an unverified GRI writer", () => {
-    const workflow = read(".github/workflows/auto-ingest-news.yml");
-    const fallback = workflow.slice(workflow.indexOf("public-live-freshness-fallback:"));
+  it("keeps manual news recovery from becoming an unverified GRI writer", () => {
+    const recovery = read(".github/workflows/auto-ingest-news.yml");
+    const globalRisk = read(".github/workflows/gri-realtime-direct-postgres.yml");
 
-    expect(fallback).toContain("probe-public-intelligence-live-fallback.ts");
-    expect(fallback).not.toContain("compute-gri-v12.js");
-    expect(fallback).not.toContain("publish-b2-global-risk-direct-postgres.mjs");
+    expect(recovery).toContain("workflow_dispatch");
+    expect(recovery).not.toContain("schedule:");
+    expect(recovery).not.toContain("compute-gri-v12.js");
+    expect(recovery).not.toContain("publish-b2-global-risk-direct-postgres.mjs");
+
+    expect(globalRisk).toContain("compute-gri-v12.js");
+    expect(globalRisk).toContain("verify-gri-snapshot-v12.js");
+    expect(globalRisk).toContain("publish-b2-global-risk-direct-postgres.mjs");
   });
 });
