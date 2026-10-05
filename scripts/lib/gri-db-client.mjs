@@ -97,8 +97,10 @@ class DirectQueryBuilder {
     identifier(this.table, "table");
     this.operation = "select";
     this.columns = "*";
+    this.selectOptions = {};
     this.returningColumns = null;
     this.payload = null;
+    this.upsertOptions = null;
     this.filters = [];
     this.orders = [];
     this.offset = null;
@@ -106,11 +108,12 @@ class DirectQueryBuilder {
     this.cardinality = "many";
   }
 
-  select(columns = "*") {
-    if (this.operation === "insert" || this.operation === "update") {
+  select(columns = "*", options = {}) {
+    if (["insert", "update", "upsert"].includes(this.operation)) {
       this.returningColumns = parseColumns(columns);
     } else {
       this.columns = parseColumns(columns);
+      this.selectOptions = options && typeof options === "object" ? options : {};
     }
     return this;
   }
@@ -119,6 +122,14 @@ class DirectQueryBuilder {
     this.operation = "insert";
     this.payload = Array.isArray(payload) ? payload : [payload];
     if (!this.payload.length) throw new Error("EMPTY_INSERT_PAYLOAD");
+    return this;
+  }
+
+  upsert(payload, options = {}) {
+    this.operation = "upsert";
+    this.payload = Array.isArray(payload) ? payload : [payload];
+    if (!this.payload.length) throw new Error("EMPTY_UPSERT_PAYLOAD");
+    this.upsertOptions = options && typeof options === "object" ? options : {};
     return this;
   }
 
@@ -259,7 +270,12 @@ class DirectQueryBuilder {
     return `SELECT row_to_json(q)::text FROM (SELECT ${this.columns} FROM ${table}${this.#where()}${this.#tail()}) q;`;
   }
 
-  #insertSql() {
+  #countSql() {
+    const table = `public.${identifier(this.table)}`;
+    return `SELECT json_build_object('count', count(*))::text FROM ${table}${this.#where()};`;
+  }
+
+  #insertParts() {
     const rows = this.payload;
     const keys = [...new Set(rows.flatMap((row) => Object.keys(row ?? {})))];
     if (!keys.length) throw new Error("INSERT_PAYLOAD_HAS_NO_COLUMNS");
@@ -269,8 +285,30 @@ class DirectQueryBuilder {
     const payloadJson = quoteString(JSON.stringify(rows));
     const sourceCols = keys.map((key) => identifier(key)).join(",");
     const insert = `INSERT INTO ${table} (${cols}) SELECT ${sourceCols} FROM jsonb_populate_recordset(NULL::${table}, ${payloadJson}::jsonb)`;
+    return { table, keys, insert };
+  }
+
+  #insertSql() {
+    const { insert } = this.#insertParts();
     if (!this.returningColumns) return `${insert};`;
     return `WITH changed AS (${insert} RETURNING *) SELECT row_to_json(q)::text FROM (SELECT ${this.returningColumns} FROM changed) q;`;
+  }
+
+  #upsertSql() {
+    const { keys, insert } = this.#insertParts();
+    const rawConflict = String(this.upsertOptions?.onConflict ?? "").trim();
+    const conflictKeys = rawConflict.split(",").map((part) => part.trim()).filter(Boolean);
+    if (!conflictKeys.length) throw new Error("DIRECT_POSTGRES_UPSERT_REQUIRES_ON_CONFLICT");
+    conflictKeys.forEach((key) => identifier(key, "upsert_conflict_column"));
+    const conflictSql = conflictKeys.map((key) => identifier(key)).join(",");
+    const ignoreDuplicates = this.upsertOptions?.ignoreDuplicates === true;
+    const updateKeys = keys.filter((key) => !conflictKeys.includes(key));
+    const action = ignoreDuplicates || updateKeys.length === 0
+      ? "DO NOTHING"
+      : `DO UPDATE SET ${updateKeys.map((key) => `${identifier(key)} = EXCLUDED.${identifier(key)}`).join(",")}`;
+    const upsert = `${insert} ON CONFLICT (${conflictSql}) ${action}`;
+    if (!this.returningColumns) return `${upsert};`;
+    return `WITH changed AS (${upsert} RETURNING *) SELECT row_to_json(q)::text FROM (SELECT ${this.returningColumns} FROM changed) q;`;
   }
 
   #updateSql() {
@@ -289,28 +327,48 @@ class DirectQueryBuilder {
 
   async #execute() {
     try {
-      let stdout;
-      if (this.operation === "select") stdout = psql(this.dbUrl, this.#selectSql());
-      else if (this.operation === "insert") stdout = psql(this.dbUrl, this.#insertSql());
-      else if (this.operation === "update") stdout = psql(this.dbUrl, this.#updateSql());
-      else throw new Error(`UNSUPPORTED_DIRECT_POSTGRES_OPERATION:${this.operation}`);
+      let stdout = "";
+      let count = null;
+      const wantsCount = this.operation === "select" && String(this.selectOptions?.count ?? "").toLowerCase() === "exact";
+      const headOnly = this.operation === "select" && this.selectOptions?.head === true;
 
-      const rows = this.operation === "select" || this.returningColumns ? jsonRows(stdout) : [];
+      if (wantsCount) {
+        const countRows = jsonRows(psql(this.dbUrl, this.#countSql()));
+        count = Number(countRows[0]?.count ?? 0);
+      }
+
+      if (this.operation === "select") {
+        if (!headOnly) stdout = psql(this.dbUrl, this.#selectSql());
+      } else if (this.operation === "insert") {
+        stdout = psql(this.dbUrl, this.#insertSql());
+      } else if (this.operation === "upsert") {
+        stdout = psql(this.dbUrl, this.#upsertSql());
+      } else if (this.operation === "update") {
+        stdout = psql(this.dbUrl, this.#updateSql());
+      } else {
+        throw new Error(`UNSUPPORTED_DIRECT_POSTGRES_OPERATION:${this.operation}`);
+      }
+
+      const rows = !headOnly && (this.operation === "select" || this.returningColumns) ? jsonRows(stdout) : [];
       if (this.cardinality === "single") {
         if (rows.length !== 1) {
-          return { data: null, error: { message: `JSON object requested, multiple (or no) rows returned: ${rows.length}`, code: "PGRST116" } };
+          return { data: null, count, error: { message: `JSON object requested, multiple (or no) rows returned: ${rows.length}`, code: "PGRST116" } };
         }
-        return { data: rows[0], error: null };
+        return { data: rows[0], count, error: null };
       }
       if (this.cardinality === "maybe_single") {
         if (rows.length > 1) {
-          return { data: null, error: { message: `JSON object requested, multiple rows returned: ${rows.length}`, code: "PGRST116" } };
+          return { data: null, count, error: { message: `JSON object requested, multiple rows returned: ${rows.length}`, code: "PGRST116" } };
         }
-        return { data: rows[0] ?? null, error: null };
+        return { data: rows[0] ?? null, count, error: null };
       }
-      return { data: this.operation === "select" || this.returningColumns ? rows : null, error: null };
+      return {
+        data: headOnly ? null : (this.operation === "select" || this.returningColumns ? rows : null),
+        count,
+        error: null,
+      };
     } catch (error) {
-      return { data: null, error: normalizedError(error) };
+      return { data: null, count: null, error: normalizedError(error) };
     }
   }
 }
