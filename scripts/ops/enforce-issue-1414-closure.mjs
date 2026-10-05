@@ -6,25 +6,23 @@ import { evaluateIssue1414Acceptance } from "../lib/issue-1414-closure-guard.mjs
 const eventPath = String(process.env.GITHUB_EVENT_PATH ?? "").trim();
 const token = String(process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? "").trim();
 const apiBase = String(process.env.GITHUB_API_URL ?? "https://api.github.com").replace(/\/$/, "");
+let event = {};
+if (eventPath) {
+  try {
+    event = JSON.parse(readFileSync(eventPath, "utf8"));
+  } catch (error) {
+    throw new Error(`GITHUB_EVENT_READ_FAILED:${error?.message ?? String(error)}`);
+  }
+}
 
-if (!eventPath) throw new Error("GITHUB_EVENT_PATH_REQUIRED");
-
-const event = JSON.parse(readFileSync(eventPath, "utf8"));
-const issueNumber = Number(event?.issue?.number ?? 0);
-const action = String(event?.action ?? "");
-
-if (issueNumber !== 1414 || action !== "closed") {
-  console.log(JSON.stringify({ ok: true, skipped: true, reason: "not_1414_closed_event" }));
+const eventIssueNumber = Number(event?.issue?.number ?? 0);
+const eventName = String(process.env.GITHUB_EVENT_NAME ?? "").trim();
+if (eventName === "issues" && eventIssueNumber !== 1414) {
+  console.log(JSON.stringify({ ok: true, skipped: true, reason: "not_issue_1414" }));
   process.exit(0);
 }
 
-const evaluation = evaluateIssue1414Acceptance(event?.issue?.body ?? "");
-if (evaluation.accepted) {
-  console.log(JSON.stringify({ ok: true, reopened: false, reason: "master_acceptance_complete" }));
-  process.exit(0);
-}
-
-if (!token) throw new Error("GITHUB_TOKEN_REQUIRED_FOR_REOPEN");
+if (!token) throw new Error("GITHUB_TOKEN_REQUIRED_FOR_ISSUE_1414_GUARD");
 
 const repository = String(event?.repository?.full_name ?? process.env.GITHUB_REPOSITORY ?? "").trim();
 if (!repository || !/^[^/]+\/[^/]+$/.test(repository)) {
@@ -39,6 +37,30 @@ const headers = {
 };
 
 const issueUrl = `${apiBase}/repos/${repository}/issues/1414`;
+const issueResponse = await fetch(issueUrl, { headers });
+if (!issueResponse.ok) {
+  throw new Error(`ISSUE_1414_READ_FAILED:${issueResponse.status}:${(await issueResponse.text()).slice(0, 500)}`);
+}
+const issue = await issueResponse.json();
+const state = String(issue?.state ?? "").toLowerCase();
+const evaluation = evaluateIssue1414Acceptance(issue?.body ?? "");
+
+if (state !== "closed") {
+  console.log(JSON.stringify({
+    ok: true,
+    reopened: false,
+    reason: "master_tracker_already_open",
+    unchecked_acceptance_count: evaluation.uncheckedAcceptanceCount,
+    missing_required_live_acceptance: evaluation.missingRequiredLiveAcceptance.length,
+  }));
+  process.exit(0);
+}
+
+if (evaluation.accepted) {
+  console.log(JSON.stringify({ ok: true, reopened: false, reason: "master_acceptance_complete" }));
+  process.exit(0);
+}
+
 const reopenResponse = await fetch(issueUrl, {
   method: "PATCH",
   headers,
@@ -57,6 +79,7 @@ const commentLines = [
   `- unchecked acceptance items in Sections 1–13: **${evaluation.uncheckedAcceptanceCount}**`,
   `- required live-payment acceptance markers missing: **${evaluation.missingRequiredLiveAcceptance.length}**`,
   "- Section 14 legacy-workstream checkboxes are intentionally excluded from this closure decision because the tracker says they may remain open after launch.",
+  "- The guard also runs periodically, so a delayed issue-close event cannot leave the incomplete tracker closed indefinitely.",
   "",
 ];
 if (details.length > 0) {
