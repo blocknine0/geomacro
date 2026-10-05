@@ -33,7 +33,10 @@ describe("GRI realtime direct Postgres freshness", () => {
     expect(cluster).toContain('throw new Error("Supabase URL and service-role key are required")');
     expect(loader).toContain('process.env.SUPABASE_URL ||= "https://direct-postgres.invalid"');
     expect(loader).toContain('process.env.SUPABASE_SERVICE_ROLE_KEY ||= "direct-postgres-no-rest"');
-    expect(loader).toContain("createClient() { return createGriDbClient(); }");
+    expect(loader).toContain("withPrefixLikeCompat(createGriDbClient())");
+    expect(loader).toContain("DIRECT_POSTGRES_LIKE_SUPPORTS_PREFIX_ONLY");
+    expect(loader).toContain('query.gte(column, prefix)');
+    expect(loader).toContain('query.lt(column, nextPrefix(prefix))');
     expect(shim).toContain("new DirectPostgresClient(process.env.SUPABASE_DB_URL)");
     expect(shim).toContain("Refusing direct GRI access outside the authoritative Supabase project");
   });
