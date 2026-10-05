@@ -7,14 +7,18 @@ const workflow = readFileSync(
 );
 
 describe("#1414 Intelligence production convergence diagnostics", () => {
-  it("keeps the scored-plus-current fail-closed acceptance contract", () => {
+  it("keeps the scored-first plus live-fallback fail-closed acceptance contract", () => {
     expect(workflow).toContain("body?.ok === true");
-    expect(workflow).toContain("body?.mode === 'verified_b2_plus_live_observed'");
+    expect(workflow).toContain("body?.mode !== 'verified_b2'");
+    expect(workflow).toContain("body?.mode !== 'verified_b2_plus_live_observed'");
     expect(workflow).toContain("['geopolitics','macro','rare_earth']");
     expect(workflow).toContain("row?.public_status === 'verified_b2'");
     expect(workflow).toContain("row?.public_status === 'live_observed'");
     expect(workflow).toContain("row?.severity !== null || row?.delta !== null");
+    expect(workflow).toContain("scoredCurrentAcrossAllDomains");
+    expect(workflow).toContain("now - timestamp <= dayMs");
     expect(workflow).toContain("body?.current_within_24h !== true");
+    expect(workflow).toContain("responseNewest !== newestScored");
     expect(workflow).toContain("responseNewest < expectedBatch");
     expect(workflow).toContain("newestLive < expectedBatch");
   });
