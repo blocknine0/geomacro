@@ -56,8 +56,8 @@ describe("GDELT GAL production freshness workflow", () => {
     expect(workflow).toContain("bun build scripts/run-live-structure-local.ts --target=node");
     expect(workflow).toContain("grep -q 'local_canonical_source_direct_postgres' gdelt-gal-cycle/structure.log");
     expect(runner).toContain('supabase/functions/live-structure-intelligence/index.ts');
-    expect(runner).toContain('const STRUCTURE_VERSION = \\"live-structure-v1.4.9\\"');
-    expect(runner).toContain('import { createGriDbClient } from \\"./scripts/lib/gri-db-client.mjs\\";');
+    expect(runner).toContain('source.includes(\'const STRUCTURE_VERSION = "live-structure-v1.4.9"\')');
+    expect(runner).toContain('import { createGriDbClient } from "./scripts/lib/gri-db-client.mjs";');
     expect(runner).toContain("LOCAL_STRUCTURER_TRANSFORM_ALIAS_MISMATCH");
     expect(runner).toContain("handleLiveStructureRequest");
     expect(drain).toContain('EXECUTION_MODE === "local_direct_postgres"');
