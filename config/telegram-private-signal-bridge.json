@@ -1,0 +1,16 @@
+{
+  "schema": "geomacro.telegram-main-bridge.v1",
+  "producer_repo": "blocknine0/geomacro-telegram-signals",
+  "producer_commit": "f3ef91a8387e37843d1b9990bc011fd09035e43f",
+  "payload_schema": "geomacro.telegram-lead-envelope.v1",
+  "source_id": "telegram_authorized_publisher_feed",
+  "storage": {
+    "durable": "B2",
+    "checkpoint_index": "D1"
+  },
+  "required_producer_invariants": {
+    "verification_status": "UNVERIFIED",
+    "scoring_eligible": false,
+    "commercial_eligible": false
+  }
+}
