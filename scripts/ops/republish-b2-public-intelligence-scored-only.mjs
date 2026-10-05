@@ -14,6 +14,15 @@ const REQUIRED_CATEGORIES = ["geopolitics", "macro", "rare_earth"];
 const ROWS_PER_CATEGORY = 40;
 const REQUIRED_FRESH_MS = 24 * 60 * 60 * 1000;
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
+const DUPLICATE_WINDOW_MS = 72 * 60 * 60 * 1000;
+const TITLE_PREFIX = /^Geomacro\s+(?:finds|observes)\s+/iu;
+const TOKEN_STOPWORDS = new Set([
+  "the", "and", "for", "with", "from", "into", "onto", "over", "under",
+  "after", "before", "amid", "among", "this", "that", "these", "those",
+  "its", "their", "his", "her", "our", "your", "was", "were", "are",
+  "has", "have", "had", "will", "would", "could", "should", "about",
+  "through", "across", "within", "without", "more", "less", "new",
+]);
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -30,6 +39,75 @@ function cleanText(value, max = 1200) {
     .trim()
     .slice(0, max)
     .trim();
+}
+
+function normalizeText(value) {
+  return String(value ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .replace(TITLE_PREFIX, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function tokens(value) {
+  const out = new Set();
+  for (const token of normalizeText(value).split(" ")) {
+    if (token.length < 3 || TOKEN_STOPWORDS.has(token)) continue;
+    out.add(token);
+  }
+  return out;
+}
+
+function overlap(a, b) {
+  if (a.size === 0 || b.size === 0) return { jaccard: 0, containment: 0, minSize: 0 };
+  let intersection = 0;
+  for (const token of a) if (b.has(token)) intersection += 1;
+  const union = a.size + b.size - intersection;
+  const minSize = Math.min(a.size, b.size);
+  return {
+    jaccard: union > 0 ? intersection / union : 0,
+    containment: minSize > 0 ? intersection / minSize : 0,
+    minSize,
+  };
+}
+
+function sameStory(a, b) {
+  if (String(a?.category ?? "") !== String(b?.category ?? "")) return false;
+  const timeA = rowTime(a);
+  const timeB = rowTime(b);
+  if (!Number.isFinite(timeA) || !Number.isFinite(timeB) || Math.abs(timeA - timeB) > DUPLICATE_WINDOW_MS) return false;
+
+  const summaryA = normalizeText(a?.summary);
+  const summaryB = normalizeText(b?.summary);
+  if (summaryA.length >= 32 && summaryA === summaryB) return true;
+
+  const titleA = normalizeText(a?.source_title);
+  const titleB = normalizeText(b?.source_title);
+  if (titleA.length >= 32 && titleA === titleB) return true;
+
+  const summaryOverlap = overlap(tokens(a?.summary), tokens(b?.summary));
+  if (
+    (summaryOverlap.minSize >= 5 && summaryOverlap.jaccard >= 0.82) ||
+    (summaryOverlap.minSize >= 8 && summaryOverlap.containment >= 0.74)
+  ) return true;
+
+  const titleOverlap = overlap(tokens(a?.source_title), tokens(b?.source_title));
+  return (
+    (titleOverlap.minSize >= 6 && titleOverlap.jaccard >= 0.82) ||
+    (titleOverlap.minSize >= 8 && titleOverlap.containment >= 0.82)
+  );
+}
+
+function dedupeScoredRows(rows) {
+  const accepted = [];
+  for (const row of [...rows].sort((a, b) => rowTime(b) - rowTime(a))) {
+    if (accepted.some((prior) => sameStory(row, prior))) continue;
+    accepted.push(row);
+  }
+  return accepted;
 }
 
 function assertConfig() {
@@ -90,8 +168,7 @@ async function readScoredRows() {
   const latestByCategory = {};
   const now = Date.now();
   for (const category of REQUIRED_CATEGORIES) {
-    const rows = grouped.get(category)
-      .sort((a, b) => rowTime(b) - rowTime(a) || String(b.id).localeCompare(String(a.id)));
+    const rows = dedupeScoredRows(grouped.get(category));
     const latest = rows[0];
     const latestMs = rowTime(latest);
     const ageMs = now - latestMs;
@@ -135,6 +212,8 @@ function validateRows(rows) {
   for (const category of REQUIRED_CATEGORIES) {
     if (!categories.has(category)) throw new Error(`FASTLANE_SCORED_ONLY_CATEGORY_MISSING:${category}`);
   }
+  const nearDedupe = dedupeScoredRows(rows);
+  if (nearDedupe.length !== rows.length) throw new Error("FASTLANE_SCORED_ONLY_NEAR_DUPLICATE_ROW");
 }
 
 assertConfig();
@@ -209,6 +288,8 @@ const proofValue = {
   scored_only: true,
   live_observed_unscored: false,
   real_event_timestamps_preserved: true,
+  near_duplicate_suppression: true,
+  duplicate_window_ms: DUPLICATE_WINDOW_MS,
   public_language: "en",
   derived_titles_only: true,
   guardian_commercial_dependency: false,
@@ -237,6 +318,8 @@ console.log(JSON.stringify({
   verified_scored_rows: rows.length,
   live_observed_rows: 0,
   scored_only: true,
+  near_duplicate_suppression: true,
+  duplicate_window_ms: DUPLICATE_WINDOW_MS,
   synthetic_score: false,
   raw_source_headlines_exposed: false,
   provider_identity_exposed: false,
