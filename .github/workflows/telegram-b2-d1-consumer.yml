@@ -1,0 +1,203 @@
+name: Telegram B2 D1 Governed Consumer
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+  pull_request:
+    paths:
+      - ".github/workflows/telegram-b2-d1-consumer.yml"
+      - "scripts/ops/drain-telegram-b2-leads.mjs"
+      - "scripts/run-live-flash-ingest-local.ts"
+      - "scripts/verify-telegram-lead-envelope.mjs"
+      - "scripts/ops/b2-s3-client.mjs"
+      - "config/telegram-private-signal-bridge.json"
+      - "workers/control-plane/migrations/0005_telegram_signal_producer_repin_79fb.sql"
+      - "workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql"
+      - "src/__tests__/telegram-b2-d1-consumer-contract.test.ts"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/telegram-b2-d1-consumer.yml"
+      - "scripts/ops/drain-telegram-b2-leads.mjs"
+      - "scripts/run-live-flash-ingest-local.ts"
+      - "scripts/verify-telegram-lead-envelope.mjs"
+      - "scripts/ops/b2-s3-client.mjs"
+      - "config/telegram-private-signal-bridge.json"
+      - "workers/control-plane/migrations/0005_telegram_signal_producer_repin_79fb.sql"
+      - "workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: telegram-b2-d1-governed-consumer
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Require fail-closed lossless Telegram consumer contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'telegram_signal_lead_queue' workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql
+          grep -q 'trg_telegram_checkpoint_enqueue_update' workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql
+          grep -q 'allowedKeyPrefixes: \["telegram/leads/"\]' scripts/ops/drain-telegram-b2-leads.mjs
+          grep -q 'TELEGRAM_B2_QUEUE_HASH_MISMATCH' scripts/ops/drain-telegram-b2-leads.mjs
+          grep -q 'TELEGRAM_QUEUE_DELIVERY_ID_MISMATCH' scripts/ops/drain-telegram-b2-leads.mjs
+          grep -q 'verifyTelegramLeadEnvelope' scripts/ops/drain-telegram-b2-leads.mjs
+          grep -q 'LIVE_FLASH_LOCAL_REQUIRES_DIRECT_POSTGRES' scripts/run-live-flash-ingest-local.ts
+          grep -q 'source_channel_key' scripts/run-live-flash-ingest-local.ts
+          grep -q '79fb75cf342a652216cff4355448012c5bab8cbf' config/telegram-private-signal-bridge.json
+
+  consume:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      D1_CONFIG: workers/control-plane/wrangler.runtime.jsonc
+      WRANGLER_VERSION: "4.136.3"
+      B2_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_BUCKET: geomacro-private-archive
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_REQUEST_BUDGET: "60"
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      GRI_DB_MODE: direct_postgres
+      FLASH_INGEST_TOKEN: telegram-main-local-consumer
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Validate governed consumer credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID B2_KEY_ID B2_APPLICATION_KEY SUPABASE_DB_URL; do
+            test -n "${!name:-}" || { echo "::error::Missing ${name}"; exit 1; }
+          done
+          test "$B2_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com" || exit 2
+          test "$B2_BUCKET" = "geomacro-private-archive" || exit 3
+          test "$GRI_DB_MODE" = "direct_postgres" || exit 4
+          test -z "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::PostgREST service key must not be injected"; exit 5; }
+      - name: Resolve existing D1 control plane
+        id: d1
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | node -e 'let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{const rows=JSON.parse(s); const row=rows.find(x=>x.name===process.env.D1_DATABASE_NAME); process.stdout.write(row?.uuid ?? row?.id ?? "");});')"
+          test -n "$DB_ID" || { echo "::error::geomacro-control-plane D1 database is not bootstrapped"; exit 6; }
+          echo "database_id=$DB_ID" >> "$GITHUB_OUTPUT"
+      - name: Build ephemeral D1 config
+        env:
+          D1_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const source=fs.readFileSync('workers/control-plane/wrangler.example.jsonc','utf8');
+          const id=String(process.env.D1_DATABASE_ID||'').trim();
+          if (!/^[0-9a-f-]{20,}$/i.test(id)) throw new Error('INVALID_D1_DATABASE_ID');
+          const output=source.replace('REPLACE_WITH_D1_DATABASE_ID',id);
+          if (output.includes('REPLACE_WITH_D1_DATABASE_ID')) throw new Error('D1_ID_REPLACEMENT_FAILED');
+          fs.writeFileSync(process.env.D1_CONFIG,output);
+          NODE
+      - name: Apply current main D1 migrations on push
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config "$D1_CONFIG"
+      - name: Verify accepted private producer and queue schema in D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/telegram-lead-intake
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT schema_version,producer_repo,producer_commit,last_verified_b2_write_at,last_checkpoint_at,last_error_code,updated_at FROM telegram_signal_runtime_status WHERE id=1;" > artifacts/telegram-lead-intake/runtime-status.json
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT count(*) AS queue_rows FROM telegram_signal_lead_queue;" > artifacts/telegram-lead-intake/queue-schema.json
+          node <<'NODE'
+          const fs=require('fs');
+          const parsed=JSON.parse(fs.readFileSync('artifacts/telegram-lead-intake/runtime-status.json','utf8'));
+          const envs=Array.isArray(parsed)?parsed:[parsed];
+          const rows=envs.flatMap(x=>Array.isArray(x?.results)?x.results:[]);
+          if (rows.length!==1) throw new Error('TELEGRAM_RUNTIME_STATUS_MISSING');
+          const row=rows[0];
+          if (row.schema_version!=='geomacro.telegram-lead-envelope.v1') throw new Error('TELEGRAM_RUNTIME_SCHEMA_MISMATCH');
+          if (row.producer_repo!=='blocknine0/geomacro-telegram-signals') throw new Error('TELEGRAM_RUNTIME_PRODUCER_REPO_MISMATCH');
+          if (row.producer_commit!=='79fb75cf342a652216cff4355448012c5bab8cbf') throw new Error('TELEGRAM_RUNTIME_PRODUCER_COMMIT_MISMATCH');
+          NODE
+      - name: Export pending Telegram lead queue from D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT delivery_id,signal_id,source_channel_key,source_record_id,published_at,b2_object_key,b2_sha256,state,created_at,attempt_count FROM telegram_signal_lead_queue WHERE state='PENDING' ORDER BY created_at ASC, delivery_id ASC LIMIT 25;" > artifacts/telegram-lead-intake/d1-queue.json
+      - name: Verify D1 queue pointers against B2 and sanitize leads
+        run: node scripts/ops/drain-telegram-b2-leads.mjs --queue-file artifacts/telegram-lead-intake/d1-queue.json --out-dir artifacts/telegram-lead-intake/verified --max 25
+      - name: Ingest verified leads through canonical direct-Postgres handler and acknowledge exact delivery
+        shell: bash
+        run: |
+          set -euo pipefail
+          SUMMARY=artifacts/telegram-lead-intake/verified/summary.json
+          test -s "$SUMMARY"
+          node <<'NODE' > /tmp/telegram-queue-items.tsv
+          const fs=require('fs');
+          const s=JSON.parse(fs.readFileSync('artifacts/telegram-lead-intake/verified/summary.json','utf8'));
+          for (const item of s.accepted ?? []) {
+            if (!/^tg_[a-f0-9]{32}_[a-f0-9]{16}$/.test(String(item.delivery_id ?? ''))) throw new Error('TELEGRAM_DELIVERY_ID_INVALID');
+            if (String(item.payload_file ?? '').includes('\t') || String(item.payload_file ?? '').includes('\n')) throw new Error('TELEGRAM_PAYLOAD_PATH_INVALID');
+            console.log(`${item.delivery_id}\t${item.payload_file}`);
+          }
+          NODE
+          while IFS=$'\t' read -r delivery payload; do
+            [[ -n "$delivery" ]] || continue
+            [[ "$delivery" =~ ^tg_[a-f0-9]{32}_[a-f0-9]{16}$ ]] || { echo "invalid delivery id"; exit 7; }
+            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET attempt_count=attempt_count+1,last_attempt_at=datetime('now'),last_error_code='CANONICAL_INGEST_IN_PROGRESS' WHERE delivery_id='$delivery' AND state='PENDING';" >/tmp/telegram-attempt.json
+            if ! node scripts/run-live-flash-ingest-local.ts --payload-file "$payload"; then
+              npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET last_error_code='CANONICAL_INGEST_FAILED',last_attempt_at=datetime('now') WHERE delivery_id='$delivery' AND state='PENDING';" >/tmp/telegram-failed.json || true
+              exit 8
+            fi
+            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET state='CONSUMED',consumed_at=datetime('now'),last_error_code=NULL,last_attempt_at=datetime('now') WHERE delivery_id='$delivery' AND state='PENDING';" >/tmp/telegram-consumed.json
+          done < /tmp/telegram-queue-items.tsv
+      - name: Assert no Telegram pre-promotion occurred and prune old consumed pointers
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const s=JSON.parse(fs.readFileSync('artifacts/telegram-lead-intake/verified/summary.json','utf8'));
+          for (const item of s.accepted ?? []) {
+            if (item.verification_status!=='UNVERIFIED' || item.scoring_eligible!==false || item.commercial_eligible!==false) throw new Error('TELEGRAM_PREPROMOTION_DETECTED');
+          }
+          NODE
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "DELETE FROM telegram_signal_lead_queue WHERE state='CONSUMED' AND consumed_at < datetime('now','-7 days');" >/tmp/telegram-prune.json
+      - name: Upload bounded Telegram bridge evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: telegram-b2-d1-consumer-${{ github.run_id }}
+          path: |
+            artifacts/telegram-lead-intake/runtime-status.json
+            artifacts/telegram-lead-intake/queue-schema.json
+            artifacts/telegram-lead-intake/d1-queue.json
+            artifacts/telegram-lead-intake/verified/summary.json
+          if-no-files-found: error
+          retention-days: 7
