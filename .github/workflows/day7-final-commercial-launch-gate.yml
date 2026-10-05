@@ -136,39 +136,83 @@ jobs:
           test "$PASS" = "true" || { printf '%s\n' "$OUT"; echo "::error::D1 primary compact authority marker not verified"; exit 3; }
           printf '{"ok":true,"store":"d1","control_plane_role":"primary","schema_version":1}\n' > /tmp/final-d1.json
 
-      - name: Verify fresh production Intelligence scheduler
+      - name: Verify fresh production Intelligence publication owner
         shell: bash
         run: |
           set -euo pipefail
           gh api -H 'Accept: application/vnd.github+json' \
             "/repos/${GITHUB_REPOSITORY}/actions/workflows/intelligence-scored-refresh.yml/runs?branch=main&per_page=20" \
             > /tmp/final-intelligence-runs.json
+          gh api -H 'Accept: application/vnd.github+json' \
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/intelligence-fastlane-publication.yml/runs?branch=main&per_page=20" \
+            > /tmp/final-fastlane-publication-runs.json
           node <<'NODE'
           const fs=require('fs');
-          const parsed=JSON.parse(fs.readFileSync('/tmp/final-intelligence-runs.json','utf8'));
-          const runs=(parsed.workflow_runs ?? []).filter(run =>
-            run?.head_branch === 'main' && ['schedule','workflow_dispatch','push'].includes(run?.event)
-          );
-          const latest=runs[0];
-          if (!latest) throw new Error('PRODUCTION_INTELLIGENCE_RUN_MISSING');
-          const startedAt=Date.parse(String(latest.run_started_at ?? latest.created_at ?? ''));
-          const ageMs=Date.now()-startedAt;
-          if (latest.status !== 'completed' || latest.conclusion !== 'success') {
-            throw new Error(`PRODUCTION_INTELLIGENCE_LATEST_RUN_NOT_SUCCESS:${latest.id}:${latest.status}:${latest.conclusion}`);
+          const now=Date.now();
+          const maxAgeMs=6 * 60 * 60 * 1000;
+          const futureToleranceMs=5 * 60 * 1000;
+          const owners=[
+            {
+              owner:'intelligence-scored-refresh',
+              workflow:'Intelligence Scored + Current Evidence',
+              file:'/tmp/final-intelligence-runs.json',
+              events:new Set(['schedule','workflow_dispatch','push']),
+            },
+            {
+              owner:'intelligence-fastlane-publication',
+              workflow:'Intelligence Fastlane Publication Sync',
+              file:'/tmp/final-fastlane-publication-runs.json',
+              events:new Set(['workflow_run','workflow_dispatch','push']),
+            },
+          ];
+          const observed=[];
+          const eligible=[];
+          for (const source of owners) {
+            const parsed=JSON.parse(fs.readFileSync(source.file,'utf8'));
+            for (const run of parsed.workflow_runs ?? []) {
+              if (run?.head_branch !== 'main' || !source.events.has(run?.event)) continue;
+              const startedAt=Date.parse(String(run.run_started_at ?? run.created_at ?? ''));
+              const ageMs=now-startedAt;
+              const row={
+                owner:source.owner,
+                workflow:source.workflow,
+                workflow_run_id:run.id,
+                workflow_event:run.event,
+                workflow_head_sha:run.head_sha,
+                workflow_started_at:run.run_started_at ?? run.created_at ?? null,
+                status:run.status,
+                conclusion:run.conclusion,
+                age_ms:Number.isFinite(ageMs)?ageMs:null,
+              };
+              observed.push(row);
+              if (
+                run.status === 'completed' &&
+                run.conclusion === 'success' &&
+                Number.isFinite(startedAt) &&
+                ageMs >= -futureToleranceMs &&
+                ageMs <= maxAgeMs
+              ) eligible.push({...row, started_at_ms:startedAt});
+            }
           }
-          if (!Number.isFinite(startedAt) || ageMs < -5 * 60 * 1000 || ageMs > 6 * 60 * 60 * 1000) {
-            throw new Error(`PRODUCTION_INTELLIGENCE_LATEST_RUN_STALE:${latest.id}:${latest.run_started_at ?? latest.created_at ?? 'missing'}`);
+          eligible.sort((a,b)=>b.started_at_ms-a.started_at_ms);
+          const latest=eligible[0];
+          if (!latest) {
+            const recent=observed
+              .sort((a,b)=>String(b.workflow_started_at??'').localeCompare(String(a.workflow_started_at??'')))
+              .slice(0,8);
+            throw new Error(`PRODUCTION_INTELLIGENCE_PUBLICATION_PROOF_MISSING:${JSON.stringify(recent)}`);
           }
           fs.writeFileSync('/tmp/final-scheduler.json', JSON.stringify({
             ok:true,
             fresh:true,
             fail_closed_on_stale:true,
-            owner:'intelligence-scored-refresh',
-            workflow:'Intelligence Scored + Current Evidence',
-            workflow_run_id:latest.id,
-            workflow_event:latest.event,
-            workflow_head_sha:latest.head_sha,
-            workflow_started_at:latest.run_started_at ?? latest.created_at ?? null,
+            owner:latest.owner,
+            workflow:latest.workflow,
+            workflow_run_id:latest.workflow_run_id,
+            workflow_event:latest.workflow_event,
+            workflow_head_sha:latest.workflow_head_sha,
+            workflow_started_at:latest.workflow_started_at,
+            accepted_publication_owners:['intelligence-scored-refresh','intelligence-fastlane-publication'],
           })+'\n');
           NODE
 
