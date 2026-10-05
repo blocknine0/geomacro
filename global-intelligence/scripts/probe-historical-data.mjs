@@ -1,13 +1,9 @@
-import { fetchHistoricalMacro, fetchHistoricalGeopolitics, fetchHistoricalRareEarths } from "../adapters/historical-data.mjs";
+import { probeHistoricalConnection } from "../adapters/historical-data.mjs";
 
 const results = {};
-for (const [name, fn] of [
-  ["macro", fetchHistoricalMacro],
-  ["geopolitics", fetchHistoricalGeopolitics],
-  ["rare_earths", fetchHistoricalRareEarths]
-]) {
+for (const name of ["macro", "geopolitics", "rare_earths"]) {
   try {
-    const result = await fn({limit: 1});
+    const result = await probeHistoricalConnection(name);
     results[name] = {status: "PASS", count: result.count, table: result.source_table};
   } catch (error) {
     results[name] = {status: "FAIL", error: String(error?.message ?? error)};
