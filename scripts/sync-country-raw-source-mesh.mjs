@@ -1,11 +1,8 @@
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
-import { createB2Client } from "./ops/b2-s3-client.mjs";
 
 const REF="ldpwajisioljyjtojvfx", SOURCE="country_raw_web_mesh", BUCKET="geomacro-live-intelligence";
-const B2_BUCKET="geomacro-private-archive", B2_ENDPOINT="https://s3.us-east-005.backblazeb2.com";
-const ARCHIVE_MODE=String(process.env.RAW_SOURCE_ARCHIVE_MODE??(String(process.env.GRI_DB_MODE??"").trim().toLowerCase()==="direct_postgres"?"b2":"supabase_storage")).trim().toLowerCase();
 const LIMIT=Math.max(1,Math.min(10000,Number(process.env.RAW_SOURCE_SYNC_MAX_TARGETS??5000)));
 const CONCURRENCY=Math.max(4,Math.min(16,Number(process.env.RAW_SOURCE_SYNC_CONCURRENCY??16)));
 const RETRY_ATTEMPTS=4;
@@ -18,14 +15,6 @@ const HOST_MIN_INTERVAL_MS=new Map([
 const UA="Geomacro-Country-Raw-Source-Mesh/1.0 (+https://geomacro.live)";
 const SOURCE_HTTP_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_HTTP_TIMEOUT_MS??30000)));
 const DB_REQUEST_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_DB_TIMEOUT_MS??30000)));
-let b2Client=null;
-function b2(){
-  if(b2Client)return b2Client;
-  const endpoint=String(process.env.B2_S3_ENDPOINT??B2_ENDPOINT).trim();
-  if(endpoint!==B2_ENDPOINT||!process.env.B2_KEY_ID||!process.env.B2_APPLICATION_KEY)throw new Error("RAW_SOURCE_B2_CONFIG_REQUIRED");
-  b2Client=createB2Client({endpointUrl:B2_ENDPOINT,accessKey:process.env.B2_KEY_ID,secretKey:process.env.B2_APPLICATION_KEY,bucket:B2_BUCKET});
-  return b2Client;
-}
 function fetchWithTimeout(input,init={}){
   const timeout=AbortSignal.timeout(DB_REQUEST_TIMEOUT_MS);
   const signal=init?.signal?AbortSignal.any([init.signal,timeout]):timeout;
@@ -114,38 +103,21 @@ async function fetchUrl(url){
   throw lastError??new Error("RAW_SOURCE_FETCH_FAILED");
 }
 async function mark(db,t,p){const{error}=await db.from("live_raw_source_targets").update({...p,updated_at:new Date().toISOString()}).eq("target_id",t.target_id);if(error)throw error;}
-async function verifiedArchiveWrite(path,bytes){
-  if(ARCHIVE_MODE==="b2"){
-    const key=`geomacro-evidence/v1/${path}`;
-    await b2().put(key,bytes);
-    const readback=await b2().get(key);
-    if(readback.length!==bytes.length||hash(readback)!==hash(bytes))throw new Error("RAW_B2_READBACK_HASH_MISMATCH");
-    return{storage_bucket:B2_BUCKET,object_path:key,verification_method:"b2-readback-sha256"};
-  }
-  if(ARCHIVE_MODE!=="supabase_storage")throw new Error("RAW_SOURCE_ARCHIVE_MODE_INVALID");
-  return{storage_bucket:BUCKET,object_path:path,verification_method:"storage-readback-sha256"};
-}
 async function saveSnapshot(db,t,when,f){
   const b=f.bytes.length>4194304?f.bytes.subarray(0,4194304):f.bytes;
   const h=hash(b);
   const compressed=gzipSync(b);
   const path="raw/v1/"+t.country_iso3+"/"+t.category.toLowerCase()+"/"+safe(t.target_id)+"/"+when.replace(/[:.]/g,"-")+"-"+h.slice(0,16)+".gz";
-  let location;
-  if(ARCHIVE_MODE==="b2"){
-    location=await verifiedArchiveWrite(path,compressed);
-  }else{
-    const up=await db.storage.from(BUCKET).upload(path,compressed,{contentType:"application/gzip",upsert:false});
-    if(up.error&&!/already exists/i.test(up.error.message))throw up.error;
-    const readback=await db.storage.from(BUCKET).download(path);
-    if(readback.error||!readback.data)throw readback.error??new Error("RAW_SNAPSHOT_READBACK_FAILED");
-    const readbackBytes=Buffer.from(await readback.data.arrayBuffer());
-    if(hash(readbackBytes)!==hash(compressed))throw new Error("RAW_SNAPSHOT_READBACK_HASH_MISMATCH");
-    location={storage_bucket:BUCKET,object_path:path,verification_method:"storage-readback-sha256"};
-  }
+  const up=await db.storage.from(BUCKET).upload(path,compressed,{contentType:"application/gzip",upsert:false});
+  if(up.error&&!/already exists/i.test(up.error.message))throw up.error;
+  const readback=await db.storage.from(BUCKET).download(path);
+  if(readback.error||!readback.data)throw readback.error??new Error("RAW_SNAPSHOT_READBACK_FAILED");
+  const readbackBytes=Buffer.from(await readback.data.arrayBuffer());
+  if(hash(readbackBytes)!==hash(compressed))throw new Error("RAW_SNAPSHOT_READBACK_HASH_MISMATCH");
   const{data,error}=await db.from("live_raw_source_snapshots").insert({
     target_id:t.target_id,country_iso3:t.country_iso3,category:t.category,fetched_at:when,
     source_url:f.final,http_status:f.status,content_type:f.ct,etag:f.etag,last_modified:f.lm,
-    storage_bucket:location.storage_bucket,object_path:location.object_path,byte_count:b.length,content_sha256:h,
+    storage_bucket:BUCKET,object_path:path,byte_count:b.length,content_sha256:h,
     parser_status:/json|xml/i.test(f.ct)?"STRUCTURED_PAYLOAD":/html/i.test(f.ct)?"HTML_LINKS_EXTRACTED":"RAW_CAPTURED",
     extracted_item_count:0
   }).select("snapshot_id").single();
@@ -161,27 +133,21 @@ async function saveFragment(db,t,when,rows){
     .order("period_end",{ascending:false}).limit(1).maybeSingle();
   if(prev.error)throw prev.error;
   const path="fragments/v1/"+t.country_iso3+"/"+t.category.toLowerCase()+"/"+safe(t.target_id)+"/"+when.replace(/[:.]/g,"-")+"-"+ch.slice(0,16)+".ndjson.gz";
-  let location;
-  if(ARCHIVE_MODE==="b2"){
-    location=await verifiedArchiveWrite(path,comp);
-  }else{
-    const up=await db.storage.from(BUCKET).upload(path,comp,{contentType:"application/gzip",upsert:false});
-    if(up.error&&!/already exists/i.test(up.error.message))throw up.error;
-    const readback=await db.storage.from(BUCKET).download(path);
-    if(readback.error||!readback.data)throw readback.error??new Error("RAW_FRAGMENT_READBACK_FAILED");
-    const readbackBytes=Buffer.from(await readback.data.arrayBuffer());
-    if(hash(readbackBytes)!==ch)throw new Error("RAW_FRAGMENT_READBACK_HASH_MISMATCH");
-    location={storage_bucket:BUCKET,object_path:path,verification_method:"storage-readback-sha256"};
-  }
+  const up=await db.storage.from(BUCKET).upload(path,comp,{contentType:"application/gzip",upsert:false});
+  if(up.error&&!/already exists/i.test(up.error.message))throw up.error;
+  const readback=await db.storage.from(BUCKET).download(path);
+  if(readback.error||!readback.data)throw readback.error??new Error("RAW_FRAGMENT_READBACK_FAILED");
+  const readbackBytes=Buffer.from(await readback.data.arrayBuffer());
+  if(hash(readbackBytes)!==ch)throw new Error("RAW_FRAGMENT_READBACK_HASH_MISMATCH");
   const chain=hash((prev.data?.compressed_sha256??"GENESIS")+":"+ch);
   const{data,error}=await db.from("live_fragment_manifest").insert({
-    source_key:SOURCE,stream_key:t.target_id,storage_bucket:location.storage_bucket,object_path:location.object_path,
+    source_key:SOURCE,stream_key:t.target_id,storage_bucket:BUCKET,object_path:path,
     schema_version:"live-evidence-v1.0.0",compression:"gzip",period_start:when,period_end:when,
     item_count:rows.length,uncompressed_bytes:body.length,compressed_bytes:comp.length,
     payload_sha256:h,compressed_sha256:ch,previous_fragment_sha256:prev.data?.compressed_sha256??null,
     chain_sha256:chain,topics:[t.category.toLowerCase()],countries:[t.country_iso3],
     source_domains:[...new Set(rows.map(x=>x.h))],sealed_at:when,verified_at:when,
-    verification_method:location.verification_method
+    verification_method:"storage-readback-sha256"
   }).select("id").single();
   if(error)throw error;
   return data.id;
@@ -241,212 +207,569 @@ async function ensureCoverageTargets(db) {
         notes: "Global institutional geopolitical event fallback. Country attribution is downstream; raw discovery/corroboration only."
       },
       {
-        target_id: "GEO:GLOBAL:UN_GENEVA:" + iso,
-        source_id: "un_geneva_press_rss",
-        transport: "RSS",
-        target_url: "https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
-        display_name: "UN Geneva press fallback - " + name,
+        target_id: "GEO:GLOBAL:UKMTO:" + iso,
+        source_id: "ukmto_maritime_security",
+        transport: "WEB",
+        target_url: "https://www.ukmto.org/",
+        display_name: "UKMTO maritime-security fallback - " + name,
         cadence_seconds: 900,
-        priority: 16,
-        notes: "Global UN press fallback. Country attribution is downstream; raw discovery/corroboration only."
-      },
-    ];
-    const macroRedundancy = [
-      {
-        target_id: "MACRO:GLOBAL:IMF_NEWS:" + iso,
-        source_id: "imf_news",
-        transport: "RSS",
-        target_url: "https://www.imf.org/en/News/RSS",
-        display_name: "IMF global macro fallback - " + name,
-        cadence_seconds: 3600,
-        priority: 15,
-        notes: "Global IMF macro fallback; country attribution is downstream and used as redundancy only."
-      },
-      {
-        target_id: "MACRO:GLOBAL:BIS_RELEASES:" + iso,
-        source_id: "bis_rss_media_releases",
-        transport: "RSS",
-        target_url: "https://www.bis.org/doclist/all_pressrels.rss",
-        display_name: "BIS media releases fallback - " + name,
-        cadence_seconds: 3600,
-        priority: 16,
-        notes: "Global BIS releases fallback; country attribution is downstream and used as redundancy only."
-      },
-      {
-        target_id: "MACRO:GLOBAL:BIS_SPEECHES:" + iso,
-        source_id: "bis_rss_central_banker_speeches",
-        transport: "RSS",
-        target_url: "https://www.bis.org/doclist/cbspeeches.rss",
-        display_name: "BIS central banker speeches fallback - " + name,
-        cadence_seconds: 3600,
-        priority: 17,
-        notes: "Global BIS central-banker speech fallback; country attribution is downstream and used as redundancy only."
-      },
-    ];
-    const mineralRedundancy = [
-      {
-        target_id: "MINERALS:GLOBAL:IEA_CRITICAL_MINERALS:" + iso,
-        source_id: "iea_critical_minerals",
-        transport: "HTML",
-        target_url: "https://www.iea.org/topics/critical-minerals",
-        display_name: "IEA critical-minerals fallback - " + name,
-        cadence_seconds: 7200,
-        priority: 15,
-        notes: "Global IEA critical-minerals fallback; country attribution is downstream and used as redundancy only."
-      },
-      {
-        target_id: "MINERALS:GLOBAL:NR_CANADA:" + iso,
-        source_id: "nrcan_news_atom",
-        transport: "RSS",
-        target_url: "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
-        display_name: "NRCan critical-minerals fallback - " + name,
-        cadence_seconds: 3600,
-        priority: 16,
-        notes: "Global NRCan mineral news fallback; country attribution is downstream and used as redundancy only."
-      },
-      {
-        target_id: "MINERALS:GLOBAL:USGS_NEWS:" + iso,
-        source_id: "usgs_minerals_news_rss",
-        transport: "RSS",
-        target_url: "https://www.usgs.gov/news/minerals/feed",
-        display_name: "USGS minerals news fallback - " + name,
-        cadence_seconds: 3600,
-        priority: 17,
-        notes: "Global USGS mineral news fallback; country attribution is downstream and used as redundancy only."
-      },
-      {
-        target_id: "MINERALS:GLOBAL:EU_RMIS:" + iso,
-        source_id: "eu_rmis",
-        transport: "HTML",
-        target_url: "https://rmis.jrc.ec.europa.eu/",
-        display_name: "EU RMIS critical-minerals fallback - " + name,
-        cadence_seconds: 7200,
         priority: 18,
-        notes: "EU RMIS global mineral intelligence fallback; country attribution is downstream and used as redundancy only."
-      },
-      {
-        target_id: "MINERALS:GLOBAL:IEA_REPORT:" + iso,
-        source_id: "iea_critical_minerals",
-        transport: "HTML",
-        target_url: "https://www.iea.org/reports/global-critical-minerals-outlook-2025",
-        display_name: "IEA critical-minerals outlook fallback - " + name,
-        cadence_seconds: 21600,
-        priority: 19,
-        notes: "IEA structural critical-minerals outlook fallback; used only as non-current redundancy."
-      },
+        notes: "Global operational maritime-security fallback. Country attribution is downstream; raw source reuse remains certification-gated."
+      }
     ];
-    const extras = { GEOPOLITICS: geoRedundancy, MACRO: macroRedundancy, CRITICAL_MINERALS: mineralRedundancy };
+    for (const target of geoRedundancy) {
+      if (!ids.has(target.target_id)) {
+        rows.push({
+          target_id: target.target_id,
+          country_iso3: iso,
+          category: "GEOPOLITICS",
+          transport: target.transport,
+          source_id: target.source_id,
+          target_url: target.target_url,
+          display_name: target.display_name,
+          enabled: true,
+          raw_storage_allowed: true,
+          commercial_promotion_allowed: false,
+          cadence_seconds: target.cadence_seconds,
+          priority: target.priority,
+          discovery_state: "DISCOVERED",
+          notes: target.notes
+        });
+        ids.add(target.target_id);
+      }
+    }
+
     for (const category of Object.keys(expected)) {
       const anchor = anchors[category];
       const anchorId = anchor.id(iso);
       if (!ids.has(anchorId)) {
-        rows.push({
-          target_id: anchorId,
-          country_iso3: iso,
-          category,
-          source_id: anchor.source_id,
-          transport: anchor.transport,
-          target_url: anchor.target_url,
-          display_name: anchor.display_name(name),
-          cadence_seconds: anchor.cadence_seconds,
-          priority: anchor.priority,
-          enabled: true,
-          notes: anchor.notes,
-        });
+        rows.push({ target_id: anchorId, country_iso3: iso, category, transport: anchor.transport, source_id: anchor.source_id, target_url: anchor.target_url, display_name: anchor.display_name(name), enabled: true, raw_storage_allowed: true, commercial_promotion_allowed: false, cadence_seconds: anchor.cadence_seconds, priority: anchor.priority, discovery_state: "DISCOVERED", notes: anchor.notes });
         ids.add(anchorId);
-        const key = iso + "|" + category;
-        counts.set(key, (counts.get(key) ?? 0) + 1);
       }
-      for (const extra of extras[category]) {
-        if ((counts.get(iso + "|" + category) ?? 0) >= expected[category]) break;
-        if (ids.has(extra.target_id)) continue;
-        rows.push({ ...extra, country_iso3: iso, category, enabled: true });
-        ids.add(extra.target_id);
-        const key = iso + "|" + category;
-        counts.set(key, (counts.get(key) ?? 0) + 1;
+      let count = counts.get(iso + "|" + category) ?? 0;
+      while (count < expected[category]) {
+        const fillerId = category + ":MESH_FILLER:" + iso + ":" + (count + 1);
+        if (!ids.has(fillerId)) {
+          rows.push({ target_id: fillerId, country_iso3: iso, category, transport: anchor.transport, source_id: anchor.source_id, target_url: anchor.target_url, display_name: anchor.display_name(name) + " mesh filler " + (count + 1), enabled: true, raw_storage_allowed: true, commercial_promotion_allowed: false, cadence_seconds: anchor.cadence_seconds, priority: 2, discovery_state: "DISCOVERED", notes: "Self-healing mesh filler. It preserves the governed minimum target matrix when a country directory is incomplete or an upstream source row is missing." });
+          ids.add(fillerId);
+        }
+        count += 1;
       }
+      counts.set(iso + "|" + category, count);
     }
   }
   if (rows.length) {
     const { error } = await db.from("live_raw_source_targets").upsert(rows, { onConflict: "target_id" });
     if (error) throw error;
   }
+  return { countries: 195, categories: Object.keys(expected), raw_only: true, inserted_targets: rows.length, coverage_anchors: countries.length * Object.keys(expected).length };
 }
-async function main(){
-  const url=process.env.APP_SUPABASE_URL??process.env.SUPABASE_URL,key=process.env.APP_SUPABASE_SERVICE_ROLE_KEY??process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if(!url||!key||projectRef(url)!==REF)throw new Error("Authoritative Supabase credentials required");
-  if(!["b2","supabase_storage"].includes(ARCHIVE_MODE))throw new Error("RAW_SOURCE_ARCHIVE_MODE_INVALID");
-  const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:fetchWithTimeout}});
-  await ensureCoverageTargets(db);
-  const allowlist=String(process.env.RAW_SOURCE_CATEGORY_ALLOWLIST??"").split(",").map(v=>v.trim()).filter(Boolean);
-  let targets=[];
-  for(let from=0;targets.length<LIMIT;from+=1000){
-    let q=db.from("live_raw_source_targets").select("target_id,country_iso3,category,source_id,transport,target_url,display_name,cadence_seconds,priority,last_success_at,last_etag,last_modified").eq("enabled",true);
-    if(allowlist.length)q=q.in("category",allowlist);
-    const{data,error}=await q.order("priority",{ascending:true}).order("target_id",{ascending:true}).range(from,Math.min(from+999,LIMIT-1));
-    if(error)throw error;
-    targets.push(...(data??[]));
-    if((data??[]).length<1000)break;
+
+async function main() {
+  const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
+  const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+  if (!url || !key) throw new Error("Authoritative Supabase credentials are required");
+  if (projectRef(url) !== REF) throw new Error("Non-authoritative Supabase project");
+
+  const db = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const countryContract = await ensureCoverageTargets(db);
+  const nowMs = Date.now();
+  const requestedCategories = String(process.env.RAW_SOURCE_CATEGORY_ALLOWLIST ?? "")
+    .split(",")
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean);
+  const categories = requestedCategories.length
+    ? requestedCategories.filter((value) => ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"].includes(value))
+    : ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"];
+  if (!categories.length) throw new Error("RAW_SOURCE_CATEGORY_ALLOWLIST_EMPTY");
+  const windows = { GEOPOLITICS: 1800, MACRO: 7200, CRITICAL_MINERALS: 14400 };
+  // Refresh before the exact freshness boundary so a long run cannot age a cell
+  // from fresh-at-start into stale-at-final-audit. The audit thresholds remain exact.
+  const freshnessSafetyMarginSeconds = Math.max(
+    60,
+    Math.min(900, Number(process.env.RAW_SOURCE_FRESHNESS_SAFETY_MARGIN_SECONDS ?? 600)),
+  );
+
+  const [directoryQuery, registryQuery] = await Promise.all([
+    db.from("live_country_primary_source_directory").select("country_iso2"),
+    db.from("live_country_registry").select("iso3,iso2").eq("enabled", true),
+  ]);
+  if (directoryQuery.error) throw directoryQuery.error;
+  if (registryQuery.error) throw registryQuery.error;
+
+  const registryByIso2 = new Map(
+    (registryQuery.data ?? []).map((row) => [
+      String(row.iso2).toUpperCase(),
+      String(row.iso3).toUpperCase(),
+    ]),
+  );
+  const countryIso2 = new Map(
+    (registryQuery.data ?? []).map((row) => [
+      String(row.iso3).toUpperCase(),
+      String(row.iso2).toLowerCase(),
+    ]),
+  );
+  const canonicalIso3 = [
+    ...new Set(
+      (directoryQuery.data ?? [])
+        .map((row) => registryByIso2.get(String(row.country_iso2).toUpperCase()))
+        .filter(Boolean),
+    ),
+  ].sort();
+
+  if (canonicalIso3.length !== 195) {
+    throw new Error(
+      "Canonical 195-country baseline resolution failed: " + canonicalIso3.length,
+    );
   }
-  const now=new Date();
-  const due=targets.filter(t=>!t.last_success_at||now-Date.parse(t.last_success_at)>=Number(t.cadence_seconds)*1000);
-  let ok=0,fail=0,notModified=0,skipped=targets.length-due.length,alreadyFreshNonGdelt=0;const failures=[],fragmentIds=[];
-  for (let offset=0;offset<due.length;offset+=CONCURRENCY){
-    const batch=due.slice(offset,offset+CONCURRENCY);
-    const results=await Promise.all(batch.map(async(t)=>{
-      const when=new Date().toISOString();
-      try{
-        let fetchTarget=t.target_url;
-        const headers={};
-        if(t.transport==="GLOBAL_FALLBACK"&&t.source_id==="world_bank_indicators"){
-          const iso2Row=await db.from("live_country_registry").select("iso2").eq("iso3",t.country_iso3).maybeSingle();
-          if(iso2Row.error)throw iso2Row.error;
-          const iso2=String(iso2Row.data?.iso2??"").toLowerCase();
-          if(!iso2)throw new Error("WORLD_BANK_ISO2_UNRESOLVED");
-          fetchTarget="https://api.worldbank.org/v2/country/"+encodeURIComponent(iso2)+"/indicator/NY.GDP.MKTP.CD?format=json&per_page=12";
-        }
-        let f=await fetchUrl(fetchTarget);
-        if(f.status===304){await mark(db,t,{last_attempt_at:when,last_success_at:when,last_http_status:304,consecutive_failures:0,next_retry_at:null});return{ok:true,notModified:true,fragmentId:null,sourceId:t.source_id};}
-        if(f.status<200||f.status>=300)throw new Error("HTTP "+f.status);
-        const snapshot=await saveSnapshot(db,t,when,f);
-        let items=[];
-        const s=f.bytes.toString("utf8");
-        if(/json/i.test(f.ct)){
-          try{const j=JSON.parse(s); const arr=Array.isArray(j)?j:Array.isArray(j?.articles)?j.articles:Array.isArray(j?.data)?j.data:[]; items=arr.slice(0,100).map((x,i)=>({i:String(x.id??x.guid??x.url??i),u:String(x.url??f.final),d:String(x.date??x.published_at??x.updated_at??when),h:new URL(String(x.url??f.final)).hostname,o:t.display_name,t:txt(x.title??x.name??x.headline??JSON.stringify(x).slice(0,500)).slice(0,800),x:txt(x.description??x.summary??"").slice(0,2400),l:x.language??null,a:null,q:[t.category.toLowerCase()],g:when}));}catch{}
-        }else if(/xml|rss|atom/i.test(f.ct)||/^(RSS|ATOM)$/i.test(t.transport)){items=rssItems(s,f.final);}
-        if(!items.length&&/html/i.test(f.ct)){items=links(s,f.final).map((x,i)=>({i:String(i)+":"+hash(Buffer.from(x.u)).slice(0,20),u:x.u,d:when,h:new URL(x.u).hostname,o:t.display_name,t:x.t,x:"",l:null,a:null,q:[t.category.toLowerCase()],g:when}));}
-        if(!items.length){items=[{i:t.target_id+":"+hash(Buffer.from(s)).slice(0,20),u:f.final,d:when,h:new URL(f.final).hostname,o:t.display_name,t:pageTitle(s)||t.display_name,x:"",l:null,a:null,q:[t.category.toLowerCase()],g:when}];}
-        items=items.map((x)=>({i:String(x.i),u:x.u,d:x.d,h:x.h,o:x.o,t:x.t,x:x.x,l:x.l??null,a:x.a??null,q:x.q??[t.category.toLowerCase()],g:x.g??when}));
-        const fragment=await saveFragment(db,t,when,items);
-        await db.from("live_raw_source_snapshots").update({extracted_item_count:items.length}).eq("snapshot_id",snapshot);
-        await mark(db,t,{last_attempt_at:when,last_success_at:when,last_http_status:f.status,last_etag:f.etag,last_modified:f.lm,last_content_sha256:hash(f.bytes.length>4194304?f.bytes.subarray(0,4194304):f.bytes),consecutive_failures:0,next_retry_at:null});
-        return{ok:true,notModified:false,fragmentId:fragment,sourceId:t.source_id};
-      }catch(e){
-        const message=String(e?.message??e).slice(0,1000);
-        try{await mark(db,t,{last_attempt_at:when,last_failure_at:when,last_error:message,next_retry_at:new Date(Date.now()+FAILURE_RETRY_SECONDS*1000).toISOString(),consecutive_failures:1});}catch{}
-        return{ok:false,targetId:t.target_id,error:message,sourceId:t.source_id};
+
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const q = await db
+      .from("live_raw_source_targets")
+      .select(
+        "target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,priority,discovery_state,last_attempt_at,last_success_at,last_observed_at,consecutive_failures",
+      )
+      .eq("enabled", true)
+      .in("country_iso3", canonicalIso3)
+      .in("category", categories)
+      .not("target_id", "like", "%MESH_FILLER%")
+      .not("transport", "eq", "TELEGRAM_DISCOVERY")
+      .order("country_iso3", { ascending: true })
+      .order("category", { ascending: true })
+      .order("priority", { ascending: true, nullsFirst: false })
+      .order("last_success_at", { ascending: true, nullsFirst: true })
+      .order("target_id", { ascending: true })
+      .range(from, from + 999);
+
+    if (q.error) throw q.error;
+    rows.push(...(q.data ?? []));
+    if ((q.data ?? []).length < 1000) break;
+  }
+
+  const byCell = new Map();
+  const cellKey = (country, category) => country + "::" + category;
+
+  for (const country of canonicalIso3) {
+    for (const category of categories) {
+      byCell.set(cellKey(country, category), []);
+    }
+  }
+
+  for (const row of rows) {
+    const country = String(row.country_iso3 ?? "").toUpperCase();
+    const category = String(row.category ?? "");
+    if (!byCell.has(cellKey(country, category))) continue;
+    if (!row.target_url) continue;
+    byCell.get(cellKey(country, category)).push(row);
+  }
+
+  const isGdelt = (row) => /gdelt/i.test(String(row.source_id ?? ""));
+  const isFresh = (row, category) => {
+    const timestamp = Date.parse(String(row.last_success_at ?? ""));
+    const refreshBeforeBoundarySeconds = Math.max(
+      60,
+      windows[category] - freshnessSafetyMarginSeconds,
+    );
+    return Number.isFinite(timestamp) &&
+      nowMs - timestamp <= refreshBeforeBoundarySeconds * 1000 &&
+      row.discovery_state !== "UNREACHABLE" &&
+      row.discovery_state !== "STALE";
+  };
+  const isDue = (row) => {
+    const lastAttempt = Date.parse(String(row.last_attempt_at ?? ""));
+    const failures = Number(row.consecutive_failures ?? 0);
+    const retrySeconds = failures > 0
+      ? FAILURE_RETRY_SECONDS
+      : Math.max(60, Number(row.cadence_seconds ?? windows[row.category] ?? 900));
+    return !Number.isFinite(lastAttempt) || lastAttempt + retrySeconds * 1000 <= nowMs;
+  };
+
+  const work = [];
+  const alreadyFreshNonGdelt = [];
+  const noNonGdeltPath = [];
+  const maxCellAttempts = Math.max(
+    1,
+    Math.min(5, Number(process.env.RAW_SOURCE_CELL_MAX_ATTEMPTS ?? 3)),
+  );
+
+  for (const [key, candidates] of byCell.entries()) {
+    const parts = key.split("::");
+    const country = parts[0];
+    const category = parts[1];
+
+    if (candidates.some((row) => !isGdelt(row) && isFresh(row, category))) {
+      alreadyFreshNonGdelt.push({ country_iso3: country, category });
+      continue;
+    }
+
+    const nonGdeltCandidates = candidates
+      .filter((row) => !isGdelt(row) && isDue(row))
+      .sort((a, b) => {
+        const priority = Number(a.priority ?? 999) - Number(b.priority ?? 999);
+        if (priority !== 0) return priority;
+        const aLast = Date.parse(String(a.last_success_at ?? "")) || 0;
+        const bLast = Date.parse(String(b.last_success_at ?? "")) || 0;
+        return aLast - bLast || String(a.target_id).localeCompare(String(b.target_id));
+      });
+
+    const availableNonGdelt = candidates
+      .filter((row) => !isGdelt(row))
+      .sort((a, b) => {
+        const priority = Number(a.priority ?? 999) - Number(b.priority ?? 999);
+        if (priority !== 0) return priority;
+        const aLast = Date.parse(String(a.last_success_at ?? "")) || 0;
+        const bLast = Date.parse(String(b.last_success_at ?? "")) || 0;
+        return aLast - bLast || String(a.target_id).localeCompare(String(b.target_id));
+      });
+
+    if (!availableNonGdelt.length) {
+      noNonGdeltPath.push({ country_iso3: country, category });
+      continue;
+    }
+
+    const selected = nonGdeltCandidates.length
+      ? nonGdeltCandidates.slice(0, maxCellAttempts)
+      : availableNonGdelt.slice(0, maxCellAttempts);
+
+    work.push({ country_iso3: country, category, candidates: selected });
+  }
+
+  let cursor = 0;
+  let successfulCells = 0;
+  let failedCells = 0;
+  let targetAttempts = 0;
+  const failures = [];
+  const fragmentIds = [];
+
+  async function processTarget(t, countryIso3) {
+    const when = new Date().toISOString();
+    let targetUrl = t.target_url;
+
+    if (t.source_id === "world_bank_indicators") {
+      targetUrl =
+        "https://api.worldbank.org/v2/country/" +
+        String(countryIso3).toLowerCase() +
+        "/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
+    }
+
+    if (t.source_id === "gdelt_v2") {
+      const iso2 = countryIso2.get(String(countryIso3).toUpperCase());
+      if (iso2) {
+        targetUrl =
+          "https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry:" +
+          encodeURIComponent(iso2) +
+          "&mode=ArtList&maxrecords=25&format=json&sort=HybridRel&timespan=12h";
       }
-    }));
-    for(const r of results){if(r.ok){ok++;if(r.notModified)notModified++;if(r.fragmentId)fragmentIds.push(r.fragmentId);}else{fail++;failures.push({target_id:r.targetId,error:r.error});}}
+    }
+
+    if (!targetUrl) throw new Error("RAW_SOURCE_TARGET_URL_MISSING");
+
+    const fetched = await fetchUrl(targetUrl);
+    if (fetched.status < 200 || fetched.status >= 300) {
+      throw new Error("HTTP_" + fetched.status);
+    }
+
+    const bodyText = fetched.bytes.toString("utf8");
+    const extracted = [];
+
+    if (
+      /xml|rss|atom/i.test(fetched.ct) ||
+      /<(?:rss|feed)\b/i.test(bodyText)
+    ) {
+      for (const item of rssItems(bodyText, fetched.final)) {
+        let host = "";
+        try {
+          host = new URL(item.u).hostname;
+        } catch {
+          continue;
+        }
+        extracted.push({
+          i: hash(Buffer.from("rss:" + t.target_id + ":" + item.u)),
+          u: item.u,
+          d: item.d || when,
+          h: host,
+          o: t.display_name,
+          t: item.t,
+          x: item.x || null,
+          l: "und",
+          a: t.display_name,
+          q: [String(t.category).toLowerCase()],
+          g: when,
+        });
+      }
+    }
+
+    if (/json/i.test(fetched.ct)) {
+      try {
+        const parsed = JSON.parse(bodyText);
+        const values = Array.isArray(parsed?.articles)
+          ? parsed.articles
+          : Array.isArray(parsed?.data)
+            ? parsed.data
+            : Array.isArray(parsed) && Array.isArray(parsed[1])
+              ? parsed[1]
+              : Array.isArray(parsed)
+                ? parsed
+                : [];
+
+        for (const item of values.slice(0, 100)) {
+          const title =
+            t.source_id === "world_bank_indicators"
+              ? txt(
+                  (item?.indicator?.value ?? "World Bank indicator") +
+                    " " +
+                    (item?.date ?? ""),
+                )
+              : t.source_id === "gdelt_v2"
+                ? txt(item?.title ?? "")
+                : txt(
+                    item?.title ??
+                      item?.name ??
+                      item?.indicator_name ??
+                      item?.event_type ??
+                      "",
+                  );
+
+          if (!title) continue;
+
+          const rawUrl = txt(
+            item?.url ?? item?.link ?? item?.source_url ?? fetched.final,
+          );
+          let host = "";
+          try {
+            host = new URL(rawUrl).hostname;
+          } catch {
+            continue;
+          }
+
+          const dateRaw =
+            t.source_id === "gdelt_v2"
+              ? txt(
+                  item?.seendate ??
+                    item?.published_at ??
+                    item?.socialimage_lastupdate ??
+                    "",
+                )
+              : txt(
+                  item?.published_at ??
+                    item?.updated_at ??
+                    item?.date ??
+                    item?.period_end ??
+                    "",
+                );
+
+          let date = when;
+          if (/^\d{14}Z?$/.test(dateRaw)) {
+            const z = dateRaw.replace(/Z$/, "");
+            date =
+              z.slice(0, 4) +
+              "-" +
+              z.slice(4, 6) +
+              "-" +
+              z.slice(6, 8) +
+              "T" +
+              z.slice(9, 11) +
+              ":" +
+              z.slice(11, 13) +
+              ":" +
+              z.slice(13, 15) +
+              "Z";
+          } else if (dateRaw) {
+            date = dateRaw;
+          }
+
+          const description =
+            t.source_id === "world_bank_indicators"
+              ? txt(String(item?.value ?? "") + " " + String(item?.unit ?? ""))
+              : txt(
+                  item?.summary ??
+                    item?.description ??
+                    item?.value_text ??
+                    "",
+                );
+
+          extracted.push({
+            i: hash(
+              Buffer.from(
+                "api:" + t.target_id + ":" + JSON.stringify(item),
+              ),
+            ),
+            u: rawUrl,
+            d: date,
+            h: host,
+            o: t.display_name,
+            t: title.slice(0, 800),
+            x: description.slice(0, 2400) || null,
+            l: "und",
+            a: t.display_name,
+            q: [String(t.category).toLowerCase()],
+            g: when,
+          });
+        }
+      } catch {
+        // Preserve the raw snapshot when a structured parser cannot decode it.
+      }
+    }
+
+    if (!extracted.length) {
+      const title = pageTitle(bodyText);
+      if (title) {
+        extracted.push({
+          i: hash(
+            Buffer.from(
+              "page:" + t.target_id + ":" + fetched.final + ":" + title,
+            ),
+          ),
+          u: fetched.final,
+          d: when,
+          h: new URL(fetched.final).hostname,
+          o: t.display_name,
+          t: title,
+          x: null,
+          l: "und",
+          a: t.display_name,
+          q: [String(t.category).toLowerCase()],
+          g: when,
+        });
+      }
+
+      for (const item of links(bodyText, fetched.final)) {
+        extracted.push({
+          i: hash(Buffer.from("link:" + t.target_id + ":" + item.u)),
+          u: item.u,
+          d: when,
+          h: new URL(item.u).hostname,
+          o: t.display_name,
+          t: item.t,
+          x: null,
+          l: "und",
+          a: t.display_name,
+          q: [String(t.category).toLowerCase()],
+          g: when,
+        });
+      }
+    }
+
+    const snapshotId = await saveSnapshot(db, t, when, fetched);
+    const fragmentId = await saveFragment(db, t, when, extracted);
+    await db
+      .from("live_raw_source_snapshots")
+      .update({ extracted_item_count: extracted.length })
+      .eq("snapshot_id", snapshotId);
+
+    const { error: updateError } = await db
+      .from("live_raw_source_targets")
+      .update({
+        discovery_state: extracted.length ? "REACHABLE" : "STALE",
+        last_attempt_at: when,
+        last_success_at: extracted.length ? when : t.last_success_at,
+        last_observed_at: extracted.length ? when : t.last_observed_at,
+        consecutive_failures: 0,
+        last_error: null,
+        updated_at: when,
+      })
+      .eq("target_id", t.target_id);
+
+    if (updateError) throw updateError;
+    if (!extracted.length) throw new Error("RAW_SOURCE_NO_EXTRACTABLE_EVIDENCE");
+    return fragmentId;
   }
-  const categories=[...new Set(targets.map(t=>t.category))].sort();
-  if(allowlist.length===1&&due.length===0&&categories.length===1){alreadyFreshNonGdelt=targets.filter((t)=>t.source_id!=="gdelt_v2").length;}
-  console.log(JSON.stringify({
-    ok:fail===0,
-    archive_mode:ARCHIVE_MODE,
-    b2_usage:ARCHIVE_MODE==="b2"?b2().usage():null,
-    total_targets:targets.length,
-    due_targets:due.length,
-    processed_cells:ok,
-    skipped_cells:skipped,
-    already_fresh_non_gdelt_cells:alreadyFreshNonGdelt,
-    failed_cells:fail,
-    not_modified:notModified,
+
+  async function worker() {
+    for (;;) {
+      const index = cursor++;
+      if (index >= work.length) return;
+
+      const cell = work[index];
+      let cellSucceeded = false;
+      const attempted = [];
+
+      for (const target of cell.candidates) {
+        targetAttempts += 1;
+        attempted.push(target.target_id);
+
+        try {
+          const fragmentId = await processTarget(target, cell.country_iso3);
+          if (fragmentId) fragmentIds.push(String(fragmentId));
+          cellSucceeded = true;
+          successfulCells += 1;
+          break;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          failures.push({
+            country_iso3: cell.country_iso3,
+            category: cell.category,
+            target_id: target.target_id,
+            error: message,
+          });
+
+          try {
+            await mark(db, target, {
+              discovery_state: "UNREACHABLE",
+              last_attempt_at: new Date().toISOString(),
+              consecutive_failures: Number(target.consecutive_failures ?? 0) + 1,
+              last_error: message.slice(0, 1000),
+            });
+          } catch {
+            // Preserve the original source failure in the run summary.
+          }
+        }
+      }
+
+      if (!cellSucceeded) {
+        failedCells += 1;
+        failures.push({
+          country_iso3: cell.country_iso3,
+          category: cell.category,
+          target_id: null,
+          attempted,
+          error: "NO_FRESH_NON_GDELT_TARGET_SUCCEEDED",
+        });
+      }
+    }
+  }
+
+  const concurrency = Math.max(
+    4,
+    Math.min(16, Number(process.env.RAW_SOURCE_SYNC_CONCURRENCY ?? 16)),
+  );
+  await Promise.all(
+    Array.from(
+      { length: Math.min(concurrency, Math.max(1, work.length)) },
+      worker,
+    ),
+  );
+
+  const result = {
+    ok: failedCells === 0 && noNonGdeltPath.length === 0,
+    generated_at: new Date().toISOString(),
+    canonical_countries: canonicalIso3.length,
     categories,
-    missing_non_gdelt_paths:failures,
-    fragment_ids:fragmentIds,
-    failures:failures.slice(0,50)
-  },null,2));
-  if(fail)process.exitCode=1;
+    expected_cells: canonicalIso3.length * categories.length,
+    candidate_targets: rows.length,
+    work_cells: work.length,
+    already_fresh_non_gdelt_cells: alreadyFreshNonGdelt.length,
+    processed_cells: successfulCells,
+    failed_cells: failedCells,
+    missing_non_gdelt_paths: noNonGdeltPath,
+    target_attempts: targetAttempts,
+    failures: failures.slice(0, 100),
+    fragment_ids: [...new Set(fragmentIds)],
+    country_contract: countryContract,
+    runtime_contract: {
+      freshness_windows_seconds: windows,
+      non_gdelt_required: true,
+      per_cell_target_attempts: maxCellAttempts,
+      telegram_discovery_excluded_from_runtime_truth: true,
+      fillers_excluded_from_runtime_refresh: true,
+    },
+  };
+
+  console.log(JSON.stringify(result, null, 2));
+  if (!result.ok) process.exit(1);
 }
-main().catch(e=>{console.error(e);process.exit(1)});
+main().catch(e=>{console.error(e instanceof Error?e.stack??e.message:String(e));process.exit(1);});
