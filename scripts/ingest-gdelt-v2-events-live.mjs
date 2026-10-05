@@ -23,8 +23,6 @@ const EXPECTED_COLUMN_COUNT = 61
 const FILTER_CONTRACT_VERSION = "gdelt-conflict-root-filter-v1"
 const CONFLICT_ROOT_CODES = new Set(["13", "14", "15", "16", "17", "18", "19", "20"])
 
-// GDELT V2 Event export positions from the Event Codebook. Schema guards below
-// require the full 61-column export before any row can become an observation.
 const FIELD = Object.freeze({
   GLOBAL_EVENT_ID: 0,
   SQLDATE: 1,
@@ -75,12 +73,8 @@ function parseDateAdded(value) {
   const match = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(text)
   if (!match) return null
   const date = new Date(Date.UTC(
-    Number(match[1]),
-    Number(match[2]) - 1,
-    Number(match[3]),
-    Number(match[4]),
-    Number(match[5]),
-    Number(match[6]),
+    Number(match[1]), Number(match[2]) - 1, Number(match[3]),
+    Number(match[4]), Number(match[5]), Number(match[6]),
   ))
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
@@ -91,13 +85,11 @@ function ageMinutes(olderIso, newer) {
 
 async function fetchWithRetry(url, accept) {
   let lastError = null
-  for (let attempt = 1; attempt <= 4; attempt++) {
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
     try {
       const response = await fetch(url, {
-        headers: {
-          accept,
-          "user-agent": "Geomacro-GDELT-Event-Ingest/1.0 (+https://geomacro.live)",
-        },
+        headers: { accept, "user-agent": "Geomacro-GDELT-Event-Ingest/1.1 (+https://geomacro.live)" },
+        signal: AbortSignal.timeout(30_000),
       })
       if (response.ok) return response
       lastError = new Error(`GDELT HTTP ${response.status} for ${url}`)
@@ -112,90 +104,48 @@ async function fetchWithRetry(url, accept) {
 }
 
 function parseLastUpdate(text, asOf = NOW) {
-  const rows = String(text)
+  const candidates = String(text)
     .trim()
     .split(/\r?\n/)
     .map((line) => line.trim().split(/\s+/))
     .filter((parts) => parts.length >= 3)
-    .map(([size, md5, url]) => ({
-      size: Number(size),
-      md5: String(md5).toLowerCase(),
-      url,
-    }))
+    .map(([size, md5, url]) => ({ size: Number(size), md5: String(md5).toLowerCase(), url: String(url) }))
+    .filter((row) => Number.isInteger(row.size) && row.size > 0 && /^[0-9a-f]{32}$/.test(row.md5))
     .filter((row) => row.url.endsWith(".export.CSV.zip"))
-
-  const candidates = []
-  for (const row of rows) {
-    if (!Number.isInteger(row.size) || row.size <= 0) continue
-    if (!/^[0-9a-f]{32}$/.test(row.md5)) continue
-
-    let listedUrl
-    try {
-      listedUrl = new URL(row.url)
-    } catch {
-      continue
-    }
-
-    if (
-      !["http:", "https:"].includes(listedUrl.protocol) ||
-      listedUrl.hostname !== "data.gdeltproject.org" ||
-      !/^\/gdeltv2\/\d{14}\.export\.CSV\.zip$/.test(listedUrl.pathname)
-    ) {
-      continue
-    }
-
-    const timestamp =
-      /\/(\d{14})\.export\.CSV\.zip$/.exec(listedUrl.pathname)?.[1] ?? null
-    const batchIso = timestamp ? parseDateAdded(timestamp) : null
-    if (!batchIso) continue
-
-    candidates.push({
-      ...row,
-      listed_url: row.url,
-      listedUrl,
-      batchIso,
+    .flatMap((row) => {
+      try {
+        const listedUrl = new URL(row.url)
+        if (
+          !["http:", "https:"].includes(listedUrl.protocol) ||
+          listedUrl.hostname !== "data.gdeltproject.org" ||
+          !/^\/gdeltv2\/\d{14}\.export\.CSV\.zip$/.test(listedUrl.pathname)
+        ) return []
+        const timestamp = /\/(\d{14})\.export\.CSV\.zip$/.exec(listedUrl.pathname)?.[1]
+        const batchIso = timestamp ? parseDateAdded(timestamp) : null
+        return batchIso ? [{ ...row, listedUrl, batchIso }] : []
+      } catch {
+        return []
+      }
     })
-  }
 
-  if (!candidates.length) {
-    throw new Error("GDELT lastupdate.txt has no valid Event export ZIP")
-  }
+  if (!candidates.length) throw new Error("GDELT lastupdate.txt has no valid Event export ZIP")
 
-  /*
-   * GDELT's rolling lastupdate manifest can briefly advertise the next
-   * five-minute export before that ZIP is actually published. Selecting the
-   * newest batch whose timestamp is not in the future makes availability
-   * deterministic and avoids treating a not-yet-published export as a
-   * freshness-positive batch.
-   */
   const available = candidates
     .filter((row) => {
       const batchTime = new Date(row.batchIso).getTime()
       return Number.isFinite(batchTime) && batchTime <= asOf.getTime()
     })
-    .sort(
-      (a, b) =>
-        new Date(b.batchIso).getTime() -
-        new Date(a.batchIso).getTime(),
-    )[0]
+    .sort((a, b) => new Date(b.batchIso).getTime() - new Date(a.batchIso).getTime())[0]
 
   if (!available) {
-    throw new Error(
-      "GDELT lastupdate.txt has no Event export available at or before the requested as-of time",
-    )
+    throw new Error("GDELT lastupdate.txt has no Event export available at or before the requested as-of time")
   }
-
-  // The official list still emits legacy HTTP URLs. Validate the exact
-  // official host/path first, then upgrade the transport rather than
-  // following HTTP.
-  const secureUrl =
-    `https://data.gdeltproject.org${available.listedUrl.pathname}`
 
   return {
     size: available.size,
     md5: available.md5,
-    listed_url: available.listed_url,
-    url: secureUrl,
+    listed_url: available.url,
+    url: `https://data.gdeltproject.org${available.listedUrl.pathname}`,
     batchIso: available.batchIso,
   }
 }
@@ -207,8 +157,7 @@ function parseFipsLookup(text) {
     const [codeRaw, ...nameParts] = line.split("\t")
     const code = String(codeRaw ?? "").trim().toUpperCase()
     const name = nameParts.join("\t").trim()
-    if (!/^[A-Z]{2}$/.test(code) || !name) continue
-    map.set(code, name)
+    if (/^[A-Z]{2}$/.test(code) && name) map.set(code, name)
   }
   if (map.size < 200) throw new Error(`GDELT FIPS lookup unexpectedly small: ${map.size}`)
   return map
@@ -219,96 +168,75 @@ function mapFipsToIso3(fipsCode, fipsLookup, registry) {
   if (!/^[A-Z]{2}$/.test(code)) return { iso3: null, sourceName: null, reason: "MISSING_OR_INVALID_FIPS" }
   const sourceName = fipsLookup.get(code) ?? null
   if (!sourceName) return { iso3: null, sourceName: null, reason: "FIPS_NOT_IN_OFFICIAL_LOOKUP" }
-
-  const candidates = [sourceName, ...(FIPS_NAME_ALIASES[sourceName] ?? [])]
-  for (const candidate of candidates) {
+  for (const candidate of [sourceName, ...(FIPS_NAME_ALIASES[sourceName] ?? [])]) {
     const iso3 = countryIso3FromName(candidate, registry)
     if (iso3 && registry.byIso3.has(iso3)) return { iso3, sourceName, reason: null }
   }
   return { iso3: null, sourceName, reason: "OFFICIAL_FIPS_NAME_NOT_IN_CANONICAL_COUNTRY_REGISTRY" }
 }
 
-
 async function loadCurrentlyAvailableExport(asOf) {
-  const waitMinutes = Number(
-    process.env.GDELT_MAX_AVAILABILITY_WAIT_MINUTES ?? 8,
-  )
+  const waitMinutes = Number(process.env.GDELT_MAX_AVAILABILITY_WAIT_MINUTES ?? 8)
   if (!Number.isFinite(waitMinutes) || waitMinutes < 0) {
-    throw new Error(
-      "GDELT_MAX_AVAILABILITY_WAIT_MINUTES must be zero or positive",
-    )
+    throw new Error("GDELT_MAX_AVAILABILITY_WAIT_MINUTES must be zero or positive")
   }
-
-  const deadline =
-    Date.now() + waitMinutes * 60_000
-
+  const deadline = Date.now() + waitMinutes * 60_000
   let lastAvailabilityError = null
-
   while (true) {
-    const lastUpdateResponse = await fetchWithRetry(
-      LAST_UPDATE_URL,
-      "text/plain",
-    )
-    const lastUpdateText = await lastUpdateResponse.text()
-
-    // Live runs must re-evaluate against the current wall clock on every
-    // availability poll. A five-minute GDELT export can be "future" at the
-    // first read and become available during the bounded wait. An explicit
-    // GDELT_AS_OF remains immutable for deterministic replay/testing.
+    const response = await fetchWithRetry(LAST_UPDATE_URL, "text/plain")
+    const text = await response.text()
     const effectiveAsOf = GDELT_AS_OF ? asOf : new Date()
-
     try {
-      return parseLastUpdate(lastUpdateText, effectiveAsOf)
+      return parseLastUpdate(text, effectiveAsOf)
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : String(error)
-
-      if (
-        message !==
-        "GDELT lastupdate.txt has no Event export available at or before the requested as-of time"
-      ) {
-        throw error
-      }
-
+      const message = error instanceof Error ? error.message : String(error)
+      if (message !== "GDELT lastupdate.txt has no Event export available at or before the requested as-of time") throw error
       lastAvailabilityError = error
     }
-
-    if (Date.now() >= deadline) {
-      throw (
-        lastAvailabilityError ??
-        new Error("GDELT Event export did not become available")
-      )
-    }
-
-    console.log(
-      "GDELT lastupdate advertises a future Event export; waiting for an export that is available at or before the current as-of time.",
-    )
-
+    if (Date.now() >= deadline) throw lastAvailabilityError ?? new Error("GDELT Event export did not become available")
+    console.log("GDELT lastupdate advertises a future Event export; waiting for an export that is available at or before the current as-of time.")
     await new Promise((resolve) => setTimeout(resolve, 10_000))
   }
 }
 
-async function loadSourceRegistration(db) {
-  const result = await db
-    .from("live_external_sources")
-    .select("source_id,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,licence_name")
-    .eq("source_id", SOURCE_ID)
-    .maybeSingle()
-  if (result.error) throw result.error
-  if (!result.data) throw new Error(`Source registration not found: ${SOURCE_ID}`)
-  return result.data
+async function loadSourceGovernance(db) {
+  const [sourceResult, certificationResult] = await Promise.all([
+    db
+      .from("live_external_sources")
+      .select("source_id,category,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,licence_name")
+      .eq("source_id", SOURCE_ID)
+      .maybeSingle(),
+    db
+      .from("live_source_certification_records")
+      .select("source_id,certification_state,rights_status,endpoint_status,schema_status,freshness_status,provenance_status,independence_status,adapter_status,runtime_status,fallback_status,certification_hash,certified_at")
+      .eq("source_id", SOURCE_ID)
+      .maybeSingle(),
+  ])
+  if (sourceResult.error) throw sourceResult.error
+  if (certificationResult.error) throw certificationResult.error
+  if (!sourceResult.data) throw new Error(`Source registration not found: ${SOURCE_ID}`)
+  if (!certificationResult.data) throw new Error(`Source certification not found: ${SOURCE_ID}`)
+  return { source: sourceResult.data, certification: certificationResult.data }
 }
 
-function assertWriteGovernance(source) {
-  if (source.commercial_usage_status !== "COMMERCIAL_OK") {
-    throw new Error(`GDELT write blocked: commercial_usage_status=${source.commercial_usage_status}`)
-  }
-  if (source.enabled_for_ingestion !== true) {
-    throw new Error("GDELT write blocked: enabled_for_ingestion is not true")
-  }
-  if (source.enabled_for_commercial_signals !== false) {
-    throw new Error("GDELT write blocked: commercial signals must remain disabled until overlay methodology and census proof pass")
-  }
+function assertWriteGovernance(source, certification) {
+  const valid =
+    source.category === "GEOPOLITICS" &&
+    source.commercial_usage_status === "COMMERCIAL_OK" &&
+    source.enabled_for_ingestion === true &&
+    source.enabled_for_commercial_signals === true &&
+    certification.certification_state === "CERTIFIED" &&
+    certification.endpoint_status === "PASS" &&
+    ["COMMERCIAL_OK", "DERIVED_ONLY"].includes(certification.rights_status) &&
+    ["PASS", "NOT_APPLICABLE"].includes(certification.schema_status) &&
+    ["FRESH", "NOT_APPLICABLE"].includes(certification.freshness_status) &&
+    ["PASS", "NOT_APPLICABLE"].includes(certification.provenance_status) &&
+    ["PASS", "NOT_APPLICABLE"].includes(certification.independence_status) &&
+    ["TESTED", "NOT_APPLICABLE"].includes(certification.adapter_status) &&
+    ["PASS", "NOT_APPLICABLE"].includes(certification.runtime_status) &&
+    ["READY", "NOT_REQUIRED"].includes(certification.fallback_status) &&
+    /^[a-f0-9]{64}$/.test(String(certification.certification_hash ?? ""))
+  if (!valid) throw new Error("GDELT_WRITE_GOVERNANCE_CERTIFICATION_INVALID")
 }
 
 function unzipUtf8(zipBuffer) {
@@ -316,10 +244,7 @@ function unzipUtf8(zipBuffer) {
   const zipPath = join(tempDir, "batch.zip")
   try {
     writeFileSync(zipPath, zipBuffer)
-    return execFileSync("unzip", ["-p", zipPath], {
-      encoding: "utf8",
-      maxBuffer: 256 * 1024 * 1024,
-    })
+    return execFileSync("unzip", ["-p", zipPath], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 })
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }
@@ -332,8 +257,8 @@ if (!Number.isFinite(MAX_BATCH_AGE_MINUTES) || MAX_BATCH_AGE_MINUTES <= 0) {
 
 const db = createDb()
 const registry = await loadCountryRegistry(db)
-const sourceRegistration = await loadSourceRegistration(db)
-if (WRITE) assertWriteGovernance(sourceRegistration)
+const { source: sourceRegistration, certification: sourceCertification } = await loadSourceGovernance(db)
+if (WRITE) assertWriteGovernance(sourceRegistration, sourceCertification)
 
 const exportMeta = await loadCurrentlyAvailableExport(NOW)
 const batchAgeAsOf = GDELT_AS_OF ? NOW : new Date()
@@ -349,16 +274,12 @@ const fipsLookupHash = createHash("sha256").update(fipsText, "utf8").digest("hex
 
 const exportResponse = await fetchWithRetry(exportMeta.url, "application/zip, application/octet-stream")
 const zipBuffer = Buffer.from(await exportResponse.arrayBuffer())
-if (zipBuffer.length !== exportMeta.size) {
-  throw new Error(`GDELT export size mismatch: expected ${exportMeta.size}, received ${zipBuffer.length}`)
-}
+if (zipBuffer.length !== exportMeta.size) throw new Error(`GDELT export size mismatch: expected ${exportMeta.size}, received ${zipBuffer.length}`)
 const exportMd5 = createHash("md5").update(zipBuffer).digest("hex")
-if (exportMd5 !== exportMeta.md5) {
-  throw new Error(`GDELT export MD5 mismatch: expected ${exportMeta.md5}, received ${exportMd5}`)
-}
+if (exportMd5 !== exportMeta.md5) throw new Error(`GDELT export MD5 mismatch: expected ${exportMeta.md5}, received ${exportMd5}`)
 
 const exportText = unzipUtf8(zipBuffer)
-const lines = exportText.split(/\r?\n/).filter((line) => line.length > 0)
+const lines = exportText.split(/\r?\n/).filter(Boolean)
 if (lines.length === 0) throw new Error("GDELT Event export is empty")
 
 const observations = []
@@ -367,7 +288,7 @@ const unmapped = []
 let filteredOut = 0
 let relevantRows = 0
 
-for (let rowIndex = 0; rowIndex < lines.length; rowIndex++) {
+for (let rowIndex = 0; rowIndex < lines.length; rowIndex += 1) {
   const fields = lines[rowIndex].split("\t")
   if (fields.length !== EXPECTED_COLUMN_COUNT) {
     malformed.push({ row_index: rowIndex, reason: "UNEXPECTED_COLUMN_COUNT", column_count: fields.length })
@@ -378,17 +299,15 @@ for (let rowIndex = 0; rowIndex < lines.length; rowIndex++) {
   const eventRootCode = String(fields[FIELD.EVENT_ROOT_CODE] ?? "").trim()
   const dateAdded = parseDateAdded(fields[FIELD.DATE_ADDED])
   const sourceUrl = String(fields[FIELD.SOURCE_URL] ?? "").trim()
-
   if (!/^\d+$/.test(globalEventId) || !/^\d{2}$/.test(eventRootCode) || !dateAdded || !/^https?:\/\//i.test(sourceUrl)) {
     malformed.push({ row_index: rowIndex, global_event_id: globalEventId || null, reason: "INVALID_SCHEMA_SENTINELS" })
     continue
   }
-
   if (!CONFLICT_ROOT_CODES.has(eventRootCode)) {
-    filteredOut++
+    filteredOut += 1
     continue
   }
-  relevantRows++
+  relevantRows += 1
 
   const goldstein = Number(fields[FIELD.GOLDSTEIN_SCALE])
   const avgTone = Number(fields[FIELD.AVG_TONE])
@@ -402,115 +321,100 @@ for (let rowIndex = 0; rowIndex < lines.length; rowIndex++) {
   const fipsCode = String(fields[FIELD.ACTION_GEO_COUNTRY_CODE] ?? "").trim().toUpperCase()
   const mapped = mapFipsToIso3(fipsCode, fipsLookup, registry)
   if (!mapped.iso3) {
-    unmapped.push({
-      global_event_id: globalEventId,
-      fips_code: fipsCode || null,
-      fips_name: mapped.sourceName,
-      reason: mapped.reason,
-    })
+    unmapped.push({ global_event_id: globalEventId, fips_code: fipsCode || null, fips_name: mapped.sourceName, reason: mapped.reason })
     continue
   }
 
-  observations.push(
-    buildObservation({
-      sourceId: SOURCE_ID,
-      sourceRecordId: globalEventId,
-      category: "GEOPOLITICS",
-      countryIso3: mapped.iso3,
-      observedAt: dateAdded,
-      publishedAt: null,
-      metric: "gdelt_event_goldstein_scale",
-      valueNumeric: goldstein,
-      valueText: String(fields[FIELD.ACTION_GEO_FULL_NAME] ?? "").trim() || null,
-      unit: "goldstein_scale",
-      eventType: String(fields[FIELD.EVENT_CODE] ?? "").trim() || eventRootCode,
-      signalType: "news_derived_conflict_event_metadata",
-      sourceUrl,
-      provenance: {
-        provider: "GDELT Project",
-        dataset: "GDELT 2.0 Event Database",
-        batch_timestamp: exportMeta.batchIso,
-        listed_export_url: exportMeta.listed_url,
-        secure_export_url: exportMeta.url,
-        transport_upgrade: exportMeta.listed_url !== exportMeta.url,
-        filter_contract_version: FILTER_CONTRACT_VERSION,
-        included_event_root_codes: [...CONFLICT_ROOT_CODES],
-        event_code: String(fields[FIELD.EVENT_CODE] ?? "").trim(),
-        event_base_code: String(fields[FIELD.EVENT_BASE_CODE] ?? "").trim(),
-        event_root_code: eventRootCode,
-        quad_class: Number(fields[FIELD.QUAD_CLASS]),
-        goldstein_scale: goldstein,
-        avg_tone: Number.isFinite(avgTone) ? avgTone : null,
-        num_mentions: Number(fields[FIELD.NUM_MENTIONS]),
-        num_sources: Number(fields[FIELD.NUM_SOURCES]),
-        num_articles: Number(fields[FIELD.NUM_ARTICLES]),
-        action_geo_type: Number(fields[FIELD.ACTION_GEO_TYPE]),
-        action_geo_full_name: String(fields[FIELD.ACTION_GEO_FULL_NAME] ?? "").trim() || null,
-        action_geo_fips_country_code: fipsCode,
-        action_geo_fips_country_name: mapped.sourceName,
-        action_geo_adm1_code: String(fields[FIELD.ACTION_GEO_ADM1_CODE] ?? "").trim() || null,
-        action_geo_adm2_code: String(fields[FIELD.ACTION_GEO_ADM2_CODE] ?? "").trim() || null,
-        action_geo_latitude: Number.isFinite(latitude) ? latitude : null,
-        action_geo_longitude: Number.isFinite(longitude) ? longitude : null,
-        action_geo_feature_id: String(fields[FIELD.ACTION_GEO_FEATURE_ID] ?? "").trim() || null,
-        sqldate: String(fields[FIELD.SQLDATE] ?? "").trim(),
-        date_added: String(fields[FIELD.DATE_ADDED] ?? "").trim(),
-        country_mapping_method: "OFFICIAL_GDELT_FIPS_LOOKUP_TO_CANONICAL_COUNTRY_REGISTRY",
-        fips_lookup_sha256: fipsLookupHash,
-        evidence_boundary: "GDELT news-derived event metadata is a freshness/evidence overlay and does not replace authoritative conflict datasets such as UCDP.",
-        risk_gate_signal_activation: false,
-        raw_publisher_text_stored: false,
+  observations.push(buildObservation({
+    sourceId: SOURCE_ID,
+    sourceRecordId: globalEventId,
+    category: "GEOPOLITICS",
+    countryIso3: mapped.iso3,
+    observedAt: dateAdded,
+    publishedAt: null,
+    metric: "gdelt_event_goldstein_scale",
+    valueNumeric: goldstein,
+    valueText: String(fields[FIELD.ACTION_GEO_FULL_NAME] ?? "").trim() || null,
+    unit: "goldstein_scale",
+    eventType: String(fields[FIELD.EVENT_CODE] ?? "").trim() || eventRootCode,
+    signalType: "news_derived_conflict_event_metadata",
+    sourceUrl,
+    provenance: {
+      provider: "GDELT Project",
+      dataset: "GDELT 2.0 Event Database",
+      batch_timestamp: exportMeta.batchIso,
+      listed_export_url: exportMeta.listed_url,
+      secure_export_url: exportMeta.url,
+      transport_upgrade: exportMeta.listed_url !== exportMeta.url,
+      filter_contract_version: FILTER_CONTRACT_VERSION,
+      included_event_root_codes: [...CONFLICT_ROOT_CODES],
+      event_code: String(fields[FIELD.EVENT_CODE] ?? "").trim(),
+      event_base_code: String(fields[FIELD.EVENT_BASE_CODE] ?? "").trim(),
+      event_root_code: eventRootCode,
+      quad_class: Number(fields[FIELD.QUAD_CLASS]),
+      goldstein_scale: goldstein,
+      avg_tone: Number.isFinite(avgTone) ? avgTone : null,
+      num_mentions: Number(fields[FIELD.NUM_MENTIONS]),
+      num_sources: Number(fields[FIELD.NUM_SOURCES]),
+      num_articles: Number(fields[FIELD.NUM_ARTICLES]),
+      action_geo_type: Number(fields[FIELD.ACTION_GEO_TYPE]),
+      action_geo_full_name: String(fields[FIELD.ACTION_GEO_FULL_NAME] ?? "").trim() || null,
+      action_geo_fips_country_code: fipsCode,
+      action_geo_fips_country_name: mapped.sourceName,
+      action_geo_adm1_code: String(fields[FIELD.ACTION_GEO_ADM1_CODE] ?? "").trim() || null,
+      action_geo_adm2_code: String(fields[FIELD.ACTION_GEO_ADM2_CODE] ?? "").trim() || null,
+      action_geo_latitude: Number.isFinite(latitude) ? latitude : null,
+      action_geo_longitude: Number.isFinite(longitude) ? longitude : null,
+      action_geo_feature_id: String(fields[FIELD.ACTION_GEO_FEATURE_ID] ?? "").trim() || null,
+      sqldate: String(fields[FIELD.SQLDATE] ?? "").trim(),
+      date_added: String(fields[FIELD.DATE_ADDED] ?? "").trim(),
+      country_mapping_method: "OFFICIAL_GDELT_FIPS_LOOKUP_TO_CANONICAL_COUNTRY_REGISTRY",
+      fips_lookup_sha256: fipsLookupHash,
+      evidence_boundary: "GDELT news-derived event metadata is a freshness/evidence overlay and does not replace authoritative conflict datasets such as UCDP.",
+      risk_gate_signal_activation: false,
+      raw_publisher_text_stored: false,
+    },
+    rawPayload: {
+      global_event_id: globalEventId,
+      sqldate: String(fields[FIELD.SQLDATE] ?? "").trim(),
+      event_code: String(fields[FIELD.EVENT_CODE] ?? "").trim(),
+      event_base_code: String(fields[FIELD.EVENT_BASE_CODE] ?? "").trim(),
+      event_root_code: eventRootCode,
+      quad_class: String(fields[FIELD.QUAD_CLASS] ?? "").trim(),
+      goldstein_scale: String(fields[FIELD.GOLDSTEIN_SCALE] ?? "").trim(),
+      num_mentions: String(fields[FIELD.NUM_MENTIONS] ?? "").trim(),
+      num_sources: String(fields[FIELD.NUM_SOURCES] ?? "").trim(),
+      num_articles: String(fields[FIELD.NUM_ARTICLES] ?? "").trim(),
+      avg_tone: String(fields[FIELD.AVG_TONE] ?? "").trim(),
+      action_geo: {
+        type: String(fields[FIELD.ACTION_GEO_TYPE] ?? "").trim(),
+        full_name: String(fields[FIELD.ACTION_GEO_FULL_NAME] ?? "").trim(),
+        country_fips: fipsCode,
+        adm1: String(fields[FIELD.ACTION_GEO_ADM1_CODE] ?? "").trim(),
+        adm2: String(fields[FIELD.ACTION_GEO_ADM2_CODE] ?? "").trim(),
+        latitude: String(fields[FIELD.ACTION_GEO_LAT] ?? "").trim(),
+        longitude: String(fields[FIELD.ACTION_GEO_LONG] ?? "").trim(),
+        feature_id: String(fields[FIELD.ACTION_GEO_FEATURE_ID] ?? "").trim(),
       },
-      rawPayload: {
-        global_event_id: globalEventId,
-        sqldate: String(fields[FIELD.SQLDATE] ?? "").trim(),
-        event_code: String(fields[FIELD.EVENT_CODE] ?? "").trim(),
-        event_base_code: String(fields[FIELD.EVENT_BASE_CODE] ?? "").trim(),
-        event_root_code: eventRootCode,
-        quad_class: String(fields[FIELD.QUAD_CLASS] ?? "").trim(),
-        goldstein_scale: String(fields[FIELD.GOLDSTEIN_SCALE] ?? "").trim(),
-        num_mentions: String(fields[FIELD.NUM_MENTIONS] ?? "").trim(),
-        num_sources: String(fields[FIELD.NUM_SOURCES] ?? "").trim(),
-        num_articles: String(fields[FIELD.NUM_ARTICLES] ?? "").trim(),
-        avg_tone: String(fields[FIELD.AVG_TONE] ?? "").trim(),
-        action_geo: {
-          type: String(fields[FIELD.ACTION_GEO_TYPE] ?? "").trim(),
-          full_name: String(fields[FIELD.ACTION_GEO_FULL_NAME] ?? "").trim(),
-          country_fips: fipsCode,
-          adm1: String(fields[FIELD.ACTION_GEO_ADM1_CODE] ?? "").trim(),
-          adm2: String(fields[FIELD.ACTION_GEO_ADM2_CODE] ?? "").trim(),
-          latitude: String(fields[FIELD.ACTION_GEO_LAT] ?? "").trim(),
-          longitude: String(fields[FIELD.ACTION_GEO_LONG] ?? "").trim(),
-          feature_id: String(fields[FIELD.ACTION_GEO_FEATURE_ID] ?? "").trim(),
-        },
-        date_added: String(fields[FIELD.DATE_ADDED] ?? "").trim(),
-        source_url: sourceUrl,
-      },
-      qualityStatus: "VERIFIED",
-      commercialEligibilityStatus: "VERIFIED",
-    }),
-  )
+      date_added: String(fields[FIELD.DATE_ADDED] ?? "").trim(),
+      source_url: sourceUrl,
+    },
+    qualityStatus: "VERIFIED",
+    commercialEligibilityStatus: "VERIFIED",
+  }))
 }
 
 if (malformed.length > Math.max(5, Math.floor(lines.length * 0.01))) {
   throw new Error(`GDELT schema validation rejected too many rows: ${malformed.length}/${lines.length}`)
 }
+const duplicateIds = observations.map((row) => row.source_record_id).filter((id, index, all) => all.indexOf(id) !== index)
+if (duplicateIds.length) throw new Error(`GDELT current batch produced duplicate event ids: ${[...new Set(duplicateIds)].slice(0, 20).join(",")}`)
 
-const duplicateIds = observations
-  .map((row) => row.source_record_id)
-  .filter((id, index, all) => all.indexOf(id) !== index)
-if (duplicateIds.length) {
-  throw new Error(`GDELT current batch produced duplicate event ids: ${[...new Set(duplicateIds)].slice(0, 20).join(",")}`)
-}
-
-const observedTimes = observations
-  .map((row) => new Date(row.observed_at).getTime())
-  .filter(Number.isFinite)
+const observedTimes = observations.map((row) => new Date(row.observed_at).getTime()).filter(Number.isFinite)
 const coverageStart = observedTimes.length ? new Date(Math.min(...observedTimes)).toISOString() : exportMeta.batchIso
 const coverageEnd = observedTimes.length ? new Date(Math.max(...observedTimes)).toISOString() : exportMeta.batchIso
 const releaseTimestamp = /\/(\d{14})\.export\.CSV\.zip$/.exec(new URL(exportMeta.url).pathname)?.[1]
 const retrievedAt = new Date().toISOString()
-
 const unmappedByCode = {}
 for (const item of unmapped) {
   const key = item.fips_code || "<missing>"
@@ -561,6 +465,9 @@ const manifestCore = {
       commercial_usage_status: sourceRegistration.commercial_usage_status,
       enabled_for_ingestion: sourceRegistration.enabled_for_ingestion,
       enabled_for_commercial_signals: sourceRegistration.enabled_for_commercial_signals,
+      certification_state: sourceCertification.certification_state,
+      certification_hash: sourceCertification.certification_hash,
+      certified_at: sourceCertification.certified_at,
     },
   },
 }
@@ -569,9 +476,7 @@ const manifest = { ...manifestCore, manifest_hash: sha256(manifestCore) }
 let attempted = 0
 if (WRITE) {
   attempted = await upsertObservations(db, observations)
-  const result = await db
-    .from("live_source_release_manifests")
-    .upsert(manifest, { onConflict: "source_id,release_id" })
+  const result = await db.from("live_source_release_manifests").upsert(manifest, { onConflict: "source_id,release_id" })
   if (result.error) throw result.error
 }
 
@@ -597,6 +502,8 @@ console.log(JSON.stringify({
     commercial_usage_status: sourceRegistration.commercial_usage_status,
     enabled_for_ingestion: sourceRegistration.enabled_for_ingestion,
     enabled_for_commercial_signals: sourceRegistration.enabled_for_commercial_signals,
+    certification_state: sourceCertification.certification_state,
+    certification_hash: sourceCertification.certification_hash,
   },
   source_role: "NEWS_DERIVED_FRESHNESS_EVIDENCE_OVERLAY_NOT_AUTHORITATIVE_CONFLICT_REPLACEMENT",
   risk_gate_signal_activation: false,
