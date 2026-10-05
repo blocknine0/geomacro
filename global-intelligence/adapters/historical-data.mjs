@@ -74,6 +74,36 @@ export async function fetchHistoricalRareEarths(options = {}) {
   });
 }
 
+const HISTORICAL_CONNECTION_PROBES = {
+  macro: {
+    table: DEFAULT_TABLES.macro,
+    source_id: "geomacro_historical_macro"
+  },
+  geopolitics: {
+    table: DEFAULT_TABLES.geopolitical,
+    source_id: "geomacro_historical_geopolitics"
+  },
+  rare_earths: {
+    table: DEFAULT_TABLES.rareEarth,
+    source_id: "geomacro_historical_rare_earths"
+  }
+};
+
+export async function probeHistoricalConnection(domain) {
+  const target = HISTORICAL_CONNECTION_PROBES[domain];
+  if (!target) throw new Error(`Unknown historical connection domain: ${domain}`);
+
+  // Connection health must prove that the governed commercial interface is
+  // reachable without executing a potentially expensive serving-view sort.
+  // Full production retrieval keeps its normal adapter ordering semantics.
+  return fetchHistoricalEvidence({
+    table: target.table,
+    source_id: target.source_id,
+    limit: 1,
+    order: undefined
+  });
+}
+
 export async function fetchHistoricalEvidence({
   table,
   source_id,
