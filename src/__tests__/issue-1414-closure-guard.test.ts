@@ -29,12 +29,22 @@ describe("#1414 closure guard", () => {
     expect(result.missingRequiredLiveAcceptance.length).toBe(3);
   });
 
-  it("requires an issue-closed trigger with write permission only for issues", () => {
+  it("supports immediate issue-close enforcement plus periodic and manual self-heal", () => {
     expect(workflow).toContain("types: [closed]");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain('cron: "*/15 * * * *"');
     expect(workflow).toContain("issues: write");
     expect(workflow).toContain("contents: read");
-    expect(workflow).toContain("github.event.issue.number == 1414");
+    expect(workflow).toContain("github.event_name != 'issues' || github.event.issue.number == 1414");
     expect(workflow).toContain("node scripts/ops/enforce-issue-1414-closure.mjs");
+  });
+
+  it("reads the canonical issue API before deciding whether a reopen is required", () => {
+    expect(runner).toContain('`${apiBase}/repos/${repository}/issues/1414`');
+    expect(runner).toContain("const issueResponse = await fetch(issueUrl, { headers })");
+    expect(runner).toContain("const state = String(issue?.state ?? \"\").toLowerCase()");
+    expect(runner).toContain("evaluateIssue1414Acceptance(issue?.body ?? \"\")");
+    expect(runner).toContain('reason: "master_tracker_already_open"');
   });
 
   it("reopens through the issue API and records why", () => {
@@ -42,5 +52,6 @@ describe("#1414 closure guard", () => {
     expect(runner).toContain('`${issueUrl}/comments`');
     expect(runner).toContain("Sections 1–13");
     expect(runner).toContain("0.05 USDC");
+    expect(runner).toContain("runs periodically");
   });
 });
