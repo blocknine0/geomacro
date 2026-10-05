@@ -12,6 +12,8 @@ describe("GRI direct-Postgres publication vs anon/RLS parity boundary", () => {
     expect(audit).toContain("verified: null");
     expect(audit).toContain("skipped: true");
     expect(audit).toContain('if (!DIRECT_POSTGRES_MODE)');
+    expect(audit).toContain("This artifact is not a parity pass");
+    expect(audit).toContain("Strict parity remains mandatory in the dedicated GRI governance workflow");
   });
 
   it("retains strict anon/RLS parity in the dedicated governance workflow", () => {
@@ -21,5 +23,7 @@ describe("GRI direct-Postgres publication vs anon/RLS parity boundary", () => {
     expect(audit).toContain("snapshotFieldParity");
     expect(audit).toContain("contributionMembershipParity");
     expect(audit).toContain("dispositionRowParity");
+    expect(audit).toContain("validationRunParity");
+    expect(audit).toContain("validationMetricParity");
   });
 });
