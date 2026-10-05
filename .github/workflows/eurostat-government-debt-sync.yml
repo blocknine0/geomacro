@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      GRI_DB_MODE: direct_postgres
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
@@ -86,6 +88,7 @@ jobs:
     environment: production
     env:
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      GRI_DB_MODE: direct_postgres
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
