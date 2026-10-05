@@ -3,6 +3,10 @@
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
+import {
+  findRemainingDenoReferences,
+  rewriteDenoEnvGets,
+} from "./lib/deno-env-rewrite.mjs";
 
 const SOURCE_PATH = path.resolve("supabase/functions/live-structure-intelligence/index.ts");
 const GENERATED_PATH = path.resolve(".geomacro-live-structure-local-handler.ts");
@@ -64,7 +68,11 @@ async function buildHandler() {
     .replaceAll("manifest.object_path", "manifest.resolved_object_path")
     .replaceAll("manifest.storage_bucket", "manifest.resolved_storage_bucket");
 
-  source = source.replace(/Deno\.env\.get\(\s*"([A-Z0-9_]+)"\s*\)/g, (_match, name) => `process.env.${name}`);
+  // Keep the canonical Deno source unchanged. The local runner only rewrites
+  // static environment reads into Node process.env access. The helper accepts
+  // formatter-style multiline calls and optional trailing commas so a harmless
+  // source-format change cannot break the direct-Postgres recovery path.
+  source = rewriteDenoEnvGets(source);
   source = replaceExactlyOnce(
     source,
     "Deno.serve(async (req) => {",
@@ -76,7 +84,10 @@ async function buildHandler() {
   if (!trimmed.endsWith("});")) throw new Error("LOCAL_STRUCTURER_TRANSFORM_END_MISMATCH");
   source = trimmed.slice(0, -3) + "}\n";
 
-  if (source.includes("Deno.")) throw new Error("LOCAL_STRUCTURER_DENO_REFERENCE_REMAINS");
+  const remainingDenoReferences = findRemainingDenoReferences(source);
+  if (remainingDenoReferences.length > 0) {
+    throw new Error(`LOCAL_STRUCTURER_DENO_REFERENCE_REMAINS:${remainingDenoReferences.join(",")}`);
+  }
   if (!source.includes('const STRUCTURE_VERSION = "live-structure-v1.4.9"')) {
     throw new Error("LOCAL_STRUCTURER_CANONICAL_VERSION_MISSING");
   }
