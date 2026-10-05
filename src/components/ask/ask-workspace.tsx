@@ -235,32 +235,32 @@ function AssistantAnswer({ answer }: { answer: AskAnswer }) {
   const evidenceLabel = answer.data_mode === "permanent" ? "Verified context" : "Live checked";
 
   return (
-    <div className="max-w-2xl min-w-0 break-words px-1">
-      <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">
+    <div className="max-w-2xl min-w-0 px-1">
+      <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">
         <span>Geomacro</span>
         <span className="text-muted-foreground">· {evidenceLabel}</span>
         {answer.low_confidence ? <span className="text-muted-foreground">· Limited confidence</span> : null}
       </div>
-      <p className="mt-2 text-[15px] leading-7 text-foreground sm:text-base">{answer.summary}</p>
+      <p className="mt-2 break-words text-[15px] leading-7 text-foreground sm:text-base">{answer.summary}</p>
 
       {evidence.length > 0 ? (
-        <details className="mt-3 rounded-xl border border-border/60 bg-card/25 px-3 py-2">
+        <details className="mt-3 min-w-0 rounded-xl border border-border/60 bg-card/25 px-3 py-2">
           <summary className="cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground">
             Evidence ({evidence.length})
           </summary>
           <ul className="mt-3 space-y-2 border-t border-border/60 pt-3">
             {evidence.map((item) => (
-              <li key={item.eventId} className="text-xs leading-5 text-muted-foreground">
+              <li key={item.eventId} className="min-w-0 break-words text-xs leading-5 text-muted-foreground">
                 {isNavigableEvidence(item.eventId) ? (
                   <Link
                     to="/event/$eventId"
                     params={{ eventId: item.eventId }}
-                    className="text-primary underline-offset-4 hover:underline"
+                    className="break-words text-primary underline-offset-4 hover:underline"
                   >
                     {item.title}
                   </Link>
                 ) : (
-                  <span>{item.title}</span>
+                  <span className="break-words">{item.title}</span>
                 )}
               </li>
             ))}
@@ -269,7 +269,7 @@ function AssistantAnswer({ answer }: { answer: AskAnswer }) {
       ) : null}
 
       {answer.insufficient_evidence ? (
-        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+        <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">
           Geomacro will not fill an evidence gap with a synthetic claim.
         </p>
       ) : null}
