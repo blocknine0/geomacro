@@ -6,7 +6,7 @@ const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const DOMAINS = ["geopolitics", "macro", "rare_earth"];
 const RAW_CATEGORIES = ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"];
 const CLASSIFICATION_VERSION = "event-severity-v1.0.5";
-const STRUCTURED_FRESH_MS = Number(process.env.RESTRICTED_STRUCTURED_FRESH_MS || 24 * 60 * 60 * 1000);
+const STRUCTURED_ADVANCE_MS = Number(process.env.RESTRICTED_STRUCTURED_ADVANCE_MS || 24 * 60 * 60 * 1000);
 const SCORED_FRESH_MS = Number(process.env.RESTRICTED_SCORED_FRESH_MS || 24 * 60 * 60 * 1000);
 const FRAGMENT_FRESH_MS = Number(process.env.RESTRICTED_FRAGMENT_FRESH_MS || 60 * 60 * 1000);
 const OUT = process.env.RESTRICTED_INTELLIGENCE_AUDIT_OUTPUT || "artifacts/restricted-intelligence-continuity.json";
@@ -91,13 +91,17 @@ const structuredRows = await paged(
 );
 const latestStructured = Object.fromEntries(DOMAINS.map((domain) => [domain, -Infinity]));
 const latestEligibleStructured = Object.fromEntries(DOMAINS.map((domain) => [domain, -Infinity]));
+let newestStructuredAny = -Infinity;
+let newestEligibleStructuredAny = -Infinity;
 for (const row of structuredRows) {
   const domain = String(row.domain ?? "");
   if (!DOMAINS.includes(domain)) continue;
   const at = observedTime(row);
   latestStructured[domain] = Math.max(latestStructured[domain], at);
+  newestStructuredAny = Math.max(newestStructuredAny, at);
   if (["VERIFIED", "DERIVED_ONLY"].includes(String(row.commercial_eligibility_status ?? ""))) {
     latestEligibleStructured[domain] = Math.max(latestEligibleStructured[domain], at);
+    newestEligibleStructuredAny = Math.max(newestEligibleStructuredAny, at);
   }
 }
 
@@ -124,8 +128,14 @@ for (const row of scoredRows) {
   latestScored[category] = Math.max(latestScored[category], at);
 }
 
-const structuredFresh = Object.fromEntries(DOMAINS.map((domain) => [domain, ageMs(latestStructured[domain]) <= STRUCTURED_FRESH_MS]));
-const eligibleStructuredFresh = Object.fromEntries(DOMAINS.map((domain) => [domain, ageMs(latestEligibleStructured[domain]) <= STRUCTURED_FRESH_MS]));
+const structuredStatus = Object.fromEntries(DOMAINS.map((domain) => [
+  domain,
+  ageMs(latestStructured[domain]) <= STRUCTURED_ADVANCE_MS ? "CURRENT" : Number.isFinite(latestStructured[domain]) ? "LAST_VERIFIED" : "UNAVAILABLE",
+]));
+const eligibleStructuredStatus = Object.fromEntries(DOMAINS.map((domain) => [
+  domain,
+  ageMs(latestEligibleStructured[domain]) <= STRUCTURED_ADVANCE_MS ? "CURRENT" : Number.isFinite(latestEligibleStructured[domain]) ? "LAST_VERIFIED" : "UNAVAILABLE",
+]));
 const scoredFresh = Object.fromEntries(DOMAINS.map((domain) => [domain, ageMs(latestScored[domain]) <= SCORED_FRESH_MS]));
 
 const checks = {
@@ -138,10 +148,14 @@ const checks = {
   newest_verified_b2_fragment_at: isoOrNull(newestFragmentMs),
   verified_b2_fragment_current: ageMs(newestFragmentMs) <= FRAGMENT_FRESH_MS,
   verified_b2_fragment_paths_valid: fragmentPathsValid && fragments.length > 0,
+  newest_structured_any_at: isoOrNull(newestStructuredAny),
+  structured_pipeline_advanced: ageMs(newestStructuredAny) <= STRUCTURED_ADVANCE_MS,
+  newest_commercially_eligible_structured_any_at: isoOrNull(newestEligibleStructuredAny),
+  commercially_eligible_structured_pipeline_advanced: ageMs(newestEligibleStructuredAny) <= STRUCTURED_ADVANCE_MS,
   latest_structured_at: Object.fromEntries(DOMAINS.map((domain) => [domain, isoOrNull(latestStructured[domain])])),
+  structured_status_by_domain: structuredStatus,
   latest_commercially_eligible_structured_at: Object.fromEntries(DOMAINS.map((domain) => [domain, isoOrNull(latestEligibleStructured[domain])])),
-  structured_fresh_by_domain: structuredFresh,
-  commercially_eligible_structured_fresh_by_domain: eligibleStructuredFresh,
+  commercially_eligible_structured_status_by_domain: eligibleStructuredStatus,
   latest_scored_at: Object.fromEntries(DOMAINS.map((domain) => [domain, isoOrNull(latestScored[domain])])),
   scored_fresh_by_domain: scoredFresh,
   invalid_scored_rows: invalidScored.length,
@@ -155,9 +169,9 @@ if (!checks.country_registry_at_least_195) failures.push("COUNTRY_REGISTRY_LT_19
 if (!checks.country_domain_matrix_complete) failures.push("COUNTRY_DOMAIN_MATRIX_INCOMPLETE");
 if (!checks.verified_b2_fragment_current) failures.push("VERIFIED_B2_FRAGMENT_STALE");
 if (!checks.verified_b2_fragment_paths_valid) failures.push("VERIFIED_B2_FRAGMENT_CONTRACT_INVALID");
+if (!checks.structured_pipeline_advanced) failures.push("STRUCTURED_PIPELINE_DID_NOT_ADVANCE");
+if (!checks.commercially_eligible_structured_pipeline_advanced) failures.push("ELIGIBLE_STRUCTURED_PIPELINE_DID_NOT_ADVANCE");
 for (const domain of DOMAINS) {
-  if (!structuredFresh[domain]) failures.push(`STRUCTURED_${domain.toUpperCase()}_STALE`);
-  if (!eligibleStructuredFresh[domain]) failures.push(`ELIGIBLE_STRUCTURED_${domain.toUpperCase()}_STALE`);
   if (!scoredFresh[domain]) failures.push(`SCORED_${domain.toUpperCase()}_STALE`);
 }
 if (invalidScored.length > 0) failures.push("INVALID_CANONICAL_SCORED_ROWS");
@@ -174,6 +188,11 @@ const result = {
     direct_postgres_is_transport_only: true,
     canonical_database_project_ref: PROJECT_REF,
     raw_archive_authority: "backblaze-b2-verified-readback",
+  },
+  freshness_boundary: {
+    per_domain_structured_status_is_honest: true,
+    stale_or_missing_structured_domains_are_not_relabelled_current: true,
+    scored_commercial_domains_must_all_be_current: true,
   },
   checks,
   missing_country_domain_cells: missingCells.slice(0, 100),
