@@ -23,6 +23,7 @@ const ISOLATED_MIGRATIONS = [
   "983_event_family_version_ledger.sql",
   "984_telegram_authorized_publisher_only.sql",
   "985_breaking_feed_registry_parity.sql",
+  "986_telegram_authorization_invariants.sql",
 ]
 
 function migrationVersionName(version) {
