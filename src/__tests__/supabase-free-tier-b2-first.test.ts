@@ -130,8 +130,11 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(orchestratorWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
     expect(orchestratorWorkflow.indexOf("supabase-free-tier-budget.mjs --require-bulk-write --require-normal"))
       .toBeLessThan(orchestratorWorkflow.indexOf("Run due intelligence tasks serially"));
-    expect(autoIngestWorkflow).toContain('cron: "17 */6 * * *"');
+    expect(autoIngestWorkflow).toContain("workflow_dispatch: {}");
+    expect(autoIngestWorkflow).not.toContain("schedule:");
+    expect(autoIngestWorkflow).not.toContain("\n  push:\n");
     expect(autoIngestWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
+    expect(autoIngestWorkflow).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest");
     expect(budget).toContain('recurring_ingest_allowed: data.mode === "normal"');
   });
 });
