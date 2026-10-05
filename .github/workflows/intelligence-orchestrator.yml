@@ -2,7 +2,15 @@ name: Geomacro Intelligence Orchestrator
 
 on:
   workflow_dispatch:
-  # Emergency quota hold. Preserve workflow_dispatch for controlled recovery.
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/intelligence-orchestrator.yml"
+      - "scripts/intelligence-orchestrator.mjs"
+      - "scripts/lib/intelligence-scheduler.mjs"
+      - "scripts/ops/supabase-free-tier-budget.mjs"
 
 permissions:
   contents: read
@@ -107,8 +115,8 @@ jobs:
           node --check scripts/intelligence-orchestrator.mjs
           echo "PASS: authoritative scheduler runtime validated."
 
-      - name: Require Supabase free-tier bulk-write budget
-        run: node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write
+      - name: Require normal Supabase free-tier recurring-write budget
+        run: node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal
 
       - name: Derive current public verification key
         shell: bash
