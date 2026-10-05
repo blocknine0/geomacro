@@ -51,6 +51,18 @@ async function buildHandler() {
     + "const db = createGriDbClient()\n\n"
     + source.slice(typeStart);
 
+  // Direct PostgreSQL writes the real table columns rather than PostgREST's
+  // presentation aliases. Preserve the already-verified bridge channel key so
+  // the database-level publisher-authorization trigger can evaluate the same
+  // canonical event row. This is transport adaptation only; the Edge source
+  // remains the business-logic authority.
+  source = replaceExactlyOnce(
+    source,
+    "    source_id:\n      sourceId,\n    source_record_id:\n      sourceRecordId,",
+    "    source_id:\n      sourceId,\n    source_channel_key:\n      cleanString(payload.source_channel_key, 64),\n    source_record_id:\n      sourceRecordId,",
+    "CHANNEL_KEY",
+  );
+
   source = rewriteDenoEnvGets(source);
   source = replaceExactlyOnce(
     source,
@@ -69,6 +81,9 @@ async function buildHandler() {
   }
   if (!source.includes('sourceId ===\n      "telegram_mtproto_flash"')) {
     throw new Error("LOCAL_FLASH_CANONICAL_TELEGRAM_GUARD_MISSING");
+  }
+  if (!source.includes("source_channel_key:\n      cleanString(payload.source_channel_key, 64)")) {
+    throw new Error("LOCAL_FLASH_CHANNEL_KEY_TRANSPORT_MISSING");
   }
   if (!source.includes('verification_status:\n      verificationStatus')) {
     throw new Error("LOCAL_FLASH_CANONICAL_VERIFICATION_PATH_MISSING");
