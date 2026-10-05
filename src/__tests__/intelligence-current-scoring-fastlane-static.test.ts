@@ -5,51 +5,45 @@ const workflow = readFileSync(
   ".github/workflows/intelligence-current-scoring-fastlane.yml",
   "utf8",
 );
+const orchestrator = readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
+const cycle = readFileSync("scripts/ops/run-intelligence-current-scoring-cycle.mjs", "utf8");
 
 describe("current Intelligence scoring fastlane", () => {
-  it("uses the canonical scorer under the existing writer lock", () => {
+  it("moves recurring current scoring into the single master orchestrator", () => {
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).not.toContain("schedule:");
+    expect(workflow).not.toContain("\n  push:\n");
     expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
-    expect(workflow).toContain("node scripts/ingest-news.js");
-    expect(workflow).toContain("classification_version: 'event-severity-v1.0.5'");
-    expect(workflow).toContain("classification_prompt_version: 'risk-desk-filter-v1.0.5'");
-    expect(workflow).toContain("raw_feature_score_promotion: false");
+    expect(orchestrator).toContain('key: "current_scoring"');
+    expect(orchestrator).toContain("cadenceSeconds: 1200");
+    expect(orchestrator).toContain("offsetSeconds: 780");
+    expect(orchestrator).toContain('scripts/ops/run-intelligence-current-scoring-cycle.mjs');
   });
 
-  it("rotates one domain per bounded GDELT-only run and holds expensive discovery lanes", () => {
-    expect(workflow).toContain('cron: "13,33,53 * * * *"');
-    expect(workflow).toContain("timeout-minutes: 12");
-    expect(workflow).toContain("GDELT_FORCE_CATEGORY=$domain");
-    expect(workflow).toContain('GEOMACRO_GDELT_ONLY: "true"');
-    expect(workflow).toContain("FASTLANE_NON_GDELT_DISCOVERY_USED");
-    expect(workflow).toContain('GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "0"');
-    expect(workflow).toContain('GDACS_ENABLED: "false"');
-    expect(workflow).toContain('RELIEFWEB_ENABLED: "false"');
-    expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "2"');
-    expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
+  it("keeps manual recovery bounded to exactly current_scoring", () => {
+    expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: current_scoring');
+    expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: current_scoring');
+    expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: "1"');
+    expect(workflow).toContain('GRI_DB_MODE: direct_postgres');
+    expect(workflow).toContain("--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs");
+    expect(workflow).toContain('.selected[0].task == "current_scoring"');
+    expect(orchestrator).toContain("TASK_ALLOWLIST.size > 0 && !TASK_ALLOWLIST.has(task.key)");
   });
 
-  it("loads the direct-Postgres shim only after checkout", () => {
-    const jobEnv = workflow.slice(
-      workflow.indexOf("    env:"),
-      workflow.indexOf("    steps:"),
-    );
-    const scorerStep = workflow.slice(
-      workflow.indexOf("      - name: Run bounded canonical current scorer"),
-      workflow.indexOf("      - name: Verify latest canonical scored state"),
-    );
-    expect(jobEnv).not.toContain("NODE_OPTIONS");
-    expect(scorerStep).toContain(
-      "NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs",
-    );
+  it("retains the bounded all-domain scorer and verified B2 publication sync", () => {
+    expect(cycle).toContain('const DOMAINS = ["geopolitics", "macro", "rare_earth"]');
+    expect(cycle).toContain('GEOMACRO_GDELT_ONLY: "true"');
+    expect(cycle).toContain('GDELT_GAL_FALLBACK_ENABLED: "true"');
+    expect(cycle).toContain('GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "0"');
+    expect(cycle).toContain("CURRENT_SCORING_NON_GDELT_DISCOVERY_USED");
+    expect(cycle).toContain('raw_feature_score_promotion: false');
+    expect(cycle).toContain('raw_event_metadata_score_promotion: false');
+    expect(cycle).toContain('sync-fastlane-scored-intelligence.mjs');
+    expect(cycle).toContain('required_fresh_ms: REQUIRED_FRESH_MS');
   });
 
-  it("bounds recurring history reads instead of scanning the full event table", () => {
-    expect(workflow).toContain("7 * 24 * 60 * 60 * 1000");
-    expect(workflow).toContain("recent_dedupe_window_days: 7");
-  });
-
-  it("never maps GDELT numeric features directly into severity", () => {
-    expect(workflow).not.toMatch(/Goldstein|AvgTone|NumMentions|NumSources.*severity|severity.*NumSources/i);
+  it("does not allow legacy numeric source features to become severity", () => {
+    expect(cycle).not.toMatch(/Goldstein|AvgTone|NumMentions|NumSources.*severity|severity.*NumSources/i);
     expect(workflow).not.toContain("live_observed_unscored: false");
   });
 });
