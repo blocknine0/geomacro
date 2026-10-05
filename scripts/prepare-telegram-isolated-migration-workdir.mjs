@@ -24,6 +24,7 @@ const ISOLATED_MIGRATIONS = [
   "984_telegram_authorized_publisher_only.sql",
   "985_breaking_feed_registry_parity.sql",
   "986_telegram_authorization_invariants.sql",
+  "987_telegram_activation_guard.sql",
 ]
 
 function migrationVersionName(version) {
