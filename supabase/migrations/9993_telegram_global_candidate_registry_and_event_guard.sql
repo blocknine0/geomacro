@@ -50,19 +50,25 @@ language plpgsql
 as $$
 declare
   channel public.live_telegram_channel_registry%rowtype;
+  normalized_key text;
 begin
   if new.source_id = 'telegram_mtproto_flash' then
     raise exception 'legacy public Telegram MTProto ingestion is disabled';
   end if;
 
   if new.source_id = 'telegram_authorized_publisher_feed' then
-    if new.source_channel_key is null or length(trim(new.source_channel_key)) = 0 then
-      raise exception 'authorized Telegram source_channel_key is required';
+    normalized_key := lower(trim(coalesce(new.source_channel_key, new.source_channel, '')));
+    normalized_key := regexp_replace(normalized_key, '^@+', '');
+
+    if normalized_key = '' or normalized_key !~ '^[a-z0-9_]{5,32}$' then
+      raise exception 'authorized Telegram source_channel/source_channel_key is required';
     end if;
+
+    new.source_channel_key := normalized_key;
 
     select * into channel
     from public.live_telegram_channel_registry
-    where channel_key = lower(trim(new.source_channel_key));
+    where channel_key = normalized_key;
 
     if not found
        or channel.enabled is not true
@@ -74,7 +80,7 @@ begin
        or length(trim(channel.authorization_reference)) = 0
        or channel.authorization_granted_at is null
        or (channel.authorization_expires_at is not null and channel.authorization_expires_at <= now()) then
-      raise exception 'Telegram publisher authorization is not valid for channel %', new.source_channel_key;
+      raise exception 'Telegram publisher authorization is not valid for channel %', normalized_key;
     end if;
 
     -- Telegram is always lead evidence first; promotion requires the normal
@@ -88,7 +94,7 @@ $$;
 
 drop trigger if exists trg_enforce_telegram_flash_authorization on public.live_flash_events;
 create trigger trg_enforce_telegram_flash_authorization
-before insert or update of source_id, source_channel_key, verification_status
+before insert or update of source_id, source_channel_key, source_channel, verification_status
 on public.live_flash_events
 for each row execute function public.enforce_telegram_flash_authorization();
 
