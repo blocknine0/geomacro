@@ -116,8 +116,9 @@ describe("production website runtime contract", () => {
   it("checks rendered route content plus functional public APIs", () => {
     const workflow = read(".github/workflows/production-website-health.yml");
     expect(workflow).toContain("Verify public production APIs and current Intelligence contract");
-    expect(workflow).toContain("body?.mode === 'verified_b2_plus_live_observed'");
-    expect(workflow).toContain("live < 1");
+    expect(workflow).toContain("scoredCurrentAcrossAllDomains");
+    expect(workflow).toContain("body?.mode !== 'verified_b2' || live !== 0");
+    expect(workflow).toContain("body?.mode !== 'verified_b2_plus_live_observed' || live < 1");
     expect(workflow).toContain('/api/public/intelligence');
     expect(workflow).toContain('/api/public/risk-indices');
     expect(workflow).toContain('/api/public-ask');
