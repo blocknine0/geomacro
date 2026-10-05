@@ -12,9 +12,9 @@ describe("Historical data connection probe", () => {
     expect(probe).not.toContain("fetchHistoricalRareEarths");
   });
 
-  it("probes the governed geopolitical base interface without expensive ordering", () => {
+  it("probes the governed geopolitical base interface without expensive ordering while full retrieval keeps the latest-country serving view", () => {
     expect(adapter).toContain('table: DEFAULT_TABLES.geopolitical');
-    expect(adapter).toContain('table: DEFAULT_TABLES.geopoliticalCountryLatest');
+    expect(adapter).toContain('table: options.table ?? DEFAULT_TABLES.geopoliticalCountryLatest');
     expect(adapter).toContain("export async function probeHistoricalConnection(domain)");
     expect(adapter).toContain("limit: 1");
     expect(adapter).toContain("order: undefined");
