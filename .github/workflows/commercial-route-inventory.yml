@@ -1,0 +1,68 @@
+name: Commercial Route Inventory
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/commercial-route-inventory.yml"
+      - "config/commercial-route-disposition.json"
+      - "scripts/audit-commercial-route-inventory.mjs"
+      - "scripts/lib/commercial-route-inventory.mjs"
+      - "src/routeTree.gen.ts"
+      - "src/routes/**"
+      - "server/api/**"
+      - "src/components/site-shell.tsx"
+      - "src/__tests__/commercial-route-inventory-gate.test.ts"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/commercial-route-inventory.yml"
+      - "config/commercial-route-disposition.json"
+      - "scripts/audit-commercial-route-inventory.mjs"
+      - "scripts/lib/commercial-route-inventory.mjs"
+      - "src/routeTree.gen.ts"
+      - "src/routes/**"
+      - "server/api/**"
+      - "src/components/site-shell.tsx"
+      - "src/__tests__/commercial-route-inventory-gate.test.ts"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commercial-route-inventory-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  route-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify explicit route dispositions
+        run: bun x vitest run src/__tests__/commercial-route-inventory-gate.test.ts
+
+      - name: Emit auditable route inventory
+        run: node scripts/audit-commercial-route-inventory.mjs
+
+      - name: Upload route inventory proof
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: commercial-route-inventory-${{ github.run_id }}
+          path: artifacts/commercial-route-inventory.json
+          if-no-files-found: error
+          retention-days: 30
