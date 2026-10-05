@@ -32,6 +32,17 @@ describe("#1414 scored-only B2 publication fallback", () => {
     expect(scoredOnly).toContain("current_source_batch_at: null");
   });
 
+  it("preserves bounded cross-source and cross-batch near-duplicate suppression", () => {
+    expect(scoredOnly).toContain("const DUPLICATE_WINDOW_MS = 72 * 60 * 60 * 1000");
+    expect(scoredOnly).toContain("function sameStory(a, b)");
+    expect(scoredOnly).toContain("summaryOverlap.jaccard >= 0.82");
+    expect(scoredOnly).toContain("summaryOverlap.containment >= 0.74");
+    expect(scoredOnly).toContain("titleOverlap.jaccard >= 0.82");
+    expect(scoredOnly).toContain("dedupeScoredRows(grouped.get(category))");
+    expect(scoredOnly).toContain("FASTLANE_SCORED_ONLY_NEAR_DUPLICATE_ROW");
+    expect(scoredOnly).toContain("near_duplicate_suppression: true");
+  });
+
   it("keeps public rows derived-only, deduplicated and provider-private", () => {
     expect(scoredOnly).toContain('`Geomacro finds ${narrative');
     expect(scoredOnly).toContain('"source_name" in row');
