@@ -6,6 +6,8 @@ const hmac = (key, value) => createHmac("sha256", key).update(value).digest();
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
 const MAX_ATTEMPTS = 4;
+const DEFAULT_ALLOWED_PREFIXES = Object.freeze(["geomacro-evidence/v1/"]);
+const EXTRA_ALLOWED_PREFIXES = Object.freeze(new Set(["telegram/leads/"]));
 
 function safeB2ErrorCode(text) {
   const source = String(text ?? "");
@@ -32,19 +34,42 @@ function parseRequestBudget() {
   return value;
 }
 
-export function createB2Client({ endpointUrl, accessKey, secretKey, bucket }) {
+function normalizeAllowedPrefixes(allowedKeyPrefixes) {
+  if (allowedKeyPrefixes == null) return DEFAULT_ALLOWED_PREFIXES;
+  if (!Array.isArray(allowedKeyPrefixes) || allowedKeyPrefixes.length < 1 || allowedKeyPrefixes.length > 4) {
+    throw new Error("B2_ARCHIVE_PREFIX_CONFIG_INVALID");
+  }
+  const normalized = allowedKeyPrefixes.map((value) => String(value ?? "").trim());
+  for (const prefix of normalized) {
+    if (prefix !== "geomacro-evidence/v1/" && !EXTRA_ALLOWED_PREFIXES.has(prefix)) {
+      throw new Error("B2_ARCHIVE_PREFIX_CONFIG_INVALID");
+    }
+  }
+  return Object.freeze([...new Set(normalized)]);
+}
+
+export function createB2Client({ endpointUrl, accessKey, secretKey, bucket, allowedKeyPrefixes = null }) {
   const endpoint = parseB2Endpoint(endpointUrl);
   if (endpoint.endpoint !== "https://s3.us-east-005.backblazeb2.com" ||
       bucket !== "geomacro-private-archive" || !accessKey || !secretKey) throw new Error("B2_ARCHIVE_CONFIG_INVALID");
 
+  const allowedPrefixes = normalizeAllowedPrefixes(allowedKeyPrefixes);
   const requestBudget = parseRequestBudget();
   let requestsStarted = 0;
 
   async function request(method, key, body = Buffer.alloc(0), { allowNotFound = false } = {}) {
-    if (!/^geomacro-evidence\/v1\/[A-Za-z0-9_./-]+$/.test(key) || key.includes("..")) {
+    const normalizedKey = String(key ?? "");
+    const matchesAllowedPrefix = allowedPrefixes.some((prefix) => normalizedKey.startsWith(prefix));
+    if (
+      !matchesAllowedPrefix ||
+      !/^[A-Za-z0-9_./-]+$/.test(normalizedKey) ||
+      normalizedKey.includes("..") ||
+      normalizedKey.startsWith("/") ||
+      normalizedKey.endsWith("/")
+    ) {
       throw new Error("B2_ARCHIVE_KEY_INVALID");
     }
-    const path = `/${[bucket, ...key.split("/")].map(encodeURIComponent).join("/")}`;
+    const path = `/${[bucket, ...normalizedKey.split("/")].map(encodeURIComponent).join("/")}`;
     const host = new URL(endpoint.endpoint).host;
     const payloadHash = sha(body);
 
@@ -103,6 +128,6 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket }) {
     put: (key, bytes) => request("PUT", key, bytes),
     get: (key) => request("GET", key),
     getOptional: (key) => request("GET", key, Buffer.alloc(0), { allowNotFound: true }),
-    usage: () => ({ requests_started: requestsStarted, request_budget: requestBudget }),
+    usage: () => ({ requests_started: requestsStarted, request_budget: requestBudget, allowed_prefixes: allowedPrefixes }),
   };
 }
