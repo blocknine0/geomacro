@@ -20,6 +20,8 @@ on:
       - "src/lib/use-risk-indices.ts"
       - "src/lib/use-intelligence.ts"
       - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
+      - "scripts/ops/republish-b2-public-intelligence-scored-only.mjs"
+      - "scripts/ops/sync-fastlane-scored-intelligence.mjs"
       - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
       - "scripts/ops/publish-b2-risk-indices-direct-postgres.mjs"
       - ".github/workflows/gri-realtime-direct-postgres.yml"
@@ -135,12 +137,16 @@ jobs:
           const fs = require('fs');
           const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           const rows = Array.isArray(body?.rows) ? body.rows : [];
-          const required = new Set(['geopolitics', 'macro', 'rare_earth']);
-          const scored = new Set();
+          const required = ['geopolitics', 'macro', 'rare_earth'];
+          const requiredSet = new Set(required);
+          const latestScored = new Map();
           let verified = 0;
           let live = 0;
           let newestLive = -Infinity;
-          let ok = body?.ok === true && body?.mode === 'verified_b2_plus_live_observed' && rows.length > 0;
+          let ok = body?.ok === true && rows.length > 0;
+          const now = Date.now();
+          const dayMs = 24 * 60 * 60 * 1000;
+          const futureToleranceMs = 5 * 60 * 1000;
           for (const row of rows) {
             const category = String(row?.category ?? '');
             const title = String(row?.source_title ?? '');
@@ -148,21 +154,35 @@ jobs:
             if (row?.public_status === 'verified_b2') {
               verified++;
               const severity = Number(row?.severity);
+              const timestamp = Date.parse(String(row?.published_at ?? row?.created_at ?? ''));
               if (!Number.isFinite(severity) || severity < 0 || severity > 100 || !title.startsWith('Geomacro finds ')) ok = false;
-              if (required.has(category)) scored.add(category);
+              if (!Number.isFinite(timestamp) || timestamp > now + futureToleranceMs) ok = false;
+              if (requiredSet.has(category) && Number.isFinite(timestamp)) {
+                latestScored.set(category, Math.max(latestScored.get(category) ?? -Infinity, timestamp));
+              }
             } else if (row?.public_status === 'live_observed') {
               live++;
               if (category !== 'geopolitics' || row?.severity !== null || row?.delta !== null || !title.startsWith('Geomacro observes ')) ok = false;
               const timestamp = Date.parse(String(row?.published_at ?? row?.created_at ?? ''));
-              if (!Number.isFinite(timestamp)) ok = false;
+              if (!Number.isFinite(timestamp) || timestamp > now + futureToleranceMs) ok = false;
               else newestLive = Math.max(newestLive, timestamp);
             } else {
               ok = false;
             }
           }
-          for (const category of required) if (!scored.has(category)) ok = false;
-          if (Number(body?.verified_rows) !== verified || Number(body?.live_observed_rows) !== live || live < 1) ok = false;
-          if (body?.current_within_24h !== true || !Number.isFinite(newestLive) || Date.now() - newestLive > 24 * 60 * 60 * 1000) ok = false;
+          for (const category of required) if (!latestScored.has(category)) ok = false;
+          const scoredCurrentAcrossAllDomains = required.every((category) => {
+            const timestamp = latestScored.get(category) ?? -Infinity;
+            return Number.isFinite(timestamp) && timestamp <= now + futureToleranceMs && now - timestamp <= dayMs;
+          });
+          if (Number(body?.verified_rows) !== verified || Number(body?.live_observed_rows) !== live) ok = false;
+          if (body?.current_within_24h !== true) ok = false;
+          if (scoredCurrentAcrossAllDomains) {
+            if (body?.mode !== 'verified_b2' || live !== 0) ok = false;
+          } else {
+            if (body?.mode !== 'verified_b2_plus_live_observed' || live < 1) ok = false;
+            if (!Number.isFinite(newestLive) || newestLive > now + futureToleranceMs || now - newestLive > dayMs) ok = false;
+          }
           if (!ok) {
             console.error(JSON.stringify({
               error: 'PUBLIC_INTELLIGENCE_CURRENT_CONTRACT_INVALID',
@@ -171,6 +191,11 @@ jobs:
               live_observed_rows: body?.live_observed_rows ?? null,
               newest_at: body?.newest_at ?? null,
               current_within_24h: body?.current_within_24h ?? null,
+              scored_current_across_all_domains: scoredCurrentAcrossAllDomains,
+              latest_scored_at: Object.fromEntries(required.map((category) => [
+                category,
+                Number.isFinite(latestScored.get(category)) ? new Date(latestScored.get(category)).toISOString() : null,
+              ])),
             }, null, 2));
             process.exit(1);
           }
@@ -180,7 +205,11 @@ jobs:
             newest_at: body.newest_at ?? null,
             verified_rows: verified,
             live_observed_rows: live,
-            categories: [...scored],
+            scored_current_across_all_domains: scoredCurrentAcrossAllDomains,
+            latest_scored_at: Object.fromEntries(required.map((category) => [
+              category,
+              Number.isFinite(latestScored.get(category)) ? new Date(latestScored.get(category)).toISOString() : null,
+            ])),
           }));
           NODE
 
