@@ -112,6 +112,25 @@ function assertThreeDomainCoverage(rows: ProductionPublicIntelligenceRow[]) {
   }
 }
 
+function hasCurrentScoredCoverage(
+  rows: ProductionPublicIntelligenceRow[],
+  now = Date.now(),
+): boolean {
+  const latest = new Map<string, number>();
+  for (const row of rows) {
+    if (row.public_status !== "verified_b2" || row.severity === null) continue;
+    const category = String(row.category ?? "").toLowerCase();
+    if (!(REQUIRED_CATEGORIES as readonly string[]).includes(category)) continue;
+    const timestamp = rowTime(row);
+    if (!Number.isFinite(timestamp) || timestamp > now + 5 * 60_000) continue;
+    latest.set(category, Math.max(latest.get(category) ?? -Infinity, timestamp));
+  }
+  return REQUIRED_CATEGORIES.every((category) => {
+    const timestamp = latest.get(category) ?? -Infinity;
+    return Number.isFinite(timestamp) && now - timestamp <= DAY_MS;
+  });
+}
+
 /**
  * Production Intelligence keeps two explicit evidence classes:
  *
@@ -119,17 +138,24 @@ function assertThreeDomainCoverage(rows: ProductionPublicIntelligenceRow[]) {
  * 2. `live_observed`: certified current GDELT Event observations with real
  *    event timestamps, derived public wording and no Geomacro severity score.
  *
- * Live observations cannot be converted into scored rows here. Raw publisher
- * headlines, source URLs and provider identity never cross this boundary.
+ * Live observations are discovery evidence, never direct score inputs. Once
+ * every launch domain has canonical scored coverage within 24 hours, public
+ * serving becomes scored-first and suppresses the unscored discovery layer.
+ * If scored current coverage is incomplete, the verified live observation
+ * layer remains visible as an explicit fail-closed freshness fallback.
  */
 export async function readProductionPublicIntelligence(): Promise<ProductionPublicIntelligence> {
   const generatedAt = new Date().toISOString();
   const base = (await readB2PublicIntelligence()) ?? [];
-  const rows = normalizedRows(base);
-  const verifiedRows = rows.filter((row) => row.public_status === "verified_b2");
-  const liveRows = rows.filter((row) => row.public_status === "live_observed");
+  const normalized = normalizedRows(base);
+  const verifiedRows = normalized.filter((row) => row.public_status === "verified_b2");
+  const observedRows = normalized.filter((row) => row.public_status === "live_observed");
   if (verifiedRows.length === 0) throw new Error("INTELLIGENCE_SCORED_PACKAGE_EMPTY");
   assertThreeDomainCoverage(verifiedRows);
+
+  const scoredCurrentAcrossAllDomains = hasCurrentScoredCoverage(verifiedRows);
+  const liveRows = scoredCurrentAcrossAllDomains ? [] : observedRows;
+  const rows = scoredCurrentAcrossAllDomains ? verifiedRows : normalized;
 
   const newest = newestAt(rows);
   const newestMs = newest ? Date.parse(newest) : -Infinity;
