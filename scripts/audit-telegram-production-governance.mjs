@@ -41,6 +41,7 @@ const rows = Array.isArray(channelsResult.data) ? channelsResult.data : [];
 const violations = [];
 let authorizedCount = 0;
 let enabledCount = 0;
+let enabledAuthorizedCount = 0;
 
 for (const row of rows) {
   const scope = String(row.authorization_scope ?? "").trim();
@@ -57,6 +58,7 @@ for (const row of rows) {
 
   if (validAuthorization) authorizedCount += 1;
   if (row.enabled === true) enabledCount += 1;
+  if (row.enabled === true && row.manual_review_status === "APPROVED" && validAuthorization) enabledAuthorizedCount += 1;
 
   if (row.publisher_authorized === true && !validAuthorization) {
     violations.push({ channel_key: row.channel_key, reason: "invalid_authorization_evidence" });
@@ -72,6 +74,10 @@ for (const row of rows) {
   }
 }
 
+if (authorizedFeed.enabled_for_ingestion === true && enabledAuthorizedCount === 0) {
+  violations.push({ reason: "authorized_feed_enabled_without_active_authorized_channel" });
+}
+
 if (violations.length) fail("TELEGRAM_GOVERNANCE_VIOLATION", { violations });
 
 console.log(JSON.stringify({
@@ -83,5 +89,6 @@ console.log(JSON.stringify({
   channel_count: rows.length,
   enabled_channel_count: enabledCount,
   valid_publisher_authorization_count: authorizedCount,
+  enabled_authorized_channel_count: enabledAuthorizedCount,
   invariant: "public Telegram disabled; enabled Telegram requires manual approval + explicit publisher authorization; Telegram never directly commercial",
 }, null, 2));
