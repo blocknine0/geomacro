@@ -33,14 +33,21 @@ describe("#1128 mobile information hierarchy", () => {
     expect(demo).toContain('grid gap-6 lg:grid-cols');
   });
 
-  it("keeps bridge and swap mobile-first instead of desktop-width-first", () => {
+  it("uses a dedicated mobile-first bridge layout while preserving desktop sizing", () => {
     expect(liquidity).toContain('max-w-3xl px-4 py-10 sm:px-6');
     expect(liquidity).toContain('max-w-3xl grid-cols-2 px-4 sm:px-6');
     expect(liquidity).toContain('max-w-3xl px-4 py-12 sm:px-6 sm:py-16');
-    expect(bridge).toContain('p-4 sm:p-6');
-    expect(bridge).toContain('flex flex-col gap-3 sm:flex-row');
-    expect(swap).toContain('p-4 sm:p-6');
-    expect(swap).toContain('flex flex-col gap-3 sm:flex-row');
+    expect(liquidity).toContain('text-2xl tracking-tight sm:text-3xl');
+    expect(bridge).toContain('p-4 sm:space-y-6 sm:p-6');
+    expect(bridge).toContain('flex flex-col gap-3');
+    expect(bridge).toContain('sm:flex-row');
+    expect(bridge).toContain('break-all text-xs text-muted-foreground');
+    expect(bridge).toContain('grid min-w-0 gap-1 sm:grid-cols-[minmax(0,1fr)_auto]');
+  });
+
+  it("keeps swap controls wrap-capable on narrow screens", () => {
+    expect(swap).toContain('flex flex-wrap gap-2');
+    expect(swap).toContain('w-full');
   });
 
   it("keeps current Intelligence responsive as required by the launch master", () => {
