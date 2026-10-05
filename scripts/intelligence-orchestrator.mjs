@@ -47,7 +47,6 @@ const FORCE_TASKS = new Set(
     .filter(Boolean),
 );
 
-
 function fetchWithTimeout(input, init = {}) {
   const timeoutSignal = AbortSignal.timeout(DB_REQUEST_TIMEOUT_MS);
   const signal = init?.signal
@@ -92,6 +91,15 @@ const TASKS = [
     priority: 11,
     timeoutMs: 900_000,
     steps: [["bun", ["scripts/ingest-gdelt-v2-events-live.mjs", "--write"], "."]],
+  },
+  {
+    key: "current_scoring",
+    cadenceSeconds: 1200,
+    offsetSeconds: 780,
+    priority: 12,
+    timeoutMs: 900_000,
+    requiredEnv: ["SUPABASE_DB_URL"],
+    steps: [["node", ["scripts/ops/run-intelligence-current-scoring-cycle.mjs"], "."]],
   },
   {
     key: "open_realtime_mesh",
@@ -404,6 +412,7 @@ async function main() {
   const rows = await loadStateRows();
   const due = [];
   for (const task of TASKS) {
+    if (TASK_ALLOWLIST.size > 0 && !TASK_ALLOWLIST.has(task.key)) continue;
     const row = rows.get(taskKey(task));
     const enabled = typeof task.enabled === "function" ? task.enabled() : true;
     let state;
@@ -433,6 +442,7 @@ async function main() {
     selected: [],
     skipped: [],
     bootstrap_seeds_are_immediately_due: true,
+    task_allowlist: [...TASK_ALLOWLIST].sort(),
     scheduler_note: "MAX_TASKS_PER_TICK prevents the bootstrap from becoming a thundering herd",
   };
 
