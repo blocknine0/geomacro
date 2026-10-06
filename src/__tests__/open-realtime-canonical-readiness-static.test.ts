@@ -14,12 +14,12 @@ describe("reviewed open realtime evidence canonical readiness path", () => {
     expect(drain).toContain("fragmentIdsFromFilePayload(raw)");
   });
 
-  it("refreshes and structures reviewed open sources before sovereign CANONICAL objects", () => {
+  it("refreshes and structures reviewed open sources before country-like CANONICAL objects", () => {
     const openRealtime = workflow.indexOf(
-      "- name: Refresh reviewed open realtime evidence before sovereign CANONICAL refresh",
+      "- name: Refresh reviewed open realtime evidence before country-like CANONICAL refresh",
     );
     const canonical = workflow.indexOf(
-      "- name: Refresh every enabled sovereign CANONICAL Risk Object",
+      "- name: Refresh every enabled country-like CANONICAL Risk Object",
     );
 
     expect(openRealtime).toBeGreaterThan(-1);
@@ -40,8 +40,8 @@ describe("reviewed open realtime evidence canonical readiness path", () => {
   });
 
   it("preserves fail-closed commercial and payment boundaries", () => {
-    expect(workflow).toContain('GLOBAL_CANONICAL_MIN_READY: "100"');
-    expect(workflow).toContain('GLOBAL_CANONICAL_MIN_SOVEREIGN_DENOMINATOR: "190"');
+    expect(workflow).toContain('GLOBAL_CANONICAL_MIN_READY: "195"');
+    expect(workflow).toContain('GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR: "195"');
     expect(workflow).toContain(".boundaries.payment_not_performed_by_refresh == true");
     expect(workflow).toContain(".boundaries.raw_source_material_emitted == false");
     expect(workflow).toContain(".boundaries.execution_authorized == false");
