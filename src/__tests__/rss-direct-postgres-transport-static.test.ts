@@ -18,6 +18,8 @@ describe("permanent RSS direct-Postgres transport", () => {
 
     expect(ingest).toContain("--payload-dir");
     expect(ingest).toContain("createGriDbClient");
+    expect(ingest).toContain("'import { createRemoteJWKSet, jwtVerify } from \"jose\"'");
+    expect(ingest).not.toContain("error.stack");
     expect(ingest).toContain('execution_mode: "local_canonical_source_direct_postgres"');
 
     expect(corroborate).toContain("supabase/functions/live-flash-corroborate/index.ts");
