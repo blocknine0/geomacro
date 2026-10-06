@@ -56,9 +56,10 @@ describe("full source production alignment", () => {
     expect(script).toContain("fail_open_noncert");
   });
 
-  it("runs only on canonical main/schedule/manual production paths and pins actions", () => {
+  it("runs only on canonical relevant-change/manual production paths and pins actions", () => {
     expect(workflow).toContain("branches:\n      - main");
-    expect(workflow).toContain('cron: "17 3 * * *"');
+    expect(workflow).not.toContain("schedule:");
+    expect(workflow).not.toContain("cron:");
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx");

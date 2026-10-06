@@ -9,8 +9,9 @@ on:
       - "scripts/commercial-source-rights-evidence.mjs"
       - ".github/workflows/full-source-production-alignment.yml"
       - "src/__tests__/full-source-production-alignment-static.test.ts"
-  schedule:
-    - cron: "17 3 * * *"
+  # Full-universe alignment is an operator/change-time reconciliation, not a
+  # daily writer. Source lifecycle changes trigger the push path; manual dispatch
+  # remains available for explicit reconciliation without steady-state DB churn.
   workflow_dispatch: {}
 
 permissions:
