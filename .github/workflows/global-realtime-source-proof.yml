@@ -77,7 +77,6 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      GRI_DB_MODE: direct_postgres
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
@@ -133,6 +132,8 @@ jobs:
           test "${SUPABASE_PROJECT_ID}" = "ldpwajisioljyjtojvfx"
 
       - name: Verify canonical direct-Postgres RSS corroboration transport
+        env:
+          GRI_DB_MODE: direct_postgres
         shell: bash
         run: |
           set -euo pipefail
@@ -173,6 +174,8 @@ jobs:
           wait
 
       - name: Run realtime orchestrator continuity
+        env:
+          GRI_DB_MODE: direct_postgres
         run: |
           set -euo pipefail
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-acceptance.log
