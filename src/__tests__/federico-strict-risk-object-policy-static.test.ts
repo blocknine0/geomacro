@@ -88,7 +88,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
-  it("keeps Federico CHN synchronization routed through the country-level source-diversity corroborator", () => {
+  it("keeps strict partner synchronization routed through the country-level source-diversity corroborator", () => {
     const workflow = read(
       ".github/workflows/federico-seven-day-risk-refresh.yml",
     );
@@ -479,7 +479,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "as_of: observedAt",
     );
     expect(preflight).toContain(
-      'artifact_version: "geomacro-invino-review-v6"',
+      'artifact_version: "geomacro-invino-review-v7"',
     );
     expect(preflight).toContain(
       "external_evidence: [{",
@@ -506,10 +506,22 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "issuer_attestations_are_not_trust_roots",
     );
     expect(preflight).toContain(
-      "receiver_policy_id: \"federico-china-country-risk-v1\"",
+      "receiver_policy_id: \"federico-global-country-risk-v1\"",
     );
     expect(preflight).toContain(
       "minimum_independent_source_families: 2",
+    );
+    expect(preflight).toContain(
+      "subject_id: reviewSubjectId",
+    );
+    expect(preflight).toContain(
+      "!/^[A-Z]{3}$/.test(reviewSubjectId)",
+    );
+    expect(preflight).not.toContain(
+      'subject_id: "CHN"',
+    );
+    expect(preflight).not.toContain(
+      "federico-china-country-risk-v1",
     );
     expect(preflight).toContain(
       "maximum_inter_source_spread_ms: 2000",
@@ -531,6 +543,15 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
     expect(publisher).toContain(
       "issuer-derived provenance through the structured fallback",
+    );
+    expect(publisher).toContain(
+      "hasTargetCountryAttribution",
+    );
+    expect(publisher).toContain(
+      "item.country_iso3 === iso3",
+    );
+    expect(publisher).not.toContain(
+      "FEDERICO_STRICT_CHINA_NEXUS_TERMS",
     );
     expect(publisher).not.toContain(
       "const fallback = await loadFedericoStructuredFallback(db, asOf, iso3);",
