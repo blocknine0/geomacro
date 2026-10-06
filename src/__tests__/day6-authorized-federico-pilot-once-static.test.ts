@@ -40,6 +40,8 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("day6-global-partner-assurance-${RUN_ID}");
     expect(workflow).not.toContain("federico-handoff-${RUN_ID}");
     expect(workflow).toContain('RSS_LIVE_SKIP_CORROBORATION: "true"');
+    expect(workflow).toContain('BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"');
+    expect(workflow).toContain("cancel-in-progress: true");
     expect(workflow).toContain('.corroboration.skipped == true');
     expect(workflow).toContain('explicit_partner_bootstrap_country_corroboration_follows');
   });
