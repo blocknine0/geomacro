@@ -26,6 +26,8 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
       DIRECT_NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       RAW_SOURCE_SYNC_MAX_TARGETS: "650"
@@ -56,6 +58,8 @@ jobs:
           test "${B2_S3_ENDPOINT:-}" = "https://s3.us-east-005.backblazeb2.com"
           test -n "${B2_KEY_ID:-}"
           test -n "${B2_APPLICATION_KEY:-}"
+          test -n "${B2_ARCHIVE_READ_KEY_ID:-}"
+          test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}"
           test -n "${LIVE_STRUCTURE_TOKEN:-}"
           timeout 30s node --check scripts/sync-country-raw-source-mesh.mjs
           timeout 30s node --check scripts/audit-global-raw-source-coverage.mjs
