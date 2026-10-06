@@ -69,6 +69,13 @@ describe("verified B2 structural serving continuity", () => {
     expect(client).toContain("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
   });
 
+  it("re-publishes when the shared B2 client changes", () => {
+    const workflow = read(".github/workflows/b2-structural-serving-snapshot.yml");
+    expect(workflow).toContain('- "scripts/ops/b2-s3-client.mjs"');
+    expect(workflow).toContain('- "scripts/ops/publish-b2-structural-serving-snapshot.ts"');
+    expect(workflow).toContain('- ".github/workflows/b2-structural-serving-snapshot.yml"');
+  });
+
   it("requires full B2 readback and restore before publishing continuity proof", () => {
     const publisher = read("scripts/ops/publish-b2-structural-serving-snapshot.ts");
     expect(publisher).toContain("await b2.put(SNAPSHOT_KEY, packed)");

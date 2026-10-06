@@ -10,6 +10,7 @@ on:
       - "global-intelligence/adapters/historical-data.mjs"
       - "src/lib/b2-structural.server.ts"
       - "src/lib/structural-context.server.ts"
+      - "scripts/ops/b2-s3-client.mjs"
       - "scripts/ops/publish-b2-structural-serving-snapshot.ts"
       - ".github/workflows/b2-structural-serving-snapshot.yml"
   schedule:
