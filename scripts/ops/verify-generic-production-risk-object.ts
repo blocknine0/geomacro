@@ -26,6 +26,7 @@ for (const key of [
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
 const TRUST_URL = "https://geomacro.live/api/risk-object-keys";
+const BUILD_MARKER_URL = "https://geomacro.live/.well-known/geomacro-build.json";
 const HASH_RE = /^[a-f0-9]{64}$/;
 const indexFile = String(process.env.RISK_OBJECT_INDEX_FILE ?? "").trim();
 
@@ -84,6 +85,36 @@ if (recordSha256 !== recordSha256Expected) {
 const expiresMs = Date.parse(String(riskObject?.expires_at ?? ""));
 if (!Number.isFinite(expiresMs) || expiresMs <= Date.now()) {
   throw new Error("GENERIC_RISK_OBJECT_NOT_FRESH");
+}
+
+const expectedHeadSha = String(process.env.HEAD_SHA ?? "").trim();
+if (expectedHeadSha) {
+  const buildUrl = new URL(BUILD_MARKER_URL);
+  buildUrl.searchParams.set("v", expectedHeadSha);
+  const buildResponse = await fetch(buildUrl, {
+    cache: "no-store",
+    headers: {
+      accept: "application/json",
+      "cache-control": "no-cache",
+      pragma: "no-cache",
+    },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!buildResponse.ok) {
+    throw new Error(`PRODUCTION_BUILD_MARKER_${buildResponse.status}`);
+  }
+  const build = await buildResponse.json() as {
+    schema_version?: string;
+    canonical_repository?: string;
+    canonical_main_sha?: string;
+  };
+  if (build.schema_version !== "geomacro.deployment-build.v1" ||
+      build.canonical_repository !== "blocknine0/geomacro" ||
+      build.canonical_main_sha !== expectedHeadSha) {
+    throw new Error(
+      `PRODUCTION_DEPLOYMENT_SHA_MISMATCH:expected=${expectedHeadSha}:observed=${String(build.canonical_main_sha ?? "missing")}`,
+    );
+  }
 }
 
 const trustUrl = new URL(TRUST_URL);
