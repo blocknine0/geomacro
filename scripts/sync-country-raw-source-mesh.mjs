@@ -766,6 +766,7 @@ async function main() {
     categories,
     expected_cells: canonicalIso3.length * categories.length,
     candidate_targets: rows.length,
+    selected_targets: work.length,
     work_cells: work.length,
     already_fresh_non_gdelt_cells: alreadyFreshNonGdelt.length,
     processed_cells: successfulCells,
@@ -781,6 +782,9 @@ async function main() {
       per_cell_target_attempts: maxCellAttempts,
       telegram_discovery_excluded_from_runtime_truth: true,
       fillers_excluded_from_runtime_refresh: true,
+      db_transport: "direct_postgres",
+      storage_backend: "b2",
+      b2_usage: b2?.usage?.() ?? null,
     },
   };
 
