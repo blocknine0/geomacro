@@ -131,7 +131,8 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::EXPECTED_CANONICAL_SHA_INVALID"; exit 1; }
-          body="$(mktemp)"
+          mkdir -p /tmp/production-website-health
+          body="/tmp/production-website-health/build-marker.json"
           matched=false
           last_code=""
           last_observed="missing"
@@ -205,13 +206,16 @@ jobs:
             echo "::error title=Lovable mirror SHA mismatch::expected=$EXPECTED_SHA observed=${observed:-missing}"
             exit 1
           fi
+          mkdir -p /tmp/production-website-health
+          printf '%s\n' "$observed" > /tmp/production-website-health/lovable-mirror-sha.txt
           echo "PASS: Lovable mirror source marker matches exact canonical main $EXPECTED_SHA."
 
       - name: Verify B2 production serving health
         shell: bash
         run: |
           set -euo pipefail
-          body="$(mktemp)"
+          mkdir -p /tmp/production-website-health
+          body="/tmp/production-website-health/public-health.json"
           code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/health?deep=1")"
           cat "$body"
           echo
@@ -552,36 +556,57 @@ jobs:
           const fs=require('fs');
           const crypto=require('crypto');
           const read=(path)=>JSON.parse(fs.readFileSync(path,'utf8'));
+          const build=read('/tmp/production-website-health/build-marker.json');
+          const publicHealth=read('/tmp/production-website-health/public-health.json');
           const d1=read('/tmp/production-website-health/d1-health.json');
           const denied=read('/tmp/production-website-health/d1-unauthorized.json');
           const ask=read('/tmp/production-website-health/ask-render.json');
+          const mirrorSha=fs.readFileSync('/tmp/production-website-health/lovable-mirror-sha.txt','utf8').trim().toLowerCase();
           const sha=String(process.env.CANONICAL_SHA||'').toLowerCase();
           if(!/^[0-9a-f]{40}$/.test(sha)) throw new Error('SECTION11_CANONICAL_SHA_INVALID');
+          const buildSha=String(build?.canonical_main_sha||'').trim().toLowerCase();
+          const b2=publicHealth?.public_production??{};
           const evidence={
             schema_version:'geomacro.section11-production-deployment-acceptance.v1',
             canonical_main_sha:sha,
             verified_at:new Date().toISOString(),
-            build_sha_matches_canonical_main:true,
+            build_sha_matches_canonical_main:buildSha===sha,
             global_risk_presentation_lock:true,
             intelligence_freshness_uses_evidence_time:true,
             ask_geomacro_desktop_mobile:ask.desktop===true&&ask.mobile===true,
             commercial_pages_readable_and_concise:true,
             product_truth_consistent:true,
             production_health:{
-              b2_serving_verified:true,
-              d1_serving_verified:d1?.ok===true&&d1?.store==='d1'&&Number(d1?.schema_version)>=1,
+              b2_serving_verified:
+                publicHealth?.ok===true &&
+                b2?.serving_authority==='backblaze-b2' &&
+                b2?.supabase_required_for_serving===false &&
+                b2?.b2_runtime_configured===true &&
+                b2?.intelligence_ready===true &&
+                b2?.global_risk_ready===true &&
+                b2?.risk_indices_ready===true,
+              d1_serving_verified:
+                d1?.ok===true &&
+                d1?.store==='d1' &&
+                Number(d1?.schema_version)>=1 &&
+                d1?.durable_payload_store==='b2' &&
+                d1?.commerce_ledger==='durable_object',
               d1_unauthenticated_write_rejected:denied?.ok===false&&denied?.error==='UNAUTHORIZED',
               fail_closed:true,
             },
-            lovable_mirror_matches_canonical_main:true,
-            published_site_matches_canonical_main:true,
+            lovable_mirror_matches_canonical_main:mirrorSha===sha,
+            published_site_matches_canonical_main:buildSha===sha,
             real_payment_performed:false,
             destructive_change:false,
           };
           if(
+            evidence.build_sha_matches_canonical_main!==true ||
+            evidence.production_health.b2_serving_verified!==true ||
             evidence.production_health.d1_serving_verified!==true ||
             evidence.production_health.d1_unauthenticated_write_rejected!==true ||
-            evidence.ask_geomacro_desktop_mobile!==true
+            evidence.ask_geomacro_desktop_mobile!==true ||
+            evidence.lovable_mirror_matches_canonical_main!==true ||
+            evidence.published_site_matches_canonical_main!==true
           ) throw new Error('SECTION11_ACCEPTANCE_INCOMPLETE');
           const canonical=JSON.stringify(evidence);
           evidence.evidence_sha256=crypto.createHash('sha256').update(canonical).digest('hex');
