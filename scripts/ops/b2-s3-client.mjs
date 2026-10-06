@@ -105,16 +105,20 @@ export function createB2Client({
     const path = `/${[bucket, ...normalizedKey.split("/")].map(encodeURIComponent).join("/")}`;
     const host = new URL(endpoint.endpoint).host;
     const payloadHash = sha(body);
-    const requestAccessKey =
+    const credentialCandidates =
       method === "GET" && readCredentialsSeparate
-        ? normalizedReadAccessKey
-        : accessKey;
-    const requestSecretKey =
-      method === "GET" && readCredentialsSeparate
-        ? normalizedReadSecretKey
-        : secretKey;
+        ? [
+            { accessKey: normalizedReadAccessKey, secretKey: normalizedReadSecretKey, role: "read" },
+            ...(normalizedReadAccessKey !== accessKey || normalizedReadSecretKey !== secretKey
+              ? [{ accessKey, secretKey, role: "primary" }]
+              : []),
+          ]
+        : [{ accessKey, secretKey, role: "primary" }];
 
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let lastAccessDenied = null;
+    for (let credentialIndex = 0; credentialIndex < credentialCandidates.length; credentialIndex++) {
+      const credential = credentialCandidates[credentialIndex];
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       if (requestBudget !== null && requestsStarted >= requestBudget) {
         throw new Error("B2_REQUEST_BUDGET_EXHAUSTED");
       }
@@ -129,7 +133,7 @@ export function createB2Client({
       const canonical = [method, path, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
       const scope = `${day}/${endpoint.region}/s3/aws4_request`;
       const stringToSign = ["AWS4-HMAC-SHA256", timestamp, scope, sha(canonical)].join("\n");
-      const signatureKey = hmac(hmac(hmac(hmac(`AWS4${requestSecretKey}`, day), endpoint.region), "s3"), "aws4_request");
+      const signatureKey = hmac(hmac(hmac(hmac(`AWS4${credential.secretKey}`, day), endpoint.region), "s3"), "aws4_request");
       const signature = createHmac("sha256", signatureKey).update(stringToSign).digest("hex");
 
       try {
@@ -138,7 +142,7 @@ export function createB2Client({
           headers: {
             "x-amz-content-sha256": payloadHash,
             "x-amz-date": timestamp,
-            Authorization: `AWS4-HMAC-SHA256 Credential=${requestAccessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+            Authorization: `AWS4-HMAC-SHA256 Credential=${credential.accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
           },
           body: method === "PUT" ? body : undefined,
           signal: AbortSignal.timeout(60_000),
@@ -150,6 +154,15 @@ export function createB2Client({
         if (allowNotFound && method === "GET" && result.status === 404 && errorCode === "NoSuchKey") {
           return null;
         }
+        if (
+          method === "GET" &&
+          result.status === 403 &&
+          errorCode === "AccessDenied" &&
+          credentialIndex < credentialCandidates.length - 1
+        ) {
+          lastAccessDenied = new Error(`B2_GET_FAILED_403_AccessDenied_${credential.role}`);
+          break;
+        }
         if (!TRANSIENT_STATUSES.has(result.status) || attempt === MAX_ATTEMPTS) {
           throw new Error(`B2_${method}_FAILED_${result.status}_${errorCode}`);
         }
@@ -160,8 +173,10 @@ export function createB2Client({
       }
 
       await sleep(500 * 2 ** (attempt - 1));
+      }
     }
 
+    if (lastAccessDenied) throw lastAccessDenied;
     throw new Error(`B2_${method}_RETRY_EXHAUSTED`);
   }
 
@@ -174,6 +189,9 @@ export function createB2Client({
       request_budget: requestBudget,
       allowed_prefixes: allowedPrefixes,
       read_credentials_separate: readCredentialsSeparate,
+      read_fallback_to_primary_available:
+        readCredentialsSeparate &&
+        (normalizedReadAccessKey !== accessKey || normalizedReadSecretKey !== secretKey),
     }),
   };
 }
