@@ -41,4 +41,38 @@ describe("live x402 prelaunch safety probe", () => {
     expect(source).toContain("payment_performed: false");
     expect(source).toContain("real_funds_touched: false");
   });
+  it("requires a no-funds 195+ global country paid-path census from the canonical 250 entity universe", () => {
+    const census = readFileSync(
+      "scripts/agentic/verify-live-x402-country-availability-census.mjs",
+      "utf8",
+    );
+    const workflow = readFileSync(
+      ".github/workflows/live-x402-prelaunch-availability.yml",
+      "utf8",
+    );
+
+    expect(census).toContain('parseSet("SOVEREIGN_ISO3")');
+    expect(census).toContain('parseSet("TERRITORY_ISO3")');
+    expect(census).toContain('parseSet("SPECIAL_ENTITY_ISO3")');
+    expect(census).toContain("groups.SOVEREIGN.length !== 194");
+    expect(census).toContain("groups.TERRITORY.length !== 53");
+    expect(census).toContain("groups.SPECIAL_ENTITY.length !== 3");
+    expect(census).toContain("entities.length !== 250");
+    expect(census).toContain("Math.max(195");
+    expect(census).toContain("payment_performed: false");
+    expect(census).toContain("real_funds_touched: false");
+    expect(census).toContain("body?.payment_required_now === false");
+    expect(census).toContain("body?.execution_authorized === false");
+    expect(census).toContain("BASE_SEPOLIA_NETWORK");
+    expect(census).toContain("X402_COUNTRY_DELIVERABILITY_BELOW_1414_TARGET");
+    expect(census).toContain("X402_COUNTRY_CENSUS_INCOMPLETE_PATHS");
+    expect(census).toContain('outcome: "INCOMPLETE"');
+    expect(census).toContain('code: "RATE_LIMITED"');
+    expect(census).toContain("const ENFORCE =");
+    expect(workflow).toContain("GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE");
+    expect(workflow).toContain("github.event_name == 'pull_request'");
+    expect(workflow).toContain("verify-live-x402-country-availability-census.mjs");
+    expect(workflow).toContain("live-x402-country-availability-census.json");
+  });
+
 });
