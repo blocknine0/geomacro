@@ -40,25 +40,51 @@ while (true) {
   if (result.stderr) process.stderr.write(result.stderr);
 
   if (result.status === 0) {
-    const refresh = spawnSync("bun", [COVERAGE_REFRESHER], {
-      encoding: "utf8",
-      env: process.env,
-      maxBuffer: 8 * 1024 * 1024,
-    });
-    if (refresh.stdout) process.stdout.write(refresh.stdout);
-    if (refresh.stderr) process.stderr.write(refresh.stderr);
-    if (refresh.status !== 0) {
-      console.error("GDELT_COVERAGE_RUNTIME_REFRESH_FAILED");
-      process.exit(refresh.status ?? 1);
+    const proof = String(result.stdout ?? "")
+      .split(/\\r?\\n/u)
+      .filter(Boolean)
+      .flatMap((line) => {
+        try {
+          const parsed = JSON.parse(line);
+          return parsed?.schema === "geomacro.public-intelligence-direct-postgres-publish.v2" ? [parsed] : [];
+        } catch {
+          return [];
+        }
+      })
+      .at(-1);
+    if (!proof) {
+      console.error("PUBLIC_INTELLIGENCE_PUBLISHER_PROOF_MISSING");
+      process.exit(1);
+    }
+
+    const sourceTransport = String(proof.current_source_transport ?? "");
+    let coverageRuntimeRefreshed = false;
+    if (sourceTransport === "event_export") {
+      const refresh = spawnSync("bun", [COVERAGE_REFRESHER], {
+        encoding: "utf8",
+        env: process.env,
+        maxBuffer: 8 * 1024 * 1024,
+      });
+      if (refresh.stdout) process.stdout.write(refresh.stdout);
+      if (refresh.stderr) process.stderr.write(refresh.stderr);
+      if (refresh.status !== 0) {
+        console.error("GDELT_COVERAGE_RUNTIME_REFRESH_FAILED");
+        process.exit(refresh.status ?? 1);
+      }
+      coverageRuntimeRefreshed = true;
+    } else if (sourceTransport !== "doc_v2_articlelist") {
+      console.error("GDELT_CURRENT_SOURCE_TRANSPORT_INVALID");
+      process.exit(1);
     }
 
     console.log(JSON.stringify({
       ok: true,
-      schema: "geomacro.public-intelligence-publisher-availability.v1",
+      schema: "geomacro.public-intelligence-publisher-availability.v2",
       attempts: attempt,
       bounded_wait: true,
       retry_reason: RETRYABLE_AVAILABILITY_ERROR,
-      coverage_runtime_refreshed: true,
+      current_source_transport: sourceTransport,
+      coverage_runtime_refreshed: coverageRuntimeRefreshed,
     }));
     process.exit(0);
   }
