@@ -11,10 +11,13 @@ describe("#1414 B2 direct archive and credential split", () => {
     expect(client).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(client).toContain("B2_ARCHIVE_WRITE_KEY_ID");
     expect(client).toContain("B2_ARCHIVE_WRITE_APPLICATION_KEY");
-    expect(client).toContain("explicitReadAccessKey || dedicatedReadAccessKey || archiveWriteAccessKey");
+    expect(client).toContain('[explicitReadAccessKey, explicitReadSecretKey, "explicit-read"]');
+    expect(client).toContain('[dedicatedReadAccessKey, dedicatedReadSecretKey, "dedicated-read"]');
+    expect(client).toContain('[archiveWriteAccessKey, archiveWriteSecretKey, "archive-read-write"]');
     expect(client).toContain("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
-    expect(client).toContain('method === "GET" && readCredentialsSeparate');
-    expect(client).toContain('role: "read"');
+    expect(client).toContain('method === "GET"');
+    expect(client).toContain('"dedicated-read"');
+    expect(client).toContain('"archive-read-write"');
     expect(client).toContain('role: "primary"');
     expect(client).toContain('errorCode === "AccessDenied"');
     expect(client).toContain("credentialIndex < credentialCandidates.length - 1");
@@ -57,6 +60,14 @@ describe("#1414 B2 direct archive and credential split", () => {
         "B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}",
       );
     }
+
+    const intelligenceRefresh = read(".github/workflows/intelligence-scored-refresh.yml");
+    expect(intelligenceRefresh).toContain(
+      "B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}",
+    );
+    expect(intelligenceRefresh).toContain(
+      "B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}",
+    );
 
     const countryContinuity = read(".github/workflows/b2-country-gro-continuity.yml");
     expect(countryContinuity).toContain(
