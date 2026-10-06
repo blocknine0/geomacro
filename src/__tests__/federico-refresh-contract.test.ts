@@ -37,22 +37,24 @@ describe("Federico refresh contract", () => {
     expect(read("src/lib/country-risk-publisher.server.ts")).toContain("publish");
   });
 
-  it("uses scoped GitHub OIDC for the governed RSS and corroboration path", () => {
+  it("uses canonical direct-Postgres transport for governed RSS and corroboration", () => {
     const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
-    expect(workflow).toContain("Acquire scoped GitHub Actions OIDC token");
-    expect(workflow).toContain("GEOMACRO_FLASH_OIDC_TOKEN=%s");
-    expect(workflow).toContain("ACTIONS_ID_TOKEN_REQUEST_URL");
+    expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
+    expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
+    expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs");
+    expect(workflow).toContain("scripts/run-live-flash-corroborate-local.ts");
+    expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_URL");
+    expect(workflow).not.toContain(".supabase.co/functions/v1/");
     expect(workflow).not.toContain("BREAKING_RSS_SOURCE_IDS:");
   });
 
   it("verifies every RSS source generically from the worker manifest", () => {
     const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
-    expect(workflow).toContain("python worker.py 2>&1 | tee /tmp/federico-rss-live.log");
-    expect(workflow).toContain("Verify every configured RSS source completed");
-    expect(workflow).toContain("event.get('rss') == 'ready'");
-    expect(workflow).toContain("event.get('kind') in {'rss_source_complete', 'rss_error'}");
-    expect(workflow).toContain('--arg country_iso3 "$TARGET_ISO3"');
-    expect(workflow).toContain('{country_iso3:$country_iso3,as_of:$as_of,candidate_offset:$offset}');
+    expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs 2>&1 | tee /tmp/federico-rss-live.log");
+    expect(workflow).toContain(".source_summary.configured_source_count == .source_summary.completed_source_count");
+    expect(workflow).toContain(".corroboration.threshold_weakening == false");
+    expect(workflow).toContain('--country "$TARGET_ISO3"');
+    expect(workflow).toContain('--candidate-offset "$offset"');
     expect(workflow).not.toContain('country_iso3:\"CHN\",as_of:$as_of,candidate_offset:$offset');
     const corroborator = read(
       "supabase/functions/live-flash-corroborate/index.ts",
@@ -60,7 +62,6 @@ describe("Federico refresh contract", () => {
     expect(corroborator).toContain("candidate_country_iso3");
     expect(workflow).not.toContain("xinhua_english_china_rss");
     expect(workflow).not.toContain("federal_reserve_press_rss");
-    expect(workflow).toContain("last_state");
   });
 
   it("treats absent qualifying strict evidence as a successful fail-closed no-publication outcome", () => {
