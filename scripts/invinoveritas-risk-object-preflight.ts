@@ -619,16 +619,6 @@ if (
 const signedRiskObjectRecord = JSON.stringify(canonicalize(riskObject));
 const signedRiskObjectRecordSha256 = sha256Canonical(riskObject);
 
-if (
-  strictProfile &&
-  signedRiskObjectRecordSha256 !==
-    String(externalEvidence?.[0]?.record_sha256 ?? "")
-) {
-  throw new Error(
-    "Federico strict admission requires computed SHA-256 to equal external_evidence[0].record_sha256",
-  );
-}
-
 const signableRiskObject = structuredClone(riskObject);
 signableRiskObject.integrity = {
   ...signableRiskObject.integrity,

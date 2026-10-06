@@ -46,10 +46,13 @@ describe("partner commercial readiness", () => {
     expect(discovery.security.no_execution_authority).toBe(true);
   });
 
-  it("pins every manual partner assurance run to its exact dispatched SHA", () => {
+  it("pins every manual partner assurance run to an explicit immutable candidate SHA", () => {
     const workflow = read(".github/workflows/day6-partner-assurance-final.yml");
-    expect(workflow).toContain("ref: ${{ github.sha }}");
-    expect(workflow).toContain('test "$(git rev-parse HEAD)" = "$GITHUB_SHA"');
+    expect(workflow).toContain("candidate_sha:");
+    expect(workflow).toContain("ref: ${{ steps.candidate.outputs.sha }}");
+    expect(workflow).toContain('test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"');
+    expect(workflow).toContain("DISPATCH_SHA: ${{ github.sha }}");
+    expect(workflow).toContain('CANDIDATE_SHA="${RAW_CANDIDATE_SHA:-$DISPATCH_SHA}"');
     expect(workflow).not.toContain("ref: main");
     expect(workflow).toContain("cancel-in-progress: false");
   });

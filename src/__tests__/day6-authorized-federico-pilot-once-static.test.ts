@@ -31,4 +31,16 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain('"execution_authorized":false');
     expect(workflow).toContain("github.run_attempt == 1");
   });
+
+  it("pins both child assurance runs to the parent SHA and exact artifact contract", () => {
+    expect(workflow).toContain('-f candidate_sha="$MAIN_SHA" -f use_partner_allowance=false');
+    expect(workflow).toContain('-f candidate_sha="$MAIN_SHA" -f use_partner_allowance=true');
+    expect(workflow).toContain("--json databaseId,createdAt,displayTitle,status");
+    expect(workflow).not.toContain("--json databaseId,createdAt,headSha,status");
+    expect(workflow).toContain("day6-global-partner-assurance-${RUN_ID}");
+    expect(workflow).not.toContain("federico-handoff-${RUN_ID}");
+    expect(workflow).toContain('RSS_LIVE_SKIP_CORROBORATION: "true"');
+    expect(workflow).toContain('.corroboration.skipped == true');
+    expect(workflow).toContain('explicit_partner_bootstrap_country_corroboration_follows');
+  });
 });
