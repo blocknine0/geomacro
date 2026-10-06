@@ -86,6 +86,8 @@ jobs:
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
       B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}
+      B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}
       DIRECT_NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
@@ -144,8 +146,18 @@ jobs:
           test "${B2_S3_ENDPOINT}" = "https://s3.us-east-005.backblazeb2.com"
           test -n "${B2_KEY_ID}"
           test -n "${B2_APPLICATION_KEY}"
-          test -n "${B2_ARCHIVE_READ_KEY_ID}"
-          test -n "${B2_ARCHIVE_READ_APPLICATION_KEY}"
+          if [[ -n "${B2_ARCHIVE_READ_KEY_ID:-}" || -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" ]]; then
+            test -n "${B2_ARCHIVE_READ_KEY_ID:-}" && test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || {
+              echo "::error::Dedicated B2 archive read credentials must be supplied as a complete pair."
+              exit 2
+            }
+          fi
+          if [[ -n "${B2_ARCHIVE_WRITE_KEY_ID:-}" || -n "${B2_ARCHIVE_WRITE_APPLICATION_KEY:-}" ]]; then
+            test -n "${B2_ARCHIVE_WRITE_KEY_ID:-}" && test -n "${B2_ARCHIVE_WRITE_APPLICATION_KEY:-}" || {
+              echo "::error::Archive B2 read/write credentials must be supplied as a complete pair."
+              exit 2
+            }
+          fi
 
       - name: Verify canonical direct-Postgres RSS corroboration transport
         env:
