@@ -55,6 +55,9 @@ describe("verified B2 structural serving continuity", () => {
     expect(workflow).toContain("B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}");
     expect(workflow).toContain("B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}");
     expect(workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}");
+    expect(workflow).toContain("B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}");
+    expect(workflow).toContain("B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}");
+    expect(client).toContain("explicitReadAccessKey || dedicatedReadAccessKey || archiveWriteAccessKey");
     expect(client).toContain('method === "GET" && readCredentialsSeparate');
     expect(client).toContain("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
   });
