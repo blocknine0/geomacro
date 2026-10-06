@@ -3,10 +3,8 @@ name: Testnet RSS Live Intelligence Runner
 on:
   workflow_dispatch: {}
 
-
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: geomacro-intelligence-orchestrator
@@ -14,41 +12,38 @@ concurrency:
 
 jobs:
   rss:
-    if: >-
-      ${{
-        github.repository == 'blocknine0/geomacro' &&
-        (
-          github.event_name != 'workflow_run' ||
-          (
-            github.event.workflow_run.conclusion == 'success' &&
-            github.event.workflow_run.head_branch == 'main'
-          )
-        )
-      }}
+    if: ${{ github.repository == 'blocknine0/geomacro' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     environment: production
     env:
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-      GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
-      GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
-      GITHUB_OIDC_AUDIENCE: "https://geomacro.live/actions/live-flash-rss"
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      GRI_DB_MODE: direct_postgres
       TELEGRAM_ENABLED: "false"
       BREAKING_RSS_ENABLED: "true"
       BREAKING_RSS_RUN_ONCE: "true"
       BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
       BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+      RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/testnet-rss-cycle.json
 
     steps:
       - name: Checkout canonical main
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.12"
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Install worker dependencies
         shell: bash
@@ -56,136 +51,41 @@ jobs:
           set -euo pipefail
           python -m pip install --disable-pip-version-check -r workers/telegram-flash/requirements.txt
 
-      - name: Acquire scoped GitHub Actions OIDC token
+      - name: Validate direct canonical RSS boundary
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 1; }
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 1; }
-          oidc_response="$(curl --fail-with-body -sS \
-            --retry 5 \
-            --retry-all-errors \
-            --retry-delay 2 \
-            --retry-max-time 120 \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}"
-          )"
-          token="$(printf "%s" "$oidc_response" | jq -er ".value")"
-          test -n "$token"
-          echo "::add-mask::$token"
-          printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\n" "$token" >> "$GITHUB_ENV"
-          echo "PASS: scoped GitHub OIDC token acquired for the canonical RSS workflow."
-
-      - name: Validate Testnet runner boundary
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID missing"; exit 1; }
-          test -n "${GEOMACRO_FLASH_OIDC_TOKEN:-}" || { echo "::error::GEOMACRO_FLASH_OIDC_TOKEN missing"; exit 1; }
+          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL missing"; exit 1; }
+          test "${GRI_DB_MODE}" = "direct_postgres"
           test "${TELEGRAM_ENABLED}" = "false"
           test "${BREAKING_RSS_ENABLED}" = "true"
           test "${BREAKING_RSS_RUN_ONCE}" = "true"
-          test "${GEOMACRO_FLASH_INGEST_URL}" = "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-ingest"
-          echo "PASS: Testnet RSS runner is locked to the canonical Geomacro ingest boundary."
+          echo "PASS: Testnet RSS runner uses canonical direct-Postgres transport and does not require Supabase Edge."
 
       - name: Run one complete governed RSS cycle
         shell: bash
         run: |
           set -euo pipefail
-          export GEOMACRO_FLASH_INGEST_TOKEN="${GEOMACRO_FLASH_INGEST_TOKEN:-}"
-          export GEOMACRO_FLASH_OIDC_TOKEN="${GEOMACRO_FLASH_OIDC_TOKEN}"
-          cd workers/telegram-flash
-          python worker.py 2>&1 | tee /tmp/testnet-rss-live.log
+          node scripts/run-rss-live-cycle.mjs 2>&1 | tee /tmp/testnet-rss-live.log
+          jq -e '
+            .ok == true and
+            .transport == "canonical_direct_postgres" and
+            .edge_function_dependency == false and
+            .source_summary.configured_source_count == .source_summary.completed_source_count and
+            .ingestion.accepted == .spool.payloads and
+            .corroboration.ok == true and
+            .corroboration.threshold_weakening == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/testnet-rss-cycle.json >/dev/null
 
-      - name: Corroborate governed RSS evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          base="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
-          response="$(curl --silent --show-error \
-            --retry 5 \
-            --retry-all-errors \
-            --retry-delay 2 \
-            --retry-max-time 120 \
-            --output /tmp/flash-corroborate.json \
-            --write-out '%{http_code}' \
-            --request POST \
-            --header "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" \
-            --header "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" \
-            --header 'Content-Type: application/json' \
-            --data '{}' \
-            "${base}/live-flash-corroborate")"
-          cat /tmp/flash-corroborate.json
-          echo
-          test "$response" = "200" || {
-            echo "::error::live-flash-corroborate did not return HTTP 200."
-            exit 1
-          }
-          grep -q '"ok":true' /tmp/flash-corroborate.json || {
-            echo "::error::live-flash-corroborate did not return ok=true."
-            exit 1
-          }
-          echo "PASS: governed RSS evidence corroboration completed."
-
-      - name: Verify every configured RSS source completed
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-
-          log_path = Path('/tmp/testnet-rss-live.log')
-          ready = None
-          last_state = {}
-          had_error = set()
-
-          for raw in log_path.read_text(encoding='utf-8', errors='replace').splitlines():
-              try:
-                  event = json.loads(raw)
-              except json.JSONDecodeError:
-                  continue
-
-              if event.get('rss') == 'ready':
-                  ready = event
-              if event.get('kind') in {'rss_source_complete', 'rss_error'} and event.get('source_id'):
-                  source_id = str(event['source_id'])
-                  if event.get('kind') == 'rss_error':
-                      had_error.add(source_id)
-                      last_state[source_id] = 'error'
-                  elif event.get('ok') is True:
-                      last_state[source_id] = 'success'
-
-          if not isinstance(ready, dict) or not isinstance(ready.get('feeds'), list) or not ready['feeds']:
-              raise SystemExit('RSS worker did not emit a valid configured-feed manifest')
-
-          expected = {str(value) for value in ready['feeds'] if str(value).strip()}
-          unresolved = sorted(source_id for source_id in expected if last_state.get(source_id) == 'error')
-          missing = sorted(source_id for source_id in expected if last_state.get(source_id) != 'success')
-          if unresolved:
-              raise SystemExit(
-                  "RSS sources remained failed after the worker's bounded recovery policy: "
-                  + ', '.join(unresolved)
-              )
-          if missing:
-              raise SystemExit(
-                  'Configured RSS sources did not complete a successful poll cycle: '
-                  + ', '.join(missing)
-              )
-
-          print(json.dumps({
-              'configured_source_count': len(expected),
-              'completed_source_count': len([source_id for source_id in expected if last_state.get(source_id) == 'success']),
-              'recovered_source_count': len([source_id for source_id in expected if last_state.get(source_id) == 'success' and source_id in had_error]),
-              'sources': sorted(expected),
-          }))
-          print('PASS: every RSS source declared by the worker completed successfully; transient failures are considered recovered when a later poll succeeds.')
-          PY
       - name: Upload live Testnet RSS evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: testnet-rss-live-run
-          path: /tmp/testnet-rss-live.log
+          path: |
+            /tmp/testnet-rss-live.log
+            /tmp/testnet-rss-cycle.json
           if-no-files-found: warn
           retention-days: 14
