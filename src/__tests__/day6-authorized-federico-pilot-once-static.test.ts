@@ -16,6 +16,16 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(corroborate).toBeGreaterThan(refresh);
     expect(local).toBeGreaterThan(corroborate);
     expect(live).toBeGreaterThan(local);
+    for (const stepName of [
+      "Select strongest fresh strict candidate set",
+      "Corroborate candidates and select first genuinely strict-ready country",
+      "Dispatch no-allowance current-head local assurance",
+      "Dispatch exactly one authorized Federico pilot allowance review",
+      "Seal orchestration summary",
+      "Record Day 6 outcome on migration tracker",
+    ]) {
+      expect(workflow.split(stepName)).toHaveLength(2);
+    }
     expect(workflow).toContain("use_partner_allowance=false");
     expect(workflow).toContain("use_partner_allowance=true");
     expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs");
