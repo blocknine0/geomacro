@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractTrustedPublishedAt,
   isTrustedFedericoTimestampUrl,
+  trustedFedericoTimestampFetchUrlForSource,
 } from "../lib/federico-source-time-hydration";
 
 const SOURCE_URL = "https://english.news.cn/20261001/example.html";
@@ -21,6 +22,43 @@ describe("Federico trusted source publication-time hydration", () => {
     expect(extractTrustedPublishedAt(html, SOURCE_URL, AS_OF)).toBe(
       "2026-10-01T14:20:00.000Z",
     );
+  });
+
+  it("canonicalizes trusted SCMP plus article routes without changing source identity", () => {
+    expect(
+      trustedFedericoTimestampFetchUrlForSource(
+        "scmp_china_rss",
+        "https://www.scmp.com/plus/news/china/diplomacy/article/3369919/germany-joins-france-call-china-trade-defences?utm_source=rss_feed#top",
+      ),
+    ).toBe(
+      "https://www.scmp.com/news/china/diplomacy/article/3369919/germany-joins-france-call-china-trade-defences",
+    );
+    expect(
+      trustedFedericoTimestampFetchUrlForSource(
+        "scmp_china_rss",
+        "https://www.scmp.com/plus/economy/china-economy/article/3369803/chinas-finance-minister-fiscal-policy?utm_source=rss_feed",
+      ),
+    ).toBe(
+      "https://www.scmp.com/economy/china-economy/article/3369803/chinas-finance-minister-fiscal-policy",
+    );
+    expect(
+      trustedFedericoTimestampFetchUrlForSource(
+        "xinhua_english_china_rss",
+        "https://english.news.cn/20261006/example/c.html?utm_source=rss#top",
+      ),
+    ).toBe("https://english.news.cn/20261006/example/c.html");
+    expect(
+      trustedFedericoTimestampFetchUrlForSource(
+        "scmp_china_rss",
+        "https://example.com/plus/news/china/article/1/example",
+      ),
+    ).toBeNull();
+    expect(
+      trustedFedericoTimestampFetchUrlForSource(
+        "scmp_china_rss",
+        "https://www.scmp.com/plus/account/preferences",
+      ),
+    ).toBe("https://www.scmp.com/plus/account/preferences");
   });
 
   it("accepts precise SCMP publisher metadata with an explicit offset", () => {

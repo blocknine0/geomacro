@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   extractTrustedPublishedAt,
   isTrustedFedericoTimestampUrlForSource,
+  trustedFedericoTimestampFetchUrlForSource,
 } from "../src/lib/federico-source-time-hydration";
 
 const SOURCE_IDS = [
@@ -64,8 +65,12 @@ for (const row of result.data ?? []) {
   attempted += 1;
   bySource[sourceId].attempted += 1;
 
+  const timestampFetchUrl =
+    trustedFedericoTimestampFetchUrlForSource(sourceId, sourceUrl);
+  if (!timestampFetchUrl) continue;
+
   try {
-    const response = await fetch(sourceUrl, {
+    const response = await fetch(timestampFetchUrl, {
       headers: {
         Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
         "User-Agent":
@@ -78,7 +83,11 @@ for (const row of result.data ?? []) {
     if (!response.ok) continue;
 
     const html = await response.text();
-    const publishedAt = extractTrustedPublishedAt(html, sourceUrl, asOf);
+    const publishedAt = extractTrustedPublishedAt(
+      html,
+      timestampFetchUrl,
+      asOf,
+    );
     if (!publishedAt) continue;
 
     const publishedMs = Date.parse(publishedAt);
@@ -110,7 +119,7 @@ for (const row of result.data ?? []) {
 
 console.log(JSON.stringify({
   ok: true,
-  schema: "geomacro.federico-source-time-hydration.v2",
+  schema: "geomacro.federico-source-time-hydration.v3",
   execution_mode: process.env.GRI_DB_MODE ?? null,
   policy: "trusted_publisher_metadata_only",
   lookback_hours: LOOKBACK_HOURS,
