@@ -30,6 +30,7 @@ export async function collectMigrationEndpointManifest(root = process.cwd()) {
     "973_completed_source_access_registry.sql",
     "974_global_source_p0_expansion.sql",
     "981_three_category_source_candidates.sql",
+    "20261006173500_open_derived_commercial_rights_gate.sql",
   ]);
   const productionHistoryOnly = productionHistoryOnlyMigrationNames(root);
   // Phase-B endpoint census remains frozen at 933. Later disabled source
