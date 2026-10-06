@@ -60,8 +60,11 @@ describe("verified B2 structural serving continuity", () => {
 
   it("keeps private B2 credentials server-only and snapshot freshness bounded", () => {
     const reader = read("src/lib/b2-structural.server.ts");
+    expect(reader).toContain("process.env.B2_ARCHIVE_READ_KEY_ID");
+    expect(reader).toContain("process.env.B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(reader).toContain("process.env.B2_KEY_ID");
     expect(reader).toContain("process.env.B2_APPLICATION_KEY");
+    expect(reader).toContain("Boolean(dedicatedAccessKey) !== Boolean(dedicatedSecretKey)");
     expect(reader).not.toContain("VITE_B2");
     expect(reader).toContain("STRUCTURAL_B2_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000");
     expect(reader).toContain('payload.source_project !== HISTORICAL_PROJECT_REF');
