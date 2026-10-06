@@ -87,6 +87,50 @@ describe("B2 native read fallback", () => {
     });
   });
 
+  it("remembers a successful Native fallback and skips repeated denied S3 GETs", async () => {
+    cleanEnv();
+    const expected = Buffer.from("verified-readback");
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        calls.push(url);
+        if (url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account") {
+          return new Response(JSON.stringify(nativeAuth()), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (url.startsWith("https://f005.backblazeb2.com/file/")) {
+          return new Response(expected, { status: 200 });
+        }
+        if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+          return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+        }
+        throw new Error("unexpected fetch target");
+      }),
+    );
+
+    const b2 = client();
+    await expect(
+      b2.get("geomacro-evidence/v1/live/native-fallback-a.bin"),
+    ).resolves.toEqual(expected);
+    await expect(
+      b2.get("geomacro-evidence/v1/live/native-fallback-b.bin"),
+    ).resolves.toEqual(expected);
+
+    expect(calls.filter((url) => url.startsWith("https://s3.us-east-005.backblazeb2.com/"))).toHaveLength(1);
+    expect(calls.filter((url) => url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account")).toHaveLength(1);
+    expect(calls.filter((url) => url.startsWith("https://f005.backblazeb2.com/file/"))).toHaveLength(2);
+    expect(b2.usage()).toMatchObject({
+      native_read_fallback_attempts: 2,
+      native_read_fallback_successes: 2,
+      native_read_preferred_credentials: 1,
+      requests_started: 4,
+    });
+  });
+
   it("fails closed when the Native API credential lacks readFiles", async () => {
     cleanEnv();
     vi.stubGlobal(
