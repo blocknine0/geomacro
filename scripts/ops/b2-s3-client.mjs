@@ -48,6 +48,11 @@ function normalizeAllowedPrefixes(allowedKeyPrefixes) {
   return Object.freeze([...new Set(normalized)]);
 }
 
+function methodIndependentPrimaryFallbackAvailable(candidates) {
+  const roles = new Set((Array.isArray(candidates) ? candidates : []).map((candidate) => candidate?.role));
+  return roles.has("primary") && Array.from(roles).some((role) => role && role !== "primary");
+}
+
 export function createB2Client({
   endpointUrl,
   accessKey,
