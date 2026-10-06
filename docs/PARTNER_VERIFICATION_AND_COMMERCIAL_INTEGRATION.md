@@ -79,3 +79,16 @@ The machine-readable discovery document and `scripts/check-partner-commercial-re
 When a fresh `FEDERICO_STRICT` object successfully publishes, run the existing interoperability preflight with the exact persisted signed payload. If the partner returns a signed proof, retain only the minimum required proof metadata in public CI summaries. Do not expose API keys, raw private source material or unrestricted partner response payloads.
 
 Federico's offered edge-vector verifier can be added as a second reference implementation in the dedicated positive-control CI. The Geomacro reference implementation remains independent so either implementation can detect divergence in the other.
+
+
+## 8. Repeatability and repeated external testing
+
+Federico or another receiver may verify the public contract and signed objects repeatedly. Repeatability has a precise meaning:
+
+- the same immutable signed GRO must always produce the same canonical record hash and the same signature-verification result;
+- the deterministic strict positive-control vector must produce the same result on repeated executions;
+- public partner-discovery and active trust-registry projections must not drift within a verification probe;
+- a newly generated GRO may legitimately differ because fresh evidence and trusted time have changed;
+- an expired, stale, tampered or insufficiently corroborated object must fail closed rather than being forced into a successful admission result.
+
+The `Federico Repeatability Gate` runs without partner credentials, user funds or Federico allowance consumption. It is scheduled at a staggered six-hour cadence and can also be run manually. Live `/review` calls remain explicitly authorized only and are never scheduled.
