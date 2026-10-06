@@ -9,6 +9,11 @@ describe("B2 country GRO continuity", () => {
     expect(source).toContain('const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com"');
     expect(source).toContain('const B2_BUCKET = "geomacro-private-archive"');
     expect(source).toContain("AWS4-HMAC-SHA256");
+    expect(source).toContain("process.env.B2_ARCHIVE_READ_KEY_ID");
+    expect(source).toContain("process.env.B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(source).toContain('role: "read"');
+    expect(source).toContain('role: "primary"');
+    expect(source).toContain("response.status === 403");
     expect(source).toContain("verifyRiskObjectSignature(object).valid");
     expect(source).toContain("verifyCommercialRiskObjectArtifact(object");
     expect(source).not.toContain("requireRiskSupabase");
