@@ -149,6 +149,18 @@ describe("Federico strict Risk Object acceptance policy", () => {
       '"max_entry_age_hours": 24',
     );
     expect(worker).toContain(
+      "def feed_source_timestamp_has_clock(entry: Any) -> bool:",
+    );
+    expect(worker).toContain(
+      'for raw_key in ("published", "dc:date"):',
+    );
+    expect(worker).toContain(
+      'return structured_time_to_iso(entry.get("published_parsed"))',
+    );
+    expect(worker).not.toContain(
+      'for key in ("published_parsed", "updated_parsed", "created_parsed")',
+    );
+    expect(worker).toContain(
       '"fallback_url": "https://english.news.cn/china/index.htm"',
     );
     expect(worker).toContain(
