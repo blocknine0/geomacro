@@ -73,6 +73,9 @@ describe(
         expect(route).toContain(
           '"cache-control": "no-store"',
         );
+        expect(route).not.toContain(
+          '"public, max-age=300, must-revalidate"',
+        );
       },
     );
   },
