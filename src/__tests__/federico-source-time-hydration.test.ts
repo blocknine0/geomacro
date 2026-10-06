@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractTrustedPublishedAt,
   isTrustedFedericoTimestampUrl,
+  trustedFedericoTimestampFetchUrlForSource,
 } from "../lib/federico-source-time-hydration";
 
 const SOURCE_URL = "https://english.news.cn/20261001/example.html";
@@ -21,6 +22,29 @@ describe("Federico trusted source publication-time hydration", () => {
     expect(extractTrustedPublishedAt(html, SOURCE_URL, AS_OF)).toBe(
       "2026-10-01T14:20:00.000Z",
     );
+  });
+
+  it("canonicalizes only trusted SCMP /plus article routes for timestamp fetch", () => {
+    expect(
+      trustedFedericoTimestampFetchUrlForSource(
+        "scmp_china_rss",
+        "https://www.scmp.com/plus/news/china/diplomacy/article/3369919/germany-joins-france-call-china-trade-defences?utm_source=rss_feed",
+      ),
+    ).toBe(
+      "https://www.scmp.com/news/china/diplomacy/article/3369919/germany-joins-france-call-china-trade-defences",
+    );
+    expect(
+      trustedFedericoTimestampFetchUrlForSource(
+        "xinhua_english_china_rss",
+        "https://english.news.cn/20261006/example/c.html?utm_source=rss",
+      ),
+    ).toBe("https://english.news.cn/20261006/example/c.html");
+    expect(
+      trustedFedericoTimestampFetchUrlForSource(
+        "scmp_china_rss",
+        "https://example.com/plus/news/china/article/1/example",
+      ),
+    ).toBeNull();
   });
 
   it("accepts precise SCMP publisher metadata with an explicit offset", () => {
