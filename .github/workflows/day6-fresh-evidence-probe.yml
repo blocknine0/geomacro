@@ -1,29 +1,33 @@
-name: Day 6 Fresh Evidence Probe
+name: Day 6 Global Strict Evidence Probe
 
 on:
-  workflow_dispatch: {}
-  schedule:
-    - cron: "17 * * * *"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/day6-fresh-evidence-probe.yml"
-      - "scripts/probe-day6-federico-live-evidence.ts"
+  workflow_dispatch:
+    inputs:
+      iso3:
+        description: "Uppercase ISO3 country to evaluate under the same strict partner policy"
+        required: true
+        default: "USA"
+        type: string
 
 permissions:
   contents: read
-  actions: write
 
 concurrency:
-  group: day6-fresh-evidence-probe
+  group: day6-global-strict-evidence-probe
   cancel-in-progress: false
 
 jobs:
   probe:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      GRI_DB_MODE: direct_postgres
+
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -35,51 +39,46 @@ jobs:
         with:
           bun-version: "1.4.2"
 
-      - name: Check whether exact-head Day 6 is already complete or running
-        id: day6
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Normalize requested country
+        id: country
         env:
-          GH_TOKEN: ${{ github.token }}
+          RAW_ISO3: ${{ inputs.iso3 }}
         shell: bash
         run: |
           set -euo pipefail
-          HEAD_SHA="$(git rev-parse HEAD)"
-          RUNS="$(gh api -H 'Accept: application/vnd.github+json' "/repos/${GITHUB_REPOSITORY}/actions/workflows/day6-partner-assurance-final.yml/runs?branch=main&per_page=30")"
-          SUCCESS="$(printf '%s' "$RUNS" | jq --arg sha "$HEAD_SHA" '[.workflow_runs[] | select(.head_sha == $sha and .conclusion == "success")] | length')"
-          ACTIVE="$(printf '%s' "$RUNS" | jq --arg sha "$HEAD_SHA" '[.workflow_runs[] | select(.head_sha == $sha and (.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending"))] | length')"
-          if [ "$SUCCESS" -gt 0 ]; then
-            echo "already_complete=true" >> "$GITHUB_OUTPUT"
-            echo "active=false" >> "$GITHUB_OUTPUT"
-            echo "Exact-head Day 6 already has a successful run; no further partner allowance will be requested."
-          elif [ "$ACTIVE" -gt 0 ]; then
-            echo "already_complete=false" >> "$GITHUB_OUTPUT"
-            echo "active=true" >> "$GITHUB_OUTPUT"
-            echo "Exact-head Day 6 is already running; no duplicate dispatch."
+          ISO3="$(printf '%s' "$RAW_ISO3" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
+          if ! [[ "$ISO3" =~ ^[A-Z]{3}$ ]]; then
+            echo "::error::iso3 must be exactly three letters"
+            exit 2
+          fi
+          echo "iso3=$ISO3" >> "$GITHUB_OUTPUT"
+
+      - name: Probe strict country evidence without signing or partner review
+        env:
+          DAY6_COUNTRY_ISO3: ${{ steps.country.outputs.iso3 }}
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx scripts/probe-day6-federico-live-evidence.ts "$DAY6_COUNTRY_ISO3" | tee /tmp/day6-global-strict-probe.json
+          jq -e '
+            .ok == true and
+            .country_iso3 == env.DAY6_COUNTRY_ISO3 and
+            .policy.profile == "FEDERICO_STRICT" and
+            .policy.country_scope == "any_enabled_iso3" and
+            .policy.threshold_weakening == false and
+            .signed_object_created == false and
+            .b2_write_performed == false and
+            .partner_review_attempted == false and
+            .partner_allowance_spent == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/day6-global-strict-probe.json >/dev/null
+          if [ "$(jq -r '.ready' /tmp/day6-global-strict-probe.json)" = "true" ]; then
+            echo "Strict evidence is currently ready for $DAY6_COUNTRY_ISO3. No Federico allowance was used."
           else
-            echo "already_complete=false" >> "$GITHUB_OUTPUT"
-            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "Strict evidence is currently not ready for $DAY6_COUNTRY_ISO3. Fail-closed; no Federico allowance was used."
           fi
-
-      - name: Probe current strict CHN evidence without secrets
-        id: evidence
-        if: steps.day6.outputs.already_complete != 'true' && steps.day6.outputs.active != 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          bun scripts/probe-day6-federico-live-evidence.ts | tee /tmp/day6-live-evidence-probe.json
-          jq -e '.ok == true and .secrets_required == false and .supabase_required == false and .partner_allowance_spent == false and .execution_authorized == false' /tmp/day6-live-evidence-probe.json >/dev/null
-          READY="$(jq -r '.ready' /tmp/day6-live-evidence-probe.json)"
-          test "$READY" = "true" || test "$READY" = "false"
-          echo "ready=$READY" >> "$GITHUB_OUTPUT"
-          if [ "$READY" != "true" ]; then
-            echo "No qualifying live CHN pair yet; strict Day 6 remains fail-closed and no review allowance is spent."
-          fi
-
-      - name: Dispatch Day 6 only after the strict probe is positive
-        if: steps.evidence.outputs.ready == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          gh workflow run day6-partner-assurance-final.yml --ref main --repo "$GITHUB_REPOSITORY"
-          echo "Fresh qualifying evidence detected; dispatched the canonical Day 6 assurance workflow exactly once."
