@@ -50,6 +50,7 @@ describe("#1414 B2 direct archive and credential split", () => {
     for (const path of [
       ".github/workflows/b2-country-gro-continuity.yml",
       ".github/workflows/intelligence-scored-refresh.yml",
+      ".github/workflows/intelligence-fastlane-publication.yml",
       ".github/workflows/day7-final-commercial-launch-gate.yml",
     ]) {
       const workflow = read(path);
@@ -62,6 +63,12 @@ describe("#1414 B2 direct archive and credential split", () => {
     }
 
     const intelligenceRefresh = read(".github/workflows/intelligence-scored-refresh.yml");
+    const fastlanePublication = read(".github/workflows/intelligence-fastlane-publication.yml");
+    for (const workflow of [intelligenceRefresh, fastlanePublication]) {
+      expect(workflow).toContain('test -n "${B2_ARCHIVE_READ_KEY_ID:-}"');
+      expect(workflow).toContain('test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}"');
+      expect(workflow).toContain("mandatory readback");
+    }
     expect(intelligenceRefresh).toContain(
       "B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}",
     );
