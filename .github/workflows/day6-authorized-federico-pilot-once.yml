@@ -1,7 +1,7 @@
 name: Day 6 Authorized Federico Pilot Once
 
 # One-time owner-authorized bridge because the connector cannot issue workflow_dispatch.
-# Retriggered only after #1536 permanently removed Supabase Edge from governed RSS.\n# This file is deleted after the resulting partner proof is verified.
+# Retriggered after #1540 and #1543 fixed the permanent local RSS/ingest path.\n# This file is deleted after the resulting partner proof is verified.
 on:
   push:
     branches: [main]
@@ -228,7 +228,7 @@ jobs:
           mkdir -p /tmp/day6-authorized-summary
           cat > /tmp/day6-authorized-summary/summary.json <<JSON
           {
-            "schema":"geomacro.day6-authorized-federico-pilot-once.v2",
+            "schema":"geomacro.day6-authorized-federico-pilot-once.v3",
             "country_iso3":"${{ steps.strict.outputs.iso3 }}",
             "local_assurance_run_id":"${{ steps.local.outputs.run_id }}",
             "authorized_partner_run_id":"${{ steps.live.outputs.run_id }}",
