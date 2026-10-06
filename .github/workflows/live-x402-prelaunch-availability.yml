@@ -23,6 +23,8 @@ jobs:
           persist-credentials: false
 
       - name: Verify live no-charge prelaunch safety boundary
+        env:
+          GEOMACRO_X402_REQUIRE_REPRESENTATIVE_AVAILABLE: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
         run: node scripts/agentic/verify-live-x402-prelaunch-availability.mjs
 
       - name: Verify live no-charge 195+ country paid-path availability
