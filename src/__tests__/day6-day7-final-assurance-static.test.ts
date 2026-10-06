@@ -59,6 +59,8 @@ describe("Day 6 generic partner assurance", () => {
     expect(day6Workflow).toContain("inputs.use_partner_allowance == true");
     expect(day6Workflow).not.toContain("schedule:");
     expect(day6Workflow).toContain("GRI_DB_MODE: direct_postgres");
+    expect(day6Workflow).toContain("B2_ARCHIVE_READ_KEY_ID");
+    expect(day6Workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(day6Workflow).toContain("DAY6_COUNTRY_ISO3");
     expect(day6Workflow).toContain("partner_allowance_spent == false");
     expect(directDay6).not.toContain('const COUNTRY_ISO3 = "CHN"');
