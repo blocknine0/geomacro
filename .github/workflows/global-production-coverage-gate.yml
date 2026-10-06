@@ -27,8 +27,8 @@ jobs:
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       GLOBAL_CANONICAL_REFRESH_OUTPUT: artifacts/global-production-coverage/canonical-risk-objects.json
-      GLOBAL_CANONICAL_MIN_SOVEREIGN_DENOMINATOR: "190"
-      GLOBAL_CANONICAL_MIN_READY: "100"
+      GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR: "195"
+      GLOBAL_CANONICAL_MIN_READY: "195"
       GLOBAL_COVERAGE_AUDIT_OUTPUT: artifacts/global-production-coverage/coverage.json
       HOT_TOPIC_FAMILY_READINESS_OUTPUT: artifacts/global-production-coverage/hot-topic-family-readiness.json
 
@@ -73,7 +73,7 @@ jobs:
           node scripts/ingest-usgs-mcs-live.mjs 2>&1 | tee artifacts/global-production-coverage/usgs-mcs-live-refresh.log
           grep -q 'PASS: USGS CURRENT CRITICAL-MINERAL INGESTION CLEAN' artifacts/global-production-coverage/usgs-mcs-live-refresh.log
 
-      - name: Self-heal GDELT GAL freshness before sovereign CANONICAL refresh
+      - name: Self-heal GDELT GAL freshness before country-like CANONICAL refresh
         shell: bash
         run: |
           set -euo pipefail
@@ -103,7 +103,7 @@ jobs:
             exit "$probe_status"
           fi
 
-      - name: Refresh reviewed open realtime evidence before sovereign CANONICAL refresh
+      - name: Refresh reviewed open realtime evidence before country-like CANONICAL refresh
         shell: bash
         env:
           OPEN_LIVE_SOURCE_SYNC_OUTPUT: artifacts/global-production-coverage/open-live-source-sync.json
@@ -143,7 +143,7 @@ jobs:
           node scripts/drain-live-structure.mjs --fragment-ids-file "$OPEN_LIVE_SOURCE_SYNC_OUTPUT" 2>&1 | tee artifacts/global-production-coverage/open-live-structure-drain.log
           node scripts/reconcile-structured-event-commercial-rights.mjs 2>&1 | tee artifacts/global-production-coverage/open-live-rights-reconcile.log
 
-      - name: Refresh every enabled sovereign CANONICAL Risk Object
+      - name: Refresh every enabled country-like CANONICAL Risk Object
         shell: bash
         run: |
           set -euo pipefail
@@ -154,12 +154,14 @@ jobs:
           set -e
           jq -e '
             .schema_version == "geomacro-global-canonical-refresh-v1"
-            and .boundaries.all_enabled_sovereigns_evaluated == true
+            and .boundaries.all_enabled_country_like_subjects_evaluated == true
             and .boundaries.payment_not_performed_by_refresh == true
             and .boundaries.raw_source_material_emitted == false
             and .boundaries.raw_exception_messages_emitted == false
             and .boundaries.execution_authorized == false
-            and .denominator.count >= 190
+            and .denominator.count >= 195
+            and .denominator.sovereign_count >= 194
+            and .denominator.special_country_like_count == 2
           ' "$GLOBAL_CANONICAL_REFRESH_OUTPUT" >/dev/null
           if [ "$refresh_status" -ne 0 ]; then
             echo "Global CANONICAL refresh completed fail-closed with status ${refresh_status}."
