@@ -16,6 +16,11 @@ describe("#1414 governed live-source database transport", () => {
     expect(dbClient).toContain('String(process.env.GRI_DB_MODE ?? "").trim().toLowerCase() === "direct_postgres"');
     expect(dbClient).toContain("Refusing direct GRI access outside the authoritative Supabase project");
     expect(dbClient).toContain("new DirectPostgresClient(process.env.SUPABASE_DB_URL)");
+    expect(dbClient).toContain("value !== undefined");
+    expect(dbClient).toContain("const normalizedRows = rows.map");
+    expect(dbClient).toContain("delete() {");
+    expect(dbClient).toContain("DIRECT_POSTGRES_DELETE_REQUIRES_FILTER");
+    expect(dbClient).toContain('this.operation === "delete"');
   });
 
   it("runs GDELT v2 under the same direct-Postgres production mode rather than requiring Edge/Data API availability", () => {

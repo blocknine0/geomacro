@@ -109,7 +109,7 @@ class DirectQueryBuilder {
   }
 
   select(columns = "*", options = {}) {
-    if (["insert", "update", "upsert"].includes(this.operation)) {
+    if (["insert", "update", "upsert", "delete"].includes(this.operation)) {
       this.returningColumns = parseColumns(columns);
     } else {
       this.columns = parseColumns(columns);
@@ -139,6 +139,12 @@ class DirectQueryBuilder {
     }
     this.operation = "update";
     this.payload = payload;
+    return this;
+  }
+
+  delete() {
+    this.operation = "delete";
+    this.payload = null;
     return this;
   }
 
@@ -289,12 +295,15 @@ class DirectQueryBuilder {
 
   #insertParts() {
     const rows = this.payload;
-    const keys = [...new Set(rows.flatMap((row) => Object.keys(row ?? {})))];
+    const normalizedRows = rows.map((row) => Object.fromEntries(
+      Object.entries(row ?? {}).filter(([, value]) => value !== undefined),
+    ));
+    const keys = [...new Set(normalizedRows.flatMap((row) => Object.keys(row)))];
     if (!keys.length) throw new Error("INSERT_PAYLOAD_HAS_NO_COLUMNS");
     keys.forEach((key) => identifier(key, "insert_column"));
     const table = `public.${identifier(this.table)}`;
     const cols = keys.map((key) => identifier(key)).join(",");
-    const payloadJson = quoteString(JSON.stringify(rows));
+    const payloadJson = quoteString(JSON.stringify(normalizedRows));
     const sourceCols = keys.map((key) => identifier(key)).join(",");
     const insert = `INSERT INTO ${table} (${cols}) SELECT ${sourceCols} FROM jsonb_populate_recordset(NULL::${table}, ${payloadJson}::jsonb)`;
     return { table, keys, insert };
@@ -323,12 +332,23 @@ class DirectQueryBuilder {
     return `WITH changed AS (${upsert} RETURNING *) SELECT row_to_json(q)::text FROM (SELECT ${this.returningColumns} FROM changed) q;`;
   }
 
+  #deleteSql() {
+    const table = `public.${identifier(this.table)}`;
+    if (!this.filters.length) throw new Error("DIRECT_POSTGRES_DELETE_REQUIRES_FILTER");
+    const deletion = `DELETE FROM ${table}${this.#where()}`;
+    if (!this.returningColumns) return `${deletion};`;
+    return `WITH changed AS (${deletion} RETURNING *) SELECT row_to_json(q)::text FROM (SELECT ${this.returningColumns} FROM changed) q;`;
+  }
+
   #updateSql() {
-    const keys = Object.keys(this.payload ?? {});
+    const normalizedPayload = Object.fromEntries(
+      Object.entries(this.payload ?? {}).filter(([, value]) => value !== undefined),
+    );
+    const keys = Object.keys(normalizedPayload);
     if (!keys.length) throw new Error("UPDATE_PAYLOAD_HAS_NO_COLUMNS");
     keys.forEach((key) => identifier(key, "update_column"));
     const table = `public.${identifier(this.table)}`;
-    const payloadJson = quoteString(JSON.stringify(this.payload));
+    const payloadJson = quoteString(JSON.stringify(normalizedPayload));
     const assignments = keys
       .map((key) => `${identifier(key)} = (jsonb_populate_record(NULL::${table}, ${payloadJson}::jsonb)).${identifier(key)}`)
       .join(",");
@@ -357,6 +377,8 @@ class DirectQueryBuilder {
         stdout = psql(this.dbUrl, this.#upsertSql());
       } else if (this.operation === "update") {
         stdout = psql(this.dbUrl, this.#updateSql());
+      } else if (this.operation === "delete") {
+        stdout = psql(this.dbUrl, this.#deleteSql());
       } else {
         throw new Error(`UNSUPPORTED_DIRECT_POSTGRES_OPERATION:${this.operation}`);
       }
