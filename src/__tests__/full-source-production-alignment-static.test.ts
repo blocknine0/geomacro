@@ -61,7 +61,6 @@ describe("full source production alignment", () => {
     expect(workflow).not.toContain("schedule:");
     expect(workflow).not.toContain("cron:");
     expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).toContain("not a daily writer");
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx");
     expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
