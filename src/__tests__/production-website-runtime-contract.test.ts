@@ -116,6 +116,11 @@ describe("production website runtime contract", () => {
   it("checks rendered route content plus functional public APIs", () => {
     const workflow = read(".github/workflows/production-website-health.yml");
     expect(workflow).toContain("Verify public production APIs and current Intelligence contract");
+    expect(workflow).toContain("Verify live build marker matches canonical main");
+    expect(workflow).toContain("/.well-known/geomacro-build.json");
+    expect(workflow).toContain("LIVE_DEPLOYMENT_SHA_MISMATCH");
+    expect(workflow).toContain("Verify Ask Geomacro mobile rendering contract");
+    expect(workflow).toContain("iPhone; CPU iPhone OS 18_0");
     expect(workflow).toContain("scoredCurrentAcrossAllDomains");
     expect(workflow).toContain("body?.mode !== 'verified_b2' || live !== 0");
     expect(workflow).toContain("body?.mode !== 'verified_b2_plus_live_observed' || live < 1");
