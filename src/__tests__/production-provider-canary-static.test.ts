@@ -50,7 +50,7 @@ describe("production provider real-money canary runner", () => {
     expect(canary).toContain("representative_scope_payment_count: 0");
     expect(canary).toContain("representative_scope_all_chargeable");
     expect(canary).toContain("const evidenceProvider = EVIDENCE_PROVIDERS[provider]");
-    expect(canary.match(/const evidenceProvider = EVIDENCE_PROVIDERS\\[provider\\]/g)?.length).toBe(1);
+    expect(canary.match(/const evidenceProvider = EVIDENCE_PROVIDERS\[provider\]/g)?.length).toBe(1);
   });
 
   it("keeps raw payment proof and buyer secrets out of persisted evidence", () => {
