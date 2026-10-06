@@ -6,7 +6,7 @@ name: Day 6 Authorized Federico Pilot Once
 # Final bounded retrigger after #1557 added allowlisted direct-Postgres inner-relationship parity; #1554 pins child assurance to its exact dispatched SHA.
 # Final bounded retrigger after direct-Postgres `.contains()` parity fixes country-specific corroboration.
 # Final bounded retrigger after #1571 made archived GRO recovery B2-native and split B2 read/write credentials.
-# Final bounded retrigger after permanent same-host SCMP /plus article timestamp canonicalization.\n# Partner bootstrap is intentionally limited to the exact five source families used by strict candidate selection.
+# Final bounded retrigger after permanent same-host SCMP /plus article timestamp canonicalization.\n# Final bounded retrigger expands governed partner RSS bootstrap to the production-runbook 25-item bound; strict freshness/corroboration thresholds remain unchanged.\n# Partner bootstrap is intentionally limited to the exact five source families used by strict candidate selection.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
@@ -88,7 +88,7 @@ jobs:
           TELEGRAM_ENABLED: "false"
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
-          BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
+          BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "25"
           BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
           RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-cycle.json
