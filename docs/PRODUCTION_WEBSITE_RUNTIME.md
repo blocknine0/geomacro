@@ -51,6 +51,10 @@ The following customer-facing routes are release-critical:
 
 ## Continuous prevention
 
-`Production Website Health` checks the live B2 production health, alignment contract and core pages every six hours. Product CI contains static regression guards that fail if the public Intelligence, Risk Indices or Ask Geomacro paths regain a Supabase serving dependency or a browser direct-Supabase URL.
+`Production Website Health` checks the live B2 production health, alignment contract and core pages every six hours. It also checks the deployed D1 control-plane `/health` contract and proves that an unauthenticated D1 mutation is rejected with HTTP 401. Product CI contains static regression guards that fail if the public Intelligence, Risk Indices or Ask Geomacro paths regain a Supabase serving dependency or a browser direct-Supabase URL.
+
+Intelligence freshness UI time is derived from the newest production evidence timestamp (`published_at`, falling back only to the stored `created_at` evidence timestamp). Browser fetch/refresh time must never be presented as evidence freshness.
 
 Deployment remains two-stage: canonical GitHub `main` is mirrored to the Lovable-linked repository, then the owner explicitly publishes the synced revision. A successful Git mirror is not proof of a live deployment; the public build marker and health smoke must match the published canonical SHA.
+
+A successful Section 11 run uploads `geomacro.section11-production-deployment-acceptance.v1` evidence binding the exact canonical SHA to the live build marker, Lovable mirror marker, B2 public serving, D1 health/fail-closed behavior and Ask desktop/mobile rendering. The run performs no real payment and no destructive state change.
