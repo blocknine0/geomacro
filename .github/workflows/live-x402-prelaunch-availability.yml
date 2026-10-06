@@ -25,6 +25,18 @@ jobs:
       - name: Verify live no-charge prelaunch safety boundary
         run: node scripts/agentic/verify-live-x402-prelaunch-availability.mjs
 
+      - name: Verify five commercial x402 scopes reach an unpaid challenge
+        run: node scripts/agentic/verify-live-x402-no-funds-scope-acceptance.mjs
+
+      - name: Upload no-funds paid-scope evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: live-x402-no-funds-scope-acceptance-${{ github.run_id }}
+          path: artifacts/live-x402-no-funds-scope-acceptance.json
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Verify live no-charge 195+ country paid-path availability
         env:
           GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
