@@ -80,12 +80,14 @@ describe("Federico trusted source publication-time hydration", () => {
 
   it("keeps readiness fail-closed and re-corroborates only after trusted hydration", () => {
     const script = readFileSync("scripts/check-federico-publication.ts", "utf8");
-    const hydrate = script.indexOf("const hydrated = await hydrateTrustedSourceTimes()");
+    const countryGuard = script.indexOf('COUNTRY_ISO3 === "CHN"');
+    const hydrate = script.indexOf("await hydrateTrustedSourceTimes()");
     const recorroborate = script.indexOf("await recorroborateCountry()");
     const dryRun = script.indexOf("await dryRunCountryRiskObject");
     const strictAssert = script.indexOf("assertFedericoPublicationReady(object)");
 
-    expect(hydrate).toBeGreaterThan(-1);
+    expect(countryGuard).toBeGreaterThan(-1);
+    expect(hydrate).toBeGreaterThan(countryGuard);
     expect(recorroborate).toBeGreaterThan(hydrate);
     expect(dryRun).toBeGreaterThan(recorroborate);
     expect(strictAssert).toBeGreaterThan(dryRun);
