@@ -47,6 +47,33 @@ jobs:
       GLOBAL_RISK_EDGE_URL: https://geomacro-global-risk.daspallab202391.workers.dev/global-risk
       RISK_INDICES_EDGE_URL: https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices
     steps:
+      - name: Verify live build marker matches canonical main
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/.well-known/geomacro-build.json")"
+          cat "$body"
+          echo
+          if [[ "$code" != "200" ]]; then
+            echo "::error title=Live build marker unavailable::Expected HTTP 200 from /.well-known/geomacro-build.json, got $code."
+            exit 1
+          fi
+          node - "$body" <<'NODE'
+          const fs = require('fs');
+          const marker = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const expected = String(process.env.EXPECTED_SHA ?? '').trim().toLowerCase();
+          const observed = String(marker?.canonical_main_sha ?? '').trim().toLowerCase();
+          if (!/^[0-9a-f]{40}$/.test(expected)) throw new Error('EXPECTED_CANONICAL_SHA_INVALID');
+          if (marker?.schema_version !== 'geomacro.deployment-build.v1') throw new Error('LIVE_BUILD_MARKER_SCHEMA_MISMATCH');
+          if (marker?.canonical_repository !== 'blocknine0/geomacro') throw new Error('LIVE_BUILD_MARKER_REPOSITORY_MISMATCH');
+          if (marker?.production_activation_performed !== false) throw new Error('LIVE_BUILD_MARKER_ACTIVATION_BOUNDARY_INVALID');
+          if (observed !== expected) throw new Error(`LIVE_DEPLOYMENT_SHA_MISMATCH:expected=${expected}:observed=${observed || 'missing'}`);
+          console.log(JSON.stringify({ok:true,canonical_main_sha:observed}));
+          NODE
+
       - name: Verify B2 production serving health
         shell: bash
         run: |
@@ -243,6 +270,27 @@ jobs:
             exit 1
           fi
           grep -Fq '"ok":true' "$ask"
+
+      - name: Verify Ask Geomacro mobile rendering contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          decoded="$(mktemp)"
+          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS \
+            -A 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1' \
+            -o "$body" -w '%{http_code}' "$BASE_URL/ask-geomacro")"
+          test "$code" = "200" || { echo "::error title=Ask mobile route unavailable::HTTP $code"; head -c 1000 "$body" || true; exit 1; }
+          ! grep -Fq "This page didn't load" "$body" || { echo "::error title=Ask mobile route rendered error boundary::/ask-geomacro"; exit 1; }
+          python - "$body" "$decoded" <<'PY'
+          import html
+          import pathlib
+          import sys
+          source = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8')
+          pathlib.Path(sys.argv[2]).write_text(html.unescape(source), encoding='utf-8')
+          PY
+          grep -Fq 'Ask Geomacro' "$decoded"
+          rm -f "$body" "$decoded"
 
       - name: Upload production Intelligence diagnostic
         if: always()
