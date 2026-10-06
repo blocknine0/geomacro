@@ -37,6 +37,8 @@ jobs:
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       GH_TOKEN: ${{ github.token }}
       GRI_DB_MODE: direct_postgres
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
 
     steps:
       - name: Checkout exact canonical main
@@ -57,7 +59,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in SUPABASE_DB_URL; do
+          for name in SUPABASE_DB_URL B2_ARCHIVE_READ_KEY_ID B2_ARCHIVE_READ_APPLICATION_KEY; do
             test -n "${!name:-}" || { echo "::error::$name is required"; exit 2; }
           done
           test "${GRI_DB_MODE:-}" = "direct_postgres"
