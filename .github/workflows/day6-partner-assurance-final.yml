@@ -57,10 +57,15 @@ jobs:
         id: candidate
         env:
           RAW_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
-          CANDIDATE_SHA="${RAW_CANDIDATE_SHA:-$GITHUB_SHA}"
+          [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::dispatch SHA must be an exact 40-hex commit SHA"
+            exit 2
+          }
+          CANDIDATE_SHA="${RAW_CANDIDATE_SHA:-$DISPATCH_SHA}"
           [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
             echo "::error::candidate_sha must be an exact 40-hex commit SHA"
             exit 2
