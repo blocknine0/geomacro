@@ -11,7 +11,7 @@ import time
 import http.client
 import urllib.error
 import urllib.request
-from urllib.parse import urljoin, urlencode
+from urllib.parse import urljoin, urlencode, urlparse
 from calendar import timegm
 from datetime import datetime, timezone
 from typing import Any
@@ -74,6 +74,11 @@ def parse_reliability() -> dict[str, float]:
 INGEST_URL = require_env("GEOMACRO_FLASH_INGEST_URL")
 INGEST_TOKEN = os.environ.get("GEOMACRO_FLASH_INGEST_TOKEN", "").strip()
 OIDC_TOKEN = os.environ.get("GEOMACRO_FLASH_OIDC_TOKEN", "").strip()
+
+
+def ingest_url_is_loopback() -> bool:
+    parsed = urlparse(INGEST_URL)
+    return parsed.scheme in {"http", "https"} and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
 
 TELEGRAM_ENABLED = env_bool("TELEGRAM_ENABLED", True)
 RSS_ENABLED = env_bool("BREAKING_RSS_ENABLED", True)
@@ -1487,9 +1492,9 @@ async def main() -> None:
             "TELEGRAM_ENABLED=true requires GEOMACRO_FLASH_INGEST_TOKEN"
         )
 
-    if RSS_ENABLED and not (INGEST_TOKEN or OIDC_TOKEN):
+    if RSS_ENABLED and not (INGEST_TOKEN or OIDC_TOKEN or ingest_url_is_loopback()):
         raise RuntimeError(
-            "RSS collection requires GEOMACRO_FLASH_INGEST_TOKEN or GEOMACRO_FLASH_OIDC_TOKEN"
+            "Remote RSS collection requires GEOMACRO_FLASH_INGEST_TOKEN or GEOMACRO_FLASH_OIDC_TOKEN"
         )
 
     if RSS_RUN_ONCE and TELEGRAM_ENABLED:
