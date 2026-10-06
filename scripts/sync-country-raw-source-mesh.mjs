@@ -277,11 +277,20 @@ async function main() {
   if (
     String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
     !String(process.env.B2_KEY_ID ?? "").trim() ||
-    !String(process.env.B2_APPLICATION_KEY ?? "").trim() ||
-    !String(process.env.B2_ARCHIVE_READ_KEY_ID ?? "").trim() ||
-    !String(process.env.B2_ARCHIVE_READ_APPLICATION_KEY ?? "").trim()
+    !String(process.env.B2_APPLICATION_KEY ?? "").trim()
   ) {
     throw new Error("COUNTRY_RAW_SOURCE_MESH_B2_CONFIG_REQUIRED");
+  }
+
+  for (const [accessName, secretName] of [
+    ["B2_ARCHIVE_READ_KEY_ID", "B2_ARCHIVE_READ_APPLICATION_KEY"],
+    ["B2_ARCHIVE_WRITE_KEY_ID", "B2_ARCHIVE_WRITE_APPLICATION_KEY"],
+  ]) {
+    const access = String(process.env[accessName] ?? "").trim();
+    const secret = String(process.env[secretName] ?? "").trim();
+    if (Boolean(access) !== Boolean(secret)) {
+      throw new Error("COUNTRY_RAW_SOURCE_MESH_B2_READ_CREDENTIAL_PAIR_INCOMPLETE");
+    }
   }
 
   const db = createGriDbClient();
