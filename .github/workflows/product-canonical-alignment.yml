@@ -1,0 +1,205 @@
+name: Product Canonical Alignment
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/product-canonical-alignment.yml"
+      - "src/lib/ask-*.ts"
+      - "src/lib/hybrid-ask-intelligence.server.ts"
+      - "src/lib/testnet-intelligence-capability-hybrid.server.ts"
+      - "src/lib/structured-data-entitlement-registry.ts"
+      - "src/lib/commercial-access-contract.ts"
+      - "src/lib/risk-gate/**"
+      - "src/lib/risk-gate*.ts"
+      - "src/lib/structural-*.ts"
+      - "server/api/commercial/**"
+      - "server/api/public/**"
+      - "src/__tests__/canonical-delivery-architecture.test.ts"
+      - "src/__tests__/hybrid-intelligence-routing.test.ts"
+      - "src/__tests__/ask-realtime-search-fallback.test.ts"
+      - "src/__tests__/supabase-pause-public-read-resilience.test.ts"
+      - "src/__tests__/risk-gate-commercial-readiness.test.ts"
+      - "src/__tests__/risk-gate-runtime-fail-closed.test.ts"
+      - "src/__tests__/risk-gate-verification-fail-closed.test.ts"
+      - "src/__tests__/structural-serving-contract.test.ts"
+      - "src/__tests__/structural-context-contract.test.ts"
+      - "src/__tests__/commercial-structural-api-static.test.ts"
+      - "src/__tests__/production-website-runtime-contract.test.ts"
+      - "src/__tests__/production-public-serving-boundary.test.ts"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/product-canonical-alignment.yml"
+      - "src/lib/ask-*.ts"
+      - "src/lib/hybrid-ask-intelligence.server.ts"
+      - "src/lib/testnet-intelligence-capability-hybrid.server.ts"
+      - "src/lib/structured-data-entitlement-registry.ts"
+      - "src/lib/commercial-access-contract.ts"
+      - "src/lib/risk-gate/**"
+      - "src/lib/risk-gate*.ts"
+      - "src/lib/structural-*.ts"
+      - "server/api/commercial/**"
+      - "server/api/public/**"
+      - "src/__tests__/canonical-delivery-architecture.test.ts"
+      - "src/__tests__/hybrid-intelligence-routing.test.ts"
+      - "src/__tests__/ask-realtime-search-fallback.test.ts"
+      - "src/__tests__/supabase-pause-public-read-resilience.test.ts"
+      - "src/__tests__/risk-gate-commercial-readiness.test.ts"
+      - "src/__tests__/risk-gate-runtime-fail-closed.test.ts"
+      - "src/__tests__/risk-gate-verification-fail-closed.test.ts"
+      - "src/__tests__/structural-serving-contract.test.ts"
+      - "src/__tests__/structural-context-contract.test.ts"
+      - "src/__tests__/commercial-structural-api-static.test.ts"
+      - "src/__tests__/production-website-runtime-contract.test.ts"
+      - "src/__tests__/production-public-serving-boundary.test.ts"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: product-canonical-alignment-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  static-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify one-truth multi-product contracts
+        run: >-
+          bun x vitest run
+          src/__tests__/canonical-delivery-architecture.test.ts
+          src/__tests__/hybrid-intelligence-routing.test.ts
+          src/__tests__/ask-realtime-search-fallback.test.ts
+          src/__tests__/supabase-pause-public-read-resilience.test.ts
+          src/__tests__/risk-gate-commercial-readiness.test.ts
+          src/__tests__/risk-gate-runtime-fail-closed.test.ts
+          src/__tests__/risk-gate-verification-fail-closed.test.ts
+          src/__tests__/structural-serving-contract.test.ts
+          src/__tests__/structural-context-contract.test.ts
+          src/__tests__/commercial-structural-api-static.test.ts
+          src/__tests__/production-website-runtime-contract.test.ts
+          src/__tests__/production-public-serving-boundary.test.ts
+
+  production-alignment:
+    if: ${{ github.ref == 'refs/heads/main' && github.repository == 'blocknine0/geomacro' }}
+    needs: static-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      BASE_URL: https://geomacro.live
+    steps:
+      - name: Verify B2-first production health and product readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          curl --fail --silent --show-error --location --retry 3 --retry-all-errors             "$BASE_URL/api/health?deep=1" > artifacts/product-health.json
+          node <<'NODE'
+          const fs = require('fs');
+          const h = JSON.parse(fs.readFileSync('artifacts/product-health.json', 'utf8'));
+          const p = h.public_production || {};
+          const failures = [];
+          if (h.ok !== true) failures.push('health_not_ok');
+          if (p.serving_authority !== 'backblaze-b2') failures.push('serving_not_b2');
+          if (p.supabase_required_for_serving !== false) failures.push('supabase_still_required_for_serving');
+          if (p.b2_runtime_configured !== true) failures.push('b2_not_configured');
+          if (p.intelligence_ready !== true) failures.push('intelligence_not_ready');
+          if (p.global_risk_ready !== true) failures.push('global_risk_not_ready');
+          if (p.risk_indices_ready !== true) failures.push('risk_indices_not_ready');
+          if (p.risk_verification_status !== 'verified') failures.push('risk_not_verified');
+          if (failures.length) throw new Error(`PRODUCT_HEALTH_ALIGNMENT_FAILED:${failures.join(',')}`);
+          NODE
+
+      - name: Probe live Intelligence and Ask on the canonical public runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          nonce="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(date +%s)"
+          curl --fail --silent --show-error --location             -H 'Accept: application/json' -H 'Cache-Control: no-cache'             "$BASE_URL/api/public/intelligence?product_alignment=${nonce}"             > artifacts/product-intelligence.json
+
+          curl --fail --silent --show-error --location             -H 'Accept: application/json'             -H 'Origin: https://geomacro.live'             -H 'X-Geomacro-Question: What changed in the risk indices?'             "$BASE_URL/api/public-ask"             > artifacts/product-ask.json
+
+          node <<'NODE'
+          const fs = require('fs');
+          const intelligence = JSON.parse(fs.readFileSync('artifacts/product-intelligence.json', 'utf8'));
+          const ask = JSON.parse(fs.readFileSync('artifacts/product-ask.json', 'utf8'));
+          if (intelligence.ok !== true || !Array.isArray(intelligence.rows) || intelligence.rows.length === 0) {
+            throw new Error('PUBLIC_INTELLIGENCE_ALIGNMENT_FAILED');
+          }
+          if (ask.ok !== true) throw new Error('PUBLIC_ASK_ALIGNMENT_FAILED');
+          const serialized = JSON.stringify(ask);
+          for (const forbidden of ['SUPABASE_SERVICE_ROLE_KEY','B2_APPLICATION_KEY','RISK_OBJECT_SIGNING_PRIVATE_KEY']) {
+            if (serialized.includes(forbidden)) throw new Error(`ASK_SECRET_LEAK:${forbidden}`);
+          }
+          NODE
+
+      - name: Probe live customer product routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > artifacts/product-route-status.tsv
+          for route in /intelligence /global-risk /ask-geomacro /risk-gate /pricing; do
+            code="$(curl --silent --show-error --location --retry 2 --retry-all-errors               --output /tmp/product-route.html --write-out '%{http_code}' "$BASE_URL$route")"
+            printf '%s\t%s\n' "$route" "$code" >> artifacts/product-route-status.tsv
+            test "$code" = "200" || { echo "::error::Route $route returned HTTP $code"; exit 1; }
+          done
+
+      - name: Write product alignment proof
+        shell: bash
+        env:
+          ACCEPTED_SHA: ${{ github.sha }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const health = JSON.parse(fs.readFileSync('artifacts/product-health.json','utf8'));
+          const intelligence = JSON.parse(fs.readFileSync('artifacts/product-intelligence.json','utf8'));
+          const ask = JSON.parse(fs.readFileSync('artifacts/product-ask.json','utf8'));
+          const routes = fs.readFileSync('artifacts/product-route-status.tsv','utf8').trim().split('\n').filter(Boolean)
+            .map(line => { const [route,http_status] = line.split('\t'); return { route, http_status:Number(http_status) }; });
+          const proof = {
+            schema: 'geomacro.product-canonical-alignment-proof.v1',
+            checked_at: new Date().toISOString(),
+            accepted_main_sha: process.env.ACCEPTED_SHA,
+            serving_authority: health?.public_production?.serving_authority ?? null,
+            supabase_required_for_serving: health?.public_production?.supabase_required_for_serving ?? null,
+            intelligence_ready: health?.public_production?.intelligence_ready === true,
+            global_risk_ready: health?.public_production?.global_risk_ready === true,
+            risk_indices_ready: health?.public_production?.risk_indices_ready === true,
+            public_intelligence_rows: Array.isArray(intelligence.rows) ? intelligence.rows.length : 0,
+            public_ask_ok: ask.ok === true,
+            live_routes: routes,
+            real_money_action_performed: false
+          };
+          fs.writeFileSync('artifacts/product-canonical-alignment-proof.json', JSON.stringify(proof,null,2)+'\n');
+          console.log(JSON.stringify(proof));
+          NODE
+
+      - name: Upload product alignment proof
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: product-canonical-alignment-${{ github.run_id }}
+          path: |
+            artifacts/product-health.json
+            artifacts/product-intelligence.json
+            artifacts/product-ask.json
+            artifacts/product-route-status.tsv
+            artifacts/product-canonical-alignment-proof.json
+          if-no-files-found: error
+          retention-days: 30
