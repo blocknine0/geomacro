@@ -1,4 +1,5 @@
 name: Day 6 Global Partner Assurance
+run-name: Day 6 Partner Assurance ${{ inputs.iso3 }} @ ${{ inputs.candidate_sha || github.sha }} allowance=${{ inputs.use_partner_allowance }}
 
 on:
   workflow_dispatch:
@@ -7,6 +8,11 @@ on:
         description: "Uppercase ISO3 country to generate under the global strict partner profile"
         required: true
         default: "USA"
+        type: string
+      candidate_sha:
+        description: "Exact 40-hex commit SHA whose code and contracts must be checked out for this assurance run"
+        required: false
+        default: ""
         type: string
       use_partner_allowance:
         description: "Explicitly spend one Federico pilot allowance review after every local gate passes"
@@ -47,18 +53,34 @@ jobs:
       INVINO_REVIEW_OUT: /tmp/federico-review-response.json
 
     steps:
-      - name: Checkout exact dispatched SHA
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-
-      - name: Confirm exact dispatched SHA
+      - name: Validate exact candidate SHA
+        id: candidate
+        env:
+          RAW_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA" || {
-            echo "::error::Partner assurance checkout drifted from dispatched SHA"
+          CANDIDATE_SHA="${RAW_CANDIDATE_SHA:-$GITHUB_SHA}"
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::candidate_sha must be an exact 40-hex commit SHA"
+            exit 2
+          }
+          echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact candidate SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.candidate.outputs.sha }}
+          persist-credentials: false
+
+      - name: Confirm exact candidate SHA
+        env:
+          EXPECTED_SHA: ${{ steps.candidate.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA" || {
+            echo "::error::Partner assurance checkout drifted from candidate SHA"
             exit 2
           }
 
