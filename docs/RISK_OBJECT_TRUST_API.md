@@ -26,7 +26,9 @@ Request:
 }
 ```
 
-The request object above is abbreviated. Clients should submit the complete signed Geomacro Risk Object exactly as received.
+The request object above is abbreviated. Clients may submit a complete signed Geomacro Risk Object when it fits within the advertised `verification_endpoint.max_body_bytes` limit.
+
+For larger signed Risk Objects, clients MUST use the public keys returned by `GET /api/risk-object-keys` and independently reproduce `geomacro-canonical-json-v1` bytes, the SHA-256 payload binding, and Ed25519 verification locally. The discovery response exposes `large_object_verification.mode = client_local_with_public_keys` so this behavior is machine-readable. Large artifacts are not re-uploaded merely to prove trust.
 
 The endpoint accepts JSON only and applies a bounded request-body limit. Verification always uses the server-controlled trusted key registry. A caller cannot inject an alternative public key or trust root.
 
