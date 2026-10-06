@@ -175,11 +175,11 @@ jobs:
           set -euo pipefail
           MAIN_SHA="$(git rev-parse HEAD)"
           SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          gh workflow run day6-partner-assurance-final.yml --ref main -f iso3="$TARGET_ISO3" -f use_partner_allowance=false
+          gh workflow run day6-partner-assurance-final.yml --ref main -f iso3="$TARGET_ISO3" -f candidate_sha="$MAIN_SHA" -f use_partner_allowance=false
           for _ in $(seq 1 30); do
             RUN_ID="$(gh run list --workflow day6-partner-assurance-final.yml --branch main --event workflow_dispatch --limit 20 \
-              --json databaseId,createdAt,headSha,status \
-              | jq -r --arg since "$SINCE" --arg sha "$MAIN_SHA" '[.[] | select(.createdAt >= $since and .headSha == $sha)] | sort_by(.createdAt) | last | .databaseId // empty')"
+              --json databaseId,createdAt,displayTitle,status \
+              | jq -r --arg since "$SINCE" --arg marker "@ $MAIN_SHA allowance=false" '[.[] | select(.createdAt >= $since and (.displayTitle | contains($marker)))] | sort_by(.createdAt) | last | .databaseId // empty')"
             [[ -n "$RUN_ID" ]] && break
             sleep 3
           done
@@ -189,7 +189,7 @@ jobs:
           for _ in $(seq 1 12); do
             ARTIFACTS="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '.artifacts[].name' || true)"
             printf '%s\n' "$ARTIFACTS"
-            printf '%s\n' "$ARTIFACTS" | grep -q "^federico-handoff-${RUN_ID}$" && exit 0
+            printf '%s\n' "$ARTIFACTS" | grep -q "^day6-global-partner-assurance-${RUN_ID}$" && exit 0
             sleep 5
           done
           echo "::error::No fresh local-assurance handoff was produced. Federico allowance was not used."
@@ -204,11 +204,11 @@ jobs:
           set -euo pipefail
           MAIN_SHA="$(git rev-parse HEAD)"
           SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          gh workflow run day6-partner-assurance-final.yml --ref main -f iso3="$TARGET_ISO3" -f use_partner_allowance=true
+          gh workflow run day6-partner-assurance-final.yml --ref main -f iso3="$TARGET_ISO3" -f candidate_sha="$MAIN_SHA" -f use_partner_allowance=true
           for _ in $(seq 1 30); do
             RUN_ID="$(gh run list --workflow day6-partner-assurance-final.yml --branch main --event workflow_dispatch --limit 20 \
-              --json databaseId,createdAt,headSha,status \
-              | jq -r --arg since "$SINCE" --arg sha "$MAIN_SHA" '[.[] | select(.createdAt >= $since and .headSha == $sha)] | sort_by(.createdAt) | last | .databaseId // empty')"
+              --json databaseId,createdAt,displayTitle,status \
+              | jq -r --arg since "$SINCE" --arg marker "@ $MAIN_SHA allowance=true" '[.[] | select(.createdAt >= $since and (.displayTitle | contains($marker)))] | sort_by(.createdAt) | last | .databaseId // empty')"
             [[ -n "$RUN_ID" ]] && break
             sleep 3
           done
@@ -218,7 +218,7 @@ jobs:
           for _ in $(seq 1 12); do
             ARTIFACTS="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '.artifacts[].name' || true)"
             printf '%s\n' "$ARTIFACTS"
-            printf '%s\n' "$ARTIFACTS" | grep -q "^federico-handoff-${RUN_ID}$" && exit 0
+            printf '%s\n' "$ARTIFACTS" | grep -q "^day6-global-partner-assurance-${RUN_ID}$" && exit 0
             sleep 5
           done
           echo "::error::Authorized review completed without a sealed handoff artifact."
