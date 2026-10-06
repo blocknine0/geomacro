@@ -51,7 +51,8 @@ describe("partner commercial readiness", () => {
     expect(workflow).toContain("candidate_sha:");
     expect(workflow).toContain("ref: ${{ steps.candidate.outputs.sha }}");
     expect(workflow).toContain('test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"');
-    expect(workflow).toContain('CANDIDATE_SHA="${RAW_CANDIDATE_SHA:-$GITHUB_SHA}"');
+    expect(workflow).toContain("DISPATCH_SHA: ${{ github.sha }}");
+    expect(workflow).toContain('CANDIDATE_SHA="${RAW_CANDIDATE_SHA:-$DISPATCH_SHA}"');
     expect(workflow).not.toContain("ref: main");
     expect(workflow).toContain("cancel-in-progress: false");
   });
