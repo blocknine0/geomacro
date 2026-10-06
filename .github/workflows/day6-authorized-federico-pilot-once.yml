@@ -5,6 +5,7 @@ name: Day 6 Authorized Federico Pilot Once
 # Final bounded retrigger after #1548 fixed direct-Postgres optional-column semantics exposed by run 37435599083.
 # Final bounded retrigger after #1557 added allowlisted direct-Postgres inner-relationship parity; #1554 pins child assurance to its exact dispatched SHA.
 # Final bounded retrigger after direct-Postgres `.contains()` parity fixes country-specific corroboration.
+# Partner bootstrap is intentionally limited to the exact five source families used by strict candidate selection.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
@@ -18,7 +19,7 @@ permissions:
 
 concurrency:
   group: day6-authorized-federico-pilot-once
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   authorize-and-run:
@@ -67,6 +68,7 @@ jobs:
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
           BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
+          BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
           RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-cycle.json
           RSS_LIVE_SKIP_CORROBORATION: "true"
