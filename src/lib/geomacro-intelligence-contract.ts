@@ -86,6 +86,53 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+const FORBIDDEN_COMMERCIAL_RESPONSE_KEYS = new Set([
+  "source",
+  "sources",
+  "source_id",
+  "source_ids",
+  "source_name",
+  "source_names",
+  "source_url",
+  "source_urls",
+  "publisher",
+  "publisher_name",
+  "provider",
+  "provider_id",
+  "provider_name",
+  "raw",
+  "raw_data",
+  "raw_payload",
+  "raw_content",
+  "raw_text",
+  "article",
+  "article_url",
+  "feed_url",
+  "endpoint_url",
+  "archive_url",
+  "b2_key",
+  "b2_path",
+  "storage_path",
+  "object_key",
+  "provenance_blob",
+]);
+
+function assertNoRawSourceLeak(value: unknown, path = "$"): void {
+  if (Array.isArray(value)) {
+    value.forEach((child, index) => assertNoRawSourceLeak(child, path + "[" + index + "]"));
+    return;
+  }
+  if (!isRecord(value)) return;
+
+  for (const [key, child] of Object.entries(value)) {
+    const normalizedKey = key.toLowerCase();
+    if (FORBIDDEN_COMMERCIAL_RESPONSE_KEYS.has(normalizedKey)) {
+      throw new Error("INTELLIGENCE_RESPONSE_RAW_SOURCE_LEAK:" + path + "." + key);
+    }
+    assertNoRawSourceLeak(child, path + "." + key);
+  }
+}
+
 /**
  * Runtime delivery contract for the paid adaptive intelligence product.
  *
@@ -96,6 +143,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  */
 export function assertGeomacroIntelligenceResponseContract(payload: unknown): asserts payload is Record<string, unknown> {
   if (!isRecord(payload)) throw new Error("INTELLIGENCE_RESPONSE_NOT_OBJECT");
+  // Permanent commercial boundary: reject raw payloads and upstream source/provider identity at any nesting depth.
+  assertNoRawSourceLeak(payload);
   if (payload.schema_version !== GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA) {
     throw new Error("INTELLIGENCE_RESPONSE_SCHEMA_VERSION_MISMATCH");
   }
