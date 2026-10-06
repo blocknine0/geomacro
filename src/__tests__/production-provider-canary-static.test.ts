@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const canary = readFileSync("scripts/commerce/run-production-provider-canary.mjs", "utf8");
+const common = readFileSync("scripts/commerce/production-canary-common.mjs", "utf8");
 
 describe("production provider real-money canary runner", () => {
   it("is explicit, single-provider, exact-SHA and capped", () => {
@@ -32,6 +33,24 @@ describe("production provider real-money canary runner", () => {
     expect(canary).toContain("Changed-request replay did not fail closed");
     expect(canary).toContain("payment_verified: true");
     expect(canary).toContain("replay_no_second_charge: true");
+  });
+
+  it("proves all five commercial scopes before the single paid call", () => {
+    for (const marker of [
+      "geopolitics-deu",
+      "macro-bra",
+      "critical-minerals-zaf",
+      "country-usa",
+      "corridor-usa-chn",
+    ]) {
+      expect(common).toContain(marker);
+    }
+    expect(canary).toContain("productionAcceptanceAvailabilityCases()");
+    expect(canary).toContain("scopeAvailabilityProofs");
+    expect(canary).toContain("representative_scope_payment_count: 0");
+    expect(canary).toContain("representative_scope_all_chargeable");
+    expect(canary).toContain("const evidenceProvider = EVIDENCE_PROVIDERS[provider]");
+    expect(canary.match(/const evidenceProvider = EVIDENCE_PROVIDERS\[provider\]/g)?.length).toBe(1);
   });
 
   it("keeps raw payment proof and buyer secrets out of persisted evidence", () => {
