@@ -121,6 +121,7 @@ export function assertGeomacroIntelligenceResponseContract(payload: unknown): as
     "signed_risk_objects",
     "gri_context",
     "current_state",
+    "change_intelligence",
     "decision_intelligence",
     "answer",
     "methodology",
@@ -129,6 +130,31 @@ export function assertGeomacroIntelligenceResponseContract(payload: unknown): as
     if (field === "gri_context" && payload[field] === null) continue;
     if (!isRecord(payload[field]) && !Array.isArray(payload[field])) {
       throw new Error(`INTELLIGENCE_RESPONSE_FIELD_INVALID:${field}`);
+    }
+  }
+
+  if (!Array.isArray(payload.change_intelligence) || payload.change_intelligence.length !== payload.subjects.length) {
+    throw new Error("INTELLIGENCE_RESPONSE_CHANGE_INTELLIGENCE_INVALID");
+  }
+  for (const row of payload.change_intelligence) {
+    if (!isRecord(row) || row.schema_version !== "geomacro.change-intelligence.v1") {
+      throw new Error("INTELLIGENCE_RESPONSE_CHANGE_INTELLIGENCE_SCHEMA_INVALID");
+    }
+    if (row.delivery_boundary !== "STRUCTURED_DERIVED_CHANGE_INTELLIGENCE_ONLY") {
+      throw new Error("INTELLIGENCE_RESPONSE_CHANGE_INTELLIGENCE_BOUNDARY_INVALID");
+    }
+    if (row.raw_data_delivered !== false || row.execution_authorized !== false) {
+      throw new Error("INTELLIGENCE_RESPONSE_CHANGE_INTELLIGENCE_SAFETY_BOUNDARY_INVALID");
+    }
+    if (!isRecord(row.refresh_hint) || row.refresh_hint.strategy !== "SOURCE_NATIVE_CADENCE_OR_STATE_CHANGE") {
+      throw new Error("INTELLIGENCE_RESPONSE_CHANGE_INTELLIGENCE_REFRESH_HINT_INVALID");
+    }
+    const refreshSeconds = row.refresh_hint.recommended_not_before_seconds;
+    if (typeof refreshSeconds !== "number" || !Number.isFinite(refreshSeconds) || refreshSeconds < 900 || refreshSeconds > 86_400) {
+      throw new Error("INTELLIGENCE_RESPONSE_CHANGE_INTELLIGENCE_REFRESH_WINDOW_INVALID");
+    }
+    if (typeof row.state_version !== "string" || !row.state_version.startsWith("gstate_")) {
+      throw new Error("INTELLIGENCE_RESPONSE_CHANGE_INTELLIGENCE_STATE_VERSION_INVALID");
     }
   }
 
