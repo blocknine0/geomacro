@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { createB2Client } from "../../scripts/ops/b2-s3-client.mjs";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
@@ -23,6 +24,50 @@ describe("#1414 B2 direct archive and credential split", () => {
     expect(client).toContain("credentialIndex < credentialCandidates.length - 1");
     expect(client).toContain("read_credentials_separate: readCredentialsSeparate");
     expect(client).toContain("read_fallback_to_primary_available");
+  });
+
+  it("reports primary fallback only when it is an independent credential candidate", () => {
+    const names = [
+      "B2_ARCHIVE_READ_KEY_ID",
+      "B2_ARCHIVE_READ_APPLICATION_KEY",
+      "B2_ARCHIVE_WRITE_KEY_ID",
+      "B2_ARCHIVE_WRITE_APPLICATION_KEY",
+      "B2_REQUEST_BUDGET",
+    ] as const;
+    const previous = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+    try {
+      process.env.B2_ARCHIVE_READ_KEY_ID = "read-key";
+      process.env.B2_ARCHIVE_READ_APPLICATION_KEY = "read-secret";
+      delete process.env.B2_ARCHIVE_WRITE_KEY_ID;
+      delete process.env.B2_ARCHIVE_WRITE_APPLICATION_KEY;
+      delete process.env.B2_REQUEST_BUDGET;
+
+      const independent = createB2Client({
+        endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+        accessKey: "primary-key",
+        secretKey: "primary-secret",
+        bucket: "geomacro-private-archive",
+      });
+      expect(independent.usage().read_credential_roles).toEqual(["dedicated-read", "primary"]);
+      expect(independent.usage().read_fallback_to_primary_available).toBe(true);
+
+      process.env.B2_ARCHIVE_READ_KEY_ID = "primary-key";
+      process.env.B2_ARCHIVE_READ_APPLICATION_KEY = "primary-secret";
+      const deduped = createB2Client({
+        endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+        accessKey: "primary-key",
+        secretKey: "primary-secret",
+        bucket: "geomacro-private-archive",
+      });
+      expect(deduped.usage().read_credential_roles).toEqual(["dedicated-read"]);
+      expect(deduped.usage().read_fallback_to_primary_available).toBe(false);
+    } finally {
+      for (const name of names) {
+        const value = previous[name];
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
   });
 
   it("makes direct-Postgres archived GRO recovery B2-native", () => {
