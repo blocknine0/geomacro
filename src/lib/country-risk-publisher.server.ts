@@ -490,6 +490,26 @@ function flashDirection(
   return "steady";
 }
 
+function federicoStrictPublishedAt(
+  value: unknown,
+  asOf: Date,
+  cutoffIso: string,
+): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const timestamp = Date.parse(raw);
+  const cutoff = Date.parse(cutoffIso);
+  if (
+    !Number.isFinite(timestamp) ||
+    !Number.isFinite(cutoff) ||
+    timestamp < cutoff ||
+    timestamp > asOf.getTime()
+  ) {
+    return null;
+  }
+  return new Date(timestamp).toISOString();
+}
+
 async function loadFedericoStructuredFallback(
   db: ReturnType<typeof requireRiskSupabase>,
   asOf: Date,
@@ -911,7 +931,6 @@ async function loadFedericoStrictEvents(
     const members = byFamily.get(familyId) ?? [];
     if (!members.length) continue;
 
-    const latest = members[0];
     // Strict partner evidence is country-agnostic. A member is auditable only
     // when it comes from the governed source universe AND that exact source
     // record has receiver-replayable governed attribution to the requested
@@ -927,7 +946,13 @@ async function loadFedericoStrictEvents(
       const hasTargetCountryAttribution = memberAttributions.some(
         (item) => item.country_iso3 === iso3,
       );
-      return isAllowedSource && hasTargetCountryAttribution;
+      const hasPreciseFreshPublicationTime =
+        federicoStrictPublishedAt(member.published_at, asOf, cutoff) !== null;
+      return (
+        isAllowedSource &&
+        hasTargetCountryAttribution &&
+        hasPreciseFreshPublicationTime
+      );
     });
 
     if (!auditableMembers.length) {
@@ -981,9 +1006,10 @@ async function loadFedericoStrictEvents(
 
     const latestAuditableMember = [...auditableMembers].sort(
       (a, b) =>
-        Date.parse(String(b.published_at ?? b.last_seen_at ?? "")) -
-        Date.parse(String(a.published_at ?? a.last_seen_at ?? "")),
+        Date.parse(String(b.published_at ?? "")) -
+        Date.parse(String(a.published_at ?? "")),
     )[0];
+    const latest = latestAuditableMember;
 
     const targetAttributions =
       members
@@ -1083,17 +1109,14 @@ async function loadFedericoStrictEvents(
     }
 
     const materialEvidenceAt =
-      String(
-        family.last_material_update_at ??
-          latest.last_material_update_at ??
-          (
-            latest.material_update
-              ? latest.last_seen_at
-              : latest.published_at ??
-                latest.first_seen_at ??
-                latest.ingested_at
-          ),
+      federicoStrictPublishedAt(
+        latest.published_at,
+        asOf,
+        cutoff,
       );
+    if (!materialEvidenceAt) {
+      continue;
+    }
 
     const lastSeen = new Date(materialEvidenceAt);
     const ageHours = Math.max(
