@@ -1,0 +1,104 @@
+name: Federico Repeatability Gate
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "13 */6 * * *"
+  pull_request:
+    paths:
+      - "src/lib/country-risk-engine.ts"
+      - "src/lib/country-risk-commercial-eligibility.ts"
+      - "src/lib/federico-publication-policy.ts"
+      - "src/lib/public-demo-risk-profile.ts"
+      - "src/lib/risk-object-signing.server.ts"
+      - "scripts/check-federico-positive-control.ts"
+      - "scripts/check-federico-repeatability.mjs"
+      - "scripts/check-partner-commercial-readiness.mjs"
+      - "scripts/partner-assurance-adapter.ts"
+      - "scripts/invinoveritas-risk-object-preflight.ts"
+      - "config/partner-assurance.v1.json"
+      - "public/.well-known/geomacro-partner-verification.json"
+      - "test-vectors/federico-strict-positive-control-v1.json"
+      - ".github/workflows/federico-repeatability.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/country-risk-engine.ts"
+      - "src/lib/country-risk-commercial-eligibility.ts"
+      - "src/lib/federico-publication-policy.ts"
+      - "src/lib/public-demo-risk-profile.ts"
+      - "src/lib/risk-object-signing.server.ts"
+      - "scripts/check-federico-positive-control.ts"
+      - "scripts/check-federico-repeatability.mjs"
+      - "scripts/check-partner-commercial-readiness.mjs"
+      - "scripts/partner-assurance-adapter.ts"
+      - "scripts/invinoveritas-risk-object-preflight.ts"
+      - "config/partner-assurance.v1.json"
+      - "public/.well-known/geomacro-partner-verification.json"
+      - "test-vectors/federico-strict-positive-control-v1.json"
+      - ".github/workflows/federico-repeatability.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: federico-repeatability-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GEOMACRO_ORIGIN: https://geomacro.live
+
+jobs:
+  repeatability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify deterministic Federico contract
+        run: node scripts/check-federico-repeatability.mjs | tee /tmp/federico-repeatability.json
+
+      - name: Assert zero-spend repeatability boundary
+        run: |
+          jq -e '
+            .ok == true and
+            .positive_control.runs == 5 and
+            .positive_control.deterministic == true and
+            .public_contract.deterministic == true and
+            .active_trust_registry.deterministic_within_probe == true and
+            .semantics.same_immutable_record_same_hash_and_signature_result == true and
+            .semantics.stale_or_insufficient_evidence_fails_closed == true and
+            .semantics.partner_live_review_scheduled == false and
+            .semantics.partner_allowance_used == 0 and
+            .semantics.user_funds_used == false and
+            .semantics.execution_authorized == false
+          ' /tmp/federico-repeatability.json >/dev/null
+
+      - name: Seal repeatability evidence
+        run: |
+          mkdir -p artifacts/federico-repeatability
+          cp /tmp/federico-repeatability.json artifacts/federico-repeatability/result.json
+          (
+            cd artifacts/federico-repeatability
+            sha256sum result.json > SHA256SUMS.txt
+            sha256sum -c SHA256SUMS.txt
+          )
+
+      - name: Upload repeatability evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: federico-repeatability-${{ github.run_id }}
+          path: artifacts/federico-repeatability/
+          if-no-files-found: error
+          retention-days: 14
