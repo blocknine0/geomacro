@@ -17,6 +17,33 @@ describe("RSS live partner bootstrap boundary", () => {
     expect(spoolServer).not.toContain("error.stack");
   });
 
+
+  it("never logs child stderr, stack traces, paths, tokens, or arbitrary exception text", () => {
+    const runStart = script.indexOf("function runCommand");
+    const runEnd = script.indexOf("function parseLastJson", runStart);
+    const runCommand = script.slice(runStart, runEnd);
+    const mainCatchStart = script.indexOf("main().catch");
+    const mainCatch = script.slice(mainCatchStart);
+
+    expect(runStart).toBeGreaterThanOrEqual(0);
+    expect(runEnd).toBeGreaterThan(runStart);
+    expect(runCommand).not.toContain("process.stderr.write");
+    expect(runCommand).not.toContain("error.message");
+
+    expect(script).not.toContain("stderr.slice");
+    expect(script).not.toContain("error.stack");
+    expect(script).not.toContain("String(error)");
+    expect(script).not.toContain("RSS worker failed with exit code=");
+    expect(script).toContain('throw new Error("RSS_WORKER_FAILED")');
+    expect(script).toContain('throw new Error("RSS_CANONICAL_DIRECT_INGEST_FAILED")');
+    expect(script).toContain('throw new Error("RSS_CANONICAL_DIRECT_CORROBORATION_FAILED")');
+
+    expect(mainCatch).toContain('/^RSS_[A-Z0-9_]+$/.test(message)');
+    expect(mainCatch).toContain('"RSS_LIVE_CYCLE_FAILED"');
+    expect(mainCatch).toContain("console.error(failureCode)");
+    expect(mainCatch).not.toContain("console.error(message");
+  });
+
   it("keeps global corroboration enabled by default and skips it only on explicit opt-in", () => {
     expect(script).toContain("RSS_LIVE_SKIP_CORROBORATION");
     expect(script).toContain('=== "true"');
