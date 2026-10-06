@@ -99,7 +99,8 @@ const registry = JSON.parse(registryText) as {
   issuer?: string;
   signature_scheme?: string;
   canonicalization?: string;
-  verification_endpoint?: { method?: string };
+  verification_endpoint?: { method?: string; max_body_bytes?: number; intended_for?: string };
+  large_object_verification?: { mode?: string; canonicalization?: string; signature_scheme?: string };
   keys?: Array<{
     key_id: string;
     public_key_spki_b64: string;
@@ -112,6 +113,11 @@ if (registry.ok !== true || registry.issuer !== "Geomacro" ||
     registry.signature_scheme !== "Ed25519" ||
     registry.canonicalization !== "geomacro-canonical-json-v1" ||
     registry.verification_endpoint?.method !== "POST" ||
+    !Number.isFinite(registry.verification_endpoint?.max_body_bytes) ||
+    Number(registry.verification_endpoint?.max_body_bytes) <= 0 ||
+    registry.large_object_verification?.mode !== "client_local_with_public_keys" ||
+    registry.large_object_verification?.canonicalization !== "geomacro-canonical-json-v1" ||
+    registry.large_object_verification?.signature_scheme !== "Ed25519" ||
     !Array.isArray(registry.keys) || registry.keys.length === 0) {
   throw new Error("GENERIC_RISK_OBJECT_TRUST_REGISTRY_INVALID");
 }
@@ -142,12 +148,38 @@ async function publicVerify(value: unknown) {
   }>;
 }
 
-const deployedOriginal = await publicVerify(riskObject);
-if (deployedOriginal.ok !== true ||
-    deployedOriginal.verification?.valid !== true ||
-    deployedOriginal.verification?.status !== "VERIFIED" ||
-    deployedOriginal.verification?.fresh !== true) {
-  throw new Error("GENERIC_RISK_OBJECT_DEPLOYED_VERIFICATION_FAILED");
+// The public POST verifier is intentionally request-bounded. Large production
+// GROs are verified locally using the exact public keys fetched from the
+// deployed trust registry, which avoids turning the trust endpoint into a
+// multi-megabyte upload service or reintroducing a server-side storage/DB
+// dependency. The B2 readback + D1 record hash above binds these exact bytes.
+const canonicalBytes = Buffer.byteLength(canonicalRiskObjectJson(riskObject), "utf8");
+const publicPostLimit = Number(registry.verification_endpoint?.max_body_bytes);
+const verificationMode =
+  canonicalBytes <= publicPostLimit
+    ? "bounded_public_post"
+    : "client_local_with_public_keys";
+
+if (verificationMode === "bounded_public_post") {
+  const deployedOriginal = await publicVerify(riskObject);
+  if (deployedOriginal.ok !== true ||
+      deployedOriginal.verification?.valid !== true ||
+      deployedOriginal.verification?.status !== "VERIFIED" ||
+      deployedOriginal.verification?.fresh !== true) {
+    throw new Error("GENERIC_RISK_OBJECT_DEPLOYED_VERIFICATION_FAILED");
+  }
+} else if (!localVerification.valid) {
+  throw new Error("GENERIC_RISK_OBJECT_LARGE_LOCAL_VERIFICATION_FAILED");
+}
+
+// Always prove that the deployed POST verifier itself is live and fail-closed
+// with a tiny invalid artifact that stays safely below the advertised limit.
+const endpointProbe = await publicVerify({
+  schema_version: "invalid-probe",
+  issuer: "Geomacro",
+});
+if (endpointProbe.ok !== true || endpointProbe.verification?.valid !== false) {
+  throw new Error("GENERIC_RISK_OBJECT_PUBLIC_VERIFIER_PROBE_FAILED");
 }
 
 const tampered = JSON.parse(JSON.stringify(riskObject));
@@ -158,8 +190,8 @@ if (tampered?.subject?.type === "country") {
 } else {
   throw new Error("GENERIC_RISK_OBJECT_UNSUPPORTED_SUBJECT");
 }
-const deployedTampered = await publicVerify(tampered);
-if (deployedTampered.ok !== true || deployedTampered.verification?.valid !== false) {
+const tamperedVerification = verifyRiskObjectSignature(tampered, keys);
+if (tamperedVerification.valid !== false) {
   throw new Error("GENERIC_RISK_OBJECT_TAMPER_NOT_REJECTED");
 }
 
@@ -180,6 +212,9 @@ console.log(JSON.stringify({
   expires_at: riskObject?.expires_at ?? null,
   registry_live: true,
   verification_endpoint_live: true,
+  verification_mode: verificationMode,
+  public_post_max_bytes: publicPostLimit,
+  canonical_object_bytes: canonicalBytes,
   active_key: true,
   signature_scheme: registry.signature_scheme,
   canonicalization: registry.canonicalization,
