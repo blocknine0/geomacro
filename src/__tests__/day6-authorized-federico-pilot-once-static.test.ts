@@ -42,37 +42,7 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("e.published_at is not null");
     expect(workflow).toContain("e.published_at >= now() - interval '6 hours'");
     expect(workflow).toContain("e.published_at <= now()");
-    expect(workflow).toContain("c.country_iso3 ~ '^[A-Z]{3}
-    expect(workflow).not.toContain("coalesce(e.published_at,e.last_seen_at,e.ingested_at)");
-    expect(workflow).not.toContain(".supabase.co/functions/v1/");
-    expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_URL");
-  });
-
-  it("does not authorize user funds or irreversible execution", () => {
-    expect(workflow).toContain('"user_funds_authorized":false');
-    expect(workflow).toContain('"real_money_payment_authorized":false');
-    expect(workflow).toContain('"execution_authorized":false');
-    expect(workflow).toContain("github.run_attempt == 1");
-  });
-
-  it("pins both child assurance runs to the parent SHA and exact artifact contract", () => {
-    expect(workflow).toContain('-f candidate_sha="$MAIN_SHA" -f use_partner_allowance=false');
-    expect(workflow).toContain('-f candidate_sha="$MAIN_SHA" -f use_partner_allowance=true');
-    expect(workflow).toContain("--json databaseId,createdAt,displayTitle,status");
-    expect(workflow).not.toContain("--json databaseId,createdAt,headSha,status");
-    expect(workflow).toContain("day6-global-partner-assurance-${RUN_ID}");
-    expect(workflow).not.toContain("federico-handoff-${RUN_ID}");
-    expect(workflow).toContain('RSS_LIVE_SKIP_CORROBORATION: "true"');
-    expect(workflow).toContain('BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"');
-    expect(workflow).toContain("cancel-in-progress: true");
-    expect(workflow).toContain("issues: write");
-    expect(workflow).toContain("Record Day 6 outcome on migration tracker");
-    expect(workflow).toContain("gh issue comment 1354");
-    expect(workflow).toContain('.corroboration.skipped == true');
-    expect(workflow).toContain('explicit_partner_bootstrap_country_corroboration_follows');
-  });
-});
-");
+    expect(workflow).toContain("c.country_iso3 ~ " + "'^[A-Z]{3}$'");
     expect(workflow).not.toContain("coalesce(e.published_at,e.last_seen_at,e.ingested_at)");
     expect(workflow).not.toContain(".supabase.co/functions/v1/");
     expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_URL");
