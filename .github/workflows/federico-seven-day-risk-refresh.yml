@@ -22,7 +22,6 @@ on:
 permissions:
   contents: read
   actions: write
-  id-token: write
 
 concurrency:
   group: geomacro-federico-acceptance-${{ github.run_id }}
@@ -35,6 +34,8 @@ jobs:
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      GRI_DB_MODE: direct_postgres
       B2_GDELT_PRIMARY: "1"
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
@@ -45,7 +46,6 @@ jobs:
       INVINO_REQUEST_OUT: /tmp/federico-review-request.json
       INVINO_REVIEW_OUT: /tmp/federico-review-response.json
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
-      GITHUB_OIDC_AUDIENCE: https://geomacro.live/actions/live-flash-rss
 
     steps:
       - name: Checkout exact triggering production SHA
@@ -66,7 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
             test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
           done
 
@@ -78,21 +78,6 @@ jobs:
             echo "::error::iso3 must be exactly three uppercase letters"
             exit 2
           fi
-
-      - name: Acquire scoped GitHub Actions OIDC token
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 1; }
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 1; }
-          oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
-          token="$(printf '%s' "$oidc_response" | jq -er '.value')"
-          test -n "$token"
-          echo "::add-mask::$token"
-          printf 'GEOMACRO_FLASH_OIDC_TOKEN=%s\n' "$token" >> "$GITHUB_ENV"
-          echo "PASS: scoped GitHub OIDC token acquired for Federico's governed corroboration path."
 
       - name: Verify signer matches deployed trust registry
         shell: bash
@@ -120,66 +105,31 @@ jobs:
 
       - name: Re-poll governed RSS
         env:
-          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-          GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
-          GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
           TELEGRAM_ENABLED: "false"
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
           BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+          RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/federico-rss-cycle.json
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID missing"; exit 1; }
-          test -n "${GEOMACRO_FLASH_OIDC_TOKEN:-}" || { echo "::error::GEOMACRO_FLASH_OIDC_TOKEN missing"; exit 1; }
+          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL missing"; exit 1; }
+          test "${GRI_DB_MODE:-}" = "direct_postgres"
           python -m pip install --disable-pip-version-check --retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/federico-rss-deps.log
-          cd workers/telegram-flash
-          : > /tmp/federico-rss-live.log
-          python worker.py 2>&1 | tee /tmp/federico-rss-live.log
-
-      - name: Verify every configured RSS source completed
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          log_path = Path('/tmp/federico-rss-live.log')
-          ready = None
-          last_state = {}
-          had_error = set()
-          for raw in log_path.read_text(encoding='utf-8', errors='replace').splitlines():
-              try:
-                  event = json.loads(raw)
-              except json.JSONDecodeError:
-                  continue
-              if event.get('rss') == 'ready':
-                  ready = event
-              if event.get('kind') in {'rss_source_complete', 'rss_error'} and event.get('source_id'):
-                  source_id = str(event['source_id'])
-                  if event.get('kind') == 'rss_error':
-                      had_error.add(source_id)
-                      last_state[source_id] = 'error'
-                  elif event.get('ok') is True:
-                      last_state[source_id] = 'success'
-          if not isinstance(ready, dict) or not isinstance(ready.get('feeds'), list) or not ready['feeds']:
-              raise SystemExit('Federico RSS worker did not emit a valid configured-feed manifest')
-          expected = {str(value) for value in ready['feeds'] if str(value).strip()}
-          unresolved = sorted(source_id for source_id in expected if last_state.get(source_id) == 'error')
-          missing = sorted(source_id for source_id in expected if last_state.get(source_id) != 'success')
-          if unresolved:
-              raise SystemExit('Federico RSS sources remained failed: ' + ', '.join(unresolved))
-          if missing:
-              raise SystemExit('Federico RSS sources did not complete successfully: ' + ', '.join(missing))
-          print(json.dumps({
-              'configured_source_count': len(expected),
-              'completed_source_count': len(expected),
-              'recovered_source_count': len([s for s in expected if s in had_error and last_state.get(s) == 'success']),
-              'sources': sorted(expected),
-          }))
-          print('PASS: every RSS source declared by the worker completed successfully.')
-          PY
+          node scripts/run-rss-live-cycle.mjs 2>&1 | tee /tmp/federico-rss-live.log
+          jq -e '
+            .ok == true and
+            .transport == "canonical_direct_postgres" and
+            .edge_function_dependency == false and
+            .source_summary.configured_source_count == .source_summary.completed_source_count and
+            .ingestion.accepted == .spool.payloads and
+            .corroboration.ok == true and
+            .corroboration.threshold_weakening == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/federico-rss-cycle.json >/dev/null
+          echo "PASS: every configured RSS source completed through canonical direct-Postgres transport."
 
       - name: Corroborate fresh RSS and structured evidence
         shell: bash
@@ -190,23 +140,12 @@ jobs:
           window_as_of="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           : > /tmp/federico-corroboration-all.ndjson
           while true; do
-            oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
-            token="$(printf '%s' "$oidc_response" | jq -er '.value')"
-            echo "::add-mask::$token"
-            response="$(curl --silent --show-error \
-              --output /tmp/federico-corroborate.json \
-              --write-out '%{http_code}' \
-              --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-              --request POST \
-              --header "x-geomacro-github-oidc-token: ${token}" \
-              --header "Authorization: Bearer ${token}" \
-              --header 'Content-Type: application/json' \
-              --data "$(jq -nc --arg country_iso3 "$TARGET_ISO3" --arg as_of "$window_as_of" --argjson offset "$offset" '{country_iso3:$country_iso3,as_of:$as_of,candidate_offset:$offset}')" \
-              "${base}/live-flash-corroborate")"
-            test "$response" = "200" || { cat /tmp/federico-corroborate.json; echo "::error::live-flash-corroborate did not return HTTP 200."; exit 1; }
-            jq -e '.ok == true and has("next_candidate_offset") and has("window_as_of")' /tmp/federico-corroborate.json >/dev/null
+            bun scripts/run-live-flash-corroborate-local.ts \
+              --country "$TARGET_ISO3" \
+              --as-of "$window_as_of" \
+              --candidate-offset "$offset" \
+              > /tmp/federico-corroborate.json
+            jq -e '.ok == true and has("next_candidate_offset") and has("window_as_of") and .execution_mode == "local_canonical_corroboration_direct_postgres" and .threshold_weakening == false' /tmp/federico-corroborate.json >/dev/null
             jq -c . /tmp/federico-corroborate.json >> /tmp/federico-corroboration-all.ndjson
             next="$(jq -r '.next_candidate_offset' /tmp/federico-corroborate.json)"
             [[ "$next" != "null" ]] || break
