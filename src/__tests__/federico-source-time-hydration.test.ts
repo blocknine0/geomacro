@@ -23,6 +23,17 @@ describe("Federico trusted source publication-time hydration", () => {
     );
   });
 
+  it("accepts precise SCMP publisher metadata with an explicit offset", () => {
+    const html = '<meta property="article:published_time" content="2026-10-06T22:00:00+08:00">';
+    expect(
+      extractTrustedPublishedAt(
+        html,
+        "https://www.scmp.com/news/china/science/article/3369897/example",
+        new Date("2026-10-06T15:00:00.000Z"),
+      ),
+    ).toBe("2026-10-06T14:00:00.000Z");
+  });
+
   it("interprets a timezone-less Xinhua publication time as China Standard Time", () => {
     const html = '<meta itemprop="datePublished" content="2026-10-01 22:00:00">';
     expect(extractTrustedPublishedAt(html, SOURCE_URL, AS_OF)).toBe(
@@ -52,6 +63,7 @@ describe("Federico trusted source publication-time hydration", () => {
   it("rejects untrusted hosts, stale timestamps, and future timestamps", () => {
     expect(isTrustedFedericoTimestampUrl(SOURCE_URL)).toBe(true);
     expect(isTrustedFedericoTimestampUrl("https://example.com/article")).toBe(false);
+    expect(isTrustedFedericoTimestampUrl("https://www.scmp.com/news/china/article/1/example")).toBe(true);
 
     expect(
       extractTrustedPublishedAt(
