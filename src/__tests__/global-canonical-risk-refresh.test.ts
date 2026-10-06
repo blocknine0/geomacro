@@ -6,11 +6,12 @@ const ROOT = process.cwd();
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 describe("global canonical Risk Object refresh", () => {
-  it("uses the enabled sovereign registry instead of a hard-coded country list", () => {
+  it("uses the enabled country-like registry instead of a hard-coded country list", () => {
     const script = read("scripts/refresh-global-canonical-risk-objects.ts");
     expect(script).toContain('.from("live_country_registry")');
     expect(script).toContain('.eq("enabled", true)');
-    expect(script).toContain('classifyGlobalEntity(row.iso3) === "SOVEREIGN"');
+    expect(script).toContain('const COUNTRY_LIKE_SPECIALS = new Set(["PSE", "TWN"])');
+    expect(script).toContain('scope === "SOVEREIGN" || COUNTRY_LIKE_SPECIALS.has(iso3)');
     expect(script).not.toContain('const COUNTRY_IDS = [');
   });
 
@@ -35,7 +36,8 @@ describe("global canonical Risk Object refresh", () => {
       "raw_exception_messages_emitted: false",
       "execution_authorized: false",
       "minimum_ready_gate: MIN_READY",
-      "GLOBAL_CANONICAL_MIN_SOVEREIGN_DENOMINATOR",
+      "GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR",
+      "all_enabled_country_like_subjects_evaluated",
       'error_code: "canonical_refresh_failed_closed"',
     ]) {
       expect(script).toContain(required);
