@@ -77,6 +77,9 @@ describe("#1414 partner-independent final commercial launch gate", () => {
     expect(verifier).toContain("geomacro-evidence\\/v1\\/gro\\/");
     expect(verifier).toContain("verifyRiskObjectSignature");
     expect(verifier).toContain("https://geomacro.live/api/risk-object-keys");
+    expect(verifier).toContain("https://geomacro.live/.well-known/geomacro-build.json");
+    expect(verifier).toContain("geomacro.deployment-build.v1");
+    expect(verifier).toContain("PRODUCTION_DEPLOYMENT_SHA_MISMATCH");
     expect(verifier).toContain("GENERIC_RISK_OBJECT_NOT_FRESH");
     expect(verifier).toContain("GENERIC_RISK_OBJECT_TAMPER_NOT_REJECTED");
     expect(verifier).toContain("client_local_with_public_keys");
