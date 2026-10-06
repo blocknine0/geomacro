@@ -28,6 +28,15 @@ describe("Production Website Health current Intelligence contract", () => {
     expect(workflow).toContain("Number(body?.verified_rows) !== verified || Number(body?.live_observed_rows) !== live");
   });
 
+  it("binds displayed freshness to production evidence time rather than browser refresh time", () => {
+    const hook = readFileSync("src/lib/use-intelligence.ts", "utf8");
+    expect(hook).toContain("function latestEvidenceAt(rows: IntelEvent[]): number | null");
+    expect(hook).toContain("initialData ? latestEvidenceAt(initialData.all) : null");
+    expect(hook).toContain("setUpdatedAt(latestEvidenceAt(next.all))");
+    expect(hook).not.toContain("setUpdatedAt(Date.now())");
+    expect(workflow).toContain("Browser refresh time leaked into Intelligence freshness");
+  });
+
   it("reruns when either primary or scored-only Intelligence publication ownership changes", () => {
     expect(workflow).toContain('scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs');
     expect(workflow).toContain('scripts/ops/republish-b2-public-intelligence-scored-only.mjs');
