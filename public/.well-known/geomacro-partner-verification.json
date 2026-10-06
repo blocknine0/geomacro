@@ -43,5 +43,14 @@
     "no_partner_secret_in_public_artifacts": true,
     "receiver_controls_admission_policy": true,
     "receiver_controls_key_pin_and_revocation_policy": true
+  },
+  "repeatability": {
+    "same_immutable_record_same_hash_and_signature_result": true,
+    "fresh_evidence_may_change_new_gro_content": true,
+    "stale_or_insufficient_evidence_fails_closed": true,
+    "deterministic_positive_control_runs_per_gate": 5,
+    "no_spend_ci": "Federico Repeatability Gate",
+    "live_partner_review_scheduled": false,
+    "partner_allowance_requires_explicit_authorization": true
   }
 }
