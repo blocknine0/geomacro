@@ -156,7 +156,8 @@ jobs:
           for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
             (
               export RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"
-              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-acceptance-${category}.json" 2>&1
+              export COUNTRY_RAW_SOURCE_SYNC_OUTPUT="country-raw-source-acceptance-${category}.json"
+              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs
             ) > "category-acceptance-${category}.log" 2>&1 &
           done
           wait
@@ -225,7 +226,8 @@ jobs:
           for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
             (
               export RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"
-              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-final-${category}.json" 2>&1
+              export COUNTRY_RAW_SOURCE_SYNC_OUTPUT="country-raw-source-final-${category}.json"
+              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs
             ) > "category-final-${category}.log" 2>&1 &
           done
           wait
