@@ -41,6 +41,7 @@ describe("permanent 933 endpoint disposition contract", () => {
   it("locks the canonical endpoint manifest at exactly 933 URLs", async () => {
     const lock = JSON.parse(manifestLock);
     expect(lock.endpoint_count).toBe(933);
+    expect(manifestScript).toContain("20261006173500_open_derived_commercial_rights_gate.sql");
     expect(lock.manifest_sha256).toMatch(/^[0-9a-f]{64}$/);
 
     const module = await import("../../scripts/source-endpoint-manifest.mjs");
