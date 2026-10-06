@@ -35,6 +35,10 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}");
     expect(workflow).toContain("B2_ARCHIVE_READ_KEY_ID");
     expect(workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(workflow).toContain("B2_ARCHIVE_WRITE_KEY_ID");
+    expect(workflow).toContain("B2_ARCHIVE_WRITE_APPLICATION_KEY");
+    expect(workflow).toContain("Archive B2 read/write credentials must be supplied as a complete pair.");
+    expect(workflow).toContain("dedicated read pair, else archive read/write pair, else existing B2 pair");
     expect(workflow).toContain("SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY");
     expect(workflow).toContain("Dedicated B2 archive read credentials must be supplied as a complete pair.");
     expect(workflow).toContain("otherwise existing verified B2 credentials");
