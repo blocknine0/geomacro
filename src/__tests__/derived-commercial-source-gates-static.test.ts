@@ -23,6 +23,7 @@ describe("derived-commercial source rights gate", () => {
   });
 
   it("keeps technical commercial activation fail-closed", () => {
+    expect(migration).toContain("enabled_for_commercial_signals = src.enabled_for_ingestion = true and exists (");
     for (const marker of [
       "cert.certification_state = 'CERTIFIED'",
       "cert.endpoint_status = 'PASS'",
