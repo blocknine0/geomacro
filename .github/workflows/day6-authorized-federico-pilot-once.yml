@@ -4,7 +4,7 @@ name: Day 6 Authorized Federico Pilot Once
 # Retriggered only after #1536 permanently removed Supabase Edge from governed RSS.\n# Retriggered after #1543 fixed local canonical ingest npm:jose compatibility.
 # Final bounded retrigger after #1548 fixed direct-Postgres optional-column semantics exposed by run 37435599083.
 # Final bounded retrigger after #1557 added allowlisted direct-Postgres inner-relationship parity; #1554 pins child assurance to its exact dispatched SHA.
-# This file is deleted after the resulting partner proof is verified.
+# Final bounded retrigger after direct-Postgres `.contains()` parity fixes country-specific corroboration.\n# This file is deleted after the resulting partner proof is verified.
 on:
   push:
     branches: [main]
