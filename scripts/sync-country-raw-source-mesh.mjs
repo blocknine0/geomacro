@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
+import { writeFile } from "node:fs/promises";
 
 const REF="ldpwajisioljyjtojvfx", SOURCE="country_raw_web_mesh", BUCKET="geomacro-live-intelligence";
 const LIMIT=Math.max(1,Math.min(10000,Number(process.env.RAW_SOURCE_SYNC_MAX_TARGETS??5000)));
@@ -13,6 +14,7 @@ const HOST_MIN_INTERVAL_MS=new Map([
   ["www.usgs.gov",300],
 ]);
 const UA="Geomacro-Country-Raw-Source-Mesh/1.0 (+https://geomacro.live)";
+const OUTPUT_PATH=String(process.env.COUNTRY_RAW_SOURCE_SYNC_OUTPUT??"").trim();
 const SOURCE_HTTP_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_HTTP_TIMEOUT_MS??30000)));
 const DB_REQUEST_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_DB_TIMEOUT_MS??30000)));
 function fetchWithTimeout(input,init={}){
@@ -769,7 +771,11 @@ async function main() {
     },
   };
 
-  console.log(JSON.stringify(result, null, 2));
+  const resultJson = JSON.stringify(result, null, 2) + "\n";
+  if (OUTPUT_PATH) {
+    await writeFile(OUTPUT_PATH, resultJson, "utf8");
+  }
+  process.stdout.write(resultJson);
   if (!result.ok) process.exit(1);
 }
 main().catch(e=>{console.error(e instanceof Error?e.stack??e.message:String(e));process.exit(1);});
