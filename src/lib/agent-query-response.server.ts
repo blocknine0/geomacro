@@ -516,6 +516,107 @@ async function buildCurrentState(
   }));
 }
 
+const CHANGE_INTELLIGENCE_SCHEMA_VERSION = "geomacro.change-intelligence.v1" as const;
+
+function buildChangeIntelligence(
+  states: Awaited<ReturnType<typeof buildCurrentState>>,
+  asOf: string,
+) {
+  return states.map((state) => {
+    const risk = state.risk;
+    const latestEvidenceAt =
+      risk?.observed_at ??
+      state.structural?.latest_observed_at ??
+      state.live.checked_at ??
+      null;
+    const evidenceAgeSeconds = latestEvidenceAt
+      ? Math.max(0, Math.floor((Date.parse(asOf) - Date.parse(latestEvidenceAt)) / 1_000))
+      : null;
+    const liveLagSeconds =
+      typeof state.live.pipeline_lag_seconds === "number"
+        ? Math.max(0, state.live.pipeline_lag_seconds)
+        : null;
+    const boundedRefreshSeconds = Math.min(
+      86_400,
+      Math.max(900, liveLagSeconds ?? (evidenceAgeSeconds !== null && evidenceAgeSeconds <= 86_400 ? 3_600 : 21_600)),
+    );
+    const topDrivers = risk
+      ? risk.attribution.slice(0, 5).map((driver) => ({
+          driver: driver.driver,
+          score_contribution: driver.score_contribution,
+          delta_contribution: driver.delta_contribution,
+          event_count: driver.event_count,
+          weight: driver.weight,
+        }))
+      : [];
+
+    return {
+      schema_version: CHANGE_INTELLIGENCE_SCHEMA_VERSION,
+      subject: state.subject,
+      state_version: state.state_version,
+      current_state: risk
+        ? {
+            score: risk.risk.score,
+            label: risk.risk.label,
+            direction: risk.risk.direction,
+            confidence: risk.confidence,
+            observed_at: risk.observed_at,
+            last_verified_at: risk.verification.last_verified_at,
+            methodology_version: risk.methodology_version,
+          }
+        : null,
+      previous_verified_state: risk && typeof risk.risk.previous_score === "number"
+        ? { score: risk.risk.previous_score }
+        : null,
+      change: risk
+        ? {
+            delta: risk.risk.delta ?? null,
+            direction: risk.risk.direction,
+            changed: typeof risk.risk.delta === "number" ? risk.risk.delta !== 0 : null,
+          }
+        : null,
+      drivers: topDrivers,
+      cross_domain_effects: {
+        available_dimensions: state.structural?.available_dimensions ?? [],
+        current_material_developments: state.developments.map((development) => ({
+          event_id: development.event_id,
+          event_version: development.event_version,
+          materiality: development.materiality,
+          direction: development.direction,
+          affected_countries: development.affected_countries,
+        })),
+      },
+      corridor_effects: state.subject.type === "corridor"
+        ? {
+            directional: true,
+            origin_country_iso3: state.subject.origin_country_iso3,
+            destination_country_iso3: state.subject.destination_country_iso3,
+          }
+        : null,
+      evidence_summary: {
+        ...(risk?.evidence_summary ?? {}),
+        structural_observation_count: state.structural?.observation_count ?? 0,
+        latest_observed_at: latestEvidenceAt,
+        current_event_count: state.live.event_count,
+      },
+      historical_reference_states: state.historical_context.reference_states,
+      refresh_hint: {
+        strategy: "SOURCE_NATIVE_CADENCE_OR_STATE_CHANGE",
+        recommended_not_before_seconds: boundedRefreshSeconds,
+        reason: state.live.current_event_signal
+          ? "CURRENT_MATERIAL_DEVELOPMENT_PRESENT"
+          : "NO_NEW_MATERIAL_DEVELOPMENT_CONFIRMED",
+        state_version: state.state_version,
+        conditional_requery: "Requery when state_version changes or after the recommended interval; this hint never advances evidence freshness.",
+      },
+      integrity: risk?.integrity ?? null,
+      delivery_boundary: "STRUCTURED_DERIVED_CHANGE_INTELLIGENCE_ONLY",
+      raw_data_delivered: false,
+      execution_authorized: false,
+    };
+  });
+}
+
 function buildDirectAnswer(
   plan: AgentQueryPlan,
   states: Awaited<ReturnType<typeof buildCurrentState>>,
@@ -768,6 +869,7 @@ export async function assembleAgentQueryResponse(input: {
   const currentStates = await buildCurrentState(plan, structural, riskObjects, hotTopics);
   const adaptiveAnalysis = intentAnalysis(plan, riskObjects);
   const responseAsOf = plan.as_of ?? new Date().toISOString();
+  const changeIntelligence = buildChangeIntelligence(currentStates, responseAsOf);
   const decisionIntelligence = currentStates.map((state) => {
     const risk = state.risk;
     return buildDecisionIntelligence({
@@ -817,6 +919,7 @@ export async function assembleAgentQueryResponse(input: {
     signed_risk_objects: riskObjects.map(publicRiskObjectAttestation),
     gri_context: gri,
     current_state: currentStates,
+    change_intelligence: changeIntelligence,
     decision_intelligence: decisionIntelligence,
     answer: buildDirectAnswer(
       plan,
@@ -837,6 +940,7 @@ export async function assembleAgentQueryResponse(input: {
       ranking_metric: plan.ranking?.metric ?? null,
       change_baseline: plan.change?.baseline ?? null,
       customer_facing_output: "decision_intelligence_v1",
+      change_intelligence_contract: CHANGE_INTELLIGENCE_SCHEMA_VERSION,
     },
     limitations: {
       execution_authorized: false,
