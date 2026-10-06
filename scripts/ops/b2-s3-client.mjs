@@ -115,6 +115,13 @@ export function createB2Client({
   let nativeReadFallbackSuccesses = 0;
   const nativeReadAuthCache = new Map();
 
+  function reserveRequestBudget() {
+    if (requestBudget !== null && requestsStarted >= requestBudget) {
+      throw new Error("B2_REQUEST_BUDGET_EXHAUSTED");
+    }
+    requestsStarted += 1;
+  }
+
   function nativeCredentialFingerprint(credential) {
     return `${credential.accessKey}\u0000${credential.secretKey}`;
   }
@@ -127,6 +134,7 @@ export function createB2Client({
       const authHeader = Buffer.from(`${credential.accessKey}:${credential.secretKey}`, "utf8").toString("base64");
       let response;
       try {
+        reserveRequestBudget();
         response = await fetch(B2_NATIVE_AUTHORIZE_URL, {
           method: "GET",
           headers: { Authorization: `Basic ${authHeader}` },
@@ -209,6 +217,7 @@ export function createB2Client({
       .join("/")}`;
     let response;
     try {
+      reserveRequestBudget();
       response = await fetch(`${auth.downloadUrl}${nativePath}`, {
         method: "GET",
         headers: { Authorization: auth.token },
@@ -256,10 +265,7 @@ export function createB2Client({
     for (let credentialIndex = 0; credentialIndex < credentialCandidates.length; credentialIndex++) {
       const credential = credentialCandidates[credentialIndex];
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      if (requestBudget !== null && requestsStarted >= requestBudget) {
-        throw new Error("B2_REQUEST_BUDGET_EXHAUSTED");
-      }
-      requestsStarted += 1;
+      reserveRequestBudget();
 
       const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
       const day = timestamp.slice(0, 8);
@@ -321,7 +327,8 @@ export function createB2Client({
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : String(cause);
         const explicitHttpFailure = /^B2_(PUT|GET)_FAILED_\d+_[A-Za-z0-9_.:-]+$/.test(message);
-        if (explicitHttpFailure || message === "B2_REQUEST_BUDGET_EXHAUSTED" || attempt === MAX_ATTEMPTS) throw cause;
+        const explicitNativeFailure = /^B2_NATIVE_[A-Z0-9_:-]+$/.test(message);
+        if (explicitHttpFailure || explicitNativeFailure || message === "B2_REQUEST_BUDGET_EXHAUSTED" || attempt === MAX_ATTEMPTS) throw cause;
       }
 
       await sleep(500 * 2 ** (attempt - 1));
