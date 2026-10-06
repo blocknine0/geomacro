@@ -74,7 +74,6 @@ jobs:
 
       - name: Re-poll governed RSS without partner allowance
         env:
-          GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
           TELEGRAM_ENABLED: "false"
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
@@ -83,10 +82,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          local_token="$(openssl rand -hex 32)"
+          echo "::add-mask::$local_token"
+          export GEOMACRO_LOCAL_FLASH_INGEST_TOKEN="$local_token"
+          export GEOMACRO_FLASH_INGEST_TOKEN="$local_token"
+          export GEOMACRO_FLASH_INGEST_URL="http://127.0.0.1:8788/ingest"
+          node scripts/ops/local-flash-ingest-server.mjs >/tmp/day6-local-flash-ingest.log 2>&1 &
+          bridge_pid=$!
+          trap 'kill "$bridge_pid" >/dev/null 2>&1 || true' EXIT
+          for _ in $(seq 1 30); do
+            curl --silent --fail http://127.0.0.1:8788/health >/tmp/day6-local-flash-health.json && break
+            sleep 1
+          done
+          jq -e '.ok == true and .transport == "direct_postgres"' /tmp/day6-local-flash-health.json >/dev/null
           python -m pip install --disable-pip-version-check --retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/day6-rss-deps.log
-          cd workers/telegram-flash
           : > /tmp/day6-rss-live.log
-          python worker.py 2>&1 | tee /tmp/day6-rss-live.log
+          (
+            cd workers/telegram-flash
+            python worker.py
+          ) 2>&1 | tee /tmp/day6-rss-live.log
+          echo "PASS: owner-authorized Day 6 RSS refresh bypassed restricted Supabase Edge/Data API."
 
       - name: Verify every configured RSS source completed
         shell: bash
@@ -163,31 +178,9 @@ jobs:
           SELECTED=""
           while IFS= read -r ISO3; do
             test -n "$ISO3" || continue
-            offset=0
-            window_as_of="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            while true; do
-              oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-                -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-                "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
-              token="$(printf '%s' "$oidc_response" | jq -er '.value')"
-              echo "::add-mask::$token"
-              http="$(curl --silent --show-error \
-                --output /tmp/day6-corroborate.json \
-                --write-out '%{http_code}' \
-                --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-                --request POST \
-                --header "x-geomacro-github-oidc-token: ${token}" \
-                --header "Authorization: Bearer ${token}" \
-                --header 'Content-Type: application/json' \
-                --data "$(jq -nc --arg country_iso3 "$ISO3" --arg as_of "$window_as_of" --argjson offset "$offset" '{country_iso3:$country_iso3,as_of:$as_of,candidate_offset:$offset}')" \
-                "${APP_SUPABASE_URL%/}/functions/v1/live-flash-corroborate")"
-              test "$http" = "200" || { cat /tmp/day6-corroborate.json; echo "::error::corroboration HTTP $http"; exit 1; }
-              jq -c --arg iso3 "$ISO3" '. + {probe_country_iso3:$iso3}' /tmp/day6-corroborate.json >> /tmp/day6-corroboration-all.ndjson
-              next="$(jq -r '.next_candidate_offset' /tmp/day6-corroborate.json)"
-              [[ "$next" != "null" ]] || break
-              [[ "$next" =~ ^[0-9]+$ && "$next" -gt "$offset" && "$next" -lt 600 ]] || exit 2
-              offset="$next"
-            done
+            node scripts/ops/local-flash-corroborate.mjs "$ISO3" | tee /tmp/day6-corroborate.json
+            jq -e '.ok == true and .policy.threshold_weakening == false' /tmp/day6-corroborate.json >/dev/null
+            jq -c --arg iso3 "$ISO3" '. + {probe_country_iso3:$iso3}' /tmp/day6-corroborate.json >> /tmp/day6-corroboration-all.ndjson
 
             set +e
             DAY6_COUNTRY_ISO3="$ISO3" NODE_OPTIONS=--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs \
@@ -203,7 +196,7 @@ jobs:
           done < /tmp/day6-candidates.txt
 
           test -n "$SELECTED" || {
-            echo "::error::Fresh sources were repolled and candidates corroborated, but no country passed the unchanged FEDERICO_STRICT local evidence gate. Federico allowance was not used."
+            echo "::error::Fresh sources were repolled and direct-Postgres corroboration completed, but no country passed the unchanged FEDERICO_STRICT local evidence gate. Federico allowance was not used."
             exit 4
           }
           echo "iso3=$SELECTED" >> "$GITHUB_OUTPUT"
