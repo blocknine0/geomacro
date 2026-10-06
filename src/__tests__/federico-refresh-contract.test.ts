@@ -51,7 +51,9 @@ describe("Federico refresh contract", () => {
     expect(workflow).toContain("Verify every configured RSS source completed");
     expect(workflow).toContain("event.get('rss') == 'ready'");
     expect(workflow).toContain("event.get('kind') in {'rss_source_complete', 'rss_error'}");
-    expect(workflow).toContain('country_iso3:\"CHN\",as_of:$as_of,candidate_offset:$offset');
+    expect(workflow).toContain('--arg country_iso3 "$TARGET_ISO3"');
+    expect(workflow).toContain('{country_iso3:$country_iso3,as_of:$as_of,candidate_offset:$offset}');
+    expect(workflow).not.toContain('country_iso3:\"CHN\",as_of:$as_of,candidate_offset:$offset');
     const corroborator = read(
       "supabase/functions/live-flash-corroborate/index.ts",
     );
