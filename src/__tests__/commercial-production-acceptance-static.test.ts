@@ -396,6 +396,13 @@ describe("private revenue ledger production runtime gate", () => {
 
 
 describe("Federico exact external-evidence review binding", () => {
+  it("constructs external evidence before strict self-consistency checks", () => {
+    const declaration = federicoPreflight.indexOf("const externalEvidence = [{");
+    const consistency = federicoPreflight.indexOf("externalEvidence.length !== 1");
+    expect(declaration).toBeGreaterThan(-1);
+    expect(consistency).toBeGreaterThan(declaration);
+  });
+
   it("binds the exact signed Risk Object with the external-evidence envelope", () => {
     expect(federicoPreflight).toContain(
       'const signedRiskObjectRecord = JSON.stringify(canonicalize(riskObject));',
