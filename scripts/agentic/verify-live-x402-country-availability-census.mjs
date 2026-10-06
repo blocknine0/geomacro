@@ -58,7 +58,6 @@ if (entities.length !== 250 || new Set(entities.map((row) => row.iso3)).size !==
 function requestFor(iso3) {
   return {
     schema_version: "geomacro.agent-query.v1",
-    question: `Give me the current signed Risk Object for ${iso3}.`,
     subjects: [{ type: "country", country_iso3: iso3 }],
     topics: ["risk_object"],
     evidence: "required",
