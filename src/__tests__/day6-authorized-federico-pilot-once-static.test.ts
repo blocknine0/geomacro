@@ -9,11 +9,15 @@ const workflow = readFileSync(
 describe("one-time Day 6 Federico pilot authorization", () => {
   it("refreshes and proves local readiness before partner allowance", () => {
     const refresh = workflow.indexOf("Re-poll governed RSS without partner allowance");
+    const hydrate = workflow.indexOf("Hydrate trusted publisher times before strict candidate selection");
+    const select = workflow.indexOf("Select strongest fresh strict candidate set");
     const corroborate = workflow.indexOf("Corroborate candidates and select first genuinely strict-ready country");
     const local = workflow.indexOf("Dispatch no-allowance current-head local assurance");
     const live = workflow.indexOf("Dispatch exactly one authorized Federico pilot allowance review");
     expect(refresh).toBeGreaterThan(-1);
-    expect(corroborate).toBeGreaterThan(refresh);
+    expect(hydrate).toBeGreaterThan(refresh);
+    expect(select).toBeGreaterThan(hydrate);
+    expect(corroborate).toBeGreaterThan(select);
     expect(local).toBeGreaterThan(corroborate);
     expect(live).toBeGreaterThan(local);
     for (const stepName of [
@@ -30,6 +34,10 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("use_partner_allowance=true");
     expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs");
     expect(workflow).toContain("scripts/run-live-flash-corroborate-local.ts");
+    expect(workflow).toContain("scripts/hydrate-federico-source-times.ts");
+    expect(workflow).toContain("--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs");
+    expect(workflow).toContain('policy == "trusted_publisher_metadata_only"');
+    expect(workflow).toContain(".fake_freshness == false");
     expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
     expect(workflow).toContain("B2_KEY_ID: ${{ secrets.B2_KEY_ID }}");
     expect(workflow).toContain("B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}");
