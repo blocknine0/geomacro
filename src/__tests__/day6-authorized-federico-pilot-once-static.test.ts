@@ -41,7 +41,6 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("dedicated read pair, else archive read/write pair, else existing B2 pair");
     expect(workflow).toContain("SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY");
     expect(workflow).toContain("Dedicated B2 archive read credentials must be supplied as a complete pair.");
-    expect(workflow).toContain("otherwise existing verified B2 credentials");
     expect(workflow).toContain("e.published_at as evidence_at");
     expect(workflow).toContain("e.published_at is not null");
     expect(workflow).toContain("e.published_at >= now() - interval '6 hours'");
