@@ -39,5 +39,8 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).not.toContain("--json databaseId,createdAt,headSha,status");
     expect(workflow).toContain("day6-global-partner-assurance-${RUN_ID}");
     expect(workflow).not.toContain("federico-handoff-${RUN_ID}");
+    expect(workflow).toContain('RSS_LIVE_SKIP_CORROBORATION: "true"');
+    expect(workflow).toContain('.corroboration.skipped == true');
+    expect(workflow).toContain('explicit_partner_bootstrap_country_corroboration_follows');
   });
 });
