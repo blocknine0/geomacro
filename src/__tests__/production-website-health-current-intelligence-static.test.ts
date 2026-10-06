@@ -57,4 +57,15 @@ describe("Production Website Health current Intelligence contract", () => {
     expect(workflow).toContain("LIVE_BUILD_MARKER_SCHEMA_MISMATCH");
   });
 
+
+  it("verifies production deployment acceptance on every canonical main push", () => {
+    const pushStart = workflow.indexOf("  push:\n");
+    const scheduleStart = workflow.indexOf("  schedule:\n", pushStart);
+    const pushBlock = workflow.slice(pushStart, scheduleStart);
+    expect(pushStart).toBeGreaterThanOrEqual(0);
+    expect(scheduleStart).toBeGreaterThan(pushStart);
+    expect(pushBlock).toContain("branches:\n      - main");
+    expect(pushBlock).not.toContain("paths:");
+  });
+
 });
