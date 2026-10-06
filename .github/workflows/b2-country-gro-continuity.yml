@@ -84,7 +84,7 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/global-gro-continuity
           set +e
-          bun scripts/refresh-global-canonical-risk-objects.ts
+          node --import tsx scripts/refresh-global-canonical-risk-objects.ts
           refresh_status=$?
           set -e
           test -f "$GLOBAL_CANONICAL_REFRESH_OUTPUT"

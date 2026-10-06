@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { classifyGlobalEntity } from "../src/lib/global-entity-classification";
 import { publishCountryRiskObject } from "../src/lib/country-risk-publisher.server";
 import { verifyCommercialRiskObjectArtifact } from "../src/lib/commercial-risk-object-policy";
@@ -298,7 +300,10 @@ async function main() {
 
   const json = `${JSON.stringify(report, null, 2)}\n`;
   const output = String(process.env.GLOBAL_CANONICAL_REFRESH_OUTPUT ?? "").trim();
-  if (output) await Bun.write(output, json);
+  if (output) {
+    mkdirSync(dirname(output), { recursive: true });
+    writeFileSync(output, json, "utf8");
+  }
   console.log(json);
 
   if (paidReady.length < MIN_READY) {

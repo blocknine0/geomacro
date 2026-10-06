@@ -90,8 +90,11 @@ describe("B2 country GRO continuity", () => {
     expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
     expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
     expect(workflow).toContain("--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs");
-    expect(workflow).toContain("bun scripts/refresh-global-canonical-risk-objects.ts");
+    expect(workflow).toContain("node --import tsx scripts/refresh-global-canonical-risk-objects.ts");
     expect(workflow).toContain("node --import tsx scripts/ops/publish-b2-country-gro-continuity.ts");
+    const refresh = read("scripts/refresh-global-canonical-risk-objects.ts");
+    expect(refresh).toContain('writeFileSync(output, json, "utf8")');
+    expect(refresh).not.toContain("Bun.write");
     expect(shim).toContain("filter(column, operator, value)");
     expect(shim).toContain('op === "cs" || op === "not.cs"');
     expect(shim).toContain(" @> ");
