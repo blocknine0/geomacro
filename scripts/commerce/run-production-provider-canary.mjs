@@ -381,7 +381,6 @@ async function main() {
   const db = createClient(reconciliationUrl, reconciliationKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const evidenceProvider = EVIDENCE_PROVIDERS[provider];
   const { data: replayPaymentEvents, error: replayPaymentError } = await db
     .from("commercial_payment_events")
     .select("id,payment_status,provider,provider_settlement_id")
