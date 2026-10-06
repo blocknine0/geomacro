@@ -6,7 +6,12 @@ import {
   isTrustedFedericoTimestampUrl,
 } from "../src/lib/federico-source-time-hydration";
 
-const COUNTRY_ISO3 = "CHN";
+const COUNTRY_ISO3 = String(
+  process.argv[2] ?? process.env.FEDERICO_COUNTRY_ISO3 ?? "",
+).trim().toUpperCase();
+if (!/^[A-Z]{3}$/.test(COUNTRY_ISO3)) {
+  throw new Error("FEDERICO_COUNTRY_ISO3 must be exactly three uppercase letters");
+}
 const SOURCE_ID = "xinhua_english_china_rss";
 const MAX_ROWS = 30;
 
@@ -172,7 +177,10 @@ async function recorroborateCountry() {
   }));
 }
 
-const hydrated = await hydrateTrustedSourceTimes();
+const hydrated =
+  COUNTRY_ISO3 === "CHN"
+    ? await hydrateTrustedSourceTimes()
+    : 0;
 if (hydrated > 0) {
   await recorroborateCountry();
 }
