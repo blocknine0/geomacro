@@ -88,20 +88,38 @@ export async function verifyCanaryBuild(context) {
 }
 
 export function productionAdaptiveRequest(prefix = "prod-canary") {
-  const country = String(process.env.GEOMACRO_CANARY_COUNTRY_ISO3 ?? "USA").trim().toUpperCase();
-  if (!ISO3.test(country)) fail("GEOMACRO_CANARY_COUNTRY_ISO3 must be an ISO3 code");
   const clientRequestId =
     String(process.env.GEOMACRO_CANARY_CLIENT_REQUEST_ID ?? "").trim() ||
     `${prefix}-${randomUUID()}`;
 
+  // One deliberately comprehensive paid request proves the shared x402
+  // delivery path across all commercial launch scopes. The same exact query
+  // must first pass the no-charge deliverability gate, so no payment is
+  // attempted if any requested scope is not currently deliverable.
   return {
     request: {
       schema_version: "geomacro.agent-query.v1",
-      question: `What are the current Geomacro risk signals and Risk Gate context for ${country}?`,
-      subjects: [{ type: "country", country_iso3: country }],
-      topics: ["risk_object", "risk_gate"],
+      question:
+        "Commercial acceptance bundle covering geopolitical, macro/FX, critical-minerals, country and corridor intelligence.",
+      intent: "comparison",
+      subjects: [
+        { type: "country", country_iso3: "DEU" },
+        { type: "country", country_iso3: "BRA" },
+        { type: "country", country_iso3: "ZAF" },
+        { type: "country", country_iso3: "USA" },
+        { type: "corridor", origin_country_iso3: "USA", destination_country_iso3: "CHN" },
+      ],
+      topics: [
+        "conflict_geopolitics",
+        "macro_risk",
+        "fx_external_risk",
+        "critical_minerals",
+        "trade_corridor",
+        "risk_object",
+        "risk_gate",
+      ],
       evidence: "required",
-      detail: "standard",
+      detail: "compact",
       risk_gate_context: {
         policy_preset: "balanced",
         action_type: "treasury_payment",
@@ -109,9 +127,78 @@ export function productionAdaptiveRequest(prefix = "prod-canary") {
       },
       client_request_id: clientRequestId,
     },
-    country,
+    country: "USA",
     clientRequestId,
   };
+}
+
+export function productionAcceptanceAvailabilityCases() {
+  const make = (id, request) => ({ id, request: { schema_version: "geomacro.agent-query.v1", evidence: "required", detail: "compact", ...request } });
+  return [
+    make("geopolitics-deu", {
+      question: "What verified geopolitical risk intelligence is currently available for Germany?",
+      subjects: [{ type: "country", country_iso3: "DEU" }],
+      topics: ["conflict_geopolitics"],
+    }),
+    make("macro-bra", {
+      question: "What are the current macro and FX risks for Brazil?",
+      subjects: [{ type: "country", country_iso3: "BRA" }],
+      topics: ["macro_risk", "fx_external_risk"],
+    }),
+    make("critical-minerals-zaf", {
+      question: "What verified critical-minerals intelligence is currently available for South Africa?",
+      subjects: [{ type: "country", country_iso3: "ZAF" }],
+      topics: ["critical_minerals"],
+    }),
+    make("country-usa", {
+      question: "Give me the current signed Risk Object for the United States.",
+      subjects: [{ type: "country", country_iso3: "USA" }],
+      topics: ["risk_object"],
+    }),
+    make("corridor-usa-chn", {
+      question: "What are the current trade and geopolitical risks for the United States to China corridor?",
+      subjects: [{ type: "corridor", origin_country_iso3: "USA", destination_country_iso3: "CHN" }],
+      topics: ["trade_corridor", "conflict_geopolitics"],
+    }),
+  ];
+}
+
+export function assertComprehensivePaidScopeDelivery(body, label = "Paid response") {
+  const subjectKeys = new Set(
+    (Array.isArray(body?.subjects) ? body.subjects : []).map((subject) =>
+      subject?.type === "country"
+        ? `country:${subject.country_iso3}`
+        : `corridor:${subject?.origin_country_iso3}>${subject?.destination_country_iso3}`
+    ),
+  );
+  for (const expected of [
+    "country:DEU",
+    "country:BRA",
+    "country:ZAF",
+    "country:USA",
+    "corridor:USA>CHN",
+  ]) {
+    if (!subjectKeys.has(expected)) fail(`${label} missing acceptance subject ${expected}`);
+  }
+  const topics = new Set(body?.question_interpretation?.topics ?? []);
+  for (const expected of [
+    "conflict_geopolitics",
+    "macro_risk",
+    "fx_external_risk",
+    "critical_minerals",
+    "trade_corridor",
+    "risk_object",
+    "risk_gate",
+  ]) {
+    if (!topics.has(expected)) fail(`${label} missing acceptance topic ${expected}`);
+  }
+  if (!Array.isArray(body?.signed_risk_objects) || body.signed_risk_objects.length !== 5) {
+    fail(`${label} must contain five signed Risk Object attestations`);
+  }
+  if (!Array.isArray(body?.risk_gate) || body.risk_gate.length !== 5) {
+    fail(`${label} must contain five Risk Gate results`);
+  }
+  return true;
 }
 
 export function assertAdaptiveProduct(body, label = "Paid response") {
