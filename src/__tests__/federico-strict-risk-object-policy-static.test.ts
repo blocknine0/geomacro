@@ -88,30 +88,39 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
-  it("keeps strict partner synchronization routed through the country-level source-diversity corroborator", () => {
+  it("keeps strict partner synchronization on the unchanged country-level source-diversity contract", () => {
     const workflow = read(
       ".github/workflows/federico-seven-day-risk-refresh.yml",
     );
-    const corroborator = read(
+    const edgeCorroborator = read(
       "supabase/functions/live-flash-corroborate/index.ts",
+    );
+    const directCorroborator = read(
+      "scripts/ops/local-flash-corroborate.mjs",
     );
 
     expect(workflow).toContain(
-      "live-flash-corroborate",
+      'node scripts/ops/local-flash-corroborate.mjs "$TARGET_ISO3"',
     );
-    expect(workflow).toContain(
-      "fresh RSS and structured evidence corroboration completed",
+    expect(workflow).not.toContain(
+      "/functions/v1/live-flash-corroborate",
     );
-    expect(corroborator).toContain(
-      "familySourceFamilies",
+    expect(directCorroborator).toContain(
+      "MIN_INDEPENDENT_SOURCE_FAMILIES = 2",
     );
-    expect(corroborator).toContain(
+    expect(directCorroborator).toContain(
+      "MIN_SIMILARITY = 0.45",
+    );
+    expect(directCorroborator).toContain(
+      "VERIFICATION_SCORE_THRESHOLD = 65",
+    );
+    expect(directCorroborator).toContain(
+      "threshold_weakening: false",
+    );
+    expect(edgeCorroborator).toContain(
       "distinctSourceCount >= FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES",
     );
-    expect(corroborator).toContain(
-      "strongStructuredMatch",
-    );
-    expect(corroborator).toContain(
+    expect(edgeCorroborator).toContain(
       "strongMultiSourceMatch",
     );
     expect(workflow).not.toContain(
