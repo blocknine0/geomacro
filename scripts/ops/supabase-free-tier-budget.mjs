@@ -30,6 +30,15 @@ function validateDatabaseUrl(raw) {
   return raw;
 }
 
+function normalizeBudgetState(value) {
+  if (!value || typeof value !== "object") return value;
+  const mode =
+    value.mode === "warn" ? "warning" :
+    value.mode === "freeze" ? "frozen" :
+    value.mode;
+  return { ...value, mode };
+}
+
 function validBudgetState(value) {
   return value && typeof value === "object" &&
     ["normal", "warning", "frozen"].includes(value.mode) &&
@@ -46,8 +55,9 @@ async function readViaDataApi() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data, error } = await db.rpc("geomacro_free_tier_budget_state");
-  if (error || !validBudgetState(data)) return null;
-  return { data, transport: "data_api" };
+  const normalized = normalizeBudgetState(data);
+  if (error || !validBudgetState(normalized)) return null;
+  return { data: normalized, transport: "data_api" };
 }
 
 function readViaDirectPostgres() {
@@ -66,7 +76,9 @@ function readViaDirectPostgres() {
       },
     ).trim();
     if (!output) return null;
-    const data = JSON.parse(output.split(/\r?\n/).filter(Boolean).at(-1));
+    const data = normalizeBudgetState(
+      JSON.parse(output.split(/\r?\n/).filter(Boolean).at(-1)),
+    );
     if (!validBudgetState(data)) return null;
     return { data, transport: "direct_postgres_fallback" };
   } catch {
