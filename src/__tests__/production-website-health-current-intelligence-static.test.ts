@@ -40,4 +40,12 @@ describe("Production Website Health current Intelligence contract", () => {
     expect(workflow).toContain("Upload production Intelligence diagnostic");
     expect(workflow).toContain("if: always()");
   });
+  it("waits boundedly for exact production deployment propagation without accepting stale SHA", () => {
+    expect(workflow).toContain("for attempt in $(seq 1 40)");
+    expect(workflow).toContain("Waiting for production deployment SHA");
+    expect(workflow).toContain("LIVE_DEPLOYMENT_SHA_MISMATCH");
+    expect(workflow).toContain("observed !== expected");
+    expect(workflow).toContain("LIVE_BUILD_MARKER_SCHEMA_MISMATCH");
+  });
+
 });

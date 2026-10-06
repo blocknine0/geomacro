@@ -41,7 +41,7 @@ concurrency:
 jobs:
   public-production-smoke:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     env:
       BASE_URL: https://geomacro.live
       GLOBAL_RISK_EDGE_URL: https://geomacro-global-risk.daspallab202391.workers.dev/global-risk
@@ -53,26 +53,49 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::EXPECTED_CANONICAL_SHA_INVALID"; exit 1; }
           body="$(mktemp)"
-          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/.well-known/geomacro-build.json")"
-          cat "$body"
-          echo
-          if [[ "$code" != "200" ]]; then
-            echo "::error title=Live build marker unavailable::Expected HTTP 200 from /.well-known/geomacro-build.json, got $code."
-            exit 1
-          fi
-          node - "$body" <<'NODE'
+          matched=false
+          last_code=""
+          last_observed="missing"
+          for attempt in $(seq 1 40); do
+            last_code="$(curl -L --retry 2 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL/.well-known/geomacro-build.json" || true)"
+            if [[ "$last_code" == "200" ]]; then
+              if node - "$body" <<'NODE'
           const fs = require('fs');
           const marker = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           const expected = String(process.env.EXPECTED_SHA ?? '').trim().toLowerCase();
           const observed = String(marker?.canonical_main_sha ?? '').trim().toLowerCase();
-          if (!/^[0-9a-f]{40}$/.test(expected)) throw new Error('EXPECTED_CANONICAL_SHA_INVALID');
           if (marker?.schema_version !== 'geomacro.deployment-build.v1') throw new Error('LIVE_BUILD_MARKER_SCHEMA_MISMATCH');
           if (marker?.canonical_repository !== 'blocknine0/geomacro') throw new Error('LIVE_BUILD_MARKER_REPOSITORY_MISMATCH');
           if (marker?.production_activation_performed !== false) throw new Error('LIVE_BUILD_MARKER_ACTIVATION_BOUNDARY_INVALID');
-          if (observed !== expected) throw new Error(`LIVE_DEPLOYMENT_SHA_MISMATCH:expected=${expected}:observed=${observed || 'missing'}`);
-          console.log(JSON.stringify({ok:true,canonical_main_sha:observed}));
+          console.log(JSON.stringify({expected,observed:observed || 'missing'}));
+          if (observed !== expected) process.exit(10);
           NODE
+              then
+                matched=true
+                break
+              else
+                status=$?
+                if [[ "$status" -ne 10 ]]; then
+                  echo "::error title=Invalid live build marker::Marker contract failed independently of deployment propagation."
+                  cat "$body"
+                  exit "$status"
+                fi
+                last_observed="$(node -e 'const fs=require("fs");try{const b=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(b?.canonical_main_sha||"missing"))}catch{process.stdout.write("invalid")}' "$body")"
+              fi
+            fi
+            if [[ "$attempt" -lt 40 ]]; then
+              echo "Waiting for production deployment SHA: attempt $attempt/40 expected=$EXPECTED_SHA observed=$last_observed http=$last_code"
+              sleep 15
+            fi
+          done
+          if [[ "$matched" != "true" ]]; then
+            cat "$body" || true
+            echo "::error title=Live deployment SHA mismatch::LIVE_DEPLOYMENT_SHA_MISMATCH:expected=$EXPECTED_SHA:observed=$last_observed:http=$last_code"
+            exit 1
+          fi
+          echo "PASS: live build marker matches exact canonical main $EXPECTED_SHA."
 
       - name: Verify B2 production serving health
         shell: bash
