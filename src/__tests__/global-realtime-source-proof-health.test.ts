@@ -100,12 +100,14 @@ describe("global realtime source proof health classification", () => {
     });
   });
 
-  it("keeps machine-readable OIDC and health evidence in the exact-head workflow", () => {
-    expect(workflow).toContain('scripts/classify-realtime-corroborate-health.mjs');
-    expect(workflow).toContain("Validate scoped OIDC claims");
-    expect(workflow).toContain("oidc-claims-summary.json");
-    expect(workflow).toContain("realtime-corroborate-health.json");
-    expect(workflow).toContain("realtime-corroborate-health-classification.json");
-    expect(workflow).toContain("SUPABASE_PROJECT_ID");
+  it("uses machine-readable direct-Postgres corroboration evidence in the exact-head workflow", () => {
+    expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
+    expect(workflow).toContain("scripts/run-live-flash-corroborate-local.ts");
+    expect(workflow).toContain("realtime-corroborate-direct.json");
+    expect(workflow).toContain('local_canonical_corroboration_direct_postgres');
+    expect(workflow).toContain(".threshold_weakening == false");
+    expect(workflow).not.toContain("Validate scoped OIDC claims");
+    expect(workflow).not.toContain("oidc-claims-summary.json");
+    expect(workflow).not.toContain(".supabase.co/functions/v1/live-flash-corroborate");
   });
 });
