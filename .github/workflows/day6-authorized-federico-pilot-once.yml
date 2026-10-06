@@ -11,7 +11,6 @@ on:
 permissions:
   contents: read
   actions: write
-  id-token: write
 
 concurrency:
   group: day6-authorized-federico-pilot-once
@@ -30,7 +29,6 @@ jobs:
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
-      GITHUB_OIDC_AUDIENCE: https://geomacro.live/actions/live-flash-rss
       GH_TOKEN: ${{ github.token }}
       GRI_DB_MODE: direct_postgres
 
@@ -53,70 +51,36 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL SUPABASE_PROJECT_ID; do
+          for name in SUPABASE_DB_URL; do
             test -n "${!name:-}" || { echo "::error::$name is required"; exit 2; }
           done
-          test "$SUPABASE_PROJECT_ID" = "ldpwajisioljyjtojvfx"
+          test "${GRI_DB_MODE:-}" = "direct_postgres"
           echo "Owner authorization scope: Federico pilot allowance only; no user funds and no execution authorization."
-
-      - name: Acquire scoped GitHub Actions OIDC token
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
-          oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
-          token="$(printf '%s' "$oidc_response" | jq -er '.value')"
-          echo "::add-mask::$token"
-          printf 'GEOMACRO_FLASH_OIDC_TOKEN=%s\n' "$token" >> "$GITHUB_ENV"
 
       - name: Re-poll governed RSS without partner allowance
         env:
-          GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
           TELEGRAM_ENABLED: "false"
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
           BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+          RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-cycle.json
         shell: bash
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check --retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/day6-rss-deps.log
-          cd workers/telegram-flash
-          : > /tmp/day6-rss-live.log
-          python worker.py 2>&1 | tee /tmp/day6-rss-live.log
-
-      - name: Verify every configured RSS source completed
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          ready = None
-          last = {}
-          for raw in Path('/tmp/day6-rss-live.log').read_text(encoding='utf-8', errors='replace').splitlines():
-              try:
-                  event = json.loads(raw)
-              except json.JSONDecodeError:
-                  continue
-              if event.get('rss') == 'ready':
-                  ready = event
-              sid = event.get('source_id')
-              if sid and event.get('kind') == 'rss_error':
-                  last[str(sid)] = 'error'
-              elif sid and event.get('kind') == 'rss_source_complete' and event.get('ok') is True:
-                  last[str(sid)] = 'success'
-          if not isinstance(ready, dict) or not isinstance(ready.get('feeds'), list) or not ready['feeds']:
-              raise SystemExit('RSS worker did not emit a configured-feed manifest')
-          expected = {str(v) for v in ready['feeds'] if str(v).strip()}
-          missing = sorted(s for s in expected if last.get(s) != 'success')
-          if missing:
-              raise SystemExit('RSS sources did not complete successfully: ' + ', '.join(missing))
-          print(json.dumps({'configured': len(expected), 'completed': len(expected), 'sources': sorted(expected)}))
-          PY
+          node scripts/run-rss-live-cycle.mjs | tee /tmp/day6-rss-live.log
+          jq -e '
+            .ok == true and
+            .transport == "canonical_direct_postgres" and
+            .edge_function_dependency == false and
+            .source_summary.configured_source_count == .source_summary.completed_source_count and
+            .corroboration.ok == true and
+            .corroboration.threshold_weakening == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/day6-rss-cycle.json >/dev/null
+          echo "PASS: governed RSS refresh completed through canonical direct-Postgres transport; no partner allowance used."
 
       - name: Select strongest fresh strict candidate set
         id: candidates
@@ -166,22 +130,12 @@ jobs:
             offset=0
             window_as_of="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             while true; do
-              oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-                -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-                "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
-              token="$(printf '%s' "$oidc_response" | jq -er '.value')"
-              echo "::add-mask::$token"
-              http="$(curl --silent --show-error \
-                --output /tmp/day6-corroborate.json \
-                --write-out '%{http_code}' \
-                --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-                --request POST \
-                --header "x-geomacro-github-oidc-token: ${token}" \
-                --header "Authorization: Bearer ${token}" \
-                --header 'Content-Type: application/json' \
-                --data "$(jq -nc --arg country_iso3 "$ISO3" --arg as_of "$window_as_of" --argjson offset "$offset" '{country_iso3:$country_iso3,as_of:$as_of,candidate_offset:$offset}')" \
-                "${APP_SUPABASE_URL%/}/functions/v1/live-flash-corroborate")"
-              test "$http" = "200" || { cat /tmp/day6-corroborate.json; echo "::error::corroboration HTTP $http"; exit 1; }
+              bun scripts/run-live-flash-corroborate-local.ts \
+                --country "$ISO3" \
+                --as-of "$window_as_of" \
+                --candidate-offset "$offset" \
+                > /tmp/day6-corroborate.json
+              jq -e '.ok == true and .execution_mode == "local_canonical_corroboration_direct_postgres" and .threshold_weakening == false' /tmp/day6-corroborate.json >/dev/null
               jq -c --arg iso3 "$ISO3" '. + {probe_country_iso3:$iso3}' /tmp/day6-corroborate.json >> /tmp/day6-corroboration-all.ndjson
               next="$(jq -r '.next_candidate_offset' /tmp/day6-corroborate.json)"
               [[ "$next" != "null" ]] || break

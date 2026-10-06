@@ -173,10 +173,16 @@ describe("Federico strict Risk Object acceptance policy", () => {
       'scmp_china_rss: "scmp_china"',
     );
     expect(rssWorkflow).toContain(
-      "Verify every configured RSS source completed",
+      ".source_summary.configured_source_count == .source_summary.completed_source_count",
     );
     expect(rssWorkflow).toContain(
-      "if event.get('kind') in {'rss_source_complete', 'rss_error'}",
+      "node scripts/run-rss-live-cycle.mjs",
+    );
+    expect(rssWorkflow).toContain(
+      "GRI_DB_MODE: direct_postgres",
+    );
+    expect(rssWorkflow).not.toContain(
+      ".supabase.co/functions/v1/live-flash-ingest",
     );
     expect(rssWorkflow).not.toContain(
       "xinhua_english_china_rss",

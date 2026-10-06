@@ -18,6 +18,11 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(live).toBeGreaterThan(local);
     expect(workflow).toContain("use_partner_allowance=false");
     expect(workflow).toContain("use_partner_allowance=true");
+    expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs");
+    expect(workflow).toContain("scripts/run-live-flash-corroborate-local.ts");
+    expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
+    expect(workflow).not.toContain(".supabase.co/functions/v1/");
+    expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_URL");
   });
 
   it("does not authorize user funds or irreversible execution", () => {

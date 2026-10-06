@@ -13,6 +13,9 @@ on:
       - "scripts/sync-country-raw-source-mesh.mjs"
       - "scripts/drain-live-structure.mjs"
       - "scripts/intelligence-orchestrator.mjs"
+      - "scripts/run-rss-live-cycle.mjs"
+      - "scripts/run-live-flash-ingest-local.ts"
+      - "scripts/run-live-flash-corroborate-local.ts"
       - "scripts/classify-realtime-corroborate-health.mjs"
       - "supabase/functions/live-flash-ingest/index.ts"
       - "supabase/functions/live-flash-corroborate/index.ts"
@@ -97,8 +100,6 @@ jobs:
       INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness
       INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness
       OPEN_LIVE_SOURCE_SYNC_OUTPUT: open-live-source-sync.json
-      GITHUB_OIDC_AUDIENCE: "https://geomacro.live/actions/live-flash-rss"
-      GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
     steps:
       - name: Checkout exact PR head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -130,94 +131,23 @@ jobs:
           test -n "${APP_SUPABASE_SERVICE_ROLE_KEY}"
           test "${SUPABASE_PROJECT_ID}" = "ldpwajisioljyjtojvfx"
 
-      - name: Install pinned Supabase CLI
-        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520
-        with:
-          version: 2.117.0
-
-      - name: Deploy realtime flash functions
-        run: |
-          set -euo pipefail
-          test -n "${SUPABASE_ACCESS_TOKEN}"
-          supabase functions deploy live-flash-ingest --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt --use-api
-          supabase functions deploy live-flash-corroborate --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt --use-api
-
-      - name: Acquire scoped GitHub Actions OIDC token
+      - name: Verify canonical direct-Postgres RSS corroboration transport
+        env:
+          GRI_DB_MODE: direct_postgres
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL}"
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
-          oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
-          token="$(printf "%s" "${oidc_response}" | jq -er ".value")"
-          test -n "${token}"
-          echo "::add-mask::${token}"
-          printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\n" "${token}" >> "${GITHUB_ENV}"
-
-      - name: Validate scoped OIDC claims
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import base64, json, os, re
-
-          token = os.environ["GEOMACRO_FLASH_OIDC_TOKEN"]
-          payload = token.split(".", 2)[1]
-          payload += "=" * (-len(payload) % 4)
-          claims = json.loads(base64.urlsafe_b64decode(payload.encode()))
-
-          ref = str(claims.get("ref") or "")
-          workflow = str(claims.get("workflow") or "")
-          workflow_ref = str(claims.get("workflow_ref") or "")
-          job_workflow_ref = str(claims.get("job_workflow_ref") or "")
-          expected_prefix = "blocknine0/geomacro/.github/workflows/global-realtime-source-proof.yml@"
-
-          contract_valid = all([
-              claims.get("repository") == "blocknine0/geomacro",
-              claims.get("event_name") == "pull_request",
-              re.fullmatch(r"refs/pull/\d+/merge", ref) is not None,
-              claims.get("base_ref") == "main",
-              workflow in {"Global Realtime Source Proof", "global-realtime-source-proof.yml"},
-              workflow_ref == expected_prefix + ref or job_workflow_ref == expected_prefix + ref,
-          ])
-
-          summary = {
-              "repository": claims.get("repository"),
-              "ref": claims.get("ref"),
-              "event_name": claims.get("event_name"),
-              "workflow": claims.get("workflow"),
-              "workflow_ref": claims.get("workflow_ref"),
-              "job_workflow_ref": claims.get("job_workflow_ref"),
-              "head_ref": claims.get("head_ref"),
-              "base_ref": claims.get("base_ref"),
-              "contract_valid": contract_valid,
-          }
-
-          with open("oidc-claims-summary.json", "w", encoding="utf-8") as fh:
-              json.dump(summary, fh, indent=2, sort_keys=True)
-              fh.write("\n")
-
-          print(json.dumps(summary, indent=2, sort_keys=True))
-          if not contract_valid:
-              raise SystemExit("OIDC_CLAIM_CONTRACT_MISMATCH")
-          PY
-
-      - name: Verify realtime corroboration auth and service health
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${GEOMACRO_FLASH_OIDC_TOKEN}"
-          set +e
-          code="$(curl --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 --output realtime-corroborate-health.json --write-out '%{http_code}' -X POST -H "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" -H "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" -H 'Content-Type: application/json' "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-corroborate?mode=health")"
-          curl_status=$?
-          set -e
-          test -f realtime-corroborate-health.json || printf '{}\n' > realtime-corroborate-health.json
-          cat realtime-corroborate-health.json
-          node scripts/classify-realtime-corroborate-health.mjs \
-            --status "${code:-000}" \
-            --transport-status "${curl_status}" \
-            --input realtime-corroborate-health.json \
-            --output realtime-corroborate-health-classification.json
+          test -n "${SUPABASE_DB_URL:-}"
+          test "${GRI_DB_MODE:-}" = "direct_postgres"
+          node --check scripts/run-rss-live-cycle.mjs
+          bun scripts/run-live-flash-corroborate-local.ts > realtime-corroborate-direct.json
+          jq -e '
+            .ok == true and
+            .execution_mode == "local_canonical_corroboration_direct_postgres" and
+            .threshold_weakening == false
+          ' realtime-corroborate-direct.json >/dev/null
+          ! grep -q '.supabase.co/functions/v1/' scripts/run-rss-live-cycle.mjs
+          echo "PASS: canonical realtime corroboration works through direct PostgreSQL without Supabase Edge."
 
       - name: Refresh all three raw runtime categories
         shell: bash
@@ -244,6 +174,8 @@ jobs:
           wait
 
       - name: Run realtime orchestrator continuity
+        env:
+          GRI_DB_MODE: direct_postgres
         run: |
           set -euo pipefail
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-acceptance.log
@@ -358,9 +290,7 @@ jobs:
         with:
           name: global-realtime-intelligence-100-${{ github.event.pull_request.head.sha }}
           path: |
-            oidc-claims-summary.json
-            realtime-corroborate-health.json
-            realtime-corroborate-health-classification.json
+            realtime-corroborate-direct.json
             country-raw-source-acceptance-GEOPOLITICS.json
             country-raw-source-acceptance-MACRO.json
             country-raw-source-acceptance-CRITICAL_MINERALS.json

@@ -102,7 +102,10 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(discovery).toContain('"status": "DISABLED_BY_POLICY"');
     expect(discovery).not.toContain("TelegramClient");
     expect(orchestrator).toContain('key: "telegram_discovery"');
-    expect(orchestrator).toContain('requiredEnv: []');
+    expect(orchestrator).toContain('requiredEnv: ["TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_SESSION"]');
+    expect(orchestrator).toContain("enabled: governedTelegramEnabled");
+    expect(orchestrator).toContain('process.env.TELEGRAM_ENABLED ?? "false"');
+    expect(orchestrator).toContain('disabledReason: () => "governed_telegram_discovery_disabled"');
     expect(authorized).toContain("telegram_mtproto_flash");
     expect(authorized).toContain("commercial_usage_status = 'PERMISSION_REQUIRED'");
     expect(authorized).toContain("telegram_authorized_publisher_feed");

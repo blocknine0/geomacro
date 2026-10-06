@@ -9,6 +9,11 @@ on:
     paths:
       - ".github/workflows/intelligence-orchestrator.yml"
       - "scripts/intelligence-orchestrator.mjs"
+      - "scripts/run-rss-live-cycle.mjs"
+      - "scripts/run-live-flash-ingest-local.ts"
+      - "scripts/run-live-flash-corroborate-local.ts"
+      - "supabase/functions/live-flash-ingest/**"
+      - "supabase/functions/live-flash-corroborate/**"
       - "scripts/lib/intelligence-scheduler.mjs"
       - "scripts/lib/direct-postgres-supabase-loader.mjs"
       - "scripts/lib/d1-control-plane-state.mjs"
@@ -58,7 +63,6 @@ jobs:
       GRI_DB_MODE: direct_postgres
       LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
-      GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
       GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
