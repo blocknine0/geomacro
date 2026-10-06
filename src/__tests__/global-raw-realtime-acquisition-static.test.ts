@@ -35,6 +35,13 @@ describe("global raw realtime acquisition",()=>{
     expect(worker).toContain("processed_cells: successfulCells");
     expect(worker).toContain("COUNTRY_RAW_SOURCE_SYNC_OUTPUT");
     expect(worker).toContain("await writeFile(OUTPUT_PATH, resultJson, \"utf8\")");
+    expect(worker).toContain("COUNTRY_RAW_SOURCE_MESH_REQUIRES_DIRECT_POSTGRES");
+    expect(worker).toContain("COUNTRY_RAW_SOURCE_MESH_B2_CONFIG_REQUIRED");
+    expect(worker).toContain("createGriDbClient");
+    expect(worker).toContain("createB2Client");
+    expect(worker).toContain('storage_backend: "b2"');
+    expect(worker).toContain('db_transport: "direct_postgres"');
+    expect(worker).not.toContain("db.storage.from(BUCKET)");
   });
 
   it("keeps GDELT country fallback as a fallback, not the global first-break backbone",()=>{
