@@ -454,14 +454,15 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "json.load(handle)",
     );
     expect(workflow).toContain(
-      "sha256sum GRO_CANONICAL_JSON_V1.md gro-1.1-canonical-v1-edge-vectors.json gro-1.1-canonical-v1-test-vector.json gro-1.1.schema.json federico-risk-object.json review-request.json review-response.json verification-summary.json > SHA256SUMS.txt",
+      "find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\\n' | sort | xargs sha256sum > SHA256SUMS.txt",
     );
+    expect(workflow).toContain("sha256sum -c SHA256SUMS.txt");
 
     const summaryIndex = workflow.indexOf(
       " > /tmp/federico-handoff/verification-summary.json",
     );
     const checksumIndex = workflow.indexOf(
-      "verification-summary.json > SHA256SUMS.txt",
+      "find . -maxdepth 1 -type f ! -name SHA256SUMS.txt",
     );
     expect(summaryIndex).toBeGreaterThan(-1);
     expect(checksumIndex).toBeGreaterThan(summaryIndex);
