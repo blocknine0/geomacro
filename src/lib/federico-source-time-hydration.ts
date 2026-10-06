@@ -1,8 +1,24 @@
-const TRUSTED_TIMESTAMP_HOSTS = new Set([
-  "english.news.cn",
-  "www.xinhuanet.com",
-  "xinhuanet.com",
+const TRUSTED_TIMESTAMP_HOSTS_BY_SOURCE = new Map<string, ReadonlySet<string>>([
+  [
+    "xinhua_english_china_rss",
+    new Set([
+      "english.news.cn",
+      "www.xinhuanet.com",
+      "xinhuanet.com",
+    ]),
+  ],
+  [
+    "scmp_china_rss",
+    new Set([
+      "www.scmp.com",
+      "scmp.com",
+    ]),
+  ],
 ]);
+
+const TRUSTED_TIMESTAMP_HOSTS = new Set(
+  [...TRUSTED_TIMESTAMP_HOSTS_BY_SOURCE.values()].flatMap((hosts) => [...hosts]),
+);
 
 const PUBLISHED_META_KEYS = new Set([
   "article:published_time",
@@ -22,6 +38,23 @@ export function isTrustedFedericoTimestampUrl(value: string) {
   try {
     const url = new URL(value);
     return url.protocol === "https:" && TRUSTED_TIMESTAMP_HOSTS.has(url.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+export function isTrustedFedericoTimestampUrlForSource(
+  sourceId: string,
+  value: string,
+) {
+  try {
+    const url = new URL(value);
+    const hosts = TRUSTED_TIMESTAMP_HOSTS_BY_SOURCE.get(sourceId);
+    return Boolean(
+      hosts &&
+      url.protocol === "https:" &&
+      hosts.has(url.hostname.toLowerCase()),
+    );
   } catch {
     return false;
   }
