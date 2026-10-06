@@ -153,6 +153,11 @@ function mapPublicRows(rows: PublicIntelligenceApiRow[]): IntelEvent[] {
   });
 }
 
+function latestEvidenceAt(rows: IntelEvent[]): number | null {
+  const latest = rows.reduce((best, row) => Math.max(best, timeOf(row)), -Infinity);
+  return Number.isFinite(latest) ? latest : null;
+}
+
 function build(rows: IntelEvent[], now: number): Intelligence {
   const markedRows = rows
     .filter((row) => Number.isFinite(timeOf(row)) && timeOf(row) <= now + 5 * 60_000)
@@ -283,7 +288,9 @@ export function useIntelligence(
   const [data, setData] = useState<Intelligence | null>(initialData);
   const [status, setStatus] = useState<IntelStatus>(initialData ? "ready" : "loading");
   const [error, setError] = useState<UserError | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<number | null>(initialData ? Date.now() : null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(() =>
+    initialData ? latestEvidenceAt(initialData.all) : null,
+  );
   const [reloadKey, setReloadKey] = useState(0);
   const hasData = useRef(Boolean(initialData));
 
@@ -318,8 +325,9 @@ export function useIntelligence(
         }
 
         hasData.current = true;
-        setData(build(mapped, now));
-        setUpdatedAt(Date.now());
+        const next = build(mapped, now);
+        setData(next);
+        setUpdatedAt(latestEvidenceAt(next.all));
         setError(null);
         setStatus("ready");
       } catch (e) {
