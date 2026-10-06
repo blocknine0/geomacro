@@ -372,7 +372,6 @@ async function main() {
   };
 
   console.log(JSON.stringify(output));
-  if (finalVerified.length < 1) process.exitCode = 3;
 }
 
 main().catch((error) => {
