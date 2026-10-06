@@ -23,6 +23,20 @@ describe("partner commercial readiness", () => {
     expect(assurance.partners.federico.subject_id).toBeNull();
   });
 
+  it("keeps Federico repeatability verification no-spend and independent of live allowance", () => {
+    const workflow = read(".github/workflows/federico-repeatability.yml");
+    const verifier = read("scripts/check-federico-repeatability.mjs");
+    expect(workflow).toContain('cron: "13 */6 * * *"');
+    expect(workflow).not.toContain("INVINO_API_KEY");
+    expect(workflow).not.toContain("use_partner_allowance=true");
+    expect(verifier).toContain("POSITIVE_CONTROL_RUNS = 5");
+    expect(verifier).toContain("POSITIVE_CONTROL_NON_DETERMINISTIC");
+    expect(verifier).toContain("PUBLIC_PARTNER_CONTRACT_NON_DETERMINISTIC");
+    expect(verifier).toContain("ACTIVE_TRUST_SET_CHANGED_WITHIN_PROBE");
+    expect(verifier).toContain("partner_allowance_used: 0");
+    expect(verifier).toContain("user_funds_used: false");
+  });
+
   it("keeps commercial use contract-gated and derived-output bounded", () => {
     expect(discovery.commercial_path.production_pilot).toBe("contract_required");
     expect(discovery.commercial_path.custom_sla).toBe("contract_required");
