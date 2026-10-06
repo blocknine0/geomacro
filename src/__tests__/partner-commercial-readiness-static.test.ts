@@ -21,11 +21,6 @@ describe("partner commercial readiness", () => {
     expect(assurance.partners.federico.delivery_profile).toBe("FEDERICO_STRICT");
     expect(assurance.partners.federico.subject_type).toBe("country");
     expect(assurance.partners.federico.subject_id).toBeNull();
-    expect(discovery.repeatability.same_immutable_record_same_hash_and_signature_result).toBe(true);
-    expect(discovery.repeatability.stale_or_insufficient_evidence_fails_closed).toBe(true);
-    expect(discovery.repeatability.deterministic_positive_control_runs_per_gate).toBe(5);
-    expect(discovery.repeatability.live_partner_review_scheduled).toBe(false);
-    expect(discovery.repeatability.partner_allowance_requires_explicit_authorization).toBe(true);
   });
 
   it("keeps Federico repeatability verification no-spend and independent of live allowance", () => {
