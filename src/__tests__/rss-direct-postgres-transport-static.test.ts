@@ -14,6 +14,9 @@ describe("permanent RSS direct-Postgres transport", () => {
     expect(cycle).toContain('"scripts/run-live-flash-ingest-local.ts"');
     expect(cycle).toContain('"scripts/run-live-flash-corroborate-local.ts"');
     expect(cycle).toContain('edge_function_dependency: false');
+    expect(cycle).toContain('randomBytes(32).toString("hex")');
+    expect(cycle).toContain('request.headers["x-geomacro-flash-token"] !== token');
+    expect(cycle).toContain("GEOMACRO_FLASH_INGEST_TOKEN: loopbackToken");
     expect(cycle).not.toContain(".supabase.co/functions/v1/");
 
     expect(ingest).toContain("--payload-dir");
