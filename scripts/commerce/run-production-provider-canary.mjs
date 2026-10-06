@@ -9,6 +9,7 @@ import {
   decodeBase64Json,
   fail,
   productionAdaptiveRequest,
+  productionAcceptanceAvailabilityCases,
   required,
   verifyCanaryBuild,
   writeEvidence,
@@ -269,13 +270,44 @@ async function main() {
   const context = canaryContext();
   await verifyCanaryBuild(context);
   const endpoint = new URL(PATHS[provider], context.base);
+  const evidenceProvider = EVIDENCE_PROVIDERS[provider];
+  const expectedAvailabilityProvider =
+    provider === "coinbase" ? "coinbase_cdp_x402" :
+    provider === "circle" ? "circle_gateway_x402" :
+    "nevermined";
+
+  // Prove the same production paid route can prepare representative
+  // geopolitics, macro/FX, critical-minerals, country and corridor requests
+  // before any signed payment authorization exists. These are no-charge
+  // availability checks only; the canary still performs exactly one payment.
+  const scopeAvailabilityProofs = [];
+  for (const testCase of productionAcceptanceAvailabilityCases()) {
+    const serializedCase = JSON.stringify(testCase.request);
+    const checked = await assertAvailability(
+      context.base,
+      serializedCase,
+      expectedAvailabilityProvider,
+    );
+    const planHash = String(checked.body?.query_plan_hash ?? "").toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(planHash)) {
+      fail(`Production canary scope ${testCase.id} lacks query_plan_hash`);
+    }
+    scopeAvailabilityProofs.push({
+      id: testCase.id,
+      status: checked.response.status,
+      chargeable: checked.body?.chargeable === true,
+      payment_required_now: checked.body?.payment_required_now === true,
+      query_plan_hash: planHash,
+    });
+  }
+
   const { request, clientRequestId } = productionAdaptiveRequest(`${provider}-production-canary`);
   const serializedBody = JSON.stringify(request);
 
   const availability = await assertAvailability(
     context.base,
     serializedBody,
-    provider === "coinbase" ? "coinbase_cdp_x402" : provider === "circle" ? "circle_gateway_x402" : "nevermined",
+    expectedAvailabilityProvider,
   );
   const availabilityPlanHash = String(availability.body?.query_plan_hash ?? "").toLowerCase();
   if (!/^[0-9a-f]{64}$/.test(availabilityPlanHash)) fail("Production canary availability lacks query_plan_hash");
@@ -349,7 +381,6 @@ async function main() {
   const db = createClient(reconciliationUrl, reconciliationKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const evidenceProvider = EVIDENCE_PROVIDERS[provider];
   const { data: replayPaymentEvents, error: replayPaymentError } = await db
     .from("commercial_payment_events")
     .select("id,payment_status,provider,provider_settlement_id")
@@ -388,7 +419,6 @@ async function main() {
     fail(`Changed-request replay did not fail closed: HTTP ${conflict.response.status}`);
   }
 
-  const evidenceProvider = EVIDENCE_PROVIDERS[provider];
   const evidence = {
     schema_version: "geomacro.production-provider-canary.v1",
     generated_at: new Date().toISOString(),
@@ -416,6 +446,12 @@ async function main() {
       authoritative_ledger_single_settled_usage_response_after_replay: true,
     },
     changed_request_replay_failed_closed: true,
+    representative_scope_availability: scopeAvailabilityProofs,
+    representative_scope_ids: scopeAvailabilityProofs.map((row) => row.id),
+    representative_scope_all_chargeable: scopeAvailabilityProofs.every(
+      (row) => row.chargeable === true && row.payment_required_now === false,
+    ),
+    representative_scope_payment_count: 0,
     execution_authorized: false,
     internal_canary: true,
     purchase_classification: "internal_canary",
