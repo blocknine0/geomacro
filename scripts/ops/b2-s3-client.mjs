@@ -78,12 +78,26 @@ export function createB2Client({
     }
   }
 
-  const normalizedReadAccessKey =
-    explicitReadAccessKey || dedicatedReadAccessKey || archiveWriteAccessKey;
-  const normalizedReadSecretKey =
-    explicitReadSecretKey || dedicatedReadSecretKey || archiveWriteSecretKey;
-  const readCredentialsSeparate = Boolean(
-    normalizedReadAccessKey && normalizedReadSecretKey,
+  const readCredentialCandidates = [];
+  const seenReadCredentials = new Set();
+  for (const [candidateAccess, candidateSecret, role] of [
+    [explicitReadAccessKey, explicitReadSecretKey, "explicit-read"],
+    [dedicatedReadAccessKey, dedicatedReadSecretKey, "dedicated-read"],
+    [archiveWriteAccessKey, archiveWriteSecretKey, "archive-read-write"],
+    [accessKey, secretKey, "primary"],
+  ]) {
+    if (!candidateAccess || !candidateSecret) continue;
+    const fingerprint = `${candidateAccess}\u0000${candidateSecret}`;
+    if (seenReadCredentials.has(fingerprint)) continue;
+    seenReadCredentials.add(fingerprint);
+    readCredentialCandidates.push({
+      accessKey: candidateAccess,
+      secretKey: candidateSecret,
+      role,
+    });
+  }
+  const readCredentialsSeparate = readCredentialCandidates.some(
+    (candidate) => candidate.role !== "primary",
   );
 
   const allowedPrefixes = normalizeAllowedPrefixes(allowedKeyPrefixes);
@@ -106,13 +120,8 @@ export function createB2Client({
     const host = new URL(endpoint.endpoint).host;
     const payloadHash = sha(body);
     const credentialCandidates =
-      method === "GET" && readCredentialsSeparate
-        ? [
-            { accessKey: normalizedReadAccessKey, secretKey: normalizedReadSecretKey, role: "read" },
-            ...(normalizedReadAccessKey !== accessKey || normalizedReadSecretKey !== secretKey
-              ? [{ accessKey, secretKey, role: "primary" }]
-              : []),
-          ]
+      method === "GET"
+        ? readCredentialCandidates
         : [{ accessKey, secretKey, role: "primary" }];
 
     let lastAccessDenied = null;
@@ -189,9 +198,9 @@ export function createB2Client({
       request_budget: requestBudget,
       allowed_prefixes: allowedPrefixes,
       read_credentials_separate: readCredentialsSeparate,
+      read_credential_roles: readCredentialCandidates.map((candidate) => candidate.role),
       read_fallback_to_primary_available:
-        readCredentialsSeparate &&
-        (normalizedReadAccessKey !== accessKey || normalizedReadSecretKey !== secretKey),
+        methodIndependentPrimaryFallbackAvailable(readCredentialCandidates),
     }),
   };
 }
