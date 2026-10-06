@@ -23,13 +23,24 @@ export const FEDERICO_STRICT_RELEVANCE_METHOD =
   "country_bridge_attribution_v1" as const;
 
 export const FEDERICO_STRICT_SOURCE_FAMILY_MAP_VERSION =
-  "federico-source-family-map-v8" as const;
+  "federico-source-family-map-v9" as const;
 
 export const FEDERICO_STRICT_SOURCE_FAMILY_BY_ID = {
   telegram_mtproto_flash: "telegram_network",
   aljazeera_rss: "aljazeera",
   bbc_world_rss: "bbc_world",
   federal_reserve_press_rss: "federal_reserve",
+  ecb_press_rss: "european_central_bank",
+  ecb_market_information_rss: "european_central_bank",
+  bis_rss_media_releases: "bank_for_international_settlements",
+  bis_rss_central_banker_speeches: "bank_for_international_settlements",
+  eu_council_press_rss: "council_of_the_european_union",
+  un_all_documents_rss: "united_nations",
+  un_human_rights_council_rss: "united_nations",
+  un_geneva_press_rss: "united_nations",
+  un_security_council_docs_rss: "united_nations",
+  un_geneva_meeting_summaries_rss: "united_nations",
+  nrcan_news_atom: "natural_resources_canada",
   xinhua_english_china_rss: "xinhua_english_china",
   scmp_china_rss: "scmp_china",
   forexlive_rss: "forexlive",
@@ -129,16 +140,29 @@ export const FEDERICO_STRICT_MAJOR_SOURCE_IDS = [
   "aljazeera_rss",
 ] as const;
 
-// Every source admitted here is already a governed, independently identified
-// source family in the live corroborator. Keep the publication layer aligned
-// with that same trust universe so a source cannot help establish verification
-// and then disappear from the independently-auditable evidence count.
+// Every source admitted here is a governed RSS channel. Independence is
+// resolved through FEDERICO_STRICT_SOURCE_FAMILY_BY_ID so multiple endpoints
+// from the same institution never count as separate source families. Keep the
+// publication layer aligned with the live corroborator's same family policy.
 export const FEDERICO_STRICT_AUDITABLE_SOURCE_IDS = [
-  "xinhua_english_china_rss",
-  "scmp_china_rss",
-  "forexlive_rss",
+  "un_all_documents_rss",
+  "un_human_rights_council_rss",
+  "un_geneva_press_rss",
+  "un_security_council_docs_rss",
+  "eu_council_press_rss",
+  "ecb_press_rss",
+  "ecb_market_information_rss",
+  "un_geneva_meeting_summaries_rss",
   "aljazeera_rss",
   "bbc_world_rss",
+  "xinhua_english_china_rss",
+  "scmp_china_rss",
+  "federal_reserve_press_rss",
+  "forexlive_rss",
+  "bis_rss_media_releases",
+  "bis_rss_central_banker_speeches",
+  "nrcan_news_atom",
+  "usgs_minerals_news_rss",
 ] as const;
 
 
