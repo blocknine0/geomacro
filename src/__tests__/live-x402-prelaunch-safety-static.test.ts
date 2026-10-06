@@ -65,6 +65,12 @@ describe("live x402 prelaunch safety probe", () => {
     expect(census).toContain("body?.execution_authorized === false");
     expect(census).toContain("BASE_SEPOLIA_NETWORK");
     expect(census).toContain("X402_COUNTRY_DELIVERABILITY_BELOW_1414_TARGET");
+    expect(census).toContain("X402_COUNTRY_CENSUS_INCOMPLETE_PATHS");
+    expect(census).toContain('outcome: "INCOMPLETE"');
+    expect(census).toContain('code: "RATE_LIMITED"');
+    expect(census).toContain("const ENFORCE =");
+    expect(workflow).toContain("GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE");
+    expect(workflow).toContain("github.event_name == 'pull_request'");
     expect(workflow).toContain("verify-live-x402-country-availability-census.mjs");
     expect(workflow).toContain("live-x402-country-availability-census.json");
   });
