@@ -246,6 +246,21 @@ class DirectQueryBuilder {
     return this;
   }
 
+  contains(column, value) {
+    identifier(column, "filter_column");
+    if (value === null || typeof value !== "object") {
+      throw new Error("DIRECT_POSTGRES_CONTAINS_REQUIRES_JSON_OR_ARRAY");
+    }
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined) {
+      throw new Error("DIRECT_POSTGRES_CONTAINS_REQUIRES_SERIALIZABLE_VALUE");
+    }
+    this.filters.push(
+      `to_jsonb(${identifier(column)}) @> ${quoteString(encoded)}::jsonb`,
+    );
+    return this;
+  }
+
   is(column, value) {
     identifier(column, "filter_column");
     if (value === null) this.filters.push(`${identifier(column)} IS NULL`);
