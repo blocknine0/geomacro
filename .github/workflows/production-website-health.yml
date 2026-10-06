@@ -47,6 +47,27 @@ jobs:
       GLOBAL_RISK_EDGE_URL: https://geomacro-global-risk.daspallab202391.workers.dev/global-risk
       RISK_INDICES_EDGE_URL: https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices
     steps:
+      - name: Checkout exact canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify checked-out website lock on exact candidate SHA
+        run: node scripts/ops/verify-website-lock.mjs
+
+      - name: Verify exact-source customer truth contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'const timestamp = event.publishedAt ?? event.createdAt;' src/components/intelligence/card.tsx
+          grep -Fq 'Score dates remain the original verified evidence times.' src/routes/intelligence.tsx
+          grep -Fq 'Free to explore. Pay only for successful commercial machine delivery.' src/routes/pricing.tsx
+          grep -Fq 'Failed, stale, unavailable, replayed, refunded, internal, testnet and unpaid requests do not count as successful paid deliveries.' src/routes/pricing.tsx
+          grep -Fq 'Prediction Markets, Bridge and Swap remain separate testnet technical proofs' src/routes/institutional.tsx
+          grep -Fq 'real-money access remains fail-closed until separately authorized for production' src/routes/pricing.tsx
+          echo "PASS: evidence-time and commercial-truth source contracts match the exact checked-out SHA."
+
       - name: Verify live build marker matches canonical main
         env:
           EXPECTED_SHA: ${{ github.sha }}
@@ -96,6 +117,39 @@ jobs:
             exit 1
           fi
           echo "PASS: live build marker matches exact canonical main $EXPECTED_SHA."
+
+      - name: Verify Lovable mirror source parity
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.LOVABLE_MIRROR_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::error title=Lovable mirror credential missing::Cannot prove mirror parity without LOVABLE_MIRROR_TOKEN."
+            exit 1
+          fi
+          matched=false
+          observed="missing"
+          for attempt in $(seq 1 40); do
+            encoded="$(gh api 'repos/blocknine0/geomacro-160c8e56/contents/.geomacro-canonical-main?ref=main' --jq '.content' 2>/dev/null || true)"
+            if [[ -n "$encoded" ]]; then
+              observed="$(printf '%s' "$encoded" | tr -d '\n' | base64 --decode 2>/dev/null | tr -d '\r\n' || true)"
+            fi
+            if [[ "${observed,,}" == "${EXPECTED_SHA,,}" ]]; then
+              matched=true
+              break
+            fi
+            if [[ "$attempt" -lt 40 ]]; then
+              echo "Waiting for Lovable mirror parity: attempt $attempt/40 expected=$EXPECTED_SHA observed=${observed:-missing}"
+              sleep 15
+            fi
+          done
+          if [[ "$matched" != "true" ]]; then
+            echo "::error title=Lovable mirror SHA mismatch::expected=$EXPECTED_SHA observed=${observed:-missing}"
+            exit 1
+          fi
+          echo "PASS: Lovable mirror source marker matches exact canonical main $EXPECTED_SHA."
 
       - name: Verify B2 production serving health
         shell: bash
@@ -294,26 +348,34 @@ jobs:
           fi
           grep -Fq '"ok":true' "$ask"
 
-      - name: Verify Ask Geomacro mobile rendering contract
+      - name: Verify Ask Geomacro desktop and mobile rendering contract
         shell: bash
         run: |
           set -euo pipefail
-          body="$(mktemp)"
-          decoded="$(mktemp)"
-          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS \
-            -A 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1' \
-            -o "$body" -w '%{http_code}' "$BASE_URL/ask-geomacro")"
-          test "$code" = "200" || { echo "::error title=Ask mobile route unavailable::HTTP $code"; head -c 1000 "$body" || true; exit 1; }
-          ! grep -Fq "This page didn't load" "$body" || { echo "::error title=Ask mobile route rendered error boundary::/ask-geomacro"; exit 1; }
-          python - "$body" "$decoded" <<'PY'
+          verify_ask_render() {
+            local label="$1"
+            local agent="$2"
+            local body decoded code
+            body="$(mktemp)"
+            decoded="$(mktemp)"
+            code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS \
+              -A "$agent" \
+              -o "$body" -w '%{http_code}' "$BASE_URL/ask-geomacro")"
+            test "$code" = "200" || { echo "::error title=Ask $label route unavailable::HTTP $code"; head -c 1000 "$body" || true; exit 1; }
+            ! grep -Fq "This page didn't load" "$body" || { echo "::error title=Ask $label route rendered error boundary::/ask-geomacro"; exit 1; }
+            python - "$body" "$decoded" <<'PY'
           import html
           import pathlib
           import sys
           source = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8')
           pathlib.Path(sys.argv[2]).write_text(html.unescape(source), encoding='utf-8')
           PY
-          grep -Fq 'Ask Geomacro' "$decoded"
-          rm -f "$body" "$decoded"
+            grep -Fq 'Ask Geomacro' "$decoded"
+            rm -f "$body" "$decoded"
+          }
+          verify_ask_render "desktop" 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154.0.0.0 Safari/537.36'
+          verify_ask_render "mobile" 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'
+          echo "PASS: Ask Geomacro rendered on desktop and mobile user agents."
 
       - name: Upload production Intelligence diagnostic
         if: always()
