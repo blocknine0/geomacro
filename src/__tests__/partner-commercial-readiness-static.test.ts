@@ -13,6 +13,8 @@ describe("partner commercial readiness", () => {
     expect(discovery.risk_object.signature_scheme).toBe("Ed25519");
     expect(discovery.risk_object.canonicalization).toBe("geomacro-canonical-json-v1");
     expect(discovery.federation.supported_profile).toBe("federico-strict-evidence-v1");
+    expect(discovery.federation.country_scope).toBe("all_enabled_iso3_countries");
+    expect(discovery.federation.country_policy).toBe("same_strict_gates_per_country_fail_closed");
     expect(discovery.federation.receiver_side_verification_required).toBe(true);
     expect(discovery.federation.fail_closed).toBe(true);
   });
@@ -33,6 +35,9 @@ describe("partner commercial readiness", () => {
     expect(preflight).toContain("execution_authorized: false");
     expect(preflight).toContain("independent_node");
     expect(preflight).toContain("partial_disclosure");
+    expect(preflight).toContain('receiver_policy_id: "federico-global-country-risk-v1"');
+    expect(preflight).toContain("subject_id: reviewSubjectId");
+    expect(preflight).not.toContain('subject_id: "CHN"');
   });
 
   it("documents the path from evaluation to a commercial agreement", () => {
