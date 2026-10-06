@@ -42,7 +42,6 @@ import {
   FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES,
   FEDERICO_STRICT_MAJOR_SOURCE_IDS,
   FEDERICO_STRICT_AUDITABLE_SOURCE_IDS,
-  FEDERICO_STRICT_CHINA_NEXUS_TERMS,
   federicoStrictSourceFamilyForId,
   FEDERICO_STRICT_RELEVANCE_METHOD,
   FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD,
@@ -913,19 +912,22 @@ async function loadFedericoStrictEvents(
     if (!members.length) continue;
 
     const latest = members[0];
-    // Federico strict evidence uses only governed sources with an explicit
-    // CHN nexus in the source headline. This prevents GDELT/syndicated
-    // domain fan-out from masquerading as substantive independence.
+    // Strict partner evidence is country-agnostic. A member is auditable only
+    // when it comes from the governed source universe AND that exact source
+    // record has receiver-replayable governed attribution to the requested
+    // ISO3. This prevents family-level or syndicated fan-out from creating a
+    // false country nexus while keeping the same policy for every country.
     const auditableMembers = members.filter((member) => {
       const sourceId = String(member.source_id ?? "").trim().toLowerCase();
-      const title = String(member.headline ?? "").trim().toLowerCase();
       const isAllowedSource = (
         FEDERICO_STRICT_AUDITABLE_SOURCE_IDS as readonly string[]
       ).includes(sourceId);
-      const hasChinaNexus = (
-        FEDERICO_STRICT_CHINA_NEXUS_TERMS as readonly string[]
-      ).some((term) => title.includes(term));
-      return isAllowedSource && hasChinaNexus;
+      const memberAttributions =
+        attributionByFlash.get(String(member.flash_id ?? "")) ?? [];
+      const hasTargetCountryAttribution = memberAttributions.some(
+        (item) => item.country_iso3 === iso3,
+      );
+      return isAllowedSource && hasTargetCountryAttribution;
     });
 
     if (!auditableMembers.length) {
@@ -1155,7 +1157,7 @@ async function loadFedericoStrictEvents(
         content_hashes: contentHashes,
         event_family_id: familyId,
         relevance_reason:
-          `Direct CHN linkage via canonical event-family country mapping: ${iso3}`,
+          `Direct ${iso3} linkage via governed source-record country attribution`,
         transmission_channel:
           "direct_country_link",
         relevance_weight: 1,
