@@ -141,13 +141,15 @@
   "overrides": {
     "js-yaml": "^5.0.0",
     "uuid": "^11.1.0",
-    "stream-json": "3.5.0",
+    "source-map-js": "1.2.2",
+    "stream-json": "3.6.0",
     "toml": "4.2.0"
   },
   "resolutions": {
     "js-yaml": "^5.0.0",
     "uuid": "^11.1.0",
-    "stream-json": "3.5.0",
+    "source-map-js": "1.2.2",
+    "stream-json": "3.6.0",
     "toml": "4.2.0"
   }
 }
