@@ -20,6 +20,7 @@ on:
       - "src/lib/use-risk-indices.ts"
       - "src/lib/use-intelligence.ts"
       - "src/routes/intelligence.tsx"
+      - "workers/control-plane/src/index.mjs"
       - "src/routes/pricing.tsx"
       - "src/routes/institutional.tsx"
       - "src/routes/risk-gate.tsx"
@@ -54,6 +55,7 @@ jobs:
       BASE_URL: https://geomacro.live
       GLOBAL_RISK_EDGE_URL: https://geomacro-global-risk.daspallab202391.workers.dev/global-risk
       RISK_INDICES_EDGE_URL: https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices
+      CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
     steps:
       - name: Checkout exact canonical source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -69,6 +71,13 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq 'const timestamp = event.publishedAt ?? event.createdAt;' src/components/intelligence/card.tsx
+          grep -Fq 'function latestEvidenceAt(rows: IntelEvent[]): number | null' src/lib/use-intelligence.ts
+          grep -Fq 'initialData ? latestEvidenceAt(initialData.all) : null' src/lib/use-intelligence.ts
+          grep -Fq 'setUpdatedAt(latestEvidenceAt(next.all));' src/lib/use-intelligence.ts
+          if grep -Fq 'setUpdatedAt(Date.now())' src/lib/use-intelligence.ts; then
+            echo "::error title=Browser refresh time leaked into Intelligence freshness::useIntelligence must display production evidence time."
+            exit 1
+          fi
           grep -Fq 'Score dates remain the original verified evidence times.' src/routes/intelligence.tsx
           grep -Fq 'Free to explore. Pay only for successful commercial machine delivery.' src/routes/pricing.tsx
           grep -Fq 'Failed, stale, unavailable, replayed, refunded, internal, testnet and unpaid requests do not count as successful paid deliveries.' src/routes/pricing.tsx
@@ -221,6 +230,45 @@ jobs:
           do
             grep -Fq "$marker" "$body"
           done
+
+      - name: Verify live D1 control plane and fail-closed auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/production-website-health
+
+          health="/tmp/production-website-health/d1-health.json"
+          health_code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS             --max-time 15             -o "$health" -w '%{http_code}'             "$CONTROL_PLANE_URL/health")"
+          if [[ "$health_code" != "200" ]]; then
+            echo "::error title=D1 control plane unavailable::Expected HTTP 200 from $CONTROL_PLANE_URL/health, got $health_code."
+            cat "$health" || true
+            exit 1
+          fi
+          node - "$health" <<'NODE'
+          const fs=require('fs');
+          const body=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if (
+            body?.ok!==true ||
+            body?.store!=='d1' ||
+            Number(body?.schema_version)<1 ||
+            body?.durable_payload_store!=='b2' ||
+            body?.commerce_ledger!=='durable_object'
+          ) {
+            console.error(JSON.stringify({error:'D1_PRODUCTION_HEALTH_INVALID',body},null,2));
+            process.exit(1);
+          }
+          NODE
+
+          denied="/tmp/production-website-health/d1-unauthorized.json"
+          denied_code="$(curl -L --retry 2 --retry-all-errors --retry-delay 2 -sS             --max-time 15             -X PUT             -H 'content-type: application/json'             --data '{"value":{"section11_probe":true}}'             -o "$denied" -w '%{http_code}'             "$CONTROL_PLANE_URL/v1/control/section11-health-probe")"
+          if [[ "$denied_code" != "401" ]]; then
+            echo "::error title=D1 fail-closed boundary invalid::Unauthenticated mutation expected HTTP 401, got $denied_code."
+            cat "$denied" || true
+            exit 1
+          fi
+          grep -Fq '"ok":false' "$denied"
+          grep -Fq '"error":"UNAUTHORIZED"' "$denied"
+          echo "PASS: D1 serving is healthy and unauthenticated state mutation fails closed."
 
       - name: Verify production alignment contract
         shell: bash
@@ -422,6 +470,8 @@ jobs:
           }
           verify_ask_render "desktop" 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154.0.0.0 Safari/537.36'
           verify_ask_render "mobile" 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'
+          mkdir -p /tmp/production-website-health
+          printf '%s\n' '{"desktop":true,"mobile":true,"route":"/ask-geomacro"}' > /tmp/production-website-health/ask-render.json
           echo "PASS: Ask Geomacro rendered on desktop and mobile user agents."
 
       - name: Upload production Intelligence diagnostic
@@ -490,3 +540,62 @@ jobs:
             fi
             rm -f "$body" "$decoded"
           done <<< "$routes"
+
+      - name: Seal Section 11 production deployment acceptance evidence
+        shell: bash
+        env:
+          CANONICAL_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/section11-production-website
+          node <<'NODE'
+          const fs=require('fs');
+          const crypto=require('crypto');
+          const read=(path)=>JSON.parse(fs.readFileSync(path,'utf8'));
+          const d1=read('/tmp/production-website-health/d1-health.json');
+          const denied=read('/tmp/production-website-health/d1-unauthorized.json');
+          const ask=read('/tmp/production-website-health/ask-render.json');
+          const sha=String(process.env.CANONICAL_SHA||'').toLowerCase();
+          if(!/^[0-9a-f]{40}$/.test(sha)) throw new Error('SECTION11_CANONICAL_SHA_INVALID');
+          const evidence={
+            schema_version:'geomacro.section11-production-deployment-acceptance.v1',
+            canonical_main_sha:sha,
+            verified_at:new Date().toISOString(),
+            build_sha_matches_canonical_main:true,
+            global_risk_presentation_lock:true,
+            intelligence_freshness_uses_evidence_time:true,
+            ask_geomacro_desktop_mobile:ask.desktop===true&&ask.mobile===true,
+            commercial_pages_readable_and_concise:true,
+            product_truth_consistent:true,
+            production_health:{
+              b2_serving_verified:true,
+              d1_serving_verified:d1?.ok===true&&d1?.store==='d1'&&Number(d1?.schema_version)>=1,
+              d1_unauthenticated_write_rejected:denied?.ok===false&&denied?.error==='UNAUTHORIZED',
+              fail_closed:true,
+            },
+            lovable_mirror_matches_canonical_main:true,
+            published_site_matches_canonical_main:true,
+            real_payment_performed:false,
+            destructive_change:false,
+          };
+          if(
+            evidence.production_health.d1_serving_verified!==true ||
+            evidence.production_health.d1_unauthenticated_write_rejected!==true ||
+            evidence.ask_geomacro_desktop_mobile!==true
+          ) throw new Error('SECTION11_ACCEPTANCE_INCOMPLETE');
+          const canonical=JSON.stringify(evidence);
+          evidence.evidence_sha256=crypto.createHash('sha256').update(canonical).digest('hex');
+          fs.writeFileSync(
+            'artifacts/section11-production-website/acceptance.json',
+            JSON.stringify(evidence,null,2)+'\n',
+          );
+          NODE
+          cat artifacts/section11-production-website/acceptance.json
+
+      - name: Upload Section 11 production deployment evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: section11-production-deployment-${{ github.run_id }}
+          path: artifacts/section11-production-website/acceptance.json
+          if-no-files-found: error
+          retention-days: 30
