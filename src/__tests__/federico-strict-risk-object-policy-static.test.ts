@@ -309,31 +309,37 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
-  it("uses material evidence time instead of a renewed observation TTL", () => {
+  it("uses exact publication time instead of a renewed observation TTL", () => {
     const publisher = read(
       "src/lib/country-risk-publisher.server.ts",
     );
 
     expect(publisher).toContain(
-      "family.last_material_update_at",
+      "function federicoStrictPublishedAt(",
     );
     expect(publisher).toContain(
-      "latest.last_material_update_at",
+      "/^\\d{4}-\\d{2}-\\d{2}$/u.test(raw)",
     );
     expect(publisher).toContain(
-      "last_material_update_at",
+      "publishedMs > asOf.getTime()",
+    );
+    expect(publisher).toContain(
+      "latestAuditableMember.published_at",
     );
     expect(publisher).toContain(
       'verification_status", "VERIFIED"',
-    );
-    expect(publisher).toContain(
-      "last_material_update_at",
     );
     expect(publisher).toContain(
       "source_record_id",
     );
     expect(publisher).toContain(
       "content_hash",
+    );
+    expect(publisher).not.toContain(
+      "family.last_material_update_at ??",
+    );
+    expect(publisher).not.toContain(
+      "latest.last_material_update_at ??",
     );
     expect(publisher).not.toContain(
       "legacy_schema_compat",
