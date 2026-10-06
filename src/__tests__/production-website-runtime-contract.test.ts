@@ -113,13 +113,36 @@ describe("production website runtime contract", () => {
     expect(intelligence).toContain("Risk Indices temporarily unavailable");
   });
 
+  it("binds final website acceptance to exact-source lock, evidence time and mirror parity", () => {
+    const workflow = read(".github/workflows/production-website-health.yml");
+    const intelligenceCard = read("src/components/intelligence/card.tsx");
+    const intelligenceRoute = read("src/routes/intelligence.tsx");
+    const pricing = read("src/routes/pricing.tsx");
+    const institutional = read("src/routes/institutional.tsx");
+
+    expect(workflow).toContain("Verify checked-out website lock on exact candidate SHA");
+    expect(workflow).toContain("node scripts/ops/verify-website-lock.mjs");
+    expect(workflow).toContain("Verify Lovable mirror source parity");
+    expect(workflow).toContain("LOVABLE_MIRROR_TOKEN");
+    expect(workflow).toContain("geomacro-160c8e56/contents/.geomacro-canonical-main");
+    expect(workflow).toContain("Verify Ask Geomacro desktop and mobile rendering contract");
+    expect(workflow).toContain("Windows NT 10.0; Win64; x64");
+    expect(workflow).toContain("iPhone; CPU iPhone OS 18_0");
+
+    expect(intelligenceCard).toContain("event.publishedAt ?? event.createdAt");
+    expect(intelligenceRoute).toContain("Score dates remain the original verified evidence times.");
+    expect(pricing).toContain("Free to explore. Pay only for successful commercial machine delivery.");
+    expect(pricing).toContain("real-money access remains fail-closed until separately authorized for production");
+    expect(institutional).toContain("separate testnet technical proofs");
+  });
+
   it("checks rendered route content plus functional public APIs", () => {
     const workflow = read(".github/workflows/production-website-health.yml");
     expect(workflow).toContain("Verify public production APIs and current Intelligence contract");
     expect(workflow).toContain("Verify live build marker matches canonical main");
     expect(workflow).toContain("/.well-known/geomacro-build.json");
     expect(workflow).toContain("LIVE_DEPLOYMENT_SHA_MISMATCH");
-    expect(workflow).toContain("Verify Ask Geomacro mobile rendering contract");
+    expect(workflow).toContain("Verify Ask Geomacro desktop and mobile rendering contract");
     expect(workflow).toContain("iPhone; CPU iPhone OS 18_0");
     expect(workflow).toContain("scoredCurrentAcrossAllDomains");
     expect(workflow).toContain("body?.mode !== 'verified_b2' || live !== 0");
