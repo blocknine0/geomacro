@@ -15,8 +15,10 @@ import {
   verifyPublicRiskObjectArtifact,
 } from "../lib/risk-object-verification.server";
 
+// Bounded to the canonical production GRO artifact ceiling. Production B2
+// verification refuses uncompressed GRO payloads above 4,000,000 bytes.
 const MAX_VERIFY_BODY_BYTES =
-  512 * 1024;
+  4 * 1024 * 1024;
 
 function jsonResponse(
   body: unknown,
