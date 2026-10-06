@@ -38,6 +38,24 @@ describe("RSS worker source selection contract", () => {
     expect(worker).toContain("*(process_one_feed(feed) for feed in feeds)");
   });
 
+  it("hydrates missing strict publication times only from publisher-native article metadata", () => {
+    const worker = read("workers/telegram-flash/worker.py");
+    expect(worker).toContain("class PublisherArticleTimestampParser:");
+    expect(worker).toContain("PUBLISHER_PUBLISHED_META_KEYS");
+    expect(worker).toContain('"article:published_time"');
+    expect(worker).toContain('"datepublished"');
+    expect(worker).toContain("exact_publisher_timestamp");
+    expect(worker).toContain("moment.tzinfo is None");
+    expect(worker).toContain("hydrate_article_published_at");
+    expect(worker).toContain("article_timestamp_hosts");
+    expect(worker).toContain("fetch_article_published_at_sync");
+    expect(worker).toContain("publisher_article_metadata");
+    expect(worker).toContain('"publication_timestamp_source": timestamp_source');
+    expect(worker).toContain('["english.news.cn"]');
+    expect(worker).toContain('["www.scmp.com", "scmp.com"]');
+    expect(worker).toContain('["investinglive.com", "www.investinglive.com"]');
+  });
+
   it("recovers readable malformed RSS or Atom XML without weakening fail-closed behavior", () => {
     const worker = read("workers/telegram-flash/worker.py");
     expect(worker).toContain("class LenientFeedParser:");
