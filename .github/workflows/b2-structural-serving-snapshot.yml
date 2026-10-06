@@ -49,5 +49,12 @@ jobs:
         with: { bun-version: "1.4.2" }
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
+      - name: Require dedicated B2 readback credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${B2_ARCHIVE_READ_KEY_ID:-}" || { echo "B2_ARCHIVE_READ_KEY_ID is required for structural readback"; exit 2; }
+          test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || { echo "B2_ARCHIVE_READ_APPLICATION_KEY is required for structural readback"; exit 2; }
+
       - name: Publish and fully read back structural serving snapshot
         run: bun scripts/ops/publish-b2-structural-serving-snapshot.ts
