@@ -117,11 +117,15 @@ describe("global realtime source proof health classification", () => {
     expect(workflow).toContain("drain-live-structure.mjs --fragment-ids-file");
   });
 
-  it("uses dedicated B2 readback credentials for raw runtime proof", () => {
+  it("uses pair-atomic B2 readback fallback credentials for raw runtime proof", () => {
     expect(workflow).toContain("B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}");
     expect(workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}");
-    expect(workflow).toContain('test -n "${B2_ARCHIVE_READ_KEY_ID}"');
-    expect(workflow).toContain('test -n "${B2_ARCHIVE_READ_APPLICATION_KEY}"');
+    expect(workflow).toContain("B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}");
+    expect(workflow).toContain("B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}");
+    expect(workflow).toContain("Dedicated B2 archive read credentials must be supplied as a complete pair.");
+    expect(workflow).toContain("Archive B2 read/write credentials must be supplied as a complete pair.");
+    expect(workflow).not.toContain('test -n "${B2_ARCHIVE_READ_KEY_ID}"');
+    expect(workflow).not.toContain('test -n "${B2_ARCHIVE_READ_APPLICATION_KEY}"');
   });
 
 });
