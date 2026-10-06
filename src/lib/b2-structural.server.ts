@@ -60,8 +60,15 @@ async function hmac(key: Uint8Array | string, value: string): Promise<Uint8Array
 function config(): B2Config | null {
   if (typeof window !== "undefined" || typeof process === "undefined") return null;
   const endpoint = String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim();
-  const accessKey = String(process.env.B2_KEY_ID ?? "").trim();
-  const secretKey = String(process.env.B2_APPLICATION_KEY ?? "").trim();
+  const dedicatedAccessKey = String(
+    process.env.B2_ARCHIVE_READ_KEY_ID ?? "",
+  ).trim();
+  const dedicatedSecretKey = String(
+    process.env.B2_ARCHIVE_READ_APPLICATION_KEY ?? "",
+  ).trim();
+  if (Boolean(dedicatedAccessKey) !== Boolean(dedicatedSecretKey)) return null;
+  const accessKey = dedicatedAccessKey || String(process.env.B2_KEY_ID ?? "").trim();
+  const secretKey = dedicatedSecretKey || String(process.env.B2_APPLICATION_KEY ?? "").trim();
   if (endpoint !== B2_ENDPOINT || !accessKey || !secretKey) return null;
   return { accessKey, secretKey };
 }
