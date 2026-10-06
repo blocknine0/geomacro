@@ -116,6 +116,7 @@ describe("production website runtime contract", () => {
   it("binds final website acceptance to exact-source lock, evidence time and mirror parity", () => {
     const workflow = read(".github/workflows/production-website-health.yml");
     const intelligenceCard = read("src/components/intelligence/card.tsx");
+    const intelligenceHook = read("src/lib/use-intelligence.ts");
     const intelligenceRoute = read("src/routes/intelligence.tsx");
     const pricing = read("src/routes/pricing.tsx");
     const institutional = read("src/routes/institutional.tsx");
@@ -130,6 +131,10 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain("iPhone; CPU iPhone OS 18_0");
 
     expect(intelligenceCard).toContain("event.publishedAt ?? event.createdAt");
+    expect(intelligenceHook).toContain("function latestEvidenceAt(rows: IntelEvent[]): number | null");
+    expect(intelligenceHook).toContain("initialData ? latestEvidenceAt(initialData.all) : null");
+    expect(intelligenceHook).toContain("setUpdatedAt(latestEvidenceAt(next.all))");
+    expect(intelligenceHook).not.toContain("setUpdatedAt(Date.now())");
     expect(intelligenceRoute).toContain("Score dates remain the original verified evidence times.");
     expect(pricing).toContain("Free to explore. Pay only for successful commercial machine delivery.");
     expect(pricing).toContain("real-money access remains fail-closed until separately authorized for production");
@@ -156,6 +161,12 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain("/ask-geomacro|Ask Geomacro");
     expect(workflow).toContain("/pricing|Access & pricing");
     expect(workflow).toContain("/docs|Geomacro public documentation");
+    expect(workflow).toContain("Verify live D1 control plane and fail-closed auth");
+    expect(workflow).toContain("geomacro-control-plane.daspallab202391.workers.dev");
+    expect(workflow).toContain("d1_unauthenticated_write_rejected");
+    expect(workflow).toContain("geomacro.section11-production-deployment-acceptance.v1");
+    expect(workflow).toContain("published_site_matches_canonical_main");
+    expect(workflow).toContain("lovable_mirror_matches_canonical_main");
   });
 
   it("documents that hosted B2 secrets are separate from GitHub Actions secrets", () => {
