@@ -28,7 +28,6 @@ jobs:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
-      GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
       GH_TOKEN: ${{ github.token }}
       GRI_DB_MODE: direct_postgres
 
@@ -56,6 +55,7 @@ jobs:
           done
           test "${GRI_DB_MODE:-}" = "direct_postgres"
           echo "Owner authorization scope: Federico pilot allowance only; no user funds and no execution authorization."
+          echo "Governed RSS transport: tokenless loopback spool -> canonical direct Postgres; remote tokenless ingest remains forbidden."
 
       - name: Re-poll governed RSS without partner allowance
         env:
