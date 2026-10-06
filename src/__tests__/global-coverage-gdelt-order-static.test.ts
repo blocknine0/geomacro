@@ -9,10 +9,10 @@ const workflow = readFileSync(
 describe("global production coverage evidence ordering", () => {
   it("repairs governed GDELT evidence before sovereign CANONICAL Risk Objects are generated", () => {
     const gdelt = workflow.indexOf(
-      "- name: Self-heal GDELT GAL freshness before sovereign CANONICAL refresh",
+      "- name: Self-heal GDELT GAL freshness before country-like CANONICAL refresh",
     );
     const canonical = workflow.indexOf(
-      "- name: Refresh every enabled sovereign CANONICAL Risk Object",
+      "- name: Refresh every enabled country-like CANONICAL Risk Object",
     );
 
     expect(gdelt).toBeGreaterThan(-1);
@@ -31,8 +31,8 @@ describe("global production coverage evidence ordering", () => {
   });
 
   it("does not weaken canonical readiness or payment safety boundaries", () => {
-    expect(workflow).toContain('GLOBAL_CANONICAL_MIN_READY: "100"');
-    expect(workflow).toContain('GLOBAL_CANONICAL_MIN_SOVEREIGN_DENOMINATOR: "190"');
+    expect(workflow).toContain('GLOBAL_CANONICAL_MIN_READY: "195"');
+    expect(workflow).toContain('GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR: "195"');
     expect(workflow).toContain(".boundaries.payment_not_performed_by_refresh == true");
     expect(workflow).toContain(".boundaries.raw_source_material_emitted == false");
     expect(workflow).toContain(".boundaries.execution_authorized == false");
