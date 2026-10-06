@@ -21,6 +21,12 @@ describe("#1414 governed live-source database transport", () => {
     expect(dbClient).toContain("delete() {");
     expect(dbClient).toContain("DIRECT_POSTGRES_DELETE_REQUIRES_FILTER");
     expect(dbClient).toContain('this.operation === "delete"');
+    expect(dbClient).toContain("live_flash_event_countries");
+    expect(dbClient).toContain("UNSUPPORTED_DIRECT_POSTGRES_RELATIONSHIP");
+    expect(dbClient).toContain("parseSelectProjection");
+    expect(dbClient).toContain("parseFilterTarget");
+    expect(dbClient).toContain("EXISTS (SELECT 1 FROM public.");
+    expect(dbClient).toContain("jsonb_agg(jsonb_build_object");
   });
 
   it("runs GDELT v2 under the same direct-Postgres production mode rather than requiring Edge/Data API availability", () => {
