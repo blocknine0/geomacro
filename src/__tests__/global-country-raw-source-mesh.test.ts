@@ -105,6 +105,8 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain('B2_PREFIX="geomacro-evidence/v1/live/country-raw-source-mesh"');
     expect(worker).toContain("createGriDbClient");
     expect(worker).toContain("createB2Client");
+    expect(worker).toContain("readAccessKey: process.env.B2_ARCHIVE_READ_KEY_ID");
+    expect(worker).toContain("readSecretKey: process.env.B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(worker).toContain("await b2.put(path,compressed)");
     expect(worker).toContain("await b2.put(path,comp)");
     expect(worker).toContain('verification_method:"b2-readback-sha256"');
