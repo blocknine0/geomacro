@@ -1,8 +1,10 @@
 {
-  "schema": "geomacro.telegram-main-bridge.v1",
+  "schema": "geomacro.telegram-main-bridge.v2",
   "producer_repo": "blocknine0/geomacro-telegram-signals",
-  "producer_commit": "aba12aea43ec8a5c9e54a4266e639903d531ad33",
-  "payload_schema": "geomacro.telegram-lead-envelope.v1",
+  "producer_commit_audit": "d7d18d9dc122f64980870bd08676b135d161ff41",
+  "producer_acceptance": "protocol_hash",
+  "payload_schema": "geomacro.telegram-lead-envelope.v2",
+  "protocol_contract_sha256": "6da33ed2a966d58122039ba38d83e801476a6318bc89634d0b3d951e8ad017c9",
   "source_id": "telegram_authorized_publisher_feed",
   "storage": {
     "durable": "B2",
