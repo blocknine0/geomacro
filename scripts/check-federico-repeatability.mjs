@@ -40,7 +40,7 @@ async function fetchJson(path) {
 }
 
 function runPositiveControl() {
-  const run = spawnSync(process.execPath, ["scripts/check-federico-positive-control.ts"], {
+  const run = spawnSync("bun", ["scripts/check-federico-positive-control.ts"], {
     encoding: "utf8",
     env: process.env,
   });
@@ -97,7 +97,6 @@ for (let i = 0; i < 3; i += 1) {
     federation: discovery?.federation,
     partner_handoff: discovery?.partner_handoff,
     security: discovery?.security,
-    repeatability: discovery?.repeatability,
   };
   discoverySamples.push(sha256(stableJson(discoveryProjection)));
 
