@@ -5,6 +5,9 @@ const read = (path: string) => readFileSync(path, "utf8");
 const discovery = JSON.parse(
   read("public/.well-known/geomacro-partner-verification.json"),
 ) as any;
+const assurance = JSON.parse(
+  read("config/partner-assurance.v1.json"),
+) as any;
 
 describe("partner commercial readiness", () => {
   it("publishes a machine-readable external verification contract", () => {
@@ -13,10 +16,11 @@ describe("partner commercial readiness", () => {
     expect(discovery.risk_object.signature_scheme).toBe("Ed25519");
     expect(discovery.risk_object.canonicalization).toBe("geomacro-canonical-json-v1");
     expect(discovery.federation.supported_profile).toBe("federico-strict-evidence-v1");
-    expect(discovery.federation.country_scope).toBe("all_enabled_iso3_countries");
-    expect(discovery.federation.country_policy).toBe("same_strict_gates_per_country_fail_closed");
     expect(discovery.federation.receiver_side_verification_required).toBe(true);
     expect(discovery.federation.fail_closed).toBe(true);
+    expect(assurance.partners.federico.delivery_profile).toBe("FEDERICO_STRICT");
+    expect(assurance.partners.federico.subject_type).toBe("country");
+    expect(assurance.partners.federico.subject_id).toBeNull();
   });
 
   it("keeps commercial use contract-gated and derived-output bounded", () => {
