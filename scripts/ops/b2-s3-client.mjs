@@ -114,6 +114,7 @@ export function createB2Client({
   let nativeReadFallbackAttempts = 0;
   let nativeReadFallbackSuccesses = 0;
   const nativeReadAuthCache = new Map();
+  const nativeReadPreferredCredentials = new Set();
 
   function reserveRequestBudget() {
     if (requestBudget !== null && requestsStarted >= requestBudget) {
@@ -264,6 +265,15 @@ export function createB2Client({
     let lastDedicatedNativeError = null;
     for (let credentialIndex = 0; credentialIndex < credentialCandidates.length; credentialIndex++) {
       const credential = credentialCandidates[credentialIndex];
+      const credentialFingerprint = nativeCredentialFingerprint(credential);
+      if (method === "GET" && nativeReadPreferredCredentials.has(credentialFingerprint)) {
+        try {
+          return await nativeRead(credential, normalizedKey, { allowNotFound });
+        } catch {
+          // Re-probe S3/fallback candidates if a previously healthy Native path regresses.
+          nativeReadPreferredCredentials.delete(credentialFingerprint);
+        }
+      }
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       reserveRequestBudget();
 
@@ -303,7 +313,9 @@ export function createB2Client({
           errorCode === "AccessDenied"
         ) {
           try {
-            return await nativeRead(credential, normalizedKey, { allowNotFound });
+            const nativeBytes = await nativeRead(credential, normalizedKey, { allowNotFound });
+            nativeReadPreferredCredentials.add(credentialFingerprint);
+            return nativeBytes;
           } catch (nativeCause) {
             const nativeMessage =
               nativeCause instanceof Error ? nativeCause.message : "B2_NATIVE_READ_FAILED";
@@ -355,6 +367,7 @@ export function createB2Client({
       native_read_fallback_enabled: true,
       native_read_fallback_attempts: nativeReadFallbackAttempts,
       native_read_fallback_successes: nativeReadFallbackSuccesses,
+      native_read_preferred_credentials: nativeReadPreferredCredentials.size,
     }),
   };
 }
