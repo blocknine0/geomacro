@@ -69,7 +69,8 @@ jobs:
             const p = await Bun.file("package.json").json();
             if (p.packageManager !== "bun@1.4.2") throw new Error("packageManager must remain bun@1.4.2");
             if (p.overrides?.toml !== "4.2.0") throw new Error("toml override must remain patched at 4.2.0");
-            if (p.overrides?.["stream-json"] !== "3.5.0") throw new Error("stream-json override must remain patched at 3.5.0");
+            if (p.overrides?.["source-map-js"] !== "1.2.2") throw new Error("source-map-js override must remain patched at 1.2.2");
+            if (p.overrides?.["stream-json"] !== "3.6.0") throw new Error("stream-json override must remain patched at 3.6.0");
           '
 
       - name: Install locked dependencies
