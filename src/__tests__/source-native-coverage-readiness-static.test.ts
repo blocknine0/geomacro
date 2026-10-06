@@ -13,6 +13,10 @@ const wrapper = readFileSync(
   "scripts/ops/run-b2-public-intelligence-publisher.mjs",
   "utf8",
 );
+const fastlane = readFileSync(
+  "scripts/ops/sync-fastlane-scored-intelligence.mjs",
+  "utf8",
+);
 
 describe("source-native three-domain coverage readiness", () => {
   it("binds every domain to the exact certified commercial launch source", () => {
@@ -43,6 +47,13 @@ describe("source-native three-domain coverage readiness", () => {
     expect(refresher).toContain("synthetic_score !== false");
     expect(refresher).toContain("GDELT_COVERAGE_TARGET_CENSUS_INVALID");
     expect(refresher).toContain("GDELT_COVERAGE_REFRESH_COUNT_MISMATCH");
+  });
+
+  it("keeps coverage maintenance ahead of the two-hour source-native expiry window", () => {
+    expect(fastlane).toContain("GDELT_COVERAGE_MAINTENANCE_MAX_AGE_MS");
+    expect(fastlane).toContain("95 * 60 * 1000");
+    expect(fastlane).toContain("gdeltCoverageMaintenanceStatus");
+    expect(fastlane).toContain("FASTLANE_GDELT_COVERAGE_MAINTENANCE_UNSATISFIED");
   });
 
   it("runs the coverage refresh only after the public Intelligence publisher succeeds", () => {

@@ -19,10 +19,24 @@ describe("#1414 fastlane scored Intelligence publication", () => {
     expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
   });
 
-  it("skips redundant B2 writes only when every scored launch domain is already caught up", () => {
+  it("skips redundant B2 writes only when scores and source-native coverage heartbeat are both fresh", () => {
     expect(script).toContain('const CATEGORIES = ["geopolitics", "macro", "rare_earth"]');
     expect(script).toContain("caughtUp(before.latest_scored_by_category, canonicalLatest)");
+    expect(script).toContain("GDELT_COVERAGE_MAINTENANCE_MAX_AGE_MS");
+    expect(script).toContain("gdeltCoverageMaintenanceStatus");
+    expect(script).toContain("maintenance_required");
+    expect(script).toContain("already_caught_up_coverage_fresh");
     expect(script).toContain("publisherInvoked: false");
+  });
+
+  it("forces the verified publisher before the two-hour GDELT coverage window expires", () => {
+    expect(script).toContain('GDELT_COVERAGE_SOURCE_ID = "gdelt_v2_events"');
+    expect(script).toContain('GDELT_COVERAGE_TARGET_PREFIX = "GEO:COVERAGE_FALLBACK:"');
+    expect(script).toContain("95 * 60 * 1000");
+    expect(script).toContain("FASTLANE_PUBLICATION_COVERAGE_MAINTENANCE_REQUIRED");
+    expect(script).toContain("FASTLANE_GDELT_COVERAGE_MAINTENANCE_UNSATISFIED");
+    expect(script).toContain("coverage_maintenance_before");
+    expect(script).toContain("coverage_maintenance_after");
   });
 
   it("accepts scored-first serving while preserving verified live fallback compatibility", () => {

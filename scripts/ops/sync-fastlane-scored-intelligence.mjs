@@ -13,6 +13,11 @@ const ARTIFACT = "artifacts/intelligence-fastlane-publication.json";
 const POLL_MS = 10_000;
 const MAX_POLLS = 18;
 const FASTLANE_GDELT_WAIT_MS = 30_000;
+const GDELT_COVERAGE_SOURCE_ID = "gdelt_v2_events";
+const GDELT_COVERAGE_TARGET_PREFIX = "GEO:COVERAGE_FALLBACK:";
+const GDELT_COVERAGE_MAINTENANCE_MAX_AGE_MS = Number(
+  process.env.GDELT_COVERAGE_MAINTENANCE_MAX_AGE_MS || 95 * 60 * 1000,
+);
 
 function eventTime(row) {
   const value = row?.published_at ?? row?.created_at;
@@ -45,6 +50,69 @@ async function latestCanonicalScored() {
     latest[category] = timestamp;
   }
   return latest;
+}
+
+async function gdeltCoverageMaintenanceStatus() {
+  const db = createGriDbClient();
+  const [registryResult, targetsResult] = await Promise.all([
+    db
+      .from("live_country_registry")
+      .select("iso3")
+      .eq("enabled", true),
+    db
+      .from("live_raw_source_targets")
+      .select("target_id,country_iso3,last_success_at")
+      .eq("enabled", true)
+      .eq("category", "GEOPOLITICS")
+      .eq("transport", "GLOBAL_FALLBACK")
+      .eq("source_id", GDELT_COVERAGE_SOURCE_ID),
+  ]);
+  if (registryResult.error) {
+    throw new Error(`FASTLANE_COVERAGE_COUNTRY_READ_FAILED:${registryResult.error.message}`);
+  }
+  if (targetsResult.error) {
+    throw new Error(`FASTLANE_COVERAGE_TARGET_READ_FAILED:${targetsResult.error.message}`);
+  }
+
+  const expectedCountries = new Set((registryResult.data ?? []).map((row) => String(row.iso3 ?? "")));
+  const targets = (targetsResult.data ?? []).filter((row) =>
+    String(row.target_id ?? "").startsWith(GDELT_COVERAGE_TARGET_PREFIX) &&
+    expectedCountries.has(String(row.country_iso3 ?? ""))
+  );
+
+  let oldestSuccessMs = Infinity;
+  let malformedRows = 0;
+  for (const row of targets) {
+    const parsed = Date.parse(String(row.last_success_at ?? ""));
+    if (!Number.isFinite(parsed)) {
+      malformedRows += 1;
+      continue;
+    }
+    oldestSuccessMs = Math.min(oldestSuccessMs, parsed);
+  }
+
+  const censusComplete =
+    expectedCountries.size > 0 &&
+    targets.length === expectedCountries.size &&
+    malformedRows === 0;
+  const ageMs = Number.isFinite(oldestSuccessMs) ? Date.now() - oldestSuccessMs : Infinity;
+  const maintenanceRequired =
+    !censusComplete ||
+    !Number.isFinite(ageMs) ||
+    ageMs < 0 ||
+    ageMs >= GDELT_COVERAGE_MAINTENANCE_MAX_AGE_MS;
+
+  return {
+    source_id: GDELT_COVERAGE_SOURCE_ID,
+    expected_country_count: expectedCountries.size,
+    target_count: targets.length,
+    malformed_rows: malformedRows,
+    oldest_success_at: Number.isFinite(oldestSuccessMs) ? new Date(oldestSuccessMs).toISOString() : null,
+    age_ms: Number.isFinite(ageMs) ? ageMs : null,
+    max_age_ms: GDELT_COVERAGE_MAINTENANCE_MAX_AGE_MS,
+    census_complete: censusComplete,
+    maintenance_required: maintenanceRequired,
+  };
 }
 
 function publicLatestByCategory(body) {
@@ -103,7 +171,16 @@ async function fetchPublic(attempt) {
   };
 }
 
-function writeProof({ canonicalLatest, before, after, publisherInvoked, publisherAttempts, publicationMode }) {
+function writeProof({
+  canonicalLatest,
+  before,
+  after,
+  publisherInvoked,
+  publisherAttempts,
+  publicationMode,
+  coverageMaintenanceBefore = null,
+  coverageMaintenanceAfter = null,
+}) {
   mkdirSync("artifacts", { recursive: true });
   const proof = {
     schema: "geomacro.fastlane-scored-publication.v1",
@@ -132,6 +209,8 @@ function writeProof({ canonicalLatest, before, after, publisherInvoked, publishe
     publisher_invoked: publisherInvoked,
     publisher_attempts: publisherAttempts,
     publication_mode: publicationMode,
+    coverage_maintenance_before: coverageMaintenanceBefore,
+    coverage_maintenance_after: coverageMaintenanceAfter,
     raw_rows_serialized: false,
     completed_at: new Date().toISOString(),
   };
@@ -167,16 +246,26 @@ try {
   console.warn(`FASTLANE_PUBLICATION_PRECHECK_UNAVAILABLE:${error instanceof Error ? error.message : String(error)}`);
 }
 
+let coverageMaintenanceBefore = null;
 if (before && caughtUp(before.latest_scored_by_category, canonicalLatest)) {
-  writeProof({
-    canonicalLatest,
-    before,
-    after: before,
-    publisherInvoked: false,
-    publisherAttempts: 0,
-    publicationMode: "already_caught_up",
-  });
-  process.exit(0);
+  coverageMaintenanceBefore = await gdeltCoverageMaintenanceStatus();
+  if (!coverageMaintenanceBefore.maintenance_required) {
+    writeProof({
+      canonicalLatest,
+      before,
+      after: before,
+      publisherInvoked: false,
+      publisherAttempts: 0,
+      publicationMode: "already_caught_up_coverage_fresh",
+      coverageMaintenanceBefore,
+      coverageMaintenanceAfter: coverageMaintenanceBefore,
+    });
+    process.exit(0);
+  }
+
+  console.warn(
+    `FASTLANE_PUBLICATION_COVERAGE_MAINTENANCE_REQUIRED:${coverageMaintenanceBefore.oldest_success_at ?? "missing"}`,
+  );
 }
 
 const publishEnv = {
@@ -242,6 +331,11 @@ for (let attempt = 1; attempt <= MAX_POLLS; attempt += 1) {
       after.current_within_24h === true &&
       caughtUp(after.latest_scored_by_category, canonicalLatest)
     ) {
+      const coverageMaintenanceAfter = await gdeltCoverageMaintenanceStatus();
+      if (coverageMaintenanceBefore?.maintenance_required === true &&
+          coverageMaintenanceAfter.maintenance_required === true) {
+        throw new Error("FASTLANE_GDELT_COVERAGE_MAINTENANCE_UNSATISFIED");
+      }
       writeProof({
         canonicalLatest,
         before,
@@ -249,6 +343,8 @@ for (let attempt = 1; attempt <= MAX_POLLS; attempt += 1) {
         publisherInvoked: true,
         publisherAttempts,
         publicationMode,
+        coverageMaintenanceBefore,
+        coverageMaintenanceAfter,
       });
       process.exit(0);
     }

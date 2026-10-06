@@ -15,6 +15,10 @@ on:
       - "scripts/lib/d1-orchestrator-supabase-shim.mjs"
       - "scripts/ops/supabase-free-tier-budget.mjs"
       - "scripts/sync-country-raw-source-mesh.mjs"
+      - "scripts/ops/run-intelligence-current-scoring-cycle.mjs"
+      - "scripts/ops/sync-fastlane-scored-intelligence.mjs"
+      - "scripts/ops/run-b2-public-intelligence-publisher.mjs"
+      - "scripts/ops/refresh-gdelt-coverage-runtime-after-b2.mjs"
       - "workers/control-plane/**"
 
 permissions:
