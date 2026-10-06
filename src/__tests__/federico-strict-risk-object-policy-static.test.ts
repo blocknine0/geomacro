@@ -34,10 +34,37 @@ describe("Federico strict Risk Object acceptance policy", () => {
       'country_bridge_attribution_v1',
     );
     expect(policy).toContain(
-      'federico-source-family-map-v8',
+      'federico-source-family-map-v9',
     );
     expect(policy).toContain(
       '?? normalized',
+    );
+    expect(policy).toContain(
+      'un_all_documents_rss: "united_nations"',
+    );
+    expect(policy).toContain(
+      'un_security_council_docs_rss: "united_nations"',
+    );
+    expect(policy).toContain(
+      'ecb_press_rss: "european_central_bank"',
+    );
+    expect(policy).toContain(
+      'ecb_market_information_rss: "european_central_bank"',
+    );
+    expect(policy).toContain(
+      'bis_rss_media_releases: "bank_for_international_settlements"',
+    );
+    expect(policy).toContain(
+      'bis_rss_central_banker_speeches: "bank_for_international_settlements"',
+    );
+    expect(policy).toContain(
+      'nrcan_news_atom: "natural_resources_canada"',
+    );
+    expect(policy).toContain(
+      '"federal_reserve_press_rss"',
+    );
+    expect(policy).toContain(
+      '"usgs_minerals_news_rss"',
     );
   });
 
