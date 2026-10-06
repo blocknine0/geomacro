@@ -41,6 +41,8 @@ jobs:
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
       B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}
+      B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}
 
     steps:
       - name: Checkout exact canonical main
@@ -70,7 +72,13 @@ jobs:
               exit 2
             }
           fi
-          echo "B2 archive read path: dedicated pair when configured; otherwise existing verified B2 credentials."
+          if [[ -n "${B2_ARCHIVE_WRITE_KEY_ID:-}" || -n "${B2_ARCHIVE_WRITE_APPLICATION_KEY:-}" ]]; then
+            test -n "${B2_ARCHIVE_WRITE_KEY_ID:-}" && test -n "${B2_ARCHIVE_WRITE_APPLICATION_KEY:-}" || {
+              echo "::error::Archive B2 read/write credentials must be supplied as a complete pair."
+              exit 2
+            }
+          fi
+          echo "B2 archive read path: dedicated read pair, else archive read/write pair, else existing B2 pair."
           test "${GRI_DB_MODE:-}" = "direct_postgres"
           echo "Owner authorization scope: Federico pilot allowance only; no user funds and no execution authorization."
           echo "Governed RSS transport: tokenless loopback spool -> canonical direct Postgres; remote tokenless ingest remains forbidden."
