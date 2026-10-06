@@ -6,6 +6,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { createB2Client } from "./b2-s3-client.mjs";
+import {
+  GDELT_DOC_EVIDENCE_CONTRACT,
+  GDELT_DOC_SOURCE_TRANSPORT,
+  readGdeltDocCurrentRows,
+} from "./gdelt-doc-current-evidence.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
@@ -398,7 +403,44 @@ async function readCurrentGdeltRows() {
     batchIso: exportMeta.batchIso,
     exportMd5: exportMeta.md5,
     fipsSha256: sha256(Buffer.from(fipsText, "utf8")),
+    sourceDigest: exportMeta.md5,
+    evidenceContract: CURRENT_EVIDENCE_CONTRACT,
+    sourceTransport: "event_export",
   };
+}
+
+function eventExportTransportUnavailable(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message === "CURRENT_GDELT_EXPORT_UNAVAILABLE" ||
+    message.startsWith("CURRENT_GDELT_BATCH_STALE:") ||
+    /^CURRENT_EVIDENCE_HTTP_(429|5\\d\\d)$/u.test(message) ||
+    /fetch failed|timeout|timed out|aborted/iu.test(message)
+  );
+}
+
+async function readCurrentGdeltEvidence() {
+  try {
+    return await readCurrentGdeltRows();
+  } catch (error) {
+    if (!eventExportTransportUnavailable(error)) throw error;
+    const primaryMessage = error instanceof Error ? error.message : String(error);
+    try {
+      const fallback = await readGdeltDocCurrentRows();
+      console.error(JSON.stringify({
+        ok: true,
+        degraded_transport: true,
+        primary_transport_error: primaryMessage,
+        fallback_transport: GDELT_DOC_SOURCE_TRANSPORT,
+        fallback_contract: GDELT_DOC_EVIDENCE_CONTRACT,
+        fallback_rows: fallback.rows.length,
+      }));
+      return fallback;
+    } catch (fallbackError) {
+      const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+      throw new Error(`CURRENT_GDELT_EXPORT_UNAVAILABLE;DOC_FALLBACK_FAILED:${fallbackMessage}`);
+    }
+  }
 }
 
 function assertB2Config() {
@@ -462,7 +504,7 @@ const dbUrl = authoritativeDbUrl();
 assertB2Config();
 requireCurrentSourceGovernance(dbUrl);
 const scoredRows = readScoredRows(dbUrl);
-const current = await readCurrentGdeltRows();
+const current = await readCurrentGdeltEvidence();
 const rows = [...current.rows, ...scoredRows]
   .sort((a, b) => rowTime(b) - rowTime(a));
 validateRows(rows);
@@ -474,7 +516,7 @@ const value = {
   source_project: PROJECT_REF,
   scoring_policy: "canonical-scored-plus-certified-current-unscored",
   classification_version: CLASSIFICATION_VERSION,
-  current_evidence_contract: CURRENT_EVIDENCE_CONTRACT,
+  current_evidence_contract: current.evidenceContract,
   public_language: "en",
   raw_source_headlines_exposed: false,
   provider_identity_exposed: false,
@@ -509,7 +551,7 @@ if (
   restored?.source_project !== PROJECT_REF ||
   restored?.scoring_policy !== value.scoring_policy ||
   restored?.classification_version !== CLASSIFICATION_VERSION ||
-  restored?.current_evidence_contract !== CURRENT_EVIDENCE_CONTRACT ||
+  restored?.current_evidence_contract !== current.evidenceContract ||
   restored?.public_language !== "en" ||
   restored?.raw_source_headlines_exposed !== false ||
   restored?.provider_identity_exposed !== false
@@ -523,9 +565,11 @@ const proof = Buffer.from(JSON.stringify({
   source_project: PROJECT_REF,
   live_key: LIVE_KEY,
   classification_version: CLASSIFICATION_VERSION,
-  current_evidence_contract: CURRENT_EVIDENCE_CONTRACT,
+  current_evidence_contract: current.evidenceContract,
   current_source_id: "gdelt_v2_events",
+  current_source_transport: current.sourceTransport,
   current_source_batch_at: current.batchIso,
+  current_source_digest: current.sourceDigest,
   current_source_export_md5: current.exportMd5,
   current_source_fips_sha256: current.fipsSha256,
   categories: REQUIRED_CATEGORIES,
@@ -554,10 +598,11 @@ const newest = rows.map(rowTime).filter(Number.isFinite).sort((a, b) => b - a)[0
 console.log(JSON.stringify({
   ok: true,
   schema: "geomacro.public-intelligence-direct-postgres-publish.v2",
-  authority_read: "direct-postgres-scored-plus-certified-gdelt-event-export",
+  authority_read: `direct-postgres-scored-plus-certified-gdelt-${current.sourceTransport}`,
   authority_serve: "backblaze-b2",
   classification_version: CLASSIFICATION_VERSION,
-  current_evidence_contract: CURRENT_EVIDENCE_CONTRACT,
+  current_evidence_contract: current.evidenceContract,
+  current_source_transport: current.sourceTransport,
   scored_only: false,
   live_observed_unscored: true,
   public_language: "en",
