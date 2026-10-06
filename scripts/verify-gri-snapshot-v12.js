@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
+import { createGriDbClient } from './lib/gri-db-client.mjs';
 import { attributeGriChange, calculateGri } from './lib/gri-engine-v12.js';
 import {
   GRI_PROOF_VERSION,
@@ -19,10 +19,7 @@ const args = process.argv.slice(2);
 const snapshotArg = args.indexOf('--snapshot-id');
 const snapshotId = snapshotArg >= 0 ? args[snapshotArg + 1] : null;
 
-const url = process.env.SUPABASE_URL || process.env.APP_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
-if (!url || !key) throw new Error('Supabase URL and service-role key are required');
-const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+const supabase = createGriDbClient();
 
 const CANONICAL_CLASSIFICATION_VERSION = 'event-severity-v1.0.5';
 const CANONICAL_CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.5';
