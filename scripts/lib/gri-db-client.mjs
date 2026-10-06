@@ -171,8 +171,20 @@ class DirectQueryBuilder {
 
   not(column, operator, value) {
     identifier(column, "filter_column");
-    if (String(operator).toLowerCase() === "is" && value === null) {
+    const op = String(operator).toLowerCase();
+    if (op === "is" && value === null) {
       this.filters.push(`${identifier(column)} IS NOT NULL`);
+      return this;
+    }
+    if (op === "eq") {
+      this.filters.push(value === null
+        ? `${identifier(column)} IS NOT NULL`
+        : `${identifier(column)} <> ${sqlValue(value)}`);
+      return this;
+    }
+    if (op === "like") {
+      if (value === null || value === undefined) throw new Error("DIRECT_POSTGRES_NOT_LIKE_REQUIRES_VALUE");
+      this.filters.push(`${identifier(column)} NOT LIKE ${sqlValue(value)}`);
       return this;
     }
     throw new Error(`UNSUPPORTED_DIRECT_POSTGRES_NOT_OPERATOR:${operator}`);
