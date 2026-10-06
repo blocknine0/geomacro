@@ -1,0 +1,152 @@
+name: Free Tier Recurring Footprint
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/free-tier-recurring-footprint.yml"
+      - ".github/workflows/phase-a-runtime-freshness-repair.yml"
+      - ".github/workflows/full-source-production-alignment.yml"
+      - ".github/workflows/intelligence-orchestrator.yml"
+      - "scripts/ops/supabase-free-tier-budget.mjs"
+      - "src/__tests__/phase-a-runtime-freshness-repair-static.test.ts"
+      - "src/__tests__/full-source-production-alignment-static.test.ts"
+      - "src/__tests__/supabase-free-tier-b2-first.test.ts"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/free-tier-recurring-footprint.yml"
+      - ".github/workflows/phase-a-runtime-freshness-repair.yml"
+      - ".github/workflows/full-source-production-alignment.yml"
+      - ".github/workflows/intelligence-orchestrator.yml"
+      - "scripts/ops/supabase-free-tier-budget.mjs"
+      - "src/__tests__/phase-a-runtime-freshness-repair-static.test.ts"
+      - "src/__tests__/full-source-production-alignment-static.test.ts"
+      - "src/__tests__/supabase-free-tier-b2-first.test.ts"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: free-tier-recurring-footprint-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  static-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify recovery writers stay off steady-state schedules
+        run: >-
+          bun x vitest run
+          src/__tests__/phase-a-runtime-freshness-repair-static.test.ts
+          src/__tests__/full-source-production-alignment-static.test.ts
+          src/__tests__/supabase-free-tier-b2-first.test.ts
+
+  production-budget:
+    if: ${{ github.ref == 'refs/heads/main' && github.repository == 'blocknine0/geomacro' }}
+    needs: static-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BASE_URL: https://geomacro.live
+    steps:
+      - name: Checkout exact main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Read authoritative free-tier budget through direct PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL is required"; exit 2; }
+          node scripts/ops/supabase-free-tier-budget.mjs | tee artifacts/free-tier-budget.json
+      - name: Require fail-closed recurring-ingest semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('artifacts/free-tier-budget.json','utf8'));
+          if (b.ok!==true) throw new Error('FREE_TIER_BUDGET_NOT_OK');
+          if (!['normal','warning','frozen'].includes(b.mode)) throw new Error('FREE_TIER_MODE_INVALID');
+          if (b.mode==='normal' && b.policy?.recurring_ingest_allowed!==true) {
+            throw new Error('NORMAL_MODE_RECURRING_INGEST_UNEXPECTEDLY_BLOCKED');
+          }
+          if (b.mode!=='normal' && b.policy?.recurring_ingest_allowed!==false) {
+            throw new Error('WARNING_OR_FROZEN_MODE_MUST_BLOCK_RECURRING_INGEST');
+          }
+          if (Number(b.database_bytes)>=Number(b.freeze_bytes) && b.policy?.bulk_supabase_writes_allowed!==false) {
+            throw new Error('FREEZE_THRESHOLD_MUST_BLOCK_BULK_WRITES');
+          }
+          NODE
+      - name: Require customer serving to remain outside Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 3 --retry-all-errors             "$BASE_URL/api/health?deep=1" > artifacts/free-tier-public-health.json
+          node <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('artifacts/free-tier-public-health.json','utf8'));
+          const p=h.public_production||{};
+          if (h.ok!==true) throw new Error('PUBLIC_HEALTH_NOT_OK');
+          if (p.serving_authority!=='backblaze-b2') throw new Error('PUBLIC_SERVING_NOT_B2');
+          if (p.supabase_required_for_serving!==false) throw new Error('PUBLIC_SERVING_REQUIRES_SUPABASE');
+          NODE
+      - name: Write bounded-footprint proof
+        shell: bash
+        env:
+          ACCEPTED_SHA: ${{ github.sha }}
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('artifacts/free-tier-budget.json','utf8'));
+          const h=JSON.parse(fs.readFileSync('artifacts/free-tier-public-health.json','utf8'));
+          const proof={
+            schema:'geomacro.free-tier-recurring-footprint-proof.v1',
+            checked_at:new Date().toISOString(),
+            accepted_main_sha:process.env.ACCEPTED_SHA,
+            database_bytes:Number(b.database_bytes),
+            mode:b.mode,
+            recurring_ingest_allowed:b.policy?.recurring_ingest_allowed===true,
+            bulk_supabase_writes_allowed:b.policy?.bulk_supabase_writes_allowed===true,
+            public_serving_authority:h?.public_production?.serving_authority??null,
+            supabase_required_for_serving:h?.public_production?.supabase_required_for_serving??null,
+            recovery_writers_scheduled:false,
+            real_money_action_performed:false
+          };
+          fs.writeFileSync('artifacts/free-tier-recurring-footprint-proof.json',JSON.stringify(proof,null,2)+'\n');
+          console.log(JSON.stringify(proof));
+          NODE
+      - name: Upload bounded-footprint proof
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: free-tier-recurring-footprint-${{ github.run_id }}
+          path: artifacts/free-tier-*.json
+          if-no-files-found: error
+          retention-days: 30
