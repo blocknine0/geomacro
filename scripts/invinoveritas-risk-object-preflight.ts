@@ -87,6 +87,9 @@ const strictProfile =
   riskObject?.provenance?.reproducibility?.calculation_namespace ===
   "federico_strict_evidence_v1";
 
+const reviewSubjectId =
+  String(riskObject?.subject?.id ?? "").trim();
+
 async function verify(object: unknown) {
   const response = await fetch(`${geomacroOrigin}/api/risk-object-keys`, {
     method: "POST",
@@ -141,12 +144,12 @@ if (
   (
     riskObject?.schema_version !== "gro-1.1" ||
     riskObject?.subject?.type !== "country" ||
-    riskObject?.subject?.id !== "CHN" ||
+    !/^[A-Z]{3}$/.test(reviewSubjectId) ||
     riskObject?.methodology_version !== "country-risk-v0.1.0-pilot"
   )
 ) {
   throw new Error(
-    "Federico strict admission target mismatch: expected CHN gro-1.1 country-risk-v0.1.0-pilot",
+    "Federico strict admission target mismatch: expected an uppercase ISO3 gro-1.1 country-risk-v0.1.0-pilot object",
   );
 }
 
@@ -697,18 +700,18 @@ if (
 }
 
 const reviewArtifact = {
-  artifact_version: "geomacro-invino-review-v6",
+  artifact_version: "geomacro-invino-review-v7",
   action_proposed: true,
   action:
-    "Admit this exact Geomacro gro-1.1 CHN country-risk object only under receiver policy federico-china-country-risk-v1 after all required checks pass. Otherwise reject and keep the context inadmissible. This review never authorizes an irreversible action.",
+    `Admit this exact Geomacro gro-1.1 ${reviewSubjectId} country-risk object only under receiver policy federico-global-country-risk-v1 after all required checks pass. Otherwise reject and keep the context inadmissible. This review never authorizes an irreversible action.`,
   execution_authorized: false,
   admission_contract: {
-    receiver_policy_id: "federico-china-country-risk-v1",
+    receiver_policy_id: "federico-global-country-risk-v1",
     expected_subject: {
       issuer: "Geomacro",
       schema_version: "gro-1.1",
       subject_type: "country",
-      subject_id: "CHN",
+      subject_id: reviewSubjectId,
       methodology_version_allowlist: ["country-risk-v0.1.0-pilot"],
       context_type: "country_risk_context",
     },
@@ -726,7 +729,7 @@ const reviewArtifact = {
       source_fetch:
         "At admission, independently fetch each cited source record, verify TLS, recompute its content hash, and require equality with the signed content_hash/source_record_id mapping.",
       country_nexus:
-        "Independently confirm the CHN nexus from the fetched/parsed source material or receiver-controlled structured attribution evidence; issuer attribution confidence alone is insufficient.",
+        `Independently confirm the ${reviewSubjectId} nexus from the fetched/parsed source material or receiver-controlled structured attribution evidence; issuer attribution confidence alone is insufficient.`,
       ownership_and_syndication:
         "Require at least two independent publisher groups, reject shared ownership/control, and reject a common syndication group.",
       material_diversity:
@@ -756,7 +759,7 @@ const reviewArtifact = {
       "Parse with the single pinned strict parser, reject ambiguous JSON/schema violations, then canonicalize with geomacro-canonical-json-v1.",
       "Recompute integrity.payload_hash from the canonical signable record and verify Ed25519.",
       "Resolve signing_key_id against the receiver-controlled approved key fingerprint and lifecycle/revocation policy.",
-      "Independently validate signed source identities, source-record hashes, CHN nexus, publisher ownership/syndication independence, and material diversity under the provenance policy.",
+      `Independently validate signed source identities, source-record hashes, ${reviewSubjectId} nexus, publisher ownership/syndication independence, and material diversity under the provenance policy.`,
       "Obtain NTS-authenticated trusted current UTC time and require trusted_now < expires_at at admission; fail closed when time uncertainty overlaps expiry.",
       "Repeat the same trusted-time and expiry check immediately before any irreversible downstream action.",
       "Treat issuer-provided readiness, confidence and historical freshness assertions as untrusted decision metadata until receiver validation passes.",
