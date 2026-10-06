@@ -5,6 +5,84 @@ const PROJECT = "ldpwajisioljyjtojvfx";
 const IDENT = /^[a-z_][a-z0-9_]*$/i;
 const MAX_BUFFER = 64 * 1024 * 1024;
 
+const RELATIONSHIPS = Object.freeze({
+  live_flash_events: Object.freeze({
+    live_flash_event_countries: Object.freeze({
+      localColumn: "flash_id",
+      foreignColumn: "flash_id",
+    }),
+  }),
+});
+
+function relationshipFor(table, relation) {
+  const config = RELATIONSHIPS?.[table]?.[relation];
+  if (!config) throw new Error(`UNSUPPORTED_DIRECT_POSTGRES_RELATIONSHIP:${table}.${relation}`);
+  return config;
+}
+
+function splitTopLevelColumns(value) {
+  const raw = String(value ?? "").trim();
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index];
+    if (char === "(") depth += 1;
+    else if (char === ")") {
+      depth -= 1;
+      if (depth < 0) throw new Error("INVALID_SELECT_COLUMN_LIST");
+    } else if (char === "," && depth === 0) {
+      parts.push(raw.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  if (depth !== 0) throw new Error("INVALID_SELECT_COLUMN_LIST");
+  parts.push(raw.slice(start).trim());
+  return parts.filter(Boolean);
+}
+
+function parseSelectProjection(value, table) {
+  const raw = String(value ?? "*").trim();
+  if (raw === "*") return { baseColumns: ["*"], relationships: [] };
+  const baseColumns = [];
+  const relationships = [];
+  for (const part of splitTopLevelColumns(raw)) {
+    if (part === "*") {
+      baseColumns.push("*");
+      continue;
+    }
+    const match = part.match(/^([a-z_][a-z0-9_]*)!inner\(([^()]*)\)$/i);
+    if (!match) {
+      identifier(part, "column");
+      baseColumns.push(part);
+      continue;
+    }
+    const relation = match[1];
+    relationshipFor(table, relation);
+    const columns = splitTopLevelColumns(match[2]);
+    if (!columns.length) throw new Error("EMPTY_RELATIONSHIP_SELECT_COLUMN_LIST");
+    for (const column of columns) identifier(column, "relationship_column");
+    if (relationships.some((item) => item.relation === relation)) {
+      throw new Error(`DUPLICATE_DIRECT_POSTGRES_RELATIONSHIP:${relation}`);
+    }
+    relationships.push({ relation, columns });
+  }
+  if (!baseColumns.length && !relationships.length) throw new Error("EMPTY_SELECT_COLUMN_LIST");
+  return { baseColumns, relationships };
+}
+
+function parseFilterTarget(value, table) {
+  const raw = String(value ?? "").trim();
+  if (IDENT.test(raw)) return { kind: "base", column: raw };
+  const match = raw.match(/^([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)$/i);
+  if (!match) throw new Error(`INVALID_FILTER_COLUMN:${raw}`);
+  const relation = match[1];
+  const column = match[2];
+  relationshipFor(table, relation);
+  identifier(column, "relationship_filter_column");
+  return { kind: "relationship", relation, column };
+}
+
 function identifier(value, label = "identifier") {
   const raw = String(value ?? "").trim();
   if (!IDENT.test(raw)) throw new Error(`INVALID_${label.toUpperCase()}:${raw}`);
@@ -102,6 +180,8 @@ class DirectQueryBuilder {
     this.payload = null;
     this.upsertOptions = null;
     this.filters = [];
+    this.relationshipFilters = [];
+    this.selectProjection = { baseColumns: ["*"], relationships: [] };
     this.orders = [];
     this.offset = null;
     this.rowLimit = null;
@@ -112,7 +192,7 @@ class DirectQueryBuilder {
     if (["insert", "update", "upsert", "delete"].includes(this.operation)) {
       this.returningColumns = parseColumns(columns);
     } else {
-      this.columns = parseColumns(columns);
+      this.selectProjection = parseSelectProjection(columns, this.table);
       this.selectOptions = options && typeof options === "object" ? options : {};
     }
     return this;
@@ -261,19 +341,66 @@ class DirectQueryBuilder {
   }
 
   #filter(column, operator, value) {
-    identifier(column, "filter_column");
+    const target = parseFilterTarget(column, this.table);
+    if (target.kind === "relationship") {
+      this.relationshipFilters.push({ relation: target.relation, column: target.column, operator, value });
+      return this;
+    }
     if (value === null) {
-      if (operator === "=") this.filters.push(`${identifier(column)} IS NULL`);
-      else if (operator === "<>") this.filters.push(`${identifier(column)} IS NOT NULL`);
+      if (operator === "=") this.filters.push(`${identifier(target.column)} IS NULL`);
+      else if (operator === "<>") this.filters.push(`${identifier(target.column)} IS NOT NULL`);
       else throw new Error("NULL_FILTER_ONLY_SUPPORTS_EQ_NEQ");
     } else {
-      this.filters.push(`${identifier(column)} ${operator} ${sqlValue(value)}`);
+      this.filters.push(`${identifier(target.column)} ${operator} ${sqlValue(value)}`);
     }
     return this;
   }
 
+  #relationshipCondition(relation, alias) {
+    const config = relationshipFor(this.table, relation);
+    const conditions = [
+      `${alias}.${identifier(config.foreignColumn)} = ${identifier(this.table)}.${identifier(config.localColumn)}`,
+    ];
+    for (const filter of this.relationshipFilters.filter((item) => item.relation === relation)) {
+      if (filter.value === null) {
+        if (filter.operator === "=") conditions.push(`${alias}.${identifier(filter.column)} IS NULL`);
+        else if (filter.operator === "<>") conditions.push(`${alias}.${identifier(filter.column)} IS NOT NULL`);
+        else throw new Error("NULL_FILTER_ONLY_SUPPORTS_EQ_NEQ");
+      } else {
+        conditions.push(`${alias}.${identifier(filter.column)} ${filter.operator} ${sqlValue(filter.value)}`);
+      }
+    }
+    return conditions.join(" AND ");
+  }
+
+  #relationshipPredicates() {
+    const names = new Set([
+      ...this.selectProjection.relationships.map((item) => item.relation),
+      ...this.relationshipFilters.map((item) => item.relation),
+    ]);
+    return [...names].map((relation, index) => {
+      const alias = `__rel_filter_${index}`;
+      return `EXISTS (SELECT 1 FROM public.${identifier(relation)} AS ${identifier(alias)} WHERE ${this.#relationshipCondition(relation, identifier(alias))})`;
+    });
+  }
+
   #where() {
-    return this.filters.length ? ` WHERE ${this.filters.join(" AND ")}` : "";
+    const clauses = [...this.filters, ...this.#relationshipPredicates()];
+    return clauses.length ? ` WHERE ${clauses.join(" AND ")}` : "";
+  }
+
+  #selectProjectionSql() {
+    const parts = [];
+    for (const column of this.selectProjection.baseColumns) {
+      parts.push(column === "*" ? "*" : identifier(column));
+    }
+    for (const [index, item] of this.selectProjection.relationships.entries()) {
+      const alias = identifier(`__rel_select_${index}`);
+      const objectArgs = item.columns.flatMap((column) => [quoteString(column), `${alias}.${identifier(column)}`]);
+      parts.push(`(SELECT COALESCE(jsonb_agg(jsonb_build_object(${objectArgs.join(",")})), '[]'::jsonb) FROM public.${identifier(item.relation)} AS ${alias} WHERE ${this.#relationshipCondition(item.relation, alias)}) AS ${identifier(item.relation)}`);
+    }
+    if (!parts.length) throw new Error("EMPTY_SELECT_COLUMN_LIST");
+    return parts.join(",");
   }
 
   #tail() {
@@ -285,7 +412,7 @@ class DirectQueryBuilder {
 
   #selectSql() {
     const table = `public.${identifier(this.table)}`;
-    return `SELECT row_to_json(q)::text FROM (SELECT ${this.columns} FROM ${table}${this.#where()}${this.#tail()}) q;`;
+    return `SELECT row_to_json(q)::text FROM (SELECT ${this.#selectProjectionSql()} FROM ${table}${this.#where()}${this.#tail()}) q;`;
   }
 
   #countSql() {
