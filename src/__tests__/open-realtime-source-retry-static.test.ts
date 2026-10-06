@@ -19,8 +19,8 @@ describe("open realtime source retry contract", () => {
   });
 
   it("does not weaken production readiness or payment safety boundaries", () => {
-    expect(productionGate).toContain('GLOBAL_CANONICAL_MIN_READY: "100"');
-    expect(productionGate).toContain('GLOBAL_CANONICAL_MIN_SOVEREIGN_DENOMINATOR: "190"');
+    expect(productionGate).toContain('GLOBAL_CANONICAL_MIN_READY: "195"');
+    expect(productionGate).toContain('GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR: "195"');
     expect(productionGate).toContain("payment_not_performed_by_refresh == true");
     expect(productionGate).toContain("execution_authorized == false");
   });
