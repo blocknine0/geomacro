@@ -16,7 +16,11 @@ vi.mock("../lib/risk-object-signing.server", () => ({
 
 const asOf = "2026-09-25T12:00:00.000Z";
 const input = { country_iso3: "CHN", as_of: asOf, delivery_profile: "FEDERICO_STRICT" as const };
-function database(sources: string[], count?: number) {
+function database(
+  sources: string[],
+  count?: number,
+  publishedAt: string | null = "2026-09-25T10:00:00.000Z",
+) {
   const urls: URL[] = [];
   const flashes = sources.map((source_id, i) => ({
     flash_id: `flash-${i}`, source_id, source_record_id: `source-record-${i}`,
@@ -24,7 +28,8 @@ function database(sources: string[], count?: number) {
     headline: "China announces trade policy", source_url: `https://example.com/${i}`,
     content_hash: String(i).repeat(64), severity: 40, source_reliability: 95,
     event_type: "trade_policy", first_seen_at: "2026-09-25T10:00:00.000Z",
-    last_seen_at: "2026-09-25T11:00:00.000Z", published_at: "2026-09-25T10:00:00.000Z",
+    last_seen_at: "2026-09-25T11:00:00.000Z", published_at: publishedAt,
+    material_update: false,
   }));
   const db = createClient("https://example.supabase.co", "test-key", {
     global: { fetch: async (request) => {
@@ -68,6 +73,25 @@ describe("Federico publication safety", () => {
   it("does not admit a DEGRADED object with only one independent source", async () => {
     database(["scmp_china_rss"]);
     await expect(publishCountryRiskObject(input)).rejects.toThrow("insufficient_independent_source_families");
+    expect(mocks.sign).not.toHaveBeenCalled();
+    expect(mocks.persist).not.toHaveBeenCalled();
+  });
+
+  it("never substitutes observation or ingestion time for missing publication time", async () => {
+    database(["scmp_china_rss", "bbc_world_rss"], undefined, null);
+    const preview = await dryRunCountryRiskObject(input);
+    expect(preview.context.country_events_used).toBe(0);
+    expect(() => assertFedericoPublicationReady(preview.object)).toThrow("no_fresh_evidence");
+    await expect(publishCountryRiskObject(input)).rejects.toThrow("no_fresh_evidence");
+    expect(mocks.sign).not.toHaveBeenCalled();
+    expect(mocks.persist).not.toHaveBeenCalled();
+  });
+
+  it("does not treat a date-only publication value as a precise fresh timestamp", async () => {
+    database(["scmp_china_rss", "bbc_world_rss"], undefined, "2026-09-25");
+    const preview = await dryRunCountryRiskObject(input);
+    expect(preview.context.country_events_used).toBe(0);
+    expect(() => assertFedericoPublicationReady(preview.object)).toThrow("no_fresh_evidence");
     expect(mocks.sign).not.toHaveBeenCalled();
     expect(mocks.persist).not.toHaveBeenCalled();
   });
