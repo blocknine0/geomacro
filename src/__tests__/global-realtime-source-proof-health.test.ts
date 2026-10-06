@@ -116,4 +116,12 @@ describe("global realtime source proof health classification", () => {
     expect(workflow).toContain("DIRECT_NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs");
     expect(workflow).toContain("drain-live-structure.mjs --fragment-ids-file");
   });
+
+  it("uses dedicated B2 readback credentials for raw runtime proof", () => {
+    expect(workflow).toContain("B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}");
+    expect(workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}");
+    expect(workflow).toContain('test -n "${B2_ARCHIVE_READ_KEY_ID}"');
+    expect(workflow).toContain('test -n "${B2_ARCHIVE_READ_APPLICATION_KEY}"');
+  });
+
 });
