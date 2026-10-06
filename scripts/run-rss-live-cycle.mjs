@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -107,7 +107,7 @@ function verifyWorkerSources(stdout) {
   };
 }
 
-async function createLocalSpoolServer(spoolDir) {
+async function createLocalSpoolServer(spoolDir, token) {
   const seen = new Set();
   const server = createServer(async (request, response) => {
     try {
@@ -178,14 +178,14 @@ async function main() {
   const spoolDir = await mkdtemp(path.join(tmpdir(), "geomacro-rss-spool-"));
   let server = null;
   try {
-    const local = await createLocalSpoolServer(spoolDir);
+    const loopbackToken = randomBytes(32).toString("hex");\n    const local = await createLocalSpoolServer(spoolDir, loopbackToken);
     server = local.server;
 
     const worker = await runCommand("python", ["worker.py"], {
       cwd: "workers/telegram-flash",
       env: {
         GEOMACRO_FLASH_INGEST_URL: local.url,
-        GEOMACRO_FLASH_INGEST_TOKEN: "",
+        GEOMACRO_FLASH_INGEST_TOKEN: loopbackToken,
         GEOMACRO_FLASH_OIDC_TOKEN: "",
         TELEGRAM_ENABLED: "false",
         TELEGRAM_CHANNELS: "",
