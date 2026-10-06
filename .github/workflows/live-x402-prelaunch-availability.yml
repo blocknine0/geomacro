@@ -25,6 +25,18 @@ jobs:
       - name: Verify live no-charge prelaunch safety boundary
         run: node scripts/agentic/verify-live-x402-prelaunch-availability.mjs
 
+      - name: Verify live no-charge 195+ country paid-path availability
+        run: node scripts/agentic/verify-live-x402-country-availability-census.mjs
+
+      - name: Upload global country availability evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: live-x402-country-census-${{ github.run_id }}
+          path: artifacts/live-x402-country-availability-census.json
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Record safety boundary
         run: |
           echo "Payment performed: false" >> "$GITHUB_STEP_SUMMARY"
