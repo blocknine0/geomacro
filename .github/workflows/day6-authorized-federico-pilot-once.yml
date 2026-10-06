@@ -6,7 +6,7 @@ name: Day 6 Authorized Federico Pilot Once
 # Final bounded retrigger after #1557 added allowlisted direct-Postgres inner-relationship parity; #1554 pins child assurance to its exact dispatched SHA.
 # Final bounded retrigger after direct-Postgres `.contains()` parity fixes country-specific corroboration.
 # Final bounded retrigger after #1571 made archived GRO recovery B2-native and split B2 read/write credentials.
-# Partner bootstrap is intentionally limited to the exact five source families used by strict candidate selection.
+# Final bounded retrigger after permanent same-host SCMP /plus article timestamp canonicalization.\n# Partner bootstrap is intentionally limited to the exact five source families used by strict candidate selection.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
