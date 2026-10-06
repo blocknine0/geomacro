@@ -2,7 +2,7 @@ import { classifyGlobalEntity } from "../src/lib/global-entity-classification";
 import { publishCountryRiskObject } from "../src/lib/country-risk-publisher.server";
 import { verifyCommercialRiskObjectArtifact } from "../src/lib/commercial-risk-object-policy";
 import { verifyRiskObjectSignature } from "../src/lib/risk-object-signing.server";
-import { requireRiskSupabase } from "../src/lib/risk-supabase.server";
+import { createGriDbClient } from "./lib/gri-db-client.mjs";
 
 const CONCURRENCY = Math.max(
   1,
@@ -29,21 +29,25 @@ function isCommercialCountryLikeSubject(iso3: string) {
 }
 
 async function loadEnabledCommercialCountrySubjects() {
-  const db = requireRiskSupabase();
+  const db = createGriDbClient();
   const result = await db
     .from("live_country_registry")
-    .select("iso3,country_name,region,subregion")
+    .select("iso3,country_name")
     .eq("enabled", true)
     .order("iso3", { ascending: true });
 
-  if (result.error) throw result.error;
+  if (result.error) {
+    throw new Error(
+      `GLOBAL_COUNTRY_REGISTRY_READ_FAILED:${String(result.error.message ?? "unknown")}`,
+    );
+  }
 
   return (result.data ?? [])
-    .map((row) => ({
+    .map((row: { iso3?: unknown; country_name?: unknown }) => ({
       iso3: String(row.iso3 ?? "").trim().toUpperCase(),
       country_name: String(row.country_name ?? "").trim(),
-      region: row.region == null ? null : String(row.region),
-      subregion: row.subregion == null ? null : String(row.subregion),
+      region: null,
+      subregion: null,
     }))
     .filter(
       (row) =>
