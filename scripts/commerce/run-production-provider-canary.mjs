@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import {
   assertAdaptiveProduct,
+  assertComprehensivePaidScopeDelivery,
   assertAvailability,
   canaryContext,
   centsToAtomic,
@@ -327,6 +328,7 @@ async function main() {
     fail(`Production canary paid request failed with HTTP ${payment.paid.response.status}`);
   }
   const hashes = assertProductHashes(payment.paid.body, "Production canary paid response");
+  assertComprehensivePaidScopeDelivery(payment.paid.body, "Production canary paid response");
   if (hashes.queryPlanHash !== availabilityPlanHash) {
     fail("Production canary delivered query plan differs from pre-payment availability");
   }
@@ -347,6 +349,7 @@ async function main() {
   const replay = await postJson(endpoint, serializedBody, payment.signature);
   if (replay.response.status !== 200) fail(`Production canary replay failed with HTTP ${replay.response.status}`);
   const replayHashes = assertProductHashes(replay.body, "Production canary replay");
+  assertComprehensivePaidScopeDelivery(replay.body, "Production canary replay");
   if (
     replayHashes.queryPlanHash !== hashes.queryPlanHash ||
     replayHashes.deliveredProductHash !== hashes.deliveredProductHash
@@ -452,6 +455,9 @@ async function main() {
       (row) => row.chargeable === true && row.payment_required_now === false,
     ),
     representative_scope_payment_count: 0,
+    representative_scope_single_paid_bundle: true,
+    representative_paid_subject_count: 5,
+    representative_paid_topic_count: 7,
     execution_authorized: false,
     internal_canary: true,
     purchase_classification: "internal_canary",
