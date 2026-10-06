@@ -37,6 +37,8 @@ jobs:
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       GH_TOKEN: ${{ github.token }}
       GRI_DB_MODE: direct_postgres
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
       B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
 
@@ -59,9 +61,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in SUPABASE_DB_URL B2_ARCHIVE_READ_KEY_ID B2_ARCHIVE_READ_APPLICATION_KEY; do
+          for name in SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY; do
             test -n "${!name:-}" || { echo "::error::$name is required"; exit 2; }
           done
+          if [[ -n "${B2_ARCHIVE_READ_KEY_ID:-}" || -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" ]]; then
+            test -n "${B2_ARCHIVE_READ_KEY_ID:-}" && test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || {
+              echo "::error::Dedicated B2 archive read credentials must be supplied as a complete pair."
+              exit 2
+            }
+          fi
+          echo "B2 archive read path: dedicated pair when configured; otherwise existing verified B2 credentials."
           test "${GRI_DB_MODE:-}" = "direct_postgres"
           echo "Owner authorization scope: Federico pilot allowance only; no user funds and no execution authorization."
           echo "Governed RSS transport: tokenless loopback spool -> canonical direct Postgres; remote tokenless ingest remains forbidden."
