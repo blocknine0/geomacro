@@ -34,6 +34,10 @@ describe("#1414 B2 direct archive and credential split", () => {
     expect(archive).toContain("archive_bundle_sha256");
     expect(helper).toContain("B2_ARCHIVE_READ_KEY_ID");
     expect(helper).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(helper).toContain("B2_ARCHIVE_WRITE_KEY_ID");
+    expect(helper).toContain("B2_ARCHIVE_WRITE_APPLICATION_KEY");
+    expect(helper).toContain("dedicatedAccess || archiveWriteAccess || defaultAccess");
+    expect(helper).toContain("dedicatedSecret || archiveWriteSecret || defaultSecret");
     expect(helper).toContain('const B2_BUCKET = "geomacro-private-archive"');
     expect(store).toContain("archive_bundle_key,archive_bundle_sha256");
   });
@@ -52,6 +56,14 @@ describe("#1414 B2 direct archive and credential split", () => {
         "B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}",
       );
     }
+
+    const countryContinuity = read(".github/workflows/b2-country-gro-continuity.yml");
+    expect(countryContinuity).toContain(
+      "B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}",
+    );
+    expect(countryContinuity).toContain(
+      "B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}",
+    );
   });
 
   it("lets the production B2 serving path prefer the read-only key pair", () => {
