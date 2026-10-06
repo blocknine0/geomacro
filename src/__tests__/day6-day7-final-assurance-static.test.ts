@@ -51,6 +51,7 @@ describe("Day 6 generic partner assurance", () => {
   it("generates a country-agnostic strict GRO while keeping the Federico allowance explicit", () => {
     expect(day6Workflow).toContain("day6-direct-live-federico-gro.ts");
     expect(day6Workflow).toContain("candidate_sha:");
+    expect(day6Workflow).toContain("DISPATCH_SHA");
     expect(day6Workflow).toContain("Checkout exact candidate SHA");
     expect(day6Workflow).toContain("steps.candidate.outputs.sha");
     expect(day6Workflow).toContain("use_partner_allowance:");
