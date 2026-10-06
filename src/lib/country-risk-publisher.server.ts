@@ -490,6 +490,34 @@ function flashDirection(
   return "steady";
 }
 
+function federicoStrictPublishedAt(
+  value: unknown,
+  asOf: Date,
+) {
+  const raw =
+    typeof value === "string"
+      ? value.trim()
+      : "";
+
+  if (
+    !raw ||
+    /^\d{4}-\d{2}-\d{2}$/u.test(raw) ||
+    !/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(raw)
+  ) {
+    return null;
+  }
+
+  const publishedMs = Date.parse(raw);
+  if (
+    !Number.isFinite(publishedMs) ||
+    publishedMs > asOf.getTime()
+  ) {
+    return null;
+  }
+
+  return new Date(publishedMs).toISOString();
+}
+
 async function loadFedericoStructuredFallback(
   db: ReturnType<typeof requireRiskSupabase>,
   asOf: Date,
@@ -846,6 +874,16 @@ async function loadFedericoStrictEvents(
       continue;
     }
 
+    const publishedAt =
+      federicoStrictPublishedAt(
+        flash.published_at,
+        asOf,
+      );
+
+    if (!publishedAt) {
+      continue;
+    }
+
     virtualFamilies.push({
       family_id: `flash:${flashId}`,
       signal_category:
@@ -855,19 +893,11 @@ async function loadFedericoStrictEvents(
       country_isos:
         [...eventCountries].sort(),
       first_seen_at:
-        String(flash.first_seen_at ?? flash.ingested_at ?? asOf.toISOString()),
+        String(flash.first_seen_at ?? flash.ingested_at ?? publishedAt),
       last_seen_at:
-        String(flash.last_seen_at ?? flash.ingested_at ?? asOf.toISOString()),
+        String(flash.last_seen_at ?? flash.ingested_at ?? publishedAt),
       last_material_update_at:
-        String(
-          flash.last_material_update_at ??
-            (flash.material_update
-              ? flash.last_seen_at
-              : flash.published_at ??
-                flash.first_seen_at ??
-                flash.ingested_at ??
-                asOf.toISOString()),
-        ),
+        publishedAt,
       current_status: "ACTIVE",
       source_count: 1,
       independent_source_count: 1,
@@ -911,7 +941,6 @@ async function loadFedericoStrictEvents(
     const members = byFamily.get(familyId) ?? [];
     if (!members.length) continue;
 
-    const latest = members[0];
     // Strict partner evidence is country-agnostic. A member is auditable only
     // when it comes from the governed source universe AND that exact source
     // record has receiver-replayable governed attribution to the requested
@@ -927,7 +956,16 @@ async function loadFedericoStrictEvents(
       const hasTargetCountryAttribution = memberAttributions.some(
         (item) => item.country_iso3 === iso3,
       );
-      return isAllowedSource && hasTargetCountryAttribution;
+      const publishedAt =
+        federicoStrictPublishedAt(
+          member.published_at,
+          asOf,
+        );
+      return Boolean(
+        isAllowedSource &&
+        hasTargetCountryAttribution &&
+        publishedAt,
+      );
     });
 
     if (!auditableMembers.length) {
@@ -981,9 +1019,21 @@ async function loadFedericoStrictEvents(
 
     const latestAuditableMember = [...auditableMembers].sort(
       (a, b) =>
-        Date.parse(String(b.published_at ?? b.last_seen_at ?? "")) -
-        Date.parse(String(a.published_at ?? a.last_seen_at ?? "")),
+        Date.parse(
+          federicoStrictPublishedAt(
+            b.published_at,
+            asOf,
+          ) ?? "",
+        ) -
+        Date.parse(
+          federicoStrictPublishedAt(
+            a.published_at,
+            asOf,
+          ) ?? "",
+        ),
     )[0];
+
+    const latest = latestAuditableMember;
 
     const targetAttributions =
       members
@@ -1083,23 +1133,18 @@ async function loadFedericoStrictEvents(
     }
 
     const materialEvidenceAt =
-      String(
-        family.last_material_update_at ??
-          latest.last_material_update_at ??
-          (
-            latest.material_update
-              ? latest.last_seen_at
-              : latest.published_at ??
-                latest.first_seen_at ??
-                latest.ingested_at
-          ),
+      federicoStrictPublishedAt(
+        latestAuditableMember.published_at,
+        asOf,
       );
 
+    if (!materialEvidenceAt) {
+      continue;
+    }
+
     const lastSeen = new Date(materialEvidenceAt);
-    const ageHours = Math.max(
-      0,
-      (asOf.getTime() - lastSeen.getTime()) / 3_600_000,
-    );
+    const ageHours =
+      (asOf.getTime() - lastSeen.getTime()) / 3_600_000;
 
     if (
       !Number.isFinite(ageHours) ||
