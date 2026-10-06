@@ -14,11 +14,12 @@ describe("#1414 B2 direct archive and credential split", () => {
     expect(client).toContain("explicitReadAccessKey || dedicatedReadAccessKey || archiveWriteAccessKey");
     expect(client).toContain("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
     expect(client).toContain('method === "GET" && readCredentialsSeparate');
-    expect(client).toContain("? normalizedReadAccessKey");
-    expect(client).toContain(": accessKey");
-    expect(client).toContain("? normalizedReadSecretKey");
-    expect(client).toContain(": secretKey");
+    expect(client).toContain('role: "read"');
+    expect(client).toContain('role: "primary"');
+    expect(client).toContain('errorCode === "AccessDenied"');
+    expect(client).toContain("credentialIndex < credentialCandidates.length - 1");
     expect(client).toContain("read_credentials_separate: readCredentialsSeparate");
+    expect(client).toContain("read_fallback_to_primary_available");
   });
 
   it("makes direct-Postgres archived GRO recovery B2-native", () => {
