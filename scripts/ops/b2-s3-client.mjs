@@ -53,19 +53,35 @@ export function createB2Client({
   accessKey,
   secretKey,
   bucket,
-  readAccessKey = process.env.B2_ARCHIVE_READ_KEY_ID,
-  readSecretKey = process.env.B2_ARCHIVE_READ_APPLICATION_KEY,
+  readAccessKey,
+  readSecretKey,
   allowedKeyPrefixes = null,
 }) {
   const endpoint = parseB2Endpoint(endpointUrl);
   if (endpoint.endpoint !== "https://s3.us-east-005.backblazeb2.com" ||
       bucket !== "geomacro-private-archive" || !accessKey || !secretKey) throw new Error("B2_ARCHIVE_CONFIG_INVALID");
 
-  const normalizedReadAccessKey = String(readAccessKey ?? "").trim();
-  const normalizedReadSecretKey = String(readSecretKey ?? "").trim();
-  if (Boolean(normalizedReadAccessKey) !== Boolean(normalizedReadSecretKey)) {
-    throw new Error("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
+  const explicitReadAccessKey = String(readAccessKey ?? "").trim();
+  const explicitReadSecretKey = String(readSecretKey ?? "").trim();
+  const dedicatedReadAccessKey = String(process.env.B2_ARCHIVE_READ_KEY_ID ?? "").trim();
+  const dedicatedReadSecretKey = String(process.env.B2_ARCHIVE_READ_APPLICATION_KEY ?? "").trim();
+  const archiveWriteAccessKey = String(process.env.B2_ARCHIVE_WRITE_KEY_ID ?? "").trim();
+  const archiveWriteSecretKey = String(process.env.B2_ARCHIVE_WRITE_APPLICATION_KEY ?? "").trim();
+
+  for (const [candidateAccess, candidateSecret] of [
+    [explicitReadAccessKey, explicitReadSecretKey],
+    [dedicatedReadAccessKey, dedicatedReadSecretKey],
+    [archiveWriteAccessKey, archiveWriteSecretKey],
+  ]) {
+    if (Boolean(candidateAccess) !== Boolean(candidateSecret)) {
+      throw new Error("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
+    }
   }
+
+  const normalizedReadAccessKey =
+    explicitReadAccessKey || dedicatedReadAccessKey || archiveWriteAccessKey;
+  const normalizedReadSecretKey =
+    explicitReadSecretKey || dedicatedReadSecretKey || archiveWriteSecretKey;
   const readCredentialsSeparate = Boolean(
     normalizedReadAccessKey && normalizedReadSecretKey,
   );
