@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 
 const bridge = JSON.parse(readFileSync("config/telegram-private-signal-bridge.json", "utf8"));
 const migration = readFileSync(
-  "workers/control-plane/migrations/0007_telegram_signal_producer_repin_68643.sql",
+  "workers/control-plane/migrations/0008_telegram_signal_producer_repin_aba12.sql",
   "utf8",
 );
 
-const CURRENT_PRODUCER = "68643f25c7ad1ab6bb0fa5238866fb7358eb1ab9";
+const CURRENT_PRODUCER = "aba12aea43ec8a5c9e54a4266e639903d531ad33";
 
 describe("Telegram private producer repin contract", () => {
   it("pins the exact accepted private producer commit", () => {
