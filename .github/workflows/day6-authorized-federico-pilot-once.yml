@@ -5,6 +5,7 @@ name: Day 6 Authorized Federico Pilot Once
 # Final bounded retrigger after #1548 fixed direct-Postgres optional-column semantics exposed by run 37435599083.
 # Final bounded retrigger after #1557 added allowlisted direct-Postgres inner-relationship parity; #1554 pins child assurance to its exact dispatched SHA.
 # Final bounded retrigger after direct-Postgres `.contains()` parity fixes country-specific corroboration.
+# Final bounded retrigger after #1571 made archived GRO recovery B2-native and split B2 read/write credentials.
 # Partner bootstrap is intentionally limited to the exact five source families used by strict candidate selection.
 # This file is deleted after the resulting partner proof is verified.
 on:
@@ -16,6 +17,7 @@ on:
 permissions:
   contents: read
   actions: write
+  issues: write
 
 concurrency:
   group: day6-authorized-federico-pilot-once
@@ -238,6 +240,8 @@ jobs:
           cat > /tmp/day6-authorized-summary/summary.json <<JSON
           {
             "schema":"geomacro.day6-authorized-federico-pilot-once.v2",
+            "orchestration_run_id":"${GITHUB_RUN_ID}",
+            "candidate_sha":"${GITHUB_SHA}",
             "country_iso3":"${{ steps.strict.outputs.iso3 }}",
             "local_assurance_run_id":"${{ steps.local.outputs.run_id }}",
             "authorized_partner_run_id":"${{ steps.live.outputs.run_id }}",
@@ -258,3 +262,29 @@ jobs:
           path: /tmp/day6-authorized-summary/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Record Day 6 outcome on migration tracker
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          JOB_STATUS: ${{ job.status }}
+          TARGET_ISO3: ${{ steps.strict.outputs.iso3 }}
+          LOCAL_RUN_ID: ${{ steps.local.outputs.run_id }}
+          AUTHORIZED_RUN_ID: ${{ steps.live.outputs.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/day6-tracker-comment.md <<EOF
+          Day 6 authorized Federico pilot orchestration update
+
+          - orchestration run: ${GITHUB_RUN_ID}
+          - candidate SHA: ${GITHUB_SHA}
+          - job status: ${JOB_STATUS}
+          - selected country: ${TARGET_ISO3:-not_selected}
+          - no-allowance local assurance run: ${LOCAL_RUN_ID:-not_started}
+          - authorized Federico allowance run: ${AUTHORIZED_RUN_ID:-not_started}
+          - owner-authorized pilot allowance only: true
+          - user funds authorized: false
+          - execution authorized: false
+          EOF
+          gh issue comment 1354 --repo "$GITHUB_REPOSITORY" --body-file /tmp/day6-tracker-comment.md
