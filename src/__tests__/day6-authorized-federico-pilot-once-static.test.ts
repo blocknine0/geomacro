@@ -21,6 +21,9 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs");
     expect(workflow).toContain("scripts/run-live-flash-corroborate-local.ts");
     expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
+    expect(workflow).toContain("B2_ARCHIVE_READ_KEY_ID");
+    expect(workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(workflow).toContain("SUPABASE_DB_URL B2_ARCHIVE_READ_KEY_ID B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(workflow).not.toContain(".supabase.co/functions/v1/");
     expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_URL");
   });
