@@ -20,6 +20,11 @@ describe("Intelligence GDELT availability contract", () => {
     expect(publisher).toContain("CURRENT_GDELT_EXPORT_MD5_MISMATCH");
     expect(publisher).toContain("GDELT_EXPECTED_COLUMNS = 61");
     expect(publisher).toContain("CURRENT_GDELT_BATCH_STALE");
+    expect(publisher).toContain("GDELT_FUTURE_TOLERANCE_MS = 5 * 60 * 1000");
+    expect(publisher).toContain(
+      "Date.parse(row.batchIso) <= asOf.getTime() + GDELT_FUTURE_TOLERANCE_MS",
+    );
+    expect(publisher).toContain("batchAgeMs < -GDELT_FUTURE_TOLERANCE_MS");
     expect(publisher).toContain('public_status: "live_observed"');
     expect(publisher).toContain("row?.severity !== null");
     expect(publisher).toContain("B2_PUBLIC_INTELLIGENCE_HASH_INVALID");
