@@ -104,6 +104,23 @@ jobs:
           ' /tmp/day6-rss-cycle.json >/dev/null
           echo "PASS: governed RSS refresh completed through canonical direct-Postgres transport; global corroboration was explicitly skipped because country-specific strict corroboration follows; no partner allowance used."
 
+      - name: Hydrate trusted publisher times before strict candidate selection
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx scripts/hydrate-federico-source-times.ts | tee /tmp/day6-source-time-hydration.json
+          jq -e '
+            .ok == true and
+            .execution_mode == "direct_postgres" and
+            .policy == "trusted_publisher_metadata_only" and
+            .threshold_weakening == false and
+            .fake_freshness == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/day6-source-time-hydration.json >/dev/null
+
       - name: Select strongest fresh strict candidate set
         id: candidates
         shell: bash
