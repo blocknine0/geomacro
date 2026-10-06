@@ -78,4 +78,13 @@ describe("permanent RSS direct-Postgres transport", () => {
     expect(authorized).toContain('"execution_authorized":false');
     expect(authorized).toContain('"automatic_retry_of_allowance":false');
   });
+  it("supports PostgREST-style contains for country-array corroboration in direct Postgres mode", () => {
+    const dbClient = read("scripts/lib/gri-db-client.mjs");
+    const canonicalCorroborate = read("supabase/functions/live-flash-corroborate/index.ts");
+    expect(canonicalCorroborate).toContain('.contains("countries", [requestedCountryIso3])');
+    expect(dbClient).toContain("contains(column, value)");
+    expect(dbClient).toContain("to_jsonb(");
+    expect(dbClient).toContain("DIRECT_POSTGRES_CONTAINS_REQUIRES_JSON_OR_ARRAY");
+  });
+
 });
