@@ -148,11 +148,11 @@ async function createLocalSpoolServer(spoolDir) {
         persisted: false,
         transport: "local_spool_pending_canonical_direct_postgres",
       }));
-    } catch (error) {
+    } catch {
       response.writeHead(400, { "content-type": "application/json", "cache-control": "no-store" });
       response.end(JSON.stringify({
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: "RSS_SPOOL_REQUEST_REJECTED",
       }));
     }
   });
