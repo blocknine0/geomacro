@@ -71,6 +71,8 @@ jobs:
           test -n "${SUPABASE_DB_URL:-}" || { echo "SUPABASE_DB_URL is required"; exit 2; }
           test -n "${B2_KEY_ID:-}" || { echo "B2_KEY_ID is required"; exit 2; }
           test -n "${B2_APPLICATION_KEY:-}" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
+          test -n "${B2_ARCHIVE_READ_KEY_ID:-}" || { echo "B2_ARCHIVE_READ_KEY_ID is required for mandatory readback"; exit 2; }
+          test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || { echo "B2_ARCHIVE_READ_APPLICATION_KEY is required for mandatory readback"; exit 2; }
           command -v unzip >/dev/null
 
       - name: Require permanent production source anchors
