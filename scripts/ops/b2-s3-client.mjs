@@ -48,10 +48,27 @@ function normalizeAllowedPrefixes(allowedKeyPrefixes) {
   return Object.freeze([...new Set(normalized)]);
 }
 
-export function createB2Client({ endpointUrl, accessKey, secretKey, bucket, allowedKeyPrefixes = null }) {
+export function createB2Client({
+  endpointUrl,
+  accessKey,
+  secretKey,
+  bucket,
+  readAccessKey = process.env.B2_ARCHIVE_READ_KEY_ID,
+  readSecretKey = process.env.B2_ARCHIVE_READ_APPLICATION_KEY,
+  allowedKeyPrefixes = null,
+}) {
   const endpoint = parseB2Endpoint(endpointUrl);
   if (endpoint.endpoint !== "https://s3.us-east-005.backblazeb2.com" ||
       bucket !== "geomacro-private-archive" || !accessKey || !secretKey) throw new Error("B2_ARCHIVE_CONFIG_INVALID");
+
+  const normalizedReadAccessKey = String(readAccessKey ?? "").trim();
+  const normalizedReadSecretKey = String(readSecretKey ?? "").trim();
+  if (Boolean(normalizedReadAccessKey) !== Boolean(normalizedReadSecretKey)) {
+    throw new Error("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
+  }
+  const readCredentialsSeparate = Boolean(
+    normalizedReadAccessKey && normalizedReadSecretKey,
+  );
 
   const allowedPrefixes = normalizeAllowedPrefixes(allowedKeyPrefixes);
   const requestBudget = parseRequestBudget();
@@ -72,6 +89,14 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket, allo
     const path = `/${[bucket, ...normalizedKey.split("/")].map(encodeURIComponent).join("/")}`;
     const host = new URL(endpoint.endpoint).host;
     const payloadHash = sha(body);
+    const requestAccessKey =
+      method === "GET" && readCredentialsSeparate
+        ? normalizedReadAccessKey
+        : accessKey;
+    const requestSecretKey =
+      method === "GET" && readCredentialsSeparate
+        ? normalizedReadSecretKey
+        : secretKey;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       if (requestBudget !== null && requestsStarted >= requestBudget) {
@@ -88,7 +113,7 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket, allo
       const canonical = [method, path, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
       const scope = `${day}/${endpoint.region}/s3/aws4_request`;
       const stringToSign = ["AWS4-HMAC-SHA256", timestamp, scope, sha(canonical)].join("\n");
-      const signatureKey = hmac(hmac(hmac(hmac(`AWS4${secretKey}`, day), endpoint.region), "s3"), "aws4_request");
+      const signatureKey = hmac(hmac(hmac(hmac(`AWS4${requestSecretKey}`, day), endpoint.region), "s3"), "aws4_request");
       const signature = createHmac("sha256", signatureKey).update(stringToSign).digest("hex");
 
       try {
@@ -97,7 +122,7 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket, allo
           headers: {
             "x-amz-content-sha256": payloadHash,
             "x-amz-date": timestamp,
-            Authorization: `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+            Authorization: `AWS4-HMAC-SHA256 Credential=${requestAccessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
           },
           body: method === "PUT" ? body : undefined,
           signal: AbortSignal.timeout(60_000),
@@ -128,6 +153,11 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket, allo
     put: (key, bytes) => request("PUT", key, bytes),
     get: (key) => request("GET", key),
     getOptional: (key) => request("GET", key, Buffer.alloc(0), { allowNotFound: true }),
-    usage: () => ({ requests_started: requestsStarted, request_budget: requestBudget, allowed_prefixes: allowedPrefixes }),
+    usage: () => ({
+      requests_started: requestsStarted,
+      request_budget: requestBudget,
+      allowed_prefixes: allowedPrefixes,
+      read_credentials_separate: readCredentialsSeparate,
+    }),
   };
 }

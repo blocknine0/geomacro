@@ -22,6 +22,8 @@ type RiskObjectRow = {
   payload_hash: string | null;
   archive_key: string | null;
   archive_sha256: string | null;
+  archive_bundle_key: string | null;
+  archive_bundle_sha256: string | null;
   generated_at: string;
   expires_at: string;
 };
@@ -283,7 +285,7 @@ getLatestCompatibleCountryRiskObject(
         "geomacro_risk_objects",
       )
       .select(
-        "object_id,payload,payload_hash,archive_key,archive_sha256,generated_at,expires_at",
+        "object_id,payload,payload_hash,archive_key,archive_sha256,archive_bundle_key,archive_bundle_sha256,generated_at,expires_at",
       )
       .eq(
         "subject_type",
@@ -405,7 +407,7 @@ getLatestCompatibleCountryRiskObjectAtOrBefore(
         "geomacro_risk_objects",
       )
       .select(
-        "object_id,payload,payload_hash,archive_key,archive_sha256,generated_at,expires_at",
+        "object_id,payload,payload_hash,archive_key,archive_sha256,archive_bundle_key,archive_bundle_sha256,generated_at,expires_at",
       )
       .eq(
         "subject_type",
@@ -499,7 +501,7 @@ getRiskObjectByObjectId(
         "geomacro_risk_objects",
       )
       .select(
-        "object_id,payload,payload_hash,archive_key,archive_sha256,generated_at,expires_at",
+        "object_id,payload,payload_hash,archive_key,archive_sha256,archive_bundle_key,archive_bundle_sha256,generated_at,expires_at",
       )
       .eq(
         "object_id",
@@ -574,7 +576,7 @@ getLatestCompatibleCorridorRiskObject(
         "geomacro_risk_objects",
       )
       .select(
-        "object_id,payload,payload_hash,archive_key,archive_sha256,generated_at,expires_at",
+        "object_id,payload,payload_hash,archive_key,archive_sha256,archive_bundle_key,archive_bundle_sha256,generated_at,expires_at",
       )
       .eq(
         "subject_type",
@@ -687,7 +689,7 @@ getLatestCompatibleCorridorRiskObjectAtOrBefore(
         "geomacro_risk_objects",
       )
       .select(
-        "object_id,payload,payload_hash,archive_key,archive_sha256,generated_at,expires_at",
+        "object_id,payload,payload_hash,archive_key,archive_sha256,archive_bundle_key,archive_bundle_sha256,generated_at,expires_at",
       )
       .eq(
         "subject_type",
