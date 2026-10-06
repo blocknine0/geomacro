@@ -5,6 +5,7 @@ name: Day 6 Authorized Federico Pilot Once
 # Final bounded retrigger after #1548 fixed direct-Postgres optional-column semantics exposed by run 37435599083.
 # Final bounded retrigger after #1557 added allowlisted direct-Postgres inner-relationship parity; #1554 pins child assurance to its exact dispatched SHA.
 # Final bounded retrigger after direct-Postgres `.contains()` parity fixes country-specific corroboration.
+# Retrigger after publisher-native article timestamp hydration restores precise strict freshness without ingestion-time substitution.
 # Final bounded retrigger after #1571 made archived GRO recovery B2-native and split B2 read/write credentials.
 # Partner bootstrap is intentionally limited to the exact five source families used by strict candidate selection.
 # This file is deleted after the resulting partner proof is verified.
