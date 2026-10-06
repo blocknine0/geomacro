@@ -67,7 +67,10 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Verify deterministic Federico contract
-        run: node scripts/check-federico-repeatability.mjs | tee /tmp/federico-repeatability.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/check-federico-repeatability.mjs | tee /tmp/federico-repeatability.json
 
       - name: Assert zero-spend repeatability boundary
         run: |
