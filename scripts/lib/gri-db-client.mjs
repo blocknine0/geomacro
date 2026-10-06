@@ -142,6 +142,12 @@ class DirectQueryBuilder {
     return this;
   }
 
+  delete() {
+    this.operation = "delete";
+    this.payload = null;
+    return this;
+  }
+
   eq(column, value) { return this.#filter(column, "=", value); }
   neq(column, value) { return this.#filter(column, "<>", value); }
   gt(column, value) { return this.#filter(column, ">", value); }
@@ -311,6 +317,12 @@ class DirectQueryBuilder {
     return `WITH changed AS (${upsert} RETURNING *) SELECT row_to_json(q)::text FROM (SELECT ${this.returningColumns} FROM changed) q;`;
   }
 
+  #deleteSql() {
+    const table = `public.${identifier(this.table)}`;
+    if (!this.filters.length) throw new Error("DIRECT_POSTGRES_DELETE_REQUIRES_FILTER");
+    return `DELETE FROM ${table}${this.#where()};`;
+  }
+
   #updateSql() {
     const keys = Object.keys(this.payload ?? {});
     if (!keys.length) throw new Error("UPDATE_PAYLOAD_HAS_NO_COLUMNS");
@@ -345,6 +357,8 @@ class DirectQueryBuilder {
         stdout = psql(this.dbUrl, this.#upsertSql());
       } else if (this.operation === "update") {
         stdout = psql(this.dbUrl, this.#updateSql());
+      } else if (this.operation === "delete") {
+        stdout = psql(this.dbUrl, this.#deleteSql());
       } else {
         throw new Error(`UNSUPPORTED_DIRECT_POSTGRES_OPERATION:${this.operation}`);
       }
