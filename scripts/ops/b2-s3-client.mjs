@@ -34,6 +34,13 @@ function parseRequestBudget() {
   return value;
 }
 
+function primaryReadFallbackAvailable(candidates) {
+  const primaryIndex = candidates.findIndex(
+    (candidate) => candidate?.role === "primary",
+  );
+  return primaryIndex > 0;
+}
+
 function normalizeAllowedPrefixes(allowedKeyPrefixes) {
   if (allowedKeyPrefixes == null) return DEFAULT_ALLOWED_PREFIXES;
   if (!Array.isArray(allowedKeyPrefixes) || allowedKeyPrefixes.length < 1 || allowedKeyPrefixes.length > 4) {
@@ -200,7 +207,7 @@ export function createB2Client({
       read_credentials_separate: readCredentialsSeparate,
       read_credential_roles: readCredentialCandidates.map((candidate) => candidate.role),
       read_fallback_to_primary_available:
-        methodIndependentPrimaryFallbackAvailable(readCredentialCandidates),
+        primaryReadFallbackAvailable(readCredentialCandidates),
     }),
   };
 }
