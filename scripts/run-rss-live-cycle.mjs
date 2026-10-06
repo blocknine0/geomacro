@@ -263,6 +263,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(message.slice(0, 2000));
   process.exit(1);
 });
