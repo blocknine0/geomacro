@@ -57,10 +57,14 @@ describe("verified B2 structural serving continuity", () => {
     expect(workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}");
     expect(workflow).toContain("B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}");
     expect(workflow).toContain("B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}");
-    expect(client).toContain("explicitReadAccessKey || dedicatedReadAccessKey || archiveWriteAccessKey");
-    expect(client).toContain('method === "GET" && readCredentialsSeparate');
+    expect(client).toContain('[explicitReadAccessKey, explicitReadSecretKey, "explicit-read"]');
+    expect(client).toContain('[dedicatedReadAccessKey, dedicatedReadSecretKey, "dedicated-read"]');
+    expect(client).toContain('[archiveWriteAccessKey, archiveWriteSecretKey, "archive-read-write"]');
+    expect(client).toContain('[accessKey, secretKey, "primary"]');
+    expect(client).toContain('method === "GET"');
     expect(client).toContain('errorCode === "AccessDenied"');
     expect(client).toContain('role: "primary"');
+    expect(client).toContain("read_credential_roles");
     expect(client).toContain("read_fallback_to_primary_available");
     expect(client).toContain("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
   });
