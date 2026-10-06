@@ -46,6 +46,14 @@ describe("partner commercial readiness", () => {
     expect(discovery.security.no_execution_authority).toBe(true);
   });
 
+  it("pins every manual partner assurance run to its exact dispatched SHA", () => {
+    const workflow = read(".github/workflows/day6-partner-assurance-final.yml");
+    expect(workflow).toContain("ref: ${{ github.sha }}");
+    expect(workflow).toContain('test "$(git rev-parse HEAD)" = "$GITHUB_SHA"');
+    expect(workflow).not.toContain("ref: main");
+    expect(workflow).toContain("cancel-in-progress: false");
+  });
+
   it("keeps exact evidence binding and independent proof verification in the partner preflight", () => {
     const preflight = read("scripts/invinoveritas-risk-object-preflight.ts");
     expect(preflight).toContain("record_sha256");
