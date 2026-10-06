@@ -30,6 +30,19 @@ const projectRef=(u)=>{try{return new URL(u).hostname.split(".")[0]??"";}catch{r
 const hash=(b)=>createHash("sha256").update(b).digest("hex");
 const txt=(v)=>String(v??"").replace(/\s+/g," ").trim();
 const safe=(v)=>String(v).replace(/[^A-Za-z0-9._-]+/g,"_").slice(0,160);
+function classifySourceFailure(error){
+  const raw=error instanceof Error?error.message:"";
+  if(/^HTTP_[1-5][0-9]{2}$/.test(raw))return raw;
+  if(/^(?:B2|RAW_SOURCE|COUNTRY_RAW_SOURCE_MESH|SUPABASE_DB|NON_AUTHORITATIVE_SUPABASE_PROJECT)[A-Za-z0-9_:-]*$/.test(raw))return raw;
+  if(/(?:TLS|SSL|certificate|self signed)/i.test(raw))return "UPSTREAM_TLS_ERROR";
+  return "UPSTREAM_SOURCE_ERROR";
+}
+function isFatalInfrastructureFailure(code){
+  return /^B2_(?:GET|PUT)_FAILED_403_AccessDenied(?:_[A-Za-z0-9_-]+)?$/.test(code)
+    || code==="B2_ARCHIVE_CONFIG_INVALID"
+    || code==="B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE"
+    || code==="COUNTRY_RAW_SOURCE_MESH_B2_CONFIG_REQUIRED";
+}
 function pageTitle(html){const m=html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);return txt(m?.[1]?.replace(/<[^>]+>/g," ")).slice(0,800);}
 function links(html,base,limit=80){const out=[];const seen=new Set();const re=/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;let m;const host=new URL(base).hostname;while((m=re.exec(html))&&out.length<limit){try{const u=new URL(m[1],base);if(!/^https?:$/.test(u.protocol)||u.hostname!==host)continue;const t=txt(m[2].replace(/<[^>]+>/g," "));if(t.length<8||seen.has(u.href)||!/(news|press|media|release|statement|announcement|update|bulletin|publication|202[4-9]|latest|minister|econom|trade|mineral|mine|energy|security)/i.test(u.href))continue;seen.add(u.href);out.push({u:u.href,t:t.slice(0,800)});}catch{}}return out;}
 function rssItems(xml, baseUrl, limit=100){
@@ -48,7 +61,7 @@ function rssItems(xml, baseUrl, limit=100){
       ?? block.match(/<published[^>]*>([\s\S]*?)<\/published>/i)?.[1]
       ?? block.match(/<updated[^>]*>([\s\S]*?)<\/updated>/i)?.[1]
       ?? ""
-    ) || new Date().toISOString();
+    );
     const desc=txt(
       block.match(/<description[^>]*>([\s\S]*?)<\/description>/i)?.[1]
       ?? block.match(/<summary[^>]*>([\s\S]*?)<\/summary>/i)?.[1]
@@ -518,7 +531,7 @@ async function main() {
         extracted.push({
           i: hash(Buffer.from("rss:" + t.target_id + ":" + item.u)),
           u: item.u,
-          d: item.d || when,
+          d: item.d || null,
           h: host,
           o: t.display_name,
           t: item.t,
@@ -590,7 +603,7 @@ async function main() {
                     "",
                 );
 
-          let date = when;
+          let date = null;
           if (/^\d{14}Z?$/.test(dateRaw)) {
             const z = dateRaw.replace(/Z$/, "");
             date =
@@ -653,7 +666,7 @@ async function main() {
             ),
           ),
           u: fetched.final,
-          d: when,
+          d: null,
           h: new URL(fetched.final).hostname,
           o: t.display_name,
           t: title,
@@ -669,7 +682,7 @@ async function main() {
         extracted.push({
           i: hash(Buffer.from("link:" + t.target_id + ":" + item.u)),
           u: item.u,
-          d: when,
+          d: null,
           h: new URL(item.u).hostname,
           o: t.display_name,
           t: item.t,
@@ -727,12 +740,15 @@ async function main() {
           successfulCells += 1;
           break;
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
+          const failureCode = classifySourceFailure(error);
+          if (isFatalInfrastructureFailure(failureCode)) {
+            throw new Error(failureCode);
+          }
           failures.push({
             country_iso3: cell.country_iso3,
             category: cell.category,
             target_id: target.target_id,
-            error: message,
+            error: failureCode,
           });
 
           try {
@@ -740,10 +756,10 @@ async function main() {
               discovery_state: "UNREACHABLE",
               last_attempt_at: new Date().toISOString(),
               consecutive_failures: Number(target.consecutive_failures ?? 0) + 1,
-              last_error: message.slice(0, 1000),
+              last_error: failureCode,
             });
           } catch {
-            // Preserve the original source failure in the run summary.
+            // Preserve the sanitized source failure classification in the run summary.
           }
         }
       }
@@ -808,10 +824,10 @@ async function main() {
   process.stdout.write(resultJson);
   if (!result.ok) process.exit(1);
 }
-main().catch(async (e)=>{
-  const detail=e instanceof Error?(e.stack??e.message):(()=>{try{return JSON.stringify(e);}catch{return String(e);}})();
-  const failure={ok:false,generated_at:new Date().toISOString(),error:detail,db_transport:"direct_postgres",storage_backend:"b2"};
+main().catch(async (error)=>{
+  const failureCode=classifySourceFailure(error);
+  const failure={ok:false,generated_at:new Date().toISOString(),error:failureCode,db_transport:"direct_postgres",storage_backend:"b2"};
   if(OUTPUT_PATH){try{await writeFile(OUTPUT_PATH,JSON.stringify(failure,null,2)+"\n","utf8");}catch{}}
-  console.error(detail);
+  console.error(failureCode);
   process.exit(1);
 });
