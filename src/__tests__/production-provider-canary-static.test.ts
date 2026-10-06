@@ -53,6 +53,27 @@ describe("production provider real-money canary runner", () => {
     expect(canary.match(/const evidenceProvider = EVIDENCE_PROVIDERS\[provider\]/g)?.length).toBe(1);
   });
 
+  it("makes the single paid request itself span all five commercial scopes", () => {
+    for (const marker of [
+      '{ type: "country", country_iso3: "DEU" }',
+      '{ type: "country", country_iso3: "BRA" }',
+      '{ type: "country", country_iso3: "ZAF" }',
+      '{ type: "country", country_iso3: "USA" }',
+      '{ type: "corridor", origin_country_iso3: "USA", destination_country_iso3: "CHN" }',
+      '"conflict_geopolitics"',
+      '"macro_risk"',
+      '"fx_external_risk"',
+      '"critical_minerals"',
+      '"trade_corridor"',
+    ]) {
+      expect(common).toContain(marker);
+    }
+    expect(common).toContain("assertComprehensivePaidScopeDelivery");
+    expect(canary).toContain('assertComprehensivePaidScopeDelivery(payment.paid.body');
+    expect(canary).toContain('assertComprehensivePaidScopeDelivery(replay.body');
+    expect(canary).toContain("representative_scope_single_paid_bundle: true");
+  });
+
   it("keeps raw payment proof and buyer secrets out of persisted evidence", () => {
     expect(canary).toContain("private_key_persisted: false");
     expect(canary).toContain("raw_payment_proof_persisted: false");
