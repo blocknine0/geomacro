@@ -5,10 +5,9 @@ on:
     - cron: "41 * * * *"
   workflow_dispatch: {}
   # The final commercial gate is exact-head and may start immediately after a
-  # canonical merge. Start the bounded one-country continuity refresh on every
-  # main advance so D1 has a fresh verified commercial GRO before that gate
-  # reaches its trust-object check. The hourly schedule remains the steady-state
-  # freshness owner when main is quiet.
+  # canonical merge. Refresh the full country-like commercial subject universe
+  # on every main advance so B2/D1 serving does not collapse to a single USA
+  # object. The hourly schedule remains the steady-state freshness owner.
   push:
     branches: [main]
 
@@ -23,7 +22,7 @@ jobs:
   publish:
     if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 45
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -40,6 +39,10 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       D1_DATABASE_NAME: geomacro-control-plane
+      GLOBAL_CANONICAL_REFRESH_OUTPUT: artifacts/global-gro-continuity/canonical-risk-objects.json
+      GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR: "195"
+      GLOBAL_CANONICAL_MIN_READY: "195"
+      GLOBAL_GRO_D1_MIN_INDEXED: "195"
       GRO_CONTINUITY_COUNTRY_ISO3: USA
     steps:
       - name: Checkout canonical main
@@ -65,47 +68,98 @@ jobs:
           const { data, error } = await db
             .from('live_country_registry')
             .select('iso3,enabled')
-            .eq('iso3', process.env.GRO_CONTINUITY_COUNTRY_ISO3)
             .eq('enabled', true)
-            .maybeSingle();
+            .order('iso3', { ascending: true });
           if (error) throw new Error(error.message);
-          if (!data || data.iso3 !== process.env.GRO_CONTINUITY_COUNTRY_ISO3 || data.enabled !== true) {
-            throw new Error('GRO_CONTINUITY_COUNTRY_NOT_ENABLED');
-          }
-          console.log(JSON.stringify({ ok: true, transport: 'direct_postgres', country_iso3: data.iso3 }));
+          const enabled = (data ?? []).filter((row) => /^[A-Z]{3}$/.test(String(row.iso3 ?? '')));
+          if (enabled.length < 195) throw new Error(`GRO_CONTINUITY_COUNTRY_UNIVERSE_REGRESSION:${enabled.length}`);
+          console.log(JSON.stringify({ ok: true, transport: 'direct_postgres', enabled_country_like_candidates: enabled.length }));
           NODE
-      - name: Refresh one bounded commercially verified canonical GRO
+      - name: Refresh global commercially governed canonical GROs
         id: refresh
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         shell: bash
         run: |
           set -euo pipefail
-          node --import tsx scripts/publish-country-risk-object.ts USA CANONICAL | tee /tmp/current-country-gro.json
-          if jq -e '
-            .delivery_profile == "CANONICAL"
-            and .subject.type == "country"
-            and .subject.id == "USA"
-            and .verification.status == "VERIFIED"
-            and .commercial_eligibility.status == "VERIFIED"
-            and .integrity.signature_valid == true
-          ' /tmp/current-country-gro.json >/dev/null; then
+          mkdir -p artifacts/global-gro-continuity
+          set +e
+          bun scripts/refresh-global-canonical-risk-objects.ts
+          refresh_status=$?
+          set -e
+          test -f "$GLOBAL_CANONICAL_REFRESH_OUTPUT"
+          jq -e '
+            .schema_version == "geomacro-global-canonical-refresh-v1"
+            and .denominator.type == "enabled_country_like_entities"
+            and .denominator.count >= 195
+            and .denominator.sovereign_count >= 194
+            and .denominator.special_country_like_count == 2
+            and (.denominator.special_country_like_iso3 | sort) == ["PSE","TWN"]
+            and .boundaries.all_enabled_country_like_subjects_evaluated == true
+            and .boundaries.payment_not_performed_by_refresh == true
+            and .boundaries.raw_source_material_emitted == false
+            and .boundaries.execution_authorized == false
+          ' "$GLOBAL_CANONICAL_REFRESH_OUTPUT" >/dev/null
+          ready="$(jq -r '.summary.paid_ready_country_count // 0' "$GLOBAL_CANONICAL_REFRESH_OUTPUT")"
+          echo "ready_count=$ready" >> "$GITHUB_OUTPUT"
+          if [ "$refresh_status" -eq 0 ] && [ "$ready" -ge 195 ]; then
             echo "fresh=true" >> "$GITHUB_OUTPUT"
+            echo "PASS: global canonical refresh produced ${ready} commercially deliverable country-like GROs."
           else
             echo "fresh=false" >> "$GITHUB_OUTPUT"
-            echo "No newly verified commercial USA GRO; preserving the last independently verified B2 continuity package without advancing freshness."
+            echo "::error title=Global commercial GRO floor not met::Ready=${ready}; required=195; refresh_status=${refresh_status}. Preserving the previous verified B2 package and refusing to advance D1."
           fi
+
       - name: Publish current verified canonical country GROs to private B2
         if: steps.refresh.outputs.fresh == 'true'
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         run: node --import tsx scripts/ops/publish-b2-country-gro-continuity.ts
+
       - name: Reverify last verified B2 country GRO package without advancing freshness
         if: steps.refresh.outputs.fresh != 'true'
         run: bun scripts/ops/verify-b2-country-gro-preservation.ts
+
       - name: Prove runtime GRO read works after removing Supabase credentials
         if: steps.refresh.outputs.fresh == 'true'
         run: bun scripts/ops/verify-b2-country-gro-direct-read.ts
-      - name: Sync independently verified current country GRO to D1
+
+      - name: Sync all independently verified current country GROs to D1
         if: steps.refresh.outputs.fresh == 'true'
-        run: bun scripts/ops/sync-current-country-gro-to-d1.ts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/sync-global-current-country-gro-to-d1.ts | tee artifacts/global-gro-continuity/d1-sync.json
+          jq -e '
+            .ok == true
+            and .indexed_country_count >= 195
+            and .threshold_satisfied == true
+            and .b2_readback_verified == true
+            and .signature_verified == true
+            and .commercial_eligibility_verified == true
+            and .d1_readback_verified == true
+            and .external_payment_performed == false
+            and .execution_authorized == false
+            and .destructive_b2_change == false
+          ' artifacts/global-gro-continuity/d1-sync.json >/dev/null
+
+      - name: Upload global GRO continuity evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: global-gro-continuity-${{ github.run_id }}
+          path: artifacts/global-gro-continuity/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Enforce #1414 195+ commercial GRO floor
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready="${{ steps.refresh.outputs.ready_count }}"
+          if [ "${ready:-0}" -lt 195 ]; then
+            echo "::error title=#1414 country GRO coverage incomplete::Only ${ready:-0} country-like subjects are commercially deliverable; 195 are required."
+            exit 1
+          fi
+          test "${{ steps.refresh.outputs.fresh }}" = "true"
