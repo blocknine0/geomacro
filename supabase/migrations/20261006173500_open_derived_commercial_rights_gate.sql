@@ -68,7 +68,7 @@ where source_id = 'gdacs_global_disasters';
 -- only when every production gate is already proven on the exact source.
 update public.live_external_sources as src
 set
-  enabled_for_commercial_signals = exists (
+  enabled_for_commercial_signals = src.enabled_for_ingestion = true and exists (
     select 1
     from public.live_source_certification_records cert
     where cert.source_id = src.source_id
