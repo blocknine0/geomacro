@@ -42,6 +42,7 @@ describe("permanent RSS direct-Postgres transport", () => {
     const testnet = read(".github/workflows/testnet-rss-live-runner.yml");
     const federico = read(".github/workflows/federico-seven-day-risk-refresh.yml");
     const authorized = read(".github/workflows/day6-authorized-federico-pilot-once.yml");
+    const worker = read("workers/telegram-flash/worker.py");
 
     expect(orchestrator).toContain('requiredEnv: ["SUPABASE_DB_URL"]');
     expect(orchestrator).not.toContain('disabledReason: () => "supabase_edge_function_service_unavailable"');
@@ -55,6 +56,11 @@ describe("permanent RSS direct-Postgres transport", () => {
 
     expect(federico).toContain("scripts/run-live-flash-corroborate-local.ts");
     expect(authorized).toContain("scripts/run-live-flash-corroborate-local.ts");
+    expect(authorized).not.toContain("GEOMACRO_FLASH_INGEST_TOKEN:");
+    expect(worker).toContain("def ingest_url_is_loopback() -> bool:");
+    expect(worker).toContain('parsed.hostname in {"127.0.0.1", "localhost", "::1"}');
+    expect(worker).toContain("INGEST_TOKEN or OIDC_TOKEN or ingest_url_is_loopback()");
+    expect(worker).toContain("Remote RSS collection requires GEOMACRO_FLASH_INGEST_TOKEN or GEOMACRO_FLASH_OIDC_TOKEN");
   });
 
   it("does not change partner allowance or execution safety", () => {
