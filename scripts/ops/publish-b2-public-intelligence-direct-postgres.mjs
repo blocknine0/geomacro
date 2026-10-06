@@ -218,6 +218,8 @@ async function fetchWithRetry(url, accept) {
   throw lastError ?? new Error("CURRENT_EVIDENCE_FETCH_FAILED");
 }
 
+const GDELT_FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
+
 function parseGdeltTimestamp(value) {
   const match = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/u.exec(String(value ?? ""));
   if (!match) return null;
@@ -255,7 +257,7 @@ function parseLastUpdate(text, asOf = new Date()) {
         return [];
       }
     })
-    .filter((row) => Date.parse(row.batchIso) <= asOf.getTime())
+    .filter((row) => Date.parse(row.batchIso) <= asOf.getTime() + GDELT_FUTURE_TOLERANCE_MS)
     .sort((a, b) => Date.parse(b.batchIso) - Date.parse(a.batchIso));
   const selected = candidates[0];
   if (!selected) throw new Error("CURRENT_GDELT_EXPORT_UNAVAILABLE");
@@ -374,7 +376,7 @@ async function readCurrentGdeltRows() {
   const lastUpdate = await fetchWithRetry(GDELT_LAST_UPDATE_URL, "text/plain,*/*;q=0.1");
   const exportMeta = parseLastUpdate(await lastUpdate.text());
   const batchAgeMs = Date.now() - Date.parse(exportMeta.batchIso);
-  if (!Number.isFinite(batchAgeMs) || batchAgeMs < -5 * 60_000 || batchAgeMs > LIVE_MAX_AGE_MS) {
+  if (!Number.isFinite(batchAgeMs) || batchAgeMs < -GDELT_FUTURE_TOLERANCE_MS || batchAgeMs > LIVE_MAX_AGE_MS) {
     throw new Error(`CURRENT_GDELT_BATCH_STALE:${Math.round(batchAgeMs / 60_000)}`);
   }
 
