@@ -15,13 +15,23 @@ const hmac = (key: Buffer | string, value: string) =>
 function readCredentials() {
   const dedicatedAccess = String(process.env.B2_ARCHIVE_READ_KEY_ID ?? "").trim();
   const dedicatedSecret = String(process.env.B2_ARCHIVE_READ_APPLICATION_KEY ?? "").trim();
+  const archiveWriteAccess = String(process.env.B2_ARCHIVE_WRITE_KEY_ID ?? "").trim();
+  const archiveWriteSecret = String(process.env.B2_ARCHIVE_WRITE_APPLICATION_KEY ?? "").trim();
+  const defaultAccess = String(process.env.B2_KEY_ID ?? "").trim();
+  const defaultSecret = String(process.env.B2_APPLICATION_KEY ?? "").trim();
 
-  if (Boolean(dedicatedAccess) !== Boolean(dedicatedSecret)) {
-    throw new Error("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
+  for (const [candidateAccess, candidateSecret] of [
+    [dedicatedAccess, dedicatedSecret],
+    [archiveWriteAccess, archiveWriteSecret],
+    [defaultAccess, defaultSecret],
+  ]) {
+    if (Boolean(candidateAccess) !== Boolean(candidateSecret)) {
+      throw new Error("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
+    }
   }
 
-  const accessKey = dedicatedAccess || String(process.env.B2_KEY_ID ?? "").trim();
-  const secretKey = dedicatedSecret || String(process.env.B2_APPLICATION_KEY ?? "").trim();
+  const accessKey = dedicatedAccess || archiveWriteAccess || defaultAccess;
+  const secretKey = dedicatedSecret || archiveWriteSecret || defaultSecret;
   if (!accessKey || !secretKey) {
     throw new Error("B2_ARCHIVE_READ_CREDENTIALS_REQUIRED");
   }
