@@ -5,7 +5,9 @@ const BASE = String(process.env.GEOMACRO_LIVE_HOST ?? "https://geomacro.live").r
 const AVAILABILITY_URL = `${BASE}/api/x402/risk/availability`;
 const BASE_SEPOLIA_NETWORK = "eip155:84532";
 const MIN_DELIVERABLE = Math.max(195, Number(process.env.GEOMACRO_X402_MIN_COUNTRY_PATHS ?? 195));
-const CONCURRENCY = Math.max(1, Math.min(4, Number(process.env.GEOMACRO_X402_COUNTRY_CENSUS_CONCURRENCY ?? 2)));\nconst PACING_MS = Math.max(100, Math.min(2_000, Number(process.env.GEOMACRO_X402_COUNTRY_CENSUS_PACING_MS ?? 650)));\nconst ENFORCE = String(process.env.GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE ?? "true").trim().toLowerCase() !== "false";
+const CONCURRENCY = Math.max(1, Math.min(4, Number(process.env.GEOMACRO_X402_COUNTRY_CENSUS_CONCURRENCY ?? 2)));
+const PACING_MS = Math.max(100, Math.min(2_000, Number(process.env.GEOMACRO_X402_COUNTRY_CENSUS_PACING_MS ?? 650)));
+const ENFORCE = String(process.env.GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE ?? "true").trim().toLowerCase() !== "false";
 const OUT = String(process.env.GEOMACRO_X402_COUNTRY_CENSUS_OUT ?? "artifacts/live-x402-country-availability-census.json");
 const SAFE_FAIL_CLOSED_CODES = new Set([
   "NOT_AVAILABLE",
@@ -223,7 +225,8 @@ async function mapLimit(rows, limit, fn) {
       const index = next;
       next += 1;
       if (index >= rows.length) return;
-      output[index] = await fn(rows[index]);\n      await new Promise((resolve) => setTimeout(resolve, PACING_MS));
+      output[index] = await fn(rows[index]);
+      await new Promise((resolve) => setTimeout(resolve, PACING_MS));
     }
   }
   await Promise.all(Array.from({ length: Math.min(limit, rows.length) }, () => worker()));
@@ -233,7 +236,8 @@ async function mapLimit(rows, limit, fn) {
 const results = await mapLimit(entities, CONCURRENCY, fetchAvailability);
 const available = results.filter((row) => row.outcome === "AVAILABLE");
 const failClosed = results.filter((row) => row.outcome === "FAIL_CLOSED");
-const unsafe = results.filter((row) => row.outcome === "UNSAFE");\nconst incomplete = results.filter((row) => row.outcome === "INCOMPLETE");
+const unsafe = results.filter((row) => row.outcome === "UNSAFE");
+const incomplete = results.filter((row) => row.outcome === "INCOMPLETE");
 
 const byScope = Object.fromEntries(
   Object.keys(groups).map((scope) => {
@@ -244,7 +248,8 @@ const byScope = Object.fromEntries(
         total: rows.length,
         available: rows.filter((row) => row.outcome === "AVAILABLE").length,
         fail_closed: rows.filter((row) => row.outcome === "FAIL_CLOSED").length,
-        unsafe: rows.filter((row) => row.outcome === "UNSAFE").length,\n        incomplete: rows.filter((row) => row.outcome === "INCOMPLETE").length,
+        unsafe: rows.filter((row) => row.outcome === "UNSAFE").length,
+        incomplete: rows.filter((row) => row.outcome === "INCOMPLETE").length,
       },
     ];
   }),
@@ -270,7 +275,9 @@ const evidence = {
   required_minimum_deliverable_paths: MIN_DELIVERABLE,
   deliverable_path_count: available.length,
   fail_closed_path_count: failClosed.length,
-  unsafe_path_count: unsafe.length,\n  incomplete_path_count: incomplete.length,\n  enforcement_enabled: ENFORCE,
+  unsafe_path_count: unsafe.length,
+  incomplete_path_count: incomplete.length,
+  enforcement_enabled: ENFORCE,
   all_available_paths_testnet_only: available.every((row) => row.network === BASE_SEPOLIA_NETWORK),
   threshold_satisfied: available.length >= MIN_DELIVERABLE,
   by_scope: byScope,
@@ -282,7 +289,8 @@ const evidence = {
     missing_modules: row.missing_modules ?? [],
     stale_modules: row.stale_modules ?? [],
   })),
-  unsafe_entities: unsafe,\n  incomplete_entities: incomplete,
+  unsafe_entities: unsafe,
+  incomplete_entities: incomplete,
   results,
 };
 
