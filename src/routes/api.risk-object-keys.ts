@@ -252,10 +252,24 @@ export const Route =
                 ok: true,
                 verification_endpoint: {
                   method: "POST",
+                  max_body_bytes:
+                    MAX_VERIFY_BODY_BYTES,
+                  intended_for:
+                    "bounded_risk_objects",
                   body: {
                     risk_object:
                       "Geomacro Risk Object",
                   },
+                },
+                large_object_verification: {
+                  mode:
+                    "client_local_with_public_keys",
+                  canonicalization:
+                    "geomacro-canonical-json-v1",
+                  signature_scheme:
+                    "Ed25519",
+                  reason:
+                    "Large signed artifacts must be verified locally against this deployed public-key registry instead of being re-uploaded through the bounded POST endpoint.",
                 },
                 ...keySet,
               },
