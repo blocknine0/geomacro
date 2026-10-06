@@ -81,8 +81,8 @@ describe("Telegram B2/D1 governed consumer", () => {
 
   it("uses the already-canonical accepted producer pin from main", () => {
     const bridge = JSON.parse(read("config/telegram-private-signal-bridge.json"));
-    const migration = read("workers/control-plane/migrations/0005_telegram_signal_producer_repin_79fb.sql");
-    const accepted = "79fb75cf342a652216cff4355448012c5bab8cbf";
+    const migration = read("workers/control-plane/migrations/0007_telegram_signal_producer_repin_68643.sql");
+    const accepted = "68643f25c7ad1ab6bb0fa5238866fb7358eb1ab9";
     expect(bridge.producer_commit).toBe(accepted);
     expect(migration).toContain(accepted);
     expect(migration).toContain("telegram_signal_runtime_status");
