@@ -39,8 +39,6 @@ jobs:
       GRI_DB_MODE: direct_postgres
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
@@ -125,7 +123,6 @@ jobs:
 
       - name: Correlate current canonical evidence through direct PostgreSQL
         env:
-          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           GROQ_MODEL: ${{ vars.GROQ_MODEL }}
@@ -133,13 +130,9 @@ jobs:
         run: node scripts/cluster-gri-stories-v12.js
 
       - name: Compute current verified three-domain GRI
-        env:
-          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         run: node scripts/compute-gri-v12.js
 
       - name: Independently verify current GRI proof package
-        env:
-          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         run: node scripts/verify-gri-snapshot-v12.js
 
       - name: Publish verified Global Risk continuity package to B2
