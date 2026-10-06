@@ -1,0 +1,297 @@
+name: Day 6 Authorized Federico Pilot Once
+
+# One-time owner-authorized bridge because the connector cannot issue workflow_dispatch.
+# This file is deleted after the resulting partner proof is verified.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/day6-authorized-federico-pilot-once.yml"
+
+permissions:
+  contents: read
+  actions: write
+  id-token: write
+
+concurrency:
+  group: day6-authorized-federico-pilot-once
+  cancel-in-progress: false
+
+jobs:
+  authorize-and-run:
+    if: github.repository == 'blocknine0/geomacro' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
+      GITHUB_OIDC_AUDIENCE: https://geomacro.live/actions/live-flash-rss
+      GH_TOKEN: ${{ github.token }}
+      GRI_DB_MODE: direct_postgres
+
+    steps:
+      - name: Checkout exact canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate one-time prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL SUPABASE_PROJECT_ID; do
+            test -n "${!name:-}" || { echo "::error::$name is required"; exit 2; }
+          done
+          test "$SUPABASE_PROJECT_ID" = "ldpwajisioljyjtojvfx"
+          echo "Owner authorization scope: Federico pilot allowance only; no user funds and no execution authorization."
+
+      - name: Acquire scoped GitHub Actions OIDC token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
+          oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
+          token="$(printf '%s' "$oidc_response" | jq -er '.value')"
+          echo "::add-mask::$token"
+          printf 'GEOMACRO_FLASH_OIDC_TOKEN=%s\n' "$token" >> "$GITHUB_ENV"
+
+      - name: Re-poll governed RSS without partner allowance
+        env:
+          GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
+          TELEGRAM_ENABLED: "false"
+          BREAKING_RSS_ENABLED: "true"
+          BREAKING_RSS_RUN_ONCE: "true"
+          BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
+          BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/day6-rss-deps.log
+          cd workers/telegram-flash
+          : > /tmp/day6-rss-live.log
+          python worker.py 2>&1 | tee /tmp/day6-rss-live.log
+
+      - name: Verify every configured RSS source completed
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          ready = None
+          last = {}
+          for raw in Path('/tmp/day6-rss-live.log').read_text(encoding='utf-8', errors='replace').splitlines():
+              try:
+                  event = json.loads(raw)
+              except json.JSONDecodeError:
+                  continue
+              if event.get('rss') == 'ready':
+                  ready = event
+              sid = event.get('source_id')
+              if sid and event.get('kind') == 'rss_error':
+                  last[str(sid)] = 'error'
+              elif sid and event.get('kind') == 'rss_source_complete' and event.get('ok') is True:
+                  last[str(sid)] = 'success'
+          if not isinstance(ready, dict) or not isinstance(ready.get('feeds'), list) or not ready['feeds']:
+              raise SystemExit('RSS worker did not emit a configured-feed manifest')
+          expected = {str(v) for v in ready['feeds'] if str(v).strip()}
+          missing = sorted(s for s in expected if last.get(s) != 'success')
+          if missing:
+              raise SystemExit('RSS sources did not complete successfully: ' + ', '.join(missing))
+          print(json.dumps({'configured': len(expected), 'completed': len(expected), 'sources': sorted(expected)}))
+          PY
+
+      - name: Select strongest fresh strict candidate set
+        id: candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL' > /tmp/day6-candidates.txt
+          with recent as (
+            select
+              c.country_iso3,
+              e.source_id,
+              coalesce(e.published_at,e.last_seen_at,e.ingested_at) as evidence_at
+            from public.live_flash_events e
+            join public.live_flash_event_countries c on c.flash_id=e.flash_id
+            where e.source_id in (
+              'xinhua_english_china_rss',
+              'scmp_china_rss',
+              'forexlive_rss',
+              'aljazeera_rss',
+              'bbc_world_rss'
+            )
+              and coalesce(e.published_at,e.last_seen_at,e.ingested_at) >= now() - interval '6 hours'
+              and c.country_iso3 ~ '^[A-Z]{3}$'
+          )
+          select country_iso3
+          from recent
+          group by country_iso3
+          having count(distinct source_id) >= 2
+          order by count(distinct source_id) desc, count(*) desc, max(evidence_at) desc, country_iso3
+          limit 8;
+          SQL
+          test -s /tmp/day6-candidates.txt || {
+            echo "::error::No country currently has at least two fresh auditable partner source families after governed RSS refresh. Federico allowance was not used."
+            exit 3
+          }
+          printf 'Candidate countries: '; tr '\n' ' ' < /tmp/day6-candidates.txt; echo
+
+      - name: Corroborate candidates and select first genuinely strict-ready country
+        id: strict
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/day6-corroboration-all.ndjson
+          SELECTED=""
+          while IFS= read -r ISO3; do
+            test -n "$ISO3" || continue
+            offset=0
+            window_as_of="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            while true; do
+              oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
+                -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+                "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
+              token="$(printf '%s' "$oidc_response" | jq -er '.value')"
+              echo "::add-mask::$token"
+              http="$(curl --silent --show-error \
+                --output /tmp/day6-corroborate.json \
+                --write-out '%{http_code}' \
+                --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
+                --request POST \
+                --header "x-geomacro-github-oidc-token: ${token}" \
+                --header "Authorization: Bearer ${token}" \
+                --header 'Content-Type: application/json' \
+                --data "$(jq -nc --arg country_iso3 "$ISO3" --arg as_of "$window_as_of" --argjson offset "$offset" '{country_iso3:$country_iso3,as_of:$as_of,candidate_offset:$offset}')" \
+                "${APP_SUPABASE_URL%/}/functions/v1/live-flash-corroborate")"
+              test "$http" = "200" || { cat /tmp/day6-corroborate.json; echo "::error::corroboration HTTP $http"; exit 1; }
+              jq -c --arg iso3 "$ISO3" '. + {probe_country_iso3:$iso3}' /tmp/day6-corroborate.json >> /tmp/day6-corroboration-all.ndjson
+              next="$(jq -r '.next_candidate_offset' /tmp/day6-corroborate.json)"
+              [[ "$next" != "null" ]] || break
+              [[ "$next" =~ ^[0-9]+$ && "$next" -gt "$offset" && "$next" -lt 600 ]] || exit 2
+              offset="$next"
+            done
+
+            set +e
+            DAY6_COUNTRY_ISO3="$ISO3" NODE_OPTIONS=--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs \
+              node --import tsx scripts/probe-day6-federico-live-evidence.ts "$ISO3" > /tmp/day6-probe.json
+            rc=$?
+            set -e
+            cat /tmp/day6-probe.json
+            if [[ "$rc" -eq 0 ]] && jq -e '.ok == true and .ready == true and .policy.threshold_weakening == false and .partner_allowance_spent == false' /tmp/day6-probe.json >/dev/null; then
+              SELECTED="$ISO3"
+              cp /tmp/day6-probe.json /tmp/day6-selected-probe.json
+              break
+            fi
+          done < /tmp/day6-candidates.txt
+
+          test -n "$SELECTED" || {
+            echo "::error::Fresh sources were repolled and candidates corroborated, but no country passed the unchanged FEDERICO_STRICT local evidence gate. Federico allowance was not used."
+            exit 4
+          }
+          echo "iso3=$SELECTED" >> "$GITHUB_OUTPUT"
+          echo "Selected strict-ready country: $SELECTED"
+
+      - name: Dispatch no-allowance current-head local assurance
+        id: local
+        env:
+          TARGET_ISO3: ${{ steps.strict.outputs.iso3 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(git rev-parse HEAD)"
+          SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh workflow run day6-partner-assurance-final.yml --ref main -f iso3="$TARGET_ISO3" -f use_partner_allowance=false
+          for _ in $(seq 1 30); do
+            RUN_ID="$(gh run list --workflow day6-partner-assurance-final.yml --branch main --event workflow_dispatch --limit 20 \
+              --json databaseId,createdAt,headSha,status \
+              | jq -r --arg since "$SINCE" --arg sha "$MAIN_SHA" '[.[] | select(.createdAt >= $since and .headSha == $sha)] | sort_by(.createdAt) | last | .databaseId // empty')"
+            [[ -n "$RUN_ID" ]] && break
+            sleep 3
+          done
+          test -n "${RUN_ID:-}" || { echo "::error::Could not locate no-allowance Day 6 run"; exit 2; }
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          gh run watch "$RUN_ID" --exit-status
+          for _ in $(seq 1 12); do
+            ARTIFACTS="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '.artifacts[].name' || true)"
+            printf '%s\n' "$ARTIFACTS"
+            printf '%s\n' "$ARTIFACTS" | grep -q "^federico-handoff-${RUN_ID}$" && exit 0
+            sleep 5
+          done
+          echo "::error::No fresh local-assurance handoff was produced. Federico allowance was not used."
+          exit 5
+
+      - name: Dispatch exactly one authorized Federico pilot allowance review
+        id: live
+        env:
+          TARGET_ISO3: ${{ steps.strict.outputs.iso3 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(git rev-parse HEAD)"
+          SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh workflow run day6-partner-assurance-final.yml --ref main -f iso3="$TARGET_ISO3" -f use_partner_allowance=true
+          for _ in $(seq 1 30); do
+            RUN_ID="$(gh run list --workflow day6-partner-assurance-final.yml --branch main --event workflow_dispatch --limit 20 \
+              --json databaseId,createdAt,headSha,status \
+              | jq -r --arg since "$SINCE" --arg sha "$MAIN_SHA" '[.[] | select(.createdAt >= $since and .headSha == $sha)] | sort_by(.createdAt) | last | .databaseId // empty')"
+            [[ -n "$RUN_ID" ]] && break
+            sleep 3
+          done
+          test -n "${RUN_ID:-}" || { echo "::error::Could not locate authorized Day 6 run"; exit 2; }
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          gh run watch "$RUN_ID" --exit-status
+          for _ in $(seq 1 12); do
+            ARTIFACTS="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '.artifacts[].name' || true)"
+            printf '%s\n' "$ARTIFACTS"
+            printf '%s\n' "$ARTIFACTS" | grep -q "^federico-handoff-${RUN_ID}$" && exit 0
+            sleep 5
+          done
+          echo "::error::Authorized review completed without a sealed handoff artifact."
+          exit 6
+
+      - name: Seal orchestration summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          mkdir -p /tmp/day6-authorized-summary
+          cat > /tmp/day6-authorized-summary/summary.json <<JSON
+          {
+            "schema":"geomacro.day6-authorized-federico-pilot-once.v1",
+            "country_iso3":"${{ steps.strict.outputs.iso3 }}",
+            "local_assurance_run_id":"${{ steps.local.outputs.run_id }}",
+            "authorized_partner_run_id":"${{ steps.live.outputs.run_id }}",
+            "owner_authorized_pilot_allowance":true,
+            "user_funds_authorized":false,
+            "real_money_payment_authorized":false,
+            "execution_authorized":false,
+            "automatic_retry_of_allowance":false
+          }
+          JSON
+          sha256sum /tmp/day6-authorized-summary/summary.json > /tmp/day6-authorized-summary/SHA256SUMS.txt
+
+      - name: Upload orchestration summary
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: day6-authorized-federico-pilot-${{ github.run_id }}
+          path: /tmp/day6-authorized-summary/
+          if-no-files-found: warn
+          retention-days: 14
