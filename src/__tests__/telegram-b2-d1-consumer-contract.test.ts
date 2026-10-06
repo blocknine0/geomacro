@@ -79,12 +79,13 @@ describe("Telegram B2/D1 governed consumer", () => {
     expect(workflow).not.toContain("supabase.co/functions/v1/live-flash-ingest");
   });
 
-  it("uses the already-canonical accepted producer pin from main", () => {
+  it("uses protocol-hash acceptance so non-protocol producer commits do not require repins", () => {
     const bridge = JSON.parse(read("config/telegram-private-signal-bridge.json"));
-    const migration = read("workers/control-plane/migrations/0008_telegram_signal_producer_repin_aba12.sql");
-    const accepted = "aba12aea43ec8a5c9e54a4266e639903d531ad33";
-    expect(bridge.producer_commit).toBe(accepted);
-    expect(migration).toContain(accepted);
+    const migration = read("workers/control-plane/migrations/0009_telegram_signal_protocol_v2.sql");
+    expect(bridge.producer_acceptance).toBe("protocol_hash");
+    expect(bridge.payload_schema).toBe("geomacro.telegram-lead-envelope.v2");
+    expect(bridge.protocol_contract_sha256).toBe("6da33ed2a966d58122039ba38d83e801476a6318bc89634d0b3d951e8ad017c9");
+    expect(migration).toContain("6da33ed2a966d58122039ba38d83e801476a6318bc89634d0b3d951e8ad017c9");
     expect(migration).toContain("telegram_signal_runtime_status");
   });
 });
