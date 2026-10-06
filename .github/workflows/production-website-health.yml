@@ -19,6 +19,14 @@ on:
       - "src/lib/use-global-risk.ts"
       - "src/lib/use-risk-indices.ts"
       - "src/lib/use-intelligence.ts"
+      - "src/routes/intelligence.tsx"
+      - "src/routes/pricing.tsx"
+      - "src/routes/institutional.tsx"
+      - "src/routes/risk-gate.tsx"
+      - "src/components/home/commercial-home.tsx"
+      - "src/components/ask/ask-workspace.tsx"
+      - "config/commercial-route-disposition.json"
+      - "public/llms.txt"
       - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
       - "scripts/ops/republish-b2-public-intelligence-scored-only.mjs"
       - "scripts/ops/sync-fastlane-scored-intelligence.mjs"
@@ -47,6 +55,50 @@ jobs:
       GLOBAL_RISK_EDGE_URL: https://geomacro-global-risk.daspallab202391.workers.dev/global-risk
       RISK_INDICES_EDGE_URL: https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices
     steps:
+      - name: Checkout canonical main acceptance contract
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Verify locked production presentation and product truth
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          grep -Fq 'Three risks. Three separate indices.' src/components/gri/global-risk-domain-indices.tsx
+          grep -Fq 'Score dates remain the original verified evidence times.' src/routes/intelligence.tsx
+          grep -Fq 'Feed refreshed ' src/routes/intelligence.tsx
+          grep -Fq 'Ask Geomacro' src/components/ask/ask-workspace.tsx
+          grep -Fq 'Global risk intelligence for humans and machines' src/components/home/commercial-home.tsx
+
+          grep -Fq '0.05' src/routes/pricing.tsx
+          grep -Fq 'USDC / successful delivery' src/routes/pricing.tsx
+          grep -Fq 'first 20,000' src/routes/pricing.tsx
+          grep -Fq 'No-charge failure boundary' src/routes/pricing.tsx
+          grep -Fq 'real-money access remains fail-closed until separately authorized for production' src/routes/pricing.tsx
+
+          grep -Fq 'COMMERCIAL RISK INTELLIGENCE' src/routes/institutional.tsx
+          grep -Fq 'Risk Gate' src/routes/risk-gate.tsx
+          grep -Fq '"classification": "PRODUCTION", "status": "LIVE"' config/commercial-route-disposition.json
+          grep -Fq 'Risk API: PRIVATE PILOT' public/llms.txt
+          grep -Fq 'Risk Gate: PRIVATE PILOT' public/llms.txt
+          grep -Fq 'execution_authorized=false' public/llms.txt
+
+          python - <<'PY'
+          from pathlib import Path
+          budgets = {
+              "src/routes/pricing.tsx": 14000,
+              "src/routes/institutional.tsx": 22000,
+              "src/components/home/commercial-home.tsx": 26000,
+              "src/components/ask/ask-workspace.tsx": 18000,
+          }
+          for path, maximum in budgets.items():
+              size = len(Path(path).read_text(encoding="utf-8"))
+              if size > maximum:
+                  raise SystemExit(f"COMMERCIAL_COPY_SURFACE_BUDGET_EXCEEDED:{path}:{size}>{maximum}")
+          print("PASS: commercial presentation source budgets remain bounded.")
+          PY
+
       - name: Verify live build marker matches canonical main
         env:
           EXPECTED_SHA: ${{ github.sha }}
