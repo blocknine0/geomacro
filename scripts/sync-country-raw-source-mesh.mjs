@@ -826,7 +826,14 @@ async function main() {
 }
 main().catch(async (error)=>{
   const failureCode=classifySourceFailure(error);
-  const failure={ok:false,generated_at:new Date().toISOString(),error:failureCode,db_transport:"direct_postgres",storage_backend:"b2"};
+  const failure={
+    ok:false,
+    generated_at:new Date().toISOString(),
+    error:failureCode,
+    db_transport:"direct_postgres",
+    storage_backend:"b2",
+    b2_usage:b2?.usage?.()??null,
+  };
   if(OUTPUT_PATH){try{await writeFile(OUTPUT_PATH,JSON.stringify(failure,null,2)+"\n","utf8");}catch{}}
   console.error(failureCode);
   process.exit(1);
