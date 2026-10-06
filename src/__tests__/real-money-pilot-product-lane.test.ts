@@ -21,6 +21,8 @@ describe("controlled real-money pilot product lane", () => {
     ]);
     expect(plan.required_modules).not.toContain("hot_topics");
     expect(plan.required_modules).not.toContain("signed_risk_object");
+    expect(plan.topics).not.toContain("hot_topics");
+    expect(plan.topics).not.toContain("risk_object");
     expect(plan.required_modules).not.toContain("risk_gate");
   });
 
