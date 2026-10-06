@@ -35,11 +35,15 @@ describe("live x402 prelaunch safety probe", () => {
     for (const iso3 of ["USA", "BRA", "DEU", "ZAF", "ARE", "IND", "CHN"]) {
       expect(source).toContain(`country_iso3: \"${iso3}\"`);
     }
-    expect(source).toContain('schema_version: "geomacro.live-x402-prelaunch-availability.v4"');
+    expect(source).toContain('schema_version: "geomacro.live-x402-prelaunch-availability.v5"');
     expect(source).toContain("representative_regions: [...REQUIRED_REGIONS].sort()");
     expect(source).toContain("representative_case_count: cases.length");
     expect(source).toContain("payment_performed: false");
     expect(source).toContain("real_funds_touched: false");
+    expect(source).toContain("GEOMACRO_X402_REQUIRE_REPRESENTATIVE_AVAILABLE");
+    expect(source).toContain("all_representative_cases_available");
+    expect(source).toContain("representative_availability_enforced");
+    expect(source).toContain("#1414 representative commercial x402 scopes are not all currently AVAILABLE");
   });
   it("requires a no-funds 195+ global country paid-path census from the canonical 250 entity universe", () => {
     const census = readFileSync(
@@ -70,6 +74,7 @@ describe("live x402 prelaunch safety probe", () => {
     expect(census).toContain('code: "RATE_LIMITED"');
     expect(census).toContain("const ENFORCE =");
     expect(workflow).toContain("GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE");
+    expect(workflow).toContain("GEOMACRO_X402_REQUIRE_REPRESENTATIVE_AVAILABLE:");
     expect(workflow).toContain("github.event_name == 'pull_request'");
     expect(workflow).toContain("verify-live-x402-country-availability-census.mjs");
     expect(workflow).toContain("live-x402-country-availability-census.json");

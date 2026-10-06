@@ -2,6 +2,7 @@
 const BASE = "https://geomacro.live";
 const URL = `${BASE}/api/x402/risk/availability`;
 const BASE_SEPOLIA_NETWORK = "eip155:84532";
+const REQUIRE_REPRESENTATIVE_AVAILABLE = String(process.env.GEOMACRO_X402_REQUIRE_REPRESENTATIVE_AVAILABLE ?? "false").trim().toLowerCase() === "true";
 const SAFE_FAIL_CLOSED_CODES = new Set([
   "NOT_AVAILABLE",
   "INSUFFICIENT_COVERAGE",
@@ -232,8 +233,19 @@ async function main() {
     }
   }
 
+  const allRepresentativeAvailable = results.every((result) =>
+    result.status === 200 &&
+    result.deliverable === true &&
+    result.code === "AVAILABLE" &&
+    result.network === BASE_SEPOLIA_NETWORK &&
+    result.payment_required_now === false &&
+    result.execution_authorized === false &&
+    typeof result.query_plan_hash === "string" &&
+    /^[0-9a-f]{64}$/.test(result.query_plan_hash)
+  );
+
   console.log(JSON.stringify({
-    schema_version: "geomacro.live-x402-prelaunch-availability.v4",
+    schema_version: "geomacro.live-x402-prelaunch-availability.v5",
     checked_at: new Date().toISOString(),
     host: BASE,
     payment_performed: false,
@@ -246,11 +258,17 @@ async function main() {
     all_representative_cases_fail_closed: allFailClosed,
     all_representative_cases_safe_prelaunch: allSafePrelaunch,
     all_available_cases_testnet_only: allAvailableCasesTestnetOnly,
+    representative_availability_enforced: REQUIRE_REPRESENTATIVE_AVAILABLE,
+    all_representative_cases_available: allRepresentativeAvailable,
     allowed_available_network: BASE_SEPOLIA_NETWORK,
     results,
   }, null, 2));
 
   if (!allSafePrelaunch || !allAvailableCasesTestnetOnly) process.exit(2);
+  if (REQUIRE_REPRESENTATIVE_AVAILABLE && !allRepresentativeAvailable) {
+    console.error("FAIL: #1414 representative commercial x402 scopes are not all currently AVAILABLE");
+    process.exit(3);
+  }
 }
 main().catch((error) => {
   console.error(`FAIL: ${error instanceof Error ? error.message : String(error)}`);
