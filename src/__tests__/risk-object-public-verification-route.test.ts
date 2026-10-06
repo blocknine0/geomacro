@@ -41,6 +41,9 @@ describe(
           "MAX_VERIFY_BODY_BYTES",
         );
         expect(route).toContain(
+          "4 * 1024 * 1024",
+        );
+        expect(route).toContain(
           "risk_object_payload_too_large",
         );
         expect(route).toContain(
