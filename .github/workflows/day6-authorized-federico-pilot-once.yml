@@ -105,7 +105,7 @@ jobs:
             select
               c.country_iso3,
               e.source_id,
-              coalesce(e.published_at,e.last_seen_at,e.ingested_at) as evidence_at
+              e.published_at as evidence_at
             from public.live_flash_events e
             join public.live_flash_event_countries c on c.flash_id=e.flash_id
             where e.source_id in (
@@ -115,8 +115,184 @@ jobs:
               'aljazeera_rss',
               'bbc_world_rss'
             )
-              and coalesce(e.published_at,e.last_seen_at,e.ingested_at) >= now() - interval '6 hours'
-              and c.country_iso3 ~ '^[A-Z]{3}$'
+              and e.published_at is not null
+              and e.published_at >= now() - interval '6 hours'
+              and e.published_at <= now()
+              and c.country_iso3 ~ '^[A-Z]{3}
+          )
+          select country_iso3
+          from recent
+          group by country_iso3
+          having count(distinct source_id) >= 2
+          order by count(distinct source_id) desc, count(*) desc, max(evidence_at) desc, country_iso3
+          limit 8;
+          SQL
+          test -s /tmp/day6-candidates.txt || {
+            echo "::error::No country currently has at least two fresh auditable partner source families after governed RSS refresh. Federico allowance was not used."
+            exit 3
+          }
+          printf 'Candidate countries: '; tr '\n' ' ' < /tmp/day6-candidates.txt; echo
+
+      - name: Corroborate candidates and select first genuinely strict-ready country
+        id: strict
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/day6-corroboration-all.ndjson
+          SELECTED=""
+          while IFS= read -r ISO3; do
+            test -n "$ISO3" || continue
+            offset=0
+            window_as_of="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            while true; do
+              bun scripts/run-live-flash-corroborate-local.ts \
+                --country "$ISO3" \
+                --as-of "$window_as_of" \
+                --candidate-offset "$offset" \
+                > /tmp/day6-corroborate.json
+              jq -e '.ok == true and .execution_mode == "local_canonical_corroboration_direct_postgres" and .threshold_weakening == false' /tmp/day6-corroborate.json >/dev/null
+              jq -c --arg iso3 "$ISO3" '. + {probe_country_iso3:$iso3}' /tmp/day6-corroborate.json >> /tmp/day6-corroboration-all.ndjson
+              next="$(jq -r '.next_candidate_offset' /tmp/day6-corroborate.json)"
+              [[ "$next" != "null" ]] || break
+              [[ "$next" =~ ^[0-9]+$ && "$next" -gt "$offset" && "$next" -lt 600 ]] || exit 2
+              offset="$next"
+            done
+
+            set +e
+            DAY6_COUNTRY_ISO3="$ISO3" NODE_OPTIONS=--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs \
+              node --import tsx scripts/probe-day6-federico-live-evidence.ts "$ISO3" > /tmp/day6-probe.json
+            rc=$?
+            set -e
+            cat /tmp/day6-probe.json
+            if [[ "$rc" -eq 0 ]] && jq -e '.ok == true and .ready == true and .policy.threshold_weakening == false and .partner_allowance_spent == false' /tmp/day6-probe.json >/dev/null; then
+              SELECTED="$ISO3"
+              cp /tmp/day6-probe.json /tmp/day6-selected-probe.json
+              break
+            fi
+          done < /tmp/day6-candidates.txt
+
+          test -n "$SELECTED" || {
+            echo "::error::Fresh sources were repolled and candidates corroborated, but no country passed the unchanged FEDERICO_STRICT local evidence gate. Federico allowance was not used."
+            exit 4
+          }
+          echo "iso3=$SELECTED" >> "$GITHUB_OUTPUT"
+          echo "Selected strict-ready country: $SELECTED"
+
+      - name: Dispatch no-allowance current-head local assurance
+        id: local
+        env:
+          TARGET_ISO3: ${{ steps.strict.outputs.iso3 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(git rev-parse HEAD)"
+          SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh workflow run day6-partner-assurance-final.yml --ref main -f iso3="$TARGET_ISO3" -f candidate_sha="$MAIN_SHA" -f use_partner_allowance=false
+          for _ in $(seq 1 30); do
+            RUN_ID="$(gh run list --workflow day6-partner-assurance-final.yml --branch main --event workflow_dispatch --limit 20 \
+              --json databaseId,createdAt,displayTitle,status \
+              | jq -r --arg since "$SINCE" --arg marker "@ $MAIN_SHA allowance=false" '[.[] | select(.createdAt >= $since and (.displayTitle | contains($marker)))] | sort_by(.createdAt) | last | .databaseId // empty')"
+            [[ -n "$RUN_ID" ]] && break
+            sleep 3
+          done
+          test -n "${RUN_ID:-}" || { echo "::error::Could not locate no-allowance Day 6 run"; exit 2; }
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          gh run watch "$RUN_ID" --exit-status
+          for _ in $(seq 1 12); do
+            ARTIFACTS="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '.artifacts[].name' || true)"
+            printf '%s\n' "$ARTIFACTS"
+            printf '%s\n' "$ARTIFACTS" | grep -q "^day6-global-partner-assurance-${RUN_ID}$" && exit 0
+            sleep 5
+          done
+          echo "::error::No fresh local-assurance handoff was produced. Federico allowance was not used."
+          exit 5
+
+      - name: Dispatch exactly one authorized Federico pilot allowance review
+        id: live
+        env:
+          TARGET_ISO3: ${{ steps.strict.outputs.iso3 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(git rev-parse HEAD)"
+          SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh workflow run day6-partner-assurance-final.yml --ref main -f iso3="$TARGET_ISO3" -f candidate_sha="$MAIN_SHA" -f use_partner_allowance=true
+          for _ in $(seq 1 30); do
+            RUN_ID="$(gh run list --workflow day6-partner-assurance-final.yml --branch main --event workflow_dispatch --limit 20 \
+              --json databaseId,createdAt,displayTitle,status \
+              | jq -r --arg since "$SINCE" --arg marker "@ $MAIN_SHA allowance=true" '[.[] | select(.createdAt >= $since and (.displayTitle | contains($marker)))] | sort_by(.createdAt) | last | .databaseId // empty')"
+            [[ -n "$RUN_ID" ]] && break
+            sleep 3
+          done
+          test -n "${RUN_ID:-}" || { echo "::error::Could not locate authorized Day 6 run"; exit 2; }
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          gh run watch "$RUN_ID" --exit-status
+          for _ in $(seq 1 12); do
+            ARTIFACTS="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '.artifacts[].name' || true)"
+            printf '%s\n' "$ARTIFACTS"
+            printf '%s\n' "$ARTIFACTS" | grep -q "^day6-global-partner-assurance-${RUN_ID}$" && exit 0
+            sleep 5
+          done
+          echo "::error::Authorized review completed without a sealed handoff artifact."
+          exit 6
+
+      - name: Seal orchestration summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          mkdir -p /tmp/day6-authorized-summary
+          cat > /tmp/day6-authorized-summary/summary.json <<JSON
+          {
+            "schema":"geomacro.day6-authorized-federico-pilot-once.v2",
+            "orchestration_run_id":"${GITHUB_RUN_ID}",
+            "candidate_sha":"${GITHUB_SHA}",
+            "country_iso3":"${{ steps.strict.outputs.iso3 }}",
+            "local_assurance_run_id":"${{ steps.local.outputs.run_id }}",
+            "authorized_partner_run_id":"${{ steps.live.outputs.run_id }}",
+            "owner_authorized_pilot_allowance":true,
+            "user_funds_authorized":false,
+            "real_money_payment_authorized":false,
+            "execution_authorized":false,
+            "automatic_retry_of_allowance":false
+          }
+          JSON
+          sha256sum /tmp/day6-authorized-summary/summary.json > /tmp/day6-authorized-summary/SHA256SUMS.txt
+
+      - name: Upload orchestration summary
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: day6-authorized-federico-pilot-${{ github.run_id }}
+          path: /tmp/day6-authorized-summary/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Record Day 6 outcome on migration tracker
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          JOB_STATUS: ${{ job.status }}
+          TARGET_ISO3: ${{ steps.strict.outputs.iso3 }}
+          LOCAL_RUN_ID: ${{ steps.local.outputs.run_id }}
+          AUTHORIZED_RUN_ID: ${{ steps.live.outputs.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/day6-tracker-comment.md <<EOF
+          Day 6 authorized Federico pilot orchestration update
+
+          - orchestration run: ${GITHUB_RUN_ID}
+          - candidate SHA: ${GITHUB_SHA}
+          - job status: ${JOB_STATUS}
+          - selected country: ${TARGET_ISO3:-not_selected}
+          - no-allowance local assurance run: ${LOCAL_RUN_ID:-not_started}
+          - authorized Federico allowance run: ${AUTHORIZED_RUN_ID:-not_started}
+          - owner-authorized pilot allowance only: true
+          - user funds authorized: false
+          - execution authorized: false
+          EOF
+          gh issue comment 1354 --repo "$GITHUB_REPOSITORY" --body-file /tmp/day6-tracker-comment.md
+
           )
           select country_iso3
           from recent
