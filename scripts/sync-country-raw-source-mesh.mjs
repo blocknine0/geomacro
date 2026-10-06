@@ -277,7 +277,9 @@ async function main() {
   if (
     String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
     !String(process.env.B2_KEY_ID ?? "").trim() ||
-    !String(process.env.B2_APPLICATION_KEY ?? "").trim()
+    !String(process.env.B2_APPLICATION_KEY ?? "").trim() ||
+    !String(process.env.B2_ARCHIVE_READ_KEY_ID ?? "").trim() ||
+    !String(process.env.B2_ARCHIVE_READ_APPLICATION_KEY ?? "").trim()
   ) {
     throw new Error("COUNTRY_RAW_SOURCE_MESH_B2_CONFIG_REQUIRED");
   }
@@ -287,6 +289,8 @@ async function main() {
     endpointUrl: B2_ENDPOINT,
     accessKey: process.env.B2_KEY_ID,
     secretKey: process.env.B2_APPLICATION_KEY,
+    readAccessKey: process.env.B2_ARCHIVE_READ_KEY_ID,
+    readSecretKey: process.env.B2_ARCHIVE_READ_APPLICATION_KEY,
     bucket: BUCKET,
   });
 
