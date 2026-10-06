@@ -283,6 +283,8 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "source_id": "xinhua_english_china_rss",
         "name": "Xinhua English China RSS",
         "url": "https://www.xinhuanet.com/english/rss/chinarss.xml",
+        "hydrate_article_published_at": True,
+        "article_timestamp_hosts": ["english.news.cn"],
         "event_type": "GEOPOLITICS_BREAKING",
         "source_reliability": 90.0,
         "country_iso3": "CHN",
@@ -317,6 +319,8 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "source_id": "scmp_china_rss",
         "name": "South China Morning Post China RSS",
         "url": "https://www.scmp.com/rss/4/feed",
+        "hydrate_article_published_at": True,
+        "article_timestamp_hosts": ["www.scmp.com", "scmp.com"],
         "event_type": "GEOPOLITICS_BREAKING",
         "source_reliability": 80.0,
         "country_iso3": "CHN",
@@ -346,6 +350,8 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "source_id": "forexlive_rss",
         "name": "ForexLive RSS",
         "url": "https://www.forexlive.com/feed/news",
+        "hydrate_article_published_at": True,
+        "article_timestamp_hosts": ["investinglive.com", "www.investinglive.com"],
         "event_type": "MACRO_BREAKING",
         "source_reliability": 65.0,
         "priority_keywords": [
@@ -938,6 +944,187 @@ def feed_entry_timestamp(entry: Any) -> str | None:
     return structured_time_to_iso(entry.get("published_parsed"))
 
 
+PUBLISHER_PUBLISHED_META_KEYS = {
+    "article:published_time",
+    "datepublished",
+    "date_published",
+    "publishdate",
+    "pubdate",
+}
+
+
+def exact_publisher_timestamp(value: Any) -> str | None:
+    raw = " ".join(str(value or "").split()).strip()
+    if not raw or re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
+        return None
+    if not re.search(r"(?:T|\s)\d{1,2}:?\d{2}(?::?\d{2}(?:\.\d+)?)?", raw):
+        return None
+    if not re.search(r"(?:Z|[+-]\d{2}:?\d{2}|\bGMT\b|\bUTC\b)", raw, flags=re.IGNORECASE):
+        return None
+
+    moment = None
+    try:
+        moment = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except (TypeError, ValueError, OverflowError):
+        try:
+            from email.utils import parsedate_to_datetime
+
+            moment = parsedate_to_datetime(raw)
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+    if moment is None or moment.tzinfo is None:
+        return None
+
+    normalized = moment.astimezone(timezone.utc)
+    if normalized.timestamp() > time.time() + 300:
+        return None
+    return normalized.isoformat()
+
+
+class PublisherArticleTimestampParser:
+    def __init__(self):
+        from html.parser import HTMLParser
+
+        class _Parser(HTMLParser):
+            def __init__(self, outer: "PublisherArticleTimestampParser"):
+                super().__init__(convert_charrefs=True)
+                self.outer = outer
+                self.in_json_ld = False
+                self.json_ld_parts: list[str] = []
+
+            def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+                normalized = {
+                    str(key).lower(): value
+                    for key, value in attrs
+                    if isinstance(key, str)
+                }
+                if tag == "meta":
+                    key = str(
+                        normalized.get("property")
+                        or normalized.get("name")
+                        or normalized.get("itemprop")
+                        or ""
+                    ).strip().lower()
+                    content = normalized.get("content")
+                    if key in PUBLISHER_PUBLISHED_META_KEYS and isinstance(content, str):
+                        self.outer.candidates.append(content)
+                    return
+                if tag == "time":
+                    itemprop = str(normalized.get("itemprop") or "").strip().lower()
+                    value = normalized.get("datetime")
+                    if itemprop == "datepublished" and isinstance(value, str):
+                        self.outer.candidates.append(value)
+                    return
+                if tag == "script":
+                    script_type = str(normalized.get("type") or "").strip().lower()
+                    if script_type == "application/ld+json":
+                        self.in_json_ld = True
+                        self.json_ld_parts = []
+
+            def handle_data(self, data: str) -> None:
+                if self.in_json_ld:
+                    self.json_ld_parts.append(data)
+
+            def handle_endtag(self, tag: str) -> None:
+                if tag != "script" or not self.in_json_ld:
+                    return
+                self.in_json_ld = False
+                raw = "".join(self.json_ld_parts).strip()
+                self.json_ld_parts = []
+                if not raw:
+                    return
+                try:
+                    parsed = json.loads(raw)
+                except json.JSONDecodeError:
+                    return
+
+                def visit(value: Any) -> None:
+                    if isinstance(value, dict):
+                        for key, item in value.items():
+                            if str(key).lower() == "datepublished" and isinstance(item, str):
+                                self.outer.candidates.append(item)
+                            else:
+                                visit(item)
+                    elif isinstance(value, list):
+                        for item in value:
+                            visit(item)
+
+                visit(parsed)
+
+        self.candidates: list[str] = []
+        self._parser = _Parser(self)
+
+    def parse(self, raw: bytes) -> str | None:
+        text = raw.decode("utf-8", errors="replace")
+        self._parser.feed(text)
+        self._parser.close()
+        for candidate in self.candidates:
+            normalized = exact_publisher_timestamp(candidate)
+            if normalized:
+                return normalized
+        return None
+
+
+def fetch_article_published_at_sync(
+    url: str,
+    allowed_hosts: list[str],
+) -> str | None:
+    parsed = urlparse(url)
+    host = str(parsed.hostname or "").lower()
+    normalized_hosts = {
+        str(value).strip().lower()
+        for value in allowed_hosts
+        if str(value).strip()
+    }
+    if parsed.scheme not in {"http", "https"} or host not in normalized_hosts:
+        return None
+
+    status, raw = fetch_web_page_sync(
+        url,
+        timeout_seconds=20,
+        retry_attempts=1,
+        retry_backoff_seconds=1.0,
+    )
+    if status < 200 or status >= 400:
+        return None
+    return PublisherArticleTimestampParser().parse(raw)
+
+
+async def resolve_entry_published_at(
+    entry: Any,
+    feed: dict[str, Any],
+) -> tuple[str | None, str]:
+    native = feed_entry_timestamp(entry)
+    if native:
+        return native, "feed"
+
+    if not bool(feed.get("hydrate_article_published_at", False)):
+        return None, "missing"
+
+    link = clean_link(entry)
+    allowed_hosts = [
+        str(value)
+        for value in feed.get("article_timestamp_hosts", [])
+        if str(value).strip()
+    ]
+    if not link or not allowed_hosts:
+        return None, "missing"
+
+    try:
+        hydrated = await asyncio.to_thread(
+            fetch_article_published_at_sync,
+            link,
+            allowed_hosts,
+        )
+    except Exception:
+        return None, "missing"
+
+    if hydrated:
+        return hydrated, "publisher_article_metadata"
+    return None, "missing"
+
+
 def feed_entry_matches_priority(
     entry: Any,
     keywords: list[str],
@@ -1293,8 +1480,14 @@ async def process_feed(
     else:
         entries = all_entries
 
+    resolved_timestamps = await asyncio.gather(
+        *(resolve_entry_published_at(entry, feed) for entry in entries)
+    )
+
     new_count = 0
-    for entry in reversed(entries):
+    for entry, (published_at, timestamp_source) in reversed(
+        list(zip(entries, resolved_timestamps))
+    ):
         identity = feed_entry_identity(entry, source_id)
         if identity in current["seen"]:
             continue
@@ -1306,7 +1499,7 @@ async def process_feed(
         payload: dict[str, Any] = {
             "source_id": source_id,
             "source_record_id": identity,
-            "published_at": feed_entry_timestamp(entry),
+            "published_at": published_at,
             "headline": title[:1200],
             "body": None,
             "source_channel": str(feed.get("name", source_id))[:300],
@@ -1318,6 +1511,7 @@ async def process_feed(
                 "feed_guid": str(entry.get("id", entry.get("guid", "")))[:500] or None,
                 "feed_published": str(entry.get("published", ""))[:200] or None,
                 "feed_updated": str(entry.get("updated", ""))[:200] or None,
+                "publication_timestamp_source": timestamp_source,
             },
         }
 
