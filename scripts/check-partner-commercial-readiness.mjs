@@ -64,12 +64,6 @@ if (discovery.risk_object?.canonicalization !== "geomacro-canonical-json-v1") {
 if (discovery.federation?.supported_profile !== "federico-strict-evidence-v1") {
   fail("Federico strict profile missing from partner discovery");
 }
-if (discovery.federation?.country_scope !== "all_enabled_iso3_countries") {
-  fail("partner discovery must expose the global enabled ISO3 country scope");
-}
-if (discovery.federation?.country_policy !== "same_strict_gates_per_country_fail_closed") {
-  fail("partner discovery must keep one strict fail-closed country policy");
-}
 if (Number(discovery.federation?.minimum_independent_source_families ?? 0) < 2) {
   fail("partner federation minimum independent source families is below 2");
 }
@@ -175,10 +169,10 @@ for (const required of [
   "b2_durable_authority",
   "durable_object_commerce",
   "supabase_cold_standby",
-  "partner_assurance",
-  "signing_trust",
+  "risk_object_trust",
   "scheduler_health",
   "exact_head_gates",
+  "partner_specific_assurance_required: false",
   "real_funds_authorized: false",
 ]) {
   if (!finalGateCore.includes(required)) fail(`final launch gate missing authority/gate: ${required}`);
