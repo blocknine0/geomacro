@@ -68,6 +68,7 @@ jobs:
           BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
           RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-cycle.json
+          RSS_LIVE_SKIP_CORROBORATION: "true"
         shell: bash
         run: |
           set -euo pipefail
@@ -79,11 +80,13 @@ jobs:
             .edge_function_dependency == false and
             .source_summary.configured_source_count == .source_summary.completed_source_count and
             .corroboration.ok == true and
+            .corroboration.skipped == true and
+            .corroboration.reason == "explicit_partner_bootstrap_country_corroboration_follows" and
             .corroboration.threshold_weakening == false and
             .payment_performed == false and
             .execution_authorized == false
           ' /tmp/day6-rss-cycle.json >/dev/null
-          echo "PASS: governed RSS refresh completed through canonical direct-Postgres transport; no partner allowance used."
+          echo "PASS: governed RSS refresh completed through canonical direct-Postgres transport; global corroboration was explicitly skipped because country-specific strict corroboration follows; no partner allowance used."
 
       - name: Select strongest fresh strict candidate set
         id: candidates
