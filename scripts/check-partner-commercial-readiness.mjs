@@ -25,6 +25,8 @@ const assuranceAdapterPath = "scripts/partner-assurance-adapter.ts";
 const finalGateCorePath = "scripts/ops/final-launch-gate-core.mjs";
 const day6WorkflowPath = ".github/workflows/day6-partner-assurance-final.yml";
 const day6ProbeWorkflowPath = ".github/workflows/day6-fresh-evidence-probe.yml";
+const federicoRepeatabilityWorkflowPath = ".github/workflows/federico-repeatability.yml";
+const federicoRepeatabilityScriptPath = "scripts/check-federico-repeatability.mjs";
 
 for (const path of [
   discoveryPath,
@@ -38,6 +40,8 @@ for (const path of [
   finalGateCorePath,
   day6WorkflowPath,
   day6ProbeWorkflowPath,
+  federicoRepeatabilityWorkflowPath,
+  federicoRepeatabilityScriptPath,
 ]) {
   if (!existsSync(path)) fail(`missing required partner artifact: ${path}`);
 }
@@ -52,6 +56,8 @@ const adapter = readFileSync(assuranceAdapterPath, "utf8");
 const finalGateCore = readFileSync(finalGateCorePath, "utf8");
 const day6Workflow = readFileSync(day6WorkflowPath, "utf8");
 const day6ProbeWorkflow = readFileSync(day6ProbeWorkflowPath, "utf8");
+const federicoRepeatabilityWorkflow = readFileSync(federicoRepeatabilityWorkflowPath, "utf8");
+const federicoRepeatabilityScript = readFileSync(federicoRepeatabilityScriptPath, "utf8");
 
 if (discovery.schema_version !== "geomacro-partner-verification-v1") {
   fail("unexpected partner discovery schema_version");
@@ -73,6 +79,15 @@ if (discovery.federation?.receiver_side_verification_required !== true) {
 }
 if (discovery.security?.no_execution_authority !== true) {
   fail("partner verification must not grant execution authority");
+}
+if (
+  discovery.repeatability?.same_immutable_record_same_hash_and_signature_result !== true ||
+  discovery.repeatability?.stale_or_insufficient_evidence_fails_closed !== true ||
+  Number(discovery.repeatability?.deterministic_positive_control_runs_per_gate ?? 0) !== 5 ||
+  discovery.repeatability?.live_partner_review_scheduled !== false ||
+  discovery.repeatability?.partner_allowance_requires_explicit_authorization !== true
+) {
+  fail("Federico repeatability contract is incomplete");
 }
 if (discovery.commercial_path?.production_pilot !== "contract_required") {
   fail("production pilot must require a contract");
@@ -221,6 +236,33 @@ if (!positiveWorkflow.includes("persist-credentials: false")) {
 if (!positiveWorkflow.includes("check-federico-positive-control.ts")) {
   fail("positive-control workflow does not execute the known-good verifier");
 }
+for (const required of [
+  'cron: "13 */6 * * *"',
+  "check-federico-repeatability.mjs",
+  "persist-credentials: false",
+]) {
+  if (!federicoRepeatabilityWorkflow.includes(required)) {
+    fail(`Federico repeatability workflow missing marker: ${required}`);
+  }
+}
+if (
+  federicoRepeatabilityWorkflow.includes("INVINO_API_KEY") ||
+  federicoRepeatabilityWorkflow.includes("use_partner_allowance=true")
+) {
+  fail("Federico repeatability workflow must never spend partner allowance");
+}
+for (const required of [
+  "POSITIVE_CONTROL_RUNS = 5",
+  "POSITIVE_CONTROL_NON_DETERMINISTIC",
+  "PUBLIC_PARTNER_CONTRACT_NON_DETERMINISTIC",
+  "ACTIVE_TRUST_SET_CHANGED_WITHIN_PROBE",
+  "partner_allowance_used: 0",
+  "user_funds_used: false",
+]) {
+  if (!federicoRepeatabilityScript.includes(required)) {
+    fail(`Federico repeatability verifier missing marker: ${required}`);
+  }
+}
 
 console.log(JSON.stringify({
   ok: true,
@@ -237,4 +279,7 @@ console.log(JSON.stringify({
   production_pilot: discovery.commercial_path.production_pilot,
   paid_api: discovery.commercial_path.paid_api,
   fail_closed: discovery.federation.fail_closed,
+  federico_repeatability_gate: discovery.repeatability.no_spend_ci,
+  federico_repeatability_same_record_deterministic:
+    discovery.repeatability.same_immutable_record_same_hash_and_signature_result,
 }, null, 2));
