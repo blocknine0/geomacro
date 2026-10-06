@@ -18,8 +18,8 @@ as $$
     'warn_bytes', 419430400,
     'freeze_bytes', 471859200,
     'mode', case
-      when pg_database_size(current_database()) >= 471859200 then 'freeze'
-      when pg_database_size(current_database()) >= 419430400 then 'warn'
+      when pg_database_size(current_database()) >= 471859200 then 'frozen'
+      when pg_database_size(current_database()) >= 419430400 then 'warning'
       else 'normal'
     end,
     'bulk_write_allowed', pg_database_size(current_database()) < 471859200
