@@ -1,7 +1,8 @@
 name: Day 6 Authorized Federico Pilot Once
 
 # One-time owner-authorized bridge because the connector cannot issue workflow_dispatch.
-# Retriggered only after #1536 permanently removed Supabase Edge from governed RSS.\n# This file is deleted after the resulting partner proof is verified.
+# Retriggered only after #1536 permanently removed Supabase Edge from governed RSS.\n# Retriggered after #1543 fixed local canonical ingest npm:jose compatibility.
+# This file is deleted after the resulting partner proof is verified.
 on:
   push:
     branches: [main]
