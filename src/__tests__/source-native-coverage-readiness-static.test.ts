@@ -56,13 +56,17 @@ describe("source-native three-domain coverage readiness", () => {
     expect(fastlane).toContain("FASTLANE_GDELT_COVERAGE_MAINTENANCE_UNSATISFIED");
   });
 
-  it("runs the coverage refresh only after the public Intelligence publisher succeeds", () => {
+  it("refreshes source-native GDELT coverage only after verified event-export publication", () => {
     const publisherSuccess = wrapper.indexOf("if (result.status === 0)");
+    const transportGate = wrapper.indexOf('if (sourceTransport === "event_export")');
     const refreshRun = wrapper.indexOf("spawnSync(\"bun\", [COVERAGE_REFRESHER]");
     expect(publisherSuccess).toBeGreaterThan(-1);
-    expect(refreshRun).toBeGreaterThan(publisherSuccess);
+    expect(transportGate).toBeGreaterThan(publisherSuccess);
+    expect(refreshRun).toBeGreaterThan(transportGate);
     expect(wrapper).toContain("GDELT_COVERAGE_RUNTIME_REFRESH_FAILED");
-    expect(wrapper).toContain("coverage_runtime_refreshed: true");
+    expect(wrapper).toContain("coverageRuntimeRefreshed = true");
+    expect(wrapper).toContain('sourceTransport !== "doc_v2_articlelist"');
+    expect(wrapper).toContain("coverage_runtime_refreshed: coverageRuntimeRefreshed");
   });
 
   it("keeps the migration security-invoker and service-role-only contract", () => {

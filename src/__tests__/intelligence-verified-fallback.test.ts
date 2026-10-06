@@ -55,6 +55,8 @@ describe("Intelligence verified fallback contract", () => {
     expect(directPublisher).toContain('GDELT_LAST_UPDATE_URL = "https://data.gdeltproject.org/gdeltv2/lastupdate.txt"');
     expect(directPublisher).toContain("GDELT_EXPECTED_COLUMNS = 61");
     expect(directPublisher).toContain('CURRENT_EVIDENCE_CONTRACT = "gdelt-v2-event-export-conflict-root-v1"');
+    expect(directPublisher).toContain("readGdeltDocCurrentRows");
+    expect(directPublisher).toContain("current_source_transport: current.sourceTransport");
     expect(directPublisher).toContain("CURRENT_GDELT_EXPORT_MD5_MISMATCH");
     expect(directPublisher).toContain('public_status: "live_observed"');
     expect(directPublisher).toContain('title = `Geomacro observes ${label} in ${place}${countrySuffix}`');

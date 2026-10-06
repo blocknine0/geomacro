@@ -10,7 +10,12 @@ const B2_BUCKET = "geomacro-private-archive";
 const LIVE_KEY = "geomacro-evidence/v1/live/public-intelligence/latest.json.gz";
 const PROOF_KEY = "geomacro-evidence/v1/live/public-intelligence/latest-proof.json";
 const CLASSIFICATION_VERSION = "event-severity-v1.0.5";
-const CURRENT_EVIDENCE_CONTRACT = "gdelt-v2-event-export-conflict-root-v1";
+const EVENT_EXPORT_EVIDENCE_CONTRACT = "gdelt-v2-event-export-conflict-root-v1";
+const DOC_EVIDENCE_CONTRACT = "gdelt-doc-v2-conflict-coverage-v1";
+const ALLOWED_CURRENT_EVIDENCE_CONTRACTS = new Set([
+  EVENT_EXPORT_EVIDENCE_CONTRACT,
+  DOC_EVIDENCE_CONTRACT,
+]);
 const REQUIRED_CATEGORIES = ["geopolitics", "macro", "rare_earth"];
 const ROWS_PER_CATEGORY = 40;
 const MAX_LIVE_OBSERVED_ROWS = 24;
@@ -88,7 +93,7 @@ async function readVerifiedExistingLive(b2) {
     proof?.source_project !== PROJECT_REF ||
     proof?.live_key !== LIVE_KEY ||
     proof?.classification_version !== CLASSIFICATION_VERSION ||
-    proof?.current_evidence_contract !== CURRENT_EVIDENCE_CONTRACT ||
+    !ALLOWED_CURRENT_EVIDENCE_CONTRACTS.has(String(proof?.current_evidence_contract ?? "")) ||
     proof?.current_source_id !== "gdelt_v2_events" ||
     proof?.full_b2_readback_verified !== true ||
     proof?.exact_gzip_restore_verified !== true ||
@@ -102,7 +107,7 @@ async function readVerifiedExistingLive(b2) {
     value?.schema !== "geomacro.public-intelligence-live.v1" ||
     value?.source_project !== PROJECT_REF ||
     value?.classification_version !== CLASSIFICATION_VERSION ||
-    value?.current_evidence_contract !== CURRENT_EVIDENCE_CONTRACT ||
+    value?.current_evidence_contract !== proof?.current_evidence_contract ||
     value?.raw_source_headlines_exposed !== false ||
     value?.provider_identity_exposed !== false
   ) throw new Error("FASTLANE_PRESERVE_EXISTING_BINDING_INVALID");
@@ -118,6 +123,9 @@ async function readVerifiedExistingLive(b2) {
     batchIso: proof.current_source_batch_at,
     exportMd5: proof.current_source_export_md5,
     fipsSha256: proof.current_source_fips_sha256,
+    sourceDigest: proof.current_source_digest ?? proof.current_source_export_md5 ?? null,
+    sourceTransport: proof.current_source_transport ?? "event_export",
+    evidenceContract: proof.current_evidence_contract,
   };
 }
 
@@ -225,7 +233,7 @@ const value = {
   source_project: PROJECT_REF,
   scoring_policy: "canonical-scored-plus-certified-current-unscored",
   classification_version: CLASSIFICATION_VERSION,
-  current_evidence_contract: CURRENT_EVIDENCE_CONTRACT,
+  current_evidence_contract: preserved.evidenceContract,
   public_language: "en",
   raw_source_headlines_exposed: false,
   provider_identity_exposed: false,
@@ -251,9 +259,11 @@ const proofValue = {
   source_project: PROJECT_REF,
   live_key: LIVE_KEY,
   classification_version: CLASSIFICATION_VERSION,
-  current_evidence_contract: CURRENT_EVIDENCE_CONTRACT,
+  current_evidence_contract: preserved.evidenceContract,
   current_source_id: "gdelt_v2_events",
+  current_source_transport: preserved.sourceTransport,
   current_source_batch_at: preserved.batchIso,
+  current_source_digest: preserved.sourceDigest,
   current_source_export_md5: preserved.exportMd5,
   current_source_fips_sha256: preserved.fipsSha256,
   current_source_reused: true,

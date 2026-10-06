@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 const wrapper = readFileSync("scripts/ops/run-b2-public-intelligence-publisher.mjs", "utf8");
 const publisher = readFileSync("scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs", "utf8");
 const workflow = readFileSync(".github/workflows/intelligence-scored-refresh.yml", "utf8");
+const docFallback = readFileSync("scripts/ops/gdelt-doc-current-evidence.mjs", "utf8");
+const preserve = readFileSync("scripts/ops/republish-b2-public-intelligence-preserve-live.mjs", "utf8");
 
 describe("Intelligence GDELT availability contract", () => {
   it("retries only the documented rolling-manifest availability race within a hard bound", () => {
@@ -12,10 +14,31 @@ describe("Intelligence GDELT availability contract", () => {
     expect(wrapper).toContain("DEFAULT_POLL_MS = 10_000");
     expect(wrapper).toContain("if (!combined.includes(RETRYABLE_AVAILABILITY_ERROR))");
     expect(wrapper).toContain("CURRENT_GDELT_AVAILABILITY_WAIT_EXHAUSTED");
+    expect(wrapper).toContain('sourceTransport === "event_export"');
+    expect(wrapper).toContain('sourceTransport !== "doc_v2_articlelist"');
+    expect(wrapper).toContain("coverage_runtime_refreshed: coverageRuntimeRefreshed");
     expect(wrapper).not.toContain("--retry-all-errors");
   });
 
-  it("does not weaken publisher host, hash, schema, freshness or scoring guards", () => {
+  it("adds a bounded corroborated GDELT DOC fallback without weakening event-export integrity guards", () => {
+    expect(publisher).toContain("readCurrentGdeltEvidence");
+    expect(publisher).toContain("eventExportTransportUnavailable");
+    expect(publisher).toContain("GDELT_DOC_SOURCE_TRANSPORT");
+    expect(publisher).toContain("DOC_FALLBACK_FAILED");
+    expect(docFallback).toContain('GDELT_DOC_API_URL = "https://api.gdeltproject.org/api/v2/doc/doc"');
+    expect(docFallback).toContain('url.searchParams.set("timespan", "2h")');
+    expect(docFallback).toContain("MIN_INDEPENDENT_DOMAINS = 2");
+    expect(docFallback).toContain("group.domains.size >= MIN_INDEPENDENT_DOMAINS");
+    expect(docFallback).toContain("not a verified event claim");
+    expect(docFallback).toContain('public_status: "live_observed"');
+    expect(docFallback).toContain("severity: null");
+    expect(docFallback).toContain("delta: null");
+    expect(preserve).toContain("ALLOWED_CURRENT_EVIDENCE_CONTRACTS");
+    expect(preserve).toContain("preserved.evidenceContract");
+
+    // Event-export integrity errors remain hard failures and are never silently
+    // converted into DOC fallback evidence.
+
     expect(publisher).toContain('listed.hostname !== "data.gdeltproject.org"');
     expect(publisher).toContain("CURRENT_GDELT_EXPORT_MD5_MISMATCH");
     expect(publisher).toContain("GDELT_EXPECTED_COLUMNS = 61");
