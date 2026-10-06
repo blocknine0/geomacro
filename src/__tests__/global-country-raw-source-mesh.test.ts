@@ -66,6 +66,9 @@ describe("global country raw source mesh",()=>{
     expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("ldpwajisioljyjtojvfx");
     expect(workflow).toContain("sync-country-raw-source-mesh.mjs");
+    expect(workflow).toContain("COUNTRY_RAW_SOURCE_SYNC_OUTPUT=country-raw-source-sync.json");
+    expect(workflow).toContain("country-raw-source-sync.log");
+    expect(workflow).not.toContain("sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json");
     expect(workflow).toContain("live-structure-intelligence");
     expect(workflow.indexOf("Reconcile and capture country web/API sources")).toBeLessThan(
       workflow.indexOf("Verify 195-country three-category raw mesh"),
@@ -87,6 +90,8 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("GEO:GLOBAL:UKMTO:");
     expect(worker).toContain("const fragmentId = await saveFragment");
     expect(worker).toContain("fragment_ids: [...new Set(fragmentIds)]");
+    expect(worker).toContain("COUNTRY_RAW_SOURCE_SYNC_OUTPUT");
+    expect(worker).toContain("await writeFile(OUTPUT_PATH, resultJson, \"utf8\")");
   });
 
   it("keeps raw bytes private and hashed",()=>{
