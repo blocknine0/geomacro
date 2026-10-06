@@ -6,6 +6,8 @@ import { createGriDbClient } from "./lib/gri-db-client.mjs";
 
 const OUT = process.env.TELEGRAM_DISCOVERY_ROOTS_OUT || "artifacts/telegram-discovery-roots.json";
 const DOMAINS = new Set(["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"]);
+const OFFICIAL_IDENTITY_RE =
+  /(government|official state|central bank|national bank|ministry|department|geological|geoscience|statistics|statistical|customs|treasury|parliament|presiden|energy|mineral|finance|economy|trade)/i;
 
 function isHttpUrl(value) {
   try {
@@ -14,6 +16,11 @@ function isHttpUrl(value) {
   } catch {
     return false;
   }
+}
+
+function isOfficialIdentityRoot(source) {
+  return String(source.source_id ?? "").toLowerCase().startsWith("gov_portal_") ||
+    OFFICIAL_IDENTITY_RE.test(String(source.provider_name ?? ""));
 }
 
 async function main() {
@@ -40,11 +47,16 @@ async function main() {
     if (!cert) continue;
     if (!DOMAINS.has(String(source.category ?? "").toUpperCase())) continue;
     if (String(source.source_id ?? "").toLowerCase().startsWith("telegram")) continue;
-    if (cert.endpoint_status !== "PASS" || cert.endpoint_disposition !== "WORKING") continue;
     if (!cert.rights_status || cert.rights_status === "UNREVIEWED") continue;
 
     const rootUrl = cert.canonical_url || cert.endpoint_final_url || source.base_url;
     if (!isHttpUrl(rootUrl)) continue;
+
+    const runtimeVerified =
+      cert.endpoint_status === "PASS" &&
+      cert.endpoint_disposition === "WORKING";
+    const identityOnly = isOfficialIdentityRoot(source);
+    if (!runtimeVerified && !identityOnly) continue;
 
     roots.push({
       source_id: source.source_id,
@@ -52,6 +64,7 @@ async function main() {
       category: source.category,
       country_scope: source.country_scope,
       root_url: rootUrl,
+      discovery_tier: runtimeVerified ? "RUNTIME_VERIFIED" : "IDENTITY_ONLY",
       certification_state: cert.certification_state,
       rights_status: cert.rights_status,
       rights_evidence_ref: cert.rights_evidence_ref ?? null,
@@ -68,6 +81,15 @@ async function main() {
     if (!categories.has(domain)) throw new Error(`TELEGRAM_DISCOVERY_DOMAIN_MISSING:${domain}`);
   }
 
+  const identityCountryScopes = new Set(
+    roots
+      .filter((row) => row.discovery_tier === "IDENTITY_ONLY" && /^[A-Z]{3}$/.test(String(row.country_scope ?? "")))
+      .map((row) => row.country_scope),
+  );
+  if (identityCountryScopes.size < 150) {
+    throw new Error(`TELEGRAM_IDENTITY_DISCOVERY_COUNTRY_BREADTH_TOO_LOW:${identityCountryScopes.size}`);
+  }
+
   const rootsSha256 = createHash("sha256").update(JSON.stringify(roots)).digest("hex");
   const artifact = {
     schema: "geomacro.telegram-governed-discovery-roots.v1",
@@ -75,19 +97,26 @@ async function main() {
       discovery_only: true,
       auto_authorization: false,
       auto_activation: false,
-      endpoint_status_required: "PASS",
-      endpoint_disposition_required: "WORKING",
+      runtime_verified_requires_endpoint_pass: true,
+      identity_only_is_public_identity_discovery_only: true,
+      identity_only_may_have_nonworking_runtime_endpoint: true,
       rights_status_forbidden: "UNREVIEWED",
       telegram_sources_excluded: true,
     },
     root_count: roots.length,
+    identity_country_scope_count: identityCountryScopes.size,
     roots_sha256: rootsSha256,
     roots,
   };
 
   mkdirSync(OUT.split("/").slice(0, -1).join("/") || ".", { recursive: true });
   writeFileSync(OUT, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
-  process.stdout.write(`${JSON.stringify({ ok: true, root_count: roots.length, roots_sha256: rootsSha256 })}\n`);
+  process.stdout.write(`${JSON.stringify({
+    ok: true,
+    root_count: roots.length,
+    identity_country_scope_count: identityCountryScopes.size,
+    roots_sha256: rootsSha256,
+  })}\n`);
 }
 
 main().catch((error) => {
