@@ -79,6 +79,9 @@ describe("#1414 partner-independent final commercial launch gate", () => {
     expect(verifier).toContain("https://geomacro.live/api/risk-object-keys");
     expect(verifier).toContain("GENERIC_RISK_OBJECT_NOT_FRESH");
     expect(verifier).toContain("GENERIC_RISK_OBJECT_TAMPER_NOT_REJECTED");
+    expect(verifier).toContain("client_local_with_public_keys");
+    expect(verifier).toContain("GENERIC_RISK_OBJECT_PUBLIC_VERIFIER_PROBE_FAILED");
+    expect(verifier).toContain("verification_mode: verificationMode");
     expect(verifier).toContain("supabase_credentials_present: false");
     expect(verifier).toContain("external_payment_performed: false");
   });
