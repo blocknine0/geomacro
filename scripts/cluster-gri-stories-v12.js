@@ -3,7 +3,7 @@
 import dotenv from "dotenv";
 import Groq from "groq-sdk";
 import fetch from "node-fetch";
-import { createClient } from "@supabase/supabase-js";
+import { createGriDbClient } from "./lib/gri-db-client.mjs";
 import { createHash } from "node:crypto";
 
 dotenv.config();
@@ -21,27 +21,12 @@ const MAX_CLUSTER_CANDIDATES = 40;
 const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
 const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || "gpt-oss-120b";
 
-const supabaseUrl =
-  process.env.SUPABASE_URL || process.env.APP_SUPABASE_URL;
-
-const serviceRoleKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error("Supabase URL and service-role key are required");
-}
 
 if (!process.env.GROQ_API_KEY && !process.env.CEREBRAS_API_KEY) {
   throw new Error("GROQ_API_KEY or CEREBRAS_API_KEY is required");
 }
 
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-});
+const supabase = createGriDbClient();
 
 const groq = process.env.GROQ_API_KEY
   ? new Groq({ apiKey: process.env.GROQ_API_KEY })
