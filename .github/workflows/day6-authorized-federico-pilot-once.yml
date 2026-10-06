@@ -59,6 +59,19 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Resolve strict governed RSS source cohort
+        id: source_cohort
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_CSV="$(bun -e 'import { FEDERICO_STRICT_AUDITABLE_SOURCE_IDS } from "./src/lib/public-demo-risk-profile.ts"; process.stdout.write(FEDERICO_STRICT_AUDITABLE_SOURCE_IDS.join(","));')"
+          SOURCE_MAP_JSON="$(bun -e 'import { FEDERICO_STRICT_AUDITABLE_SOURCE_IDS, federicoStrictSourceFamilyForId } from "./src/lib/public-demo-risk-profile.ts"; process.stdout.write(JSON.stringify(Object.fromEntries(FEDERICO_STRICT_AUDITABLE_SOURCE_IDS.map((sourceId) => [sourceId, federicoStrictSourceFamilyForId(sourceId)]))));')"
+          test -n "$SOURCE_CSV"
+          test -n "$SOURCE_MAP_JSON"
+          echo "csv=$SOURCE_CSV" >> "$GITHUB_OUTPUT"
+          echo "family_map_json=$SOURCE_MAP_JSON" >> "$GITHUB_OUTPUT"
+          echo "Resolved Federico strict governed RSS source cohort from canonical policy."
+
       - name: Validate one-time prerequisites
         shell: bash
         run: |
@@ -89,7 +102,7 @@ jobs:
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
           BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
-          BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"
+          BREAKING_RSS_SOURCE_IDS: ${{ steps.source_cohort.outputs.csv }}
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
           RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-cycle.json
           RSS_LIVE_SKIP_CORROBORATION: "true"
@@ -131,25 +144,26 @@ jobs:
 
       - name: Select strongest fresh strict candidate set
         id: candidates
+        env:
+          STRICT_SOURCE_MAP_JSON: ${{ steps.source_cohort.outputs.family_map_json }}
         shell: bash
         run: |
           set -euo pipefail
-          psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL' > /tmp/day6-candidates.txt
-          with recent as (
+          psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At -v strict_source_map="$STRICT_SOURCE_MAP_JSON" <<'SQL' > /tmp/day6-candidates.txt
+          with source_map as (
+            select key as source_id, value as source_family
+            from jsonb_each_text(:'strict_source_map'::jsonb)
+          ),
+          recent as (
             select
               c.country_iso3,
               e.source_id,
+              m.source_family,
               e.published_at as evidence_at
             from public.live_flash_events e
+            join source_map m on m.source_id=e.source_id
             join public.live_flash_event_countries c on c.flash_id=e.flash_id
-            where e.source_id in (
-              'xinhua_english_china_rss',
-              'scmp_china_rss',
-              'forexlive_rss',
-              'aljazeera_rss',
-              'bbc_world_rss'
-            )
-              and e.published_at is not null
+            where e.published_at is not null
               and e.published_at >= now() - interval '6 hours'
               and e.published_at <= now()
               and c.country_iso3 ~ '^[A-Z]{3}$'
@@ -157,8 +171,8 @@ jobs:
           select country_iso3
           from recent
           group by country_iso3
-          having count(distinct source_id) >= 2
-          order by count(distinct source_id) desc, count(*) desc, max(evidence_at) desc, country_iso3
+          having count(distinct source_family) >= 2
+          order by count(distinct source_family) desc, count(*) desc, max(evidence_at) desc, country_iso3
           limit 8;
           SQL
           test -s /tmp/day6-candidates.txt || {
