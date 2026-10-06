@@ -59,6 +59,9 @@ describe("verified B2 structural serving continuity", () => {
     expect(workflow).toContain("B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}");
     expect(client).toContain("explicitReadAccessKey || dedicatedReadAccessKey || archiveWriteAccessKey");
     expect(client).toContain('method === "GET" && readCredentialsSeparate');
+    expect(client).toContain('errorCode === "AccessDenied"');
+    expect(client).toContain('role: "primary"');
+    expect(client).toContain("read_fallback_to_primary_available");
     expect(client).toContain("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
   });
 
@@ -79,6 +82,10 @@ describe("verified B2 structural serving continuity", () => {
     expect(reader).toContain("process.env.B2_KEY_ID");
     expect(reader).toContain("process.env.B2_APPLICATION_KEY");
     expect(reader).toContain("Boolean(dedicatedAccessKey) !== Boolean(dedicatedSecretKey)");
+    expect(reader).toContain("Boolean(primaryAccessKey) !== Boolean(primarySecretKey)");
+    expect(reader).toContain('role: "read"');
+    expect(reader).toContain('role: "primary"');
+    expect(reader).toContain("response.status === 403");
     expect(reader).not.toContain("VITE_B2");
     expect(reader).toContain("STRUCTURAL_B2_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000");
     expect(reader).toContain('payload.source_project !== HISTORICAL_PROJECT_REF');
