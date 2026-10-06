@@ -28,6 +28,11 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY");
     expect(workflow).toContain("Dedicated B2 archive read credentials must be supplied as a complete pair.");
     expect(workflow).toContain("otherwise existing verified B2 credentials");
+    expect(workflow).toContain("e.published_at as evidence_at");
+    expect(workflow).toContain("e.published_at is not null");
+    expect(workflow).toContain("e.published_at >= now() - interval '6 hours'");
+    expect(workflow).toContain("e.published_at <= now()");
+    expect(workflow).not.toContain("coalesce(e.published_at,e.last_seen_at,e.ingested_at)");
     expect(workflow).not.toContain(".supabase.co/functions/v1/");
     expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_URL");
   });
