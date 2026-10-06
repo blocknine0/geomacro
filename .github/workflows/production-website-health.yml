@@ -78,10 +78,11 @@ jobs:
           grep -Fq 'real-money access remains fail-closed until separately authorized for production' src/routes/pricing.tsx
 
           grep -Fq 'COMMERCIAL RISK INTELLIGENCE' src/routes/institutional.tsx
-          grep -Fq 'execution_authorized=false' src/routes/risk-gate.tsx
+          grep -Fq 'Risk Gate' src/routes/risk-gate.tsx
           grep -Fq '"classification": "PRODUCTION", "status": "LIVE"' config/commercial-route-disposition.json
           grep -Fq 'Risk API: PRIVATE PILOT' public/llms.txt
           grep -Fq 'Risk Gate: PRIVATE PILOT' public/llms.txt
+          grep -Fq 'execution_authorized=false' public/llms.txt
 
           python - <<'PY'
           from pathlib import Path
