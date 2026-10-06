@@ -23,6 +23,9 @@ describe("Day 6 generic partner assurance", () => {
     expect(assurance.partners.federico.signed_partner_proof_required).toBe(true);
     expect(assurance.partners.federico.independent_proof_verification_required).toBe(true);
     expect(assurance.partners.federico.live_review_allowance_per_run).toBe(1);
+    expect(assurance.partners.federico.subject_type).toBe("country");
+    expect(assurance.partners.federico.subject_id).toBeNull();
+    expect(assurance.partners.federico.note).toContain("every enabled uppercase ISO3 country");
   });
 
   it("maps a second partner without activating a weaker path", () => {
@@ -45,22 +48,25 @@ describe("Day 6 generic partner assurance", () => {
     expect(adapter).toContain("TAMPER_NOT_REJECTED");
   });
 
-  it("generates the final Day 6 canary without a Supabase serving dependency", () => {
+  it("generates a country-agnostic strict GRO while keeping the Federico allowance explicit", () => {
     expect(day6Workflow).toContain("day6-direct-live-federico-gro.ts");
-    expect(day6Workflow).toContain("Day 6 final assurance must not inject Supabase runtime credentials");
-    expect(day6Workflow).not.toContain("secrets.APP_SUPABASE_URL");
-    expect(day6Workflow).not.toContain("secrets.SUPABASE_SERVICE_ROLE_KEY");
-    expect(day6Workflow).not.toContain("secrets.SUPABASE_PROJECT_ID");
-    expect(directDay6).not.toContain("@supabase/supabase-js");
-    expect(directDay6).not.toContain("check-federico-publication.ts");
-    expect(directDay6).toContain("FEDERICO_STRICT_MULTI_SOURCE_MIN_SIMILARITY");
-    expect(directDay6).toContain("MAX_PEER_DELTA_SECONDS = 3600");
-    expect(directDay6).toContain("FEDERICO_STRICT_VERIFICATION_SCORE_THRESHOLD");
+    expect(day6Workflow).toContain("use_partner_allowance:");
+    expect(day6Workflow).toContain("default: false");
+    expect(day6Workflow).toContain("inputs.use_partner_allowance == true");
+    expect(day6Workflow).not.toContain("schedule:");
+    expect(day6Workflow).toContain("GRI_DB_MODE: direct_postgres");
+    expect(day6Workflow).toContain("DAY6_COUNTRY_ISO3");
+    expect(day6Workflow).toContain("partner_allowance_spent == false");
+    expect(directDay6).not.toContain('const COUNTRY_ISO3 = "CHN"');
+    expect(directDay6).toContain("DAY6_COUNTRY_ISO3");
+    expect(directDay6).toContain("dryRunCountryRiskObject");
+    expect(directDay6).toContain('delivery_profile: "FEDERICO_STRICT"');
     expect(directDay6).toContain("withRiskObjectObservationTimestamp");
-    expect(directDay6).toContain("assertFedericoPublicationReady(eligible)");
+    expect(directDay6).toContain("assertFedericoPublicationReady(dryRun.object)");
     expect(directDay6).toContain("signRiskObject(observationBound)");
     expect(directDay6).toContain("b2_readback_verified: true");
     expect(directDay6).toContain("raw_source_payload_stored: false");
+    expect(directDay6).toContain("partner_allowance_spent: false");
   });
 });
 

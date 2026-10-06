@@ -23,13 +23,14 @@
       "delivery_profile": "FEDERICO_STRICT",
       "calculation_namespace": "federico_strict_evidence_v1",
       "subject_type": "country",
-      "subject_id": "CHN",
+      "subject_id": null,
       "provider": "invinoveritas",
       "provider_preflight": "scripts/invinoveritas-risk-object-preflight.ts",
       "live_review_allowed": true,
       "signed_partner_proof_required": true,
       "independent_proof_verification_required": true,
-      "live_review_allowance_per_run": 1
+      "live_review_allowance_per_run": 1,
+      "note": "Country-agnostic strict assurance. The same signed-object, freshness, provenance, independence, tamper and proof gates apply to every enabled uppercase ISO3 country. Live partner review still requires separate explicit allowance opt-in."
     },
     "goat": {
       "status": "MAPPED_NOT_ACTIVATED",

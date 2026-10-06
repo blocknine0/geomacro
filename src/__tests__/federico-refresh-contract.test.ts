@@ -27,7 +27,9 @@ describe("Federico refresh contract", () => {
 
   it("is manual-only because partner refresh cadence is no longer a live intelligence cron", () => {
     const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
-    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("use_partner_allowance:");
+    expect(workflow).toContain("default: false");
     expect(workflow).not.toContain("push:");
     expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("scripts/invinoveritas-risk-object-preflight.ts");
@@ -49,7 +51,9 @@ describe("Federico refresh contract", () => {
     expect(workflow).toContain("Verify every configured RSS source completed");
     expect(workflow).toContain("event.get('rss') == 'ready'");
     expect(workflow).toContain("event.get('kind') in {'rss_source_complete', 'rss_error'}");
-    expect(workflow).toContain('country_iso3:\"CHN\",as_of:$as_of,candidate_offset:$offset');
+    expect(workflow).toContain('--arg country_iso3 "$TARGET_ISO3"');
+    expect(workflow).toContain('{country_iso3:$country_iso3,as_of:$as_of,candidate_offset:$offset}');
+    expect(workflow).not.toContain('country_iso3:\"CHN\",as_of:$as_of,candidate_offset:$offset');
     const corroborator = read(
       "supabase/functions/live-flash-corroborate/index.ts",
     );
@@ -68,6 +72,10 @@ describe("Federico refresh contract", () => {
     expect(workflow).toContain("federico-no-publication-${{ github.run_id }}");
     expect(workflow).toContain("sha256sum corroboration.ndjson evidence-readiness.json no-publication.json > SHA256SUMS.txt");
     expect(workflow).toContain("if: ${{ steps.readiness.outputs.ready == 'true' }}");
-    expect(workflow).toContain("bun scripts/publish-country-risk-object.ts CHN FEDERICO_STRICT");
+    expect(workflow).toContain('bun scripts/publish-country-risk-object.ts "$TARGET_ISO3" FEDERICO_STRICT');
+    expect(workflow).toContain('bun scripts/check-federico-publication.ts "$TARGET_ISO3"');
+    expect(workflow).toContain("inputs.use_partner_allowance == true");
+    expect(workflow).toContain('.gates.live_partner_review == "NOT_RUN"');
+    expect(workflow).toContain("owner_did_not_authorize_partner_allowance");
   });
 });

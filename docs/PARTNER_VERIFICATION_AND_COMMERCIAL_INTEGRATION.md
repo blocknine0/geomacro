@@ -18,7 +18,7 @@ The receiver owns the final admission decision and should pin approved key finge
 
 ## 2. Federico strict profile
 
-The `federico-strict-evidence-v1` profile is a bounded partner evaluation profile. It is fail-closed and requires multiple independent source families. The deterministic positive-control fixture proves the gate can open for a known-good vector without weakening the live evidence gate.
+The `federico-strict-evidence-v1` profile is a bounded partner evaluation profile. It is fail-closed and requires multiple independent source families. The profile is country-agnostic: the same cryptographic, provenance, independence, freshness, commercial-eligibility, tamper and receiver-verification rules apply to every enabled uppercase ISO3 country. A country with insufficient current evidence remains `UNREADY`/`NO_PUBLICATION`; no country-specific threshold is weakened to force availability. The deterministic positive-control fixture proves the gate can open for a known-good vector without weakening the live evidence gate.
 
 The positive control is synthetic and must never be treated as production evidence.
 

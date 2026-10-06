@@ -141,15 +141,6 @@ export const FEDERICO_STRICT_AUDITABLE_SOURCE_IDS = [
   "bbc_world_rss",
 ] as const;
 
-export const FEDERICO_STRICT_CHINA_NEXUS_TERMS = [
-  "china",
-  "chinese",
-  "beijing",
-  "shanghai",
-  "prc",
-  "hong kong",
-  "taiwan",
-] as const;
 
 export type RiskObjectDeliveryProfile =
   | "CANONICAL"

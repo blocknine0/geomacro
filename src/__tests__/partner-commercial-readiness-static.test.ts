@@ -5,6 +5,9 @@ const read = (path: string) => readFileSync(path, "utf8");
 const discovery = JSON.parse(
   read("public/.well-known/geomacro-partner-verification.json"),
 ) as any;
+const assurance = JSON.parse(
+  read("config/partner-assurance.v1.json"),
+) as any;
 
 describe("partner commercial readiness", () => {
   it("publishes a machine-readable external verification contract", () => {
@@ -15,6 +18,9 @@ describe("partner commercial readiness", () => {
     expect(discovery.federation.supported_profile).toBe("federico-strict-evidence-v1");
     expect(discovery.federation.receiver_side_verification_required).toBe(true);
     expect(discovery.federation.fail_closed).toBe(true);
+    expect(assurance.partners.federico.delivery_profile).toBe("FEDERICO_STRICT");
+    expect(assurance.partners.federico.subject_type).toBe("country");
+    expect(assurance.partners.federico.subject_id).toBeNull();
   });
 
   it("keeps commercial use contract-gated and derived-output bounded", () => {
@@ -33,6 +39,9 @@ describe("partner commercial readiness", () => {
     expect(preflight).toContain("execution_authorized: false");
     expect(preflight).toContain("independent_node");
     expect(preflight).toContain("partial_disclosure");
+    expect(preflight).toContain('receiver_policy_id: "federico-global-country-risk-v1"');
+    expect(preflight).toContain("subject_id: reviewSubjectId");
+    expect(preflight).not.toContain('subject_id: "CHN"');
   });
 
   it("documents the path from evaluation to a commercial agreement", () => {

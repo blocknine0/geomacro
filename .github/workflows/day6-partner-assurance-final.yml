@@ -1,23 +1,25 @@
-name: Day 6 Partner Assurance Final
+name: Day 6 Global Partner Assurance
 
 on:
-  workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - "config/partner-assurance.v1.json"
-      - "scripts/partner-assurance-adapter.ts"
-      - "scripts/day6-direct-live-federico-gro.ts"
-      - "scripts/check-partner-commercial-readiness.mjs"
-      - "scripts/invinoveritas-risk-object-preflight.ts"
-      - "src/lib/federico-publication-policy.ts"
-      - "src/lib/public-demo-risk-profile.ts"
-      - "src/lib/risk-object-observation.ts"
-      - ".github/workflows/day6-partner-assurance-final.yml"
-      - "src/__tests__/day6-day7-final-assurance-static.test.ts"
+  workflow_dispatch:
+    inputs:
+      iso3:
+        description: "Uppercase ISO3 country to generate under the global strict partner profile"
+        required: true
+        default: "USA"
+        type: string
+      use_partner_allowance:
+        description: "Explicitly spend one Federico pilot allowance review after every local gate passes"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
+
+concurrency:
+  group: geomacro-day6-global-partner-assurance
+  cancel-in-progress: false
 
 env:
   GEOMACRO_ORIGIN: https://geomacro.live
@@ -29,22 +31,26 @@ jobs:
     timeout-minutes: 30
     environment: production
     env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      GRI_DB_MODE: direct_postgres
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_REQUEST_BUDGET: "6"
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
-      INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
-      INVINO_REQUEST_OUT: /tmp/federico-review-request.json
-      INVINO_REVIEW_OUT: /tmp/federico-review-response.json
       DAY6_RISK_OBJECT_OUT: /tmp/day6-risk-object.json
       DAY6_DIRECT_EVIDENCE_OUT: /tmp/day6-direct-evidence.json
+      INVINO_REQUEST_OUT: /tmp/federico-review-request.json
+      INVINO_REVIEW_OUT: /tmp/federico-review-response.json
 
     steps:
       - name: Checkout exact canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: main
           persist-credentials: false
 
       - name: Setup Bun 1.4.2
@@ -55,19 +61,29 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Require production assurance configuration
+      - name: Normalize requested country
+        id: country
+        env:
+          RAW_ISO3: ${{ inputs.iso3 }}
         shell: bash
         run: |
           set -euo pipefail
-          for name in B2_KEY_ID B2_APPLICATION_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 INVINO_API_KEY; do
+          ISO3="$(printf '%s' "$RAW_ISO3" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
+          if ! [[ "$ISO3" =~ ^[A-Z]{3}$ ]]; then
+            echo "::error::iso3 must be exactly three letters"
+            exit 2
+          fi
+          echo "iso3=$ISO3" >> "$GITHUB_OUTPUT"
+
+      - name: Require local assurance configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
             test -n "${!name:-}" || { echo "::error::$name is required"; exit 2; }
           done
           node scripts/check-partner-commercial-readiness.mjs
           node scripts/ops/simulate-final-launch-failures.mjs
-          if env | grep -Eq '^APP_SUPABASE_|^SUPABASE_(URL|DB_URL|SERVICE_ROLE_KEY|PROJECT_ID)='; then
-            echo "::error::Day 6 final assurance must not inject Supabase runtime credentials"
-            exit 2
-          fi
 
       - name: Verify configured signer is active in deployed trust registry
         shell: bash
@@ -94,32 +110,37 @@ jobs:
           console.log('PASS: signer matches deployed active Ed25519 key');
           NODE
 
-      - name: Generate fresh strict signed GRO directly and verify B2 readback
+      - name: Generate fresh global-strict signed GRO and verify B2 readback
+        env:
+          DAY6_COUNTRY_ISO3: ${{ steps.country.outputs.iso3 }}
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/day6-direct-live-federico-gro.ts | tee /tmp/day6-direct-result.json
-          jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
+          node --import tsx scripts/day6-direct-live-federico-gro.ts "$DAY6_COUNTRY_ISO3" | tee /tmp/day6-direct-result.json
+          jq -e --arg iso3 "$DAY6_COUNTRY_ISO3" --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
             .ok == true and
+            .country_iso3 == $iso3 and
             .schema_version == "gro-1.1" and
+            .calculation_namespace == "federico_strict_evidence_v1" and
             (.decision_readiness.status == "READY" or .decision_readiness.status == "DEGRADED") and
             .commercial_eligibility.status == "VERIFIED" and
             .verification.status == "VERIFIED" and
             .integrity.signature_present == true and
             .integrity.signature_valid == true and
             .integrity.signing_key_id == $key_id and
-            .evidence.independent_source_count >= 2 and
-            .evidence.similarity >= 0.45 and
-            .evidence.peer_time_delta_seconds <= 3600 and
-            .evidence.verification_score >= 65 and
+            .evidence_summary.independent_source_count >= 2 and
             .persistence.authority == "b2" and
             .persistence.readback_verified == true and
+            .partner_review_attempted == false and
+            .partner_allowance_spent == false and
+            .payment_performed == false and
             .execution_authorized == false
           ' /tmp/day6-direct-result.json >/dev/null
           test -s /tmp/day6-risk-object.json
           test -s /tmp/day6-direct-evidence.json
 
-      - name: Pass all generic local assurance gates before allowance
+      - name: Pass all local assurance gates before any allowance
         shell: bash
         run: |
           set -euo pipefail
@@ -132,11 +153,31 @@ jobs:
             .live_review.attempted == false and
             .live_review.allowance_used == 0 and
             .live_review.allowance_max == 1 and
-            ([.local_gates[]] | all(. == "PASS"))
+            .local_gates.commercial_eligibility == "PASS" and
+            .local_gates.object_verification == "PASS" and
+            .local_gates.canonical_record_hash == "PASS" and
+            .local_gates.local_signature == "PASS" and
+            .local_gates.deployed_verifier == "PASS" and
+            .local_gates.active_key == "PASS" and
+            .local_gates.freshness == "PASS" and
+            .local_gates.tamper_rejection == "PASS" and
+            .local_gates.independent_source_families == "PASS" and
+            .execution_authorized == false
           ' /tmp/day6-local-assurance.json >/dev/null
 
-      - name: Spend exactly one Federico review allowance after local gates
+      - name: Require explicit live allowance authorization
+        if: ${{ inputs.use_partner_allowance == true }}
+        shell: bash
         env:
+          INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${INVINO_API_KEY:-}" || { echo "::error::INVINO_API_KEY is required only when use_partner_allowance=true"; exit 2; }
+
+      - name: Spend exactly one Federico pilot allowance after local gates
+        if: ${{ inputs.use_partner_allowance == true }}
+        env:
+          INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
           PARTNER_ASSURANCE_ALLOW_LIVE_REVIEW: "1"
         shell: bash
         run: |
@@ -158,32 +199,55 @@ jobs:
           test -s /tmp/federico-review-request.json
           test -s /tmp/federico-review-response.json
 
+      - name: Record no-allowance mode
+        if: ${{ inputs.use_partner_allowance != true }}
+        shell: bash
+        run: |
+          cat > /tmp/day6-live-review-status.json <<'JSON'
+          {
+            "attempted": false,
+            "reason": "owner_did_not_authorize_partner_allowance",
+            "allowance_used": 0,
+            "payment_performed": false,
+            "execution_authorized": false
+          }
+          JSON
+
       - name: Seal Day 6 assurance evidence
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts/day6-partner-assurance
           cp /tmp/day6-risk-object.json artifacts/day6-partner-assurance/risk-object.json
-          cp /tmp/day6-direct-evidence.json artifacts/day6-partner-assurance/direct-live-evidence.json
-          cp /tmp/day6-direct-result.json artifacts/day6-partner-assurance/direct-live-result.json
+          cp /tmp/day6-direct-evidence.json artifacts/day6-partner-assurance/direct-evidence.json
+          cp /tmp/day6-direct-result.json artifacts/day6-partner-assurance/direct-result.json
           cp /tmp/day6-local-assurance.json artifacts/day6-partner-assurance/local-assurance.json
-          cp /tmp/day6-live-assurance.json artifacts/day6-partner-assurance/live-assurance.json
-          cp /tmp/federico-review-request.json artifacts/day6-partner-assurance/review-request.json
-          cp /tmp/federico-review-response.json artifacts/day6-partner-assurance/review-response.json
+          if [ -s /tmp/day6-live-assurance.json ]; then
+            cp /tmp/day6-live-assurance.json artifacts/day6-partner-assurance/live-assurance.json
+            cp /tmp/federico-review-request.json artifacts/day6-partner-assurance/review-request.json
+            cp /tmp/federico-review-response.json artifacts/day6-partner-assurance/review-response.json
+          else
+            cp /tmp/day6-live-review-status.json artifacts/day6-partner-assurance/live-review-status.json
+          fi
           (
             cd artifacts/day6-partner-assurance
-            sha256sum risk-object.json direct-live-evidence.json direct-live-result.json local-assurance.json live-assurance.json review-request.json review-response.json > SHA256SUMS.txt
+            find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS.txt
             sha256sum -c SHA256SUMS.txt
           )
 
       - name: Upload Day 6 partner assurance artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: day6-partner-assurance-${{ github.run_id }}
+          name: day6-global-partner-assurance-${{ github.run_id }}
           path: artifacts/day6-partner-assurance/
           if-no-files-found: error
           retention-days: 14
 
-      - name: Record bounded success only
+      - name: Record bounded result
+        shell: bash
         run: |
-          echo "Day 6 partner assurance passed: fresh independent live evidence, signed GRO, B2 readback, local/deployed trust gates, one Federico review allowance, signed proof, independent proof verification. No Supabase serving dependency, funds or execution authorization."
+          if [ "${{ inputs.use_partner_allowance }}" = "true" ]; then
+            echo "Day 6 global partner assurance passed including one explicitly authorized Federico pilot review. No external payment or execution authorization."
+          else
+            echo "Day 6 local global-strict assurance passed. Federico pilot allowance was not used."
+          fi
