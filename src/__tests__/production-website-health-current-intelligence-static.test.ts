@@ -37,10 +37,12 @@ describe("Production Website Health current Intelligence contract", () => {
     expect(workflow).toContain("Browser refresh time leaked into Intelligence freshness");
   });
 
-  it("reruns when either primary or scored-only Intelligence publication ownership changes", () => {
-    expect(workflow).toContain('scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs');
-    expect(workflow).toContain('scripts/ops/republish-b2-public-intelligence-scored-only.mjs');
-    expect(workflow).toContain('scripts/ops/sync-fastlane-scored-intelligence.mjs');
+  it("covers publisher and deployment changes through the every-main-push acceptance contract", () => {
+    const pushStart = workflow.indexOf("  push:\n");
+    const scheduleStart = workflow.indexOf("  schedule:\n", pushStart);
+    const pushBlock = workflow.slice(pushStart, scheduleStart);
+    expect(pushBlock).toContain("branches:\n      - main");
+    expect(pushBlock).not.toContain("paths:");
   });
 
   it("cache-busts production probes and always keeps diagnostic evidence", () => {
@@ -55,6 +57,17 @@ describe("Production Website Health current Intelligence contract", () => {
     expect(workflow).toContain("LIVE_DEPLOYMENT_SHA_MISMATCH");
     expect(workflow).toContain("observed !== expected");
     expect(workflow).toContain("LIVE_BUILD_MARKER_SCHEMA_MISMATCH");
+  });
+
+
+  it("verifies production deployment acceptance on every canonical main push", () => {
+    const pushStart = workflow.indexOf("  push:\n");
+    const scheduleStart = workflow.indexOf("  schedule:\n", pushStart);
+    const pushBlock = workflow.slice(pushStart, scheduleStart);
+    expect(pushStart).toBeGreaterThanOrEqual(0);
+    expect(scheduleStart).toBeGreaterThan(pushStart);
+    expect(pushBlock).toContain("branches:\n      - main");
+    expect(pushBlock).not.toContain("paths:");
   });
 
 });

@@ -5,38 +5,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - ".github/workflows/production-website-health.yml"
-      - "server/middleware/05-retire-public-testnet-surfaces.ts"
-      - "server/api/public/global-risk.get.ts"
-      - "server/api/public/risk-indices.get.ts"
-      - "server/api/public/intelligence.get.ts"
-      - "src/lib/global-risk-edge.server.ts"
-      - "src/lib/risk-indices-edge.server.ts"
-      - "src/lib/global-risk-continuity.ts"
-      - "src/lib/risk-indices-from-global-risk.ts"
-      - "src/lib/public-intelligence-production.server.ts"
-      - "src/lib/use-global-risk.ts"
-      - "src/lib/use-risk-indices.ts"
-      - "src/lib/use-intelligence.ts"
-      - "src/routes/intelligence.tsx"
-      - "workers/control-plane/src/index.mjs"
-      - "src/routes/pricing.tsx"
-      - "src/routes/institutional.tsx"
-      - "src/routes/risk-gate.tsx"
-      - "src/components/home/commercial-home.tsx"
-      - "src/components/ask/ask-workspace.tsx"
-      - "config/commercial-route-disposition.json"
-      - "public/llms.txt"
-      - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
-      - "scripts/ops/republish-b2-public-intelligence-scored-only.mjs"
-      - "scripts/ops/sync-fastlane-scored-intelligence.mjs"
-      - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
-      - "scripts/ops/publish-b2-risk-indices-direct-postgres.mjs"
-      - ".github/workflows/gri-realtime-direct-postgres.yml"
-      - ".github/workflows/risk-indices-realtime-direct-postgres.yml"
-      - "src/__tests__/production-website-health-current-intelligence-static.test.ts"
-      - "src/__tests__/global-risk-lock-production-health.test.ts"
   schedule:
     - cron: "11 */6 * * *"
 
