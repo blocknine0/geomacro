@@ -74,7 +74,13 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("day6-global-partner-assurance-${RUN_ID}");
     expect(workflow).not.toContain("federico-handoff-${RUN_ID}");
     expect(workflow).toContain('RSS_LIVE_SKIP_CORROBORATION: "true"');
-    expect(workflow).toContain('BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"');
+    expect(workflow).toContain("Resolve strict governed RSS source cohort");
+    expect(workflow).toContain("FEDERICO_STRICT_AUDITABLE_SOURCE_IDS");
+    expect(workflow).toContain("federicoStrictSourceFamilyForId");
+    expect(workflow).toContain("BREAKING_RSS_SOURCE_IDS: ${{ steps.source_cohort.outputs.csv }}");
+    expect(workflow).toContain("jsonb_each_text(:'strict_source_map'::jsonb)");
+    expect(workflow).toContain("count(distinct source_family) >= 2");
+    expect(workflow).not.toContain('BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"');
     expect(workflow).toContain("cancel-in-progress: true");
     expect(workflow).toContain("issues: write");
     expect(workflow).toContain("Record Day 6 outcome on migration tracker");
