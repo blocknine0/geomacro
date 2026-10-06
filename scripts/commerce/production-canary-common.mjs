@@ -114,6 +114,37 @@ export function productionAdaptiveRequest(prefix = "prod-canary") {
   };
 }
 
+export function productionAcceptanceAvailabilityCases() {
+  const make = (id, request) => ({ id, request: { schema_version: "geomacro.agent-query.v1", evidence: "required", detail: "compact", ...request } });
+  return [
+    make("geopolitics-deu", {
+      question: "What verified geopolitical risk intelligence is currently available for Germany?",
+      subjects: [{ type: "country", country_iso3: "DEU" }],
+      topics: ["conflict_geopolitics"],
+    }),
+    make("macro-bra", {
+      question: "What are the current macro and FX risks for Brazil?",
+      subjects: [{ type: "country", country_iso3: "BRA" }],
+      topics: ["macro_risk", "fx_external_risk"],
+    }),
+    make("critical-minerals-zaf", {
+      question: "What verified critical-minerals intelligence is currently available for South Africa?",
+      subjects: [{ type: "country", country_iso3: "ZAF" }],
+      topics: ["critical_minerals"],
+    }),
+    make("country-usa", {
+      question: "Give me the current signed Risk Object for the United States.",
+      subjects: [{ type: "country", country_iso3: "USA" }],
+      topics: ["risk_object"],
+    }),
+    make("corridor-usa-chn", {
+      question: "What are the current trade and geopolitical risks for the United States to China corridor?",
+      subjects: [{ type: "corridor", origin_country_iso3: "USA", destination_country_iso3: "CHN" }],
+      topics: ["trade_corridor", "conflict_geopolitics"],
+    }),
+  ];
+}
+
 export function assertAdaptiveProduct(body, label = "Paid response") {
   if (!body || typeof body !== "object") fail(`${label} is not a JSON object`);
   if (body.execution_authorized !== false) fail(`${label} violated execution_authorized=false`);
