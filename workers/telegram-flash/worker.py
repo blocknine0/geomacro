@@ -912,13 +912,32 @@ def structured_time_to_iso(value: Any) -> str | None:
     return datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
 
 
+def feed_source_timestamp_has_clock(entry: Any) -> bool:
+    # A date-only feed value must never become a precise publication instant.
+    # Keep publication freshness fail-closed unless the publisher supplied an
+    # actual clock component in the source metadata.
+    raw = None
+    for raw_key in ("published", "dc:date"):
+        value = entry.get(raw_key)
+        if isinstance(value, str) and value.strip():
+            raw = value.strip()
+            break
+    if not raw:
+        return False
+    return bool(
+        re.search(
+            r"(?:T|\\s)\\d{1,2}:?\\d{2}(?::?\\d{2}(?:\\.\\d+)?)?",
+            raw,
+            flags=re.IGNORECASE,
+        )
+    )
+
+
 def feed_entry_timestamp(entry: Any) -> str | None:
-    for key in ("published_parsed", "updated_parsed", "created_parsed"):
-        value = entry.get(key)
-        iso = structured_time_to_iso(value)
-        if iso:
-            return iso
-    return None
+    if not feed_source_timestamp_has_clock(entry):
+        return None
+    value = entry.get("published_parsed")
+    return structured_time_to_iso(value)
 
 
 def feed_entry_matches_priority(
