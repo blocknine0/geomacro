@@ -28,10 +28,10 @@ describe("B2 country GRO preservation fallback", () => {
 
   it("never advances D1 from a preservation-only cycle", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
-    const syncMarker = "Sync independently verified current country GRO to D1";
+    const syncMarker = "Sync all independently verified current country GROs to D1";
     const syncIndex = workflow.indexOf(syncMarker);
     expect(syncIndex).toBeGreaterThanOrEqual(0);
-    const syncBlock = workflow.slice(syncIndex, syncIndex + 260);
+    const syncBlock = workflow.slice(syncIndex, syncIndex + 420);
     expect(syncBlock).toContain("if: steps.refresh.outputs.fresh == 'true'");
   });
 });

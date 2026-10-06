@@ -10,14 +10,25 @@ const CONCURRENCY = Math.max(
 );
 const MIN_READY = Math.max(
   0,
-  Number(process.env.GLOBAL_CANONICAL_MIN_READY ?? 100),
+  Number(process.env.GLOBAL_CANONICAL_MIN_READY ?? 195),
 );
-const MIN_SOVEREIGN_DENOMINATOR = Math.max(
+const MIN_COUNTRY_LIKE_DENOMINATOR = Math.max(
   1,
-  Number(process.env.GLOBAL_CANONICAL_MIN_SOVEREIGN_DENOMINATOR ?? 190),
+  Number(
+    process.env.GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR ??
+      process.env.GLOBAL_CANONICAL_MIN_SOVEREIGN_DENOMINATOR ??
+      195,
+  ),
 );
 
-async function loadEnabledSovereigns() {
+const COUNTRY_LIKE_SPECIALS = new Set(["PSE", "TWN"]);
+
+function isCommercialCountryLikeSubject(iso3: string) {
+  const scope = classifyGlobalEntity(iso3);
+  return scope === "SOVEREIGN" || COUNTRY_LIKE_SPECIALS.has(iso3);
+}
+
+async function loadEnabledCommercialCountrySubjects() {
   const db = requireRiskSupabase();
   const result = await db
     .from("live_country_registry")
@@ -37,7 +48,7 @@ async function loadEnabledSovereigns() {
     .filter(
       (row) =>
         /^[A-Z]{3}$/.test(row.iso3) &&
-        classifyGlobalEntity(row.iso3) === "SOVEREIGN",
+        isCommercialCountryLikeSubject(row.iso3),
     );
 }
 
@@ -72,7 +83,7 @@ function normalizeFailureReasons(row: {
 }
 
 async function refreshCountry(
-  country: Awaited<ReturnType<typeof loadEnabledSovereigns>>[number],
+  country: Awaited<ReturnType<typeof loadEnabledCommercialCountrySubjects>>[number],
   asOf: string,
 ) {
   try {
@@ -167,17 +178,21 @@ async function main() {
   // This process evaluates one frozen as_of for every sovereign. Allow only
   // this bounded batch to reuse identical reads; web requests remain uncached.
   process.env.GEOMACRO_CANONICAL_BATCH = "1";
-  if (!Number.isFinite(CONCURRENCY) || !Number.isFinite(MIN_READY)) {
+  if (
+    !Number.isFinite(CONCURRENCY) ||
+    !Number.isFinite(MIN_READY) ||
+    !Number.isFinite(MIN_COUNTRY_LIKE_DENOMINATOR)
+  ) {
     throw new Error("Global canonical refresh numeric configuration is invalid");
   }
 
   const startedAt = new Date();
   const asOf = startedAt.toISOString();
-  const countries = await loadEnabledSovereigns();
+  const countries = await loadEnabledCommercialCountrySubjects();
 
-  if (countries.length < MIN_SOVEREIGN_DENOMINATOR) {
+  if (countries.length < MIN_COUNTRY_LIKE_DENOMINATOR) {
     throw new Error(
-      `Enabled sovereign denominator regression: ${countries.length} < ${MIN_SOVEREIGN_DENOMINATOR}`,
+      `Enabled country-like denominator regression: ${countries.length} < ${MIN_COUNTRY_LIKE_DENOMINATOR}`,
     );
   }
 
@@ -233,8 +248,15 @@ async function main() {
     generated_at: asOf,
     completed_at: completedAt,
     denominator: {
-      type: "enabled_sovereign_countries",
+      type: "enabled_country_like_entities",
       count: countries.length,
+      sovereign_count: countries.filter(
+        (row) => classifyGlobalEntity(row.iso3) === "SOVEREIGN",
+      ).length,
+      special_country_like_count: countries.filter((row) =>
+        COUNTRY_LIKE_SPECIALS.has(row.iso3),
+      ).length,
+      special_country_like_iso3: [...COUNTRY_LIKE_SPECIALS].sort(),
     },
     summary: {
       paid_ready_country_count: paidReady.length,
@@ -252,7 +274,15 @@ async function main() {
       ),
     },
     boundaries: {
-      all_enabled_sovereigns_evaluated: normalizedResults.length === countries.length,
+      all_enabled_sovereigns_evaluated:
+        normalizedResults.filter(
+          (row) => classifyGlobalEntity(row.iso3) === "SOVEREIGN",
+        ).length ===
+        countries.filter(
+          (row) => classifyGlobalEntity(row.iso3) === "SOVEREIGN",
+        ).length,
+      all_enabled_country_like_subjects_evaluated:
+        normalizedResults.length === countries.length,
       unsupported_or_ineligible_fail_closed: true,
       payment_not_performed_by_refresh: true,
       raw_source_material_emitted: false,

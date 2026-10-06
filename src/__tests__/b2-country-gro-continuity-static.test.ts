@@ -63,19 +63,24 @@ describe("B2 country GRO continuity", () => {
     expect(workflow).toContain("bun scripts/ops/verify-b2-country-gro-direct-read.ts");
   });
 
-  it("keeps one bounded fresh commercial GRO alive without restoring bulk global refresh", () => {
+  it("refreshes the full 195+ country-like commercial subject universe without synthetic fill", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
+    const runner = read("scripts/refresh-global-canonical-risk-objects.ts");
     expect(workflow).toContain('cron: "41 * * * *"');
-    expect(workflow).toContain("scripts/publish-country-risk-object.ts USA CANONICAL");
-    expect(workflow).toContain("GRO_CONTINUITY_COUNTRY_ISO3: USA");
-    expect(workflow).not.toContain("refresh-global-canonical-risk-objects.ts");
-    expect(workflow).not.toContain("refresh-public-demo-risk-objects.ts");
+    expect(workflow).toContain("refresh-global-canonical-risk-objects.ts");
+    expect(workflow).toContain('GLOBAL_CANONICAL_MIN_READY: "195"');
+    expect(workflow).toContain('GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR: "195"');
+    expect(workflow).toContain("paid_ready_country_count");
+    expect(workflow).not.toContain("scripts/publish-country-risk-object.ts USA CANONICAL");
+    expect(runner).toContain('const COUNTRY_LIKE_SPECIALS = new Set(["PSE", "TWN"])');
+    expect(runner).toContain('scope === "SOVEREIGN" || COUNTRY_LIKE_SPECIALS.has(iso3)');
+    expect(runner).not.toContain('COUNTRY_LIKE_SPECIALS = new Set(["PSE", "TWN", "UNK"])');
   });
 
   it("prewarms a fresh D1 GRO on every canonical main advance before the exact-head final gate", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     expect(workflow).toContain("push:\n    branches: [main]");
-    expect(workflow).toContain("Start the bounded one-country continuity refresh on every");
+    expect(workflow).toContain("Refresh the full country-like commercial subject universe");
     expect(workflow).toContain("hourly schedule remains the steady-state");
   });
 
@@ -85,7 +90,7 @@ describe("B2 country GRO continuity", () => {
     expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
     expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
     expect(workflow).toContain("--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs");
-    expect(workflow).toContain("node --import tsx scripts/publish-country-risk-object.ts USA CANONICAL");
+    expect(workflow).toContain("bun scripts/refresh-global-canonical-risk-objects.ts");
     expect(workflow).toContain("node --import tsx scripts/ops/publish-b2-country-gro-continuity.ts");
     expect(shim).toContain("filter(column, operator, value)");
     expect(shim).toContain('op === "cs" || op === "not.cs"');
@@ -93,17 +98,20 @@ describe("B2 country GRO continuity", () => {
     expect(shim).toContain('op === "not.cs" ? `NOT (${predicate})` : predicate');
   });
 
-  it("derives the D1 current index only from independently verified B2 bytes", () => {
-    const sync = read("scripts/ops/sync-current-country-gro-to-d1.ts");
+  it("derives the full D1 current index only from independently verified B2 continuity proof bytes", () => {
+    const sync = read("scripts/ops/sync-global-current-country-gro-to-d1.ts");
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
-    expect(sync).toContain("country-gro/by-id/");
-    expect(sync).toContain("canonicalRiskObjectJson(byIdEnvelope.object) !== canonicalRiskObjectJson(riskObject)");
-    expect(sync).toContain("CURRENT_GRO_GENERIC_B2_HASH_MISMATCH");
-    expect(sync).toContain("CURRENT_GRO_GENERIC_B2_RESTORE_INVALID");
-    expect(sync).toContain("CURRENT_GRO_D1_READBACK_INVALID");
+    expect(sync).toContain("country-gro/continuity-proof.json");
+    expect(sync).toContain("GLOBAL_GRO_D1_PROOF_CARDINALITY_INVALID");
+    expect(sync).toContain("GLOBAL_GRO_D1_ENVELOPE_HASH_INVALID");
+    expect(sync).toContain("GLOBAL_GRO_D1_GENERIC_B2_HASH_INVALID");
+    expect(sync).toContain("GLOBAL_GRO_D1_GENERIC_B2_RESTORE_INVALID");
+    expect(sync).toContain("verifyCommercialRiskObjectArtifact");
+    expect(sync).toContain("GLOBAL_GRO_D1_READY_FLOOR_BREACH");
     expect(sync).toContain("supabase_payload_used_for_d1_record: false");
     expect(sync).toContain("external_payment_performed: false");
-    expect(workflow).toContain("bun scripts/ops/sync-current-country-gro-to-d1.ts");
+    expect(sync).toContain("destructive_b2_change: false");
+    expect(workflow).toContain("bun scripts/ops/sync-global-current-country-gro-to-d1.ts");
   });
 
   it("keeps production publication bounded and explicit", () => {
@@ -111,7 +119,8 @@ describe("B2 country GRO continuity", () => {
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("scripts/db/assert-authoritative-supabase.mjs");
     expect(workflow).toContain("publish-b2-country-gro-continuity.ts");
-    expect(workflow).toContain("sync-current-country-gro-to-d1.ts");
+    expect(workflow).toContain("sync-global-current-country-gro-to-d1.ts");
+    expect(workflow).toContain("Enforce #1414 195+ commercial GRO floor");
     expect(workflow).toContain('cron: "41 * * * *"');
   });
 });
