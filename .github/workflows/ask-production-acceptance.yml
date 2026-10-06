@@ -1,0 +1,45 @@
+name: Ask Production Acceptance
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/ask-production-acceptance.yml"
+      - "scripts/ops/verify-public-ask-production.mjs"
+      - "src/lib/ask-**"
+      - "src/lib/hybrid-ask-intelligence.server.ts"
+      - "src/lib/testnet-intelligence-capability-hybrid.server.ts"
+      - "server/api/public-ask.get.ts"
+      - "src/__tests__/ask-production-acceptance-static.test.ts"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ask-production-acceptance.yml"
+      - "scripts/ops/verify-public-ask-production.mjs"
+      - "src/lib/ask-**"
+      - "src/lib/hybrid-ask-intelligence.server.ts"
+      - "src/lib/testnet-intelligence-capability-hybrid.server.ts"
+      - "server/api/public-ask.get.ts"
+      - "src/__tests__/ask-production-acceptance-static.test.ts"
+  schedule:
+    - cron: "41 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ask-production-acceptance
+  cancel-in-progress: false
+
+jobs:
+  ask-production-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify all three Ask domains against production
+        run: node scripts/ops/verify-public-ask-production.mjs
