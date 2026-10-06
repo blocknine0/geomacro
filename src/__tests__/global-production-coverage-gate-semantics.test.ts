@@ -10,6 +10,8 @@ describe("global production coverage gate semantics", () => {
     expect(script).toContain("ready_for_global_coverage_claim");
     expect(script).toContain("commercial_source_network_ready");
     expect(script).toContain("result.ready_for_global_coverage_claim =");
+    expect(script).toContain("country_registry_at_least_195: enabledCountries.length >= 195");
+    expect(script).toContain("result.structural.country_registry_at_least_195 &&");
     expect(script).toContain("result.ready_for_global_production_claim =");
     expect(script).toContain("Commercial source certification remains a separate fail-closed gate");
     expect(script).toContain('process.argv.includes("--strict") && !result.ready_for_global_coverage_claim');
