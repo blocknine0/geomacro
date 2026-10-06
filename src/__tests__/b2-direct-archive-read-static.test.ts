@@ -9,6 +9,10 @@ describe("#1414 B2 direct archive and credential split", () => {
 
     expect(client).toContain("B2_ARCHIVE_READ_KEY_ID");
     expect(client).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(client).toContain("B2_ARCHIVE_WRITE_KEY_ID");
+    expect(client).toContain("B2_ARCHIVE_WRITE_APPLICATION_KEY");
+    expect(client).toContain("explicitReadAccessKey || dedicatedReadAccessKey || archiveWriteAccessKey");
+    expect(client).toContain("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
     expect(client).toContain('method === "GET" && readCredentialsSeparate');
     expect(client).toContain("? normalizedReadAccessKey");
     expect(client).toContain(": accessKey");
