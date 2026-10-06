@@ -140,10 +140,10 @@ export const FEDERICO_STRICT_MAJOR_SOURCE_IDS = [
   "aljazeera_rss",
 ] as const;
 
-// Every source admitted here is already a governed, independently identified
-// source family in the live corroborator. Keep the publication layer aligned
-// with that same trust universe so a source cannot help establish verification
-// and then disappear from the independently-auditable evidence count.
+// Every source admitted here is a governed RSS channel. Independence is
+// resolved through FEDERICO_STRICT_SOURCE_FAMILY_BY_ID so multiple endpoints
+// from the same institution never count as separate source families. Keep the
+// publication layer aligned with the live corroborator's same family policy.
 export const FEDERICO_STRICT_AUDITABLE_SOURCE_IDS = [
   "un_all_documents_rss",
   "un_human_rights_council_rss",
