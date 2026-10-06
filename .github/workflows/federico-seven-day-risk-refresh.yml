@@ -6,7 +6,18 @@ name: Federico Continuous Testnet Risk Object Refresh
 # batch_size="$(jq -r '.batch_size // 0' "${response_file}")"
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      iso3:
+        description: "Uppercase ISO3 country to evaluate under the strict partner profile"
+        required: true
+        default: "USA"
+        type: string
+      use_partner_allowance:
+        description: "Explicitly spend one Federico pilot allowance review after local gates pass"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -30,7 +41,7 @@ jobs:
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
-      INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
+      TARGET_ISO3: ${{ inputs.iso3 }}
       INVINO_REQUEST_OUT: /tmp/federico-review-request.json
       INVINO_REVIEW_OUT: /tmp/federico-review-response.json
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
@@ -58,6 +69,15 @@ jobs:
           for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
             test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
           done
+
+      - name: Validate requested country
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! [[ "${TARGET_ISO3:-}" =~ ^[A-Z]{3}$ ]]; then
+            echo "::error::iso3 must be exactly three uppercase letters"
+            exit 2
+          fi
 
       - name: Acquire scoped GitHub Actions OIDC token
         shell: bash
@@ -183,7 +203,7 @@ jobs:
               --header "x-geomacro-github-oidc-token: ${token}" \
               --header "Authorization: Bearer ${token}" \
               --header 'Content-Type: application/json' \
-              --data "$(jq -nc --arg as_of "$window_as_of" --argjson offset "$offset" '{country_iso3:"CHN",as_of:$as_of,candidate_offset:$offset}')" \
+              --data "$(jq -nc --arg country_iso3 "$TARGET_ISO3" --arg as_of "$window_as_of" --argjson offset "$offset" '{country_iso3:$country_iso3,as_of:$as_of,candidate_offset:$offset}')" \
               "${base}/live-flash-corroborate")"
             test "$response" = "200" || { cat /tmp/federico-corroborate.json; echo "::error::live-flash-corroborate did not return HTTP 200."; exit 1; }
             jq -e '.ok == true and has("next_candidate_offset") and has("window_as_of")' /tmp/federico-corroborate.json >/dev/null
@@ -204,7 +224,7 @@ jobs:
         run: |
           set -uo pipefail
           set +e
-          bun scripts/check-federico-publication.ts > /tmp/federico-evidence-readiness.json 2> /tmp/federico-evidence-readiness.err
+          bun scripts/check-federico-publication.ts "$TARGET_ISO3" > /tmp/federico-evidence-readiness.json 2> /tmp/federico-evidence-readiness.err
           rc=$?
           set -e
           if [[ -s /tmp/federico-evidence-readiness.json ]]; then
@@ -230,7 +250,7 @@ jobs:
           cp /tmp/federico-evidence-readiness.json /tmp/federico-no-publication/evidence-readiness.json || printf '{}\n' > /tmp/federico-no-publication/evidence-readiness.json
           cp /tmp/federico-corroboration-all.ndjson /tmp/federico-no-publication/corroboration.ndjson
           jq -n \
-            --arg country_iso3 "CHN" \
+            --arg country_iso3 "$TARGET_ISO3" \
             --arg status "NO_PUBLICATION" \
             --arg reason "strict_evidence_gate_not_met" \
             --arg run_id "${GITHUB_RUN_ID}" \
@@ -253,12 +273,12 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Publish fresh production-signed CHN Risk Object
+      - name: Publish fresh production-signed strict country Risk Object
         if: ${{ steps.readiness.outputs.ready == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/publish-country-risk-object.ts CHN FEDERICO_STRICT | tee /tmp/publish.json
+          bun scripts/publish-country-risk-object.ts "$TARGET_ISO3" FEDERICO_STRICT | tee /tmp/publish.json
           jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
             .published == true and
             .schema_version == "gro-1.1" and
@@ -290,11 +310,12 @@ jobs:
           })().catch((error) => { console.error(error); process.exit(1); });
           NODE
 
-      - name: Verify freshness, signature and tamper rejection
+      - name: Verify local freshness signature tamper and reproducibility
         if: ${{ steps.readiness.outputs.ready == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
+          unset INVINO_API_KEY || true
           bun scripts/invinoveritas-risk-object-preflight.ts /tmp/federico-risk-object.json | tee /tmp/federico-preflight.json
           python3 - <<'PY'
           import json
@@ -304,8 +325,31 @@ jobs:
               document = json.load(handle)
           if not isinstance(document, dict):
               raise SystemExit('Federico preflight output must be exactly one JSON object')
-          print('PASS: Federico preflight output is exactly one valid JSON document')
+          print('PASS: local strict preflight output is exactly one valid JSON document')
           PY
+          jq -e '
+            .ok == true and
+            .gates.deployed_original_verification == "PASS" and
+            .gates.tampered_payload_rejected == "PASS" and
+            .gates.freshness == "PASS" and
+            .gates.partner_request_contract == "PASS" and
+            .gates.trust_metadata == "PASS" and
+            .gates.reproducibility == "PASS" and
+            .gates.live_partner_review == "NOT_RUN" and
+            .gates.partner_admission == "NOT_RUN" and
+            .gates.partner_proof_verification == "NOT_RUN" and
+            .live_review.attempted == false
+          ' /tmp/federico-preflight.json >/dev/null
+
+      - name: Run explicitly authorized Federico allowance review
+        if: ${{ steps.readiness.outputs.ready == 'true' && inputs.use_partner_allowance == true }}
+        env:
+          INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${INVINO_API_KEY:-}" || { echo "::error::INVINO_API_KEY is required only when use_partner_allowance=true"; exit 2; }
+          bun scripts/invinoveritas-risk-object-preflight.ts /tmp/federico-risk-object.json | tee /tmp/federico-live-preflight.json
           jq -e '
             .ok == true and
             .gates.deployed_original_verification == "PASS" and
@@ -318,7 +362,7 @@ jobs:
             .gates.partner_proof_verification == "PASS" and
             .gates.live_partner_review == "PASS" and
             .live_review.proof_present == true
-          ' /tmp/federico-preflight.json >/dev/null
+          ' /tmp/federico-live-preflight.json >/dev/null
 
       - name: Build handoff artifact
         if: ${{ steps.readiness.outputs.ready == 'true' }}
@@ -331,9 +375,21 @@ jobs:
           cp docs/GRO_CANONICAL_JSON_V1.md /tmp/federico-handoff/GRO_CANONICAL_JSON_V1.md
           cp docs/examples/gro-1.1-canonical-v1-test-vector.json /tmp/federico-handoff/gro-1.1-canonical-v1-test-vector.json
           cp docs/examples/gro-1.1-canonical-v1-edge-vectors.json /tmp/federico-handoff/gro-1.1-canonical-v1-edge-vectors.json
-          cp /tmp/federico-review-request.json /tmp/federico-handoff/review-request.json
-          cp /tmp/federico-review-response.json /tmp/federico-handoff/review-response.json
-          jq '{ok,gates,object,live_review}' /tmp/federico-preflight.json > /tmp/federico-handoff/verification-summary.json
+          if [ -s /tmp/federico-live-preflight.json ]; then
+            cp /tmp/federico-review-request.json /tmp/federico-handoff/review-request.json
+            cp /tmp/federico-review-response.json /tmp/federico-handoff/review-response.json
+            jq '{ok,gates,object,live_review}' /tmp/federico-live-preflight.json > /tmp/federico-handoff/verification-summary.json
+          else
+            jq '{ok,gates,object,live_review}' /tmp/federico-preflight.json > /tmp/federico-handoff/verification-summary.json
+            jq -n --arg country_iso3 "$TARGET_ISO3" '{
+              attempted:false,
+              country_iso3:$country_iso3,
+              reason:"owner_did_not_authorize_partner_allowance",
+              allowance_used:0,
+              payment_performed:false,
+              execution_authorized:false
+            }' > /tmp/federico-handoff/review-not-run.json
+          fi
           python3 - <<'PY'
           import json
           with open('/tmp/federico-handoff/verification-summary.json', 'r', encoding='utf-8') as handle:
@@ -343,7 +399,7 @@ jobs:
           PY
           (
             cd /tmp/federico-handoff
-            sha256sum GRO_CANONICAL_JSON_V1.md gro-1.1-canonical-v1-edge-vectors.json gro-1.1-canonical-v1-test-vector.json gro-1.1.schema.json federico-risk-object.json review-request.json review-response.json verification-summary.json > SHA256SUMS.txt
+            find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS.txt
             sha256sum -c SHA256SUMS.txt
           )
           python3 - <<'PY'
@@ -351,20 +407,13 @@ jobs:
           from zipfile import ZipFile, ZIP_DEFLATED
           root = Path('/tmp/federico-handoff')
           package = root / 'Geomacro_Federico_Latest_Handoff.zip'
-          files = [
-              'GRO_CANONICAL_JSON_V1.md',
-              'gro-1.1-canonical-v1-test-vector.json',
-              'gro-1.1-canonical-v1-edge-vectors.json',
-              'gro-1.1.schema.json',
-              'federico-risk-object.json',
-              'review-request.json',
-              'review-response.json',
-              'SHA256SUMS.txt',
-              'verification-summary.json',
-          ]
+          files = sorted(
+              path for path in root.iterdir()
+              if path.is_file() and path.name != package.name
+          )
           with ZipFile(package, 'w', ZIP_DEFLATED) as archive:
-              for name in files:
-                  archive.write(root / name, arcname=name)
+              for path in files:
+                  archive.write(path, arcname=path.name)
           PY
 
       - name: Upload Federico handoff
@@ -388,7 +437,12 @@ jobs:
             echo
             if [[ "${FEDERICO_EVIDENCE_READY:-false}" == "true" ]]; then
               echo "Outcome: VERIFIED publication path completed"
-              jq '{object_id: .object.object_id, schema_version: .object.schema_version, expires_at: .object.expires_at, signing_key_id: .object.signing_key_id, gates}' /tmp/federico-preflight.json
+              if [[ -s /tmp/federico-live-preflight.json ]]; then
+                jq '{object_id: .object.object_id, schema_version: .object.schema_version, expires_at: .object.expires_at, signing_key_id: .object.signing_key_id, gates, live_review}' /tmp/federico-live-preflight.json
+              else
+                jq '{object_id: .object.object_id, schema_version: .object.schema_version, expires_at: .object.expires_at, signing_key_id: .object.signing_key_id, gates, live_review}' /tmp/federico-preflight.json
+                echo "Federico pilot allowance: NOT USED"
+              fi
               echo "Artifact: federico-handoff-${{ github.run_id }}"
             else
               echo "Outcome: NO_PUBLICATION"
