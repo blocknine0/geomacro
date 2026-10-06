@@ -90,7 +90,6 @@ jobs:
       - name: Verify canonical direct-Postgres realtime transport
         env:
           NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
-        env:
           GRI_DB_MODE: direct_postgres
         run: |
           set -euo pipefail
@@ -155,6 +154,8 @@ jobs:
           done
           wait
       - name: Verify three-category runtime and GDELT independence
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         run: |
           set -euo pipefail
           timeout 10m node scripts/audit-global-raw-source-runtime.mjs
@@ -163,6 +164,7 @@ jobs:
       - name: Run remaining launch-critical realtime tasks
         env:
           GRI_DB_MODE: direct_postgres
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
           INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
           INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness,source_evidence
           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: gdelt_gal,rss_live,realtime_fanout
@@ -171,6 +173,8 @@ jobs:
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-repair.log
 
       - name: Final GDELT first-break and scope fanout convergence
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         shell: bash
         run: |
           set -euo pipefail
@@ -231,6 +235,8 @@ jobs:
           timeout 10m node scripts/audit-gdelt-dependency-live.mjs
 
       - name: Run strict Global Realtime Intelligence 100 gate
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         run: |
           set -euo pipefail
           node scripts/audit-global-raw-source-runtime.mjs
