@@ -60,6 +60,42 @@ export function isTrustedFedericoTimestampUrlForSource(
   }
 }
 
+const SCMP_CANONICAL_ARTICLE_SECTIONS = new Set([
+  "news",
+  "economy",
+  "opinion",
+  "business",
+  "tech",
+  "lifestyle",
+  "sport",
+  "week-asia",
+]);
+
+export function trustedFedericoTimestampFetchUrlForSource(
+  sourceId: string,
+  value: string,
+) {
+  if (!isTrustedFedericoTimestampUrlForSource(sourceId, value)) return null;
+
+  const url = new URL(value);
+  url.hash = "";
+  url.search = "";
+
+  // SCMP RSS can emit /plus/<section>/... wrappers that do not expose the
+  // publisher-native timestamp even though the same publisher serves the
+  // canonical article at /<section>/.... Timestamp hydration may fetch only
+  // that same-host canonical article route. The stored source URL, source ID,
+  // provenance and signed evidence binding remain unchanged.
+  if (sourceId === "scmp_china_rss" && url.pathname.startsWith("/plus/")) {
+    const section = url.pathname.split("/").filter(Boolean)[1] ?? "";
+    if (SCMP_CANONICAL_ARTICLE_SECTIONS.has(section)) {
+      url.pathname = url.pathname.replace(/^\/plus(?=\/)/, "");
+    }
+  }
+
+  return url.toString();
+}
+
 function parseMetaAttributes(tag: string) {
   const attrs = new Map<string, string>();
   const pattern = /([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g;
