@@ -60,6 +60,30 @@ export function isTrustedFedericoTimestampUrlForSource(
   }
 }
 
+export function trustedFedericoTimestampFetchUrlForSource(
+  sourceId: string,
+  value: string,
+) {
+  if (!isTrustedFedericoTimestampUrlForSource(sourceId, value)) return null;
+
+  const url = new URL(value);
+  url.hash = "";
+  url.search = "";
+
+  // SCMP RSS may emit a /plus/news/... paywall wrapper even when the same
+  // publisher article has a canonical /news/... route. Timestamp hydration
+  // may fetch only that same-host canonical route; the stored evidence URL and
+  // source identity remain unchanged.
+  if (
+    sourceId === "scmp_china_rss" &&
+    /^\/plus\/news\//.test(url.pathname)
+  ) {
+    url.pathname = url.pathname.replace(/^\/plus(?=\/news\/)/, "");
+  }
+
+  return url.toString();
+}
+
 function parseMetaAttributes(tag: string) {
   const attrs = new Map<string, string>();
   const pattern = /([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g;
