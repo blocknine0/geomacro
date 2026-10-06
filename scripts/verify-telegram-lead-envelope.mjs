@@ -5,13 +5,18 @@ import { readFileSync } from "node:fs";
 const CATEGORIES = new Set(["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"]);
 const USERNAME = /^[a-z0-9_]{5,32}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
+export const TELEGRAM_ENVELOPE_SCHEMA = "geomacro.telegram-lead-envelope.v2";
+export const TELEGRAM_PROTOCOL_CONTRACT_SHA256 = "6da33ed2a966d58122039ba38d83e801476a6318bc89634d0b3d951e8ad017c9";
 
 export function verifyTelegramLeadEnvelope(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new Error("TELEGRAM_ENVELOPE_OBJECT_REQUIRED");
   }
-  if (input.schema !== "geomacro.telegram-lead-envelope.v1") {
+  if (input.schema !== TELEGRAM_ENVELOPE_SCHEMA) {
     throw new Error("TELEGRAM_ENVELOPE_SCHEMA_MISMATCH");
+  }
+  if (input.protocol_contract_sha256 !== TELEGRAM_PROTOCOL_CONTRACT_SHA256) {
+    throw new Error("TELEGRAM_PROTOCOL_CONTRACT_HASH_MISMATCH");
   }
   if (input.source_id !== "telegram_authorized_publisher_feed") {
     throw new Error("TELEGRAM_SOURCE_ID_NOT_AUTHORIZED_FEED");
