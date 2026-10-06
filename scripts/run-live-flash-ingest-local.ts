@@ -48,6 +48,12 @@ async function buildHandler() {
     'import { createGriDbClient } from "./scripts/lib/gri-db-client.mjs"',
     "IMPORT",
   );
+  source = replaceExactlyOnce(
+    source,
+    'import { createRemoteJWKSet, jwtVerify } from "npm:jose@6.2.3"',
+    'import { createRemoteJWKSet, jwtVerify } from "jose"',
+    "JOSE_IMPORT",
+  );
   const dbStart = source.indexOf("const db =\n  createClient(");
   const typeStart = source.indexOf("type CountryRow = {");
   if (dbStart < 0 || typeStart <= dbStart) throw new Error("LOCAL_FLASH_TRANSFORM_DB_MISMATCH");
@@ -135,6 +141,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(message.slice(0, 2000));
   process.exit(1);
 });
