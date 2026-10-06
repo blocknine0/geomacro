@@ -47,16 +47,17 @@ function runCommand(command, args, options = {}) {
       if (options.forward !== false) process.stdout.write(value);
     });
     child.stderr.on("data", (chunk) => {
-      const value = String(chunk);
-      stderr += value;
-      if (options.forward !== false) process.stderr.write(value);
+      // stderr can contain stack traces, filesystem paths, tokens, request details,
+      // or upstream response bodies. Capture it for bounded process control only;
+      // never forward it to the workflow/public log boundary.
+      stderr += String(chunk);
     });
     child.on("close", (code, signal) => resolve({ code, signal, stdout, stderr }));
-    child.on("error", (error) => resolve({
+    child.on("error", () => resolve({
       code: null,
       signal: null,
       stdout,
-      stderr: stderr + "\n" + error.message,
+      stderr,
     }));
   });
 }
@@ -98,7 +99,7 @@ function verifyWorkerSources(stdout) {
 
   const expected = [...new Set(ready.feeds.map(String).filter(Boolean))];
   const missing = expected.filter((id) => lastState.get(id) !== "success");
-  if (missing.length) throw new Error(`RSS_SOURCES_INCOMPLETE:${missing.join(",")}`);
+  if (missing.length) throw new Error("RSS_SOURCES_INCOMPLETE");
 
   return {
     configured_source_count: expected.length,
@@ -198,7 +199,7 @@ async function main() {
     server = null;
 
     if (worker.code !== 0) {
-      throw new Error(`RSS worker failed with exit code=${worker.code}, signal=${worker.signal}`);
+      throw new Error("RSS_WORKER_FAILED");
     }
     const sourceSummary = verifyWorkerSources(worker.stdout);
 
@@ -207,7 +208,7 @@ async function main() {
       ["scripts/run-live-flash-ingest-local.ts", "--payload-dir", spoolDir],
       { forward: true },
     );
-    if (ingest.code !== 0) throw new Error(`RSS_CANONICAL_DIRECT_INGEST_FAILED:${ingest.stderr.slice(-2000)}`);
+    if (ingest.code !== 0) throw new Error("RSS_CANONICAL_DIRECT_INGEST_FAILED");
     const ingestSummary = parseLastJson(ingest.stdout, "RSS_CANONICAL_DIRECT_INGEST");
     if (ingestSummary?.ok !== true || Number(ingestSummary.accepted) !== local.spooledCount()) {
       throw new Error("RSS_CANONICAL_DIRECT_INGEST_COUNT_MISMATCH");
@@ -232,7 +233,7 @@ async function main() {
         ["scripts/run-live-flash-corroborate-local.ts"],
         { forward: true },
       );
-      if (corroboration.code !== 0) throw new Error(`RSS_CANONICAL_DIRECT_CORROBORATION_FAILED:${corroboration.stderr.slice(-2000)}`);
+      if (corroboration.code !== 0) throw new Error("RSS_CANONICAL_DIRECT_CORROBORATION_FAILED");
       corroborationSummary = parseLastJson(corroboration.stdout, "RSS_CANONICAL_DIRECT_CORROBORATION");
       if (corroborationSummary?.ok !== true || corroborationSummary?.threshold_weakening !== false) {
         throw new Error("RSS_CANONICAL_DIRECT_CORROBORATION_REJECTED");
@@ -281,7 +282,10 @@ async function main() {
 }
 
 main().catch((error) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(message.slice(0, 2000));
+  const message = error instanceof Error ? error.message : "";
+  const failureCode = /^RSS_[A-Z0-9_]+$/.test(message)
+    ? message
+    : "RSS_LIVE_CYCLE_FAILED";
+  console.error(failureCode);
   process.exit(1);
 });
