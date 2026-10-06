@@ -44,6 +44,12 @@ describe(
           "risk_object_payload_too_large",
         );
         expect(route).toContain(
+          "max_body_bytes",
+        );
+        expect(route).toContain(
+          "client_local_with_public_keys",
+        );
+        expect(route).toContain(
           "content_type_must_be_application_json",
         );
       },
