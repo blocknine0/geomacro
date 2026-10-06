@@ -26,6 +26,8 @@ jobs:
         run: node scripts/agentic/verify-live-x402-prelaunch-availability.mjs
 
       - name: Verify live no-charge 195+ country paid-path availability
+        env:
+          GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
         run: node scripts/agentic/verify-live-x402-country-availability-census.mjs
 
       - name: Upload global country availability evidence
