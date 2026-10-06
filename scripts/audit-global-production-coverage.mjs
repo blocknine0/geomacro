@@ -248,6 +248,7 @@ const result = {
     source_network_100: bool(network?.source_network_100_complete),
     source_network_launch: bool(launch?.source_network_launch_complete),
     enabled_country_count: enabledCountries.length,
+    country_registry_at_least_195: enabledCountries.length >= 195,
     phase_a_expected_matrix_rows: phaseAExpectedRows,
     phase_a_actual_matrix_rows: countryCategoryMatrix.length,
     phase_a_unique_matrix_rows: phaseAUniqueKeys.size,
@@ -322,6 +323,7 @@ const result = {
 };
 
 result.ready_for_global_coverage_claim =
+  result.structural.country_registry_at_least_195 &&
   result.structural.inventory_100 &&
   result.structural.phase_a_matrix_contract_complete &&
   result.structural.country_matrix_complete &&
