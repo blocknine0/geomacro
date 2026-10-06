@@ -47,7 +47,9 @@ describe("Federico refresh contract", () => {
 
   it("verifies every RSS source generically from the worker manifest", () => {
     const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
-    expect(workflow).toContain("python worker.py 2>&1 | tee /tmp/federico-rss-live.log");
+    expect(workflow).toContain("python worker.py");
+    expect(workflow).toContain("local-flash-ingest-server.mjs");
+    expect(workflow).toContain('GEOMACRO_FLASH_INGEST_URL="http://127.0.0.1:8788/ingest"');
     expect(workflow).toContain("Verify every configured RSS source completed");
     expect(workflow).toContain("event.get('rss') == 'ready'");
     expect(workflow).toContain("event.get('kind') in {'rss_source_complete', 'rss_error'}");
