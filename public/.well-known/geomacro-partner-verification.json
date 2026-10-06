@@ -20,9 +20,7 @@
     "minimum_independent_source_families": 2,
     "receiver_side_verification_required": true,
     "issuer_attestations_are_not_trust_roots": true,
-    "fail_closed": true,
-    "country_scope": "all_enabled_iso3_countries",
-    "country_policy": "same_strict_gates_per_country_fail_closed"
+    "fail_closed": true
   },
   "partner_handoff": {
     "interoperability_preflight": "scripts/invinoveritas-risk-object-preflight.ts",
