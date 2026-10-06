@@ -12,7 +12,7 @@ on:
       - "scripts/verify-telegram-lead-envelope.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "config/telegram-private-signal-bridge.json"
-      - "workers/control-plane/migrations/0008_telegram_signal_producer_repin_aba12.sql"
+      - "workers/control-plane/migrations/0009_telegram_signal_protocol_v2.sql"
       - "workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql"
       - "src/__tests__/telegram-b2-d1-consumer-contract.test.ts"
   push:
@@ -24,7 +24,7 @@ on:
       - "scripts/verify-telegram-lead-envelope.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "config/telegram-private-signal-bridge.json"
-      - "workers/control-plane/migrations/0008_telegram_signal_producer_repin_aba12.sql"
+      - "workers/control-plane/migrations/0009_telegram_signal_protocol_v2.sql"
       - "workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql"
 
 permissions:
@@ -55,7 +55,8 @@ jobs:
           grep -q 'verifyTelegramLeadEnvelope' scripts/ops/drain-telegram-b2-leads.mjs
           grep -q 'LIVE_FLASH_LOCAL_REQUIRES_DIRECT_POSTGRES' scripts/run-live-flash-ingest-local.ts
           grep -q 'source_channel_key' scripts/run-live-flash-ingest-local.ts
-          grep -q 'aba12aea43ec8a5c9e54a4266e639903d531ad33' config/telegram-private-signal-bridge.json
+          grep -q '6da33ed2a966d58122039ba38d83e801476a6318bc89634d0b3d951e8ad017c9' config/telegram-private-signal-bridge.json
+          grep -q 'geomacro.telegram-lead-envelope.v2' scripts/verify-telegram-lead-envelope.mjs
 
   consume:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -133,7 +134,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/telegram-lead-intake
-          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT schema_version,producer_repo,producer_commit,last_verified_b2_write_at,last_checkpoint_at,last_error_code,updated_at FROM telegram_signal_runtime_status WHERE id=1;" > artifacts/telegram-lead-intake/runtime-status.json
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT schema_version,producer_repo,producer_commit,protocol_contract_sha256,last_verified_b2_write_at,last_checkpoint_at,last_error_code,updated_at FROM telegram_signal_runtime_status WHERE id=1;" > artifacts/telegram-lead-intake/runtime-status.json
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT count(*) AS queue_rows FROM telegram_signal_lead_queue;" > artifacts/telegram-lead-intake/queue-schema.json
           node <<'NODE'
           const fs=require('fs');
@@ -142,9 +143,10 @@ jobs:
           const rows=envs.flatMap(x=>Array.isArray(x?.results)?x.results:[]);
           if (rows.length!==1) throw new Error('TELEGRAM_RUNTIME_STATUS_MISSING');
           const row=rows[0];
-          if (row.schema_version!=='geomacro.telegram-lead-envelope.v1') throw new Error('TELEGRAM_RUNTIME_SCHEMA_MISMATCH');
+          if (row.schema_version!=='geomacro.telegram-lead-envelope.v2') throw new Error('TELEGRAM_RUNTIME_SCHEMA_MISMATCH');
           if (row.producer_repo!=='blocknine0/geomacro-telegram-signals') throw new Error('TELEGRAM_RUNTIME_PRODUCER_REPO_MISMATCH');
-          if (row.producer_commit!=='aba12aea43ec8a5c9e54a4266e639903d531ad33') throw new Error('TELEGRAM_RUNTIME_PRODUCER_COMMIT_MISMATCH');
+          if (row.protocol_contract_sha256!=='6da33ed2a966d58122039ba38d83e801476a6318bc89634d0b3d951e8ad017c9') throw new Error('TELEGRAM_RUNTIME_PROTOCOL_HASH_MISMATCH');
+          if (!/^[a-f0-9]{40}$/.test(String(row.producer_commit??''))) throw new Error('TELEGRAM_RUNTIME_PRODUCER_AUDIT_SHA_INVALID');
           NODE
       - name: Export pending Telegram lead queue from D1
         shell: bash
