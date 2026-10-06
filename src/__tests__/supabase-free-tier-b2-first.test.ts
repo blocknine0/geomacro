@@ -25,6 +25,12 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(contract).toContain("'warn_bytes', 419430400");
     expect(contract).toContain("'freeze_bytes', 471859200");
     expect(contract).toContain("'bulk_write_allowed'");
+    expect(contract).toContain("then 'frozen'");
+    expect(contract).toContain("then 'warning'");
+    expect(contract).not.toContain("then 'freeze'");
+    expect(contract).not.toContain("then 'warn'");
+    expect(budget).toContain('value.mode === "warn" ? "warning"');
+    expect(budget).toContain('value.mode === "freeze" ? "frozen"');
     expect(budget).toContain("compact_operational_control_plane");
     expect(budget).toContain("raw_archive_historical_large_payloads");
     expect(budget).toContain('process.env.GITHUB_WORKFLOW === "Auto Ingest News"');
