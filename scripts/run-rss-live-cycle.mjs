@@ -10,6 +10,7 @@ import { spawn } from "node:child_process";
 const DB_URL = String(process.env.SUPABASE_DB_URL ?? "").trim();
 const DB_MODE = String(process.env.GRI_DB_MODE ?? "").trim().toLowerCase();
 const SUMMARY_OUT = String(process.env.RSS_LIVE_CYCLE_SUMMARY_OUT ?? "").trim();
+const SKIP_CORROBORATION = String(process.env.RSS_LIVE_SKIP_CORROBORATION ?? "").trim().toLowerCase() === "true";
 
 if (!DB_URL || DB_MODE !== "direct_postgres") {
   throw new Error("RSS_LIVE_CYCLE_REQUIRES_DIRECT_POSTGRES");
@@ -212,15 +213,30 @@ async function main() {
       throw new Error("RSS_CANONICAL_DIRECT_INGEST_COUNT_MISMATCH");
     }
 
-    const corroboration = await runCommand(
-      "bun",
-      ["scripts/run-live-flash-corroborate-local.ts"],
-      { forward: true },
-    );
-    if (corroboration.code !== 0) throw new Error(`RSS_CANONICAL_DIRECT_CORROBORATION_FAILED:${corroboration.stderr.slice(-2000)}`);
-    const corroborationSummary = parseLastJson(corroboration.stdout, "RSS_CANONICAL_DIRECT_CORROBORATION");
-    if (corroborationSummary?.ok !== true || corroborationSummary?.threshold_weakening !== false) {
-      throw new Error("RSS_CANONICAL_DIRECT_CORROBORATION_REJECTED");
+    let corroborationSummary;
+    if (SKIP_CORROBORATION) {
+      corroborationSummary = {
+        ok: true,
+        skipped: true,
+        reason: "explicit_partner_bootstrap_country_corroboration_follows",
+        processed: 0,
+        verified: 0,
+        corroborating: 0,
+        unverified: 0,
+        execution_mode: "skipped_explicitly",
+        threshold_weakening: false,
+      };
+    } else {
+      const corroboration = await runCommand(
+        "bun",
+        ["scripts/run-live-flash-corroborate-local.ts"],
+        { forward: true },
+      );
+      if (corroboration.code !== 0) throw new Error(`RSS_CANONICAL_DIRECT_CORROBORATION_FAILED:${corroboration.stderr.slice(-2000)}`);
+      corroborationSummary = parseLastJson(corroboration.stdout, "RSS_CANONICAL_DIRECT_CORROBORATION");
+      if (corroborationSummary?.ok !== true || corroborationSummary?.threshold_weakening !== false) {
+        throw new Error("RSS_CANONICAL_DIRECT_CORROBORATION_REJECTED");
+      }
     }
 
     const summary = {
@@ -241,6 +257,8 @@ async function main() {
       },
       corroboration: {
         ok: true,
+        skipped: corroborationSummary.skipped === true,
+        reason: corroborationSummary.reason ?? null,
         processed: Number(corroborationSummary.processed ?? 0),
         verified: Number(corroborationSummary.verified ?? 0),
         corroborating: Number(corroborationSummary.corroborating ?? 0),
