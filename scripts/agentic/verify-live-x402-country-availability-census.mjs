@@ -2,7 +2,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const BASE = String(process.env.GEOMACRO_LIVE_HOST ?? "https://geomacro.live").replace(/\/$/, "");
-const URL = `${BASE}/api/x402/risk/availability`;
+const AVAILABILITY_URL = `${BASE}/api/x402/risk/availability`;
 const BASE_SEPOLIA_NETWORK = "eip155:84532";
 const MIN_DELIVERABLE = Math.max(195, Number(process.env.GEOMACRO_X402_MIN_COUNTRY_PATHS ?? 195));
 const CONCURRENCY = Math.max(1, Math.min(16, Number(process.env.GEOMACRO_X402_COUNTRY_CENSUS_CONCURRENCY ?? 8)));
@@ -72,7 +72,7 @@ async function fetchAvailability(entity) {
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const response = await fetch(URL, {
+      const response = await fetch(AVAILABILITY_URL, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -232,7 +232,7 @@ const evidence = {
   schema_version: "geomacro.live-x402-country-availability-census.v1",
   checked_at: new Date().toISOString(),
   host: BASE,
-  endpoint: URL,
+  endpoint: AVAILABILITY_URL,
   payment_performed: false,
   real_funds_touched: false,
   execution_authorized: false,
