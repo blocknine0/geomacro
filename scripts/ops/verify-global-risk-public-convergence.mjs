@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const BASE_URL = "https://geomacro.live";
-const EXPECTED_AUTHORITY = "backblaze-b2";
+const EXPECTED_AUTHORITY = "backblaze-b2-verified-edge";
 const MAX_ATTEMPTS = 18;
 const POLL_MS = 10_000;
 
