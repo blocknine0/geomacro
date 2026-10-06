@@ -12,7 +12,7 @@ on:
       - "scripts/verify-telegram-lead-envelope.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "config/telegram-private-signal-bridge.json"
-      - "workers/control-plane/migrations/0007_telegram_signal_producer_repin_68643.sql"
+      - "workers/control-plane/migrations/0008_telegram_signal_producer_repin_aba12.sql"
       - "workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql"
       - "src/__tests__/telegram-b2-d1-consumer-contract.test.ts"
   push:
@@ -24,7 +24,7 @@ on:
       - "scripts/verify-telegram-lead-envelope.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "config/telegram-private-signal-bridge.json"
-      - "workers/control-plane/migrations/0007_telegram_signal_producer_repin_68643.sql"
+      - "workers/control-plane/migrations/0008_telegram_signal_producer_repin_aba12.sql"
       - "workers/control-plane/migrations/0006_telegram_signal_lead_queue.sql"
 
 permissions:
@@ -55,7 +55,7 @@ jobs:
           grep -q 'verifyTelegramLeadEnvelope' scripts/ops/drain-telegram-b2-leads.mjs
           grep -q 'LIVE_FLASH_LOCAL_REQUIRES_DIRECT_POSTGRES' scripts/run-live-flash-ingest-local.ts
           grep -q 'source_channel_key' scripts/run-live-flash-ingest-local.ts
-          grep -q '68643f25c7ad1ab6bb0fa5238866fb7358eb1ab9' config/telegram-private-signal-bridge.json
+          grep -q 'aba12aea43ec8a5c9e54a4266e639903d531ad33' config/telegram-private-signal-bridge.json
 
   consume:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -144,7 +144,7 @@ jobs:
           const row=rows[0];
           if (row.schema_version!=='geomacro.telegram-lead-envelope.v1') throw new Error('TELEGRAM_RUNTIME_SCHEMA_MISMATCH');
           if (row.producer_repo!=='blocknine0/geomacro-telegram-signals') throw new Error('TELEGRAM_RUNTIME_PRODUCER_REPO_MISMATCH');
-          if (row.producer_commit!=='68643f25c7ad1ab6bb0fa5238866fb7358eb1ab9') throw new Error('TELEGRAM_RUNTIME_PRODUCER_COMMIT_MISMATCH');
+          if (row.producer_commit!=='aba12aea43ec8a5c9e54a4266e639903d531ad33') throw new Error('TELEGRAM_RUNTIME_PRODUCER_COMMIT_MISMATCH');
           NODE
       - name: Export pending Telegram lead queue from D1
         shell: bash
