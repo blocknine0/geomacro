@@ -48,6 +48,17 @@ describe("verified B2 structural serving continuity", () => {
     expect(publisher).not.toContain("const baseRows =");
   });
 
+  it("requires distinct write and read credentials for fail-closed B2 publication verification", () => {
+    const workflow = read(".github/workflows/b2-structural-serving-snapshot.yml");
+    const client = read("scripts/ops/b2-s3-client.mjs");
+    expect(workflow).toContain("B2_KEY_ID: ${{ secrets.B2_KEY_ID }}");
+    expect(workflow).toContain("B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}");
+    expect(workflow).toContain("B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}");
+    expect(workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}");
+    expect(client).toContain('method === "GET" && readCredentialsSeparate');
+    expect(client).toContain("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
+  });
+
   it("requires full B2 readback and restore before publishing continuity proof", () => {
     const publisher = read("scripts/ops/publish-b2-structural-serving-snapshot.ts");
     expect(publisher).toContain("await b2.put(SNAPSHOT_KEY, packed)");
