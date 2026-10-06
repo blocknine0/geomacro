@@ -8,8 +8,11 @@ const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 describe("global canonical Risk Object refresh", () => {
   it("uses the enabled country-like registry instead of a hard-coded country list", () => {
     const script = read("scripts/refresh-global-canonical-risk-objects.ts");
+    expect(script).toContain('createGriDbClient');
     expect(script).toContain('.from("live_country_registry")');
+    expect(script).toContain('.select("iso3,country_name")');
     expect(script).toContain('.eq("enabled", true)');
+    expect(script).toContain("GLOBAL_COUNTRY_REGISTRY_READ_FAILED");
     expect(script).toContain('const COUNTRY_LIKE_SPECIALS = new Set(["PSE", "TWN"])');
     expect(script).toContain('scope === "SOVEREIGN" || COUNTRY_LIKE_SPECIALS.has(iso3)');
     expect(script).not.toContain('const COUNTRY_IDS = [');
