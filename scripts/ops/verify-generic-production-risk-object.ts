@@ -86,8 +86,15 @@ if (!Number.isFinite(expiresMs) || expiresMs <= Date.now()) {
   throw new Error("GENERIC_RISK_OBJECT_NOT_FRESH");
 }
 
-const registryResponse = await fetch(TRUST_URL, {
-  headers: { accept: "application/json" },
+const trustUrl = new URL(TRUST_URL);
+trustUrl.searchParams.set("v", String(process.env.HEAD_SHA ?? Date.now()));
+const registryResponse = await fetch(trustUrl, {
+  cache: "no-store",
+  headers: {
+    accept: "application/json",
+    "cache-control": "no-cache",
+    pragma: "no-cache",
+  },
   signal: AbortSignal.timeout(15_000),
 });
 if (!registryResponse.ok) {

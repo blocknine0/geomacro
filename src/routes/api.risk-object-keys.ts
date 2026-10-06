@@ -275,10 +275,11 @@ export const Route =
               },
               200,
               {
-                // Public verification keys may be cached briefly, but
-                // revocation/rotation changes must propagate quickly.
+                // Trust discovery is a launch/security boundary. Do not let
+                // an intermediary serve a pre-deploy contract or stale key
+                // lifecycle state to independent verifiers.
                 "cache-control":
-                  "public, max-age=300, must-revalidate",
+                  "no-store",
               },
             );
           } catch {
