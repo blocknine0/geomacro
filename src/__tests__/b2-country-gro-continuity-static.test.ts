@@ -42,16 +42,21 @@ describe("B2 country GRO continuity", () => {
     expect(gate).toContain("await resolveCountryGroAtOrBefore(");
   });
 
-  it("publishes only verified deliverable signed GROs after full B2 readback", () => {
+  it("publishes only verified deliverable signed GROs through one fully verified bundle", () => {
     const publisher = read("scripts/ops/publish-b2-country-gro-continuity.ts");
-    expect(publisher).toContain("await b2.put(key, packed)");
-    expect(publisher).toContain("const readback = await b2.get(key)");
-    expect(publisher).toContain("sha256(readback) !== digest");
+    expect(publisher).toContain("geomacro.country-gro-continuity-bundle.v1");
+    expect(publisher).toContain("await b2.put(byIdKey, packed)");
+    expect(publisher).toContain("await b2.put(latestKey, packed)");
+    expect(publisher).toContain("const bundleReadback = await b2.get(bundleKey)");
+    expect(publisher).toContain("B2_COUNTRY_GRO_BUNDLE_READBACK_HASH_INVALID");
+    expect(publisher).toContain("bundle_members_verified");
+    expect(publisher).toContain("b2_full_readback_objects_verified: 2");
     expect(publisher).toContain("verifyRiskObjectSignature(object).valid");
     expect(publisher).toContain("verifyCommercialRiskObjectArtifact(object");
     expect(publisher).toContain("PUBLIC_DEMO_RISK_PROFILE_REASON");
     expect(publisher).toContain("country-gro/by-id/");
     expect(publisher).toContain("/latest.json.gz");
+    expect(publisher).not.toContain("const readback = await b2.get(key)");
   });
 
   it("proves the runtime reader works after Supabase credentials are removed", () => {
@@ -106,19 +111,25 @@ describe("B2 country GRO continuity", () => {
     expect(shim).toContain('op === "not.cs" ? `NOT (${predicate})` : predicate');
   });
 
-  it("derives the full D1 current index only from independently verified B2 continuity proof bytes", () => {
+  it("derives the full D1 current index from one independently verified B2 continuity bundle", () => {
     const sync = read("scripts/ops/sync-global-current-country-gro-to-d1.ts");
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     expect(sync).toContain("country-gro/continuity-proof.json");
+    expect(sync).toContain("geomacro.country-gro-continuity-bundle.v1");
     expect(sync).toContain("GLOBAL_GRO_D1_PROOF_CARDINALITY_INVALID");
+    expect(sync).toContain("GLOBAL_GRO_D1_BUNDLE_HASH_INVALID");
+    expect(sync).toContain("GLOBAL_GRO_D1_BUNDLE_MEMBER_INVALID");
     expect(sync).toContain("GLOBAL_GRO_D1_ENVELOPE_HASH_INVALID");
-    expect(sync).toContain("GLOBAL_GRO_D1_GENERIC_B2_HASH_INVALID");
-    expect(sync).toContain("GLOBAL_GRO_D1_GENERIC_B2_RESTORE_INVALID");
     expect(sync).toContain("verifyCommercialRiskObjectArtifact");
     expect(sync).toContain("GLOBAL_GRO_D1_READY_FLOOR_BREACH");
+    expect(sync).toContain("b2_class_b_source_reads: 2");
+    expect(sync).toContain("generic_archive_readback_deferred_to_runtime: true");
+    expect(sync).not.toContain("const readback = await b2.get(genericKey)");
     expect(sync).toContain("supabase_payload_used_for_d1_record: false");
     expect(sync).toContain("external_payment_performed: false");
     expect(sync).toContain("destructive_b2_change: false");
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "500"');
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "220"');
     expect(workflow).toContain("bun scripts/ops/sync-global-current-country-gro-to-d1.ts");
   });
 
