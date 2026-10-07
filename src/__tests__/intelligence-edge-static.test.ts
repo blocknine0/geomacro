@@ -25,6 +25,10 @@ describe("verified public edge hot-cache contract", () => {
     expect(worker).toContain("/v1/public/intelligence-overlay");
     expect(worker).toContain("validHotOverlayRows");
     expect(worker).toContain("applyHotOverlay");
+    expect(worker).toContain("payload?.verified_b2_sha256 !== verifiedB2Sha256");
+    expect(worker).toContain("payload?.generated_at !== expectedGeneratedAt");
+    expect(worker).toContain('"x-geomacro-b2-sha256": proof.compressed_sha256');
+    expect(worker).toContain('cached.headers.get("x-geomacro-b2-sha256")');
     expect(worker).toContain("projectCachedResponse");
     expect(worker).toContain("return await projectCachedResponse(cached)");
     expect(worker).not.toContain("if (cached) return cached");

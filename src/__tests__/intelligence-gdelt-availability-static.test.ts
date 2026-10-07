@@ -5,7 +5,7 @@ const wrapper = readFileSync("scripts/ops/run-b2-public-intelligence-publisher.m
 const publisher = readFileSync("scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs", "utf8");
 const workflow = readFileSync(".github/workflows/intelligence-scored-refresh.yml", "utf8");
 const docFallback = readFileSync("scripts/ops/gdelt-doc-current-evidence.mjs", "utf8");
-const geoFallback = readFileSync("scripts/ops/gdelt-geo-current-evidence.mjs", "utf8");
+const masterfileFallback = readFileSync("scripts/ops/gdelt-masterfile-current-evidence.mjs", "utf8");
 const preserve = readFileSync("scripts/ops/republish-b2-public-intelligence-preserve-live.mjs", "utf8");
 
 describe("Intelligence GDELT availability contract", () => {
@@ -15,13 +15,15 @@ describe("Intelligence GDELT availability contract", () => {
     expect(wrapper).toContain("DEFAULT_POLL_MS = 10_000");
     expect(wrapper).toContain("if (!combined.includes(RETRYABLE_AVAILABILITY_ERROR))");
     expect(wrapper).toContain("CURRENT_GDELT_AVAILABILITY_WAIT_EXHAUSTED");
-    expect(wrapper).toContain('sourceTransport === "event_export"');
-    expect(wrapper).toContain('["doc_v2_articlelist", "geo_v2_jsonfeed"].includes(sourceTransport)');
+    expect(wrapper).toContain('"event_export_masterfile_tail"');
+    expect(wrapper).toContain("eventExportTransports.has(sourceTransport)");
+    expect(wrapper).toContain('sourceTransport !== "doc_v2_articlelist"');
+    expect(wrapper).not.toContain('"geo_v2_jsonfeed"');
     expect(wrapper).toContain("coverage_runtime_refreshed: coverageRuntimeRefreshed");
     expect(wrapper).not.toContain("--retry-all-errors");
   });
 
-  it("adds a bounded corroborated GDELT DOC fallback without weakening event-export integrity guards", () => {
+  it("uses bounded verified masterfile Event fallback before DOC without weakening integrity guards", () => {
     expect(publisher).toContain("readCurrentGdeltEvidence");
     expect(publisher).toContain("eventExportTransportUnavailable");
     expect(publisher).toContain("CURRENT_EVIDENCE_HTTP_(404|429|5\\\\d\\\\d)");
@@ -37,23 +39,24 @@ describe("Intelligence GDELT availability contract", () => {
     expect(docFallback).toContain("severity: null");
     expect(docFallback).toContain("delta: null");
 
-    expect(publisher).toContain("readGdeltGeoCurrentRows");
-    expect(publisher).toContain("docFallbackTransportUnavailable");
-    expect(publisher).toContain("geoFallbackTransportUnavailable");
-    expect(publisher).toContain("GDELT_GEO_SOURCE_TRANSPORT");
-    expect(publisher).toContain("CURRENT_GDELT_GEO_FALLBACK_INVALID");
-    expect(geoFallback).toContain('GDELT_GEO_API_URL = "https://api.gdeltproject.org/api/v2/geo/geo"');
-    expect(geoFallback).toContain('url.searchParams.set("format", "jsonfeed")');
-    expect(geoFallback).toContain('url.searchParams.set("timespan", "2h")');
-    expect(geoFallback).toContain('url.searchParams.set("timespanround", "precise")');
-    expect(geoFallback).toContain('url.searchParams.set("sortby", "Date")');
-    expect(geoFallback).toContain("MIN_INDEPENDENT_DOMAINS = 3");
-    expect(geoFallback).toContain("item?.date_published");
-    expect(geoFallback).toContain("not a verified event claim");
-    expect(geoFallback).toContain('public_status: "live_observed"');
-    expect(geoFallback).toContain("severity: null");
-    expect(geoFallback).toContain("delta: null");
-    expect(geoFallback).not.toContain("item?.date_modified");
+    expect(publisher).toContain("readGdeltMasterfileCurrentCandidates");
+    expect(publisher).toContain("readCurrentGdeltMasterfileRows");
+    expect(publisher).toContain("masterfileFallbackTransportUnavailable");
+    expect(publisher).toContain("GDELT_MASTERFILE_SOURCE_TRANSPORT");
+    expect(publisher).toContain("CURRENT_GDELT_MASTERFILE_FALLBACK_INVALID");
+    expect(publisher).not.toContain("readGdeltGeoCurrentRows");
+    expect(publisher).not.toContain("GDELT_GEO_SOURCE_TRANSPORT");
+
+    expect(masterfileFallback).toContain(
+      'GDELT_MASTERFILE_URL = "https://data.gdeltproject.org/gdeltv2/masterfilelist.txt"',
+    );
+    expect(masterfileFallback).toContain('range: `bytes=-${MAX_TAIL_BYTES}`');
+    expect(masterfileFallback).toContain("response?.status !== 206");
+    expect(masterfileFallback).toContain("CURRENT_GDELT_MASTERFILE_CONTENT_RANGE_INVALID");
+    expect(masterfileFallback).toContain('listed.hostname !== "data.gdeltproject.org"');
+    expect(masterfileFallback).toContain("/^\\/gdeltv2\\/\\d{14}\\.export\\.CSV\\.zip$/u");
+    expect(masterfileFallback).toContain("MAX_CANDIDATES = 8");
+    expect(masterfileFallback).toContain("LIVE_MAX_AGE_MS = 2 * 60 * 60 * 1000");
 
     expect(preserve).toContain("ALLOWED_CURRENT_EVIDENCE_CONTRACTS");
     expect(preserve).toContain("gdelt-geo-v2-global-conflict-coverage-v1");
