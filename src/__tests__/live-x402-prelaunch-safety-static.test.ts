@@ -80,4 +80,24 @@ describe("live x402 prelaunch safety probe", () => {
     expect(workflow).toContain("live-x402-country-availability-census.json");
   });
 
+  it("serializes enforced main acceptance after exact production deployment health", () => {
+    const workflow = readFileSync(
+      ".github/workflows/live-x402-prelaunch-availability.yml",
+      "utf8",
+    );
+
+    expect(workflow).toContain("workflow_run:");
+    expect(workflow).toContain("- Production Website Health");
+    expect(workflow).not.toContain("push:\n    branches:\n      - main");
+    expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(workflow).toContain("github.event.workflow_run.head_branch == 'main'");
+    expect(workflow).toContain("WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}");
+    expect(workflow).toContain("ref: ${{ steps.release.outputs.sha }}");
+    expect(workflow).toContain("Verify live build marker still matches accepted deployment");
+    expect(workflow).toContain("if: ${{ github.event_name != 'pull_request' }}");
+    expect(workflow).toContain("X402_LIVE_BUILD_MARKER_SHA_MISMATCH");
+    expect(workflow).toContain("GEOMACRO_X402_REQUIRE_REPRESENTATIVE_AVAILABLE:");
+    expect(workflow).toContain("GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE:");
+  });
+
 });
