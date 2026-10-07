@@ -24,6 +24,16 @@ describe("#1414 Ask Geomacro production acceptance", () => {
     expect(verifier).toContain("ASK_PRIVATE_SOURCE_LEAK");
   });
 
+  it("uses the proof-validating Cloudflare Risk Indices edge before direct B2 for index questions", () => {
+    expect(machine).toContain("RISK_INDICES_EDGE_URL");
+    expect(machine).toContain("backblaze-b2-risk-indices-edge");
+    expect(machine).toContain("RISK_INDICES_EDGE_TIMEOUT_MS = 4_000");
+    const edge = machine.indexOf("await readRiskIndicesEdge()");
+    const b2 = machine.indexOf("await readB2PublicRisk()");
+    expect(edge).toBeGreaterThan(-1);
+    expect(b2).toBeGreaterThan(edge);
+  });
+
   it("keeps human and machine intelligence_query on the same canonical answer engine", () => {
     expect(human).toContain('import { answerAskQuestion } from "./ask-answer.server"');
     expect(human).toContain("answerAskQuestion(data.question)");
