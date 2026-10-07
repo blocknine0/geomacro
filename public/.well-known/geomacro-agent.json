@@ -73,7 +73,7 @@
         "gri_context"
       ],
       "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
-      "paid_endpoint": "https://geomacro.live/api/v1/intelligence/query",
+      "paid_endpoint": "https://geomacro.live/api/x402/intelligence",
       "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
       "content_type": "application/json",
       "execution_authorized": false
@@ -91,7 +91,7 @@
   },
   "delivery": {
     "protocol": "x402-v2",
-    "canonical_paid_endpoint": "https://geomacro.live/api/v1/intelligence/query",
+    "canonical_paid_endpoint": "https://geomacro.live/api/x402/intelligence",
     "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
     "payment_after_deliverability_only": true,
     "replay_protection": true,
