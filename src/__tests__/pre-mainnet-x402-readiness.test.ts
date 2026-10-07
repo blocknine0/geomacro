@@ -111,7 +111,7 @@ describe("production x402 readiness", () => {
 
     expect(commerce.commercial_contract.production_funds_authorized).toBe(false);
     expect(Object.keys(commerce.offers[0].providers).sort()).toEqual(["circle_gateway", "coinbase_x402", "nevermined"]);
-    expect(openapi.paths["/api/v1/intelligence/query"].post["x-payment-info"].production_enabled).toBe(false);
+    expect(openapi.paths["/api/x402/intelligence"].post["x-payment-info"].production_enabled).toBe(false);
     expect(openapi.paths["/api/x402/circle/intelligence"].post["x-payment-info"].production_enabled).toBe(false);
     expect(launch.providers.circle_gateway_x402.launch_cohort).toBe(true);
     expect(launch.providers.circle_gateway_x402.production_enabled).toBe(false);
