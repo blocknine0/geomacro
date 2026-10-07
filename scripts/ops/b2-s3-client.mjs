@@ -321,7 +321,7 @@ export function createB2Client({
               nativeCause instanceof Error ? nativeCause.message : "B2_NATIVE_READ_FAILED";
             if (credential.role !== "primary") {
               lastDedicatedNativeError = new Error(
-                /^[A-Z0-9_:-]+$/.test(nativeMessage)
+                /^[A-Za-z0-9_:-]+$/.test(nativeMessage)
                   ? nativeMessage
                   : "B2_NATIVE_READ_FAILED",
               );
