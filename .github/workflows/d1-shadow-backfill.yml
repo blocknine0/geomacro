@@ -88,7 +88,7 @@ jobs:
           fs.writeFileSync(process.env.D1_CONFIG, source.replace('REPLACE_WITH_D1_DATABASE_ID', id));
           NODE
 
-      - name: Require D1 schema v1 before copying anything
+      - name: Require D1 schema v2+ before copying anything
         shell: bash
         run: |
           set -euo pipefail
@@ -101,9 +101,9 @@ jobs:
               try { parsed = JSON.parse(s); } catch { process.exit(4); }
               const envelopes = Array.isArray(parsed) ? parsed : [parsed];
               const rows = envelopes.flatMap(x => Array.isArray(x?.results) ? x.results : []);
-              if (!rows.some(row => Number(row?.version) === 1)) process.exit(4);
+              if (!rows.some(row => Number(row?.version) >= 2)) process.exit(4);
             });
-          ' || { echo "D1 schema v1 is not ready"; exit 4; }
+          ' || { echo "D1 schema v2 or newer is not ready"; exit 4; }
 
       - name: Run checksum-verified shadow backfill
         run: node scripts/ops/d1-shadow-backfill.mjs
