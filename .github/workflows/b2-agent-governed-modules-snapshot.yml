@@ -10,6 +10,9 @@ on:
       - "scripts/ops/run-b2-governed-direct-postgres.mjs"
       - "scripts/ops/verify-b2-agent-governed-runtime.ts"
       - "src/lib/b2-agent-governed-modules.server.ts"
+      - "src/lib/b2-private-archive-read.server.ts"
+      - "scripts/ops/verify-b2-private-archive-read.ts"
+      - "scripts/ops/b2-s3-client.mjs"
       - "src/lib/agent-query-political-governance.server.ts"
       - "src/lib/agent-query-world-bank-modules.server.ts"
       - "src/lib/agent-query-critical-minerals.server.ts"
@@ -41,6 +44,8 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -60,10 +65,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY; do
+          for name in SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY B2_ARCHIVE_READ_KEY_ID B2_ARCHIVE_READ_APPLICATION_KEY; do
             test -n "${!name:-}" || { echo "$name is required"; exit 2; }
           done
           command -v psql >/dev/null || { echo "psql is required"; exit 2; }
+
+      - name: Preflight private B2 read capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          bun scripts/ops/verify-b2-private-archive-read.ts > artifacts/b2-read-preflight.json
+          jq -e '.ok == true and .dedicated_read_credentials == true and .destructive_b2_change == false' artifacts/b2-read-preflight.json >/dev/null
 
       - name: Publish fresh governed derived module snapshot via bounded direct Postgres export
         run: bun scripts/ops/run-b2-governed-direct-postgres.mjs
