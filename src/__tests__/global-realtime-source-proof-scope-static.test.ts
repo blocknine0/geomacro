@@ -16,7 +16,7 @@ describe("Global Realtime Source Proof change scoping", () => {
   });
 
   it("runs the bounded source heartbeat on exact head without enabling raw writers", () => {
-    expect(workflow).toContain("Run bounded 250x3 source heartbeat on exact PR head");
+    expect(workflow).toContain("Run bounded source heartbeat on exact PR head");
     expect(workflow).toContain("RUN_BOUNDED_SOURCE_HEARTBEAT=true");
     expect(workflow).toContain("PHASE_A_HEARTBEAT_ONLY=1");
     expect(workflow).toContain('phase-a-bounded-heartbeat.json');
@@ -26,7 +26,7 @@ describe("Global Realtime Source Proof change scoping", () => {
   });
 
   it("runs 195x3 raw refresh only for raw-pipeline changes", () => {
-    expect(workflow).toContain("Scope broad raw-runtime acceptance to raw-pipeline changes");
+    expect(workflow).toContain("Scope exact-head acceptance");
     expect(workflow).toContain("FULL_RAW_ACCEPTANCE=true");
     expect(workflow).toContain("FULL_RAW_ACCEPTANCE=false");
     expect(workflow).not.toContain('scripts/intelligence-orchestrator.mjs|scripts/run-rss-live-cycle.mjs');
