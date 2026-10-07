@@ -14,7 +14,7 @@ const commerceWorker = readFileSync(
   "workers/commerce-ledger/src/index.mjs",
   "utf8",
 );
-const adaptive = readFileSync("src/routes/api.x402.intelligence.ts", "utf8");
+const adaptive = readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts", "utf8");
 const legacy = readFileSync("src/routes/api.x402.risk.ts", "utf8");
 const reconcile = readFileSync(
   "scripts/ops/reconcile-agent-commerce-payment.mjs",
