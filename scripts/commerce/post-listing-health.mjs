@@ -12,7 +12,7 @@ const providers = [
   {
     key: "coinbase",
     id: "coinbase_x402",
-    path: "/api/x402/intelligence",
+    path: "/api/v1/intelligence/query",
     expectedScheme: "exact",
     expectedNetwork: BASE_MAINNET,
     expectedAsset: BASE_USDC,
