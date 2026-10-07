@@ -15,8 +15,6 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { preferredNetwork } from "@/lib/arc";
-import { useWallet } from "@/hooks/WalletProvider";
 import { supabaseFeed } from "@/lib/supabase-feed";
 import { EmptyValue } from "@/components/foundation/data";
 import { RiskBadge, riskLevel } from "@/components/foundation/risk";
@@ -234,8 +232,6 @@ function StepGuide() {
 }
 
 export function HeroSection() {
-  const { network } = useWallet();
-  const activeNet = network ?? preferredNetwork();
   const riskFeed = useGlobalRisk();
   const [whyOpen, setWhyOpen] = useState(false);
   const [whyLoading, setWhyLoading] = useState(false);
@@ -358,9 +354,8 @@ export function HeroSection() {
                   historical context and deterministic Global Risk Index attribution.
                 </p>
                 <p className="mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
-                  The intelligence layer supports human research and machine-readable decision context.
-                  Prediction markets and programmable onchain execution remain available as
-                  secondary applications of the same underlying intelligence.
+                  The intelligence layer supports human research, institutional workflows and
+                  machine-readable decision context through governed commercial interfaces.
                 </p>
               </div>
               <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -370,14 +365,9 @@ export function HeroSection() {
                   </Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
-                  <a
-                    href="https://testnet.arcscan.app/address/0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="gap-2"
-                  >
-                    <Link2 className="h-4 w-4" /> Technical Proof
-                  </a>
+                  <Link to="/data-api" className="gap-2">
+                    <Link2 className="h-4 w-4" /> API & Agent Access
+                  </Link>
                 </Button>
               </div>
             </div>
