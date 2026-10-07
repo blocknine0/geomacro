@@ -8,10 +8,6 @@ const OUT = String(
     "artifacts/live-x402-no-funds-scope-acceptance.json",
 );
 
-if (BASE !== "https://geomacro.live") {
-  throw new Error("X402_SCOPE_ACCEPTANCE_MUST_TARGET_PUBLIC_PRODUCTION");
-}
-
 function decodeRequired(value) {
   if (!value) throw new Error("PAYMENT_REQUIRED_HEADER_MISSING");
   try {
@@ -194,28 +190,81 @@ const cases = [
   },
 ];
 
-const results = [];
-for (const testCase of cases) results.push(await proveCase(testCase));
+function safeCaseFailure(testCase, error) {
+  const message = error instanceof Error ? error.message : "";
+  if (
+    /^[A-Za-z0-9_.:-]+$/.test(message) &&
+    (
+      message.startsWith(`${testCase.id}_`) ||
+      message.startsWith("PAYMENT_REQUIRED_")
+    )
+  ) {
+    return message;
+  }
+  return `${testCase.id}_REQUEST_FAILED`;
+}
 
-const evidence = {
-  schema_version: "geomacro.live-x402-no-funds-scope-acceptance.v1",
-  checked_at: new Date().toISOString(),
-  host: BASE,
-  payment_performed: false,
-  real_funds_touched: false,
-  payment_signature_sent: false,
-  settlement_attempted: false,
-  scopes: {
-    geopolitics_paid_path: true,
-    macro_paid_path: true,
-    critical_minerals_paid_path: true,
-    country_paid_path_representative: true,
-    corridor_paid_path_representative: true,
-  },
-  results,
-};
+async function main() {
+  if (BASE !== "https://geomacro.live") {
+    console.error("X402_SCOPE_ACCEPTANCE_MUST_TARGET_PUBLIC_PRODUCTION");
+    process.exitCode = 1;
+    return;
+  }
 
-mkdirSync(OUT.split("/").slice(0, -1).join("/") || ".", { recursive: true });
-writeFileSync(OUT, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
-console.log(JSON.stringify(evidence, null, 2));
-console.log("PASS: all five #1414 commercial scopes reached a query-plan-bound unpaid x402 challenge without sending payment proof.");
+  const results = [];
+  for (const testCase of cases) {
+    try {
+      results.push(await proveCase(testCase));
+    } catch (error) {
+      results.push({
+        id: testCase.id,
+        status: "FAIL",
+        failure_code: safeCaseFailure(testCase, error),
+        payment_signature_sent: false,
+        settlement_attempted: false,
+        execution_authorized: false,
+      });
+    }
+  }
+
+  const failures = results.filter((result) => result.status !== "PASS");
+  const evidence = {
+    schema_version: "geomacro.live-x402-no-funds-scope-acceptance.v1",
+    checked_at: new Date().toISOString(),
+    host: BASE,
+    payment_performed: false,
+    real_funds_touched: false,
+    payment_signature_sent: false,
+    settlement_attempted: false,
+    all_scopes_passed: failures.length === 0,
+    scopes: {
+      geopolitics_paid_path: true,
+      macro_paid_path: true,
+      critical_minerals_paid_path: true,
+      country_paid_path_representative: true,
+      corridor_paid_path_representative: true,
+    },
+    results,
+  };
+
+  mkdirSync(OUT.split("/").slice(0, -1).join("/") || ".", { recursive: true });
+  writeFileSync(OUT, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
+  console.log(JSON.stringify(evidence, null, 2));
+
+  if (failures.length > 0) {
+    console.error(
+      `X402_SCOPE_ACCEPTANCE_FAILED:${failures.map((result) => result.id).join(",")}`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(
+    "PASS: all five #1414 commercial scopes reached a query-plan-bound unpaid x402 challenge without sending payment proof.",
+  );
+}
+
+main().catch(() => {
+  console.error("X402_SCOPE_ACCEPTANCE_UNEXPECTED_FAILURE");
+  process.exitCode = 1;
+});
