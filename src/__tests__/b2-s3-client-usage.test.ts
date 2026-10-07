@@ -408,8 +408,8 @@ describe("B2 hard cap handling", () => {
 });
 
 
-describe("B2 signed PUT plus HEAD metadata verification", () => {
-  it("verifies a fresh object without downloading its body", async () => {
+describe("B2 signed PUT plus full readback verification", () => {
+  it("verifies stored bytes with the same single Class-B verification operation", async () => {
     clearOptionalReadCredentials();
     process.env.B2_REQUEST_BUDGET = "4";
 
@@ -429,15 +429,9 @@ describe("B2 signed PUT plus HEAD metadata verification", () => {
         return new Response(null, { status: 200 });
       }
 
-      if (method === "HEAD") {
+      if (method === "GET") {
         expect(init.body).toBeUndefined();
-        return new Response(null, {
-          status: 200,
-          headers: {
-            "content-length": String(body.length),
-            "x-amz-meta-geomacro-sha256": digest,
-          },
-        });
+        return new Response(body, { status: 200 });
       }
 
       return new Response("unexpected", { status: 500 });
@@ -458,11 +452,11 @@ describe("B2 signed PUT plus HEAD metadata verification", () => {
     ).resolves.toEqual({
       sha256: digest,
       bytes: body.length,
-      verification_mode: "signed-put-head-metadata",
-      full_body_readback_verified: false,
+      verification_mode: "signed-put-full-readback-sha256",
+      full_body_readback_verified: true,
     });
 
-    expect(methods).toEqual(["PUT", "HEAD"]);
+    expect(methods).toEqual(["PUT", "GET"]);
     expect(client.usage()).toMatchObject({
       requests_started: 2,
       s3_requests_started: 2,
@@ -470,21 +464,77 @@ describe("B2 signed PUT plus HEAD metadata verification", () => {
     });
   });
 
-  it("fails closed when HEAD metadata does not match the signed PUT payload", async () => {
+  it("uses native authenticated readback when S3 GET is denied", async () => {
+    clearOptionalReadCredentials();
+    process.env.B2_REQUEST_BUDGET = "5";
+    const body = Buffer.from("native-readback-proof", "utf8");
+    const methods: string[] = [];
+
+    vi.stubGlobal("fetch", vi.fn(async (input, init = {}) => {
+      const url = String(input);
+      const method = String(init.method ?? "GET");
+      methods.push(`${method} ${url}`);
+
+      if (method === "PUT" && url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+        return new Response(null, { status: 200 });
+      }
+      if (method === "GET" && url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+        return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+      }
+      if (url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account") {
+        return Response.json({
+          authorizationToken: "token",
+          apiInfo: {
+            storageApi: {
+              downloadUrl: "https://f005.backblazeb2.com",
+              allowed: {
+                capabilities: ["readFiles"],
+                buckets: [{ name: "geomacro-private-archive" }],
+                namePrefix: "geomacro-evidence/v1/",
+              },
+            },
+          },
+        });
+      }
+      if (url.startsWith("https://f005.backblazeb2.com/file/")) {
+        return new Response(body, { status: 200 });
+      }
+      return new Response("unexpected", { status: 500 });
+    }));
+
+    const client = createB2Client({
+      endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+      accessKey: "primary-key",
+      secretKey: "primary-secret",
+      bucket: "geomacro-private-archive",
+    });
+
+    await expect(
+      client.putWithMetadataVerification(
+        "geomacro-evidence/v1/native-proof.json",
+        body,
+      ),
+    ).resolves.toMatchObject({
+      sha256: createHash("sha256").update(body).digest("hex"),
+      full_body_readback_verified: true,
+    });
+
+    expect(methods.some((value) => value.startsWith("HEAD "))).toBe(false);
+    expect(client.usage()).toMatchObject({
+      requests_started: 3,
+      s3_requests_started: 2,
+      native_read_requests_started: 1,
+      native_read_fallback_successes: 1,
+    });
+  });
+
+  it("fails closed when full readback bytes do not match the uploaded payload", async () => {
     clearOptionalReadCredentials();
 
     vi.stubGlobal("fetch", vi.fn(async (_input, init = {}) => {
       const method = String(init.method ?? "GET");
       if (method === "PUT") return new Response(null, { status: 200 });
-      if (method === "HEAD") {
-        return new Response(null, {
-          status: 200,
-          headers: {
-            "content-length": "4",
-            "x-amz-meta-geomacro-sha256": "0".repeat(64),
-          },
-        });
-      }
+      if (method === "GET") return new Response("nope", { status: 200 });
       return new Response("unexpected", { status: 500 });
     }));
 
@@ -500,6 +550,6 @@ describe("B2 signed PUT plus HEAD metadata verification", () => {
         "geomacro-evidence/v1/mismatch.json",
         Buffer.from("test"),
       ),
-    ).rejects.toThrow("B2_METADATA_SHA256_MISMATCH");
+    ).rejects.toThrow("B2_READBACK_SHA256_MISMATCH");
   });
 });

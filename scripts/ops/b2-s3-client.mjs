@@ -453,22 +453,27 @@ export function createB2Client({
       },
     });
 
-    const metadata = await request("HEAD", key, Buffer.alloc(0), {
-      metadataOnly: true,
-    });
+    // A HEAD costs the same Class-B transaction class as a read on the
+    // constrained account but cannot prove the stored bytes, and S3 HEAD 403
+    // responses may carry no body/error code. Reuse the governed GET path
+    // instead: one independent byte readback proves length + SHA-256 and can
+    // use the authenticated Backblaze Native fallback when S3 read access is
+    // denied. This is deliberately stronger without increasing the number of
+    // verification operations per upload.
+    const readback = await readSingleFlight(key, false);
 
-    if (metadata.geomacro_sha256 !== digest) {
-      throw new Error("B2_METADATA_SHA256_MISMATCH");
+    if (readback.length !== body.length) {
+      throw new Error("B2_READBACK_CONTENT_LENGTH_MISMATCH");
     }
-    if (metadata.content_length !== body.length) {
-      throw new Error("B2_METADATA_CONTENT_LENGTH_MISMATCH");
+    if (sha(readback) !== digest) {
+      throw new Error("B2_READBACK_SHA256_MISMATCH");
     }
 
     return {
       sha256: digest,
       bytes: body.length,
-      verification_mode: "signed-put-head-metadata",
-      full_body_readback_verified: false,
+      verification_mode: "signed-put-full-readback-sha256",
+      full_body_readback_verified: true,
     };
   }
 
