@@ -81,7 +81,7 @@ function ReviewPage() {
             This is not a request for a positive review. We want honest feedback, including anything that breaks, feels unclear or should be improved.
           </div>
           <div className="mt-4 rounded-lg border border-border/60 bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
-            Product boundary: Prediction Markets, Bridge and Swap are separate testnet technical proofs. They are not part of Geomacro's commercial mainnet product and are intentionally excluded from this reviewer flow.
+            Product boundary: this reviewer flow covers only Geomacro's commercial risk-intelligence product, current Private Pilot machine surfaces and supporting evidence/methodology.
           </div>
         </div>
 
@@ -120,7 +120,7 @@ function ReviewPage() {
         <div className="rounded-xl border border-border/60 bg-muted/20 p-6 sm:p-8">
           <h2 className="text-xl font-semibold">Environment clarity</h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Geomacro's commercial identity is risk intelligence. Supporting testnet and technical-proof surfaces are deliberately separated from the main product experience so users can distinguish production-facing intelligence from experimental onchain demonstrations.
+            Geomacro's commercial identity is risk intelligence. Reviewer feedback should focus on production-facing intelligence, commercial delivery boundaries, evidence quality and controlled machine access.
           </p>
           <div className="mt-5 flex flex-wrap gap-3 text-sm">
             <a className="underline underline-offset-4" href="/intelligence">Intelligence</a>
