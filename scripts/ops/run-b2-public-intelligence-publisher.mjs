@@ -58,8 +58,12 @@ while (true) {
     }
 
     const sourceTransport = String(proof.current_source_transport ?? "");
+    const eventExportTransports = new Set([
+      "event_export",
+      "event_export_masterfile_tail",
+    ]);
     let coverageRuntimeRefreshed = false;
-    if (sourceTransport === "event_export") {
+    if (eventExportTransports.has(sourceTransport)) {
       const refresh = spawnSync("bun", [COVERAGE_REFRESHER], {
         encoding: "utf8",
         env: process.env,
@@ -72,7 +76,7 @@ while (true) {
         process.exit(refresh.status ?? 1);
       }
       coverageRuntimeRefreshed = true;
-    } else if (!["doc_v2_articlelist", "geo_v2_jsonfeed"].includes(sourceTransport)) {
+    } else if (sourceTransport !== "doc_v2_articlelist") {
       console.error("GDELT_CURRENT_SOURCE_TRANSPORT_INVALID");
       process.exit(1);
     }
