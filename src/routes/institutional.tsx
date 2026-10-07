@@ -139,7 +139,7 @@ function InstitutionalPage() {
           <article className="rounded-2xl border border-border/60 bg-card/35 p-6">
             <ShieldCheck className="h-5 w-5 text-primary" />
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Product boundary</p>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">Prediction Markets, Bridge and Swap remain separate testnet technical proofs and are not the institutional risk-intelligence product.</p>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">Institutional delivery is limited to governed Geomacro risk intelligence, supported machine interfaces and explicitly contracted workflows.</p>
           </article>
         </div>
       </section>
