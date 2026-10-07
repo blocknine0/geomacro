@@ -32,7 +32,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
       const config = getCoinbaseX402Config();
       if (config?.environment === "production") {
         resources.push({
-          resource: `${origin}/api/x402/intelligence`,
+          resource: `${origin}/api/v1/intelligence/query`,
           method: "POST",
           provider: "coinbase_x402",
           product: CANONICAL_PRODUCT,
@@ -141,7 +141,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
     ],
     plannedResources: [
       {
-        resource: `${origin}/api/x402/intelligence`,
+        resource: `${origin}/api/v1/intelligence/query`,
         method: "POST",
         product: CANONICAL_PRODUCT,
         provider: "coinbase_x402",
