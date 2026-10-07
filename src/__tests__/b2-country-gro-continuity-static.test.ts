@@ -54,6 +54,13 @@ describe("B2 country GRO continuity", () => {
     expect(publisher).toContain("verifyRiskObjectSignature(object).valid");
     expect(publisher).toContain("verifyCommercialRiskObjectArtifact(object");
     expect(publisher).toContain("PUBLIC_DEMO_RISK_PROFILE_REASON");
+    expect(publisher).toContain('.eq("verification_status", "VERIFIED")');
+    expect(publisher).toContain('.eq("commercial_eligibility_status", "VERIFIED")');
+    expect(publisher).toContain('.gt("expires_at", evaluatedAt)');
+    expect(publisher).toContain('.not("payload", "is", null)');
+    expect(publisher).toContain("CURRENT_PAGE_SIZE");
+    expect(publisher).toContain("B2_COUNTRY_GRO_CANDIDATE_SCAN_LIMIT_EXCEEDED");
+    expect(publisher).not.toContain("getLatestCompatibleCountryRiskObjectAtOrBefore");
     expect(publisher).toContain("country-gro/by-id/");
     expect(publisher).toContain("/latest.json.gz");
     expect(publisher).not.toContain("const readback = await b2.get(key)");
