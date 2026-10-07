@@ -171,3 +171,55 @@ describe("B2 native readback fallback", () => {
     expect(client.usage().native_read_fallback_successes).toBe(0);
   });
 });
+
+
+describe("B2 hard cap handling", () => {
+  it("stops immediately on native download_cap_exceeded without rotating credentials", async () => {
+    clearOptionalReadCredentials();
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+        return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+      }
+      if (url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account") {
+        return Response.json({
+          authorizationToken: "token",
+          apiInfo: {
+            storageApi: {
+              downloadUrl: "https://f005.backblazeb2.com",
+              allowed: {
+                capabilities: ["readFiles"],
+                buckets: [{ name: "geomacro-private-archive" }],
+                namePrefix: "geomacro-evidence/v1/",
+              },
+            },
+          },
+        });
+      }
+      if (url.startsWith("https://f005.backblazeb2.com/file/")) {
+        return Response.json(
+          { status: 403, code: "download_cap_exceeded", message: "Usage cap exceeded." },
+          { status: 403 },
+        );
+      }
+      return new Response("unexpected", { status: 500 });
+    }));
+
+    const client = createB2Client({
+      endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+      accessKey: "primary-key",
+      secretKey: "primary-secret",
+      readAccessKey: "dedicated-key",
+      readSecretKey: "dedicated-secret",
+      bucket: "geomacro-private-archive",
+    });
+
+    await expect(client.get("geomacro-evidence/v1/test.json"))
+      .rejects.toThrow("B2_DOWNLOAD_CAP_EXCEEDED");
+    expect(calls.filter((url) => url.includes("b2_authorize_account"))).toHaveLength(1);
+    expect(calls.filter((url) => url.startsWith("https://f005.backblazeb2.com/file/"))).toHaveLength(1);
+    expect(calls.filter((url) => url.startsWith("https://s3.us-east-005.backblazeb2.com/"))).toHaveLength(1);
+  });
+});
