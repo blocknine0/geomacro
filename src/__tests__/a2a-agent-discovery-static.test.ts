@@ -48,7 +48,7 @@ describe("GeoMacro A2A global agent discovery contract", () => {
       "https://geomacro.live/api/x402/risk/availability",
     );
     expect(commerce.offers[0].providers.coinbase_x402.endpoint).toBe(
-      "https://geomacro.live/api/v1/intelligence/query",
+      "https://geomacro.live/api/x402/intelligence",
     );
     expect(commerce.offers[0].providers.coinbase_x402.production_enabled).toBe(false);
   });
