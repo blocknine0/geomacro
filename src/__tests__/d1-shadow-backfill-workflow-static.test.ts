@@ -4,9 +4,10 @@ import { readFileSync } from "node:fs";
 const workflow = readFileSync(".github/workflows/d1-shadow-backfill.yml", "utf8");
 
 describe("D1 shadow backfill workflow", () => {
-  it("parses Wrangler JSON structurally instead of grepping formatting", () => {
+  it("parses Wrangler JSON structurally and requires schema v2 or newer", () => {
     expect(workflow).toContain("JSON.parse(s)");
-    expect(workflow).toContain("Number(row?.version) === 1");
+    expect(workflow).toContain("Require D1 schema v2+ before copying anything");
+    expect(workflow).toContain("Number(row?.version) >= 2");
     expect(workflow).not.toContain("grep -q '\"version\":1'");
   });
 
