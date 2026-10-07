@@ -23,12 +23,12 @@ describe("commercial source runtime drift repair", () => {
     expect(migration).toContain("enabled_for_commercial_signals = false");
     expect(migration).toContain("when cert.certification_state = 'NOT_STARTED' then 'IN_REVIEW'");
     expect(migration).toContain("when cert.rights_status = 'UNREVIEWED' then 'REVIEW_REQUIRED'");
-    expect(migration).toContain("select public.sync_telegram_authorized_feed_source_state()");
+    expect(migration).toContain("enabled_for_ingestion = false");
   });
 
   it("does not fabricate direct commercial or publisher authorization", () => {
     expect(migration).not.toContain("enabled_for_commercial_signals = true");
-    expect(migration).not.toContain("publisher_authorized = true");
+    expect(migration).not.toContain("publisher_authorized = true");\n    expect(migration).not.toContain("sync_telegram_authorized_feed_source_state()");
     expect(migration).not.toContain("rights_status = 'COMMERCIAL_OK'");
   });
 });
