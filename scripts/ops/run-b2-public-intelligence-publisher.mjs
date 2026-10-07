@@ -41,7 +41,7 @@ while (true) {
 
   if (result.status === 0) {
     const proof = String(result.stdout ?? "")
-      .split(/\\r?\\n/u)
+      .split(/\r?\n/u)
       .filter(Boolean)
       .flatMap((line) => {
         try {
