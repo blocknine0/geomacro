@@ -416,6 +416,9 @@ jobs:
           grep -Fq '"ok":true' "$ask"
 
       - name: Verify Ask Geomacro desktop and mobile rendering contract
+        # Website rendering is independent evidence. A B2/data-plane failure
+        # above must not suppress desktop/mobile acceptance diagnostics.
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
@@ -456,6 +459,9 @@ jobs:
           retention-days: 14
 
       - name: Verify rendered production page markers
+        # Keep route/UI evidence observable even when an upstream data-plane
+        # gate fails. The overall workflow still fails closed on that gate.
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
@@ -512,6 +518,20 @@ jobs:
             fi
             rm -f "$body" "$decoded"
           done <<< "$routes"
+          mkdir -p /tmp/production-website-health
+          printf '%s\n' '{"routes_rendered":true}' > /tmp/production-website-health/rendered-routes.json
+          echo "PASS: production route markers rendered independently of data-plane health."
+
+      - name: Upload independent website surface diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: production-website-surfaces-${{ github.run_id }}
+          path: |
+            /tmp/production-website-health/ask-render.json
+            /tmp/production-website-health/rendered-routes.json
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Seal Section 11 production deployment acceptance evidence
         shell: bash

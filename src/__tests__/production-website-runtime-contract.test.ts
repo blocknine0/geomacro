@@ -127,6 +127,10 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain("LOVABLE_MIRROR_TOKEN");
     expect(workflow).toContain("geomacro-160c8e56/contents/.geomacro-canonical-main");
     expect(workflow).toContain("Verify Ask Geomacro desktop and mobile rendering contract");
+    expect(workflow).toContain(`Verify Ask Geomacro desktop and mobile rendering contract
+        # Website rendering is independent evidence. A B2/data-plane failure
+        # above must not suppress desktop/mobile acceptance diagnostics.
+        if: always()`);
     expect(workflow).toContain("Windows NT 10.0; Win64; x64");
     expect(workflow).toContain("iPhone; CPU iPhone OS 18_0");
 
@@ -161,6 +165,11 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain("/ask-geomacro|Ask Geomacro");
     expect(workflow).toContain("/pricing|Access & pricing");
     expect(workflow).toContain("/docs|Geomacro public documentation");
+    expect(workflow).toContain(`Verify rendered production page markers
+        # Keep route/UI evidence observable even when an upstream data-plane
+        # gate fails. The overall workflow still fails closed on that gate.
+        if: always()`);
+    expect(workflow).toContain("production-website-surfaces-${{ github.run_id }}");
     expect(workflow).toContain("Verify live D1 control plane and fail-closed auth");
     expect(workflow).toContain("geomacro-control-plane.daspallab202391.workers.dev");
     expect(workflow).toContain("d1_unauthenticated_write_rejected");
