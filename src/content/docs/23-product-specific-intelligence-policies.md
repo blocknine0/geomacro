@@ -9,7 +9,6 @@ Geomacro uses one intelligence architecture but different products have differen
 | Risk API | PRIVATE PILOT | Country / corridor machine context | Structured delivery |
 | Risk Gate | PRIVATE PILOT | Country / corridor risk context | Pre-flight recommendation |
 | Research | LIVE / evolving | Public methodology and analysis | Human research |
-| Prediction / onchain | TECHNICAL PROOF | Arc Testnet application layer | Experimental execution |
 
 The public Risk Indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second current product.
 
