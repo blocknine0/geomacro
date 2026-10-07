@@ -47,6 +47,7 @@ import {
   federicoStrictSourceFamilyForId,
   FEDERICO_STRICT_RELEVANCE_METHOD,
   FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD,
+  PUBLIC_DEMO_RISK_PROFILE_REASON,
   riskObjectCalculationNamespace,
   withPublicDemoProfileReason,
   type RiskObjectDeliveryProfile,
