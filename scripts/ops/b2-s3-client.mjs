@@ -6,6 +6,8 @@ const hmac = (key, value) => createHmac("sha256", key).update(value).digest();
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
 const MAX_ATTEMPTS = 4;
+const DEFAULT_REQUEST_BUDGET = 64;
+const MAX_REQUEST_BUDGET = 500;
 const DEFAULT_ALLOWED_PREFIXES = Object.freeze(["geomacro-evidence/v1/"]);
 const EXTRA_ALLOWED_PREFIXES = Object.freeze(new Set(["telegram/leads/"]));
 const B2_NATIVE_AUTHORIZE_URL = "https://api.backblazeb2.com/b2api/v4/b2_authorize_account";
@@ -28,10 +30,12 @@ function safeB2ErrorCode(text) {
 
 function parseRequestBudget() {
   const raw = String(process.env.B2_REQUEST_BUDGET ?? "").trim();
-  if (!raw) return null;
+  if (!raw) return DEFAULT_REQUEST_BUDGET;
   if (!/^\d+$/.test(raw)) throw new Error("B2_REQUEST_BUDGET_INVALID");
   const value = Number(raw);
-  if (!Number.isSafeInteger(value) || value < 1 || value > 10000) throw new Error("B2_REQUEST_BUDGET_INVALID");
+  if (!Number.isSafeInteger(value) || value < 1 || value > MAX_REQUEST_BUDGET) {
+    throw new Error("B2_REQUEST_BUDGET_INVALID");
+  }
   return value;
 }
 
@@ -111,10 +115,23 @@ export function createB2Client({
   const allowedPrefixes = normalizeAllowedPrefixes(allowedKeyPrefixes);
   const requestBudget = parseRequestBudget();
   let requestsStarted = 0;
+  let s3RequestsStarted = 0;
+  let nativeReadRequestsStarted = 0;
   let nativeReadFallbackAttempts = 0;
   let nativeReadFallbackSuccesses = 0;
   let nativeReadFatalError = null;
   const nativeReadAuthCache = new Map();
+  const nativePreferredCredentials = new Set();
+  const inFlightReads = new Map();
+
+  function consumeRequestBudget(kind) {
+    if (requestsStarted >= requestBudget) {
+      throw new Error("B2_REQUEST_BUDGET_EXHAUSTED");
+    }
+    requestsStarted += 1;
+    if (kind === "s3") s3RequestsStarted += 1;
+    if (kind === "native-read") nativeReadRequestsStarted += 1;
+  }
 
   function nativeCredentialFingerprint(credential) {
     return `${credential.accessKey}\u0000${credential.secretKey}`;
@@ -210,6 +227,7 @@ export function createB2Client({
       .join("/")}`;
     let response;
     try {
+      consumeRequestBudget("native-read");
       response = await fetch(`${auth.downloadUrl}${nativePath}`, {
         method: "GET",
         headers: { Authorization: auth.token },
@@ -257,11 +275,28 @@ export function createB2Client({
     let lastDedicatedNativeError = null;
     for (let credentialIndex = 0; credentialIndex < credentialCandidates.length; credentialIndex++) {
       const credential = credentialCandidates[credentialIndex];
-      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      if (requestBudget !== null && requestsStarted >= requestBudget) {
-        throw new Error("B2_REQUEST_BUDGET_EXHAUSTED");
+      const fingerprint = nativeCredentialFingerprint(credential);
+
+      if (method === "GET" && nativePreferredCredentials.has(fingerprint)) {
+        try {
+          return await nativeRead(credential, normalizedKey, { allowNotFound });
+        } catch (nativeCause) {
+          const nativeMessage =
+            nativeCause instanceof Error ? nativeCause.message : "B2_NATIVE_READ_FAILED";
+          if (nativeMessage === "B2_NATIVE_GET_FAILED_403_download_cap_exceeded") {
+            nativeReadFatalError = "B2_DOWNLOAD_CAP_EXCEEDED";
+            throw new Error(nativeReadFatalError);
+          }
+          if (nativeMessage === "B2_NATIVE_GET_FAILED_403_transaction_cap_exceeded") {
+            nativeReadFatalError = "B2_TRANSACTION_CAP_EXCEEDED";
+            throw new Error(nativeReadFatalError);
+          }
+          throw nativeCause;
+        }
       }
-      requestsStarted += 1;
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      consumeRequestBudget("s3");
 
       const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
       const day = timestamp.slice(0, 8);
@@ -299,7 +334,9 @@ export function createB2Client({
           errorCode === "AccessDenied"
         ) {
           try {
-            return await nativeRead(credential, normalizedKey, { allowNotFound });
+            const bytes = await nativeRead(credential, normalizedKey, { allowNotFound });
+            nativePreferredCredentials.add(fingerprint);
+            return bytes;
           } catch (nativeCause) {
             const nativeMessage =
               nativeCause instanceof Error ? nativeCause.message : "B2_NATIVE_READ_FAILED";
@@ -346,13 +383,26 @@ export function createB2Client({
     throw new Error(`B2_${method}_RETRY_EXHAUSTED`);
   }
 
+  function readSingleFlight(key, allowNotFound) {
+    const cacheKey = `${allowNotFound ? "optional" : "required"}:${String(key ?? "")}`;
+    if (inFlightReads.has(cacheKey)) return inFlightReads.get(cacheKey);
+    const promise = request("GET", key, Buffer.alloc(0), { allowNotFound })
+      .finally(() => inFlightReads.delete(cacheKey));
+    inFlightReads.set(cacheKey, promise);
+    return promise;
+  }
+
   return {
     put: (key, bytes) => request("PUT", key, bytes),
-    get: (key) => request("GET", key),
-    getOptional: (key) => request("GET", key, Buffer.alloc(0), { allowNotFound: true }),
+    get: (key) => readSingleFlight(key, false),
+    getOptional: (key) => readSingleFlight(key, true),
     usage: () => ({
       requests_started: requestsStarted,
       request_budget: requestBudget,
+      default_request_budget: DEFAULT_REQUEST_BUDGET,
+      max_request_budget: MAX_REQUEST_BUDGET,
+      s3_requests_started: s3RequestsStarted,
+      native_read_requests_started: nativeReadRequestsStarted,
       allowed_prefixes: allowedPrefixes,
       read_credentials_separate: readCredentialsSeparate,
       read_credential_roles: readCredentialCandidates.map((candidate) => candidate.role),
@@ -362,6 +412,8 @@ export function createB2Client({
       native_read_fallback_attempts: nativeReadFallbackAttempts,
       native_read_fallback_successes: nativeReadFallbackSuccesses,
       native_read_fatal_error: nativeReadFatalError,
+      native_preferred_credential_count: nativePreferredCredentials.size,
+      in_flight_read_count: inFlightReads.size,
     }),
   };
 }
