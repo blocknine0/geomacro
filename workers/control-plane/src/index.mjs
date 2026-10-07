@@ -10,6 +10,7 @@ const STATUS_RE = /^[A-Z0-9][A-Z0-9_-]{1,63}$/;
 const PUBLIC_INTELLIGENCE_OVERLAY_KEY = "public_intelligence_live_observed_v1";
 const PUBLIC_INTELLIGENCE_OVERLAY_SCHEMA = "geomacro.public-intelligence-live-observed.v1";
 const PUBLIC_INTELLIGENCE_OVERLAY_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+const PUBLIC_INTELLIGENCE_VERIFIED_BASELINE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const PUBLIC_INTELLIGENCE_OVERLAY_MAX_ROWS = 24;
 const HOT_SNAPSHOT_PRODUCTS = Object.freeze({
   intelligence: {
@@ -146,13 +147,19 @@ function validatePublicIntelligenceOverlay(value, now = Date.now()) {
   ) return null;
 
   const generatedAt = Date.parse(String(value.generated_at ?? ""));
+  const verifiedB2GeneratedAt = Date.parse(
+    String(value.verified_b2_generated_at ?? value.generated_at ?? ""),
+  );
   const sourceBatchAt = Date.parse(String(value.current_source_batch_at ?? ""));
   if (
     !Number.isFinite(generatedAt) ||
+    !Number.isFinite(verifiedB2GeneratedAt) ||
     !Number.isFinite(sourceBatchAt) ||
     generatedAt > now + 5 * 60_000 ||
+    verifiedB2GeneratedAt > now + 5 * 60_000 ||
     sourceBatchAt > now + 5 * 60_000 ||
     now - generatedAt > PUBLIC_INTELLIGENCE_OVERLAY_MAX_AGE_MS ||
+    now - verifiedB2GeneratedAt > PUBLIC_INTELLIGENCE_VERIFIED_BASELINE_MAX_AGE_MS ||
     now - sourceBatchAt > PUBLIC_INTELLIGENCE_OVERLAY_MAX_AGE_MS
   ) return null;
 
@@ -218,6 +225,7 @@ function validatePublicIntelligenceOverlay(value, now = Date.now()) {
     provider_identity_exposed: false,
     verified_b2_key: "geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
     verified_b2_sha256: String(value.verified_b2_sha256),
+    verified_b2_generated_at: new Date(verifiedB2GeneratedAt).toISOString(),
     full_b2_readback_verified: true,
     exact_gzip_restore_verified: true,
     rows,
