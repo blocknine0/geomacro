@@ -45,7 +45,11 @@ const archiveSha256 = String(row.archive_sha256 ?? "");
 const recordSha256Expected = String(row.record_sha256 ?? "");
 
 if (!/^gro_[A-Za-z0-9_]+$/.test(objectId)) throw new Error("GENERIC_RISK_OBJECT_ID_INVALID");
-if (!/^geomacro-evidence\/v1\/gro\/gro_[A-Za-z0-9_]+\.json\.gz$/.test(archiveKey)) {
+const standaloneArchive =
+  /^geomacro-evidence\/v1\/gro\/gro_[A-Za-z0-9_]+\.json\.gz$/.test(archiveKey);
+const countryBundleArchive =
+  /^geomacro-evidence\/v1\/live\/country-gro\/bundles\/[a-f0-9]{64}\.json\.gz$/.test(archiveKey);
+if (!standaloneArchive && !countryBundleArchive) {
   throw new Error("GENERIC_RISK_OBJECT_ARCHIVE_KEY_INVALID");
 }
 if (!HASH_RE.test(archiveSha256) || !HASH_RE.test(recordSha256Expected)) {
@@ -67,11 +71,47 @@ const b2 = createB2Client({
 });
 
 const compressed = await b2.get(archiveKey);
-if (compressed.length > 2_000_000 || sha256(compressed) !== archiveSha256) {
+const maxCompressedBytes = countryBundleArchive ? 64 * 1024 * 1024 : 2_000_000;
+const maxDecompressedBytes = countryBundleArchive ? 192 * 1024 * 1024 : 4_000_000;
+if (
+  compressed.length > maxCompressedBytes ||
+  sha256(compressed) !== archiveSha256
+) {
   throw new Error("GENERIC_RISK_OBJECT_B2_READBACK_HASH_MISMATCH");
 }
-const raw = gunzipSync(compressed, { maxOutputLength: 4_000_000 });
-const riskObject = JSON.parse(raw.toString("utf8"));
+const raw = gunzipSync(compressed, { maxOutputLength: maxDecompressedBytes });
+const restored = JSON.parse(raw.toString("utf8"));
+
+let riskObject: any;
+let archiveMode: "standalone-gro" | "country-gro-bundle-v2";
+if (countryBundleArchive) {
+  if (
+    restored?.schema !== "geomacro.country-gro-bundle.v2" ||
+    restored?.source_project !== "ldpwajisioljyjtojvfx" ||
+    !Array.isArray(restored?.members) ||
+    restored.members.length < 1
+  ) {
+    throw new Error("GENERIC_RISK_OBJECT_BUNDLE_CONTRACT_INVALID");
+  }
+  const matches = restored.members.filter(
+    (member: any) => String(member?.object_id ?? "") === objectId,
+  );
+  if (matches.length !== 1) {
+    throw new Error("GENERIC_RISK_OBJECT_BUNDLE_MEMBER_CARDINALITY_INVALID");
+  }
+  const member = matches[0];
+  if (
+    String(member?.record_sha256 ?? "") !== recordSha256Expected ||
+    String(member?.object?.object_id ?? "") !== objectId
+  ) {
+    throw new Error("GENERIC_RISK_OBJECT_BUNDLE_MEMBER_BINDING_INVALID");
+  }
+  riskObject = member.object;
+  archiveMode = "country-gro-bundle-v2";
+} else {
+  riskObject = restored;
+  archiveMode = "standalone-gro";
+}
 
 if (riskObject?.object_id !== objectId ||
     riskObject?.verification?.status !== "VERIFIED" ||
@@ -245,6 +285,8 @@ console.log(JSON.stringify({
   ok: true,
   schema: "geomacro.generic-production-risk-object-trust.v1",
   object_id: objectId,
+  archive_mode: archiveMode,
+  archive_key: archiveKey,
   subject_type: riskObject?.subject?.type ?? null,
   subject_id: riskObject?.subject?.id ?? null,
   expires_at: riskObject?.expires_at ?? null,
