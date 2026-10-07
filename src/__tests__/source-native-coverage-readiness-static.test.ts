@@ -47,6 +47,10 @@ describe("source-native three-domain coverage readiness", () => {
     expect(refresher).toContain("synthetic_score !== false");
     expect(refresher).toContain("GDELT_COVERAGE_TARGET_CENSUS_INVALID");
     expect(refresher).toContain("GDELT_COVERAGE_REFRESH_COUNT_MISMATCH");
+    expect(refresher).toContain("assertRecoveryProof");
+    expect(refresher).toContain("GEOMACRO_GDELT_COVERAGE_RECOVERY_PROOF_JSON");
+    expect(refresher).toContain("GDELT_COVERAGE_RECOVERY_BASELINE_NOT_VERIFIED");
+    expect(refresher).toContain("GDELT_COVERAGE_RECOVERY_UNVERIFIED_B2_PROMOTION");
   });
 
   it("keeps coverage maintenance ahead of the two-hour source-native expiry window", () => {
@@ -65,6 +69,7 @@ describe("source-native three-domain coverage readiness", () => {
     expect(refreshRun).toBeGreaterThan(transportGate);
     expect(wrapper).toContain("GDELT_COVERAGE_RUNTIME_REFRESH_FAILED");
     expect(wrapper).toContain("coverageRuntimeRefreshed = true");
+    expect(wrapper).toContain("GEOMACRO_GDELT_COVERAGE_RECOVERY_PROOF_JSON");
     expect(wrapper).toContain('"event_export_masterfile_tail"');
     expect(wrapper).toContain('sourceTransport !== "doc_v2_articlelist"');
     expect(wrapper).toContain("coverage_runtime_refreshed: coverageRuntimeRefreshed");

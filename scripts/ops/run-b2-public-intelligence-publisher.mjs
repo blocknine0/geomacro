@@ -69,9 +69,16 @@ while (true) {
     ]);
     let coverageRuntimeRefreshed = false;
     if (eventExportTransports.has(sourceTransport)) {
+      const refreshEnv =
+        proof.schema === "geomacro.public-intelligence-overlay-recovery.v1"
+          ? {
+              ...process.env,
+              GEOMACRO_GDELT_COVERAGE_RECOVERY_PROOF_JSON: JSON.stringify(proof),
+            }
+          : process.env;
       const refresh = spawnSync("bun", [COVERAGE_REFRESHER], {
         encoding: "utf8",
-        env: process.env,
+        env: refreshEnv,
         maxBuffer: 8 * 1024 * 1024,
       });
       if (refresh.stdout) process.stdout.write(refresh.stdout);

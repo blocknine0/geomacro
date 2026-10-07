@@ -13,6 +13,7 @@ on:
       - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
       - "scripts/ops/publish-b2-verified-hot-snapshot.mjs"
       - "scripts/ops/run-b2-public-intelligence-publisher.mjs"
+      - "scripts/ops/refresh-gdelt-coverage-runtime-after-b2.mjs"
       - "scripts/ops/probe-public-intelligence-live-fallback.ts"
       - "src/lib/public-intelligence-production.server.ts"
       - "src/lib/public-intelligence.functions.ts"
