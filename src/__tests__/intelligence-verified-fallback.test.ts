@@ -68,7 +68,11 @@ describe("Intelligence verified fallback contract", () => {
     expect(directPublisher).toContain('raw_source_headlines_exposed: false');
     expect(directPublisher).toContain('provider_identity_exposed: false');
     expect(directPublisher).toContain("PUBLIC_INTELLIGENCE_SOURCE_IDENTITY_EXPOSED");
-    expect(directPublisher).toContain("publishHotOverlay(current, generatedAt)");
+    expect(directPublisher).toContain("await publishHotOverlay(current, generatedAt, digest)");
+    expect(directPublisher.indexOf("await publishHotOverlay(current, generatedAt, digest)")).toBeGreaterThan(
+      directPublisher.indexOf("B2_PUBLIC_INTELLIGENCE_PROOF_READBACK_INVALID"),
+    );
+    expect(directPublisher).not.toContain("await publishHotOverlay(current, generatedAt);");
     expect(directPublisher).toContain('HOT_OVERLAY_SCHEMA = "geomacro.public-intelligence-live-observed.v1"');
     expect(directPublisher).toContain('HOT_OVERLAY_MAX_BYTES = 30 * 1024');
     expect(directPublisher).toContain('"cloudflare-d1-hot-overlay"');

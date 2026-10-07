@@ -166,7 +166,8 @@ function validHotOverlayRows(rows, now = Date.now()) {
   return true;
 }
 
-async function readHotOverlay() {
+async function readHotOverlay(verifiedB2Sha256, expectedGeneratedAt) {
+  if (!/^[0-9a-f]{64}$/u.test(String(verifiedB2Sha256 ?? "")) || !expectedGeneratedAt) return null;
   try {
     const response = await fetch(HOT_OVERLAY_URL, {
       method: "GET",
@@ -181,6 +182,11 @@ async function readHotOverlay() {
       payload?.ok !== true ||
       payload?.schema !== HOT_OVERLAY_SCHEMA ||
       payload?.source_id !== "gdelt_v2_events" ||
+      payload?.verified_b2_key !== LIVE_KEY ||
+      payload?.verified_b2_sha256 !== verifiedB2Sha256 ||
+      payload?.full_b2_readback_verified !== true ||
+      payload?.exact_gzip_restore_verified !== true ||
+      payload?.generated_at !== expectedGeneratedAt ||
       payload?.synthetic_score !== false ||
       payload?.raw_source_headlines_exposed !== false ||
       payload?.provider_identity_exposed !== false ||
@@ -198,8 +204,8 @@ async function readHotOverlay() {
   }
 }
 
-async function applyHotOverlay(live) {
-  const overlay = await readHotOverlay();
+async function applyHotOverlay(live, verifiedB2Sha256) {
+  const overlay = await readHotOverlay(verifiedB2Sha256, live?.generated_at);
   if (!overlay) return { live, used: false };
 
   const scoredRows = Array.isArray(live?.rows)
@@ -245,7 +251,7 @@ async function buildContinuityResponse() {
     !validRows(live?.rows)
   ) throw new Error("INTELLIGENCE_CONTINUITY_PAYLOAD_INVALID");
 
-  const projected = await applyHotOverlay(live);
+  const projected = await applyHotOverlay(live, continuity.source_live_sha256);
   return new Response(JSON.stringify(projected.live), {
     status: 200,
     headers: {
@@ -254,6 +260,7 @@ async function buildContinuityResponse() {
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-intelligence-edge",
       "x-geomacro-continuity": "github-actions-b2-readback-verified-projection",
+      "x-geomacro-b2-sha256": continuity.source_live_sha256,
       "x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none",
       "access-control-allow-origin": "*",
       "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity, x-geomacro-current-overlay",
@@ -318,7 +325,7 @@ async function buildResponse(env) {
     !validRows(rows)
   ) throw new Error("INTELLIGENCE_EDGE_BINDING_INVALID");
 
-  const projected = await applyHotOverlay(live);
+  const projected = await applyHotOverlay(live, proof.compressed_sha256);
   return new Response(JSON.stringify(projected.live), {
     status: 200,
     headers: {
@@ -326,6 +333,7 @@ async function buildResponse(env) {
       "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-intelligence-edge",
+      "x-geomacro-b2-sha256": proof.compressed_sha256,
       "x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none",
       "access-control-allow-origin": "*",
       "access-control-expose-headers": "x-geomacro-authority, x-geomacro-current-overlay",
@@ -347,7 +355,7 @@ async function projectCachedResponse(cached) {
     !validRows(live?.rows)
   ) throw new Error("INTELLIGENCE_EDGE_CACHE_PAYLOAD_INVALID");
 
-  const projected = await applyHotOverlay(live);
+  const projected = await applyHotOverlay(live, cached.headers.get("x-geomacro-b2-sha256"));
   const headers = new Headers(cached.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("x-geomacro-current-overlay", projected.used ? "cloudflare-d1-hot" : "none");

@@ -116,7 +116,11 @@ function validatePublicIntelligenceOverlay(value, now = Date.now()) {
     value.source_id !== "gdelt_v2_events" ||
     value.synthetic_score !== false ||
     value.raw_source_headlines_exposed !== false ||
-    value.provider_identity_exposed !== false
+    value.provider_identity_exposed !== false ||
+    value.verified_b2_key !== "geomacro-evidence/v1/live/public-intelligence/latest.json.gz" ||
+    !/^[0-9a-f]{64}$/u.test(String(value.verified_b2_sha256 ?? "")) ||
+    value.full_b2_readback_verified !== true ||
+    value.exact_gzip_restore_verified !== true
   ) return null;
 
   const generatedAt = Date.parse(String(value.generated_at ?? ""));
@@ -190,6 +194,10 @@ function validatePublicIntelligenceOverlay(value, now = Date.now()) {
     synthetic_score: false,
     raw_source_headlines_exposed: false,
     provider_identity_exposed: false,
+    verified_b2_key: "geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
+    verified_b2_sha256: String(value.verified_b2_sha256),
+    full_b2_readback_verified: true,
+    exact_gzip_restore_verified: true,
     rows,
   };
 }

@@ -27,6 +27,9 @@ describe("Cloudflare D1 permanent control plane", () => {
     expect(worker).toContain('raw.delta !== null');
     expect(worker).toContain('value.raw_source_headlines_exposed !== false');
     expect(worker).toContain('value.provider_identity_exposed !== false');
+    expect(worker).toContain('value.verified_b2_sha256');
+    expect(worker).toContain('value.full_b2_readback_verified !== true');
+    expect(worker).toContain('value.exact_gzip_restore_verified !== true');
   });
 
   it("fails closed when control-plane authentication or D1 is unavailable", () => {
