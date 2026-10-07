@@ -13,6 +13,8 @@ on:
       - "scripts/sync-country-raw-source-mesh.mjs"
       - "scripts/drain-live-structure.mjs"
       - "scripts/intelligence-orchestrator.mjs"
+      - "scripts/ops/phase-a-runtime-freshness-repair.mjs"
+      - ".github/workflows/intelligence-orchestrator.yml"
       - "scripts/run-rss-live-cycle.mjs"
       - "scripts/run-live-flash-ingest-local.ts"
       - "scripts/run-live-flash-corroborate-local.ts"
@@ -133,6 +135,264 @@ jobs:
           else
             echo "FULL_RAW_ACCEPTANCE=false" >> "$GITHUB_ENV"
             echo "No raw-runtime contract changed; direct transport and scheduler-policy proofs remain mandatory."
+          fi
+
+          if grep -Eq '^(scripts/ops/phase-a-runtime-freshness-repair\.mjs|scripts/intelligence-orchestrator\.mjs|\.github/workflows/intelligence-orchestrator\.yml)
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Install pinned RSS worker dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --disable-pip-version-check --no-input -r workers/telegram-flash/requirements.txt
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Verify authoritative production target
+        run: |
+          set -euo pipefail
+          test -n "${APP_SUPABASE_URL}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY}"
+          test "${SUPABASE_PROJECT_ID}" = "ldpwajisioljyjtojvfx"
+
+      - name: Run bounded 250x3 source heartbeat on exact PR head
+        if: env.RUN_BOUNDED_SOURCE_HEARTBEAT == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PHASE_A_HEARTBEAT_ONLY=1 node scripts/ops/phase-a-runtime-freshness-repair.mjs | tee phase-a-bounded-heartbeat.json
+          jq -e '
+            .ok == true and
+            .mode == "bounded_source_heartbeat" and
+            (.status.production_ready_rows|tonumber) == (.expected_matrix_rows|tonumber) and
+            (.target_rows_written|tonumber) == (.expected_matrix_rows|tonumber) and
+            .durable_evidence_written == false and
+            .evidence_graph_rows_written == 0 and
+            .raw_observations_written == 0 and
+            .unbounded_rows_written == 0 and
+            .b2_requests == 0 and
+            .payment_or_settlement_enabled == false
+          ' phase-a-bounded-heartbeat.json >/dev/null
+
+      - name: Verify canonical direct-Postgres RSS corroboration transport
+        env:
+          GRI_DB_MODE: direct_postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL:-}"
+          test "${GRI_DB_MODE:-}" = "direct_postgres"
+          node --check scripts/run-rss-live-cycle.mjs
+          bun scripts/run-live-flash-corroborate-local.ts > realtime-corroborate-direct.json
+          jq -e '
+            .ok == true and
+            .execution_mode == "local_canonical_corroboration_direct_postgres" and
+            .threshold_weakening == false
+          ' realtime-corroborate-direct.json >/dev/null
+          ! grep -q '.supabase.co/functions/v1/' scripts/run-rss-live-cycle.mjs
+          echo "PASS: canonical realtime corroboration works through direct PostgreSQL without Supabase Edge."
+
+      - name: Verify restricted-mode scheduler contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const workflow = fs.readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
+          const orchestrator = fs.readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
+          const safe = ["phase_a_heartbeat", "production_readiness"];
+          if (!workflow.includes("GEOMACRO_SUPABASE_RESTRICTED_MODE=true")) throw new Error("RESTRICTED_MODE_WORKFLOW_MISSING");
+          if (workflow.includes("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only")) throw new Error("D1_ONLY_FREEZE_STILL_PRESENT");
+          if (!orchestrator.includes("restrictedDataPlane && task.restrictedDirectPostgresSafe !== true")) throw new Error("RESTRICTED_FILTER_MISSING");
+          for (const key of safe) {
+            const marker = 'key: "' + key + '",\n    restrictedDirectPostgresSafe: true';
+            if (!orchestrator.includes(marker)) throw new Error("SAFE_TASK_NOT_CLASSIFIED:" + key);
+          }
+          for (const key of ["gdelt_gal", "gdelt_v2", "current_scoring", "rss_live", "country_raw_mesh", "open_realtime_mesh", "realtime_fanout", "news_ingest"]) {
+            const marker = 'key: "' + key + '",\n    restrictedDirectPostgresSafe: true';
+            if (orchestrator.includes(marker)) throw new Error("UNSAFE_TASK_CLASSIFIED:" + key);
+          }
+          console.log("PASS: restricted scheduler keeps only fixed-cardinality/read-only lanes live.");
+          NODE
+
+      - name: Refresh all three raw runtime categories
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
+            (
+              export RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"
+              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-acceptance-${category}.json" 2>&1
+            ) > "category-acceptance-${category}.log" 2>&1 &
+          done
+          wait
+          node -e 'const fs=require("node:fs"); for (const category of ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]) { const f="country-raw-source-acceptance-"+category+".json"; if(!fs.existsSync(f)) throw new Error("MISSING_"+f); const x=JSON.parse(fs.readFileSync(f,"utf8")); if(x.ok!==true || x.failed_cells!==0 || x.missing_non_gdelt_paths.length!==0 || x.processed_cells+x.already_fresh_non_gdelt_cells!==195 || x.categories.length!==1 || x.categories[0]!==category) { console.error(JSON.stringify(x,null,2)); process.exit(1); } console.log(JSON.stringify({category,expected_cells:x.expected_cells,processed_cells:x.processed_cells,already_fresh_non_gdelt_cells:x.already_fresh_non_gdelt_cells,failed_cells:x.failed_cells,missing_non_gdelt_paths:x.missing_non_gdelt_paths.length,fragment_ids:x.fragment_ids.length})); }'
+
+      - name: Drain acceptance fragments in parallel
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
+            (
+              timeout 15m node scripts/drain-live-structure.mjs --fragment-ids-file "country-raw-source-acceptance-${category}.json"
+            ) >> "category-acceptance-${category}.log" 2>&1 &
+          done
+          wait
+
+      - name: Run realtime orchestrator continuity
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
+        env:
+          GRI_DB_MODE: direct_postgres
+        run: |
+          set -euo pipefail
+          node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-acceptance.log
+
+      - name: Final GDELT first-break and scope fanout convergence
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          node scripts/run-gdelt-gal-cycle.mjs 2>&1 | tee gdelt-gal-cycle-final.log
+          cycle_status=${PIPESTATUS[0]}
+          set -e
+
+          if (( cycle_status != 0 )); then
+            echo "GDELT GAL cycle did not seal a new upstream file; checking the authoritative first-break freshness window before failing."
+            node --input-type=module -e '
+              import { createClient } from "@supabase/supabase-js";
+              const url = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
+              const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+              if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
+              if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
+              const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+              const { data, error } = await db.from("live_ingestion_cursors").select("source_key,stream_key,status,last_success_at,last_item_at,consecutive_failures").eq("source_key","gdelt_gal").eq("stream_key","global-relevant").limit(1).maybeSingle();
+              if (error) throw new Error(error.message);
+              const lastSuccessMs = Date.parse(String(data?.last_success_at ?? ""));
+              const ageSeconds = Number.isFinite(lastSuccessMs) ? Math.max(0, (Date.now() - lastSuccessMs) / 1000) : Infinity;
+              const fresh = Number.isFinite(lastSuccessMs) && ageSeconds <= 1800 && ["healthy","degraded"].includes(String(data?.status ?? "")) && Number(data?.consecutive_failures ?? 0) === 0;
+              console.log(JSON.stringify({ fallback:"UPSTREAM_SOURCE_DELAYED_WITHIN_STRICT_FRESHNESS_WINDOW", source_key:data?.source_key ?? null, stream_key:data?.stream_key ?? null, status:data?.status ?? null, last_success_at:data?.last_success_at ?? null, age_seconds:Math.round(ageSeconds), consecutive_failures:Number(data?.consecutive_failures ?? 0), max_age_seconds:1800, accepted:fresh }, null, 2));
+              if (!fresh) process.exit(1);
+            '
+          fi
+
+      - name: Refresh realtime-fanout orchestrator state after GDELT convergence
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
+        run: |
+          set -euo pipefail
+          INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=realtime_fanout           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=realtime_fanout           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-realtime-fanout.log
+
+      - name: Refresh production-readiness orchestrator state after GDELT convergence
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
+        run: |
+          set -euo pipefail
+          INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=production_readiness           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=production_readiness           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-production-readiness.log
+
+      - name: Final raw freshness convergence
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
+            (
+              export RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"
+              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-final-${category}.json" 2>&1
+            ) > "category-final-${category}.log" 2>&1 &
+          done
+          wait
+          node -e 'const fs=require("node:fs"); for (const category of ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]) { const f="country-raw-source-final-"+category+".json"; if(!fs.existsSync(f)) throw new Error("MISSING_"+f); const x=JSON.parse(fs.readFileSync(f,"utf8")); if(x.ok!==true || x.failed_cells!==0 || x.missing_non_gdelt_paths.length!==0 || x.processed_cells+x.already_fresh_non_gdelt_cells!==195 || x.categories.length!==1 || x.categories[0]!==category) { console.error(JSON.stringify(x,null,2)); process.exit(1); } console.log(JSON.stringify({category,expected_cells:x.expected_cells,processed_cells:x.processed_cells,already_fresh_non_gdelt_cells:x.already_fresh_non_gdelt_cells,failed_cells:x.failed_cells,missing_non_gdelt_paths:x.missing_non_gdelt_paths.length,fragment_ids:x.fragment_ids.length})); }'
+
+      - name: Drain final freshness fragments
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
+            (
+              timeout 15m node scripts/drain-live-structure.mjs --fragment-ids-file "country-raw-source-final-${category}.json"
+            ) >> "category-final-${category}.log" 2>&1 &
+          done
+          wait
+
+      - name: Enforce production commercial certification fail-closed
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 <<'SQL'
+          update public.live_external_sources as src
+          set
+            enabled_for_commercial_signals = false,
+            updated_at = now()
+          where src.enabled_for_commercial_signals = true
+            and not exists (
+              select 1
+              from public.live_source_certification_records as cert
+              where cert.source_id = src.source_id
+                and cert.certification_state = 'CERTIFIED'
+                and cert.endpoint_status = 'PASS'
+                and cert.rights_status in ('COMMERCIAL_OK', 'DERIVED_ONLY')
+                and cert.schema_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.freshness_status in ('FRESH', 'VARIABLE', 'NOT_APPLICABLE')
+                and cert.provenance_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.independence_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.adapter_status in ('TESTED', 'NOT_APPLICABLE')
+                and cert.runtime_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.fallback_status in ('READY', 'NOT_REQUIRED')
+            );
+          SQL
+
+          state_count="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_external_sources where enabled_for_commercial_signals = true and not exists (select 1 from public.live_source_certification_records cert where cert.source_id = live_external_sources.source_id and cert.certification_state = 'CERTIFIED' and cert.endpoint_status = 'PASS' and cert.rights_status in ('COMMERCIAL_OK','DERIVED_ONLY') and cert.schema_status in ('PASS','NOT_APPLICABLE') and cert.freshness_status in ('FRESH','VARIABLE','NOT_APPLICABLE') and cert.provenance_status in ('PASS','NOT_APPLICABLE') and cert.independence_status in ('PASS','NOT_APPLICABLE') and cert.adapter_status in ('TESTED','NOT_APPLICABLE') and cert.runtime_status in ('PASS','NOT_APPLICABLE') and cert.fallback_status in ('READY','NOT_REQUIRED'))")"
+          test "${state_count}" = "0"
+
+      - name: Verify final realtime contracts
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
+        run: |
+          set -euo pipefail
+          node scripts/audit-global-raw-source-runtime.mjs
+          node scripts/audit-realtime-scope-fanout.mjs
+          node scripts/audit-gdelt-dependency-live.mjs
+
+      - name: Run strict Global Realtime Intelligence 100 gate
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
+        run: |
+          set -euo pipefail
+          node scripts/audit-global-realtime-intelligence-100.mjs --strict
+
+      - name: Upload exact-head production evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.1.0
+        with:
+          name: global-realtime-intelligence-100-${{ github.event.pull_request.head.sha }}
+          path: |
+            realtime-corroborate-direct.json
+            country-raw-source-acceptance-GEOPOLITICS.json
+            country-raw-source-acceptance-MACRO.json
+            country-raw-source-acceptance-CRITICAL_MINERALS.json
+            country-raw-source-final-GEOPOLITICS.json
+            country-raw-source-final-MACRO.json
+            country-raw-source-final-CRITICAL_MINERALS.json
+            intelligence-orchestrator-acceptance.log
+            category-acceptance-*.log
+            category-final-*.log
+            artifacts/global-realtime-intelligence-100/summary.json
+            exact-head-changed-files.txt
+            phase-a-bounded-heartbeat.json
+          if-no-files-found: warn
+          retention-days: 30 exact-head-changed-files.txt; then
+            echo "RUN_BOUNDED_SOURCE_HEARTBEAT=true" >> "$GITHUB_ENV"
+          else
+            echo "RUN_BOUNDED_SOURCE_HEARTBEAT=false" >> "$GITHUB_ENV"
           fi
 
       - name: Setup Bun 1.4.2
