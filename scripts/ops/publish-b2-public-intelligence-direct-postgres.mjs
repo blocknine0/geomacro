@@ -866,7 +866,15 @@ try {
   throw error;
 }
 
-await b2.put(LIVE_KEY, packed);
+try {
+  await b2.put(LIVE_KEY, packed);
+} catch (error) {
+  if (b2CapReason(error)) {
+    await publishB2CapOverlayRecovery(current, error);
+    process.exit(0);
+  }
+  throw error;
+}
 let readback;
 try {
   readback = await b2.get(LIVE_KEY);
@@ -932,7 +940,15 @@ const proof = Buffer.from(JSON.stringify({
   full_b2_readback_verified: true,
   exact_gzip_restore_verified: true,
 }));
-await b2.put(PROOF_KEY, proof);
+try {
+  await b2.put(PROOF_KEY, proof);
+} catch (error) {
+  if (b2CapReason(error)) {
+    await publishB2CapOverlayRecovery(current, error);
+    process.exit(0);
+  }
+  throw error;
+}
 let proofReadback;
 try {
   proofReadback = await b2.get(PROOF_KEY);
