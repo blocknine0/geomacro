@@ -27,7 +27,7 @@ This package prepares Geomacro for coordinated distribution without publishing o
 - LLM discovery: `https://geomacro.live/llms.txt`
 - Agent-commerce docs: `https://geomacro.live/agent-commerce.md`
 - Free deliverability check: `POST https://geomacro.live/api/x402/risk/availability`
-- Coinbase x402 adaptive resource: `POST https://geomacro.live/api/x402/intelligence`
+- Coinbase x402 adaptive resource: `POST https://geomacro.live/api/v1/intelligence/query`
 - Circle Gateway x402 adaptive resource: `POST https://geomacro.live/api/x402/circle/intelligence`
 - Nevermined adaptive resource: `POST https://geomacro.live/api/x402/nevermined/intelligence`
 
@@ -89,7 +89,7 @@ After approved production endpoints return valid 402 challenges, submit:
 - service name: `Geomacro Risk Intelligence`
 - website: `https://geomacro.live`
 - contact: `contact@geomacro.live`
-- endpoint paths: `/api/x402/intelligence` and `/api/x402/circle/intelligence` when each is live and verified
+- endpoint paths: `/api/v1/intelligence/query` and `/api/x402/circle/intelligence` when each is live and verified
 - description: use the canonical short/long copy above
 - category: resolve against the directory's live category list on submission day rather than hard-coding a stale category
 
