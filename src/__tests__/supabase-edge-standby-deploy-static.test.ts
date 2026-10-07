@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 const workflow = readFileSync(".github/workflows/deploy-country-flash-supabase.yml", "utf8");
-const localRunner = readFileSync("scripts/run-live-flash-corroborate-local.ts", "utf8");
 
 describe("Supabase Edge standby deployment contract", () => {
   it("classifies external egress restriction without claiming Edge health", () => {
@@ -12,18 +11,19 @@ describe("Supabase Edge standby deployment contract", () => {
     expect(workflow).toContain("Supabase Edge standby");
   });
 
-  it("requires canonical direct-Postgres corroboration when Edge is unavailable", () => {
-    expect(workflow).toContain("run-live-flash-corroborate-local.ts --health");
-    expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
-    expect(workflow).toContain('.health == true');
-    expect(workflow).toContain('.authenticated == true');
+  it("requires a read-only authoritative direct-Postgres health proof when Edge is unavailable", () => {
+    expect(workflow).toContain("Verify read-only direct-Postgres flash path while Supabase Edge is standby");
+    expect(workflow).toContain("begin read only;");
+    expect(workflow).toContain("rollback;");
+    expect(workflow).toContain("public.live_flash_events");
+    expect(workflow).toContain("public.live_flash_event_countries");
+    expect(workflow).toContain('execution_mode == "direct_postgres_read_only_health"');
     expect(workflow).toContain('.candidate_query == "PASS"');
-    expect(workflow).toContain('execution_mode == "local_canonical_corroboration_direct_postgres"');
-    expect(workflow).toContain(".threshold_weakening == false");
-    expect(localRunner).toContain('process.argv.includes("--health")');
-    expect(localRunner).toContain('live-flash-corroborate?mode=health');
-    expect(localRunner).toContain("LOCAL_CORROBORATE_HEALTH_MODE_EXCLUSIVE");
-    expect(localRunner).not.toContain("error.stack");
+    expect(workflow).toContain(".writes_performed == false");
+    const start = workflow.indexOf("Verify read-only direct-Postgres flash path while Supabase Edge is standby");
+    const end = workflow.indexOf("Verify authoritative country registry", start);
+    const proof = workflow.slice(start, end);
+    expect(proof).not.toMatch(/\b(insert|update|delete|upsert)\b/i);
   });
 
   it("still fails unexpected Edge responses closed", () => {
