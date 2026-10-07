@@ -234,7 +234,7 @@ function finalResponse(
 
 export const mainnetIntelligenceHandlers = {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
-      GET: async ({ request }) => {
+      GET: async ({ request }: { request: Request }) => {
         let config: CoinbaseX402Config | null;
         try { config = getCoinbaseX402Config(); } catch (error) {
           return json({ ok: false, configured: false, error: error instanceof Error ? error.message : "Invalid x402 configuration", execution_authorized: false }, 503);
@@ -260,7 +260,7 @@ export const mainnetIntelligenceHandlers = {
           execution_authorized: false,
         });
       },
-      POST: async ({ request }) => {
+      POST: async ({ request }: { request: Request }) => {
         let raw: unknown;
         try { raw = await parseJsonBody(request); } catch (error) {
           if (error instanceof Response) return json({ ok: false, error: { code: "INVALID_AGENT_REQUEST", message: await error.text() }, execution_authorized: false }, error.status);
