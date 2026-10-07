@@ -431,55 +431,70 @@ export async function primeCanonicalBatchPreviousRiskObjects(
     byCountry.set(iso3, payload as GeomacroRiskObject);
   }
 
-  const preservedResult = await db
-    .from("geomacro_risk_objects")
-    .select(
-      "subject_id,payload,generated_at,expires_at,commercial_eligibility_reason_codes",
-    )
-    .eq("subject_type", "country")
-    .eq("schema_version", GRO_SCHEMA_VERSION)
-    .eq("methodology_version", COUNTRY_RISK_METHOD_VERSION)
-    .eq("verification_status", "VERIFIED")
-    .eq("commercial_eligibility_status", "VERIFIED")
-    .lt("generated_at", key)
-    .gt("expires_at", key)
-    .not("payload", "is", null)
-    .order("generated_at", { ascending: false })
-    .limit(1000);
-
-  if (preservedResult.error) throw preservedResult.error;
-
   const preservedCommercialByCountry = new Map<string, GeomacroRiskObject>();
-  for (const row of (preservedResult.data ?? []) as Array<Record<string, unknown>>) {
-    const iso3 = String(row.subject_id ?? "").trim().toUpperCase();
-    if (!/^[A-Z]{3}$/.test(iso3) || preservedCommercialByCountry.has(iso3)) {
-      continue;
+  const preservedPageSize = 1000;
+  const preservedScanLimit = 10_000;
+  let preservedScanned = 0;
+
+  for (let from = 0; from < preservedScanLimit; from += preservedPageSize) {
+    const preservedResult = await db
+      .from("geomacro_risk_objects")
+      .select(
+        "subject_id,payload,generated_at,expires_at,commercial_eligibility_reason_codes",
+      )
+      .eq("subject_type", "country")
+      .eq("schema_version", GRO_SCHEMA_VERSION)
+      .eq("methodology_version", COUNTRY_RISK_METHOD_VERSION)
+      .eq("verification_status", "VERIFIED")
+      .eq("commercial_eligibility_status", "VERIFIED")
+      .lt("generated_at", key)
+      .gt("expires_at", key)
+      .not("payload", "is", null)
+      .order("generated_at", { ascending: false })
+      .order("object_id", { ascending: true })
+      .range(from, from + preservedPageSize - 1);
+
+    if (preservedResult.error) throw preservedResult.error;
+
+    const page = (preservedResult.data ?? []) as Array<Record<string, unknown>>;
+    preservedScanned += page.length;
+
+    for (const row of page) {
+      const iso3 = String(row.subject_id ?? "").trim().toUpperCase();
+      if (!/^[A-Z]{3}$/.test(iso3) || preservedCommercialByCountry.has(iso3)) {
+        continue;
+      }
+
+      const reasons = normalizeStringArray(row.commercial_eligibility_reason_codes);
+      if (reasons.includes(PUBLIC_DEMO_RISK_PROFILE_REASON)) continue;
+
+      const payload = row.payload;
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) continue;
+      const object = payload as GeomacroRiskObject;
+      if (
+        object.schema_version !== GRO_SCHEMA_VERSION ||
+        object.methodology_version !== COUNTRY_RISK_METHOD_VERSION ||
+        object.subject?.type !== "country" ||
+        object.subject?.id !== iso3 ||
+        Date.parse(object.expires_at) <= boundary.getTime()
+      ) {
+        continue;
+      }
+
+      if (!verifyRiskObjectSignature(object).valid) continue;
+      if (
+        !verifyCommercialRiskObjectArtifact(object, { now: boundary }).deliverable
+      ) {
+        continue;
+      }
+
+      preservedCommercialByCountry.set(iso3, object);
     }
 
-    const reasons = normalizeStringArray(row.commercial_eligibility_reason_codes);
-    if (reasons.includes(PUBLIC_DEMO_RISK_PROFILE_REASON)) continue;
-
-    const payload = row.payload;
-    if (!payload || typeof payload !== "object" || Array.isArray(payload)) continue;
-    const object = payload as GeomacroRiskObject;
-    if (
-      object.schema_version !== GRO_SCHEMA_VERSION ||
-      object.methodology_version !== COUNTRY_RISK_METHOD_VERSION ||
-      object.subject?.type !== "country" ||
-      object.subject?.id !== iso3 ||
-      Date.parse(object.expires_at) <= boundary.getTime()
-    ) {
-      continue;
+    if (page.length < preservedPageSize) break;
+    if (from + preservedPageSize >= preservedScanLimit) {
+      throw new Error("CANONICAL_BATCH_PRESERVED_SCAN_LIMIT_EXCEEDED");
     }
-
-    if (!verifyRiskObjectSignature(object).valid) continue;
-    if (
-      !verifyCommercialRiskObjectArtifact(object, { now: boundary }).deliverable
-    ) {
-      continue;
-    }
-
-    preservedCommercialByCountry.set(iso3, object);
   }
 
   canonicalBatchPreviousObjects = {
@@ -487,13 +502,13 @@ export async function primeCanonicalBatchPreviousRiskObjects(
     byCountry,
     preservedCommercialByCountry,
     scanned: (result.data ?? []).length,
-    preservedScanned: (preservedResult.data ?? []).length,
+    preservedScanned,
   };
   return {
     loaded: byCountry.size,
     scanned: (result.data ?? []).length,
     preservedCommercialLoaded: preservedCommercialByCountry.size,
-    preservedCommercialScanned: (preservedResult.data ?? []).length,
+    preservedCommercialScanned: preservedScanned,
   };
 }
 
