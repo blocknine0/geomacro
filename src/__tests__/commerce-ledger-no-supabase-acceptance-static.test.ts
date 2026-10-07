@@ -11,7 +11,12 @@ describe("no-Supabase commerce acceptance safety", () => {
     expect(workflow).toContain("push:");
     expect(workflow).toContain('branches:\n      - main');
     expect(workflow).toContain('"src/lib/agent-commerce-delivery.server.ts"');
-    expect(workflow).toContain('"workers/commerce-ledger/**"');
+    expect(workflow).toContain("workflow_run:");
+    expect(workflow).toContain("- Deploy Commerce Ledger Worker");
+    expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(workflow).toContain("github.event.workflow_run.head_sha");
+    expect(workflow).toContain("COMMERCE_ACCEPTANCE_DEPLOYED_SHA_MISMATCH");
+    expect(workflow).not.toContain('"workers/commerce-ledger/**"');
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1");
     expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
