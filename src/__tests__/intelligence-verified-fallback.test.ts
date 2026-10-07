@@ -68,5 +68,11 @@ describe("Intelligence verified fallback contract", () => {
     expect(directPublisher).toContain('raw_source_headlines_exposed: false');
     expect(directPublisher).toContain('provider_identity_exposed: false');
     expect(directPublisher).toContain("PUBLIC_INTELLIGENCE_SOURCE_IDENTITY_EXPOSED");
+    expect(directPublisher).toContain("publishHotOverlay(current, generatedAt)");
+    expect(directPublisher).toContain('HOT_OVERLAY_SCHEMA = "geomacro.public-intelligence-live-observed.v1"');
+    expect(directPublisher).toContain('HOT_OVERLAY_MAX_BYTES = 30 * 1024');
+    expect(directPublisher).toContain('"cloudflare-d1-hot-overlay"');
+    expect(directPublisher).toContain('raw_source_headlines_exposed: false');
+    expect(directPublisher).toContain('provider_identity_exposed: false');
   });
 });
