@@ -118,6 +118,10 @@ jobs:
         if: steps.refresh.outputs.fresh == 'true'
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+          # 196 latest + 196 by-id PUTs plus one bundle/proof write/readback pair.
+          # Local all-request budget stays below the client hard maximum while
+          # Class-B reads are bounded to two independent publication readbacks.
+          B2_REQUEST_BUDGET: "500"
         run: node --import tsx scripts/ops/publish-b2-country-gro-continuity.ts
 
       - name: Reverify last verified B2 country GRO package without advancing freshness
@@ -132,6 +136,10 @@ jobs:
 
       - name: Sync all independently verified current country GROs to D1
         if: steps.refresh.outputs.fresh == 'true'
+        env:
+          # One proof GET + one bundle GET; the remaining requests are bounded
+          # serving-projection PUTs and do not spend Class-B read allowance.
+          B2_REQUEST_BUDGET: "220"
         shell: bash
         run: |
           set -euo pipefail
@@ -141,6 +149,11 @@ jobs:
             and .indexed_country_count >= 195
             and .threshold_satisfied == true
             and .b2_readback_verified == true
+            and .b2_readback_scope == "continuity_proof_and_bundle"
+            and .b2_class_b_source_reads == 2
+            and .bundle_readback_verified == true
+            and .bundle_members_verified >= 195
+            and .generic_archive_readback_deferred_to_runtime == true
             and .signature_verified == true
             and .commercial_eligibility_verified == true
             and .d1_readback_verified == true
