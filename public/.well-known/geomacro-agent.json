@@ -7,7 +7,11 @@
     "mode": "read_and_recommend",
     "execution_authorized": false
   },
-  "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
+  "categories": [
+    "GEOPOLITICS",
+    "MACRO",
+    "CRITICAL_MINERALS"
+  ],
   "geographic_scope": "global_data_driven_fail_closed",
   "discovery": {
     "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
@@ -32,17 +36,42 @@
   "capabilities": [
     {
       "id": "risk_preflight",
-      "access": "paid_private_pilot_or_nonproduction_agent_commerce",
+      "access": "paid_private_pilot",
       "method": "POST",
       "content_type": "application/json",
-      "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
+      "categories": [
+        "GEOPOLITICS",
+        "MACRO",
+        "CRITICAL_MINERALS"
+      ],
       "execution_authorized": false
     },
     {
       "id": "adaptive_risk_intelligence",
-      "access": "prelaunch_x402_or_provider_sandbox",
-      "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
-      "topics": ["sovereign_risk", "macro_risk", "fx_external_risk", "sanctions_restrictions", "conflict_geopolitics", "trade_corridor", "energy_commodities", "critical_minerals", "political_governance", "banking_financial_system", "food_agriculture", "natural_hazards", "hot_topics", "risk_gate", "risk_object", "gri_context"],
+      "access": "prelaunch_x402",
+      "categories": [
+        "GEOPOLITICS",
+        "MACRO",
+        "CRITICAL_MINERALS"
+      ],
+      "topics": [
+        "sovereign_risk",
+        "macro_risk",
+        "fx_external_risk",
+        "sanctions_restrictions",
+        "conflict_geopolitics",
+        "trade_corridor",
+        "energy_commodities",
+        "critical_minerals",
+        "political_governance",
+        "banking_financial_system",
+        "food_agriculture",
+        "natural_hazards",
+        "hot_topics",
+        "risk_gate",
+        "risk_object",
+        "gri_context"
+      ],
       "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
       "paid_endpoint": "https://geomacro.live/api/x402/intelligence",
       "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
@@ -91,7 +120,14 @@
     "unsolicited_direct_messages": false,
     "spam_automation": false,
     "claims_must_be_machine_verifiable": true,
-    "preferred_free_surfaces": ["a2a_agent_card", "x402_bazaar_metadata", "github", "llms_txt", "openapi", "free_agent_directories"]
+    "preferred_free_surfaces": [
+      "a2a_agent_card",
+      "x402_bazaar_metadata",
+      "github",
+      "llms_txt",
+      "openapi",
+      "free_agent_directories"
+    ]
   },
   "commercial": {
     "launch_state": "prelaunch",
@@ -105,12 +141,12 @@
     "risk_api": "paid_private_pilot",
     "institutional_sla": "not_generally_available",
     "price_source": "authoritative_payment_challenge_or_provider_plan",
-    "launch_cohort": ["coinbase_x402", "circle_gateway_x402", "nevermined"],
-    "deferred_providers": {
-      "goat_x402_mainnet": "manual_merchant_application_and_approval_required"
-    },
+    "launch_cohort": [
+      "coinbase_x402",
+      "circle_gateway_x402",
+      "nevermined"
+    ],
     "mainnet_activation_requires_explicit_owner_authorization": true,
-    "testnet_or_sandbox_is_revenue": false,
     "automatic_public_marketing": false
   }
 }
