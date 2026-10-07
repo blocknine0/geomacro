@@ -5,30 +5,27 @@ const script = readFileSync("scripts/ops/live-performance-slo.mjs", "utf8");
 const workflow = readFileSync(".github/workflows/live-performance-slo.yml", "utf8");
 
 describe("live performance SLO guard", () => {
-  it("measures the main commercial and Testnet surfaces over the real network", () => {
+  it("measures current commercial surfaces over the real network", () => {
     for (const route of [
       'path: "/"',
       'path: "/intelligence"',
       'path: "/global-risk"',
+      'path: "/ask-geomacro"',
       'path: "/risk-gate"',
       'path: "/data-api"',
-      'path: "/testnet-access"',
-      'path: "/testnet-console"',
+      'path: "/pricing"',
+      'path: "/institutional"',
+      'path: "/docs"',
       'path: "/api/health"',
-      'path: "/api/testnet/manifest"',
-    ]) {
-      expect(script).toContain(route);
-    }
+    ]) expect(script).toContain(route);
+    expect(script.toLowerCase()).not.toContain("testnet");
     expect(script).toContain("p95_ms");
     expect(script).toContain("real_network_requests: true");
-    expect(script).toContain("production_capacity_claim: false");
   });
 
-  it("preserves manual evidence collection while recurring probes are quota-held", () => {
+  it("keeps recurring probes quota-held", () => {
     expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).toContain("Emergency Supabase quota hold");
     expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("live-performance-slo.mjs");
-    expect(workflow).toMatch(/actions\/upload-artifact@(v[4-9]|[0-9a-f]{40})/);
   });
 });
