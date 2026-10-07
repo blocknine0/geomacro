@@ -5,6 +5,10 @@ const COUNTRY_RE = /^[A-Z]{3}$/;
 const DOMAIN_RE = /^[a-z0-9][a-z0-9_-]{1,63}$/;
 const OBJECT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_.:-]{2,191}$/;
 const STATUS_RE = /^[A-Z0-9][A-Z0-9_-]{1,63}$/;
+const PUBLIC_INTELLIGENCE_OVERLAY_KEY = "public_intelligence_live_observed_v1";
+const PUBLIC_INTELLIGENCE_OVERLAY_SCHEMA = "geomacro.public-intelligence-live-observed.v1";
+const PUBLIC_INTELLIGENCE_OVERLAY_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+const PUBLIC_INTELLIGENCE_OVERLAY_MAX_ROWS = 24;
 
 function json(payload, status = 200) {
   return Response.json(payload, {
@@ -90,6 +94,125 @@ function rejectDurablePayloadFields(body) {
   const forbidden = ["payload", "raw", "raw_payload", "evidence", "evidence_payload", "record", "signed_risk_object"];
   for (const key of forbidden) {
     if (Object.prototype.hasOwnProperty.call(body, key)) throw new Error("DURABLE_PAYLOAD_BELONGS_IN_B2");
+  }
+}
+
+function publicJson(payload, status = 200) {
+  return Response.json(payload, {
+    status,
+    headers: {
+      "Cache-Control": status === 200 ? "public, max-age=60" : "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
+}
+
+function validatePublicIntelligenceOverlay(value, now = Date.now()) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  if (
+    value.schema !== PUBLIC_INTELLIGENCE_OVERLAY_SCHEMA ||
+    value.source_id !== "gdelt_v2_events" ||
+    value.synthetic_score !== false ||
+    value.raw_source_headlines_exposed !== false ||
+    value.provider_identity_exposed !== false
+  ) return null;
+
+  const generatedAt = Date.parse(String(value.generated_at ?? ""));
+  const sourceBatchAt = Date.parse(String(value.current_source_batch_at ?? ""));
+  if (
+    !Number.isFinite(generatedAt) ||
+    !Number.isFinite(sourceBatchAt) ||
+    generatedAt > now + 5 * 60_000 ||
+    sourceBatchAt > now + 5 * 60_000 ||
+    now - generatedAt > PUBLIC_INTELLIGENCE_OVERLAY_MAX_AGE_MS ||
+    now - sourceBatchAt > PUBLIC_INTELLIGENCE_OVERLAY_MAX_AGE_MS
+  ) return null;
+
+  if (
+    !Array.isArray(value.rows) ||
+    value.rows.length < 1 ||
+    value.rows.length > PUBLIC_INTELLIGENCE_OVERLAY_MAX_ROWS
+  ) return null;
+
+  const allowedKeys = new Set([
+    "id", "source_title", "summary", "category", "severity", "delta",
+    "created_at", "published_at", "public_status",
+  ]);
+  const rows = [];
+  const seen = new Set();
+  for (const raw of value.rows) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    if (Object.keys(raw).some((key) => !allowedKeys.has(key))) return null;
+    const id = String(raw.id ?? "").trim();
+    const title = String(raw.source_title ?? "").replace(/\s+/g, " ").trim();
+    const createdAt = String(raw.created_at ?? "").trim();
+    const publishedAt = raw.published_at == null ? null : String(raw.published_at).trim();
+    const timestamp = Date.parse(publishedAt || createdAt);
+    if (
+      !id ||
+      id.length > 192 ||
+      title.length < 24 ||
+      title.length > 280 ||
+      !title.startsWith("Geomacro observes ") ||
+      raw.category !== "geopolitics" ||
+      raw.public_status !== "live_observed" ||
+      raw.severity !== null ||
+      raw.delta !== null ||
+      !Number.isFinite(timestamp) ||
+      timestamp > now + 5 * 60_000 ||
+      now - timestamp > PUBLIC_INTELLIGENCE_OVERLAY_MAX_AGE_MS
+    ) return null;
+    const key = `${id}|${title.toLowerCase()}`;
+    if (seen.has(key)) return null;
+    seen.add(key);
+    rows.push({
+      id,
+      source_title: title,
+      summary: raw.summary == null ? null : String(raw.summary).replace(/\s+/g, " ").trim().slice(0, 500),
+      category: "geopolitics",
+      severity: null,
+      delta: null,
+      created_at: createdAt,
+      published_at: publishedAt,
+      public_status: "live_observed",
+    });
+  }
+
+  return {
+    schema: PUBLIC_INTELLIGENCE_OVERLAY_SCHEMA,
+    generated_at: new Date(generatedAt).toISOString(),
+    source_id: "gdelt_v2_events",
+    current_source_transport: boundedText(value.current_source_transport, 80),
+    current_source_batch_at: new Date(sourceBatchAt).toISOString(),
+    current_evidence_contract: boundedText(value.current_evidence_contract, 160),
+    synthetic_score: false,
+    raw_source_headlines_exposed: false,
+    provider_identity_exposed: false,
+    rows,
+  };
+}
+
+async function getPublicIntelligenceOverlay(env) {
+  try {
+    const row = await env.DB.prepare(
+      "SELECT value_json FROM control_state WHERE key = ? LIMIT 1",
+    ).bind(PUBLIC_INTELLIGENCE_OVERLAY_KEY).first();
+    if (!row?.value_json) {
+      return publicJson({ ok: false, error: "INTELLIGENCE_OVERLAY_UNAVAILABLE" }, 503);
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(String(row.value_json));
+    } catch {
+      return publicJson({ ok: false, error: "INTELLIGENCE_OVERLAY_INVALID" }, 503);
+    }
+    const overlay = validatePublicIntelligenceOverlay(parsed);
+    if (!overlay) return publicJson({ ok: false, error: "INTELLIGENCE_OVERLAY_STALE_OR_INVALID" }, 503);
+    return publicJson({ ok: true, ...overlay });
+  } catch {
+    return publicJson({ ok: false, error: "D1_UNAVAILABLE" }, 503);
   }
 }
 
@@ -296,6 +419,9 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
+    if (request.method === "GET" && url.pathname === "/v1/public/intelligence-overlay") {
+      return getPublicIntelligenceOverlay(env);
+    }
 
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
