@@ -60,6 +60,21 @@ jobs:
           bun-version: "1.4.2"
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
+      - name: Preflight private B2 read capability before global refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/preflight-b2-read-capability.mjs \
+            | tee artifacts/b2-read-preflight.json
+          jq -e '
+            .ok == true
+            and .missing_probe_accepted == true
+            and .b2_write_performed == false
+            and .destructive_b2_change == false
+            and .payment_performed == false
+            and .execution_authorized == false
+          ' artifacts/b2-read-preflight.json >/dev/null
+
       - name: Verify authoritative direct PostgreSQL source
         shell: bash
         run: |
