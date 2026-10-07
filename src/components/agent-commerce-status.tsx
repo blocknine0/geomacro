@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export type AgentCommerceMode = "checking" | "unavailable" | "prelaunch" | "testnet" | "production";
+export type AgentCommerceMode = "checking" | "unavailable" | "prelaunch" | "production";
 
 type AgentCommerceState = {
   mode: AgentCommerceMode;
@@ -36,7 +36,6 @@ export function useAgentCommerceStatus() {
 
     void (async () => {
       try {
-        // Payment authority remains /api/x402/intelligence; status probing deliberately uses the 200-only health surface.
         const response = await fetch("/api/health", {
           method: "GET",
           headers: { Accept: "application/json" },
@@ -57,14 +56,12 @@ export function useAgentCommerceStatus() {
           ? payload.x402 as Record<string, unknown>
           : null;
         const configured = x402?.configured === true;
-        const environment = configured && (x402?.environment === "production" || x402?.environment === "testnet")
-          ? x402.environment
-          : null;
-        const priceUsdc = configured && typeof x402?.exact_price_usdc === "string" ? x402.exact_price_usdc : null;
-        const network = configured && typeof x402?.network === "string" ? x402.network : null;
+        const production = configured && x402?.environment === "production";
+        const priceUsdc = production && typeof x402?.exact_price_usdc === "string" ? x402.exact_price_usdc : null;
+        const network = production && typeof x402?.network === "string" ? x402.network : null;
 
         setState({
-          mode: environment === "production" ? "production" : environment === "testnet" ? "testnet" : "prelaunch",
+          mode: production ? "production" : "prelaunch",
           priceUsdc,
           network,
         });
@@ -89,14 +86,12 @@ export function AgentCommerceStatus({ compact = false }: { compact?: boolean }) 
   const state = useAgentCommerceStatus();
 
   const label = state.mode === "production"
-    ? `x402 agent access · live${state.priceUsdc ? ` · ${state.priceUsdc} USDC/call` : ""}`
-    : state.mode === "testnet"
-      ? "x402 agent access · controlled testnet"
-      : state.mode === "checking"
-        ? "x402 agent access · checking status"
-        : state.mode === "unavailable"
-          ? "x402 agent access · status unavailable"
-          : "x402 agent access · controlled pre-launch";
+    ? `x402 commercial access · live${state.priceUsdc ? ` · ${state.priceUsdc} USDC/call` : ""}`
+    : state.mode === "checking"
+      ? "x402 commercial access · verifying production status"
+      : state.mode === "unavailable"
+        ? "x402 commercial access · status unavailable"
+        : "x402 commercial access · production activation pending";
 
   if (compact) {
     return (
@@ -120,13 +115,11 @@ export function AgentCommerceStatus({ compact = false }: { compact?: boolean }) 
       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
         {state.mode === "production"
           ? `The paid endpoint is advertising production x402 access${state.network ? ` on ${state.network}` : ""}. The live HTTP 402 challenge remains the payment authority.`
-          : state.mode === "testnet"
-            ? "The current runtime reports a controlled testnet environment. Testnet settlement is not commercial revenue. The live HTTP challenge and health contract remain the authority for payment and access state."
-            : state.mode === "unavailable"
-              ? "The status probe did not return a usable result in time. Commercial access is not inferred from a failed health check; the paid endpoint remains the payment authority."
-              : state.mode === "checking"
-                ? "Checking the deployment health surface for the current x402 runtime mode."
-                : "Real-money x402 access remains controlled pre-launch and fail-closed until the production endpoint itself authorizes production. The live HTTP challenge and health contract remain the authority for payment and access state."}
+          : state.mode === "unavailable"
+            ? "The status probe did not return a usable result in time. Commercial access is not inferred from a failed health check; the paid endpoint remains the payment authority."
+            : state.mode === "checking"
+              ? "Checking the deployment health surface for the current production x402 state."
+              : "Commercial x402 remains fail-closed until the production endpoint is explicitly activated. The live HTTP challenge and health contract remain the authority for payment and access state."}
       </p>
     </div>
   );
