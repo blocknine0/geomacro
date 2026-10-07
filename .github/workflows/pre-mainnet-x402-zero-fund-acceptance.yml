@@ -9,7 +9,7 @@ on:
       - "src/lib/agent-query-*.ts"
       - "src/lib/agent-commerce-delivery.server.ts"
       - "src/routes/api.x402.intelligence.ts"
-      - "src/routes/api.v1.intelligence_.query.ts"
+      - "src/routes/api.v1.intelligence.query.ts"
       - "src/lib/mainnet-intelligence-endpoint.server.ts"
       - "src/__tests__/mainnet-intelligence-api-v1-static.test.ts"
       - "src/routes/api.x402.risk_.availability.ts"
