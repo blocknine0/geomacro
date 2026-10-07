@@ -48,7 +48,7 @@
         }
       }
     },
-    "/api/v1/intelligence/query": {
+    "/api/x402/intelligence": {
       "get": {
         "summary": "Inspect the canonical Coinbase-compatible x402 resource",
         "operationId": "getGeomacroX402Resource",
