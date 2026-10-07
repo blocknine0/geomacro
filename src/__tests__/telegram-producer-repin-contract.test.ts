@@ -6,13 +6,18 @@ const migration = readFileSync(
   "workers/control-plane/migrations/0009_telegram_signal_protocol_v2.sql",
   "utf8",
 );
+const auditRepin = readFileSync(
+  "workers/control-plane/migrations/0010_telegram_signal_producer_audit_sha.sql",
+  "utf8",
+);
+const CURRENT_PRODUCER_AUDIT_SHA = "408ad3ffd689e6422fce6dac51dfdbbb78f642a6";
 const CONTRACT_HASH = "6da33ed2a966d58122039ba38d83e801476a6318bc89634d0b3d951e8ad017c9";
 
 describe("Telegram private producer protocol acceptance contract", () => {
   it("accepts the private producer by repository plus versioned protocol hash", () => {
     expect(bridge.producer_repo).toBe("blocknine0/geomacro-telegram-signals");
     expect(bridge.producer_acceptance).toBe("protocol_hash");
-    expect(bridge.producer_commit_audit).toMatch(/^[a-f0-9]{40}$/);
+    expect(bridge.producer_commit_audit).toBe(CURRENT_PRODUCER_AUDIT_SHA);
     expect(bridge.payload_schema).toBe("geomacro.telegram-lead-envelope.v2");
     expect(bridge.protocol_contract_sha256).toBe(CONTRACT_HASH);
   });
@@ -23,6 +28,13 @@ describe("Telegram private producer protocol acceptance contract", () => {
     expect(migration).toContain("geomacro.telegram-lead-envelope.v2");
     expect(migration).toContain("blocknine0/geomacro-telegram-signals");
     expect(migration).toContain("update telegram_signal_runtime_status");
+  });
+
+  it("repins only audit metadata while preserving protocol-hash acceptance", () => {
+    expect(auditRepin).toContain(CURRENT_PRODUCER_AUDIT_SHA);
+    expect(auditRepin).toContain(CONTRACT_HASH);
+    expect(auditRepin).toContain("producer_commit =");
+    expect(auditRepin).not.toContain("alter table");
   });
 
   it("keeps Telegram producer output supplementary and non-commercial", () => {
