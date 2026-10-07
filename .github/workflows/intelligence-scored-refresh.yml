@@ -18,6 +18,7 @@ on:
       - "src/lib/use-intelligence.ts"
       - "server/api/public/intelligence.get.ts"
       - "src/__tests__/intelligence-scored-convergence-policy.test.ts"
+      - "src/__tests__/intelligence-b2-cap-hot-overlay-recovery-static.test.ts"
 
 permissions:
   contents: read
