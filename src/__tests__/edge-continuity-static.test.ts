@@ -26,6 +26,8 @@ describe("cap-independent verified edge continuity", () => {
       expect(worker).toContain('import continuity from "./continuity.mjs"');
       expect(worker).toContain("payload_sha256");
       expect(worker).toContain("source_live_sha256");
+      expect(worker).toContain("!/^\\d+$/.test");
+      expect(worker).not.toContain("!/^\\\\d+$/.test");
       expect(continuity).toBe("export default null;\n");
     }
   });
