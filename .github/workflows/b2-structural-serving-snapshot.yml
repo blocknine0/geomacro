@@ -56,5 +56,13 @@ jobs:
           test -n "${B2_ARCHIVE_READ_KEY_ID:-}" || { echo "B2_ARCHIVE_READ_KEY_ID is required for structural readback"; exit 2; }
           test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || { echo "B2_ARCHIVE_READ_APPLICATION_KEY is required for structural readback"; exit 2; }
 
+      - name: Preflight private B2 read capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          bun scripts/ops/verify-b2-private-archive-read.ts > artifacts/b2-read-preflight.json
+          jq -e '.ok == true and .dedicated_read_credentials == true and .destructive_b2_change == false' artifacts/b2-read-preflight.json >/dev/null
+
       - name: Publish and fully read back structural serving snapshot
         run: bun scripts/ops/publish-b2-structural-serving-snapshot.ts
