@@ -2,7 +2,13 @@
 
 import { classifyGlobalEntity } from "../src/lib/global-entity-classification";
 import { verifyCommercialRiskObjectArtifact } from "../src/lib/commercial-risk-object-policy";
-import { getLatestCompatibleCountryRiskObject } from "../src/lib/risk-object-store.server";
+import {
+  COUNTRY_RISK_METHOD_VERSION,
+  GRO_SCHEMA_VERSION,
+  LEGACY_GRO_SCHEMA_VERSION,
+  type GeomacroRiskObject,
+} from "../src/lib/risk-object-contract";
+import { PUBLIC_DEMO_RISK_PROFILE_REASON } from "../src/lib/public-demo-risk-profile";
 import { verifyRiskObjectSignature } from "../src/lib/risk-object-signing.server";
 import { requireRiskSupabase } from "../src/lib/risk-supabase.server";
 
@@ -103,55 +109,100 @@ function remediationAction(status: string, reasonCodes: string[]) {
 }
 
 async function loadLatestCountryStates(countries: Country[]) {
-  const states = new Array<any>(countries.length);
-  let cursor = 0;
+  const db = requireRiskSupabase();
+  const wanted = new Set(countries.map((country) => country.iso3));
+  const latest = new Map<string, GeomacroRiskObject>();
+  const profileJson = JSON.stringify([PUBLIC_DEMO_RISK_PROFILE_REASON]);
+  const pageSize = 1000;
+  const maxRows = 4000;
+  let rowsScanned = 0;
 
-  async function worker() {
-    while (true) {
-      const index = cursor++;
-      if (index >= countries.length) return;
-      const country = countries[index];
-      const object = await getLatestCompatibleCountryRiskObject(country.iso3, undefined, "CANONICAL");
+  // This is a current-readiness audit, not an archive restore. Read hot payload
+  // rows in bounded pages and never fan out one country at a time into B2.
+  // If a country has only a cold/archived object, it remains fail-closed here.
+  for (let offset = 0; offset < maxRows && latest.size < wanted.size; offset += pageSize) {
+    const result = await db
+      .from("geomacro_risk_objects")
+      .select("subject_id,payload,generated_at,commercial_eligibility_reason_codes")
+      .eq("subject_type", "country")
+      .in("schema_version", [GRO_SCHEMA_VERSION, LEGACY_GRO_SCHEMA_VERSION])
+      .eq("methodology_version", COUNTRY_RISK_METHOD_VERSION)
+      .filter("commercial_eligibility_reason_codes", "not.cs", profileJson)
+      .not("payload", "is", null)
+      .order("generated_at", { ascending: false })
+      .range(offset, offset + pageSize - 1);
 
-      if (!object) {
-        states[index] = {
-          ...country,
-          status: "FAIL_CLOSED",
-          object_id: null,
-          verification_status: null,
-          commercial_eligibility_status: null,
-          signature_valid: false,
-          country_reason_codes: ["missing_canonical_risk_object"],
-          event_ids: [],
-        };
-        continue;
-      }
+    if (result.error) throw result.error;
+    const rows = (result.data ?? []) as Array<Record<string, unknown>>;
+    rowsScanned += rows.length;
 
-      const signature = verifyRiskObjectSignature(object);
-      const commercial = verifyCommercialRiskObjectArtifact(object);
-      const paidReady = signature.valid === true && commercial.deliverable === true;
-
-      states[index] = {
-        ...country,
-        status: paidReady ? "PAID_READY" : "FAIL_CLOSED",
-        object_id: object.object_id,
-        generated_at: object.generated_at,
-        expires_at: object.expires_at,
-        verification_status: object.verification.status,
-        commercial_eligibility_status: object.commercial_eligibility.status,
-        signature_valid: signature.valid,
-        country_reason_codes: uniq([
-          ...commercial.reason_codes,
-          ...object.commercial_eligibility.reason_codes,
-          ...object.verification.reason_codes,
-        ]),
-        event_ids: uniq(object.evidence.map((item) => item.event_id)),
-      };
+    for (const row of rows) {
+      const iso3 = String(row.subject_id ?? "").trim().toUpperCase();
+      if (!wanted.has(iso3) || latest.has(iso3)) continue;
+      const payload = row.payload;
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) continue;
+      const object = payload as Partial<GeomacroRiskObject>;
+      if (
+        ![GRO_SCHEMA_VERSION, LEGACY_GRO_SCHEMA_VERSION].includes(
+          object.schema_version as typeof GRO_SCHEMA_VERSION | typeof LEGACY_GRO_SCHEMA_VERSION,
+        ) ||
+        object.methodology_version !== COUNTRY_RISK_METHOD_VERSION ||
+        object.subject?.type !== "country" ||
+        object.subject?.id !== iso3
+      ) continue;
+      latest.set(iso3, payload as GeomacroRiskObject);
     }
+
+    if (rows.length < pageSize) break;
   }
 
-  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
-  return states;
+  const states = countries.map((country) => {
+    const object = latest.get(country.iso3) ?? null;
+
+    if (!object) {
+      return {
+        ...country,
+        status: "FAIL_CLOSED",
+        object_id: null,
+        verification_status: null,
+        commercial_eligibility_status: null,
+        signature_valid: false,
+        country_reason_codes: ["missing_hot_canonical_risk_object"],
+        event_ids: [],
+      };
+    }
+
+    const signature = verifyRiskObjectSignature(object);
+    const commercial = verifyCommercialRiskObjectArtifact(object);
+    const paidReady = signature.valid === true && commercial.deliverable === true;
+
+    return {
+      ...country,
+      status: paidReady ? "PAID_READY" : "FAIL_CLOSED",
+      object_id: object.object_id,
+      generated_at: object.generated_at,
+      expires_at: object.expires_at,
+      verification_status: object.verification.status,
+      commercial_eligibility_status: object.commercial_eligibility.status,
+      signature_valid: signature.valid,
+      country_reason_codes: uniq([
+        ...commercial.reason_codes,
+        ...object.commercial_eligibility.reason_codes,
+        ...object.verification.reason_codes,
+      ]),
+      event_ids: uniq(object.evidence.map((item) => item.event_id)),
+    };
+  });
+
+  return {
+    states,
+    hot_scan: {
+      rows_scanned: rowsScanned,
+      hot_country_objects_loaded: latest.size,
+      cold_archive_reads: 0,
+      max_rows: maxRows,
+    },
+  };
 }
 
 async function loadEventDiagnostics(eventIds: string[]) {
@@ -252,7 +303,8 @@ async function main() {
 
   const generatedAt = new Date().toISOString();
   const countries = await loadEnabledSovereigns();
-  const countryStates = await loadLatestCountryStates(countries);
+  const countryLoad = await loadLatestCountryStates(countries);
+  const countryStates = countryLoad.states;
   const failClosed = countryStates.filter((row) => row.status === "FAIL_CLOSED");
   const eventIds = uniq(failClosed.flatMap((row) => row.event_ids));
   const eventDiagnostics = await loadEventDiagnostics(eventIds);
@@ -324,6 +376,7 @@ async function main() {
     paid_ready_country_count: countryStates.length - failClosed.length,
     fail_closed_country_count: failClosed.length,
     summary: {
+      hot_gro_scan: countryLoad.hot_scan,
       remediation_action_country_counts: Object.fromEntries(
         [...actionCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])),
       ),
@@ -357,6 +410,7 @@ async function main() {
 
 main().catch((error) => {
   console.error("GLOBAL_COUNTRY_REMEDIATION_AUDIT_FAILED");
-  console.error(error instanceof Error ? error.message : String(error));
+  const message = error instanceof Error ? error.message : "bounded_audit_failure";
+  console.error(String(message).slice(0, 240));
   process.exit(1);
 });
