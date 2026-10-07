@@ -14,7 +14,8 @@ const SCHEMA = "geomacro.country-gro-continuity.v1";
 const BUNDLE_SCHEMA = "geomacro.country-gro-continuity-bundle.v1";
 const PROOF_SCHEMA = "geomacro.country-gro-continuity-proof.v1";
 const PROOF_KEY = "geomacro-evidence/v1/live/country-gro/continuity-proof.json";
-const MAX_CURRENT_ROWS = 1000;
+const MAX_CURRENT_ROWS = 10_000;
+const CURRENT_PAGE_SIZE = 1000;
 const MAX_BUNDLE_BYTES = 40_000_000;
 const MAX_BUNDLE_OUTPUT_BYTES = 100_000_000;
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
@@ -40,26 +41,34 @@ const b2 = createB2Client({
 });
 
 const evaluatedAt = new Date().toISOString();
-const { data: candidates, error: candidateError, count } = await db
-  .from("geomacro_risk_objects")
-  .select(
-    "subject_id,payload,generated_at,expires_at,commercial_eligibility_reason_codes",
-    { count: "exact" },
-  )
-  .eq("subject_type", "country")
-  .eq("verification_status", "VERIFIED")
-  .eq("commercial_eligibility_status", "VERIFIED")
-  .gt("expires_at", evaluatedAt)
-  .not("payload", "is", null)
-  .order("generated_at", { ascending: false })
-  .limit(MAX_CURRENT_ROWS);
+const candidateRows: Array<Record<string, unknown>> = [];
+for (let from = 0; from < MAX_CURRENT_ROWS; from += CURRENT_PAGE_SIZE) {
+  const result = await db
+    .from("geomacro_risk_objects")
+    .select(
+      "subject_id,payload,generated_at,expires_at,commercial_eligibility_reason_codes",
+    )
+    .eq("subject_type", "country")
+    .eq("verification_status", "VERIFIED")
+    .eq("commercial_eligibility_status", "VERIFIED")
+    .gt("expires_at", evaluatedAt)
+    .not("payload", "is", null)
+    .order("generated_at", { ascending: false })
+    .order("object_id", { ascending: true })
+    .range(from, from + CURRENT_PAGE_SIZE - 1);
 
-if (candidateError || count === null || count > MAX_CURRENT_ROWS || !Array.isArray(candidates)) {
-  throw new Error("B2_COUNTRY_GRO_CANDIDATE_QUERY_INVALID");
+  if (result.error) throw new Error("B2_COUNTRY_GRO_CANDIDATE_QUERY_INVALID");
+
+  const page = (result.data ?? []) as Array<Record<string, unknown>>;
+  candidateRows.push(...page);
+  if (page.length < CURRENT_PAGE_SIZE) break;
+  if (from + CURRENT_PAGE_SIZE >= MAX_CURRENT_ROWS) {
+    throw new Error("B2_COUNTRY_GRO_CANDIDATE_SCAN_LIMIT_EXCEEDED");
+  }
 }
 
 const currentByCountry = new Map<string, any>();
-for (const row of candidates as Array<Record<string, unknown>>) {
+for (const row of candidateRows) {
   const iso3 = String(row.subject_id ?? "").trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(iso3) || currentByCountry.has(iso3)) continue;
   const reasons = Array.isArray(row.commercial_eligibility_reason_codes)
