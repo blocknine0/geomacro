@@ -25,7 +25,7 @@ describe("B2 request budget governor", () => {
     expect(client).toContain("allowNotFound = false");
     expect(client).toContain('result.status === 404 && errorCode === "NoSuchKey"');
     expect(client).toContain("return null");
-    expect(client).toContain('getOptional: (key) => request("GET", key, Buffer.alloc(0), { allowNotFound: true })');
+    expect(client).toContain('getOptional: (key) => readSingleFlight(key, true)');
     expect(client).toContain('B2_${method}_FAILED_${result.status}_${errorCode}');
   });
 
