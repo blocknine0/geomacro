@@ -14,6 +14,10 @@ describe("B2 country GRO continuity", () => {
     expect(source).toContain('role: "read"');
     expect(source).toContain('role: "primary"');
     expect(source).toContain("response.status === 403");
+    expect(source).toContain("B2_NATIVE_AUTHORIZE_URL");
+    expect(source).toContain('capabilities.includes("readFiles")');
+    expect(source).toContain("backblazeb2\\.com");
+    expect(source).toContain("await nativeGet(cfg, key, MAX_COMPRESSED_BYTES)");
     expect(source).toContain("verifyRiskObjectSignature(object).valid");
     expect(source).toContain("verifyCommercialRiskObjectArtifact(object");
     expect(source).not.toContain("requireRiskSupabase");
