@@ -109,5 +109,13 @@ describe("global realtime source proof health classification", () => {
     expect(workflow).not.toContain("Validate scoped OIDC claims");
     expect(workflow).not.toContain("oidc-claims-summary.json");
     expect(workflow).not.toContain(".supabase.co/functions/v1/live-flash-corroborate");
+    expect(workflow).toContain("B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}");
+    expect(workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}");
+    expect(workflow).toContain("Prove production private B2 archive reader");
+    expect(workflow).toContain("bun scripts/ops/verify-b2-private-archive-read.ts");
+    expect(workflow).toContain("b2-private-archive-runtime-read.json");
+    expect(workflow.indexOf("Prove production private B2 archive reader")).toBeLessThan(
+      workflow.indexOf("Verify canonical direct-Postgres RSS corroboration transport"),
+    );
   });
 });
