@@ -129,7 +129,7 @@ const TASKS = [
     requiredEnv: ["LIVE_STRUCTURE_TOKEN", "SUPABASE_DB_URL", "B2_KEY_ID", "B2_APPLICATION_KEY"],
     timeoutMs: 1_500_000,
     steps: [
-      ["bash", ["-lc", "bun scripts/sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json"], "."],
+      ["bash", ["-lc", "COUNTRY_RAW_SOURCE_SYNC_OUTPUT=country-raw-source-sync.json bun scripts/sync-country-raw-source-mesh.mjs > country-raw-source-sync.log 2>&1 && cat country-raw-source-sync.json"], "."],
       ["node", ["scripts/drain-live-structure.mjs", "--fragment-ids-file", "country-raw-source-sync.json"], "."],
       ["bash", ["-lc", "RECONCILE_SOURCE_KEYS=country_raw_web_mesh RECONCILE_LOOKBACK_MINUTES=120 node scripts/reconcile-structured-event-commercial-rights.mjs"], "."],
       ["bun", ["scripts/audit-global-raw-source-coverage.mjs"], "."],
