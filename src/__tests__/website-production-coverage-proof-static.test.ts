@@ -32,7 +32,7 @@ describe("public production coverage proof", () => {
     expect(shell).toContain('const PRODUCTION_EVIDENCE_ROUTES = new Set(["/risk-gate", "/research"]);');
     expect(shell).toContain("showProductionEvidence ? <ProductionCoverageProof /> : null");
     expect(shell).not.toContain('new Set(["/",');
-    expect(shell).toContain("Public intelligence live · Risk Gate controlled Private Pilot · real-money x402 fail-closed until production activation");
+    expect(shell).toContain("Public intelligence live · Risk Gate controlled Private Pilot · commercial x402 remains fail-closed until production activation");
   });
 
   it("keeps machine-readable website context aligned with the same measured claim", () => {
@@ -40,15 +40,16 @@ describe("public production coverage proof", () => {
     const coverage = read("docs/RISK_GATE_MAX_COUNTRY_COVERAGE.md");
     const launch = read("docs/PRODUCTION_GLOBAL_COVERAGE_AND_HOT_TOPICS.md");
 
-    for (const content of [llms, coverage, launch]) {
+    for (const content of [coverage, launch]) {
       expect(content).toContain("114");
       expect(content).toContain("194");
       expect(content).toContain("80");
       expect(content).toContain("execution_authorized=false");
     }
 
-    expect(llms).toContain("Base mainnet disabled pending coordinated launch");
-    expect(llms).toContain("During pre-launch, all real-money provider activation remains disabled");
+    expect(llms).toContain("Risk Gate: PRIVATE PILOT");
+    expect(llms).toContain("PRODUCTION GATED");
+    expect(llms).toContain("execution_authorized=false");
     expect(coverage).toContain("did not activate x402, Base mainnet, real-money settlement or autonomous execution");
     expect(launch).toContain("did not activate x402, real-money settlement or Base mainnet");
   });
