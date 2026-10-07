@@ -23,7 +23,11 @@ describe("global canonical Risk Object refresh", () => {
     expect(script).toContain('delivery_profile: "CANONICAL"');
     expect(script).toContain("verifyRiskObjectSignature");
     expect(script).toContain("verifyCommercialRiskObjectArtifact");
-    expect(script).toContain('status: paidReady ? "PAID_READY" : "FAIL_CLOSED"');
+    expect(script).toContain('status: "PAID_READY" as const');
+    expect(script).toContain('status: "FAIL_CLOSED" as const');
+    expect(script).toContain('"new_verified_canonical"');
+    expect(script).toContain('"preserved_verified_fresh_previous"');
+    expect(script).toContain('"fail_closed_unsigned_preview"');
     expect(script).toContain('"canonical_refresh_failed_closed"');
     expect(script).toContain("ready_floor_met: paidReady.length >= MIN_READY");
     expect(script).toContain("failure_summary");
@@ -37,6 +41,8 @@ describe("global canonical Risk Object refresh", () => {
       "payment_not_performed_by_refresh: true",
       "raw_source_material_emitted: false",
       "raw_exception_messages_emitted: false",
+      "unverified_objects_signed_for_gap_fill: false",
+      "preserved_objects_retimestamped: false",
       "execution_authorized: false",
       "minimum_ready_gate: MIN_READY",
       "GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR",
