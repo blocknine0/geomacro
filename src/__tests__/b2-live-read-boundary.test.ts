@@ -8,6 +8,13 @@ describe("non-destructive B2 live read boundary", () => {
     const source = read("src/lib/b2-live.server.ts");
     expect(source).toContain("process.env.B2_KEY_ID");
     expect(source).toContain("process.env.B2_APPLICATION_KEY");
+    expect(source).toContain("process.env.B2_ARCHIVE_READ_KEY_ID");
+    expect(source).toContain("process.env.B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(source).toContain("B2_NATIVE_AUTHORIZE_URL");
+    expect(source).toContain('capabilities.includes("readFiles")');
+    expect(source).toContain("backblazeb2\\.com");
+    expect(source).toContain("response.status === 403");
+    expect(source).toContain("await nativeGet(cfg, key)");
     expect(source).not.toContain("VITE_B2");
     expect(source).toContain("REQUEST_TIMEOUT_MS = 3_500");
     expect(source).toContain("CIRCUIT_OPEN_MS = 30_000");
