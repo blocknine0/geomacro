@@ -11,9 +11,9 @@ import { geomacroSupabaseRuntimeMode } from "../lib/supabase-runtime-mode.server
 const SUPABASE_RECOVERY_PROJECT_REF = "ldpwajisioljyjtojvfx";
 
 type X402RuntimeStatus = {
-  state: "controlled_prelaunch" | "testnet" | "production" | "configuration_invalid";
+  state: "controlled_prelaunch" | "production" | "configuration_invalid";
   configured: boolean;
-  environment: "prelaunch" | "testnet" | "production";
+  environment: "prelaunch" | "production";
   network: string | null;
   exact_price_usdc: string | null;
 };
@@ -31,10 +31,20 @@ function getX402RuntimeStatus(): X402RuntimeStatus {
       };
     }
 
+    if (config.environment !== "production") {
+      return {
+        state: "controlled_prelaunch",
+        configured: true,
+        environment: "prelaunch",
+        network: null,
+        exact_price_usdc: null,
+      };
+    }
+
     return {
-      state: config.environment === "production" ? "production" : "testnet",
+      state: "production",
       configured: true,
-      environment: config.environment,
+      environment: "production",
       network: config.network,
       exact_price_usdc: config.priceUsdc,
     };
@@ -128,11 +138,6 @@ export const Route = createFileRoute("/api/health")({
             supabase_role: "ingestion-recovery-standby",
             supabase_recovery_project_ref: SUPABASE_RECOVERY_PROJECT_REF,
             supabase_runtime_mode: geomacroSupabaseRuntimeMode(),
-            legacy_testnet_alignment: {
-              alignment_contract: "github-main-external-supabase-lovable-v1",
-              database_authority: "external-supabase",
-              supabase_project_ref: SUPABASE_RECOVERY_PROJECT_REF,
-            },
             x402: getX402RuntimeStatus(),
           },
           {
