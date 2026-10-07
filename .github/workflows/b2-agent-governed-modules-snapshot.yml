@@ -9,6 +9,9 @@ on:
       - "scripts/ops/direct-postgres-supabase-lite.ts"
       - "scripts/ops/run-b2-governed-direct-postgres.mjs"
       - "scripts/ops/verify-b2-agent-governed-runtime.ts"
+      - "scripts/ops/verify-b2-private-archive-read.ts"
+      - "scripts/ops/b2-s3-client.mjs"
+      - "src/lib/b2-private-archive-read.server.ts"
       - "src/lib/b2-agent-governed-modules.server.ts"
       - "src/lib/agent-query-political-governance.server.ts"
       - "src/lib/agent-query-world-bank-modules.server.ts"
@@ -68,6 +71,14 @@ jobs:
             test -n "${!name:-}" || { echo "$name is required"; exit 2; }
           done
           command -v psql >/dev/null || { echo "psql is required"; exit 2; }
+
+      - name: Preflight private B2 read capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          bun scripts/ops/verify-b2-private-archive-read.ts > artifacts/b2-read-preflight.json
+          jq -e '.ok == true and .dedicated_read_credentials == true and .destructive_b2_change == false' artifacts/b2-read-preflight.json >/dev/null
 
       - name: Publish fresh governed derived module snapshot via bounded direct Postgres export
         run: bun scripts/ops/run-b2-governed-direct-postgres.mjs
