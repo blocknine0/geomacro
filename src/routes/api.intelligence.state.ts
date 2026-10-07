@@ -176,7 +176,7 @@ export const Route = createFileRoute("/api/intelligence/state")({
               },
               payment: {
                 required_for_current_intelligence: true,
-                endpoint: "/api/x402/intelligence",
+                endpoint: "/api/v1/intelligence/query",
               },
               commercial_boundary: {
                 raw_source_identity_exposed: false,
