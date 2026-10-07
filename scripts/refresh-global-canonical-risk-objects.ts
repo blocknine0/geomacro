@@ -209,7 +209,7 @@ async function main() {
   console.log(JSON.stringify({
     schema: "geomacro.canonical-batch-baseline-prime.v1",
     hot_previous_objects_loaded: baselinePrime.loaded,
-    hot_previous_objects_missing: baselinePrime.missing,
+    hot_previous_rows_scanned: baselinePrime.scanned,
     b2_archive_reads_for_previous_baseline: 0,
   }));
 
