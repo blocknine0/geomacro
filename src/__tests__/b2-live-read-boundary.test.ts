@@ -23,6 +23,22 @@ describe("non-destructive B2 live read boundary", () => {
     expect(b2).toContain("B2_PUBLIC_GLOBAL_RISK_KEY");
     expect(b2).toContain("geomacro.public-global-risk-live.v1");
     expect(b2).toContain("validateGlobalRiskContinuity");
+    expect(b2).toContain('import { readGlobalRiskEdge } from "./global-risk-edge.server"');
+    const edgeRead = b2.indexOf("await readGlobalRiskEdge()");
+    const directB2Read = b2.indexOf("B2_PUBLIC_GLOBAL_RISK_KEY");
+    expect(edgeRead).toBeGreaterThan(-1);
+    expect(directB2Read).toBeGreaterThan(-1);
+    expect(edgeRead).toBeGreaterThan(directB2Read);
+  });
+
+  it("uses the proof-verified edge before runtime private-B2 recovery", () => {
+    const b2 = read("src/lib/b2-live.server.ts");
+    const fn = b2.slice(b2.indexOf("export async function readB2PublicRisk"));
+    expect(fn.indexOf("await readGlobalRiskEdge()")).toBeGreaterThan(-1);
+    expect(fn.indexOf("await readJsonGzip")).toBeGreaterThan(fn.indexOf("await readGlobalRiskEdge()"));
+    expect(read("src/lib/global-risk-edge.server.ts")).toContain('x-geomacro-authority") !== "backblaze-b2-verified-edge"');
+    expect(read("src/lib/global-risk-edge.server.ts")).toContain('payload.source_project !== "ldpwajisioljyjtojvfx"');
+    expect(read("src/lib/global-risk-edge.server.ts")).toContain("validateGlobalRiskContinuity(payload.data).ok");
   });
 
   it("keeps the old bundled publisher verified while Global Risk has an independent permanent refresh path", () => {
