@@ -23,6 +23,10 @@ describe("#1414 no-funds x402 scope acceptance", () => {
     expect(script).toContain("payment_signature_sent: false");
     expect(script).toContain("settlement_attempted: false");
     expect(script).toContain("all_scopes_passed: failures.length === 0");
+    expect(script).toContain("missing_modules: Array.isArray(publicAvailability?.missing_modules)");
+    expect(script).toContain("stale_modules: Array.isArray(publicAvailability?.stale_modules)");
+    expect(script).toContain("governed_fallback_modules");
+    expect(script).toContain("latest_evidence_at");
     expect(script).toContain("safeCaseFailure(testCase, error)");
     expect(script).toContain("X402_SCOPE_ACCEPTANCE_FAILED:");
     expect(script).toContain("process.exitCode = 1");
