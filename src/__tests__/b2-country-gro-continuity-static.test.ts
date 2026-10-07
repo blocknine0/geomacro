@@ -146,7 +146,7 @@ describe("B2 country GRO continuity", () => {
     expect(source).toContain('const BUNDLE_SCHEMA = "geomacro.country-gro-bundle.v2"');
     expect(source).toContain('const PROOF_SCHEMA = "geomacro.country-gro-continuity-proof.v2"');
     expect(source).toContain("const CACHE_TTL_MS = 5 * 60_000");
-    expect(source).toContain("inFlightGets.has(key)");
+    expect(source).toContain("inFlightGets.get(key)");
     expect(source).toContain("const bundle = await loadBundleV2()");
     expect(source).toContain("bundle?.byCountry.get(iso3)?.object");
     expect(source).toContain("readLegacyEnvelope(countryKey(iso3))");
