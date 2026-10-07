@@ -55,6 +55,7 @@ jobs:
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'version: 2.117.0' "$file"
           grep -q 'push:' "$file"
+          grep -q 'production-history-only.mjs verify' "$file"
           test -f "supabase/migrations/955_realtime_event_family_lifecycle.sql"
           test -f "supabase/migrations/956_event_family_version_ledger.sql"
                                         
@@ -137,6 +138,12 @@ jobs:
         uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
         with:
           version: 2.117.0
+
+      - name: Verify immutable production-history migration inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/db/production-history-only.mjs verify
 
       - name: Show pending database migrations
         shell: bash
