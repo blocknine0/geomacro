@@ -7,7 +7,7 @@ const implementation = readFileSync(
   "utf8",
 );
 const canonicalRoute = readFileSync(
-  "src/routes/api.v1.intelligence_.query.ts",
+  "src/routes/api.v1.intelligence.query.ts",
   "utf8",
 );
 const legacyRoute = readFileSync(
