@@ -51,7 +51,7 @@ describe("Intelligence GDELT availability contract", () => {
     expect(geoFallback).toContain('public_status: "live_observed"');
     expect(geoFallback).toContain("severity: null");
     expect(geoFallback).toContain("delta: null");
-    expect(geoFallback).not.toContain("date_modified as an evidence timestamp");
+    expect(geoFallback).not.toContain("item?.date_modified");
 
     expect(preserve).toContain("ALLOWED_CURRENT_EVIDENCE_CONTRACTS");
     expect(preserve).toContain("gdelt-geo-v2-global-conflict-coverage-v1");
