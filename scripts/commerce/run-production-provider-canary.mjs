@@ -23,7 +23,7 @@ const PROVIDER_ACKS = {
   nevermined: "I_AUTHORIZE_NEVERMINED_CAPPED_CANARY",
 };
 const PATHS = {
-  coinbase: "/api/x402/intelligence",
+  coinbase: "/api/v1/intelligence/query",
   circle: "/api/x402/circle/intelligence",
   nevermined: "/api/x402/nevermined/intelligence",
 };
