@@ -53,6 +53,7 @@ afterEach(() => {
 
 describe("Geomacro central security route boundary", () => {
   it("puts every current paid rail behind the payment security class", () => {
+    expect(classifyCentralSecurityRoute("/api/v1/intelligence/query", "POST")).toBe("payment");
     expect(classifyCentralSecurityRoute("/api/x402/risk", "POST")).toBe("payment");
     expect(classifyCentralSecurityRoute("/api/goat/pilot/order", "POST")).toBe("payment");
     expect(classifyCentralSecurityRoute("/api/goat/pilot/status", "POST")).toBe("payment");
@@ -65,6 +66,12 @@ describe("Geomacro central security route boundary", () => {
     expect(
       isCoinbaseTestnetLocalSecurityFallbackAllowed(
         "/api/x402/risk/availability",
+        "payment",
+      ),
+    ).toBe(true);
+    expect(
+      isCoinbaseTestnetLocalSecurityFallbackAllowed(
+        "/api/v1/intelligence/query",
         "payment",
       ),
     ).toBe(true);
@@ -193,7 +200,7 @@ describe("real-funds security release gate", () => {
     delete process.env.GEOMACRO_API_CREDENTIAL_PEPPER;
 
     const decision = await enforceCentralRequestSecurity({
-      pathname: "/api/x402/risk",
+      pathname: "/api/v1/intelligence/query",
       method: "POST",
       headers: new Headers(),
     });
