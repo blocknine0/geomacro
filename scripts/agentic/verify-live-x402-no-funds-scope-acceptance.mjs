@@ -60,9 +60,41 @@ async function proveCase(testCase) {
     typeof availability?.query_plan_hash !== "string" ||
     !/^[0-9a-f]{64}$/.test(availability.query_plan_hash)
   ) {
-    throw new Error(
-      `${testCase.id}_NOT_DELIVERABLE:${availabilityResponse.status}:${availability?.availability?.code ?? "UNKNOWN"}`,
-    );
+    const publicAvailability = availability?.availability ?? {};
+    const subjectDiagnostics = Array.isArray(publicAvailability?.subjects)
+      ? publicAvailability.subjects.map((entry) => ({
+          status: String(entry?.status ?? "UNKNOWN"),
+          available_modules: Array.isArray(entry?.available_modules)
+            ? entry.available_modules.map(String).sort()
+            : [],
+          governed_fallback_modules: Array.isArray(entry?.governed_fallback_modules)
+            ? entry.governed_fallback_modules.map(String).sort()
+            : [],
+          latest_evidence_at:
+            typeof entry?.latest_evidence_at === "string"
+              ? entry.latest_evidence_at
+              : null,
+        }))
+      : [];
+
+    return {
+      id: testCase.id,
+      status: "FAIL",
+      failure_code:
+        `${testCase.id}_NOT_DELIVERABLE:${availabilityResponse.status}:${publicAvailability?.code ?? "UNKNOWN"}`,
+      availability_http: availabilityResponse.status,
+      availability_code: String(publicAvailability?.code ?? "UNKNOWN"),
+      missing_modules: Array.isArray(publicAvailability?.missing_modules)
+        ? publicAvailability.missing_modules.map(String).sort()
+        : [],
+      stale_modules: Array.isArray(publicAvailability?.stale_modules)
+        ? publicAvailability.stale_modules.map(String).sort()
+        : [],
+      subjects: subjectDiagnostics,
+      payment_signature_sent: false,
+      settlement_attempted: false,
+      execution_authorized: false,
+    };
   }
 
   const challengeResponse = await fetch(PAID_ENDPOINT, {
