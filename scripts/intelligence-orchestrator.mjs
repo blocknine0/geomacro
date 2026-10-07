@@ -81,6 +81,18 @@ const db = createClient(APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY, {
 
 const TASKS = [
   {
+    key: "phase_a_heartbeat",
+    restrictedDirectPostgresSafe: true,
+    cadenceSeconds: 3600,
+    offsetSeconds: 300,
+    priority: 9,
+    timeoutMs: 240_000,
+    requiredEnv: ["SUPABASE_DB_URL"],
+    steps: [
+      ["bash", ["-lc", "PHASE_A_HEARTBEAT_ONLY=1 node scripts/ops/phase-a-runtime-freshness-repair.mjs"], "."],
+    ],
+  },
+  {
     key: "gdelt_gal",
     cadenceSeconds: 900,
     offsetSeconds: 0,
@@ -93,7 +105,6 @@ const TASKS = [
   },
   {
     key: "gdelt_v2",
-    restrictedDirectPostgresSafe: true,
     cadenceSeconds: 900,
     offsetSeconds: 180,
     priority: 11,
@@ -103,7 +114,6 @@ const TASKS = [
   },
   {
     key: "current_scoring",
-    restrictedDirectPostgresSafe: true,
     cadenceSeconds: 1200,
     offsetSeconds: 780,
     priority: 12,
@@ -142,7 +152,6 @@ const TASKS = [
   },
   {
     key: "rss_live",
-    restrictedDirectPostgresSafe: true,
     cadenceSeconds: 900,
     offsetSeconds: 540,
     priority: 30,
