@@ -5,6 +5,9 @@ import { readGlobalRiskEdge } from "./global-risk-edge.server";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
+const PUBLIC_INTELLIGENCE_EDGE_URL =
+  "https://geomacro-intelligence.daspallab202391.workers.dev/intelligence";
+const PUBLIC_INTELLIGENCE_EDGE_AUTHORITY = "backblaze-b2-intelligence-edge";
 const CACHE_TTL_MS = 120_000;
 const FAILURE_THRESHOLD = 3;
 const CIRCUIT_OPEN_MS = 30_000;
@@ -222,7 +225,51 @@ function recentEnough(value: unknown, maxAgeMs = 24 * 60 * 60 * 1000): boolean {
   return Number.isFinite(parsed) && parsed <= Date.now() + 5 * 60_000 && Date.now() - parsed <= maxAgeMs;
 }
 
+async function readPublicIntelligenceEdge(): Promise<PublicIntelligenceRow[] | null> {
+  try {
+    const response = await fetch(PUBLIC_INTELLIGENCE_EDGE_URL, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(4_500),
+    });
+    if (
+      !response.ok ||
+      response.headers.get("x-geomacro-authority") !== PUBLIC_INTELLIGENCE_EDGE_AUTHORITY
+    ) return null;
+
+    const payload = await response.json() as {
+      schema?: string;
+      generated_at?: string;
+      source_project?: string;
+      rows?: PublicIntelligenceRow[];
+    };
+    if (
+      payload.schema !== "geomacro.public-intelligence-live.v1" ||
+      payload.source_project !== "ldpwajisioljyjtojvfx" ||
+      !recentEnough(payload.generated_at, PUBLIC_INTELLIGENCE_FALLBACK_MAX_AGE_MS) ||
+      !Array.isArray(payload.rows) ||
+      payload.rows.length === 0 ||
+      payload.rows.length > 300
+    ) return null;
+    const categories = new Set(
+      payload.rows.map((row) => String(row.category ?? "").toLowerCase()),
+    );
+    if (!["geopolitics", "macro", "rare_earth"].every((category) => categories.has(category))) {
+      return null;
+    }
+    return payload.rows;
+  } catch {
+    return null;
+  }
+}
+
 export async function readB2PublicIntelligence(): Promise<PublicIntelligenceRow[] | null> {
+  // Customer/server reads prefer the verified Cloudflare hot edge. B2 remains
+  // the durable source of truth, but repeated public traffic must not spend a
+  // private B2 download on every process/cache miss.
+  const edge = await readPublicIntelligenceEdge();
+  if (edge) return edge;
+
   const payload = await readJsonGzip<{
     schema?: string;
     generated_at?: string;

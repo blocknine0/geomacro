@@ -158,7 +158,7 @@ async function buildResponse(env) {
     status: 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "cache-control": "public, max-age=60, s-maxage=300, stale-while-revalidate=300",
+      "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-risk-indices-edge",
       "access-control-allow-origin": "*",

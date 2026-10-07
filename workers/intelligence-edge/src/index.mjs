@@ -1,9 +1,8 @@
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
-const LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz";
-const PROOF_KEY = "geomacro-evidence/v1/live/global-risk/latest-proof.json";
+const LIVE_KEY = "geomacro-evidence/v1/live/public-intelligence/latest.json.gz";
+const PROOF_KEY = "geomacro-evidence/v1/live/public-intelligence/latest-proof.json";
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
-const METHOD = "gri-v1.2.0";
 const MAX_COMPRESSED_BYTES = 12_000_000;
 const MAX_DECOMPRESSED_BYTES = 40_000_000;
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -31,7 +30,7 @@ async function hmac(key, value) {
 async function signedGet(key, env) {
   const accessKey = String(env.B2_KEY_ID ?? "").trim();
   const secretKey = String(env.B2_APPLICATION_KEY ?? "").trim();
-  if (!accessKey || !secretKey) throw new Error("B2_EDGE_CONFIG_REQUIRED");
+  if (!accessKey || !secretKey) throw new Error("B2_INTELLIGENCE_EDGE_CONFIG_REQUIRED");
 
   const path = `/${[B2_BUCKET, ...key.split("/")].map(encodeURIComponent).join("/")}`;
   const host = new URL(B2_ENDPOINT).host;
@@ -64,9 +63,11 @@ async function signedGet(key, env) {
       },
       signal: controller.signal,
     });
-    if (!response.ok) throw new Error(`B2_EDGE_READ_${response.status}`);
+    if (!response.ok) throw new Error(`B2_INTELLIGENCE_EDGE_READ_${response.status}`);
     const bytes = new Uint8Array(await response.arrayBuffer());
-    if (!bytes.length || bytes.length > MAX_COMPRESSED_BYTES) throw new Error("B2_EDGE_SIZE_INVALID");
+    if (!bytes.length || bytes.length > MAX_COMPRESSED_BYTES) {
+      throw new Error("B2_INTELLIGENCE_EDGE_SIZE_INVALID");
+    }
     return bytes;
   } finally {
     clearTimeout(timer);
@@ -76,7 +77,9 @@ async function signedGet(key, env) {
 async function gunzip(bytes) {
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
   const raw = new Uint8Array(await new Response(stream).arrayBuffer());
-  if (!raw.length || raw.length > MAX_DECOMPRESSED_BYTES) throw new Error("B2_EDGE_DECOMPRESSED_SIZE_INVALID");
+  if (!raw.length || raw.length > MAX_DECOMPRESSED_BYTES) {
+    throw new Error("B2_INTELLIGENCE_EDGE_DECOMPRESSED_SIZE_INVALID");
+  }
   return raw;
 }
 
@@ -85,19 +88,48 @@ function recentEnough(value) {
   return Number.isFinite(parsed) && parsed <= Date.now() + 5 * 60_000 && Date.now() - parsed <= MAX_AGE_MS;
 }
 
-function validDomains(data) {
-  const domains = data?.domainIndices;
-  if (!domains || typeof domains !== "object" || Array.isArray(domains)) return false;
-  return ["geopolitics", "macro", "rare_earth"].every((key) => {
-    const domain = domains[key];
-    return domain && typeof domain === "object" &&
-      Array.isArray(domain?.series?.["7D"]?.buckets) &&
-      domain.series["7D"].buckets.length >= 2;
-  });
+function validRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0 || rows.length > 300) return false;
+  const allowedKeys = new Set([
+    "id", "source_title", "summary", "category", "severity", "delta",
+    "created_at", "published_at", "public_status",
+  ]);
+  const scoredCategories = new Set();
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+    if (Object.keys(row).some((key) => !allowedKeys.has(key))) return false;
+    const category = String(row.category ?? "").trim().toLowerCase();
+    const title = String(row.source_title ?? "").replace(/\s+/g, " ").trim();
+    if (!["geopolitics", "macro", "rare_earth"].includes(category)) return false;
+    if (!String(row.id ?? "").trim()) return false;
+    const created = Date.parse(String(row.created_at ?? ""));
+    const published = row.published_at == null ? NaN : Date.parse(String(row.published_at));
+    if (!Number.isFinite(created) && !Number.isFinite(published)) return false;
+
+    if (row.public_status === "live_observed") {
+      if (
+        category !== "geopolitics" ||
+        !title.startsWith("Geomacro observes ") ||
+        row.severity !== null ||
+        row.delta !== null
+      ) return false;
+      continue;
+    }
+
+    const severity = Number(row.severity);
+    if (
+      !title.startsWith("Geomacro finds ") ||
+      !Number.isFinite(severity) ||
+      severity < 0 ||
+      severity > 100
+    ) return false;
+    scoredCategories.add(category);
+  }
+  return ["geopolitics", "macro", "rare_earth"].every((category) => scoredCategories.has(category));
 }
 
 function unavailable(status = 503) {
-  return new Response(JSON.stringify({ ok: false, code: "GLOBAL_RISK_EDGE_UNAVAILABLE" }), {
+  return new Response(JSON.stringify({ ok: false, code: "INTELLIGENCE_EDGE_UNAVAILABLE" }), {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
@@ -110,8 +142,10 @@ function unavailable(status = 503) {
 }
 
 async function buildResponse(env) {
-  const liveBytes = await signedGet(LIVE_KEY, env);
-  const proofBytes = await signedGet(PROOF_KEY, env);
+  const [liveBytes, proofBytes] = await Promise.all([
+    signedGet(LIVE_KEY, env),
+    signedGet(PROOF_KEY, env),
+  ]);
   const liveDigest = await sha256(liveBytes);
 
   let proof;
@@ -120,27 +154,36 @@ async function buildResponse(env) {
     proof = JSON.parse(decoder.decode(proofBytes));
     live = JSON.parse(decoder.decode(await gunzip(liveBytes)));
   } catch {
-    throw new Error("GLOBAL_RISK_EDGE_JSON_INVALID");
+    throw new Error("INTELLIGENCE_EDGE_JSON_INVALID");
   }
 
-  const data = live?.data;
+  const rows = live?.rows;
+  const verifiedRows = Array.isArray(rows)
+    ? rows.filter((row) => row?.public_status !== "live_observed").length
+    : 0;
+  const liveObservedRows = Array.isArray(rows)
+    ? rows.filter((row) => row?.public_status === "live_observed").length
+    : 0;
+
   if (
-    proof?.schema !== "geomacro.public-global-risk-live-proof.v1" ||
+    proof?.schema !== "geomacro.public-intelligence-live-proof.v1" ||
     proof?.source_project !== PROJECT_REF ||
     proof?.live_key !== LIVE_KEY ||
     proof?.compressed_sha256 !== liveDigest ||
     proof?.full_b2_readback_verified !== true ||
     proof?.exact_gzip_restore_verified !== true ||
-    live?.schema !== "geomacro.public-global-risk-live.v1" ||
+    proof?.raw_source_headlines_exposed !== false ||
+    proof?.provider_identity_exposed !== false ||
+    proof?.synthetic_score !== false ||
+    live?.schema !== "geomacro.public-intelligence-live.v1" ||
     live?.source_project !== PROJECT_REF ||
+    proof?.generated_at !== live?.generated_at ||
     !recentEnough(live?.generated_at) ||
-    data?.snapshotId !== proof?.snapshot_id ||
-    data?.snapshotAsOf !== proof?.snapshot_as_of ||
-    data?.methodologyVersion !== METHOD ||
-    data?.verificationStatus !== "verified" ||
-    data?.auditPersisted !== true ||
-    !validDomains(data)
-  ) throw new Error("GLOBAL_RISK_EDGE_BINDING_INVALID");
+    proof?.row_count !== rows?.length ||
+    proof?.verified_scored_rows !== verifiedRows ||
+    proof?.live_observed_rows !== liveObservedRows ||
+    !validRows(rows)
+  ) throw new Error("INTELLIGENCE_EDGE_BINDING_INVALID");
 
   return new Response(JSON.stringify(live), {
     status: 200,
@@ -148,7 +191,7 @@ async function buildResponse(env) {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
       "x-content-type-options": "nosniff",
-      "x-geomacro-authority": "backblaze-b2-verified-edge",
+      "x-geomacro-authority": "backblaze-b2-intelligence-edge",
       "access-control-allow-origin": "*",
       "access-control-expose-headers": "x-geomacro-authority",
     },
@@ -159,10 +202,12 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method !== "GET") return unavailable(405);
-    if (url.pathname !== "/global-risk" || url.search) return unavailable(404);
+    if (url.pathname !== "/intelligence" || url.search) return unavailable(404);
 
+    // L2 continuity for any already-warm POP. Workers Cache is enabled in
+    // wrangler and sits in front of this entrypoint as the global L1.
     const cache = caches.default;
-    const cacheKey = new Request(`${url.origin}/global-risk`, { method: "GET" });
+    const cacheKey = new Request(`${url.origin}/intelligence`, { method: "GET" });
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
 
@@ -171,7 +216,7 @@ export default {
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
       return response;
     } catch (error) {
-      console.error("global-risk-edge unavailable", error instanceof Error ? error.message : "unknown");
+      console.error("intelligence-edge unavailable", error instanceof Error ? error.message : "unknown");
       return unavailable(503);
     }
   },

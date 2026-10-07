@@ -3,5 +3,9 @@
   "name": "geomacro-risk-indices",
   "main": "src/index.mjs",
   "compatibility_date": "2026-10-03",
-  "workers_dev": true
+  "workers_dev": true,
+  "cache": {
+    "enabled": true,
+    "cross_version_cache": true
+  }
 }
