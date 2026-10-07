@@ -54,10 +54,8 @@ describe("verified B2 governed agent module continuity", () => {
     expect(reader).toContain('const B2_KEY = `${SERVING_PREFIX}/latest.json.gz`');
     expect(reader).toContain('const B2_PROOF_KEY = `${SERVING_PREFIX}/latest-proof.json`');
     expect(reader).toContain("AGENT_GOVERNED_MODULES_B2_MAX_AGE_MS = 24 * 60 * 60 * 1000");
-    expect(reader).toContain("process.env.B2_ARCHIVE_READ_KEY_ID");
-    expect(reader).toContain("process.env.B2_ARCHIVE_READ_APPLICATION_KEY");
-    expect(reader).toContain("process.env.B2_KEY_ID");
-    expect(reader).toContain("process.env.B2_APPLICATION_KEY");
+    expect(reader).toContain("readPrivateB2Object");
+    expect(reader).toContain("b2PrivateArchiveReadConfigured");
     expect(reader).toContain("signedGet(B2_PROOF_KEY)");
     expect(reader).toContain('proof.schema !== "geomacro.agent-governed-modules-proof.v2"');
     expect(reader).toContain("(await sha256(compressed)) !== String(proof.compressed_sha256)");
@@ -114,6 +112,8 @@ describe("verified B2 governed agent module continuity", () => {
     expect(workflow).toContain("secrets.B2_ARCHIVE_READ_KEY_ID");
     expect(workflow).toContain("secrets.B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(workflow).toContain("run-b2-governed-direct-postgres.mjs");
+    expect(workflow).toContain("scripts/ops/b2-s3-client.mjs");
+    expect(workflow).toContain("src/lib/b2-private-archive-read.server.ts");
     expect(workflow).toContain("verify-b2-agent-governed-runtime.ts");
     expect(workflow).not.toContain("run-b2-snapshot-maintenance-with-preservation.mjs governed-modules");
     expect(workflow).not.toContain("VITE_B2");
