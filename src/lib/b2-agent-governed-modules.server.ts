@@ -8,6 +8,7 @@ const FAILURE_THRESHOLD = 3;
 const CIRCUIT_OPEN_MS = 30_000;
 const MAX_COMPRESSED_BYTES = 6_000_000;
 const MAX_DECOMPRESSED_BYTES = 20_000_000;
+const B2_NATIVE_AUTHORIZE_URL = "https://api.backblazeb2.com/b2api/v4/b2_authorize_account";
 export const AGENT_GOVERNED_MODULES_B2_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export type B2AgentGovernedModuleName =
@@ -57,7 +58,7 @@ export type B2AgentGovernedModuleEntry = {
   state: B2AgentGovernedRiskState | B2AgentCriticalMineralsState;
 };
 
-type B2Config = { accessKey: string; secretKey: string };
+type B2Config = { accessKey: string; secretKey: string; role: "read" | "primary" };
 type CacheEntry = { expiresAt: number; bytes: Uint8Array };
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -101,13 +102,76 @@ async function hmac(key: Uint8Array | string, value: string): Promise<Uint8Array
   );
 }
 
-function config(): B2Config | null {
+function config(): B2Config[] | null {
   if (typeof window !== "undefined" || typeof process === "undefined") return null;
   const endpoint = String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim();
-  const accessKey = String(process.env.B2_KEY_ID ?? "").trim();
-  const secretKey = String(process.env.B2_APPLICATION_KEY ?? "").trim();
-  if (endpoint !== B2_ENDPOINT || !accessKey || !secretKey) return null;
-  return { accessKey, secretKey };
+  const dedicatedAccessKey = String(process.env.B2_ARCHIVE_READ_KEY_ID ?? "").trim();
+  const dedicatedSecretKey = String(process.env.B2_ARCHIVE_READ_APPLICATION_KEY ?? "").trim();
+  const primaryAccessKey = String(process.env.B2_KEY_ID ?? "").trim();
+  const primarySecretKey = String(process.env.B2_APPLICATION_KEY ?? "").trim();
+  if (Boolean(dedicatedAccessKey) !== Boolean(dedicatedSecretKey)) return null;
+  if (Boolean(primaryAccessKey) !== Boolean(primarySecretKey)) return null;
+  if (endpoint !== B2_ENDPOINT) return null;
+
+  const candidates: B2Config[] = [];
+  if (dedicatedAccessKey && dedicatedSecretKey) {
+    candidates.push({ accessKey: dedicatedAccessKey, secretKey: dedicatedSecretKey, role: "read" });
+  }
+  if (
+    primaryAccessKey &&
+    primarySecretKey &&
+    (primaryAccessKey !== dedicatedAccessKey || primarySecretKey !== dedicatedSecretKey)
+  ) {
+    candidates.push({ accessKey: primaryAccessKey, secretKey: primarySecretKey, role: "primary" });
+  }
+  return candidates.length > 0 ? candidates : null;
+}
+
+function basicAuthorization(accessKey: string, secretKey: string) {
+  return `Basic ${btoa(`${accessKey}:${secretKey}`)}`;
+}
+
+async function nativeGet(cfg: B2Config): Promise<Uint8Array | null> {
+  try {
+    const authResponse = await fetch(B2_NATIVE_AUTHORIZE_URL, {
+      method: "GET",
+      headers: { Authorization: basicAuthorization(cfg.accessKey, cfg.secretKey) },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (!authResponse.ok) return null;
+
+    const auth = await authResponse.json() as Record<string, any>;
+    const storage = auth?.apiInfo?.storageApi;
+    const token = String(auth?.authorizationToken ?? "").trim();
+    const downloadUrl = String(storage?.downloadUrl ?? "").trim();
+    const capabilities = Array.isArray(storage?.allowed?.capabilities)
+      ? storage.allowed.capabilities.map(String)
+      : [];
+    const allowedBuckets = Array.isArray(storage?.allowed?.buckets)
+      ? storage.allowed.buckets.map((entry: any) => String(entry?.name ?? "").trim()).filter(Boolean)
+      : [];
+    const namePrefix = String(storage?.allowed?.namePrefix ?? "").trim();
+
+    if (!token || !downloadUrl || !capabilities.includes("readFiles")) return null;
+    if (allowedBuckets.length && !allowedBuckets.includes(B2_BUCKET)) return null;
+    if (namePrefix && !B2_KEY.startsWith(namePrefix)) return null;
+
+    const parsed = new URL(downloadUrl);
+    if (parsed.protocol !== "https:" || !/(^|\.)backblazeb2\.com$/i.test(parsed.hostname)) return null;
+
+    const nativePath = `/file/${encodeURIComponent(B2_BUCKET)}/${B2_KEY.split("/").map(encodeURIComponent).join("/")}`;
+    const response = await fetch(`${parsed.origin}${nativePath}`, {
+      method: "GET",
+      headers: { Authorization: token },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return bytes.length > 0 && bytes.length <= MAX_COMPRESSED_BYTES ? bytes : null;
+  } catch {
+    return null;
+  }
 }
 
 function circuitOpen(now = Date.now()) {
@@ -131,55 +195,68 @@ function noteFailure() {
 }
 
 async function signedGet(): Promise<Uint8Array | null> {
-  const cfg = config();
-  if (!cfg || circuitOpen()) return null;
+  const candidates = config();
+  if (!candidates || circuitOpen()) return null;
   const cached = cache.get(B2_KEY);
   if (cached && cached.expiresAt > Date.now()) return cached.bytes;
 
   const path = `/${[B2_BUCKET, ...B2_KEY.split("/")].map(encodeURIComponent).join("/")}`;
   const host = new URL(B2_ENDPOINT).host;
-  try {
-    const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
-    const day = timestamp.slice(0, 8);
-    const emptyHash = await sha256("");
-    const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
-    const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${emptyHash}\nx-amz-date:${timestamp}\n`;
-    const canonical = ["GET", path, "", canonicalHeaders, signedHeaders, emptyHash].join("\n");
-    const scope = `${day}/us-east-005/s3/aws4_request`;
-    const stringToSign = ["AWS4-HMAC-SHA256", timestamp, scope, await sha256(canonical)].join("\n");
-    const signingKey = await hmac(
-      await hmac(
-        await hmac(await hmac(`AWS4${cfg.secretKey}`, day), "us-east-005"),
-        "s3",
-      ),
-      "aws4_request",
-    );
-    const signature = hex(await hmac(signingKey, stringToSign));
-    const response = await fetch(`${B2_ENDPOINT}${path}`, {
-      method: "GET",
-      headers: {
-        "x-amz-content-sha256": emptyHash,
-        "x-amz-date": timestamp,
-        Authorization: `AWS4-HMAC-SHA256 Credential=${cfg.accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
-      },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      noteFailure();
-      return null;
+  for (let index = 0; index < candidates.length; index += 1) {
+    const cfg = candidates[index];
+    try {
+      const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
+      const day = timestamp.slice(0, 8);
+      const emptyHash = await sha256("");
+      const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+      const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${emptyHash}\nx-amz-date:${timestamp}\n`;
+      const canonical = ["GET", path, "", canonicalHeaders, signedHeaders, emptyHash].join("\n");
+      const scope = `${day}/us-east-005/s3/aws4_request`;
+      const stringToSign = ["AWS4-HMAC-SHA256", timestamp, scope, await sha256(canonical)].join("\n");
+      const signingKey = await hmac(
+        await hmac(
+          await hmac(await hmac(`AWS4${cfg.secretKey}`, day), "us-east-005"),
+          "s3",
+        ),
+        "aws4_request",
+      );
+      const signature = hex(await hmac(signingKey, stringToSign));
+      const response = await fetch(`${B2_ENDPOINT}${path}`, {
+        method: "GET",
+        headers: {
+          "x-amz-content-sha256": emptyHash,
+          "x-amz-date": timestamp,
+          Authorization: `AWS4-HMAC-SHA256 Credential=${cfg.accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+        },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+
+      let bytes: Uint8Array | null = null;
+      if (response.ok) {
+        bytes = new Uint8Array(await response.arrayBuffer());
+      } else if (response.status === 403) {
+        bytes = await nativeGet(cfg);
+      }
+
+      if (bytes && bytes.length > 0 && bytes.length <= MAX_COMPRESSED_BYTES) {
+        noteSuccess();
+        cache.set(B2_KEY, { expiresAt: Date.now() + CACHE_TTL_MS, bytes });
+        return bytes;
+      }
+      if (index < candidates.length - 1) continue;
+    } catch {
+      const native = await nativeGet(cfg);
+      if (native) {
+        noteSuccess();
+        cache.set(B2_KEY, { expiresAt: Date.now() + CACHE_TTL_MS, bytes: native });
+        return native;
+      }
+      if (index < candidates.length - 1) continue;
     }
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (!bytes.length || bytes.length > MAX_COMPRESSED_BYTES) {
-      noteFailure();
-      return null;
-    }
-    noteSuccess();
-    cache.set(B2_KEY, { expiresAt: Date.now() + CACHE_TTL_MS, bytes });
-    return bytes;
-  } catch {
-    noteFailure();
-    return null;
   }
+
+  noteFailure();
+  return null;
 }
 
 async function gunzip(bytes: Uint8Array) {
