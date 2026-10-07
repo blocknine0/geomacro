@@ -32,7 +32,9 @@ describe("verified public edge hot-cache contract", () => {
     expect(worker).toContain("validHotOverlayRows");
     expect(worker).toContain("applyHotOverlay");
     expect(worker).toContain("payload?.verified_b2_sha256 !== verifiedB2Sha256");
-    expect(worker).toContain("payload?.generated_at !== expectedGeneratedAt");
+    expect(worker).toContain("payload?.verified_b2_generated_at !== expectedGeneratedAt");
+    expect(worker).toContain("Date.now() - verifiedB2GeneratedAt > MAX_AGE_MS");
+    expect(worker).toContain("Date.now() - generatedAt > HOT_OVERLAY_MAX_AGE_MS");
     expect(worker).toContain('"x-geomacro-b2-sha256": proof.compressed_sha256');
     expect(worker).toContain('cached.headers.get("x-geomacro-b2-sha256")');
     expect(worker).toContain("projectCachedResponse");
