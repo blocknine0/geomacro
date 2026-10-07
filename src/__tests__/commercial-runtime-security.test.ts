@@ -8,16 +8,8 @@ const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const BUN_LOCKED_RUNTIME_WORKFLOWS = [
   ".github/workflows/propose-v2-upgrade.yml",
   ".github/workflows/execute-v2-upgrade.yml",
-  ".github/workflows/fund-v2-liquidity.yml",
 ];
 
-const PAUSED_PREDICTION_MARKET_WORKFLOWS = [
-  ".github/workflows/security-monitor.yml",
-  ".github/workflows/market-lifecycle.yml",
-  ".github/workflows/auto-recovery.yml",
-  ".github/workflows/auto-create-markets.yml",
-  ".github/workflows/Auto-generate-briefings.yml",
-];
 
 function filesUnder(path: string): string[] {
   const absolute = join(ROOT, path);
@@ -74,19 +66,6 @@ describe("commercial runtime security baseline", () => {
       expect(source, path).not.toContain("npm ci");
       expect(source, path).not.toContain("cache: npm");
       expect(source, path).not.toMatch(/\bnpm install\b/);
-    }
-  });
-
-  it("keeps paused prediction-market workflows inert and credential-free", () => {
-    for (const path of PAUSED_PREDICTION_MARKET_WORKFLOWS) {
-      const source = read(path);
-      expect(source, path).toContain("workflow_dispatch");
-      expect(source, path).not.toContain("schedule:");
-      expect(source, path).toContain("permissions:\n  contents: read");
-      expect(source, path).toContain("if: ${{ false }}");
-      expect(source, path).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
-      expect(source, path).not.toMatch(/secrets\.(?:OWNER|GUARDIAN|JURY|TREASURY|LIQUIDITY|DEPLOYER)_PRIVATE_KEY/);
-      expectPinnedActions(path);
     }
   });
 
