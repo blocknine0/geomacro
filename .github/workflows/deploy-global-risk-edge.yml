@@ -1,6 +1,8 @@
 name: Deploy Global Risk Edge
 
 on:
+  schedule:
+    - cron: "13 */6 * * *"
   workflow_dispatch: {}
   push:
     branches:
@@ -8,10 +10,13 @@ on:
     paths:
       - "workers/global-risk-edge/**"
       - ".github/workflows/deploy-global-risk-edge.yml"
+      - "scripts/ops/materialize-edge-continuity.mjs"
+      - "scripts/ops/prepare-edge-continuity.sh"
       - "src/__tests__/global-risk-edge-static.test.ts"
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: geomacro-global-risk-edge-production
@@ -20,20 +25,22 @@ concurrency:
 jobs:
   deploy-accept:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: production
     env:
+      GH_TOKEN: ${{ github.token }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
-      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
       WRANGLER_VERSION: "4.136.3"
       EXPECTED_URL: https://geomacro-global-risk.daspallab202391.workers.dev
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: main
           persist-credentials: false
 
       - name: Require existing production secrets
@@ -42,8 +49,17 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
-          test -n "$B2_KEY_ID" || { echo "B2_KEY_ID is required"; exit 2; }
-          test -n "$B2_APPLICATION_KEY" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
+          test -n "$B2_ARCHIVE_READ_KEY_ID" || { echo "B2_ARCHIVE_READ_KEY_ID is required"; exit 2; }
+          test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo "B2_ARCHIVE_READ_APPLICATION_KEY is required"; exit 2; }
+
+      - name: Materialize latest B2-readback-verified Global Risk continuity
+        shell: bash
+        run: |
+          bash scripts/ops/prepare-edge-continuity.sh \
+            global-risk \
+            gri-realtime-direct-postgres.yml \
+            geomacro.public-global-risk-direct-postgres-publish.v1 \
+            workers/global-risk-edge/src/continuity.mjs
 
       - name: Deploy read-only Global Risk Worker with pinned Wrangler
         id: deploy
@@ -56,11 +72,11 @@ jobs:
           DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
           test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev URL"; exit 3; }
           test "$DEPLOYMENT_URL" = "$EXPECTED_URL" || { echo "Unexpected worker URL: $DEPLOYMENT_URL"; exit 3; }
-          printf '%s' "$B2_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_KEY_ID --config wrangler.jsonc >/tmp/global-risk-edge-b2-key.log
-          printf '%s' "$B2_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.jsonc >/tmp/global-risk-edge-b2-secret.log
+          printf '%s' "$B2_ARCHIVE_READ_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_KEY_ID --config wrangler.jsonc >/tmp/global-risk-edge-b2-key.log
+          printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.jsonc >/tmp/global-risk-edge-b2-secret.log
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Require verified B2 package through public-safe edge
+      - name: Require verified package through public-safe edge
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         shell: bash
@@ -94,4 +110,4 @@ jobs:
           set -euo pipefail
           CODE="$(curl -sS -o /tmp/global-risk-edge-deny.json -w '%{http_code}' --max-time 10 "$EXPECTED_URL/not-allowed" || true)"
           test "$CODE" = "404" || { echo "Unexpected generic read surface: HTTP $CODE"; exit 5; }
-          echo "Global Risk edge exposes one read-only verified public package; no B2 delete/write, Supabase mutation, or payment action occurred."
+          echo "Global Risk edge serves live B2 or bounded B2-readback-verified continuity only; no B2 write/delete, Supabase mutation, or payment action occurred."

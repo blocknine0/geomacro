@@ -1,6 +1,8 @@
 name: Deploy Risk Indices Edge
 
 on:
+  schedule:
+    - cron: "28 */6 * * *"
   workflow_dispatch: {}
   push:
     branches:
@@ -8,31 +10,33 @@ on:
     paths:
       - "workers/risk-indices-edge/**"
       - ".github/workflows/deploy-risk-indices-edge.yml"
-      - "scripts/ops/publish-b2-risk-indices-direct-postgres.mjs"
+      - "scripts/ops/materialize-edge-continuity.mjs"
+      - "scripts/ops/prepare-edge-continuity.sh"
       - "src/lib/risk-indices-edge.server.ts"
       - "src/lib/use-risk-indices.ts"
       - "server/api/public/risk-indices.get.ts"
+      - "src/__tests__/risk-indices-edge-static.test.ts"
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: geomacro-risk-indices-edge-production
   cancel-in-progress: false
 
 jobs:
-  publish-deploy-accept:
+  deploy-accept:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
     environment: production
     env:
+      GH_TOKEN: ${{ github.token }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
-      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
-      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
       WRANGLER_VERSION: "4.136.3"
       EXPECTED_URL: https://geomacro-risk-indices.daspallab202391.workers.dev
     steps:
@@ -42,26 +46,23 @@ jobs:
           ref: main
           persist-credentials: false
 
-      - name: Set up Bun 1.4.2
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: "1.4.2"
-
-      - name: Install locked runtime dependencies
-        run: bun install --frozen-lockfile --ignore-scripts
-
       - name: Require existing production secrets
         shell: bash
         run: |
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
-          test -n "$SUPABASE_DB_URL" || { echo "SUPABASE_DB_URL is required"; exit 2; }
-          test -n "$B2_KEY_ID" || { echo "B2_KEY_ID is required"; exit 2; }
-          test -n "$B2_APPLICATION_KEY" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
+          test -n "$B2_ARCHIVE_READ_KEY_ID" || { echo "B2_ARCHIVE_READ_KEY_ID is required"; exit 2; }
+          test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo "B2_ARCHIVE_READ_APPLICATION_KEY is required"; exit 2; }
 
-      - name: Bootstrap isolated verified Risk Indices package
-        run: bun scripts/ops/publish-b2-risk-indices-direct-postgres.mjs | tee /tmp/risk-indices-bootstrap.json
+      - name: Materialize latest B2-readback-verified Risk Indices continuity
+        shell: bash
+        run: |
+          bash scripts/ops/prepare-edge-continuity.sh \
+            risk-indices \
+            risk-indices-realtime-direct-postgres.yml \
+            geomacro.public-risk-indices-direct-postgres-publish.v1 \
+            workers/risk-indices-edge/src/continuity.mjs
 
       - name: Deploy read-only Risk Indices Worker with pinned Wrangler
         id: deploy
@@ -74,11 +75,11 @@ jobs:
           DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
           test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev URL"; exit 3; }
           test "$DEPLOYMENT_URL" = "$EXPECTED_URL" || { echo "Unexpected worker URL: $DEPLOYMENT_URL"; exit 3; }
-          printf '%s' "$B2_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_KEY_ID --config wrangler.jsonc >/tmp/risk-indices-edge-b2-key.log
-          printf '%s' "$B2_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.jsonc >/tmp/risk-indices-edge-b2-secret.log
+          printf '%s' "$B2_ARCHIVE_READ_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_KEY_ID --config wrangler.jsonc >/tmp/risk-indices-edge-b2-key.log
+          printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.jsonc >/tmp/risk-indices-edge-b2-secret.log
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Require isolated verified package through Risk Indices edge
+      - name: Require verified package through Risk Indices edge
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         shell: bash
@@ -119,4 +120,4 @@ jobs:
           test "$CODE" = "404" || { echo "Unexpected generic read surface: HTTP $CODE"; exit 5; }
           CODE="$(curl -sS -X POST -o /tmp/risk-indices-edge-post.json -w '%{http_code}' --max-time 10 "$EXPECTED_URL/risk-indices" || true)"
           test "$CODE" = "405" || { echo "Unexpected write surface: HTTP $CODE"; exit 5; }
-          echo "Risk Indices edge exposes one isolated read-only verified package; no B2 delete/write from the public edge, Supabase mutation, or payment action occurred."
+          echo "Risk Indices edge serves live B2 or bounded B2-readback-verified continuity only; no deploy-time B2 publish, Supabase mutation, or payment action occurred."

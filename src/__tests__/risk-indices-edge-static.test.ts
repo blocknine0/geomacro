@@ -49,13 +49,20 @@ describe("independent verified Risk Indices edge", () => {
     expect(refresh).not.toContain("publish-b2-public-intelligence-direct-postgres.mjs");
   });
 
-  it("deploys with bootstrap publication before live acceptance", () => {
-    expect(deploy).toContain("Bootstrap isolated verified Risk Indices package");
-    expect(deploy).toContain("publish-b2-risk-indices-direct-postgres.mjs");
+  it("deploys only after materializing a successful B2-readback-verified continuity artifact", () => {
+    expect(deploy).toContain("prepare-edge-continuity.sh");
+    expect(deploy).toContain("risk-indices-realtime-direct-postgres.yml");
+    expect(deploy).toContain("geomacro.public-risk-indices-direct-postgres-publish.v1");
+    expect(deploy).not.toContain("Bootstrap isolated verified Risk Indices package");
+    expect(deploy).not.toContain("publish-b2-risk-indices-direct-postgres.mjs | tee");
+    expect(deploy).toContain("B2_ARCHIVE_READ_KEY_ID");
+    expect(deploy).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(deploy).toContain("geomacro-risk-indices.daspallab202391.workers.dev");
     expect(deploy).toContain("backblaze-b2-risk-indices-edge");
     expect(deploy).toContain("EDGE_7D_HISTORY_INVALID");
     expect(deploy).toContain("Unexpected write surface");
+    expect(worker).toContain('import continuity from "./continuity.mjs"');
+    expect(worker).toContain("RISK_INDICES_CONTINUITY_HASH_INVALID");
   });
 
   it("keeps browser and Lovable compatibility reads on Risk Indices authority only", () => {
