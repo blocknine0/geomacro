@@ -48,9 +48,9 @@ jobs:
           fi
           grep -Fq 'Score dates remain the original verified evidence times.' src/routes/intelligence.tsx
           grep -Fq 'Free to explore. Pay only for successful commercial machine delivery.' src/routes/pricing.tsx
-          grep -Fq 'Failed, stale, unavailable, replayed, refunded, internal, testnet and unpaid requests do not count as successful paid deliveries.' src/routes/pricing.tsx
-          grep -Fq 'Prediction Markets, Bridge and Swap remain separate testnet technical proofs' src/routes/institutional.tsx
-          grep -Fq 'real-money access remains fail-closed until separately authorized for production' src/routes/pricing.tsx
+          grep -Fq 'Failed, stale, unavailable, replayed, refunded, internal and unpaid requests do not count as successful paid deliveries.' src/routes/pricing.tsx
+          grep -Fq 'Risk Gate, paid agent/x402 production access and broader machine delivery remain roadmap or controlled capabilities until separately promoted.' src/routes/institutional.tsx
+          grep -Fq 'Payment availability is runtime-authoritative. Commercial revenue begins only after production settlement is explicitly authorized and verified.' src/routes/pricing.tsx
           echo "PASS: evidence-time and commercial-truth source contracts match the exact checked-out SHA."
 
       - name: Verify locked production presentation and product truth
@@ -68,7 +68,7 @@ jobs:
           grep -Fq 'USDC / successful delivery' src/routes/pricing.tsx
           grep -Fq 'first 20,000' src/routes/pricing.tsx
           grep -Fq 'No-charge failure boundary' src/routes/pricing.tsx
-          grep -Fq 'real-money access remains fail-closed until separately authorized for production' src/routes/pricing.tsx
+          grep -Fq 'Payment availability is runtime-authoritative. Commercial revenue begins only after production settlement is explicitly authorized and verified.' src/routes/pricing.tsx
 
           grep -Fq 'COMMERCIAL RISK INTELLIGENCE' src/routes/institutional.tsx
           grep -Fq 'Risk Gate' src/routes/risk-gate.tsx
@@ -481,11 +481,6 @@ jobs:
           /about|About & trust
           /roadmap|What works today, and what comes next.
           /contact|Bring the workflow.
-          /testnet-access|GOVERNED DATA
-          /testnet-console|GOVERNED DATA
-          /demo|Agentic Commerce Demo
-          /pipeline|Intelligence Pipeline
-          /onchain|Arc / Onchain
           EOF
           )"
 
@@ -518,9 +513,43 @@ jobs:
             fi
             rm -f "$body" "$decoded"
           done <<< "$routes"
+
+          retired_routes="$(cat <<'EOF'
+          /testnet-access|/data-api
+          /testnet-console|/data-api
+          /demo|/data-api
+          /pipeline|/research
+          /onchain|/data-api
+          /arena|/intelligence
+          /bridge|/data-api
+          /bridge-swap|/data-api
+          /portfolio|/intelligence
+          /tameion|/data-api
+          EOF
+          )"
+
+          while IFS='|' read -r legacy target; do
+            legacy="$(printf '%s' "$legacy" | xargs)"
+            target="$(printf '%s' "$target" | xargs)"
+            [[ -z "$legacy" ]] && continue
+            body="$(mktemp)"
+            result="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}|%{url_effective}' "$BASE_URL$legacy")"
+            code="${result%%|*}"
+            effective="${result#*|}"
+            if [[ "$code" != "200" ]]; then
+              echo "::error title=Retired route unavailable::$legacy expected a commercial redirect ending in HTTP 200, got $code"
+              exit 1
+            fi
+            if [[ "$effective" != "$BASE_URL$target" && "$effective" != "$BASE_URL$target/" ]]; then
+              echo "::error title=Retired route did not resolve to commercial surface::$legacy resolved to $effective, expected $BASE_URL$target"
+              exit 1
+            fi
+            rm -f "$body"
+          done <<< "$retired_routes"
+
           mkdir -p /tmp/production-website-health
-          printf '%s\n' '{"routes_rendered":true}' > /tmp/production-website-health/rendered-routes.json
-          echo "PASS: production route markers rendered independently of data-plane health."
+          printf '%s\n' '{"routes_rendered":true,"retired_routes_redirect_only":true}' > /tmp/production-website-health/rendered-routes.json
+          echo "PASS: production commercial routes render and retired routes resolve only to current commercial surfaces."
 
       - name: Upload independent website surface diagnostics
         if: always()
