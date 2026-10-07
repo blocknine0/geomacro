@@ -51,6 +51,7 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("api.gdeltproject.org");
     expect(worker).toContain("alreadyFreshNonGdelt");
     expect(worker).toContain("NO_FRESH_NON_GDELT_TARGET_SUCCEEDED");
+    expect(worker).toContain("/^B2_NATIVE_[A-Za-z0-9_:-]+$/");
     expect(worker).toContain("RAW_SOURCE_CELL_MAX_ATTEMPTS");
     expect(worker).toContain("nonGdeltCandidates");
   });
@@ -66,7 +67,13 @@ describe("global country raw source mesh",()=>{
     expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("ldpwajisioljyjtojvfx");
     expect(workflow).toContain("sync-country-raw-source-mesh.mjs");
-    expect(workflow).toContain("live-structure-intelligence");
+    expect(workflow).toContain("COUNTRY_RAW_SOURCE_SYNC_OUTPUT=country-raw-source-sync.json");
+    expect(workflow).toContain("country-raw-source-sync.log");
+    expect(workflow).not.toContain("sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json");
+    expect(workflow).toContain("LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres");
+    expect(workflow).toContain("B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com");
+    expect(workflow).toContain("drain-live-structure.mjs --fragment-ids-file country-raw-source-sync.json");
+    expect(workflow).not.toContain("/functions/v1/live-structure-intelligence");
     expect(workflow.indexOf("Reconcile and capture country web/API sources")).toBeLessThan(
       workflow.indexOf("Verify 195-country three-category raw mesh"),
     );
@@ -87,12 +94,23 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("GEO:GLOBAL:UKMTO:");
     expect(worker).toContain("const fragmentId = await saveFragment");
     expect(worker).toContain("fragment_ids: [...new Set(fragmentIds)]");
+    expect(worker).toContain("COUNTRY_RAW_SOURCE_SYNC_OUTPUT");
+    expect(worker).toContain("await writeFile(OUTPUT_PATH, resultJson, \"utf8\")");
   });
 
   it("keeps raw bytes private and hashed",()=>{
     expect(snapshot).toContain("content_sha256");
     expect(snapshot).toContain("storage_bucket");
     expect(snapshot).toContain("live_raw_source_snapshots");
-    expect(worker).toContain('contentType:"application/gzip"');
+    expect(worker).toContain('BUCKET="geomacro-private-archive"');
+    expect(worker).toContain('B2_PREFIX="geomacro-evidence/v1/live/country-raw-source-mesh"');
+    expect(worker).toContain("createGriDbClient");
+    expect(worker).toContain("createB2Client");
+    expect(worker).toContain("readAccessKey: process.env.B2_ARCHIVE_READ_KEY_ID");
+    expect(worker).toContain("readSecretKey: process.env.B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(worker).toContain("await b2.put(path,compressed)");
+    expect(worker).toContain("await b2.put(path,comp)");
+    expect(worker).toContain('verification_method:"b2-readback-sha256"');
+    expect(worker).not.toContain("db.storage.from(BUCKET)")
   });
 });
