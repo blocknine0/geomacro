@@ -8,6 +8,8 @@ on:
       - "scripts/ops/publish-b2-agent-governed-modules.ts"
       - "scripts/ops/direct-postgres-supabase-lite.ts"
       - "scripts/ops/run-b2-governed-direct-postgres.mjs"
+      - "scripts/ops/b2-s3-client.mjs"
+      - "src/lib/b2-private-archive-read.server.ts"
       - "scripts/ops/verify-b2-agent-governed-runtime.ts"
       - "src/lib/b2-agent-governed-modules.server.ts"
       - "src/lib/agent-query-political-governance.server.ts"
