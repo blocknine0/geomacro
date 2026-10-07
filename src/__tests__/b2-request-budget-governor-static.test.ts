@@ -7,9 +7,16 @@ describe("B2 request budget governor", () => {
   it("fails closed before starting requests beyond the per-process budget", () => {
     const client = read("scripts/ops/b2-s3-client.mjs");
     expect(client).toContain('process.env.B2_REQUEST_BUDGET');
+    expect(client).toContain('const DEFAULT_REQUEST_BUDGET = 64');
+    expect(client).toContain('const MAX_REQUEST_BUDGET = 500');
     expect(client).toContain('B2_REQUEST_BUDGET_EXHAUSTED');
     expect(client).toContain('requestsStarted >= requestBudget');
     expect(client).toContain('requestsStarted += 1');
+    expect(client).toContain('consumeRequestBudget("s3")');
+    expect(client).toContain('consumeRequestBudget("native-read")');
+    expect(client).toContain('nativePreferredCredentials.has(fingerprint)');
+    expect(client).toContain('nativePreferredCredentials.add(fingerprint)');
+    expect(client).toContain('inFlightReads.has(cacheKey)');
     expect(client).toContain('message === "B2_REQUEST_BUDGET_EXHAUSTED"');
   });
 
