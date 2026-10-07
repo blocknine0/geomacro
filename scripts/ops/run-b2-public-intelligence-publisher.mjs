@@ -46,7 +46,12 @@ while (true) {
       .flatMap((line) => {
         try {
           const parsed = JSON.parse(line);
-          return parsed?.schema === "geomacro.public-intelligence-direct-postgres-publish.v2" ? [parsed] : [];
+          return [
+            "geomacro.public-intelligence-direct-postgres-publish.v2",
+            "geomacro.public-intelligence-overlay-recovery.v1",
+          ].includes(parsed?.schema)
+            ? [parsed]
+            : [];
         } catch {
           return [];
         }
@@ -88,6 +93,10 @@ while (true) {
       bounded_wait: true,
       retry_reason: RETRYABLE_AVAILABILITY_ERROR,
       current_source_transport: sourceTransport,
+      publish_mode:
+        proof.schema === "geomacro.public-intelligence-overlay-recovery.v1"
+          ? "verified_b2_baseline_plus_d1_hot_overlay"
+          : "full_b2_readback_verified_publish",
       coverage_runtime_refreshed: coverageRuntimeRefreshed,
     }));
     process.exit(0);
