@@ -27,6 +27,7 @@ describe("Cloudflare D1 permanent control plane", () => {
     expect(worker).toContain('PUBLIC_INTELLIGENCE_OVERLAY_KEY = "public_intelligence_live_observed_v1"');
     expect(worker).toContain('PUBLIC_INTELLIGENCE_OVERLAY_MAX_ROWS = 24');
     expect(worker).toContain('PUBLIC_INTELLIGENCE_OVERLAY_MAX_AGE_MS = 6 * 60 * 60 * 1000');
+    expect(worker).toContain('PUBLIC_INTELLIGENCE_VERIFIED_BASELINE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000');
     expect(worker).toContain('url.pathname === "/v1/public/intelligence-overlay"');
     expect(worker).toContain('raw.public_status !== "live_observed"');
     expect(worker).toContain('raw.severity !== null');
@@ -34,6 +35,8 @@ describe("Cloudflare D1 permanent control plane", () => {
     expect(worker).toContain('value.raw_source_headlines_exposed !== false');
     expect(worker).toContain('value.provider_identity_exposed !== false');
     expect(worker).toContain('value.verified_b2_sha256');
+    expect(worker).toContain('value.verified_b2_generated_at');
+    expect(worker).toContain('now - verifiedB2GeneratedAt > PUBLIC_INTELLIGENCE_VERIFIED_BASELINE_MAX_AGE_MS');
     expect(worker).toContain('value.full_b2_readback_verified !== true');
     expect(worker).toContain('value.exact_gzip_restore_verified !== true');
   });
