@@ -9,7 +9,7 @@ This document is the launch-time checklist for turning the already-built pay-per
 The canonical machine product is `geomacro_adaptive_risk_intelligence_v1`.
 
 - Free deliverability check: `POST /api/x402/risk/availability`
-- Canonical Coinbase-compatible paid resource: `POST /api/x402/intelligence`
+- Canonical Coinbase-compatible paid resource: `POST /api/v1/intelligence/query`
 - Nevermined adapter: `POST /api/x402/nevermined/intelligence`
 - Existing Circle/Arc proof: `POST /api/agent/risk` on Arc Testnet only
 - Canonical host-compatible x402 discovery: `/.well-known/x402.json`
