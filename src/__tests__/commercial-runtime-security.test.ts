@@ -111,8 +111,9 @@ describe("commercial runtime security baseline", () => {
     expect(orchestrator).toContain("Resolve production D1 control-plane database");
     expect(orchestrator).toContain("Validate Supabase-independent scheduler runtime");
     expect(orchestrator).toContain("Probe optional Supabase data plane without blocking D1/B2 heartbeat");
-    expect(orchestrator).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only");
-    expect(orchestrator).toContain("Supabase unavailable: D1/B2 heartbeat remains live; Supabase-backed writers are fail-closed.");
+    expect(orchestrator).toContain("GEOMACRO_SUPABASE_RESTRICTED_MODE=true");
+    expect(orchestrator).toContain("explicitly classified direct-Postgres-safe ingestion remains live");
+    expect(orchestrator).not.toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only");
     expect(orchestrator).toContain("Run due intelligence tasks serially");
 
     expect(ingestRecovery).toContain("workflow_dispatch");
