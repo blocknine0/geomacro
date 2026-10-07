@@ -25,6 +25,9 @@ describe("verified public edge hot-cache contract", () => {
     expect(worker).toContain("/v1/public/intelligence-overlay");
     expect(worker).toContain("validHotOverlayRows");
     expect(worker).toContain("applyHotOverlay");
+    expect(worker).toContain("projectCachedResponse");
+    expect(worker).toContain("return await projectCachedResponse(cached)");
+    expect(worker).not.toContain("if (cached) return cached");
     expect(worker).toContain('"x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none"');
     expect(worker).toContain("/intelligence?projection=d1-hot-v1");
     expect(worker).toContain("stale-while-revalidate=3600");
