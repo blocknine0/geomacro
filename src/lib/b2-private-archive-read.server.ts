@@ -26,6 +26,7 @@ type NativeAuthorization = {
 };
 
 const nativeAuthorizationCache = new Map<string, Promise<NativeAuthorization>>();
+const nativePreferredCredentials = new Set<string>();
 
 function readCredentials(): ReadCredential[] {
   const dedicatedAccess = String(process.env.B2_ARCHIVE_READ_KEY_ID ?? "").trim();
@@ -280,13 +281,41 @@ export async function readPrivateB2Object(
   );
   const maxBytes = Math.max(
     1,
-    Math.min(40_000_000, Number(options.maxBytes ?? DEFAULT_MAX_BYTES)),
+    Math.min(64 * 1024 * 1024, Number(options.maxBytes ?? DEFAULT_MAX_BYTES)),
   );
   const normalizedKey = validateKey(key);
   const credentials = readCredentials();
   let lastError: unknown = null;
 
+  const classifyHardCap = (error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.endsWith("_403_download_cap_exceeded")) {
+      throw new Error("B2_DOWNLOAD_CAP_EXCEEDED");
+    }
+    if (message.endsWith("_403_transaction_cap_exceeded")) {
+      throw new Error("B2_TRANSACTION_CAP_EXCEEDED");
+    }
+  };
+
   for (const credential of credentials) {
+    const fingerprint = `${credential.accessKey}\u0000${credential.secretKey}`;
+
+    if (nativePreferredCredentials.has(fingerprint)) {
+      try {
+        return validateSize(
+          await nativeRead(credential, normalizedKey, timeoutMs),
+          maxBytes,
+        );
+      } catch (error) {
+        classifyHardCap(error);
+        // A credential may be rotated or its native authorization may change.
+        // Clear the preference and retry the normal S3 -> native discovery path
+        // for this credential rather than permanently pinning a broken route.
+        nativePreferredCredentials.delete(fingerprint);
+        lastError = error;
+      }
+    }
+
     try {
       const s3 = await s3Read(credential, normalizedKey, timeoutMs);
       if (s3.bytes) return validateSize(s3.bytes, maxBytes);
@@ -296,15 +325,10 @@ export async function readPrivateB2Object(
         );
       }
       const nativeBytes = await nativeRead(credential, normalizedKey, timeoutMs);
+      nativePreferredCredentials.add(fingerprint);
       return validateSize(nativeBytes, maxBytes);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (message.endsWith("_403_download_cap_exceeded")) {
-        throw new Error("B2_DOWNLOAD_CAP_EXCEEDED");
-      }
-      if (message.endsWith("_403_transaction_cap_exceeded")) {
-        throw new Error("B2_TRANSACTION_CAP_EXCEEDED");
-      }
+      classifyHardCap(error);
       lastError = error;
     }
   }
