@@ -65,7 +65,7 @@ describe("source-native three-domain coverage readiness", () => {
     expect(refreshRun).toBeGreaterThan(transportGate);
     expect(wrapper).toContain("GDELT_COVERAGE_RUNTIME_REFRESH_FAILED");
     expect(wrapper).toContain("coverageRuntimeRefreshed = true");
-    expect(wrapper).toContain('sourceTransport !== "doc_v2_articlelist"');
+    expect(wrapper).toContain('["doc_v2_articlelist", "geo_v2_jsonfeed"].includes(sourceTransport)');
     expect(wrapper).toContain("coverage_runtime_refreshed: coverageRuntimeRefreshed");
   });
 

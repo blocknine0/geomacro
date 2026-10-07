@@ -72,7 +72,7 @@ while (true) {
         process.exit(refresh.status ?? 1);
       }
       coverageRuntimeRefreshed = true;
-    } else if (sourceTransport !== "doc_v2_articlelist") {
+    } else if (!["doc_v2_articlelist", "geo_v2_jsonfeed"].includes(sourceTransport)) {
       console.error("GDELT_CURRENT_SOURCE_TRANSPORT_INVALID");
       process.exit(1);
     }
