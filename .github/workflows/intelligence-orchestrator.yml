@@ -203,7 +203,7 @@ jobs:
             echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=false" >> "$GITHUB_ENV"
             echo "GEOMACRO_SUPABASE_RESTRICTED_MODE=true" >> "$GITHUB_ENV"
             echo '{"ok":false,"transport":"restricted_direct_postgres","policy":{"recurring_ingest_allowed":false,"fixed_cardinality_source_heartbeat_allowed":true}}' > supabase-budget.json
-            echo "Supabase restricted: D1 plus fixed-cardinality source heartbeat/read-only readiness remain live; event/raw/scoring writers are fail-closed."
+            echo "Supabase restricted: D1 plus fixed-cardinality source heartbeat remains live; readiness/event/raw/scoring writers are fail-closed."
           fi
 
       - name: Derive current public verification key

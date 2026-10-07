@@ -214,7 +214,6 @@ const TASKS = [
   },
   {
     key: "production_readiness",
-    restrictedDirectPostgresSafe: true,
     cadenceSeconds: 7200,
     offsetSeconds: 3600,
     priority: 85,
