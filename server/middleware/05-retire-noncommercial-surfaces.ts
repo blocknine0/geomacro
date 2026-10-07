@@ -8,6 +8,7 @@ const RETIRED_PUBLIC_PATHS = new Map<string, string>([
   ["/bridge-swap", "/data-api"],
   ["/onchain", "/data-api"],
   ["/portfolio", "/intelligence"],
+  ["/pipeline", "/research"],
   ["/demo", "/data-api"],
   ["/tameion", "/data-api"],
 ]);
