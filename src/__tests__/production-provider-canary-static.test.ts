@@ -17,7 +17,7 @@ describe("production provider real-money canary runner", () => {
   });
 
   it("uses only the approved initial production cohort and keeps public production forbidden", () => {
-    expect(canary).toContain('coinbase: "/api/x402/intelligence"');
+    expect(canary).toContain('coinbase: "/api/v1/intelligence/query"');
     expect(canary).toContain('circle: "/api/x402/circle/intelligence"');
     expect(canary).toContain('nevermined: "/api/x402/nevermined/intelligence"');
     expect(canary).toContain('const BASE_MAINNET = "eip155:8453"');
