@@ -13,17 +13,29 @@ describe("B2 country GRO preservation fallback", () => {
     expect(workflow).toContain("if: steps.refresh.outputs.fresh == 'true'");
   });
 
-  it("reverifies the preserved B2 package without writes or current-deliverability relabeling", () => {
+  it("verifies bundle v2 with two B2 reads and never relabels preserved freshness", () => {
     const verifier = read("scripts/ops/verify-b2-country-gro-preservation.ts");
-    expect(verifier).toContain("continuity-proof.json");
-    expect(verifier).toContain("sha256(compressed) !== expectedSha");
-    expect(verifier).toContain('object?.verification?.status !== "VERIFIED"');
-    expect(verifier).toContain('object?.commercial_eligibility?.status !== "VERIFIED"');
+    expect(verifier).toContain('BUNDLE_PROOF_SCHEMA = "geomacro.country-gro-continuity-proof.v2"');
+    expect(verifier).toContain('BUNDLE_SCHEMA = "geomacro.country-gro-bundle.v2"');
+    expect(verifier).toContain("const packed = await b2.get(bundleKey)");
+    expect(verifier).toContain("sha256(packed) !== bundleSha");
+    expect(verifier).toContain("sha256(canonicalRiskObjectJson(object)) !== recordSha");
     expect(verifier).toContain("verifyRiskObjectSignature(object).valid");
+    expect(verifier).toContain('auditMode = "single-bundle-full-member-integrity"');
+    expect(verifier).toContain("max_b2_gets_per_preservation_cycle: proof.schema === LEGACY_PROOF_SCHEMA ? 3 : 2");
     expect(verifier).toContain("wrote_new_snapshot: false");
     expect(verifier).toContain("freshness_advanced: false");
     expect(verifier).not.toContain("b2.put(");
     expect(verifier).not.toContain("verifyCommercialRiskObjectArtifact(");
+  });
+
+  it("bounds legacy-v1 preservation to one rotating latest/by-id pair", () => {
+    const verifier = read("scripts/ops/verify-b2-country-gro-preservation.ts");
+    expect(verifier).toContain("const hourNumber = Math.floor(Date.now() / 3_600_000)");
+    expect(verifier).toContain("const latest = latestEntries[hourNumber % latestEntries.length]");
+    expect(verifier).toContain("const sample = [latest, byId]");
+    expect(verifier).toContain('auditMode = "rotating-bounded-legacy-pair"');
+    expect(verifier).not.toContain("for (const entry of proof.entries)");
   });
 
   it("never advances D1 from a preservation-only cycle", () => {
@@ -31,7 +43,7 @@ describe("B2 country GRO preservation fallback", () => {
     const syncMarker = "Sync all independently verified current country GROs to D1";
     const syncIndex = workflow.indexOf(syncMarker);
     expect(syncIndex).toBeGreaterThanOrEqual(0);
-    const syncBlock = workflow.slice(syncIndex, syncIndex + 420);
+    const syncBlock = workflow.slice(syncIndex, syncIndex + 900);
     expect(syncBlock).toContain("if: steps.refresh.outputs.fresh == 'true'");
   });
 });
