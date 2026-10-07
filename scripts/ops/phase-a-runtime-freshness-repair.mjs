@@ -262,10 +262,20 @@ async function main() {
   }));
   const b2 = createB2Client({ endpointUrl: B2_ENDPOINT, accessKey: B2_KEY_ID, secretKey: B2_APPLICATION_KEY, bucket: B2_BUCKET });
   const key = `geomacro-evidence/v1/phase-a-runtime/${runId}/runtime-evidence.json`;
-  await b2.put(key, payload);
-  const readback = await b2.get(key);
-  if (readback.length !== payload.length || sha256(readback) !== sha256(payload)) throw new Error("PHASE_A_B2_EVIDENCE_READBACK_MISMATCH");
-  const evidenceRef = `b2://${B2_BUCKET}/${key}#sha256=${sha256(payload)}`;
+  const b2EvidenceVerification =
+    await b2.putWithMetadataVerification(
+      key,
+      payload,
+    );
+  const payloadSha256 = sha256(payload);
+  if (
+    b2EvidenceVerification.sha256 !== payloadSha256 ||
+    b2EvidenceVerification.bytes !== payload.length ||
+    b2EvidenceVerification.verification_mode !== "signed-put-head-metadata"
+  ) {
+    throw new Error("PHASE_A_B2_EVIDENCE_METADATA_VERIFICATION_MISMATCH");
+  }
+  const evidenceRef = `b2://${B2_BUCKET}/${key}#sha256=${payloadSha256}`;
 
   let certifications = await currentCertifications();
   const now = Date.now();
@@ -306,7 +316,9 @@ async function main() {
     target_rows_written: targetRowsWritten,
     certification_mode: certificationMode,
     b2_evidence_key: key,
-    b2_evidence_sha256: sha256(payload),
+    b2_evidence_sha256: payloadSha256,
+    b2_evidence_verification_mode: b2EvidenceVerification.verification_mode,
+    b2_full_body_readback_verified: b2EvidenceVerification.full_body_readback_verified,
     b2_requests: b2.usage(),
     registry_sources: registrySources,
     certifications,
