@@ -181,10 +181,12 @@ jobs:
               data_api)
                 echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=true" >> "$GITHUB_ENV"
                 echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=true" >> "$GITHUB_ENV"
+                echo "GEOMACRO_SUPABASE_RESTRICTED_MODE=false" >> "$GITHUB_ENV"
                 ;;
               direct_postgres_fallback)
                 echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=false" >> "$GITHUB_ENV"
                 echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=true" >> "$GITHUB_ENV"
+                echo "GEOMACRO_SUPABASE_RESTRICTED_MODE=false" >> "$GITHUB_ENV"
                 ;;
               *)
                 echo "::error::Unknown Supabase budget transport: ${transport}"
@@ -192,14 +194,15 @@ jobs:
                 ;;
             esac
           else
-            # Supabase is optional for heartbeat and public serving. Until each
-            # remaining ingestion task is B2/D1-native, freeze those writers
-            # rather than fabricating freshness or failing the whole scheduler.
+            # Supabase REST/Storage is optional for the scheduler. When the
+            # free-tier budget is restricted, keep only explicitly classified
+            # direct-Postgres-safe tasks alive. Storage/B2-readback-heavy lanes
+            # remain fail-closed and cannot be re-enabled by an allowlist.
             echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=false" >> "$GITHUB_ENV"
             echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=false" >> "$GITHUB_ENV"
-            echo "INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only" >> "$GITHUB_ENV"
-            echo '{"ok":false,"transport":"unavailable","policy":{"recurring_ingest_allowed":false}}' > supabase-budget.json
-            echo "Supabase unavailable: D1/B2 heartbeat remains live; Supabase-backed writers are fail-closed."
+            echo "GEOMACRO_SUPABASE_RESTRICTED_MODE=true" >> "$GITHUB_ENV"
+            echo '{"ok":false,"transport":"restricted_direct_postgres","policy":{"recurring_ingest_allowed":false,"restricted_direct_postgres_safe_tasks":true}}' > supabase-budget.json
+            echo "Supabase restricted: D1 heartbeat plus explicitly classified direct-Postgres-safe ingestion remains live; Storage/B2-heavy writers are fail-closed."
           fi
 
       - name: Derive current public verification key
