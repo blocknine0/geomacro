@@ -120,9 +120,25 @@ jobs:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         run: node --import tsx scripts/ops/publish-b2-country-gro-continuity.ts
 
-      - name: Reverify last verified B2 country GRO package without advancing freshness
+      - name: Preserve previous B2 package without consuming download quota
         if: steps.refresh.outputs.fresh != 'true'
-        run: bun scripts/ops/verify-b2-country-gro-preservation.ts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/record-b2-country-gro-preservation-hold.ts \
+            | tee artifacts/global-gro-continuity/preservation-hold.json
+          jq -e '
+            .schema == "geomacro.country-gro-preservation-hold.v1"
+            and .action == "FAIL_CLOSED_NO_B2_IO"
+            and .previous_b2_package_mutated == false
+            and .previous_b2_package_reverified_this_run == false
+            and .b2_read_performed == false
+            and .b2_write_performed == false
+            and .freshness_advanced == false
+            and .d1_advanced == false
+            and .payment_performed == false
+            and .execution_authorized == false
+          ' artifacts/global-gro-continuity/preservation-hold.json >/dev/null
 
       - name: Prove runtime GRO read works after removing Supabase credentials
         if: steps.refresh.outputs.fresh == 'true'
