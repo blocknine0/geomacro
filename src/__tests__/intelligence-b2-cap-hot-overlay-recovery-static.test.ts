@@ -9,6 +9,10 @@ const runner = readFileSync(
   "scripts/ops/run-b2-public-intelligence-publisher.mjs",
   "utf8",
 );
+const coverageRefresher = readFileSync(
+  "scripts/ops/refresh-gdelt-coverage-runtime-after-b2.mjs",
+  "utf8",
+);
 const workflow = readFileSync(
   ".github/workflows/intelligence-scored-refresh.yml",
   "utf8",
@@ -89,6 +93,31 @@ describe("public Intelligence B2-cap hot-overlay recovery", () => {
     expect(runner).toContain(
       '"full_b2_readback_verified_publish"',
     );
+  });
+
+  it("refreshes GDELT coverage from the same strict recovery proof without another capped B2 read", () => {
+    expect(runner).toContain("GEOMACRO_GDELT_COVERAGE_RECOVERY_PROOF_JSON");
+    expect(runner).toContain("JSON.stringify(proof)");
+    expect(coverageRefresher).toContain("assertRecoveryProof");
+    expect(coverageRefresher).toContain(
+      'proof?.schema !== "geomacro.public-intelligence-overlay-recovery.v1"',
+    );
+    expect(coverageRefresher).toContain(
+      'proof?.authority_read !== "verified-intelligence-edge"',
+    );
+    expect(coverageRefresher).toContain(
+      "proof?.baseline_b2_readback_verified !== true",
+    );
+    expect(coverageRefresher).toContain(
+      "proof?.current_b2_snapshot_promoted !== false",
+    );
+    expect(coverageRefresher).toContain(
+      'proofSource = "local-verified-b2-cap-recovery-proof"',
+    );
+    expect(coverageRefresher).toContain(
+      'proofSource = "b2-readback-verified"',
+    );
+    expect(coverageRefresher).toContain("await b2.get(PROOF_KEY)");
   });
 
   it("accepts recovery in production only under strict baseline and safety invariants", () => {
