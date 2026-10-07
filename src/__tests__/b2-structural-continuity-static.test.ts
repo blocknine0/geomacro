@@ -83,8 +83,9 @@ describe("verified B2 structural serving continuity", () => {
     const publisher = read("scripts/ops/publish-b2-structural-serving-snapshot.ts");
     const reader = read("src/lib/b2-structural.server.ts");
 
-    expect(publisher).toContain('const LIVE_PREFIX = "geomacro-evidence/v1/live/structural/serving"');
-    expect(publisher).not.toContain('geomacro-evidence/v1/structural/serving/latest.json.gz');
+    expect(publisher).toContain('const LIVE_PREFIX = "geomacro-evidence/v1/structural/serving"');
+    expect(publisher).toContain('const LIVE_PREFIX = "geomacro-evidence/v1/structural/serving"');
+    expect(publisher).not.toContain('geomacro-evidence/v1/live/structural/serving');
     expect(publisher).toContain("await b2.put(stagingKey, packed)");
     expect(publisher).toContain("const stagingReadback = await b2.get(stagingKey)");
     expect(publisher).toContain("B2_STRUCTURAL_STAGING_READBACK_HASH_INVALID");
@@ -98,7 +99,8 @@ describe("verified B2 structural serving continuity", () => {
     expect(publisher).toContain("const proofReadback = await b2.get(PROOF_KEY)");
     expect(publisher).not.toContain(".delete(");
 
-    expect(reader).toContain('const LIVE_PREFIX = "geomacro-evidence/v1/live/structural/serving"');
+    expect(reader).toContain('const LIVE_PREFIX = "geomacro-evidence/v1/structural/serving"');
+    expect(reader).not.toContain('geomacro-evidence/v1/live/structural/serving');
     expect(reader).toContain("signedGet(SNAPSHOT_KEY)");
     expect(reader).toContain("signedGet(PROOF_KEY)");
     expect(reader).toContain('"geomacro.structural-serving-snapshot-proof.v2"');
