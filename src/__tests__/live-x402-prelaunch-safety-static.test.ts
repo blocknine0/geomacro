@@ -94,6 +94,7 @@ describe("live x402 prelaunch safety probe", () => {
     expect(workflow).toContain("WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}");
     expect(workflow).toContain("ref: ${{ steps.release.outputs.sha }}");
     expect(workflow).toContain("Verify live build marker still matches accepted deployment");
+    expect(workflow).toContain("if: ${{ github.event_name != 'pull_request' }}");
     expect(workflow).toContain("X402_LIVE_BUILD_MARKER_SHA_MISMATCH");
     expect(workflow).toContain("GEOMACRO_X402_REQUIRE_REPRESENTATIVE_AVAILABLE:");
     expect(workflow).toContain("GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE:");
