@@ -158,10 +158,10 @@ jobs:
           if (summary?.supabase_dependency !== false || summary?.supabase_mirror_attempted !== false || summary?.supabase_raw_payload_written !== false) throw new Error('SUPABASE_INDEPENDENCE_INVALID');
           if (summary?.destructive_change !== false || summary?.payment_performed !== false) throw new Error('SAFETY_FLAG_INVALID');
           for (const source of summary?.sources ?? []) {
-            if (source?.storage_mode !== 'gzip-fragment-bundles' || source?.b2_storage_metadata_verified !== true || source?.b2_local_restore_verified !== true || source?.b2_full_body_readback_verified !== false || source?.verification_mode !== 'signed-put-head-metadata' || source?.normalized_observations_durable_in_b2 !== true || source?.supabase_dependency !== false) throw new Error('SOURCE_FRAGMENT_EVIDENCE_INVALID');
+            if (source?.storage_mode !== 'gzip-fragment-bundles' || source?.b2_storage_metadata_verified !== true || source?.b2_local_restore_verified !== true || source?.b2_full_body_readback_verified !== true || source?.verification_mode !== 'signed-put-full-readback-sha256' || source?.normalized_observations_durable_in_b2 !== true || source?.supabase_dependency !== false) throw new Error('SOURCE_FRAGMENT_EVIDENCE_INVALID');
             if (!Array.isArray(source?.fragments) || source.fragments.length !== source.fragment_count) throw new Error('SOURCE_FRAGMENT_COUNT_MISMATCH');
             for (const fragment of source.fragments) {
-              if (fragment?.storage_metadata_verified !== true || fragment?.local_restore_verified !== true || fragment?.full_body_readback_verified !== false || fragment?.verification_mode !== 'signed-put-head-metadata' || fragment?.contains_normalized_observations !== true || !/^[a-f0-9]{64}$/.test(String(fragment?.sha256 ?? '')) || !String(fragment?.key ?? '').endsWith('.json.gz')) throw new Error('FRAGMENT_PROOF_INVALID');
+              if (fragment?.storage_metadata_verified !== true || fragment?.local_restore_verified !== true || fragment?.full_body_readback_verified !== true || fragment?.verification_mode !== 'signed-put-full-readback-sha256' || fragment?.contains_normalized_observations !== true || !/^[a-f0-9]{64}$/.test(String(fragment?.sha256 ?? '')) || !String(fragment?.key ?? '').endsWith('.json.gz')) throw new Error('FRAGMENT_PROOF_INVALID');
             }
           }
           NODE
@@ -196,7 +196,7 @@ jobs:
               for (const row of rows) {
                 if (row.pipeline !== "governed_source_ingestion" || row.status !== "PASS" || !expected.delete(row.scope) || !/^[a-f0-9]{64}$/.test(String(row.cursor ?? ""))) throw new Error("D1_CHECKPOINT_INVALID");
                 const metadata = JSON.parse(row.metadata_json);
-                if (metadata?.durable_payload_store !== "backblaze-b2" || metadata?.normalized_data_store !== "backblaze-b2" || metadata?.compact_control_store !== "cloudflare-d1" || metadata?.storage_mode !== "gzip-fragment-bundles" || metadata?.compression !== "gzip-9" || !Number.isInteger(metadata?.fragment_count) || metadata.fragment_count < 1 || metadata?.b2_storage_metadata_verified !== true || metadata?.b2_local_restore_verified !== true || metadata?.b2_full_body_readback_verified !== false || metadata?.verification_mode !== "signed-put-head-metadata" || metadata?.supabase_dependency !== false) throw new Error("D1_CHECKPOINT_METADATA_INVALID");
+                if (metadata?.durable_payload_store !== "backblaze-b2" || metadata?.normalized_data_store !== "backblaze-b2" || metadata?.compact_control_store !== "cloudflare-d1" || metadata?.storage_mode !== "gzip-fragment-bundles" || metadata?.compression !== "gzip-9" || !Number.isInteger(metadata?.fragment_count) || metadata.fragment_count < 1 || metadata?.b2_storage_metadata_verified !== true || metadata?.b2_local_restore_verified !== true || metadata?.b2_full_body_readback_verified !== true || metadata?.verification_mode !== "signed-put-full-readback-sha256" || metadata?.supabase_dependency !== false) throw new Error("D1_CHECKPOINT_METADATA_INVALID");
               }
               if (expected.size) throw new Error("D1_CHECKPOINT_SCOPE_MISSING");
             });
