@@ -267,11 +267,10 @@ jobs:
             if (p.coinbase_x402?.launch_cohort !== true || p.coinbase_x402?.production_enabled !== false) throw new Error("Coinbase discovery cohort mismatch");
             if (p.circle_gateway?.launch_cohort !== true || p.circle_gateway?.production_enabled !== false) throw new Error("Circle discovery cohort mismatch");
             if (p.nevermined?.launch_cohort !== true || p.nevermined?.production_enabled !== false) throw new Error("Nevermined discovery cohort mismatch");
-            if (p.goat_x402?.launch_cohort !== false || p.goat_x402?.production_enabled !== false) throw new Error("GOAT discovery must remain deferred");
+            if (p.goat_x402 !== undefined) throw new Error("non-cohort provider must not appear in public commerce discovery");
           '
           grep -q '/.well-known/geomacro-commerce.json' public/llms.txt
           grep -q '/.well-known/geomacro-commerce.json' public/agent-commerce.md
-          grep -q 'manual merchant application/approval' public/agent-commerce.md
       - name: Verify marketing automation remains approval-gated and revenue-evidence only
         shell: bash
         run: |
