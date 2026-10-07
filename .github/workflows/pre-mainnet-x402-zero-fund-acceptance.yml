@@ -9,6 +9,8 @@ on:
       - "src/lib/agent-query-*.ts"
       - "src/lib/agent-commerce-delivery.server.ts"
       - "src/routes/api.x402.intelligence.ts"
+      - "src/routes/api.v1.intelligence_.query.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
       - "src/routes/api.x402.risk_.availability.ts"
       - "scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs"
       - "scripts/verify-launch-readiness.mjs"
