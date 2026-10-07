@@ -8,6 +8,7 @@ const paymentRoute = fs.readFileSync("src/routes/api.x402.intelligence.ts", "utf
 describe("agent commerce status probe", () => {
   it("never probes the fail-closed payment endpoint from public UI", () => {
     expect(statusComponent).toContain('fetch("/api/health"');
+    expect(statusComponent).not.toContain('fetch("/api/v1/intelligence/query"');
     expect(statusComponent).not.toContain('fetch("/api/x402/intelligence"');
   });
 
