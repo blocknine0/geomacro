@@ -91,4 +91,43 @@ describe("private B2 server native fallback", () => {
     await expect(readPrivateB2Object("geomacro-evidence/v1/test.json"))
       .rejects.toThrow("B2_PRIVATE_NATIVE_READ_CAPABILITY_MISSING");
   });
+  it("stops on native download cap instead of trying another credential", async () => {
+    setReadCredentials();
+    process.env.B2_KEY_ID = "primary-key";
+    process.env.B2_APPLICATION_KEY = "primary-secret";
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+        return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+      }
+      if (url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account") {
+        return Response.json({
+          authorizationToken: "native-token",
+          apiInfo: {
+            storageApi: {
+              downloadUrl: "https://f005.backblazeb2.com",
+              allowed: {
+                capabilities: ["readFiles"],
+                buckets: [{ name: "geomacro-private-archive" }],
+                namePrefix: "geomacro-evidence/v1/",
+              },
+            },
+          },
+        });
+      }
+      if (url.startsWith("https://f005.backblazeb2.com/file/")) {
+        return Response.json(
+          { status: 403, code: "download_cap_exceeded", message: "Usage cap exceeded." },
+          { status: 403 },
+        );
+      }
+      return new Response("unexpected", { status: 500 });
+    }));
+
+    await expect(readPrivateB2Object("geomacro-evidence/v1/test.json"))
+      .rejects.toThrow("B2_DOWNLOAD_CAP_EXCEEDED");
+    expect(calls.filter((url) => url.startsWith("https://s3.us-east-005.backblazeb2.com/"))).toHaveLength(1);
+  });
 });
