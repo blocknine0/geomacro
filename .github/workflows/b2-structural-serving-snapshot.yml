@@ -11,6 +11,8 @@ on:
       - "src/lib/b2-structural.server.ts"
       - "src/lib/structural-context.server.ts"
       - "scripts/ops/b2-s3-client.mjs"
+      - "scripts/ops/verify-b2-private-archive-read.ts"
+      - "src/lib/b2-private-archive-read.server.ts"
       - "scripts/ops/publish-b2-structural-serving-snapshot.ts"
       - ".github/workflows/b2-structural-serving-snapshot.yml"
   schedule:
