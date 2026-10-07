@@ -1,10 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  CANONICAL_MAINNET_INTELLIGENCE_PATH,
-  mainnetIntelligenceHandlers,
-} from "./api.x402.intelligence";
+import { mainnetIntelligenceHandlers } from "../lib/mainnet-intelligence-endpoint.server";
 
-export const Route = createFileRoute(CANONICAL_MAINNET_INTELLIGENCE_PATH)({
+export const Route = createFileRoute("/api/v1/intelligence/query")({
   server: {
     handlers: mainnetIntelligenceHandlers,
   },
