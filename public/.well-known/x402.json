@@ -20,7 +20,7 @@
   ],
   "plannedResources": [
     {
-      "resource": "https://geomacro.live/api/x402/intelligence",
+      "resource": "https://geomacro.live/api/v1/intelligence/query",
       "method": "POST",
       "product": "geomacro_adaptive_risk_intelligence_v1",
       "provider": "coinbase_x402",
