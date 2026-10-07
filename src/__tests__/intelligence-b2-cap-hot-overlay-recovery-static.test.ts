@@ -52,8 +52,12 @@ describe("public Intelligence B2-cap hot-overlay recovery", () => {
     expect(publisher).toContain('authority_read: "verified-intelligence-edge"');
     expect(publisher).toContain('authority_serve: "cloudflare-d1-hot-overlay"');
     expect(publisher).toContain('execution_authorized: false');
+    expect(publisher).toContain("const generatedAt = new Date().toISOString()");
     expect(publisher).toContain(
-      "await publishHotOverlay(current, baseline.generatedAt, baseline.b2Sha256)",
+      "verified_b2_generated_at: verifiedB2GeneratedAt",
+    );
+    expect(publisher).toContain(
+      "baseline.b2Sha256,\n    baseline.generatedAt",
     );
   });
 
