@@ -82,6 +82,10 @@ export type CountryRiskGenerationResult = {
     country_events_used: number;
 
     previous_object_id: string | null;
+    previous_baseline_status:
+      | "AVAILABLE"
+      | "NOT_FOUND"
+      | "ARCHIVE_CAP_UNAVAILABLE";
 
     published: boolean;
   };
@@ -1358,6 +1362,61 @@ function eventTouchesCountry(
 }
 
 
+function archiveBaselineTemporarilyUnavailable(
+  error: unknown,
+) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : String(error);
+
+  return (
+    message === "B2_DOWNLOAD_CAP_EXCEEDED" ||
+    message === "B2_TRANSACTION_CAP_EXCEEDED"
+  );
+}
+
+async function loadOptionalPreviousBaseline(
+  countryIso3: string,
+  asOf: string,
+  deliveryProfile: RiskObjectDeliveryProfile,
+) {
+  try {
+    const object =
+      await getLatestCompatibleCountryRiskObject(
+        countryIso3,
+        asOf,
+        deliveryProfile,
+      );
+
+    return {
+      object,
+      status:
+        object
+          ? "AVAILABLE"
+          : "NOT_FOUND",
+    } as const;
+  } catch (error) {
+    if (!archiveBaselineTemporarilyUnavailable(error)) {
+      throw error;
+    }
+
+    // The previous compatible GRO is optional and is used only for
+    // deterministic delta attribution. Explicit Backblaze account caps must
+    // not block publication from fresh current evidence. All other archive
+    // failures remain fail-closed.
+    console.warn(
+      `COUNTRY_GRO_PREVIOUS_BASELINE_ARCHIVE_CAP_UNAVAILABLE ${countryIso3}`,
+    );
+
+    return {
+      object: null,
+      status: "ARCHIVE_CAP_UNAVAILABLE",
+    } as const;
+  }
+}
+
+
 function previousUsableForPilotDelta(
   previous:
     GeomacroRiskObject |
@@ -1480,12 +1539,18 @@ async function generateInternal(
         ),
     );
 
-  const previous =
+  const previousBaseline =
     process.env.GEOMACRO_CANONICAL_BATCH === "1" &&
     deliveryProfile === "CANONICAL" &&
     canonicalBatchPreviousObjects?.key === asOf.toISOString()
-      ? canonicalBatchPreviousObjects.byCountry.get(iso3) ?? null
-      : await getLatestCompatibleCountryRiskObject(
+      ? (() => {
+          const object = canonicalBatchPreviousObjects.byCountry.get(iso3) ?? null;
+          return {
+            object,
+            status: object ? "AVAILABLE" : "NOT_FOUND",
+          } as const;
+        })()
+      : await loadOptionalPreviousBaseline(
           iso3,
           asOf.toISOString(),
           deliveryProfile,
@@ -1493,7 +1558,7 @@ async function generateInternal(
 
   const baseline =
     previousUsableForPilotDelta(
-      previous,
+      previousBaseline.object,
     );
 
   const calculatedObject =
@@ -1617,6 +1682,9 @@ async function generateInternal(
       previous_object_id:
         baseline?.object_id ??
         null,
+
+      previous_baseline_status:
+        previousBaseline.status,
 
       published:
         publish,
