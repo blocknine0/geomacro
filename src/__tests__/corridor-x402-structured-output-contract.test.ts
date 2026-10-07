@@ -26,7 +26,7 @@ describe("#1414 directional corridor x402 contract", () => {
   });
 
   it("wires corridor requests through derived response assembly rather than raw data", () => {
-    const paid = read("src/routes/api.x402.intelligence.ts");
+    const paid = read("src/lib/mainnet-intelligence-endpoint.server.ts");
     const response = read("src/lib/agent-query-response.server.ts");
     const prelaunch = read("scripts/agentic/verify-live-x402-prelaunch-availability.mjs");
 
