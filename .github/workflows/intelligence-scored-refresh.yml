@@ -119,20 +119,36 @@ jobs:
           for (const line of lines) {
             try {
               const value = JSON.parse(line);
-              if (value?.schema === 'geomacro.public-intelligence-direct-postgres-publish.v2') proof = value;
+              if ([
+                'geomacro.public-intelligence-direct-postgres-publish.v2',
+                'geomacro.public-intelligence-overlay-recovery.v1',
+              ].includes(value?.schema)) proof = value;
             } catch {}
           }
-          if (
-            !proof ||
-            proof.ok !== true ||
-            proof.authority_serve !== 'backblaze-b2' ||
-            proof.scored_only !== false ||
-            proof.live_observed_unscored !== true ||
-            Number(proof.live_observed_rows) < 1 ||
-            !proof.current_source_batch_at ||
-            proof.synthetic_score !== false ||
-            proof.b2_readback_verified !== true
-          ) {
+          const sharedValid =
+            proof?.ok === true &&
+            proof?.live_observed_unscored === true &&
+            Number(proof?.live_observed_rows) >= 1 &&
+            Boolean(proof?.current_source_batch_at) &&
+            proof?.synthetic_score === false;
+          const fullB2PublishValid =
+            proof?.schema === 'geomacro.public-intelligence-direct-postgres-publish.v2' &&
+            proof?.authority_serve === 'backblaze-b2' &&
+            proof?.scored_only === false &&
+            proof?.b2_readback_verified === true;
+          const capOverlayRecoveryValid =
+            proof?.schema === 'geomacro.public-intelligence-overlay-recovery.v1' &&
+            proof?.authority_read === 'verified-intelligence-edge' &&
+            proof?.authority_serve === 'cloudflare-d1-hot-overlay' &&
+            ['B2_DOWNLOAD_CAP_EXCEEDED','B2_TRANSACTION_CAP_EXCEEDED'].includes(proof?.recovery_reason) &&
+            proof?.baseline_b2_readback_verified === true &&
+            /^[0-9a-f]{64}$/.test(String(proof?.baseline_b2_sha256 ?? '')) &&
+            Number.isFinite(Date.parse(String(proof?.baseline_generated_at ?? ''))) &&
+            proof?.current_b2_snapshot_promoted === false &&
+            proof?.raw_source_headlines_exposed === false &&
+            proof?.provider_identity_exposed === false &&
+            proof?.execution_authorized === false;
+          if (!sharedValid || (!fullB2PublishValid && !capOverlayRecoveryValid)) {
             throw new Error('PUBLIC_INTELLIGENCE_PUBLISH_PROOF_INVALID');
           }
           fs.writeFileSync('/tmp/intelligence-publish-proof.json', JSON.stringify(proof, null, 2) + '\n');
