@@ -39,6 +39,7 @@ function classifySourceFailure(error){
 }
 function isFatalInfrastructureFailure(code){
   return /^B2_(?:GET|PUT)_FAILED_403_AccessDenied(?:_[A-Za-z0-9_-]+)?$/.test(code)
+    || /^B2_NATIVE_[A-Za-z0-9_:-]+$/.test(code)
     || code==="B2_ARCHIVE_CONFIG_INVALID"
     || code==="B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE"
     || code==="COUNTRY_RAW_SOURCE_MESH_B2_CONFIG_REQUIRED";
