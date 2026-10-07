@@ -122,6 +122,8 @@ jobs:
 
       - name: Reverify last verified B2 country GRO package without advancing freshness
         if: steps.refresh.outputs.fresh != 'true'
+        env:
+          B2_REQUEST_BUDGET: "4"
         run: bun scripts/ops/verify-b2-country-gro-preservation.ts
 
       - name: Prove runtime GRO read works after removing Supabase credentials
