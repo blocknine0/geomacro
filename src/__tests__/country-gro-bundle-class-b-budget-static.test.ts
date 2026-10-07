@@ -54,5 +54,8 @@ describe("country GRO bundle Class-B budget", () => {
     expect(runtime).toContain("readPrivateB2Object(key");
     expect(privateReader).toContain("nativePreferredCredentials.has(fingerprint)");
     expect(privateReader).toContain("nativePreferredCredentials.add(fingerprint)");
+    expect(privateReader).toContain("if (hardCapError) throw new Error(hardCapError)");
+    expect(privateReader).toContain('hardCapError = "B2_DOWNLOAD_CAP_EXCEEDED"');
+    expect(privateReader).toContain('hardCapError = "B2_TRANSACTION_CAP_EXCEEDED"');
   });
 });
