@@ -6,7 +6,7 @@ const service = readFileSync("src/lib/agent-commerce-delivery.server.ts", "utf8"
 const durableWorker = readFileSync("workers/commerce-ledger/src/index.mjs", "utf8");
 const durableConfig = readFileSync("workers/commerce-ledger/wrangler.jsonc", "utf8");
 const neverminedRoute = readFileSync("src/routes/api.x402.nevermined_.intelligence.ts", "utf8");
-const coinbaseRoute = readFileSync("src/routes/api.x402.intelligence.ts", "utf8");
+const coinbaseRoute = readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts", "utf8");
 const circleRoute = readFileSync("src/routes/api.x402.circle_.intelligence.ts", "utf8");
 
 describe("provider-neutral agent commerce delivery ledger", () => {
