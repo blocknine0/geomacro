@@ -200,7 +200,7 @@ function DataApiPage() {
                   </div>
                   <CircleDollarSign className="h-6 w-6 text-primary" />
                 </div>
-                <p className="mt-4 text-sm leading-6 text-muted-foreground">Launch price for the first 20,000 successfully settled and delivered commercial intelligence calls. Failed, stale, unavailable, replayed, refunded, internal, testnet or unpaid requests do not count as successful paid deliveries.</p>
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">Launch price for the first 20,000 successfully settled and delivered commercial intelligence calls. Failed, stale, unavailable, replayed, refunded, internal or unpaid requests do not count as successful paid deliveries.</p>
                 <ul className="mt-6 space-y-3">
                   {PAID_ACCESS.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 h-4 w-4 shrink-0 text-primary" /><span>{item}</span></li>)}
                 </ul>
