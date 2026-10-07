@@ -83,6 +83,22 @@ jobs:
           echo "Owner authorization scope: Federico pilot allowance only; no user funds and no execution authorization."
           echo "Governed RSS transport: tokenless loopback spool -> canonical direct Postgres; remote tokenless ingest remains forbidden."
 
+      - name: Prove private B2 real-byte read before Federico work
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/verify-b2-private-archive-read.ts | tee /tmp/day6-b2-read-preflight.json
+          jq -e '
+            .ok == true and
+            .schema == "geomacro.b2-private-archive-runtime-read-proof.v1" and
+            .dedicated_read_credentials == true and
+            .raw_data_delivered == false and
+            .destructive_b2_change == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/day6-b2-read-preflight.json >/dev/null
+          echo "PASS: private B2 archive real-byte readback is available before Federico assurance."
+
       - name: Re-poll governed RSS without partner allowance
         env:
           TELEGRAM_ENABLED: "false"

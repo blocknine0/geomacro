@@ -8,14 +8,18 @@ const workflow = readFileSync(
 
 describe("one-time Day 6 Federico pilot authorization", () => {
   it("refreshes and proves local readiness before partner allowance", () => {
+    const preflight = workflow.indexOf("Prove private B2 real-byte read before Federico work");
     const refresh = workflow.indexOf("Re-poll governed RSS without partner allowance");
     const hydrate = workflow.indexOf("Hydrate trusted publisher times before strict candidate selection");
     const select = workflow.indexOf("Select strongest fresh strict candidate set");
     const corroborate = workflow.indexOf("Corroborate candidates and select first genuinely strict-ready country");
     const local = workflow.indexOf("Dispatch no-allowance current-head local assurance");
     const live = workflow.indexOf("Dispatch exactly one authorized Federico pilot allowance review");
-    expect(refresh).toBeGreaterThan(-1);
+    expect(preflight).toBeGreaterThan(-1);
+    expect(refresh).toBeGreaterThan(preflight);
     expect(hydrate).toBeGreaterThan(refresh);
+    expect(workflow).toContain("scripts/ops/verify-b2-private-archive-read.ts");
+    expect(workflow).toContain("geomacro.b2-private-archive-runtime-read-proof.v1");
     expect(select).toBeGreaterThan(hydrate);
     expect(corroborate).toBeGreaterThan(select);
     expect(local).toBeGreaterThan(corroborate);
