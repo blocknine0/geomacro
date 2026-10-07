@@ -26,7 +26,7 @@ import {
   verifyPublicRiskObjectArtifact,
 } from "./risk-object-verification.server";
 
-const MAX_MCP_BODY_BYTES = 640 * 1024;
+const MAX_MCP_BODY_BYTES = 64 * 1024;
 const SERVER_INFO_META_KEY = "io.modelcontextprotocol/serverInfo";
 const PROTOCOL_VERSION_META_KEY = "io.modelcontextprotocol/protocolVersion";
 
