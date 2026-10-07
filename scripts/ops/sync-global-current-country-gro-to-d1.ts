@@ -17,6 +17,8 @@ import { verifyCommercialRiskObjectArtifact } from "../../src/lib/commercial-ris
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
 const SOURCE_PROJECT = "ldpwajisioljyjtojvfx";
+const PROOF_SCHEMA = "geomacro.country-gro-continuity-proof.v1";
+const BUNDLE_SCHEMA = "geomacro.country-gro-continuity-bundle.v1";
 const PROOF_KEY = "geomacro-evidence/v1/live/country-gro/continuity-proof.json";
 const WRANGLER_VERSION = String(process.env.WRANGLER_VERSION ?? "4.136.3").trim();
 const D1_DATABASE_NAME = String(process.env.D1_DATABASE_NAME ?? "geomacro-control-plane").trim();
@@ -27,6 +29,7 @@ const D1_CONFIG = join(OUT_DIR, "wrangler.runtime.jsonc");
 const HASH_RE = /^[a-f0-9]{64}$/;
 const ISO3_RE = /^[A-Z]{3}$/;
 const OBJECT_RE = /^gro_[A-Za-z0-9_]+$/;
+const BUNDLE_KEY_RE = /^geomacro-evidence\/v1\/live\/country-gro\/bundles\/[0-9TZ]+\.json\.gz$/;
 const sha256 = (value: Buffer | string) => createHash("sha256").update(value).digest("hex");
 const sqlText = (value: unknown) =>
   value == null ? "NULL" : `'${String(value).replaceAll("'", "''")}'`;
@@ -96,6 +99,10 @@ const proof = JSON.parse(proofBytes.toString("utf8")) as {
   generated_at?: string;
   source_project?: string;
   countries_published?: number;
+  bundle_schema?: string;
+  bundle_key?: string;
+  bundle_sha256?: string;
+  bundle_bytes?: number;
   entries?: Array<{
     key?: string;
     sha256?: string;
@@ -104,8 +111,13 @@ const proof = JSON.parse(proofBytes.toString("utf8")) as {
   }>;
 };
 if (
-  proof.schema !== "geomacro.country-gro-continuity-proof.v1" ||
+  proof.schema !== PROOF_SCHEMA ||
   proof.source_project !== SOURCE_PROJECT ||
+  proof.bundle_schema !== BUNDLE_SCHEMA ||
+  !BUNDLE_KEY_RE.test(String(proof.bundle_key ?? "")) ||
+  !HASH_RE.test(String(proof.bundle_sha256 ?? "")) ||
+  !Number.isInteger(Number(proof.bundle_bytes)) ||
+  Number(proof.bundle_bytes) <= 0 ||
   !Array.isArray(proof.entries)
 ) {
   throw new Error("GLOBAL_GRO_D1_PROOF_CONTRACT_INVALID");
@@ -127,22 +139,80 @@ if (
   throw new Error("GLOBAL_GRO_D1_PROOF_CARDINALITY_INVALID");
 }
 
+const bundleBytes = await b2.get(String(proof.bundle_key));
+if (
+  bundleBytes.length !== Number(proof.bundle_bytes) ||
+  sha256(bundleBytes) !== String(proof.bundle_sha256)
+) {
+  throw new Error("GLOBAL_GRO_D1_BUNDLE_HASH_INVALID");
+}
+const bundle = JSON.parse(
+  gunzipSync(bundleBytes, { maxOutputLength: 100_000_000 }).toString("utf8"),
+) as {
+  schema?: string;
+  generated_at?: string;
+  source_project?: string;
+  countries_published?: number;
+  entries?: Array<{
+    country_iso3?: string;
+    object_id?: string;
+    envelope_gzip_b64?: string;
+    envelope_sha256?: string;
+    envelope_bytes?: number;
+  }>;
+};
+if (
+  bundle.schema !== BUNDLE_SCHEMA ||
+  bundle.generated_at !== proof.generated_at ||
+  bundle.source_project !== SOURCE_PROJECT ||
+  bundle.countries_published !== proof.countries_published ||
+  !Array.isArray(bundle.entries) ||
+  bundle.entries.length !== Number(proof.countries_published)
+) {
+  throw new Error("GLOBAL_GRO_D1_BUNDLE_CONTRACT_INVALID");
+}
+
+const bundleByObjectId = new Map(
+  bundle.entries.map((entry) => [String(entry.object_id ?? ""), entry]),
+);
+if (bundleByObjectId.size !== bundle.entries.length) {
+  throw new Error("GLOBAL_GRO_D1_BUNDLE_DUPLICATE_OBJECT_ID");
+}
+
 const rows: Array<Record<string, string>> = [];
 for (const entry of byIdEntries) {
-  const key = String(entry.key ?? "");
   const expectedObjectId = String(entry.object_id ?? "");
   const expectedEnvelopeSha = String(entry.sha256 ?? "");
-  if (!OBJECT_RE.test(expectedObjectId) || !HASH_RE.test(expectedEnvelopeSha)) {
+  const expectedEnvelopeBytes = Number(entry.bytes ?? 0);
+  if (
+    !OBJECT_RE.test(expectedObjectId) ||
+    !HASH_RE.test(expectedEnvelopeSha) ||
+    !Number.isInteger(expectedEnvelopeBytes) ||
+    expectedEnvelopeBytes <= 0
+  ) {
     throw new Error(`GLOBAL_GRO_D1_PROOF_ENTRY_INVALID:${expectedObjectId}`);
   }
 
-  const packedEnvelope = await b2.get(key);
+  const member = bundleByObjectId.get(expectedObjectId);
   if (
+    !member ||
+    !ISO3_RE.test(String(member.country_iso3 ?? "")) ||
+    member.envelope_sha256 !== expectedEnvelopeSha ||
+    Number(member.envelope_bytes) !== expectedEnvelopeBytes ||
+    typeof member.envelope_gzip_b64 !== "string"
+  ) {
+    throw new Error(`GLOBAL_GRO_D1_BUNDLE_MEMBER_INVALID:${expectedObjectId}`);
+  }
+
+  const packedEnvelope = Buffer.from(member.envelope_gzip_b64, "base64");
+  if (
+    packedEnvelope.length !== expectedEnvelopeBytes ||
     packedEnvelope.length > 2_000_000 ||
     sha256(packedEnvelope) !== expectedEnvelopeSha
   ) {
     throw new Error(`GLOBAL_GRO_D1_ENVELOPE_HASH_INVALID:${expectedObjectId}`);
   }
+
   const envelope = JSON.parse(
     gunzipSync(packedEnvelope, { maxOutputLength: 4_000_000 }).toString("utf8"),
   );
@@ -152,6 +222,7 @@ for (const entry of byIdEntries) {
     envelope?.schema !== "geomacro.country-gro-continuity.v1" ||
     envelope?.source_project !== SOURCE_PROJECT ||
     !ISO3_RE.test(iso3) ||
+    iso3 !== String(member.country_iso3) ||
     object?.object_id !== expectedObjectId ||
     object?.subject?.type !== "country" ||
     object?.subject?.id !== iso3 ||
@@ -171,25 +242,16 @@ for (const entry of byIdEntries) {
     throw new Error(`GLOBAL_GRO_D1_FRESHNESS_HEADROOM_INVALID:${expectedObjectId}`);
   }
 
+  // The continuity bundle has already been independently read back and every
+  // member is hash/signature verified above. Generic per-object archives are a
+  // serving projection. PUT acknowledgement is sufficient here; consumers
+  // independently verify archive_sha256 + signature on read. This removes one
+  // Class-B GET per country without weakening fail-closed consumption.
   const raw = Buffer.from(JSON.stringify(object));
   const genericPacked = gzipSync(raw, { level: 9 });
   const genericKey = `geomacro-evidence/v1/gro/${expectedObjectId}.json.gz`;
   const genericSha = sha256(genericPacked);
   await b2.put(genericKey, genericPacked);
-  const readback = await b2.get(genericKey);
-  if (readback.length !== genericPacked.length || sha256(readback) !== genericSha) {
-    throw new Error(`GLOBAL_GRO_D1_GENERIC_B2_HASH_INVALID:${expectedObjectId}`);
-  }
-  const restored = JSON.parse(
-    gunzipSync(readback, { maxOutputLength: 4_000_000 }).toString("utf8"),
-  );
-  if (
-    canonicalRiskObjectJson(restored) !== canonicalRiskObjectJson(object) ||
-    !verifyRiskObjectSignature(restored, keys).valid ||
-    !verifyCommercialRiskObjectArtifact(restored, { now: new Date() }).deliverable
-  ) {
-    throw new Error(`GLOBAL_GRO_D1_GENERIC_B2_RESTORE_INVALID:${expectedObjectId}`);
-  }
 
   const recordSha = sha256(Buffer.from(canonicalRiskObjectJson(object), "utf8"));
   const payloadHash = String(object?.integrity?.payload_hash ?? "");
@@ -303,14 +365,22 @@ console.log(
   JSON.stringify(
     {
       ok: true,
-      schema: "geomacro.global-current-country-gro-d1-sync.v1",
+      schema: "geomacro.global-current-country-gro-d1-sync.v2",
       proof_key: PROOF_KEY,
       proof_generated_at: proof.generated_at ?? null,
+      bundle_key: proof.bundle_key ?? null,
+      bundle_sha256: proof.bundle_sha256 ?? null,
       indexed_country_count: rows.length,
       minimum_indexed_required: MIN_INDEXED,
       threshold_satisfied: rows.length >= MIN_INDEXED,
       subjects: rows.map((row) => row.subject_id),
       b2_readback_verified: true,
+      b2_readback_scope: "continuity_proof_and_bundle",
+      b2_class_b_source_reads: 2,
+      bundle_readback_verified: true,
+      bundle_members_verified: rows.length,
+      generic_archive_writes_acknowledged: rows.length,
+      generic_archive_readback_deferred_to_runtime: true,
       signature_verified: true,
       commercial_eligibility_verified: true,
       d1_readback_verified: true,
@@ -319,6 +389,7 @@ console.log(
       execution_authorized: false,
       destructive_b2_change: false,
       generated_at: now,
+      b2: b2.usage(),
     },
     null,
     2,
