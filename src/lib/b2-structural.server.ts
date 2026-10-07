@@ -5,7 +5,7 @@ import type {
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
-const LIVE_PREFIX = "geomacro-evidence/v1/live/structural/serving";
+const LIVE_PREFIX = "geomacro-evidence/v1/structural/serving";
 const SNAPSHOT_KEY = `${LIVE_PREFIX}/latest.json.gz`;
 const PROOF_KEY = `${LIVE_PREFIX}/latest-proof.json`;
 const HISTORICAL_PROJECT_REF = "nqvpcbnnvjsrlvyxxevk";
