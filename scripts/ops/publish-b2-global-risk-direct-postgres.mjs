@@ -5,6 +5,7 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { assemblePublicGlobalRisk } from "../../src/lib/global-risk-assemble.ts";
 import { validateGlobalRiskContinuity } from "../../src/lib/global-risk-continuity.ts";
 import { createB2Client } from "./b2-s3-client.mjs";
+import { publishB2VerifiedHotSnapshot } from "./publish-b2-verified-hot-snapshot.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
@@ -243,6 +244,11 @@ const proofReadback = await b2.get(LIVE_PROOF_KEY);
 if (sha256(proofReadback) !== sha256(proof)) {
   throw new Error("B2_GLOBAL_RISK_PROOF_READBACK_INVALID");
 }
+const hotSnapshot = await publishB2VerifiedHotSnapshot({
+  product: "global-risk",
+  value: liveValue,
+  proof: JSON.parse(proof.toString("utf8")),
+});
 
 console.log(JSON.stringify({
   ok: true,
@@ -264,4 +270,7 @@ console.log(JSON.stringify({
   synthetic_history: false,
   synthetic_current_score: false,
   b2_readback_verified: true,
+  d1_hot_snapshot_published: true,
+  d1_payload_sha256: hotSnapshot.payload_sha256,
+  d1_expires_at: hotSnapshot.expires_at,
 }));

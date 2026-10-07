@@ -106,7 +106,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "SELECT version FROM schema_meta WHERE name='control-plane' AND version=1;")"
+          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "SELECT version FROM schema_meta WHERE name='control-plane' AND version>=2;")"
           printf '%s' "$OUT" | grep -q '1' || { echo "D1 schema verification failed"; exit 4; }
 
       - name: Derive domain-separated control-plane token

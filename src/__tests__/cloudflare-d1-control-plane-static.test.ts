@@ -9,6 +9,9 @@ describe("Cloudflare D1 permanent control plane", () => {
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS source_state");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS country_domain_state");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS risk_object_index");
+    expect(schema).toContain("CREATE TABLE IF NOT EXISTS public_b2_hot_snapshot");
+    expect(schema).toContain("source_as_of TEXT NOT NULL");
+    expect(schema).toContain("payload_sha256 TEXT NOT NULL");
     expect(schema).toContain("archive_key TEXT NOT NULL");
     expect(schema).toContain("archive_sha256 TEXT NOT NULL");
     expect(schema).not.toMatch(/raw_payload\s+TEXT/i);
@@ -30,6 +33,18 @@ describe("Cloudflare D1 permanent control plane", () => {
     expect(worker).toContain('value.verified_b2_sha256');
     expect(worker).toContain('value.full_b2_readback_verified !== true');
     expect(worker).toContain('value.exact_gzip_restore_verified !== true');
+  });
+
+  it("stores public hot projections only with current full B2 readback and exact restore proof", () => {
+    const worker = read("workers/control-plane/src/index.mjs");
+    expect(worker).toContain("MAX_HOT_SNAPSHOT_BODY_BYTES = 1024 * 1024");
+    expect(worker).toContain("MAX_HOT_SNAPSHOT_BYTES = 768 * 1024");
+    expect(worker).toContain("proof.full_b2_readback_verified !== true");
+    expect(worker).toContain("proof.exact_gzip_restore_verified !== true");
+    expect(worker).toContain("HOT_SNAPSHOT_PROOF_BINDING_INVALID");
+    expect(worker).toContain("HOT_SNAPSHOT_PAYLOAD_HASH_MISMATCH");
+    expect(worker).toContain("now - sourceAsOfMs > config.maxAgeMs");
+    expect(worker).toContain('parts[1] === "public" && parts[2] === "hot-snapshot"');
   });
 
   it("fails closed when control-plane authentication or D1 is unavailable", () => {

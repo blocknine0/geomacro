@@ -114,8 +114,10 @@ jobs:
           const h=JSON.parse(fs.readFileSync('artifacts/free-tier-public-health.json','utf8'));
           const p=h.public_production||{};
           if (h.ok!==true) throw new Error('PUBLIC_HEALTH_NOT_OK');
-          if (p.serving_authority!=='backblaze-b2') throw new Error('PUBLIC_SERVING_NOT_B2');
+          if (p.serving_authority!=='backblaze-b2-durable-truth-cloudflare-d1-verified-hot') throw new Error('PUBLIC_SERVING_NOT_B2_D1_VERIFIED_HOT');
           if (p.supabase_required_for_serving!==false) throw new Error('PUBLIC_SERVING_REQUIRES_SUPABASE');
+          const hot=Object.values(p.hot_snapshot_serving||{});
+          if (hot.length!==3 || hot.some(proof=>proof?.ok!==true || proof?.serving_store!=='cloudflare-d1')) throw new Error('PUBLIC_B2_D1_HOT_PROOF_MISSING');
           NODE
       - name: Write bounded-footprint proof
         shell: bash

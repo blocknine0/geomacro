@@ -1,4 +1,6 @@
 const MAX_BODY_BYTES = 64 * 1024;
+const MAX_HOT_SNAPSHOT_BODY_BYTES = 1024 * 1024;
+const MAX_HOT_SNAPSHOT_BYTES = 768 * 1024;
 const HASH_RE = /^[0-9a-f]{64}$/;
 const SOURCE_KEY_RE = /^[a-z0-9][a-z0-9_.:-]{1,127}$/;
 const COUNTRY_RE = /^[A-Z]{3}$/;
@@ -9,6 +11,26 @@ const PUBLIC_INTELLIGENCE_OVERLAY_KEY = "public_intelligence_live_observed_v1";
 const PUBLIC_INTELLIGENCE_OVERLAY_SCHEMA = "geomacro.public-intelligence-live-observed.v1";
 const PUBLIC_INTELLIGENCE_OVERLAY_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 const PUBLIC_INTELLIGENCE_OVERLAY_MAX_ROWS = 24;
+const HOT_SNAPSHOT_PRODUCTS = Object.freeze({
+  intelligence: {
+    schema: "geomacro.public-intelligence-live.v1",
+    proofSchema: "geomacro.public-intelligence-live-proof.v1",
+    b2Key: "geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
+    maxAgeMs: 6 * 60 * 60 * 1000,
+  },
+  "global-risk": {
+    schema: "geomacro.public-global-risk-live.v1",
+    proofSchema: "geomacro.public-global-risk-live-proof.v1",
+    b2Key: "geomacro-evidence/v1/live/global-risk/latest.json.gz",
+    maxAgeMs: 90 * 60 * 1000,
+  },
+  "risk-indices": {
+    schema: "geomacro.public-risk-indices-live.v1",
+    proofSchema: "geomacro.public-risk-indices-live-proof.v1",
+    b2Key: "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz",
+    maxAgeMs: 90 * 60 * 1000,
+  },
+});
 
 function json(payload, status = 200) {
   return Response.json(payload, {
@@ -47,11 +69,11 @@ function authorized(request, env) {
   return { ok: true };
 }
 
-async function readJson(request) {
+async function readJson(request, maxBytes = MAX_BODY_BYTES) {
   const declared = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) throw new Error("BODY_TOO_LARGE");
+  if (Number.isFinite(declared) && declared > maxBytes) throw new Error("BODY_TOO_LARGE");
   const raw = await request.text();
-  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) throw new Error("BODY_TOO_LARGE");
+  if (new TextEncoder().encode(raw).byteLength > maxBytes) throw new Error("BODY_TOO_LARGE");
   const parsed = JSON.parse(raw || "{}");
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("INVALID_BODY");
   return parsed;
@@ -221,6 +243,163 @@ async function getPublicIntelligenceOverlay(env) {
     return publicJson({ ok: true, ...overlay });
   } catch {
     return publicJson({ ok: false, error: "D1_UNAVAILABLE" }, 503);
+  }
+}
+
+function validateHotSnapshot(body, product, now = Date.now()) {
+  const config = HOT_SNAPSHOT_PRODUCTS[product];
+  if (!config || !body || typeof body !== "object" || Array.isArray(body)) throw new Error("INVALID_HOT_SNAPSHOT");
+  const value = body.value;
+  const proof = body.proof;
+  if (!value || typeof value !== "object" || Array.isArray(value) || !proof || typeof proof !== "object") {
+    throw new Error("INVALID_HOT_SNAPSHOT");
+  }
+  const payloadJson = JSON.stringify(value);
+  if (new TextEncoder().encode(payloadJson).byteLength > MAX_HOT_SNAPSHOT_BYTES) throw new Error("HOT_SNAPSHOT_TOO_LARGE");
+  const generatedAt = iso(value.generated_at, true);
+  const generatedMs = Date.parse(generatedAt);
+  const sourceAsOf = iso(product === "intelligence" ? proof.current_source_batch_at : proof.snapshot_as_of, true);
+  const sourceAsOfMs = Date.parse(sourceAsOf);
+  if (
+    value.schema !== config.schema ||
+    value.source_project !== "ldpwajisioljyjtojvfx" ||
+    proof.schema !== config.proofSchema ||
+    proof.live_key !== config.b2Key ||
+    !HASH_RE.test(String(proof.compressed_sha256 ?? "")) ||
+    proof.full_b2_readback_verified !== true ||
+    proof.exact_gzip_restore_verified !== true ||
+    proof.generated_at !== generatedAt ||
+    (product === "intelligence" && proof.current_source_id !== "gdelt_v2_events") ||
+    (product !== "intelligence" && (
+      proof.snapshot_id !== value.data?.snapshotId ||
+      Date.parse(String(proof.snapshot_as_of ?? "")) !== Date.parse(String(value.data?.snapshotAsOf ?? ""))
+    )) ||
+    generatedMs > now + 5 * 60_000 ||
+    sourceAsOfMs > now + 5 * 60_000 ||
+    now - sourceAsOfMs > config.maxAgeMs
+  ) throw new Error("HOT_SNAPSHOT_PROOF_BINDING_INVALID");
+
+  const sourceRunId = boundedText(body.source_run_id, 32);
+  if (!/^\d{1,20}$/.test(sourceRunId)) throw new Error("INVALID_HOT_SNAPSHOT_RUN_ID");
+  const payloadSha256 = String(body.payload_sha256 ?? "").trim().toLowerCase();
+  if (!HASH_RE.test(payloadSha256)) throw new Error("INVALID_HASH");
+  return {
+    product,
+    schema: config.schema,
+    generatedAt,
+    sourceAsOf,
+    expiresAt: new Date(sourceAsOfMs + config.maxAgeMs).toISOString(),
+    b2Key: config.b2Key,
+    b2Sha256: String(proof.compressed_sha256),
+    payloadSha256,
+    proofSchema: config.proofSchema,
+    verifiedAt: nowIso(),
+    sourceRunId,
+    payloadJson,
+  };
+}
+
+async function putPublicHotSnapshot(env, product, body) {
+  const row = validateHotSnapshot(body, product);
+  const actualPayloadSha256 = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(row.payloadJson));
+  const actualHex = Array.from(new Uint8Array(actualPayloadSha256), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  if (actualHex !== row.payloadSha256) throw new Error("HOT_SNAPSHOT_PAYLOAD_HASH_MISMATCH");
+  await env.DB.prepare(`
+    INSERT INTO public_b2_hot_snapshot (
+      product, schema_name, generated_at, source_as_of, expires_at, b2_object_key, b2_sha256,
+      payload_sha256, proof_schema, verified_at, source_run_id, payload_json, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(product) DO UPDATE SET
+      schema_name = excluded.schema_name,
+      generated_at = excluded.generated_at,
+      source_as_of = excluded.source_as_of,
+      expires_at = excluded.expires_at,
+      b2_object_key = excluded.b2_object_key,
+      b2_sha256 = excluded.b2_sha256,
+      payload_sha256 = excluded.payload_sha256,
+      proof_schema = excluded.proof_schema,
+      verified_at = excluded.verified_at,
+      source_run_id = excluded.source_run_id,
+      payload_json = excluded.payload_json,
+      updated_at = excluded.updated_at
+  `).bind(
+    row.product, row.schema, row.generatedAt, row.sourceAsOf, row.expiresAt, row.b2Key, row.b2Sha256,
+    row.payloadSha256, row.proofSchema, row.verifiedAt, row.sourceRunId, row.payloadJson, row.verifiedAt,
+  ).run();
+  return json({
+    ok: true,
+    product: row.product,
+    generated_at: row.generatedAt,
+    source_as_of: row.sourceAsOf,
+    expires_at: row.expiresAt,
+    b2_object_key: row.b2Key,
+    b2_sha256: row.b2Sha256,
+    payload_sha256: row.payloadSha256,
+    full_b2_readback_verified: true,
+    exact_gzip_restore_verified: true,
+  });
+}
+
+async function getPublicHotSnapshot(env, product, now = Date.now()) {
+  const config = HOT_SNAPSHOT_PRODUCTS[product];
+  if (!config) return json({ ok: false, error: "HOT_SNAPSHOT_NOT_FOUND" }, 404);
+  try {
+    const row = await env.DB.prepare(`
+      SELECT product, schema_name, generated_at, source_as_of, expires_at, b2_object_key, b2_sha256,
+        payload_sha256, proof_schema, verified_at, source_run_id, payload_json
+      FROM public_b2_hot_snapshot WHERE product = ? LIMIT 1
+    `).bind(product).first();
+    if (!row) return json({ ok: false, error: "HOT_SNAPSHOT_UNAVAILABLE" }, 503);
+    const generatedMs = Date.parse(String(row.generated_at ?? ""));
+    const sourceAsOfMs = Date.parse(String(row.source_as_of ?? ""));
+    const expiresMs = Date.parse(String(row.expires_at ?? ""));
+    const payloadJson = String(row.payload_json ?? "");
+    if (
+      row.product !== product ||
+      row.schema_name !== config.schema ||
+      row.proof_schema !== config.proofSchema ||
+      row.b2_object_key !== config.b2Key ||
+      !HASH_RE.test(String(row.b2_sha256 ?? "")) ||
+      !HASH_RE.test(String(row.payload_sha256 ?? "")) ||
+      !/^\d{1,20}$/.test(String(row.source_run_id ?? "")) ||
+      !Number.isFinite(generatedMs) ||
+      !Number.isFinite(sourceAsOfMs) ||
+      !Number.isFinite(expiresMs) ||
+      generatedMs > now + 5 * 60_000 ||
+      sourceAsOfMs > now + 5 * 60_000 ||
+      now - sourceAsOfMs > config.maxAgeMs ||
+      expiresMs <= now ||
+      expiresMs > sourceAsOfMs + config.maxAgeMs ||
+      expiresMs <= sourceAsOfMs ||
+      new TextEncoder().encode(payloadJson).byteLength > MAX_HOT_SNAPSHOT_BYTES
+    ) return json({ ok: false, error: "HOT_SNAPSHOT_STALE_OR_INVALID" }, 503);
+    let value;
+    try { value = JSON.parse(payloadJson); } catch {
+      return json({ ok: false, error: "HOT_SNAPSHOT_INVALID" }, 503);
+    }
+    const actualPayloadSha256 = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payloadJson));
+    const actualHex = Array.from(new Uint8Array(actualPayloadSha256), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    if (actualHex !== row.payload_sha256 || value?.schema !== config.schema || value?.generated_at !== row.generated_at) {
+      return json({ ok: false, error: "HOT_SNAPSHOT_HASH_MISMATCH" }, 503);
+    }
+    return json({
+      ok: true,
+      product,
+      schema: config.schema,
+      generated_at: row.generated_at,
+      source_as_of: row.source_as_of,
+      expires_at: row.expires_at,
+      b2_object_key: row.b2_object_key,
+      b2_sha256: row.b2_sha256,
+      payload_sha256: row.payload_sha256,
+      proof_schema: row.proof_schema,
+      verified_at: row.verified_at,
+      full_b2_readback_verified: true,
+      exact_gzip_restore_verified: true,
+      payload_json: payloadJson,
+    });
+  } catch {
+    return json({ ok: false, error: "D1_UNAVAILABLE" }, 503);
   }
 }
 
@@ -430,12 +609,19 @@ export default {
     if (request.method === "GET" && url.pathname === "/v1/public/intelligence-overlay") {
       return getPublicIntelligenceOverlay(env);
     }
+    if (request.method === "GET" && parts[0] === "v1" && parts[1] === "public" && parts[2] === "hot-snapshot" && parts.length === 4) {
+      return getPublicHotSnapshot(env, decodeURIComponent(parts[3]));
+    }
 
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
       if (request.method !== "PUT") return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
+      if (parts[0] === "v1" && parts[1] === "hot-snapshot" && parts.length === 3) {
+        const body = await readJson(request, MAX_HOT_SNAPSHOT_BODY_BYTES);
+        return await putPublicHotSnapshot(env, decodeURIComponent(parts[2]), body);
+      }
       const body = await readJson(request);
 
       if (parts[0] === "v1" && parts[1] === "control" && parts.length === 3) {
@@ -456,7 +642,7 @@ export default {
       return json({ ok: false, error: "NOT_FOUND" }, 404);
     } catch (error) {
       const code = error instanceof Error ? error.message : "CONTROL_PLANE_FAILURE";
-      const clientError = /^(BODY_|INVALID_|MISSING_|VALUE_|METADATA_|DURABLE_)/.test(code);
+      const clientError = /^(BODY_|INVALID_|MISSING_|VALUE_|METADATA_|DURABLE_|HOT_SNAPSHOT_)/.test(code);
       if (!clientError) console.error("[control-plane] request failed", code);
       return json({ ok: false, error: clientError ? code : "CONTROL_PLANE_FAILURE" }, clientError ? 400 : 500);
     }

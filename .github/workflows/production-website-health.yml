@@ -200,12 +200,15 @@ jobs:
           fi
           for marker in \
             '"ok":true' \
-            '"serving_authority":"backblaze-b2"' \
+            '"serving_authority":"backblaze-b2-durable-truth-cloudflare-d1-verified-hot"' \
             '"supabase_required_for_serving":false' \
             '"b2_runtime_configured":true' \
             '"intelligence_ready":true' \
+            '"global_risk_ready":true' \
             '"risk_indices_ready":true' \
-            '"risk_verification_status":"verified"'
+            '"risk_verification_status":"verified"' \
+            '"hot_snapshot_serving"' \
+            '"serving_store":"cloudflare-d1"'
           do
             grep -Fq "$marker" "$body"
           done
@@ -229,7 +232,7 @@ jobs:
           if (
             body?.ok!==true ||
             body?.store!=='d1' ||
-            Number(body?.schema_version)<1 ||
+            Number(body?.schema_version)<2 ||
             body?.durable_payload_store!=='b2' ||
             body?.commerce_ledger!=='durable_object'
           ) {
@@ -279,6 +282,10 @@ jobs:
           global_code="$(curl -sS -D "$global_headers" -o "$global_edge" -w '%{http_code}' --max-time 20 "$GLOBAL_RISK_EDGE_URL")"
           test "$global_code" = "200" || { echo "Global Risk edge HTTP $global_code"; cat "$global_edge"; exit 1; }
           grep -qi '^x-geomacro-authority: backblaze-b2-verified-edge' "$global_headers"
+          grep -qi '^x-geomacro-serving-store: cloudflare-d1' "$global_headers"
+          grep -qi '^x-geomacro-b2-verification: full-readback-hash-exact-restore' "$global_headers"
+          grep -Eqi '^x-geomacro-b2-sha256: [0-9a-f]{64}' "$global_headers"
+          grep -Eqi '^x-geomacro-d1-payload-sha256: [0-9a-f]{64}' "$global_headers"
           grep -Fq '"schema":"geomacro.public-global-risk-live.v1"' "$global_edge"
 
           indices_edge="$(mktemp)"
@@ -286,6 +293,10 @@ jobs:
           indices_code="$(curl -sS -D "$indices_headers" -o "$indices_edge" -w '%{http_code}' --max-time 20 "$RISK_INDICES_EDGE_URL")"
           test "$indices_code" = "200" || { echo "Risk Indices edge HTTP $indices_code"; cat "$indices_edge"; exit 1; }
           grep -qi '^x-geomacro-authority: backblaze-b2-risk-indices-edge' "$indices_headers"
+          grep -qi '^x-geomacro-serving-store: cloudflare-d1' "$indices_headers"
+          grep -qi '^x-geomacro-b2-verification: full-readback-hash-exact-restore' "$indices_headers"
+          grep -Eqi '^x-geomacro-b2-sha256: [0-9a-f]{64}' "$indices_headers"
+          grep -Eqi '^x-geomacro-d1-payload-sha256: [0-9a-f]{64}' "$indices_headers"
           grep -Fq '"schema":"geomacro.public-risk-indices-live.v1"' "$indices_edge"
 
           if cmp -s "$global_edge" "$indices_edge"; then
@@ -603,16 +614,18 @@ jobs:
             production_health:{
               b2_serving_verified:
                 publicHealth?.ok===true &&
-                b2?.serving_authority==='backblaze-b2' &&
+                b2?.serving_authority==='backblaze-b2-durable-truth-cloudflare-d1-verified-hot' &&
                 b2?.supabase_required_for_serving===false &&
                 b2?.b2_runtime_configured===true &&
                 b2?.intelligence_ready===true &&
                 b2?.global_risk_ready===true &&
-                b2?.risk_indices_ready===true,
+                b2?.risk_indices_ready===true &&
+                Object.values(b2?.hot_snapshot_serving??{}).length===3 &&
+                Object.values(b2?.hot_snapshot_serving??{}).every(proof=>proof.ok&&proof.serving_store==='cloudflare-d1'),
               d1_serving_verified:
                 d1?.ok===true &&
                 d1?.store==='d1' &&
-                Number(d1?.schema_version)>=1 &&
+                Number(d1?.schema_version)>=2 &&
                 d1?.durable_payload_store==='b2' &&
                 d1?.commerce_ledger==='durable_object',
               d1_unauthenticated_write_rejected:denied?.ok===false&&denied?.error==='UNAUTHORIZED',

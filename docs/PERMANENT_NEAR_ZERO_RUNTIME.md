@@ -39,7 +39,7 @@ Cloudflare Workers
                public continuity packages
 ```
 
-The existing B2 public-serving path remains authoritative. The existing Durable Object commerce ledger remains authoritative for payment replay/idempotency. D1 fills the remaining role currently held by Supabase hot/control tables.
+Backblaze B2 remains durable truth. After a successful B2 write plus full readback/hash/exact-restore verification, the publisher may copy a bounded derived public projection into D1 for hot serving. The D1 row carries the B2 key/hash, its own payload hash, proof contract, actual source-as-of time and a fixed source-native expiry; edge readers recheck the hash and expiry and fail closed when invalid or stale. D1 does not become a second truth. The existing Durable Object commerce ledger remains authoritative for payment replay/idempotency.
 
 ## What D1 MUST NOT contain
 
@@ -53,7 +53,7 @@ D1 is not an archive. The following remain in B2:
 - large logs;
 - duplicate durable copies of B2 payloads.
 
-D1 may contain hashes, B2 object keys, compact counters/statuses, timestamps and small metadata needed to operate the system.
+The only serving-copy exception is a bounded, already-public derived projection (Intelligence, Global Risk or Risk Indices) whose exact payload hash is tied to a successfully readback-verified B2 object. It expires at its source-native deadline and is not used as archival truth. D1 may also contain hashes, B2 object keys, compact counters/statuses, timestamps and small metadata needed to operate the system.
 
 ## Why this can stay cheap
 
@@ -86,7 +86,7 @@ Pricing can change. Operational acceptance must use current provider pricing/lim
 11. Never delete `storage.objects` through SQL.
 12. Never delete an unverified B2/Supabase payload during migration.
 
-## D1 v1 datasets
+## D1 control-plane datasets
 
 ### `source_state`
 Compact current certification/rights/endpoint/schema/freshness/provenance/independence/runtime/fallback state for a source.
@@ -103,6 +103,9 @@ Small freshness/ingestion/archive cursors and timestamps.
 ### `control_state`
 Versioned small operational configuration/state only.
 
+### `public_b2_hot_snapshot`
+One replaceable bounded public projection per Intelligence, Global Risk and Risk Indices. The writer requires the matching B2 object key, compressed-object SHA, full readback and exact gzip-restore proof, plus an exact SHA of the serving JSON. Reads enforce the source timestamp and expiry (6 hours for the GDELT-backed Intelligence snapshot; 90 minutes for Global Risk and Risk Indices). An absent, tampered or expired projection is unavailable; it never authorizes fallback to Supabase or synthetic data.
+
 ### `migration_cursor`
 Parity/checksum evidence for each migrated dataset.
 
@@ -112,7 +115,7 @@ Do not move the existing commerce ledger into D1. It already uses a SQLite-backe
 
 ## Cost-control rules
 
-- B2 is the only bulk durable store.
+- B2 is the only bulk durable store; D1 hot projections remain bounded and replaceable.
 - D1 queries must be indexed and bounded.
 - No unbounded history scans from customer requests.
 - Public reads should prefer B2 continuity packages/cache instead of D1 row fan-out.
