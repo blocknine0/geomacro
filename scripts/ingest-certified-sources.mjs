@@ -253,7 +253,8 @@ async function archiveVerifiedFragment(sourceId, rows) {
   if (
     storageVerification.sha256 !== compressedSha256 ||
     storageVerification.bytes !== fragment.compressed.length ||
-    storageVerification.verification_mode !== "signed-put-head-metadata"
+    storageVerification.verification_mode !== "signed-put-full-readback-sha256" ||
+    storageVerification.full_body_readback_verified !== true
   ) {
     throw new Error(`B2_FRAGMENT_METADATA_VERIFICATION_MISMATCH:${sourceId}`);
   }
@@ -271,7 +272,7 @@ async function archiveVerifiedFragment(sourceId, rows) {
       verification_mode: storageVerification.verification_mode,
       storage_metadata_verified: true,
       local_restore_verified: true,
-      full_body_readback_verified: false,
+      full_body_readback_verified: true,
       contains_normalized_observations: true,
     },
   };
@@ -302,8 +303,8 @@ async function archiveSourceBatch(sourceId, rows) {
     compression_ratio: Number((compressedBytes / Math.max(1, uncompressedBytes)).toFixed(6)),
     b2_storage_metadata_verified: true,
     b2_local_restore_verified: true,
-    b2_full_body_readback_verified: false,
-    verification_mode: "signed-put-head-metadata",
+    b2_full_body_readback_verified: true,
+    verification_mode: "signed-put-full-readback-sha256",
     normalized_observations_durable_in_b2: true,
     supabase_dependency: false,
     supabase_mirror_attempted: false,
@@ -340,8 +341,8 @@ const checkpointSql = summaries.map((summary) => {
     compression_ratio: summary.compression_ratio,
     b2_storage_metadata_verified: true,
     b2_local_restore_verified: true,
-    b2_full_body_readback_verified: false,
-    verification_mode: "signed-put-head-metadata",
+    b2_full_body_readback_verified: true,
+    verification_mode: "signed-put-full-readback-sha256",
     normalized_observations_durable_in_b2: true,
     supabase_dependency: false,
   });
