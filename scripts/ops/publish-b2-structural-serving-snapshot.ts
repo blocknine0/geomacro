@@ -8,7 +8,7 @@ const HISTORICAL_URL = "https://nqvpcbnnvjsrlvyxxevk.supabase.co";
 const HISTORICAL_PROJECT_REF = "nqvpcbnnvjsrlvyxxevk";
 const ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const BUCKET = "geomacro-private-archive";
-const LIVE_PREFIX = "geomacro-evidence/v1/live/structural/serving";
+const LIVE_PREFIX = "geomacro-evidence/v1/structural/serving";
 const SNAPSHOT_KEY = `${LIVE_PREFIX}/latest.json.gz`;
 const PROOF_KEY = `${LIVE_PREFIX}/latest-proof.json`;
 const PAGE_SIZE = 500;
@@ -376,8 +376,11 @@ if (!packed.length || packed.length > MAX_COMPRESSED_BYTES) {
 const digest = sha256(packed);
 const stagingKey = `${LIVE_PREFIX}/staging/${digest}.json.gz`;
 
-// Fail closed before touching the canonical live object. The exact bytes are
-// first written to a non-serving staging key and independently read back.
+// Fail closed before touching the canonical serving object. The exact bytes are
+// first written to a non-serving staging key and independently read back. The
+// namespace intentionally stays under the long-lived permissions-compatible
+// structural/serving prefix; proof v2, staging readback and hash binding—not a
+// path rename—define the canonical serving boundary.
 await b2.put(stagingKey, packed);
 const stagingReadback = await b2.get(stagingKey);
 if (stagingReadback.length !== packed.length || sha256(stagingReadback) !== digest) {
