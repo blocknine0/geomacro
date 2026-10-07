@@ -104,7 +104,7 @@ async function buildContinuityResponse() {
     continuity?.product !== "global-risk" ||
     continuity?.b2_readback_verified !== true ||
     continuity?.projection !== "exact-public-package" ||
-    !/^\\d+$/.test(String(continuity?.source_run_id ?? "")) ||
+    !/^\d+$/.test(String(continuity?.source_run_id ?? "")) ||
     !/^[0-9a-f]{64}$/.test(String(continuity?.source_live_sha256 ?? "")) ||
     !/^[0-9a-f]{64}$/.test(String(continuity?.payload_sha256 ?? "")) ||
     typeof continuity?.payload_json !== "string"
