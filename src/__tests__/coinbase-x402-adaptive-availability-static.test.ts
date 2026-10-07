@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const availabilityRoute = fs.readFileSync("src/routes/api.x402.risk_.availability.ts", "utf8");
-const paidRoute = fs.readFileSync("src/routes/api.x402.intelligence.ts", "utf8");
+const paidRoute = fs.readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts", "utf8");
 
 describe("Coinbase x402 adaptive availability boundary", () => {
   it("uses deterministic planning and governed deliverability before payment", () => {
