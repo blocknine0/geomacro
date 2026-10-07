@@ -6,6 +6,10 @@ const canonicalRoute = readFileSync(
   "src/routes/api.v1.intelligence_.query.ts",
   "utf8",
 );
+const sharedEndpoint = readFileSync(
+  "src/lib/mainnet-intelligence-endpoint.server.ts",
+  "utf8",
+);
 const legacyRoute = readFileSync(
   "src/routes/api.x402.intelligence.ts",
   "utf8",
@@ -29,14 +33,15 @@ describe("Geomacro Mainnet Intelligence API v1", () => {
   it("mounts the canonical endpoint on the exact same handler as the legacy x402 alias", () => {
     expect(canonicalRoute).toContain("CANONICAL_MAINNET_INTELLIGENCE_PATH");
     expect(canonicalRoute).toContain("mainnetIntelligenceHandlers");
-    expect(legacyRoute).toContain(
+    expect(sharedEndpoint).toContain(
       'export const CANONICAL_MAINNET_INTELLIGENCE_PATH = "/api/v1/intelligence/query"',
     );
-    expect(legacyRoute).toContain(
+    expect(sharedEndpoint).toContain(
       'export const LEGACY_X402_INTELLIGENCE_PATH = "/api/x402/intelligence"',
     );
-    expect(legacyRoute).toContain("export const mainnetIntelligenceHandlers");
-    expect(legacyRoute).toContain("handlers: mainnetIntelligenceHandlers");
+    expect(sharedEndpoint).toContain("export const mainnetIntelligenceHandlers");
+    expect(legacyRoute).toContain("mainnetIntelligenceHandlers");
+    expect(legacyRoute).toContain('createFileRoute("/api/x402/intelligence")');
   });
 
   it("keeps canonical v1 behind the same fail-closed real-funds security class", () => {
@@ -69,7 +74,7 @@ describe("Geomacro Mainnet Intelligence API v1", () => {
       "claimCoinbaseX402Delivery",
       "completeCoinbaseX402Delivery",
     ]) {
-      expect(legacyRoute).toContain(marker);
+      expect(sharedEndpoint).toContain(marker);
     }
   });
 });
