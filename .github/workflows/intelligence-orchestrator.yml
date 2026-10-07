@@ -19,6 +19,7 @@ on:
       - "scripts/lib/d1-control-plane-state.mjs"
       - "scripts/lib/d1-orchestrator-supabase-shim.mjs"
       - "scripts/ops/supabase-free-tier-budget.mjs"
+      - "scripts/ops/phase-a-runtime-freshness-repair.mjs"
       - "scripts/sync-country-raw-source-mesh.mjs"
       - "scripts/ops/run-intelligence-current-scoring-cycle.mjs"
       - "scripts/ops/sync-fastlane-scored-intelligence.mjs"
@@ -195,14 +196,14 @@ jobs:
             esac
           else
             # Supabase REST/Storage is optional for the scheduler. When the
-            # free-tier budget is restricted, keep only explicitly classified
-            # direct-Postgres-safe tasks alive. Storage/B2-readback-heavy lanes
+            # free-tier budget is restricted, keep only fixed-cardinality
+            # source-heartbeat/read-only tasks alive. Event/raw/scoring writers
             # remain fail-closed and cannot be re-enabled by an allowlist.
             echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=false" >> "$GITHUB_ENV"
             echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=false" >> "$GITHUB_ENV"
             echo "GEOMACRO_SUPABASE_RESTRICTED_MODE=true" >> "$GITHUB_ENV"
-            echo '{"ok":false,"transport":"restricted_direct_postgres","policy":{"recurring_ingest_allowed":false,"restricted_direct_postgres_safe_tasks":true}}' > supabase-budget.json
-            echo "Supabase restricted: D1 heartbeat plus explicitly classified direct-Postgres-safe ingestion remains live; Storage/B2-heavy writers are fail-closed."
+            echo '{"ok":false,"transport":"restricted_direct_postgres","policy":{"recurring_ingest_allowed":false,"fixed_cardinality_source_heartbeat_allowed":true}}' > supabase-budget.json
+            echo "Supabase restricted: D1 plus fixed-cardinality source heartbeat/read-only readiness remain live; event/raw/scoring writers are fail-closed."
           fi
 
       - name: Derive current public verification key
