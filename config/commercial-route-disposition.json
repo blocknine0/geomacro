@@ -78,8 +78,8 @@
       "status": "REMOVED"
     },
     "/pipeline": {
-      "classification": "EXPERIMENTAL",
-      "status": "TECHNICAL_PROOF"
+      "classification": "REMOVE",
+      "status": "REMOVED"
     },
     "/portfolio": {
       "classification": "REMOVE",
