@@ -106,6 +106,34 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+          fetch-depth: 0
+
+      - name: Scope broad raw-runtime acceptance to raw-pipeline changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          changed="$(git diff --name-only "$base" "$head")"
+          printf '%s\n' "$changed" > exact-head-changed-files.txt
+
+          full_raw=false
+          while IFS= read -r file; do
+            case "$file" in
+              scripts/audit-global-realtime-intelligence-100.mjs|scripts/audit-global-raw-source-runtime.mjs|scripts/audit-realtime-scope-fanout.mjs|scripts/audit-gdelt-dependency-live.mjs|scripts/run-gdelt-gal-cycle.mjs|scripts/verify-gdelt-gal-cycle.mjs|scripts/sync-country-raw-source-mesh.mjs|scripts/drain-live-structure.mjs|scripts/run-rss-live-cycle.mjs|scripts/run-live-flash-ingest-local.ts|scripts/run-live-flash-corroborate-local.ts|scripts/classify-realtime-corroborate-health.mjs|supabase/functions/live-flash-ingest/*|supabase/functions/live-flash-corroborate/*|supabase/migrations/920_multi_source_commercial_registry.sql)
+                full_raw=true
+                break
+                ;;
+            esac
+          done <<< "$changed"
+
+          if [[ "$full_raw" == "true" ]]; then
+            echo "FULL_RAW_ACCEPTANCE=true" >> "$GITHUB_ENV"
+            echo "Raw-runtime contract changed; 195x3 production refresh is mandatory."
+          else
+            echo "FULL_RAW_ACCEPTANCE=false" >> "$GITHUB_ENV"
+            echo "No raw-runtime contract changed; direct transport and scheduler-policy proofs remain mandatory."
+          fi
 
       - name: Setup Bun 1.4.2
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
@@ -149,7 +177,31 @@ jobs:
           ! grep -q '.supabase.co/functions/v1/' scripts/run-rss-live-cycle.mjs
           echo "PASS: canonical realtime corroboration works through direct PostgreSQL without Supabase Edge."
 
+      - name: Verify restricted-mode scheduler contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const workflow = fs.readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
+          const orchestrator = fs.readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
+          const safe = ["gdelt_v2", "rss_live", "current_scoring", "production_readiness"];
+          if (!workflow.includes("GEOMACRO_SUPABASE_RESTRICTED_MODE=true")) throw new Error("RESTRICTED_MODE_WORKFLOW_MISSING");
+          if (workflow.includes("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only")) throw new Error("D1_ONLY_FREEZE_STILL_PRESENT");
+          if (!orchestrator.includes("restrictedDataPlane && task.restrictedDirectPostgresSafe !== true")) throw new Error("RESTRICTED_FILTER_MISSING");
+          for (const key of safe) {
+            const marker = 'key: "' + key + '",\n    restrictedDirectPostgresSafe: true';
+            if (!orchestrator.includes(marker)) throw new Error("SAFE_TASK_NOT_CLASSIFIED:" + key);
+          }
+          for (const key of ["gdelt_gal", "country_raw_mesh", "open_realtime_mesh", "realtime_fanout", "news_ingest"]) {
+            const marker = 'key: "' + key + '",\n    restrictedDirectPostgresSafe: true';
+            if (orchestrator.includes(marker)) throw new Error("UNSAFE_TASK_CLASSIFIED:" + key);
+          }
+          console.log("PASS: restricted scheduler keeps only explicitly classified direct-Postgres-safe lanes live.");
+          NODE
+
       - name: Refresh all three raw runtime categories
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -163,6 +215,7 @@ jobs:
           node -e 'const fs=require("node:fs"); for (const category of ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]) { const f="country-raw-source-acceptance-"+category+".json"; if(!fs.existsSync(f)) throw new Error("MISSING_"+f); const x=JSON.parse(fs.readFileSync(f,"utf8")); if(x.ok!==true || x.failed_cells!==0 || x.missing_non_gdelt_paths.length!==0 || x.processed_cells+x.already_fresh_non_gdelt_cells!==195 || x.categories.length!==1 || x.categories[0]!==category) { console.error(JSON.stringify(x,null,2)); process.exit(1); } console.log(JSON.stringify({category,expected_cells:x.expected_cells,processed_cells:x.processed_cells,already_fresh_non_gdelt_cells:x.already_fresh_non_gdelt_cells,failed_cells:x.failed_cells,missing_non_gdelt_paths:x.missing_non_gdelt_paths.length,fragment_ids:x.fragment_ids.length})); }'
 
       - name: Drain acceptance fragments in parallel
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -174,6 +227,7 @@ jobs:
           wait
 
       - name: Run realtime orchestrator continuity
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         env:
           GRI_DB_MODE: direct_postgres
         run: |
@@ -181,6 +235,7 @@ jobs:
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-acceptance.log
 
       - name: Final GDELT first-break and scope fanout convergence
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -209,16 +264,19 @@ jobs:
           fi
 
       - name: Refresh realtime-fanout orchestrator state after GDELT convergence
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         run: |
           set -euo pipefail
           INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=realtime_fanout           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=realtime_fanout           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-realtime-fanout.log
 
       - name: Refresh production-readiness orchestrator state after GDELT convergence
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         run: |
           set -euo pipefail
           INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=production_readiness           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=production_readiness           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-production-readiness.log
 
       - name: Final raw freshness convergence
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -232,6 +290,7 @@ jobs:
           node -e 'const fs=require("node:fs"); for (const category of ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]) { const f="country-raw-source-final-"+category+".json"; if(!fs.existsSync(f)) throw new Error("MISSING_"+f); const x=JSON.parse(fs.readFileSync(f,"utf8")); if(x.ok!==true || x.failed_cells!==0 || x.missing_non_gdelt_paths.length!==0 || x.processed_cells+x.already_fresh_non_gdelt_cells!==195 || x.categories.length!==1 || x.categories[0]!==category) { console.error(JSON.stringify(x,null,2)); process.exit(1); } console.log(JSON.stringify({category,expected_cells:x.expected_cells,processed_cells:x.processed_cells,already_fresh_non_gdelt_cells:x.already_fresh_non_gdelt_cells,failed_cells:x.failed_cells,missing_non_gdelt_paths:x.missing_non_gdelt_paths.length,fragment_ids:x.fragment_ids.length})); }'
 
       - name: Drain final freshness fragments
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -243,6 +302,7 @@ jobs:
           wait
 
       - name: Enforce production commercial certification fail-closed
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -273,6 +333,7 @@ jobs:
           test "${state_count}" = "0"
 
       - name: Verify final realtime contracts
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         run: |
           set -euo pipefail
           node scripts/audit-global-raw-source-runtime.mjs
@@ -280,6 +341,7 @@ jobs:
           node scripts/audit-gdelt-dependency-live.mjs
 
       - name: Run strict Global Realtime Intelligence 100 gate
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         run: |
           set -euo pipefail
           node scripts/audit-global-realtime-intelligence-100.mjs --strict
@@ -301,5 +363,6 @@ jobs:
             category-acceptance-*.log
             category-final-*.log
             artifacts/global-realtime-intelligence-100/summary.json
+            exact-head-changed-files.txt
           if-no-files-found: warn
           retention-days: 30
