@@ -4,7 +4,6 @@ import {
   DEMO_ACTION_TYPES,
   DEMO_POLICY_PRESETS,
 } from "./agentic-demo-contract";
-import { testnetPaymentProofSchema } from "./testnet-intelligence-contract";
 
 export const GEOMACRO_A2A_PROTOCOL_VERSION = "1.0" as const;
 export const GEOMACRO_A2A_AGENT_VERSION = "geomacro-a2a-v1" as const;
@@ -39,7 +38,6 @@ export const a2aRiskPreflightInputSchema = z
     policy_preset: z.enum(DEMO_POLICY_PRESETS).default("balanced"),
     action_type: z.enum(DEMO_ACTION_TYPES).default("agent_payment"),
     amount_usdc: z.number().finite().positive().max(1_000_000_000).optional(),
-    payment: testnetPaymentProofSchema.optional(),
   })
   .superRefine((value, ctx) => {
     if (
@@ -145,12 +143,6 @@ export function geomacroA2AAgentCard(origin = "https://geomacro.live") {
   const normalized = origin.replace(/\/$/, "");
   const securityRequirements = [
     { schemes: { geomacroBearer: emptyScopes } },
-    {
-      schemes: {
-        geomacroTestnetKey: emptyScopes,
-        geomacroTestnetSecret: emptyScopes,
-      },
-    },
   ] as const;
 
   return {
@@ -183,21 +175,7 @@ export function geomacroA2AAgentCard(origin = "https://geomacro.live") {
           description: "Geomacro commercial API bearer credential.",
         },
       },
-      geomacroTestnetKey: {
-        apiKeySecurityScheme: {
-          location: "header",
-          name: "X-Geomacro-Api-Key",
-          description: "Geomacro Testnet developer API key.",
-        },
-      },
-      geomacroTestnetSecret: {
-        apiKeySecurityScheme: {
-          location: "header",
-          name: "X-Geomacro-Api-Secret",
-          description:
-            "Geomacro Testnet developer API secret. Required together with the Testnet API key.",
-        },
-      },
+
     },
     securityRequirements,
     defaultInputModes: ["application/json", "text/plain"],
