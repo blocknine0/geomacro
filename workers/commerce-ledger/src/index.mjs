@@ -87,6 +87,8 @@ function claimResponse(record, disposition, claimToken = null) {
     claim_token: claimToken,
     response_payload: disposition === "REPLAY" ? record?.responsePayload ?? null : disposition === "CLAIMED" ? record?.responsePayload ?? null : null,
     response_sha256: record?.responseSha256 ?? null,
+    request_fingerprint: record?.requestFingerprint ?? null,
+    product_id: record?.productId ?? null,
     settlement_reference: record?.settlementReference ?? null,
     settlement_network: record?.settlementNetwork ?? null,
   };
