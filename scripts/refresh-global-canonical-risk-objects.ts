@@ -1,7 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { classifyGlobalEntity } from "../src/lib/global-entity-classification";
-import { publishCountryRiskObject } from "../src/lib/country-risk-publisher.server";
+import {
+  primeCanonicalBatchPreviousRiskObjects,
+  publishCountryRiskObject,
+} from "../src/lib/country-risk-publisher.server";
 import { verifyCommercialRiskObjectArtifact } from "../src/lib/commercial-risk-object-policy";
 import { verifyRiskObjectSignature } from "../src/lib/risk-object-signing.server";
 import { createGriDbClient } from "./lib/gri-db-client.mjs";
@@ -201,6 +204,14 @@ async function main() {
       `Enabled country-like denominator regression: ${countries.length} < ${MIN_COUNTRY_LIKE_DENOMINATOR}`,
     );
   }
+
+  const baselinePrime = await primeCanonicalBatchPreviousRiskObjects(asOf);
+  console.log(JSON.stringify({
+    schema: "geomacro.canonical-batch-baseline-prime.v1",
+    hot_previous_objects_loaded: baselinePrime.loaded,
+    hot_previous_rows_scanned: baselinePrime.scanned,
+    b2_archive_reads_for_previous_baseline: 0,
+  }));
 
   const results = new Array<Awaited<ReturnType<typeof refreshCountry>>>(countries.length);
   let cursor = 0;
