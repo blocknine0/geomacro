@@ -212,7 +212,7 @@ jobs:
           set -euo pipefail
           file="scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs"
           grep -q 'COINBASE_X402_ADAPTIVE_BASE_SEPOLIA_USDC' "$file"
-          grep -q 'https://geomacro.live/api/x402/intelligence' "$file"
+          grep -q 'https://geomacro.live/api/v1/intelligence/query' "$file"
           grep -q 'https://geomacro.live/api/x402/risk/availability' "$file"
           grep -q 'EXPECTED_AMOUNT_ATOMIC = 50_000n' "$file"
           grep -q 'duplicate_charge_count: 0' "$file"
