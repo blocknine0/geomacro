@@ -301,6 +301,12 @@ export function createB2Client({
           } catch (nativeCause) {
             const nativeMessage =
               nativeCause instanceof Error ? nativeCause.message : "B2_NATIVE_READ_FAILED";
+            if (nativeMessage === "B2_NATIVE_GET_FAILED_403_download_cap_exceeded") {
+              throw new Error("B2_DOWNLOAD_CAP_EXCEEDED");
+            }
+            if (nativeMessage === "B2_NATIVE_GET_FAILED_403_transaction_cap_exceeded") {
+              throw new Error("B2_TRANSACTION_CAP_EXCEEDED");
+            }
             if (credential.role !== "primary") {
               lastDedicatedNativeError = new Error(
                 /^[A-Z0-9_:-]+$/.test(nativeMessage)
@@ -321,7 +327,10 @@ export function createB2Client({
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : String(cause);
         const explicitHttpFailure = /^B2_(PUT|GET)_FAILED_\d+_[A-Za-z0-9_.:-]+$/.test(message);
-        if (explicitHttpFailure || message === "B2_REQUEST_BUDGET_EXHAUSTED" || attempt === MAX_ATTEMPTS) throw cause;
+        const hardCapFailure =
+          message === "B2_DOWNLOAD_CAP_EXCEEDED" ||
+          message === "B2_TRANSACTION_CAP_EXCEEDED";
+        if (explicitHttpFailure || hardCapFailure || message === "B2_REQUEST_BUDGET_EXHAUSTED" || attempt === MAX_ATTEMPTS) throw cause;
       }
 
       await sleep(500 * 2 ** (attempt - 1));
