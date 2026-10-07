@@ -8,6 +8,7 @@ const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
 const MAX_ATTEMPTS = 4;
 const DEFAULT_ALLOWED_PREFIXES = Object.freeze(["geomacro-evidence/v1/"]);
 const EXTRA_ALLOWED_PREFIXES = Object.freeze(new Set(["telegram/leads/"]));
+const B2_NATIVE_AUTHORIZE_URL = "https://api.backblazeb2.com/b2api/v4/b2_authorize_account";
 
 function safeB2ErrorCode(text) {
   const source = String(text ?? "");
@@ -110,6 +111,125 @@ export function createB2Client({
   const allowedPrefixes = normalizeAllowedPrefixes(allowedKeyPrefixes);
   const requestBudget = parseRequestBudget();
   let requestsStarted = 0;
+  let nativeReadFallbackAttempts = 0;
+  let nativeReadFallbackSuccesses = 0;
+  const nativeReadAuthCache = new Map();
+
+  function nativeCredentialFingerprint(credential) {
+    return `${credential.accessKey}\u0000${credential.secretKey}`;
+  }
+
+  async function authorizeNativeRead(credential) {
+    const fingerprint = nativeCredentialFingerprint(credential);
+    if (nativeReadAuthCache.has(fingerprint)) return nativeReadAuthCache.get(fingerprint);
+
+    const promise = (async () => {
+      const authHeader = Buffer.from(`${credential.accessKey}:${credential.secretKey}`, "utf8").toString("base64");
+      let response;
+      try {
+        response = await fetch(B2_NATIVE_AUTHORIZE_URL, {
+          method: "GET",
+          headers: { Authorization: `Basic ${authHeader}` },
+          signal: AbortSignal.timeout(60_000),
+        });
+      } catch {
+        throw new Error("B2_NATIVE_AUTHORIZE_NETWORK_FAILED");
+      }
+
+      if (!response.ok) {
+        const responseText = await response.text().catch(() => "");
+        throw new Error(`B2_NATIVE_AUTHORIZE_FAILED_${response.status}_${safeB2ErrorCode(responseText)}`);
+      }
+
+      let payload;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new Error("B2_NATIVE_AUTHORIZE_RESPONSE_INVALID");
+      }
+
+      const storage = payload?.apiInfo?.storageApi;
+      const token = String(payload?.authorizationToken ?? "").trim();
+      const downloadUrl = String(storage?.downloadUrl ?? "").trim();
+      const capabilities = Array.isArray(storage?.allowed?.capabilities)
+        ? storage.allowed.capabilities.map((value) => String(value))
+        : [];
+      const allowedBuckets = Array.isArray(storage?.allowed?.buckets)
+        ? storage.allowed.buckets
+            .map((entry) => String(entry?.name ?? "").trim())
+            .filter(Boolean)
+        : [];
+      const namePrefix = String(storage?.allowed?.namePrefix ?? "").trim();
+
+      if (!token || !downloadUrl) throw new Error("B2_NATIVE_AUTHORIZE_RESPONSE_INVALID");
+      if (!capabilities.includes("readFiles")) throw new Error("B2_NATIVE_READ_CAPABILITY_MISSING");
+      if (allowedBuckets.length && !allowedBuckets.includes(bucket)) {
+        throw new Error("B2_NATIVE_READ_BUCKET_NOT_ALLOWED");
+      }
+
+      let download;
+      try {
+        download = new URL(downloadUrl);
+      } catch {
+        throw new Error("B2_NATIVE_DOWNLOAD_URL_INVALID");
+      }
+      if (
+        download.protocol !== "https:" ||
+        !/(^|\.)backblazeb2\.com$/i.test(download.hostname)
+      ) {
+        throw new Error("B2_NATIVE_DOWNLOAD_URL_INVALID");
+      }
+
+      return {
+        token,
+        downloadUrl: download.origin,
+        namePrefix,
+      };
+    })();
+
+    nativeReadAuthCache.set(fingerprint, promise);
+    try {
+      return await promise;
+    } catch (error) {
+      nativeReadAuthCache.delete(fingerprint);
+      throw error;
+    }
+  }
+
+  async function nativeRead(credential, key, { allowNotFound = false } = {}) {
+    nativeReadFallbackAttempts += 1;
+    const auth = await authorizeNativeRead(credential);
+    if (auth.namePrefix && !key.startsWith(auth.namePrefix)) {
+      throw new Error("B2_NATIVE_READ_PREFIX_NOT_ALLOWED");
+    }
+
+    const nativePath = `/file/${encodeURIComponent(bucket)}/${key
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/")}`;
+    let response;
+    try {
+      response = await fetch(`${auth.downloadUrl}${nativePath}`, {
+        method: "GET",
+        headers: { Authorization: auth.token },
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch {
+      throw new Error("B2_NATIVE_GET_NETWORK_FAILED");
+    }
+
+    if (response.ok) {
+      nativeReadFallbackSuccesses += 1;
+      return Buffer.from(await response.arrayBuffer());
+    }
+
+    const responseText = await response.text().catch(() => "");
+    const errorCode = safeB2ErrorCode(responseText);
+    if (allowNotFound && response.status === 404 && errorCode === "not_found") {
+      return null;
+    }
+    throw new Error(`B2_NATIVE_GET_FAILED_${response.status}_${errorCode}`);
+  }
 
   async function request(method, key, body = Buffer.alloc(0), { allowNotFound = false } = {}) {
     const normalizedKey = String(key ?? "");
@@ -132,6 +252,7 @@ export function createB2Client({
         : [{ accessKey, secretKey, role: "primary" }];
 
     let lastAccessDenied = null;
+    let lastDedicatedNativeError = null;
     for (let credentialIndex = 0; credentialIndex < credentialCandidates.length; credentialIndex++) {
       const credential = credentialCandidates[credentialIndex];
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -173,11 +294,26 @@ export function createB2Client({
         if (
           method === "GET" &&
           result.status === 403 &&
-          errorCode === "AccessDenied" &&
-          credentialIndex < credentialCandidates.length - 1
+          errorCode === "AccessDenied"
         ) {
-          lastAccessDenied = new Error(`B2_GET_FAILED_403_AccessDenied_${credential.role}`);
-          break;
+          try {
+            return await nativeRead(credential, normalizedKey, { allowNotFound });
+          } catch (nativeCause) {
+            const nativeMessage =
+              nativeCause instanceof Error ? nativeCause.message : "B2_NATIVE_READ_FAILED";
+            if (credential.role !== "primary") {
+              lastDedicatedNativeError = new Error(
+                /^[A-Z0-9_:-]+$/.test(nativeMessage)
+                  ? nativeMessage
+                  : "B2_NATIVE_READ_FAILED",
+              );
+            }
+            if (credentialIndex < credentialCandidates.length - 1) {
+              lastAccessDenied = new Error(`B2_GET_FAILED_403_AccessDenied_${credential.role}`);
+              break;
+            }
+            throw lastDedicatedNativeError ?? nativeCause;
+          }
         }
         if (!TRANSIENT_STATUSES.has(result.status) || attempt === MAX_ATTEMPTS) {
           throw new Error(`B2_${method}_FAILED_${result.status}_${errorCode}`);
@@ -192,6 +328,7 @@ export function createB2Client({
       }
     }
 
+    if (lastDedicatedNativeError) throw lastDedicatedNativeError;
     if (lastAccessDenied) throw lastAccessDenied;
     throw new Error(`B2_${method}_RETRY_EXHAUSTED`);
   }
@@ -208,6 +345,9 @@ export function createB2Client({
       read_credential_roles: readCredentialCandidates.map((candidate) => candidate.role),
       read_fallback_to_primary_available:
         primaryReadFallbackAvailable(readCredentialCandidates),
+      native_read_fallback_enabled: true,
+      native_read_fallback_attempts: nativeReadFallbackAttempts,
+      native_read_fallback_successes: nativeReadFallbackSuccesses,
     }),
   };
 }
