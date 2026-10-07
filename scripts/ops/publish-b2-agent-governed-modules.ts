@@ -20,8 +20,9 @@ const PROJECT_URL = "https://ldpwajisioljyjtojvfx.supabase.co";
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
-const SNAPSHOT_KEY = "geomacro-evidence/v1/live/agent-governed-modules/latest.json.gz";
-const PROOF_KEY = "geomacro-evidence/v1/live/agent-governed-modules/latest-proof.json";
+const SERVING_PREFIX = "geomacro-evidence/v1/structural/serving/agent-governed-modules";
+const SNAPSHOT_KEY = `${SERVING_PREFIX}/latest.json.gz`;
+const PROOF_KEY = `${SERVING_PREFIX}/latest-proof.json`;
 const MAX_RAW_BYTES = 20_000_000;
 const MAX_COMPRESSED_BYTES = 6_000_000;
 const PAGE_SIZE = 1000;
@@ -473,13 +474,33 @@ if (!raw.length || raw.length > MAX_RAW_BYTES) throw new Error("B2_AGENT_MODULE_
 const packed = gzipSync(raw, { level: 9 });
 if (!packed.length || packed.length > MAX_COMPRESSED_BYTES) throw new Error("B2_AGENT_MODULE_COMPRESSED_SIZE_INVALID");
 const digest = sha256(packed);
-await b2.put(SNAPSHOT_KEY, packed);
-const readback = await b2.get(SNAPSHOT_KEY);
-if (readback.length !== packed.length || sha256(readback) !== digest) {
-  throw new Error("B2_AGENT_MODULE_READBACK_HASH_INVALID");
+const stagingKey = `${SERVING_PREFIX}/staging/${digest}.json.gz`;
+
+// Independent readback must succeed before the serving object is promoted.
+await b2.put(stagingKey, packed);
+const stagingReadback = await b2.get(stagingKey);
+if (stagingReadback.length !== packed.length || sha256(stagingReadback) !== digest) {
+  throw new Error("B2_AGENT_MODULE_STAGING_READBACK_HASH_INVALID");
 }
-const restoredRaw = gunzipSync(readback);
-if (!restoredRaw.equals(raw)) throw new Error("B2_AGENT_MODULE_RESTORE_BYTES_INVALID");
+const restoredStagingRaw = gunzipSync(stagingReadback);
+if (!restoredStagingRaw.equals(raw)) throw new Error("B2_AGENT_MODULE_STAGING_RESTORE_BYTES_INVALID");
+const restoredStaging = JSON.parse(restoredStagingRaw.toString("utf8"));
+if (
+  restoredStaging?.schema !== payload.schema ||
+  restoredStaging?.generated_at !== generatedAt ||
+  restoredStaging?.source_project !== PROJECT_REF ||
+  restoredStaging?.delivery_boundary !== payload.delivery_boundary ||
+  !Array.isArray(restoredStaging?.entries) ||
+  restoredStaging.entries.length !== entries.length
+) throw new Error("B2_AGENT_MODULE_STAGING_RESTORE_INVALID");
+
+await b2.put(SNAPSHOT_KEY, stagingReadback);
+const liveReadback = await b2.get(SNAPSHOT_KEY);
+if (liveReadback.length !== packed.length || sha256(liveReadback) !== digest) {
+  throw new Error("B2_AGENT_MODULE_LIVE_READBACK_HASH_INVALID");
+}
+const restoredRaw = gunzipSync(liveReadback);
+if (!restoredRaw.equals(raw)) throw new Error("B2_AGENT_MODULE_LIVE_RESTORE_BYTES_INVALID");
 const restored = JSON.parse(restoredRaw.toString("utf8"));
 if (
   restored?.schema !== payload.schema ||
@@ -488,7 +509,7 @@ if (
   restored?.delivery_boundary !== payload.delivery_boundary ||
   !Array.isArray(restored?.entries) ||
   restored.entries.length !== entries.length
-) throw new Error("B2_AGENT_MODULE_RESTORE_INVALID");
+) throw new Error("B2_AGENT_MODULE_LIVE_RESTORE_INVALID");
 
 const byModule = entries.reduce<Record<string, number>>((acc, entry) => {
   acc[entry.module] = (acc[entry.module] ?? 0) + 1;
@@ -499,6 +520,7 @@ const proof = Buffer.from(JSON.stringify({
   generated_at: generatedAt,
   source_project: PROJECT_REF,
   snapshot_key: SNAPSHOT_KEY,
+  staging_key: stagingKey,
   compressed_sha256: digest,
   compressed_bytes: packed.length,
   raw_bytes: raw.length,
@@ -514,7 +536,7 @@ const proof = Buffer.from(JSON.stringify({
   full_b2_readback_verified: true,
   exact_gzip_restore_verified: true,
   raw_source_material_in_snapshot: false,
-  verification: "certified-commercial-signal-sources+governed-latest-inputs+pure-derived-state-builders+full-b2-readback-sha256+exact-gzip-restore",
+  verification: "certified-commercial-signal-sources+governed-latest-inputs+pure-derived-state-builders+staging-readback-sha256+exact-gzip-restore+live-readback+proof-readback",
 }));
 await b2.put(PROOF_KEY, proof);
 const proofReadback = await b2.get(PROOF_KEY);
@@ -535,5 +557,5 @@ console.log(JSON.stringify({
   included_source_ids: includedSourceIds,
   excluded_source_gates: excludedSourceGates,
   compressed_bytes: packed.length,
-  b2_objects_verified: 2,
+  b2_objects_verified: 3,
 }));
