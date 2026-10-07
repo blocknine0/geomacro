@@ -336,6 +336,7 @@ export function createB2Client({
         const message = cause instanceof Error ? cause.message : String(cause);
         const explicitHttpFailure = /^B2_(PUT|GET)_FAILED_\d+_[A-Za-z0-9_.:-]+$/.test(message);
         const hardCapFailure =
+          isAccountWideNativeReadFailure(message) ||
           message === "B2_DOWNLOAD_CAP_EXCEEDED" ||
           message === "B2_TRANSACTION_CAP_EXCEEDED";
         if (explicitHttpFailure || hardCapFailure || message === "B2_REQUEST_BUDGET_EXHAUSTED" || attempt === MAX_ATTEMPTS) throw cause;
