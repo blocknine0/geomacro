@@ -290,16 +290,29 @@ export async function readPrivateB2Object(
     .update(stringToSign)
     .digest("hex");
 
-  const response = await fetch(`${B2_ENDPOINT}${path}`, {
-    method: "GET",
-    headers: {
-      "x-amz-content-sha256": emptyHash,
-      "x-amz-date": timestamp,
-      Authorization:
-        `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
-    },
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${B2_ENDPOINT}${path}`, {
+      method: "GET",
+      headers: {
+        "x-amz-content-sha256": emptyHash,
+        "x-amz-date": timestamp,
+        Authorization:
+          `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+      },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    const bytes = await readNativeB2Object(
+      normalizedKey,
+      accessKey,
+      secretKey,
+      timeoutMs,
+      maxBytes,
+    );
+    nativePreferredCredentials.add(fingerprint);
+    return bytes;
+  }
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
