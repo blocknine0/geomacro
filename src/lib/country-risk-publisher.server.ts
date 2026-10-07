@@ -21,6 +21,8 @@ import {
 
 import {
   COUNTRY_RISK_LOOKBACK_HOURS,
+  COUNTRY_RISK_METHOD_VERSION,
+  GRO_SCHEMA_VERSION,
   type GeomacroRiskObject,
   type RiskDirection,
 } from "./risk-object-contract";
@@ -326,6 +328,70 @@ function rowToCommercialEligibility(
 // the same immutable read within that single batch instead of paginating the
 // 72-hour structured-event window 195+ times. Server requests stay uncached.
 let globalRecentEvents: { key: string; promise: Promise<LoadedStructuredEvents> } | null = null;
+let canonicalBatchPreviousObjects: {
+  key: string;
+  byCountry: Map<string, GeomacroRiskObject>;
+} | null = null;
+
+export async function primeCanonicalBatchPreviousRiskObjects(
+  asOf: string,
+): Promise<{ loaded: number; missing: number }> {
+  if (process.env.GEOMACRO_CANONICAL_BATCH !== "1") {
+    throw new Error("CANONICAL_BATCH_PREVIOUS_PRIME_OUTSIDE_BATCH");
+  }
+
+  const boundary = new Date(asOf);
+  if (Number.isNaN(boundary.getTime())) {
+    throw new Error("CANONICAL_BATCH_PREVIOUS_PRIME_INVALID_AS_OF");
+  }
+  const key = boundary.toISOString();
+  if (canonicalBatchPreviousObjects?.key === key) {
+    return {
+      loaded: canonicalBatchPreviousObjects.byCountry.size,
+      missing: 0,
+    };
+  }
+
+  const db = requireRiskSupabase();
+  const result = await db
+    .from("geomacro_risk_objects")
+    .select(
+      "subject_id,payload,generated_at,commercial_eligibility_reason_codes",
+    )
+    .eq("subject_type", "country")
+    .eq("schema_version", GRO_SCHEMA_VERSION)
+    .eq("methodology_version", COUNTRY_RISK_METHOD_VERSION)
+    .lt("generated_at", key)
+    .not("payload", "is", null)
+    .order("generated_at", { ascending: false })
+    .limit(1000);
+
+  if (result.error) throw result.error;
+
+  const byCountry = new Map<string, GeomacroRiskObject>();
+  for (const row of (result.data ?? []) as Array<Record<string, unknown>>) {
+    const iso3 = String(row.subject_id ?? "").trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(iso3) || byCountry.has(iso3)) continue;
+
+    const reasons = normalizeStringArray(row.commercial_eligibility_reason_codes);
+    if (reasons.includes(PUBLIC_DEMO_RISK_PROFILE_REASON)) continue;
+
+    const payload = row.payload;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) continue;
+    const object = payload as Partial<GeomacroRiskObject>;
+    if (
+      object.schema_version !== GRO_SCHEMA_VERSION ||
+      object.methodology_version !== COUNTRY_RISK_METHOD_VERSION ||
+      object.subject?.type !== "country" ||
+      object.subject?.id !== iso3
+    ) continue;
+
+    byCountry.set(iso3, payload as GeomacroRiskObject);
+  }
+
+  canonicalBatchPreviousObjects = { key, byCountry };
+  return { loaded: byCountry.size, missing: Math.max(0, 196 - byCountry.size) };
+}
 
 function loadRecentStructuredEvents(asOf: Date): Promise<LoadedStructuredEvents> {
   if (process.env.GEOMACRO_CANONICAL_BATCH !== "1") return loadRecentStructuredEventsUncached(asOf);
@@ -1414,11 +1480,15 @@ async function generateInternal(
     );
 
   const previous =
-    await getLatestCompatibleCountryRiskObject(
-      iso3,
-      asOf.toISOString(),
-      deliveryProfile,
-    );
+    process.env.GEOMACRO_CANONICAL_BATCH === "1" &&
+    deliveryProfile === "CANONICAL" &&
+    canonicalBatchPreviousObjects?.key === asOf.toISOString()
+      ? canonicalBatchPreviousObjects.byCountry.get(iso3) ?? null
+      : await getLatestCompatibleCountryRiskObject(
+          iso3,
+          asOf.toISOString(),
+          deliveryProfile,
+        );
 
   const baseline =
     previousUsableForPilotDelta(
