@@ -16,7 +16,7 @@ describe("canonical refresh read budget", () => {
     expect(runner).toContain("primeCanonicalBatchPreviousRiskObjects(asOf)");
     expect(publisher).toContain("canonicalBatchPreviousObjects");
     expect(publisher).toContain('.not("payload", "is", null)');
-    expect(publisher).toContain("b2_archive_reads_for_previous_baseline");
+    expect(runner).toContain("b2_archive_reads_for_previous_baseline");
     expect(macro).toContain('process.env.GEOMACRO_CANONICAL_BATCH !== "1"');
     expect(macro).toContain("batchNormalizations.set(key, promise)");
     expect(macro).toContain("batchNormalizations.delete(key)");
