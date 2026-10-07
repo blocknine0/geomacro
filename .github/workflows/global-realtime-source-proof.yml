@@ -115,7 +115,7 @@ jobs:
           base="${{ github.event.pull_request.base.sha }}"
           head="${{ github.event.pull_request.head.sha }}"
           changed="$(git diff --name-only "$base" "$head")"
-          printf '%s\\n' "$changed" > exact-head-changed-files.txt
+          printf '%s\n' "$changed" > exact-head-changed-files.txt
 
           full_raw=false
           while IFS= read -r file; do
