@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -30,6 +30,11 @@ const MAX_LIVE_OBSERVED_ROWS = 24;
 const LIVE_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 const GDELT_LAST_UPDATE_URL = "https://data.gdeltproject.org/gdeltv2/lastupdate.txt";
 const GDELT_FIPS_LOOKUP_URL = "https://www.gdeltproject.org/data/lookups/FIPS.country.txt";
+const CONTROL_PLANE_URL =
+  "https://geomacro-control-plane.daspallab202391.workers.dev";
+const HOT_OVERLAY_KEY = "public_intelligence_live_observed_v1";
+const HOT_OVERLAY_SCHEMA = "geomacro.public-intelligence-live-observed.v1";
+const HOT_OVERLAY_MAX_BYTES = 30 * 1024;
 const GDELT_EXPECTED_COLUMNS = 61;
 const GDELT_FIELD = Object.freeze({
   GLOBAL_EVENT_ID: 0,
@@ -51,6 +56,91 @@ const GDELT_CONFLICT_LABEL = Object.freeze({
   "20": "mass-violence activity",
 });
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+
+function controlPlaneToken() {
+  const root = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
+  if (root.length < 32) throw new Error("GEOMACRO_COMMERCE_LEDGER_TOKEN_REQUIRED");
+  return createHmac("sha256", root)
+    .update("geomacro-control-plane-v1")
+    .digest("hex");
+}
+
+async function publishHotOverlay(current, generatedAt) {
+  if (!Array.isArray(current?.rows) || current.rows.length < 1 || current.rows.length > MAX_LIVE_OBSERVED_ROWS) {
+    throw new Error("PUBLIC_INTELLIGENCE_HOT_OVERLAY_ROWS_INVALID");
+  }
+  const rows = current.rows.map((row) => ({
+    id: String(row.id),
+    source_title: String(row.source_title),
+    summary: row.summary == null ? null : String(row.summary),
+    category: "geopolitics",
+    severity: null,
+    delta: null,
+    created_at: String(row.created_at),
+    published_at: row.published_at == null ? null : String(row.published_at),
+    public_status: "live_observed",
+  }));
+  for (const row of rows) {
+    if (
+      !row.id ||
+      !row.source_title.startsWith("Geomacro observes ") ||
+      row.severity !== null ||
+      row.delta !== null ||
+      row.public_status !== "live_observed"
+    ) throw new Error("PUBLIC_INTELLIGENCE_HOT_OVERLAY_ROW_INVALID");
+  }
+
+  const overlay = {
+    schema: HOT_OVERLAY_SCHEMA,
+    generated_at: generatedAt,
+    source_id: "gdelt_v2_events",
+    current_source_transport: current.sourceTransport,
+    current_source_batch_at: current.batchIso,
+    current_evidence_contract: current.evidenceContract,
+    synthetic_score: false,
+    raw_source_headlines_exposed: false,
+    provider_identity_exposed: false,
+    rows,
+  };
+  const encoded = Buffer.from(JSON.stringify(overlay), "utf8");
+  if (encoded.length > HOT_OVERLAY_MAX_BYTES) {
+    throw new Error(`PUBLIC_INTELLIGENCE_HOT_OVERLAY_TOO_LARGE:${encoded.length}`);
+  }
+
+  const response = await fetch(
+    `${CONTROL_PLANE_URL}/v1/control/${HOT_OVERLAY_KEY}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${controlPlaneToken()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ value: overlay, version: 1 }),
+      signal: AbortSignal.timeout(15_000),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`PUBLIC_INTELLIGENCE_HOT_OVERLAY_WRITE_FAILED_${response.status}`);
+  }
+  const body = await response.json().catch(() => null);
+  if (body?.ok !== true || body?.key !== HOT_OVERLAY_KEY) {
+    throw new Error("PUBLIC_INTELLIGENCE_HOT_OVERLAY_WRITE_INVALID");
+  }
+
+  console.log(JSON.stringify({
+    ok: true,
+    schema: "geomacro.public-intelligence-hot-overlay-publish.v1",
+    authority_serve: "cloudflare-d1-hot-overlay",
+    current_source_batch_at: current.batchIso,
+    current_source_transport: current.sourceTransport,
+    current_evidence_contract: current.evidenceContract,
+    live_observed_rows: rows.length,
+    bytes: encoded.length,
+    synthetic_score: false,
+    raw_source_headlines_exposed: false,
+    provider_identity_exposed: false,
+  }));
+}
 
 function authoritativeDbUrl() {
   const raw = String(process.env.SUPABASE_DB_URL ?? "").trim();
@@ -562,6 +652,8 @@ const rows = [...current.rows, ...scoredRows]
 validateRows(rows);
 
 const generatedAt = new Date().toISOString();
+await publishHotOverlay(current, generatedAt);
+
 const value = {
   schema: "geomacro.public-intelligence-live.v1",
   generated_at: generatedAt,
