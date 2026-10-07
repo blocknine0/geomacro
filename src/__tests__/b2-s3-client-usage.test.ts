@@ -425,7 +425,7 @@ describe("B2 signed PUT plus HEAD metadata verification", () => {
       if (method === "PUT") {
         expect(headers["x-amz-meta-geomacro-sha256"]).toBe(digest);
         expect(headers.Authorization).toContain("x-amz-meta-geomacro-sha256");
-        expect(init.body).toBe(body);
+        expect(init.body).toStrictEqual(body);
         return new Response(null, { status: 200 });
       }
 
