@@ -11,6 +11,9 @@ on:
       - "scripts/run-gdelt-gal-cycle.mjs"
       - "scripts/verify-gdelt-gal-cycle.mjs"
       - "scripts/sync-country-raw-source-mesh.mjs"
+      - "scripts/ops/verify-b2-private-archive-read.ts"
+      - "src/lib/b2-private-archive-read.server.ts"
+      - "src/__tests__/b2-private-archive-read-native-fallback.test.ts"
       - "scripts/drain-live-structure.mjs"
       - "scripts/intelligence-orchestrator.mjs"
       - "scripts/run-rss-live-cycle.mjs"
@@ -78,6 +81,17 @@ jobs:
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      GRI_DB_MODE: direct_postgres
+      LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres
+      B2_GDELT_PRIMARY: "1"
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}
+      B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}
+      DIRECT_NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
       INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
@@ -128,8 +142,41 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${APP_SUPABASE_URL}"
-          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY}"
+          test -n "${SUPABASE_DB_URL}"
           test "${SUPABASE_PROJECT_ID}" = "ldpwajisioljyjtojvfx"
+          test "${GRI_DB_MODE}" = "direct_postgres"
+          test "${LIVE_STRUCTURE_EXECUTION_MODE}" = "local_direct_postgres"
+          test "${B2_S3_ENDPOINT}" = "https://s3.us-east-005.backblazeb2.com"
+          test -n "${B2_KEY_ID}"
+          test -n "${B2_APPLICATION_KEY}"
+          if [[ -n "${B2_ARCHIVE_READ_KEY_ID:-}" || -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" ]]; then
+            test -n "${B2_ARCHIVE_READ_KEY_ID:-}" && test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || {
+              echo "::error::Dedicated B2 archive read credentials must be supplied as a complete pair."
+              exit 2
+            }
+          fi
+          if [[ -n "${B2_ARCHIVE_WRITE_KEY_ID:-}" || -n "${B2_ARCHIVE_WRITE_APPLICATION_KEY:-}" ]]; then
+            test -n "${B2_ARCHIVE_WRITE_KEY_ID:-}" && test -n "${B2_ARCHIVE_WRITE_APPLICATION_KEY:-}" || {
+              echo "::error::Archive B2 read/write credentials must be supplied as a complete pair."
+              exit 2
+            }
+          fi
+
+      - name: Prove production private B2 archive reader
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/verify-b2-private-archive-read.ts | tee b2-private-archive-runtime-read.json
+          jq -e '
+            .ok == true and
+            .schema == "geomacro.b2-private-archive-runtime-read-proof.v1" and
+            .dedicated_read_credentials == true and
+            .raw_data_delivered == false and
+            .destructive_b2_change == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' b2-private-archive-runtime-read.json >/dev/null
+          echo "PASS: production archive reader restored verified private B2 bytes with no destructive action."
 
       - name: Verify canonical direct-Postgres RSS corroboration transport
         env:
@@ -156,7 +203,8 @@ jobs:
           for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
             (
               export RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"
-              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-acceptance-${category}.json" 2>&1
+              export COUNTRY_RAW_SOURCE_SYNC_OUTPUT="country-raw-source-acceptance-${category}.json"
+              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs
             ) > "category-acceptance-${category}.log" 2>&1 &
           done
           wait
@@ -176,11 +224,14 @@ jobs:
       - name: Run realtime orchestrator continuity
         env:
           GRI_DB_MODE: direct_postgres
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         run: |
           set -euo pipefail
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-acceptance.log
 
       - name: Final GDELT first-break and scope fanout convergence
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         shell: bash
         run: |
           set -euo pipefail
@@ -209,11 +260,15 @@ jobs:
           fi
 
       - name: Refresh realtime-fanout orchestrator state after GDELT convergence
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         run: |
           set -euo pipefail
           INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=realtime_fanout           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=realtime_fanout           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-realtime-fanout.log
 
       - name: Refresh production-readiness orchestrator state after GDELT convergence
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         run: |
           set -euo pipefail
           INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=production_readiness           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=production_readiness           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-production-readiness.log
@@ -225,7 +280,8 @@ jobs:
           for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
             (
               export RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"
-              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-final-${category}.json" 2>&1
+              export COUNTRY_RAW_SOURCE_SYNC_OUTPUT="country-raw-source-final-${category}.json"
+              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs
             ) > "category-final-${category}.log" 2>&1 &
           done
           wait
@@ -273,6 +329,8 @@ jobs:
           test "${state_count}" = "0"
 
       - name: Verify final realtime contracts
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         run: |
           set -euo pipefail
           node scripts/audit-global-raw-source-runtime.mjs
@@ -280,6 +338,8 @@ jobs:
           node scripts/audit-gdelt-dependency-live.mjs
 
       - name: Run strict Global Realtime Intelligence 100 gate
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         run: |
           set -euo pipefail
           node scripts/audit-global-realtime-intelligence-100.mjs --strict
@@ -290,6 +350,7 @@ jobs:
         with:
           name: global-realtime-intelligence-100-${{ github.event.pull_request.head.sha }}
           path: |
+            b2-private-archive-runtime-read.json
             realtime-corroborate-direct.json
             country-raw-source-acceptance-GEOPOLITICS.json
             country-raw-source-acceptance-MACRO.json
