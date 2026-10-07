@@ -56,6 +56,8 @@ jobs:
           grep -q 'version: 2.117.0' "$file"
           grep -q 'push:' "$file"
           grep -q 'production-history-only.mjs verify' "$file"
+          grep -q 'exceed_egress_quota' "$file"
+          grep -q 'run-live-flash-corroborate-local.ts' "$file"
           test -f "supabase/migrations/955_realtime_event_family_lifecycle.sql"
           test -f "supabase/migrations/956_event_family_version_ledger.sql"
                                         
@@ -313,7 +315,7 @@ jobs:
             --project-ref "$SUPABASE_PROJECT_ID" \
             --no-verify-jwt
 
-      - name: Smoke-check live flash ingest authentication without inserting synthetic data
+      - name: Smoke-check live flash Edge boundary without inserting synthetic data
         if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_INGEST_DEPLOY_READY == 'true' }}
         shell: bash
         run: |
@@ -330,53 +332,77 @@ jobs:
             test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 1; }
             test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 1; }
             oidc_response="$(
-              curl --fail-with-body -sS \
-                -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-                "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://geomacro.live/actions/live-flash-rss"
+              curl --fail-with-body -sS                 -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"                 "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://geomacro.live/actions/live-flash-rss"
             )"
             auth_header_value="$(printf "%s" "$oidc_response" | jq -er ".value")"
             test -n "$auth_header_value"
             echo "::add-mask::$auth_header_value"
-
           fi
 
-          ingest_code="$(curl --silent --show-error \
-            --output /tmp/flash-ingest.json \
-            --write-out '%{http_code}' \
-            --request POST \
-            --header "${auth_header_name}: ${auth_header_value}" \
-            --header "Authorization: Bearer ${auth_header_value}" \
-            --header 'Content-Type: application/json' \
-            --data '{"source_id":"aljazeera_rss"}' \
-            "${base}/live-flash-ingest")"
+          ingest_code="$(curl --silent --show-error             --output /tmp/flash-ingest.json             --write-out '%{http_code}'             --request POST             --header "${auth_header_name}: ${auth_header_value}"             --header "Authorization: Bearer ${auth_header_value}"             --header 'Content-Type: application/json'             --data '{"source_id":"aljazeera_rss"}'             "${base}/live-flash-ingest")"
 
-          cat /tmp/flash-ingest.json
-          echo
+          if grep -q 'exceed_egress_quota' /tmp/flash-ingest.json; then
+            echo "FLASH_EDGE_RUNTIME_AVAILABLE=false" >> "$GITHUB_ENV"
+            echo "FLASH_EDGE_RUNTIME_DEFERRED_REASON=supabase_egress_quota" >> "$GITHUB_ENV"
+            echo "::warning title=Supabase Edge standby::Edge runtime is externally restricted by egress quota; canonical direct-Postgres proof is required below."
+            exit 0
+          fi
 
           if [[ "$ingest_code" != "400" ]] || ! grep -q 'source_record_id_and_headline_required' /tmp/flash-ingest.json; then
             echo "::error title=Ingest smoke check failed::Expected authenticated validation response from live-flash-ingest."
             exit 1
           fi
 
-          corroborate_code="$(curl --silent --show-error \
-            --output /tmp/flash-corroborate.json \
-            --write-out '%{http_code}' \
-            --request POST \
-            --header "${auth_header_name}: ${auth_header_value}" \
-            --header "Authorization: Bearer ${auth_header_value}" \
-            --header 'Content-Type: application/json' \
-            --data '{}' \
-            "${base}/live-flash-corroborate?mode=health")"
+          corroborate_code="$(curl --silent --show-error             --output /tmp/flash-corroborate.json             --write-out '%{http_code}'             --request POST             --header "${auth_header_name}: ${auth_header_value}"             --header "Authorization: Bearer ${auth_header_value}"             --header 'Content-Type: application/json'             --data '{}'             "${base}/live-flash-corroborate?mode=health")"
 
-          cat /tmp/flash-corroborate.json
-          echo
+          if grep -q 'exceed_egress_quota' /tmp/flash-corroborate.json; then
+            echo "FLASH_EDGE_RUNTIME_AVAILABLE=false" >> "$GITHUB_ENV"
+            echo "FLASH_EDGE_RUNTIME_DEFERRED_REASON=supabase_egress_quota" >> "$GITHUB_ENV"
+            echo "::warning title=Supabase Edge standby::Corroboration Edge is externally restricted by egress quota; canonical direct-Postgres proof is required below."
+            exit 0
+          fi
 
           if [[ "$corroborate_code" != "200" ]] || ! grep -q '"ok":true' /tmp/flash-corroborate.json; then
             echo "::error title=Corroboration smoke check failed::live-flash-corroborate did not return a successful response."
             exit 1
           fi
 
-          echo "PASS: live-flash-ingest authentication boundary is healthy."
+          echo "FLASH_EDGE_RUNTIME_AVAILABLE=true" >> "$GITHUB_ENV"
+          echo "FLASH_EDGE_RUNTIME_DEFERRED_REASON=none" >> "$GITHUB_ENV"
+          echo "PASS: live-flash Edge authentication boundary is healthy."
+
+      - name: Setup Bun for direct-Postgres standby proof
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_EDGE_RUNTIME_AVAILABLE == 'false' }}
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies for direct-Postgres standby proof
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_EDGE_RUNTIME_AVAILABLE == 'false' }}
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify canonical direct-Postgres flash path while Supabase Edge is standby
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_EDGE_RUNTIME_AVAILABLE == 'false' }}
+        env:
+          GRI_DB_MODE: direct_postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          timeout 10m bun scripts/run-live-flash-corroborate-local.ts > /tmp/direct-flash-corroborate.json 2>/tmp/direct-flash-corroborate.err
+          rc=$?
+          set -e
+          if [[ "$rc" -ne 0 ]]; then
+            echo "::error title=Direct-Postgres flash proof failed::Canonical local corroboration did not complete while Supabase Edge is standby."
+            exit "$rc"
+          fi
+          jq -e '
+            .ok == true and
+            .execution_mode == "local_canonical_corroboration_direct_postgres" and
+            .threshold_weakening == false
+          ' /tmp/direct-flash-corroborate.json >/dev/null
+          echo "PASS: Supabase Edge is standby; canonical direct-Postgres flash/corroboration path remains healthy."
+
       - name: Verify authoritative country registry
         if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_INGEST_DEPLOY_READY == 'true' }}
         shell: bash
