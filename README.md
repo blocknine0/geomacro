@@ -34,7 +34,7 @@ Real-world evidence and data
              +-- Ask Geomacro - Live
              +-- Country Risk Object - Private Pilot --+
              +-- Corridor Risk Object - Private Pilot -+-> Risk Gate - Private Pilot
-             +-- Commercial API / agent delivery - Production gated
+             +-- Commercial API / agent delivery - Production Gated
 
 Risk Gate advisory response: CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
         -> Customer identity + permissions + policy enforcement
