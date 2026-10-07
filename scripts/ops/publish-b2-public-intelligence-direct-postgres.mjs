@@ -253,6 +253,7 @@ async function publishB2CapOverlayRecovery(current, error) {
   const proof = {
     ok: true,
     schema: "geomacro.public-intelligence-overlay-recovery.v1",
+    generated_at: new Date().toISOString(),
     authority_read: "verified-intelligence-edge",
     authority_serve: "cloudflare-d1-hot-overlay",
     recovery_reason: reason,
