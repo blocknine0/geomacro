@@ -79,6 +79,15 @@ describe("verified B2 structural serving continuity", () => {
     expect(workflow).toContain('- ".github/workflows/b2-structural-serving-snapshot.yml"');
   });
 
+  it("checks B2 read capability before scanning or writing the structural snapshot", () => {
+    const workflow = read(".github/workflows/b2-structural-serving-snapshot.yml");
+    const preflight = workflow.indexOf("Preflight B2 read capability before structural scan");
+    const publish = workflow.indexOf("Publish and fully read back structural serving snapshot");
+    expect(preflight).toBeGreaterThanOrEqual(0);
+    expect(publish).toBeGreaterThan(preflight);
+    expect(workflow).toContain("scripts/ops/preflight-b2-read-capability.mjs");
+  });
+
   it("stages, verifies, promotes and proof-binds B2 structural serving", () => {
     const publisher = read("scripts/ops/publish-b2-structural-serving-snapshot.ts");
     const reader = read("src/lib/b2-structural.server.ts");
