@@ -22,6 +22,13 @@ describe("#1414 no-funds x402 scope acceptance", () => {
     expect(script).toContain("QUERY_PLAN_NOT_BOUND_TO_CHALLENGE");
     expect(script).toContain("payment_signature_sent: false");
     expect(script).toContain("settlement_attempted: false");
+    expect(script).toContain("all_scopes_passed: failures.length === 0");
+    expect(script).toContain("safeCaseFailure(testCase, error)");
+    expect(script).toContain("X402_SCOPE_ACCEPTANCE_FAILED:");
+    expect(script).toContain("process.exitCode = 1");
+    expect(script).toContain("writeFileSync(OUT");
+    expect(script).not.toContain("console.error(error.stack");
+    expect(script).not.toContain("console.error(error.message");
     expect(script).not.toContain('\"payment-signature\"');
     expect(script).not.toContain("'payment-signature'");
     expect(script).not.toContain("settleCoinbaseX402");
