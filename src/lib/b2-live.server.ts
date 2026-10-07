@@ -1,6 +1,7 @@
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 import type { GlobalRisk } from "./global-risk.types";
 import { validateGlobalRiskContinuity } from "./global-risk-continuity";
+import { readGlobalRiskEdge } from "./global-risk-edge.server";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
@@ -253,6 +254,13 @@ function validatedGlobalRiskPayload(
 }
 
 export async function readB2PublicRisk(): Promise<GlobalRisk | null> {
+  // The public Cloudflare edge serves only a proof-verified B2 continuity
+  // package and is independent of the private-account download cap seen by
+  // server-side S3 reads. Prefer that already-verified package before touching
+  // private B2 directly. Direct B2 remains a bounded recovery path.
+  const edge = await readGlobalRiskEdge();
+  if (edge) return edge;
+
   const dedicated = validatedGlobalRiskPayload(
     await readJsonGzip<{
       schema?: string;
