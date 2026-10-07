@@ -43,6 +43,64 @@ function requiredIsoTimestamp(value, name, maxAgeMs) {
   return new Date(parsed).toISOString();
 }
 
+function assertRecoveryProof(proof) {
+  if (proof?.schema !== "geomacro.public-intelligence-overlay-recovery.v1") {
+    throw new Error("GDELT_COVERAGE_RECOVERY_PROOF_SCHEMA_INVALID");
+  }
+  if (proof?.authority_read !== "verified-intelligence-edge") {
+    throw new Error("GDELT_COVERAGE_RECOVERY_PROOF_AUTHORITY_INVALID");
+  }
+  if (proof?.baseline_b2_readback_verified !== true) {
+    throw new Error("GDELT_COVERAGE_RECOVERY_BASELINE_NOT_VERIFIED");
+  }
+  if (!/^[0-9a-f]{64}$/u.test(String(proof?.baseline_b2_sha256 ?? ""))) {
+    throw new Error("GDELT_COVERAGE_RECOVERY_BASELINE_HASH_INVALID");
+  }
+  if (proof?.current_b2_snapshot_promoted !== false) {
+    throw new Error("GDELT_COVERAGE_RECOVERY_UNVERIFIED_B2_PROMOTION");
+  }
+  if (proof?.current_source_id !== SOURCE_ID) {
+    throw new Error("GDELT_COVERAGE_RECOVERY_SOURCE_INVALID");
+  }
+  if (proof?.current_evidence_contract !== CURRENT_EVIDENCE_CONTRACT) {
+    throw new Error("GDELT_COVERAGE_RECOVERY_CONTRACT_INVALID");
+  }
+  if (
+    !["B2_DOWNLOAD_CAP_EXCEEDED", "B2_TRANSACTION_CAP_EXCEEDED"].includes(
+      String(proof?.recovery_reason ?? ""),
+    )
+  ) {
+    throw new Error("GDELT_COVERAGE_RECOVERY_REASON_INVALID");
+  }
+  if (
+    proof?.live_observed_unscored !== true ||
+    !Number.isInteger(Number(proof?.live_observed_rows)) ||
+    Number(proof.live_observed_rows) < 1
+  ) {
+    throw new Error("GDELT_COVERAGE_RECOVERY_LIVE_EVIDENCE_INVALID");
+  }
+  if (
+    proof?.synthetic_score !== false ||
+    proof?.raw_source_headlines_exposed !== false ||
+    proof?.provider_identity_exposed !== false ||
+    proof?.execution_authorized !== false
+  ) {
+    throw new Error("GDELT_COVERAGE_RECOVERY_PUBLIC_BOUNDARY_INVALID");
+  }
+  return {
+    generatedAt: requiredIsoTimestamp(
+      proof.generated_at,
+      "GDELT_COVERAGE_RECOVERY_GENERATED_AT",
+      PROOF_MAX_AGE_MS,
+    ),
+    batchAt: requiredIsoTimestamp(
+      proof.current_source_batch_at,
+      "GDELT_COVERAGE_RECOVERY_BATCH_AT",
+      GDELT_BATCH_MAX_AGE_MS,
+    ),
+  };
+}
+
 function assertProof(proof) {
   if (proof?.schema !== "geomacro.public-intelligence-live-proof.v1") throw new Error("GDELT_COVERAGE_PROOF_SCHEMA_INVALID");
   if (proof?.source_project !== PROJECT_REF) throw new Error("GDELT_COVERAGE_PROOF_PROJECT_INVALID");
@@ -162,31 +220,57 @@ function refreshCoverageRuntime(dbUrl, generatedAt) {
 }
 
 const dbUrl = authoritativeDbUrl();
-if (String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT || !process.env.B2_KEY_ID || !process.env.B2_APPLICATION_KEY) {
-  throw new Error("GDELT_COVERAGE_B2_CONFIG_REQUIRED");
-}
+const localRecoveryProofRaw = String(
+  process.env.GEOMACRO_GDELT_COVERAGE_RECOVERY_PROOF_JSON ?? "",
+).trim();
 
-const b2 = createB2Client({
-  endpointUrl: B2_ENDPOINT,
-  accessKey: process.env.B2_KEY_ID,
-  secretKey: process.env.B2_APPLICATION_KEY,
-  bucket: B2_BUCKET,
-});
-const proofBytes = await b2.get(PROOF_KEY);
-let proof;
-try {
-  proof = JSON.parse(proofBytes.toString("utf8"));
-} catch {
-  throw new Error("GDELT_COVERAGE_PROOF_JSON_INVALID");
+let proofSource = "b2-readback-verified";
+let proofKey = PROOF_KEY;
+let generatedAt;
+let batchAt;
+
+if (localRecoveryProofRaw) {
+  let recoveryProof;
+  try {
+    recoveryProof = JSON.parse(localRecoveryProofRaw);
+  } catch {
+    throw new Error("GDELT_COVERAGE_RECOVERY_PROOF_JSON_INVALID");
+  }
+  ({ generatedAt, batchAt } = assertRecoveryProof(recoveryProof));
+  proofSource = "local-verified-b2-cap-recovery-proof";
+  proofKey = null;
+} else {
+  if (
+    String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
+    !process.env.B2_KEY_ID ||
+    !process.env.B2_APPLICATION_KEY
+  ) {
+    throw new Error("GDELT_COVERAGE_B2_CONFIG_REQUIRED");
+  }
+
+  const b2 = createB2Client({
+    endpointUrl: B2_ENDPOINT,
+    accessKey: process.env.B2_KEY_ID,
+    secretKey: process.env.B2_APPLICATION_KEY,
+    bucket: B2_BUCKET,
+  });
+  const proofBytes = await b2.get(PROOF_KEY);
+  let proof;
+  try {
+    proof = JSON.parse(proofBytes.toString("utf8"));
+  } catch {
+    throw new Error("GDELT_COVERAGE_PROOF_JSON_INVALID");
+  }
+  ({ generatedAt, batchAt } = assertProof(proof));
 }
-const { generatedAt, batchAt } = assertProof(proof);
 const refresh = refreshCoverageRuntime(dbUrl, generatedAt);
 
 console.log(JSON.stringify({
   ok: true,
   schema: "geomacro.gdelt-coverage-runtime-refresh.v1",
   source_id: SOURCE_ID,
-  proof_key: PROOF_KEY,
+  proof_source: proofSource,
+  proof_key: proofKey,
   proof_generated_at: generatedAt,
   current_source_batch_at: batchAt,
   expected_country_rows: refresh.expected,
