@@ -20,6 +20,10 @@ import {
 } from "./country-risk-commercial-eligibility";
 
 import {
+  verifyCommercialRiskObjectArtifact,
+} from "./commercial-risk-object-policy";
+
+import {
   COUNTRY_RISK_LOOKBACK_HOURS,
   COUNTRY_RISK_METHOD_VERSION,
   GRO_SCHEMA_VERSION,
@@ -336,11 +340,45 @@ let globalRecentEvents: { key: string; promise: Promise<LoadedStructuredEvents> 
 let canonicalBatchPreviousObjects: {
   key: string;
   byCountry: Map<string, GeomacroRiskObject>;
+  preservedCommercialByCountry: Map<string, GeomacroRiskObject>;
+  scanned: number;
+  preservedScanned: number;
 } | null = null;
+
+export function getCanonicalBatchPreservedCommercialRiskObject(
+  countryIso3: string,
+  asOf: string,
+): GeomacroRiskObject | null {
+  if (process.env.GEOMACRO_CANONICAL_BATCH !== "1") {
+    throw new Error("CANONICAL_BATCH_PRESERVED_GRO_OUTSIDE_BATCH");
+  }
+
+  const boundary = new Date(asOf);
+  if (Number.isNaN(boundary.getTime())) {
+    throw new Error("CANONICAL_BATCH_PRESERVED_GRO_INVALID_AS_OF");
+  }
+
+  const key = boundary.toISOString();
+  if (canonicalBatchPreviousObjects?.key !== key) {
+    throw new Error("CANONICAL_BATCH_PRESERVED_GRO_NOT_PRIMED");
+  }
+
+  const iso3 = countryIso3.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(iso3)) {
+    throw new Error("CANONICAL_BATCH_PRESERVED_GRO_INVALID_ISO3");
+  }
+
+  return canonicalBatchPreviousObjects.preservedCommercialByCountry.get(iso3) ?? null;
+}
 
 export async function primeCanonicalBatchPreviousRiskObjects(
   asOf: string,
-): Promise<{ loaded: number; scanned: number }> {
+): Promise<{
+  loaded: number;
+  scanned: number;
+  preservedCommercialLoaded: number;
+  preservedCommercialScanned: number;
+}> {
   if (process.env.GEOMACRO_CANONICAL_BATCH !== "1") {
     throw new Error("CANONICAL_BATCH_PREVIOUS_PRIME_OUTSIDE_BATCH");
   }
@@ -353,7 +391,11 @@ export async function primeCanonicalBatchPreviousRiskObjects(
   if (canonicalBatchPreviousObjects?.key === key) {
     return {
       loaded: canonicalBatchPreviousObjects.byCountry.size,
-      scanned: canonicalBatchPreviousObjects.byCountry.size,
+      scanned: canonicalBatchPreviousObjects.scanned,
+      preservedCommercialLoaded:
+        canonicalBatchPreviousObjects.preservedCommercialByCountry.size,
+      preservedCommercialScanned:
+        canonicalBatchPreviousObjects.preservedScanned,
     };
   }
 
@@ -394,8 +436,71 @@ export async function primeCanonicalBatchPreviousRiskObjects(
     byCountry.set(iso3, payload as GeomacroRiskObject);
   }
 
-  canonicalBatchPreviousObjects = { key, byCountry };
-  return { loaded: byCountry.size, scanned: (result.data ?? []).length };
+  const preservedResult = await db
+    .from("geomacro_risk_objects")
+    .select(
+      "subject_id,payload,generated_at,expires_at,commercial_eligibility_reason_codes",
+    )
+    .eq("subject_type", "country")
+    .eq("schema_version", GRO_SCHEMA_VERSION)
+    .eq("methodology_version", COUNTRY_RISK_METHOD_VERSION)
+    .eq("verification_status", "VERIFIED")
+    .eq("commercial_eligibility_status", "VERIFIED")
+    .lt("generated_at", key)
+    .gt("expires_at", key)
+    .not("payload", "is", null)
+    .order("generated_at", { ascending: false })
+    .limit(1000);
+
+  if (preservedResult.error) throw preservedResult.error;
+
+  const preservedCommercialByCountry = new Map<string, GeomacroRiskObject>();
+  for (const row of (preservedResult.data ?? []) as Array<Record<string, unknown>>) {
+    const iso3 = String(row.subject_id ?? "").trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(iso3) || preservedCommercialByCountry.has(iso3)) {
+      continue;
+    }
+
+    const reasons = normalizeStringArray(row.commercial_eligibility_reason_codes);
+    if (reasons.includes(PUBLIC_DEMO_RISK_PROFILE_REASON)) continue;
+
+    const payload = row.payload;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) continue;
+    const object = payload as GeomacroRiskObject;
+    if (
+      object.schema_version !== GRO_SCHEMA_VERSION ||
+      object.methodology_version !== COUNTRY_RISK_METHOD_VERSION ||
+      object.subject?.type !== "country" ||
+      object.subject?.id !== iso3 ||
+      Date.parse(object.expires_at) <= boundary.getTime()
+    ) {
+      continue;
+    }
+
+    if (!verifyRiskObjectSignature(object).valid) continue;
+    if (
+      !verifyCommercialRiskObjectArtifact(object, { now: boundary }).deliverable
+    ) {
+      continue;
+    }
+
+    preservedCommercialByCountry.set(iso3, object);
+  }
+
+  canonicalBatchPreviousObjects = {
+    key,
+    byCountry,
+    preservedCommercialByCountry,
+    scanned: (result.data ?? []).length,
+    preservedScanned: (preservedResult.data ?? []).length,
+  };
+
+  return {
+    loaded: byCountry.size,
+    scanned: (result.data ?? []).length,
+    preservedCommercialLoaded: preservedCommercialByCountry.size,
+    preservedCommercialScanned: (preservedResult.data ?? []).length,
+  };
 }
 
 function loadRecentStructuredEvents(asOf: Date): Promise<LoadedStructuredEvents> {
