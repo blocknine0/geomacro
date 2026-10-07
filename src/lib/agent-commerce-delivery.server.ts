@@ -8,6 +8,8 @@ export type AgentCommerceDeliveryClaim = {
   claim_token: string | null;
   response_payload: unknown | null;
   response_sha256: string | null;
+  request_fingerprint: string | null;
+  product_id: string | null;
   settlement_reference: string | null;
   settlement_network: string | null;
 };
@@ -119,6 +121,8 @@ function assertDurableClaim(value: unknown): AgentCommerceDeliveryClaim {
     claim_token: row.claim_token == null ? null : String(row.claim_token),
     response_payload: row.response_payload ?? null,
     response_sha256: row.response_sha256 == null ? null : String(row.response_sha256),
+    request_fingerprint: row.request_fingerprint == null ? null : String(row.request_fingerprint),
+    product_id: row.product_id == null ? null : String(row.product_id),
     settlement_reference: row.settlement_reference == null ? null : String(row.settlement_reference),
     settlement_network: row.settlement_network == null ? null : String(row.settlement_network),
   };
