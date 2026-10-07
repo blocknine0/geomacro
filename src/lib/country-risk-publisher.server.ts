@@ -335,7 +335,7 @@ let canonicalBatchPreviousObjects: {
 
 export async function primeCanonicalBatchPreviousRiskObjects(
   asOf: string,
-): Promise<{ loaded: number; missing: number }> {
+): Promise<{ loaded: number; scanned: number }> {
   if (process.env.GEOMACRO_CANONICAL_BATCH !== "1") {
     throw new Error("CANONICAL_BATCH_PREVIOUS_PRIME_OUTSIDE_BATCH");
   }
@@ -348,7 +348,7 @@ export async function primeCanonicalBatchPreviousRiskObjects(
   if (canonicalBatchPreviousObjects?.key === key) {
     return {
       loaded: canonicalBatchPreviousObjects.byCountry.size,
-      missing: 0,
+      scanned: canonicalBatchPreviousObjects.byCountry.size,
     };
   }
 
@@ -390,7 +390,7 @@ export async function primeCanonicalBatchPreviousRiskObjects(
   }
 
   canonicalBatchPreviousObjects = { key, byCountry };
-  return { loaded: byCountry.size, missing: Math.max(0, 196 - byCountry.size) };
+  return { loaded: byCountry.size, scanned: (result.data ?? []).length };
 }
 
 function loadRecentStructuredEvents(asOf: Date): Promise<LoadedStructuredEvents> {
