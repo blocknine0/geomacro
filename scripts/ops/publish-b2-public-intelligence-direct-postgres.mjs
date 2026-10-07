@@ -12,10 +12,9 @@ import {
   readGdeltDocCurrentRows,
 } from "./gdelt-doc-current-evidence.mjs";
 import {
-  GDELT_GEO_EVIDENCE_CONTRACT,
-  GDELT_GEO_SOURCE_TRANSPORT,
-  readGdeltGeoCurrentRows,
-} from "./gdelt-geo-current-evidence.mjs";
+  GDELT_MASTERFILE_SOURCE_TRANSPORT,
+  readGdeltMasterfileCurrentCandidates,
+} from "./gdelt-masterfile-current-evidence.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
@@ -382,25 +381,34 @@ function buildLiveObservedRows(exportText, fipsLookup, now = Date.now()) {
     .map(({ _numSources, _numArticles, ...row }) => row);
 }
 
-async function readCurrentGdeltRows() {
-  const lastUpdate = await fetchWithRetry(GDELT_LAST_UPDATE_URL, "text/plain,*/*;q=0.1");
-  const exportMeta = parseLastUpdate(await lastUpdate.text());
+async function readGdeltEventExport(exportMeta, sourceTransport) {
   const batchAgeMs = Date.now() - Date.parse(exportMeta.batchIso);
-  if (!Number.isFinite(batchAgeMs) || batchAgeMs < -GDELT_FUTURE_TOLERANCE_MS || batchAgeMs > LIVE_MAX_AGE_MS) {
+  if (
+    !Number.isFinite(batchAgeMs) ||
+    batchAgeMs < -GDELT_FUTURE_TOLERANCE_MS ||
+    batchAgeMs > LIVE_MAX_AGE_MS
+  ) {
     throw new Error(`CURRENT_GDELT_BATCH_STALE:${Math.round(batchAgeMs / 60_000)}`);
   }
 
-  const fipsResponse = await fetchWithRetry(GDELT_FIPS_LOOKUP_URL, "text/plain,*/*;q=0.1");
-  const fipsText = await fipsResponse.text();
-  const fipsLookup = parseFipsLookup(fipsText);
-
-  const exportResponse = await fetchWithRetry(exportMeta.secureUrl, "application/zip,application/octet-stream");
+  const exportResponse = await fetchWithRetry(
+    exportMeta.secureUrl,
+    "application/zip,application/octet-stream",
+  );
   const zip = Buffer.from(await exportResponse.arrayBuffer());
   if (zip.length !== exportMeta.size) {
     throw new Error(`CURRENT_GDELT_EXPORT_SIZE_MISMATCH:${exportMeta.size}:${zip.length}`);
   }
   const md5 = createHash("md5").update(zip).digest("hex");
   if (md5 !== exportMeta.md5) throw new Error("CURRENT_GDELT_EXPORT_MD5_MISMATCH");
+
+  const fipsResponse = await fetchWithRetry(
+    GDELT_FIPS_LOOKUP_URL,
+    "text/plain,*/*;q=0.1",
+  );
+  const fipsText = await fipsResponse.text();
+  const fipsLookup = parseFipsLookup(fipsText);
+
   const rows = buildLiveObservedRows(unzipUtf8(zip), fipsLookup);
   if (!rows.length) throw new Error("CURRENT_GDELT_NO_ELIGIBLE_LIVE_OBSERVATIONS");
   return {
@@ -410,8 +418,45 @@ async function readCurrentGdeltRows() {
     fipsSha256: sha256(Buffer.from(fipsText, "utf8")),
     sourceDigest: exportMeta.md5,
     evidenceContract: CURRENT_EVIDENCE_CONTRACT,
-    sourceTransport: "event_export",
+    sourceTransport,
   };
+}
+
+async function readCurrentGdeltRows() {
+  const lastUpdate = await fetchWithRetry(
+    GDELT_LAST_UPDATE_URL,
+    "text/plain,*/*;q=0.1",
+  );
+  const exportMeta = parseLastUpdate(await lastUpdate.text());
+  return readGdeltEventExport(exportMeta, "event_export");
+}
+
+async function readCurrentGdeltMasterfileRows() {
+  const { candidates } = await readGdeltMasterfileCurrentCandidates();
+  let unavailableCount = 0;
+
+  for (const candidate of candidates) {
+    try {
+      return await readGdeltEventExport(
+        candidate,
+        GDELT_MASTERFILE_SOURCE_TRANSPORT,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        message === "CURRENT_EVIDENCE_HTTP_404" ||
+        message === "CURRENT_GDELT_NO_ELIGIBLE_LIVE_OBSERVATIONS"
+      ) {
+        unavailableCount += 1;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw new Error(
+    `CURRENT_GDELT_MASTERFILE_EXPORTS_UNAVAILABLE:${unavailableCount}`,
+  );
 }
 
 function eventExportTransportUnavailable(error) {
@@ -420,6 +465,18 @@ function eventExportTransportUnavailable(error) {
     message === "CURRENT_GDELT_EXPORT_UNAVAILABLE" ||
     message.startsWith("CURRENT_GDELT_BATCH_STALE:") ||
     /^CURRENT_EVIDENCE_HTTP_(404|429|5\\d\\d)$/u.test(message) ||
+    /fetch failed|timeout|timed out|aborted/iu.test(message)
+  );
+}
+
+function masterfileFallbackTransportUnavailable(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message === "CURRENT_GDELT_MASTERFILE_CONTENT_RANGE_INVALID" ||
+    message === "CURRENT_GDELT_MASTERFILE_NO_CURRENT_EXPORTS" ||
+    message.startsWith("CURRENT_GDELT_MASTERFILE_EXPORTS_UNAVAILABLE:") ||
+    /^CURRENT_GDELT_MASTERFILE_RANGE_HTTP_(404|416|429|5\\d\\d)$/u.test(message) ||
+    message.startsWith("CURRENT_GDELT_MASTERFILE_FETCH_FAILED:") ||
     /fetch failed|timeout|timed out|aborted/iu.test(message)
   );
 }
@@ -435,17 +492,6 @@ function docFallbackTransportUnavailable(error) {
   );
 }
 
-function geoFallbackTransportUnavailable(error) {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message === "CURRENT_GDELT_GEO_ITEMS_EMPTY" ||
-    message.startsWith("CURRENT_GDELT_GEO_CORROBORATION_INSUFFICIENT:") ||
-    /^CURRENT_GDELT_GEO_HTTP_(429|5\\d\\d)$/u.test(message) ||
-    message.startsWith("CURRENT_GDELT_GEO_FETCH_FAILED:") ||
-    /fetch failed|timeout|timed out|aborted/iu.test(message)
-  );
-}
-
 async function readCurrentGdeltEvidence() {
   try {
     return await readCurrentGdeltRows();
@@ -454,41 +500,42 @@ async function readCurrentGdeltEvidence() {
     const primaryMessage = error instanceof Error ? error.message : String(error);
 
     try {
-      const fallback = await readGdeltDocCurrentRows();
+      const masterfileFallback = await readCurrentGdeltMasterfileRows();
       console.error(JSON.stringify({
         ok: true,
         degraded_transport: true,
         primary_transport_error: primaryMessage,
-        fallback_transport: GDELT_DOC_SOURCE_TRANSPORT,
-        fallback_contract: GDELT_DOC_EVIDENCE_CONTRACT,
-        fallback_rows: fallback.rows.length,
+        fallback_transport: GDELT_MASTERFILE_SOURCE_TRANSPORT,
+        fallback_contract: CURRENT_EVIDENCE_CONTRACT,
+        fallback_rows: masterfileFallback.rows.length,
       }));
-      return fallback;
-    } catch (docError) {
-      const docMessage = docError instanceof Error ? docError.message : String(docError);
-      if (!docFallbackTransportUnavailable(docError)) {
-        throw new Error(`CURRENT_GDELT_DOC_FALLBACK_INVALID:${docMessage}`);
+      return masterfileFallback;
+    } catch (masterfileError) {
+      const masterfileMessage =
+        masterfileError instanceof Error ? masterfileError.message : String(masterfileError);
+      if (!masterfileFallbackTransportUnavailable(masterfileError)) {
+        throw new Error(`CURRENT_GDELT_MASTERFILE_FALLBACK_INVALID:${masterfileMessage}`);
       }
 
       try {
-        const geoFallback = await readGdeltGeoCurrentRows();
+        const docFallback = await readGdeltDocCurrentRows();
         console.error(JSON.stringify({
           ok: true,
           degraded_transport: true,
           primary_transport_error: primaryMessage,
-          doc_transport_error: docMessage,
-          fallback_transport: GDELT_GEO_SOURCE_TRANSPORT,
-          fallback_contract: GDELT_GEO_EVIDENCE_CONTRACT,
-          fallback_rows: geoFallback.rows.length,
+          masterfile_transport_error: masterfileMessage,
+          fallback_transport: GDELT_DOC_SOURCE_TRANSPORT,
+          fallback_contract: GDELT_DOC_EVIDENCE_CONTRACT,
+          fallback_rows: docFallback.rows.length,
         }));
-        return geoFallback;
-      } catch (geoError) {
-        const geoMessage = geoError instanceof Error ? geoError.message : String(geoError);
-        if (!geoFallbackTransportUnavailable(geoError)) {
-          throw new Error(`CURRENT_GDELT_GEO_FALLBACK_INVALID:${geoMessage}`);
+        return docFallback;
+      } catch (docError) {
+        const docMessage = docError instanceof Error ? docError.message : String(docError);
+        if (!docFallbackTransportUnavailable(docError)) {
+          throw new Error(`CURRENT_GDELT_DOC_FALLBACK_INVALID:${docMessage}`);
         }
         throw new Error(
-          `CURRENT_GDELT_EXPORT_UNAVAILABLE;DOC_FALLBACK_FAILED:${docMessage};GEO_FALLBACK_FAILED:${geoMessage}`,
+          `CURRENT_GDELT_EXPORT_UNAVAILABLE;MASTERFILE_FALLBACK_FAILED:${masterfileMessage};DOC_FALLBACK_FAILED:${docMessage}`,
         );
       }
     }
