@@ -69,7 +69,12 @@ function controlPlaneToken() {
     .digest("hex");
 }
 
-async function publishHotOverlay(current, generatedAt, verifiedB2Sha256) {
+async function publishHotOverlay(
+  current,
+  generatedAt,
+  verifiedB2Sha256,
+  verifiedB2GeneratedAt = generatedAt,
+) {
   if (!/^[0-9a-f]{64}$/u.test(String(verifiedB2Sha256 ?? ""))) {
     throw new Error("PUBLIC_INTELLIGENCE_HOT_OVERLAY_B2_SHA_INVALID");
   }
@@ -103,6 +108,7 @@ async function publishHotOverlay(current, generatedAt, verifiedB2Sha256) {
     source_id: "gdelt_v2_events",
     verified_b2_key: LIVE_KEY,
     verified_b2_sha256: verifiedB2Sha256,
+    verified_b2_generated_at: verifiedB2GeneratedAt,
     full_b2_readback_verified: true,
     exact_gzip_restore_verified: true,
     current_source_transport: current.sourceTransport,
@@ -145,6 +151,8 @@ async function publishHotOverlay(current, generatedAt, verifiedB2Sha256) {
     current_source_batch_at: current.batchIso,
     current_source_transport: current.sourceTransport,
     current_evidence_contract: current.evidenceContract,
+    generated_at: generatedAt,
+    verified_b2_generated_at: verifiedB2GeneratedAt,
     live_observed_rows: rows.length,
     bytes: encoded.length,
     synthetic_score: false,
@@ -249,11 +257,17 @@ async function publishB2CapOverlayRecovery(current, error) {
   const reason = b2CapReason(error);
   if (!reason) throw error;
   const baseline = await readVerifiedEdgeBaseline();
-  await publishHotOverlay(current, baseline.generatedAt, baseline.b2Sha256);
+  const generatedAt = new Date().toISOString();
+  await publishHotOverlay(
+    current,
+    generatedAt,
+    baseline.b2Sha256,
+    baseline.generatedAt,
+  );
   const proof = {
     ok: true,
     schema: "geomacro.public-intelligence-overlay-recovery.v1",
-    generated_at: new Date().toISOString(),
+    generated_at: generatedAt,
     authority_read: "verified-intelligence-edge",
     authority_serve: "cloudflare-d1-hot-overlay",
     recovery_reason: reason,

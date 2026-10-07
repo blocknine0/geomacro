@@ -179,6 +179,9 @@ async function readHotOverlay(verifiedB2Sha256, expectedGeneratedAt) {
     if (!response.ok) return null;
     const payload = await response.json();
     const generatedAt = Date.parse(String(payload?.generated_at ?? ""));
+    const verifiedB2GeneratedAt = Date.parse(
+      String(payload?.verified_b2_generated_at ?? ""),
+    );
     const sourceBatchAt = Date.parse(String(payload?.current_source_batch_at ?? ""));
     if (
       payload?.ok !== true ||
@@ -188,15 +191,18 @@ async function readHotOverlay(verifiedB2Sha256, expectedGeneratedAt) {
       payload?.verified_b2_sha256 !== verifiedB2Sha256 ||
       payload?.full_b2_readback_verified !== true ||
       payload?.exact_gzip_restore_verified !== true ||
-      payload?.generated_at !== expectedGeneratedAt ||
+      payload?.verified_b2_generated_at !== expectedGeneratedAt ||
       payload?.synthetic_score !== false ||
       payload?.raw_source_headlines_exposed !== false ||
       payload?.provider_identity_exposed !== false ||
       !Number.isFinite(generatedAt) ||
+      !Number.isFinite(verifiedB2GeneratedAt) ||
       !Number.isFinite(sourceBatchAt) ||
       generatedAt > Date.now() + 5 * 60_000 ||
+      verifiedB2GeneratedAt > Date.now() + 5 * 60_000 ||
       sourceBatchAt > Date.now() + 5 * 60_000 ||
       Date.now() - generatedAt > HOT_OVERLAY_MAX_AGE_MS ||
+      Date.now() - verifiedB2GeneratedAt > MAX_AGE_MS ||
       Date.now() - sourceBatchAt > HOT_OVERLAY_MAX_AGE_MS ||
       !validHotOverlayRows(payload?.rows)
     ) return null;

@@ -134,6 +134,163 @@ describe("B2 cap resilient public edge reads", () => {
     expect(b2Reads).toBe(0);
   });
 
+  it("projects a fresh Intelligence overlay over an older verified B2 baseline when baseline time is explicitly bound", async () => {
+    const baselineAt = new Date(Date.now() - 19 * 60 * 60 * 1000).toISOString();
+    const overlayAt = new Date(Date.now() - 60_000).toISOString();
+    const live = {
+      ...livePackage("intelligence"),
+      generated_at: baselineAt,
+      rows: ["geopolitics", "macro", "rare_earth"].map((category) => ({
+        id: `baseline-${category}`,
+        source_title: "Geomacro finds a verified material development",
+        summary: "Derived summary.",
+        category,
+        severity: 40,
+        delta: null,
+        created_at: baselineAt,
+        published_at: baselineAt,
+        public_status: "verified_b2",
+      })),
+    };
+    const cached = new Response(JSON.stringify(live), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+        "x-geomacro-b2-sha256": b2Sha,
+      },
+    });
+    vi.stubGlobal("caches", {
+      default: {
+        match: async () => cached.clone(),
+        put: async () => undefined,
+      },
+    });
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/v1/public/intelligence-overlay")) {
+        return Response.json({
+          ok: true,
+          schema: "geomacro.public-intelligence-live-observed.v1",
+          generated_at: overlayAt,
+          verified_b2_generated_at: baselineAt,
+          source_id: "gdelt_v2_events",
+          current_source_transport: "event_export",
+          current_source_batch_at: overlayAt,
+          current_evidence_contract: "gdelt-v2-event-export-conflict-root-v1",
+          synthetic_score: false,
+          raw_source_headlines_exposed: false,
+          provider_identity_exposed: false,
+          verified_b2_key: "geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
+          verified_b2_sha256: b2Sha,
+          full_b2_readback_verified: true,
+          exact_gzip_restore_verified: true,
+          rows: [{
+            id: "live-current-1",
+            source_title: "Geomacro observes a current verified geopolitical development",
+            summary: "Derived current observation.",
+            category: "geopolitics",
+            severity: null,
+            delta: null,
+            created_at: overlayAt,
+            published_at: overlayAt,
+            public_status: "live_observed",
+          }],
+        });
+      }
+      return new Response("unexpected", { status: 500 });
+    });
+
+    const response = await intelligenceWorker.fetch(
+      new Request("https://edge.test/intelligence"),
+      { B2_KEY_ID: "read-key", B2_APPLICATION_KEY: "read-secret" },
+      { waitUntil: () => undefined },
+    );
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-geomacro-current-overlay")).toBe("cloudflare-d1-hot");
+    expect(body.generated_at).toBe(overlayAt);
+    expect(body.current_overlay_source_batch_at).toBe(overlayAt);
+    expect(body.rows.filter((row: any) => row.public_status === "live_observed")).toHaveLength(1);
+    expect(body.rows.filter((row: any) => row.public_status === "verified_b2")).toHaveLength(3);
+  });
+
+  it("does not apply an Intelligence overlay whose B2 baseline timestamp does not match the cached verified package", async () => {
+    const baselineAt = new Date(Date.now() - 19 * 60 * 60 * 1000).toISOString();
+    const overlayAt = new Date(Date.now() - 60_000).toISOString();
+    const live = {
+      ...livePackage("intelligence"),
+      generated_at: baselineAt,
+      rows: ["geopolitics", "macro", "rare_earth"].map((category) => ({
+        id: `baseline-mismatch-${category}`,
+        source_title: "Geomacro finds a verified material development",
+        summary: "Derived summary.",
+        category,
+        severity: 40,
+        delta: null,
+        created_at: baselineAt,
+        published_at: baselineAt,
+        public_status: "verified_b2",
+      })),
+    };
+    const cached = new Response(JSON.stringify(live), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+        "x-geomacro-b2-sha256": b2Sha,
+      },
+    });
+    vi.stubGlobal("caches", {
+      default: {
+        match: async () => cached.clone(),
+        put: async () => undefined,
+      },
+    });
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      if (String(input).includes("/v1/public/intelligence-overlay")) {
+        return Response.json({
+          ok: true,
+          schema: "geomacro.public-intelligence-live-observed.v1",
+          generated_at: overlayAt,
+          verified_b2_generated_at: new Date(Date.parse(baselineAt) + 60_000).toISOString(),
+          source_id: "gdelt_v2_events",
+          current_source_transport: "event_export",
+          current_source_batch_at: overlayAt,
+          current_evidence_contract: "gdelt-v2-event-export-conflict-root-v1",
+          synthetic_score: false,
+          raw_source_headlines_exposed: false,
+          provider_identity_exposed: false,
+          verified_b2_key: "geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
+          verified_b2_sha256: b2Sha,
+          full_b2_readback_verified: true,
+          exact_gzip_restore_verified: true,
+          rows: [{
+            id: "live-current-mismatch-1",
+            source_title: "Geomacro observes a current verified geopolitical development",
+            summary: "Derived current observation.",
+            category: "geopolitics",
+            severity: null,
+            delta: null,
+            created_at: overlayAt,
+            published_at: overlayAt,
+            public_status: "live_observed",
+          }],
+        });
+      }
+      return new Response("unexpected", { status: 500 });
+    });
+
+    const response = await intelligenceWorker.fetch(
+      new Request("https://edge.test/intelligence"),
+      { B2_KEY_ID: "read-key", B2_APPLICATION_KEY: "read-secret" },
+      { waitUntil: () => undefined },
+    );
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-geomacro-current-overlay")).toBe("none");
+    expect(body.generated_at).toBe(baselineAt);
+    expect(body.rows.some((row: any) => row.public_status === "live_observed")).toBe(false);
+  });
+
   it("fails closed when a D1 hot payload hash is invalid and B2 is capped", async () => {
     vi.stubGlobal("caches", { default: { match: async () => null, put: async () => undefined } });
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
