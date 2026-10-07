@@ -298,6 +298,13 @@ export async function readPrivateB2Object(
       const nativeBytes = await nativeRead(credential, normalizedKey, timeoutMs);
       return validateSize(nativeBytes, maxBytes);
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.endsWith("_403_download_cap_exceeded")) {
+        throw new Error("B2_DOWNLOAD_CAP_EXCEEDED");
+      }
+      if (message.endsWith("_403_transaction_cap_exceeded")) {
+        throw new Error("B2_TRANSACTION_CAP_EXCEEDED");
+      }
       lastError = error;
     }
   }
