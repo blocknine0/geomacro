@@ -86,7 +86,8 @@ describe("Intelligence GDELT availability contract", () => {
   it("fails closed until production serves current scored data, using live-observed only while scored coverage is incomplete", () => {
     expect(workflow).toContain("PUBLIC_INTELLIGENCE_PUBLISH_PROOF_INVALID");
     expect(workflow).toContain("proof.b2_readback_verified !== true");
-    expect(workflow).toContain("for attempt in $(seq 1 24)");
+    expect(workflow).toContain("for attempt in $(seq 1 40)");
+    expect(workflow).toContain("strictly longer than that TTL");
     expect(workflow).toContain("freshness_proof=${nonce}");
     expect(workflow).toContain("-H 'Cache-Control: no-cache'");
     expect(workflow).toContain("scoredCurrentAcrossAllDomains");
