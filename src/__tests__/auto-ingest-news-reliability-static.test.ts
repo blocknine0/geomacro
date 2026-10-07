@@ -39,7 +39,9 @@ describe("Auto Ingest News reliability contract", () => {
     expect(orchestratorWorkflow).toContain("D1_DATABASE_NAME: geomacro-control-plane");
     expect(orchestratorWorkflow).toContain("D1_DATABASE_ID=$DB_ID");
     expect(orchestratorWorkflow).toContain("D1/B2 scheduler runtime validated without requiring Supabase availability");
-    expect(orchestratorWorkflow).toContain("Supabase unavailable: D1/B2 heartbeat remains live");
+    expect(orchestratorWorkflow).toContain("Supabase restricted: D1 heartbeat plus explicitly classified direct-Postgres-safe ingestion remains live");
+    expect(orchestratorWorkflow).toContain("GEOMACRO_SUPABASE_RESTRICTED_MODE=true");
+    expect(orchestratorWorkflow).not.toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only");
     expect(loader).toContain('ORCHESTRATOR_SHIM_URL = "geomacro:d1-orchestrator-supabase"');
     expect(loader).toContain("d1-orchestrator-supabase-shim.mjs");
     expect(d1State).toContain("pipeline_checkpoint");
