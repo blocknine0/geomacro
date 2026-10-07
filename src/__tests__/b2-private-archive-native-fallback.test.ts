@@ -21,16 +21,16 @@ afterEach(() => {
   }
 });
 
-function setReadCredentials() {
+function setReadCredentials(suffix: string) {
   for (const key of KEYS) delete process.env[key];
-  process.env.B2_ARCHIVE_READ_KEY_ID = "read-key";
-  process.env.B2_ARCHIVE_READ_APPLICATION_KEY = "read-secret";
+  process.env.B2_ARCHIVE_READ_KEY_ID = `read-key-${suffix}`;
+  process.env.B2_ARCHIVE_READ_APPLICATION_KEY = `read-secret-${suffix}`;
   process.env.B2_S3_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 }
 
 describe("private B2 server native fallback", () => {
   it("falls back from exact S3 AccessDenied to scoped native authenticated download", async () => {
-    setReadCredentials();
+    setReadCredentials("success");
     vi.stubGlobal("fetch", vi.fn(async (input, init = {}) => {
       const url = String(input);
       if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
@@ -64,7 +64,7 @@ describe("private B2 server native fallback", () => {
   });
 
   it("rejects native authorization without readFiles capability", async () => {
-    setReadCredentials();
+    setReadCredentials("missing-capability");
     vi.stubGlobal("fetch", vi.fn(async (input) => {
       const url = String(input);
       if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
@@ -92,7 +92,7 @@ describe("private B2 server native fallback", () => {
       .rejects.toThrow("B2_PRIVATE_NATIVE_READ_CAPABILITY_MISSING");
   });
   it("stops on native download cap instead of trying another credential", async () => {
-    setReadCredentials();
+    setReadCredentials("hard-cap");
     process.env.B2_KEY_ID = "primary-key";
     process.env.B2_APPLICATION_KEY = "primary-secret";
     const calls: string[] = [];
