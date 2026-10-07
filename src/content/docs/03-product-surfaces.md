@@ -22,7 +22,7 @@ Each index is a risk-intelligence signal with its own current reading, history a
 
 The three public indices preserve the audited `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records and are not a second current headline product.
 
-The Risk Indices are **not** prediction-market probabilities, investment recommendations or transaction authorization signals.
+The Risk Indices are risk-intelligence signals, not investment recommendations or transaction authorization signals.
 
 ## 3.3 Ask Geomacro
 
