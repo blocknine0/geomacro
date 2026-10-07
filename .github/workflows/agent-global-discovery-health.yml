@@ -79,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --max-time 20 \
-            https://geomacro.live/api/x402/intelligence \
+            https://geomacro.live/api/v1/intelligence/query \
             -o /tmp/x402-service.json
           jq -e '
             .ok == true and

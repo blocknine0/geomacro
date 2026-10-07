@@ -15,7 +15,7 @@ const targets = [
       host.endsWith(".coinbase.com") ||
       host === "x402.org" ||
       host.endsWith(".x402.org"),
-    endpoint: "https://geomacro.live/api/x402/intelligence",
+    endpoint: "https://geomacro.live/api/v1/intelligence/query",
   },
   {
     key: "circle_agent_marketplace",

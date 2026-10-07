@@ -179,7 +179,7 @@ describe("end-to-end paid production acceptance evidence chain", () => {
   it("checks exact-SHA public production and three unpaid 402 contracts without paying", () => {
     expect(postListingHealth).toContain('base.hostname !== "geomacro.live"');
     expect(postListingHealth).toContain("/.well-known/geomacro-build.json");
-    expect(postListingHealth).toContain("/api/x402/intelligence");
+    expect(postListingHealth).toContain("/api/v1/intelligence/query");
     expect(postListingHealth).toContain("/api/x402/circle/intelligence");
     expect(postListingHealth).toContain("/api/x402/nevermined/intelligence");
     expect(postListingHealth).toContain("payment_performed_by_this_check: false");

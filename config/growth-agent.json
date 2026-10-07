@@ -5,7 +5,7 @@
   "canonical_origin": "https://geomacro.live",
   "canonical_product": "Geomacro Decision Intelligence",
   "canonical_free_preflight": "https://geomacro.live/api/x402/risk/availability",
-  "canonical_paid_product": "https://geomacro.live/api/x402/intelligence",
+  "canonical_paid_product": "https://geomacro.live/api/v1/intelligence/query",
   "commercial_contract": "config/decision-intelligence-commercial-contract.json",
   "marketplace_contract": "config/agent-marketplace-distribution.json",
   "distribution_contract": "config/auto-distribution.json",

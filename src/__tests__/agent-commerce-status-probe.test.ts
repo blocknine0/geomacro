@@ -3,11 +3,12 @@ import { describe, expect, it } from "vitest";
 
 const statusComponent = fs.readFileSync("src/components/agent-commerce-status.tsx", "utf8");
 const healthRoute = fs.readFileSync("src/routes/api.health.ts", "utf8");
-const paymentRoute = fs.readFileSync("src/routes/api.x402.intelligence.ts", "utf8");
+const paymentRoute = fs.readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts", "utf8");
 
 describe("agent commerce status probe", () => {
   it("never probes the fail-closed payment endpoint from public UI", () => {
     expect(statusComponent).toContain('fetch("/api/health"');
+    expect(statusComponent).not.toContain('fetch("/api/v1/intelligence/query"');
     expect(statusComponent).not.toContain('fetch("/api/x402/intelligence"');
   });
 

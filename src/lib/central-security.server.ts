@@ -133,7 +133,10 @@ export function isCoinbaseTestnetLocalSecurityFallbackAllowed(
 
   return (
     routeClass === "payment" &&
-    normalizedPathname(pathnameInput).startsWith("/api/x402") &&
+    (
+      normalizedPathname(pathnameInput).startsWith("/api/x402") ||
+      normalizedPathname(pathnameInput) === "/api/v1/intelligence/query"
+    ) &&
     coinbaseEnvironment === "testnet"
   );
 }
@@ -148,6 +151,7 @@ export function classifyCentralSecurityRoute(
 
   if (
     pathname.startsWith("/api/x402") ||
+    pathname === "/api/v1/intelligence/query" ||
     pathname.startsWith("/api/goat") ||
     pathname === "/api/agent/risk"
   ) {

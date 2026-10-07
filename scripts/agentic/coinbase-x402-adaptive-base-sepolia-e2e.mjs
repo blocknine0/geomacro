@@ -5,7 +5,7 @@ import { x402Client, x402HTTPClient } from "@x402/core/client";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { Contract, Interface, JsonRpcProvider, Wallet, getAddress, isAddress } from "ethers";
 
-const RESOURCE_URL = "https://geomacro.live/api/x402/intelligence";
+const RESOURCE_URL = "https://geomacro.live/api/v1/intelligence/query";
 const AVAILABILITY_URL = "https://geomacro.live/api/x402/risk/availability";
 const EXPECTED_NETWORK = "eip155:84532";
 const EXPECTED_ASSET = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
@@ -127,7 +127,7 @@ async function main() {
   requireAck();
   requirePrivateKey();
 
-  for (const [url, pathname] of [[RESOURCE_URL, "/api/x402/intelligence"], [AVAILABILITY_URL, "/api/x402/risk/availability"]]) {
+  for (const [url, pathname] of [[RESOURCE_URL, "/api/v1/intelligence/query"], [AVAILABILITY_URL, "/api/x402/risk/availability"]]) {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:" || parsed.hostname !== "geomacro.live" || parsed.pathname !== pathname) {
       fail(`Pinned Geomacro HTTPS endpoint mismatch: ${url}`);

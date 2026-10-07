@@ -10,6 +10,8 @@ on:
       - "src/routes/api.x402.risk.ts"
       - "src/routes/api.x402.risk_.availability.ts"
       - "src/routes/api.x402.intelligence.ts"
+      - "src/routes/api.v1.intelligence.query.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
       - "src/__tests__/coinbase-x402-adaptive-availability-static.test.ts"
       - "src/__tests__/agent-query-hot-topics-static.test.ts"
       - "src/lib/geomacro-intelligence-contract.ts"
@@ -17,6 +19,7 @@ on:
       - "src/routes/api.intelligence.capabilities.ts"
       - "src/routes/api.intelligence.state.ts"
       - "src/__tests__/public-intelligence-machine-surfaces-static.test.ts"
+      - "src/__tests__/mainnet-intelligence-api-v1-static.test.ts"
       - "supabase/migrations/932_coinbase_x402_agent_usage_guard.sql"
       - "supabase/migrations/933_coinbase_x402_product_audit.sql"
       - ".github/workflows/agent-query-production-readiness.yml"
@@ -41,20 +44,20 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
       - name: Query planner, deliverability and hot-topic tests
-        run: bunx vitest run src/lib/agent-query-plan.test.ts src/lib/agent-query-deliverability.server.test.ts src/lib/geomacro-intelligence-contract.test.ts src/__tests__/public-intelligence-machine-surfaces-static.test.ts src/__tests__/coinbase-x402-adaptive-availability-static.test.ts src/__tests__/agent-query-hot-topics-static.test.ts
+        run: bunx vitest run src/lib/agent-query-plan.test.ts src/lib/agent-query-deliverability.server.test.ts src/lib/geomacro-intelligence-contract.test.ts src/__tests__/public-intelligence-machine-surfaces-static.test.ts src/__tests__/coinbase-x402-adaptive-availability-static.test.ts src/__tests__/agent-query-hot-topics-static.test.ts src/__tests__/mainnet-intelligence-api-v1-static.test.ts
       - name: Database migration safety
         run: bun run db:safety
       - name: Verify no-charge and mainnet safety invariants
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'checkAgentQueryDeliverability' src/routes/api.x402.intelligence.ts
-          grep -q 'FINAL_AVAILABILITY' src/routes/api.x402.intelligence.ts
+          grep -q 'checkAgentQueryDeliverability' src/lib/mainnet-intelligence-endpoint.server.ts
+          grep -q 'FINAL_AVAILABILITY' src/lib/mainnet-intelligence-endpoint.server.ts
           grep -q 'LEGACY_X402_PRODUCTION_DISABLED' src/routes/api.x402.risk.ts
           grep -q 'payment_required_now: false' src/routes/api.x402.risk_.availability.ts
           ! grep -q 'settleCoinbaseX402' src/routes/api.x402.risk_.availability.ts
-          grep -q 'reserveCoinbaseX402AgentUsage' src/routes/api.x402.intelligence.ts
-          grep -q 'X402_SETTLEMENT_AMBIGUOUS' src/routes/api.x402.intelligence.ts
+          grep -q 'reserveCoinbaseX402AgentUsage' src/lib/mainnet-intelligence-endpoint.server.ts
+          grep -q 'X402_SETTLEMENT_AMBIGUOUS' src/lib/mainnet-intelligence-endpoint.server.ts
           grep -q 'COMMERCIAL_SOURCE_NOT_ELIGIBLE' src/lib/agent-query-deliverability.server.ts
           grep -q 'HOT_TOPIC_PIPELINE_STALE' src/lib/agent-query-hot-topics.server.ts
           grep -q 'HOT_TOPIC_COMMERCIAL_COVERAGE_INSUFFICIENT' src/lib/agent-query-hot-topics.server.ts

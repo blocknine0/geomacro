@@ -21,7 +21,7 @@ describe("industry-ready website contract", () => {
   it("preserves the no-charge-unavailable invariant in public product copy", () => {
     const section = read("src/components/home/industry-readiness-section.tsx");
     const availability = read("src/routes/api.x402.risk_.availability.ts");
-    const paid = read("src/routes/api.x402.intelligence.ts");
+    const paid = read("src/lib/mainnet-intelligence-endpoint.server.ts");
 
     expect(section).toContain("No payment is requested when required coverage is unavailable, stale or commercially ineligible");
     expect(availability).toContain("payment_required_now: false");

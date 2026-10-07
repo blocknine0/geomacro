@@ -12,7 +12,7 @@ const MODES = new Set([
   "quarantine_nevermined",
 ]);
 const providerPaths = {
-  coinbase_x402: "/api/x402/intelligence",
+  coinbase_x402: "/api/v1/intelligence/query",
   circle_gateway_x402: "/api/x402/circle/intelligence",
   nevermined: "/api/x402/nevermined/intelligence",
 };

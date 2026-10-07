@@ -4,7 +4,7 @@ Status: READY FOR OWNER-CONTROLLED ACTIVATION. Real-USDC settlement remains disa
 
 ## Canonical paid endpoint
 
-`POST https://geomacro.live/api/x402/intelligence`
+`POST https://geomacro.live/api/v1/intelligence/query`
 
 Product:
 

@@ -9,7 +9,7 @@
   "canonical_openapi": "https://geomacro.live/openapi-x402.json",
   "canonical_decision_intelligence_contract": "config/decision-intelligence-commercial-contract.json",
   "canonical_availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
-  "canonical_paid_endpoint": "https://geomacro.live/api/x402/intelligence",
+  "canonical_paid_endpoint": "https://geomacro.live/api/v1/intelligence/query",
   "canonical_circle_paid_endpoint": "https://geomacro.live/api/x402/circle/intelligence",
   "initial_launch_cohort": [
     "coinbase_bazaar",
@@ -133,7 +133,7 @@
     "long_description": "Geomacro turns source-governed geopolitical, macroeconomic and corridor evidence into concise Decision Intelligence for software and AI agents. Each payable response is checked for current deliverability, freshness and commercial source eligibility before payment is requested, then returns a structured answer with the Geomacro-detected cause, material drivers, why-it-matters context, bounded decision guardrail, change attribution, watch-next signals, confidence, freshness and state continuity. Geomacro delivers derived intelligence rather than raw upstream data, and can include independently verifiable signed Risk Objects and non-executing Risk Gate context. Geomacro does not custody funds, sign customer transactions, replace sanctions screening, provide legal or financial advice, or authorize execution.",
     "differentiation": "Geomacro is designed as a Decision Intelligence layer rather than a raw-data feed: it explains the current state, the verified cause, what materially changed, why the change matters, and what should be watched next in one compact machine-readable object.",
     "approved_endpoint_paths": [
-      "/api/x402/intelligence",
+      "/api/v1/intelligence/query",
       "/api/x402/circle/intelligence"
     ],
     "nevermined_endpoint_paths": [

@@ -9,6 +9,9 @@ on:
       - "src/lib/agent-query-*.ts"
       - "src/lib/agent-commerce-delivery.server.ts"
       - "src/routes/api.x402.intelligence.ts"
+      - "src/routes/api.v1.intelligence.query.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
+      - "src/__tests__/mainnet-intelligence-api-v1-static.test.ts"
       - "src/routes/api.x402.risk_.availability.ts"
       - "scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs"
       - "scripts/verify-launch-readiness.mjs"
@@ -60,6 +63,7 @@ jobs:
           src/__tests__/agent-commerce-delivery-ledger-static.test.ts
           src/__tests__/production-agent-commerce-reconciliation-static.test.ts
           src/__tests__/public-intelligence-machine-surfaces-static.test.ts
+          src/__tests__/mainnet-intelligence-api-v1-static.test.ts
 
       - name: Verify database migration safety
         run: bun run db:safety

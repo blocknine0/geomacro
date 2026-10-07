@@ -33,6 +33,7 @@ process.env.GEOMACRO_SECURITY_FINGERPRINT_PEPPER = "s".repeat(64);
 process.env.GEOMACRO_API_CREDENTIAL_PEPPER = "a".repeat(64);
 
 const paths = [
+  "/api/v1/intelligence/query",
   "/api/x402/intelligence",
   "/api/x402/risk",
   "/api/risk-gate",

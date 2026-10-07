@@ -111,7 +111,9 @@ A source may be added to the internal acquisition mesh without changing the cust
 
 The canonical machine resource remains:
 
-`POST /api/x402/intelligence`
+`POST /api/v1/intelligence/query`
+
+The previous `POST /api/x402/intelligence` route is retained only as a compatibility alias during migration. It shares the same handler and cannot become a second intelligence truth.
 
 The response is JSON and includes:
 
