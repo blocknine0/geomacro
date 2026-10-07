@@ -43,3 +43,24 @@ describe("#1414 Ask Geomacro production acceptance", () => {
     expect(machine).toContain("answerAskQuestion(question)");
   });
 });
+
+
+describe("Ask acceptance workflow lifecycle", () => {
+  const workflow = readFileSync(".github/workflows/ask-production-acceptance.yml", "utf8");
+
+  it("does not require undeployed PR code to pass a live-production probe", () => {
+    expect(workflow).toContain("workflow_run:");
+    expect(workflow).toContain('workflows:');
+    expect(workflow).toContain('"Production Website Health"');
+    expect(workflow).toContain("github.event_name == 'pull_request'");
+    expect(workflow).toContain("github.event_name != 'pull_request'");
+    expect(workflow).toContain("live deployment claim intentionally deferred");
+  });
+
+  it("runs live Ask acceptance only after successful main production health or explicit scheduled/manual checks", () => {
+    expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(workflow).toContain("github.event.workflow_run.head_branch == 'main'");
+    expect(workflow).toContain("github.event.workflow_run.head_sha");
+    expect(workflow).not.toContain("push:\n");
+  });
+});
