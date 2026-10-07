@@ -27,6 +27,7 @@ type NativeAuthorization = {
 
 const nativeAuthorizationCache = new Map<string, Promise<NativeAuthorization>>();
 const nativePreferredCredentials = new Set<string>();
+let hardCapError: "B2_DOWNLOAD_CAP_EXCEEDED" | "B2_TRANSACTION_CAP_EXCEEDED" | null = null;
 
 function readCredentials(): ReadCredential[] {
   const dedicatedAccess = String(process.env.B2_ARCHIVE_READ_KEY_ID ?? "").trim();
@@ -270,6 +271,8 @@ export async function readPrivateB2Object(
   key: string,
   options: { timeoutMs?: number; maxBytes?: number } = {},
 ): Promise<Buffer> {
+  if (hardCapError) throw new Error(hardCapError);
+
   const endpoint = String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim();
   if (endpoint !== B2_ENDPOINT) {
     throw new Error("B2_PRIVATE_ARCHIVE_ENDPOINT_INVALID");
@@ -290,10 +293,12 @@ export async function readPrivateB2Object(
   const classifyHardCap = (error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
     if (message.endsWith("_403_download_cap_exceeded")) {
-      throw new Error("B2_DOWNLOAD_CAP_EXCEEDED");
+      hardCapError = "B2_DOWNLOAD_CAP_EXCEEDED";
+      throw new Error(hardCapError);
     }
     if (message.endsWith("_403_transaction_cap_exceeded")) {
-      throw new Error("B2_TRANSACTION_CAP_EXCEEDED");
+      hardCapError = "B2_TRANSACTION_CAP_EXCEEDED";
+      throw new Error(hardCapError);
     }
   };
 
