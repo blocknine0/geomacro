@@ -40,8 +40,15 @@ describe("#1414 B2 direct archive and credential split", () => {
     expect(helper).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(helper).toContain("B2_ARCHIVE_WRITE_KEY_ID");
     expect(helper).toContain("B2_ARCHIVE_WRITE_APPLICATION_KEY");
-    expect(helper).toContain("dedicatedAccess || archiveWriteAccess || defaultAccess");
-    expect(helper).toContain("dedicatedSecret || archiveWriteSecret || defaultSecret");
+    expect(helper).toContain('"dedicated-read"');
+    expect(helper).toContain('"archive-read-write"');
+    expect(helper).toContain('"primary"');
+    expect(helper).toContain("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
+    expect(helper).toContain('const B2_NATIVE_AUTHORIZE_URL = "https://api.backblazeb2.com/b2api/v4/b2_authorize_account"');
+    expect(helper).toContain('capabilities.includes("readFiles")');
+    expect(helper).toContain('buckets.includes(B2_BUCKET)');
+    expect(helper).toContain("authorization.namePrefix");
+    expect(helper).toContain("B2_DOWNLOAD_CAP_EXCEEDED");
     expect(helper).toContain('const B2_BUCKET = "geomacro-private-archive"');
     expect(store).toContain("archive_bundle_key,archive_bundle_sha256");
   });
