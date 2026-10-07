@@ -1,6 +1,6 @@
 # 48. Status Labels
 
-Geomacro uses a small, explicit status vocabulary across public surfaces.
+Geomacro uses a small, explicit status vocabulary across public commercial surfaces.
 
 ## LIVE
 
@@ -8,11 +8,11 @@ Available in the current public product.
 
 ## PRIVATE PILOT
 
-Implemented capability available only through controlled pilot access, with validation/operations still being hardened.
+Implemented capability available only through controlled customer access, with validation and operating controls still being hardened.
 
-## TECHNICAL PROOF
+## PRODUCTION GATED
 
-Working secondary implementation, often Testnet-based, that demonstrates engineering capability but is not represented as a production commercial service.
+Commercial capability whose runtime remains fail-closed until explicit production activation and required acceptance gates pass.
 
 ## PLANNED
 
@@ -20,6 +20,6 @@ A roadmap or commercial direction that is not currently available.
 
 ## LEGACY
 
-Older implementation retained for compatibility, reproducibility or technical evidence.
+Older implementation retained internally for compatibility or reproducibility and not presented as a customer product.
 
 Status must describe the actual product state. Code existence alone does not justify `LIVE`, and `PRIVATE PILOT` does not imply a production SLA or institutional deployment.

@@ -6,13 +6,12 @@ Geomacro is geopolitical, macroeconomic and critical-mineral risk intelligence i
 
 The core product turns real-world events into structured, explainable, machine-readable risk intelligence for human and machine decision systems.
 
-Prediction markets and programmable onchain execution are secondary application, feedback and technical-proof layers.
 
 ## Intelligence Contract v1
 
 The canonical current commercial intelligence response contract is documented in [Geomacro Intelligence Contract v1](./GEOMACRO_INTELLIGENCE_CONTRACT_V1.md). The contract keeps the existing adaptive API identity while adding versioned current state, deterministic direct answers and redacted structural developments.
 
-Early-adoption pricing is **0.05 USDC per successfully settled and delivered intelligence call for the first 20,000 successful paid deliveries**. At that launch price, 20,000 successful paid deliveries equal **1,000 USDC gross before provider/network/hosting costs, refunds or disputes**. Failed, stale, unavailable, replayed, refunded, internal, testnet and unpaid requests do not count. Post-cohort pricing is an explicit operator-controlled commercial change and is not automatically increased by the intelligence engine.
+Early-adoption pricing is **0.05 USDC per successfully settled and delivered intelligence call for the first 20,000 successful paid deliveries**. At that launch price, 20,000 successful paid deliveries equal **1,000 USDC gross before provider/network/hosting costs, refunds or disputes**. Failed, stale, unavailable, replayed, refunded, internal and unpaid requests do not count. Post-cohort pricing is an explicit operator-controlled commercial change and is not automatically increased by the intelligence engine.
 
 Current commercial responses do not redistribute raw upstream article material or source identity. Internal provenance and commercial-rights checks remain governed server-side.
 
@@ -27,8 +26,6 @@ Current commercial responses do not redistribute raw upstream article material o
 | Ask Geomacro | Live | Intelligence query surface grounded in stored Geomacro data |
 | Risk API | Private Pilot | Machine-readable country/corridor intelligence delivery |
 | Risk Gate | Private Pilot | Verifiable pre-flight country/corridor risk context before customer-owned policy and execution |
-| Prediction Markets | Technical Proof | Experimental market and feedback layer |
-| Arc / USDC / Circle / CCTP | Technical Proof | Programmable execution and settlement proof |
 
 Private Pilot does not mean a generally available public hosted API, self-serve production authentication, production SLA or authorized real-money x402 settlement exists. The public pricing section documents the intended launch offer while production payments remain fail-closed until the coordinated launch gates are authorized.
 
@@ -44,7 +41,6 @@ Real-world evidence and data
              +-- Ask Geomacro - Live
              +-- Country Risk Object - Private Pilot --+
              +-- Corridor Risk Object - Private Pilot -+-> Risk Gate - Private Pilot
-             +-- Arc / Circle / prediction-market technical proof
 
 Risk Gate - Private Pilot
         -> Customer identity + permissions + policy
@@ -161,6 +157,4 @@ Optional secondary technical-proof path:
 
 ```text
 Structured Risk Intelligence
-        -> Prediction Markets / Programmable Execution Proof
-        -> Arc / USDC / Circle / CCTP
 ```

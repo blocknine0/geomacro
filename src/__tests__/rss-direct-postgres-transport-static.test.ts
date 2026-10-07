@@ -39,10 +39,9 @@ describe("permanent RSS direct-Postgres transport", () => {
     }
   });
 
-  it("keeps production, Testnet and Federico RSS callers off the Edge transport", () => {
+  it("keeps production and partner RSS callers off the Edge transport", () => {
     const orchestrator = read("scripts/intelligence-orchestrator.mjs");
     const productionWorkflow = read(".github/workflows/intelligence-orchestrator.yml");
-    const testnet = read(".github/workflows/testnet-rss-live-runner.yml");
     const federico = read(".github/workflows/federico-seven-day-risk-refresh.yml");
     const authorized = read(".github/workflows/day6-authorized-federico-pilot-once.yml");
     const worker = read("workers/telegram-flash/worker.py");
@@ -51,7 +50,7 @@ describe("permanent RSS direct-Postgres transport", () => {
     expect(orchestrator).not.toContain('disabledReason: () => "supabase_edge_function_service_unavailable"');
     expect(productionWorkflow).not.toContain("GEOMACRO_FLASH_INGEST_URL:");
 
-    for (const source of [testnet, federico, authorized]) {
+    for (const source of [federico, authorized]) {
       expect(source).toContain("GRI_DB_MODE: direct_postgres");
       expect(source).not.toContain(".supabase.co/functions/v1/live-flash-ingest");
       expect(source).not.toContain(".supabase.co/functions/v1/live-flash-corroborate");

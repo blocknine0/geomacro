@@ -2,7 +2,7 @@
 
 > Explainable geopolitical, macroeconomic and critical-mineral risk intelligence for human and machine decisions.
 
-Geomacro turns real-world geopolitical, macroeconomic and strategic-resource developments into structured, explainable risk intelligence. The primary product is the intelligence layer: live Risk Intelligence, separate verified Risk Indices, grounded research, machine-readable Risk Objects and Risk Gate decision context.
+Geomacro turns real-world geopolitical, macroeconomic and strategic-resource developments into structured, explainable risk intelligence. The commercial product is the intelligence layer: live Risk Intelligence, separate verified Risk Indices, grounded Ask Geomacro, machine-readable Risk Objects, Risk Gate decision context and governed paid machine delivery.
 
 ## Current product status
 
@@ -15,14 +15,9 @@ Geomacro turns real-world geopolitical, macroeconomic and strategic-resource dev
 - Risk API: PRIVATE PILOT
 - Risk Gate: PRIVATE PILOT
 - Signed country and directional-corridor Risk Objects: PRIVATE PILOT
-- Paid agent / x402 access: PRE-LAUNCH; production real-money activation disabled pending coordinated launch gates
-- GOAT Testnet3 and Arc Testnet onchain applications: TECHNICAL PROOF
-- Prediction markets: TECHNICAL PROOF; permanent Testnet-only boundary
-- Circle CCTP, Bridge & Swap and programmable-finance surfaces: TECHNICAL PROOF unless a page explicitly states otherwise
+- Paid agent / x402 access: PRODUCTION GATED; real-money settlement remains fail-closed until explicit production activation
 
-The separate public Risk Indices preserve the audited `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records. The historical combined GRI is not a second live headline product.
-
-Technical-proof surfaces are secondary to the risk-intelligence product and must not be interpreted as production mainnet, real-money institutional settlement, transaction authorization, production SLA or independent security certification.
+The separate public Risk Indices preserve the versioned `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records, not a second live headline product.
 
 ## Canonical product pages
 
@@ -32,23 +27,12 @@ Technical-proof surfaces are secondary to the risk-intelligence product and must
 - Risk Gate: https://geomacro.live/risk-gate
 - Ask Geomacro: https://geomacro.live/ask-geomacro
 - Data & API: https://geomacro.live/data-api
+- Pricing: https://geomacro.live/pricing
 - For Institutions: https://geomacro.live/institutional
 - Research: https://geomacro.live/research
 - Documentation: https://geomacro.live/docs
 - About & Trust: https://geomacro.live/about
 - Contact: https://geomacro.live/contact
-
-## Public Risk Indices
-
-The public product presents three risk domains independently:
-
-1. Geopolitical Risk Index
-2. Macroeconomic Risk Index
-3. Critical Minerals Risk Index
-
-Missing or unverifiable evidence is not converted into zero risk. Public risk-index presentation is fail-soft: a previously verified reading can remain visible during refresh problems, while a cold read uses a neutral refreshing state rather than exposing a raw infrastructure error or synthesizing a replacement score.
-
-The indices are risk-intelligence signals. They are not prediction-market probabilities, investment recommendations or autonomous execution instructions.
 
 ## Risk Gate and customer-control boundary
 
@@ -57,14 +41,8 @@ Risk Gate is a controlled Private Pilot capability for country and directional-c
 - Geomacro verifies the applicable Risk Object and returns bounded external risk context and a recommendation.
 - Customer identity, permissions and policy are applied by the customer's system after the Geomacro response.
 - Geomacro does not custody customer funds or authorize customer transactions.
-- The current external boundary remains `execution_authorized=false`.
-- A stale, incomplete, expired or unverifiable risk object must not become an implicit approval.
-
-## Dated controlled coverage evidence
-
-A controlled four-module Risk Gate census completed on 2026-09-16 evaluated 194 enabled sovereign countries under that workflow. 114 passed every required current module and 80 remained fail-closed. Every accepted result preserved `execution_authorized=false`.
-
-This is a dated workflow-coverage result, not an all-country product guarantee, institutional deployment claim, production SLA or promise that every product/request shape is deliverable for all 114 countries.
+- The external boundary remains `execution_authorized=false`.
+- Stale, incomplete, expired or unverifiable risk context must not become an implicit approval.
 
 ## Data, API and agent access
 
@@ -79,53 +57,18 @@ Machine discovery:
 - Agent discovery: https://geomacro.live/.well-known/geomacro-agent.json
 - Commerce discovery: https://geomacro.live/.well-known/geomacro-commerce.json
 - x402 discovery: https://geomacro.live/.well-known/x402.json
-- x402 compatibility alias: https://geomacro.live/.well-known/x402
+- OpenAPI: https://geomacro.live/openapi-x402.json
 
 A commercial entitlement defines the permitted capability, subject scope, history depth and response limits. Payment rails do not widen the underlying Geomacro entitlement.
 
 ## Machine-payment boundary
-
-Where pre-launch machine-payment integrations are exposed for testing or discovery:
 
 - deliverability must be checked before a payment challenge is issued;
 - unavailable, stale or commercially ineligible required coverage is not chargeable;
 - successful payment unlocks only the bounded requested product;
 - raw/private warehouse data is not a default customer entitlement;
 - payment success does not authorize a downstream financial action;
-- real-money provider activation remains disabled until the coordinated launch gates and explicit owner authorization are satisfied.
-
-During pre-launch, all real-money provider activation remains disabled.
-Base mainnet disabled pending coordinated launch.
-GOAT mainnet: DEFERRED pending manual merchant application/approval.
-Arc mainnet is not automatically enabled by this prepared architecture.
-
-## Current machine-readable request scope
-
-Supported Private Pilot subject types include:
-
-- country by ISO3 code;
-- directional corridor by origin ISO3 and destination ISO3.
-
-Relevant topic families can include:
-
-- sovereign risk;
-- macroeconomic risk;
-- FX/external risk;
-- sanctions/restrictions context;
-- conflict/geopolitics;
-- trade-corridor context;
-- energy/commodities;
-- critical minerals;
-- political/governance risk;
-- banking/financial-system context;
-- food/agriculture;
-- natural hazards;
-- hot topics;
-- Risk Gate;
-- signed Risk Object;
-- Risk Indices context.
-
-The exact deliverable remains subject to current evidence, source rights, entitlement and product support. Corridor composition does not imply full physical-route, vessel, counterparty, correspondent-bank or logistics-path modelling.
+- real-money activation remains disabled until the production acceptance gates and explicit owner authorization are satisfied.
 
 ## Product and claim boundaries
 
@@ -134,12 +77,11 @@ The exact deliverable remains subject to current evidence, source rights, entitl
 - Geomacro intelligence is not financial, legal, compliance or investment advice.
 - Sanctions/restrictions context is not a replacement for sanctions screening or legal/compliance review.
 - Missing evidence is not silently converted into zero risk.
-- Public repository visibility does not imply unrestricted open-source licensing; the repository licence governs reuse.
 - No independent external security audit, certification or production SLA should be inferred unless explicitly documented as completed or contracted.
 
 ## Privacy and security contact
 
-Public intelligence can be viewed without creating an account or connecting a wallet. Testnet and Private Pilot workflows can process the information intentionally supplied for those workflows, together with operational/audit metadata required by the implemented service. Users should never submit seed phrases, private keys or unnecessary confidential information through public surfaces.
+Public intelligence can be viewed without creating an account. Private Pilot and commercial workflows may process information intentionally supplied for those workflows together with operational and audit metadata required by the implemented service. Users should never submit seed phrases, private keys or unnecessary confidential information through public surfaces.
 
 Security contact: https://geomacro.live/.well-known/security.txt
 Privacy and product-use boundaries: https://geomacro.live/about#privacy and https://geomacro.live/about#product-use
@@ -147,8 +89,6 @@ Privacy and product-use boundaries: https://geomacro.live/about#privacy and http
 ## Technical implementation
 
 Public repository: https://github.com/blocknine0/geomacro
-
-The repository is publicly viewable. Its repository licence governs reuse; public visibility does not imply unrestricted open-source licensing.
 
 ## Contact
 

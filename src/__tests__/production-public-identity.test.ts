@@ -4,34 +4,38 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("production-first public identity", () => {
-  it("keeps testnet access isolated inside Technical Proof rather than primary buyer navigation", () => {
+  it("keeps the public shell commercial-only", () => {
     const shell = read("src/components/site-shell.tsx");
-    const primary = shell.match(/const PRIMARY_NAV = \[[\s\S]*?\] as const;/)?.[0] ?? "";
-    const technical = shell.match(/const TECHNICAL_NAV = \[[\s\S]*?\] as const;/)?.[0] ?? "";
-
-    expect(primary).not.toContain("Testnet API");
-    expect(primary).not.toContain("/testnet-access");
-    expect(technical).toContain('{ to: "/testnet-access", label: "Testnet API"');
-    expect(shell).not.toContain("Connect testnet wallet");
-    expect(shell).not.toContain("Testable implementation proof");
-    expect(shell).toContain("Implementation proof");
-    expect(shell).toContain("machine access follows live runtime policy");
+    for (const marker of ["Technical Proof", "Testnet API", "/testnet-access", "/onchain", "/bridge-swap", "/arena", "Connect wallet"]) {
+      expect(shell).not.toContain(marker);
+    }
+    expect(shell).toContain('label: "API & Agents"');
+    expect(shell).toContain('label: "Institutions"');
+    expect(shell).toContain('label: "Pricing"');
   });
 
-  it("reports live commerce mode without promoting testnet settlement as commercial revenue", () => {
+  it("publishes only production or production-gated commerce status", () => {
     const status = read("src/components/agent-commerce-status.tsx");
-    expect(status).not.toContain("x402 agent access · testnet proof");
-    expect(status).not.toContain("configured for testnet proof only");
-    expect(status).toContain("x402 agent access · controlled pre-launch");
-    expect(status).toContain("x402 agent access · controlled testnet");
-    expect(status).toContain("Testnet settlement is not commercial revenue");
+    expect(status.toLowerCase()).not.toContain("testnet");
+    expect(status).toContain("x402 commercial access · production activation pending");
     expect(status).toContain("live HTTP challenge and health contract remain the authority");
   });
 
-  it("retains technical proof routes without making them the production identity", () => {
-    const routeTree = read("src/routeTree.gen.ts");
-    expect(routeTree).toContain("/testnet-access");
-    expect(routeTree).toContain("/onchain");
-    expect(routeTree).toContain("/demo");
+  it("retires legacy client routes into current commercial surfaces", () => {
+    const expectations: Array<[string, string]> = [
+      ["src/routes/arena.tsx", "/intelligence"],
+      ["src/routes/bridge.tsx", "/data-api"],
+      ["src/routes/bridge-swap.tsx", "/data-api"],
+      ["src/routes/onchain.tsx", "/data-api"],
+      ["src/routes/testnet-access.tsx", "/data-api"],
+      ["src/routes/testnet-console.tsx", "/data-api"],
+      ["src/routes/demo.tsx", "/data-api"],
+      ["src/routes/pipeline.tsx", "/research"],
+    ];
+    for (const [path, target] of expectations) {
+      const source = read(path);
+      expect(source).toContain('to: "' + target + '"');
+      expect(source).toContain("replace: true");
+    }
   });
 });

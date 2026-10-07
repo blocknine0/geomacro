@@ -26,9 +26,6 @@ function answerQuestion(input: string): string {
   if (q.includes("rare") || q.includes("mineral") || q.includes("earth")) {
     return "Critical Minerals & Rare Earth Risk is a dedicated Geomacro launch product for supply concentration, geopolitical dependency, sourcing pressure and related macro exposure, with evidence and confidence boundaries.";
   }
-  if (q.includes("prediction") || q.includes("bridge") || q.includes("swap")) {
-    return "Prediction Markets, Bridge and Swap are separate testnet technical proofs. They are not part of Geomacro's commercial mainnet product identity.";
-  }
   if (q.includes("price") || q.includes("pricing") || q.includes("cost") || q.includes("plan")) {
     return `For pricing, commercial access or a proposal, contact ${EMAIL}.`;
   }

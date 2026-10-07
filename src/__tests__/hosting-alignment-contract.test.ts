@@ -10,7 +10,7 @@ describe("GitHub Supabase Lovable hosting alignment", () => {
     const health = read("src/routes/api.health.ts");
     const docs = read("docs/HOSTING_ALIGNMENT.md");
 
-    expect(health).toContain("github-main-external-supabase-lovable-v1");
+    expect(health).toContain("github-main-b2-primary-supabase-standby-lovable-v2");
     expect(health).toContain('"ldpwajisioljyjtojvfx"');
     expect(docs).toContain("GitHub `main`");
     expect(docs).toContain("ldpwajisioljyjtojvfx");

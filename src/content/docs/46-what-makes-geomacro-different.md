@@ -11,4 +11,4 @@ Its differentiating architecture combines:
 5. **Pre-flight policy separation** — Risk Gate evaluates external context while customer execution remains customer-controlled.
 6. **Human + machine surfaces** — the same intelligence fabric supports public research, Ask Geomacro and machine APIs without creating separate data truths.
 
-The product is not positioned as a generic chatbot, raw news feed or prediction-market company.
+The product is not positioned as a generic chatbot or raw news feed.

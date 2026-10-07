@@ -7,7 +7,7 @@ on:
       - 'supabase/migrations/043_commercial_credit_ledger.sql'
       - 'supabase/migrations/901_commercial_credit_idempotency_hardening.sql'
       - 'supabase/migrations/929_commercial_credit_account_concurrency_hardening.sql'
-      - 'scripts/testnet/postgres-concurrency-audit.sh'
+      - 'scripts/ops/postgres-concurrency-audit.sh'
       - '.github/workflows/structured-commerce-db-concurrency.yml'
   workflow_dispatch:
 
@@ -74,7 +74,7 @@ jobs:
 
       - name: Run real PostgreSQL race tests
         shell: bash
-        run: timeout 5m bash scripts/testnet/postgres-concurrency-audit.sh
+        run: timeout 5m bash scripts/ops/postgres-concurrency-audit.sh
 
       - name: Upload concurrency evidence
         if: always()

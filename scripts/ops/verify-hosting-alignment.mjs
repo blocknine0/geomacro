@@ -119,12 +119,7 @@ for (const name of [
   "SUPABASE_URL=",
   "SUPABASE_SERVICE_ROLE_KEY=",
   "HISTORICAL_SUPABASE_URL=",
-  "HISTORICAL_SUPABASE_SERVICE_ROLE_KEY=",
-  "TESTNET_USDC_RECEIVER_ADDRESS=",
-  "TESTNET_RPC_ARC=",
-  "TESTNET_RPC_BASE_SEPOLIA=",
-  "TESTNET_RPC_POLYGON_AMOY=",
-  "PUBLIC_SITE_URL=https://geomacro.live",
+  "HISTORICAL_SUPABASE_SERVICE_ROLE_KEY=",  "PUBLIC_SITE_URL=https://geomacro.live",
   "RISK_OBJECT_SIGNING_KEY_ID=",
   "RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64=",
   "RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=",
@@ -135,28 +130,9 @@ for (const name of [
 if (!env.includes(EXPECTED_SUPABASE_REF)) {
   fail(".env.example must name the authoritative Supabase project ref");
 } else {
-  pass("runtime Supabase and Testnet launch env contracts are documented");
+  pass("runtime Supabase and production site contracts are documented");
 }
 
-const deploymentConfig = read("docs/TESTNET_TESTER_DEPLOYMENT_CONFIG.md");
-for (const marker of [
-  "wallet-first",
-  "EIP-4361",
-  "resume that existing account instead of creating a duplicate",
-  "same verified wallet must never create another tester profile",
-  "no upfront Testnet USDC activation payment",
-  "TESTNET_RPC_ARC",
-  "TESTNET_RPC_BASE_SEPOLIA",
-  "TESTNET_RPC_POLYGON_AMOY",
-  "signed_risk_object",
-  "risk_gate_bundle",
-  "8/8 capability pass",
-]) {
-  if (!deploymentConfig.includes(marker)) {
-    fail(`Testnet deployment configuration is missing ${marker}`);
-  }
-}
-pass("Testnet deployment guide matches the wallet-first EIP-4361 pay-per-call launch contract");
 
 const browserFiles = walk("src").filter(
   (path) =>
@@ -251,9 +227,9 @@ pass("privileged diagnostics/export paths use server-only Supabase credentials")
 
 requireText("src/routes/api.health.ts", ALIGNMENT_CONTRACT, "deployment alignment contract");
 requireText("src/routes/api.health.ts", EXPECTED_SUPABASE_REF, "authoritative Supabase project marker");
-requireText(".github/workflows/live-testnet-health.yml", ALIGNMENT_CONTRACT, "live alignment smoke marker");
+requireText(".github/workflows/production-website-health.yml", ALIGNMENT_CONTRACT, "production alignment smoke marker");
 requireText("docs/HOSTING_ALIGNMENT.md", "Publish changes", "zero-credit publish workflow");
 
 if (!process.exitCode) {
-  console.log("\nPASS: canonical GitHub source, one-way Lovable mirror, B2-primary production serving, browser data boundary and Supabase recovery/Testnet runtime contracts are aligned.");
+  console.log("\nPASS: canonical GitHub source, one-way Lovable mirror, B2-primary production serving, browser data boundary and Supabase recovery/production runtime contracts are aligned.");
 }

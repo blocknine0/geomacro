@@ -34,7 +34,7 @@ function AboutPage() {
         <div className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-18 lg:py-22">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">About & trust</p>
           <h1 className="mt-4 max-w-4xl text-[clamp(2.8rem,6vw,5.5rem)] font-semibold leading-[0.96] tracking-[-0.05em]">Trust the risk view because you can inspect its boundaries.</h1>
-          <p className="mt-6 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">Geomacro tracks geopolitical, macroeconomic and critical-mineral risk with confidence, change attribution and methodology context. We keep what is live, what is pilot and what is only technical proof clearly separated.</p>
+          <p className="mt-6 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">Geomacro tracks geopolitical, macroeconomic and critical-mineral risk with confidence, change attribution and methodology context. Public, Private Pilot and production-gated commercial capabilities are labelled explicitly.</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild variant="outline"><Link to="/research">Research & evidence</Link></Button>
             <Button asChild variant="outline"><Link to="/docs">Documentation</Link></Button>
@@ -47,7 +47,7 @@ function AboutPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <StatusCard label="LIVE" title="Public intelligence" text="Risk Intelligence, separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices, and Ask Geomacro." />
           <StatusCard label="PRIVATE PILOT" title="Controlled machine context" text="Risk Gate, signed country/directional-corridor Risk Objects and scoped commercial delivery." />
-          <StatusCard label="TECHNICAL PROOF" title="Arc / Circle implementation" text="Testnet USDC, prediction-market and programmable-finance proof remains separate from the core commercial product." />
+          <StatusCard label="COMMERCIAL ACCESS" title="API & agent delivery" text="Paid machine delivery is production-gated and remains fail-closed until the live production payment path is explicitly activated." />
         </div>
       </section>
 
@@ -77,9 +77,8 @@ function AboutPage() {
             "Not financial, legal, compliance or investment advice.",
             "Risk Gate does not authorize or execute customer transactions.",
             "No independent external security certification or production SLA is claimed unless actually completed or contracted.",
-            "Testnet USDC and Testnet market activity are not real-money production settlement.",
             "Customer policy and final execution remain customer-controlled.",
-            "Prediction Markets, Bridge and Swap are separate technical proof, not the commercial risk-intelligence product.",
+            "Raw upstream data and customer execution authority are not part of the commercial intelligence product.",
           ].map((item) => (
             <div key={item} className="rounded-xl border border-border/60 bg-card/30 p-4 text-sm leading-6 text-muted-foreground">{item}</div>
           ))}
@@ -93,7 +92,7 @@ function AboutPage() {
               <summary className="cursor-pointer list-none text-lg font-semibold">Privacy notice <span className="ml-2 text-xs font-normal text-muted-foreground">Open details</span></summary>
               <div className="mt-5 space-y-4 text-sm leading-7 text-muted-foreground">
                 <p>Public intelligence can be viewed without an account or wallet. Standard hosting, security and operational infrastructure may process ordinary request metadata needed to deliver and protect the service.</p>
-                <p>Interactive Testnet or pilot features can process information intentionally provided by the user, including verified wallet or credential metadata, usage records, payment references and structured feedback. Never send a seed phrase, private key or unnecessary confidential information.</p>
+                <p>Private Pilot or commercial machine features can process information intentionally provided by the user, including credential metadata, usage records, payment references and structured feedback. Never send a seed phrase, private key or unnecessary confidential information.</p>
                 <p>Private Pilot data minimization, retention, access and deletion requirements should be defined before sensitive business data is introduced.</p>
                 <p>Privacy questions: <a href="mailto:contact@geomacro.live" className="text-primary hover:underline">contact@geomacro.live</a>.</p>
               </div>
@@ -104,7 +103,7 @@ function AboutPage() {
               <div className="mt-5 space-y-4 text-sm leading-7 text-muted-foreground">
                 <p><span className="font-medium text-foreground">Public product:</span> informational risk intelligence that should be independently evaluated for the user&apos;s purpose.</p>
                 <p><span className="font-medium text-foreground">Private Pilot and APIs:</span> access is governed by the scope actually agreed with the customer, including permitted use, support, security and data handling.</p>
-                <p><span className="font-medium text-foreground">Technical proof:</span> Arc, Circle, CCTP, Bridge & Swap and prediction-market surfaces remain experimental or Testnet proof unless a page explicitly states otherwise.</p>
+                <p><span className="font-medium text-foreground">Commercial access:</span> machine delivery is limited to the production-gated APIs and entitlements documented by Geomacro. No hidden experimental product is part of the customer contract.</p>
                 <p><span className="font-medium text-foreground">Acceptable use:</span> do not bypass authentication, entitlement, rate-limit or security controls, misuse credentials, submit secrets through public forms or represent Geomacro output as an authorization it did not issue.</p>
               </div>
             </details>

@@ -1,19 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import {
-  ChevronDown,
-  Copy,
-  Github,
-  Languages,
-  LogOut,
-  Menu,
-  Twitter,
-  Wallet,
-  Zap,
-} from "lucide-react";
+import { ChevronDown, Github, Languages, Menu, Twitter } from "lucide-react";
 import { Wordmark } from "@/components/wordmark";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { AnimatedBackground } from "@/components/animated-background";
 import { ProductionCoverageProof } from "@/components/production-coverage-proof";
 import { AgentCommerceStatus } from "@/components/agent-commerce-status";
@@ -25,98 +14,13 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { useWallet } from "@/hooks/WalletProvider";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { shortAddr } from "@/components/section-ui";
-
-function isWalletRoute(pathname: string) {
-  return (
-    pathname === "/arena" ||
-    pathname === "/onchain" ||
-    pathname === "/bridge-swap" ||
-    pathname === "/portfolio"
-  );
-}
-
-function ConnectButton() {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { address, onArc, network, connect, switchToArc, connecting, error, disconnect, isSignedIn } =
-    useWallet();
-  const executionContext = isWalletRoute(pathname);
-
-  if (!address && !executionContext) return null;
-
-  if (!address) {
-    return (
-      <div className="flex flex-col items-end gap-1">
-        <Button
-          onClick={connect}
-          disabled={connecting}
-          size="sm"
-          variant="ghost"
-          className="gap-2 border border-border/50 px-3 text-muted-foreground hover:text-foreground sm:h-10 sm:px-4"
-        >
-          <Wallet className="h-4 w-4" />
-          <span className="hidden sm:inline">{connecting ? "Connecting…" : "Connect wallet"}</span>
-          <span className="sm:hidden">{connecting ? "…" : "Connect"}</span>
-        </Button>
-        {error && (
-          <span className="max-w-[220px] text-right text-[11px] text-destructive sm:max-w-xs sm:text-xs">
-            {error}
-          </span>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      {executionContext && !onArc && (
-        <Button variant="outline" size="sm" onClick={() => void switchToArc()} className="gap-1">
-          <Zap className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Switch to Arc</span>
-          <span className="sm:hidden">Switch</span>
-        </Button>
-      )}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button type="button" aria-label="Wallet menu">
-            <Badge
-              variant={onArc ? "default" : "secondary"}
-              className="cursor-pointer gap-1.5 px-2 py-1 font-mono text-[10px] sm:px-3 sm:py-1.5 sm:text-xs"
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${onArc ? "bg-primary" : "bg-muted-foreground"}`} />
-              <span className="hidden md:inline">{executionContext ? `${network ? network.chainName : "Wrong network"} · ` : "Wallet · "}</span>
-              {shortAddr(address)}
-            </Badge>
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="font-mono text-xs font-normal">
-            {shortAddr(address)}
-            <span className="mt-1 block text-[10px] text-muted-foreground">
-              {isSignedIn ? "Signed in with wallet" : "Wallet connected"}
-            </span>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => void navigator.clipboard?.writeText(address)} className="gap-2">
-            <Copy className="h-3.5 w-3.5" /> Copy address
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={disconnect} className="gap-2 text-destructive focus:text-destructive">
-            <LogOut className="h-3.5 w-3.5" /> Disconnect wallet
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
-}
 
 const PRIMARY_NAV = [
   { to: "/intelligence", label: "Intelligence" },
@@ -133,14 +37,7 @@ const EXPLORE_NAV = [
   { to: "/research", label: "Research & Evidence", description: "Methodology, coverage evidence and limitations" },
   { to: "/docs", label: "Documentation", description: "Product architecture and technical reference" },
   { to: "/about", label: "About & Trust", description: "Product boundaries, privacy and trust disclosures" },
-  { to: "/roadmap", label: "Roadmap", description: "Live, Private Pilot and future capabilities" },
-] as const;
-
-const TECHNICAL_NAV = [
-  { to: "/testnet-access", label: "Testnet API", description: "Credential, quote and settlement verification on the test environment" },
-  { to: "/demo", label: "Agentic Commerce Demo", description: "Inspect Risk Gate, machine output and x402 proof" },
-  { to: "/pipeline", label: "Data Pipeline", description: "Technical data-processing surface" },
-  { to: "/onchain", label: "Arc / Onchain", description: "Programmable-finance technical proof" },
+  { to: "/roadmap", label: "Roadmap", description: "Live, Private Pilot and future commercial capabilities" },
 ] as const;
 
 const REFERENCE_NAV = [{ to: "/contact", label: "Contact" }] as const;
@@ -227,31 +124,6 @@ function ExploreMenu() {
   );
 }
 
-function TechnicalProofMenu() {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap py-2 transition hover:text-foreground">
-          Technical Proof <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          Implementation proof
-        </DropdownMenuLabel>
-        {TECHNICAL_NAV.map((item) => (
-          <DropdownMenuItem key={item.to} asChild>
-            <Link to={item.to} className="flex flex-col items-start gap-0.5 py-2.5">
-              <span>{item.label}</span>
-              <span className="text-xs text-muted-foreground">{item.description}</span>
-            </Link>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 function MobileGroup({ title, items }: { title: string; items: ReadonlyArray<{ to: string; label: string }> }) {
   return (
     <div>
@@ -275,10 +147,7 @@ function MobileGroup({ title, items }: { title: string; items: ReadonlyArray<{ t
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { address } = useWallet();
   const exploreMobile = EXPLORE_NAV.map(({ to, label }) => ({ to, label }));
-  const technicalMobile = TECHNICAL_NAV.map(({ to, label }) => ({ to, label }));
-  const accountMobile = address ? [{ to: "/portfolio" as const, label: "Portfolio" }] : [];
   const showProductionEvidence = PRODUCTION_EVIDENCE_ROUTES.has(pathname);
 
   return (
@@ -308,8 +177,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
                     <MobileGroup title="Core" items={PRIMARY_NAV} />
                     <MobileGroup title="Explore" items={exploreMobile} />
                     <MobileGroup title="Reference" items={REFERENCE_NAV} />
-                    <MobileGroup title="Technical proof" items={technicalMobile} />
-                    {accountMobile.length > 0 ? <MobileGroup title="Account" items={accountMobile} /> : null}
                   </nav>
                 </SheetContent>
               </Sheet>
@@ -330,7 +197,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 </Link>
               ))}
               <ExploreMenu />
-              <TechnicalProofMenu />
               <Button asChild size="sm" className="ml-1 h-9 px-4 text-xs">
                 <Link to="/contact">Contact</Link>
               </Button>
@@ -338,16 +204,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
             <div className="flex min-w-[44px] items-center justify-end gap-1">
               <LanguageMenu />
-              {address && (
-                <Link
-                  to="/portfolio"
-                  className="hidden text-sm text-muted-foreground transition hover:text-foreground 2xl:inline-flex"
-                  activeProps={{ className: "text-foreground" }}
-                >
-                  Portfolio
-                </Link>
-              )}
-              <ConnectButton />
             </div>
           </div>
         </header>
@@ -387,12 +243,11 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 </div>
               </div>
               <div>
-                <p className="font-medium text-foreground">Technical Proof</p>
+                <p className="font-medium text-foreground">Evidence</p>
                 <div className="mt-3 flex flex-col gap-2.5">
-                  <Link to="/testnet-access" className="hover:text-foreground">Testnet API</Link>
-                  <Link to="/demo" className="hover:text-foreground">Agentic Commerce Demo</Link>
-                  <Link to="/pipeline" className="hover:text-foreground">Data Pipeline</Link>
-                  <Link to="/onchain" className="hover:text-foreground">Arc / Onchain</Link>
+                  <Link to="/research" className="hover:text-foreground">Research & Evidence</Link>
+                  <Link to="/docs" className="hover:text-foreground">Documentation</Link>
+                  <Link to="/roadmap" className="hover:text-foreground">Roadmap</Link>
                   <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
                     <Github className="h-3.5 w-3.5" /> GitHub
                   </a>
@@ -402,10 +257,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 <p className="font-medium text-foreground">Company & Trust</p>
                 <div className="mt-3 flex flex-col gap-2.5">
                   <Link to="/ecosystem" className="hover:text-foreground">Ecosystem</Link>
-                  <Link to="/research" className="hover:text-foreground">Research & Evidence</Link>
-                  <Link to="/docs" className="hover:text-foreground">Documentation</Link>
                   <Link to="/about" className="hover:text-foreground">About & Trust</Link>
-                  <Link to="/roadmap" className="hover:text-foreground">Roadmap</Link>
+                  <Link to="/contact" className="hover:text-foreground">Contact</Link>
                   <a href="https://x.com/GeomacroLive" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
                     <Twitter className="h-3.5 w-3.5" /> X
                   </a>
@@ -416,7 +269,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-              <span>Public intelligence live · Risk Gate controlled Private Pilot · real-money x402 fail-closed until production activation · machine access follows live runtime policy</span>
+              <span>Public intelligence live · Risk Gate controlled Private Pilot · commercial x402 remains fail-closed until production activation</span>
               <span>Production status is verified from live service contracts, not static marketing copy.</span>
             </div>
           </div>

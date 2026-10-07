@@ -10,7 +10,6 @@ Current public surfaces include:
 - separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices with verification context
 - Ask Geomacro
 - public research and methodology
-- technical-proof surfaces clearly labelled as Testnet/secondary
 
 The public Risk Indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline product.
 
@@ -28,4 +27,4 @@ Potential future capabilities include deeper history, alerts, exports, advanced 
 
 Potential capabilities include structured API access, Risk Objects, Risk Gate, audit/provenance tooling, monitoring, team permissions, custom integrations and support commitments where they can actually be sustained.
 
-Exact pricing, quotas and service commitments are not yet publicly final.
+Public pricing and machine-delivery terms are shown only where the production commercial contract supports them; customer-specific quotas and service commitments remain contract-scoped.

@@ -10,15 +10,13 @@ const TARGETS = [
   { path: "/", kind: "html", budget_ms: 4_000 },
   { path: "/intelligence", kind: "html", budget_ms: 4_000 },
   { path: "/global-risk", kind: "html", budget_ms: 4_000 },
+  { path: "/ask-geomacro", kind: "html", budget_ms: 4_000 },
   { path: "/risk-gate", kind: "html", budget_ms: 4_000 },
   { path: "/data-api", kind: "html", budget_ms: 4_000 },
-  { path: "/testnet-access", kind: "html", budget_ms: 3_500 },
-  { path: "/testnet-console", kind: "html", budget_ms: 3_500 },
+  { path: "/pricing", kind: "html", budget_ms: 4_000 },
+  { path: "/institutional", kind: "html", budget_ms: 4_000 },
+  { path: "/docs", kind: "html", budget_ms: 4_000 },
   { path: "/api/health", kind: "api", budget_ms: 2_500 },
-  { path: "/api/testnet/manifest", kind: "api", budget_ms: 3_000 },
-  { path: "/testnet-wallet-first-v2.js", kind: "asset", budget_ms: 2_500 },
-  { path: "/testnet-console.js", kind: "asset", budget_ms: 2_500 },
-  { path: "/testnet-console-pricing.js", kind: "asset", budget_ms: 2_500 },
 ];
 
 function assert(condition, message) {
@@ -35,7 +33,7 @@ async function probe(target) {
   const started = performance.now();
   const response = await fetch(`${BASE_URL}${target.path}`, {
     redirect: "follow",
-    headers: { accept: target.kind === "api" ? "application/json" : "text/html,application/javascript,*/*" },
+    headers: { accept: target.kind === "api" ? "application/json" : "text/html,*/*" },
     signal: AbortSignal.timeout(15_000),
   });
   const body = await response.arrayBuffer();
@@ -43,8 +41,6 @@ async function probe(target) {
     status: response.status,
     elapsed_ms: Number((performance.now() - started).toFixed(1)),
     bytes: body.byteLength,
-    cache_control: response.headers.get("cache-control"),
-    server_timing: response.headers.get("server-timing"),
   };
 }
 
@@ -58,39 +54,23 @@ async function main() {
   const failures = [];
 
   for (const target of TARGETS) {
-    // Warm once so p95 is not dominated by one cold DNS/TLS setup on the runner.
     await probe(target);
     const observations = [];
-    for (let i = 0; i < SAMPLES; i += 1) {
-      observations.push(await probe(target));
-    }
+    for (let i = 0; i < SAMPLES; i += 1) observations.push(await probe(target));
     const times = observations.map((item) => item.elapsed_ms);
     const statuses = observations.map((item) => item.status);
-    const p50 = Number(percentile(times, 50).toFixed(1));
     const p95 = Number(percentile(times, 95).toFixed(1));
-    const max = Number(Math.max(...times).toFixed(1));
-    const min = Number(Math.min(...times).toFixed(1));
-    const status_ok = statuses.every((status) => status === 200);
-    const latency_ok = p95 <= target.budget_ms;
     const row = {
       path: target.path,
       kind: target.kind,
-      samples: SAMPLES,
-      status_ok,
       statuses,
-      latency_budget_p95_ms: target.budget_ms,
-      p50_ms: p50,
+      p50_ms: Number(percentile(times, 50).toFixed(1)),
       p95_ms: p95,
-      min_ms: min,
-      max_ms: max,
-      bytes: observations[0]?.bytes ?? 0,
-      cache_control: observations[0]?.cache_control ?? null,
-      server_timing: observations[0]?.server_timing ?? null,
-      ok: status_ok && latency_ok,
+      latency_budget_p95_ms: target.budget_ms,
+      ok: statuses.every((status) => status === 200) && p95 <= target.budget_ms,
     };
     results.push(row);
     if (!row.ok) failures.push(row);
-    console.log(`${row.ok ? "PASS" : "FAIL"} ${target.path} status=${statuses.join(",")} p50=${p50}ms p95=${p95}ms budget=${target.budget_ms}ms`);
   }
 
   const report = {
@@ -98,9 +78,8 @@ async function main() {
     measured_at: new Date().toISOString(),
     target_host: parsed.hostname,
     model: "real_network_live_route_slo",
-    samples_per_route: SAMPLES,
     routes: results,
-    failures: failures.map((item) => ({ path: item.path, statuses: item.statuses, p95_ms: item.p95_ms, budget_ms: item.latency_budget_p95_ms })),
+    failures,
     boundaries: {
       real_network_requests: true,
       paid_transactions: false,
@@ -112,7 +91,6 @@ async function main() {
   await mkdir(ARTIFACT_DIR, { recursive: true });
   const artifact = path.join(ARTIFACT_DIR, `live-performance-${Date.now()}.json`);
   await writeFile(artifact, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-  console.log(JSON.stringify({ ok: report.ok, artifact, failures: report.failures }, null, 2));
   if (!report.ok) process.exit(1);
 }
 

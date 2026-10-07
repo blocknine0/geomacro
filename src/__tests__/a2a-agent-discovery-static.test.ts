@@ -19,7 +19,7 @@ describe("GeoMacro A2A global agent discovery contract", () => {
     expect(card.capabilities.pushNotifications).toBe(true);
     expect(card.capabilities.extendedAgentCard).toBe(true);
     expect(card.securitySchemes.geomacroBearer).toBeDefined();
-    expect(card.securitySchemes.geomacroTestnetKey).toBeDefined();
+    expect(Object.keys(card.securitySchemes)).toEqual(["geomacroBearer"]);
     const ids = new Set(card.skills.map((skill: { id: string }) => skill.id));
     expect(ids).toContain("risk_preflight");
     expect(ids).toContain("geopolitics");
@@ -50,6 +50,6 @@ describe("GeoMacro A2A global agent discovery contract", () => {
     expect(commerce.offers[0].providers.coinbase_x402.endpoint).toBe(
       "https://geomacro.live/api/x402/intelligence",
     );
-    expect(commerce.offers[0].providers.coinbase_x402.paid_testnet_acceptance_complete).toBe(false);
+    expect(commerce.offers[0].providers.coinbase_x402.production_enabled).toBe(false);
   });
 });

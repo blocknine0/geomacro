@@ -9,7 +9,6 @@ const CURRENT_PUBLIC_DOCS = [
   "src/content/docs/03-product-surfaces.md",
   "src/content/docs/23-product-specific-intelligence-policies.md",
   "src/content/docs/24-access-levels-free-to-institutional.md",
-  "src/content/docs/37-research-and-experimental-layers.md",
   "src/content/docs/45-current-development-roadmap.md",
   "src/content/docs/49-commercial-availability.md",
   "docs/RISK_GATE.md",

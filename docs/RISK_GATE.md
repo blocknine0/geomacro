@@ -65,7 +65,6 @@ Real-world evidence and data
              +-- Ask Geomacro - Live
              +-- Country Risk Object - Private Pilot --+
              +-- Corridor Risk Object - Private Pilot -+-> Risk Gate - Private Pilot
-             +-- Arc / Circle / prediction-market technical proof
 
 Risk Gate - Private Pilot
         -> Customer identity + permissions + policy

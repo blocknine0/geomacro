@@ -96,10 +96,10 @@ describe("commercial public surface v2", () => {
     const home = read("src/components/home/commercial-home.tsx");
     const dataApi = read("src/routes/data-api.tsx");
 
-    expect(status).toContain('/api/x402/intelligence');
+    expect(status).toContain('fetch("/api/health"');
     expect(status).toContain('environment === "production"');
-    expect(status).toContain("controlled pre-launch");
-    expect(status).toContain("Testnet settlement is not commercial revenue");
+    expect(status).toContain("production activation pending");
+    expect(status.toLowerCase()).not.toContain("testnet");
     expect(dataApi).toContain("AgentCommerceStatus");
     expect(dataApi).toContain("x402 pay per call");
     expect(dataApi).toContain("Real-money x402 access stays fail-closed");

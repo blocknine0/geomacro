@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "c4e7737b0271fe4a8a5a0a5636af8acaa3d846eb",
-  "published_baseline": "Founder-approved website presentation baseline candidate for the next publish after the #1414 Intelligence score-truth presentation fix, the #1128 permanent Bridge/Swap mobile hierarchy hardening, and the Ask Geomacro long-text mobile wrapping hardening. /intelligence defaults to Newest so newer verified evidence is not hidden behind an older higher-severity record; Highest risk remains explicitly selectable. Risk-domain summaries show each domain's latest verified score and original evidence date rather than an average that can obscure recency. Current scored rows are labelled Verified current score; quiet or historical scored rows remain Last verified score. Feed refresh time is shown separately from score evidence time, so a continuously checked domain is never falsely presented as having a newly changed score. No score, timestamp, source eligibility or freshness is synthesized. Live observations remain separately labelled and unscored until canonical classification. Raw publisher content/provider details remain hidden. The mobile presentation keeps the same product/data logic while applying mobile-first Bridge/Swap gutters, vertical rhythm, stacked wallet/actions, safe wrapping for long wallet/transaction identifiers, and break-safe Ask question/answer/evidence text. /global-risk remains independently hard-pinned by config/global-risk-final-lock.json and its dedicated fail-closed verifier.",
+  "baseline_sha": "87fe2e9dd4d1f6c7abeb2af8cbe2029d5b9b4f14",
+  "published_baseline": "Founder-approved commercial-only website baseline. Public product identity contains only live risk intelligence, separate Risk Indices, Ask Geomacro, controlled Risk Gate, commercial API/agent access, institutional workflows, pricing, evidence, documentation, trust and ecosystem surfaces. Retired experimental payment, wallet, market and transaction surfaces are excluded from public navigation, documentation, discovery and static assets. Real-money x402 remains fail-closed until explicit production activation. /global-risk remains independently protected by its permanent frozen baseline.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
-  "locked_at_utc": "2026-10-05T07:10:45Z",
-  "published_source_sha": "58f2a6604170ea27e897700917632158189159dd",
-  "lock_revision": "founder-approved-intelligence-score-truth-issue-1128-mobile-hierarchy-and-ask-wrap-20261005"
+  "locked_at_utc": "2026-10-07T17:35:00Z",
+  "published_source_sha": "87fe2e9dd4d1f6c7abeb2af8cbe2029d5b9b4f14",
+  "lock_revision": "founder-approved-commercial-only-public-website-final-20261007"
 }

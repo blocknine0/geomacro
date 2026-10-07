@@ -102,7 +102,6 @@ describe("permanent intelligence orchestration contract", () => {
       ".github/workflows/gdelt-gal-live-sync.yml",
       ".github/workflows/gdelt-v2-event-sync.yml",
       ".github/workflows/realtime-corridor-hot-topic-fanout.yml",
-      ".github/workflows/testnet-rss-live-runner.yml",
       ".github/workflows/source-evidence-graph-auto-promotion.yml",
       ".github/workflows/federico-seven-day-risk-refresh.yml",
       ".github/workflows/open-realtime-source-mesh.yml",

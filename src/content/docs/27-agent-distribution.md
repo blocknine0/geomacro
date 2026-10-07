@@ -1,57 +1,41 @@
 # 27. Agent Distribution
 
-Geomacro's machine-delivery foundation is the authenticated Private Pilot Risk API / Risk Gate interface, with a separate Arc Testnet x402 technical-proof path for agent-native pay-per-call access.
+Geomacro's machine-delivery foundation uses the same governed intelligence system as the public product. Agent and API access may change authentication, entitlement, payment and response shaping, but it does not create a second dataset or risk engine.
 
-The product remains transport-agnostic: the intelligence and Risk Object contracts do not depend on one marketplace, wallet or payment rail.
+## Current commercial architecture
 
-## Current
-
-- authenticated country/corridor Risk Gate API foundation
+- authenticated country and directional-corridor intelligence
 - signed machine-readable Risk Objects
 - versioned verification and audit contracts
-- free public technical sandbox at `POST /api/demo/preflight`
-- Circle x402 / USDC technical-proof route at `POST /api/agent/risk`
-- Arc Testnet payment requirements using HTTP 402 and Circle Gateway batching
-- `execution_authorized = false` preserved in both free and paid responses
+- no-charge deliverability checks before payment
+- x402 production endpoints that remain fail-closed until production activation
+- `execution_authorized = false` preserved in machine responses
 
-## x402 implementation status
+## x402 production boundary
 
-The x402 route is **IMPLEMENTED AS TECHNICAL PROOF**, not yet a production commercial endpoint.
+The production commercial contract is availability-first:
 
-Current test contract:
+1. confirm the requested product is currently deliverable;
+2. confirm freshness and commercial source eligibility;
+3. issue a payment challenge only when a chargeable result can be produced;
+4. bind payment proof to the exact request;
+5. re-check deliverability before settlement;
+6. deliver the bounded derived product;
+7. reconcile payment and delivery under idempotent audit records.
 
-- network: Arc Testnet (`eip155:5042002`)
-- asset: test USDC
-- test price: `0.001 USDC` per call
-- supported public demo subjects: USA, CHN, USA→CHN, CHN→USA
-- seller/pay-to address supplied by server-only `CIRCLE_X402_SELLER_ADDRESS`
-- unpaid valid requests return HTTP `402` with `PAYMENT-REQUIRED`
-- paid retries are verified and settled before the prepared Risk Gate resource is returned
-- payer identity is hashed before persistence in telemetry
+Unavailable, stale, commercially ineligible or unverifiable required coverage is not chargeable.
 
-The test price is not institutional pricing. The route does not authorize or execute customer transactions.
+The live HTTP payment challenge is the authority for network, asset, amount and recipient. Static documentation does not authorize real-money settlement.
 
-## Public-deployment gates
+## Distribution options
 
-Do not describe the x402 route as publicly live until all of these are complete:
+Supported or planned distribution may include:
 
-1. a dedicated Arc Testnet seller address is configured;
-2. migration `035_agentic_demo_feedback.sql` is applied to the authoritative application database;
-3. the real unpaid `402 → payment → settlement → resource` path passes end-to-end on Arc Testnet;
-4. isolated staging HTTP resilience testing passes;
-5. the scoped pre-demo security review is complete and critical/high findings are fixed and re-tested.
-
-## Planned distribution options
-
-Potential future interfaces include:
-
-- formal OpenAPI developer specification and SDK generation
+- OpenAPI and SDK-based integration
 - webhooks
 - MCP-compatible adapters
 - agent-to-agent interfaces
 - marketplace integrations
-- additional payment/access rails where appropriate
+- additional production payment/access rails where appropriate
 
-These remain **PLANNED** unless separately implemented and verified.
-
-A payment/access mechanism must never bypass source-rights restrictions or become part of the core risk calculation methodology.
+A payment or access mechanism must never bypass source-rights restrictions or become part of the core risk calculation methodology.

@@ -12,18 +12,17 @@ flowchart TD
     STATE --> ASK["Ask Geomacro - Live"]
     STATE --> COUNTRY["Country Risk Object - Private Pilot"]
     STATE --> CORRIDOR["Corridor Risk Object - Private Pilot"]
+    STATE --> DELIVERY["Commercial API / agent delivery - Production Gated"]
     COUNTRY --> GATE["Risk Gate - Private Pilot"]
     CORRIDOR --> GATE
     GATE --> POLICY["Customer identity + permissions + policy"]
     POLICY --> ACTION["Customer-controlled action"]
-    STATE --> TECH["Arc / Circle / prediction-market technical proof"]
 ```
 
 This architecture preserves three boundaries:
 
 - **Live public intelligence**: Risk Intelligence, the separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices, and Ask Geomacro expose the current shared intelligence state for human use.
 - **Private Pilot machine decisions**: current signed Risk Object and Risk Gate delivery is scoped to country and directional corridor risk. Risk Gate supplies external risk context; the customer keeps identity, permissions, policy, funds and final execution control.
-- **Technical proof**: Arc, Circle, USDC, CCTP, Bridge & Swap and prediction-market functionality demonstrate programmable-finance integration. They are not the primary commercial product or a production-mainnet claim. **Prediction markets are permanently Arc Testnet-only and are excluded from Geomacro's production/mainnet commercialization path.**
 
 The public Risk Indices preserve the versioned `gri-v1.2.0` parent methodology and verified `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records; the historical combined GRI is not a second current headline product.
 
@@ -35,7 +34,7 @@ Data & API is an access and delivery surface over this architecture. Research an
 
 ### One data foundation, multiple delivery adapters
 
-Browser, authenticated API, Testnet pay-per-call and agent/x402 surfaces may use different authentication, entitlement, payment, response-shaping and audit adapters, but they still resolve from the same governed intelligence foundation and canonical product services. Pay-per-call changes access and settlement; it does not create a separate dataset, score engine, Risk Object path or Risk Gate implementation.
+Browser, authenticated API and agent/x402 surfaces may use different authentication, entitlement, payment, response-shaping and audit adapters, but they still resolve from the same governed intelligence foundation and canonical product services. Pay-per-call changes access and settlement; it does not create a separate dataset, score engine, Risk Object path or Risk Gate implementation.
 
 “Same data” means the same governed evidence/provenance foundation and relevant canonical service contract. Product-specific rules may still differ: the versioned GRI v1.2 lineage has its own scoring admission, the current public Risk Indices expose its domains separately, Risk Objects have subject/verification rules, and Risk Gate can evaluate bounded caller context. Those are documented derived uses of shared intelligence, not conflicting copies of reality.
 

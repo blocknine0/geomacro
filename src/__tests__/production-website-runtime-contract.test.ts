@@ -141,8 +141,8 @@ describe("production website runtime contract", () => {
     expect(intelligenceHook).not.toContain("setUpdatedAt(Date.now())");
     expect(intelligenceRoute).toContain("Score dates remain the original verified evidence times.");
     expect(pricing).toContain("Free to explore. Pay only for successful commercial machine delivery.");
-    expect(pricing).toContain("real-money access remains fail-closed until separately authorized for production");
-    expect(institutional).toContain("separate testnet technical proofs");
+    expect(pricing).toContain("Commercial revenue begins only after production settlement is explicitly authorized and verified.");
+    expect(institutional).toContain("Institutional delivery is limited to governed Geomacro risk intelligence");
   });
 
   it("checks rendered route content plus functional public APIs", () => {

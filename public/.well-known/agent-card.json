@@ -26,88 +26,150 @@
         "bearerFormat": "opaque",
         "description": "Geomacro commercial API bearer credential."
       }
-    },
-    "geomacroTestnetKey": {
-      "apiKeySecurityScheme": {
-        "location": "header",
-        "name": "X-Geomacro-Api-Key",
-        "description": "Geomacro Testnet developer API key."
-      }
-    },
-    "geomacroTestnetSecret": {
-      "apiKeySecurityScheme": {
-        "location": "header",
-        "name": "X-Geomacro-Api-Secret",
-        "description": "Geomacro Testnet developer API secret. Required together with the Testnet API key."
-      }
     }
   },
   "securityRequirements": [
     {
       "schemes": {
-        "geomacroBearer": { "list": [] }
-      }
-    },
-    {
-      "schemes": {
-        "geomacroTestnetKey": { "list": [] },
-        "geomacroTestnetSecret": { "list": [] }
+        "geomacroBearer": {
+          "list": []
+        }
       }
     }
   ],
-  "defaultInputModes": ["application/json", "text/plain"],
-  "defaultOutputModes": ["application/json"],
+  "defaultInputModes": [
+    "application/json",
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
   "skills": [
     {
       "id": "risk_preflight",
       "name": "Risk preflight",
       "description": "Evaluate a country or directional corridor before an agent payment or exposure action. Returns Risk Gate decision context, a verified signed Risk Object, structural context and canonical GRI context. Geomacro never authorizes execution.",
-      "tags": ["geopolitical-risk", "macro-risk", "critical-minerals", "risk-gate", "treasury", "payments"],
-      "examples": ["Assess India before a treasury payment.", "Evaluate the India to Singapore corridor before an agent payment."],
-      "inputModes": ["application/json"],
-      "outputModes": ["application/json"],
+      "tags": [
+        "geopolitical-risk",
+        "macro-risk",
+        "critical-minerals",
+        "risk-gate",
+        "treasury",
+        "payments"
+      ],
+      "examples": [
+        "Assess India before a treasury payment.",
+        "Evaluate the India to Singapore corridor before an agent payment."
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ],
       "securityRequirements": [
-        { "schemes": { "geomacroBearer": { "list": [] } } },
-        { "schemes": { "geomacroTestnetKey": { "list": [] }, "geomacroTestnetSecret": { "list": [] } } }
+        {
+          "schemes": {
+            "geomacroBearer": {
+              "list": []
+            }
+          }
+        }
       ]
     },
     {
       "id": "geopolitics",
       "name": "Global geopolitical risk intelligence",
       "description": "Authenticated country and corridor geopolitical/security context, including governed conflict, sanctions/restrictions, governance, trade disruption and hot-topic evidence when current coverage is deliverable.",
-      "tags": ["GEOPOLITICS", "country-risk", "corridor-risk", "security", "sanctions", "hot-topics"],
-      "examples": ["Assess current geopolitical risk for a supported country."],
-      "inputModes": ["application/json", "text/plain"],
-      "outputModes": ["application/json"],
+      "tags": [
+        "GEOPOLITICS",
+        "country-risk",
+        "corridor-risk",
+        "security",
+        "sanctions",
+        "hot-topics"
+      ],
+      "examples": [
+        "Assess current geopolitical risk for a supported country."
+      ],
+      "inputModes": [
+        "application/json",
+        "text/plain"
+      ],
+      "outputModes": [
+        "application/json"
+      ],
       "securityRequirements": [
-        { "schemes": { "geomacroBearer": { "list": [] } } },
-        { "schemes": { "geomacroTestnetKey": { "list": [] }, "geomacroTestnetSecret": { "list": [] } } }
+        {
+          "schemes": {
+            "geomacroBearer": {
+              "list": []
+            }
+          }
+        }
       ]
     },
     {
       "id": "macro",
       "name": "Global macro and FX risk intelligence",
       "description": "Authenticated macro, monetary, sovereign/fiscal, banking and FX/external-vulnerability context with freshness, provenance and commercial-eligibility gates.",
-      "tags": ["MACRO", "fx", "sovereign-risk", "monetary", "fiscal", "banking"],
-      "examples": ["Assess macro and FX vulnerability for a supported country."],
-      "inputModes": ["application/json", "text/plain"],
-      "outputModes": ["application/json"],
+      "tags": [
+        "MACRO",
+        "fx",
+        "sovereign-risk",
+        "monetary",
+        "fiscal",
+        "banking"
+      ],
+      "examples": [
+        "Assess macro and FX vulnerability for a supported country."
+      ],
+      "inputModes": [
+        "application/json",
+        "text/plain"
+      ],
+      "outputModes": [
+        "application/json"
+      ],
       "securityRequirements": [
-        { "schemes": { "geomacroBearer": { "list": [] } } },
-        { "schemes": { "geomacroTestnetKey": { "list": [] }, "geomacroTestnetSecret": { "list": [] } } }
+        {
+          "schemes": {
+            "geomacroBearer": {
+              "list": []
+            }
+          }
+        }
       ]
     },
     {
       "id": "critical_minerals",
       "name": "Global critical-minerals risk intelligence",
       "description": "Authenticated critical-mineral supply, concentration, policy, disruption and cross-border risk context where governed source coverage is current and commercially eligible.",
-      "tags": ["CRITICAL_MINERALS", "supply-chain", "commodities", "geoeconomics", "corridor-risk"],
-      "examples": ["Assess critical-mineral supply risk affecting a supported country or corridor."],
-      "inputModes": ["application/json", "text/plain"],
-      "outputModes": ["application/json"],
+      "tags": [
+        "CRITICAL_MINERALS",
+        "supply-chain",
+        "commodities",
+        "geoeconomics",
+        "corridor-risk"
+      ],
+      "examples": [
+        "Assess critical-mineral supply risk affecting a supported country or corridor."
+      ],
+      "inputModes": [
+        "application/json",
+        "text/plain"
+      ],
+      "outputModes": [
+        "application/json"
+      ],
       "securityRequirements": [
-        { "schemes": { "geomacroBearer": { "list": [] } } },
-        { "schemes": { "geomacroTestnetKey": { "list": [] }, "geomacroTestnetSecret": { "list": [] } } }
+        {
+          "schemes": {
+            "geomacroBearer": {
+              "list": []
+            }
+          }
+        }
       ]
     }
   ]

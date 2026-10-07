@@ -23,7 +23,6 @@ import {
 import { recordCommercialUsageEvent } from "./commercial-ops.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 import { structuredDeliveryPolicy } from "./structured-data-entitlement-registry";
-import { settleTestnetApiCall } from "./testnet-api-payment.server";
 import { runCanonicalTestnetIntelligence } from "./testnet-intelligence-capability.server";
 import {
   testnetIntelligenceRequestSchema,
@@ -471,7 +470,6 @@ function toIntelligenceRequest(taskId: string, input: ReturnType<typeof extractA
     policy_preset: input.policy_preset,
     action_type: input.action_type,
     amount_usdc: input.amount_usdc,
-    payment: input.payment,
   });
 }
 
@@ -566,64 +564,19 @@ export async function sendA2AMessage(input: {
       throw new CommercialAccessError(403, "CAPABILITY_NOT_INCLUDED", "Risk Gate is not included in this Geomacro entitlement.");
     }
 
-    let usage: CommercialCreditResult;
-    let paymentEventId: string | null = null;
-    let payment: Record<string, unknown> | null = null;
-
     if (entitlement.tier === "testnet_tester") {
-      const settlement = await settleTestnetApiCall({
-        principal: input.principal,
-        entitlement,
-        request_id: task.id,
-        capability: "risk_gate_bundle",
-        payment: riskInput.payment,
-      });
-      if (settlement.status === "payment_required") {
-        const message = statusAgentMessage(task.id, task.context_id, {
-          code: "TESTNET_PAYMENT_REQUIRED",
-          message: "Pay the quoted Testnet USDC amount, then send another ROLE_USER message on this same taskId with the payment proof.",
-          payment: settlement.quote,
-          execution_authorized: false,
-        });
-        await persistMessage({
-          principalId: input.principal.principal_id,
-          taskId: task.id,
-          message,
-        });
-        task = await updateTask({
-          task,
-          state: "TASK_STATE_INPUT_REQUIRED",
-          output: {
-            status_message: message,
-            payment: settlement.quote,
-            execution_authorized: false,
-          },
-        });
-        await audit({
-          taskId: task.id,
-          principalId: input.principal.principal_id,
-          direction: "inbound",
-          eventType: "payment_input_required",
-          requestHash: task.request_sha256,
-          responseHash: task.response_sha256,
-          metadata: { capability: "risk_gate_bundle", execution_authorized: false },
-        });
-        await deliverPushNotifications(task);
-        const history = await loadTaskHistory(task.id, input.principal.principal_id, input.request.configuration?.historyLength ?? 20);
-        return publicTask(task, history);
-      }
-      usage = settlement.usage;
-      paymentEventId = settlement.payment.payment_event_id;
-      payment = settlement.payment;
-    } else {
-      await ensureCommercialCreditAccount({ principal: input.principal, tier: entitlement.tier });
-      usage = await consumeCommercialCapability({
-        principal: input.principal,
-        entitlement,
-        requestId: task.id,
-        capability: "risk_gate_bundle",
-      });
+      throw new CommercialAccessError(403, "LEGACY_ENTITLEMENT_RETIRED", "This legacy entitlement is not accepted on the commercial A2A interface.");
     }
+
+    await ensureCommercialCreditAccount({ principal: input.principal, tier: entitlement.tier });
+    const usage: CommercialCreditResult = await consumeCommercialCapability({
+      principal: input.principal,
+      entitlement,
+      requestId: task.id,
+      capability: "risk_gate_bundle",
+    });
+    const paymentEventId: string | null = null;
+    const payment: Record<string, unknown> | null = null;
 
     const delivery = await runCanonicalTestnetIntelligence({
       request: intelligenceRequest,
@@ -668,8 +621,8 @@ export async function sendA2AMessage(input: {
 
     try {
       await recordCommercialUsageEvent({
-        environment: entitlement.tier === "testnet_tester" ? "testnet" : "internal",
-        access_surface: entitlement.tier === "testnet_tester" ? "testnet_tester" : "agent_payment",
+        environment: "production_commercial",
+        access_surface: "agent_payment",
         principal_id: input.principal.principal_id,
         principal_type: input.principal.principal_type,
         entitlement_grant_id: entitlement.grant_id,

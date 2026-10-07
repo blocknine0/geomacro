@@ -63,7 +63,7 @@ function PricingPage() {
               </p>
               <div className="mt-4"><AgentCommerceStatus /></div>
               <p className="mt-4 text-xs leading-5 text-muted-foreground">
-                Payment availability is runtime-authoritative. Testnet configuration is not represented as commercial revenue, and real-money access remains fail-closed until separately authorized for production.
+                Payment availability is runtime-authoritative. Commercial revenue begins only after production settlement is explicitly authorized and verified.
               </p>
             </div>
           </div>
@@ -127,7 +127,7 @@ function PricingPage() {
                   <ShieldCheck className="h-4 w-4 text-primary" /> No-charge failure boundary
                 </div>
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Failed, stale, unavailable, replayed, refunded, internal, testnet and unpaid requests do not count as successful paid deliveries.
+                  Failed, stale, unavailable, replayed, refunded, internal and unpaid requests do not count as successful paid deliveries.
                 </p>
               </div>
               <div className="mt-6 flex flex-wrap gap-3">

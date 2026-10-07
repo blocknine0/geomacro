@@ -49,9 +49,9 @@ State the current boundary explicitly: `execution_authorized=false`.
 
 Use the direct `/demo` link for technical buyers or partners. It remains outside the public sitemap.
 
-Show the free browser pre-flight first. Explain that the separate x402 endpoint proves agent-native pay-per-call access with USDC on Arc Testnet.
+Show the commercial machine-delivery path only after explaining the no-charge deliverability gate. Production x402 settlement remains fail-closed until explicitly activated.
 
-The `0.001 USDC` x402 price is technical proof only. It is not institutional pricing.
+Use only the current public commercial price or customer-specific contracted terms. The live payment challenge is authoritative.
 
 ## 5. Show integration surfaces
 
@@ -72,7 +72,6 @@ Emphasize:
 - fail-closed behavior;
 - explicit separation between intelligence, customer policy and execution.
 
-Arc, Circle/x402 and prediction markets are supporting technical proof, not the primary product identity.
 
 ## Founding-pilot ask
 

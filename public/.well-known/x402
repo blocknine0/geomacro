@@ -4,7 +4,11 @@
   "description": "Machine-readable geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI agents.",
   "status": "prelaunch",
   "productionFundsAuthorized": false,
-  "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
+  "categories": [
+    "GEOPOLITICS",
+    "MACRO",
+    "CRITICAL_MINERALS"
+  ],
   "resources": [],
   "freeResources": [
     {
@@ -20,7 +24,11 @@
       "method": "POST",
       "product": "geomacro_adaptive_risk_intelligence_v1",
       "provider": "coinbase_x402",
-      "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
+      "categories": [
+        "GEOPOLITICS",
+        "MACRO",
+        "CRITICAL_MINERALS"
+      ],
       "pricing": "runtime_402_challenge_only",
       "availability_first": true,
       "production_enabled": false
@@ -32,8 +40,7 @@
       "provider": "circle_gateway_x402",
       "pricing": "runtime_402_challenge_only",
       "production_enabled": false,
-      "approved_initial_mainnet_network": "eip155:8453",
-      "arc_mainnet_enabled": false
+      "approved_initial_mainnet_network": "eip155:8453"
     },
     {
       "resource": "https://geomacro.live/api/x402/nevermined/intelligence",
