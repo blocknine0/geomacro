@@ -29,15 +29,20 @@ describe("Phase A runtime freshness repair", () => {
     expect(repair).toContain("COMMERCIAL_SOURCE_RIGHTS_EVIDENCE[sourceId]");
   });
 
-  it("requires source probes and signed PUT plus HEAD metadata verification before freshness writes", () => {
+  it("keeps the full repair B2-verified while allowing a bounded heartbeat without B2", () => {
     const probe = repair.indexOf("await fetchObserved(source.endpoint");
+    const heartbeat = repair.indexOf("if (HEARTBEAT_ONLY)");
     const b2Verification = repair.indexOf("await b2.putWithMetadataVerification(");
-    const certificationDecision = repair.indexOf("let certifications = await currentCertifications()");
-    const targetWrite = repair.indexOf("const targetRowsWritten = await refreshTargets(observed)");
     expect(probe).toBeGreaterThan(-1);
-    expect(b2Verification).toBeGreaterThan(probe);
-    expect(certificationDecision).toBeGreaterThan(b2Verification);
-    expect(targetWrite).toBeGreaterThan(certificationDecision);
+    expect(heartbeat).toBeGreaterThan(probe);
+    expect(b2Verification).toBeGreaterThan(heartbeat);
+    expect(repair).toContain('PHASE_A_HEARTBEAT_CERTIFICATION_INCOMPLETE');
+    expect(repair).toContain('mode: "bounded_source_heartbeat"');
+    expect(repair).toContain("durable_evidence_written: false");
+    expect(repair).toContain("evidence_graph_rows_written: 0");
+    expect(repair).toContain("raw_observations_written: 0");
+    expect(repair).toContain("unbounded_rows_written: 0");
+    expect(repair).toContain('if (!HEARTBEAT_ONLY && (!B2_KEY_ID || !B2_APPLICATION_KEY))');
     expect(repair).toContain('"signed-put-head-metadata"');
     expect(repair).toContain("b2_full_body_readback_verified");
     expect(repair).not.toContain("const readback = await b2.get(key)");
