@@ -1,11 +1,16 @@
 name: Live x402 Prelaunch Safety
-# Re-run this no-charge production probe after governed intelligence refreshes.
+# PRs prove the no-funds fail-closed contract against live production.
+# Enforced main acceptance is serialized after Production Website Health proves
+# that the exact canonical SHA is actually published. A Git mirror alone is not
+# deployment evidence.
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows:
+      - Production Website Health
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -13,14 +18,69 @@ permissions:
 
 jobs:
   verify:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout exact main
+      - name: Resolve exact deployed canonical SHA
+        id: release
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_run" ]]; then
+            sha="${WORKFLOW_RUN_SHA:-}"
+          else
+            sha="${EVENT_SHA:-}"
+          fi
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::X402_EXACT_DEPLOYED_SHA_INVALID"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Exact x402 proof SHA: $sha"
+
+      - name: Checkout exact deployed canonical source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ steps.release.outputs.sha }}
           persist-credentials: false
+
+      - name: Verify workflow-run source is exact successful Production Website Health
+        if: ${{ github.event_name == 'workflow_run' }}
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.release.outputs.sha }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -euo pipefail
+          [[ "$RUN_CONCLUSION" == "success" ]] || { echo "::error::X402_DEPLOYMENT_HEALTH_NOT_SUCCESS"; exit 1; }
+          [[ "$RUN_SHA" == "$EXPECTED_SHA" ]] || { echo "::error::X402_DEPLOYMENT_SHA_BINDING_MISMATCH"; exit 1; }
+          case "$RUN_EVENT" in
+            push|workflow_dispatch|schedule) ;;
+            *) echo "::error::X402_UNAPPROVED_DEPLOYMENT_HEALTH_EVENT:$RUN_EVENT"; exit 1 ;;
+          esac
+
+      - name: Verify live build marker still matches accepted deployment
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 2 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' https://geomacro.live/.well-known/geomacro-build.json)"
+          [[ "$code" == "200" ]] || { echo "::error::X402_LIVE_BUILD_MARKER_HTTP_$code"; cat "$body"; exit 1; }
+          node - "$body" <<'NODE'
+          const fs=require("fs");
+          const marker=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
+          const expected=String(process.env.EXPECTED_SHA||"").toLowerCase();
+          const observed=String(marker?.canonical_main_sha||"").toLowerCase();
+          if(marker?.schema_version!=="geomacro.deployment-build.v1") throw new Error("X402_LIVE_BUILD_MARKER_SCHEMA_MISMATCH");
+          if(marker?.canonical_repository!=="blocknine0/geomacro") throw new Error("X402_LIVE_BUILD_MARKER_REPOSITORY_MISMATCH");
+          if(observed!==expected) throw new Error(`X402_LIVE_BUILD_MARKER_SHA_MISMATCH:${observed}:${expected}`);
+          NODE
 
       - name: Verify live no-charge prelaunch safety boundary
         env:
@@ -46,3 +106,4 @@ jobs:
           echo "Payment performed: false" >> "$GITHUB_STEP_SUMMARY"
           echo "Real funds touched: false" >> "$GITHUB_STEP_SUMMARY"
           echo "Production activation changed: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Accepted deployed SHA: ${{ steps.release.outputs.sha }}" >> "$GITHUB_STEP_SUMMARY"
