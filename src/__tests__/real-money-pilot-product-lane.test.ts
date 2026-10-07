@@ -7,7 +7,6 @@ describe("controlled real-money pilot product lane", () => {
     const plan = buildAgentQueryPlan({
       schema_version: "geomacro.agent-query.v1",
       subjects: [{ type: "country", country_iso3: "BRA" }],
-      topics: ["macro_risk", "fx_external_risk"],
       evidence: "required",
       detail: "standard",
     });
