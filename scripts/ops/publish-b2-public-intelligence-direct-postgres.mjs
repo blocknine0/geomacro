@@ -419,7 +419,7 @@ function eventExportTransportUnavailable(error) {
   return (
     message === "CURRENT_GDELT_EXPORT_UNAVAILABLE" ||
     message.startsWith("CURRENT_GDELT_BATCH_STALE:") ||
-    /^CURRENT_EVIDENCE_HTTP_(429|5\\d\\d)$/u.test(message) ||
+    /^CURRENT_EVIDENCE_HTTP_(404|429|5\\d\\d)$/u.test(message) ||
     /fetch failed|timeout|timed out|aborted/iu.test(message)
   );
 }
