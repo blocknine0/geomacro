@@ -8,8 +8,6 @@ const ALLOWED_TABLES = new Set([
   "gri_source_dispositions",
   "gri_validation_runs",
   "gri_validation_metrics",
-  "market_disputes",
-  "jury_votes",
 ]);
 
 const SAFE_REQUEST_HEADERS = [
