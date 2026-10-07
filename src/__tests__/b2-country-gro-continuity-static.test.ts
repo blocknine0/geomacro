@@ -84,6 +84,11 @@ describe("B2 country GRO continuity", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     const runner = read("scripts/refresh-global-canonical-risk-objects.ts");
     expect(workflow).toContain('cron: "41 * * * *"');
+    expect(workflow).toContain("bun scripts/ops/verify-b2-private-archive-read.ts");
+    expect(workflow).toContain("b2-read-preflight.json");
+    expect(workflow.indexOf("verify-b2-private-archive-read.ts")).toBeLessThan(
+      workflow.indexOf("refresh-global-canonical-risk-objects.ts"),
+    );
     expect(workflow).toContain("refresh-global-canonical-risk-objects.ts");
     expect(workflow).toContain('GLOBAL_CANONICAL_MIN_READY: "195"');
     expect(workflow).toContain('GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR: "195"');
