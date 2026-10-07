@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createB2Client } from "../../scripts/ops/b2-s3-client.mjs";
 
@@ -403,5 +404,102 @@ describe("B2 hard cap handling", () => {
       .rejects.toThrow("B2_DOWNLOAD_CAP_EXCEEDED");
     expect(calls).toHaveLength(callsAfterFirstFailure);
     expect(client.usage().native_read_fatal_error).toBe("B2_DOWNLOAD_CAP_EXCEEDED");
+  });
+});
+
+
+describe("B2 signed PUT plus HEAD metadata verification", () => {
+  it("verifies a fresh object without downloading its body", async () => {
+    clearOptionalReadCredentials();
+    process.env.B2_REQUEST_BUDGET = "4";
+
+    const body = Buffer.from("fresh-phase-a-evidence", "utf8");
+    const digest = createHash("sha256").update(body).digest("hex");
+    const methods: string[] = [];
+
+    vi.stubGlobal("fetch", vi.fn(async (_input, init = {}) => {
+      const method = String(init.method ?? "GET");
+      methods.push(method);
+      const headers = init.headers as Record<string, string>;
+
+      if (method === "PUT") {
+        expect(headers["x-amz-meta-geomacro-sha256"]).toBe(digest);
+        expect(headers.Authorization).toContain("x-amz-meta-geomacro-sha256");
+        expect(init.body).toStrictEqual(body);
+        return new Response(null, { status: 200 });
+      }
+
+      if (method === "HEAD") {
+        expect(init.body).toBeUndefined();
+        return new Response(null, {
+          status: 200,
+          headers: {
+            "content-length": String(body.length),
+            "x-amz-meta-geomacro-sha256": digest,
+          },
+        });
+      }
+
+      return new Response("unexpected", { status: 500 });
+    }));
+
+    const client = createB2Client({
+      endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+      accessKey: "primary-key",
+      secretKey: "primary-secret",
+      bucket: "geomacro-private-archive",
+    });
+
+    await expect(
+      client.putWithMetadataVerification(
+        "geomacro-evidence/v1/live-write-proof.json",
+        body,
+      ),
+    ).resolves.toEqual({
+      sha256: digest,
+      bytes: body.length,
+      verification_mode: "signed-put-head-metadata",
+      full_body_readback_verified: false,
+    });
+
+    expect(methods).toEqual(["PUT", "HEAD"]);
+    expect(client.usage()).toMatchObject({
+      requests_started: 2,
+      s3_requests_started: 2,
+      native_read_requests_started: 0,
+    });
+  });
+
+  it("fails closed when HEAD metadata does not match the signed PUT payload", async () => {
+    clearOptionalReadCredentials();
+
+    vi.stubGlobal("fetch", vi.fn(async (_input, init = {}) => {
+      const method = String(init.method ?? "GET");
+      if (method === "PUT") return new Response(null, { status: 200 });
+      if (method === "HEAD") {
+        return new Response(null, {
+          status: 200,
+          headers: {
+            "content-length": "4",
+            "x-amz-meta-geomacro-sha256": "0".repeat(64),
+          },
+        });
+      }
+      return new Response("unexpected", { status: 500 });
+    }));
+
+    const client = createB2Client({
+      endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+      accessKey: "primary-key",
+      secretKey: "primary-secret",
+      bucket: "geomacro-private-archive",
+    });
+
+    await expect(
+      client.putWithMetadataVerification(
+        "geomacro-evidence/v1/mismatch.json",
+        Buffer.from("test"),
+      ),
+    ).rejects.toThrow("B2_METADATA_SHA256_MISMATCH");
   });
 });
