@@ -53,7 +53,7 @@ describe("agent commerce machine discovery contract", () => {
 
   it("points discovery to the no-charge availability check and production-gated paid adapters", () => {
     expect(commerce.discovery.availability).toBe("https://geomacro.live/api/x402/risk/availability");
-    expect(commerce.offers[0].providers.coinbase_x402.endpoint).toBe("https://geomacro.live/api/v1/intelligence/query");
+    expect(commerce.offers[0].providers.coinbase_x402.endpoint).toBe("https://geomacro.live/api/x402/intelligence");
     expect(commerce.offers[0].providers.circle_gateway.endpoint).toBe("https://geomacro.live/api/x402/circle/intelligence");
     expect(commerce.offers[0].providers.nevermined.endpoint).toBe("https://geomacro.live/api/x402/nevermined/intelligence");
     expect(agent.discovery.commerce_catalog).toBe("https://geomacro.live/.well-known/geomacro-commerce.json");
