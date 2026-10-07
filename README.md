@@ -43,7 +43,7 @@ Risk Gate advisory response: CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
 
 The architecture has **one governed intelligence foundation**. Website, API, agent protocols and x402 payment rails are access/delivery layers around that same intelligence state; they do not create a second risk engine.
 
-The Risk Gate boundary is non-authorizing: `execution_authorized=false`. Identity, permissions, compliance policy, funds and downstream execution remain customer-controlled.
+The Risk Gate boundary is non-authorizing: `execution_authorized=false`. Identity, permissions, compliance policy, funds and downstream execution remain customer-controlled. A caller-supplied policy profile may be evaluated as bounded Risk Gate input; that input is not customer-side policy enforcement.
 
 ## Current product status
 
