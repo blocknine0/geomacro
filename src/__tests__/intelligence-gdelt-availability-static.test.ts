@@ -23,7 +23,7 @@ describe("Intelligence GDELT availability contract", () => {
     expect(wrapper).not.toContain("--retry-all-errors");
   });
 
-  it("adds a bounded corroborated GDELT DOC fallback without weakening event-export integrity guards", () => {
+  it("uses bounded verified masterfile Event fallback before DOC without weakening integrity guards", () => {
     expect(publisher).toContain("readCurrentGdeltEvidence");
     expect(publisher).toContain("eventExportTransportUnavailable");
     expect(publisher).toContain("CURRENT_EVIDENCE_HTTP_(404|429|5\\\\d\\\\d)");
