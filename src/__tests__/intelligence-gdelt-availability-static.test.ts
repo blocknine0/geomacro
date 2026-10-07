@@ -24,6 +24,8 @@ describe("Intelligence GDELT availability contract", () => {
   it("adds a bounded corroborated GDELT DOC fallback without weakening event-export integrity guards", () => {
     expect(publisher).toContain("readCurrentGdeltEvidence");
     expect(publisher).toContain("eventExportTransportUnavailable");
+    expect(publisher).toContain("CURRENT_EVIDENCE_HTTP_(404|429|5\\\\d\\\\d)");
+    expect(publisher).not.toContain("CURRENT_EVIDENCE_HTTP_(4\\\\d\\\\d|5\\\\d\\\\d)");
     expect(publisher).toContain("GDELT_DOC_SOURCE_TRANSPORT");
     expect(publisher).toContain("DOC_FALLBACK_FAILED");
     expect(docFallback).toContain('GDELT_DOC_API_URL = "https://api.gdeltproject.org/api/v2/doc/doc"');
