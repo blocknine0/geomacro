@@ -60,6 +60,8 @@ describe("verified B2 structural serving continuity", () => {
     expect(workflow).toContain('test -n "${B2_ARCHIVE_READ_KEY_ID:-}"');
     expect(workflow).toContain('test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}"');
     expect(workflow).toContain("structural readback");
+    expect(workflow).toContain("bun scripts/ops/verify-b2-private-archive-read.ts");
+    expect(workflow.indexOf("verify-b2-private-archive-read.ts")).toBeLessThan(workflow.indexOf("publish-b2-structural-serving-snapshot.ts"));
     expect(client).toContain('[explicitReadAccessKey, explicitReadSecretKey, "explicit-read"]');
     expect(client).toContain('[dedicatedReadAccessKey, dedicatedReadSecretKey, "dedicated-read"]');
     expect(client).toContain('[archiveWriteAccessKey, archiveWriteSecretKey, "archive-read-write"]');
