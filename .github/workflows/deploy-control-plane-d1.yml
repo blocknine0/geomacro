@@ -157,7 +157,7 @@ jobs:
             if printf '%s' "$HEALTH" | grep -q '"ok":true'; then break; fi
             sleep $((attempt * 2))
           done
-          printf '%s' "$HEALTH" | grep -q '"schema_version":1' || { echo "D1 Worker health acceptance failed"; exit 7; }
+          printf '%s' "$HEALTH" | jq -e '.schema_version >= 2' >/dev/null || { echo "D1 Worker schema v2 health acceptance failed"; exit 7; }
           printf '%s' "$HEALTH" | grep -q '"durable_payload_store":"b2"' || { echo "B2 authority contract missing"; exit 7; }
           printf '%s' "$HEALTH" | grep -q '"commerce_ledger":"durable_object"' || { echo "Commerce authority contract missing"; exit 7; }
 
