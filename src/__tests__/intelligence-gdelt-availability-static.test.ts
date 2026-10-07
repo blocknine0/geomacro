@@ -5,6 +5,7 @@ const wrapper = readFileSync("scripts/ops/run-b2-public-intelligence-publisher.m
 const publisher = readFileSync("scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs", "utf8");
 const workflow = readFileSync(".github/workflows/intelligence-scored-refresh.yml", "utf8");
 const docFallback = readFileSync("scripts/ops/gdelt-doc-current-evidence.mjs", "utf8");
+const geoFallback = readFileSync("scripts/ops/gdelt-geo-current-evidence.mjs", "utf8");
 const preserve = readFileSync("scripts/ops/republish-b2-public-intelligence-preserve-live.mjs", "utf8");
 
 describe("Intelligence GDELT availability contract", () => {
@@ -15,7 +16,7 @@ describe("Intelligence GDELT availability contract", () => {
     expect(wrapper).toContain("if (!combined.includes(RETRYABLE_AVAILABILITY_ERROR))");
     expect(wrapper).toContain("CURRENT_GDELT_AVAILABILITY_WAIT_EXHAUSTED");
     expect(wrapper).toContain('sourceTransport === "event_export"');
-    expect(wrapper).toContain('sourceTransport !== "doc_v2_articlelist"');
+    expect(wrapper).toContain('["doc_v2_articlelist", "geo_v2_jsonfeed"].includes(sourceTransport)');
     expect(wrapper).toContain("coverage_runtime_refreshed: coverageRuntimeRefreshed");
     expect(wrapper).not.toContain("--retry-all-errors");
   });
@@ -33,7 +34,27 @@ describe("Intelligence GDELT availability contract", () => {
     expect(docFallback).toContain('public_status: "live_observed"');
     expect(docFallback).toContain("severity: null");
     expect(docFallback).toContain("delta: null");
+
+    expect(publisher).toContain("readGdeltGeoCurrentRows");
+    expect(publisher).toContain("docFallbackTransportUnavailable");
+    expect(publisher).toContain("geoFallbackTransportUnavailable");
+    expect(publisher).toContain("GDELT_GEO_SOURCE_TRANSPORT");
+    expect(publisher).toContain("CURRENT_GDELT_GEO_FALLBACK_INVALID");
+    expect(geoFallback).toContain('GDELT_GEO_API_URL = "https://api.gdeltproject.org/api/v2/geo/geo"');
+    expect(geoFallback).toContain('url.searchParams.set("format", "jsonfeed")');
+    expect(geoFallback).toContain('url.searchParams.set("timespan", "2h")');
+    expect(geoFallback).toContain('url.searchParams.set("timespanround", "precise")');
+    expect(geoFallback).toContain('url.searchParams.set("sortby", "Date")');
+    expect(geoFallback).toContain("MIN_INDEPENDENT_DOMAINS = 3");
+    expect(geoFallback).toContain("item?.date_published");
+    expect(geoFallback).toContain("not a verified event claim");
+    expect(geoFallback).toContain('public_status: "live_observed"');
+    expect(geoFallback).toContain("severity: null");
+    expect(geoFallback).toContain("delta: null");
+    expect(geoFallback).not.toContain("date_modified as an evidence timestamp");
+
     expect(preserve).toContain("ALLOWED_CURRENT_EVIDENCE_CONTRACTS");
+    expect(preserve).toContain("gdelt-geo-v2-global-conflict-coverage-v1");
     expect(preserve).toContain("preserved.evidenceContract");
 
     // Event-export integrity errors remain hard failures and are never silently
