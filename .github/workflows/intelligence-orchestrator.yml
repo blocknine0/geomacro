@@ -19,6 +19,7 @@ on:
       - "scripts/lib/d1-control-plane-state.mjs"
       - "scripts/lib/d1-orchestrator-supabase-shim.mjs"
       - "scripts/ops/supabase-free-tier-budget.mjs"
+      - "scripts/ops/phase-a-runtime-freshness-repair.mjs"
       - "scripts/sync-country-raw-source-mesh.mjs"
       - "scripts/ops/run-intelligence-current-scoring-cycle.mjs"
       - "scripts/ops/sync-fastlane-scored-intelligence.mjs"
@@ -181,10 +182,12 @@ jobs:
               data_api)
                 echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=true" >> "$GITHUB_ENV"
                 echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=true" >> "$GITHUB_ENV"
+                echo "GEOMACRO_SUPABASE_RESTRICTED_MODE=false" >> "$GITHUB_ENV"
                 ;;
               direct_postgres_fallback)
                 echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=false" >> "$GITHUB_ENV"
                 echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=true" >> "$GITHUB_ENV"
+                echo "GEOMACRO_SUPABASE_RESTRICTED_MODE=false" >> "$GITHUB_ENV"
                 ;;
               *)
                 echo "::error::Unknown Supabase budget transport: ${transport}"
@@ -192,14 +195,15 @@ jobs:
                 ;;
             esac
           else
-            # Supabase is optional for heartbeat and public serving. Until each
-            # remaining ingestion task is B2/D1-native, freeze those writers
-            # rather than fabricating freshness or failing the whole scheduler.
+            # Supabase REST/Storage is optional for the scheduler. When the
+            # free-tier budget is restricted, keep only fixed-cardinality
+            # source-heartbeat/read-only tasks alive. Event/raw/scoring writers
+            # remain fail-closed and cannot be re-enabled by an allowlist.
             echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=false" >> "$GITHUB_ENV"
             echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=false" >> "$GITHUB_ENV"
-            echo "INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only" >> "$GITHUB_ENV"
-            echo '{"ok":false,"transport":"unavailable","policy":{"recurring_ingest_allowed":false}}' > supabase-budget.json
-            echo "Supabase unavailable: D1/B2 heartbeat remains live; Supabase-backed writers are fail-closed."
+            echo "GEOMACRO_SUPABASE_RESTRICTED_MODE=true" >> "$GITHUB_ENV"
+            echo '{"ok":false,"transport":"restricted_direct_postgres","policy":{"recurring_ingest_allowed":false,"fixed_cardinality_source_heartbeat_allowed":true}}' > supabase-budget.json
+            echo "Supabase restricted: D1 plus fixed-cardinality source heartbeat/read-only readiness remain live; event/raw/scoring writers are fail-closed."
           fi
 
       - name: Derive current public verification key
