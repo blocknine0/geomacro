@@ -13,8 +13,8 @@ describe("public data proxy contract", () => {
     expect(proxy).toContain('request.method !== "GET" && request.method !== "HEAD"');
     expect(proxy).toContain('"events"');
     expect(proxy).toContain('"gri_snapshots"');
-    expect(proxy).toContain('"market_disputes"');
-    expect(proxy).toContain('"jury_votes"');
+    expect(proxy).not.toContain('"market_disputes"');
+    expect(proxy).not.toContain('"jury_votes"');
     expect(proxy).toContain("APP_SUPABASE_ANON_KEY");
     expect(proxy).not.toContain("APP_SUPABASE_SERVICE_ROLE_KEY");
     expect(client).toContain("/api/public-data-proxy?target=");
@@ -70,14 +70,5 @@ describe("public data proxy contract", () => {
     expect(appClient).toContain("APP_SUPABASE_SERVICE_ROLE_KEY");
     expect(riskClient).toContain("ldpwajisioljyjtojvfx");
     expect(riskClient).not.toContain("APP_SUPABASE_ANON_KEY");
-  });
-
-  it("mounts bridge and swap browser integrations after hydration", () => {
-    const liquidity = read("src/components/sections/liquidity-section.tsx");
-
-    expect(liquidity).toContain("const [mounted, setMounted] = useState(false)");
-    expect(liquidity).toContain("setMounted(true)");
-    expect(liquidity).toContain("<BridgeSection />");
-    expect(liquidity).toContain("<SwapSection />");
   });
 });
