@@ -26,8 +26,8 @@ export function loadProductionHistoryOnlyManifest(root = process.cwd()) {
   if (manifest.schema_version !== 'geomacro.production-history-only-migrations.v1') {
     throw new Error(`Unexpected production-history manifest schema: ${manifest.schema_version}`);
   }
-  if (!Array.isArray(manifest.migrations) || manifest.migrations.length !== 46) {
-    throw new Error(`Production-history manifest must contain exactly 46 migrations; got ${manifest.migrations?.length ?? 'invalid'}`);
+  if (!Array.isArray(manifest.migrations) || manifest.migrations.length === 0) {
+    throw new Error('Production-history manifest must contain at least one migration');
   }
 
   const seen = new Set();
@@ -57,8 +57,9 @@ export function loadProductionHistoryLineEndings(root = process.cwd()) {
   if (metadata.production_project_ref !== 'ldpwajisioljyjtojvfx') {
     throw new Error('Production-history line-ending metadata targets the wrong Supabase project');
   }
-  if (metadata.migration_count !== 46 || !Array.isArray(metadata.ends_with_lf)) {
-    throw new Error('Production-history line-ending metadata must describe the 46 restored migrations');
+  const expectedCount = loadProductionHistoryOnlyManifest(root).migrations.length;
+  if (metadata.migration_count !== expectedCount || !Array.isArray(metadata.ends_with_lf)) {
+    throw new Error(`Production-history line-ending metadata must describe all ${expectedCount} restored migrations`);
   }
   const endsWithLf = new Set(metadata.ends_with_lf);
   if (endsWithLf.size !== metadata.ends_with_lf.length) {
