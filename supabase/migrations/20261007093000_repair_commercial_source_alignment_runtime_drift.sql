@@ -73,11 +73,10 @@ where cert.source_id = 'telegram_authorized_publisher_feed'
   and s.enabled_for_ingestion = false
   and s.enabled_for_commercial_signals = false;
 
--- Re-evaluate the existing DB-level activation guard. With no currently
--- authorized publisher channel this keeps ingestion disabled. If a publisher
--- is authorized later, the existing trigger may enable ingestion, but the
--- commercial-signal flag remains false and normal certification gates still
--- apply.
-select public.sync_telegram_authorized_feed_source_state();
+-- This canonical migration must replay from zero without relying on
+-- production-history-only Telegram helper functions. It therefore leaves the
+-- generic bridge fail-closed here. Current production's existing authorization
+-- trigger may later re-evaluate ingestion only after a separate publisher
+-- authorization contract succeeds; this migration itself never authorizes it.
 
 commit;
