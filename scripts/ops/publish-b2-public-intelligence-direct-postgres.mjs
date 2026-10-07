@@ -11,6 +11,11 @@ import {
   GDELT_DOC_SOURCE_TRANSPORT,
   readGdeltDocCurrentRows,
 } from "./gdelt-doc-current-evidence.mjs";
+import {
+  GDELT_GEO_EVIDENCE_CONTRACT,
+  GDELT_GEO_SOURCE_TRANSPORT,
+  readGdeltGeoCurrentRows,
+} from "./gdelt-geo-current-evidence.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
@@ -419,12 +424,35 @@ function eventExportTransportUnavailable(error) {
   );
 }
 
+function docFallbackTransportUnavailable(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message === "CURRENT_GDELT_DOC_ARTICLES_EMPTY" ||
+    message === "CURRENT_GDELT_DOC_NO_CORROBORATED_COVERAGE" ||
+    /^CURRENT_GDELT_DOC_HTTP_(429|5\\d\\d)$/u.test(message) ||
+    message.startsWith("CURRENT_GDELT_DOC_FETCH_FAILED:") ||
+    /fetch failed|timeout|timed out|aborted/iu.test(message)
+  );
+}
+
+function geoFallbackTransportUnavailable(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message === "CURRENT_GDELT_GEO_ITEMS_EMPTY" ||
+    message.startsWith("CURRENT_GDELT_GEO_CORROBORATION_INSUFFICIENT:") ||
+    /^CURRENT_GDELT_GEO_HTTP_(429|5\\d\\d)$/u.test(message) ||
+    message.startsWith("CURRENT_GDELT_GEO_FETCH_FAILED:") ||
+    /fetch failed|timeout|timed out|aborted/iu.test(message)
+  );
+}
+
 async function readCurrentGdeltEvidence() {
   try {
     return await readCurrentGdeltRows();
   } catch (error) {
     if (!eventExportTransportUnavailable(error)) throw error;
     const primaryMessage = error instanceof Error ? error.message : String(error);
+
     try {
       const fallback = await readGdeltDocCurrentRows();
       console.error(JSON.stringify({
@@ -436,9 +464,33 @@ async function readCurrentGdeltEvidence() {
         fallback_rows: fallback.rows.length,
       }));
       return fallback;
-    } catch (fallbackError) {
-      const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-      throw new Error(`CURRENT_GDELT_EXPORT_UNAVAILABLE;DOC_FALLBACK_FAILED:${fallbackMessage}`);
+    } catch (docError) {
+      const docMessage = docError instanceof Error ? docError.message : String(docError);
+      if (!docFallbackTransportUnavailable(docError)) {
+        throw new Error(`CURRENT_GDELT_DOC_FALLBACK_INVALID:${docMessage}`);
+      }
+
+      try {
+        const geoFallback = await readGdeltGeoCurrentRows();
+        console.error(JSON.stringify({
+          ok: true,
+          degraded_transport: true,
+          primary_transport_error: primaryMessage,
+          doc_transport_error: docMessage,
+          fallback_transport: GDELT_GEO_SOURCE_TRANSPORT,
+          fallback_contract: GDELT_GEO_EVIDENCE_CONTRACT,
+          fallback_rows: geoFallback.rows.length,
+        }));
+        return geoFallback;
+      } catch (geoError) {
+        const geoMessage = geoError instanceof Error ? geoError.message : String(geoError);
+        if (!geoFallbackTransportUnavailable(geoError)) {
+          throw new Error(`CURRENT_GDELT_GEO_FALLBACK_INVALID:${geoMessage}`);
+        }
+        throw new Error(
+          `CURRENT_GDELT_EXPORT_UNAVAILABLE;DOC_FALLBACK_FAILED:${docMessage};GEO_FALLBACK_FAILED:${geoMessage}`,
+        );
+      }
     }
   }
 }
