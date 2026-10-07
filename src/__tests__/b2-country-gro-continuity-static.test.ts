@@ -4,16 +4,21 @@ import { readFileSync } from "node:fs";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("B2 country GRO continuity", () => {
-  it("reads canonical country GROs directly from private B2 without Supabase mediation", () => {
+  it("reads canonical country GROs through the native-capable private B2 reader without Supabase mediation", () => {
     const source = read("src/lib/b2-country-gro.server.ts");
-    expect(source).toContain('const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com"');
-    expect(source).toContain('const B2_BUCKET = "geomacro-private-archive"');
-    expect(source).toContain("AWS4-HMAC-SHA256");
-    expect(source).toContain("process.env.B2_ARCHIVE_READ_KEY_ID");
-    expect(source).toContain("process.env.B2_ARCHIVE_READ_APPLICATION_KEY");
-    expect(source).toContain('role: "read"');
-    expect(source).toContain('role: "primary"');
-    expect(source).toContain("response.status === 403");
+    const privateReader = read("src/lib/b2-private-archive-read.server.ts");
+    expect(source).toContain('from "./b2-private-archive-read.server"');
+    expect(source).toContain("readPrivateB2Object(key");
+    expect(source).toContain('message === "B2_DOWNLOAD_CAP_EXCEEDED"');
+    expect(source).toContain('message === "B2_TRANSACTION_CAP_EXCEEDED"');
+    expect(privateReader).toContain('const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com"');
+    expect(privateReader).toContain('const B2_BUCKET = "geomacro-private-archive"');
+    expect(privateReader).toContain("AWS4-HMAC-SHA256");
+    expect(privateReader).toContain("process.env.B2_ARCHIVE_READ_KEY_ID");
+    expect(privateReader).toContain("process.env.B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(privateReader).toContain("B2_NATIVE_AUTHORIZE_URL");
+    expect(privateReader).toContain("nativePreferredCredentials.has(fingerprint)");
+    expect(privateReader).toContain("nativePreferredCredentials.add(fingerprint)");
     expect(source).toContain("verifyRiskObjectSignature(object).valid");
     expect(source).toContain("verifyCommercialRiskObjectArtifact(object");
     expect(source).not.toContain("requireRiskSupabase");
