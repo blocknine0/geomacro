@@ -276,7 +276,7 @@ describe("B2 hard cap handling", () => {
     });
 
     await expect(client.get("geomacro-evidence/v1/test.json"))
-      .rejects.toThrow("B2_DOWNLOAD_CAP_EXCEEDED");
+      .rejects.toThrow("B2_NATIVE_GET_FAILED_403_download_cap_exceeded");
     expect(calls.filter((url) => url.includes("b2_authorize_account"))).toHaveLength(1);
     expect(calls.filter((url) => url.startsWith("https://f005.backblazeb2.com/file/"))).toHaveLength(1);
     expect(calls.filter((url) => url.startsWith("https://s3.us-east-005.backblazeb2.com/"))).toHaveLength(1);
