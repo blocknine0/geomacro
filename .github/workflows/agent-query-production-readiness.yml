@@ -10,6 +10,8 @@ on:
       - "src/routes/api.x402.risk.ts"
       - "src/routes/api.x402.risk_.availability.ts"
       - "src/routes/api.x402.intelligence.ts"
+      - "src/routes/api.v1.intelligence_.query.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
       - "src/__tests__/coinbase-x402-adaptive-availability-static.test.ts"
       - "src/__tests__/agent-query-hot-topics-static.test.ts"
       - "src/lib/geomacro-intelligence-contract.ts"
@@ -48,13 +50,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'checkAgentQueryDeliverability' src/routes/api.x402.intelligence.ts
-          grep -q 'FINAL_AVAILABILITY' src/routes/api.x402.intelligence.ts
+          grep -q 'checkAgentQueryDeliverability' src/lib/mainnet-intelligence-endpoint.server.ts
+          grep -q 'FINAL_AVAILABILITY' src/lib/mainnet-intelligence-endpoint.server.ts
           grep -q 'LEGACY_X402_PRODUCTION_DISABLED' src/routes/api.x402.risk.ts
           grep -q 'payment_required_now: false' src/routes/api.x402.risk_.availability.ts
           ! grep -q 'settleCoinbaseX402' src/routes/api.x402.risk_.availability.ts
-          grep -q 'reserveCoinbaseX402AgentUsage' src/routes/api.x402.intelligence.ts
-          grep -q 'X402_SETTLEMENT_AMBIGUOUS' src/routes/api.x402.intelligence.ts
+          grep -q 'reserveCoinbaseX402AgentUsage' src/lib/mainnet-intelligence-endpoint.server.ts
+          grep -q 'X402_SETTLEMENT_AMBIGUOUS' src/lib/mainnet-intelligence-endpoint.server.ts
           grep -q 'COMMERCIAL_SOURCE_NOT_ELIGIBLE' src/lib/agent-query-deliverability.server.ts
           grep -q 'HOT_TOPIC_PIPELINE_STALE' src/lib/agent-query-hot-topics.server.ts
           grep -q 'HOT_TOPIC_COMMERCIAL_COVERAGE_INSUFFICIENT' src/lib/agent-query-hot-topics.server.ts
