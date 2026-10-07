@@ -43,6 +43,7 @@ set
   authentication_type = 'SIGNED_ENVELOPE_PROTOCOL_HASH',
   commercial_usage_status = 'REVIEW_REQUIRED',
   raw_redistribution_allowed = false,
+  enabled_for_ingestion = false,
   enabled_for_commercial_signals = false,
   notes = 'Default-off governed Telegram lead bridge: geomacro-telegram-signals publishes compact UNVERIFIED envelopes to B2 with D1 checkpoint/index state. Per-publisher authorization plus independent non-Telegram corroboration and normal rights/provenance/freshness gates are mandatory before downstream promotion. Raw Telegram content is never customer-facing.',
   updated_at = now()
