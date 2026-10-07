@@ -246,7 +246,7 @@ async function refreshCountry(
       country_name: country.country_name,
       region: country.region,
       subregion: country.subregion,
-      status: paidReady ? "PAID_READY" as const : "FAIL_CLOSED" as const,
+      status: paidReady ? "PAID_READY" : "FAIL_CLOSED",
       object_id: object.object_id,
       generated_at: object.generated_at,
       expires_at: object.expires_at,
