@@ -51,7 +51,7 @@
       "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
       "providers": {
         "coinbase_x402": {
-          "endpoint": "https://geomacro.live/api/x402/intelligence",
+          "endpoint": "https://geomacro.live/api/v1/intelligence/query",
           "environment": "Production x402 adapter prepared; activation remains gated by paid E2E acceptance and explicit authorization.",
           "launch_cohort": true,
           "production_enabled": false
