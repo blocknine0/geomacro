@@ -72,7 +72,14 @@ jobs:
 
           grep -Fq 'COMMERCIAL RISK INTELLIGENCE' src/routes/institutional.tsx
           grep -Fq 'Risk Gate' src/routes/risk-gate.tsx
-          grep -Fq '"classification": "PRODUCTION", "status": "LIVE"' config/commercial-route-disposition.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const manifest = JSON.parse(fs.readFileSync('config/commercial-route-disposition.json', 'utf8'));
+          const live = manifest?.routes?.['/'];
+          if (live?.classification !== 'PRODUCTION' || live?.status !== 'LIVE') {
+            throw new Error('COMMERCIAL_ROUTE_DISPOSITION_ROOT_NOT_LIVE');
+          }
+          NODE
           grep -Fq 'Risk API: PRIVATE PILOT' public/llms.txt
           grep -Fq 'Risk Gate: PRIVATE PILOT' public/llms.txt
           grep -Fq 'execution_authorized=false' public/llms.txt
