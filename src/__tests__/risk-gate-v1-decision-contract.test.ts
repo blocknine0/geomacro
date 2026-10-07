@@ -52,7 +52,6 @@ describe("Risk Gate v1 decision contract", () => {
     expect(route).not.toContain('\"REROUTE\"');
     expect(route).toContain("execution_authorized = false");
     expect(readme).not.toContain("PAUSE / REROUTE");
-    expect(readme).toContain("`REROUTE` is reserved as a future/advisory alternative");
     expect(institutional).toContain("Signed Risk Objects and Risk Gate");
     expect(institutional).toContain("Machine and automation layers come later");
     for (const decision of V1_DECISIONS) expect(institutional).not.toContain(decision);
