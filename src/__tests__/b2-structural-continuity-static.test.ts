@@ -119,6 +119,10 @@ describe("verified B2 structural serving continuity", () => {
     expect(reader).toContain('role: "read"');
     expect(reader).toContain('role: "primary"');
     expect(reader).toContain("response.status === 403");
+    expect(reader).toContain("B2_NATIVE_AUTHORIZE_URL");
+    expect(reader).toContain('capabilities.includes("readFiles")');
+    expect(reader).toContain("backblazeb2\\.com");
+    expect(reader).toContain("await nativeGet(cfg, key, MAX_COMPRESSED_BYTES)");
     expect(reader).not.toContain("VITE_B2");
     expect(reader).toContain("STRUCTURAL_B2_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000");
     expect(reader).toContain('payload.source_project !== HISTORICAL_PROJECT_REF');
