@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const verifier = readFileSync("scripts/ops/verify-public-ask-production.mjs", "utf8");
 const human = readFileSync("src/lib/ask-geomacro-core.server.ts", "utf8");
+const hybrid = readFileSync("src/lib/hybrid-ask-intelligence.server.ts", "utf8");
 const machine = readFileSync("src/lib/testnet-intelligence-capability-hybrid.server.ts", "utf8");
 
 describe("#1414 Ask Geomacro production acceptance", () => {
@@ -22,6 +23,16 @@ describe("#1414 Ask Geomacro production acceptance", () => {
     expect(verifier).toContain("source_identity_exposed");
     expect(verifier).toContain("durable_live_storage_write");
     expect(verifier).toContain("ASK_PRIVATE_SOURCE_LEAK");
+  });
+
+  it("uses the proof-validating Cloudflare Risk Indices edge before direct B2 for index questions", () => {
+    expect(hybrid).toContain("RISK_INDICES_EDGE_URL");
+    expect(hybrid).toContain("backblaze-b2-risk-indices-edge");
+    expect(hybrid).toContain("RISK_INDICES_EDGE_TIMEOUT_MS = 4_000");
+    const edge = hybrid.indexOf("await readRiskIndicesEdge()");
+    const b2 = hybrid.indexOf("await readB2PublicRisk()");
+    expect(edge).toBeGreaterThan(-1);
+    expect(b2).toBeGreaterThan(edge);
   });
 
   it("keeps human and machine intelligence_query on the same canonical answer engine", () => {
