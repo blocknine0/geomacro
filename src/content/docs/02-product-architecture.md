@@ -12,6 +12,7 @@ flowchart TD
     STATE --> ASK["Ask Geomacro - Live"]
     STATE --> COUNTRY["Country Risk Object - Private Pilot"]
     STATE --> CORRIDOR["Corridor Risk Object - Private Pilot"]
+    STATE --> DELIVERY["Commercial API / agent delivery - Production Gated"]
     COUNTRY --> GATE["Risk Gate - Private Pilot"]
     CORRIDOR --> GATE
     GATE --> POLICY["Customer identity + permissions + policy"]
