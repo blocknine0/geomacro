@@ -23,6 +23,16 @@ describe("#1414 country GRO refresh under external B2 archive caps", () => {
     expect(publisher).toContain("previousBaseline.object");
   });
 
+
+  it("preserves only an unchanged still-fresh signed commercially verified canonical GRO", () => {
+    expect(publisher).toContain("preservedCommercialByCountry");
+    expect(publisher).toContain('.eq("verification_status", "VERIFIED")');
+    expect(publisher).toContain('.eq("commercial_eligibility_status", "VERIFIED")');
+    expect(publisher).toContain('.gt("expires_at", key)');
+    expect(publisher).toContain("verifyCommercialRiskObjectArtifact(object, { now: boundary }).deliverable");
+    expect(publisher).toContain("verifyRiskObjectSignature(object).valid");
+  });
+
   it("does not weaken current evidence, signing, persistence or read-back verification", () => {
     expect(publisher).toContain("loadRecentStructuredEvents(");
     expect(publisher).toContain("applyCountryRiskCommercialEligibility(");
