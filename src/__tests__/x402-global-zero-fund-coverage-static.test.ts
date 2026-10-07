@@ -38,4 +38,20 @@ describe("#1414 x402 global zero-fund coverage", () => {
     expect(workflow).not.toContain('api/x402/intelligence');
     expect(workflow).not.toContain('I_ACCEPT_REAL_USDC');
   });
+
+  it("fails the live workflow when the piped verifier exits non-zero", () => {
+    const start = workflow.indexOf(
+      "- name: Verify all-country and corridor paid-product availability without funds",
+    );
+    const end = workflow.indexOf("- name: Record no-funds boundary", start);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+
+    const liveCoverageStep = workflow.slice(start, end);
+    expect(liveCoverageStep).toContain("shell: bash");
+    expect(liveCoverageStep).toContain("set -euo pipefail");
+    expect(liveCoverageStep).toContain(
+      "node scripts/agentic/verify-live-x402-global-zero-fund-coverage.mjs | tee /tmp/x402-global-zero-fund.json",
+    );
+  });
 });
