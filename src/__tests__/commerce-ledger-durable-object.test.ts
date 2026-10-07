@@ -99,6 +99,8 @@ describe("Supabase-independent Durable Object commerce ledger", () => {
     expect(replay.disposition).toBe("REPLAY");
     expect(replay.response_payload).toEqual(responsePayload);
     expect(replay.response_sha256).toBe(responseSha256);
+    expect(replay.request_fingerprint).toBe(claimInput.requestFingerprint);
+    expect(replay.product_id).toBe(claimInput.productId);
     expect(replay.settlement_reference).toBe("0xsettlement-0001");
     expect(replay.settlement_network).toBe("base");
   });
