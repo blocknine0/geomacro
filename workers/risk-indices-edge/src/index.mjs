@@ -1,3 +1,5 @@
+import continuity from "./continuity.mjs";
+
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
 const LIVE_KEY = "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz";
@@ -109,6 +111,45 @@ function validIndices(data) {
   return expected.size === 0;
 }
 
+async function buildContinuityResponse() {
+  if (
+    continuity?.schema !== "geomacro.edge-continuity.v1" ||
+    continuity?.product !== "risk-indices" ||
+    continuity?.b2_readback_verified !== true ||
+    continuity?.projection !== "exact-public-package" ||
+    !/^\\d+$/.test(String(continuity?.source_run_id ?? "")) ||
+    !/^[0-9a-f]{64}$/.test(String(continuity?.source_live_sha256 ?? "")) ||
+    !/^[0-9a-f]{64}$/.test(String(continuity?.payload_sha256 ?? "")) ||
+    typeof continuity?.payload_json !== "string"
+  ) throw new Error("RISK_INDICES_CONTINUITY_PROOF_INVALID");
+
+  const payloadBytes = encoder.encode(continuity.payload_json);
+  if (await sha256(payloadBytes) !== continuity.payload_sha256) {
+    throw new Error("RISK_INDICES_CONTINUITY_HASH_INVALID");
+  }
+  const live = JSON.parse(continuity.payload_json);
+  const data = live?.data;
+  if (
+    live?.schema !== "geomacro.public-risk-indices-live.v1" ||
+    live?.source_project !== PROJECT_REF ||
+    !recentEnough(live?.generated_at) ||
+    !validIndices(data)
+  ) throw new Error("RISK_INDICES_CONTINUITY_PAYLOAD_INVALID");
+
+  return new Response(continuity.payload_json, {
+    status: 200,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
+      "x-content-type-options": "nosniff",
+      "x-geomacro-authority": "backblaze-b2-risk-indices-edge",
+      "x-geomacro-continuity": "github-actions-b2-readback-verified",
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity",
+    },
+  });
+}
+
 function unavailable(status = 503) {
   return new Response(JSON.stringify({ ok: false, code: "RISK_INDICES_EDGE_UNAVAILABLE" }), {
     status,
@@ -183,8 +224,15 @@ export default {
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
       return response;
     } catch (error) {
-      console.error("risk-indices-edge unavailable", error instanceof Error ? error.message : "unknown");
-      return unavailable(503);
+      console.error("risk-indices-edge origin unavailable", error instanceof Error ? error.message : "unknown");
+      try {
+        const response = await buildContinuityResponse();
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        return response;
+      } catch (continuityError) {
+        console.error("risk-indices-edge continuity unavailable", continuityError instanceof Error ? continuityError.message : "unknown");
+        return unavailable(503);
+      }
     }
   },
 };
