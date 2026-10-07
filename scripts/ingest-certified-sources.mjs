@@ -215,31 +215,63 @@ async function archiveVerifiedFragment(sourceId, rows) {
     selected = selected.slice(0, -1);
   }
   if (!fragment || !selected.length) throw new Error(`NO_SAFE_FRAGMENT_SIZE:${sourceId}`);
-  await b2.put(fragment.key, fragment.compressed);
-  const readback = await b2.get(fragment.key);
-  if (readback.length !== fragment.compressed.length || sha(readback) !== sha(fragment.compressed)) throw new Error(`B2_FRAGMENT_READBACK_HASH_MISMATCH:${sourceId}`);
-  const restoredBytes = gunzipSync(readback, { maxOutputLength: MAX_FRAGMENT_UNCOMPRESSED_BYTES + 1 });
-  if (sha(restoredBytes) !== sha(fragment.bundleBytes)) throw new Error(`B2_FRAGMENT_RESTORE_MISMATCH:${sourceId}`);
+
+  // Validate the exact compressed artifact locally before upload. This proves the
+  // codec, shape and every member hash without relying on a B2 download.
+  const restoredBytes = gunzipSync(
+    fragment.compressed,
+    { maxOutputLength: MAX_FRAGMENT_UNCOMPRESSED_BYTES + 1 },
+  );
+  if (sha(restoredBytes) !== sha(fragment.bundleBytes)) {
+    throw new Error(`B2_FRAGMENT_LOCAL_RESTORE_MISMATCH:${sourceId}`);
+  }
   const restored = JSON.parse(restoredBytes.toString("utf8"));
-  if (restored?.schema !== "geomacro.observation-raw-bundle.v1" || restored?.storage_mode !== "gzip-fragment-bundle" || restored?.bundle_fingerprint !== fragment.fingerprint || restored?.entries?.length !== fragment.entries.length) {
-    throw new Error(`B2_FRAGMENT_SHAPE_MISMATCH:${sourceId}`);
+  if (
+    restored?.schema !== "geomacro.observation-raw-bundle.v1" ||
+    restored?.storage_mode !== "gzip-fragment-bundle" ||
+    restored?.bundle_fingerprint !== fragment.fingerprint ||
+    restored?.entries?.length !== fragment.entries.length
+  ) {
+    throw new Error(`B2_FRAGMENT_LOCAL_SHAPE_MISMATCH:${sourceId}`);
   }
   for (const entry of restored.entries) {
-    if (!entry?.normalized_observation || hash(entry.normalized_observation) !== entry.normalized_sha256 || sha(Buffer.from(JSON.stringify(entry.raw_payload))) !== entry.payload_sha256) {
-      throw new Error(`B2_FRAGMENT_MEMBER_MISMATCH:${sourceId}`);
+    if (
+      !entry?.normalized_observation ||
+      hash(entry.normalized_observation) !== entry.normalized_sha256 ||
+      sha(Buffer.from(JSON.stringify(entry.raw_payload))) !== entry.payload_sha256
+    ) {
+      throw new Error(`B2_FRAGMENT_LOCAL_MEMBER_MISMATCH:${sourceId}`);
     }
   }
+
+  const storageVerification =
+    await b2.putWithMetadataVerification(
+      fragment.key,
+      fragment.compressed,
+    );
+  const compressedSha256 = sha(fragment.compressed);
+  if (
+    storageVerification.sha256 !== compressedSha256 ||
+    storageVerification.bytes !== fragment.compressed.length ||
+    storageVerification.verification_mode !== "signed-put-head-metadata"
+  ) {
+    throw new Error(`B2_FRAGMENT_METADATA_VERIFICATION_MISMATCH:${sourceId}`);
+  }
+
   return {
     consumed: selected.length,
     fragment: {
       key: fragment.key,
-      sha256: sha(fragment.compressed),
+      sha256: compressedSha256,
       fingerprint: fragment.fingerprint,
       members: selected.length,
       uncompressed_bytes: fragment.bundleBytes.length,
       compressed_bytes: fragment.compressed.length,
       compression_ratio: Number((fragment.compressed.length / Math.max(1, fragment.bundleBytes.length)).toFixed(6)),
-      readback_verified: true,
+      verification_mode: storageVerification.verification_mode,
+      storage_metadata_verified: true,
+      local_restore_verified: true,
+      full_body_readback_verified: false,
       contains_normalized_observations: true,
     },
   };
@@ -268,7 +300,10 @@ async function archiveSourceBatch(sourceId, rows) {
     uncompressed_bytes: uncompressedBytes,
     compressed_bytes: compressedBytes,
     compression_ratio: Number((compressedBytes / Math.max(1, uncompressedBytes)).toFixed(6)),
-    b2_readback_verified: true,
+    b2_storage_metadata_verified: true,
+    b2_local_restore_verified: true,
+    b2_full_body_readback_verified: false,
+    verification_mode: "signed-put-head-metadata",
     normalized_observations_durable_in_b2: true,
     supabase_dependency: false,
     supabase_mirror_attempted: false,
@@ -303,7 +338,10 @@ const checkpointSql = summaries.map((summary) => {
     uncompressed_bytes: summary.uncompressed_bytes,
     compressed_bytes: summary.compressed_bytes,
     compression_ratio: summary.compression_ratio,
-    b2_readback_verified: true,
+    b2_storage_metadata_verified: true,
+    b2_local_restore_verified: true,
+    b2_full_body_readback_verified: false,
+    verification_mode: "signed-put-head-metadata",
     normalized_observations_durable_in_b2: true,
     supabase_dependency: false,
   });
