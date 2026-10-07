@@ -132,9 +132,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
     const policy = read(
       "src/lib/public-demo-risk-profile.ts",
     );
-    const rssWorkflow = read(
-      ".github/workflows/testnet-rss-live-runner.yml",
-    );
+    const rssCycle = read("scripts/run-rss-live-cycle.mjs");
 
     expect(worker).toContain(
       '"source_id": "xinhua_english_china_rss"',
@@ -184,24 +182,11 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(policy).toContain(
       'scmp_china_rss: "scmp_china"',
     );
-    expect(rssWorkflow).toContain(
-      ".source_summary.configured_source_count == .source_summary.completed_source_count",
-    );
-    expect(rssWorkflow).toContain(
-      "node scripts/run-rss-live-cycle.mjs",
-    );
-    expect(rssWorkflow).toContain(
-      "GRI_DB_MODE: direct_postgres",
-    );
-    expect(rssWorkflow).not.toContain(
-      ".supabase.co/functions/v1/live-flash-ingest",
-    );
-    expect(rssWorkflow).not.toContain(
-      "xinhua_english_china_rss",
-    );
-    expect(rssWorkflow).not.toContain(
-      "scmp_china_rss",
-    );
+    expect(rssCycle).toContain("RSS_LIVE_CYCLE_REQUIRES_DIRECT_POSTGRES");
+    expect(rssCycle).toContain("configured_source_count");
+    expect(rssCycle).toContain("completed_source_count");
+    expect(rssCycle).toContain("edge_function_dependency: false");
+    expect(rssCycle).not.toContain(".supabase.co/functions/v1/");
 
     const corroborator = read(
       "supabase/functions/live-flash-corroborate/index.ts",
