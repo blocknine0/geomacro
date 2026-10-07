@@ -56,6 +56,8 @@ for (const marker of [
   "B2_S3_ENDPOINT",
   "B2_REQUEST_BUDGET",
   "geomacro-control-plane",
+  "Require D1 schema v2 or newer before source reads",
+  "Number(row?.version) >= 2",
   "Export governed source admission state from D1",
   "Write compact D1 ingestion checkpoints",
   "Replay compact D1 checkpoint upsert",

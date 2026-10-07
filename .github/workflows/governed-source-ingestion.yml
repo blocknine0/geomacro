@@ -94,7 +94,7 @@ jobs:
           fs.writeFileSync(process.env.D1_CONFIG, output);
           NODE
 
-      - name: Require D1 schema v1 before source reads
+      - name: Require D1 schema v2 or newer before source reads
         shell: bash
         run: |
           set -euo pipefail
@@ -106,7 +106,7 @@ jobs:
               const parsed = JSON.parse(s);
               const envelopes = Array.isArray(parsed) ? parsed : [parsed];
               const rows = envelopes.flatMap(x => Array.isArray(x?.results) ? x.results : []);
-              if (!rows.some(row => Number(row?.version) === 1)) process.exit(3);
+              if (!rows.some(row => Number(row?.version) >= 2)) process.exit(3);
             });
           '
 
