@@ -48,7 +48,7 @@ describe("country GRO bundle Class-B budget", () => {
     const runtime = read("src/lib/b2-country-gro.server.ts");
     const privateReader = read("src/lib/b2-private-archive-read.server.ts");
     expect(runtime).toContain("const CACHE_TTL_MS = 5 * 60_000");
-    expect(runtime).toContain("inFlightGets.has(key)");
+    expect(runtime).toContain("inFlightGets.get(key)");
     expect(runtime).toContain("if (bundleState && bundleState.expiresAt > Date.now())");
     expect(runtime).toContain("if (inFlightBundle) return inFlightBundle");
     expect(runtime).toContain("readPrivateB2Object(key");
