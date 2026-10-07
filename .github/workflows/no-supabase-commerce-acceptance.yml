@@ -2,6 +2,13 @@ name: No-Supabase Commerce Acceptance
 
 on:
   workflow_dispatch: {}
+  workflow_run:
+    workflows:
+      - Deploy Commerce Ledger Worker
+    types:
+      - completed
+    branches:
+      - main
   push:
     branches:
       - main
@@ -9,7 +16,6 @@ on:
       - ".github/workflows/no-supabase-commerce-acceptance.yml"
       - "scripts/ops/verify-commerce-no-supabase.ts"
       - "src/lib/agent-commerce-delivery.server.ts"
-      - "workers/commerce-ledger/**"
       - "src/__tests__/agent-commerce-delivery-ledger-static.test.ts"
       - "src/__tests__/commerce-ledger-no-supabase-acceptance-static.test.ts"
 
@@ -22,7 +28,17 @@ concurrency:
 
 jobs:
   accept:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main'
+        )
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
@@ -31,6 +47,19 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Bind acceptance to deployed worker SHA
+        if: github.event_name == 'workflow_run'
+        shell: bash
+        env:
+          DEPLOYED_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$DEPLOYED_HEAD_SHA" || {
+            echo "::error::COMMERCE_ACCEPTANCE_DEPLOYED_SHA_MISMATCH"
+            exit 1
+          }
 
       - name: Set up Bun 1.4.2
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
