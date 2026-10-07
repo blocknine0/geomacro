@@ -44,11 +44,15 @@ describe("verified Global Risk edge serving boundary", () => {
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("secrets.CLOUDFLARE_API_TOKEN");
     expect(workflow).toContain("secrets.CLOUDFLARE_ACCOUNT_ID");
-    expect(workflow).toContain("secrets.B2_KEY_ID");
-    expect(workflow).toContain("secrets.B2_APPLICATION_KEY");
+    expect(workflow).toContain("secrets.B2_ARCHIVE_READ_KEY_ID");
+    expect(workflow).toContain("secrets.B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(workflow).toContain('wrangler@${WRANGLER_VERSION}');
     expect(workflow).toContain("https://geomacro-global-risk.daspallab202391.workers.dev");
     expect(workflow).toContain("EDGE_DOMAIN_HISTORY_INVALID");
+    expect(workflow).toContain("prepare-edge-continuity.sh");
+    expect(worker).toContain('import continuity from "./continuity.mjs"');
+    expect(worker).toContain("GLOBAL_RISK_CONTINUITY_HASH_INVALID");
+    expect(worker).toContain('"x-geomacro-continuity": "github-actions-b2-readback-verified"');
   });
 
   it("keeps Lovable Global Risk API as a pure compatibility transport and excludes Risk Indices", () => {
