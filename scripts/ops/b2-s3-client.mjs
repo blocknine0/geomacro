@@ -250,7 +250,16 @@ export function createB2Client({
     throw new Error(`B2_NATIVE_GET_FAILED_${response.status}_${errorCode}`);
   }
 
-  async function request(method, key, body = Buffer.alloc(0), { allowNotFound = false } = {}) {
+  async function request(
+    method,
+    key,
+    body = Buffer.alloc(0),
+    {
+      allowNotFound = false,
+      extraSignedHeaders = null,
+      metadataOnly = false,
+    } = {},
+  ) {
     const normalizedKey = String(key ?? "");
     if (method === "GET" && nativeReadFatalError) throw new Error(nativeReadFatalError);
     const matchesAllowedPrefix = allowedPrefixes.some((prefix) => normalizedKey.startsWith(prefix));
@@ -267,9 +276,19 @@ export function createB2Client({
     const host = new URL(endpoint.endpoint).host;
     const payloadHash = sha(body);
     const credentialCandidates =
-      method === "GET"
+      method === "GET" || method === "HEAD"
         ? readCredentialCandidates
         : [{ accessKey, secretKey, role: "primary" }];
+
+    const normalizedExtraHeaders = {};
+    for (const [rawName, rawValue] of Object.entries(extraSignedHeaders ?? {})) {
+      const name = String(rawName ?? "").trim().toLowerCase();
+      const value = String(rawValue ?? "").trim();
+      if (!/^x-amz-meta-[a-z0-9-]+$/.test(name) || !value || /[\r\n]/.test(value)) {
+        throw new Error("B2_SIGNED_METADATA_HEADER_INVALID");
+      }
+      normalizedExtraHeaders[name] = value;
+    }
 
     let lastAccessDenied = null;
     let lastDedicatedNativeError = null;
@@ -300,7 +319,12 @@ export function createB2Client({
 
       const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
       const day = timestamp.slice(0, 8);
-      const headers = { host, "x-amz-content-sha256": payloadHash, "x-amz-date": timestamp };
+      const headers = {
+        host,
+        "x-amz-content-sha256": payloadHash,
+        "x-amz-date": timestamp,
+        ...normalizedExtraHeaders,
+      };
       const names = Object.keys(headers).sort();
       const canonicalHeaders = names.map((name) => `${name}:${headers[name]}\n`).join("");
       const signedHeaders = names.join(";");
@@ -316,17 +340,44 @@ export function createB2Client({
           headers: {
             "x-amz-content-sha256": payloadHash,
             "x-amz-date": timestamp,
+            ...normalizedExtraHeaders,
             Authorization: `AWS4-HMAC-SHA256 Credential=${credential.accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
           },
           body: method === "PUT" ? body : undefined,
           signal: AbortSignal.timeout(60_000),
         });
 
-        if (result.ok) return Buffer.from(await result.arrayBuffer());
+        if (result.ok) {
+          if (metadataOnly) {
+            const contentLengthRaw = result.headers.get("content-length");
+            const contentLength = Number(contentLengthRaw);
+            return {
+              content_length:
+                Number.isSafeInteger(contentLength) && contentLength >= 0
+                  ? contentLength
+                  : null,
+              geomacro_sha256:
+                String(result.headers.get("x-amz-meta-geomacro-sha256") ?? "")
+                  .trim()
+                  .toLowerCase(),
+            };
+          }
+          return Buffer.from(await result.arrayBuffer());
+        }
         const responseText = await result.text().catch(() => "");
         const errorCode = safeB2ErrorCode(responseText);
         if (allowNotFound && method === "GET" && result.status === 404 && errorCode === "NoSuchKey") {
           return null;
+        }
+        if (
+          method === "HEAD" &&
+          result.status === 403 &&
+          errorCode === "AccessDenied"
+        ) {
+          lastAccessDenied =
+            new Error(`B2_HEAD_FAILED_403_AccessDenied_${credential.role}`);
+          if (credentialIndex < credentialCandidates.length - 1) break;
+          throw lastAccessDenied;
         }
         if (
           method === "GET" &&
@@ -367,7 +418,7 @@ export function createB2Client({
         }
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : String(cause);
-        const explicitHttpFailure = /^B2_(PUT|GET)_FAILED_\d+_[A-Za-z0-9_.:-]+$/.test(message);
+        const explicitHttpFailure = /^B2_(PUT|GET|HEAD)_FAILED_\d+_[A-Za-z0-9_.:-]+$/.test(message);
         const hardCapFailure =
           message === "B2_DOWNLOAD_CAP_EXCEEDED" ||
           message === "B2_TRANSACTION_CAP_EXCEEDED";
@@ -392,8 +443,38 @@ export function createB2Client({
     return promise;
   }
 
+  async function putWithMetadataVerification(key, bytes) {
+    const body = Buffer.from(bytes);
+    const digest = sha(body);
+
+    await request("PUT", key, body, {
+      extraSignedHeaders: {
+        "x-amz-meta-geomacro-sha256": digest,
+      },
+    });
+
+    const metadata = await request("HEAD", key, Buffer.alloc(0), {
+      metadataOnly: true,
+    });
+
+    if (metadata.geomacro_sha256 !== digest) {
+      throw new Error("B2_METADATA_SHA256_MISMATCH");
+    }
+    if (metadata.content_length !== body.length) {
+      throw new Error("B2_METADATA_CONTENT_LENGTH_MISMATCH");
+    }
+
+    return {
+      sha256: digest,
+      bytes: body.length,
+      verification_mode: "signed-put-head-metadata",
+      full_body_readback_verified: false,
+    };
+  }
+
   return {
     put: (key, bytes) => request("PUT", key, bytes),
+    putWithMetadataVerification,
     get: (key) => readSingleFlight(key, false),
     getOptional: (key) => readSingleFlight(key, true),
     usage: () => ({
