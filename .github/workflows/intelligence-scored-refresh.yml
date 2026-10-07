@@ -43,6 +43,7 @@ jobs:
       B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
       B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}
       B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -73,6 +74,7 @@ jobs:
           test -n "${B2_APPLICATION_KEY:-}" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
           test -n "${B2_ARCHIVE_READ_KEY_ID:-}" || { echo "B2_ARCHIVE_READ_KEY_ID is required for mandatory readback"; exit 2; }
           test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || { echo "B2_ARCHIVE_READ_APPLICATION_KEY is required for mandatory readback"; exit 2; }
+          test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || { echo "GEOMACRO_COMMERCE_LEDGER_TOKEN is required for D1 hot overlay"; exit 2; }
           command -v unzip >/dev/null
 
       - name: Require permanent production source anchors
@@ -143,7 +145,9 @@ jobs:
           body="$(mktemp)"
           headers="$(mktemp)"
           : > /tmp/intelligence-convergence-diagnostics.jsonl
-          for attempt in $(seq 1 24); do
+          # Intelligence edge caches a verified projection for up to 300s.
+          # Keep the bounded convergence window strictly longer than that TTL.
+          for attempt in $(seq 1 40); do
             nonce="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${attempt}-$(date +%s)"
             : > "$headers"
             code="$(curl -L -sS -D "$headers" -o "$body" -w '%{http_code}' --max-time 20 \
@@ -282,7 +286,7 @@ jobs:
           console.log(JSON.stringify(diagnostic));
           NODE
 
-            if [ "$attempt" -lt 24 ]; then sleep 10; fi
+            if [ "$attempt" -lt 40 ]; then sleep 10; fi
           done
           echo "::error::Production Intelligence API did not converge under the canonical scored/current serving policy within the bounded acceptance window."
           exit 1
