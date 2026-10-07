@@ -87,6 +87,8 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("GEO:GLOBAL:UKMTO:");
     expect(worker).toContain("const fragmentId = await saveFragment");
     expect(worker).toContain("fragment_ids: [...new Set(fragmentIds)]");
+    expect(worker).toContain("COUNTRY_RAW_SOURCE_SYNC_OUTPUT");
+    expect(worker).toContain('writeFile(OUTPUT_PATH, resultJson, "utf8")');
   });
 
   it("keeps raw bytes private and hashed",()=>{
