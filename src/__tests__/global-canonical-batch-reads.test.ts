@@ -15,6 +15,8 @@ describe("canonical refresh read budget", () => {
     expect(publisher).not.toContain('if (!process.env.GLOBAL_CANONICAL_REFRESH_OUTPUT)');
     expect(runner).toContain("primeCanonicalBatchPreviousRiskObjects(asOf)");
     expect(publisher).toContain("canonicalBatchPreviousObjects");
+    expect(publisher).toContain("PUBLIC_DEMO_RISK_PROFILE_REASON");
+    expect(publisher).toMatch(/PUBLIC_DEMO_RISK_PROFILE_REASON,[\s\S]*from "\.\/public-demo-risk-profile"/);
     expect(publisher).toContain('.not("payload", "is", null)');
     expect(runner).toContain("b2_archive_reads_for_previous_baseline");
     expect(macro).toContain('process.env.GEOMACRO_CANONICAL_BATCH !== "1"');
