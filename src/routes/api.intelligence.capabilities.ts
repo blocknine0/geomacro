@@ -17,7 +17,7 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
             provider: {
               id: "geomacro",
               name: "Geomacro",
-              endpoint: "/api/x402/intelligence",
+              endpoint: "/api/v1/intelligence/query",
             },
             product: {
               id: GEOMACRO_INTELLIGENCE_PRODUCT_ID,
@@ -52,7 +52,7 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
               execution_authorized: false,
             },
             endpoints: {
-              paid_intelligence: "POST /api/x402/intelligence",
+              paid_intelligence: "POST /api/v1/intelligence/query",
               free_capability_discovery: "GET /api/intelligence/capabilities",
               free_state_check:
                 "GET /api/intelligence/state?country=ISO3&known_state_version=...",
