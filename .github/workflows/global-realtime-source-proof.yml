@@ -11,6 +11,9 @@ on:
       - "scripts/run-gdelt-gal-cycle.mjs"
       - "scripts/verify-gdelt-gal-cycle.mjs"
       - "scripts/sync-country-raw-source-mesh.mjs"
+      - "scripts/ops/verify-b2-private-archive-read.ts"
+      - "src/lib/b2-private-archive-read.server.ts"
+      - "src/__tests__/b2-private-archive-read-native-fallback.test.ts"
       - "scripts/drain-live-structure.mjs"
       - "scripts/intelligence-orchestrator.mjs"
       - "scripts/run-rss-live-cycle.mjs"
@@ -158,6 +161,22 @@ jobs:
               exit 2
             }
           fi
+
+      - name: Prove production private B2 archive reader
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/verify-b2-private-archive-read.ts | tee b2-private-archive-runtime-read.json
+          jq -e '
+            .ok == true and
+            .schema == "geomacro.b2-private-archive-runtime-read-proof.v1" and
+            .dedicated_read_credentials == true and
+            .raw_data_delivered == false and
+            .destructive_b2_change == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' b2-private-archive-runtime-read.json >/dev/null
+          echo "PASS: production archive reader restored verified private B2 bytes with no destructive action."
 
       - name: Verify canonical direct-Postgres RSS corroboration transport
         env:
@@ -331,6 +350,7 @@ jobs:
         with:
           name: global-realtime-intelligence-100-${{ github.event.pull_request.head.sha }}
           path: |
+            b2-private-archive-runtime-read.json
             realtime-corroborate-direct.json
             country-raw-source-acceptance-GEOPOLITICS.json
             country-raw-source-acceptance-MACRO.json
