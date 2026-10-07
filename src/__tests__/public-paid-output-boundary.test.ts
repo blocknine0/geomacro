@@ -73,7 +73,7 @@ describe("source-free paid output boundary", () => {
 
   it("wires sanitation before durable x402 preparation and on replay", async () => {
     const fs = await import("node:fs/promises");
-    const route = await fs.readFile("src/routes/api.x402.intelligence.ts", "utf8");
+    const route = await fs.readFile("src/lib/mainnet-intelligence-endpoint.server.ts", "utf8");
     expect(route).toContain("sanitizeAndRehashPaidPreparedResponse(assembled");
     expect(route).toContain("availability: publicAgentQueryAvailability(finalAvailability)");
     expect(route).not.toContain("availability: finalAvailability,");
