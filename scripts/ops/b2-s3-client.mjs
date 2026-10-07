@@ -113,7 +113,14 @@ export function createB2Client({
   let requestsStarted = 0;
   let nativeReadFallbackAttempts = 0;
   let nativeReadFallbackSuccesses = 0;
+  let nativeReadFatalError = null;
   const nativeReadAuthCache = new Map();
+
+  function isAccountWideNativeReadFailure(message) {
+    return /^B2_NATIVE_(?:GET|AUTHORIZE)_FAILED_403_(?:download_cap_exceeded|transaction_cap_exceeded)$/.test(
+      String(message ?? ""),
+    );
+  }
 
   function nativeCredentialFingerprint(credential) {
     return `${credential.accessKey}\u0000${credential.secretKey}`;
@@ -233,6 +240,9 @@ export function createB2Client({
 
   async function request(method, key, body = Buffer.alloc(0), { allowNotFound = false } = {}) {
     const normalizedKey = String(key ?? "");
+    if (method === "GET" && nativeReadFatalError) {
+      throw new Error(nativeReadFatalError);
+    }
     const matchesAllowedPrefix = allowedPrefixes.some((prefix) => normalizedKey.startsWith(prefix));
     if (
       !matchesAllowedPrefix ||
@@ -301,11 +311,9 @@ export function createB2Client({
           } catch (nativeCause) {
             const nativeMessage =
               nativeCause instanceof Error ? nativeCause.message : "B2_NATIVE_READ_FAILED";
-            if (nativeMessage === "B2_NATIVE_GET_FAILED_403_download_cap_exceeded") {
-              throw new Error("B2_DOWNLOAD_CAP_EXCEEDED");
-            }
-            if (nativeMessage === "B2_NATIVE_GET_FAILED_403_transaction_cap_exceeded") {
-              throw new Error("B2_TRANSACTION_CAP_EXCEEDED");
+            if (isAccountWideNativeReadFailure(nativeMessage)) {
+              nativeReadFatalError = nativeMessage;
+              throw new Error(nativeMessage);
             }
             if (credential.role !== "primary") {
               lastDedicatedNativeError = new Error(
@@ -357,6 +365,7 @@ export function createB2Client({
       native_read_fallback_enabled: true,
       native_read_fallback_attempts: nativeReadFallbackAttempts,
       native_read_fallback_successes: nativeReadFallbackSuccesses,
+      native_read_fatal_error: nativeReadFatalError,
     }),
   };
 }
