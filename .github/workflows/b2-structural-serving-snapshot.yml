@@ -11,6 +11,7 @@ on:
       - "src/lib/b2-structural.server.ts"
       - "src/lib/structural-context.server.ts"
       - "scripts/ops/b2-s3-client.mjs"
+      - "scripts/ops/preflight-b2-read-capability.mjs"
       - "scripts/ops/publish-b2-structural-serving-snapshot.ts"
       - ".github/workflows/b2-structural-serving-snapshot.yml"
   schedule:
@@ -55,6 +56,19 @@ jobs:
           set -euo pipefail
           test -n "${B2_ARCHIVE_READ_KEY_ID:-}" || { echo "B2_ARCHIVE_READ_KEY_ID is required for structural readback"; exit 2; }
           test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || { echo "B2_ARCHIVE_READ_APPLICATION_KEY is required for structural readback"; exit 2; }
+
+      - name: Preflight B2 read capability before structural scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/preflight-b2-read-capability.mjs \
+            | tee /tmp/b2-structural-read-preflight.json
+          jq -e '
+            .ok == true
+            and .missing_probe_accepted == true
+            and .b2_write_performed == false
+            and .destructive_b2_change == false
+          ' /tmp/b2-structural-read-preflight.json >/dev/null
 
       - name: Publish and fully read back structural serving snapshot
         run: bun scripts/ops/publish-b2-structural-serving-snapshot.ts
