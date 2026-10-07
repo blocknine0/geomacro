@@ -13,7 +13,7 @@ on:
       - "src/__tests__/final-commercial-launch-gate-generic-static.test.ts"
   workflow_run:
     workflows:
-      - Exact-Head Commercial Launch Readiness
+      - B2 country GRO continuity
     types:
       - completed
 
@@ -79,7 +79,7 @@ jobs:
       WRANGLER_VERSION: "4.136.3"
       GEOMACRO_ORIGIN: https://geomacro.live
     steps:
-      - name: Checkout exact readiness-proven SHA
+      - name: Checkout exact GRO-continuity-proven SHA
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ env.HEAD_SHA }}
@@ -311,7 +311,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          REQUIRED='["Product CI","CodeQL Security Scan","Website Lock","Hosting Alignment","Live x402 Prelaunch Safety","Global Intelligence V1 CI","Exact-Head Commercial Launch Readiness"]'
+          REQUIRED='["Product CI","CodeQL Security Scan","Website Lock","Hosting Alignment","Live x402 Prelaunch Safety","Global Intelligence V1 CI","Exact-Head Commercial Launch Readiness","B2 country GRO continuity"]'
           PASS=false
           for attempt in $(seq 1 30); do
             gh api -H 'Accept: application/vnd.github+json' \
@@ -377,7 +377,7 @@ jobs:
               ...result,
               schema:'geomacro.final-commercial-launch-acknowledgement.v2',
               head_sha:process.env.HEAD_SHA,
-              exact_head_run_id:process.env.UPSTREAM_RUN_ID,
+              gro_continuity_run_id:process.env.UPSTREAM_RUN_ID,
               acknowledged_at:new Date().toISOString(),
               owner_real_funds_ack_required_before_first_usdc:true,
               first_real_money_transaction_authorized:false,

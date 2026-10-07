@@ -17,14 +17,17 @@ describe("#1414 partner-independent final commercial launch gate", () => {
     expect(exactHead).toContain("risk-object-public-verification-route.test.ts");
   });
 
-  it("drives the final production gate from exact-head readiness rather than Day 6 partner assurance", () => {
+  it("runs the final production gate only after exact-head GRO continuity and still requires exact-head readiness", () => {
     expect(finalWorkflow).toContain("Final Commercial Launch Gate");
+    expect(finalWorkflow).toContain("B2 country GRO continuity");
     expect(finalWorkflow).toContain("Exact-Head Commercial Launch Readiness");
     expect(finalWorkflow).not.toContain("Day 6 Partner Assurance Final");
     expect(finalWorkflow).not.toContain("day6-partner-assurance");
     expect(finalWorkflow).not.toContain("--partner federico");
     expect(finalWorkflow).not.toContain("Partner Commercial Readiness");
     expect(finalWorkflow).toContain("verify-generic-production-risk-object.ts");
+    expect(finalWorkflow).toContain('"B2 country GRO continuity"]');
+    expect(finalWorkflow).toContain("gro_continuity_run_id:process.env.UPSTREAM_RUN_ID");
   });
 
   it("accepts only fresh successful production Intelligence publication owners", () => {
