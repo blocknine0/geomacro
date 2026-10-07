@@ -5,7 +5,10 @@ const read = (path: string) => readFileSync(path, "utf8");
 
 describe("Cloudflare D1 permanent control plane", () => {
   it("keeps D1 bounded to hot metadata and B2 pointers", () => {
-    const schema = read("workers/control-plane/migrations/0001_core.sql");
+    const schema = [
+      read("workers/control-plane/migrations/0001_core.sql"),
+      read("workers/control-plane/migrations/0011_public_b2_verified_hot_snapshots.sql"),
+    ].join("\n");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS source_state");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS country_domain_state");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS risk_object_index");
