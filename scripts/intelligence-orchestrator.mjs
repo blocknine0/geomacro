@@ -49,6 +49,8 @@ const FORCE_TASKS = new Set(
 
 const edgeServiceAvailable = () =>
   String(process.env.GEOMACRO_SUPABASE_EDGE_AVAILABLE ?? "false").trim().toLowerCase() === "true";
+const restrictedDataPlane =
+  String(process.env.GEOMACRO_SUPABASE_RESTRICTED_MODE ?? "false").trim().toLowerCase() === "true";
 const governedTelegramEnabled = () =>
   String(process.env.TELEGRAM_ENABLED ?? "false").trim().toLowerCase() === "true";
 
@@ -91,6 +93,7 @@ const TASKS = [
   },
   {
     key: "gdelt_v2",
+    restrictedDirectPostgresSafe: true,
     cadenceSeconds: 900,
     offsetSeconds: 180,
     priority: 11,
@@ -100,6 +103,7 @@ const TASKS = [
   },
   {
     key: "current_scoring",
+    restrictedDirectPostgresSafe: true,
     cadenceSeconds: 1200,
     offsetSeconds: 780,
     priority: 12,
@@ -138,6 +142,7 @@ const TASKS = [
   },
   {
     key: "rss_live",
+    restrictedDirectPostgresSafe: true,
     cadenceSeconds: 900,
     offsetSeconds: 540,
     priority: 30,
@@ -200,6 +205,7 @@ const TASKS = [
   },
   {
     key: "production_readiness",
+    restrictedDirectPostgresSafe: true,
     cadenceSeconds: 7200,
     offsetSeconds: 3600,
     priority: 85,
@@ -427,6 +433,7 @@ async function main() {
   const disabled = [];
   for (const task of TASKS) {
     if (TASK_ALLOWLIST.size > 0 && !TASK_ALLOWLIST.has(task.key)) continue;
+    if (restrictedDataPlane && task.restrictedDirectPostgresSafe !== true) continue;
     const row = rows.get(taskKey(task));
     const enabled = typeof task.enabled === "function" ? task.enabled() : true;
     let state;
@@ -463,6 +470,11 @@ async function main() {
     skipped: disabled,
     bootstrap_seeds_are_immediately_due: true,
     task_allowlist: [...TASK_ALLOWLIST].sort(),
+    restricted_data_plane: restrictedDataPlane,
+    restricted_direct_postgres_safe_tasks: TASKS
+      .filter((task) => task.restrictedDirectPostgresSafe === true)
+      .map((task) => task.key)
+      .sort(),
     supabase_edge_available: edgeServiceAvailable(),
     direct_postgres_mode: String(process.env.GRI_DB_MODE ?? "").trim().toLowerCase() === "direct_postgres",
     raw_archive_mode: String(process.env.RAW_SOURCE_ARCHIVE_MODE ?? "").trim().toLowerCase(),
