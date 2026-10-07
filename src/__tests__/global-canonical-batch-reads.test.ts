@@ -15,6 +15,18 @@ describe("canonical refresh read budget", () => {
     expect(publisher).not.toContain('if (!process.env.GLOBAL_CANONICAL_REFRESH_OUTPUT)');
     expect(runner).toContain("primeCanonicalBatchPreviousRiskObjects(asOf)");
     expect(publisher).toContain("canonicalBatchPreviousObjects");
+    expect(publisher).toContain("preservedCommercialByCountry");
+    expect(publisher).toContain("getCanonicalBatchPreservedCommercialRiskObject");
+    expect(publisher).toContain('.eq("verification_status", "VERIFIED")');
+    expect(publisher).toContain('.eq("commercial_eligibility_status", "VERIFIED")');
+    expect(publisher).toContain('.gt("expires_at", key)');
+    expect(publisher).toContain("verifyRiskObjectSignature(object).valid");
+    expect(publisher).toContain("verifyCommercialRiskObjectArtifact(object, { now: boundary }).deliverable");
+    expect(runner).toContain("dryRunCountryRiskObject");
+    expect(runner).toContain('"preserved_verified_fresh_previous"');
+    expect(runner).toContain('"fail_closed_unsigned_preview"');
+    expect(runner).toContain("unverified_objects_signed_for_gap_fill: false");
+    expect(runner).toContain("preserved_objects_retimestamped: false");
     expect(publisher).toContain("PUBLIC_DEMO_RISK_PROFILE_REASON");
     expect(publisher).toMatch(/PUBLIC_DEMO_RISK_PROFILE_REASON,[\s\S]*from "\.\/public-demo-risk-profile"/);
     expect(publisher).toContain('.not("payload", "is", null)');
