@@ -9,8 +9,7 @@ Geomacro exposes bounded geopolitical, macroeconomic and critical-mineral risk i
 - Agent discovery: `/.well-known/geomacro-agent.json`
 - Commerce catalog: `/.well-known/geomacro-commerce.json`
 - No-charge deliverability check: `POST /api/x402/risk/availability`
-- Canonical Mainnet Intelligence API: `POST /api/v1/intelligence/query`
-- Legacy x402 compatibility alias: `POST /api/x402/intelligence`
+- Coinbase x402 adaptive intelligence: `POST /api/x402/intelligence`
 - Circle Gateway adaptive intelligence: `POST /api/x402/circle/intelligence`
 - Nevermined adaptive intelligence: `POST /api/x402/nevermined/intelligence`
 - Human-readable product documentation: `/data-api` and `/risk-gate`
