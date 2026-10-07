@@ -64,6 +64,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p artifacts
           node scripts/ops/preflight-b2-read-capability.mjs \
             | tee artifacts/b2-read-preflight.json
           jq -e '
