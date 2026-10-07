@@ -132,6 +132,15 @@ jobs:
             Number(proof?.live_observed_rows) >= 1 &&
             Boolean(proof?.current_source_batch_at) &&
             proof?.synthetic_score === false;
+          if (
+            proof?.schema === 'geomacro.public-intelligence-direct-postgres-publish.v2' &&
+            (
+              proof.b2_readback_verified !== true ||
+              proof.live_observed_unscored !== true
+            )
+          ) {
+            throw new Error('PUBLIC_INTELLIGENCE_FULL_B2_READBACK_PROOF_INVALID');
+          }
           const fullB2PublishValid =
             proof?.schema === 'geomacro.public-intelligence-direct-postgres-publish.v2' &&
             proof?.authority_serve === 'backblaze-b2' &&
