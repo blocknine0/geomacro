@@ -113,6 +113,11 @@ describe("verified B2 governed agent module continuity", () => {
     expect(workflow).toContain("secrets.B2_APPLICATION_KEY");
     expect(workflow).toContain("secrets.B2_ARCHIVE_READ_KEY_ID");
     expect(workflow).toContain("secrets.B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(workflow).toContain("verify-b2-private-archive-read.ts");
+    expect(workflow).toContain("mkdir -p artifacts");
+    expect(workflow.indexOf("run: bun scripts/ops/verify-b2-private-archive-read.ts")).toBeLessThan(
+      workflow.indexOf("run: bun scripts/ops/run-b2-governed-direct-postgres.mjs"),
+    );
     expect(workflow).toContain("run-b2-governed-direct-postgres.mjs");
     expect(workflow).toContain("verify-b2-agent-governed-runtime.ts");
     expect(workflow).not.toContain("run-b2-snapshot-maintenance-with-preservation.mjs governed-modules");
