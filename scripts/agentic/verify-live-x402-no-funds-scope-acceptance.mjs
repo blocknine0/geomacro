@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 import { mkdirSync, writeFileSync } from "node:fs";
-import { productionAcceptanceAvailabilityCases } from "../commerce/production-canary-common.mjs";
-
 const BASE = String(process.env.GEOMACRO_LIVE_HOST ?? "https://geomacro.live").replace(/\/$/, "");
 const AVAILABILITY = `${BASE}/api/x402/risk/availability`;
 const PAID_ENDPOINT = `${BASE}/api/x402/intelligence`;
@@ -139,17 +137,62 @@ async function proveCase(testCase) {
   };
 }
 
-const cases = productionAcceptanceAvailabilityCases();
-const expected = new Set([
-  "geopolitics-deu",
-  "macro-bra",
-  "critical-minerals-zaf",
-  "country-usa",
-  "corridor-usa-chn",
-]);
-if (cases.length !== expected.size || cases.some((row) => !expected.has(row.id))) {
-  throw new Error("X402_SCOPE_CASE_SET_DRIFT");
-}
+// These are the five machine-facing paid-query scopes from #1414 Section 10.
+ // Keep them explicit and topic-bound. Natural-language current-intelligence,
+ // signed Risk Object and Risk Gate acceptance remain separately enforced by
+ // the representative prelaunch gate and the future real-money canary.
+const cases = [
+  {
+    id: "geopolitics-deu",
+    request: {
+      schema_version: "geomacro.agent-query.v1",
+      subjects: [{ type: "country", country_iso3: "DEU" }],
+      topics: ["conflict_geopolitics"],
+      evidence: "required",
+      detail: "compact",
+    },
+  },
+  {
+    id: "macro-bra",
+    request: {
+      schema_version: "geomacro.agent-query.v1",
+      subjects: [{ type: "country", country_iso3: "BRA" }],
+      topics: ["macro_risk", "fx_external_risk"],
+      evidence: "required",
+      detail: "compact",
+    },
+  },
+  {
+    id: "critical-minerals-zaf",
+    request: {
+      schema_version: "geomacro.agent-query.v1",
+      subjects: [{ type: "country", country_iso3: "ZAF" }],
+      topics: ["critical_minerals"],
+      evidence: "required",
+      detail: "compact",
+    },
+  },
+  {
+    id: "country-usa",
+    request: {
+      schema_version: "geomacro.agent-query.v1",
+      subjects: [{ type: "country", country_iso3: "USA" }],
+      topics: ["conflict_geopolitics"],
+      evidence: "required",
+      detail: "compact",
+    },
+  },
+  {
+    id: "corridor-usa-chn",
+    request: {
+      schema_version: "geomacro.agent-query.v1",
+      subjects: [{ type: "corridor", origin_country_iso3: "USA", destination_country_iso3: "CHN" }],
+      topics: ["trade_corridor"],
+      evidence: "required",
+      detail: "compact",
+    },
+  },
+];
 
 const results = [];
 for (const testCase of cases) results.push(await proveCase(testCase));
