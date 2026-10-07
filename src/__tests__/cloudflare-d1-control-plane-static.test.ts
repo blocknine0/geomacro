@@ -16,6 +16,19 @@ describe("Cloudflare D1 permanent control plane", () => {
     expect(schema).not.toMatch(/signed_risk_object\s+TEXT/i);
   });
 
+  it("exposes only a bounded derived current-intelligence overlay publicly", () => {
+    const worker = read("workers/control-plane/src/index.mjs");
+    expect(worker).toContain('PUBLIC_INTELLIGENCE_OVERLAY_KEY = "public_intelligence_live_observed_v1"');
+    expect(worker).toContain('PUBLIC_INTELLIGENCE_OVERLAY_MAX_ROWS = 24');
+    expect(worker).toContain('PUBLIC_INTELLIGENCE_OVERLAY_MAX_AGE_MS = 6 * 60 * 60 * 1000');
+    expect(worker).toContain('url.pathname === "/v1/public/intelligence-overlay"');
+    expect(worker).toContain('raw.public_status !== "live_observed"');
+    expect(worker).toContain('raw.severity !== null');
+    expect(worker).toContain('raw.delta !== null');
+    expect(worker).toContain('value.raw_source_headlines_exposed !== false');
+    expect(worker).toContain('value.provider_identity_exposed !== false');
+  });
+
   it("fails closed when control-plane authentication or D1 is unavailable", () => {
     const worker = read("workers/control-plane/src/index.mjs");
     expect(worker).toContain("CONTROL_PLANE_AUTH_UNCONFIGURED");
