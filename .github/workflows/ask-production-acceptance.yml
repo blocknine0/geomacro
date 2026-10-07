@@ -10,17 +10,11 @@ on:
       - "src/lib/testnet-intelligence-capability-hybrid.server.ts"
       - "server/api/public-ask.get.ts"
       - "src/__tests__/ask-production-acceptance-static.test.ts"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/ask-production-acceptance.yml"
-      - "scripts/ops/verify-public-ask-production.mjs"
-      - "src/lib/ask-**"
-      - "src/lib/hybrid-ask-intelligence.server.ts"
-      - "src/lib/testnet-intelligence-capability-hybrid.server.ts"
-      - "server/api/public-ask.get.ts"
-      - "src/__tests__/ask-production-acceptance-static.test.ts"
+  workflow_run:
+    workflows:
+      - "Production Website Health"
+    types:
+      - completed
   schedule:
     - cron: "41 * * * *"
   workflow_dispatch:
@@ -29,17 +23,52 @@ permissions:
   contents: read
 
 concurrency:
-  group: ask-production-acceptance
+  group: ask-production-acceptance-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.workflow_run.id || github.ref }}
   cancel-in-progress: false
 
 jobs:
   ask-production-acceptance:
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
-      - name: Checkout
+      - name: Checkout exact acceptance revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Verify all three Ask domains against production
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Verify pull-request Ask contract without claiming deployment
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const hybrid = fs.readFileSync("src/lib/hybrid-ask-intelligence.server.ts", "utf8");
+          const route = fs.readFileSync("server/api/public-ask.get.ts", "utf8");
+          for (const marker of [
+            "RISK_INDICES_EDGE_URL",
+            "backblaze-b2-risk-indices-edge",
+            "RISK_INDICES_EDGE_TIMEOUT_MS = 4_000",
+            "await readRiskIndicesEdge()",
+            "await readB2PublicRisk()",
+          ]) {
+            if (!hybrid.includes(marker)) throw new Error("ASK_PR_CONTRACT_MISSING:" + marker);
+          }
+          if (hybrid.indexOf("await readRiskIndicesEdge()") > hybrid.indexOf("await readB2PublicRisk()")) {
+            throw new Error("ASK_EDGE_MUST_PRECEDE_B2_RECOVERY");
+          }
+          if (!route.includes("answerAskQuestion")) throw new Error("ASK_PUBLIC_ROUTE_CANONICAL_ENGINE_MISSING");
+          console.log("PASS: Ask PR contract verified; live deployment claim intentionally deferred.");
+          NODE
+
+      - name: Verify all three Ask domains against deployed production
+        if: github.event_name != 'pull_request'
         run: node scripts/ops/verify-public-ask-production.mjs
