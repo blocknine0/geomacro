@@ -132,10 +132,8 @@ describe("A2A v1 contract", () => {
       "httpAuthSecurityScheme.scheme",
       "Bearer",
     );
-    expect(card.securitySchemes.geomacroTestnetKey).toHaveProperty(
-      "apiKeySecurityScheme.location",
-      "header",
-    );
+    expect(Object.keys(card.securitySchemes)).toEqual(["geomacroBearer"]);
+    expect(card.securityRequirements).toHaveLength(1);
     expect(card.securityRequirements[0]).toHaveProperty(
       "schemes.geomacroBearer.list",
       [],
