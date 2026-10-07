@@ -44,11 +44,15 @@ describe("country GRO bundle Class-B budget", () => {
     expect(sync).toContain("record_sha256: recordSha");
   });
 
-  it("keeps runtime bundle reads single-flight and cached", () => {
+  it("keeps runtime bundle reads single-flight, cached and on the proven native route", () => {
     const runtime = read("src/lib/b2-country-gro.server.ts");
+    const privateReader = read("src/lib/b2-private-archive-read.server.ts");
     expect(runtime).toContain("const CACHE_TTL_MS = 5 * 60_000");
     expect(runtime).toContain("inFlightGets.has(key)");
     expect(runtime).toContain("if (bundleState && bundleState.expiresAt > Date.now())");
     expect(runtime).toContain("if (inFlightBundle) return inFlightBundle");
+    expect(runtime).toContain("readPrivateB2Object(key");
+    expect(privateReader).toContain("nativePreferredCredentials.has(fingerprint)");
+    expect(privateReader).toContain("nativePreferredCredentials.add(fingerprint)");
   });
 });
