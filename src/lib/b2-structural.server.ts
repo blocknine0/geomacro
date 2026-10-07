@@ -5,7 +5,9 @@ import type {
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
-const B2_KEY = "geomacro-evidence/v1/structural/serving/latest.json.gz";
+const LIVE_PREFIX = "geomacro-evidence/v1/live/structural/serving";
+const SNAPSHOT_KEY = `${LIVE_PREFIX}/latest.json.gz`;
+const PROOF_KEY = `${LIVE_PREFIX}/latest-proof.json`;
 const HISTORICAL_PROJECT_REF = "nqvpcbnnvjsrlvyxxevk";
 const MAX_COMPRESSED_BYTES = 12_000_000;
 const MAX_DECOMPRESSED_BYTES = 40_000_000;
@@ -106,13 +108,13 @@ function noteFailure() {
   if (failureCount >= FAILURE_THRESHOLD && !circuitOpenedAt) circuitOpenedAt = Date.now();
 }
 
-async function signedGet(): Promise<Uint8Array | null> {
+async function signedGet(key: string): Promise<Uint8Array | null> {
   const candidates = config();
   if (!candidates || circuitOpen()) return null;
-  const cached = cache.get(B2_KEY);
+  const cached = cache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.bytes;
 
-  const path = `/${[B2_BUCKET, ...B2_KEY.split("/")].map(encodeURIComponent).join("/")}`;
+  const path = `/${[B2_BUCKET, ...key.split("/")].map(encodeURIComponent).join("/")}`;
   const host = new URL(B2_ENDPOINT).host;
   for (let index = 0; index < candidates.length; index++) {
     const cfg = candidates[index];
@@ -153,7 +155,7 @@ async function signedGet(): Promise<Uint8Array | null> {
         return null;
       }
       noteSuccess();
-      cache.set(B2_KEY, { expiresAt: Date.now() + CACHE_TTL_MS, bytes });
+      cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, bytes });
       return bytes;
     } catch {
       if (index < candidates.length - 1) continue;
@@ -223,14 +225,29 @@ function coverageRow(value: unknown): value is StructuralCoverage {
 }
 
 export async function readB2StructuralServingSnapshot(): Promise<B2StructuralServingSnapshot | null> {
-  const compressed = await signedGet();
-  if (!compressed) return null;
+  const [compressed, proofBytes] = await Promise.all([
+    signedGet(SNAPSHOT_KEY),
+    signedGet(PROOF_KEY),
+  ]);
+  if (!compressed || !proofBytes) return null;
   try {
+    const proof = JSON.parse(decoder.decode(proofBytes)) as Record<string, unknown>;
+    if (
+      proof.schema !== "geomacro.structural-serving-snapshot-proof.v2" ||
+      proof.source_project !== HISTORICAL_PROJECT_REF ||
+      proof.snapshot_key !== SNAPSHOT_KEY ||
+      !recentEnough(proof.generated_at) ||
+      !/^[a-f0-9]{64}$/i.test(String(proof.compressed_sha256 ?? "")) ||
+      Number(proof.compressed_bytes) !== compressed.length ||
+      (await sha256(compressed)) !== String(proof.compressed_sha256)
+    ) return null;
+
     const raw = await gunzip(compressed);
     const payload = JSON.parse(decoder.decode(raw)) as Record<string, unknown>;
     if (
       payload.schema !== "geomacro.structural-serving-snapshot.v1" ||
       payload.source_project !== HISTORICAL_PROJECT_REF ||
+      payload.generated_at !== proof.generated_at ||
       !recentEnough(payload.generated_at) ||
       !Array.isArray(payload.country_profiles) ||
       payload.country_profiles.length === 0 ||

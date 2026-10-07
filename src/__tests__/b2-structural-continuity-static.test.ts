@@ -79,14 +79,31 @@ describe("verified B2 structural serving continuity", () => {
     expect(workflow).toContain('- ".github/workflows/b2-structural-serving-snapshot.yml"');
   });
 
-  it("requires full B2 readback and restore before publishing continuity proof", () => {
+  it("stages, verifies, promotes and proof-binds B2 structural serving", () => {
     const publisher = read("scripts/ops/publish-b2-structural-serving-snapshot.ts");
-    expect(publisher).toContain("await b2.put(SNAPSHOT_KEY, packed)");
-    expect(publisher).toContain("const readback = await b2.get(SNAPSHOT_KEY)");
-    expect(publisher).toContain("B2_STRUCTURAL_READBACK_HASH_INVALID");
-    expect(publisher).toContain("B2_STRUCTURAL_RESTORE_INVALID");
+    const reader = read("src/lib/b2-structural.server.ts");
+
+    expect(publisher).toContain('const LIVE_PREFIX = "geomacro-evidence/v1/live/structural/serving"');
+    expect(publisher).not.toContain('geomacro-evidence/v1/structural/serving/latest.json.gz');
+    expect(publisher).toContain("await b2.put(stagingKey, packed)");
+    expect(publisher).toContain("const stagingReadback = await b2.get(stagingKey)");
+    expect(publisher).toContain("B2_STRUCTURAL_STAGING_READBACK_HASH_INVALID");
+    expect(publisher).toContain("B2_STRUCTURAL_STAGING_RESTORE_INVALID");
+    expect(publisher).toContain("await b2.put(SNAPSHOT_KEY, stagingReadback)");
+    expect(publisher).toContain("const liveReadback = await b2.get(SNAPSHOT_KEY)");
+    expect(publisher).toContain("B2_STRUCTURAL_LIVE_READBACK_HASH_INVALID");
+    expect(publisher).toContain("B2_STRUCTURAL_LIVE_RESTORE_INVALID");
+    expect(publisher).toContain('"geomacro.structural-serving-snapshot-proof.v2"');
     expect(publisher).toContain("await b2.put(PROOF_KEY, proof)");
+    expect(publisher).toContain("const proofReadback = await b2.get(PROOF_KEY)");
     expect(publisher).not.toContain(".delete(");
+
+    expect(reader).toContain('const LIVE_PREFIX = "geomacro-evidence/v1/live/structural/serving"');
+    expect(reader).toContain("signedGet(SNAPSHOT_KEY)");
+    expect(reader).toContain("signedGet(PROOF_KEY)");
+    expect(reader).toContain('"geomacro.structural-serving-snapshot-proof.v2"');
+    expect(reader).toContain("(await sha256(compressed)) !== String(proof.compressed_sha256)");
+    expect(reader).toContain("payload.generated_at !== proof.generated_at");
   });
 
   it("keeps private B2 credentials server-only and snapshot freshness bounded", () => {
