@@ -33,25 +33,34 @@ describe("verified B2 governed agent module continuity", () => {
   });
 
   it("requires full B2 readback, compressed hash equality and exact gzip restore before proof", () => {
-    const put = publisher.indexOf("await b2.put(SNAPSHOT_KEY, packed)");
-    const readback = publisher.indexOf("const readback = await b2.get(SNAPSHOT_KEY)");
-    const restore = publisher.indexOf("const restoredRaw = gunzipSync(readback)");
+    const put = publisher.indexOf("await b2.put(stagingKey, packed)");
+    const readback = publisher.indexOf("const stagingReadback = await b2.get(stagingKey)");
+    const restore = publisher.indexOf("const restoredStagingRaw = gunzipSync(stagingReadback)");
     const proof = publisher.indexOf("await b2.put(PROOF_KEY, proof)");
     expect(put).toBeGreaterThanOrEqual(0);
     expect(readback).toBeGreaterThan(put);
     expect(restore).toBeGreaterThan(readback);
     expect(proof).toBeGreaterThan(restore);
-    expect(publisher).toContain("B2_AGENT_MODULE_READBACK_HASH_INVALID");
-    expect(publisher).toContain("B2_AGENT_MODULE_RESTORE_BYTES_INVALID");
+    expect(publisher).toContain("B2_AGENT_MODULE_STAGING_READBACK_HASH_INVALID");
+    expect(publisher).toContain("B2_AGENT_MODULE_STAGING_RESTORE_BYTES_INVALID");
+    expect(publisher).toContain("B2_AGENT_MODULE_LIVE_READBACK_HASH_INVALID");
+    expect(publisher).toContain("B2_AGENT_MODULE_LIVE_RESTORE_BYTES_INVALID");
     expect(publisher).toContain("B2_AGENT_MODULE_PROOF_READBACK_INVALID");
     expect(publisher).not.toContain(".delete(");
   });
 
   it("keeps the runtime archive private, bounded, recent, v2 and server-only", () => {
-    expect(reader).toContain('const B2_KEY = "geomacro-evidence/v1/live/agent-governed-modules/latest.json.gz"');
+    expect(reader).toContain('const SERVING_PREFIX = "geomacro-evidence/v1/structural/serving/agent-governed-modules"');
+    expect(reader).toContain('const B2_KEY = `${SERVING_PREFIX}/latest.json.gz`');
+    expect(reader).toContain('const B2_PROOF_KEY = `${SERVING_PREFIX}/latest-proof.json`');
     expect(reader).toContain("AGENT_GOVERNED_MODULES_B2_MAX_AGE_MS = 24 * 60 * 60 * 1000");
+    expect(reader).toContain("process.env.B2_ARCHIVE_READ_KEY_ID");
+    expect(reader).toContain("process.env.B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(reader).toContain("process.env.B2_KEY_ID");
     expect(reader).toContain("process.env.B2_APPLICATION_KEY");
+    expect(reader).toContain("signedGet(B2_PROOF_KEY)");
+    expect(reader).toContain('proof.schema !== "geomacro.agent-governed-modules-proof.v2"');
+    expect(reader).toContain("(await sha256(compressed)) !== String(proof.compressed_sha256)");
     expect(reader).toContain('payload.schema !== "geomacro.agent-governed-modules-live.v2"');
     expect(reader).toContain('payload.source_project !== SOURCE_PROJECT');
     expect(reader).toContain('payload.delivery_boundary !== "DERIVED_STATE_ONLY_NO_RAW_SOURCE_MATERIAL"');
@@ -102,6 +111,8 @@ describe("verified B2 governed agent module continuity", () => {
     expect(workflow).not.toContain("secrets.SUPABASE_SERVICE_ROLE_KEY");
     expect(workflow).toContain("secrets.B2_KEY_ID");
     expect(workflow).toContain("secrets.B2_APPLICATION_KEY");
+    expect(workflow).toContain("secrets.B2_ARCHIVE_READ_KEY_ID");
+    expect(workflow).toContain("secrets.B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(workflow).toContain("run-b2-governed-direct-postgres.mjs");
     expect(workflow).toContain("verify-b2-agent-governed-runtime.ts");
     expect(workflow).not.toContain("run-b2-snapshot-maintenance-with-preservation.mjs governed-modules");
