@@ -170,6 +170,65 @@ describe("B2 native readback fallback", () => {
       .rejects.toThrow("B2_NATIVE_READ_CAPABILITY_MISSING");
     expect(client.usage().native_read_fallback_successes).toBe(0);
   });
+  it("preserves download_cap_exceeded and performs zero additional fetches after the first fatal read", async () => {
+    clearOptionalReadCredentials();
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      const url = String(input);
+      calls.push(url);
+
+      if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+        return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+      }
+      if (url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account") {
+        return Response.json({
+          authorizationToken: "native-read-token",
+          apiInfo: {
+            storageApi: {
+              downloadUrl: "https://f005.backblazeb2.com",
+              allowed: {
+                capabilities: ["readFiles"],
+                buckets: [{ name: "geomacro-private-archive" }],
+                namePrefix: "geomacro-evidence/v1/",
+              },
+            },
+          },
+        });
+      }
+      if (url.startsWith("https://f005.backblazeb2.com/file/")) {
+        return Response.json(
+          { status: 403, code: "download_cap_exceeded", message: "Usage cap exceeded." },
+          { status: 403 },
+        );
+      }
+      return new Response("unexpected", { status: 500 });
+    }));
+
+    const client = createB2Client({
+      endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+      accessKey: "primary-key",
+      secretKey: "primary-secret",
+      readAccessKey: "dedicated-key",
+      readSecretKey: "dedicated-secret",
+      bucket: "geomacro-private-archive",
+    });
+
+    await expect(client.get("geomacro-evidence/v1/first.json"))
+      .rejects.toThrow("B2_NATIVE_GET_FAILED_403_download_cap_exceeded");
+
+    const fetchesAfterFirstFailure = calls.length;
+    expect(fetchesAfterFirstFailure).toBeGreaterThan(0);
+
+    await expect(client.get("geomacro-evidence/v1/second.json"))
+      .rejects.toThrow("B2_NATIVE_GET_FAILED_403_download_cap_exceeded");
+    expect(calls).toHaveLength(fetchesAfterFirstFailure);
+
+    expect(client.usage()).toMatchObject({
+      native_read_fallback_successes: 0,
+      native_read_fatal_error: "B2_NATIVE_GET_FAILED_403_download_cap_exceeded",
+    });
+  });
+
 });
 
 
