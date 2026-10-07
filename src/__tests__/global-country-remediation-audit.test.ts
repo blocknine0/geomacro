@@ -4,10 +4,21 @@ import { describe, expect, it } from "vitest";
 const audit = readFileSync("scripts/audit-global-country-remediation.ts", "utf8");
 
 describe("global country remediation audit", () => {
-  it("uses the sovereign registry and latest canonical country Risk Objects", () => {
+  it("uses the sovereign registry and a bounded hot canonical GRO scan", () => {
     expect(audit).toContain('.from("live_country_registry")');
     expect(audit).toContain('classifyGlobalEntity(row.iso3) === "SOVEREIGN"');
-    expect(audit).toContain('getLatestCompatibleCountryRiskObject(country.iso3, undefined, "CANONICAL")');
+    expect(audit).toContain('.from("geomacro_risk_objects")');
+    expect(audit).toContain('.not("payload", "is", null)');
+    expect(audit).toContain('"not.cs", profileJson');
+    expect(audit).toContain("cold_archive_reads: 0");
+    expect(audit).not.toContain("getLatestCompatibleCountryRiskObject(");
+  });
+
+  it("fails closed when a country has no hot canonical object instead of reading B2", () => {
+    expect(audit).toContain('"missing_hot_canonical_risk_object"');
+    expect(audit).toContain("hot_country_objects_loaded");
+    expect(audit).toContain("rows_scanned");
+    expect(audit).toContain("maxRows = 4000");
   });
 
   it("traces authoritative rights and provenance without raw source material", () => {
@@ -44,5 +55,14 @@ describe("global country remediation audit", () => {
     expect(audit).toContain('signature.valid === true');
     expect(audit).toContain('payment_performed: false');
     expect(audit).toContain('execution_authorized: false');
+  });
+});
+
+
+describe("global country remediation audit error boundary", () => {
+  it("does not emit stacks or arbitrary serialized failure objects", () => {
+    expect(audit).toContain('String(message).slice(0, 240)');
+    expect(audit).not.toContain('error.stack');
+    expect(audit).not.toContain('JSON.stringify(error)');
   });
 });
