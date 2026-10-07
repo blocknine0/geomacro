@@ -130,6 +130,13 @@ jobs:
 
       - name: Sync all independently verified current country GROs to D1
         if: steps.refresh.outputs.fresh == 'true'
+        env:
+          # These files are the exact bytes returned by the mandatory publisher
+          # B2 readbacks in this same trusted job. Reusing them avoids another
+          # 195+ object-store reads without weakening byte/hash verification.
+          GLOBAL_GRO_ALLOW_LOCAL_VERIFIED_READBACK: "true"
+          GLOBAL_GRO_BUNDLE_READBACK_FILE: artifacts/global-gro-continuity/country-gro-bundle-readback.json.gz
+          GLOBAL_GRO_PROOF_READBACK_FILE: artifacts/global-gro-continuity/continuity-proof-readback.json
         shell: bash
         run: |
           set -euo pipefail
@@ -139,6 +146,9 @@ jobs:
             and .indexed_country_count >= 195
             and .threshold_satisfied == true
             and .b2_readback_verified == true
+            and .bundle_indexed == true
+            and .publisher_readback_reused == true
+            and .additional_b2_gets_for_d1_sync == 0
             and .signature_verified == true
             and .commercial_eligibility_verified == true
             and .d1_readback_verified == true
