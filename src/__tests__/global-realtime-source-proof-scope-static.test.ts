@@ -15,6 +15,16 @@ describe("Global Realtime Source Proof change scoping", () => {
     expect(workflow).toContain('["gdelt_gal", "gdelt_v2", "current_scoring", "rss_live", "country_raw_mesh", "open_realtime_mesh", "realtime_fanout", "news_ingest"]');
   });
 
+  it("runs the bounded source heartbeat on exact head without enabling raw writers", () => {
+    expect(workflow).toContain("Run bounded 250x3 source heartbeat on exact PR head");
+    expect(workflow).toContain("RUN_BOUNDED_SOURCE_HEARTBEAT=true");
+    expect(workflow).toContain("PHASE_A_HEARTBEAT_ONLY=1");
+    expect(workflow).toContain('phase-a-bounded-heartbeat.json');
+    expect(workflow).toContain('.b2_requests == 0');
+    expect(workflow).toContain('.raw_observations_written == 0');
+    expect(workflow).toContain('.unbounded_rows_written == 0');
+  });
+
   it("runs 195x3 raw refresh only for raw-pipeline changes", () => {
     expect(workflow).toContain("Scope broad raw-runtime acceptance to raw-pipeline changes");
     expect(workflow).toContain("FULL_RAW_ACCEPTANCE=true");
