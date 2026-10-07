@@ -59,6 +59,9 @@ describe("permanent intelligence orchestration contract", () => {
     expect(gdeltCycle).toContain("reconcile-structured-event-commercial-rights.mjs");
     expect(script).toContain("RECONCILE_SOURCE_KEYS=country_raw_web_mesh");
     expect(script).toContain("RECONCILE_LOOKBACK_MINUTES=120");
+    expect(script).toContain("COUNTRY_RAW_SOURCE_SYNC_OUTPUT=country-raw-source-sync.json");
+    expect(script).toContain("country-raw-source-sync.log");
+    expect(script).not.toContain("sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json");
     expect(script).toContain("offsetSeconds: 240");
     expect(script).toContain("refreshOidcToken");
     expect(script).toContain("timeoutMs: 2_400_000");
