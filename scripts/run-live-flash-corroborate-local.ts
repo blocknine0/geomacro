@@ -20,16 +20,12 @@ function arg(name: string) {
 const countryIso3 = arg("--country").toUpperCase();
 const asOf = arg("--as-of");
 const offsetRaw = arg("--candidate-offset");
-const healthMode = process.argv.includes("--health");
 const candidateOffset = offsetRaw ? Number(offsetRaw) : 0;
 
 if (countryIso3 && !/^[A-Z]{3}$/.test(countryIso3)) throw new Error("LOCAL_CORROBORATE_COUNTRY_INVALID");
 if (asOf && !Number.isFinite(Date.parse(asOf))) throw new Error("LOCAL_CORROBORATE_AS_OF_INVALID");
 if (!Number.isInteger(candidateOffset) || candidateOffset < 0 || candidateOffset >= 600 || candidateOffset % 120 !== 0) {
   throw new Error("LOCAL_CORROBORATE_OFFSET_INVALID");
-}
-if (healthMode && (countryIso3 || asOf || offsetRaw)) {
-  throw new Error("LOCAL_CORROBORATE_HEALTH_MODE_EXCLUSIVE");
 }
 if (String(process.env.GRI_DB_MODE ?? "").trim().toLowerCase() !== "direct_postgres") {
   throw new Error("LOCAL_CORROBORATE_REQUIRES_DIRECT_POSTGRES");
@@ -106,10 +102,7 @@ async function main() {
     if (asOf) body.as_of = new Date(asOf).toISOString();
     if (countryIso3 || offsetRaw) body.candidate_offset = candidateOffset;
 
-    const requestUrl = healthMode
-      ? "http://geomacro.local/live-flash-corroborate?mode=health"
-      : "http://geomacro.local/live-flash-corroborate";
-    const request = new Request(requestUrl, {
+    const request = new Request("http://geomacro.local/live-flash-corroborate", {
       method: "POST",
       headers: { "content-type": "application/json", "x-geomacro-flash-token": TOKEN },
       body: JSON.stringify(body),
@@ -136,7 +129,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  const message = error instanceof Error ? error.message : "LOCAL_CORROBORATE_FAILURE";
-  console.error(String(message).replace(/[^\x20-\x7E]/g, " ").slice(0, 600));
+  console.error(error instanceof Error ? error.stack ?? error.message : String(error));
   process.exit(1);
 });
