@@ -1,0 +1,99 @@
+name: Deploy Intelligence Edge
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - "workers/intelligence-edge/**"
+      - ".github/workflows/deploy-intelligence-edge.yml"
+      - "src/lib/b2-live.server.ts"
+      - "src/__tests__/intelligence-edge-static.test.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-intelligence-edge-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-accept:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      WRANGLER_VERSION: "4.136.3"
+      EXPECTED_URL: https://geomacro-intelligence.daspallab202391.workers.dev
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Require existing production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
+          test -n "$B2_ARCHIVE_READ_KEY_ID" || { echo "B2_ARCHIVE_READ_KEY_ID is required"; exit 2; }
+          test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo "B2_ARCHIVE_READ_APPLICATION_KEY is required"; exit 2; }
+
+      - name: Deploy read-only Intelligence Worker with pinned Wrangler
+        id: deploy
+        working-directory: workers/intelligence-edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_LOG="$(mktemp)"
+          npx -y "wrangler@${WRANGLER_VERSION}" deploy --config wrangler.jsonc 2>&1 | tee "$DEPLOY_LOG"
+          DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
+          test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev URL"; exit 3; }
+          test "$DEPLOYMENT_URL" = "$EXPECTED_URL" || { echo "Unexpected worker URL: $DEPLOYMENT_URL"; exit 3; }
+          printf '%s' "$B2_ARCHIVE_READ_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_KEY_ID --config wrangler.jsonc >/tmp/intelligence-edge-b2-key.log
+          printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.jsonc >/tmp/intelligence-edge-b2-secret.log
+          echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Require verified B2 package through Intelligence edge
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=''
+          for attempt in 1 2 3 4 5 6; do
+            CODE="$(curl -sS -D /tmp/intelligence-edge.headers -o /tmp/intelligence-edge.json -w '%{http_code}' --max-time 15 "$DEPLOYMENT_URL/intelligence" || true)"
+            if [ "$CODE" = "200" ]; then break; fi
+            sleep $((attempt * 2))
+          done
+          test "$CODE" = "200" || { echo "Intelligence edge acceptance failed: HTTP $CODE"; cat /tmp/intelligence-edge.json || true; exit 4; }
+          grep -qi '^x-geomacro-authority: backblaze-b2-intelligence-edge' /tmp/intelligence-edge.headers || { echo "Verified Intelligence edge authority header missing"; exit 4; }
+          node <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/intelligence-edge.json', 'utf8'));
+          if (body?.schema !== 'geomacro.public-intelligence-live.v1') throw new Error('EDGE_SCHEMA_INVALID');
+          if (body?.source_project !== 'ldpwajisioljyjtojvfx') throw new Error('EDGE_PROJECT_INVALID');
+          if (!Array.isArray(body?.rows) || body.rows.length < 3 || body.rows.length > 300) throw new Error('EDGE_ROWS_INVALID');
+          const scored = new Set(body.rows.filter(r => r?.public_status !== 'live_observed' && Number.isFinite(Number(r?.severity))).map(r => String(r?.category ?? '').toLowerCase()));
+          for (const key of ['geopolitics','macro','rare_earth']) {
+            if (!scored.has(key)) throw new Error(`EDGE_SCORED_DOMAIN_MISSING:${key}`);
+          }
+          console.log(JSON.stringify({ ok: true, rows: body.rows.length, generated_at: body.generated_at }));
+          NODE
+
+      - name: Confirm narrow non-destructive serving boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="$(curl -sS -o /tmp/intelligence-edge-deny.json -w '%{http_code}' --max-time 10 "$EXPECTED_URL/not-allowed" || true)"
+          test "$CODE" = "404" || { echo "Unexpected generic read surface: HTTP $CODE"; exit 5; }
+          CODE="$(curl -sS -X POST -o /tmp/intelligence-edge-post.json -w '%{http_code}' --max-time 10 "$EXPECTED_URL/intelligence" || true)"
+          test "$CODE" = "405" || { echo "Unexpected write surface: HTTP $CODE"; exit 5; }
+          echo "Intelligence edge exposes one verified read-only B2 package; no B2 write/delete, Supabase mutation, or payment action occurred."
