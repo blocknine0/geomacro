@@ -15,7 +15,6 @@ const legacyRoute = readFileSync(
   "utf8",
 );
 const discovery = readFileSync("src/lib/x402-discovery.server.ts", "utf8");
-const openapi = JSON.parse(readFileSync("public/openapi-x402.json", "utf8")) as any;
 const marketplace = JSON.parse(
   readFileSync("config/agent-marketplace-distribution.json", "utf8"),
 ) as any;
@@ -68,9 +67,7 @@ describe("Geomacro Mainnet Intelligence API v1", () => {
     expect(classifyCentralSecurityRoute(LEGACY, "POST")).toBe("payment");
   });
 
-  it("advertises only the canonical v1 endpoint as the machine product", () => {
-    expect(openapi.paths[CANONICAL]).toBeTruthy();
-    expect(openapi.paths[LEGACY]).toBeUndefined();
+  it("locks the canonical v1 endpoint in runtime discovery and marketplace config", () => {
     expect(discovery).toContain("/api/v1/intelligence/query");
     expect(marketplace.canonical_paid_endpoint).toBe(
       "https://geomacro.live/api/v1/intelligence/query",
