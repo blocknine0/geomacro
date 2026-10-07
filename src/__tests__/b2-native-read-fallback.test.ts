@@ -155,6 +155,36 @@ describe("B2 native read fallback", () => {
     ).rejects.toThrow("B2_NATIVE_READ_CAPABILITY_MISSING");
   });
 
+  it("preserves safe lowercase Native API failure codes for diagnosis", async () => {
+    cleanEnv();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        if (url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account") {
+          return new Response(JSON.stringify(nativeAuth()), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (url.startsWith("https://f005.backblazeb2.com/file/")) {
+          return new Response(JSON.stringify({ code: "bad_auth_token", status: 401 }), {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+          return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+        }
+        throw new Error("unexpected fetch target");
+      }),
+    );
+
+    await expect(
+      client().get("geomacro-evidence/v1/live/native-fallback-auth-failure.bin"),
+    ).rejects.toThrow("B2_NATIVE_GET_FAILED_401_bad_auth_token");
+  });
+
   it("preserves optional-not-found semantics through the Native API", async () => {
     cleanEnv();
     vi.stubGlobal(
