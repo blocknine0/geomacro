@@ -21,6 +21,29 @@ describe("adaptive agent query planner", () => {
     expect(plan.query_plan_hash).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it("treats explicit topics as the authoritative module contract even when a question is present", () => {
+    const geopolitics = buildAgentQueryPlan({
+      question: "What verified geopolitical risk intelligence is currently available for Germany?",
+      subjects: [{ type: "country", country_iso3: "DEU" }],
+      topics: ["conflict_geopolitics"],
+      evidence: "required",
+      detail: "compact",
+    });
+    expect(geopolitics.topics).toEqual(["conflict_geopolitics"]);
+    expect(geopolitics.required_modules).toEqual(["geopolitical_security"]);
+    expect(geopolitics.required_modules).not.toContain("hot_topics");
+    expect(geopolitics.required_modules).not.toContain("signed_risk_object");
+
+    const riskObject = buildAgentQueryPlan({
+      question: "Give me the current signed Risk Object for the United States.",
+      subjects: [{ type: "country", country_iso3: "USA" }],
+      topics: ["risk_object"],
+      evidence: "required",
+      detail: "compact",
+    });
+    expect(riskObject.required_modules).toEqual(["signed_risk_object"]);
+  });
+
   it("produces the same plan hash regardless of duplicate/topic ordering", () => {
     const a = buildAgentQueryPlan(base);
     const b = buildAgentQueryPlan({

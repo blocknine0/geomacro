@@ -285,7 +285,8 @@ export type AgentQueryPlan = {
 export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   const parsed = agentAdaptiveQuerySchema.parse(raw);
   const subjects = canonicalSubjects(parsed.subjects);
-  const inferredTopics = inferAgentQueryTopics(parsed.question);
+  const explicitTopics = parsed.topics.length > 0;
+  const inferredTopics = explicitTopics ? [] : inferAgentQueryTopics(parsed.question);
   let topics = [...new Set([...parsed.topics, ...inferredTopics])].sort() as AgentQueryTopic[];
   const intent = resolveIntent(parsed, subjects, topics);
 
@@ -303,6 +304,7 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   // requests stay explicitly historical and do not silently mix live events.
   if (
     parsed.question &&
+    !explicitTopics &&
     !parsed.as_of &&
     topics.length > 0 &&
     ["single_subject", "comparison", "corridor"].includes(intent)

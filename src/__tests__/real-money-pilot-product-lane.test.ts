@@ -21,6 +21,8 @@ describe("controlled real-money pilot product lane", () => {
     ]);
     expect(plan.required_modules).not.toContain("hot_topics");
     expect(plan.required_modules).not.toContain("signed_risk_object");
+    expect(plan.topics).not.toContain("hot_topics");
+    expect(plan.topics).not.toContain("risk_object");
     expect(plan.required_modules).not.toContain("risk_gate");
   });
 
@@ -39,16 +41,17 @@ describe("controlled real-money pilot product lane", () => {
     expect(plan.required_modules).not.toContain("signed_risk_object");
   });
 
-  it("still makes natural-language current intelligence fail closed on realtime and signed-risk dependencies", () => {
+  it("still makes topic-inferred natural-language current intelligence fail closed on realtime and signed-risk dependencies", () => {
     const plan = buildAgentQueryPlan({
       schema_version: "geomacro.agent-query.v1",
       question: "What is the current macro and FX risk in Brazil?",
       subjects: [{ type: "country", country_iso3: "BRA" }],
-      topics: ["macro_risk", "fx_external_risk"],
       evidence: "required",
       detail: "standard",
     });
 
+    expect(plan.topics).toContain("macro_risk");
+    expect(plan.topics).toContain("fx_external_risk");
     expect(plan.required_modules).toContain("hot_topics");
     expect(plan.required_modules).toContain("signed_risk_object");
     expect(plan.required_modules).toContain("external_fx");
