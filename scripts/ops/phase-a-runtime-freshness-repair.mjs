@@ -15,6 +15,7 @@ const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
 const B2_KEY_ID = String(process.env.B2_KEY_ID ?? "").trim();
 const B2_APPLICATION_KEY = String(process.env.B2_APPLICATION_KEY ?? "").trim();
+const HEARTBEAT_ONLY = String(process.env.PHASE_A_HEARTBEAT_ONLY ?? "0").trim() === "1";
 const HTTP_TIMEOUT_MS = Math.max(5000, Math.min(60000, Number(process.env.PHASE_A_SOURCE_TIMEOUT_MS ?? 25000)));
 const HTTP_ATTEMPTS = Math.max(1, Math.min(4, Number(process.env.PHASE_A_SOURCE_ATTEMPTS ?? 3)));
 const CERTIFICATION_MAX_AGE_HOURS = 24;
@@ -67,7 +68,9 @@ function assertConfig() {
   if (!(url.hostname === `db.${PROJECT}.supabase.co` || url.hostname.endsWith(".pooler.supabase.com"))) {
     throw new Error(`NON_AUTHORITATIVE_SUPABASE_DB_HOST:${url.hostname}`);
   }
-  if (!B2_KEY_ID || !B2_APPLICATION_KEY) throw new Error("B2_RUNTIME_EVIDENCE_CREDENTIALS_REQUIRED");
+  if (!HEARTBEAT_ONLY && (!B2_KEY_ID || !B2_APPLICATION_KEY)) {
+    throw new Error("B2_RUNTIME_EVIDENCE_CREDENTIALS_REQUIRED");
+  }
 }
 
 async function psql(sql, { json = false } = {}) {
@@ -249,6 +252,57 @@ async function main() {
   for (const source of SOURCES) {
     const observation = await fetchObserved(source.endpoint, source.accept);
     observed.push({ source, observation, parsed: parseObserved(source, observation) });
+  }
+
+  if (HEARTBEAT_ONLY) {
+    const certifications = await currentCertifications();
+    if (certifications.length !== SOURCES.length || certifications.some((row) => !certificationEligible(row))) {
+      throw new Error(`PHASE_A_HEARTBEAT_CERTIFICATION_INCOMPLETE:${JSON.stringify(certifications)}`);
+    }
+
+    const targetRowsWritten = await refreshTargets(observed);
+    const expected = countries.length * SOURCES.length;
+    const status = (await psql(`select * from public.live_country_category_coverage_matrix_status`, { json: true }))[0];
+    const domains = await psql(`select domain,count(*)::bigint rows,count(*) filter(where production_ready)::bigint ready_rows from public.live_country_category_coverage_matrix group by domain order by domain`, { json: true });
+    if (!status
+        || status.matrix_contract_complete !== true
+        || Number(status.expected_matrix_rows) !== expected
+        || Number(status.actual_matrix_rows) !== expected
+        || Number(status.production_ready_rows) !== expected
+        || Number(status.unavailable_rows) !== 0
+        || Number(status.nonready_rows_missing_reason) !== 0
+        || Number(status.invalid_ready_rows) !== 0
+        || Number(status.invalid_fallback_rows) !== 0
+        || Number(status.duplicate_matrix_rows) !== 0
+        || targetRowsWritten !== expected) {
+      throw new Error(`PHASE_A_HEARTBEAT_NOT_FULLY_READY:${JSON.stringify({ status, domains, targetRowsWritten, expected })}`);
+    }
+
+    console.log(JSON.stringify({
+      ok: true,
+      mode: "bounded_source_heartbeat",
+      code_revision: CODE_REVISION,
+      registry_country_count: countries.length,
+      expected_matrix_rows: expected,
+      target_rows_written: targetRowsWritten,
+      source_probes: observed.map((entry) => ({
+        domain: entry.source.domain,
+        source_id: entry.source.source_id,
+        observed_at: entry.observation.observed_at,
+        body_sha256: entry.observation.body_sha256,
+        parsed: entry.parsed,
+      })),
+      certifications,
+      status,
+      domains,
+      durable_evidence_written: false,
+      evidence_graph_rows_written: 0,
+      raw_observations_written: 0,
+      unbounded_rows_written: 0,
+      b2_requests: 0,
+      payment_or_settlement_enabled: false,
+    }, null, 2));
+    return;
   }
 
   const runId = `phase-a-runtime-${new Date().toISOString().replace(/[:.]/g,"-")}-${CODE_REVISION.slice(0,12)}`;
