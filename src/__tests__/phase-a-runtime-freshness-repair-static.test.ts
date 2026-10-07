@@ -29,17 +29,18 @@ describe("Phase A runtime freshness repair", () => {
     expect(repair).toContain("COMMERCIAL_SOURCE_RIGHTS_EVIDENCE[sourceId]");
   });
 
-  it("requires source probes and B2 readback before certification decisions and freshness writes", () => {
+  it("requires source probes and signed PUT plus HEAD metadata verification before freshness writes", () => {
     const probe = repair.indexOf("await fetchObserved(source.endpoint");
-    const b2Put = repair.indexOf("await b2.put(key, payload)");
-    const b2Readback = repair.indexOf("const readback = await b2.get(key)");
+    const b2Verification = repair.indexOf("await b2.putWithMetadataVerification(");
     const certificationDecision = repair.indexOf("let certifications = await currentCertifications()");
     const targetWrite = repair.indexOf("const targetRowsWritten = await refreshTargets(observed)");
     expect(probe).toBeGreaterThan(-1);
-    expect(b2Put).toBeGreaterThan(probe);
-    expect(b2Readback).toBeGreaterThan(b2Put);
-    expect(certificationDecision).toBeGreaterThan(b2Readback);
+    expect(b2Verification).toBeGreaterThan(probe);
+    expect(certificationDecision).toBeGreaterThan(b2Verification);
     expect(targetWrite).toBeGreaterThan(certificationDecision);
+    expect(repair).toContain('"signed-put-head-metadata"');
+    expect(repair).toContain("b2_full_body_readback_verified");
+    expect(repair).not.toContain("const readback = await b2.get(key)");
   });
 
   it("uses a set-based registry x source-contract upsert and canonical target-id count", () => {
