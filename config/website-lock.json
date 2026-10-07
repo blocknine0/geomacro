@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "77a78b2e238b72320630c373c3fe878934327d84",
+  "baseline_sha": "87fe2e9dd4d1f6c7abeb2af8cbe2029d5b9b4f14",
   "published_baseline": "Founder-approved commercial-only website baseline. Public product identity contains only live risk intelligence, separate Risk Indices, Ask Geomacro, controlled Risk Gate, commercial API/agent access, institutional workflows, pricing, evidence, documentation, trust and ecosystem surfaces. Retired experimental payment, wallet, market and transaction surfaces are excluded from public navigation, documentation, discovery and static assets. Real-money x402 remains fail-closed until explicit production activation. /global-risk remains independently protected by its permanent frozen baseline.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
-  "locked_at_utc": "2026-10-07T17:20:00Z",
-  "published_source_sha": "58f2a6604170ea27e897700917632158189159dd",
-  "lock_revision": "founder-approved-commercial-only-public-website-20261007"
+  "locked_at_utc": "2026-10-07T17:35:00Z",
+  "published_source_sha": "87fe2e9dd4d1f6c7abeb2af8cbe2029d5b9b4f14",
+  "lock_revision": "founder-approved-commercial-only-public-website-final-20261007"
 }
