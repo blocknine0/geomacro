@@ -79,6 +79,10 @@ export type CountryRiskGenerationResult = {
     country_events_used: number;
 
     previous_object_id: string | null;
+    previous_baseline_status:
+      | "AVAILABLE"
+      | "NOT_FOUND"
+      | "ARCHIVE_CAP_UNAVAILABLE";
 
     published: boolean;
   };
@@ -1291,6 +1295,62 @@ function eventTouchesCountry(
 }
 
 
+function archiveBaselineTemporarilyUnavailable(
+  error: unknown,
+) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : String(error);
+
+  return (
+    message === "B2_DOWNLOAD_CAP_EXCEEDED" ||
+    message === "B2_TRANSACTION_CAP_EXCEEDED"
+  );
+}
+
+async function loadOptionalPreviousBaseline(
+  countryIso3: string,
+  asOf: string,
+  deliveryProfile: RiskObjectDeliveryProfile,
+) {
+  try {
+    const object =
+      await getLatestCompatibleCountryRiskObject(
+        countryIso3,
+        asOf,
+        deliveryProfile,
+      );
+
+    return {
+      object,
+      status:
+        object
+          ? "AVAILABLE"
+          : "NOT_FOUND",
+    } as const;
+  } catch (error) {
+    if (!archiveBaselineTemporarilyUnavailable(error)) {
+      throw error;
+    }
+
+    // The country engine defines previous as optional and uses it only for
+    // deterministic delta attribution. A Backblaze account cap must not make
+    // fresh current evidence impossible to publish. We deliberately do NOT
+    // catch hash, signature, contract, credential, network, or generic archive
+    // failures here: those remain fail-closed.
+    console.warn(
+      `COUNTRY_GRO_PREVIOUS_BASELINE_ARCHIVE_CAP_UNAVAILABLE ${countryIso3}`,
+    );
+
+    return {
+      object: null,
+      status: "ARCHIVE_CAP_UNAVAILABLE",
+    } as const;
+  }
+}
+
+
 function previousUsableForPilotDelta(
   previous:
     GeomacroRiskObject |
@@ -1413,8 +1473,8 @@ async function generateInternal(
         ),
     );
 
-  const previous =
-    await getLatestCompatibleCountryRiskObject(
+  const previousBaseline =
+    await loadOptionalPreviousBaseline(
       iso3,
       asOf.toISOString(),
       deliveryProfile,
@@ -1422,7 +1482,7 @@ async function generateInternal(
 
   const baseline =
     previousUsableForPilotDelta(
-      previous,
+      previousBaseline.object,
     );
 
   const calculatedObject =
@@ -1546,6 +1606,9 @@ async function generateInternal(
       previous_object_id:
         baseline?.object_id ??
         null,
+
+      previous_baseline_status:
+        previousBaseline.status,
 
       published:
         publish,
