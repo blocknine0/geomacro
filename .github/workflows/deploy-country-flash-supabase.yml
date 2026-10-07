@@ -389,15 +389,19 @@ jobs:
         run: |
           set -euo pipefail
           set +e
-          timeout 10m bun scripts/run-live-flash-corroborate-local.ts > /tmp/direct-flash-corroborate.json 2>/tmp/direct-flash-corroborate.err
+          timeout 10m bun scripts/run-live-flash-corroborate-local.ts --health > /tmp/direct-flash-corroborate.json 2>/tmp/direct-flash-corroborate.err
           rc=$?
           set -e
           if [[ "$rc" -ne 0 ]]; then
-            echo "::error title=Direct-Postgres flash proof failed::Canonical local corroboration did not complete while Supabase Edge is standby."
+            sed -n '1,12p' /tmp/direct-flash-corroborate.err >&2 || true
+            echo "::error title=Direct-Postgres flash proof failed::Canonical read-only health corroboration did not complete while Supabase Edge is standby."
             exit "$rc"
           fi
           jq -e '
             .ok == true and
+            .health == true and
+            .authenticated == true and
+            .candidate_query == "PASS" and
             .execution_mode == "local_canonical_corroboration_direct_postgres" and
             .threshold_weakening == false
           ' /tmp/direct-flash-corroborate.json >/dev/null
