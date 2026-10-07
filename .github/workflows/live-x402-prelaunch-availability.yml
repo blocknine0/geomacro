@@ -64,6 +64,7 @@ jobs:
           esac
 
       - name: Verify live build marker still matches accepted deployment
+        if: ${{ github.event_name != 'pull_request' }}
         shell: bash
         env:
           EXPECTED_SHA: ${{ steps.release.outputs.sha }}
