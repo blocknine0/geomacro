@@ -9,6 +9,7 @@ const SCHEMA = "geomacro.country-gro-continuity.v1";
 const REQUEST_TIMEOUT_MS = 3_500;
 const MAX_COMPRESSED_BYTES = 2_000_000;
 const MAX_DECOMPRESSED_BYTES = 4_000_000;
+const B2_NATIVE_AUTHORIZE_URL = "https://api.backblazeb2.com/b2api/v4/b2_authorize_account";
 const CACHE_TTL_MS = 60_000;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -71,6 +72,56 @@ function config(): Config[] | null {
   return candidates.length > 0 ? candidates : null;
 }
 
+function basicAuthorization(accessKey: string, secretKey: string) {
+  return `Basic ${btoa(`${accessKey}:${secretKey}`)}`;
+}
+
+async function nativeGet(
+  cfg: Config,
+  key: string,
+  maxBytes: number,
+): Promise<Uint8Array | null> {
+  try {
+    const authResponse = await fetch(B2_NATIVE_AUTHORIZE_URL, {
+      method: "GET",
+      headers: { Authorization: basicAuthorization(cfg.accessKey, cfg.secretKey) },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (!authResponse.ok) return null;
+
+    const auth = await authResponse.json() as Record<string, any>;
+    const storage = auth?.apiInfo?.storageApi;
+    const token = String(auth?.authorizationToken ?? "").trim();
+    const downloadUrl = String(storage?.downloadUrl ?? "").trim();
+    const capabilities = Array.isArray(storage?.allowed?.capabilities)
+      ? storage.allowed.capabilities.map(String)
+      : [];
+    const allowedBuckets = Array.isArray(storage?.allowed?.buckets)
+      ? storage.allowed.buckets.map((entry: any) => String(entry?.name ?? "").trim()).filter(Boolean)
+      : [];
+    const namePrefix = String(storage?.allowed?.namePrefix ?? "").trim();
+
+    if (!token || !downloadUrl || !capabilities.includes("readFiles")) return null;
+    if (allowedBuckets.length && !allowedBuckets.includes(B2_BUCKET)) return null;
+    if (namePrefix && !key.startsWith(namePrefix)) return null;
+
+    const parsed = new URL(downloadUrl);
+    if (parsed.protocol !== "https:" || !/(^|\.)backblazeb2\.com$/i.test(parsed.hostname)) return null;
+    const nativePath = `/file/${encodeURIComponent(B2_BUCKET)}/${key.split("/").map(encodeURIComponent).join("/")}`;
+    const response = await fetch(`${parsed.origin}${nativePath}`, {
+      method: "GET",
+      headers: { Authorization: token },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return bytes.length > 0 && bytes.length <= maxBytes ? bytes : null;
+  } catch {
+    return null;
+  }
+}
+
 function countryKey(iso3: string) {
   return `geomacro-evidence/v1/live/country-gro/${iso3}/latest.json.gz`;
 }
@@ -104,10 +155,7 @@ async function signedGet(key: string): Promise<Uint8Array | null> {
       const scope = `${day}/us-east-005/s3/aws4_request`;
       const stringToSign = ["AWS4-HMAC-SHA256", timestamp, scope, await sha256(canonical)].join("\n");
       const signingKey = await hmac(
-        await hmac(
-          await hmac(await hmac(`AWS4${cfg.secretKey}`, day), "us-east-005"),
-          "s3",
-        ),
+        await hmac(await hmac(await hmac(`AWS4${cfg.secretKey}`, day), "us-east-005"), "s3"),
         "aws4_request",
       );
       const signature = hex(await hmac(signingKey, stringToSign));
@@ -120,17 +168,23 @@ async function signedGet(key: string): Promise<Uint8Array | null> {
         },
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-      if (!response.ok) {
-        if (response.status === 403 && index < candidates.length - 1) continue;
-        return null;
+
+      let bytes: Uint8Array | null = null;
+      if (response.ok) bytes = new Uint8Array(await response.arrayBuffer());
+      else if (response.status === 403) bytes = await nativeGet(cfg, key, MAX_COMPRESSED_BYTES);
+
+      if (bytes && bytes.length > 0 && bytes.length <= MAX_COMPRESSED_BYTES) {
+        cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, bytes });
+        return bytes;
       }
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      if (!bytes.length || bytes.length > MAX_COMPRESSED_BYTES) return null;
-      cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, bytes });
-      return bytes;
-    } catch {
       if (index < candidates.length - 1) continue;
-      return null;
+    } catch {
+      const native = await nativeGet(cfg, key, MAX_COMPRESSED_BYTES);
+      if (native) {
+        cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, bytes: native });
+        return native;
+      }
+      if (index < candidates.length - 1) continue;
     }
   }
   return null;
