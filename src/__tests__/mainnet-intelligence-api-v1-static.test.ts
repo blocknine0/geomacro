@@ -51,7 +51,7 @@ describe("Geomacro Mainnet Intelligence API v1", () => {
   it("publishes the canonical endpoint consistently across machine discovery", () => {
     expect(openapi.paths[CANONICAL]).toBeTruthy();
     expect(discovery).toContain("/api/v1/intelligence/query");
-    expect(agent.commerce.canonical_paid_endpoint).toBe(
+    expect(agent.delivery.canonical_paid_endpoint).toBe(
       "https://geomacro.live/api/v1/intelligence/query",
     );
     expect(commerce.offers[0].providers.coinbase_x402.endpoint).toBe(
