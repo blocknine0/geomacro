@@ -34,6 +34,10 @@ const CONTROL_PLANE_URL =
 const HOT_OVERLAY_KEY = "public_intelligence_live_observed_v1";
 const HOT_OVERLAY_SCHEMA = "geomacro.public-intelligence-live-observed.v1";
 const HOT_OVERLAY_MAX_BYTES = 30 * 1024;
+const PUBLIC_INTELLIGENCE_EDGE_URL =
+  "https://geomacro-intelligence.daspallab202391.workers.dev/intelligence";
+const PUBLIC_INTELLIGENCE_EDGE_AUTHORITY = "backblaze-b2-intelligence-edge";
+const VERIFIED_BASELINE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const GDELT_EXPECTED_COLUMNS = 61;
 const GDELT_FIELD = Object.freeze({
   GLOBAL_EVENT_ID: 0,
@@ -146,6 +150,129 @@ async function publishHotOverlay(current, generatedAt, verifiedB2Sha256) {
     raw_source_headlines_exposed: false,
     provider_identity_exposed: false,
   }));
+}
+
+
+function b2CapReason(error) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (
+    message === "B2_DOWNLOAD_CAP_EXCEEDED" ||
+    message.includes("B2_DOWNLOAD_CAP_EXCEEDED") ||
+    message.includes("B2_NATIVE_GET_FAILED_403_download_cap_exceeded")
+  ) return "B2_DOWNLOAD_CAP_EXCEEDED";
+  if (
+    message === "B2_TRANSACTION_CAP_EXCEEDED" ||
+    message.includes("B2_TRANSACTION_CAP_EXCEEDED")
+  ) return "B2_TRANSACTION_CAP_EXCEEDED";
+  return null;
+}
+
+function validVerifiedEdgeBaselineRows(rows) {
+  if (!Array.isArray(rows) || rows.length < 1 || rows.length > 300) return false;
+  const categories = new Set();
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+    if (
+      "source_name" in row ||
+      "source_domain" in row ||
+      "source_url" in row ||
+      "provider" in row ||
+      "raw" in row ||
+      "raw_payload" in row
+    ) return false;
+    if (row.public_status === "live_observed") continue;
+    const category = String(row.category ?? "").trim().toLowerCase();
+    const title = String(row.source_title ?? "").replace(/\s+/gu, " ").trim();
+    const severity = Number(row.severity);
+    if (
+      !REQUIRED_CATEGORIES.includes(category) ||
+      !String(row.id ?? "").trim() ||
+      !title.startsWith("Geomacro finds ") ||
+      !Number.isFinite(severity) ||
+      severity < 0 ||
+      severity > 100
+    ) return false;
+    categories.add(category);
+  }
+  return REQUIRED_CATEGORIES.every((category) => categories.has(category));
+}
+
+async function readVerifiedEdgeBaseline() {
+  const response = await fetch(PUBLIC_INTELLIGENCE_EDGE_URL, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) {
+    throw new Error(`PUBLIC_INTELLIGENCE_VERIFIED_EDGE_HTTP_${response.status}`);
+  }
+  if (
+    response.headers.get("x-geomacro-authority") !==
+    PUBLIC_INTELLIGENCE_EDGE_AUTHORITY
+  ) {
+    throw new Error("PUBLIC_INTELLIGENCE_VERIFIED_EDGE_AUTHORITY_INVALID");
+  }
+  const b2Sha256 = String(
+    response.headers.get("x-geomacro-b2-sha256") ?? "",
+  ).trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/u.test(b2Sha256)) {
+    throw new Error("PUBLIC_INTELLIGENCE_VERIFIED_EDGE_B2_SHA_INVALID");
+  }
+  const payload = await response.json();
+  const generatedAt = String(payload?.generated_at ?? "");
+  const generatedMs = Date.parse(generatedAt);
+  if (
+    payload?.schema !== "geomacro.public-intelligence-live.v1" ||
+    payload?.source_project !== PROJECT_REF ||
+    !Number.isFinite(generatedMs) ||
+    generatedMs > Date.now() + 5 * 60_000 ||
+    Date.now() - generatedMs > VERIFIED_BASELINE_MAX_AGE_MS ||
+    !validVerifiedEdgeBaselineRows(payload?.rows)
+  ) {
+    throw new Error("PUBLIC_INTELLIGENCE_VERIFIED_EDGE_BASELINE_INVALID");
+  }
+  return {
+    generatedAt,
+    b2Sha256,
+    continuity:
+      response.headers.get("x-geomacro-continuity") ===
+      "github-actions-b2-readback-verified-projection",
+  };
+}
+
+async function publishB2CapOverlayRecovery(current, error) {
+  const reason = b2CapReason(error);
+  if (!reason) throw error;
+  const baseline = await readVerifiedEdgeBaseline();
+  await publishHotOverlay(current, baseline.generatedAt, baseline.b2Sha256);
+  const proof = {
+    ok: true,
+    schema: "geomacro.public-intelligence-overlay-recovery.v1",
+    authority_read: "verified-intelligence-edge",
+    authority_serve: "cloudflare-d1-hot-overlay",
+    recovery_reason: reason,
+    baseline_b2_readback_verified: true,
+    baseline_b2_sha256: baseline.b2Sha256,
+    baseline_generated_at: baseline.generatedAt,
+    baseline_continuity_projection: baseline.continuity,
+    current_b2_snapshot_promoted: false,
+    current_source_id: "gdelt_v2_events",
+    current_source_transport: current.sourceTransport,
+    current_source_batch_at: current.batchIso,
+    current_evidence_contract: current.evidenceContract,
+    live_observed_rows: current.rows.length,
+    live_observed_unscored: true,
+    synthetic_score: false,
+    raw_source_headlines_exposed: false,
+    provider_identity_exposed: false,
+    execution_authorized: false,
+  };
+  console.log(JSON.stringify(proof));
+  return proof;
 }
 
 function authoritativeDbUrl() {
@@ -729,8 +856,27 @@ const b2 = createB2Client({
   bucket: B2_BUCKET,
 });
 
+try {
+  await b2.get(PROOF_KEY);
+} catch (error) {
+  if (b2CapReason(error)) {
+    await publishB2CapOverlayRecovery(current, error);
+    process.exit(0);
+  }
+  throw error;
+}
+
 await b2.put(LIVE_KEY, packed);
-const readback = await b2.get(LIVE_KEY);
+let readback;
+try {
+  readback = await b2.get(LIVE_KEY);
+} catch (error) {
+  if (b2CapReason(error)) {
+    await publishB2CapOverlayRecovery(current, error);
+    process.exit(0);
+  }
+  throw error;
+}
 if (readback.length !== packed.length || sha256(readback) !== digest) {
   throw new Error("B2_PUBLIC_INTELLIGENCE_HASH_INVALID");
 }
@@ -787,7 +933,16 @@ const proof = Buffer.from(JSON.stringify({
   exact_gzip_restore_verified: true,
 }));
 await b2.put(PROOF_KEY, proof);
-const proofReadback = await b2.get(PROOF_KEY);
+let proofReadback;
+try {
+  proofReadback = await b2.get(PROOF_KEY);
+} catch (error) {
+  if (b2CapReason(error)) {
+    await publishB2CapOverlayRecovery(current, error);
+    process.exit(0);
+  }
+  throw error;
+}
 if (sha256(proofReadback) !== sha256(proof)) throw new Error("B2_PUBLIC_INTELLIGENCE_PROOF_READBACK_INVALID");
 await publishHotOverlay(current, generatedAt, digest);
 
