@@ -22,6 +22,12 @@ describe("verified public edge hot-cache contract", () => {
     expect(worker).toContain('proof?.synthetic_score !== false');
     expect(worker).toContain('"x-geomacro-authority": "backblaze-b2-intelligence-edge"');
     expect(worker).toContain('HOT_OVERLAY_URL =');
+    expect(worker).toContain("async function readD1HotSnapshot()");
+    expect(worker).toContain("await sha256(payloadJson) !== snapshot.payload_sha256");
+    expect(worker).toContain('snapshot?.full_b2_readback_verified !== true');
+    expect(worker).toContain('snapshot?.exact_gzip_restore_verified !== true');
+    expect(worker).toContain('"x-geomacro-serving-store": "cloudflare-d1"');
+    expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot()");
     expect(worker).toContain("/v1/public/intelligence-overlay");
     expect(worker).toContain("validHotOverlayRows");
     expect(worker).toContain("applyHotOverlay");

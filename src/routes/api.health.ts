@@ -9,6 +9,68 @@ import { readRiskIndicesEdge } from "../lib/risk-indices-edge.server";
 import { geomacroSupabaseRuntimeMode } from "../lib/supabase-runtime-mode.server";
 
 const SUPABASE_RECOVERY_PROJECT_REF = "ldpwajisioljyjtojvfx";
+const VERIFIED_HOT_EDGE_PROOF = "full-readback-hash-exact-restore";
+const HOT_EDGE_PROBES = [
+  {
+    product: "intelligence",
+    url: "https://geomacro-intelligence.daspallab202391.workers.dev/intelligence",
+    authority: "backblaze-b2-intelligence-edge",
+    schema: "geomacro.public-intelligence-live.v1",
+    maxAgeMs: 6 * 60 * 60 * 1000,
+  },
+  {
+    product: "global_risk",
+    url: "https://geomacro-global-risk.daspallab202391.workers.dev/global-risk",
+    authority: "backblaze-b2-verified-edge",
+    schema: "geomacro.public-global-risk-live.v1",
+    maxAgeMs: 90 * 60 * 1000,
+  },
+  {
+    product: "risk_indices",
+    url: "https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices",
+    authority: "backblaze-b2-risk-indices-edge",
+    schema: "geomacro.public-risk-indices-live.v1",
+    maxAgeMs: 90 * 60 * 1000,
+  },
+];
+
+async function verifyHotEdge(probe: (typeof HOT_EDGE_PROBES)[number]) {
+  try {
+    const response = await fetch(probe.url, {
+      headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+      signal: AbortSignal.timeout(4_500),
+    });
+    if (
+      !response.ok ||
+      response.headers.get("x-geomacro-authority") !== probe.authority ||
+      response.headers.get("x-geomacro-serving-store") !== "cloudflare-d1" ||
+      response.headers.get("x-geomacro-b2-verification") !== VERIFIED_HOT_EDGE_PROOF
+    ) return { ok: false, serving_store: null, b2_sha256: null, payload_sha256: null };
+    const b2Sha256 = String(response.headers.get("x-geomacro-b2-sha256") ?? "");
+    const payloadSha256 = String(response.headers.get("x-geomacro-d1-payload-sha256") ?? "");
+    const sourceAsOf = String(response.headers.get("x-geomacro-source-as-of") ?? "");
+    const body = await response.json() as { schema?: string; generated_at?: string };
+    const generatedAt = Date.parse(String(body.generated_at ?? ""));
+    const sourceAsOfMs = Date.parse(sourceAsOf);
+    const age = Date.now() - generatedAt;
+    const sourceAge = Date.now() - sourceAsOfMs;
+    const ok =
+      body.schema === probe.schema &&
+      /^[0-9a-f]{64}$/.test(b2Sha256) &&
+      /^[0-9a-f]{64}$/.test(payloadSha256) &&
+      Number.isFinite(age) && age >= -5 * 60_000 && age <= 30 * 24 * 60 * 60 * 1000 &&
+      Number.isFinite(sourceAge) && sourceAge >= -5 * 60_000 && sourceAge <= probe.maxAgeMs;
+    return {
+      ok,
+      serving_store: ok ? "cloudflare-d1" : null,
+      b2_sha256: ok ? b2Sha256 : null,
+      payload_sha256: ok ? payloadSha256 : null,
+      source_as_of: ok ? sourceAsOf : null,
+    };
+  } catch {
+    return { ok: false, serving_store: null, b2_sha256: null, payload_sha256: null };
+  }
+}
 
 type X402RuntimeStatus = {
   state: "controlled_prelaunch" | "production" | "configuration_invalid";
@@ -65,6 +127,7 @@ async function getPublicProductionReadiness(deep: boolean) {
     return {
       deep_checked: false,
       serving_authority: "backblaze-b2",
+      hot_snapshot_serving: null,
       supabase_required_for_serving: false,
       b2_runtime_configured: configured,
       intelligence_ready: null,
@@ -77,10 +140,11 @@ async function getPublicProductionReadiness(deep: boolean) {
     };
   }
 
-  const [intelligence, globalRisk, riskIndices] = await Promise.all([
+  const [intelligence, globalRisk, riskIndices, ...hotEdges] = await Promise.all([
     configured ? readB2PublicIntelligence() : Promise.resolve(null),
     configured ? readB2PublicRisk() : Promise.resolve(null),
     readRiskIndicesEdge(),
+    ...HOT_EDGE_PROBES.map(verifyHotEdge),
   ]);
 
   const categories = new Set(
@@ -95,10 +159,17 @@ async function getPublicProductionReadiness(deep: boolean) {
     riskIndices?.verificationStatus === "verified" &&
     riskIndices.indices.length === 3 &&
     riskIndices.indices.every((index) => index.status === "available");
+  const hotSnapshotServing = Object.fromEntries(
+    HOT_EDGE_PROBES.map((probe, index) => [probe.product, hotEdges[index]]),
+  );
+  const d1HotServingReady = hotEdges.length === HOT_EDGE_PROBES.length && hotEdges.every((proof) => proof.ok);
 
   return {
     deep_checked: true,
-    serving_authority: "backblaze-b2",
+    serving_authority: d1HotServingReady
+      ? "backblaze-b2-durable-truth-cloudflare-d1-verified-hot"
+      : "backblaze-b2-with-d1-hot-snapshot-required",
+    hot_snapshot_serving: hotSnapshotServing,
     supabase_required_for_serving: false,
     b2_runtime_configured: configured,
     intelligence_ready: intelligenceReady,
@@ -123,7 +194,9 @@ export const Route = createFileRoute("/api/health")({
             publicProduction.intelligence_ready === true &&
             publicProduction.global_risk_ready === true &&
             publicProduction.risk_indices_ready === true &&
-            publicProduction.risk_verification_status === "verified");
+            publicProduction.risk_verification_status === "verified" &&
+            Object.values(publicProduction.hot_snapshot_serving ?? {}).length === HOT_EDGE_PROBES.length &&
+            Object.values(publicProduction.hot_snapshot_serving ?? {}).every((proof) => proof.ok));
 
         return Response.json(
           {

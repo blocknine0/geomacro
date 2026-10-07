@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { createB2Client } from "./b2-s3-client.mjs";
+import { publishB2VerifiedHotSnapshot } from "./publish-b2-verified-hot-snapshot.mjs";
 import {
   GDELT_DOC_EVIDENCE_CONTRACT,
   GDELT_DOC_SOURCE_TRANSPORT,
@@ -790,6 +791,11 @@ await b2.put(PROOF_KEY, proof);
 const proofReadback = await b2.get(PROOF_KEY);
 if (sha256(proofReadback) !== sha256(proof)) throw new Error("B2_PUBLIC_INTELLIGENCE_PROOF_READBACK_INVALID");
 await publishHotOverlay(current, generatedAt, digest);
+const hotSnapshot = await publishB2VerifiedHotSnapshot({
+  product: "intelligence",
+  value,
+  proof: JSON.parse(proof.toString("utf8")),
+});
 
 const newest = rows.map(rowTime).filter(Number.isFinite).sort((a, b) => b - a)[0];
 console.log(JSON.stringify({
@@ -817,4 +823,7 @@ console.log(JSON.stringify({
   destructive_change: false,
   synthetic_score: false,
   b2_readback_verified: true,
+  d1_hot_snapshot_published: true,
+  d1_payload_sha256: hotSnapshot.payload_sha256,
+  d1_expires_at: hotSnapshot.expires_at,
 }));

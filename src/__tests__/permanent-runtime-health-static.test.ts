@@ -25,9 +25,12 @@ describe("permanent runtime health acceptance", () => {
     expect(workflow).toContain('b?.store==="d1"');
     expect(workflow).toContain('b?.durable_payload_store==="b2"');
     expect(workflow).toContain('b?.commerce_ledger==="durable_object"');
+    expect(workflow).toContain("Number(b?.schema_version)>=2");
     expect(workflow).toContain("Verify B2 directly with Supabase network blocked");
     expect(workflow).toContain("verify-b2-public-no-supabase.ts");
     expect(workflow).toContain('b?.production_data_authority!=="backblaze-b2"');
+    expect(workflow).toContain('p?.serving_authority!=="backblaze-b2-durable-truth-cloudflare-d1-verified-hot"');
+    expect(workflow).toContain('p?.hot_snapshot_serving');
     expect(workflow).toContain("Verify Durable Object commerce ledger health");
     expect(workflow).toContain('b?.storage!=="durable_objects_sqlite"');
   });

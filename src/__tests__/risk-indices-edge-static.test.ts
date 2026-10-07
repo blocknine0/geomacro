@@ -16,6 +16,11 @@ describe("independent verified Risk Indices edge", () => {
     expect(publisher).toContain('LIVE_PROOF_KEY = "geomacro-evidence/v1/live/risk-indices-independent/latest-proof.json"');
     expect(worker).toContain('LIVE_KEY = "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz"');
     expect(worker).toContain('PROOF_KEY = "geomacro-evidence/v1/live/risk-indices-independent/latest-proof.json"');
+    expect(worker).toContain("async function readD1HotSnapshot()");
+    expect(worker).toContain("await sha256(payloadJson) !== snapshot.payload_sha256");
+    expect(worker).toContain("Date.now() - sourceAsOf > 90 * 60 * 1000");
+    expect(worker).toContain('"x-geomacro-serving-store": "cloudflare-d1"');
+    expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot()");
     expect(publisher).not.toContain('LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz"');
   });
 

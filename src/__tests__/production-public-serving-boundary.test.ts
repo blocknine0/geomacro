@@ -32,6 +32,9 @@ describe("production public serving boundary", () => {
     expect(health).toContain('supabase_role: "ingestion-recovery-standby"');
     expect(health).toContain("supabase_recovery_project_ref");
     expect(health).toContain('serving_authority: "backblaze-b2"');
+    expect(health).toContain('"backblaze-b2-durable-truth-cloudflare-d1-verified-hot"');
+    expect(health).toContain('response.headers.get("x-geomacro-serving-store") !== "cloudflare-d1"');
+    expect(health).toContain("hot_snapshot_serving");
     expect(health).toContain("supabase_required_for_serving: false");
     expect(health).toContain("readB2PublicIntelligence");
     expect(health).toContain("readB2PublicRisk");
@@ -43,6 +46,8 @@ describe("production public serving boundary", () => {
     expect(workflow).toContain("/intelligence");
     expect(workflow).toContain("/global-risk");
     expect(workflow).toContain("/ask-geomacro");
-    expect(workflow).toContain('"serving_authority":"backblaze-b2"');
+    expect(workflow).toContain('"serving_authority":"backblaze-b2-durable-truth-cloudflare-d1-verified-hot"');
+    expect(workflow).toContain("x-geomacro-b2-verification: full-readback-hash-exact-restore");
+    expect(workflow).toContain("hot_snapshot_serving");
   });
 });

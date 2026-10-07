@@ -7,6 +7,7 @@ const PROOF_KEY = "geomacro-evidence/v1/live/risk-indices-independent/latest-pro
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const CONTRACT = "risk-indices-v1.1.0";
 const METHOD = "gri-v1.2.0";
+const D1_HOT_SNAPSHOT_URL = "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/hot-snapshot/risk-indices";
 const MAX_COMPRESSED_BYTES = 12_000_000;
 const MAX_DECOMPRESSED_BYTES = 40_000_000;
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -150,6 +151,68 @@ async function buildContinuityResponse() {
   });
 }
 
+async function readD1HotSnapshot() {
+  try {
+    const response = await fetch(D1_HOT_SNAPSHOT_URL, {
+      headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+      signal: AbortSignal.timeout(3_500),
+    });
+    if (!response.ok) return null;
+    const snapshot = await response.json();
+    const generatedAt = Date.parse(String(snapshot?.generated_at ?? ""));
+    const sourceAsOf = Date.parse(String(snapshot?.source_as_of ?? ""));
+    const expiresAt = Date.parse(String(snapshot?.expires_at ?? ""));
+    const payloadJson = String(snapshot?.payload_json ?? "");
+    if (
+      snapshot?.ok !== true ||
+      snapshot?.product !== "risk-indices" ||
+      snapshot?.schema !== "geomacro.public-risk-indices-live.v1" ||
+      snapshot?.proof_schema !== "geomacro.public-risk-indices-live-proof.v1" ||
+      snapshot?.b2_object_key !== LIVE_KEY ||
+      !/^[0-9a-f]{64}$/.test(String(snapshot?.b2_sha256 ?? "")) ||
+      !/^[0-9a-f]{64}$/.test(String(snapshot?.payload_sha256 ?? "")) ||
+      snapshot?.full_b2_readback_verified !== true ||
+      snapshot?.exact_gzip_restore_verified !== true ||
+      !Number.isFinite(generatedAt) ||
+      !Number.isFinite(sourceAsOf) ||
+      !Number.isFinite(expiresAt) ||
+      !recentEnough(snapshot.generated_at) ||
+      sourceAsOf > Date.now() + 5 * 60_000 ||
+      Date.now() - sourceAsOf > 90 * 60 * 1000 ||
+      expiresAt <= Date.now() ||
+      expiresAt > sourceAsOf + 90 * 60 * 1000 ||
+      await sha256(payloadJson) !== snapshot.payload_sha256
+    ) return null;
+    const live = JSON.parse(payloadJson);
+    if (
+      live?.schema !== "geomacro.public-risk-indices-live.v1" ||
+      live?.source_project !== PROJECT_REF ||
+      live?.generated_at !== snapshot.generated_at ||
+      Date.parse(String(live?.data?.snapshotAsOf ?? "")) !== sourceAsOf ||
+      !validIndices(live?.data)
+    ) return null;
+    return new Response(payloadJson, {
+      status: 200,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
+        "x-content-type-options": "nosniff",
+        "x-geomacro-authority": "backblaze-b2-risk-indices-edge",
+        "x-geomacro-continuity": "d1-b2-readback-verified-hot-snapshot",
+        "x-geomacro-serving-store": "cloudflare-d1",
+        "x-geomacro-source-as-of": snapshot.source_as_of,
+        "x-geomacro-b2-sha256": snapshot.b2_sha256,
+        "x-geomacro-d1-payload-sha256": snapshot.payload_sha256,
+        "x-geomacro-b2-verification": "full-readback-hash-exact-restore",
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity, x-geomacro-serving-store, x-geomacro-source-as-of, x-geomacro-b2-sha256, x-geomacro-d1-payload-sha256, x-geomacro-b2-verification",
+      },
+    });
+  } catch {
+    return null;
+  }
+}
+
 function unavailable(status = 503) {
   return new Response(JSON.stringify({ ok: false, code: "RISK_INDICES_EDGE_UNAVAILABLE" }), {
     status,
@@ -164,6 +227,8 @@ function unavailable(status = 503) {
 }
 
 async function buildResponse(env) {
+  const hotSnapshot = await readD1HotSnapshot();
+  if (hotSnapshot) return hotSnapshot;
   const liveBytes = await signedGet(LIVE_KEY, env);
   const proofBytes = await signedGet(PROOF_KEY, env);
   const liveDigest = await sha256(liveBytes);

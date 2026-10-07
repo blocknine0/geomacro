@@ -238,7 +238,8 @@ jobs:
           printf '%s' "$BODY" | tee /tmp/final-public-health.json | node -e '
             let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
               const b=JSON.parse(s); const p=b?.public_production ?? {};
-              if (b?.ok!==true || b?.production_data_authority!=="backblaze-b2" || p?.serving_authority!=="backblaze-b2") process.exit(6);
+              if (b?.ok!==true || b?.production_data_authority!=="backblaze-b2" || p?.serving_authority!=="backblaze-b2-durable-truth-cloudflare-d1-verified-hot") process.exit(6);
+              const hot=Object.values(p?.hot_snapshot_serving??{}); if (hot.length!==3 || hot.some(x=>x?.ok!==true || x?.serving_store!=="cloudflare-d1")) process.exit(6);
               if (b?.supabase_runtime_mode!=="standby" || p?.supabase_required_for_serving!==false) process.exit(6);
               if (b?.commerce_control_plane!=="cloudflare-durable-objects") process.exit(6);
             });
