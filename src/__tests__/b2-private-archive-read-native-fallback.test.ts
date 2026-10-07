@@ -109,6 +109,38 @@ describe("private B2 archive Native read compatibility", () => {
     ).toHaveLength(2);
   });
 
+  it("falls back to Native when the S3-compatible read times out", async () => {
+    setReadCredentials("timeout");
+    const expected = Buffer.from("verified-after-timeout");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        if (url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account") {
+          return new Response(JSON.stringify(nativeAuth()), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (url.startsWith("https://f005.backblazeb2.com/file/")) {
+          return new Response(expected, { status: 200 });
+        }
+        if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+          throw new DOMException("The operation timed out", "TimeoutError");
+        }
+        throw new Error("unexpected fetch target");
+      }),
+    );
+
+    await expect(
+      readPrivateB2Object(
+        "geomacro-evidence/v1/gro/gro_native_timeout.json.gz",
+        { timeoutMs: 1_000 },
+      ),
+    ).resolves.toEqual(expected);
+  });
+
   it("fails closed when the Native credential lacks readFiles", async () => {
     setReadCredentials("capability");
 
