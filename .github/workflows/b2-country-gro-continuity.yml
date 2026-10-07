@@ -79,6 +79,13 @@ jobs:
           if (enabled.length < 195) throw new Error(`GRO_CONTINUITY_COUNTRY_UNIVERSE_REGRESSION:${enabled.length}`);
           console.log(JSON.stringify({ ok: true, transport: 'direct_postgres', enabled_country_like_candidates: enabled.length }));
           NODE
+      - name: Preflight private B2 read capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/verify-b2-private-archive-read.ts > artifacts/b2-read-preflight.json
+          jq -e '.ok == true and .dedicated_read_credentials == true and .destructive_b2_change == false' artifacts/b2-read-preflight.json >/dev/null
+
       - name: Refresh global commercially governed canonical GROs
         id: refresh
         env:
