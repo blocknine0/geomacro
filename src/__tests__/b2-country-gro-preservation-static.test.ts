@@ -37,6 +37,15 @@ describe("B2 country GRO preservation fallback", () => {
     expect(publisher).toContain("B2_COUNTRY_GRO_PROOF_READBACK_INVALID");
   });
 
+  it("fails before the expensive global refresh when B2 reads are unavailable", () => {
+    const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
+    const preflight = workflow.indexOf("Preflight private B2 read capability before global refresh");
+    const refresh = workflow.indexOf("Refresh global commercially governed canonical GROs");
+    expect(preflight).toBeGreaterThanOrEqual(0);
+    expect(refresh).toBeGreaterThan(preflight);
+    expect(workflow).toContain("scripts/ops/preflight-b2-read-capability.mjs");
+  });
+
   it("never advances D1 from a preservation-only cycle", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     const syncMarker = "Sync all independently verified current country GROs to D1";
