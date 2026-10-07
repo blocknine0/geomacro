@@ -52,6 +52,12 @@ describe("verified B2 governed agent module continuity", () => {
     expect(reader).toContain("AGENT_GOVERNED_MODULES_B2_MAX_AGE_MS = 24 * 60 * 60 * 1000");
     expect(reader).toContain("process.env.B2_KEY_ID");
     expect(reader).toContain("process.env.B2_APPLICATION_KEY");
+    expect(reader).toContain("process.env.B2_ARCHIVE_READ_KEY_ID");
+    expect(reader).toContain("process.env.B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(reader).toContain("B2_NATIVE_AUTHORIZE_URL");
+    expect(reader).toContain('capabilities.includes("readFiles")');
+    expect(reader).toContain("backblazeb2\\.com");
+    expect(reader).toContain('response.status === 403');
     expect(reader).toContain('payload.schema !== "geomacro.agent-governed-modules-live.v2"');
     expect(reader).toContain('payload.source_project !== SOURCE_PROJECT');
     expect(reader).toContain('payload.delivery_boundary !== "DERIVED_STATE_ONLY_NO_RAW_SOURCE_MATERIAL"');
@@ -102,6 +108,10 @@ describe("verified B2 governed agent module continuity", () => {
     expect(workflow).not.toContain("secrets.SUPABASE_SERVICE_ROLE_KEY");
     expect(workflow).toContain("secrets.B2_KEY_ID");
     expect(workflow).toContain("secrets.B2_APPLICATION_KEY");
+    expect(workflow).toContain("secrets.B2_ARCHIVE_READ_KEY_ID");
+    expect(workflow).toContain("secrets.B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(workflow).toContain("verify-b2-private-archive-read.ts");
+    expect(workflow.indexOf("verify-b2-private-archive-read.ts")).toBeLessThan(workflow.indexOf("run-b2-governed-direct-postgres.mjs"));
     expect(workflow).toContain("run-b2-governed-direct-postgres.mjs");
     expect(workflow).toContain("verify-b2-agent-governed-runtime.ts");
     expect(workflow).not.toContain("run-b2-snapshot-maintenance-with-preservation.mjs governed-modules");
