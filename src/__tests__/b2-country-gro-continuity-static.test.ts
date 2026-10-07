@@ -42,16 +42,22 @@ describe("B2 country GRO continuity", () => {
     expect(gate).toContain("await resolveCountryGroAtOrBefore(");
   });
 
-  it("publishes only verified deliverable signed GROs after full B2 readback", () => {
+  it("publishes one content-addressed verified bundle instead of two B2 objects per country", () => {
     const publisher = read("scripts/ops/publish-b2-country-gro-continuity.ts");
-    expect(publisher).toContain("await b2.put(key, packed)");
-    expect(publisher).toContain("const readback = await b2.get(key)");
-    expect(publisher).toContain("sha256(readback) !== digest");
+    expect(publisher).toContain('const BUNDLE_SCHEMA = "geomacro.country-gro-bundle.v2"');
+    expect(publisher).toContain('const PROOF_SCHEMA = "geomacro.country-gro-continuity-proof.v2"');
+    expect(publisher).toContain('const bundleKey = `${BUNDLE_PREFIX}/${bundleSha}.json.gz`');
+    expect(publisher).toContain("await b2.put(bundleKey, packed)");
+    expect(publisher).toContain("const readback = await b2.get(bundleKey)");
+    expect(publisher).toContain("sha256(readback) !== bundleSha");
+    expect(publisher).toContain("record_sha256: sha256(Buffer.from(canonicalRiskObjectJson(object)");
     expect(publisher).toContain("verifyRiskObjectSignature(object).valid");
     expect(publisher).toContain("verifyCommercialRiskObjectArtifact(object");
     expect(publisher).toContain("PUBLIC_DEMO_RISK_PROFILE_REASON");
-    expect(publisher).toContain("country-gro/by-id/");
-    expect(publisher).toContain("/latest.json.gz");
+    expect(publisher).toContain("b2_full_gets: 2");
+    expect(publisher).toContain("legacy_per_country_b2_mirrors_written: false");
+    expect(publisher).not.toContain("country-gro/by-id/");
+    expect(publisher).not.toContain("/latest.json.gz");
   });
 
   it("proves the runtime reader works after Supabase credentials are removed", () => {
@@ -64,6 +70,9 @@ describe("B2 country GRO continuity", () => {
     expect(canary).toContain("await import(");
     expect(canary).toContain('"../../src/lib/b2-country-gro.server"');
     expect(canary).toContain("readB2LatestCanonicalCountryGro(countryIso3, evaluatedAt)");
+    expect(canary).toContain('BUNDLE_PROOF_SCHEMA = "geomacro.country-gro-continuity-proof.v2"');
+    expect(canary).toContain('proofSource: "publisher_readback" | "b2"');
+    expect(canary).toContain("expected_runtime_b2_gets_when_bundle_v2");
     expect(canary).toContain("supabase_credentials_present: Boolean(");
     expect(workflow).toContain("bun scripts/ops/verify-b2-country-gro-direct-read.ts");
   });
@@ -106,20 +115,37 @@ describe("B2 country GRO continuity", () => {
     expect(shim).toContain('op === "not.cs" ? `NOT (${predicate})` : predicate');
   });
 
-  it("derives the full D1 current index only from independently verified B2 continuity proof bytes", () => {
+  it("derives the D1 current index from one independently verified bundle and reuses publisher readback bytes", () => {
     const sync = read("scripts/ops/sync-global-current-country-gro-to-d1.ts");
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     expect(sync).toContain("country-gro/continuity-proof.json");
-    expect(sync).toContain("GLOBAL_GRO_D1_PROOF_CARDINALITY_INVALID");
-    expect(sync).toContain("GLOBAL_GRO_D1_ENVELOPE_HASH_INVALID");
-    expect(sync).toContain("GLOBAL_GRO_D1_GENERIC_B2_HASH_INVALID");
-    expect(sync).toContain("GLOBAL_GRO_D1_GENERIC_B2_RESTORE_INVALID");
+    expect(sync).toContain('BUNDLE_PROOF_SCHEMA = "geomacro.country-gro-continuity-proof.v2"');
+    expect(sync).toContain("GLOBAL_GRO_ALLOW_LOCAL_VERIFIED_READBACK");
+    expect(sync).toContain("GLOBAL_GRO_D1_BUNDLE_HASH_INVALID");
+    expect(sync).toContain("GLOBAL_GRO_D1_BUNDLE_MEMBER_PROOF_INVALID");
     expect(sync).toContain("verifyCommercialRiskObjectArtifact");
     expect(sync).toContain("GLOBAL_GRO_D1_READY_FLOOR_BREACH");
+    expect(sync).toContain("publisher_readback_reused: reusedPublisherReadback");
+    expect(sync).toContain("additional_b2_gets_for_d1_sync: b2Reads");
+    expect(sync).toContain("bundle_indexed: proof.schema === BUNDLE_PROOF_SCHEMA");
     expect(sync).toContain("supabase_payload_used_for_d1_record: false");
     expect(sync).toContain("external_payment_performed: false");
     expect(sync).toContain("destructive_b2_change: false");
-    expect(workflow).toContain("bun scripts/ops/sync-global-current-country-gro-to-d1.ts");
+    expect(workflow).toContain('GLOBAL_GRO_ALLOW_LOCAL_VERIFIED_READBACK: "true"');
+    expect(workflow).toContain(".additional_b2_gets_for_d1_sync == 0");
+    expect(workflow).toContain(".publisher_readback_reused == true");
+  });
+
+  it("serves bundle v2 first with a five-minute in-process cache and legacy fallback", () => {
+    const source = read("src/lib/b2-country-gro.server.ts");
+    expect(source).toContain('const BUNDLE_SCHEMA = "geomacro.country-gro-bundle.v2"');
+    expect(source).toContain('const PROOF_SCHEMA = "geomacro.country-gro-continuity-proof.v2"');
+    expect(source).toContain("const CACHE_TTL_MS = 5 * 60_000");
+    expect(source).toContain("inFlightGets.has(key)");
+    expect(source).toContain("const bundle = await loadBundleV2()");
+    expect(source).toContain("bundle?.byCountry.get(iso3)?.object");
+    expect(source).toContain("readLegacyEnvelope(countryKey(iso3))");
+    expect(source).toContain("bundle?.byObjectId.get(objectId)");
   });
 
   it("keeps production publication bounded and explicit", () => {
