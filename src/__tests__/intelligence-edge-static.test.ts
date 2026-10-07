@@ -23,6 +23,12 @@ describe("verified public edge hot-cache contract", () => {
     expect(worker).toContain('"x-geomacro-authority": "backblaze-b2-intelligence-edge"');
     expect(worker).toContain("stale-while-revalidate=3600");
     expect(worker).toContain("stale-if-error=86400");
+    expect(worker).toContain('import continuity from "./continuity.mjs"');
+    expect(worker).toContain("INTELLIGENCE_CONTINUITY_HASH_INVALID");
+    expect(worker).toContain('"x-geomacro-continuity": "github-actions-b2-readback-verified-projection"');
+    expect(deploy).toContain("prepare-edge-continuity.sh");
+    expect(deploy).toContain("intelligence-scored-refresh.yml");
+    expect(deploy).toContain("geomacro.public-intelligence-direct-postgres-publish.v2");
     expect(deploy).toContain("B2_ARCHIVE_READ_KEY_ID");
     expect(deploy).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(deploy).toContain("geomacro-intelligence.daspallab202391.workers.dev");
