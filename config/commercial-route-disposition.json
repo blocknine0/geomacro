@@ -197,6 +197,10 @@
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
     },
+    "/api/v1/intelligence/query": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
     "/api/x402/intelligence": {
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
