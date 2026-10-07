@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 describe("Federico refresh contract", () => {
   it("keeps the strict source-family map versioned and covers newly observed GDELT identities", () => {
     const profile = read("src/lib/public-demo-risk-profile.ts");
-    expect(profile).toContain("federico-source-family-map-v8");
+    expect(profile).toContain("federico-source-family-map-v9");
     expect(profile).toContain('"mymixfm.com": "mymixfm.com"');
     expect(profile).toContain('"wtvbam.com": "wtvbam.com"');
     expect(profile).toContain('"wiky.com": "wiky.com"');
@@ -23,6 +23,14 @@ describe("Federico refresh contract", () => {
     const profile = read("src/lib/public-demo-risk-profile.ts");
     expect(profile).toContain("federicoStrictSourceFamilyForId");
     expect(profile).toContain("?? normalized");
+    expect(profile).toContain('ecb_press_rss: "european_central_bank"');
+    expect(profile).toContain('ecb_market_information_rss: "european_central_bank"');
+    expect(profile).toContain('bis_rss_media_releases: "bank_for_international_settlements"');
+    expect(profile).toContain('bis_rss_central_banker_speeches: "bank_for_international_settlements"');
+    expect(profile).toContain('un_all_documents_rss: "united_nations"');
+    expect(profile).toContain('un_security_council_docs_rss: "united_nations"');
+    expect(profile).toContain('"nrcan_news_atom"');
+    expect(profile).toContain('"usgs_minerals_news_rss"');
   });
 
   it("is manual-only because partner refresh cadence is no longer a live intelligence cron", () => {
