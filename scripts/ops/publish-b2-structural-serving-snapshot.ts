@@ -8,8 +8,9 @@ const HISTORICAL_URL = "https://nqvpcbnnvjsrlvyxxevk.supabase.co";
 const HISTORICAL_PROJECT_REF = "nqvpcbnnvjsrlvyxxevk";
 const ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const BUCKET = "geomacro-private-archive";
-const SNAPSHOT_KEY = "geomacro-evidence/v1/structural/serving/latest.json.gz";
-const PROOF_KEY = "geomacro-evidence/v1/structural/serving/latest-proof.json";
+const LIVE_PREFIX = "geomacro-evidence/v1/live/structural/serving";
+const SNAPSHOT_KEY = `${LIVE_PREFIX}/latest.json.gz`;
+const PROOF_KEY = `${LIVE_PREFIX}/latest-proof.json`;
 const PAGE_SIZE = 500;
 const MAX_SOURCES = 5_000;
 const MAX_SOURCE_ROWS = 250_000;
@@ -373,26 +374,49 @@ if (!packed.length || packed.length > MAX_COMPRESSED_BYTES) {
   throw new Error("B2_STRUCTURAL_COMPRESSED_SIZE_INVALID");
 }
 const digest = sha256(packed);
-await b2.put(SNAPSHOT_KEY, packed);
-const readback = await b2.get(SNAPSHOT_KEY);
-if (readback.length !== packed.length || sha256(readback) !== digest) {
-  throw new Error("B2_STRUCTURAL_READBACK_HASH_INVALID");
+const stagingKey = `${LIVE_PREFIX}/staging/${digest}.json.gz`;
+
+// Fail closed before touching the canonical live object. The exact bytes are
+// first written to a non-serving staging key and independently read back.
+await b2.put(stagingKey, packed);
+const stagingReadback = await b2.get(stagingKey);
+if (stagingReadback.length !== packed.length || sha256(stagingReadback) !== digest) {
+  throw new Error("B2_STRUCTURAL_STAGING_READBACK_HASH_INVALID");
 }
-const restored = JSON.parse(gunzipSync(readback).toString("utf8"));
+const restoredStaging = JSON.parse(gunzipSync(stagingReadback).toString("utf8"));
 if (
-  restored?.schema !== payload.schema ||
-  restored?.generated_at !== generatedAt ||
-  restored?.source_project !== HISTORICAL_PROJECT_REF ||
-  restored?.country_profiles?.length !== profiles.length ||
-  restored?.coverage?.length !== coverage.length ||
-  restored?.direct_observations?.length !== direct.length
-) throw new Error("B2_STRUCTURAL_RESTORE_INVALID");
+  restoredStaging?.schema !== payload.schema ||
+  restoredStaging?.generated_at !== generatedAt ||
+  restoredStaging?.source_project !== HISTORICAL_PROJECT_REF ||
+  restoredStaging?.country_profiles?.length !== profiles.length ||
+  restoredStaging?.coverage?.length !== coverage.length ||
+  restoredStaging?.direct_observations?.length !== direct.length
+) throw new Error("B2_STRUCTURAL_STAGING_RESTORE_INVALID");
+
+// Promotion uses the already verified bytes. Runtime readers additionally
+// require the matching proof object below, so a failed promotion/readback can
+// never become serving truth.
+await b2.put(SNAPSHOT_KEY, stagingReadback);
+const liveReadback = await b2.get(SNAPSHOT_KEY);
+if (liveReadback.length !== packed.length || sha256(liveReadback) !== digest) {
+  throw new Error("B2_STRUCTURAL_LIVE_READBACK_HASH_INVALID");
+}
+const restoredLive = JSON.parse(gunzipSync(liveReadback).toString("utf8"));
+if (
+  restoredLive?.schema !== payload.schema ||
+  restoredLive?.generated_at !== generatedAt ||
+  restoredLive?.source_project !== HISTORICAL_PROJECT_REF ||
+  restoredLive?.country_profiles?.length !== profiles.length ||
+  restoredLive?.coverage?.length !== coverage.length ||
+  restoredLive?.direct_observations?.length !== direct.length
+) throw new Error("B2_STRUCTURAL_LIVE_RESTORE_INVALID");
 
 const proof = Buffer.from(JSON.stringify({
-  schema: "geomacro.structural-serving-snapshot-proof.v1",
+  schema: "geomacro.structural-serving-snapshot-proof.v2",
   generated_at: generatedAt,
   source_project: HISTORICAL_PROJECT_REF,
   snapshot_key: SNAPSHOT_KEY,
+  staging_key: stagingKey,
   compressed_sha256: digest,
   compressed_bytes: packed.length,
   raw_bytes: raw.length,
@@ -403,7 +427,7 @@ const proof = Buffer.from(JSON.stringify({
   coverage_rows: coverage.length,
   direct_observations: direct.length,
   commercial_boundary: "registry_active+production_approved+commercial_use+row_verified+quality_verified",
-  verification: "streaming-indexed-private-base-read+exact-commercial-gates+canonical-latest-per-key+bounded-per-source+full-b2-readback-sha256-plus-gzip-json-restore",
+  verification: "staging-put+staging-readback-sha256+gzip-json-restore+live-put+live-readback-sha256+proof-readback",
 }));
 await b2.put(PROOF_KEY, proof);
 const proofReadback = await b2.get(PROOF_KEY);
@@ -412,6 +436,10 @@ if (sha256(proofReadback) !== sha256(proof)) throw new Error("B2_STRUCTURAL_PROO
 console.log(JSON.stringify({
   ok: true,
   generated_at: generatedAt,
+  live_prefix: LIVE_PREFIX,
+  staging_key: stagingKey,
+  snapshot_key: SNAPSHOT_KEY,
+  proof_key: PROOF_KEY,
   eligible_sources: eligibleSourceIds.length,
   source_rows_scanned: sourceRowsScanned,
   latest_rows: latestRows.length,
@@ -419,5 +447,6 @@ console.log(JSON.stringify({
   coverage_rows: coverage.length,
   direct_observations: direct.length,
   compressed_bytes: packed.length,
-  b2_objects_verified: 2,
+  b2_objects_verified: 3,
+  proof_bound_runtime_read: true,
 }));
