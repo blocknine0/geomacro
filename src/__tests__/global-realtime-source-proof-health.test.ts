@@ -109,5 +109,14 @@ describe("global realtime source proof health classification", () => {
     expect(workflow).not.toContain("Validate scoped OIDC claims");
     expect(workflow).not.toContain("oidc-claims-summary.json");
     expect(workflow).not.toContain(".supabase.co/functions/v1/live-flash-corroborate");
+    expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
+    expect(workflow).toContain("LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres");
+    expect(workflow).toContain("B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com");
+    expect(workflow).toContain("B2_KEY_ID: ${{ secrets.B2_KEY_ID }}");
+    expect(workflow).toContain("B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}");
+    expect(workflow).toContain('export COUNTRY_RAW_SOURCE_SYNC_OUTPUT="country-raw-source-acceptance-${category}.json"');
+    expect(workflow).toContain('export COUNTRY_RAW_SOURCE_SYNC_OUTPUT="country-raw-source-final-${category}.json"');
+    expect(workflow).toContain("drain-live-structure.mjs --fragment-ids-file");
+    expect(workflow).not.toContain("Prove production private B2 archive reader");
   });
 });
