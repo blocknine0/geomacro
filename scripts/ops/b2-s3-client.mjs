@@ -225,9 +225,9 @@ export function createB2Client({
       .split("/")
       .map(encodeURIComponent)
       .join("/")}`;
+    consumeRequestBudget("native-read");
     let response;
     try {
-      consumeRequestBudget("native-read");
       response = await fetch(`${auth.downloadUrl}${nativePath}`, {
         method: "GET",
         headers: { Authorization: auth.token },
