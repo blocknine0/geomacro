@@ -15,8 +15,15 @@ describe("Intelligence orchestrator D1 control transport", () => {
     expect(workflow).toContain("Validate Supabase-independent scheduler runtime");
     expect(workflow).toContain("Probe optional Supabase data plane without blocking D1/B2 heartbeat");
     expect(workflow).toContain("GEOMACRO_SUPABASE_RESTRICTED_MODE=true");
-    expect(workflow).toContain("restricted_direct_postgres_safe_tasks");
+    expect(workflow).toContain("fixed_cardinality_source_heartbeat_allowed");
     expect(workflow).toContain("Run due intelligence tasks serially");
+    expect(orchestrator).toContain('key: "phase_a_heartbeat"');
+    expect(orchestrator).toContain("PHASE_A_HEARTBEAT_ONLY=1");
+    expect(orchestrator).toContain("restrictedDirectPostgresSafe: true");
+    for (const unsafe of ["gdelt_v2", "current_scoring", "rss_live"]) {
+      const marker = 'key: "' + unsafe + '",\n    restrictedDirectPostgresSafe: true';
+      expect(orchestrator).not.toContain(marker);
+    }
     expect(workflow.indexOf("Resolve production D1 control-plane database"))
       .toBeLessThan(workflow.indexOf("Run due intelligence tasks serially"));
   });
