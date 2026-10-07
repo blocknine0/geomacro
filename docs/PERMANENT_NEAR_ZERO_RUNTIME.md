@@ -121,6 +121,34 @@ Do not move the existing commerce ledger into D1. It already uses a SQLite-backe
 - Do not introduce an always-on VM or always-on Postgres database before workload/revenue requires it.
 - Upgrade the existing Cloudflare plan before adding a second database provider solely for quota.
 
+## Locked zero-cost operating profile — 2026-10-07
+
+The owner approved the zero-cost operating architecture for the controlled commercial launch. This section is normative until replaced by a later reviewed plan.
+
+The production goal is not to consume provider free ceilings. Geomacro must stay well below them and degrade nonessential work before customer-facing serving or integrity work is affected.
+
+### B2 transaction policy
+
+The active non-paying B2 account demonstrated that Class-B transaction count, rather than bandwidth, is the immediate bottleneck. A sample day reached 2,895 Class-B transactions while transferring only about 73 MB. Therefore:
+
+- every B2 client has a conservative hard request budget even when a workflow forgets to provide one;
+- explicit workflow budgets remain smaller than the provider ceiling and are not permission to consume the whole daily account allowance;
+- native authenticated read fallback consumes the same local budget as S3 reads;
+- once a credential proves that S3 reads return AccessDenied and native authenticated download succeeds, that client must reuse the native read path instead of repeating the failed S3 read for every object;
+- concurrent reads of the same object are single-flight;
+- hard provider caps remain fail-closed and are cached for the process;
+- immutable archival data should be bundled and content-addressed so one verified readback covers many members;
+- D1 stores compact hashes, pointers and verification state only; it never stores full raw/evidence/GRO payloads;
+- destructive cleanup still requires independently verified bytes and hashes. Quota reduction must never weaken deletion safety.
+
+The default per-process B2 request budget is intentionally conservative. Workflows that need a larger bounded batch must set an explicit reviewed budget. The design target for normal steady-state B2 reads is below 100 per day and preferably below 25 per day; the provider hard ceiling is not an operating target.
+
+### Hot-object evolution
+
+The launch architecture must not require a new paid account or billing action. If the existing Cloudflare account can later provision R2 inside the zero-spend policy, an R2 hot-object/cache adapter may be added behind the same object-store interface and proven in shadow mode first. Until that acceptance passes, B2 remains the durable object authority and production must stay within the bounded-read design above.
+
+No R2 activation, paid plan activation, partner allowance spend, x402 settlement, or user-fund movement is authorized by this operating plan.
+
 ## Revenue-stage upgrade
 
 The intended first paid infrastructure step is an in-place Cloudflare Workers plan upgrade. D1, Workers and Durable Objects stay in the same architecture. B2 stays as object storage unless a later measured workload proves a different store is economically better.

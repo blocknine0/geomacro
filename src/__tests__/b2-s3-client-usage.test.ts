@@ -6,6 +6,7 @@ const KEYS = [
   "B2_ARCHIVE_READ_APPLICATION_KEY",
   "B2_ARCHIVE_WRITE_KEY_ID",
   "B2_ARCHIVE_WRITE_APPLICATION_KEY",
+  "B2_REQUEST_BUDGET",
 ] as const;
 
 const original = Object.fromEntries(KEYS.map((key) => [key, process.env[key]]));
@@ -73,6 +74,24 @@ describe("B2 client read fallback usage metadata", () => {
 
 
 describe("B2 native readback fallback", () => {
+  it("uses a conservative default request budget when a workflow omits one", () => {
+    clearOptionalReadCredentials();
+    delete process.env.B2_REQUEST_BUDGET;
+    const client = createB2Client({
+      endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+      accessKey: "primary-key",
+      secretKey: "primary-secret",
+      bucket: "geomacro-private-archive",
+    });
+
+    expect(client.usage()).toMatchObject({
+      request_budget: 64,
+      default_request_budget: 64,
+      max_request_budget: 500,
+      requests_started: 0,
+    });
+  });
+
   it("uses Backblaze native authenticated download after S3 AccessDenied", async () => {
     clearOptionalReadCredentials();
 
@@ -130,6 +149,163 @@ describe("B2 native readback fallback", () => {
       native_read_fallback_attempts: 1,
       native_read_fallback_successes: 1,
     });
+  });
+
+
+  it("sticks to the proven native read path after the first S3 AccessDenied", async () => {
+    clearOptionalReadCredentials();
+    process.env.B2_REQUEST_BUDGET = "8";
+    const calls: string[] = [];
+
+    vi.stubGlobal("fetch", vi.fn(async (input, init = {}) => {
+      const url = String(input);
+      calls.push(url);
+
+      if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+        return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+      }
+      if (url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account") {
+        return Response.json({
+          authorizationToken: "token",
+          apiInfo: {
+            storageApi: {
+              downloadUrl: "https://f005.backblazeb2.com",
+              allowed: {
+                capabilities: ["readFiles"],
+                buckets: [{ name: "geomacro-private-archive" }],
+                namePrefix: "geomacro-evidence/v1/",
+              },
+            },
+          },
+        });
+      }
+      if (url.startsWith("https://f005.backblazeb2.com/file/")) {
+        return new Response(url.endsWith("first.json") ? "first" : "second", { status: 200 });
+      }
+      return new Response("unexpected", { status: 500 });
+    }));
+
+    const client = createB2Client({
+      endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+      accessKey: "primary-key",
+      secretKey: "primary-secret",
+      bucket: "geomacro-private-archive",
+    });
+
+    expect((await client.get("geomacro-evidence/v1/first.json")).toString()).toBe("first");
+    expect((await client.get("geomacro-evidence/v1/second.json")).toString()).toBe("second");
+
+    expect(calls.filter((url) => url.startsWith("https://s3.us-east-005.backblazeb2.com/"))).toHaveLength(1);
+    expect(calls.filter((url) => url.includes("b2_authorize_account"))).toHaveLength(1);
+    expect(calls.filter((url) => url.startsWith("https://f005.backblazeb2.com/file/"))).toHaveLength(2);
+    expect(client.usage()).toMatchObject({
+      requests_started: 3,
+      s3_requests_started: 1,
+      native_read_requests_started: 2,
+      native_preferred_credential_count: 1,
+    });
+  });
+
+  it("counts native fallback reads inside the same hard request budget", async () => {
+    clearOptionalReadCredentials();
+    process.env.B2_REQUEST_BUDGET = "2";
+    const calls: string[] = [];
+
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+        return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+      }
+      if (url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account") {
+        return Response.json({
+          authorizationToken: "token",
+          apiInfo: {
+            storageApi: {
+              downloadUrl: "https://f005.backblazeb2.com",
+              allowed: {
+                capabilities: ["readFiles"],
+                buckets: [{ name: "geomacro-private-archive" }],
+                namePrefix: "geomacro-evidence/v1/",
+              },
+            },
+          },
+        });
+      }
+      if (url.startsWith("https://f005.backblazeb2.com/file/")) {
+        return new Response("verified", { status: 200 });
+      }
+      return new Response("unexpected", { status: 500 });
+    }));
+
+    const client = createB2Client({
+      endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+      accessKey: "primary-key",
+      secretKey: "primary-secret",
+      bucket: "geomacro-private-archive",
+    });
+
+    await expect(client.get("geomacro-evidence/v1/first.json")).resolves.toBeInstanceOf(Buffer);
+    const callsAfterFirstRead = calls.length;
+    await expect(client.get("geomacro-evidence/v1/second.json"))
+      .rejects.toThrow("B2_REQUEST_BUDGET_EXHAUSTED");
+    expect(calls).toHaveLength(callsAfterFirstRead);
+    expect(client.usage()).toMatchObject({
+      requests_started: 2,
+      request_budget: 2,
+      s3_requests_started: 1,
+      native_read_requests_started: 1,
+    });
+  });
+
+  it("single-flights concurrent reads of the same required key", async () => {
+    clearOptionalReadCredentials();
+    process.env.B2_REQUEST_BUDGET = "4";
+    let nativeDownloads = 0;
+
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      const url = String(input);
+      if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+        return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+      }
+      if (url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account") {
+        return Response.json({
+          authorizationToken: "token",
+          apiInfo: {
+            storageApi: {
+              downloadUrl: "https://f005.backblazeb2.com",
+              allowed: {
+                capabilities: ["readFiles"],
+                buckets: [{ name: "geomacro-private-archive" }],
+                namePrefix: "geomacro-evidence/v1/",
+              },
+            },
+          },
+        });
+      }
+      if (url.startsWith("https://f005.backblazeb2.com/file/")) {
+        nativeDownloads += 1;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return new Response("same-bytes", { status: 200 });
+      }
+      return new Response("unexpected", { status: 500 });
+    }));
+
+    const client = createB2Client({
+      endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+      accessKey: "primary-key",
+      secretKey: "primary-secret",
+      bucket: "geomacro-private-archive",
+    });
+
+    const [a, b] = await Promise.all([
+      client.get("geomacro-evidence/v1/same.json"),
+      client.get("geomacro-evidence/v1/same.json"),
+    ]);
+    expect(a.toString()).toBe("same-bytes");
+    expect(b.toString()).toBe("same-bytes");
+    expect(nativeDownloads).toBe(1);
+    expect(client.usage().requests_started).toBe(2);
   });
 
   it("fails closed when native credentials lack readFiles", async () => {
