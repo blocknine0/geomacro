@@ -16,7 +16,8 @@ describe("Global Realtime Source Proof PR scoping", () => {
     expect(workflow).toContain("FULL_RAW_ACCEPTANCE=true");
     expect(workflow).toContain("FULL_RAW_ACCEPTANCE=false");
     expect(workflow).toContain("sync-country-raw-source-mesh");
-    expect(workflow).toContain("supabase/functions/live-flash-(ingest|corroborate)");
+    expect(workflow).toContain("supabase/functions/live-flash-ingest/*");
+    expect(workflow).toContain("supabase/functions/live-flash-corroborate/*");
     for (const step of [
       "Refresh all three raw runtime categories",
       "Drain acceptance fragments in parallel",
@@ -34,5 +35,7 @@ describe("Global Realtime Source Proof PR scoping", () => {
     expect(workflow).toContain("exact-head-changed-files.txt");
     expect(workflow).toContain("fetch-depth: 0");
     expect(workflow).toContain('git diff --name-only "$base" "$head"');
+    expect(workflow).toContain("while IFS= read -r file");
+    expect(workflow).toContain('if [[ "$full_raw" == "true" ]]');
   });
 });
