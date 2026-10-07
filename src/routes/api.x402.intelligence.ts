@@ -41,6 +41,8 @@ import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const PRODUCT_ID = "geomacro_adaptive_risk_intelligence_v1";
+export const CANONICAL_MAINNET_INTELLIGENCE_PATH = "/api/v1/intelligence/query" as const;
+export const LEGACY_X402_INTELLIGENCE_PATH = "/api/x402/intelligence" as const;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -148,7 +150,7 @@ function adaptiveBazaarExtension(planHash: string) {
 }
 
 function adaptivePaymentRequired(request: Request, config: CoinbaseX402Config, planHash: string) {
-  const resourceUrl = new URL("/api/x402/intelligence", request.url).toString();
+  const resourceUrl = new URL(CANONICAL_MAINNET_INTELLIGENCE_PATH, request.url).toString();
   return {
     x402Version: 2,
     resource: {
@@ -231,9 +233,7 @@ function finalResponse(
   return response;
 }
 
-export const Route = createFileRoute("/api/x402/intelligence")({
-  server: {
-    handlers: {
+export const mainnetIntelligenceHandlers = {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       GET: async ({ request }) => {
         let config: CoinbaseX402Config | null;
@@ -245,7 +245,8 @@ export const Route = createFileRoute("/api/x402/intelligence")({
           ok: true,
           service: "Geomacro Adaptive Risk Intelligence",
           product: PRODUCT_ID,
-          endpoint: new URL("/api/x402/intelligence", request.url).toString(),
+          endpoint: new URL(CANONICAL_MAINNET_INTELLIGENCE_PATH, request.url).toString(),
+          legacy_compatibility_endpoint: new URL(LEGACY_X402_INTELLIGENCE_PATH, request.url).toString(),
           availability_endpoint: new URL("/api/x402/risk/availability", request.url).toString(),
           x402_version: 2,
           environment: config.environment,
@@ -483,6 +484,10 @@ export const Route = createFileRoute("/api/x402/intelligence")({
 
         return json(finalResponse(prepared, settlement, config), 200, { "PAYMENT-RESPONSE": coinbaseX402PaymentResponseHeader(settlement) });
       },
-    },
+};
+
+export const Route = createFileRoute(LEGACY_X402_INTELLIGENCE_PATH)({
+  server: {
+    handlers: mainnetIntelligenceHandlers,
   },
 });
