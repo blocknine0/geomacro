@@ -137,6 +137,8 @@ const replay = await claimAgentCommerceDelivery({
 if (
   replay.disposition !== "REPLAY" ||
   replay.response_sha256 !== prepared.responseSha256 ||
+  replay.request_fingerprint !== requestA ||
+  replay.product_id !== common.productId ||
   replay.settlement_reference !== settlementReference ||
   stableCommerceJson(replay.response_payload) !== stableCommerceJson(responsePayload)
 ) {
@@ -238,6 +240,13 @@ console.log(JSON.stringify({
   complete: true,
   replay: "REPLAY",
   exact_response_replay: true,
+  exactly_one_delivery_record: concurrentDispositions.filter((item) => item === "CLAIMED").length === 1,
+  one_call_entitlement_bound: replay.request_fingerprint === requestA && replay.product_id === common.productId,
+  settlement_entitlement_response_correlated:
+    replay.settlement_reference === settlementReference &&
+    replay.response_sha256 === prepared.responseSha256 &&
+    replay.request_fingerprint === requestA &&
+    replay.product_id === common.productId,
   duplicate_settlement_rejected: true,
   failed_claim_reclaim: true,
   worker_outage_fails_closed: true,
