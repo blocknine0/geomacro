@@ -12,9 +12,11 @@ const PROOF_KEY = "geomacro-evidence/v1/live/public-intelligence/latest-proof.js
 const CLASSIFICATION_VERSION = "event-severity-v1.0.5";
 const EVENT_EXPORT_EVIDENCE_CONTRACT = "gdelt-v2-event-export-conflict-root-v1";
 const DOC_EVIDENCE_CONTRACT = "gdelt-doc-v2-conflict-coverage-v1";
+const GEO_EVIDENCE_CONTRACT = "gdelt-geo-v2-global-conflict-coverage-v1";
 const ALLOWED_CURRENT_EVIDENCE_CONTRACTS = new Set([
   EVENT_EXPORT_EVIDENCE_CONTRACT,
   DOC_EVIDENCE_CONTRACT,
+  GEO_EVIDENCE_CONTRACT,
 ]);
 const REQUIRED_CATEGORIES = ["geopolitics", "macro", "rare_earth"];
 const ROWS_PER_CATEGORY = 40;
