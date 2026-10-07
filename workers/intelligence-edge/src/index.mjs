@@ -5,6 +5,11 @@ const B2_BUCKET = "geomacro-private-archive";
 const LIVE_KEY = "geomacro-evidence/v1/live/public-intelligence/latest.json.gz";
 const PROOF_KEY = "geomacro-evidence/v1/live/public-intelligence/latest-proof.json";
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
+const HOT_OVERLAY_URL =
+  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/intelligence-overlay";
+const HOT_OVERLAY_SCHEMA = "geomacro.public-intelligence-live-observed.v1";
+const HOT_OVERLAY_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+const HOT_OVERLAY_MAX_ROWS = 24;
 const MAX_COMPRESSED_BYTES = 12_000_000;
 const MAX_DECOMPRESSED_BYTES = 40_000_000;
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -130,6 +135,92 @@ function validRows(rows) {
   return ["geopolitics", "macro", "rare_earth"].every((category) => scoredCategories.has(category));
 }
 
+function validHotOverlayRows(rows, now = Date.now()) {
+  if (!Array.isArray(rows) || rows.length < 1 || rows.length > HOT_OVERLAY_MAX_ROWS) return false;
+  const seen = new Set();
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+    const allowedKeys = new Set([
+      "id", "source_title", "summary", "category", "severity", "delta",
+      "created_at", "published_at", "public_status",
+    ]);
+    if (Object.keys(row).some((key) => !allowedKeys.has(key))) return false;
+    const id = String(row.id ?? "").trim();
+    const title = String(row.source_title ?? "").replace(/\s+/g, " ").trim();
+    const timestamp = Date.parse(String(row.published_at ?? row.created_at ?? ""));
+    if (
+      !id ||
+      !title.startsWith("Geomacro observes ") ||
+      row.category !== "geopolitics" ||
+      row.public_status !== "live_observed" ||
+      row.severity !== null ||
+      row.delta !== null ||
+      !Number.isFinite(timestamp) ||
+      timestamp > now + 5 * 60_000 ||
+      now - timestamp > HOT_OVERLAY_MAX_AGE_MS
+    ) return false;
+    const key = `${id}|${title.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+  }
+  return true;
+}
+
+async function readHotOverlay() {
+  try {
+    const response = await fetch(HOT_OVERLAY_URL, {
+      method: "GET",
+      headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+      signal: AbortSignal.timeout(3_500),
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const generatedAt = Date.parse(String(payload?.generated_at ?? ""));
+    const sourceBatchAt = Date.parse(String(payload?.current_source_batch_at ?? ""));
+    if (
+      payload?.ok !== true ||
+      payload?.schema !== HOT_OVERLAY_SCHEMA ||
+      payload?.source_id !== "gdelt_v2_events" ||
+      payload?.synthetic_score !== false ||
+      payload?.raw_source_headlines_exposed !== false ||
+      payload?.provider_identity_exposed !== false ||
+      !Number.isFinite(generatedAt) ||
+      !Number.isFinite(sourceBatchAt) ||
+      generatedAt > Date.now() + 5 * 60_000 ||
+      sourceBatchAt > Date.now() + 5 * 60_000 ||
+      Date.now() - generatedAt > HOT_OVERLAY_MAX_AGE_MS ||
+      Date.now() - sourceBatchAt > HOT_OVERLAY_MAX_AGE_MS ||
+      !validHotOverlayRows(payload?.rows)
+    ) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+async function applyHotOverlay(live) {
+  const overlay = await readHotOverlay();
+  if (!overlay) return { live, used: false };
+
+  const scoredRows = Array.isArray(live?.rows)
+    ? live.rows.filter((row) => row?.public_status !== "live_observed")
+    : [];
+  const rows = [...overlay.rows, ...scoredRows];
+  if (!validRows(rows)) throw new Error("INTELLIGENCE_HOT_OVERLAY_COMPOSITION_INVALID");
+
+  return {
+    used: true,
+    live: {
+      ...live,
+      generated_at: overlay.generated_at,
+      current_evidence_contract: overlay.current_evidence_contract,
+      current_overlay_authority: "cloudflare-d1-control-plane",
+      current_overlay_source_batch_at: overlay.current_source_batch_at,
+      rows,
+    },
+  };
+}
+
 async function buildContinuityResponse() {
   if (
     continuity?.schema !== "geomacro.edge-continuity.v1" ||
@@ -154,7 +245,8 @@ async function buildContinuityResponse() {
     !validRows(live?.rows)
   ) throw new Error("INTELLIGENCE_CONTINUITY_PAYLOAD_INVALID");
 
-  return new Response(continuity.payload_json, {
+  const projected = await applyHotOverlay(live);
+  return new Response(JSON.stringify(projected.live), {
     status: 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
@@ -162,8 +254,9 @@ async function buildContinuityResponse() {
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-intelligence-edge",
       "x-geomacro-continuity": "github-actions-b2-readback-verified-projection",
+      "x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none",
       "access-control-allow-origin": "*",
-      "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity",
+      "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity, x-geomacro-current-overlay",
     },
   });
 }
@@ -225,15 +318,17 @@ async function buildResponse(env) {
     !validRows(rows)
   ) throw new Error("INTELLIGENCE_EDGE_BINDING_INVALID");
 
-  return new Response(JSON.stringify(live), {
+  const projected = await applyHotOverlay(live);
+  return new Response(JSON.stringify(projected.live), {
     status: 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-intelligence-edge",
+      "x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none",
       "access-control-allow-origin": "*",
-      "access-control-expose-headers": "x-geomacro-authority",
+      "access-control-expose-headers": "x-geomacro-authority, x-geomacro-current-overlay",
     },
   });
 }
@@ -247,7 +342,7 @@ export default {
     // L2 continuity for any already-warm POP. Workers Cache is enabled in
     // wrangler and sits in front of this entrypoint as the global L1.
     const cache = caches.default;
-    const cacheKey = new Request(`${url.origin}/intelligence`, { method: "GET" });
+    const cacheKey = new Request(`${url.origin}/intelligence?projection=d1-hot-v1`, { method: "GET" });
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
 
