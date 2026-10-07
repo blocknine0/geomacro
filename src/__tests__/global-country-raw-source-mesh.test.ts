@@ -51,6 +51,7 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("api.gdeltproject.org");
     expect(worker).toContain("alreadyFreshNonGdelt");
     expect(worker).toContain("NO_FRESH_NON_GDELT_TARGET_SUCCEEDED");
+    expect(worker).toContain("/^B2_NATIVE_[A-Za-z0-9_:-]+$/");
     expect(worker).toContain("RAW_SOURCE_CELL_MAX_ATTEMPTS");
     expect(worker).toContain("nonGdeltCandidates");
   });
