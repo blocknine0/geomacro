@@ -68,6 +68,13 @@ describe("public Intelligence B2-cap hot-overlay recovery", () => {
     expect(publisher).toContain("if (!reason) throw error");
   });
 
+  it("parses multi-line publisher stdout so recovery proof is not lost behind overlay diagnostics", () => {
+    expect(runner).toContain(".split(/\\r?\\n/u)");
+    expect(runner).not.toContain(".split(/\\\\r?\\\\n/u)");
+    expect(runner).toContain('"geomacro.public-intelligence-overlay-recovery.v1"');
+    expect(runner).toContain(".at(-1)");
+  });
+
   it("keeps normal full-B2 publication and recovery as distinct proof schemas", () => {
     expect(publisher).toContain(
       'schema: "geomacro.public-intelligence-direct-postgres-publish.v2"',
