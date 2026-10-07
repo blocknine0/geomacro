@@ -83,6 +83,12 @@ describe("Geomacro central security route boundary", () => {
     ).toBe(true);
     expect(
       isCoinbaseTestnetLocalSecurityFallbackAllowed(
+        "/api/v1/intelligence/query",
+        "payment",
+      ),
+    ).toBe(true);
+    expect(
+      isCoinbaseTestnetLocalSecurityFallbackAllowed(
         "/api/goat/pilot/order",
         "payment",
       ),
