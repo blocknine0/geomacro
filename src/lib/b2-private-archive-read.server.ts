@@ -5,6 +5,13 @@ const B2_BUCKET = "geomacro-private-archive";
 const B2_REGION = "us-east-005";
 const DEFAULT_TIMEOUT_MS = 20_000;
 const DEFAULT_MAX_BYTES = 20_000_000;
+const B2_NATIVE_AUTHORIZE_URL = "https://api.backblazeb2.com/b2api/v4/b2_authorize_account";
+const nativeAuthCache = new Map<string, Promise<{
+  token: string;
+  downloadUrl: string;
+  namePrefix: string;
+}>>();
+const nativePreferredCredentials = new Set<string>();
 
 const sha256 = (value: Buffer | string) =>
   createHash("sha256").update(value).digest("hex");
@@ -66,6 +73,151 @@ function validateKey(key: string) {
   return normalized;
 }
 
+function credentialFingerprint(accessKey: string, secretKey: string) {
+  return `${accessKey}\u0000${secretKey}`;
+}
+
+function safeNativeErrorCode(value: unknown) {
+  const source = String(value ?? "");
+  try {
+    const parsed = JSON.parse(source);
+    const code = typeof parsed?.code === "string" ? parsed.code : "";
+    if (/^[A-Za-z0-9_.:-]+$/.test(code)) return code;
+  } catch {}
+  return "unknown";
+}
+
+async function authorizeNativeRead(
+  accessKey: string,
+  secretKey: string,
+  timeoutMs: number,
+) {
+  const fingerprint = credentialFingerprint(accessKey, secretKey);
+  const existing = nativeAuthCache.get(fingerprint);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    let response: Response;
+    try {
+      response = await fetch(B2_NATIVE_AUTHORIZE_URL, {
+        method: "GET",
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${accessKey}:${secretKey}`, "utf8").toString("base64")}`,
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch {
+      throw new Error("B2_PRIVATE_ARCHIVE_NATIVE_AUTHORIZE_NETWORK_FAILED");
+    }
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(
+        `B2_PRIVATE_ARCHIVE_NATIVE_AUTHORIZE_FAILED_${response.status}_${safeNativeErrorCode(body)}`,
+      );
+    }
+
+    let payload: any;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error("B2_PRIVATE_ARCHIVE_NATIVE_AUTHORIZE_RESPONSE_INVALID");
+    }
+
+    const storage = payload?.apiInfo?.storageApi;
+    const token = String(payload?.authorizationToken ?? "").trim();
+    const downloadUrl = String(storage?.downloadUrl ?? "").trim();
+    const capabilities = Array.isArray(storage?.allowed?.capabilities)
+      ? storage.allowed.capabilities.map((value: unknown) => String(value))
+      : [];
+    const allowedBuckets = Array.isArray(storage?.allowed?.buckets)
+      ? storage.allowed.buckets
+          .map((entry: any) => String(entry?.name ?? "").trim())
+          .filter(Boolean)
+      : [];
+    const namePrefix = String(storage?.allowed?.namePrefix ?? "").trim();
+
+    if (!token || !downloadUrl) {
+      throw new Error("B2_PRIVATE_ARCHIVE_NATIVE_AUTHORIZE_RESPONSE_INVALID");
+    }
+    if (!capabilities.includes("readFiles")) {
+      throw new Error("B2_PRIVATE_ARCHIVE_NATIVE_READ_CAPABILITY_MISSING");
+    }
+    if (allowedBuckets.length && !allowedBuckets.includes(B2_BUCKET)) {
+      throw new Error("B2_PRIVATE_ARCHIVE_NATIVE_BUCKET_NOT_ALLOWED");
+    }
+
+    let parsedDownload: URL;
+    try {
+      parsedDownload = new URL(downloadUrl);
+    } catch {
+      throw new Error("B2_PRIVATE_ARCHIVE_NATIVE_DOWNLOAD_URL_INVALID");
+    }
+    if (
+      parsedDownload.protocol !== "https:" ||
+      !/(^|\.)backblazeb2\.com$/i.test(parsedDownload.hostname)
+    ) {
+      throw new Error("B2_PRIVATE_ARCHIVE_NATIVE_DOWNLOAD_URL_INVALID");
+    }
+
+    return {
+      token,
+      downloadUrl: parsedDownload.origin,
+      namePrefix,
+    };
+  })();
+
+  nativeAuthCache.set(fingerprint, promise);
+  try {
+    return await promise;
+  } catch (error) {
+    nativeAuthCache.delete(fingerprint);
+    throw error;
+  }
+}
+
+async function readNativeB2Object(
+  key: string,
+  accessKey: string,
+  secretKey: string,
+  timeoutMs: number,
+  maxBytes: number,
+) {
+  const auth = await authorizeNativeRead(accessKey, secretKey, timeoutMs);
+  if (auth.namePrefix && !key.startsWith(auth.namePrefix)) {
+    throw new Error("B2_PRIVATE_ARCHIVE_NATIVE_PREFIX_NOT_ALLOWED");
+  }
+
+  const path = `/file/${encodeURIComponent(B2_BUCKET)}/${key
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/")}`;
+
+  let response: Response;
+  try {
+    response = await fetch(`${auth.downloadUrl}${path}`, {
+      method: "GET",
+      headers: { Authorization: auth.token },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    throw new Error("B2_PRIVATE_ARCHIVE_NATIVE_GET_NETWORK_FAILED");
+  }
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `B2_PRIVATE_ARCHIVE_NATIVE_GET_FAILED_${response.status}_${safeNativeErrorCode(body)}`,
+    );
+  }
+
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (!bytes.length || bytes.length > maxBytes) {
+    throw new Error("B2_PRIVATE_ARCHIVE_SIZE_INVALID");
+  }
+  return bytes;
+}
+
 export async function readPrivateB2Object(
   key: string,
   options: { timeoutMs?: number; maxBytes?: number } = {},
@@ -85,6 +237,21 @@ export async function readPrivateB2Object(
   );
   const normalizedKey = validateKey(key);
   const { accessKey, secretKey } = readCredentials();
+  const fingerprint = credentialFingerprint(accessKey, secretKey);
+
+  if (nativePreferredCredentials.has(fingerprint)) {
+    try {
+      return await readNativeB2Object(
+        normalizedKey,
+        accessKey,
+        secretKey,
+        timeoutMs,
+        maxBytes,
+      );
+    } catch {
+      nativePreferredCredentials.delete(fingerprint);
+    }
+  }
 
   const path = `/${[B2_BUCKET, ...normalizedKey.split("/")].map(encodeURIComponent).join("/")}`;
   const host = new URL(B2_ENDPOINT).host;
@@ -135,6 +302,23 @@ export async function readPrivateB2Object(
   });
 
   if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    const accessDenied =
+      response.status === 403 &&
+      /<Code>AccessDenied<\/Code>/i.test(body);
+
+    if (accessDenied) {
+      const bytes = await readNativeB2Object(
+        normalizedKey,
+        accessKey,
+        secretKey,
+        timeoutMs,
+        maxBytes,
+      );
+      nativePreferredCredentials.add(fingerprint);
+      return bytes;
+    }
+
     throw new Error(`B2_PRIVATE_ARCHIVE_GET_FAILED_${response.status}`);
   }
 
