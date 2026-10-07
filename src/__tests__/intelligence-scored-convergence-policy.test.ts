@@ -12,6 +12,9 @@ describe("Intelligence scored/current convergence policy", () => {
     expect(workflow).toContain("body?.mode !== 'verified_b2_plus_live_observed'");
     expect(workflow).toContain("proof.b2_readback_verified !== true");
     expect(workflow).toContain("proof.live_observed_unscored !== true");
+    expect(workflow).toContain("GEOMACRO_COMMERCE_LEDGER_TOKEN");
+    expect(workflow).toContain("seq 1 40");
+    expect(workflow).toContain("strictly longer than that TTL");
   });
 
   it("matches outside-in website health policy", () => {
