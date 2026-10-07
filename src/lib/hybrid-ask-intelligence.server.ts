@@ -1,5 +1,6 @@
 import { readB2PublicIntelligence, readB2PublicRisk } from "./b2-live.server";
 import { riskIndicesFromGlobalRisk } from "./risk-indices-from-global-risk";
+import type { PublicRiskIndices } from "./risk-indices.types";
 import type { AskAnswer } from "./ask-intelligence.server";
 
 type PublicFinding = {
@@ -70,6 +71,59 @@ const STOPWORDS = new Set([
 
 const FRESHNESS_RE = /\b(now|today|latest|current|currently|real[ -]?time|breaking|recent|recently|last\s+\d+\s*(minute|minutes|hour|hours|day|days)|past\s+\d+\s*(minute|minutes|hour|hours|day|days))\b/i;
 const RISK_INDEX_RE = /\b(risk\s+indices?|risk\s+index|geopolitical\s+risk|macro(?:economic)?\s+risk|critical[- ]minerals?\s+risk)\b/i;
+
+const RISK_INDICES_EDGE_URL =
+  "https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices";
+const RISK_INDICES_EDGE_AUTHORITY = "backblaze-b2-risk-indices-edge";
+const RISK_INDICES_EDGE_SCHEMA = "geomacro.public-risk-indices-live.v1";
+const RISK_INDICES_EDGE_PROJECT = "ldpwajisioljyjtojvfx";
+const RISK_INDICES_EDGE_TIMEOUT_MS = 4_000;
+
+function validRiskIndices(data: PublicRiskIndices | null | undefined): data is PublicRiskIndices {
+  if (
+    !data ||
+    data.verificationStatus !== "verified" ||
+    !Array.isArray(data.indices) ||
+    data.indices.length !== 3
+  ) return false;
+  const expected = new Set(["geopolitics", "macro", "critical_minerals"]);
+  for (const index of data.indices) {
+    if (!expected.delete(index.key)) return false;
+    if (
+      index.status !== "available" ||
+      !Number.isFinite(Number(index.score))
+    ) return false;
+  }
+  return expected.size === 0;
+}
+
+async function readRiskIndicesEdge(): Promise<PublicRiskIndices | null> {
+  try {
+    const response = await fetch(RISK_INDICES_EDGE_URL, {
+      method: "GET",
+      headers: { accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(RISK_INDICES_EDGE_TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+    if (response.headers.get("x-geomacro-authority") !== RISK_INDICES_EDGE_AUTHORITY) {
+      return null;
+    }
+    const body = await response.json() as {
+      schema?: string;
+      source_project?: string;
+      data?: PublicRiskIndices;
+    };
+    if (
+      body.schema !== RISK_INDICES_EDGE_SCHEMA ||
+      body.source_project !== RISK_INDICES_EDGE_PROJECT ||
+      !validRiskIndices(body.data)
+    ) return null;
+    return body.data;
+  } catch {
+    return null;
+  }
+}
 
 function termsOf(question: string) {
   return Array.from(new Set(
@@ -170,10 +224,17 @@ function b2StoredRows(rows: Awaited<ReturnType<typeof readB2PublicIntelligence>>
 
 async function riskIndexAnswer(question: string): Promise<AskAnswer | null> {
   if (!RISK_INDEX_RE.test(question)) return null;
-  const risk = await readB2PublicRisk();
-  if (!risk) return null;
 
-  const projected = riskIndicesFromGlobalRisk(risk);
+  // The Cloudflare edge validates the B2 proof and keeps the verified package
+  // in edge cache. Ask should use that hot path before touching B2 directly.
+  // Direct B2 remains a bounded recovery path if the edge itself is unavailable.
+  let projected = await readRiskIndicesEdge();
+  if (!projected) {
+    const risk = await readB2PublicRisk();
+    if (!risk) return null;
+    projected = riskIndicesFromGlobalRisk(risk);
+  }
+
   const q = question.toLowerCase();
   const requested = projected.indices.filter((index) => {
     if (/geopolit/.test(q)) return index.key === "geopolitics";
@@ -194,7 +255,7 @@ async function riskIndexAnswer(question: string): Promise<AskAnswer | null> {
   return {
     summary: `Geomacro's latest verified Risk Indices package shows ${levels.join("; ")}.`,
     what_changed: /\b(changed|change|movement|moved)\b/i.test(question)
-      ? "The B2 continuity package preserves the verified current category levels but does not contain standalone per-index score-to-score change history. Geomacro therefore does not infer a movement from the historical combined-index attribution."
+      ? "The verified continuity package preserves the current category levels but does not contain standalone per-index score-to-score change history. Geomacro therefore does not infer a movement from the historical combined-index attribution."
       : `Verified category levels: ${levels.join("; ")}.`,
     why_it_matters: leadingEvents.length
       ? `Leading verified context includes: ${leadingEvents.slice(0, 3).join("; ")}.`
