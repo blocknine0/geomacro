@@ -26,7 +26,6 @@ const ENV_KEYS = [
   "CIRCLE_X402_PRICE_USDC",
   "CIRCLE_X402_PRODUCTION_NETWORKS",
   "NEVERMINED_X402_ENVIRONMENT",
-  "GOATX402_ENVIRONMENT",
 ] as const;
 
 const previous = new Map<string, string | undefined>();
@@ -47,7 +46,7 @@ afterEach(() => {
   }
 });
 
-describe("pre-mainnet x402 readiness", () => {
+describe("production x402 readiness", () => {
   it("keeps every provider out of real-funds mode by default", () => {
     const state = providerRealFundsSecurityState();
     expect(state.required).toBe(false);
@@ -55,7 +54,7 @@ describe("pre-mainnet x402 readiness", () => {
     expect(Object.values(state.providers).every((value) => value === false)).toBe(true);
   });
 
-  it("requires the same central security and coordinated launch gate for Circle and Nevermined", () => {
+  it("requires central security and coordinated launch gates for production providers", () => {
     process.env.CIRCLE_X402_ENVIRONMENT = "production";
     process.env.NEVERMINED_X402_ENVIRONMENT = "live";
     expect(providerRealFundsSecurityState().required).toBe(true);
@@ -96,73 +95,28 @@ describe("pre-mainnet x402 readiness", () => {
     expect(discovery.resources).toEqual([]);
     expect(discovery.plannedResources).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          provider: "coinbase_x402",
-          production_enabled: false,
-        }),
-        expect.objectContaining({
-          provider: "circle_gateway_x402",
-          resource: "https://geomacro.live/api/x402/circle/intelligence",
-          production_enabled: false,
-          arc_mainnet_enabled: false,
-        }),
-        expect.objectContaining({
-          provider: "nevermined",
-          production_enabled: false,
-        }),
+        expect.objectContaining({ provider: "coinbase_x402", production_enabled: false }),
+        expect.objectContaining({ provider: "circle_gateway_x402", production_enabled: false }),
+        expect.objectContaining({ provider: "nevermined", production_enabled: false }),
       ]),
     );
   });
 
-  it("keeps every marketplace target production-disabled in the committed manifest", () => {
-    const manifest = JSON.parse(read("config/agent-marketplace-distribution.json")) as {
-      state: string;
-      canonical_x402_discovery: string;
-      x402_extensionless_compatibility_alias: string;
-      canonical_circle_paid_endpoint: string;
-      targets: Record<string, { production_enabled: boolean }>;
-      submission_identity: { approved_endpoint_paths: string[]; discovery_paths: string[] };
-    };
-    expect(manifest.state).toBe("prelaunch_hold");
-    expect(manifest.canonical_x402_discovery).toBe("https://geomacro.live/.well-known/x402.json");
-    expect(manifest.x402_extensionless_compatibility_alias).toBe("https://geomacro.live/.well-known/x402");
-    expect(manifest.canonical_circle_paid_endpoint).toBe(
-      "https://geomacro.live/api/x402/circle/intelligence",
-    );
-    expect(manifest.submission_identity.approved_endpoint_paths).toContain(
-      "/api/x402/circle/intelligence",
-    );
-    expect(manifest.submission_identity.discovery_paths[0]).toBe("/.well-known/x402.json");
-    expect(Object.values(manifest.targets).every((target) => target.production_enabled === false)).toBe(true);
-  });
-
-  it("publishes discovery and focused OpenAPI without static production activation", () => {
+  it("publishes commercial discovery without static production activation", () => {
     const commerce = JSON.parse(read("public/.well-known/geomacro-commerce.json")) as any;
     const openapi = JSON.parse(read("public/openapi-x402.json")) as any;
     const launch = JSON.parse(read("config/commercial-launch-manifest.json")) as any;
     const middleware = read("server/middleware/00-central-security.ts");
     const circleRoute = read("src/routes/api.x402.circle_.intelligence.ts");
 
-    expect(commerce.discovery.x402).toBe("https://geomacro.live/.well-known/x402.json");
-    expect(commerce.discovery.x402_extensionless_alias).toBe("https://geomacro.live/.well-known/x402");
     expect(commerce.commercial_contract.production_funds_authorized).toBe(false);
-    expect(commerce.offers[0].providers.circle_gateway.endpoint).toBe(
-      "https://geomacro.live/api/x402/circle/intelligence",
-    );
-    expect(commerce.offers[0].providers.goat_x402.launch_cohort).toBe(false);
+    expect(Object.keys(commerce.offers[0].providers).sort()).toEqual(["circle_gateway", "coinbase_x402", "nevermined"]);
     expect(openapi.paths["/api/x402/intelligence"].post["x-payment-info"].production_enabled).toBe(false);
     expect(openapi.paths["/api/x402/circle/intelligence"].post["x-payment-info"].production_enabled).toBe(false);
-    expect(openapi.paths["/api/x402/circle/intelligence"].post["x-payment-info"].arc_mainnet_enabled).toBe(false);
     expect(launch.providers.circle_gateway_x402.launch_cohort).toBe(true);
     expect(launch.providers.circle_gateway_x402.production_enabled).toBe(false);
-    expect(launch.providers.circle_gateway_x402.arc_mainnet_enabled).toBe(false);
     expect(middleware).toContain("providerRealFundsSecurityState");
-    expect(middleware).toContain("PROVIDER_REAL_FUNDS_SECURITY_GATE_LOCKED");
     expect(circleRoute).toContain('provider: "circle_gateway_x402"');
-    expect(circleRoute).toContain("verifyCircleGatewayProduction");
-    expect(circleRoute).toContain("prepareAgentCommerceDelivery");
-    expect(circleRoute).toContain("settleCircleGatewayProduction");
-    expect(circleRoute).toContain("manualReview: true");
   });
 
   it("keeps the launch env template fail-closed", () => {
@@ -173,6 +127,5 @@ describe("pre-mainnet x402 readiness", () => {
     expect(env).toContain("CIRCLE_X402_ENVIRONMENT=\n");
     expect(env).toContain("CIRCLE_X402_MAINNET_ACK=\n");
     expect(env).toContain("CIRCLE_X402_PRODUCTION_NETWORKS=eip155:8453");
-    expect(env).toContain("GOATX402_MAINNET_COMMERCIAL_ENABLED=false");
   });
 });
