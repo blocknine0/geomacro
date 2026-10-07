@@ -103,7 +103,7 @@ export const Route = createFileRoute("/api/x402/risk")({
           role: config.environment === "production" ? "legacy_testnet_acceptance_only" : "base_sepolia_acceptance",
           x402_version: 2,
           endpoint: new URL("/api/x402/risk", request.url).toString(),
-          production_endpoint: new URL("/api/x402/intelligence", request.url).toString(),
+          production_endpoint: new URL("/api/v1/intelligence/query", request.url).toString(),
           availability_endpoint: new URL("/api/x402/risk/availability", request.url).toString(),
           environment: config.environment,
           network: config.network,
@@ -131,7 +131,7 @@ export const Route = createFileRoute("/api/x402/risk")({
         if (!config) return json({ ok: false, error: { code: "COINBASE_X402_NOT_CONFIGURED", message: "Coinbase x402 is not enabled." }, execution_authorized: false }, 503);
 
         // The legacy acceptance resource can never take real mainnet USDC.
-        // Production is exclusively routed through /api/x402/intelligence,
+        // Production is exclusively routed through /api/v1/intelligence/query,
         // where query-specific coverage/licensing/freshness checks run before 402.
         if (config.environment === "production") {
           return json({
@@ -140,9 +140,9 @@ export const Route = createFileRoute("/api/x402/risk")({
             payment_required_now: false,
             error: {
               code: "LEGACY_X402_PRODUCTION_DISABLED",
-              message: "Use /api/x402/intelligence after a successful /api/x402/risk/availability check.",
+              message: "Use /api/v1/intelligence/query after a successful /api/x402/risk/availability check.",
             },
-            production_endpoint: new URL("/api/x402/intelligence", request.url).toString(),
+            production_endpoint: new URL("/api/v1/intelligence/query", request.url).toString(),
             execution_authorized: false,
           }, 410);
         }
