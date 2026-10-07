@@ -11,8 +11,12 @@ describe("Global Realtime Source Proof change scoping", () => {
     expect(workflow).toContain("D1_ONLY_FREEZE_STILL_PRESENT");
     expect(workflow).toContain("SAFE_TASK_NOT_CLASSIFIED");
     expect(workflow).toContain("UNSAFE_TASK_CLASSIFIED");
-    expect(workflow).toContain('const safe = ["phase_a_heartbeat"]');
-    expect(workflow).toContain('["production_readiness", "gdelt_gal", "gdelt_v2", "current_scoring", "rss_live", "country_raw_mesh", "open_realtime_mesh", "realtime_fanout", "news_ingest"]');
+    expect(workflow).toContain('const safe = ["phase_a_heartbeat", "gdelt_gal"]');
+    expect(workflow).toContain('["production_readiness", "gdelt_v2", "current_scoring", "rss_live", "country_raw_mesh", "open_realtime_mesh", "realtime_fanout", "news_ingest"]');
+    expect(workflow).toContain("GDELT_GAL_RESTRICTED_BOUNDARY_MISSING");
+    expect(workflow).toContain('"scripts/run-gdelt-gal-cycle.mjs"');
+    expect(workflow).toContain('workflow.includes("GRI_DB_MODE: direct_postgres")');
+    expect(workflow).toContain('workflow.includes("B2_GDELT_PRIMARY: \\"1\\\"")');
   });
 
   it("runs the bounded source heartbeat on exact head without enabling raw writers", () => {

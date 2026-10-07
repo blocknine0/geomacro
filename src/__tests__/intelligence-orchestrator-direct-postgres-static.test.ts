@@ -19,6 +19,7 @@ describe("Intelligence orchestrator D1 control transport", () => {
     expect(workflow).toContain("Run due intelligence tasks serially");
     expect(orchestrator).toContain('key: "phase_a_heartbeat"');
     expect(orchestrator).toContain("PHASE_A_HEARTBEAT_ONLY=1");
+    expect(orchestrator).toContain('key: "gdelt_gal",\n    restrictedDirectPostgresSafe: true');
     expect(orchestrator).toContain("restrictedDirectPostgresSafe: true");
     for (const unsafe of ["production_readiness", "gdelt_v2", "current_scoring", "rss_live"]) {
       const marker = 'key: "' + unsafe + '",\n    restrictedDirectPostgresSafe: true';
