@@ -94,6 +94,7 @@ const TASKS = [
   },
   {
     key: "gdelt_gal",
+    restrictedDirectPostgresSafe: true,
     cadenceSeconds: 900,
     offsetSeconds: 0,
     priority: 10,
