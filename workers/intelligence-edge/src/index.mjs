@@ -333,6 +333,38 @@ async function buildResponse(env) {
   });
 }
 
+async function projectCachedResponse(cached) {
+  let live;
+  try {
+    live = await cached.clone().json();
+  } catch {
+    throw new Error("INTELLIGENCE_EDGE_CACHE_JSON_INVALID");
+  }
+  if (
+    live?.schema !== "geomacro.public-intelligence-live.v1" ||
+    live?.source_project !== PROJECT_REF ||
+    !recentEnough(live?.generated_at) ||
+    !validRows(live?.rows)
+  ) throw new Error("INTELLIGENCE_EDGE_CACHE_PAYLOAD_INVALID");
+
+  const projected = await applyHotOverlay(live);
+  const headers = new Headers(cached.headers);
+  headers.set("content-type", "application/json; charset=utf-8");
+  headers.set("x-geomacro-current-overlay", projected.used ? "cloudflare-d1-hot" : "none");
+  const exposed = new Set(
+    String(headers.get("access-control-expose-headers") ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  exposed.add("x-geomacro-current-overlay");
+  headers.set("access-control-expose-headers", [...exposed].join(", "));
+  return new Response(JSON.stringify(projected.live), {
+    status: 200,
+    headers,
+  });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -344,7 +376,16 @@ export default {
     const cache = caches.default;
     const cacheKey = new Request(`${url.origin}/intelligence?projection=d1-hot-v1`, { method: "GET" });
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      try {
+        return await projectCachedResponse(cached);
+      } catch (error) {
+        console.error(
+          "intelligence-edge cached projection invalid",
+          error instanceof Error ? error.message : "unknown",
+        );
+      }
+    }
 
     try {
       const response = await buildResponse(env);
