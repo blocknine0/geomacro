@@ -73,7 +73,10 @@ jobs:
           test -n "${SUPABASE_DB_URL:-}"
           test "${GRI_DB_MODE}" = "direct_postgres"
       - name: Verify all-country and corridor paid-product availability without funds
-        run: node scripts/agentic/verify-live-x402-global-zero-fund-coverage.mjs | tee /tmp/x402-global-zero-fund.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/agentic/verify-live-x402-global-zero-fund-coverage.mjs | tee /tmp/x402-global-zero-fund.json
       - name: Record no-funds boundary
         if: always()
         run: |
