@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RiskBadge, RiskTrend } from "@/components/foundation/risk";
+import { publicIntelligenceClarification } from "@/lib/public-intelligence-clarification";
 import {
   getPublicEventDetail,
   type PublicEventDetail,
@@ -90,6 +91,12 @@ export function EventDetailWorkspace({
     );
   }
 
+  const clarification = publicIntelligenceClarification({
+    title: event.source_title ?? "",
+    category: event.category,
+    summary: event.summary,
+  });
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 md:py-16">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -108,6 +115,7 @@ export function EventDetailWorkspace({
           </div>
 
           <h1 className="mt-4 max-w-4xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-5xl">{event.source_title ?? "Untitled intelligence event"}</h1>
+          {clarification && <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{clarification}</p>}
         </header>
 
         <section className="grid gap-4 border-b border-border py-8 sm:grid-cols-2 lg:grid-cols-4">
