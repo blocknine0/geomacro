@@ -92,7 +92,7 @@ function DocsIndexPage() {
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <main className="min-w-0 max-w-3xl">
           <DocumentHeader />
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Product guides & documentation</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Geomacro public documentation</h1>
           <p className="mt-4 leading-7 text-muted-foreground">
             Start with the public Intelligence and Risk Indices products. These guides explain what you can access for free, how commercial API delivery works, and the safeguards behind Geomacro risk intelligence.
           </p>
