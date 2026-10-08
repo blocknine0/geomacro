@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 describe("Federico refresh contract", () => {
   it("keeps the strict source-family map versioned and covers newly observed GDELT identities", () => {
     const profile = read("src/lib/public-demo-risk-profile.ts");
-    expect(profile).toContain("federico-source-family-map-v8");
+    expect(profile).toContain("federico-source-family-map-v9");
     expect(profile).toContain('"mymixfm.com": "mymixfm.com"');
     expect(profile).toContain('"wtvbam.com": "wtvbam.com"');
     expect(profile).toContain('"wiky.com": "wiky.com"');
@@ -17,6 +17,14 @@ describe("Federico refresh contract", () => {
     expect(profile).toContain('"whtc.com": "whtc.com"');
     expect(profile).toContain('"hani.co.kr": "hani.co.kr"');
     expect(profile).toContain('"koreaherald.com": "koreaherald.com"');
+    expect(profile).toContain('ecb_press_rss: "european_central_bank"');
+    expect(profile).toContain('ecb_market_information_rss: "european_central_bank"');
+    expect(profile).toContain('bis_rss_media_releases: "bank_for_international_settlements"');
+    expect(profile).toContain('bis_rss_central_banker_speeches: "bank_for_international_settlements"');
+    expect(profile).toContain('un_all_documents_rss: "united_nations"');
+    expect(profile).toContain('un_security_council_docs_rss: "united_nations"');
+    expect(profile).toContain('eu_council_press_rss: "council_of_the_european_union"');
+    expect(profile).toContain('nrcan_news_atom: "natural_resources_canada"');
   });
 
   it("keeps new governed hostname identities self-describing", () => {
@@ -62,6 +70,18 @@ describe("Federico refresh contract", () => {
     expect(corroborator).toContain("candidate_country_iso3");
     expect(workflow).not.toContain("xinhua_english_china_rss");
     expect(workflow).not.toContain("federal_reserve_press_rss");
+  });
+
+  it("normalizes endpoint IDs to institution-level provider families in the corroborator", () => {
+    const corroborator = read("supabase/functions/live-flash-corroborate/index.ts");
+    expect(corroborator).toContain("FEDERICO_PROVIDER_FAMILY_BY_SOURCE_ID");
+    expect(corroborator).toContain('ecb_press_rss: "european_central_bank"');
+    expect(corroborator).toContain('ecb_market_information_rss: "european_central_bank"');
+    expect(corroborator).toContain('bis_rss_media_releases: "bank_for_international_settlements"');
+    expect(corroborator).toContain('bis_rss_central_banker_speeches: "bank_for_international_settlements"');
+    expect(corroborator).toContain('un_geneva_press_rss: "united_nations"');
+    expect(corroborator).toContain("FEDERICO_PROVIDER_FAMILY_BY_SOURCE_ID[sourceId] ?? sourceId");
+    expect(corroborator).not.toContain("return row.source_id");
   });
 
   it("treats absent qualifying strict evidence as a successful fail-closed no-publication outcome", () => {
