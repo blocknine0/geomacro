@@ -29,6 +29,8 @@ describe("GDELT GAL production sync contract", () => {
     expect(sync).toContain("last_success_at: nowIso");
     expect(sync).toContain("function classifyFailure(error)");
     expect(sync).toContain('return "UPSTREAM_TEMPORARY_OUTAGE"');
+    expect(sync).toContain('return "B2_DOWNLOAD_CAP_EXCEEDED"');
+    expect(sync).toContain('return "B2_TRANSACTION_CAP_EXCEEDED"');
     expect(sync).toContain('return "PIPELINE_FAILURE"');
     expect(sync).toContain("last_failure_class");
     expect(sync).toContain("error_code: failureClass");
