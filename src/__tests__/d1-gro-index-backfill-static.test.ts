@@ -53,13 +53,14 @@ describe("Day 3 D1/B2 serving migration", () => {
     expect(workflow).not.toContain("schedule:");
   });
 
-  it("serves canonical country GROs from verified B2 before Supabase recovery", () => {
+  it("serves canonical country GROs from verified D1 hot state before explicit recovery", () => {
     const resolver = read("src/lib/country-gro-resolver.server.ts");
-    const b2 = resolver.indexOf("readB2LatestCanonicalCountryGro(countryIso3, atOrBefore)");
+    const hot = resolver.indexOf("readD1VerifiedHotCountryGro(countryIso3, atOrBefore)");
     const recovery = resolver.indexOf("getLatestCompatibleCountryRiskObjectAtOrBefore(");
-    expect(b2).toBeGreaterThan(-1);
+    expect(hot).toBeGreaterThan(-1);
     expect(recovery).toBeGreaterThan(-1);
-    expect(b2).toBeLessThan(recovery);
+    expect(hot).toBeLessThan(recovery);
+    expect(resolver).not.toContain("readB2LatestCanonicalCountryGro");
   });
 
   it("uses the B2-only production risk reader for paid GRI preflight", () => {

@@ -1,16 +1,17 @@
 import type { GeomacroRiskObject } from "./risk-object-contract";
 import type { RiskObjectDeliveryProfile } from "./public-demo-risk-profile";
 import { getLatestCompatibleCountryRiskObjectAtOrBefore } from "./risk-object-store.server";
-import { readB2LatestCanonicalCountryGro } from "./b2-country-gro.server";
+import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
 
 /**
- * Canonical commercial country-GRO reads are B2-first so customer/runtime
- * delivery does not wait on or require Supabase. The private B2 continuity
- * package is independently verified before it is returned.
+ * Canonical commercial country-GRO reads use the independently verified D1 hot
+ * copy first. The hot row contains the exact canonical signed GRO bytes and is
+ * admitted only after local signature/commercial verification, acknowledged B2
+ * archive write, and D1 readback/hash verification. Backblaze remains the cold
+ * durable archive, but a B2 GET is never a synchronous customer/Federico gate.
  *
- * Non-canonical profiles remain on the original profile-aware store path. For
- * canonical reads, Supabase is retained only as an explicit recovery source
- * when the verified B2 continuity package is unavailable.
+ * Non-canonical profiles and explicit recovery continue through the original
+ * profile-aware store path. Missing/expired/tampered hot rows fail closed.
  */
 export async function resolveCountryGroAtOrBefore(
   countryIso3: string,
@@ -18,8 +19,8 @@ export async function resolveCountryGroAtOrBefore(
   deliveryProfile: RiskObjectDeliveryProfile = "CANONICAL",
 ): Promise<GeomacroRiskObject | null> {
   if (deliveryProfile === "CANONICAL") {
-    const b2 = await readB2LatestCanonicalCountryGro(countryIso3, atOrBefore);
-    if (b2) return b2;
+    const hot = await readD1VerifiedHotCountryGro(countryIso3, atOrBefore);
+    if (hot) return hot;
   }
 
   try {

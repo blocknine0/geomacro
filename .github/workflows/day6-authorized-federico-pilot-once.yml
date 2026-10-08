@@ -37,6 +37,8 @@ jobs:
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       GH_TOKEN: ${{ github.token }}
       GRI_DB_MODE: direct_postgres
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GRO_CONTINUITY_COUNTRY_ISO3: USA
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
@@ -83,21 +85,25 @@ jobs:
           echo "Owner authorization scope: Federico pilot allowance only; no user funds and no execution authorization."
           echo "Governed RSS transport: tokenless loopback spool -> canonical direct Postgres; remote tokenless ingest remains forbidden."
 
-      - name: Prove private B2 real-byte read before Federico work
+      - name: Prove verified D1 signed GRO hot serving before Federico work
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/ops/verify-b2-private-archive-read.ts | tee /tmp/day6-b2-read-preflight.json
+          bun scripts/ops/verify-country-gro-hot-serving.ts | tee /tmp/day6-d1-gro-hot-preflight.json
           jq -e '
             .ok == true and
-            .schema == "geomacro.b2-private-archive-runtime-read-proof.v1" and
-            .dedicated_read_credentials == true and
-            .raw_data_delivered == false and
-            .destructive_b2_change == false and
-            .payment_performed == false and
+            .schema == "geomacro.country-gro-d1-hot-canary.v1" and
+            .serving_store == "cloudflare-d1" and
+            .archive_store == "backblaze-b2" and
+            .b2_credentials_present == false and
+            .b2_network_read_required == false and
+            .supabase_credentials_present == false and
+            .signature_valid == true and
+            .commercial_eligibility_verified == true and
+            .external_payment_performed == false and
             .execution_authorized == false
-          ' /tmp/day6-b2-read-preflight.json >/dev/null
-          echo "PASS: private B2 archive real-byte readback is available before Federico assurance."
+          ' /tmp/day6-d1-gro-hot-preflight.json >/dev/null
+          echo "PASS: verified signed country GRO hot serving works with B2/Supabase credentials removed."
 
       - name: Re-poll governed RSS without partner allowance
         env:

@@ -3,155 +3,104 @@ import { readFileSync } from "node:fs";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
-describe("B2 country GRO continuity", () => {
-  it("reads canonical country GROs directly from private B2 without Supabase mediation", () => {
-    const source = read("src/lib/b2-country-gro.server.ts");
-    expect(source).toContain('const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com"');
-    expect(source).toContain('const B2_BUCKET = "geomacro-private-archive"');
-    expect(source).toContain("AWS4-HMAC-SHA256");
-    expect(source).toContain("process.env.B2_ARCHIVE_READ_KEY_ID");
-    expect(source).toContain("process.env.B2_ARCHIVE_READ_APPLICATION_KEY");
-    expect(source).toContain('role: "read"');
-    expect(source).toContain('role: "primary"');
-    expect(source).toContain("response.status === 403");
-    expect(source).toContain("verifyRiskObjectSignature(object).valid");
-    expect(source).toContain("verifyCommercialRiskObjectArtifact(object");
-    expect(source).not.toContain("requireRiskSupabase");
-    expect(source).not.toContain("gro-archive-read");
-    expect(source).not.toContain("supabase-js");
+describe("country GRO zero-cost continuity", () => {
+  it("serves canonical signed GROs from authenticated D1 hot state without synchronous B2 reads", () => {
+    const resolver = read("src/lib/country-gro-resolver.server.ts");
+    const client = read("src/lib/d1-country-gro-hot.server.ts");
+    expect(resolver).toContain('from "./d1-country-gro-hot.server"');
+    expect(resolver).toContain("readD1VerifiedHotCountryGro(countryIso3, atOrBefore)");
+    expect(resolver).not.toContain("readB2LatestCanonicalCountryGro");
+    expect(client).toContain("geomacro-control-plane-v1");
+    expect(client).toContain('authorization: `Bearer ${token}`');
+    expect(client).toContain("canonicalRiskObjectJson(object)");
+    expect(client).toContain("verifyRiskObjectSignature(object).valid");
+    expect(client).toContain("verifyCommercialRiskObjectArtifact(object");
+    expect(client).toContain('payload?.archive_readback_required_for_serving !== false');
   });
 
-  it("uses verified B2 as the canonical commercial serving authority before Supabase recovery", () => {
-    const source = read("src/lib/country-gro-resolver.server.ts");
-    expect(source).toContain('if (deliveryProfile === "CANONICAL")');
-    expect(source).toContain("const b2 = await readB2LatestCanonicalCountryGro(countryIso3, atOrBefore)");
-    expect(source).toContain("if (b2) return b2");
-    expect(source).toContain("return await getLatestCompatibleCountryRiskObjectAtOrBefore");
-    const b2Index = source.indexOf("const b2 = await readB2LatestCanonicalCountryGro(countryIso3, atOrBefore)");
-    const recoveryIndex = source.indexOf("return await getLatestCompatibleCountryRiskObjectAtOrBefore");
-    expect(b2Index).toBeGreaterThanOrEqual(0);
-    expect(recoveryIndex).toBeGreaterThan(b2Index);
+  it("stores only derived signed GRO hot artifacts, never raw evidence", () => {
+    const migration = read("workers/control-plane/migrations/0012_country_gro_verified_hot.sql");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS country_gro_verified_hot");
+    expect(migration).toContain("object_json TEXT NOT NULL");
+    expect(migration).toContain("archive_write_acknowledged INTEGER NOT NULL");
+    expect(migration).toContain("archive_readback_verified INTEGER NOT NULL DEFAULT 0");
+    expect(migration).not.toMatch(/raw_payload\s+TEXT/i);
+    expect(migration).not.toMatch(/evidence_payload\s+TEXT/i);
+    expect(migration).not.toMatch(/source_body\s+TEXT/i);
   });
 
-  it("wires both paid country module resolution and Risk Gate through the B2-first resolver", () => {
-    const modules = read("src/lib/agent-query-external-modules.server.ts");
-    const gate = read("src/lib/risk-gate-service.server.ts");
-    expect(modules).toContain('from "./country-gro-resolver.server"');
-    expect(modules).toContain("await resolveCountryGroAtOrBefore(subject.country_iso3, asOf)");
-    expect(gate).toContain('from "./country-gro-resolver.server"');
-    expect(gate).toContain("await resolveCountryGroAtOrBefore(");
+  it("uses one compressed B2 bundle plus one proof manifest for the hot publication cycle", () => {
+    const publisher = read("scripts/ops/publish-country-gro-hot-bundle.ts");
+    expect(publisher).toContain("geomacro.country-gro-verified-hot-bundle.v1");
+    expect(publisher).toContain("geomacro.country-gro-verified-hot-proof.v1");
+    expect(publisher).toContain("await b2.put(bundleKey, bundlePacked)");
+    expect(publisher).toContain("await b2.put(PROOF_KEY, proof)");
+    expect(publisher).toContain("b2_put_count: 2");
+    expect(publisher).toContain("b2_get_count_for_hot_serving: 0");
+    expect(publisher).toContain("archive_readback_required_for_hot_serving: false");
+    expect(publisher).toContain("d1_signed_gro_hot_verified: true");
+    expect(publisher).not.toContain("await b2.get(");
   });
 
-  it("publishes only verified deliverable signed GROs through one fully verified bundle", () => {
-    const publisher = read("scripts/ops/publish-b2-country-gro-continuity.ts");
-    expect(publisher).toContain("geomacro.country-gro-continuity-bundle.v1");
-    expect(publisher).toContain("await b2.put(byIdKey, packed)");
-    expect(publisher).toContain("await b2.put(latestKey, packed)");
-    expect(publisher).toContain("const bundleReadback = await b2.get(bundleKey)");
-    expect(publisher).toContain("B2_COUNTRY_GRO_BUNDLE_READBACK_HASH_INVALID");
-    expect(publisher).toContain("bundle_members_verified");
-    expect(publisher).toContain("b2_full_readback_objects_verified: 2");
-    expect(publisher).toContain("verifyRiskObjectSignature(object).valid");
+  it("independently verifies D1 readback before declaring the hot set ready", () => {
+    const publisher = read("scripts/ops/publish-country-gro-hot-bundle.ts");
+    expect(publisher).toContain("COUNTRY_GRO_HOT_D1_READBACK_CARDINALITY_INVALID");
+    expect(publisher).toContain("COUNTRY_GRO_HOT_D1_READBACK_MISMATCH");
+    expect(publisher).toContain("COUNTRY_GRO_HOT_D1_READBACK_VERIFY_FAILED");
+    expect(publisher).toContain("verifyRiskObjectSignature(object, keys).valid");
     expect(publisher).toContain("verifyCommercialRiskObjectArtifact(object");
-    expect(publisher).toContain("PUBLIC_DEMO_RISK_PROFILE_REASON");
-    expect(publisher).toContain('.eq("verification_status", "VERIFIED")');
-    expect(publisher).toContain('.eq("commercial_eligibility_status", "VERIFIED")');
-    expect(publisher).toContain('.gt("expires_at", evaluatedAt)');
-    expect(publisher).toContain('.not("payload", "is", null)');
-    expect(publisher).toContain("const currentByCountry = new Map");
-    expect(publisher).toContain("const object = currentByCountry.get(countryIso3)");
-    expect(publisher).not.toContain("getLatestCompatibleCountryRiskObjectAtOrBefore");
-    expect(publisher).toContain("country-gro/by-id/");
-    expect(publisher).toContain("/latest.json.gz");
-    expect(publisher).not.toContain("const readback = await b2.get(key)");
+    expect(publisher).toContain("canonicalRiskObjectJson(object)");
+    expect(publisher).toContain("archive_write_acknowledged=1");
   });
 
-  it("proves the runtime reader works after Supabase credentials are removed", () => {
-    const canary = read("scripts/ops/verify-b2-country-gro-direct-read.ts");
+  it("keeps B2 readback as a deferred cold-archive audit and never weakens failures other than the known download cap", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
-    expect(canary).toContain("delete process.env.APP_SUPABASE_URL");
-    expect(canary).toContain("delete process.env.APP_SUPABASE_SERVICE_ROLE_KEY");
-    expect(canary).toContain("delete process.env.SUPABASE_URL");
-    expect(canary).toContain("delete process.env.SUPABASE_SERVICE_ROLE_KEY");
-    expect(canary).toContain("await import(");
-    expect(canary).toContain('"../../src/lib/b2-country-gro.server"');
-    expect(canary).toContain("readB2LatestCanonicalCountryGro(countryIso3, evaluatedAt)");
-    expect(canary).toContain("supabase_credentials_present: Boolean(");
-    expect(workflow).toContain("bun scripts/ops/verify-b2-country-gro-direct-read.ts");
+    const audit = read("scripts/ops/verify-country-gro-cold-bundle.ts");
+    expect(workflow).not.toContain("Preflight private B2 read capacity");
+    expect(workflow).toContain("Publish one bundled cold archive and verified D1 hot GRO set");
+    expect(workflow).toContain("Audit bundled B2 cold archive when read capacity is available");
+    expect(workflow).toContain("B2_DOWNLOAD_CAP_EXCEEDED");
+    expect(workflow).toContain("hot_serving_blocked\":false");
+    expect(workflow).toContain('exit "$rc"');
+    expect(audit).toContain("await b2.get(PROOF_KEY)");
+    expect(audit).toContain("await b2.get(String(proof.bundle_key))");
+    expect(audit).toContain("archive_readback_verified=1");
+    expect(audit).toContain("hot_serving_was_not_blocked_on_this_audit:true");
   });
 
-  it("refreshes the full 195+ country-like commercial subject universe without synthetic fill", () => {
+  it("proves the serving canary with both B2 and Supabase credentials removed", () => {
+    const canary = read("scripts/ops/verify-country-gro-hot-serving.ts");
+    expect(canary).toContain("delete process.env.B2_KEY_ID");
+    expect(canary).toContain("delete process.env.B2_ARCHIVE_READ_KEY_ID");
+    expect(canary).toContain("delete process.env.APP_SUPABASE_URL");
+    expect(canary).toContain("delete process.env.SUPABASE_DB_URL");
+    expect(canary).toContain("readD1VerifiedHotCountryGro(iso3, at)");
+    expect(canary).toContain('serving_store: "cloudflare-d1"');
+    expect(canary).toContain("b2_network_read_required: false");
+  });
+
+  it("keeps the 195+ paid-ready floor and refuses synthetic gap fill", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     const runner = read("scripts/refresh-global-canonical-risk-objects.ts");
-    expect(workflow).toContain('cron: "41 * * * *"');
-    expect(workflow).toContain("bun scripts/ops/verify-b2-private-archive-read.ts");
-    expect(workflow).toContain("b2-read-preflight.json");
-    expect(workflow.indexOf("verify-b2-private-archive-read.ts")).toBeLessThan(
-      workflow.indexOf("refresh-global-canonical-risk-objects.ts"),
-    );
-    expect(workflow).toContain("refresh-global-canonical-risk-objects.ts");
     expect(workflow).toContain('GLOBAL_CANONICAL_MIN_READY: "195"');
     expect(workflow).toContain('GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR: "195"');
-    expect(workflow).toContain("paid_ready_country_count");
-    expect(workflow).not.toContain("scripts/publish-country-risk-object.ts USA CANONICAL");
+    expect(workflow).toContain(".country_count >= 195");
+    expect(workflow).toContain(".d1_signed_gro_hot_verified == true");
     expect(runner).toContain('const COUNTRY_LIKE_SPECIALS = new Set(["PSE", "TWN"])');
-    expect(runner).toContain('scope === "SOVEREIGN" || COUNTRY_LIKE_SPECIALS.has(iso3)');
-    expect(runner).not.toContain('COUNTRY_LIKE_SPECIALS = new Set(["PSE", "TWN", "UNK"])');
+    expect(runner).toContain("unverified_objects_signed_for_gap_fill: false");
+    expect(runner).toContain("raw_source_material_emitted: false");
   });
 
-  it("prewarms a fresh D1 GRO on every canonical main advance before the exact-head final gate", () => {
-    const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
-    expect(workflow).toContain("push:\n    branches: [main]");
-    expect(workflow).toContain("Refresh the full country-like commercial subject universe");
-    expect(workflow).toContain("hourly schedule remains the steady-state");
-  });
-
-  it("keeps GRO continuity on the authoritative database while bypassing restricted REST egress", () => {
-    const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
-    const shim = read("scripts/lib/gri-db-client.mjs");
-    expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
-    expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
-    expect(workflow).toContain("--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs");
-    expect(workflow).toContain("node --import tsx scripts/refresh-global-canonical-risk-objects.ts");
-    expect(workflow).toContain("node --import tsx scripts/ops/publish-b2-country-gro-continuity.ts");
-    const refresh = read("scripts/refresh-global-canonical-risk-objects.ts");
-    expect(refresh).toContain('writeFileSync(output, json, "utf8")');
-    expect(refresh).not.toContain("Bun.write");
-    expect(shim).toContain("filter(column, operator, value)");
-    expect(shim).toContain('op === "cs" || op === "not.cs"');
-    expect(shim).toContain(" @> ");
-    expect(shim).toContain('op === "not.cs" ? `NOT (${predicate})` : predicate');
-  });
-
-  it("derives the full D1 current index from one independently verified B2 continuity bundle", () => {
-    const sync = read("scripts/ops/sync-global-current-country-gro-to-d1.ts");
-    const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
-    expect(sync).toContain("country-gro/continuity-proof.json");
-    expect(sync).toContain("geomacro.country-gro-continuity-bundle.v1");
-    expect(sync).toContain("GLOBAL_GRO_D1_PROOF_CARDINALITY_INVALID");
-    expect(sync).toContain("GLOBAL_GRO_D1_BUNDLE_HASH_INVALID");
-    expect(sync).toContain("GLOBAL_GRO_D1_BUNDLE_MEMBER_INVALID");
-    expect(sync).toContain("GLOBAL_GRO_D1_ENVELOPE_HASH_INVALID");
-    expect(sync).toContain("verifyCommercialRiskObjectArtifact");
-    expect(sync).toContain("GLOBAL_GRO_D1_READY_FLOOR_BREACH");
-    expect(sync).toContain("b2_class_b_source_reads: 2");
-    expect(sync).toContain("generic_archive_readback_deferred_to_runtime: true");
-    expect(sync).not.toContain("const readback = await b2.get(genericKey)");
-    expect(sync).toContain("supabase_payload_used_for_d1_record: false");
-    expect(sync).toContain("external_payment_performed: false");
-    expect(sync).toContain("destructive_b2_change: false");
-    expect(workflow).toContain('B2_REQUEST_BUDGET: "500"');
-    expect(workflow).toContain('B2_REQUEST_BUDGET: "220"');
-    expect(workflow).toContain("bun scripts/ops/sync-global-current-country-gro-to-d1.ts");
-  });
-
-  it("keeps production publication bounded and explicit", () => {
-    const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
-    expect(workflow).toContain("environment: production");
-    expect(workflow).toContain("scripts/db/assert-authoritative-supabase.mjs");
-    expect(workflow).toContain("publish-b2-country-gro-continuity.ts");
-    expect(workflow).toContain("sync-global-current-country-gro-to-d1.ts");
-    expect(workflow).toContain("Enforce #1414 195+ commercial GRO floor");
-    expect(workflow).toContain('cron: "41 * * * *"');
+  it("protects the D1 country GRO read behind the server-only control-plane token", () => {
+    const worker = read("workers/control-plane/src/index.mjs");
+    expect(worker).toContain("async function getCountryGroVerifiedHot");
+    expect(worker).toContain('parts[1] === "country-gro-hot"');
+    expect(worker.indexOf("const auth = authorized(request, env)")).toBeLessThan(
+      worker.indexOf('parts[1] === "country-gro-hot"'),
+    );
+    expect(worker).toContain("archive_readback_required_for_serving: false");
+    expect(worker).toContain("archive_write_acknowledged !== 1");
+    expect(worker).toContain('serving_store: "cloudflare-d1"');
+    expect(worker).toContain('archive_store: "backblaze-b2"');
   });
 });
