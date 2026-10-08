@@ -458,6 +458,13 @@ export default {
     const cacheKey = new Request(`${url.origin}/intelligence?projection=d1-hot-v1`, { method: "GET" });
     const cached = await cache.match(cacheKey);
     if (cached) {
+      if (cached.headers.get("x-geomacro-serving-store") !== "cloudflare-d1") {
+        const hotSnapshot = await readD1HotSnapshot();
+        if (hotSnapshot) {
+          ctx.waitUntil(cache.put(cacheKey, hotSnapshot.clone()));
+          return hotSnapshot;
+        }
+      }
       try {
         return await projectCachedResponse(cached);
       } catch (error) {
