@@ -61,3 +61,60 @@ export async function publishB2VerifiedHotSnapshot({ product, value, proof }) {
   ) throw new Error(`HOT_SNAPSHOT_D1_PUBLISH_FAILED_${response.status}`);
   return result;
 }
+
+
+const GLOBAL_RISK_PARENT = Object.freeze({
+  key: "geomacro-evidence/v1/live/global-risk/latest.json.gz",
+  proof: "geomacro.public-risk-indices-parent-projection-proof.v1",
+});
+
+export async function publishParentVerifiedRiskIndicesHotSnapshot({ value, proof }) {
+  if (!value || typeof value !== "object" || !proof || typeof proof !== "object") {
+    throw new Error("RISK_INDICES_PARENT_PROJECTION_INPUT_INVALID");
+  }
+  if (
+    value.schema !== "geomacro.public-risk-indices-live.v1" ||
+    proof.schema !== GLOBAL_RISK_PARENT.proof ||
+    proof.parent_product !== "global-risk" ||
+    proof.live_key !== GLOBAL_RISK_PARENT.key ||
+    proof.full_b2_readback_verified !== true ||
+    proof.exact_gzip_restore_verified !== true ||
+    proof.generated_at !== value.generated_at ||
+    proof.snapshot_id !== value.data?.snapshotId ||
+    Date.parse(String(proof.snapshot_as_of ?? "")) !== Date.parse(String(value.data?.snapshotAsOf ?? "")) ||
+    !/^[0-9a-f]{64}$/.test(String(proof.compressed_sha256 ?? "")) ||
+    !/^[0-9a-f]{64}$/.test(String(proof.parent_payload_sha256 ?? ""))
+  ) throw new Error("RISK_INDICES_PARENT_PROJECTION_PROOF_INVALID");
+
+  const root = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
+  if (root.length < 32) throw new Error("GEOMACRO_COMMERCE_LEDGER_TOKEN_REQUIRED");
+  const token = createHmac("sha256", root).update("geomacro-control-plane-v1").digest("hex");
+  const payloadJson = JSON.stringify(value);
+  const payloadSha256 = createHash("sha256").update(payloadJson).digest("hex");
+  const sourceRunId = String(process.env.GITHUB_RUN_ID ?? "").trim();
+  if (!/^\d{1,20}$/.test(sourceRunId)) throw new Error("HOT_SNAPSHOT_GITHUB_RUN_ID_REQUIRED");
+
+  const response = await fetch(`${CONTROL_PLANE_URL}/v1/hot-snapshot/risk-indices`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ value, proof, payload_sha256: payloadSha256, source_run_id: sourceRunId }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  let result;
+  try { result = await response.json(); } catch { result = null; }
+  if (
+    !response.ok ||
+    result?.ok !== true ||
+    result?.product !== "risk-indices" ||
+    result?.verification_mode !== "global-risk-parent-projection" ||
+    result?.b2_object_key !== GLOBAL_RISK_PARENT.key ||
+    result?.b2_sha256 !== proof.compressed_sha256 ||
+    result?.payload_sha256 !== payloadSha256 ||
+    result?.full_b2_readback_verified !== true ||
+    result?.exact_gzip_restore_verified !== true
+  ) throw new Error(`RISK_INDICES_PARENT_PROJECTION_D1_PUBLISH_FAILED_${response.status}`);
+  return result;
+}
