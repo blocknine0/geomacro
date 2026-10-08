@@ -177,7 +177,71 @@ jobs:
             echo "::notice::GDELT structured lane is stale/degraded. Day 6 continues with audited publisher-native RSS only; no synthetic GDELT freshness or credit is created."
           fi
 
+      - name: Check existing strict VERIFIED pair before any network refresh
+        id: pre_ready
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready_country="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL'
+          with strict_source_map(source_id, source_family) as (
+            values
+              ('xinhua_english_china_rss', 'xinhua_english_china'),
+              ('scmp_china_rss', 'scmp_china'),
+              ('forexlive_rss', 'forexlive'),
+              ('aljazeera_rss', 'aljazeera'),
+              ('bbc_world_rss', 'bbc_world'),
+              ('federal_reserve_press_rss', 'federal_reserve'),
+              ('ecb_press_rss', 'european_central_bank'),
+              ('ecb_market_information_rss', 'european_central_bank'),
+              ('bis_rss_media_releases', 'bank_for_international_settlements'),
+              ('bis_rss_central_banker_speeches', 'bank_for_international_settlements'),
+              ('eu_council_press_rss', 'council_of_the_european_union'),
+              ('un_all_documents_rss', 'united_nations'),
+              ('un_human_rights_council_rss', 'united_nations'),
+              ('un_geneva_press_rss', 'united_nations'),
+              ('un_security_council_docs_rss', 'united_nations'),
+              ('un_geneva_meeting_summaries_rss', 'united_nations'),
+              ('usgs_minerals_news_rss', 'usgs'),
+              ('nrcan_news_atom', 'natural_resources_canada')
+          ),
+          recent_verified_family as (
+            select
+              c.country_iso3,
+              e.event_family_id,
+              count(distinct m.source_family) as source_family_count,
+              min(coalesce(e.verification_score,0)) as min_verification_score,
+              max(e.published_at) as latest_published_at
+            from public.live_flash_events e
+            join strict_source_map m on m.source_id = lower(trim(e.source_id))
+            join public.live_flash_event_countries c on c.flash_id=e.flash_id
+            where e.event_family_id is not null
+              and e.verification_status = 'VERIFIED'
+              and e.published_at is not null
+              and e.published_at >= now() - interval '6 hours'
+              and e.published_at <= now()
+              and c.country_iso3 ~ '^[A-Z]{3}$'
+            group by c.country_iso3, e.event_family_id
+            having count(distinct m.source_family) >= 2
+               and min(coalesce(e.verification_score,0)) >= 65
+          )
+          select country_iso3
+          from recent_verified_family
+          order by source_family_count desc, min_verification_score desc, latest_published_at desc, country_iso3
+          limit 1;
+          SQL
+          )"
+          if [[ -n "$ready_country" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "country=$ready_country" >> "$GITHUB_OUTPUT"
+            echo "PASS: current VERIFIED strict pair already exists for $ready_country; network evidence refresh can be skipped without weakening any gate."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "country=" >> "$GITHUB_OUTPUT"
+            echo "No current VERIFIED strict pair exists; bounded evidence refresh remains required."
+          fi
+
       - name: Re-poll active Federico corroborators without partner allowance
+        if: steps.pre_ready.outputs.ready != 'true'
         env:
           TELEGRAM_ENABLED: "false"
           BREAKING_RSS_ENABLED: "true"
@@ -208,6 +272,7 @@ jobs:
           echo "PASS: active Federico corroborator refresh completed with no partner allowance."
 
       - name: Hydrate trusted publisher times after fast refresh
+        if: steps.pre_ready.outputs.ready != 'true'
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         shell: bash
@@ -229,6 +294,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "${{ steps.pre_ready.outputs.ready }}" == "true" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "country=${{ steps.pre_ready.outputs.country }}" >> "$GITHUB_OUTPUT"
+            echo "PASS: pre-refresh strict candidate remains the fast-path candidate."
+            exit 0
+          fi
           ready_country="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL'
           with strict_source_map(source_id, source_family) as (
             values
