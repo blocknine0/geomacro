@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 import { execFileSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { createHash } from "node:crypto";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { assemblePublicGlobalRisk } from "../../src/lib/global-risk-assemble.ts";
@@ -373,6 +375,18 @@ const hotSnapshot = await publishB2VerifiedHotSnapshot({
   value: liveValue,
   proof: JSON.parse(proof.toString("utf8")),
 });
+
+const publishedLiveArtifactPath = String(
+  process.env.GLOBAL_RISK_PUBLISHED_LIVE_ARTIFACT_PATH ?? "",
+).trim();
+if (publishedLiveArtifactPath) {
+  mkdirSync(dirname(publishedLiveArtifactPath), { recursive: true });
+  writeFileSync(
+    publishedLiveArtifactPath,
+    JSON.stringify(restoredLive, null, 2) + "\n",
+    "utf8",
+  );
+}
 
 console.log(JSON.stringify({
   ok: true,
