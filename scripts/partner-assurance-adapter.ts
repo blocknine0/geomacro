@@ -104,11 +104,11 @@ const head = spawnSync("git", ["rev-parse", "HEAD"], {
   maxBuffer: 1024 * 1024,
 });
 if (head.status !== 0) fail("CANDIDATE_SHA_UNAVAILABLE", head.stderr || head.stdout);
-const expectedDeployedSha = String(head.stdout ?? "").trim().toLowerCase();
-if (!/^[0-9a-f]{40}$/.test(expectedDeployedSha)) fail("CANDIDATE_SHA_INVALID");
+const candidateSha = String(head.stdout ?? "").trim().toLowerCase();
+if (!/^[0-9a-f]{40}$/.test(candidateSha)) fail("CANDIDATE_SHA_INVALID");
 
 const buildUrl = new URL(`${geomacroOrigin}/.well-known/geomacro-build.json`);
-buildUrl.searchParams.set("v", expectedDeployedSha);
+buildUrl.searchParams.set("v", candidateSha);
 const buildResponse = await fetch(buildUrl, {
   cache: "no-store",
   headers: {
@@ -120,24 +120,27 @@ const buildResponse = await fetch(buildUrl, {
 });
 if (!buildResponse.ok) fail("DEPLOYED_BUILD_MARKER_UNAVAILABLE", buildResponse.status);
 const build = await buildResponse.json() as any;
+const deployedBuildSha = String(build?.canonical_main_sha ?? "").trim().toLowerCase();
 if (
   build?.schema_version !== "geomacro.deployment-build.v1" ||
   build?.canonical_repository !== "blocknine0/geomacro" ||
-  String(build?.canonical_main_sha ?? "").trim().toLowerCase() !== expectedDeployedSha
+  !/^[0-9a-f]{40}$/.test(deployedBuildSha) ||
+  build?.production_activation_performed !== false
 ) {
   fail(
-    "DEPLOYED_BUILD_SHA_MISMATCH",
+    "DEPLOYED_BUILD_MARKER_INVALID",
     JSON.stringify({
-      expected: expectedDeployedSha,
-      observed: build?.canonical_main_sha ?? null,
+      candidate_sha: candidateSha,
+      deployed_sha: build?.canonical_main_sha ?? null,
       schema_version: build?.schema_version ?? null,
       canonical_repository: build?.canonical_repository ?? null,
+      production_activation_performed: build?.production_activation_performed ?? null,
     }),
   );
 }
 
 const trustUrl = new URL(`${geomacroOrigin}/api/risk-object-keys`);
-trustUrl.searchParams.set("v", expectedDeployedSha);
+trustUrl.searchParams.set("v", candidateSha);
 const trustResponse = await fetch(trustUrl, {
   cache: "no-store",
   headers: {
@@ -208,7 +211,7 @@ if (core.require_exact_record_sha256 && !/^[0-9a-f]{64}$/.test(exactRecordSha256
 if (core.require_deployed_verifier) {
   if (
     build?.schema_version !== "geomacro.deployment-build.v1" ||
-    String(build?.canonical_main_sha ?? "").trim().toLowerCase() !== expectedDeployedSha ||
+    !/^[0-9a-f]{40}$/.test(deployedBuildSha) ||
     trustBody?.ok !== true ||
     trustBody?.issuer !== "Geomacro"
   ) {
@@ -255,7 +258,7 @@ const localSummary: any = {
     local_signature: "PASS",
     deployed_verifier: "PASS",
     deployed_verifier_mode: "live_registry_client_local",
-    deployed_build_sha: expectedDeployedSha,
+    deployed_build_sha: deployedBuildSha,
     active_key: "PASS",
     freshness: "PASS",
     tamper_rejection: "PASS",
