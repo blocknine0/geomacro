@@ -38,6 +38,9 @@ describe("independent verified Risk Indices edge", () => {
     expect(publisher).toContain("geomacro.public-risk-indices-parent-projection-proof.v1");
     expect(publisher).toContain("current_b2_snapshot_promoted: false");
     expect(publisher).toContain("parent_b2_readback_verified: true");
+    expect(publisher).toContain("await b2.getOptional(LIVE_PROOF_KEY)");
+    expect(publisher).toContain("RISK_INDICES_PARENT_GLOBAL_RISK_PROOF_INVALID");
+    expect(refresh).toContain("set -euo pipefail");
     expect(refresh).toContain("RISK_INDICES_PUBLISHED_LIVE_ARTIFACT_PATH: /tmp/risk-indices-published-live.json");
     expect(refresh).toContain("/tmp/risk-indices-published-live.json");
     expect(worker).toContain("proof?.compressed_sha256 !== liveDigest");
@@ -88,6 +91,9 @@ describe("independent verified Risk Indices edge", () => {
     expect(deploy).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(deploy).toContain("geomacro-risk-indices.daspallab202391.workers.dev");
     expect(deploy).toContain("backblaze-b2-risk-indices-edge");
+    expect(deploy).toContain('"Risk Indices Realtime Direct Postgres"');
+    expect(worker).toContain('"global-risk-parent-projection"');
+    expect(worker).toContain('"verified-parent-projection"');
     expect(deploy).toContain("EDGE_7D_HISTORY_INVALID");
     expect(deploy).toContain("Unexpected write surface");
     expect(worker).toContain('import continuity from "./continuity.mjs"');
