@@ -225,6 +225,8 @@ jobs:
             .local_gates.canonical_record_hash == "PASS" and
             .local_gates.local_signature == "PASS" and
             .local_gates.deployed_verifier == "PASS" and
+            .local_gates.deployed_verifier_mode == "live_registry_client_local" and
+            (.local_gates.deployed_build_sha | test("^[0-9a-f]{40}$")) and
             .local_gates.active_key == "PASS" and
             .local_gates.freshness == "PASS" and
             .local_gates.tamper_rejection == "PASS" and

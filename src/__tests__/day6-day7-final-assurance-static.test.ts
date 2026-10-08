@@ -37,7 +37,7 @@ describe("Day 6 generic partner assurance", () => {
   });
 
   it("requires local gates before the single live review allowance", () => {
-    const localCheck = adapter.indexOf("const deployed = await deployedVerify");
+    const localCheck = adapter.indexOf("const buildUrl = new URL");
     const liveBlock = adapter.indexOf('if (mode === "live")');
     const providerCall = adapter.indexOf('spawnSync("bun"');
     expect(localCheck).toBeGreaterThan(-1);
@@ -50,8 +50,13 @@ describe("Day 6 generic partner assurance", () => {
     expect(adapter).toContain("verifyPublicRiskObjectArtifact");
     expect(adapter).toContain("LOCAL_PUBLIC_VERIFIER_REJECTED_ORIGINAL");
     expect(adapter).toContain("verification_keys: verificationKeys");
-    expect(adapter).toContain("reason_codes: deployed.body?.verification?.reason_codes");
-    expect(adapter).toContain("checks: deployed.body?.verification?.checks");
+    expect(adapter).toContain("/.well-known/geomacro-build.json");
+    expect(adapter).toContain("DEPLOYED_BUILD_MARKER_INVALID");
+    expect(adapter).toContain("DEPLOYED_TRUST_VERIFICATION_UNAVAILABLE");
+    expect(adapter).toContain('deployed_verifier_mode: "live_registry_client_local"');
+    expect(adapter).toContain("tamperedPublicVerification");
+    expect(adapter).not.toContain("async function deployedVerify");
+    expect(adapter).not.toContain("DEPLOYED_VERIFIER_REJECTED_ORIGINAL");
   });
 
   it("generates a country-agnostic strict GRO while keeping the Federico allowance explicit", () => {
