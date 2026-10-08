@@ -143,7 +143,7 @@ function IntelligencePage() {
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
           Explore meaningful geopolitical, macroeconomic and critical-mineral developments. See the latest updates alongside verified risk assessments, each with its actual date.
         </p>
-        <p className="mt-3 text-sm text-muted-foreground">Explore public intelligence freely.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Free to browse. For structured API delivery or monthly intelligence access, <Link to="/pricing" className="font-medium text-primary hover:underline">compare access options</Link>.</p>
       </header>
 
       <section className="mt-8 grid gap-3 rounded-2xl border border-border/70 bg-card/40 p-4 sm:grid-cols-[minmax(0,1fr)_180px_170px_auto]">
