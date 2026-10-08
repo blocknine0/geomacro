@@ -59,17 +59,17 @@ export function CommercialHome() {
     <>
       <section className="relative overflow-hidden border-b border-border/50">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_16%,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_33%)]" />
-        <div className="relative mx-auto grid w-full max-w-7xl gap-12 px-4 pb-14 pt-12 sm:px-6 sm:pb-20 sm:pt-18 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:gap-16 lg:pb-24 lg:pt-24">
-          <div className="max-w-3xl">
-            <Eyebrow>Global risk intelligence for humans and machines</Eyebrow>
-            <h1 className="mt-5 text-[clamp(2.9rem,7vw,6.4rem)] font-semibold leading-[0.92] tracking-[-0.055em]">
+        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-18 lg:min-h-[610px] lg:grid-cols-[minmax(0,1.02fr)_minmax(0,.98fr)] lg:gap-14 lg:py-20">
+          <div className="min-w-0 max-w-2xl">
+            <Eyebrow>Global risk intelligence · Built for decisions</Eyebrow>
+            <h1 className="mt-5 max-w-[43rem] text-[clamp(2.6rem,4vw,4.6rem)] font-semibold leading-[1.02] tracking-[-0.05em]">
               Know what changed.
               <span className="mt-1 block text-primary">Know why it matters.</span>
             </h1>
-            <p className="mt-7 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-              Geomacro turns geopolitical, macroeconomic and critical-mineral developments into concise, explainable risk intelligence built for decisions, workflows and AI agents.
+            <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+              Geomacro turns global developments into clear risk intelligence for teams, decisions and AI agents.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div className="mt-7 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
               <Button asChild size="lg" className="h-12 gap-2 px-6">
                 <Link to="/intelligence">Explore Intelligence <ArrowRight className="h-4 w-4" /></Link>
               </Button>
@@ -77,13 +77,13 @@ export function CommercialHome() {
                 <Link to="/data-api">API & Agent Access</Link>
               </Button>
               <Button asChild size="lg" variant="ghost" className="h-12 px-5">
-                <Link to="/global-risk">View Risk Indices</Link>
+                <Link to="/risk-indices">View Risk Indices</Link>
               </Button>
             </div>
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground sm:text-sm">
-              <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Explainable</span>
-              <span className="inline-flex items-center gap-2"><CircleGauge className="h-4 w-4 text-primary" /> Confidence-aware</span>
-              <span className="inline-flex items-center gap-2"><Bot className="h-4 w-4 text-primary" /> Machine-readable</span>
+            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground sm:text-sm">
+              <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Clear context</span>
+              <span className="inline-flex items-center gap-2"><CircleGauge className="h-4 w-4 text-primary" /> Decision-focused</span>
+              <span className="inline-flex items-center gap-2"><Bot className="h-4 w-4 text-primary" /> AI-ready</span>
             </div>
           </div>
 
@@ -113,9 +113,9 @@ export function CommercialHome() {
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
           <div>
             <Eyebrow>Built for clarity</Eyebrow>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Not another raw-data feed.</h2>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Clarity without the noise.</h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
-              Geomacro keeps raw evidence and provenance inside the intelligence system, then delivers concise decision context instead of forcing users or machines to interpret a data dump.
+              Geomacro helps people and applications focus on meaningful changes and available risk context, not an endless stream of updates.
             </p>
             <Button asChild variant="outline" className="mt-7">
               <Link to="/about">How Geomacro works <ArrowRight className="ml-2 h-4 w-4" /></Link>
