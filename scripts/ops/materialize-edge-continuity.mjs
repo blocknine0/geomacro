@@ -60,7 +60,9 @@ if (product === "global-risk") {
   if (proof.schema !== "geomacro.public-global-risk-direct-postgres-publish.v1") {
     throw new Error("EDGE_CONTINUITY_GLOBAL_PROOF_SCHEMA_INVALID");
   }
-  const file = findFile("global-risk-three-index.json");
+  const file =
+    findFile("global-risk-published-live.json") ??
+    findFile("global-risk-three-index.json");
   if (!file) throw new Error("EDGE_CONTINUITY_GLOBAL_ARTIFACT_MISSING");
   payload = JSON.parse(fs.readFileSync(file, "utf8"));
   const data = payload?.data;
