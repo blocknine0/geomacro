@@ -53,6 +53,7 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain('policy == "trusted_publisher_metadata_only"');
     expect(workflow).toContain(".fake_freshness == false");
     expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
+    expect(workflow).toContain("B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com");
     expect(workflow).toContain("B2_KEY_ID: ${{ secrets.B2_KEY_ID }}");
     expect(workflow).toContain("B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}");
     expect(workflow).toContain("GEOMACRO_COMMERCE_LEDGER_TOKEN");
