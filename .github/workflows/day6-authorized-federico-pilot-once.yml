@@ -445,7 +445,7 @@ jobs:
             having count(distinct source_family) >= 2
             order by count(distinct source_family) desc, count(*) desc, max(evidence_at) desc, country_iso3
             limit 8;
-            SQL
+          SQL
           fi
           test -s /tmp/day6-candidates.txt || {
             echo "::error::No country currently has at least two fresh auditable partner source families after governed RSS refresh. Federico allowance was not used."
