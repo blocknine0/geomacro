@@ -26,12 +26,23 @@ if (!fs.existsSync(artifactDir) || !fs.existsSync(proofPath) || !outputPath) {
 }
 
 const proof = JSON.parse(fs.readFileSync(proofPath, "utf8"));
-if (
-  proof?.ok !== true ||
-  proof?.b2_readback_verified !== true ||
-  proof?.destructive_change !== false ||
-  !/^[0-9a-f]{64}$/.test(String(proof?.live_sha256 ?? ""))
-) {
+const directB2Proof =
+  proof?.ok === true &&
+  proof?.b2_readback_verified === true &&
+  proof?.destructive_change === false &&
+  /^[0-9a-f]{64}$/.test(String(proof?.live_sha256 ?? ""));
+const parentProjectionProof =
+  product === "risk-indices" &&
+  proof?.ok === true &&
+  proof?.schema === "geomacro.public-risk-indices-parent-projection-publish.v1" &&
+  proof?.verification_mode === "global-risk-parent-projection" &&
+  proof?.parent_b2_readback_verified === true &&
+  proof?.parent_exact_gzip_restore_verified === true &&
+  proof?.current_b2_snapshot_promoted === false &&
+  proof?.destructive_change === false &&
+  /^[0-9a-f]{64}$/.test(String(proof?.parent_b2_sha256 ?? "")) &&
+  /^[0-9a-f]{64}$/.test(String(proof?.parent_payload_sha256 ?? ""));
+if (!directB2Proof && !parentProjectionProof) {
   throw new Error("EDGE_CONTINUITY_B2_PROOF_INVALID");
 }
 
@@ -75,7 +86,10 @@ if (product === "global-risk") {
     !validDate(payload?.generated_at)
   ) throw new Error("EDGE_CONTINUITY_GLOBAL_ARTIFACT_INVALID");
 } else if (product === "risk-indices") {
-  if (proof.schema !== "geomacro.public-risk-indices-direct-postgres-publish.v1") {
+  if (![
+    "geomacro.public-risk-indices-direct-postgres-publish.v1",
+    "geomacro.public-risk-indices-parent-projection-publish.v1",
+  ].includes(proof.schema)) {
     throw new Error("EDGE_CONTINUITY_INDICES_PROOF_SCHEMA_INVALID");
   }
   const file = findFile("risk-indices-published-live.json");
@@ -90,8 +104,20 @@ if (product === "global-risk") {
     data?.parentMethodologyVersion !== "gri-v1.2.0" ||
     data?.snapshotId !== proof.snapshot_id ||
     Date.parse(String(data?.snapshotAsOf ?? "")) !== Date.parse(String(proof.snapshot_as_of ?? "")) ||
+    (
+      proof.schema === "geomacro.public-risk-indices-parent-projection-publish.v1" &&
+      (
+        payload?.verification_mode !== "global-risk-parent-projection" ||
+        payload?.parent_product !== "global-risk" ||
+        payload?.parent_b2_sha256 !== proof.parent_b2_sha256 ||
+        payload?.parent_payload_sha256 !== proof.parent_payload_sha256
+      )
+    ) ||
     !validDate(payload?.generated_at)
   ) throw new Error("EDGE_CONTINUITY_INDICES_ARTIFACT_INVALID");
+  if (proof.schema === "geomacro.public-risk-indices-parent-projection-publish.v1") {
+    projection = "verified-parent-projection";
+  }
 } else {
   if (proof.schema !== "geomacro.public-intelligence-direct-postgres-publish.v2") {
     throw new Error("EDGE_CONTINUITY_INTELLIGENCE_PROOF_SCHEMA_INVALID");
@@ -125,8 +151,11 @@ const continuity = {
   product,
   source_run_id: sourceRunId,
   source_publish_schema: proof.schema,
-  source_live_sha256: proof.live_sha256,
-  b2_readback_verified: true,
+  source_live_sha256: parentProjectionProof ? proof.parent_b2_sha256 : proof.live_sha256,
+  b2_readback_verified: directB2Proof,
+  verification_mode: parentProjectionProof ? "global-risk-parent-projection" : "direct-b2-readback",
+  parent_b2_readback_verified: parentProjectionProof,
+  parent_payload_sha256: parentProjectionProof ? proof.parent_payload_sha256 : null,
   projection,
   payload_sha256: payloadSha256,
   payload_json: payloadJson,
