@@ -26,22 +26,25 @@ const WRANGLER_VERSION = String(process.env.WRANGLER_VERSION ?? "4.136.3").trim(
 const MIN_READY = Math.max(1, Number(process.env.GLOBAL_GRO_D1_MIN_INDEXED ?? 195));
 const OUT_DIR = join(process.cwd(), "artifacts", "global-gro-continuity");
 const D1_CONFIG = join(process.cwd(), "workers", "control-plane", "wrangler.country-gro-hot.runtime.jsonc");
-const SQL_FILE = join(OUT_DIR, "country-gro-hot.sql");
+const CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4";
+const D1_BATCH_MAX_BODY_BYTES = 1_500_000;
+const D1_BATCH_MAX_QUERIES = 16;
+const D1_READBACK_BATCH_SIZE = 4;
 const MANIFEST_FILE = String(
   process.env.COUNTRY_GRO_HOT_PUBLISH_OUTPUT ??
     join(OUT_DIR, "country-gro-hot-publish.json"),
 ).trim();
 const HASH_RE = /^[a-f0-9]{64}$/;
 const sha256 = (value: Buffer | string) => createHash("sha256").update(value).digest("hex");
-const sqlText = (value: unknown) =>
-  value == null ? "NULL" : `'${String(value).replaceAll("'", "''")}'`;
+const CLOUDFLARE_API_TOKEN = String(process.env.CLOUDFLARE_API_TOKEN ?? "").trim();
+const CLOUDFLARE_ACCOUNT_ID = String(process.env.CLOUDFLARE_ACCOUNT_ID ?? "").trim();
 
 if (
   String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
   !process.env.B2_KEY_ID ||
   !process.env.B2_APPLICATION_KEY ||
-  !process.env.CLOUDFLARE_API_TOKEN ||
-  !process.env.CLOUDFLARE_ACCOUNT_ID
+  !CLOUDFLARE_API_TOKEN ||
+  !CLOUDFLARE_ACCOUNT_ID
 ) throw new Error("COUNTRY_GRO_HOT_CONFIG_INVALID");
 
 function wrangler(args: string[], cwd = process.cwd()) {
@@ -61,12 +64,102 @@ function wrangler(args: string[], cwd = process.cwd()) {
   });
 }
 
-function parseD1(raw: string) {
-  const parsed = JSON.parse(raw);
-  const envelopes = Array.isArray(parsed) ? parsed : [parsed];
-  return envelopes.flatMap((entry) =>
+type D1Query = {
+  sql: string;
+  params: string[];
+};
+
+async function resolveD1DatabaseId() {
+  const url = new URL(
+    `${CLOUDFLARE_API_BASE}/accounts/${encodeURIComponent(CLOUDFLARE_ACCOUNT_ID)}/d1/database`,
+  );
+  url.searchParams.set("name", D1_DATABASE_NAME);
+  url.searchParams.set("per_page", "10");
+  const response = await fetch(url, {
+    headers: {
+      authorization: `Bearer ${CLOUDFLARE_API_TOKEN}`,
+      accept: "application/json",
+    },
+    signal: AbortSignal.timeout(30_000),
+  });
+  const payload = await response.json().catch(() => null) as any;
+  if (!response.ok || payload?.success !== true || !Array.isArray(payload?.result)) {
+    throw new Error(
+      `COUNTRY_GRO_HOT_D1_LIST_FAILED:${String(payload?.errors?.[0]?.code ?? response.status)}`,
+    );
+  }
+  const matches = payload.result.filter(
+    (row: any) => String(row?.name ?? "") === D1_DATABASE_NAME,
+  );
+  const databaseId = String(matches[0]?.uuid ?? "");
+  if (matches.length !== 1 || !/^[0-9a-f-]{20,}$/i.test(databaseId)) {
+    throw new Error("COUNTRY_GRO_HOT_D1_DATABASE_NOT_FOUND");
+  }
+  return databaseId;
+}
+
+async function d1BatchQuery(
+  databaseId: string,
+  batch: D1Query[],
+): Promise<Array<Array<Record<string, unknown>>>> {
+  if (!batch.length) return [];
+  const body = JSON.stringify({ batch });
+  if (Buffer.byteLength(body, "utf8") > D1_BATCH_MAX_BODY_BYTES) {
+    throw new Error("COUNTRY_GRO_HOT_D1_BATCH_BODY_TOO_LARGE");
+  }
+  const endpoint =
+    `${CLOUDFLARE_API_BASE}/accounts/${encodeURIComponent(CLOUDFLARE_ACCOUNT_ID)}/d1/database/${encodeURIComponent(databaseId)}/query`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${CLOUDFLARE_API_TOKEN}`,
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    body,
+    signal: AbortSignal.timeout(60_000),
+  });
+  const payload = await response.json().catch(() => null) as any;
+  if (!response.ok || payload?.success !== true || !Array.isArray(payload?.result)) {
+    throw new Error(
+      `COUNTRY_GRO_HOT_D1_QUERY_FAILED:${String(payload?.errors?.[0]?.code ?? response.status)}`,
+    );
+  }
+  if (
+    payload.result.length !== batch.length ||
+    payload.result.some((entry: any) => entry?.success !== true)
+  ) {
+    throw new Error("COUNTRY_GRO_HOT_D1_QUERY_RESULT_INVALID");
+  }
+  return payload.result.map((entry: any) =>
     Array.isArray(entry?.results) ? entry.results : [],
-  ) as Array<Record<string, unknown>>;
+  );
+}
+
+function boundedD1Batches(queries: D1Query[]) {
+  const batches: D1Query[][] = [];
+  let current: D1Query[] = [];
+  for (const query of queries) {
+    const candidate = [...current, query];
+    const bytes = Buffer.byteLength(JSON.stringify({ batch: candidate }), "utf8");
+    if (
+      current.length > 0 &&
+      (candidate.length > D1_BATCH_MAX_QUERIES || bytes > D1_BATCH_MAX_BODY_BYTES)
+    ) {
+      batches.push(current);
+      current = [query];
+    } else {
+      current = candidate;
+    }
+    if (
+      Buffer.byteLength(JSON.stringify({ batch: current }), "utf8") >
+      D1_BATCH_MAX_BODY_BYTES
+    ) {
+      throw new Error("COUNTRY_GRO_HOT_D1_SINGLE_QUERY_BODY_TOO_LARGE");
+    }
+  }
+  if (current.length) batches.push(current);
+  return batches;
 }
 
 mkdirSync(OUT_DIR, { recursive: true });
@@ -217,34 +310,87 @@ const proof = Buffer.from(JSON.stringify({
 }), "utf8");
 await b2.put(PROOF_KEY, proof);
 
-const list = JSON.parse(wrangler(["d1", "list", "--json"])) as Array<{name?: string; uuid?: string; id?: string}>;
-const databaseId = String(
-  list.find((row) => row.name === D1_DATABASE_NAME)?.uuid ??
-  list.find((row) => row.name === D1_DATABASE_NAME)?.id ?? "",
-);
-if (!/^[0-9a-f-]{20,}$/i.test(databaseId)) throw new Error("COUNTRY_GRO_HOT_D1_DATABASE_NOT_FOUND");
+const databaseId = await resolveD1DatabaseId();
 const example = readFileSync("workers/control-plane/wrangler.example.jsonc", "utf8");
 writeFileSync(D1_CONFIG, example.replace("REPLACE_WITH_D1_DATABASE_ID", databaseId), { mode: 0o600 });
 wrangler(["d1", "migrations", "apply", "DB", "--remote", "--config", D1_CONFIG], process.cwd());
 
 const now = new Date().toISOString();
-const statements: string[] = [];
-for (const row of entries) {
-  statements.push(
-    `INSERT INTO country_gro_verified_hot (country_iso3,object_id,schema_version,generated_at,expires_at,signing_key_id,payload_hash,record_sha256,archive_key,archive_sha256,archive_write_acknowledged,archive_readback_verified,object_json,verified_at,updated_at) VALUES (${sqlText(row.country_iso3)},${sqlText(row.object_id)},${sqlText(row.schema_version)},${sqlText(row.generated_at)},${sqlText(row.expires_at)},${sqlText(row.signing_key_id)},${sqlText(row.payload_hash)},${sqlText(row.record_sha256)},${sqlText(bundleKey)},${sqlText(bundleSha)},1,0,${sqlText(row.object_json)},${sqlText(now)},${sqlText(now)}) ON CONFLICT(country_iso3) DO UPDATE SET object_id=excluded.object_id,schema_version=excluded.schema_version,generated_at=excluded.generated_at,expires_at=excluded.expires_at,signing_key_id=excluded.signing_key_id,payload_hash=excluded.payload_hash,record_sha256=excluded.record_sha256,archive_key=excluded.archive_key,archive_sha256=excluded.archive_sha256,archive_write_acknowledged=1,archive_readback_verified=0,object_json=excluded.object_json,verified_at=excluded.verified_at,updated_at=excluded.updated_at;`,
-  );
-  statements.push(
-    `INSERT INTO risk_object_index (object_id,schema_version,subject_type,subject_id,generated_at,expires_at,verification_status,commercial_eligibility_status,signing_key_id,payload_hash,record_sha256,archive_key,archive_sha256,updated_at) VALUES (${sqlText(row.object_id)},${sqlText(row.schema_version)},'country',${sqlText(row.country_iso3)},${sqlText(row.generated_at)},${sqlText(row.expires_at)},'VERIFIED','VERIFIED',${sqlText(row.signing_key_id)},${sqlText(row.payload_hash)},${sqlText(row.record_sha256)},${sqlText(bundleKey)},${sqlText(bundleSha)},${sqlText(now)}) ON CONFLICT(object_id) DO UPDATE SET schema_version=excluded.schema_version,subject_type='country',subject_id=excluded.subject_id,generated_at=excluded.generated_at,expires_at=excluded.expires_at,verification_status='VERIFIED',commercial_eligibility_status='VERIFIED',signing_key_id=excluded.signing_key_id,payload_hash=excluded.payload_hash,record_sha256=excluded.record_sha256,archive_key=excluded.archive_key,archive_sha256=excluded.archive_sha256,updated_at=excluded.updated_at;`,
-  );
-}
-writeFileSync(SQL_FILE, statements.join("\n") + "\n", { mode: 0o600 });
-wrangler(["d1", "execute", "DB", "--remote", "--yes", "--config", D1_CONFIG, "--file", SQL_FILE]);
+const hotUpsertSql =
+  "INSERT INTO country_gro_verified_hot (country_iso3,object_id,schema_version,generated_at,expires_at,signing_key_id,payload_hash,record_sha256,archive_key,archive_sha256,archive_write_acknowledged,archive_readback_verified,object_json,verified_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(country_iso3) DO UPDATE SET object_id=excluded.object_id,schema_version=excluded.schema_version,generated_at=excluded.generated_at,expires_at=excluded.expires_at,signing_key_id=excluded.signing_key_id,payload_hash=excluded.payload_hash,record_sha256=excluded.record_sha256,archive_key=excluded.archive_key,archive_sha256=excluded.archive_sha256,archive_write_acknowledged=1,archive_readback_verified=0,object_json=excluded.object_json,verified_at=excluded.verified_at,updated_at=excluded.updated_at";
+const indexUpsertSql =
+  "INSERT INTO risk_object_index (object_id,schema_version,subject_type,subject_id,generated_at,expires_at,verification_status,commercial_eligibility_status,signing_key_id,payload_hash,record_sha256,archive_key,archive_sha256,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(object_id) DO UPDATE SET schema_version=excluded.schema_version,subject_type='country',subject_id=excluded.subject_id,generated_at=excluded.generated_at,expires_at=excluded.expires_at,verification_status='VERIFIED',commercial_eligibility_status='VERIFIED',signing_key_id=excluded.signing_key_id,payload_hash=excluded.payload_hash,record_sha256=excluded.record_sha256,archive_key=excluded.archive_key,archive_sha256=excluded.archive_sha256,updated_at=excluded.updated_at";
 
-const readback = parseD1(wrangler([
-  "d1", "execute", "DB", "--remote", "--json", "--config", D1_CONFIG,
-  "--command",
-  "SELECT country_iso3,object_id,generated_at,expires_at,signing_key_id,payload_hash,record_sha256,archive_key,archive_sha256,archive_write_acknowledged,archive_readback_verified,object_json FROM country_gro_verified_hot ORDER BY country_iso3;",
-]));
+const writeQueries: D1Query[] = [];
+for (const row of entries) {
+  writeQueries.push({
+    sql: hotUpsertSql,
+    params: [
+      row.country_iso3,
+      row.object_id,
+      row.schema_version,
+      row.generated_at,
+      row.expires_at,
+      row.signing_key_id,
+      row.payload_hash,
+      row.record_sha256,
+      bundleKey,
+      bundleSha,
+      "1",
+      "0",
+      row.object_json,
+      now,
+      now,
+    ],
+  });
+  writeQueries.push({
+    sql: indexUpsertSql,
+    params: [
+      row.object_id,
+      row.schema_version,
+      "country",
+      row.country_iso3,
+      row.generated_at,
+      row.expires_at,
+      "VERIFIED",
+      "VERIFIED",
+      row.signing_key_id,
+      row.payload_hash,
+      row.record_sha256,
+      bundleKey,
+      bundleSha,
+      now,
+    ],
+  });
+}
+
+const writeBatches = boundedD1Batches(writeQueries);
+for (const batch of writeBatches) {
+  await d1BatchQuery(databaseId, batch);
+}
+
+const readbackSelectSql =
+  "SELECT country_iso3,object_id,generated_at,expires_at,signing_key_id,payload_hash,record_sha256,archive_key,archive_sha256,archive_write_acknowledged,archive_readback_verified,object_json FROM country_gro_verified_hot WHERE country_iso3 = ?";
+const actual: Array<Record<string, unknown>> = [];
+let readbackBatchCount = 0;
+for (let index = 0; index < entries.length; index += D1_READBACK_BATCH_SIZE) {
+  const slice = entries.slice(index, index + D1_READBACK_BATCH_SIZE);
+  const resultSets = await d1BatchQuery(
+    databaseId,
+    slice.map((row) => ({
+      sql: readbackSelectSql,
+      params: [row.country_iso3],
+    })),
+  );
+  readbackBatchCount += 1;
+  for (const rows of resultSets) {
+    if (rows.length !== 1) {
+      throw new Error("COUNTRY_GRO_HOT_D1_READBACK_ROW_INVALID");
+    }
+    actual.push(rows[0]);
+  }
+}
+
 const expected = new Map(entries.map((row) => [row.country_iso3, row]));
 const actual = readback.filter((row) => expected.has(String(row.country_iso3)));
 if (actual.length !== entries.length) {
@@ -288,6 +434,9 @@ const output = {
   archive_readback_deferred: true,
   archive_readback_required_for_hot_serving: false,
   d1_signed_gro_hot_verified: true,
+  d1_parameterized_writes: true,
+  d1_write_batch_count: writeBatches.length,
+  d1_readback_batch_count: readbackBatchCount,
   d1_readback_verified: true,
   signature_verified: true,
   commercial_eligibility_verified: true,
