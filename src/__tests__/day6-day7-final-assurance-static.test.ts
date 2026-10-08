@@ -82,6 +82,15 @@ describe("Day 6 generic partner assurance", () => {
     expect(providerPreflight).toContain("verificationBundleSha256");
     expect(providerPreflight).toContain("receiver-preapproved immutable commit SHA");
     expect(providerPreflight).toContain("tamper_verification: tamperVerificationSummary");
+    expect(providerPreflight).toContain("source_locator_policy");
+    expect(providerPreflight).toContain("issuer content_hash values are continuity metadata");
+    expect(providerPreflight).toContain("semantic_validation");
+    expect(providerPreflight).toContain("ownership_registry_policy");
+    expect(providerPreflight).toContain("methodology_replay_policy");
+    expect(providerPreflight).toContain("contextual_only_no_automated_score_based_or_irreversible_action");
+    expect(providerPreflight).toContain('"bun.lock"');
+    expect(providerPreflight).toContain('"src/lib/country-risk-engine.ts"');
+    expect(providerPreflight).toContain('"src/lib/country-risk-publisher.server.ts"');
     expect(providerPreflight).not.toContain("tamperResult.body?.verification ?? tamperResult.body,");
   });
 
