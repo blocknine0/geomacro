@@ -96,6 +96,19 @@ describe("Federico publication safety", () => {
     expect(mocks.persist).not.toHaveBeenCalled();
   });
 
+  it("signs canonical stable HTTPS permalinks as positional Federico source locators", async () => {
+    database(["aljazeera_rss", "bbc_world_rss"]);
+    const { object } = await dryRunCountryRiskObject(input);
+    const evidence = object.evidence[0];
+    expect(evidence.source_ids).toHaveLength(2);
+    expect(evidence.source_record_ids).toEqual([
+      "https://example.com/0",
+      "https://example.com/1",
+    ]);
+    expect(evidence.source_record_ids).toHaveLength(evidence.content_hashes.length);
+    expect(evidence.source_record_ids.every((value) => value.startsWith("https://"))).toBe(true);
+  });
+
   it("publishes eligible evidence and scopes the country before the result cap", async () => {
     const urls = database(["scmp_china_rss", "bbc_world_rss"]);
     const result = await publishCountryRiskObject(input);
