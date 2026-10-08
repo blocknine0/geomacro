@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "586a5eda074f84ac9e6d82f20fb174bac28c5fde",
-  "published_baseline": "Founder-approved Geomacro post-launch commercial access guidance on every public page: clear free explorer, 0.05 USDC per-successful-call API, monthly request-based recurring access with exact entitlements agreed before activation, annual and enterprise sales contact. Intelligence, Ask and Docs have buyer links. Public copy is compact, source-free and editorial-free, historic dates stay honest. The shared production payment status remains runtime authoritative, no fake recurring checkout, no unauthorized real-money activation. Independent Global Risk frozen presentation and source/rights safety remain unchanged. Lovable publication and exact live SHA verification are separate.",
+  "baseline_sha": "1c63c23cfcfe755a65a1c9b7fcb0ea8cc18f8314",
+  "published_baseline": "Founder-approved all-public-page commercial access via prior merged main; public documentation uniformly describes independently corroborated publisher reports without editorial content-format labels; no raw redistributed material. Full docs evidence methodology preserved, metadata presents Geomacro documentation as WebPage, all existing source/signed/GRO policies untouched. Global Risk independent immutable presentation remains frozen. New Lovable publish exact SHA still required.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-08T08:16:00Z",
   "published_source_sha": "87fe2e9dd4d1f6c7abeb2af8cbe2029d5b9b4f14",
-  "lock_revision": "founder-approved-free-per-call-monthly-access-every-page-20261008"
+  "lock_revision": "founder-approved-public-docs-derived-evidence-terminology-20261008"
 }
