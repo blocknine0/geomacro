@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  extractTrustedBbcRssPublishedAt,
   extractTrustedPublishedAt,
   isTrustedFedericoTimestampUrl,
   isTrustedFedericoTimestampUrlForSource,
@@ -104,6 +105,54 @@ describe("Federico trusted source publication-time hydration", () => {
     }
   });
 
+  it("recovers exact BBC publisher time from the trusted RSS item pubDate", () => {
+    const rss = `
+      <rss><channel>
+        <item>
+          <title>South Korea recalls Ukraine envoy over prisoner-of-war row</title>
+          <link><![CDATA[https://www.bbc.com/news/articles/ckwy48rrz95vo?at_medium=RSS&at_campaign=rss]]></link>
+          <pubDate>Thu, 08 Oct 2026 12:43:00 GMT</pubDate>
+        </item>
+      </channel></rss>
+    `;
+    expect(
+      extractTrustedBbcRssPublishedAt(
+        rss,
+        "https://www.bbc.co.uk/news/articles/ckwy48rrz95vo?at_medium=RSS&at_campaign=rss",
+        new Date("2026-10-08T16:00:00.000Z"),
+      ),
+    ).toBe("2026-10-08T12:43:00.000Z");
+  });
+
+  it("never uses a different BBC item's pubDate or a feed without pubDate", () => {
+    const wrong = `
+      <rss><channel><item>
+        <link>https://www.bbc.com/news/articles/other</link>
+        <pubDate>Thu, 08 Oct 2026 12:43:00 GMT</pubDate>
+      </item></channel></rss>
+    `;
+    expect(
+      extractTrustedBbcRssPublishedAt(
+        wrong,
+        "https://www.bbc.co.uk/news/articles/ckwy48rrz95vo",
+        new Date("2026-10-08T16:00:00.000Z"),
+      ),
+    ).toBeNull();
+
+    const noPubDate = `
+      <rss><channel><item>
+        <link>https://www.bbc.com/news/articles/ckwy48rrz95vo</link>
+      </item></channel></rss>
+    `;
+    expect(
+      extractTrustedBbcRssPublishedAt(
+        noPubDate,
+        "https://www.bbc.co.uk/news/articles/ckwy48rrz95vo",
+        new Date("2026-10-08T16:00:00.000Z"),
+      ),
+    ).toBeNull();
+  });
+
   it("rejects timezone-less timestamps for non-Xinhua trusted publishers", () => {
     const asOf = new Date("2026-10-08T15:30:00.000Z");
     const html =
@@ -201,6 +250,10 @@ describe("Federico trusted source publication-time hydration", () => {
     expect(script).toContain("max_rows: MAX_ROWS");
     expect(script).toContain('.eq("verification_status", "VERIFIED")');
     expect(script).toContain('.not("event_family_id", "is", null)');
+    expect(script).toContain("BBC_WORLD_RSS_URL");
+    expect(script).toContain("extractTrustedBbcRssPublishedAt");
+    expect(script).toContain('timestampBasis === "bbc_rss_pubdate"');
+    expect(script).toContain("feed_fetch_time_used_as_publication_time: false");
     expect(script).toContain('.is("published_at", null)');
     expect(script).toContain("update({ published_at: publishedAt })");
     expect(script).not.toContain("published_at: row.last_seen_at");
