@@ -94,27 +94,40 @@ export async function publishParentVerifiedRiskIndicesHotSnapshot({ value, proof
   const sourceRunId = String(process.env.GITHUB_RUN_ID ?? "").trim();
   if (!/^\d{1,20}$/.test(sourceRunId)) throw new Error("HOT_SNAPSHOT_GITHUB_RUN_ID_REQUIRED");
 
-  const response = await fetch(`${CONTROL_PLANE_URL}/v1/hot-snapshot/risk-indices`, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ value, proof, payload_sha256: payloadSha256, source_run_id: sourceRunId }),
-    signal: AbortSignal.timeout(15_000),
+  const requestBody = JSON.stringify({
+    value,
+    proof,
+    payload_sha256: payloadSha256,
+    source_run_id: sourceRunId,
   });
-  let result;
-  try { result = await response.json(); } catch { result = null; }
-  if (
-    !response.ok ||
-    result?.ok !== true ||
-    result?.product !== "risk-indices" ||
-    result?.verification_mode !== "global-risk-parent-projection" ||
-    result?.b2_object_key !== GLOBAL_RISK_PARENT.key ||
-    result?.b2_sha256 !== proof.compressed_sha256 ||
-    result?.payload_sha256 !== payloadSha256 ||
-    result?.full_b2_readback_verified !== true ||
-    result?.exact_gzip_restore_verified !== true
-  ) throw new Error(`RISK_INDICES_PARENT_PROJECTION_D1_PUBLISH_FAILED_${response.status}`);
-  return result;
+  let lastStatus = 0;
+  let lastResult = null;
+  for (let attempt = 1; attempt <= 10; attempt += 1) {
+    const response = await fetch(`${CONTROL_PLANE_URL}/v1/hot-snapshot/risk-indices`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: requestBody,
+      signal: AbortSignal.timeout(15_000),
+    });
+    lastStatus = response.status;
+    try { lastResult = await response.json(); } catch { lastResult = null; }
+    if (
+      response.ok &&
+      lastResult?.ok === true &&
+      lastResult?.product === "risk-indices" &&
+      lastResult?.verification_mode === "global-risk-parent-projection" &&
+      lastResult?.b2_object_key === GLOBAL_RISK_PARENT.key &&
+      lastResult?.b2_sha256 === proof.compressed_sha256 &&
+      lastResult?.payload_sha256 === payloadSha256 &&
+      lastResult?.full_b2_readback_verified === true &&
+      lastResult?.exact_gzip_restore_verified === true
+    ) return lastResult;
+
+    if (![400, 404, 429, 502, 503, 504].includes(response.status) || attempt === 10) break;
+    await new Promise((resolve) => setTimeout(resolve, Math.min(4_000, attempt * 500)));
+  }
+  throw new Error(`RISK_INDICES_PARENT_PROJECTION_D1_PUBLISH_FAILED_${lastStatus}`);
 }
