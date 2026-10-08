@@ -3,14 +3,14 @@ import {
 } from "@tanstack/react-router";
 
 import {
-  ensureRiskObjectRuntimePublicKey,
-} from "../lib/risk-object-runtime-public-key.server";
-
-import {
   assertRiskObjectJsonKeysSafe,
-  publicRiskObjectVerificationKeySet,
   type RiskObjectVerificationKeys,
 } from "../lib/risk-object-signing.server";
+
+import {
+  pinnedRiskObjectVerificationKeys,
+  pinnedRiskObjectVerificationKeySet,
+} from "../lib/risk-object-public-registry";
 
 import {
   verifyPublicRiskObjectArtifact,
@@ -42,43 +42,7 @@ function jsonResponse(
 
 function deployedPublicVerificationKeys(): RiskObjectVerificationKeys | null {
   try {
-    ensureRiskObjectRuntimePublicKey();
-
-    const registry =
-      publicRiskObjectVerificationKeySet();
-
-    if (!Array.isArray(registry.keys) || registry.keys.length === 0) {
-      return null;
-    }
-
-    const keySet: RiskObjectVerificationKeys = {};
-
-    for (const item of registry.keys) {
-      if (
-        !item.key_id ||
-        !item.public_key_spki_b64 ||
-        (
-          item.status !== "active" &&
-          item.status !== "retired" &&
-          item.status !== "revoked"
-        )
-      ) {
-        return null;
-      }
-
-      keySet[item.key_id] = {
-        public_key_spki_b64:
-          item.public_key_spki_b64,
-        status:
-          item.status,
-        not_before:
-          item.not_before ?? null,
-        not_after:
-          item.not_after ?? null,
-      };
-    }
-
-    return keySet;
+    return pinnedRiskObjectVerificationKeys();
   } catch {
     return null;
   }
@@ -275,10 +239,8 @@ export const Route =
       handlers: {
         GET: async () => {
           try {
-            ensureRiskObjectRuntimePublicKey();
-
             const keySet =
-              publicRiskObjectVerificationKeySet();
+              pinnedRiskObjectVerificationKeySet();
 
             if (
               keySet.keys.length === 0

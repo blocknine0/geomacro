@@ -42,6 +42,7 @@ on:
       - ".github/workflows/day6-partner-assurance-final.yml"
       - "scripts/partner-assurance-adapter.ts"
       - "src/routes/api.risk-object-keys.ts"
+      - "src/lib/risk-object-public-registry.ts"
       - "workers/control-plane/migrations/0013_partner_assurance_gro_verified.sql"
 
 permissions:
