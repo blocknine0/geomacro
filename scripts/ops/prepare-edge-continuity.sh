@@ -13,19 +13,41 @@ command -v unzip >/dev/null 2>&1 || { echo "unzip is required" >&2; exit 2; }
 test -n "${GH_TOKEN:-}" || { echo "GH_TOKEN is required" >&2; exit 2; }
 
 SOURCE_RUN_ID="${SOURCE_RUN_ID:-}"
-if [[ -z "$SOURCE_RUN_ID" ]]; then
-  SOURCE_RUN_ID="$(gh api "repos/$REPO/actions/workflows/$SOURCE_WORKFLOW/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0].id // empty')"
-fi
-[[ "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]] || { echo "No successful source run found for $SOURCE_WORKFLOW" >&2; exit 3; }
-
-SOURCE_HEAD="$(gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID" --jq '.head_branch + ":" + (.conclusion // "")')"
-[[ "$SOURCE_HEAD" == "main:success" ]] || { echo "Source run is not a successful main run: $SOURCE_HEAD" >&2; exit 3; }
-
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
-gh run view "$SOURCE_RUN_ID" --repo "$REPO" --log > "$TMP_ROOT/source.log"
-node - "$TMP_ROOT/source.log" "$PROOF_SCHEMA" "$TMP_ROOT/source-publish-proof.json" <<'NODE'
+artifact_name_for_run() {
+  local run_id="$1"
+  case "$PRODUCT" in
+    global-risk)
+      printf 'gri-realtime-direct-postgres-%s' "$run_id"
+      ;;
+    risk-indices)
+      printf 'risk-indices-realtime-%s' "$run_id"
+      ;;
+    intelligence)
+      printf 'intelligence-current-%s' "$run_id"
+      ;;
+    *)
+      echo "Unsupported continuity product: $PRODUCT" >&2
+      return 4
+      ;;
+  esac
+}
+
+try_candidate() {
+  local run_id="$1"
+  local candidate_dir="$TMP_ROOT/$run_id"
+  local source_head artifact_name artifacts_json artifact_id
+
+  [[ "$run_id" =~ ^[0-9]+$ ]] || return 1
+  source_head="$(gh api "repos/$REPO/actions/runs/$run_id" --jq '.head_branch + ":" + (.conclusion // "")' 2>/dev/null || true)"
+  [[ "$source_head" == "main:success" ]] || return 1
+
+  mkdir -p "$candidate_dir/artifacts"
+  gh run view "$run_id" --repo "$REPO" --log > "$candidate_dir/source.log" 2>/dev/null || return 1
+
+  if ! node - "$candidate_dir/source.log" "$PROOF_SCHEMA" "$candidate_dir/source-publish-proof.json" <<'NODE'
 const fs = require("fs");
 const [logPath, schema, outPath] = process.argv.slice(2);
 const lines = fs.readFileSync(logPath, "utf8").split(/\r?\n/);
@@ -39,63 +61,87 @@ for (const line of lines) {
     if (value?.schema === schema && value?.ok === true) proof = value;
   } catch {}
 }
-if (!proof) throw new Error("EDGE_CONTINUITY_SOURCE_PROOF_NOT_FOUND");
+if (!proof) process.exit(2);
 if (
   proof.b2_readback_verified !== true ||
   proof.destructive_change !== false ||
   proof.synthetic_score === true ||
   proof.synthetic_history === true ||
   proof.synthetic_current_score === true
-) throw new Error("EDGE_CONTINUITY_SOURCE_PROOF_REJECTED");
+) process.exit(3);
 fs.writeFileSync(outPath, JSON.stringify(proof, null, 2) + "\n");
 NODE
+  then
+    return 1
+  fi
 
-case "$PRODUCT" in
-  global-risk)
-    ARTIFACT_NAME="gri-realtime-direct-postgres-$SOURCE_RUN_ID"
-    ;;
-  risk-indices)
-    ARTIFACT_NAME="risk-indices-realtime-$SOURCE_RUN_ID"
-    ;;
-  intelligence)
-    ARTIFACT_NAME="intelligence-current-$SOURCE_RUN_ID"
-    ;;
-  *)
-    echo "Unsupported continuity product: $PRODUCT" >&2
-    exit 4
-    ;;
-esac
+  artifact_name="$(artifact_name_for_run "$run_id")" || return 1
+  artifacts_json="$(gh api "repos/$REPO/actions/runs/$run_id/artifacts?per_page=100" 2>/dev/null || true)"
+  artifact_id="$(
+    printf '%s' "$artifacts_json" |
+      ARTIFACT_NAME="$artifact_name" node -e '
+        let raw = "";
+        process.stdin.on("data", (chunk) => raw += chunk);
+        process.stdin.on("end", () => {
+          let parsed = {};
+          try { parsed = JSON.parse(raw || "{}"); } catch {}
+          const matches = (parsed.artifacts ?? [])
+            .filter((artifact) => artifact?.name === process.env.ARTIFACT_NAME && artifact?.expired !== true)
+            .sort((a, b) => Date.parse(String(a?.created_at ?? "")) - Date.parse(String(b?.created_at ?? "")));
+          const latest = matches.at(-1);
+          process.stdout.write(latest?.id ? String(latest.id) : "");
+        });
+      '
+  )"
+  [[ "$artifact_id" =~ ^[0-9]+$ ]] || return 1
 
-ARTIFACTS_JSON="$(gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID/artifacts?per_page=100")"
-ARTIFACT_ID="$(
-  printf '%s' "$ARTIFACTS_JSON" |
-    ARTIFACT_NAME="$ARTIFACT_NAME" node -e '
-      let raw = "";
-      process.stdin.on("data", (chunk) => raw += chunk);
-      process.stdin.on("end", () => {
-        const parsed = JSON.parse(raw || "{}");
-        const matches = (parsed.artifacts ?? [])
-          .filter((artifact) => artifact?.name === process.env.ARTIFACT_NAME && artifact?.expired !== true)
-          .sort((a, b) => Date.parse(String(a?.created_at ?? "")) - Date.parse(String(b?.created_at ?? "")));
-        const latest = matches.at(-1);
-        process.stdout.write(latest?.id ? String(latest.id) : "");
-      });
-    '
-)"
-[[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]] || {
-  echo "No non-expired artifact named $ARTIFACT_NAME found for source run $SOURCE_RUN_ID" >&2
-  exit 4
+  gh api "repos/$REPO/actions/artifacts/$artifact_id/zip" > "$candidate_dir/source-artifact.zip" 2>/dev/null || return 1
+  unzip -q "$candidate_dir/source-artifact.zip" -d "$candidate_dir/artifacts" || return 1
+
+  if ! node scripts/ops/materialize-edge-continuity.mjs \
+    --product "$PRODUCT" \
+    --artifact-dir "$candidate_dir/artifacts" \
+    --proof "$candidate_dir/source-publish-proof.json" \
+    --source-run-id "$run_id" \
+    --output "$candidate_dir/continuity.mjs" >/dev/null 2>&1
+  then
+    return 1
+  fi
+
+  mkdir -p "$(dirname "$OUTPUT")"
+  mv "$candidate_dir/continuity.mjs" "$OUTPUT"
+  printf '%s\n' "$run_id" > "$TMP_ROOT/selected-run-id"
+  printf '%s\n' "$artifact_id" > "$TMP_ROOT/selected-artifact-id"
+  printf '%s\n' "$artifact_name" > "$TMP_ROOT/selected-artifact-name"
+  return 0
 }
 
-mkdir -p "$TMP_ROOT/artifacts"
-gh api "repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > "$TMP_ROOT/source-artifact.zip"
-unzip -q "$TMP_ROOT/source-artifact.zip" -d "$TMP_ROOT/artifacts"
+if [[ -n "$SOURCE_RUN_ID" ]]; then
+  CANDIDATE_RUN_IDS="$SOURCE_RUN_ID"
+else
+  CANDIDATE_RUN_IDS="$(
+    gh api "repos/$REPO/actions/workflows/$SOURCE_WORKFLOW/runs?branch=main&status=success&per_page=50" \
+      --jq '.workflow_runs[].id'
+  )"
+fi
 
-node scripts/ops/materialize-edge-continuity.mjs \
-  --product "$PRODUCT" \
-  --artifact-dir "$TMP_ROOT/artifacts" \
-  --proof "$TMP_ROOT/source-publish-proof.json" \
-  --source-run-id "$SOURCE_RUN_ID" \
-  --output "$OUTPUT"
+SELECTED_RUN_ID=""
+while IFS= read -r candidate_run_id; do
+  [[ -n "$candidate_run_id" ]] || continue
+  if try_candidate "$candidate_run_id"; then
+    SELECTED_RUN_ID="$candidate_run_id"
+    break
+  fi
+  if [[ -n "$SOURCE_RUN_ID" ]]; then
+    break
+  fi
+done <<< "$CANDIDATE_RUN_IDS"
 
-echo "Verified edge continuity prepared from successful main run $SOURCE_RUN_ID ($SOURCE_WORKFLOW), artifact $ARTIFACT_ID ($ARTIFACT_NAME)."
+[[ "$SELECTED_RUN_ID" =~ ^[0-9]+$ ]] || {
+  echo "No coherent B2-readback-verified continuity source found for $SOURCE_WORKFLOW / $PROOF_SCHEMA" >&2
+  exit 3
+}
+
+ARTIFACT_ID="$(cat "$TMP_ROOT/selected-artifact-id")"
+ARTIFACT_NAME="$(cat "$TMP_ROOT/selected-artifact-name")"
+echo "Verified edge continuity prepared from coherent successful main run $SELECTED_RUN_ID ($SOURCE_WORKFLOW), artifact $ARTIFACT_ID ($ARTIFACT_NAME)."

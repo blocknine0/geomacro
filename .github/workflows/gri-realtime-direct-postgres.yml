@@ -138,6 +138,8 @@ jobs:
         run: node scripts/verify-gri-snapshot-v12.js
 
       - name: Publish verified Global Risk continuity package to B2
+        env:
+          GLOBAL_RISK_PUBLISHED_LIVE_ARTIFACT_PATH: /tmp/global-risk-published-live.json
         run: bun scripts/ops/publish-b2-global-risk-direct-postgres.mjs
 
       - name: Require fresh verified three-domain database snapshot
@@ -217,6 +219,8 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
         with:
           name: gri-realtime-direct-postgres-${{ github.run_id }}
-          path: /tmp/global-risk-three-index.json
+          path: |
+            /tmp/global-risk-published-live.json
+            /tmp/global-risk-three-index.json
           if-no-files-found: warn
           retention-days: 30
