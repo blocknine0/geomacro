@@ -56,7 +56,7 @@ describe("commercial access is explained sitewide", () => {
   it("avoids technical jargon in first view while preserving governance references", () => {
     const roadmap = read("src/components/sections/roadmap-section.tsx");
     const contact = read("src/routes/contact.tsx");
-    expect(intelligence).toContain("Previous risk assessments remain available for comparison");
+    expect(intelligence).toContain("Previous verified risk assessments remain available for comparison");
     expect(roadmap).toContain("Enterprise agreements and support");
     expect(contact).toContain("Scope, service terms and access are agreed before commercial delivery.");
   });
