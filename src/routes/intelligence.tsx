@@ -333,7 +333,7 @@ function IntelligencePage() {
               </div>
               {intel.updatedAt ? (
                 <p className="mt-4 border-t border-border/50 pt-3 text-xs leading-5 text-muted-foreground">
-                  Monitoring updated {formatTime(intel.updatedAt)}; scored news may be older. All assessments retain their original dates.
+                  Monitoring updated {formatTime(intel.updatedAt)}; scored news may be older. Earlier assessments retain their original dates.
                 </p>
               ) : null}
             </div>
