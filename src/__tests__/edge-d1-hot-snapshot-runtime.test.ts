@@ -125,6 +125,9 @@ describe("B2 cap resilient public edge reads", () => {
     const response = await worker.fetch(new Request(`https://edge.test${path}`), {
       B2_KEY_ID: "read-key",
       B2_APPLICATION_KEY: "read-secret",
+      CONTROL_PLANE: {
+        fetch: (request: Request) => fetch(request),
+      },
     }, { waitUntil: () => undefined });
     const body = await response.json();
     expect(response.status).toBe(200);
@@ -166,6 +169,9 @@ describe("B2 cap resilient public edge reads", () => {
     const response = await worker.fetch(new Request(`https://edge.test${path}`), {
       B2_KEY_ID: "read-key",
       B2_APPLICATION_KEY: "read-secret",
+      CONTROL_PLANE: {
+        fetch: (request: Request) => fetch(request),
+      },
     }, { waitUntil: () => undefined });
     const body = await response.json();
 
@@ -345,6 +351,9 @@ describe("B2 cap resilient public edge reads", () => {
     const response = await globalRiskWorker.fetch(new Request("https://edge.test/global-risk"), {
       B2_KEY_ID: "read-key",
       B2_APPLICATION_KEY: "read-secret",
+      CONTROL_PLANE: {
+        fetch: (request: Request) => fetch(request),
+      },
     }, { waitUntil: () => undefined });
     expect(response.status).toBe(503);
   });
