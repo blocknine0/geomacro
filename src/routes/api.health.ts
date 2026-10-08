@@ -11,6 +11,10 @@ import { geomacroSupabaseRuntimeMode } from "../lib/supabase-runtime-mode.server
 const SUPABASE_RECOVERY_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const CONTROL_PLANE_PUBLIC_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev";
+const RISK_INDICES_PARENT_PROJECTION_PROOF_SCHEMA =
+  "geomacro.public-risk-indices-parent-projection-proof.v1";
+const GLOBAL_RISK_LIVE_KEY =
+  "geomacro-evidence/v1/live/global-risk/latest.json.gz";
 const HOT_SNAPSHOT_PROBES = [
   {
     key: "intelligence",
@@ -77,6 +81,7 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
       b2_sha256?: string;
       payload_sha256?: string;
       proof_schema?: string;
+      verification_mode?: string;
       full_b2_readback_verified?: boolean;
       exact_gzip_restore_verified?: boolean;
       payload_json?: string;
@@ -90,13 +95,21 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
     const sourceAsOfMs = Date.parse(sourceAsOf);
     const expiresAtMs = Date.parse(String(snapshot.expires_at ?? ""));
     const now = Date.now();
+    const parentProjection =
+      probe.product === "risk-indices" &&
+      snapshot.proof_schema === RISK_INDICES_PARENT_PROJECTION_PROOF_SCHEMA &&
+      snapshot.verification_mode === "global-risk-parent-projection";
+    const expectedProofSchema = parentProjection
+      ? RISK_INDICES_PARENT_PROJECTION_PROOF_SCHEMA
+      : probe.proofSchema;
+    const expectedB2Key = parentProjection ? GLOBAL_RISK_LIVE_KEY : probe.b2Key;
 
     if (
       snapshot.ok !== true ||
       snapshot.product !== probe.product ||
       snapshot.schema !== probe.schema ||
-      snapshot.proof_schema !== probe.proofSchema ||
-      snapshot.b2_object_key !== probe.b2Key ||
+      snapshot.proof_schema !== expectedProofSchema ||
+      snapshot.b2_object_key !== expectedB2Key ||
       snapshot.full_b2_readback_verified !== true ||
       snapshot.exact_gzip_restore_verified !== true ||
       !HASH_RE.test(b2Sha256) ||
@@ -136,7 +149,16 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
     if (
       payload.schema !== probe.schema ||
       payload.generated_at !== snapshot.generated_at ||
-      payload.source_project !== SUPABASE_RECOVERY_PROJECT_REF
+      payload.source_project !== SUPABASE_RECOVERY_PROJECT_REF ||
+      (
+        parentProjection &&
+        (
+          (payload as Record<string, unknown>).verification_mode !== "global-risk-parent-projection" ||
+          (payload as Record<string, unknown>).parent_product !== "global-risk" ||
+          (payload as Record<string, unknown>).parent_b2_sha256 !== b2Sha256 ||
+          !HASH_RE.test(String((payload as Record<string, unknown>).parent_payload_sha256 ?? ""))
+        )
+      )
     ) return unavailable();
 
     if (probe.product === "intelligence") {
@@ -169,6 +191,14 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
       b2_sha256: b2Sha256,
       payload_sha256: payloadSha256,
       source_as_of: sourceAsOf,
+      proof_schema: snapshot.proof_schema ?? null,
+      verification_mode:
+        parentProjection ? "global-risk-parent-projection" : "direct-b2-readback",
+      b2_object_key: snapshot.b2_object_key ?? null,
+      parent_payload_sha256:
+        parentProjection
+          ? String((payload as Record<string, unknown>).parent_payload_sha256 ?? "")
+          : null,
     };
   } catch {
     return unavailable();
@@ -265,9 +295,21 @@ async function getPublicProductionReadiness(deep: boolean) {
   const hotSnapshotServing = Object.fromEntries(
     HOT_SNAPSHOT_PROBES.map((probe, index) => [probe.key, hotSnapshots[index]]),
   );
+  const globalRiskHot = hotSnapshots[1];
+  const riskIndicesHot = hotSnapshots[2];
+  const riskIndicesParentBindingReady =
+    riskIndicesHot?.verification_mode !== "global-risk-parent-projection" ||
+    (
+      globalRiskHot?.ok === true &&
+      riskIndicesHot?.b2_sha256 === globalRiskHot?.b2_sha256 &&
+      riskIndicesHot?.source_as_of === globalRiskHot?.source_as_of &&
+      riskIndicesHot?.b2_object_key === globalRiskHot?.b2_object_key &&
+      riskIndicesHot?.parent_payload_sha256 === globalRiskHot?.payload_sha256
+    );
   const d1HotServingReady =
     hotSnapshots.length === HOT_SNAPSHOT_PROBES.length &&
-    hotSnapshots.every((proof) => proof.ok);
+    hotSnapshots.every((proof) => proof.ok) &&
+    riskIndicesParentBindingReady;
 
   return {
     deep_checked: true,
