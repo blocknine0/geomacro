@@ -353,8 +353,6 @@ function unavailable(status = 503) {
 }
 
 async function buildResponse(env) {
-  const hotSnapshot = await readD1HotSnapshot();
-  if (hotSnapshot) return hotSnapshot;
   const [liveBytes, proofBytes] = await Promise.all([
     signedGet(LIVE_KEY, env),
     signedGet(PROOF_KEY, env),
@@ -456,6 +454,12 @@ export default {
     // wrangler and sits in front of this entrypoint as the global L1.
     const cache = caches.default;
     const cacheKey = new Request(`${url.origin}/intelligence?projection=d1-hot-v1`, { method: "GET" });
+    const hotSnapshot = await readD1HotSnapshot();
+    if (hotSnapshot) {
+      ctx.waitUntil(cache.put(cacheKey, hotSnapshot.clone()));
+      return hotSnapshot;
+    }
+
     const cached = await cache.match(cacheKey);
     if (cached) {
       try {
