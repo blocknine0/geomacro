@@ -9,6 +9,7 @@ import {
 import {
   assertRiskObjectJsonKeysSafe,
   publicRiskObjectVerificationKeySet,
+  type RiskObjectVerificationKeys,
 } from "../lib/risk-object-signing.server";
 
 import {
@@ -37,6 +38,49 @@ function jsonResponse(
       },
     },
   );
+}
+
+function validatedRuntimeVerificationRegistry() {
+  // Load/validate the public registry once per request and pass those exact
+  // bytes into the verifier. This avoids a second environment-derived registry
+  // load inside cryptographic verification and keeps GET/POST on one trust set.
+  ensureRiskObjectRuntimePublicKey();
+
+  const keySet =
+    publicRiskObjectVerificationKeySet();
+
+  if (keySet.keys.length === 0) {
+    throw new Error(
+      "Risk Object verification keys unavailable",
+    );
+  }
+
+  const verificationKeys:
+    RiskObjectVerificationKeys =
+      Object.fromEntries(
+        keySet.keys.map(
+          ({
+            key_id,
+            public_key_spki_b64,
+            status,
+            not_before,
+            not_after,
+          }) => [
+            key_id,
+            {
+              public_key_spki_b64,
+              status,
+              not_before,
+              not_after,
+            },
+          ],
+        ),
+      );
+
+  return {
+    keySet,
+    verificationKeys,
+  };
 }
 
 async function verifyRequest(
@@ -160,8 +204,14 @@ async function verifyRequest(
     );
   }
 
+  let verificationKeys:
+    RiskObjectVerificationKeys;
+
   try {
-    ensureRiskObjectRuntimePublicKey();
+    ({
+      verificationKeys,
+    } =
+      validatedRuntimeVerificationRegistry());
   } catch {
     return jsonResponse(
       {
@@ -176,14 +226,34 @@ async function verifyRequest(
     );
   }
 
-  const report =
-    verifyPublicRiskObjectArtifact(
-      (
-        body as {
-          risk_object: unknown;
-        }
-      ).risk_object,
+  let report;
+
+  try {
+    report =
+      verifyPublicRiskObjectArtifact(
+        (
+          body as {
+            risk_object: unknown;
+          }
+        ).risk_object,
+        {
+          verification_keys:
+            verificationKeys,
+        },
+      );
+  } catch {
+    return jsonResponse(
+      {
+        ok: false,
+        error:
+          "verification_runtime_error",
+      },
+      503,
+      {
+        "cache-control": "no-store",
+      },
     );
+  }
 
   if (
     report.reason_codes.includes(
@@ -225,27 +295,10 @@ export const Route =
       handlers: {
         GET: async () => {
           try {
-            ensureRiskObjectRuntimePublicKey();
-
-            const keySet =
-              publicRiskObjectVerificationKeySet();
-
-            if (
-              keySet.keys.length === 0
-            ) {
-              return jsonResponse(
-                {
-                  ok: false,
-                  error:
-                    "verification_keys_unavailable",
-                },
-                503,
-                {
-                  "cache-control":
-                    "no-store",
-                },
-              );
-            }
+            const {
+              keySet,
+            } =
+              validatedRuntimeVerificationRegistry();
 
             return jsonResponse(
               {
