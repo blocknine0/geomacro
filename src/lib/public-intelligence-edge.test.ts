@@ -89,6 +89,6 @@ describe("verified Intelligence edge-first preview recovery", () => {
     });
     const result = parseVerifiedIntelligenceEdgePayload(payload(rows), NOW);
     expect(result[0].source_title).toBe("Geomacro finds Government controls tighten supply access");
-    expect(JSON.stringify(result)).not.toMatch(/\\barticle\\b/iu);
+    expect(JSON.stringify(result)).not.toMatch(/\barticle\b/iu);
   });
 });
