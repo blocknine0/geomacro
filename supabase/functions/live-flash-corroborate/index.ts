@@ -1106,12 +1106,14 @@ Deno.serve(async request => {
       if (isNewMember) {
         const memberInsert = await db
           .from("live_flash_event_family_members")
-          .insert({
+          .upsert({
             family_id: family.family_id,
             flash_id: flash.flash_id,
-            linked_at: new Date().toISOString(),
+            // Keep linked_at immutable on replay: the database default sets it
+            // only for a genuinely new membership, while conflicts refresh
+            // only last_seen_at.
             last_seen_at: new Date().toISOString(),
-          })
+          }, { onConflict: "family_id,flash_id" })
 
         if (memberInsert.error) {
           console.error(memberInsert.error)
