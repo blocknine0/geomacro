@@ -107,8 +107,8 @@ describe("D1 B2-verified hot snapshots", () => {
   it("carries a direct B2 anchor into a fresh independently verified Global Risk recovery snapshot", async () => {
     const db = fakeDb();
     const env = { DB: db, CONTROL_PLANE_TOKEN: TOKEN };
-    const baselineGeneratedAt = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-    const baselineAsOf = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const baselineGeneratedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const baselineAsOf = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const baselineValue = {
       schema: "geomacro.public-global-risk-live.v1",
       generated_at: baselineGeneratedAt,
