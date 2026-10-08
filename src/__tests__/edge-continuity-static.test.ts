@@ -7,7 +7,7 @@ describe("cap-independent verified edge continuity", () => {
   it("requires successful main-run B2 readback proof before materializing continuity", () => {
     const prepare = read("scripts/ops/prepare-edge-continuity.sh");
     const materialize = read("scripts/ops/materialize-edge-continuity.mjs");
-    expect(prepare).toContain("branch=main&status=success&per_page=1");
+    expect(prepare).toContain("branch=main&status=success&per_page=50");
     expect(prepare).toContain('proof.b2_readback_verified !== true');
     expect(prepare).toContain('proof.destructive_change !== false');
     expect(materialize).toContain('proof?.b2_readback_verified !== true');
@@ -15,11 +15,17 @@ describe("cap-independent verified edge continuity", () => {
     expect(materialize).toContain('"geomacro.edge-continuity.v1"');
     expect(materialize).toContain("payload_sha256");
     expect(materialize).toContain("source_live_sha256");
-    expect(prepare).toContain('ARTIFACT_NAME="risk-indices-realtime-$SOURCE_RUN_ID"');
-    expect(prepare).toContain('ARTIFACT_NAME="gri-realtime-direct-postgres-$SOURCE_RUN_ID"');
-    expect(prepare).toContain('ARTIFACT_NAME="intelligence-current-$SOURCE_RUN_ID"');
+    expect(prepare).toContain("artifact_name_for_run()");
+    expect(prepare).toContain("gri-realtime-direct-postgres-%s");
+    expect(prepare).toContain("risk-indices-realtime-%s");
+    expect(prepare).toContain("intelligence-current-%s");
+    expect(prepare).toContain("try_candidate()");
+    expect(prepare).toContain("No coherent B2-readback-verified continuity source found");
+    expect(prepare).toContain("SELECTED_RUN_ID");
     expect(prepare).toContain('.sort((a, b) => Date.parse(String(a?.created_at ?? "")) - Date.parse(String(b?.created_at ?? "")))');
     expect(prepare).toContain('repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip');
+    expect(materialize).toContain('findFile("global-risk-published-live.json")');
+    expect(materialize).toContain('findFile("global-risk-three-index.json")');
     expect(materialize).toContain('findFile("risk-indices-published-live.json")');
     expect(materialize).not.toContain('findFile("risk-indices-edge.json")');
   });
