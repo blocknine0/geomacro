@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "907ccad2e13a571dde725a077296fe332d063b63",
-  "published_baseline": "Founder-approved Geomacro Finds and Intelligence one-line derived gist only, no customer-facing editorial article label, strict public fields allowlist, event metadata as Geomacro Report rather than news content. Mainnet payment and Global Risk presentation remain unchanged. Publish and exact deployed SHA require separate acceptance.",
+  "baseline_sha": "78b2dfa726de0570b0a39ccc01c1f9ac48f6b997",
+  "published_baseline": "Founder-approved 2026-10-08 concise Geomacro Finds first-fold redesign. Derived single verified development selected across three categories; truthful event date; customer-friendly monitoring themes; no technical status, invented before/causal/impact/confidence text; clear x402 price, monthly inquiry and annual email access. Smaller balanced responsive hero. Global Risk frozen baseline unchanged. Publication and exact live build SHA remain separate acceptance steps.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-08T08:16:00Z",
   "published_source_sha": "87fe2e9dd4d1f6c7abeb2af8cbe2029d5b9b4f14",
-  "lock_revision": "founder-approved-derived-gist-pinned-canonical-main-20261008"
+  "lock_revision": "founder-approved-compact-commercial-homepage-20261008"
 }
