@@ -231,7 +231,7 @@ function IntelligencePage() {
 
             {filtered.length ? (
               <div className="grid gap-3">
-                {filtered.slice(0, 24).map((event) => <IntelCard key={event.id} event={event} />}
+                {filtered.slice(0, 24).map((event) => <IntelCard key={event.id} event={event} />)}
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-border p-8 text-center">
