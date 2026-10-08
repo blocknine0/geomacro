@@ -23,6 +23,8 @@ name: Day 6 Authorized Federico Pilot Once
 # to B2 write-ack plus isolated D1 exact readback verification.
 # Retrigger when the shared partner-assurance verifier/diagnostic adapter changes.
 # Retrigger when the deployed public verifier route changes; local gates still precede allowance.
+# Fresh exact-main retrigger after #1808 was published to production.
+# No policy, threshold, allowance, payment, or execution boundary changes in this retrigger.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
