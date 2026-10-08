@@ -126,7 +126,7 @@ describe("B2 cap resilient public edge reads", () => {
       B2_KEY_ID: "read-key",
       B2_APPLICATION_KEY: "read-secret",
       CONTROL_PLANE: {
-        fetch: (request: Request) => fetch(request),
+        fetch: (request: Request) => fetch(request.url),
       },
     }, { waitUntil: () => undefined });
     const body = await response.json();
@@ -170,7 +170,7 @@ describe("B2 cap resilient public edge reads", () => {
       B2_KEY_ID: "read-key",
       B2_APPLICATION_KEY: "read-secret",
       CONTROL_PLANE: {
-        fetch: (request: Request) => fetch(request),
+        fetch: (request: Request) => fetch(request.url),
       },
     }, { waitUntil: () => undefined });
     const body = await response.json();
@@ -254,7 +254,7 @@ describe("B2 cap resilient public edge reads", () => {
       {
         B2_KEY_ID: "read-key",
         B2_APPLICATION_KEY: "read-secret",
-        CONTROL_PLANE: { fetch: (request: Request) => fetch(request) },
+        CONTROL_PLANE: { fetch: (request: Request) => fetch(request.url) },
       },
       { waitUntil: () => undefined },
     );
@@ -337,7 +337,7 @@ describe("B2 cap resilient public edge reads", () => {
       {
         B2_KEY_ID: "read-key",
         B2_APPLICATION_KEY: "read-secret",
-        CONTROL_PLANE: { fetch: (request: Request) => fetch(request) },
+        CONTROL_PLANE: { fetch: (request: Request) => fetch(request.url) },
       },
       { waitUntil: () => undefined },
     );
@@ -360,7 +360,7 @@ describe("B2 cap resilient public edge reads", () => {
       B2_KEY_ID: "read-key",
       B2_APPLICATION_KEY: "read-secret",
       CONTROL_PLANE: {
-        fetch: (request: Request) => fetch(request),
+        fetch: (request: Request) => fetch(request.url),
       },
     }, { waitUntil: () => undefined });
     expect(response.status).toBe(503);
