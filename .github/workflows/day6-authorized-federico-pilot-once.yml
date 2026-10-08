@@ -14,6 +14,9 @@ name: Day 6 Authorized Federico Pilot Once
 # Final bounded retrigger after the D1 hot reader was made independent of risk-object
 # verification-key secrets by validating against the deployed public trust registry.
 # The no-B2/no-Supabase canary still runs before any Federico allowance step.
+# Final bounded retrigger after the canary itself was updated to re-verify the returned
+# hot GRO against the deployed public trust registry instead of absent secret key env.
+# The allowance remains unreachable until this independent canary succeeds.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
