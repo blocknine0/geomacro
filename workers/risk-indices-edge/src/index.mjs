@@ -282,7 +282,15 @@ export default {
     const cache = caches.default;
     const cacheKey = new Request(`${url.origin}/risk-indices`, { method: "GET" });
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      if (cached.headers.get("x-geomacro-serving-store") === "cloudflare-d1") return cached;
+      const hotSnapshot = await readD1HotSnapshot();
+      if (hotSnapshot) {
+        ctx.waitUntil(cache.put(cacheKey, hotSnapshot.clone()));
+        return hotSnapshot;
+      }
+      return cached;
+    }
 
     try {
       const response = await buildResponse(env);
