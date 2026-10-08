@@ -42,6 +42,14 @@ describe("country GRO zero-cost continuity", () => {
     expect(publisher).toContain("const childEnv = { ...process.env }");
     expect(publisher).toContain("delete childEnv.NODE_OPTIONS");
     expect(publisher).toContain("env: childEnv");
+    expect(publisher).toContain("async function d1BatchQuery");
+    expect(publisher).toContain('JSON.stringify({ batch })');
+    expect(publisher).toContain("boundedD1Batches(writeQueries)");
+    expect(publisher).toContain("params: [");
+    expect(publisher).toContain("row.object_json");
+    expect(publisher).toContain("d1_parameterized_writes: true");
+    expect(publisher).not.toContain("country-gro-hot.sql");
+    expect(publisher).not.toContain("sqlText(row.object_json)");
     expect(publisher).not.toContain("await b2.get(");
   });
 
