@@ -46,6 +46,9 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("scripts/run-gdelt-gal-cycle.mjs");
     expect(workflow).toContain("B2_GDELT_PRIMARY: \"1\"");
     expect(workflow).toContain('(.status == "healthy" or .status == "fresh_prior_cycle")');
+    expect(workflow).toContain('.failure_class == "B2_DOWNLOAD_CAP_EXCEEDED"');
+    expect(workflow).toContain("The new GDELT fragment was not promoted to structured evidence");
+    expect(workflow).toContain("FEDERICO_STRICT thresholds remain unchanged");
     expect(workflow).toContain('"scripts/run-gdelt-gal-cycle.mjs"');
     expect(workflow).toContain('"supabase/functions/live-flash-corroborate/index.ts"');
     expect(workflow).toContain('"src/lib/public-demo-risk-profile.ts"');
