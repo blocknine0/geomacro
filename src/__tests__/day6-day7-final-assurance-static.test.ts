@@ -52,6 +52,12 @@ describe("Day 6 generic partner assurance", () => {
     expect(adapter).toContain("verification_keys: verificationKeys");
     expect(adapter).toContain("reason_codes: deployed.body?.verification?.reason_codes");
     expect(adapter).toContain("checks: deployed.body?.verification?.checks");
+    expect(adapter).toContain("deployed.status === 503");
+    expect(adapter).toContain("deployedRegistryParityFallback");
+    expect(adapter).toContain("localTamperedVerification.valid !== true");
+    expect(adapter).toContain('DEPLOYED_REGISTRY_LOCAL_PARITY_503');
+    expect(adapter).toContain("LOCAL_TAMPER_NOT_REJECTED");
+    expect(adapter).not.toContain("deployed.status >= 500");
   });
 
   it("generates a country-agnostic strict GRO while keeping the Federico allowance explicit", () => {
