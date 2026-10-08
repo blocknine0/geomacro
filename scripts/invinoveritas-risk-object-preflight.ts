@@ -859,6 +859,12 @@ const verificationSourcePaths = [
   "src/lib/canonical-json.ts",
   "src/lib/risk-object-signing.server.ts",
   "src/lib/risk-object-contract.ts",
+  "src/lib/country-risk-engine.ts",
+  "src/lib/country-risk-publisher.server.ts",
+  "src/lib/federico-publication-policy.ts",
+  "package.json",
+  "bun.lock",
+  "tsconfig.json",
 ] as const;
 const verificationSourcePins = [];
 for (const sourcePath of verificationSourcePaths) {
@@ -909,13 +915,25 @@ const reviewArtifact = {
       source_resolution:
         "Resolve each signed source_id through a receiver-controlled source registry to a preapproved HTTPS hostname.",
       signed_tuple_mapping:
-        "For each signed evidence item require source_ids.length == source_record_ids.length == content_hashes.length > 0. Interpret index i as the signed tuple {source_id:source_ids[i], source_record_id:source_record_ids[i], content_hash:content_hashes[i]}; source_record_id is the signed record locator for that tuple and content_hash authenticates the fetched record bytes after receiver normalization; reject unequal lengths, missing values, host/source-registry mismatch, or ambiguous duplicate tuple keys.",
+        "For each signed evidence item require source_ids.length == source_record_ids.length == content_hashes.length > 0. Interpret index i as the signed tuple {source_id:source_ids[i], source_record_id:source_record_ids[i], content_hash:content_hashes[i]}. source_record_id must be a canonical HTTPS article/document permalink with query and fragment removed. content_hash is signed issuer-side continuity metadata for the ingested source envelope and is never a receiver trust root or a claim that it hashes fetched article bytes.",
+      source_locator_policy:
+        "Reject site roots, feed endpoints, mutable homepages, redirects to a different publisher host, opaque tracking-only locators, non-HTTPS locators, and any locator with no stable non-root path. The receiver independently fetches the canonical source_record_id and records its own retrieval SHA-256 for audit.",
       source_fetch:
-        "At admission, independently fetch each cited source record and require equality with its signed positional tuple. Use a receiver-maintained hostname allowlist; HTTPS only; no credentials; reject or fully revalidate every redirect; resolve A/AAAA before every hop and block loopback, private, link-local, multicast, reserved and metadata-service ranges; use egress isolation, DNS-rebinding-resistant address pinning, response-size limits and connection/total timeouts.",
+        "At admission independently fetch each canonical source_record_id. Use a receiver-maintained hostname allowlist; HTTPS only; no credentials; reject or fully revalidate every redirect; resolve A/AAAA before every hop and block loopback, private, link-local, multicast, reserved and metadata-service ranges; use egress isolation, DNS-rebinding-resistant address pinning, response-size limits and connection/total timeouts. Do not compare fetched bytes to issuer content_hash; compute a receiver-owned retrieval digest and use the fetched material for semantic checks.",
       country_nexus:
         `Independently confirm the ${reviewSubjectId} nexus from the fetched/parsed source material or receiver-controlled structured attribution evidence; issuer attribution confidence alone is insufficient.`,
       ownership_and_syndication:
         "Require at least two independent publisher groups, reject shared ownership/control, and reject a common syndication group.",
+      ownership_registry_policy: {
+        authority: "receiver_controlled",
+        maximum_snapshot_age_days: 30,
+        effective_date_required: true,
+        publisher_group_required: true,
+        syndication_group_required: true,
+        conflict_rule: "fail_closed_on_missing_stale_or_conflicting_registry_evidence",
+      },
+      semantic_validation:
+        "Receiver independently extracts the factual event claim from each fetched source record and requires that at least two independent publisher groups materially entail the signed event title/type and requested-country nexus. Mere co-mention of the country or existence of the URLs is insufficient.",
       material_diversity:
         "Require at least two materially distinct source records; receiver computes normalized-content similarity and rejects the corroboration set when max pairwise similarity >= 0.85.",
       unavailable_evidence:
@@ -942,6 +960,14 @@ const reviewArtifact = {
         "Clone the exact received gro-1.1 record; set integrity.payload_hash=null and integrity.signature=null; canonicalize the entire clone with geomacro-canonical-json-v1; SHA-256 of those UTF-8 canonical bytes must equal integrity.payload_hash; verify Ed25519 integrity.signature over those same canonical bytes.",
       canonicalization_url_policy:
         "The signed integrity.canonicalization_url is informational discovery metadata only. Never fetch or trust mutable branch content for admission; use only the receiver-preapproved immutable commit and SHA-256 source pins above.",
+      runtime_policy: {
+        runtime: "Bun 1.4.2",
+        lockfile: "bun.lock",
+        dependency_install: "bun install --frozen-lockfile --ignore-scripts",
+        unicode_input: "valid UTF-8 only",
+        number_serialization: "ECMAScript Number::toString as pinned by geomacro-canonical-json-v1 vectors",
+        build_rule: "receiver reproduces from the pinned commit, package.json, bun.lock, tsconfig.json and pinned source SHA-256 set",
+      },
       reject_duplicate_keys: true,
       reject_invalid_utf8: true,
       reject_non_finite_numbers: true,
@@ -953,14 +979,36 @@ const reviewArtifact = {
       "Require the receiver-preapproved immutable commit SHA and every parser/canonicalization source SHA-256 to match parser_policy before parsing.",
       "Parse with that single pinned strict parser, reject ambiguous JSON/schema violations, then construct the exact signature preimage defined in parser_policy.",
       "Recompute integrity.payload_hash from the canonical signable record and verify Ed25519 against the receiver-controlled approved key fingerprint and lifecycle/revocation policy.",
-      "For every evidence item require equal non-zero source_ids/source_record_ids/content_hashes lengths and bind index i as the signed source tuple before any source fetch.",
-      `Independently validate each signed source tuple, ${reviewSubjectId} nexus, publisher ownership/syndication independence, material diversity, and the hardened allowlisted source-fetch policy.`,
+      "For every evidence item require equal non-zero source_ids/source_record_ids/content_hashes lengths and bind index i as the signed source tuple before any source fetch. Treat issuer content_hash only as signed continuity metadata, never as fetched-content authentication.",
+      `Independently validate each canonical source locator, the ${reviewSubjectId} nexus, publisher ownership/syndication independence, semantic entailment, material diversity, and the hardened allowlisted source-fetch policy.`,
+      "Recompute the permitted country-risk-v0.1.0-pilot result from the signed reproducibility calculation_input using the receiver-pinned methodology implementation; require score, confidence, attribution and calculation_hash equality before trusting any risk field. Treat previous_score/delta as non-admissible unless the receiver also possesses and verifies the referenced prior compatible GRO.",
+      "If decision_readiness is DEGRADED or the uncertainty interval is uncalibrated, label the record contextual-only and prohibit automated score-based or irreversible decisions from this object alone.",
       "Obtain NTS-authenticated trusted current UTC time and require trusted_now < expires_at at admission; fail closed when time uncertainty overlaps expiry.",
       "Repeat the same trusted-time and expiry check immediately before any irreversible downstream action.",
       "Treat issuer-provided readiness, confidence and historical freshness assertions as untrusted decision metadata until receiver validation passes.",
     ],
+    usage_policy: {
+      ready: "may_be_used_only_after_all_receiver_checks_pass",
+      degraded: "contextual_only_no_automated_score_based_or_irreversible_action",
+      uncalibrated_uncertainty: "must_not_be_interpreted_as_calibrated_decision_quality",
+    },
+    methodology_replay_policy: {
+      implementation_commit: verificationCommitSha,
+      implementation_bundle_sha256: verificationBundleSha256,
+      calculation_namespace: String(
+        riskObject?.provenance?.reproducibility?.calculation_namespace ?? "",
+      ),
+      required_result_equality: [
+        "risk.score",
+        "confidence",
+        "attribution",
+        "integrity.calculation_hash",
+      ],
+      previous_score_delta_rule:
+        "admissible only when receiver independently verifies the prior compatible GRO; otherwise ignore previous_score and delta",
+    },
     failure_posture:
-      "Any missing trust anchor, wrong receiver purpose, subject/schema/method mismatch, parser ambiguity, hash/signature mismatch, provenance gap, stale context, or trusted-time uncertainty keeps the object inadmissible.",
+      "Any missing trust anchor, unstable source locator, wrong receiver purpose, subject/schema/method mismatch, parser ambiguity, hash/signature mismatch, semantic/provenance gap, stale ownership registry, methodology replay mismatch, stale context, or trusted-time uncertainty keeps the object inadmissible.",
   },
   freshness_policy: {
     observed_at: riskObject.observed_at,
@@ -991,7 +1039,7 @@ if (reviewArtifactBytes > 20_000) {
 }
 
 const reviewContext =
-  "Neutral review of a fail-closed admission plan. The signed gro-1.1 record is read-only external evidence. Its supplied record_sha256 is transport/audit metadata, not a trust root. Authentication requires the receiver-preapproved Ed25519 key fingerprint plus the receiver-preapproved immutable parser/canonicalization commit and source digests. Parallel evidence arrays are accepted only under the explicit equal-length positional tuple rule. Source fetches are HTTPS allowlist-only with redirect/DNS/private-range/size/timeout controls. receiver_purpose=country_risk_context is local policy metadata, not a signed GRO field. Fresh receiver-controlled trusted UTC time must be strictly before expires_at. This review never authorizes execution.";
+  "Neutral review of a fail-closed admission plan. The signed gro-1.1 record is read-only external evidence. source_record_id values are canonical stable HTTPS permalinks; issuer content_hash values are continuity metadata, not fetched-content trust roots. The receiver independently fetches sources, validates semantic entailment/country nexus/ownership/syndication, computes its own retrieval digests, reproduces the pinned methodology, and treats DEGRADED uncalibrated output as contextual-only. Authentication requires the receiver-preapproved Ed25519 key and immutable parser/methodology build pins. Fresh receiver-controlled trusted UTC time must be strictly before expires_at. This review never authorizes execution.";
 const reviewContextBytes = Buffer.byteLength(reviewContext, "utf8");
 if (reviewContextBytes > 4_000) {
   throw new Error(
