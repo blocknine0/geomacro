@@ -7,6 +7,10 @@ name: Day 6 Authorized Federico Pilot Once
 # Final bounded retrigger after direct-Postgres `.contains()` parity fixes country-specific corroboration.
 # Final bounded retrigger after #1571 made archived GRO recovery B2-native and split B2 read/write credentials.
 # Final bounded retrigger after permanent same-host SCMP /plus article timestamp canonicalization.\n# Partner bootstrap is intentionally limited to the exact five source families used by strict candidate selection.
+# Final bounded retrigger after #1767 proved production verified-hot country GRO publication:
+# 112 current VERIFIED GROs are D1-hot, B2 GET is no longer a synchronous serving gate,
+# and B2 download-cap exhaustion only defers the cold-archive audit.
+# This retrigger must still pass the no-B2/no-Supabase signed-GRO canary before any Federico allowance use.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
