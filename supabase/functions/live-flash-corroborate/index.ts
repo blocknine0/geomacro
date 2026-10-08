@@ -220,12 +220,34 @@ function overlaps(left: Set<string>, right: Set<string>) {
   return false
 }
 
+const FEDERICO_STRICT_PROVIDER_FAMILY_BY_SOURCE_ID: Record<string, string> = {
+  un_all_documents_rss: "united_nations",
+  un_human_rights_council_rss: "united_nations",
+  un_geneva_press_rss: "united_nations",
+  un_security_council_docs_rss: "united_nations",
+  un_geneva_meeting_summaries_rss: "united_nations",
+  eu_council_press_rss: "council_of_the_european_union",
+  ecb_press_rss: "european_central_bank",
+  ecb_market_information_rss: "european_central_bank",
+  aljazeera_rss: "aljazeera",
+  bbc_world_rss: "bbc_world",
+  xinhua_english_china_rss: "xinhua_english_china",
+  scmp_china_rss: "scmp_china",
+  federal_reserve_press_rss: "federal_reserve",
+  forexlive_rss: "forexlive",
+  bis_rss_media_releases: "bank_for_international_settlements",
+  bis_rss_central_banker_speeches: "bank_for_international_settlements",
+  nrcan_news_atom: "natural_resources_canada",
+  usgs_minerals_news_rss: "usgs",
+}
+
 function flashFamily(row: Flash) {
   if (row.source_id === "telegram_mtproto_flash") {
     return `telegram:${normalize(row.source_channel ?? "unknown").replace(/\s+/g, "-") || "unknown"}`
   }
 
-  return row.source_id
+  const sourceId = String(row.source_id ?? "").trim().toLowerCase()
+  return FEDERICO_STRICT_PROVIDER_FAMILY_BY_SOURCE_ID[sourceId] ?? sourceId
 }
 
 function structuredCountries(row: StructuredEvent) {
