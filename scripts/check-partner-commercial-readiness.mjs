@@ -77,6 +77,18 @@ if (discovery.federation?.fail_closed !== true) fail("partner federation must fa
 if (discovery.federation?.receiver_side_verification_required !== true) {
   fail("receiver-side verification must be required");
 }
+if (discovery.federation?.receiver_pinned_issuer_signature_is_authentication_root !== true) {
+  fail("receiver-pinned issuer signature authentication root missing");
+}
+if (discovery.federation?.third_party_source_network_fetch_required !== false) {
+  fail("receiver admission must not require third-party source network fetch");
+}
+if (!/^[0-9a-f]{64}$/.test(discovery.risk_object?.canonicalization_spec_sha256 ?? "")) {
+  fail("canonicalization spec SHA-256 pin missing");
+}
+if (!/^[0-9a-f]{64}$/.test(discovery.risk_object?.independent_verifier_sha256 ?? "")) {
+  fail("independent verifier SHA-256 pin missing");
+}
 if (discovery.security?.no_execution_authority !== true) {
   fail("partner verification must not grant execution authority");
 }
@@ -143,6 +155,12 @@ for (const required of [
   "proof_verification",
   "independent_node",
   "execution_authorized: false",
+  "parallel-arrays-same-index-v1",
+  "transport_consistency_and_audit_only",
+  "receiver_network_fetch_policy",
+  "disabled_for_admission",
+  "GRO_CANONICALIZATION_SPEC_SHA256",
+  "GRO_INDEPENDENT_VERIFIER_SHA256",
 ]) {
   if (!preflight.includes(required)) fail(`preflight missing required contract marker: ${required}`);
 }
@@ -194,8 +212,8 @@ for (const required of [
 }
 
 for (const required of [
-  'artifact_version: "geomacro-invino-review-v7"',
-  'receiver_policy_id: "federico-global-country-risk-v1"',
+  'artifact_version: "geomacro-invino-review-v8"',
+  'receiver_policy_id: "federico-global-country-risk-v2"',
   'subject_id: reviewSubjectId',
   '!/^[A-Z]{3}$/.test(reviewSubjectId)',
 ]) {
