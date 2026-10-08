@@ -62,9 +62,9 @@ describe("#1414 Intelligence latest-score display truth", () => {
 
   it("separates feed refresh from the original score evidence timestamp", () => {
     expect(route).toContain('latest.isCurrent ? "Latest verified score" : "Last verified score"');
-    expect(route).toContain('event.isCurrent ? "Verified current score" : "Last verified score"');
-    expect(route).toContain("Feed refreshed");
-    expect(route).toContain("Score dates remain the original verified evidence times.");
+    expect(route).toContain('event.isCurrent ? "Current assessment" : "Earlier assessment"');
+    expect(route).toContain("Last update");
+    expect(route).toContain("Earlier assessments retain their original dates.");
   });
 
   it("keeps a quiet rare-earth score historical instead of manufacturing freshness", () => {

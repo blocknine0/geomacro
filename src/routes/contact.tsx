@@ -123,7 +123,7 @@ function ContactPage() {
       <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
         <div className="rounded-[1.5rem] border border-border/60 bg-card/30 p-6 sm:p-8 lg:flex lg:items-center lg:justify-between lg:gap-10">
           <div className="max-w-3xl">
-            <p className="text-sm leading-7 text-muted-foreground"><span className="font-medium text-foreground">Commercial boundary:</span> Geomacro sells derived risk intelligence and governed machine-delivery capabilities. Raw upstream data, customer execution authority and unsupported coverage are outside the commercial product.</p>
+            <p className="text-sm leading-7 text-muted-foreground"><span className="font-medium text-foreground">Commercial boundary:</span> Geomacro provides decision-ready intelligence and supported integrations. Scope, service terms and access are agreed before commercial delivery.</p>
             <p className="mt-3 text-xs leading-5 text-muted-foreground">Do not send seed phrases, private keys, production secrets or unnecessary personal/confidential data by email.</p>
           </div>
           <div className="mt-6 flex shrink-0 gap-2 lg:mt-0">

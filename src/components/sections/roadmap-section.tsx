@@ -49,10 +49,10 @@ const PHASES = [
     items: [
       "Production operations",
       "Broader governed coverage",
-      "Enterprise controls and service commitments",
+      "Enterprise agreements and support",
       "Scaled institutional workflows",
-      "Controlled mainnet integrations",
-      "Production agent commerce",
+      "Broader integrations",
+      "More automated intelligence workflows",
     ],
   },
 ] as const;
@@ -66,14 +66,14 @@ export function RoadmapSection() {
           What works today, and what comes next.
         </h1>
         <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Geomacro separates currently usable product surfaces from planned or gated commercial capabilities. Nothing in the roadmap should be read as already launched, generally available, production-ready or covered by a service commitment.
+          Geomacro separates currently usable product surfaces from planned or gated commercial capabilities. Use the public tools today, explore controlled partner access and see what Geomacro is building next. Capabilities become available only after their launch requirements are met.
         </p>
       </div>
 
       <div className="mt-8 grid gap-3 sm:grid-cols-3">
         <StatusCard label="Use today" value="Public intelligence, Risk Indices, Ask Geomacro" />
         <StatusCard label="Controlled roadmap" value="Risk Gate, signed Risk Objects, commercial API" />
-        <StatusCard label="Later production" value="Enterprise scale, mainnet and autonomous commerce" />
+        <StatusCard label="Future plans" value="Enterprise scale and broader integrations" />
       </div>
 
       <div className="mt-12 grid gap-5 lg:grid-cols-2">

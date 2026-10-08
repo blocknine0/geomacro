@@ -112,7 +112,7 @@ export function AskWorkspace() {
         </div>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">Ask Geomacro</h1>
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Ask one clear question. Geomacro answers the point you asked, using verified risk context and approved intelligence evidence.
+          Ask a public risk question for free. Geomacro uses approved intelligence context to answer what is supported. For applications, recurring use or integrations, <Link to="/pricing" className="text-primary hover:underline">compare API and monthly access</Link>.
         </p>
       </header>
 
@@ -148,7 +148,7 @@ export function AskWorkspace() {
             <div className="space-y-4">
               <UserBubble>{pendingQuestion}</UserBubble>
               <div className="flex items-center gap-2 px-1 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Checking verified evidence…
+                <Loader2 className="h-4 w-4 animate-spin" /> Reviewing current risk context…
               </div>
             </div>
           ) : null}
@@ -213,7 +213,7 @@ export function AskWorkspace() {
           </span>
         </div>
         <p className="mt-2 px-1 text-[11px] leading-5 text-muted-foreground">
-          Raw source content, provider details and internal retrieval payloads are not exposed in the answer.
+          Answers focus on useful risk context and clearly distinguish what is known from what is uncertain.
         </p>
       </section>
     </main>

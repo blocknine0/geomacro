@@ -18,7 +18,7 @@ function Contents({
   return (
     <nav aria-label="Documentation contents" className="text-sm">
       <p className="mb-3 border-b border-border/60 pb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-        Contents · {DOCS_PAGE_COUNT} pages
+        Browse documentation
       </p>
       <div className="space-y-5">
         {DOCS_GROUPS.map((group) => (
@@ -43,9 +43,7 @@ function Contents({
                           : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
                       )}
                     >
-                      <span className="w-6 shrink-0 tabular-nums text-[11px] text-muted-foreground/70">
-                        {String(entry.page_number).padStart(2, "0")}
-                      </span>
+                      <span className="w-2 shrink-0 text-primary/65" aria-hidden="true">•</span>
                       <span>{entry.title}</span>
                     </Link>
                     {active && page && page.headings.length > 0 ? (
@@ -89,7 +87,7 @@ export function DocumentHeader() {
         <a href="https://geomacro.live" target="_blank" rel="noreferrer" className="hover:text-foreground">geomacro.live</a>
         <a href="mailto:contact@geomacro.live" className="hover:text-foreground">contact@geomacro.live</a>
         <span>Public Documentation</span>
-        <span>September 2026</span>
+        <span>Product, trust and integration guides</span>
       </div>
     </header>
   );
