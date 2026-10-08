@@ -47,6 +47,9 @@ describe("Day 6 generic partner assurance", () => {
     expect(adapter).toContain("LIVE_REVIEW_ALLOWANCE_NOT_EXPLICITLY_GRANTED");
     expect(adapter).toContain("SIGNED_PARTNER_PROOF_MISSING");
     expect(adapter).toContain("INDEPENDENT_PARTNER_PROOF_VERIFICATION_FAILED");
+    expect(adapter).toContain('provider?.gates?.partner_admission !== "PASS"');
+    expect(adapter).toContain('provider?.live_review?.verdict !== "approve"');
+    expect(adapter).toContain('"LIVE_PARTNER_ADMISSION_REJECTED"');
     expect(adapter).toContain("TAMPER_NOT_REJECTED");
     expect(adapter).toContain("verifyPublicRiskObjectArtifact");
     expect(adapter).toContain("LOCAL_PUBLIC_VERIFIER_REJECTED_ORIGINAL");
