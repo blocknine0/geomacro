@@ -813,6 +813,72 @@ if (
   );
 }
 
+const strictEvidenceItems =
+  Array.isArray(riskObject?.evidence)
+    ? riskObject.evidence
+    : [];
+
+for (const item of strictEvidenceItems) {
+  const sourceIds = Array.isArray(item?.source_ids) ? item.source_ids : [];
+  const sourceRecordIds =
+    Array.isArray(item?.source_record_ids) ? item.source_record_ids : [];
+  const contentHashes =
+    Array.isArray(item?.content_hashes) ? item.content_hashes : [];
+  if (
+    strictProfile &&
+    (
+      sourceIds.length === 0 ||
+      sourceIds.length !== sourceRecordIds.length ||
+      sourceIds.length !== contentHashes.length
+    )
+  ) {
+    throw new Error(
+      "Federico strict evidence tuple arrays must be non-empty and equal-length",
+    );
+  }
+}
+
+const gitHead = spawnSync("git", ["rev-parse", "HEAD"], {
+  encoding: "utf8",
+  maxBuffer: 1024 * 1024,
+});
+if (gitHead.status !== 0) {
+  throw new Error(
+    "Federico verification implementation commit is unavailable",
+  );
+}
+const verificationCommitSha =
+  String(gitHead.stdout ?? "").trim().toLowerCase();
+if (!/^[0-9a-f]{40}$/.test(verificationCommitSha)) {
+  throw new Error(
+    "Federico verification implementation commit is invalid",
+  );
+}
+
+const verificationSourcePaths = [
+  "src/lib/canonical-json.ts",
+  "src/lib/risk-object-signing.server.ts",
+  "src/lib/risk-object-contract.ts",
+] as const;
+const verificationSourcePins = [];
+for (const sourcePath of verificationSourcePaths) {
+  const sourceBytes = await readFile(sourcePath);
+  verificationSourcePins.push({
+    path: sourcePath,
+    sha256: createHash("sha256").update(sourceBytes).digest("hex"),
+    immutable_url:
+      `https://raw.githubusercontent.com/blocknine0/geomacro/${verificationCommitSha}/${sourcePath}`,
+  });
+}
+const verificationBundleSha256 = sha256Canonical({
+  repository: "blocknine0/geomacro",
+  commit_sha: verificationCommitSha,
+  files: verificationSourcePins.map(({ path, sha256 }) => ({
+    path,
+    sha256,
+  })),
+});
+
 const reviewArtifact = {
   artifact_version: "geomacro-invino-review-v7",
   action_proposed: true,
