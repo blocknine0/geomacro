@@ -72,6 +72,14 @@ describe("Federico refresh contract", () => {
     expect(workflow).not.toContain("federal_reserve_press_rss");
   });
 
+  it("keeps event-family membership replay idempotent without rewriting linked_at", () => {
+    const corroborator = read("supabase/functions/live-flash-corroborate/index.ts");
+    expect(corroborator).toContain('.from("live_flash_event_family_members")');
+    expect(corroborator).toContain('.upsert({');
+    expect(corroborator).toContain('{ onConflict: "family_id,flash_id" }');
+    expect(corroborator).not.toContain('linked_at: new Date().toISOString()');
+  });
+
   it("normalizes endpoint IDs to institution-level provider families in the corroborator", () => {
     const corroborator = read("supabase/functions/live-flash-corroborate/index.ts");
     expect(corroborator).toContain("FEDERICO_PROVIDER_FAMILY_BY_SOURCE_ID");
