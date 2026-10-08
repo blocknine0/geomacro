@@ -6,6 +6,7 @@ const assurance = JSON.parse(read("config/partner-assurance.v1.json"));
 const adapter = read("scripts/partner-assurance-adapter.ts");
 const directDay6 = read("scripts/day6-direct-live-federico-gro.ts");
 const day6Workflow = read(".github/workflows/day6-partner-assurance-final.yml");
+const day6Orchestrator = read(".github/workflows/day6-authorized-federico-pilot-once.yml");
 const migration = read("workers/control-plane/migrations/0002_primary_runtime_authority.sql");
 const partnerAssuranceMigration = read("workers/control-plane/migrations/0013_partner_assurance_gro_verified.sql");
 const finalGate = read("scripts/ops/final-launch-gate-core.mjs");
@@ -47,6 +48,11 @@ describe("Day 6 generic partner assurance", () => {
     expect(adapter).toContain("SIGNED_PARTNER_PROOF_MISSING");
     expect(adapter).toContain("INDEPENDENT_PARTNER_PROOF_VERIFICATION_FAILED");
     expect(adapter).toContain("TAMPER_NOT_REJECTED");
+    expect(adapter).toContain("DEPLOYED_VERIFIER_REJECTED_ORIGINAL");
+    expect(adapter).toContain("reason_codes");
+    expect(adapter).toContain("methodology_version");
+    expect(adapter).toContain("commercial_eligibility_status");
+    expect(day6Orchestrator).toContain('"scripts/partner-assurance-adapter.ts"');
   });
 
   it("generates a country-agnostic strict GRO while keeping the Federico allowance explicit", () => {
