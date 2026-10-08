@@ -51,9 +51,9 @@ jobs:
           grep -Fq 'Failed, stale, unavailable, replayed, refunded, internal and unpaid requests do not count as successful paid deliveries.' src/routes/pricing.tsx
           grep -Fq 'Risk Gate, paid agent/x402 production access and broader machine delivery remain roadmap or controlled capabilities until separately promoted.' src/routes/institutional.tsx
           grep -Fq 'Pay-per-call availability is confirmed by the live checkout, not the advertised price.' src/routes/pricing.tsx
-          grep -Fq 'Monthly self-service checkout is not yet available' src/routes/pricing.tsx
+          grep -Fq 'Monthly subscriptions are Coming Soon. You can request a tailored plan and quote now.' src/routes/pricing.tsx
           grep -Fq 'Structured intelligence for APIs and AI agents' src/components/commercial-access-guide.tsx
-          grep -Fq 'Monthly access is an enquiry, not an active self-service subscription.' src/components/commercial-access-guide.tsx
+          grep -Fq 'Monthly subscription checkout is Coming Soon; plan enquiries are open.' src/components/commercial-access-guide.tsx
           grep -Fq 'Pay only when a verified delivery succeeds' src/components/commercial-access-guide.tsx
           echo "PASS: evidence-time and commercial-truth source contracts match the exact checked-out SHA."
 
