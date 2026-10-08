@@ -9,6 +9,7 @@ REPO="${GITHUB_REPOSITORY:-blocknine0/geomacro}"
 
 command -v gh >/dev/null 2>&1 || { echo "gh CLI is required" >&2; exit 2; }
 command -v node >/dev/null 2>&1 || { echo "node is required" >&2; exit 2; }
+command -v unzip >/dev/null 2>&1 || { echo "unzip is required" >&2; exit 2; }
 test -n "${GH_TOKEN:-}" || { echo "GH_TOKEN is required" >&2; exit 2; }
 
 SOURCE_RUN_ID="${SOURCE_RUN_ID:-}"
@@ -49,8 +50,46 @@ if (
 fs.writeFileSync(outPath, JSON.stringify(proof, null, 2) + "\n");
 NODE
 
+case "$PRODUCT" in
+  global-risk)
+    ARTIFACT_NAME="gri-realtime-direct-postgres-$SOURCE_RUN_ID"
+    ;;
+  risk-indices)
+    ARTIFACT_NAME="risk-indices-realtime-$SOURCE_RUN_ID"
+    ;;
+  intelligence)
+    ARTIFACT_NAME="intelligence-current-$SOURCE_RUN_ID"
+    ;;
+  *)
+    echo "Unsupported continuity product: $PRODUCT" >&2
+    exit 4
+    ;;
+esac
+
+ARTIFACTS_JSON="$(gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID/artifacts?per_page=100")"
+ARTIFACT_ID="$(
+  printf '%s' "$ARTIFACTS_JSON" |
+    ARTIFACT_NAME="$ARTIFACT_NAME" node -e '
+      let raw = "";
+      process.stdin.on("data", (chunk) => raw += chunk);
+      process.stdin.on("end", () => {
+        const parsed = JSON.parse(raw || "{}");
+        const matches = (parsed.artifacts ?? [])
+          .filter((artifact) => artifact?.name === process.env.ARTIFACT_NAME && artifact?.expired !== true)
+          .sort((a, b) => Date.parse(String(a?.created_at ?? "")) - Date.parse(String(b?.created_at ?? "")));
+        const latest = matches.at(-1);
+        process.stdout.write(latest?.id ? String(latest.id) : "");
+      });
+    '
+)"
+[[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]] || {
+  echo "No non-expired artifact named $ARTIFACT_NAME found for source run $SOURCE_RUN_ID" >&2
+  exit 4
+}
+
 mkdir -p "$TMP_ROOT/artifacts"
-gh run download "$SOURCE_RUN_ID" --repo "$REPO" --dir "$TMP_ROOT/artifacts"
+gh api "repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > "$TMP_ROOT/source-artifact.zip"
+unzip -q "$TMP_ROOT/source-artifact.zip" -d "$TMP_ROOT/artifacts"
 
 node scripts/ops/materialize-edge-continuity.mjs \
   --product "$PRODUCT" \
@@ -59,4 +98,4 @@ node scripts/ops/materialize-edge-continuity.mjs \
   --source-run-id "$SOURCE_RUN_ID" \
   --output "$OUTPUT"
 
-echo "Verified edge continuity prepared from successful main run $SOURCE_RUN_ID ($SOURCE_WORKFLOW)."
+echo "Verified edge continuity prepared from successful main run $SOURCE_RUN_ID ($SOURCE_WORKFLOW), artifact $ARTIFACT_ID ($ARTIFACT_NAME)."
