@@ -43,9 +43,7 @@ function Contents({
                           : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
                       )}
                     >
-                      <span className="w-6 shrink-0 tabular-nums text-[11px] text-muted-foreground/70">
-                        <span className="sr-only">Section </span>
-                      </span>
+                      <span className="w-2 shrink-0 text-primary/65" aria-hidden="true">•</span>
                       <span>{entry.title}</span>
                     </Link>
                     {active && page && page.headings.length > 0 ? (
