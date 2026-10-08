@@ -15,6 +15,7 @@ describe("one-time Day 6 Federico pilot authorization", () => {
   it("refreshes and proves local readiness before partner allowance", () => {
     const preflight = workflow.indexOf("Prove verified D1 signed GRO hot serving before Federico work");
     const gdelt = workflow.indexOf("Assess governed GDELT structured evidence without making it a prerequisite");
+    const preReady = workflow.indexOf("Check for an existing strict recent two-family event before RSS refresh");
     const fastRefresh = workflow.indexOf("Re-poll active Federico corroborators without partner allowance");
     const fastHydrate = workflow.indexOf("Hydrate trusted publisher times after fast refresh");
     const fastReady = workflow.indexOf("Check for an already strict recent two-family event");
@@ -26,7 +27,8 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     const live = workflow.indexOf("Dispatch exactly one authorized Federico pilot allowance review");
     expect(preflight).toBeGreaterThan(-1);
     expect(gdelt).toBeGreaterThan(preflight);
-    expect(fastRefresh).toBeGreaterThan(gdelt);
+    expect(preReady).toBeGreaterThan(gdelt);
+    expect(fastRefresh).toBeGreaterThan(preReady);
     expect(fastHydrate).toBeGreaterThan(fastRefresh);
     expect(fastReady).toBeGreaterThan(fastHydrate);
     expect(broadRefresh).toBeGreaterThan(fastReady);
@@ -53,6 +55,11 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("use_partner_allowance=true");
     expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs");
     expect(workflow).toContain("Re-poll active Federico corroborators without partner allowance");
+    expect(workflow).toContain("Check for an existing strict recent two-family event before RSS refresh");
+    expect(workflow).toContain("steps.pre_ready.outputs.ready != 'true'");
+    expect(workflow).toContain("current production already has a VERIFIED same-event two-provider-family candidate");
+    expect(workflow).toContain('if [[ "${{ steps.pre_ready.outputs.ready }}" == "true" ]]');
+    expect(workflow).toContain('country=${{ steps.pre_ready.outputs.country }}');
     expect(workflow).toContain("Check for an already strict recent two-family event");
     expect(workflow).toContain("Re-poll full audited governed RSS cohort only when fast evidence is insufficient");
     expect(workflow).toContain("Re-hydrate trusted publisher times after broad fallback");
