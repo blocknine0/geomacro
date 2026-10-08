@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "3f66553796aae4ffd472dbe1a06bd04a9ef033f8",
-  "published_baseline": "Founder-approved Geomacro Finds commercial homepage release: one selected classifier-derived public intelligence story across geopolitics, macro and critical minerals, 24h selection with historical continuity labels, no raw-source display, pay-per-call pricing, monthly inquiry and annual email CTA. Exact deployment/publish confirmation remains a separate acceptance gate; no real-money launch authority is implied. /global-risk retains its independent permanent frozen baseline.",
+  "baseline_sha": "72a43e332b2106f945410ec0aead984de23a5f13",
+  "published_baseline": "Founder-approved Geomacro Finds and Intelligence one-line derived gist only, no customer-facing editorial article label, strict public fields allowlist, event metadata as Geomacro Report rather than news content. Mainnet payment and Global Risk presentation remain unchanged. Publish and exact deployed SHA require separate acceptance.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-08T08:16:00Z",
   "published_source_sha": "87fe2e9dd4d1f6c7abeb2af8cbe2029d5b9b4f14",
-  "lock_revision": "founder-approved-geomacro-finds-homepage-release-20261008"
+  "lock_revision": "founder-approved-one-line-derived-gist-no-raw-20261008"
 }
