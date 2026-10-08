@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync("src/lib/public-intelligence.functions.ts", "utf8");
+const sanitizer = readFileSync("src/lib/public-intelligence-gist.ts", "utf8");
 
 describe("public intelligence availability contract", () => {
   it("hard-bounds recovery reads so the page cannot hang indefinitely", () => {
@@ -26,7 +27,9 @@ describe("public intelligence availability contract", () => {
     expect(source).toContain('row.public_status !== "live_observed"');
     expect(source).toContain("row.severity !== null");
     expect(source).toContain("row.delta !== null");
-    expect(source).toContain('public_status: "live_observed"');
+    expect(source).toContain("sanitizePublicIntelligenceRow(row)");
+    expect(sanitizer).toContain('const status = observed ? "live_observed" as const : "verified_b2" as const;');
+    expect(sanitizer).toContain("severity !== null || input.delta !== null");
     expect(source).toContain("return []");
   });
 });
