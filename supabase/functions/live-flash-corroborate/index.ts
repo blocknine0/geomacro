@@ -1104,18 +1104,38 @@ Deno.serve(async request => {
       const isNewMember = !members.has(flash.flash_id)
 
       if (isNewMember) {
+        const memberSeenAt = new Date().toISOString()
         const memberInsert = await db
           .from("live_flash_event_family_members")
-          .insert({
+          .upsert({
             family_id: family.family_id,
             flash_id: flash.flash_id,
-            linked_at: new Date().toISOString(),
-            last_seen_at: new Date().toISOString(),
+            linked_at: memberSeenAt,
+            last_seen_at: memberSeenAt,
+          }, {
+            onConflict: "family_id,flash_id",
+            ignoreDuplicates: true,
           })
 
         if (memberInsert.error) {
           console.error(memberInsert.error)
           return jsonResponse(500, { ok: false, error: "family_member_store_failed" })
+        }
+
+        // Preserve the original linked_at on an existing membership while
+        // refreshing only its observation time. This makes repeated/concurrent
+        // corroboration cycles idempotent under the composite primary key.
+        const memberTouch = await db
+          .from("live_flash_event_family_members")
+          .update({
+            last_seen_at: memberSeenAt,
+          })
+          .eq("family_id", family.family_id)
+          .eq("flash_id", flash.flash_id)
+
+        if (memberTouch.error) {
+          console.error(memberTouch.error)
+          return jsonResponse(500, { ok: false, error: "family_member_touch_failed" })
         }
 
         members.add(flash.flash_id)
