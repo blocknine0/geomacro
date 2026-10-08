@@ -8,11 +8,16 @@ describe("Cloudflare D1 permanent control plane", () => {
     const schema = [
       read("workers/control-plane/migrations/0001_core.sql"),
       read("workers/control-plane/migrations/0011_public_b2_verified_hot_snapshots.sql"),
+      read("workers/control-plane/migrations/0012_country_gro_verified_hot.sql"),
     ].join("\n");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS source_state");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS country_domain_state");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS risk_object_index");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS public_b2_hot_snapshot");
+    expect(schema).toContain("CREATE TABLE IF NOT EXISTS country_gro_verified_hot");
+    expect(schema).toContain("archive_write_acknowledged INTEGER NOT NULL");
+    expect(schema).toContain("archive_readback_verified INTEGER NOT NULL DEFAULT 0");
+    expect(schema).toContain("object_json TEXT NOT NULL");
     expect(schema).toContain("source_as_of TEXT NOT NULL");
     expect(schema).toContain("payload_sha256 TEXT NOT NULL");
     expect(schema).toContain("archive_key TEXT NOT NULL");
@@ -55,6 +60,16 @@ describe("Cloudflare D1 permanent control plane", () => {
     expect(worker).toContain("HOT_SNAPSHOT_PAYLOAD_HASH_MISMATCH");
     expect(worker).toContain("now - sourceAsOfMs > config.maxAgeMs");
     expect(worker).toContain('parts[1] === "public" && parts[2] === "hot-snapshot"');
+  });
+
+  it("keeps signed country GRO hot reads authenticated and hash-bound", () => {
+    const worker = read("workers/control-plane/src/index.mjs");
+    expect(worker).toContain("async function getCountryGroVerifiedHot");
+    expect(worker).toContain('parts[1] === "country-gro-hot"');
+    expect(worker).toContain("archive_write_acknowledged !== 1");
+    expect(worker).toContain("COUNTRY_GRO_HOT_HASH_MISMATCH");
+    expect(worker).toContain("archive_readback_required_for_serving: false");
+    expect(worker).toContain('serving_store: "cloudflare-d1"');
   });
 
   it("fails closed when control-plane authentication or D1 is unavailable", () => {
