@@ -301,7 +301,33 @@
                 "source_independence_method": { "type": "string" },
                 "relevance_method": { "type": "string" },
                 "source_family_map_version": { "type": "string" },
-                "source_family_map": { "type": "object", "additionalProperties": { "type": "string" } }
+                "source_family_map": { "type": "object", "additionalProperties": { "type": "string" } },
+                "source_tuple_binding_version": { "type": "string" },
+                "source_record_id_scheme": { "type": "string" }
+              }
+            },
+            "verification_contract": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "contract_version": { "const": "gro-verification-contract-v1" },
+                "canonicalization_identifier": { "const": "geomacro-canonical-json-v1" },
+                "canonicalization_spec_url": { "type": "string", "format": "uri" },
+                "canonicalization_spec_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                "independent_verifier_url": { "type": "string", "format": "uri" },
+                "independent_verifier_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                "normative_vectors_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                "signature_preimage_version": { "const": "full-gro-null-payload-hash-and-signature-v1" },
+                "receiver_runtime_policy": { "const": "receiver_owned_implementation_must_pass_normative_vectors" },
+                "excluded_fields": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "prefixItems": [
+                    { "const": "integrity.payload_hash" },
+                    { "const": "integrity.signature" }
+                  ]
+                }
               }
             },
             "calculation_input": {},
