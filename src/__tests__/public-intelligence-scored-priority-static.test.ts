@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync("src/lib/public-intelligence-production.server.ts", "utf8");
+const sanitizer = readFileSync("src/lib/public-intelligence-gist.ts", "utf8");
 
 describe("#1414 scored-first public Intelligence", () => {
   it("requires current canonical scored coverage across all three launch domains", () => {
@@ -20,6 +21,8 @@ describe("#1414 scored-first public Intelligence", () => {
     expect(source).toContain('category !== "geopolitics"');
     expect(source).toContain("row.severity !== null");
     expect(source).toContain("row.delta !== null");
-    expect(source).toContain('public_status: "live_observed"');
+    expect(source).toContain("sanitizePublicIntelligenceRow(row)");
+    expect(sanitizer).toContain('const status = observed ? "live_observed" as const : "verified_b2" as const;');
+    expect(sanitizer).toContain("severity !== null || input.delta !== null");
   });
 });
