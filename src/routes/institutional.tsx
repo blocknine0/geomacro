@@ -72,7 +72,7 @@ function InstitutionalPage() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Button asChild size="lg" className="h-12 gap-2 px-6"><Link to="/contact">Discuss commercial access <ArrowRight className="h-4 w-4" /></Link></Button>
               <Button asChild size="lg" variant="outline" className="h-12 px-6"><Link to="/intelligence">Explore Intelligence</Link></Button>
-              <Button asChild size="lg" variant="ghost" className="h-12 px-5"><Link to="/global-risk">Risk Indices</Link></Button>
+              <Button asChild size="lg" variant="ghost" className="h-12 px-5"><Link to="/risk-indices">Risk Indices</Link></Button>
             </div>
           </div>
 
@@ -134,7 +134,7 @@ function InstitutionalPage() {
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Critical minerals & rare earths</p>
             <h2 className="mt-3 text-2xl font-semibold">Bring supply concentration and geopolitical dependency into the same conversation.</h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">Supply concentration, policy pressure, sourcing exposure and macro context stay visible as separate drivers rather than disappearing inside a generic composite risk score.</p>
-            <Button asChild variant="outline" className="mt-6"><Link to="/global-risk">Explore Critical Minerals Risk</Link></Button>
+            <Button asChild variant="outline" className="mt-6"><Link to="/risk-indices">Explore Critical Minerals Risk</Link></Button>
           </article>
           <article className="rounded-2xl border border-border/60 bg-card/35 p-6">
             <ShieldCheck className="h-5 w-5 text-primary" />

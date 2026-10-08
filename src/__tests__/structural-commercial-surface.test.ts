@@ -9,8 +9,8 @@ const packageDoc = readFileSync(
 
 describe("structural data commercial surface", () => {
   it("keeps commercial machine delivery governed and runtime-status driven without a free API promise", () => {
-    expect(page).toContain("GOVERNED DATA · CONTROLLED API · AGENT ACCESS");
-    expect(page).toContain("Real-money x402 access stays fail-closed");
+    expect(page).toContain("INTELLIGENCE API · AI AGENTS");
+    expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(page).toContain("AgentCommerceStatus");
     expect(page).toContain("RUNTIME STATUS ABOVE");
     expect(page).toContain("Free Explorer is website/dashboard access, not a free API");
@@ -32,7 +32,7 @@ describe("structural data commercial surface", () => {
 
   it("preserves the methodology and source-rights boundary", () => {
     expect(page).toContain("Payment never bypasses evidence, freshness, source-rights or product controls.");
-    expect(page).toContain("Upstream source URLs, publisher identities, raw provider payloads, raw article text and internal provenance blobs stay inside the governed evidence system.");
+    expect(page).toContain("Get concise, structured Geomacro intelligence built for decisions, while underlying evidence remains protected.");
     expect(packageDoc).toContain("EVIDENCE_ONLY_NOT_IN_GRO_V02");
     expect(packageDoc).toContain("Unknown or review-required source rights fail closed");
   });

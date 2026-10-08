@@ -42,7 +42,6 @@ function RiskGatePage() {
           <div>
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline" className="border-amber-400/40 bg-amber-400/5 font-mono text-[10px] uppercase tracking-[0.14em] text-amber-300">PRIVATE PILOT</Badge>
-              <Badge variant="outline" className="border-primary/25 bg-primary/5 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">PRIVATE PILOT</Badge>
             </div>
             <h1 className="mt-5 text-[clamp(2.8rem,6vw,5.6rem)] font-semibold leading-[0.96] tracking-[-0.05em]">
               Put a risk check between context and action.

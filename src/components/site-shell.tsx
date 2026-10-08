@@ -5,7 +5,6 @@ import { Wordmark } from "@/components/wordmark";
 import { Button } from "@/components/ui/button";
 import { AnimatedBackground } from "@/components/animated-background";
 import { ProductionCoverageProof } from "@/components/production-coverage-proof";
-import { AgentCommerceStatus } from "@/components/agent-commerce-status";
 import {
   Sheet,
   SheetContent,
@@ -24,14 +23,15 @@ import {
 
 const PRIMARY_NAV = [
   { to: "/intelligence", label: "Intelligence" },
-  { to: "/global-risk", label: "Risk Indices" },
+  { to: "/risk-indices", label: "Risk Indices" },
+  { to: "/ask-geomacro", label: "Ask Geomacro" },
   { to: "/data-api", label: "API & Agents" },
   { to: "/institutional", label: "Institutions" },
   { to: "/pricing", label: "Pricing" },
 ] as const;
 
 const EXPLORE_NAV = [
-  { to: "/ask-geomacro", label: "Ask Geomacro", description: "Grounded questions over governed risk intelligence" },
+  { to: "/global-risk", label: "Global Risk History", description: "Historical global risk conditions and context" },
   { to: "/risk-gate", label: "Risk Gate · Private Pilot", description: "Controlled country and corridor decision context" },
   { to: "/ecosystem", label: "Ecosystem & Partnerships", description: "Integrations, partnerships and commercial ecosystem" },
   { to: "/research", label: "Research & Evidence", description: "Methodology, coverage evidence and limitations" },
@@ -219,7 +219,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <p className="mt-4 max-w-sm text-sm leading-6">
                 Decision-ready geopolitical, macroeconomic and critical-mineral risk intelligence for humans and machines.
               </p>
-              <div className="mt-5"><AgentCommerceStatus compact /></div>
               <p className="mt-4 font-mono text-[11px]">© 2026 Geomacro</p>
             </div>
 
@@ -228,8 +227,9 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 <p className="font-medium text-foreground">Product</p>
                 <div className="mt-3 flex flex-col gap-2.5">
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
-                  <Link to="/global-risk" className="hover:text-foreground">Risk Indices</Link>
+                  <Link to="/risk-indices" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
+                  <Link to="/global-risk" className="hover:text-foreground">Global Risk History</Link>
                   <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
                 </div>
               </div>
@@ -269,8 +269,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-              <span>Public intelligence live · Risk Gate controlled Private Pilot · commercial x402 remains fail-closed until production activation</span>
-              <span>Production status is verified from live service contracts, not static marketing copy.</span>
+              <span>Public intelligence & risk indices · Risk Gate by invitation · Paid API access subject to availability</span>
+              <Link to="/about" className="hover:text-foreground">Privacy · Product use · Trust</Link>
             </div>
           </div>
         </footer>

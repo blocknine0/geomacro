@@ -48,7 +48,7 @@ describe("final commercial website closure", () => {
     const status = read("src/components/agent-commerce-status.tsx");
     expect(riskGate).toContain("PRIVATE PILOT");
     expect(riskGate).toContain("execution_authorized = false");
-    expect(dataApi).toContain("Real-money x402 access stays fail-closed");
+    expect(dataApi).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(status).toContain("production activation pending");
   });
 

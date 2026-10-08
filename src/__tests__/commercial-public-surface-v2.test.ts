@@ -102,7 +102,7 @@ describe("commercial public surface v2", () => {
     expect(status.toLowerCase()).not.toContain("testnet");
     expect(dataApi).toContain("AgentCommerceStatus");
     expect(dataApi).toContain("x402 pay per call");
-    expect(dataApi).toContain("Real-money x402 access stays fail-closed");
+    expect(dataApi).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(home).not.toContain("AgentCommerceStatus compact");
     expect(home).not.toContain("0.05 USDC");
     expect(home).not.toContain("x402 pay per call");

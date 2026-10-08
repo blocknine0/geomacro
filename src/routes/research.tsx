@@ -26,7 +26,7 @@ const RESEARCH_AREAS = [
     icon: Fingerprint,
     title: "Proof & reproducibility",
     body: "Trace the current public Risk Indices to their verified parent snapshot, evidence, calculation inputs, methodology version and integrity hashes.",
-    to: "/global-risk" as const,
+    to: "/risk-indices" as const,
     cta: "Verify current Risk Indices",
   },
   {
@@ -77,7 +77,7 @@ function ResearchPage() {
           Geomacro publishes geopolitical, macroeconomic and critical-mineral risk separately. This research layer explains the evidence rules, proof lineage, change attribution and validation limits behind those readings without presenting methodology proof as predictive validation or external certification.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Button asChild size="lg" className="gap-2"><Link to="/global-risk">Verify current Risk Indices <ArrowRight className="h-4 w-4" /></Link></Button>
+          <Button asChild size="lg" className="gap-2"><Link to="/risk-indices">Verify current Risk Indices <ArrowRight className="h-4 w-4" /></Link></Button>
           <Button asChild size="lg" variant="outline"><Link to="/docs">Open documentation</Link></Button>
         </div>
       </section>
@@ -165,7 +165,7 @@ function ResearchPage() {
             <p className="mt-2 text-sm text-muted-foreground">Use the technical documentation for the versioned GRI v1.2 parent methodology, then inspect the current separate Risk Indices and their retained proof fingerprints.</p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-3">
-            <Button asChild><Link to="/global-risk">Risk Indices</Link></Button>
+            <Button asChild><Link to="/risk-indices">Risk Indices</Link></Button>
             <Button asChild variant="outline"><Link to="/docs/gri-architecture">GRI v1.2 proof architecture</Link></Button>
           </div>
         </div>

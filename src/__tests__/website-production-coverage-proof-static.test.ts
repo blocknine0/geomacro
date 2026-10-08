@@ -32,7 +32,8 @@ describe("public production coverage proof", () => {
     expect(shell).toContain('const PRODUCTION_EVIDENCE_ROUTES = new Set(["/risk-gate", "/research"]);');
     expect(shell).toContain("showProductionEvidence ? <ProductionCoverageProof /> : null");
     expect(shell).not.toContain('new Set(["/",');
-    expect(shell).toContain("Public intelligence live · Risk Gate controlled Private Pilot · commercial x402 remains fail-closed until production activation");
+    expect(shell).toContain("Public intelligence & risk indices · Risk Gate by invitation · Paid API access subject to availability");
+    expect(shell).not.toContain("AgentCommerceStatus compact");
   });
 
   it("keeps machine-readable website context aligned with the same measured claim", () => {
