@@ -136,6 +136,68 @@ function hasExplicitTimeOfDay(value: string) {
   return /(?:T|\s)\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?/.test(value);
 }
 
+function isBbcTimestampUrl(sourceUrl: string) {
+  try {
+    const hostname = new URL(sourceUrl).hostname.toLowerCase();
+    return (
+      hostname === "www.bbc.co.uk" ||
+      hostname === "bbc.co.uk" ||
+      hostname === "www.bbc.com" ||
+      hostname === "bbc.com"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function decodeMinimalXmlText(value: string) {
+  return value
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+}
+
+function canonicalBbcArticlePath(value: string) {
+  try {
+    const url = new URL(value);
+    if (!isBbcTimestampUrl(url.toString())) return null;
+    return url.pathname.replace(/\/+$/, "") || "/";
+  } catch {
+    return null;
+  }
+}
+
+export function extractTrustedBbcRssPublishedAt(
+  rssXml: string,
+  articleUrl: string,
+  asOf: Date = new Date(),
+) {
+  const targetPath = canonicalBbcArticlePath(articleUrl);
+  if (!targetPath) return null;
+
+  // This parser is intentionally narrow: only BBC item/link/pubDate triples
+  // can contribute. No feed fetch time, item order, or seen time is accepted
+  // as publication evidence.
+  for (const match of rssXml.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)) {
+    const item = match[1] ?? "";
+    const linkMatch = item.match(/<link\b[^>]*>([\s\S]*?)<\/link>/i);
+    const pubDateMatch = item.match(/<pubDate\b[^>]*>([\s\S]*?)<\/pubDate>/i);
+    if (!linkMatch?.[1] || !pubDateMatch?.[1]) continue;
+
+    const link = decodeMinimalXmlText(linkMatch[1]);
+    if (canonicalBbcArticlePath(link) !== targetPath) continue;
+
+    const pubDate = decodeMinimalXmlText(pubDateMatch[1]);
+    return validateTimestamp(pubDate, articleUrl, asOf);
+  }
+
+  return null;
+}
+
 function isXinhuaTimestampUrl(sourceUrl: string) {
   try {
     const hostname = new URL(sourceUrl).hostname.toLowerCase();
