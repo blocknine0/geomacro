@@ -62,6 +62,8 @@ describe("permanent intelligence orchestration contract", () => {
     expect(script).toContain("COUNTRY_RAW_SOURCE_SYNC_OUTPUT=country-raw-source-sync.json");
     expect(script).toContain("country-raw-source-sync.log");
     expect(script).not.toContain("sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json");
+    const masterWorkflow = read(".github/workflows/intelligence-orchestrator.yml");
+    expect(masterWorkflow).toContain("country-raw-source-sync.log");
     expect(script).toContain("offsetSeconds: 240");
     expect(script).toContain("refreshOidcToken");
     expect(script).toContain("timeoutMs: 2_400_000");
