@@ -1148,13 +1148,59 @@ async function loadFedericoStrictEvents(
       continue;
     }
 
-    const sourceIds = [
-      ...new Set(
-        auditableMembers
-          .map((member) => String(member.source_id ?? "").trim().toLowerCase())
-          .filter(Boolean),
-      ),
-    ];
+    // Build one deterministic tuple per governed source. The signed strict
+    // contract defines source_ids[i], source_record_ids[i] and
+    // content_hashes[i] as the same provenance tuple, so these arrays must
+    // never be deduplicated independently.
+    const tupleBySourceId = new Map<
+      string,
+      {
+        source_id: string;
+        source_record_id: string;
+        content_hash: string;
+        source_url: string;
+        published_at: string;
+      }
+    >();
+
+    const tupleCandidates = auditableMembers
+      .map((member) => ({
+        source_id: String(member.source_id ?? "").trim().toLowerCase(),
+        source_record_id: String(member.source_record_id ?? "").trim(),
+        content_hash: String(member.content_hash ?? "").trim().toLowerCase(),
+        source_url: String(member.source_url ?? "").trim(),
+        published_at:
+          federicoStrictPublishedAt(member.published_at, asOf) ?? "",
+      }))
+      .filter(
+        (item) =>
+          Boolean(item.source_id) &&
+          Boolean(item.source_record_id) &&
+          /^[a-f0-9]{64}$/.test(item.content_hash) &&
+          /^https?:\/\//i.test(item.source_url) &&
+          Boolean(item.published_at),
+      )
+      .sort(
+        (a, b) =>
+          a.source_id.localeCompare(b.source_id) ||
+          Date.parse(b.published_at) - Date.parse(a.published_at) ||
+          a.source_record_id.localeCompare(b.source_record_id),
+      );
+
+    for (const tuple of tupleCandidates) {
+      if (!tupleBySourceId.has(tuple.source_id)) {
+        tupleBySourceId.set(tuple.source_id, tuple);
+      }
+    }
+
+    const sourceTuples = [...tupleBySourceId.values()].sort(
+      (a, b) => a.source_id.localeCompare(b.source_id),
+    );
+
+    const sourceIds = sourceTuples.map((item) => item.source_id);
+    const sourceRecordIds = sourceTuples.map((item) => item.source_record_id);
+    const contentHashes = sourceTuples.map((item) => item.content_hash);
+    const sourceUrls = sourceTuples.map((item) => item.source_url);
 
     const sourceFamilies = [
       ...new Set(sourceIds.map((sourceId) =>
@@ -1165,31 +1211,11 @@ async function loadFedericoStrictEvents(
     const independentSourceCount =
       sourceFamilies.length;
 
-    const sourceRecordIds = [
-      ...new Set(
-        auditableMembers
-          .map((member) => String(member.source_record_id ?? "").trim())
-          .filter(Boolean),
-      ),
-    ];
-
-    const contentHashes = [
-      ...new Set(
-        auditableMembers
-          .map((member) => String(member.content_hash ?? "").trim())
-          .filter((value) => /^[a-f0-9]{64}$/.test(value)),
-      ),
-    ];
-
-    const sourceUrls = [
-      ...new Set(
-        auditableMembers
-          .map((member) => String(member.source_url ?? "").trim())
-          .filter((value) => /^https?:\/\//i.test(value)),
-      ),
-    ];
-
-    if (!sourceUrls.length || !sourceRecordIds.length || !contentHashes.length) {
+    if (
+      sourceTuples.length < FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES ||
+      sourceIds.length !== sourceRecordIds.length ||
+      sourceIds.length !== contentHashes.length
+    ) {
       continue;
     }
 
