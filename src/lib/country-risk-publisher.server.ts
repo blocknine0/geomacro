@@ -1160,6 +1160,7 @@ async function loadFedericoStrictEvents(
         content_hash: string;
         source_url: string;
         published_at: string;
+        member: Record<string, unknown>;
       }
     >();
 
@@ -1171,6 +1172,7 @@ async function loadFedericoStrictEvents(
         source_url: String(member.source_url ?? "").trim(),
         published_at:
           federicoStrictPublishedAt(member.published_at, asOf) ?? "",
+        member,
       }))
       .filter(
         (item) =>
@@ -1219,22 +1221,14 @@ async function loadFedericoStrictEvents(
       continue;
     }
 
-    const latestAuditableMember = [...auditableMembers].sort(
+    const latestTuple = [...sourceTuples].sort(
       (a, b) =>
-        Date.parse(
-          federicoStrictPublishedAt(
-            b.published_at,
-            asOf,
-          ) ?? "",
-        ) -
-        Date.parse(
-          federicoStrictPublishedAt(
-            a.published_at,
-            asOf,
-          ) ?? "",
-        ),
+        Date.parse(b.published_at) -
+          Date.parse(a.published_at) ||
+        a.source_id.localeCompare(b.source_id),
     )[0];
 
+    const latestAuditableMember = latestTuple.member;
     const latest = latestAuditableMember;
 
     const targetAttributions =
@@ -1390,7 +1384,7 @@ async function loadFedericoStrictEvents(
       ),
       material_evidence_at:
         lastSeen.toISOString(),
-      evidence_count: auditableMembers.length,
+      evidence_count: sourceTuples.length,
       independent_source_count: independentSourceCount,
       evidence_refs: sourceUrls.length ? sourceUrls : members.map(
         (member) => String(member.content_hash ?? ""),
