@@ -33,6 +33,6 @@ describe("Ask Geomacro direct chat surface", () => {
     expect(workspace).toContain("Evidence ({evidence.length})");
     expect(workspace).toContain('!eventId.startsWith("live:")');
     expect(workspace).toContain('!eventId.startsWith("web:")');
-    expect(workspace).toContain("Raw source content, provider details and internal retrieval payloads are not exposed in the answer.");
+    expect(workspace).toContain("Answers focus on useful risk context and clearly distinguish what is known from what is uncertain.");
   });
 });
