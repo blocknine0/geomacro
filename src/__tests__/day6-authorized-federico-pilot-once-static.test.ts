@@ -104,6 +104,11 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("day6-global-partner-assurance-${RUN_ID}");
     expect(workflow).not.toContain("federico-handoff-${RUN_ID}");
     expect(workflow).toContain('RSS_LIVE_SKIP_CORROBORATION: "true"');
+    expect(workflow).toContain('RSS_LIVE_ALLOW_PARTIAL_SOURCE_FAILURES: "true"');
+    expect(workflow).toContain('RSS_LIVE_MIN_PARTIAL_COMPLETED_SOURCES: "2"');
+    expect(workflow).toContain(".source_summary.completed_source_count >= 2");
+    expect(workflow).toContain(".source_summary.failed_source_count == (.source_summary.failed_sources | length)");
+    expect(workflow).toContain(".source_summary.partial_refresh == (.source_summary.failed_source_count > 0)");
     expect(workflow).toContain('BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss,federal_reserve_press_rss,ecb_press_rss,ecb_market_information_rss,bis_rss_media_releases,bis_rss_central_banker_speeches,eu_council_press_rss,un_all_documents_rss,un_human_rights_council_rss,un_geneva_press_rss,un_security_council_docs_rss,un_geneva_meeting_summaries_rss,usgs_minerals_news_rss,nrcan_news_atom"');
     expect(workflow).toContain("('ecb_press_rss', 'european_central_bank')");
     expect(workflow).toContain("('ecb_market_information_rss', 'european_central_bank')");
