@@ -4,11 +4,14 @@ import { readFileSync } from "node:fs";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("country GRO cold-archive preservation boundary", () => {
-  it("never manufactures or advances hot freshness when a fresh canonical set is not verified", () => {
+  it("never manufactures 195-country readiness while allowing verified countries to remain individually hot-servable", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     expect(workflow).toContain('echo "fresh=false" >> "$GITHUB_OUTPUT"');
-    expect(workflow).toContain("if: steps.refresh.outputs.fresh == 'true'");
-    expect(workflow).toContain("Publish one bundled cold archive and verified D1 hot GRO set");
+    expect(workflow).toContain('echo "coverage_floor_met=false" >> "$GITHUB_OUTPUT"');
+    expect(workflow).toContain("if: steps.refresh.outputs.publishable == 'true'");
+    expect(workflow).toContain("Publish all currently VERIFIED GROs after refresh");
+    expect(workflow).toContain("global_195_coverage_claimed == false");
+    expect(workflow).toContain("this workflow stays red");
     expect(workflow).not.toContain("steps.refresh.outputs.fresh != 'true'");
     expect(workflow).not.toContain("verify-b2-country-gro-preservation.ts");
   });
