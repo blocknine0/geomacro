@@ -68,10 +68,10 @@ describe("permanent RSS direct-Postgres transport", () => {
   it("does not change partner allowance or execution safety", () => {
     const authorized = read(".github/workflows/day6-authorized-federico-pilot-once.yml");
     expect(authorized).toContain("use_partner_allowance=false");
-    expect(authorized).toContain("use_partner_allowance=true");
-    expect(authorized.indexOf("use_partner_allowance=false")).toBeLessThan(
-      authorized.indexOf("use_partner_allowance=true"),
-    );
+    expect(authorized).not.toContain("use_partner_allowance=true");
+    expect(authorized).toContain("HOLD Federico allowance until three distinct-time preflight passes and fresh owner ACK");
+    expect(authorized).toContain("allowance_dispatches=0");
+    expect(authorized).toContain('"owner_authorized_pilot_allowance":false');
     expect(authorized).toContain('"user_funds_authorized":false');
     expect(authorized).toContain('"real_money_payment_authorized":false');
     expect(authorized).toContain('"execution_authorized":false');
