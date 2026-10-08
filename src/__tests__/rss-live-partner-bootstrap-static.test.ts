@@ -49,6 +49,10 @@ describe("RSS live partner bootstrap boundary", () => {
     expect(script).toContain("RSS_LIVE_MIN_PARTIAL_COMPLETED_SOURCES");
     expect(script).toContain("RSS_PARTIAL_SOURCE_FLOOR_NOT_MET");
     expect(script).toContain("RSS_PARTIAL_SOURCE_STATE_UNPROVEN");
+    expect(script).toContain('stderr: worker.stderr');
+    expect(script).toContain('event?.kind !== "rss_error"');
+    expect(script).toContain('if (lastState.get(sourceId) !== "success") lastState.set(sourceId, "error")');
+    expect(script).not.toContain("process.stderr.write");
     expect(script).toContain("const unprovenMissing = missing.filter((id) => !hadError.has(id))");
     expect(script).toContain("failed_sources: missing.sort()");
     expect(script).toContain("partial_refresh: missing.length > 0");
