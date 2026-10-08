@@ -3,6 +3,7 @@ import { z } from "zod";
 import { assertSameOrigin } from "./origin-guard";
 import { readB2PublicIntelligence } from "./b2-live.server";
 import { getAppSupabase } from "./supabase-app.server";
+import { sanitizePublicIntelligenceRow } from "./public-intelligence-gist";
 
 const EmptyInput = z.object({}).strict();
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -87,15 +88,7 @@ function normalizeScoredRow(row: PublicIntelligenceRow): PublicIntelligenceRow |
   if (!category || !title.startsWith(SCORED_TITLE_PREFIX) || severity === null || severity < 0 || severity > 100) {
     return null;
   }
-  return {
-    ...row,
-    source_title: title,
-    summary: row.summary ? normalizeWhitespace(row.summary) : null,
-    category,
-    severity,
-    delta: numberOrNull(row.delta),
-    public_status: "verified_b2",
-  };
+  return sanitizePublicIntelligenceRow(row);
 }
 
 function normalizeLiveObservedRow(row: PublicIntelligenceRow): PublicIntelligenceRow | null {
@@ -109,15 +102,7 @@ function normalizeLiveObservedRow(row: PublicIntelligenceRow): PublicIntelligenc
     row.delta !== null ||
     !Number.isFinite(rowTime(row))
   ) return null;
-  return {
-    ...row,
-    source_title: title,
-    summary: row.summary ? normalizeWhitespace(row.summary) : null,
-    category,
-    severity: null,
-    delta: null,
-    public_status: "live_observed",
-  };
+  return sanitizePublicIntelligenceRow(row);
 }
 
 function normalizePublicRow(row: PublicIntelligenceRow): PublicIntelligenceRow | null {
