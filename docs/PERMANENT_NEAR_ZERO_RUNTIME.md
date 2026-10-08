@@ -28,7 +28,7 @@ Cloudflare Workers
         +--> D1 hot control plane
         |      source/readiness state
         |      country-domain readiness matrix
-        |      GRO index only
+        |      GRO index + bounded current signed-GRO hot rows
         |      pipeline checkpoints
         |      compact operational control metadata
         |
@@ -39,7 +39,7 @@ Cloudflare Workers
                public continuity packages
 ```
 
-Backblaze B2 remains durable truth. After a successful B2 write plus full readback/hash/exact-restore verification, the publisher may copy a bounded derived public projection into D1 for hot serving. The D1 row carries the B2 key/hash, its own payload hash, proof contract, actual source-as-of time and a fixed source-native expiry; edge readers recheck the hash and expiry and fail closed when invalid or stale. D1 does not become a second truth. The existing Durable Object commerce ledger remains authoritative for payment replay/idempotency.
+Backblaze B2 remains the cold durable archive. Public Intelligence, Global Risk and Risk Indices keep their existing B2-readback-bound D1 projections. Canonical country GRO serving uses a separate bounded verified-hot contract: the publisher verifies each current signed derived GRO locally, writes one compressed multi-country bundle plus one manifest to B2, requires both archive PUT acknowledgements, writes only the current signed GRO set to D1, then independently reads D1 back and rechecks canonical SHA, signature, commercial eligibility and expiry. B2 GET/readback is a deferred cold-archive audit and is not a synchronous customer, x402 or Federico requirement. A B2 download-cap event therefore defers archive audit but never converts an unverified object into a commercial object. D1 is replaceable hot serving state, not historical truth. The Durable Object commerce ledger remains authoritative for payment replay/idempotency.
 
 ## What D1 MUST NOT contain
 
@@ -47,13 +47,13 @@ D1 is not an archive. The following remain in B2:
 
 - raw source payloads;
 - full evidence payloads;
-- full signed GRO JSON bodies;
+- historical/full-archive signed GRO JSON bodies;
 - historical observation bodies;
 - archive fragments/bundles;
 - large logs;
 - duplicate durable copies of B2 payloads.
 
-The only serving-copy exception is a bounded, already-public derived projection (Intelligence, Global Risk or Risk Indices) whose exact payload hash is tied to a successfully readback-verified B2 object. It expires at its source-native deadline and is not used as archival truth. D1 may also contain hashes, B2 object keys, compact counters/statuses, timestamps and small metadata needed to operate the system.
+Serving-copy exceptions are bounded and replaceable: (1) the already-public Intelligence, Global Risk and Risk Indices projections under their existing B2 readback proofs; and (2) one current signed derived country GRO per ISO3 under `country_gro_verified_hot`. Country GRO hot promotion requires valid canonical bytes, signature, commercial eligibility, an acknowledged B2 bundle write, D1 readback and canonical record-SHA re-verification. It stores no raw source/evidence payloads and no history; expiry is enforced on every read. D1 may also contain hashes, B2 object keys, compact counters/statuses, timestamps and small metadata needed to operate the system.
 
 ## Why this can stay cheap
 
@@ -106,6 +106,9 @@ Versioned small operational configuration/state only.
 ### `public_b2_hot_snapshot`
 One replaceable bounded public projection per Intelligence, Global Risk and Risk Indices. The writer requires the matching B2 object key, compressed-object SHA, full readback and exact gzip-restore proof, plus an exact SHA of the serving JSON. Reads enforce the source timestamp and expiry (6 hours for the GDELT-backed Intelligence snapshot; 90 minutes for Global Risk and Risk Indices). An absent, tampered or expired projection is unavailable; it never authorizes fallback to Supabase or synthetic data.
 
+### `country_gro_verified_hot`
+At most one replaceable current signed derived country GRO per country-like subject. The row is authenticated server-side, expires with the signed object, carries canonical `record_sha256`, `payload_hash`, signing key, B2 bundle pointer/hash and archive verification state. It is admitted only after the B2 bundle write is acknowledged and D1 readback/signature/commercial re-verification succeeds. Raw evidence and historical GRO copies are forbidden.
+
 ### `migration_cursor`
 Parity/checksum evidence for each migrated dataset.
 
@@ -118,7 +121,7 @@ Do not move the existing commerce ledger into D1. It already uses a SQLite-backe
 - B2 is the only bulk durable store; D1 hot projections remain bounded and replaceable.
 - D1 queries must be indexed and bounded.
 - No unbounded history scans from customer requests.
-- Public reads should prefer B2 continuity packages/cache instead of D1 row fan-out.
+- Public snapshot reads keep their verified hot projections; commercial country-GRO reads use one indexed D1 hot row and never fan out across history or B2.
 - Scheduled jobs checkpoint once per bounded batch, not once per row when unnecessary.
 - Keep commerce coordination in Durable Objects.
 - Do not introduce an always-on VM or always-on Postgres database before workload/revenue requires it.
@@ -141,10 +144,10 @@ The active non-paying B2 account demonstrated that Class-B transaction count, ra
 - concurrent reads of the same object are single-flight;
 - hard provider caps remain fail-closed and are cached for the process;
 - immutable archival data should be bundled and content-addressed so one verified readback covers many members;
-- D1 stores compact hashes, pointers and verification state only; it never stores full raw/evidence/GRO payloads;
+- D1 never stores raw/evidence/history payloads; the only full signed-GRO exception is the bounded current verified-hot country row described above;
 - destructive cleanup still requires independently verified bytes and hashes. Quota reduction must never weaken deletion safety.
 
-The default per-process B2 request budget is intentionally conservative. Workflows that need a larger bounded batch must set an explicit reviewed budget. The design target for normal steady-state B2 reads is below 100 per day and preferably below 25 per day; the provider hard ceiling is not an operating target.
+The default per-process B2 request budget is intentionally conservative. Country-GRO refresh uses one compressed bundle plus one manifest (two archive PUTs for the whole current 195+ set) and requires zero B2 GETs for hot serving. A separate audit needs only the manifest and bundle reads; if the provider download cap is exhausted, that audit remains pending while the already verified D1 hot set continues to serve until its signed expiry. Workflows that need larger bounded batches must set an explicit reviewed budget. The provider hard ceiling is not an operating target.
 
 ### Hot-object evolution
 
