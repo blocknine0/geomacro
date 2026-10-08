@@ -34,7 +34,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       'country_bridge_attribution_v1',
     );
     expect(policy).toContain(
-      'federico-source-family-map-v8',
+      'federico-source-family-map-v9',
     );
     expect(policy).toContain(
       '?? normalized',
