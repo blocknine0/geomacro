@@ -21,6 +21,12 @@ describe("verified Global Risk edge serving boundary", () => {
     expect(worker).toContain("await sha256(payloadJson) !== snapshot.payload_sha256");
     expect(worker).toContain("Date.now() - sourceAsOf > 90 * 60 * 1000");
     expect(worker).toContain('"x-geomacro-serving-store": "cloudflare-d1"');
+    expect(worker).toContain('CURRENT_PROOF_SCHEMA = "geomacro.public-global-risk-current-proof.v1"');
+    expect(worker).toContain('CURRENT_PROOF_MODE = "independent-gri-proof-over-b2-baseline"');
+    expect(worker).toContain('"baseline-full-readback-current-gri-proof"');
+    expect(worker).toContain('"x-geomacro-verification-mode"');
+    expect(worker).toContain("snapshot?.current_b2_readback_verified !== false");
+    expect(worker).toContain("validCurrentProofValue(live)");
     expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot(env)");
     expect(worker).not.toContain("risk-indices-independent");
     expect(worker).not.toContain("request.json()");
