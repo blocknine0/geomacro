@@ -51,6 +51,8 @@ on:
       - "src/routes/api.risk-object-keys.ts"
       - "src/lib/risk-object-public-registry.ts"
       - "workers/control-plane/migrations/0013_partner_assurance_gro_verified.sql"
+      - "src/__tests__/day6-authorized-federico-pilot-once-static.test.ts"
+      - ".github/workflows/day6-partner-assurance-final.yml"
 
 permissions:
   contents: read
@@ -548,34 +550,15 @@ jobs:
           echo "::error::No fresh local-assurance handoff was produced. Federico allowance was not used."
           exit 5
 
-      - name: Dispatch exactly one authorized Federico pilot allowance review
+      - name: HOLD Federico allowance until three distinct-time preflight passes and fresh owner ACK
         id: live
-        env:
-          TARGET_ISO3: ${{ steps.strict.outputs.iso3 }}
         shell: bash
         run: |
           set -euo pipefail
-          MAIN_SHA="$(git rev-parse HEAD)"
-          SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          gh workflow run day6-partner-assurance-final.yml --ref main -f iso3="$TARGET_ISO3" -f candidate_sha="$MAIN_SHA" -f use_partner_allowance=true
-          for _ in $(seq 1 30); do
-            RUN_ID="$(gh run list --workflow day6-partner-assurance-final.yml --branch main --event workflow_dispatch --limit 20 \
-              --json databaseId,createdAt,displayTitle,status \
-              | jq -r --arg since "$SINCE" --arg marker "@ $MAIN_SHA allowance=true" '[.[] | select(.createdAt >= $since and (.displayTitle | contains($marker)))] | sort_by(.createdAt) | last | .databaseId // empty')"
-            [[ -n "$RUN_ID" ]] && break
-            sleep 3
-          done
-          test -n "${RUN_ID:-}" || { echo "::error::Could not locate authorized Day 6 run"; exit 2; }
-          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-          gh run watch "$RUN_ID" --exit-status
-          for _ in $(seq 1 12); do
-            ARTIFACTS="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '.artifacts[].name' || true)"
-            printf '%s\n' "$ARTIFACTS"
-            printf '%s\n' "$ARTIFACTS" | grep -q "^day6-global-partner-assurance-${RUN_ID}$" && exit 0
-            sleep 5
-          done
-          echo "::error::Authorized review completed without a sealed handoff artifact."
-          exit 6
+          echo "Federico platform allowance is LOCKED by owner instruction on 2026-10-09."
+          echo "No allowance=true workflow will be dispatched from this orchestrator."
+          echo "Three distinct-time fully verified no-allowance preflights and renewed explicit owner approval are mandatory before a separate release change."
+          echo "allowance_dispatches=0" >> "$GITHUB_OUTPUT"
 
       - name: Seal orchestration summary
         if: ${{ always() }}
@@ -589,8 +572,8 @@ jobs:
             "candidate_sha":"${GITHUB_SHA}",
             "country_iso3":"${{ steps.strict.outputs.iso3 }}",
             "local_assurance_run_id":"${{ steps.local.outputs.run_id }}",
-            "authorized_partner_run_id":"${{ steps.live.outputs.run_id }}",
-            "owner_authorized_pilot_allowance":true,
+            "authorized_partner_run_id":null,
+            "owner_authorized_pilot_allowance":false,
             "user_funds_authorized":false,
             "real_money_payment_authorized":false,
             "execution_authorized":false,
@@ -620,7 +603,7 @@ jobs:
         run: |
           set -euo pipefail
           cat > /tmp/day6-tracker-comment.md <<EOF
-          Day 6 authorized Federico pilot orchestration update
+          Day 6 Federico no-allowance preflight orchestration update
 
           - orchestration run: ${GITHUB_RUN_ID}
           - candidate SHA: ${GITHUB_SHA}
@@ -628,7 +611,7 @@ jobs:
           - selected country: ${TARGET_ISO3:-not_selected}
           - no-allowance local assurance run: ${LOCAL_RUN_ID:-not_started}
           - authorized Federico allowance run: ${AUTHORIZED_RUN_ID:-not_started}
-          - owner-authorized pilot allowance only: true
+          - owner-authorized pilot allowance only: false (owner hold: three distinct-time preflights + renewed ACK required)
           - user funds authorized: false
           - execution authorized: false
           EOF
