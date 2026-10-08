@@ -920,94 +920,168 @@ const verificationBundleSha256 = sha256Canonical({
   })),
 });
 
+const strictManifest =
+  riskObject?.provenance?.reproducibility ?? null;
+const strictVerificationContract =
+  strictManifest?.verification_contract ?? null;
+
+const signedSourceTuples =
+  strictProfile
+    ? (Array.isArray(riskObject.evidence) ? riskObject.evidence : []).flatMap(
+        (item: any) => {
+          const sourceIds = Array.isArray(item.source_ids) ? item.source_ids : [];
+          const recordIds = Array.isArray(item.source_record_ids) ? item.source_record_ids : [];
+          const contentHashes = Array.isArray(item.content_hashes) ? item.content_hashes : [];
+          if (
+            sourceIds.length !== recordIds.length ||
+            sourceIds.length !== contentHashes.length
+          ) {
+            throw new Error("Federico signed source tuple arrays are not index-aligned");
+          }
+          return sourceIds.map((sourceId: unknown, index: number) => ({
+            event_id: String(item.event_id ?? ""),
+            source_id: String(sourceId ?? "").trim().toLowerCase(),
+            source_record_id: String(recordIds[index] ?? ""),
+            content_hash: String(contentHashes[index] ?? "").trim().toLowerCase(),
+            source_family:
+              strictManifest?.selection_policy?.source_family_map?.[
+                String(sourceId ?? "").trim().toLowerCase()
+              ] ?? null,
+          }));
+        },
+      )
+    : [];
+
+if (
+  strictProfile &&
+  (
+    strictManifest?.selection_policy?.source_tuple_binding_version !==
+      GRO_SOURCE_TUPLE_BINDING_VERSION ||
+    strictManifest?.selection_policy?.source_record_id_scheme !==
+      "geomacro-source-id-plus-sha256-v1" ||
+    signedSourceTuples.length < 2 ||
+    signedSourceTuples.some(
+      (item: any) =>
+        !item.event_id ||
+        !item.source_id ||
+        !item.source_family ||
+        !/^[0-9a-f]{64}$/.test(item.content_hash) ||
+        item.source_record_id !==
+          `${item.source_id}:sha256:${item.content_hash}`,
+    )
+  )
+) {
+  throw new Error("Federico signed source tuple binding is incomplete");
+}
+
 const reviewArtifact = {
-  artifact_version: "geomacro-invino-review-v7",
-  action_proposed: true,
-  action:
-    `Admit this exact Geomacro gro-1.1 ${reviewSubjectId} country-risk object only under receiver policy federico-global-country-risk-v1 after all required checks pass. Otherwise reject and keep the context inadmissible. This review never authorizes an irreversible action.`,
+  artifact_version: "geomacro-invino-review-v8",
+  review_purpose: "authenticate_read_only_country_risk_context",
+  action_proposed: false,
   execution_authorized: false,
   admission_contract: {
-    receiver_policy_id: "federico-global-country-risk-v1",
-    expected_subject: {
+    receiver_policy_id: "federico-global-country-risk-v2",
+    expected_signed_fields: {
       issuer: "Geomacro",
       schema_version: "gro-1.1",
       subject_type: "country",
       subject_id: reviewSubjectId,
       methodology_version_allowlist: ["country-risk-v0.1.0-pilot"],
+      calculation_namespace: "federico_strict_evidence_v1",
     },
-    receiver_purpose: "country_risk_context",
-    transport_digest_check:
-      "Recompute SHA-256 over the exact received external_evidence[0].record bytes and compare it to external_evidence[0].record_sha256 for transport/audit consistency only. The supplied digest is not an authentication trust root.",
-    cryptographic_authentication:
-      "Authenticate the record only by canonical payload-hash recomputation plus Ed25519 verification against a receiver-preapproved signing-key fingerprint and lifecycle policy.",
-    independent_verification_required: true,
-    issuer_attestations_are_not_trust_roots: true,
-    trust_anchor_policy:
-      "The receiver pins the approved Geomacro signing-key fingerprint out of band and applies key lifecycle/revocation policy. An online Geomacro registry response is discovery evidence only.",
-    provenance_policy: {
-      minimum_independent_source_families: 2,
+    transport_digest_check: {
+      role: "transport_consistency_only",
+      rule:
+        "Recompute SHA-256 over the exact received external_evidence[0].record bytes and compare with record_sha256. The supplied digest is not an authentication trust root.",
+    },
+    authentication_policy: {
+      trust_root:
+        "receiver-preapproved Geomacro Ed25519 signing-key fingerprint plus key lifecycle policy",
+      signature_rule:
+        "Reconstruct the exact signable GRO, recompute integrity.payload_hash, and verify integrity.signature over the same canonical UTF-8 bytes.",
+      online_registry_role:
+        "discovery and lifecycle evidence only; never the sole trust root",
+    },
+    immutable_canonicalization_contract: {
+      contract_version:
+        strictVerificationContract?.contract_version ?? null,
+      canonicalization_identifier:
+        strictVerificationContract?.canonicalization_identifier ?? null,
+      canonicalization_spec_url:
+        strictVerificationContract?.canonicalization_spec_url ?? null,
+      canonicalization_spec_sha256:
+        strictVerificationContract?.canonicalization_spec_sha256 ?? null,
+      independent_verifier_url:
+        strictVerificationContract?.independent_verifier_url ?? null,
+      independent_verifier_sha256:
+        strictVerificationContract?.independent_verifier_sha256 ?? null,
+      normative_vectors_sha256:
+        strictVerificationContract?.normative_vectors_sha256 ?? null,
+      signature_preimage_version:
+        strictVerificationContract?.signature_preimage_version ?? null,
+      excluded_fields:
+        strictVerificationContract?.excluded_fields ?? null,
+      receiver_runtime_policy:
+        strictVerificationContract?.receiver_runtime_policy ?? null,
+      execution_model:
+        "Receiver uses its own trusted implementation of the pinned normative specification and must pass the pinned conformance vectors. Geomacro executable code is reference material, not the receiver trust root.",
+    },
+    provenance_authentication: {
+      tuple_binding_version: GRO_SOURCE_TUPLE_BINDING_VERSION,
+      source_record_id_scheme: "geomacro-source-id-plus-sha256-v1",
+      signed_source_tuples: signedSourceTuples,
+      rule:
+        "For each signed evidence item, source_ids[i], source_record_ids[i], and content_hashes[i] form one same-index tuple. source_record_id must equal source_id + ':sha256:' + content_hash.",
       minimum_distinct_source_ids: 2,
-      source_resolution:
-        "Resolve each signed source_id through a receiver-controlled source registry to a preapproved HTTPS hostname.",
-      signed_tuple_mapping:
-        "For each signed evidence item require source_ids.length == source_record_ids.length == content_hashes.length > 0. Interpret index i as the signed tuple {source_id:source_ids[i], source_record_id:source_record_ids[i], content_hash:content_hashes[i]}; source_record_id is the signed record locator for that tuple and content_hash authenticates the fetched record bytes after receiver normalization; reject unequal lengths, missing values, host/source-registry mismatch, or ambiguous duplicate tuple keys.",
-      source_fetch:
-        "At admission, independently fetch each cited source record and require equality with its signed positional tuple. Use a receiver-maintained hostname allowlist; HTTPS only; no credentials; reject or fully revalidate every redirect; resolve A/AAAA before every hop and block loopback, private, link-local, multicast, reserved and metadata-service ranges; use egress isolation, DNS-rebinding-resistant address pinning, response-size limits and connection/total timeouts.",
-      country_nexus:
-        `Independently confirm the ${reviewSubjectId} nexus from the fetched/parsed source material or receiver-controlled structured attribution evidence; issuer attribution confidence alone is insufficient.`,
-      ownership_and_syndication:
-        "Require at least two independent publisher groups, reject shared ownership/control, and reject a common syndication group.",
-      material_diversity:
-        "Require at least two materially distinct source records; receiver computes normalized-content similarity and rejects the corroboration set when max pairwise similarity >= 0.85.",
-      unavailable_evidence:
-        "Any unavailable source URL resolution, fetch, hash, ownership, syndication, or country-nexus evidence is a hard fail.",
+      minimum_distinct_source_families: 2,
+      source_family_rule:
+        "Provider-family names are read only from the signed source_family_map. The receiver authenticates that issuer-signed mapping but does not claim to independently reconstruct publisher ownership or syndication.",
+      source_truth_boundary:
+        "This review authenticates the exact signed provenance metadata. It does not independently re-fetch or reconstruct third-party source content and does not claim that issuer-authenticated provenance metadata independently proves underlying source truth.",
+      receiver_network_fetch_policy: "disabled",
+      ssrf_surface:
+        "No third-party source URL, DNS lookup, redirect, credential forwarding, or source-content network request is part of this admission review.",
+    },
+    semantic_scope: {
+      admitted_use:
+        "read_only_context_only",
+      methodology_recomputation:
+        "not_part_of_authentication_review",
+      explanation:
+        "This review authenticates the signed context and provenance contract; it does not independently recompute Geomacro scoring methodology or assert semantic entailment of every risk score.",
+      automated_score_decisions_allowed: false,
+      irreversible_action_authorized: false,
+    },
+    readiness_usage_policy: {
+      degraded_or_uncalibrated:
+        "context_only_no_automated_score_based_decision",
+      rule:
+        "If decision_readiness.status is not READY or uncertainty_interval.calibrated is false, downstream automated score-based decisions are prohibited unless a separate calibrated-risk policy independently authorizes them.",
     },
     time_policy: {
-      trusted_time_source:
-        "NTS-authenticated time from a receiver-controlled quorum of at least two independent time sources.",
-      maximum_inter_source_spread_ms: 2000,
-      monotonic_elapsed_time_required: true,
-      uncertainty_overlaps_expiry: "fail_closed",
-      admission_rule: "trusted_now < expires_at",
-      execution_recheck_rule: "repeat immediately before irreversible execution",
-    },
-    parser_policy: {
-      implementation: "single receiver-pinned gro-1.1 parser + geomacro-canonical-json-v1",
-      receiver_pin_rule:
-        "The receiver must independently preapprove the exact repository commit and every source-file SHA-256 below. Values supplied in this request are reference material only and are never trust roots.",
-      repository: "blocknine0/geomacro",
-      commit_sha: verificationCommitSha,
-      bundle_sha256: verificationBundleSha256,
-      pinned_sources: verificationSourcePins,
-      signature_preimage:
-        "Clone the exact received gro-1.1 record; set integrity.payload_hash=null and integrity.signature=null; canonicalize the entire clone with geomacro-canonical-json-v1; SHA-256 of those UTF-8 canonical bytes must equal integrity.payload_hash; verify Ed25519 integrity.signature over those same canonical bytes.",
-      canonicalization_url_policy:
-        "The signed integrity.canonicalization_url is informational discovery metadata only. Never fetch or trust mutable branch content for admission; use only the receiver-preapproved immutable commit and SHA-256 source pins above.",
-      reject_duplicate_keys: true,
-      reject_invalid_utf8: true,
-      reject_non_finite_numbers: true,
-      reject_out_of_schema_values: true,
+      admission_rule: "receiver_now < expires_at",
+      stale_result: "hard_fail",
+      caller_time_not_trusted: true,
     },
     required_checks: [
-      "Recompute the exact received record SHA-256 and compare it to external_evidence[0].record_sha256 only as a transport/audit consistency check; never use that supplied digest as a trust root.",
-      "Verify expected issuer, subject, schema_version and methodology_version against receiver policy. Treat receiver_purpose=country_risk_context as receiver-local policy metadata, not as a required signed GRO field.",
-      "Require the receiver-preapproved immutable commit SHA and every parser/canonicalization source SHA-256 to match parser_policy before parsing.",
-      "Parse with that single pinned strict parser, reject ambiguous JSON/schema violations, then construct the exact signature preimage defined in parser_policy.",
-      "Recompute integrity.payload_hash from the canonical signable record and verify Ed25519 against the receiver-controlled approved key fingerprint and lifecycle/revocation policy.",
-      "For every evidence item require equal non-zero source_ids/source_record_ids/content_hashes lengths and bind index i as the signed source tuple before any source fetch.",
-      `Independently validate each signed source tuple, ${reviewSubjectId} nexus, publisher ownership/syndication independence, material diversity, and the hardened allowlisted source-fetch policy.`,
-      "Obtain NTS-authenticated trusted current UTC time and require trusted_now < expires_at at admission; fail closed when time uncertainty overlaps expiry.",
-      "Repeat the same trusted-time and expiry check immediately before any irreversible downstream action.",
-      "Treat issuer-provided readiness, confidence and historical freshness assertions as untrusted decision metadata until receiver validation passes.",
+      "Treat record_sha256 only as transport consistency; authenticate with the receiver-pinned Ed25519 key and signed payload.",
+      "Verify signed issuer, schema_version, subject.type, subject.id, methodology_version, and calculation_namespace.",
+      "Require the signed immutable canonicalization contract, SHA-256 pins, signature-preimage rule, and normative-vector digest to exactly match receiver policy.",
+      "Verify payload_hash and Ed25519 using a receiver-owned implementation of the pinned normative specification after passing the pinned conformance vectors.",
+      "Require source_tuple_binding_version=parallel-arrays-same-index-v1 and source_record_id_scheme=geomacro-source-id-plus-sha256-v1.",
+      "Require every source tuple to be complete, content-addressed, and mapped to a signed provider family; require at least two source IDs and two provider families.",
+      "Perform no third-party source network fetch during this authentication review.",
+      "Require receiver-controlled current time to be strictly before expires_at.",
+      "For DEGRADED or uncalibrated records, enforce context-only usage and prohibit automated score-based decisions.",
     ],
     failure_posture:
-      "Any missing trust anchor, wrong receiver purpose, subject/schema/method mismatch, parser ambiguity, hash/signature mismatch, provenance gap, stale context, or trusted-time uncertainty keeps the object inadmissible.",
+      "Any trust-anchor, signed-field, canonicalization-pin, signature, tuple-binding, provider-family, expiry, or usage-policy failure keeps the context inadmissible.",
   },
   freshness_policy: {
     observed_at: riskObject.observed_at,
     expires_at: riskObject.expires_at,
     admission_rule:
-      "At admission obtain a fresh receiver-controlled trusted UTC time and require now < expires_at. Recheck immediately before irreversible execution and fail closed at or after expiry.",
+      "At admission require receiver-controlled current time to be strictly before expires_at.",
     caller_time_not_trusted: true,
     decision_time_revalidation_required: true,
     fail_closed_at_or_after: riskObject.expires_at,
@@ -1032,7 +1106,7 @@ if (reviewArtifactBytes > 20_000) {
 }
 
 const reviewContext =
-  "Neutral review of a fail-closed admission plan. The signed gro-1.1 record is read-only external evidence. Its supplied record_sha256 is transport/audit metadata, not a trust root. Authentication requires the receiver-preapproved Ed25519 key fingerprint plus the receiver-preapproved immutable parser/canonicalization commit and source digests. Parallel evidence arrays are accepted only under the explicit equal-length positional tuple rule. Source fetches are HTTPS allowlist-only with redirect/DNS/private-range/size/timeout controls. receiver_purpose=country_risk_context is local policy metadata, not a signed GRO field. Fresh receiver-controlled trusted UTC time must be strictly before expires_at. This review never authorizes execution.";
+  "Read-only authentication review of one signed Geomacro gro-1.1 country-risk context. Authenticate the exact record with the receiver-pinned Ed25519 key, pinned normative canonicalization contract and conformance vectors, signed same-index content-addressed source tuples, provider-family cardinality, and expiry. Do not fetch third-party source URLs and do not treat this review as independent source-truth or score-methodology validation. DEGRADED or uncalibrated context is context-only and may not drive automated score-based decisions. This review never authorizes execution.";
 const reviewContextBytes = Buffer.byteLength(reviewContext, "utf8");
 if (reviewContextBytes > 4_000) {
   throw new Error(
@@ -1042,7 +1116,7 @@ if (reviewContextBytes > 4_000) {
 
 const reviewRequest = {
   artifact: reviewArtifactText,
-  artifact_type: "plan",
+  artifact_type: "general",
   context: reviewContext,
   sign: true,
   confidentiality_tier: "partial_disclosure",
@@ -1056,7 +1130,7 @@ const reviewRequest = {
       record_sha256: signedRiskObjectRecordSha256,
       decision_readiness: riskObject.decision_readiness ?? null,
     }) +
-    " Receiver-side independent verification is mandatory; issuer attestations are not trust roots. No raw third-party source feed content is included.",
+    " Authentication uses the receiver-pinned issuer key and immutable canonicalization contract. record_sha256 is transport consistency only. Provenance tuples are signed content-addressed metadata; no receiver-side third-party source fetch occurs. DEGRADED context is context-only and cannot authorize automated score-based decisions.",
   external_evidence: externalEvidence,
 };
 
