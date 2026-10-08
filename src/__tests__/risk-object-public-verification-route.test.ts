@@ -41,7 +41,16 @@ describe(
           "deployedPublicVerificationKeys",
         );
         expect(route).toContain(
+          "RISK_OBJECT_VERIFY_KEYS_JSON",
+        );
+        expect(route).toContain(
+          "RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64",
+        );
+        expect(route).not.toContain(
           'new URL(\n      "/api/risk-object-keys",\n      request.url',
+        );
+        expect(route).not.toContain(
+          'method: "GET"',
         );
         expect(route).toContain(
           "verification_keys:\n          verificationKeys",
@@ -78,6 +87,12 @@ describe(
         );
         expect(route).not.toContain(
           "RISK_OBJECT_SIGNING_PRIVATE_KEY",
+        );
+        expect(route).not.toContain(
+          "AbortSignal.timeout",
+        );
+        expect(route).toContain(
+          "publicRiskObjectVerificationKeySet(\n      keySet",
         );
         expect(route).toContain(
           "verification_key_registry_unavailable",
