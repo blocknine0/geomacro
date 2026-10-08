@@ -19,6 +19,18 @@ jobs:
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      GRI_DB_MODE: direct_postgres
+      LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}
+      B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}
+      DIRECT_NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       RAW_SOURCE_SYNC_MAX_TARGETS: "650"
       RAW_SOURCE_SYNC_CONCURRENCY: "16"
@@ -54,42 +66,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json
+          COUNTRY_RAW_SOURCE_SYNC_OUTPUT=country-raw-source-sync.json \
+            bun scripts/sync-country-raw-source-mesh.mjs > country-raw-source-sync.log 2>&1
+          cat country-raw-source-sync.json
           jq -e '.country_contract.countries == 195' country-raw-source-sync.json >/dev/null
           jq -e '.country_contract.categories | length == 3' country-raw-source-sync.json >/dev/null
 
       - name: Verify 195-country three-category raw mesh
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/audit-global-raw-source-coverage.mjs
+          node scripts/audit-global-raw-source-coverage.mjs
 
       - name: Structure captured country fragments directly
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t ids < <(jq -r '.fragment_ids[]?' country-raw-source-sync.json)
-          if [ "${#ids[@]}" -eq 0 ]; then
-            echo '{"structured_fragments":0,"note":"No new country fragments produced in this cycle."}' | tee country-raw-structure-summary.json
-            exit 0
-          fi
-          : > country-raw-structure-summary.ndjson
-          for id in "${ids[@]}"; do
-            response="country-raw-structure-${id}.json"
-            curl --fail-with-body -sS --retry 3 --retry-all-errors --retry-delay 2 --retry-max-time 90 \
-              -X POST "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
-              -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
-              -H "content-type: application/json" \
-              -d "{\"fragment_id\":\"$id\"}" \
-              -o "$response"
-            jq -e '.ok == true' "$response" >/dev/null
-            jq -c '{fragment_id,ok,status,evidence_structured,evidence_excluded,events_created,events_updated,remaining,has_more}' "$response" | tee -a country-raw-structure-summary.ndjson
-          done
-          jq -n --argjson count "${#ids[@]}" '{structured_fragments:$count}' | tee country-raw-structure-summary.json
+          node scripts/drain-live-structure.mjs --fragment-ids-file country-raw-source-sync.json 2>&1 | tee country-raw-structure-drain.log
+          echo '{"structured_via":"local_direct_postgres_b2"}' > country-raw-structure-summary.json
 
       - name: Reconcile structured event commercial rights
         shell: bash
         env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
           RECONCILE_SOURCE_KEYS: country_raw_web_mesh
           RECONCILE_LOOKBACK_MINUTES: "120"
         run: |
@@ -122,8 +123,7 @@ jobs:
           path: |
             country-raw-source-sync.json
             country-raw-structure-summary.json
-            country-raw-structure-summary.ndjson
-            country-raw-structure-*.json
+            country-raw-structure-drain.log
             country-raw-rights-reconcile.log
           if-no-files-found: warn
           retention-days: 30
