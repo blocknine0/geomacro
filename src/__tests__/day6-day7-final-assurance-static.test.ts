@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 const read = (path: string) => readFileSync(path, "utf8");
 const assurance = JSON.parse(read("config/partner-assurance.v1.json"));
 const adapter = read("scripts/partner-assurance-adapter.ts");
+const providerPreflight = read("scripts/invinoveritas-risk-object-preflight.ts");
 const directDay6 = read("scripts/day6-direct-live-federico-gro.ts");
 const day6Workflow = read(".github/workflows/day6-partner-assurance-final.yml");
 const migration = read("workers/control-plane/migrations/0002_primary_runtime_authority.sql");
@@ -57,6 +58,19 @@ describe("Day 6 generic partner assurance", () => {
     expect(adapter).toContain("tamperedPublicVerification");
     expect(adapter).not.toContain("async function deployedVerify");
     expect(adapter).not.toContain("DEPLOYED_VERIFIER_REJECTED_ORIGINAL");
+  });
+
+  it("keeps Federico provider preflight off the redundant deployed POST verifier", () => {
+    expect(providerPreflight).toContain("live_registry_client_local");
+    expect(providerPreflight).toContain("verifyRiskObjectSignature");
+    expect(providerPreflight).toContain("verifyPublicRiskObjectArtifact");
+    expect(providerPreflight).toContain("verification_keys: verificationKeys");
+    expect(providerPreflight).toContain("tamperedPublicVerification");
+    expect(providerPreflight).toContain("Original Risk Object failed live-registry local verification");
+    expect(providerPreflight).toContain('verification_mode: verificationMode');
+    expect(providerPreflight).toContain('verificationMode = "live_registry_client_local"');
+    expect(providerPreflight).not.toContain("const original = await verify(riskObject)");
+    expect(providerPreflight).not.toContain("const tamperResult = await verify(tampered)");
   });
 
   it("generates a country-agnostic strict GRO while keeping the Federico allowance explicit", () => {
