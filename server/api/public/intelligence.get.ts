@@ -3,7 +3,6 @@ import {
   setResponseHeaders,
   setResponseStatus,
 } from "h3";
-import { readProductionPublicIntelligence } from "../../../src/lib/public-intelligence-production.server";
 
 export default defineEventHandler(async (event) => {
   // Freshness is a correctness property for this endpoint. Do not let an
@@ -20,6 +19,12 @@ export default defineEventHandler(async (event) => {
   });
 
   try {
+    // Resolve the server-only reader inside the error boundary. In preview,
+    // module evaluation itself can fail before the handler's catch executes.
+    // Return controlled 503 (never fabricated verified rows) in that case.
+    const { readProductionPublicIntelligence } = await import(
+      "../../../src/lib/public-intelligence-production.server"
+    );
     const payload = await readProductionPublicIntelligence();
     if (!payload.rows.length) {
       setResponseStatus(event, 503);
