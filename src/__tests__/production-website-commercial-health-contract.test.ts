@@ -22,15 +22,21 @@ describe("production website health validates real commercial promises", () => {
     for (const phrase of [
       "Explore for free. Choose the access that fits.",
       "Pay-per-call availability is confirmed by the live checkout, not the advertised price.",
-      "Monthly self-service checkout is not yet available",
+      "Coming Soon · Monthly checkout",
+      "Monthly subscriptions are Coming Soon. You can request a tailored plan and quote now.",
+      "Request monthly access",
     ]) {
       expect(job).toContain(phrase);
       expect(pricing).toContain(phrase);
     }
     expect(job).toContain("Structured intelligence for APIs and AI agents");
     expect(guide).toContain("Structured intelligence for APIs and AI agents");
-    expect(job).toContain("Monthly access is an enquiry, not an active self-service subscription.");
-    expect(guide).toContain("Monthly access is an enquiry, not an active self-service subscription.");
+    expect(job).toContain("Coming Soon · enquiries open");
+    expect(guide).toContain("Coming Soon · enquiries open");
+    expect(job).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
+    expect(guide).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
+    expect(job).toContain("Request monthly access");
+    expect(guide).toContain("Request monthly access");
     expect(job).toContain("Failed, stale, unavailable, replayed, refunded, internal and unpaid requests do not count as successful paid deliveries.");
   });
 
