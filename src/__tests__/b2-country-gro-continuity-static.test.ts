@@ -39,6 +39,9 @@ describe("country GRO zero-cost continuity", () => {
     expect(publisher).toContain("b2_get_count_for_hot_serving: 0");
     expect(publisher).toContain("archive_readback_required_for_hot_serving: false");
     expect(publisher).toContain("d1_signed_gro_hot_verified: true");
+    expect(publisher).toContain("const childEnv = { ...process.env }");
+    expect(publisher).toContain("delete childEnv.NODE_OPTIONS");
+    expect(publisher).toContain("env: childEnv");
     expect(publisher).not.toContain("await b2.get(");
   });
 
