@@ -156,12 +156,21 @@ for (const required of [
   if (!docs.includes(required)) fail(`commercial partner docs missing section/guardrail: ${required}`);
 }
 
+if (adapter.includes("async function deployedVerify") || adapter.includes("DEPLOYED_VERIFIER_REJECTED_ORIGINAL")) {
+  fail("Federico local assurance must not depend on the redundant deployed POST verifier");
+}
+if (!adapter.includes("/.well-known/geomacro-build.json")) {
+  fail("Federico local assurance must verify the live canonical build marker");
+}
+
 for (const required of [
   "PARTNER_ASSURANCE_ALLOW_LIVE_REVIEW",
   "LIVE_REVIEW_ALLOWANCE_NOT_EXPLICITLY_GRANTED",
   "PARTNER_ALLOWANCE_EXCEEDS_CORE",
   "LOCAL_SIGNATURE_VERIFICATION_FAILED",
-  "DEPLOYED_VERIFIER_REJECTED_ORIGINAL",
+  "DEPLOYED_BUILD_MARKER_INVALID",
+  "DEPLOYED_TRUST_VERIFICATION_UNAVAILABLE",
+  "live_registry_client_local",
   "TAMPER_NOT_REJECTED",
   "SIGNED_PARTNER_PROOF_MISSING",
   "INDEPENDENT_PARTNER_PROOF_VERIFICATION_FAILED",
