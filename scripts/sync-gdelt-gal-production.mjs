@@ -156,6 +156,12 @@ function compactRow(row, canonicalUrl, fingerprint, topics, sourceStamp) {
 
 function classifyFailure(error) {
   const message = error instanceof Error ? error.message : String(error);
+  if (message === "B2_DOWNLOAD_CAP_EXCEEDED") {
+    return "B2_DOWNLOAD_CAP_EXCEEDED";
+  }
+  if (message === "B2_TRANSACTION_CAP_EXCEEDED") {
+    return "B2_TRANSACTION_CAP_EXCEEDED";
+  }
   if (/GDELT_UPSTREAM_(?:HTTP_(?:429|5\d{2})|FETCH)/i.test(message)) {
     return "UPSTREAM_TEMPORARY_OUTAGE";
   }
