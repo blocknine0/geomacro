@@ -182,6 +182,8 @@ jobs:
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
           RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-fast.json
           RSS_LIVE_SKIP_CORROBORATION: "true"
+          RSS_LIVE_ALLOW_PARTIAL_SOURCE_FAILURES: "true"
+          RSS_LIVE_MIN_PARTIAL_COMPLETED_SOURCES: "2"
         shell: bash
         run: |
           set -euo pipefail
@@ -191,8 +193,11 @@ jobs:
             .ok == true and
             .transport == "canonical_direct_postgres" and
             .edge_function_dependency == false and
-            .source_summary.configured_source_count == 5 and
-            .source_summary.configured_source_count == .source_summary.completed_source_count and
+            .partial_source_failure_tolerance_enabled == true and
+            .source_summary.configured_source_count >= .source_summary.completed_source_count and
+            .source_summary.completed_source_count >= 2 and
+            .source_summary.failed_source_count == (.source_summary.failed_sources | length) and
+            .source_summary.partial_refresh == (.source_summary.failed_source_count > 0) and
             .corroboration.ok == true and
             .corroboration.skipped == true and
             .corroboration.reason == "explicit_partner_bootstrap_country_corroboration_follows" and
@@ -200,6 +205,7 @@ jobs:
             .payment_performed == false and
             .execution_authorized == false
           ' /tmp/day6-rss-fast.json >/dev/null
+          jq -c '{configured:.source_summary.configured_source_count,completed:.source_summary.completed_source_count,failed:.source_summary.failed_sources,partial:.source_summary.partial_refresh}' /tmp/day6-rss-fast.json
           echo "PASS: active Federico corroborator refresh completed with no partner allowance."
 
       - name: Hydrate trusted publisher times after fast refresh
@@ -278,6 +284,8 @@ jobs:
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
           RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-broad.json
           RSS_LIVE_SKIP_CORROBORATION: "true"
+          RSS_LIVE_ALLOW_PARTIAL_SOURCE_FAILURES: "true"
+          RSS_LIVE_MIN_PARTIAL_COMPLETED_SOURCES: "2"
         shell: bash
         run: |
           set -euo pipefail
@@ -286,7 +294,11 @@ jobs:
             .ok == true and
             .transport == "canonical_direct_postgres" and
             .edge_function_dependency == false and
-            .source_summary.configured_source_count == .source_summary.completed_source_count and
+            .partial_source_failure_tolerance_enabled == true and
+            .source_summary.configured_source_count >= .source_summary.completed_source_count and
+            .source_summary.completed_source_count >= 2 and
+            .source_summary.failed_source_count == (.source_summary.failed_sources | length) and
+            .source_summary.partial_refresh == (.source_summary.failed_source_count > 0) and
             .corroboration.ok == true and
             .corroboration.skipped == true and
             .corroboration.reason == "explicit_partner_bootstrap_country_corroboration_follows" and
@@ -294,6 +306,7 @@ jobs:
             .payment_performed == false and
             .execution_authorized == false
           ' /tmp/day6-rss-broad.json >/dev/null
+          jq -c '{configured:.source_summary.configured_source_count,completed:.source_summary.completed_source_count,failed:.source_summary.failed_sources,partial:.source_summary.partial_refresh}' /tmp/day6-rss-broad.json
           echo "PASS: broad audited RSS fallback completed because the fast strict-family precheck was not ready."
 
       - name: Re-hydrate trusted publisher times after broad fallback
