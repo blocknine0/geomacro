@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { readB2PublicIntelligence } from "./b2-live.server";
 import { assertPublicReadOrigin } from "./origin-guard";
+import { sanitizePublicIntelligenceRow } from "./public-intelligence-gist";
 
 const EventInput = z.object({
   eventId: z.string().trim().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
@@ -43,5 +44,6 @@ export const getPublicEventDetail = createServerFn({ method: "POST" })
 
     const b2Rows = await readB2PublicIntelligence();
     const b2Row = b2Rows?.find((row) => row.id === data.eventId);
-    return b2Row ? fromB2Row(b2Row) : null;
+    const safe = b2Row ? sanitizePublicIntelligenceRow(b2Row) : null;
+    return safe ? fromB2Row(safe) : null;
   });
