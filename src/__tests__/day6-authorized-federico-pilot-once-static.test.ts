@@ -24,7 +24,7 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     const select = workflow.indexOf("Select strongest fresh strict candidate set");
     const corroborate = workflow.indexOf("Corroborate candidates and select first genuinely strict-ready country");
     const local = workflow.indexOf("Dispatch no-allowance current-head local assurance");
-    const live = workflow.indexOf("Dispatch exactly one authorized Federico pilot allowance review");
+    const live = workflow.indexOf("HOLD Federico allowance until three distinct-time preflight passes and fresh owner ACK");
     expect(preflight).toBeGreaterThan(-1);
     expect(gdelt).toBeGreaterThan(preflight);
     expect(preReady).toBeGreaterThan(gdelt);
@@ -45,14 +45,16 @@ describe("one-time Day 6 Federico pilot authorization", () => {
       "Select strongest fresh strict candidate set",
       "Corroborate candidates and select first genuinely strict-ready country",
       "Dispatch no-allowance current-head local assurance",
-      "Dispatch exactly one authorized Federico pilot allowance review",
+      "HOLD Federico allowance until three distinct-time preflight passes and fresh owner ACK",
       "Seal orchestration summary",
       "Record Day 6 outcome on migration tracker",
     ]) {
       expect(workflow.split(stepName)).toHaveLength(2);
     }
     expect(workflow).toContain("use_partner_allowance=false");
-    expect(workflow).toContain("use_partner_allowance=true");
+    expect(workflow).not.toContain("use_partner_allowance=true");
+    expect(workflow).toContain("allowance_dispatches=0");
+    expect(workflow).toContain('"owner_authorized_pilot_allowance":false');
     expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs");
     expect(workflow).toContain("Re-poll active Federico corroborators without partner allowance");
     expect(workflow).toContain("Check for an already strict recent two-family event");
@@ -128,11 +130,16 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain('"real_money_payment_authorized":false');
     expect(workflow).toContain('"execution_authorized":false');
     expect(workflow).toContain("github.run_attempt == 1");
+    expect(workflow).toContain('"owner_authorized_pilot_allowance":false');
+    expect(workflow).not.toContain("gh workflow run day6-partner-assurance-final.yml --ref main -f iso3=\"$TARGET_ISO3\" -f candidate_sha=\"$MAIN_SHA\" -f use_partner_allowance=true");
+    expect(childWorkflow).toContain("Live Federico allowance is disabled pending three distinct-time passing preflights and a new explicit owner ACK");
+    expect(childWorkflow).toContain("exit 13");
+    expect(childWorkflow).toContain('Spend exactly one Federico pilot allowance after local gates\n        if: ${{ false }}');
   });
 
   it("pins both child assurance runs to the parent SHA and exact artifact contract", () => {
     expect(workflow).toContain('-f candidate_sha="$MAIN_SHA" -f use_partner_allowance=false');
-    expect(workflow).toContain('-f candidate_sha="$MAIN_SHA" -f use_partner_allowance=true');
+    expect(workflow).not.toContain('-f candidate_sha="$MAIN_SHA" -f use_partner_allowance=true');
     expect(workflow).toContain("--json databaseId,createdAt,displayTitle,status");
     expect(workflow).not.toContain("--json databaseId,createdAt,headSha,status");
     expect(workflow).toContain("day6-global-partner-assurance-${RUN_ID}");
