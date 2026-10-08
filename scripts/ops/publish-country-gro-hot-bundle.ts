@@ -27,7 +27,10 @@ const MIN_READY = Math.max(1, Number(process.env.GLOBAL_GRO_D1_MIN_INDEXED ?? 19
 const OUT_DIR = join(process.cwd(), "artifacts", "global-gro-continuity");
 const D1_CONFIG = join(process.cwd(), "workers", "control-plane", "wrangler.country-gro-hot.runtime.jsonc");
 const SQL_FILE = join(OUT_DIR, "country-gro-hot.sql");
-const MANIFEST_FILE = join(OUT_DIR, "country-gro-hot-publish.json");
+const MANIFEST_FILE = String(
+  process.env.COUNTRY_GRO_HOT_PUBLISH_OUTPUT ??
+    join(OUT_DIR, "country-gro-hot-publish.json"),
+).trim();
 const HASH_RE = /^[a-f0-9]{64}$/;
 const sha256 = (value: Buffer | string) => createHash("sha256").update(value).digest("hex");
 const sqlText = (value: unknown) =>
@@ -264,6 +267,8 @@ const output = {
   generated_at: evaluatedAt,
   country_count: entries.length,
   minimum_required: MIN_READY,
+  global_195_coverage_claimed: false,
+  only_verified_current_objects_admitted: true,
   bundle_key: bundleKey,
   bundle_sha256: bundleSha,
   bundle_bytes: bundlePacked.length,

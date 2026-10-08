@@ -43,6 +43,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       D1_DATABASE_NAME: geomacro-control-plane
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       GLOBAL_CANONICAL_REFRESH_OUTPUT: artifacts/global-gro-continuity/canonical-risk-objects.json
       GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR: "195"
       GLOBAL_CANONICAL_MIN_READY: "195"
@@ -79,6 +80,79 @@ jobs:
           if (enabled.length < 195) throw new Error(`GRO_CONTINUITY_COUNTRY_UNIVERSE_REGRESSION:${enabled.length}`);
           console.log(JSON.stringify({ ok: true, transport: 'direct_postgres', enabled_country_like_candidates: enabled.length }));
           NODE
+
+      - name: Check whether verified D1 country GRO hot serving already exists
+        id: hot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/global-gro-continuity
+          set +e
+          bun scripts/ops/verify-country-gro-hot-serving.ts             > artifacts/global-gro-continuity/pre-refresh-hot-canary.json             2> artifacts/global-gro-continuity/pre-refresh-hot-canary.err
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ] && jq -e '
+            .ok == true
+            and .serving_store == "cloudflare-d1"
+            and .archive_store == "backblaze-b2"
+            and .b2_network_read_required == false
+            and .signature_valid == true
+            and .commercial_eligibility_verified == true
+          ' artifacts/global-gro-continuity/pre-refresh-hot-canary.json >/dev/null; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "PASS: verified D1 country GRO hot serving already exists; no pre-refresh archive write needed."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Verified D1 hot set is absent or expired; bounded seed will run from current VERIFIED DB objects."
+          fi
+
+      - name: Seed existing VERIFIED current GROs before the long global refresh
+        id: seed
+        if: steps.hot.outputs.ready != 'true'
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+          GLOBAL_GRO_D1_MIN_INDEXED: "1"
+          COUNTRY_GRO_HOT_PUBLISH_OUTPUT: artifacts/global-gro-continuity/country-gro-hot-seed.json
+          B2_REQUEST_BUDGET: "8"
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          node --import tsx scripts/ops/publish-country-gro-hot-bundle.ts             > artifacts/global-gro-continuity/country-gro-hot-seed.stdout.json             2> artifacts/global-gro-continuity/country-gro-hot-seed.err
+          rc=$?
+          set -e
+
+          if [ "$rc" -ne 0 ]; then
+            if grep -q 'COUNTRY_GRO_HOT_READY_FLOOR_BREACH:0<1' artifacts/global-gro-continuity/country-gro-hot-seed.err; then
+              echo "seeded=false" >> "$GITHUB_OUTPUT"
+              echo "No pre-existing current VERIFIED GRO is available; continue to fresh generation without inventing a hot object."
+            else
+              cat artifacts/global-gro-continuity/country-gro-hot-seed.err
+              exit "$rc"
+            fi
+          else
+            jq -e '
+              .ok == true
+              and .country_count >= 1
+              and .minimum_required == 1
+              and .global_195_coverage_claimed == false
+              and .only_verified_current_objects_admitted == true
+              and .b2_bundle_put_acknowledged == true
+              and .b2_manifest_put_acknowledged == true
+              and .b2_get_count_for_hot_serving == 0
+              and .d1_signed_gro_hot_verified == true
+              and .d1_readback_verified == true
+              and .signature_verified == true
+              and .commercial_eligibility_verified == true
+              and .raw_source_material_emitted == false
+              and .external_payment_performed == false
+              and .execution_authorized == false
+              and .destructive_b2_change == false
+            ' artifacts/global-gro-continuity/country-gro-hot-seed.json >/dev/null
+            echo "seeded=true" >> "$GITHUB_OUTPUT"
+            echo "PASS: seeded only existing current VERIFIED commercial GROs; this does not claim 195-country coverage."
+          fi
+
       - name: Refresh global commercially governed canonical GROs
         id: refresh
         env:
@@ -106,18 +180,27 @@ jobs:
           ' "$GLOBAL_CANONICAL_REFRESH_OUTPUT" >/dev/null
           ready="$(jq -r '.summary.paid_ready_country_count // 0' "$GLOBAL_CANONICAL_REFRESH_OUTPUT")"
           echo "ready_count=$ready" >> "$GITHUB_OUTPUT"
+          if [ "$ready" -gt 0 ]; then
+            echo "publishable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publishable=false" >> "$GITHUB_OUTPUT"
+          fi
           if [ "$refresh_status" -eq 0 ] && [ "$ready" -ge 195 ]; then
             echo "fresh=true" >> "$GITHUB_OUTPUT"
+            echo "coverage_floor_met=true" >> "$GITHUB_OUTPUT"
             echo "PASS: global canonical refresh produced ${ready} commercially deliverable country-like GROs."
           else
             echo "fresh=false" >> "$GITHUB_OUTPUT"
-            echo "::error title=Global commercial GRO floor not met::Ready=${ready}; required=195; refresh_status=${refresh_status}. Preserving the previous verified B2 package and refusing to advance D1."
+            echo "coverage_floor_met=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Global commercial GRO floor not met::Ready=${ready}; required=195; refresh_status=${refresh_status}. VERIFIED countries may be hot-served individually, but the 195-country launch gate remains fail-closed."
           fi
 
-      - name: Publish one bundled cold archive and verified D1 hot GRO set
-        if: steps.refresh.outputs.fresh == 'true'
+      - name: Publish all currently VERIFIED GROs after refresh
+        if: steps.refresh.outputs.publishable == 'true'
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+          GLOBAL_GRO_D1_MIN_INDEXED: "1"
+          COUNTRY_GRO_HOT_PUBLISH_OUTPUT: artifacts/global-gro-continuity/country-gro-hot-publish.json
           B2_REQUEST_BUDGET: "8"
         shell: bash
         run: |
@@ -125,7 +208,10 @@ jobs:
           node --import tsx scripts/ops/publish-country-gro-hot-bundle.ts | tee artifacts/global-gro-continuity/country-gro-hot-publish.stdout.json
           jq -e '
             .ok == true
-            and .country_count >= 195
+            and .country_count >= 1
+            and .minimum_required == 1
+            and .global_195_coverage_claimed == false
+            and .only_verified_current_objects_admitted == true
             and .b2_bundle_put_acknowledged == true
             and .b2_manifest_put_acknowledged == true
             and .b2_put_count == 2
@@ -141,9 +227,16 @@ jobs:
             and .execution_authorized == false
             and .destructive_b2_change == false
           ' artifacts/global-gro-continuity/country-gro-hot-publish.stdout.json >/dev/null
+          published="$(jq -r '.country_count' artifacts/global-gro-continuity/country-gro-hot-publish.json)"
+          ready="${{ steps.refresh.outputs.ready_count }}"
+          test "$published" -ge "${ready:-0}" || {
+            echo "::error::Verified hot publish count ${published} is below fresh paid-ready count ${ready:-0}."
+            exit 2
+          }
+          echo "PASS: published ${published} current VERIFIED GROs to D1 hot state; 195-country coverage is evaluated separately."
 
       - name: Audit bundled B2 cold archive when read capacity is available
-        if: steps.refresh.outputs.fresh == 'true'
+        if: steps.refresh.outputs.publishable == 'true'
         env:
           B2_REQUEST_BUDGET: "4"
         shell: bash
@@ -183,9 +276,9 @@ jobs:
           set -euo pipefail
           ready="${{ steps.refresh.outputs.ready_count }}"
           if [ "${ready:-0}" -lt 195 ]; then
-            echo "::error title=#1414 country GRO coverage incomplete::Only ${ready:-0} country-like subjects are commercially deliverable; 195 are required."
+            echo "::error title=#1414 country GRO coverage incomplete::Only ${ready:-0} country-like subjects are commercially deliverable; 195 are required. Existing VERIFIED countries remain individually hot-servable, but this workflow stays red."
             exit 1
           fi
-          test "${{ steps.refresh.outputs.fresh }}" = "true"
+          test "${{ steps.refresh.outputs.coverage_floor_met }}" = "true"
           test -f artifacts/global-gro-continuity/country-gro-hot-publish.json
-          jq -e '.ok == true and .country_count >= 195 and .d1_signed_gro_hot_verified == true and .b2_get_count_for_hot_serving == 0' artifacts/global-gro-continuity/country-gro-hot-publish.json >/dev/null
+          jq -e '.ok == true and .country_count >= 195 and .d1_signed_gro_hot_verified == true and .b2_get_count_for_hot_serving == 0 and .global_195_coverage_claimed == false' artifacts/global-gro-continuity/country-gro-hot-publish.json >/dev/null

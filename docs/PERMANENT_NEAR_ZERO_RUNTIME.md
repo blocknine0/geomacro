@@ -147,7 +147,9 @@ The active non-paying B2 account demonstrated that Class-B transaction count, ra
 - D1 never stores raw/evidence/history payloads; the only full signed-GRO exception is the bounded current verified-hot country row described above;
 - destructive cleanup still requires independently verified bytes and hashes. Quota reduction must never weaken deletion safety.
 
-The default per-process B2 request budget is intentionally conservative. Country-GRO refresh uses one compressed bundle plus one manifest (two archive PUTs for the whole current 195+ set) and requires zero B2 GETs for hot serving. A separate audit needs only the manifest and bundle reads; if the provider download cap is exhausted, that audit remains pending while the already verified D1 hot set continues to serve until its signed expiry. Workflows that need larger bounded batches must set an explicit reviewed budget. The provider hard ceiling is not an operating target.
+The default per-process B2 request budget is intentionally conservative. Country-GRO refresh uses one compressed bundle plus one manifest and requires zero B2 GETs for hot serving. The bundle contains only current signed GROs that independently pass signature, freshness and commercial-deliverability checks. A separate audit needs only the manifest and bundle reads; if the provider download cap is exhausted, that audit remains pending while the already verified D1 hot set continues to serve until its signed expiry. Workflows that need larger bounded batches must set an explicit reviewed budget. The provider hard ceiling is not an operating target.
+
+The hot-serving census and the global launch-coverage census are deliberately separate. A country that has a current verified commercial GRO may be served from D1 even when another country is unavailable. This never upgrades an unavailable country, never fills a missing country with zero risk, and never changes the 195-country acceptance requirement: the global coverage workflow remains red until at least 195 country-like subjects independently satisfy the commercial GRO gate.
 
 ### Hot-object evolution
 
