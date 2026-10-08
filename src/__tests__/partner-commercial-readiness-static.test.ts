@@ -17,6 +17,10 @@ describe("partner commercial readiness", () => {
     expect(discovery.risk_object.canonicalization).toBe("geomacro-canonical-json-v1");
     expect(discovery.federation.supported_profile).toBe("federico-strict-evidence-v1");
     expect(discovery.federation.receiver_side_verification_required).toBe(true);
+    expect(discovery.federation.receiver_pinned_issuer_signature_is_authentication_root).toBe(true);
+    expect(discovery.federation.third_party_source_network_fetch_required).toBe(false);
+    expect(discovery.risk_object.canonicalization_spec_sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(discovery.risk_object.independent_verifier_sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(discovery.federation.fail_closed).toBe(true);
     expect(assurance.partners.federico.delivery_profile).toBe("FEDERICO_STRICT");
     expect(assurance.partners.federico.subject_type).toBe("country");
@@ -64,7 +68,12 @@ describe("partner commercial readiness", () => {
     expect(preflight).toContain("execution_authorized: false");
     expect(preflight).toContain("independent_node");
     expect(preflight).toContain("partial_disclosure");
-    expect(preflight).toContain('receiver_policy_id: "federico-global-country-risk-v1"');
+    expect(preflight).toContain('artifact_type: "general"');
+    expect(preflight).toContain("parallel-arrays-same-index-v1");
+    expect(preflight).toContain("transport_consistency_and_audit_only");
+    expect(preflight).toContain('"disabled_for_admission"');
+    expect(preflight).not.toContain('context_type: "country_risk_context"');
+    expect(preflight).toContain('receiver_policy_id: "federico-global-country-risk-v2"');
     expect(preflight).toContain("subject_id: reviewSubjectId");
     expect(preflight).not.toContain('subject_id: "CHN"');
   });
