@@ -29,14 +29,16 @@ jobs:
           const fs=require("node:fs");
           const crypto=require("node:crypto");
           const body=JSON.parse(fs.readFileSync("/tmp/keys.json","utf8"));
-          const key=body.keys.find(x=>x.key_id==="geomacro-risk-2026-03");
-          const spki=Buffer.from(key.public_key_spki_b64,"base64");
-          console.log(JSON.stringify({
-            key_id:key.key_id,
-            status:key.status,
-            not_before:key.not_before??null,
-            not_after:key.not_after??null,
-            public_key_spki_b64:key.public_key_spki_b64,
-            public_key_fingerprint_sha256:crypto.createHash("sha256").update(spki).digest("hex")
-          }));
+          const keys=(body.keys||[]).map(key=>{
+            const spki=Buffer.from(key.public_key_spki_b64,"base64");
+            return {
+              key_id:key.key_id,
+              status:key.status,
+              not_before:key.not_before??null,
+              not_after:key.not_after??null,
+              public_key_spki_b64:key.public_key_spki_b64,
+              public_key_fingerprint_sha256:crypto.createHash("sha256").update(spki).digest("hex")
+            };
+          }).sort((a,b)=>a.key_id.localeCompare(b.key_id));
+          console.log(JSON.stringify({issuer:body.issuer,signature_scheme:body.signature_scheme,canonicalization:body.canonicalization,keys}));
           NODE
