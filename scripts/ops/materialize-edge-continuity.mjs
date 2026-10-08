@@ -56,6 +56,54 @@ function validDate(value) {
 let payload;
 let projection = "exact-public-package";
 
+function validRiskIndicesPayload(candidate) {
+  const data = candidate?.data;
+  return (
+    candidate?.schema === "geomacro.public-risk-indices-live.v1" &&
+    candidate?.source_project === projectRef &&
+    data?.verificationStatus === "verified" &&
+    data?.contractVersion === "risk-indices-v1.1.0" &&
+    data?.parentMethodologyVersion === "gri-v1.2.0" &&
+    data?.snapshotId === proof.snapshot_id &&
+    Date.parse(String(data?.snapshotAsOf ?? "")) === Date.parse(String(proof.snapshot_as_of ?? "")) &&
+    validDate(candidate?.generated_at)
+  );
+}
+
+function readVerifiedRiskIndicesHotSnapshot() {
+  const file = findFile("risk-indices-hot-snapshot.json");
+  if (!file) return null;
+  let hot;
+  try {
+    hot = JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+  const payloadJson = String(hot?.payload_json ?? "");
+  const payloadSha256 = crypto.createHash("sha256").update(payloadJson).digest("hex");
+  if (
+    hot?.ok !== true ||
+    hot?.product !== "risk-indices" ||
+    hot?.schema !== "geomacro.public-risk-indices-live.v1" ||
+    hot?.proof_schema !== "geomacro.public-risk-indices-live-proof.v1" ||
+    hot?.b2_object_key !== "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz" ||
+    hot?.b2_sha256 !== proof.live_sha256 ||
+    hot?.payload_sha256 !== payloadSha256 ||
+    hot?.full_b2_readback_verified !== true ||
+    hot?.exact_gzip_restore_verified !== true ||
+    !validDate(hot?.source_as_of) ||
+    !validDate(hot?.expires_at) ||
+    !payloadJson
+  ) return null;
+  let candidate;
+  try {
+    candidate = JSON.parse(payloadJson);
+  } catch {
+    return null;
+  }
+  return validRiskIndicesPayload(candidate) ? candidate : null;
+}
+
 if (product === "global-risk") {
   if (proof.schema !== "geomacro.public-global-risk-direct-postgres-publish.v1") {
     throw new Error("EDGE_CONTINUITY_GLOBAL_PROOF_SCHEMA_INVALID");
@@ -78,20 +126,21 @@ if (product === "global-risk") {
   if (proof.schema !== "geomacro.public-risk-indices-direct-postgres-publish.v1") {
     throw new Error("EDGE_CONTINUITY_INDICES_PROOF_SCHEMA_INVALID");
   }
-  const file = findFile("risk-indices-edge.json");
-  if (!file) throw new Error("EDGE_CONTINUITY_INDICES_ARTIFACT_MISSING");
-  payload = JSON.parse(fs.readFileSync(file, "utf8"));
-  const data = payload?.data;
-  if (
-    payload?.schema !== "geomacro.public-risk-indices-live.v1" ||
-    payload?.source_project !== projectRef ||
-    data?.verificationStatus !== "verified" ||
-    data?.contractVersion !== "risk-indices-v1.1.0" ||
-    data?.parentMethodologyVersion !== "gri-v1.2.0" ||
-    data?.snapshotId !== proof.snapshot_id ||
-    Date.parse(String(data?.snapshotAsOf ?? "")) !== Date.parse(String(proof.snapshot_as_of ?? "")) ||
-    !validDate(payload?.generated_at)
-  ) throw new Error("EDGE_CONTINUITY_INDICES_ARTIFACT_INVALID");
+  const edgeFile = findFile("risk-indices-edge.json");
+  let edgePayload = null;
+  if (edgeFile) {
+    try {
+      edgePayload = JSON.parse(fs.readFileSync(edgeFile, "utf8"));
+    } catch {
+      edgePayload = null;
+    }
+  }
+  if (validRiskIndicesPayload(edgePayload)) {
+    payload = edgePayload;
+  } else {
+    payload = readVerifiedRiskIndicesHotSnapshot();
+  }
+  if (!payload) throw new Error("EDGE_CONTINUITY_INDICES_ARTIFACT_INVALID");
 } else {
   if (proof.schema !== "geomacro.public-intelligence-direct-postgres-publish.v2") {
     throw new Error("EDGE_CONTINUITY_INTELLIGENCE_PROOF_SCHEMA_INVALID");
