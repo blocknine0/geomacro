@@ -177,7 +177,430 @@ jobs:
             echo "::notice::GDELT structured lane is stale/degraded. Day 6 continues with audited publisher-native RSS only; no synthetic GDELT freshness or credit is created."
           fi
 
+      - name: Check for an existing strict recent two-family event before RSS refresh
+        id: pre_ready
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready_country="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL'
+          with strict_source_map(source_id, source_family) as (
+            values
+              ('xinhua_english_china_rss', 'xinhua_english_china'),
+              ('scmp_china_rss', 'scmp_china'),
+              ('forexlive_rss', 'forexlive'),
+              ('aljazeera_rss', 'aljazeera'),
+              ('bbc_world_rss', 'bbc_world'),
+              ('federal_reserve_press_rss', 'federal_reserve'),
+              ('ecb_press_rss', 'european_central_bank'),
+              ('ecb_market_information_rss', 'european_central_bank'),
+              ('bis_rss_media_releases', 'bank_for_international_settlements'),
+              ('bis_rss_central_banker_speeches', 'bank_for_international_settlements'),
+              ('eu_council_press_rss', 'council_of_the_european_union'),
+              ('un_all_documents_rss', 'united_nations'),
+              ('un_human_rights_council_rss', 'united_nations'),
+              ('un_geneva_press_rss', 'united_nations'),
+              ('un_security_council_docs_rss', 'united_nations'),
+              ('un_geneva_meeting_summaries_rss', 'united_nations'),
+              ('usgs_minerals_news_rss', 'usgs'),
+              ('nrcan_news_atom', 'natural_resources_canada')
+          ),
+          recent_verified_family as (
+            select
+              c.country_iso3,
+              e.event_family_id,
+              count(distinct m.source_family) as source_family_count,
+              max(e.published_at) as latest_published_at
+            from public.live_flash_events e
+            join strict_source_map m on m.source_id = lower(trim(e.source_id))
+            join public.live_flash_event_countries c on c.flash_id=e.flash_id
+            where e.event_family_id is not null
+              and e.verification_status = 'VERIFIED'
+              and e.published_at is not null
+              and e.published_at >= now() - interval '6 hours'
+              and e.published_at <= now()
+              and c.country_iso3 ~ '^[A-Z]{3}
+        env:
+          TELEGRAM_ENABLED: "false"
+          BREAKING_RSS_ENABLED: "true"
+          BREAKING_RSS_RUN_ONCE: "true"
+          BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
+          BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"
+          BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+          RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-fast.json
+          RSS_LIVE_SKIP_CORROBORATION: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/day6-rss-deps.log
+          node scripts/run-rss-live-cycle.mjs | tee /tmp/day6-rss-fast.log
+          jq -e '
+            .ok == true and
+            .transport == "canonical_direct_postgres" and
+            .edge_function_dependency == false and
+            .source_summary.configured_source_count == 5 and
+            .source_summary.configured_source_count == .source_summary.completed_source_count and
+            .corroboration.ok == true and
+            .corroboration.skipped == true and
+            .corroboration.reason == "explicit_partner_bootstrap_country_corroboration_follows" and
+            .corroboration.threshold_weakening == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/day6-rss-fast.json >/dev/null
+          echo "PASS: active Federico corroborator refresh completed with no partner allowance."
+
+      - name: Hydrate trusted publisher times after fast refresh
+        if: steps.pre_ready.outputs.ready != 'true'
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx scripts/hydrate-federico-source-times.ts | tee /tmp/day6-source-time-hydration-fast.json
+          jq -e '
+            .ok == true and
+            .execution_mode == "direct_postgres" and
+            .policy == "trusted_publisher_metadata_only" and
+            .threshold_weakening == false and
+            .fake_freshness == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/day6-source-time-hydration-fast.json >/dev/null
+
+      - name: Check for an already strict recent two-family event
+        id: fast_ready
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.pre_ready.outputs.ready }}" == "true" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "country=${{ steps.pre_ready.outputs.country }}" >> "$GITHUB_OUTPUT"
+            echo "PASS: reusing pre-refresh strict-ready candidate ${{ steps.pre_ready.outputs.country }}."
+            exit 0
+          fi
+          ready_country="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL'
+          with strict_source_map(source_id, source_family) as (
+            values
+              ('xinhua_english_china_rss', 'xinhua_english_china'),
+              ('scmp_china_rss', 'scmp_china'),
+              ('forexlive_rss', 'forexlive'),
+              ('aljazeera_rss', 'aljazeera'),
+              ('bbc_world_rss', 'bbc_world')
+          ),
+          recent_verified_family as (
+            select
+              c.country_iso3,
+              e.event_family_id,
+              count(distinct m.source_family) as source_family_count,
+              max(e.published_at) as latest_published_at
+            from public.live_flash_events e
+            join strict_source_map m on m.source_id = lower(trim(e.source_id))
+            join public.live_flash_event_countries c on c.flash_id=e.flash_id
+            where e.event_family_id is not null
+              and e.verification_status = 'VERIFIED'
+              and e.published_at is not null
+              and e.published_at >= now() - interval '6 hours'
+              and e.published_at <= now()
+              and c.country_iso3 ~ '^[A-Z]{3}$'
+            group by c.country_iso3, e.event_family_id
+            having count(distinct m.source_family) >= 2
+          )
+          select country_iso3
+          from recent_verified_family
+          order by source_family_count desc, latest_published_at desc, country_iso3
+          limit 1;
+          SQL
+          )"
+          if [[ -n "$ready_country" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "country=$ready_country" >> "$GITHUB_OUTPUT"
+            echo "PASS: a recent VERIFIED same-event two-provider-family candidate already exists for $ready_country; broad RSS fallback is unnecessary."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "country=" >> "$GITHUB_OUTPUT"
+            echo "No already strict recent family after fast refresh; broad audited RSS fallback will run."
+          fi
+
+      - name: Re-poll full audited governed RSS cohort only when fast evidence is insufficient
+        if: steps.fast_ready.outputs.ready != 'true'
+        env:
+          TELEGRAM_ENABLED: "false"
+          BREAKING_RSS_ENABLED: "true"
+          BREAKING_RSS_RUN_ONCE: "true"
+          BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
+          BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss,federal_reserve_press_rss,ecb_press_rss,ecb_market_information_rss,bis_rss_media_releases,bis_rss_central_banker_speeches,eu_council_press_rss,un_all_documents_rss,un_human_rights_council_rss,un_geneva_press_rss,un_security_council_docs_rss,un_geneva_meeting_summaries_rss,usgs_minerals_news_rss,nrcan_news_atom"
+          BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+          RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-broad.json
+          RSS_LIVE_SKIP_CORROBORATION: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/run-rss-live-cycle.mjs | tee /tmp/day6-rss-broad.log
+          jq -e '
+            .ok == true and
+            .transport == "canonical_direct_postgres" and
+            .edge_function_dependency == false and
+            .source_summary.configured_source_count == .source_summary.completed_source_count and
+            .corroboration.ok == true and
+            .corroboration.skipped == true and
+            .corroboration.reason == "explicit_partner_bootstrap_country_corroboration_follows" and
+            .corroboration.threshold_weakening == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/day6-rss-broad.json >/dev/null
+          echo "PASS: broad audited RSS fallback completed because the fast strict-family precheck was not ready."
+
+      - name: Re-hydrate trusted publisher times after broad fallback
+        if: steps.fast_ready.outputs.ready != 'true'
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx scripts/hydrate-federico-source-times.ts | tee /tmp/day6-source-time-hydration-broad.json
+          jq -e '
+            .ok == true and
+            .execution_mode == "direct_postgres" and
+            .policy == "trusted_publisher_metadata_only" and
+            .threshold_weakening == false and
+            .fake_freshness == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/day6-source-time-hydration-broad.json >/dev/null
+
+      - name: Select strongest fresh strict candidate set
+        id: candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL' > /tmp/day6-candidates.txt
+          with strict_source_map(source_id, source_family) as (
+            values
+              ('xinhua_english_china_rss', 'xinhua_english_china'),
+              ('scmp_china_rss', 'scmp_china'),
+              ('forexlive_rss', 'forexlive'),
+              ('aljazeera_rss', 'aljazeera'),
+              ('bbc_world_rss', 'bbc_world'),
+              ('federal_reserve_press_rss', 'federal_reserve'),
+              ('ecb_press_rss', 'european_central_bank'),
+              ('ecb_market_information_rss', 'european_central_bank'),
+              ('bis_rss_media_releases', 'bank_for_international_settlements'),
+              ('bis_rss_central_banker_speeches', 'bank_for_international_settlements'),
+              ('eu_council_press_rss', 'council_of_the_european_union'),
+              ('un_all_documents_rss', 'united_nations'),
+              ('un_human_rights_council_rss', 'united_nations'),
+              ('un_geneva_press_rss', 'united_nations'),
+              ('un_security_council_docs_rss', 'united_nations'),
+              ('un_geneva_meeting_summaries_rss', 'united_nations'),
+              ('usgs_minerals_news_rss', 'usgs'),
+              ('nrcan_news_atom', 'natural_resources_canada')
+          ),
+          recent as (
+            select
+              c.country_iso3,
+              m.source_family,
+              e.published_at as evidence_at
+            from public.live_flash_events e
+            join strict_source_map m on m.source_id = lower(trim(e.source_id))
+            join public.live_flash_event_countries c on c.flash_id=e.flash_id
+            where e.published_at is not null
+              and e.published_at >= now() - interval '6 hours'
+              and e.published_at <= now()
+              and c.country_iso3 ~ '^[A-Z]{3}$'
+          )
+          select country_iso3
+          from recent
+          group by country_iso3
+          having count(distinct source_family) >= 2
+          order by count(distinct source_family) desc, count(*) desc, max(evidence_at) desc, country_iso3
+          limit 8;
+          SQL
+          test -s /tmp/day6-candidates.txt || {
+            echo "::error::No country currently has at least two fresh auditable partner source families after governed RSS refresh. Federico allowance was not used."
+            exit 3
+          }
+          printf 'Candidate countries: '; tr '\n' ' ' < /tmp/day6-candidates.txt; echo
+
+      - name: Corroborate candidates and select first genuinely strict-ready country
+        id: strict
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/day6-corroboration-all.ndjson
+          SELECTED=""
+          while IFS= read -r ISO3; do
+            test -n "$ISO3" || continue
+            offset=0
+            window_as_of="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            while true; do
+              bun scripts/run-live-flash-corroborate-local.ts \
+                --country "$ISO3" \
+                --as-of "$window_as_of" \
+                --candidate-offset "$offset" \
+                > /tmp/day6-corroborate.json
+              jq -e '.ok == true and .execution_mode == "local_canonical_corroboration_direct_postgres" and .threshold_weakening == false' /tmp/day6-corroborate.json >/dev/null
+              jq -c --arg iso3 "$ISO3" '. + {probe_country_iso3:$iso3}' /tmp/day6-corroborate.json >> /tmp/day6-corroboration-all.ndjson
+              next="$(jq -r '.next_candidate_offset' /tmp/day6-corroborate.json)"
+              [[ "$next" != "null" ]] || break
+              [[ "$next" =~ ^[0-9]+$ && "$next" -gt "$offset" && "$next" -lt 600 ]] || exit 2
+              offset="$next"
+            done
+
+            set +e
+            DAY6_COUNTRY_ISO3="$ISO3" NODE_OPTIONS=--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs \
+              node --import tsx scripts/probe-day6-federico-live-evidence.ts "$ISO3" > /tmp/day6-probe.json
+            rc=$?
+            set -e
+            cat /tmp/day6-probe.json
+            if [[ "$rc" -eq 0 ]] && jq -e '.ok == true and .ready == true and .policy.threshold_weakening == false and .partner_allowance_spent == false' /tmp/day6-probe.json >/dev/null; then
+              SELECTED="$ISO3"
+              cp /tmp/day6-probe.json /tmp/day6-selected-probe.json
+              break
+            fi
+          done < /tmp/day6-candidates.txt
+
+          test -n "$SELECTED" || {
+            echo "::error::Fresh sources were repolled and candidates corroborated, but no country passed the unchanged FEDERICO_STRICT local evidence gate. Federico allowance was not used."
+            exit 4
+          }
+          echo "iso3=$SELECTED" >> "$GITHUB_OUTPUT"
+          echo "Selected strict-ready country: $SELECTED"
+
+      - name: Dispatch no-allowance current-head local assurance
+        id: local
+        env:
+          TARGET_ISO3: ${{ steps.strict.outputs.iso3 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(git rev-parse HEAD)"
+          SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh workflow run day6-partner-assurance-final.yml --ref main -f iso3="$TARGET_ISO3" -f candidate_sha="$MAIN_SHA" -f use_partner_allowance=false
+          for _ in $(seq 1 30); do
+            RUN_ID="$(gh run list --workflow day6-partner-assurance-final.yml --branch main --event workflow_dispatch --limit 20 \
+              --json databaseId,createdAt,displayTitle,status \
+              | jq -r --arg since "$SINCE" --arg marker "@ $MAIN_SHA allowance=false" '[.[] | select(.createdAt >= $since and (.displayTitle | contains($marker)))] | sort_by(.createdAt) | last | .databaseId // empty')"
+            [[ -n "$RUN_ID" ]] && break
+            sleep 3
+          done
+          test -n "${RUN_ID:-}" || { echo "::error::Could not locate no-allowance Day 6 run"; exit 2; }
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          gh run watch "$RUN_ID" --exit-status
+          for _ in $(seq 1 12); do
+            ARTIFACTS="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '.artifacts[].name' || true)"
+            printf '%s\n' "$ARTIFACTS"
+            printf '%s\n' "$ARTIFACTS" | grep -q "^day6-global-partner-assurance-${RUN_ID}$" && exit 0
+            sleep 5
+          done
+          echo "::error::No fresh local-assurance handoff was produced. Federico allowance was not used."
+          exit 5
+
+      - name: Dispatch exactly one authorized Federico pilot allowance review
+        id: live
+        env:
+          TARGET_ISO3: ${{ steps.strict.outputs.iso3 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN_SHA="$(git rev-parse HEAD)"
+          SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh workflow run day6-partner-assurance-final.yml --ref main -f iso3="$TARGET_ISO3" -f candidate_sha="$MAIN_SHA" -f use_partner_allowance=true
+          for _ in $(seq 1 30); do
+            RUN_ID="$(gh run list --workflow day6-partner-assurance-final.yml --branch main --event workflow_dispatch --limit 20 \
+              --json databaseId,createdAt,displayTitle,status \
+              | jq -r --arg since "$SINCE" --arg marker "@ $MAIN_SHA allowance=true" '[.[] | select(.createdAt >= $since and (.displayTitle | contains($marker)))] | sort_by(.createdAt) | last | .databaseId // empty')"
+            [[ -n "$RUN_ID" ]] && break
+            sleep 3
+          done
+          test -n "${RUN_ID:-}" || { echo "::error::Could not locate authorized Day 6 run"; exit 2; }
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          gh run watch "$RUN_ID" --exit-status
+          for _ in $(seq 1 12); do
+            ARTIFACTS="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '.artifacts[].name' || true)"
+            printf '%s\n' "$ARTIFACTS"
+            printf '%s\n' "$ARTIFACTS" | grep -q "^day6-global-partner-assurance-${RUN_ID}$" && exit 0
+            sleep 5
+          done
+          echo "::error::Authorized review completed without a sealed handoff artifact."
+          exit 6
+
+      - name: Seal orchestration summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          mkdir -p /tmp/day6-authorized-summary
+          cat > /tmp/day6-authorized-summary/summary.json <<JSON
+          {
+            "schema":"geomacro.day6-authorized-federico-pilot-once.v2",
+            "orchestration_run_id":"${GITHUB_RUN_ID}",
+            "candidate_sha":"${GITHUB_SHA}",
+            "country_iso3":"${{ steps.strict.outputs.iso3 }}",
+            "local_assurance_run_id":"${{ steps.local.outputs.run_id }}",
+            "authorized_partner_run_id":"${{ steps.live.outputs.run_id }}",
+            "owner_authorized_pilot_allowance":true,
+            "user_funds_authorized":false,
+            "real_money_payment_authorized":false,
+            "execution_authorized":false,
+            "automatic_retry_of_allowance":false
+          }
+          JSON
+          sha256sum /tmp/day6-authorized-summary/summary.json > /tmp/day6-authorized-summary/SHA256SUMS.txt
+
+      - name: Upload orchestration summary
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: day6-authorized-federico-pilot-${{ github.run_id }}
+          path: /tmp/day6-authorized-summary/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Record Day 6 outcome on migration tracker
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          JOB_STATUS: ${{ job.status }}
+          TARGET_ISO3: ${{ steps.strict.outputs.iso3 }}
+          LOCAL_RUN_ID: ${{ steps.local.outputs.run_id }}
+          AUTHORIZED_RUN_ID: ${{ steps.live.outputs.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/day6-tracker-comment.md <<EOF
+          Day 6 authorized Federico pilot orchestration update
+
+          - orchestration run: ${GITHUB_RUN_ID}
+          - candidate SHA: ${GITHUB_SHA}
+          - job status: ${JOB_STATUS}
+          - selected country: ${TARGET_ISO3:-not_selected}
+          - no-allowance local assurance run: ${LOCAL_RUN_ID:-not_started}
+          - authorized Federico allowance run: ${AUTHORIZED_RUN_ID:-not_started}
+          - owner-authorized pilot allowance only: true
+          - user funds authorized: false
+          - execution authorized: false
+          EOF
+          gh issue comment 1354 --repo "$GITHUB_REPOSITORY" --body-file /tmp/day6-tracker-comment.md
+
+            group by c.country_iso3, e.event_family_id
+            having count(distinct m.source_family) >= 2
+          )
+          select country_iso3
+          from recent_verified_family
+          order by source_family_count desc, latest_published_at desc, country_iso3
+          limit 1;
+          SQL
+          )"
+          if [[ -n "$ready_country" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "country=$ready_country" >> "$GITHUB_OUTPUT"
+            echo "PASS: current production already has a VERIFIED same-event two-provider-family candidate for $ready_country; RSS refresh is unnecessary."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "country=" >> "$GITHUB_OUTPUT"
+            echo "No current strict-ready family exists; bounded RSS refresh will run."
+          fi
+
       - name: Re-poll active Federico corroborators without partner allowance
+        if: steps.pre_ready.outputs.ready != 'true'
         env:
           TELEGRAM_ENABLED: "false"
           BREAKING_RSS_ENABLED: "true"
