@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Check, CircleDollarSign, ShieldCheck } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, CircleDollarSign, Mail, ShieldCheck } from "lucide-react";
 import { AgentCommerceStatus } from "@/components/agent-commerce-status";
 import { Button } from "@/components/ui/button";
 
 const TITLE = "Pricing | Geomacro";
 const DESCRIPTION =
-  "Geomacro access and pricing: free public intelligence exploration and governed x402 pay-per-successful-delivery machine access.";
+  "Explore Geomacro risk intelligence free, access qualified intelligence per successful API call, or enquire about monthly and annual plans.";
 const URL = "https://geomacro.live/pricing";
 
 const FREE_ACCESS = [
@@ -51,19 +51,19 @@ function PricingPage() {
           <div className="mt-4 grid gap-8 lg:grid-cols-[1fr_.72fr] lg:items-end">
             <div>
               <h1 className="max-w-4xl text-[clamp(2.7rem,6vw,5.4rem)] font-semibold leading-[0.98] tracking-[-0.05em]">
-                Free to explore. Pay only for successful commercial machine delivery.
+                Explore for free. Choose the access that fits.
               </h1>
               <p className="mt-6 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-                The public Geomacro product remains free to explore. Governed machine access uses x402 and the launch offer is priced per successful settled and delivered intelligence call, not per failed request.
+                Explore public risk intelligence at no cost. Get structured intelligence through pay-per-call access when available, or discuss a recurring plan for your team and applications.
               </p>
             </div>
             <div className="rounded-2xl border border-border/65 bg-card/45 p-5 sm:p-6">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                Live commerce status
+                API access
               </p>
               <div className="mt-4"><AgentCommerceStatus /></div>
               <p className="mt-4 text-xs leading-5 text-muted-foreground">
-                Payment availability is runtime-authoritative. Commercial revenue begins only after production settlement is explicitly authorized and verified.
+                Pay-per-call availability is confirmed by the live checkout, not the advertised price.
               </p>
             </div>
           </div>
@@ -140,6 +140,50 @@ function PricingPage() {
               </div>
             </div>
           </article>
+        </div>
+      </section>
+
+      <section className="border-t border-border/55 bg-card/15">
+        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
+          <div className="max-w-3xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Recurring & enterprise</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Intelligence on your terms.</h2>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">
+              For ongoing monitoring, agent integrations and teams requiring a defined commercial agreement.
+            </p>
+          </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col rounded-2xl border border-border/65 bg-background/35 p-6 sm:p-8">
+              <CalendarDays className="h-5 w-5 text-primary" aria-hidden="true" />
+              <h3 className="mt-4 text-2xl font-semibold">Monthly access</h3>
+              <p className="mt-3 flex-1 text-sm leading-7 text-muted-foreground">
+                Recurring API and AI-agent usage with usage limits and delivery requirements agreed before activation.
+              </p>
+              <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                Monthly self-service checkout is not yet available. Request a scoped plan and quote.
+              </p>
+              <Button asChild variant="outline" className="mt-6 self-start">
+                <a href="mailto:contact@geomacro.live?subject=Geomacro%20monthly%20intelligence%20access">
+                  Request monthly access <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+            </div>
+            <div className="flex flex-col rounded-2xl border border-border/65 bg-background/35 p-6 sm:p-8">
+              <Mail className="h-5 w-5 text-primary" aria-hidden="true" />
+              <h3 className="mt-4 text-2xl font-semibold">Annual & enterprise</h3>
+              <p className="mt-3 flex-1 text-sm leading-7 text-muted-foreground">
+                Custom annual terms for larger teams, higher-volume delivery, supported integrations and governed access.
+              </p>
+              <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                Annual pricing is quoted directly. No unverified package price or automatic charge.
+              </p>
+              <Button asChild className="mt-6 self-start">
+                <a href="mailto:contact@geomacro.live?subject=Geomacro%20annual%20enterprise%20access">
+                  Email enterprise sales <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
     </main>
