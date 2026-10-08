@@ -15,6 +15,13 @@ describe("cap-independent verified edge continuity", () => {
     expect(materialize).toContain('"geomacro.edge-continuity.v1"');
     expect(materialize).toContain("payload_sha256");
     expect(materialize).toContain("source_live_sha256");
+    expect(prepare).toContain('ARTIFACT_NAME="risk-indices-realtime-$SOURCE_RUN_ID"');
+    expect(prepare).toContain('ARTIFACT_NAME="gri-realtime-direct-postgres-$SOURCE_RUN_ID"');
+    expect(prepare).toContain('ARTIFACT_NAME="intelligence-current-$SOURCE_RUN_ID"');
+    expect(prepare).toContain('.sort((a, b) => Date.parse(String(a?.created_at ?? "")) - Date.parse(String(b?.created_at ?? "")))');
+    expect(prepare).toContain('repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip');
+    expect(materialize).toContain('findFile("risk-indices-published-live.json")');
+    expect(materialize).not.toContain('findFile("risk-indices-edge.json")');
   });
 
   it("keeps full payloads out of D1 and uses bounded edge modules only", () => {
