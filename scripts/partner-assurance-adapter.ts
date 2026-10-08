@@ -308,8 +308,9 @@ if (mode === "live") {
         high_count: provider?.live_review?.high_count ?? null,
         medium_count: provider?.live_review?.medium_count ?? null,
         low_count: provider?.live_review?.low_count ?? null,
-        provider_stderr: String(run.stderr ?? "").trim().slice(-24000),
-        review_response_path: process.env.INVINO_REVIEW_OUT ?? null,
+        provider_issue_details_redacted_from_log: true,
+        review_response_available:
+          Boolean(process.env.INVINO_REVIEW_OUT && String(process.env.INVINO_REVIEW_OUT).trim()),
       }),
     );
   }
