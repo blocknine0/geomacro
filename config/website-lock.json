@@ -1,7 +1,7 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "8c2ec31a9d383c4790663f99ea121c526990825f",
+  "baseline_sha": "586a5eda074f84ac9e6d82f20fb174bac28c5fde",
   "published_baseline": "Founder-approved Geomacro post-launch commercial access guidance on every public page: clear free explorer, 0.05 USDC per-successful-call API, monthly request-based recurring access with exact entitlements agreed before activation, annual and enterprise sales contact. Intelligence, Ask and Docs have buyer links. Public copy is compact, source-free and editorial-free, historic dates stay honest. The shared production payment status remains runtime authoritative, no fake recurring checkout, no unauthorized real-money activation. Independent Global Risk frozen presentation and source/rights safety remain unchanged. Lovable publication and exact live SHA verification are separate.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
