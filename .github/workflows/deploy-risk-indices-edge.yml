@@ -110,6 +110,11 @@ jobs:
           done
           test "$CODE" = "200" || { echo "Risk Indices edge acceptance failed: HTTP $CODE"; cat /tmp/risk-indices-edge.json || true; exit 4; }
           grep -qi '^x-geomacro-authority: backblaze-b2-risk-indices-edge' /tmp/risk-indices-edge.headers || { echo "Risk Indices verified authority header missing"; exit 4; }
+          MODE="$(awk -F': ' 'tolower($1)=="x-geomacro-verification-mode" {gsub("\\r","",$2); print $2}' /tmp/risk-indices-edge.headers | tail -n1)"
+          case "$MODE" in
+            direct-b2-readback|global-risk-parent-projection) ;;
+            *) echo "Risk Indices verification mode missing or invalid: $MODE"; exit 4 ;;
+          esac
           node <<'NODE'
           const fs = require('fs');
           const body = JSON.parse(fs.readFileSync('/tmp/risk-indices-edge.json', 'utf8'));
