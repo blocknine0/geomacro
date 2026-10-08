@@ -106,7 +106,11 @@ function verifyWorkerSources(stdout, { allowPartial = false } = {}) {
   const expected = [...new Set(ready.feeds.map(String).filter(Boolean))];
   const completed = expected.filter((id) => lastState.get(id) === "success");
   const missing = expected.filter((id) => lastState.get(id) !== "success");
+  const unprovenMissing = missing.filter((id) => !hadError.has(id));
   if (missing.length && !allowPartial) throw new Error("RSS_SOURCES_INCOMPLETE");
+  if (allowPartial && unprovenMissing.length) {
+    throw new Error("RSS_PARTIAL_SOURCE_STATE_UNPROVEN");
+  }
   if (allowPartial && completed.length < MIN_PARTIAL_COMPLETED_SOURCES) {
     throw new Error("RSS_PARTIAL_SOURCE_FLOOR_NOT_MET");
   }
