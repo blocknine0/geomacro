@@ -909,7 +909,7 @@ const reviewArtifact = {
       source_resolution:
         "Resolve each signed source_id through a receiver-controlled source registry to a preapproved HTTPS hostname.",
       signed_tuple_mapping:
-        "For each signed evidence item require source_ids.length == source_record_ids.length == content_hashes.length > 0. Interpret index i as the signed tuple {source_id:source_ids[i], source_record_id:source_record_ids[i], content_hash:content_hashes[i]}; reject unequal lengths, missing values, or ambiguous duplicate tuple keys.",
+        "For each signed evidence item require source_ids.length == source_record_ids.length == content_hashes.length > 0. Interpret index i as the signed tuple {source_id:source_ids[i], source_record_id:source_record_ids[i], content_hash:content_hashes[i]}; source_record_id is the signed record locator for that tuple and content_hash authenticates the fetched record bytes after receiver normalization; reject unequal lengths, missing values, host/source-registry mismatch, or ambiguous duplicate tuple keys.",
       source_fetch:
         "At admission, independently fetch each cited source record and require equality with its signed positional tuple. Use a receiver-maintained hostname allowlist; HTTPS only; no credentials; reject or fully revalidate every redirect; resolve A/AAAA before every hop and block loopback, private, link-local, multicast, reserved and metadata-service ranges; use egress isolation, DNS-rebinding-resistant address pinning, response-size limits and connection/total timeouts.",
       country_nexus:
@@ -940,6 +940,8 @@ const reviewArtifact = {
       pinned_sources: verificationSourcePins,
       signature_preimage:
         "Clone the exact received gro-1.1 record; set integrity.payload_hash=null and integrity.signature=null; canonicalize the entire clone with geomacro-canonical-json-v1; SHA-256 of those UTF-8 canonical bytes must equal integrity.payload_hash; verify Ed25519 integrity.signature over those same canonical bytes.",
+      canonicalization_url_policy:
+        "The signed integrity.canonicalization_url is informational discovery metadata only. Never fetch or trust mutable branch content for admission; use only the receiver-preapproved immutable commit and SHA-256 source pins above.",
       reject_duplicate_keys: true,
       reject_invalid_utf8: true,
       reject_non_finite_numbers: true,
