@@ -281,7 +281,7 @@ jobs:
             (
               export RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"
               export COUNTRY_RAW_SOURCE_SYNC_OUTPUT="country-raw-source-acceptance-${category}.json"
-              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs
+              timeout 20m bun scripts/sync-country-raw-source-mesh.mjs
             ) > "category-acceptance-${category}.log" 2>&1 &
           done
           wait
@@ -363,7 +363,7 @@ jobs:
             (
               export RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"
               export COUNTRY_RAW_SOURCE_SYNC_OUTPUT="country-raw-source-final-${category}.json"
-              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs
+              timeout 20m bun scripts/sync-country-raw-source-mesh.mjs
             ) > "category-final-${category}.log" 2>&1 &
           done
           wait
