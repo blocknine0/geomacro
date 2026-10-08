@@ -10,11 +10,11 @@ The customer-facing production runtime must keep working safely when Supabase is
 | --- | --- | --- |
 | Public Intelligence snapshots | Backblaze B2 | B2 is durable truth. A compact D1 serving projection is eligible only after the exact B2 object passed full readback/hash/gzip-restore verification and only until the source-native freshness deadline. |
 | Global Risk / Risk Indices | Backblaze B2 | B2 is durable truth. Fresh compact D1 projections may serve the public edge only when bound to a full B2 readback/hash/restore proof; otherwise B2 recovery or fail-closed unavailable behavior applies. |
-| Canonical country GRO bytes | Backblaze B2 | Canonical country resolution is B2-first. Full signed GRO bytes do not belong in D1. |
+| Canonical country GRO archive | Backblaze B2 | Cold durable archive is one compressed current multi-country bundle plus manifest per publication cycle; B2 GET/readback is a deferred audit, not a synchronous customer/Federico gate. |
 | Raw observations / evidence / historical payloads | Backblaze B2 | Durable payload store only. |
 | Source certification state | Cloudflare D1 | Compact metadata only. |
 | Country x domain readiness | Cloudflare D1 | Compact readiness/index state only. |
-| GRO index | Cloudflare D1 | Object ID, subject, validity, payload hash, canonical record SHA, B2 pointer/hash only. |
+| GRO index | Cloudflare D1 | Object ID, subject, validity, payload hash, canonical record SHA, B2 pointer/hash only. |\n| Current signed country GRO hot set | Cloudflare D1 | One replaceable current derived signed GRO per ISO3. Requires valid signature/commercial eligibility, acknowledged B2 bundle write, D1 readback and canonical-SHA re-verification; no raw evidence or history. |
 | Pipeline checkpoints / small control state | Cloudflare D1 | No raw/evidence payloads. |
 | Public verified hot snapshots | Cloudflare D1 | Bounded derived public projections with the B2 object key/hash, exact payload hash, proof schema, verified source time and expiry; never a second truth. |
 | x402 delivery replay / idempotency / usage guard / commercial audit coordination | Cloudflare Durable Objects | Transactional commerce authority. |
@@ -30,7 +30,7 @@ Production defaults `GEOMACRO_SUPABASE_RUNTIME_MODE` to `standby`. In this mode 
 - `src/lib/risk-supabase.server.ts`: publisher/recovery database client. Production standby disables primary traffic.
 - `src/lib/global-risk-read.server.ts`: legacy/recovery reader. Paid GRI preflight uses `production-global-risk.server.ts` instead.
 - `src/lib/public-intelligence.functions.ts::readPublicIntelligenceRowsFromSupabase`: snapshot publisher/recovery helper. It is not the permanent public data authority.
-- `src/lib/risk-object-store.server.ts`: legacy persistence and non-canonical/recovery lookup. Canonical customer country-GRO reads go through the B2-first resolver.
+- `src/lib/risk-object-store.server.ts`: legacy persistence and non-canonical/recovery lookup. Canonical customer country-GRO reads use the authenticated D1 verified-hot reader; B2 is the cold archive, not the synchronous serving dependency.
 - Supabase archival/readback scripts under `scripts/ops`: migration/recovery tooling only and never a customer-serving dependency.
 - Supabase migrations/functions: retained only for rollback/recovery while the old project is in cold standby.
 
@@ -45,8 +45,8 @@ Production defaults `GEOMACRO_SUPABASE_RUNTIME_MODE` to `standby`. In this mode 
 1. `NODE_ENV=production` with no explicit override must remain `standby`.
 2. Public/commercial B2 reads, D1 control state, and Durable Object commerce must pass an acceptance test with no Supabase URL/key/DB secret injected.
 3. A provider failure must not cause fake freshness, invented evidence, unsigned GRO delivery, or payment without deliverable output.
-4. Raw/history/evidence/full GRO payloads are forbidden in D1. Only bounded public derived projections may be copied after B2 full readback/hash/restore succeeds.
-5. D1 GRO `record_sha256` must come from canonical bytes of independently verified B2 readback, never inferred from a Supabase row.
+4. Raw/history/evidence payloads and historical GRO copies are forbidden in D1. The only full signed-GRO exception is the bounded current country hot set, promoted only after local canonical/signature/commercial verification, B2 bundle-write acknowledgement, D1 readback and record-SHA re-verification.
+5. D1 country-GRO `record_sha256` must be recomputed from canonical signed object bytes and verified again after D1 readback; B2 archive write acknowledgement is mandatory, while B2 GET/readback is a separate deferred cold-archive audit.
 6. Supabase may not be destructively retired until D1/B2 parity, rollback evidence, ingestion migration, fresh GRO publishing and disaster tests are complete.
 7. No `storage.objects` deletion through SQL.
 8. No threshold weakening to turn `UNREADY`, `NO_PUBLICATION` or `INSUFFICIENT_COVERAGE` into a commercial success.
@@ -56,7 +56,7 @@ Production defaults `GEOMACRO_SUPABASE_RUNTIME_MODE` to `standby`. In this mode 
 The permanent-runtime health workflow must prove, without injecting any Supabase credential:
 
 - live public Intelligence, Global Risk and Risk Indices return verified B2/D1 serving proofs and fail closed after the source-native deadline;
-- the D1 control-plane Worker can query the current schema and reports B2 as durable payload authority;
+- the D1 control-plane Worker can query the current schema, serves an authenticated current signed-GRO hot row without B2/Supabase credentials, and reports B2 as durable archive authority;
 - the Durable Object commerce ledger reports its transactional capabilities;
 - production reports Supabase runtime mode `standby` and `supabase_required_for_serving=false`;
 - no payment and no destructive action occurs during acceptance.
