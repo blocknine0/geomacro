@@ -33,6 +33,11 @@ name: Day 6 Authorized Federico Pilot Once
 # The receiver's redacted reasons are retained even when verdict is reject.
 # This file is deleted after the resulting partner proof is verified.
 on:
+  # Three owner-requested dry-run slots on 2026-10-09 UTC, six hours apart.
+  # After the third slot the workflow is disabled, and other dates fail at the
+  # initial date gate. No scheduled run can dispatch allowance=true.
+  schedule:
+    - cron: "25 0,6,12 9 10 *"
   push:
     branches: [main]
     paths:
@@ -90,6 +95,14 @@ jobs:
       B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}
 
     steps:
+      - name: Refuse scheduled runs outside the three requested 2026-10-09 slots
+        if: ${{ github.event_name == 'schedule' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(date -u +%F)" = "2026-10-09" || { echo "::error::Federico three-check schedule expired; no work authorized."; exit 19; }
+          echo "SAFE: scheduled no-allowance Federico dry-run on $(date -u +%FT%TZ)."
+
       - name: Checkout exact canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -616,3 +629,14 @@ jobs:
           - execution authorized: false
           EOF
           gh issue comment 1354 --repo "$GITHUB_REPOSITORY" --body-file /tmp/day6-tracker-comment.md
+
+      - name: Retire the three-slot preflight schedule after the final slot
+        if: ${{ always() && github.event_name == 'schedule' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$(date -u +%F)" == "2026-10-09" && "$(date -u +%H)" -ge 12 ]]; then
+            gh workflow disable day6-authorized-federico-pilot-once.yml || echo "::warning::Workflow disable was unavailable; the explicit 2026-10-09 date gate remains in force."
+          fi
