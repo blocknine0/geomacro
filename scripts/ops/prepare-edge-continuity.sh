@@ -25,9 +25,13 @@ TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
 gh run view "$SOURCE_RUN_ID" --repo "$REPO" --log > "$TMP_ROOT/source.log"
-node - "$TMP_ROOT/source.log" "$PROOF_SCHEMA" "$TMP_ROOT/source-publish-proof.json" <<'NODE'
+PRODUCT="$PRODUCT" node - "$TMP_ROOT/source.log" "$PROOF_SCHEMA" "$TMP_ROOT/source-publish-proof.json" <<'NODE'
 const fs = require("fs");
 const [logPath, schema, outPath] = process.argv.slice(2);
+const product = String(process.env.PRODUCT ?? "");
+const recoverySchema = "geomacro.public-risk-indices-parent-projection-publish.v1";
+const allowed = new Set([schema]);
+if (product === "risk-indices") allowed.add(recoverySchema);
 const lines = fs.readFileSync(logPath, "utf8").split(/\r?\n/);
 let proof = null;
 for (const line of lines) {
@@ -36,13 +40,26 @@ for (const line of lines) {
   const candidate = line.slice(start).trim();
   try {
     const value = JSON.parse(candidate);
-    if (value?.schema === schema && value?.ok === true) proof = value;
+    if (allowed.has(value?.schema) && value?.ok === true) proof = value;
   } catch {}
 }
 if (!proof) throw new Error("EDGE_CONTINUITY_SOURCE_PROOF_NOT_FOUND");
+const direct = proof.schema === schema &&
+  proof.b2_readback_verified === true &&
+  proof.destructive_change === false;
+const parentRecovery =
+  product === "risk-indices" &&
+  proof.schema === recoverySchema &&
+  proof.verification_mode === "global-risk-parent-projection" &&
+  proof.b2_readback_verified === false &&
+  proof.parent_b2_readback_verified === true &&
+  proof.parent_exact_gzip_restore_verified === true &&
+  proof.current_b2_snapshot_promoted === false &&
+  proof.destructive_change === false &&
+  /^[0-9a-f]{64}$/.test(String(proof.parent_b2_sha256 ?? "")) &&
+  /^[0-9a-f]{64}$/.test(String(proof.parent_payload_sha256 ?? ""));
 if (
-  proof.b2_readback_verified !== true ||
-  proof.destructive_change !== false ||
+  (!direct && !parentRecovery) ||
   proof.synthetic_score === true ||
   proof.synthetic_history === true ||
   proof.synthetic_current_score === true
