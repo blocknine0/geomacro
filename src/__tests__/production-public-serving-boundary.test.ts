@@ -40,6 +40,11 @@ describe("production public serving boundary", () => {
     expect(health).toContain("await sha256Hex(payloadJson) !== payloadSha256");
     expect(health).not.toContain('response.headers.get("x-geomacro-serving-store") !== "cloudflare-d1"');
     expect(health).toContain("hot_snapshot_serving");
+    expect(health).toContain("RISK_INDICES_PARENT_PROJECTION_PROOF_SCHEMA");
+    expect(health).toContain('"global-risk-parent-projection"');
+    expect(health).toContain("riskIndicesParentBindingReady");
+    expect(health).toContain("riskIndicesHot?.b2_sha256 === globalRiskHot?.b2_sha256");
+    expect(health).toContain("riskIndicesHot?.parent_payload_sha256 === globalRiskHot?.payload_sha256");
     expect(health).toContain("supabase_required_for_serving: false");
     expect(health).toContain("readB2PublicIntelligence");
     expect(health).toContain("readB2PublicRisk");
