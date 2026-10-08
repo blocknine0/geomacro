@@ -108,7 +108,6 @@ export function EventDetailWorkspace({
           </div>
 
           <h1 className="mt-4 max-w-4xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-5xl">{event.source_title ?? "Untitled intelligence event"}</h1>
-          <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground">{event.summary ?? event.narrative ?? "No public summary is stored for this event."}</p>
         </header>
 
         <section className="grid gap-4 border-b border-border py-8 sm:grid-cols-2 lg:grid-cols-4">
