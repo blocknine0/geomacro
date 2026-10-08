@@ -63,6 +63,8 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("steps.pre_ready.outputs.country");
     expect(workflow).toContain('prioritizing the already VERIFIED strict pre-refresh candidate');
     expect(workflow).toContain('printf \'%s\\n\' "${{ steps.pre_ready.outputs.country }}" > /tmp/day6-candidates.txt');
+    expect(workflow).toContain("scripts/ops/select-federico-strict-candidates.sql");
+    expect(workflow).toContain("-f scripts/ops/select-federico-strict-candidates.sql");
     expect(workflow).toContain("Re-poll full audited governed RSS cohort only when fast evidence is insufficient");
     expect(workflow).toContain("Re-hydrate trusted publisher times after broad fallback");
     expect(workflow).toContain("steps.fast_ready.outputs.ready != 'true'");
@@ -116,6 +118,19 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).not.toContain("coalesce(e.published_at,e.last_seen_at,e.ingested_at)");
     expect(workflow).not.toContain(".supabase.co/functions/v1/");
     expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_URL");
+  });
+
+  it("keeps fallback candidate SQL outside workflow heredocs", () => {
+    const sql = readFileSync(
+      "scripts/ops/select-federico-strict-candidates.sql",
+      "utf8",
+    );
+    expect(sql).toContain("with strict_source_map(source_id, source_family)");
+    expect(sql).toContain("having count(distinct source_family) >= 2");
+    expect(sql).toContain("e.published_at >= now() - interval '6 hours'");
+    expect(sql).toContain("e.published_at <= now()");
+    expect(sql).toContain("limit 8;");
+    expect(workflow).not.toContain("<<'SQL' > /tmp/day6-candidates.txt");
   });
 
   it("does not authorize user funds or irreversible execution", () => {
