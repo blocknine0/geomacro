@@ -8,8 +8,11 @@ import {
 const SOURCE_IDS = [
   "xinhua_english_china_rss",
   "scmp_china_rss",
+  "bbc_world_rss",
+  "aljazeera_rss",
+  "forexlive_rss",
 ] as const;
-const MAX_ROWS = 60;
+const MAX_ROWS = 180;
 const LOOKBACK_HOURS = 6;
 
 function requireEnv(name: string) {
