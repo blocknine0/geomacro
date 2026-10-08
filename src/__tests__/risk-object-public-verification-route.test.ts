@@ -41,7 +41,16 @@ describe(
           "deployedPublicVerificationKeys",
         );
         expect(route).toContain(
+          "ensureRiskObjectRuntimePublicKey();",
+        );
+        expect(route).toContain(
+          "publicRiskObjectVerificationKeySet();",
+        );
+        expect(route).not.toContain(
           'new URL(\n      "/api/risk-object-keys",\n      request.url',
+        );
+        expect(route).not.toContain(
+          "await fetch(\n        registryUrl",
         );
         expect(route).toContain(
           "verification_keys:\n          verificationKeys",
@@ -60,6 +69,33 @@ describe(
         );
         expect(route).toContain(
           "content_type_must_be_application_json",
+        );
+      },
+    );
+
+    it(
+      "uses the deployed runtime registry in-process instead of a same-origin self-fetch",
+      () => {
+        expect(route).toContain(
+          "function deployedPublicVerificationKeys()",
+        );
+        expect(route).toContain(
+          "ensureRiskObjectRuntimePublicKey();",
+        );
+        expect(route).toContain(
+          "publicRiskObjectVerificationKeySet();",
+        );
+        expect(route).toContain(
+          "const keySet: RiskObjectVerificationKeys = {};",
+        );
+        expect(route).toContain(
+          "deployedPublicVerificationKeys();",
+        );
+        expect(route).not.toContain(
+          "await deployedPublicVerificationKeys(",
+        );
+        expect(route).not.toContain(
+          "fetch(\n        registryUrl",
         );
       },
     );
