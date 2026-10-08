@@ -78,7 +78,7 @@ if (product === "global-risk") {
   if (proof.schema !== "geomacro.public-risk-indices-direct-postgres-publish.v1") {
     throw new Error("EDGE_CONTINUITY_INDICES_PROOF_SCHEMA_INVALID");
   }
-  const file = findFile("risk-indices-edge.json");
+  const file = findFile("risk-indices-published-live.json");
   if (!file) throw new Error("EDGE_CONTINUITY_INDICES_ARTIFACT_MISSING");
   payload = JSON.parse(fs.readFileSync(file, "utf8"));
   const data = payload?.data;
