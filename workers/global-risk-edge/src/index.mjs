@@ -141,12 +141,13 @@ async function buildContinuityResponse() {
   });
 }
 
-async function readD1HotSnapshot() {
+async function readD1HotSnapshot(env) {
   try {
-    const response = await fetch(D1_HOT_SNAPSHOT_URL, {
+    if (!env?.CONTROL_PLANE || typeof env.CONTROL_PLANE.fetch !== "function") return null;
+    const response = await env.CONTROL_PLANE.fetch(new Request(D1_HOT_SNAPSHOT_URL, {
       headers: { Accept: "application/json", "Cache-Control": "no-cache" },
       signal: AbortSignal.timeout(3_500),
-    });
+    }));
     if (!response.ok) return null;
     const snapshot = await response.json();
     const generatedAt = Date.parse(String(snapshot?.generated_at ?? ""));
@@ -274,7 +275,7 @@ export default {
 
     const cache = caches.default;
     const cacheKey = new Request(`${url.origin}/global-risk`, { method: "GET" });
-    const hotSnapshot = await readD1HotSnapshot();
+    const hotSnapshot = await readD1HotSnapshot(env);
     if (hotSnapshot) {
       ctx.waitUntil(cache.put(cacheKey, hotSnapshot.clone()));
       return hotSnapshot;
