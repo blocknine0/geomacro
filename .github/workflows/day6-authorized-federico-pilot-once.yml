@@ -17,6 +17,8 @@ name: Day 6 Authorized Federico Pilot Once
 # Provider independence is counted by normalized provider family, never raw endpoint/source-id count.
 # Exact-main retrigger after #1777 merged the bounded GDELT + full governed RSS evidence refresh.
 # No policy or allowance boundary changes in this retrigger.
+# Exact-main retrigger after VEN became a current VERIFIED same-event two-provider-family strict candidate.
+# No threshold, source policy, allowance, payment, or execution boundary changes in this retrigger.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
