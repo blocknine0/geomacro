@@ -37,6 +37,7 @@ on:
       - "scripts/day6-direct-live-federico-gro.ts"
       - ".github/workflows/day6-partner-assurance-final.yml"
       - "workers/control-plane/migrations/0013_partner_assurance_gro_verified.sql"
+      - "scripts/partner-assurance-adapter.ts"
 
 permissions:
   contents: read
