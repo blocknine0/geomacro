@@ -4,6 +4,8 @@ const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
 const LIVE_KEY = "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz";
 const PROOF_KEY = "geomacro-evidence/v1/live/risk-indices-independent/latest-proof.json";
+const GLOBAL_RISK_LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz";
+const PARENT_PROJECTION_PROOF_SCHEMA = "geomacro.public-risk-indices-parent-projection-proof.v1";
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const CONTRACT = "risk-indices-v1.1.0";
 const METHOD = "gri-v1.2.0";
@@ -116,8 +118,14 @@ async function buildContinuityResponse() {
   if (
     continuity?.schema !== "geomacro.edge-continuity.v1" ||
     continuity?.product !== "risk-indices" ||
-    continuity?.b2_readback_verified !== true ||
-    continuity?.projection !== "exact-public-package" ||
+    !(
+      continuity?.b2_readback_verified === true &&
+      continuity?.verification_mode === "direct-b2-readback" ||
+      continuity?.verification_mode === "global-risk-parent-projection" &&
+      continuity?.parent_b2_readback_verified === true &&
+      /^[0-9a-f]{64}$/.test(String(continuity?.parent_payload_sha256 ?? ""))
+    ) ||
+    !["exact-public-package", "verified-parent-projection"].includes(continuity?.projection) ||
     !/^\d+$/.test(String(continuity?.source_run_id ?? "")) ||
     !/^[0-9a-f]{64}$/.test(String(continuity?.source_live_sha256 ?? "")) ||
     !/^[0-9a-f]{64}$/.test(String(continuity?.payload_sha256 ?? "")) ||
@@ -134,6 +142,15 @@ async function buildContinuityResponse() {
     live?.schema !== "geomacro.public-risk-indices-live.v1" ||
     live?.source_project !== PROJECT_REF ||
     !recentEnough(live?.generated_at) ||
+    (
+      continuity?.verification_mode === "global-risk-parent-projection" &&
+      (
+        live?.verification_mode !== "global-risk-parent-projection" ||
+        live?.parent_product !== "global-risk" ||
+        live?.parent_b2_sha256 !== continuity?.source_live_sha256 ||
+        live?.parent_payload_sha256 !== continuity?.parent_payload_sha256
+      )
+    ) ||
     !validIndices(data)
   ) throw new Error("RISK_INDICES_CONTINUITY_PAYLOAD_INVALID");
 
@@ -144,9 +161,13 @@ async function buildContinuityResponse() {
       "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-risk-indices-edge",
-      "x-geomacro-continuity": "github-actions-b2-readback-verified",
+      "x-geomacro-continuity":
+        continuity?.verification_mode === "global-risk-parent-projection"
+          ? "github-actions-verified-global-risk-parent-projection"
+          : "github-actions-b2-readback-verified",
+      "x-geomacro-verification-mode": String(continuity?.verification_mode ?? "direct-b2-readback"),
       "access-control-allow-origin": "*",
-      "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity",
+      "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity, x-geomacro-verification-mode",
     },
   });
 }
@@ -164,12 +185,20 @@ async function readD1HotSnapshot(env) {
     const sourceAsOf = Date.parse(String(snapshot?.source_as_of ?? ""));
     const expiresAt = Date.parse(String(snapshot?.expires_at ?? ""));
     const payloadJson = String(snapshot?.payload_json ?? "");
+    const parentProjection =
+      snapshot?.proof_schema === PARENT_PROJECTION_PROOF_SCHEMA &&
+      snapshot?.verification_mode === "global-risk-parent-projection";
     if (
       snapshot?.ok !== true ||
       snapshot?.product !== "risk-indices" ||
       snapshot?.schema !== "geomacro.public-risk-indices-live.v1" ||
-      snapshot?.proof_schema !== "geomacro.public-risk-indices-live-proof.v1" ||
-      snapshot?.b2_object_key !== LIVE_KEY ||
+      !(
+        snapshot?.proof_schema === "geomacro.public-risk-indices-live-proof.v1" &&
+        snapshot?.b2_object_key === LIVE_KEY &&
+        snapshot?.verification_mode === "direct-b2-readback" ||
+        parentProjection &&
+        snapshot?.b2_object_key === GLOBAL_RISK_LIVE_KEY
+      ) ||
       !/^[0-9a-f]{64}$/.test(String(snapshot?.b2_sha256 ?? "")) ||
       !/^[0-9a-f]{64}$/.test(String(snapshot?.payload_sha256 ?? "")) ||
       snapshot?.full_b2_readback_verified !== true ||
@@ -190,6 +219,15 @@ async function readD1HotSnapshot(env) {
       live?.source_project !== PROJECT_REF ||
       live?.generated_at !== snapshot.generated_at ||
       Date.parse(String(live?.data?.snapshotAsOf ?? "")) !== sourceAsOf ||
+      (
+        parentProjection &&
+        (
+          live?.verification_mode !== "global-risk-parent-projection" ||
+          live?.parent_product !== "global-risk" ||
+          live?.parent_b2_sha256 !== snapshot.b2_sha256 ||
+          !/^[0-9a-f]{64}$/.test(String(live?.parent_payload_sha256 ?? ""))
+        )
+      ) ||
       !validIndices(live?.data)
     ) return null;
     return new Response(payloadJson, {
@@ -204,9 +242,12 @@ async function readD1HotSnapshot(env) {
         "x-geomacro-source-as-of": snapshot.source_as_of,
         "x-geomacro-b2-sha256": snapshot.b2_sha256,
         "x-geomacro-d1-payload-sha256": snapshot.payload_sha256,
-        "x-geomacro-b2-verification": "full-readback-hash-exact-restore",
+        "x-geomacro-b2-verification":
+          parentProjection ? "parent-full-readback-hash-exact-restore" : "full-readback-hash-exact-restore",
+        "x-geomacro-verification-mode":
+          parentProjection ? "global-risk-parent-projection" : "direct-b2-readback",
         "access-control-allow-origin": "*",
-        "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity, x-geomacro-serving-store, x-geomacro-source-as-of, x-geomacro-b2-sha256, x-geomacro-d1-payload-sha256, x-geomacro-b2-verification",
+        "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity, x-geomacro-serving-store, x-geomacro-source-as-of, x-geomacro-b2-sha256, x-geomacro-d1-payload-sha256, x-geomacro-b2-verification, x-geomacro-verification-mode",
       },
     });
   } catch {
