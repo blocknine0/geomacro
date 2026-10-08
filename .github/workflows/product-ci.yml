@@ -65,6 +65,15 @@ jobs:
       - name: Risk Gate country/corridor API static contract
         run: node scripts/test-risk-gate-corridor-api-static.mjs
 
+      - name: Compile critical GRO hot publisher without executing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun build scripts/ops/publish-country-gro-hot-bundle.ts \
+            --target=bun \
+            --outfile=/tmp/geomacro-gro-hot-publisher-smoke.js
+          test -s /tmp/geomacro-gro-hot-publisher-smoke.js
+
       - name: Production build
         run: bun run build
 
