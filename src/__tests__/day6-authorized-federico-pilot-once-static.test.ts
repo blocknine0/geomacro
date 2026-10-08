@@ -43,9 +43,11 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs");
     expect(workflow).toContain("scripts/run-live-flash-corroborate-local.ts");
     expect(workflow).toContain("scripts/hydrate-federico-source-times.ts");
-    expect(workflow).toContain("scripts/run-gdelt-gal-cycle.mjs");
-    expect(workflow).toContain("B2_GDELT_PRIMARY: \"1\"");
-    expect(workflow).toContain('(.status == "healthy" or .status == "fresh_prior_cycle")');
+    expect(workflow).toContain("live_ingestion_cursors");
+    expect(workflow).toContain("last_success_at >= now() - interval '30 minutes'");
+    expect(workflow).toContain("coalesce(consecutive_failures,0) = 0");
+    expect(workflow).toContain("Day 6 continues with audited publisher-native RSS only");
+    expect(workflow).not.toContain("timeout 18m node scripts/run-gdelt-gal-cycle.mjs");
     expect(workflow).toContain('"scripts/run-gdelt-gal-cycle.mjs"');
     expect(workflow).toContain('"supabase/functions/live-flash-corroborate/index.ts"');
     expect(workflow).toContain('"src/lib/public-demo-risk-profile.ts"');
