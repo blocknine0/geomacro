@@ -227,8 +227,6 @@ function unavailable(status = 503) {
 }
 
 async function buildResponse(env) {
-  const hotSnapshot = await readD1HotSnapshot();
-  if (hotSnapshot) return hotSnapshot;
   const liveBytes = await signedGet(LIVE_KEY, env);
   const proofBytes = await signedGet(PROOF_KEY, env);
   const liveDigest = await sha256(liveBytes);
@@ -281,6 +279,12 @@ export default {
 
     const cache = caches.default;
     const cacheKey = new Request(`${url.origin}/risk-indices`, { method: "GET" });
+    const hotSnapshot = await readD1HotSnapshot();
+    if (hotSnapshot) {
+      ctx.waitUntil(cache.put(cacheKey, hotSnapshot.clone()));
+      return hotSnapshot;
+    }
+
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
 
