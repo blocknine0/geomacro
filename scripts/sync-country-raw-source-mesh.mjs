@@ -17,6 +17,8 @@ const HOST_MIN_INTERVAL_MS=new Map([
   ["www.usgs.gov",300],
 ]);
 const UA="Geomacro-Country-Raw-Source-Mesh/1.0 (+https://geomacro.live)";
+const OUTPUT_PATH=String(process.env.COUNTRY_RAW_SOURCE_SYNC_OUTPUT??"").trim();
+let b2=null;
 const SOURCE_HTTP_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_HTTP_TIMEOUT_MS??30000)));
 const DB_REQUEST_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_DB_TIMEOUT_MS??30000)));
 function fetchWithTimeout(input,init={}){
@@ -62,7 +64,7 @@ function rssItems(xml, baseUrl, limit=100){
       ?? block.match(/<published[^>]*>([\s\S]*?)<\/published>/i)?.[1]
       ?? block.match(/<updated[^>]*>([\s\S]*?)<\/updated>/i)?.[1]
       ?? ""
-    ) || new Date().toISOString();
+    );
     const desc=txt(
       block.match(/<description[^>]*>([\s\S]*?)<\/description>/i)?.[1]
       ?? block.match(/<summary[^>]*>([\s\S]*?)<\/summary>/i)?.[1]
@@ -149,13 +151,10 @@ async function saveFragment(db,t,when,rows){
     .eq("source_key",SOURCE).eq("stream_key",t.target_id)
     .order("period_end",{ascending:false}).limit(1).maybeSingle();
   if(prev.error)throw prev.error;
-  const path="fragments/v1/"+t.country_iso3+"/"+t.category.toLowerCase()+"/"+safe(t.target_id)+"/"+when.replace(/[:.]/g,"-")+"-"+ch.slice(0,16)+".ndjson.gz";
-  const up=await db.storage.from(BUCKET).upload(path,comp,{contentType:"application/gzip",upsert:false});
-  if(up.error&&!/already exists/i.test(up.error.message))throw up.error;
-  const readback=await db.storage.from(BUCKET).download(path);
-  if(readback.error||!readback.data)throw readback.error??new Error("RAW_FRAGMENT_READBACK_FAILED");
-  const readbackBytes=Buffer.from(await readback.data.arrayBuffer());
-  if(hash(readbackBytes)!==ch)throw new Error("RAW_FRAGMENT_READBACK_HASH_MISMATCH");
+  const path=B2_PREFIX+"/fragments/v1/"+t.country_iso3+"/"+t.category.toLowerCase()+"/"+safe(t.target_id)+"/"+when.replace(/[:.]/g,"-")+"-"+ch.slice(0,16)+".ndjson.gz";
+  await b2.put(path,comp);
+  const readbackBytes=await b2.get(path);
+  if(hash(readbackBytes)!==ch)throw new Error("RAW_FRAGMENT_B2_READBACK_HASH_MISMATCH");
   const chain=hash((prev.data?.compressed_sha256??"GENESIS")+":"+ch);
   const{data,error}=await db.from("live_fragment_manifest").insert({
     source_key:SOURCE,stream_key:t.target_id,storage_bucket:BUCKET,object_path:path,
@@ -280,20 +279,46 @@ async function ensureCoverageTargets(db, requestedCategories = ["GEOPOLITICS", "
     const { error } = await db.from("live_raw_source_targets").upsert(rows, { onConflict: "target_id" });
     if (error) throw error;
   }
-  return { countries: 195, categories: Object.keys(expected), raw_only: true, inserted_targets: rows.length, coverage_anchors: countries.length * Object.keys(expected).length };
+  return { countries: 195, categories: Object.keys(expected), raw_only: true, storage_backend: "b2", db_transport: "direct_postgres", inserted_targets: rows.length, coverage_anchors: countries.length * Object.keys(expected).length };
 }
 
 async function main() {
-  const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
-  const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
-  if (!url || !key) throw new Error("Authoritative Supabase credentials are required");
-  if (projectRef(url) !== REF) throw new Error("Non-authoritative Supabase project");
+  const dbUrl = String(process.env.SUPABASE_DB_URL ?? "").trim();
+  const projectId = String(process.env.SUPABASE_PROJECT_ID ?? REF).trim();
+  if (!dbUrl) throw new Error("SUPABASE_DB_URL_REQUIRED");
+  if (projectId !== REF) throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
+  if (String(process.env.GRI_DB_MODE ?? "").trim().toLowerCase() !== "direct_postgres") {
+    throw new Error("COUNTRY_RAW_SOURCE_MESH_REQUIRES_DIRECT_POSTGRES");
+  }
+  if (
+    String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
+    !String(process.env.B2_KEY_ID ?? "").trim() ||
+    !String(process.env.B2_APPLICATION_KEY ?? "").trim()
+  ) {
+    throw new Error("COUNTRY_RAW_SOURCE_MESH_B2_CONFIG_REQUIRED");
+  }
 
-  const db = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
+  for (const [accessName, secretName] of [
+    ["B2_ARCHIVE_READ_KEY_ID", "B2_ARCHIVE_READ_APPLICATION_KEY"],
+    ["B2_ARCHIVE_WRITE_KEY_ID", "B2_ARCHIVE_WRITE_APPLICATION_KEY"],
+  ]) {
+    const access = String(process.env[accessName] ?? "").trim();
+    const secret = String(process.env[secretName] ?? "").trim();
+    if (Boolean(access) !== Boolean(secret)) {
+      throw new Error("COUNTRY_RAW_SOURCE_MESH_B2_READ_CREDENTIAL_PAIR_INCOMPLETE");
+    }
+  }
+
+  const db = createGriDbClient();
+  b2 = createB2Client({
+    endpointUrl: B2_ENDPOINT,
+    accessKey: process.env.B2_KEY_ID,
+    secretKey: process.env.B2_APPLICATION_KEY,
+    readAccessKey: process.env.B2_ARCHIVE_READ_KEY_ID,
+    readSecretKey: process.env.B2_ARCHIVE_READ_APPLICATION_KEY,
+    bucket: BUCKET,
   });
 
-  const countryContract = await ensureCoverageTargets(db);
   const nowMs = Date.now();
   const requestedCategories = String(process.env.RAW_SOURCE_CATEGORY_ALLOWLIST ?? "")
     .split(",")
@@ -509,7 +534,7 @@ async function main() {
         extracted.push({
           i: hash(Buffer.from("rss:" + t.target_id + ":" + item.u)),
           u: item.u,
-          d: item.d || when,
+          d: item.d || null,
           h: host,
           o: t.display_name,
           t: item.t,
@@ -644,7 +669,7 @@ async function main() {
             ),
           ),
           u: fetched.final,
-          d: when,
+          d: null,
           h: new URL(fetched.final).hostname,
           o: t.display_name,
           t: title,
@@ -718,12 +743,15 @@ async function main() {
           successfulCells += 1;
           break;
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
+          const failureCode = classifySourceFailure(error);
+          if (isFatalInfrastructureFailure(failureCode)) {
+            throw new Error(failureCode);
+          }
           failures.push({
             country_iso3: cell.country_iso3,
             category: cell.category,
             target_id: target.target_id,
-            error: message,
+            error: failureCode,
           });
 
           try {
@@ -731,10 +759,10 @@ async function main() {
               discovery_state: "UNREACHABLE",
               last_attempt_at: new Date().toISOString(),
               consecutive_failures: Number(target.consecutive_failures ?? 0) + 1,
-              last_error: message.slice(0, 1000),
+              last_error: failureCode,
             });
           } catch {
-            // Preserve the original source failure in the run summary.
+            // Preserve the sanitized source failure classification in the run summary.
           }
         }
       }
@@ -786,10 +814,30 @@ async function main() {
       per_cell_target_attempts: maxCellAttempts,
       telegram_discovery_excluded_from_runtime_truth: true,
       fillers_excluded_from_runtime_refresh: true,
+      db_transport: "direct_postgres",
+      storage_backend: "b2",
+      b2_usage: b2?.usage?.() ?? null,
     },
   };
 
-  console.log(JSON.stringify(result, null, 2));
+  const resultJson = JSON.stringify(result, null, 2) + "\n";
+  if (OUTPUT_PATH) {
+    await writeFile(OUTPUT_PATH, resultJson, "utf8");
+  }
+  process.stdout.write(resultJson);
   if (!result.ok) process.exit(1);
 }
-main().catch(e=>{console.error(e instanceof Error?e.stack??e.message:String(e));process.exit(1);});
+main().catch(async (error)=>{
+  const failureCode=classifySourceFailure(error);
+  const failure={
+    ok:false,
+    generated_at:new Date().toISOString(),
+    error:failureCode,
+    db_transport:"direct_postgres",
+    storage_backend:"b2",
+    b2_usage:b2?.usage?.()??null,
+  };
+  if(OUTPUT_PATH){try{await writeFile(OUTPUT_PATH,JSON.stringify(failure,null,2)+"\n","utf8");}catch{}}
+  console.error(failureCode);
+  process.exit(1);
+});
