@@ -261,6 +261,9 @@ jobs:
             .live_review.allowance_used == 1 and
             .live_review.allowance_max == 1 and
             .live_review.review_status == "PASS" and
+            .live_review.verdict == "approve" and
+            .live_review.admission_clear == true and
+            .live_review.issue_count == 0 and
             .live_review.signed_proof_present == true and
             .live_review.independent_proof_verification == "PASS" and
             .execution_authorized == false

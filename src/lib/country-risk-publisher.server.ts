@@ -910,6 +910,27 @@ async function loadFedericoStructuredFallback(
   return { events, commercial_eligibility };
 }
 
+function federicoStableSourceLocator(value: unknown): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return null;
+    url.username = "";
+    url.password = "";
+    url.search = "";
+    url.hash = "";
+    const path = url.pathname.replace(/\/{2,}/g, "/");
+    if (!path || path === "/" || /\/(?:xml\/rss|rss|feed)\/?$/i.test(path)) {
+      return null;
+    }
+    url.pathname = path;
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
 async function loadFedericoStrictEvents(
   asOf: Date,
   iso3: string,
@@ -1137,10 +1158,18 @@ async function loadFedericoStrictEvents(
           member.published_at,
           asOf,
         );
+      const stableLocator =
+        federicoStableSourceLocator(
+          member.source_url,
+        );
       return Boolean(
         isAllowedSource &&
         hasTargetCountryAttribution &&
-        publishedAt,
+        publishedAt &&
+        stableLocator &&
+        /^[a-f0-9]{64}$/.test(
+          String(member.content_hash ?? "").trim(),
+        ),
       );
     });
 
@@ -1148,13 +1177,54 @@ async function loadFedericoStrictEvents(
       continue;
     }
 
-    const sourceIds = [
-      ...new Set(
+    const sourceTuples = [
+      ...new Map(
         auditableMembers
-          .map((member) => String(member.source_id ?? "").trim().toLowerCase())
-          .filter(Boolean),
-      ),
-    ];
+          .map((member) => {
+            const sourceId =
+              String(member.source_id ?? "").trim().toLowerCase();
+            const sourceRecordId =
+              federicoStableSourceLocator(member.source_url);
+            const contentHash =
+              String(member.content_hash ?? "").trim().toLowerCase();
+            if (
+              !sourceId ||
+              !sourceRecordId ||
+              !/^[a-f0-9]{64}$/.test(contentHash)
+            ) return null;
+            return [
+              `${sourceId}\u0000${sourceRecordId}`,
+              {
+                source_id: sourceId,
+                source_record_id: sourceRecordId,
+                content_hash: contentHash,
+              },
+            ] as const;
+          })
+          .filter(Boolean) as Array<
+            readonly [
+              string,
+              {
+                source_id: string;
+                source_record_id: string;
+                content_hash: string;
+              },
+            ]
+          >,
+      ).values(),
+    ].sort(
+      (a, b) =>
+        a.source_id.localeCompare(b.source_id) ||
+        a.source_record_id.localeCompare(b.source_record_id),
+    );
+
+    const sourceIds =
+      sourceTuples.map((item) => item.source_id);
+    const sourceRecordIds =
+      sourceTuples.map((item) => item.source_record_id);
+    const contentHashes =
+      sourceTuples.map((item) => item.content_hash);
+    const sourceUrls = [...sourceRecordIds];
 
     const sourceFamilies = [
       ...new Set(sourceIds.map((sourceId) =>
@@ -1165,31 +1235,11 @@ async function loadFedericoStrictEvents(
     const independentSourceCount =
       sourceFamilies.length;
 
-    const sourceRecordIds = [
-      ...new Set(
-        auditableMembers
-          .map((member) => String(member.source_record_id ?? "").trim())
-          .filter(Boolean),
-      ),
-    ];
-
-    const contentHashes = [
-      ...new Set(
-        auditableMembers
-          .map((member) => String(member.content_hash ?? "").trim())
-          .filter((value) => /^[a-f0-9]{64}$/.test(value)),
-      ),
-    ];
-
-    const sourceUrls = [
-      ...new Set(
-        auditableMembers
-          .map((member) => String(member.source_url ?? "").trim())
-          .filter((value) => /^https?:\/\//i.test(value)),
-      ),
-    ];
-
-    if (!sourceUrls.length || !sourceRecordIds.length || !contentHashes.length) {
+    if (
+      sourceTuples.length < 2 ||
+      sourceIds.length !== sourceRecordIds.length ||
+      sourceIds.length !== contentHashes.length
+    ) {
       continue;
     }
 

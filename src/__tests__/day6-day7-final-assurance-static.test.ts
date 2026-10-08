@@ -47,6 +47,9 @@ describe("Day 6 generic partner assurance", () => {
     expect(adapter).toContain("LIVE_REVIEW_ALLOWANCE_NOT_EXPLICITLY_GRANTED");
     expect(adapter).toContain("SIGNED_PARTNER_PROOF_MISSING");
     expect(adapter).toContain("INDEPENDENT_PARTNER_PROOF_VERIFICATION_FAILED");
+    expect(adapter).toContain('provider?.gates?.partner_admission !== "PASS"');
+    expect(adapter).toContain('provider?.live_review?.verdict !== "approve"');
+    expect(adapter).toContain('"LIVE_PARTNER_ADMISSION_REJECTED"');
     expect(adapter).toContain("TAMPER_NOT_REJECTED");
     expect(adapter).toContain("verifyPublicRiskObjectArtifact");
     expect(adapter).toContain("LOCAL_PUBLIC_VERIFIER_REJECTED_ORIGINAL");
@@ -82,6 +85,15 @@ describe("Day 6 generic partner assurance", () => {
     expect(providerPreflight).toContain("verificationBundleSha256");
     expect(providerPreflight).toContain("receiver-preapproved immutable commit SHA");
     expect(providerPreflight).toContain("tamper_verification: tamperVerificationSummary");
+    expect(providerPreflight).toContain("source_locator_policy");
+    expect(providerPreflight).toContain("issuer content_hash values are continuity metadata");
+    expect(providerPreflight).toContain("semantic_validation");
+    expect(providerPreflight).toContain("ownership_registry_policy");
+    expect(providerPreflight).toContain("methodology_replay_policy");
+    expect(providerPreflight).toContain("contextual_only_no_automated_score_based_or_irreversible_action");
+    expect(providerPreflight).toContain('"bun.lock"');
+    expect(providerPreflight).toContain('"src/lib/country-risk-engine.ts"');
+    expect(providerPreflight).toContain('"src/lib/country-risk-publisher.server.ts"');
     expect(providerPreflight).not.toContain("tamperResult.body?.verification ?? tamperResult.body,");
   });
 
