@@ -172,7 +172,103 @@ jobs:
             echo "::notice::GDELT structured lane is stale/degraded. Day 6 continues with audited publisher-native RSS only; no synthetic GDELT freshness or credit is created."
           fi
 
-      - name: Re-poll governed RSS without partner allowance
+      - name: Re-poll active Federico corroborators without partner allowance
+        env:
+          TELEGRAM_ENABLED: "false"
+          BREAKING_RSS_ENABLED: "true"
+          BREAKING_RSS_RUN_ONCE: "true"
+          BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
+          BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"
+          BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+          RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-fast.json
+          RSS_LIVE_SKIP_CORROBORATION: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/day6-rss-deps.log
+          node scripts/run-rss-live-cycle.mjs | tee /tmp/day6-rss-fast.log
+          jq -e '
+            .ok == true and
+            .transport == "canonical_direct_postgres" and
+            .edge_function_dependency == false and
+            .source_summary.configured_source_count == 5 and
+            .source_summary.configured_source_count == .source_summary.completed_source_count and
+            .corroboration.ok == true and
+            .corroboration.skipped == true and
+            .corroboration.reason == "explicit_partner_bootstrap_country_corroboration_follows" and
+            .corroboration.threshold_weakening == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/day6-rss-fast.json >/dev/null
+          echo "PASS: active Federico corroborator refresh completed with no partner allowance."
+
+      - name: Hydrate trusted publisher times after fast refresh
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx scripts/hydrate-federico-source-times.ts | tee /tmp/day6-source-time-hydration-fast.json
+          jq -e '
+            .ok == true and
+            .execution_mode == "direct_postgres" and
+            .policy == "trusted_publisher_metadata_only" and
+            .threshold_weakening == false and
+            .fake_freshness == false and
+            .payment_performed == false and
+            .execution_authorized == false
+          ' /tmp/day6-source-time-hydration-fast.json >/dev/null
+
+      - name: Check for an already strict recent two-family event
+        id: fast_ready
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready_country="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL'
+          with strict_source_map(source_id, source_family) as (
+            values
+              ('xinhua_english_china_rss', 'xinhua_english_china'),
+              ('scmp_china_rss', 'scmp_china'),
+              ('forexlive_rss', 'forexlive'),
+              ('aljazeera_rss', 'aljazeera'),
+              ('bbc_world_rss', 'bbc_world')
+          ),
+          recent_verified_family as (
+            select
+              c.country_iso3,
+              e.event_family_id,
+              count(distinct m.source_family) as source_family_count,
+              max(e.published_at) as latest_published_at
+            from public.live_flash_events e
+            join strict_source_map m on m.source_id = lower(trim(e.source_id))
+            join public.live_flash_event_countries c on c.flash_id=e.flash_id
+            where e.event_family_id is not null
+              and e.verification_status = 'VERIFIED'
+              and e.published_at is not null
+              and e.published_at >= now() - interval '6 hours'
+              and e.published_at <= now()
+              and c.country_iso3 ~ '^[A-Z]{3}$'
+            group by c.country_iso3, e.event_family_id
+            having count(distinct m.source_family) >= 2
+          )
+          select country_iso3
+          from recent_verified_family
+          order by source_family_count desc, latest_published_at desc, country_iso3
+          limit 1;
+          SQL
+          )"
+          if [[ -n "$ready_country" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "country=$ready_country" >> "$GITHUB_OUTPUT"
+            echo "PASS: a recent VERIFIED same-event two-provider-family candidate already exists for $ready_country; broad RSS fallback is unnecessary."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "country=" >> "$GITHUB_OUTPUT"
+            echo "No already strict recent family after fast refresh; broad audited RSS fallback will run."
+          fi
+
+      - name: Re-poll full audited governed RSS cohort only when fast evidence is insufficient
+        if: steps.fast_ready.outputs.ready != 'true'
         env:
           TELEGRAM_ENABLED: "false"
           BREAKING_RSS_ENABLED: "true"
@@ -180,13 +276,12 @@ jobs:
           BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
           BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss,federal_reserve_press_rss,ecb_press_rss,ecb_market_information_rss,bis_rss_media_releases,bis_rss_central_banker_speeches,eu_council_press_rss,un_all_documents_rss,un_human_rights_council_rss,un_geneva_press_rss,un_security_council_docs_rss,un_geneva_meeting_summaries_rss,usgs_minerals_news_rss,nrcan_news_atom"
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
-          RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-cycle.json
+          RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-broad.json
           RSS_LIVE_SKIP_CORROBORATION: "true"
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --disable-pip-version-check --retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/day6-rss-deps.log
-          node scripts/run-rss-live-cycle.mjs | tee /tmp/day6-rss-live.log
+          node scripts/run-rss-live-cycle.mjs | tee /tmp/day6-rss-broad.log
           jq -e '
             .ok == true and
             .transport == "canonical_direct_postgres" and
@@ -198,16 +293,17 @@ jobs:
             .corroboration.threshold_weakening == false and
             .payment_performed == false and
             .execution_authorized == false
-          ' /tmp/day6-rss-cycle.json >/dev/null
-          echo "PASS: governed RSS refresh completed through canonical direct-Postgres transport; global corroboration was explicitly skipped because country-specific strict corroboration follows; no partner allowance used."
+          ' /tmp/day6-rss-broad.json >/dev/null
+          echo "PASS: broad audited RSS fallback completed because the fast strict-family precheck was not ready."
 
-      - name: Hydrate trusted publisher times before strict candidate selection
+      - name: Re-hydrate trusted publisher times after broad fallback
+        if: steps.fast_ready.outputs.ready != 'true'
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         shell: bash
         run: |
           set -euo pipefail
-          node --import tsx scripts/hydrate-federico-source-times.ts | tee /tmp/day6-source-time-hydration.json
+          node --import tsx scripts/hydrate-federico-source-times.ts | tee /tmp/day6-source-time-hydration-broad.json
           jq -e '
             .ok == true and
             .execution_mode == "direct_postgres" and
@@ -216,7 +312,7 @@ jobs:
             .fake_freshness == false and
             .payment_performed == false and
             .execution_authorized == false
-          ' /tmp/day6-source-time-hydration.json >/dev/null
+          ' /tmp/day6-source-time-hydration-broad.json >/dev/null
 
       - name: Select strongest fresh strict candidate set
         id: candidates
