@@ -15,6 +15,8 @@ name: Day 6 Authorized Federico Pilot Once
 # verification-key secrets by validating against the deployed public trust registry.
 # The no-B2/no-Supabase canary still runs before any Federico allowance step.
 # Provider independence is counted by normalized provider family, never raw endpoint/source-id count.
+# Exact-main retrigger after #1777 merged the bounded GDELT + full governed RSS evidence refresh.
+# No policy or allowance boundary changes in this retrigger.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
