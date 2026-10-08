@@ -399,6 +399,19 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(preflight).toContain(
       "partner_proof_verification",
     );
+    expect(preflight).toContain("GRO_SOURCE_TUPLE_BINDING_VERSION");
+    expect(preflight).toContain("parallel-arrays-same-index-v1");
+    expect(preflight).toContain("GRO_CANONICALIZATION_SPEC_SHA256");
+    expect(preflight).toContain("GRO_INDEPENDENT_VERIFIER_SHA256");
+    expect(preflight).toContain("transport_consistency_and_audit_only");
+    expect(preflight).toContain('receiver_network_fetch_policy:');
+    expect(preflight).toContain('"disabled_for_admission"');
+    expect(preflight).toContain('artifact_type: "general"');
+    expect(preflight).not.toContain('context_type: "country_risk_context"');
+    expect(preflight).toContain("tamperVerificationSummary");
+    expect(preflight).not.toContain(
+      "tamperResult.body?.verification ?? tamperResult.body,",
+    );
     expect(preflight).toContain(
       "independentNode",
     );
@@ -504,7 +517,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "as_of: observedAt",
     );
     expect(preflight).toContain(
-      'artifact_version: "geomacro-invino-review-v7"',
+      'artifact_version: "geomacro-invino-review-v8"',
     );
     expect(preflight).toContain(
       "external_evidence: [{",
@@ -531,7 +544,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "issuer_attestations_are_not_trust_roots",
     );
     expect(preflight).toContain(
-      "receiver_policy_id: \"federico-global-country-risk-v1\"",
+      "receiver_policy_id: \"federico-global-country-risk-v2\"",
     );
     expect(preflight).toContain(
       "minimum_independent_source_families: 2",
@@ -583,6 +596,30 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
     expect(canonicalSpec).toContain(
       "Number::toString",
+    );
+    const contract = read("src/lib/risk-object-contract.ts");
+    const engine = read("src/lib/country-risk-engine.ts");
+    const signer = read("src/lib/risk-object-signing.server.ts");
+    expect(contract).toContain(
+      '"parallel-arrays-same-index-v1"',
+    );
+    expect(contract).toContain(
+      '"fabfdf4044e5b35c9a0a742138b68bdf4af76d9aee16b22130868346ff301fd9"',
+    );
+    expect(contract).toContain(
+      '"701f2f47f02bfd3337dcc85cfc2cf15f3369f3fa20be0534ed3ede8a2045ba71"',
+    );
+    expect(engine).toContain(
+      "source_tuple_binding_version:",
+    );
+    expect(engine).toContain(
+      "verification_contract:",
+    );
+    expect(engine).toContain(
+      "FEDERICO_STRICT_SOURCE_TUPLE_BINDING_INVALID",
+    );
+    expect(signer).toContain(
+      "GRO_CANONICALIZATION_SPEC_URL",
     );
     const trustApi = read(
       "docs/RISK_OBJECT_TRUST_API.md",
