@@ -92,16 +92,19 @@ describe(
           "function deployedPublicVerificationKeys()",
         );
         expect(route).toContain(
-          "ensureRiskObjectRuntimePublicKey();",
+          "return pinnedRiskObjectVerificationKeys();",
         );
         expect(route).toContain(
-          "publicRiskObjectVerificationKeySet();",
-        );
-        expect(route).toContain(
-          "const keySet: RiskObjectVerificationKeys = {};",
+          "pinnedRiskObjectVerificationKeySet();",
         );
         expect(route).toContain(
           "deployedPublicVerificationKeys();",
+        );
+        expect(route).not.toContain(
+          "ensureRiskObjectRuntimePublicKey",
+        );
+        expect(route).not.toContain(
+          "publicRiskObjectVerificationKeySet",
         );
         expect(route).not.toContain(
           "await deployedPublicVerificationKeys(",
