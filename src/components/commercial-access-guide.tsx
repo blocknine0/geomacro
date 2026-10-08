@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, CalendarDays, Check, Zap } from "lucide-react";
+import { useAgentCommerceStatus } from "@/components/agent-commerce-status";
 
 /**
  * One commercial entitlement message shared by every public site section.
@@ -28,6 +29,13 @@ const ACCESS = [
 ] as const;
 
 export function CommercialAccessGuide() {
+  const commerce = useAgentCommerceStatus();
+  const x402Status = commerce.mode === "production"
+    ? "Check live checkout"
+    : commerce.mode === "checking"
+      ? "Checking availability"
+      : "Coming Soon";
+
   return (
     <section aria-label="Choose how to access Geomacro" className="border-t border-border/60 bg-card/15">
       <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
@@ -49,6 +57,13 @@ export function CommercialAccessGuide() {
                   item.key === "monthly" ? <CalendarDays className="h-4 w-4 text-primary" aria-hidden="true" /> : null}
               </div>
               <p className="mt-1 text-xs font-medium text-primary">{item.subtitle}</p>
+              <p className="mt-1 text-[11px] font-medium text-muted-foreground" aria-live={item.key === "call" ? "polite" : undefined}>
+                {item.key === "free"
+                  ? "Available now"
+                  : item.key === "monthly"
+                    ? "Coming Soon · enquiries open"
+                    : x402Status}
+              </p>
               <ul className="mt-4 flex-1 space-y-2">
                 {item.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
@@ -74,7 +89,7 @@ export function CommercialAccessGuide() {
           ))}
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          Public exploration is free. Pay-per-call requires a live, enabled payment and delivery service. Monthly access is an enquiry, not an active self-service subscription.
+          Public exploration is free. Pay-per-call requires a live, enabled payment and delivery service. Monthly subscription checkout is Coming Soon; plan enquiries are open.
           {" "}<Link to="/contact" className="text-primary hover:underline">Annual and enterprise requests</Link> are handled directly.
         </p>
       </div>
