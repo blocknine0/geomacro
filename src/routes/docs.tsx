@@ -92,13 +92,18 @@ function DocsIndexPage() {
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <main className="min-w-0 max-w-3xl">
           <DocumentHeader />
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Geomacro public documentation</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Product guides & documentation</h1>
           <p className="mt-4 leading-7 text-muted-foreground">
-            Geomacro is geopolitical and macro risk intelligence infrastructure. These documents explain how evidence becomes structured intelligence, how the separate public Risk Indices are produced and verified, how machine-readable Risk Objects and Risk Gate work, and which product surfaces are live, Private Pilot, production-gated or planned.
+            Start with the public Intelligence and Risk Indices products. These guides explain what you can access for free, how commercial API delivery works, and the safeguards behind Geomacro risk intelligence.
           </p>
           <p className="mt-4 leading-7 text-muted-foreground">
             The current public indices preserve the versioned <span className="font-mono text-foreground">gri-v1.2.0</span> parent methodology and verified proof lineage. Historical GRI material therefore remains available as a methodology and proof reference rather than a second live headline product.
           </p>
+
+          <div className="mt-7 flex flex-wrap gap-3 text-sm">
+            <Link to="/intelligence" className="rounded-lg border border-primary/35 bg-primary/10 px-4 py-2 font-medium text-primary hover:border-primary/70">Explore free Intelligence</Link>
+            <Link to="/pricing" className="rounded-lg border border-border/70 px-4 py-2 font-medium text-foreground hover:border-primary/50">Compare API & monthly access</Link>
+          </div>
 
           <div className="mt-8 rounded-lg border border-border bg-card/30 p-4">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Intelligence flow</p>
@@ -116,7 +121,7 @@ function DocsIndexPage() {
             {entryCards.map((entry) => entry ? (
               <Link key={entry.slug} to="/docs/$slug" params={{ slug: entry.slug }} className="group rounded-lg border border-border bg-card/30 p-4 transition-colors hover:border-primary/50">
                 <p className="text-sm font-semibold text-foreground">{entry.title}</p>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Page {entry.page_number} of {DOCS_PAGE_COUNT}</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Explore guide →</p>
               </Link>
             ) : null)}
           </div>
