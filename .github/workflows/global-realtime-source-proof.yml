@@ -175,8 +175,25 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${APP_SUPABASE_URL}"
-          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY}"
+          test -n "${SUPABASE_DB_URL}"
           test "${SUPABASE_PROJECT_ID}" = "ldpwajisioljyjtojvfx"
+          test "${GRI_DB_MODE}" = "direct_postgres"
+          test "${LIVE_STRUCTURE_EXECUTION_MODE}" = "local_direct_postgres"
+          test "${B2_S3_ENDPOINT}" = "https://s3.us-east-005.backblazeb2.com"
+          test -n "${B2_KEY_ID}"
+          test -n "${B2_APPLICATION_KEY}"
+          if [[ -n "${B2_ARCHIVE_READ_KEY_ID:-}" || -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" ]]; then
+            test -n "${B2_ARCHIVE_READ_KEY_ID:-}" && test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || {
+              echo "::error::Dedicated B2 archive read credentials must be supplied as a complete pair."
+              exit 2
+            }
+          fi
+          if [[ -n "${B2_ARCHIVE_WRITE_KEY_ID:-}" || -n "${B2_ARCHIVE_WRITE_APPLICATION_KEY:-}" ]]; then
+            test -n "${B2_ARCHIVE_WRITE_KEY_ID:-}" && test -n "${B2_ARCHIVE_WRITE_APPLICATION_KEY:-}" || {
+              echo "::error::Archive B2 read/write credentials must be supplied as a complete pair."
+              exit 2
+            }
+          fi
 
       - name: Run bounded source heartbeat on exact PR head
         if: env.RUN_BOUNDED_SOURCE_HEARTBEAT == 'true'
@@ -291,6 +308,8 @@ jobs:
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-acceptance.log
 
       - name: Final GDELT first-break and scope fanout convergence
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         if: env.FULL_RAW_ACCEPTANCE == 'true'
         shell: bash
         run: |
@@ -343,7 +362,8 @@ jobs:
           for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
             (
               export RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"
-              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-final-${category}.json" 2>&1
+              export COUNTRY_RAW_SOURCE_SYNC_OUTPUT="country-raw-source-final-${category}.json"
+              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs
             ) > "category-final-${category}.log" 2>&1 &
           done
           wait
@@ -403,6 +423,8 @@ jobs:
           node scripts/audit-gdelt-dependency-live.mjs
 
       - name: Run strict Global Realtime Intelligence 100 gate
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         if: env.FULL_RAW_ACCEPTANCE == 'true'
         run: |
           set -euo pipefail
