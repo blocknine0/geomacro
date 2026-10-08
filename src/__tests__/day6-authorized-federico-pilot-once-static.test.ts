@@ -57,6 +57,9 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("Re-poll active Federico corroborators without partner allowance");
     expect(workflow).toContain("Check for an already strict recent two-family event");
     expect(workflow).toContain("Check existing strict recent two-family event before refresh");
+    expect(workflow).toContain("strict-ready country $preferred_country prioritized before exploratory candidates");
+    expect(workflow).toContain('preferred_country="${{ steps.fast_ready.outputs.country }}"');
+    expect(workflow).toContain("grep -qx \"$preferred_country\" /tmp/day6-candidates.txt");
     expect(workflow).toContain("if: steps.pre_ready.outputs.ready != 'true'");
     expect(workflow).toContain("existing VERIFIED same-event two-provider-family candidate is still fresh");
     expect(workflow).toContain("No strict recent two-family candidate exists yet; bounded refresh path will run.");
