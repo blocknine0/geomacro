@@ -8,7 +8,7 @@ const workflow = readFileSync(
 
 describe("one-time Day 6 Federico pilot authorization", () => {
   it("refreshes and proves local readiness before partner allowance", () => {
-    const preflight = workflow.indexOf("Prove private B2 real-byte read before Federico work");
+    const preflight = workflow.indexOf("Prove verified D1 signed GRO hot serving before Federico work");
     const refresh = workflow.indexOf("Re-poll governed RSS without partner allowance");
     const hydrate = workflow.indexOf("Hydrate trusted publisher times before strict candidate selection");
     const select = workflow.indexOf("Select strongest fresh strict candidate set");
@@ -18,8 +18,8 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(preflight).toBeGreaterThan(-1);
     expect(refresh).toBeGreaterThan(preflight);
     expect(hydrate).toBeGreaterThan(refresh);
-    expect(workflow).toContain("scripts/ops/verify-b2-private-archive-read.ts");
-    expect(workflow).toContain("geomacro.b2-private-archive-runtime-read-proof.v1");
+    expect(workflow).toContain("scripts/ops/verify-country-gro-hot-serving.ts");
+    expect(workflow).toContain("geomacro.country-gro-d1-hot-canary.v1");
     expect(select).toBeGreaterThan(hydrate);
     expect(corroborate).toBeGreaterThan(select);
     expect(local).toBeGreaterThan(corroborate);
@@ -45,12 +45,15 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
     expect(workflow).toContain("B2_KEY_ID: ${{ secrets.B2_KEY_ID }}");
     expect(workflow).toContain("B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}");
+    expect(workflow).toContain("GEOMACRO_COMMERCE_LEDGER_TOKEN");
     expect(workflow).toContain("B2_ARCHIVE_READ_KEY_ID");
     expect(workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(workflow).toContain("B2_ARCHIVE_WRITE_KEY_ID");
     expect(workflow).toContain("B2_ARCHIVE_WRITE_APPLICATION_KEY");
     expect(workflow).toContain("Archive B2 read/write credentials must be supplied as a complete pair.");
     expect(workflow).toContain("dedicated read pair, else archive read/write pair, else existing B2 pair");
+    expect(workflow).toContain(".b2_network_read_required == false");
+    expect(workflow).toContain(".serving_store == \"cloudflare-d1\"");
     expect(workflow).toContain("SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY");
     expect(workflow).toContain("Dedicated B2 archive read credentials must be supplied as a complete pair.");
     expect(workflow).toContain("e.published_at as evidence_at");
