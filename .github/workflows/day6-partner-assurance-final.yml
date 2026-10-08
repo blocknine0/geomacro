@@ -68,6 +68,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "${ALLOWANCE_REQUESTED}" == "true" ]]; then
+            echo "::error title=Owner allowance hold::Live Federico allowance is disabled pending three distinct-time passing preflights and a new explicit owner ACK. No /review request permitted."
+            exit 13
+          fi
           [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]] || {
             echo "::error::dispatch SHA must be an exact 40-hex commit SHA"
             exit 2
@@ -235,7 +239,7 @@ jobs:
           ' /tmp/day6-local-assurance.json >/dev/null
 
       - name: Require explicit live allowance authorization
-        if: ${{ inputs.use_partner_allowance == true }}
+        if: ${{ false }}
         shell: bash
         env:
           INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
@@ -244,7 +248,7 @@ jobs:
           test -n "${INVINO_API_KEY:-}" || { echo "::error::INVINO_API_KEY is required only when use_partner_allowance=true"; exit 2; }
 
       - name: Spend exactly one Federico pilot allowance after local gates
-        if: ${{ inputs.use_partner_allowance == true }}
+        if: ${{ false }}
         env:
           INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
           PARTNER_ASSURANCE_ALLOW_LIVE_REVIEW: "1"
