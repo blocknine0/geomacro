@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "38 * * * *"
   workflow_dispatch: {}
+  workflow_run:
+    workflows:
+      - "GRI Realtime Direct Postgres"
+    types:
+      - completed
   push:
     branches:
       - main
@@ -23,7 +28,19 @@ concurrency:
 
 jobs:
   publish-three-risk-indices:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      (
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main'
+        ) ||
+        (
+          github.event_name != 'workflow_run' &&
+          github.ref == 'refs/heads/main'
+        )
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: production
