@@ -20,6 +20,9 @@ describe("independent verified Risk Indices edge", () => {
     expect(worker).toContain("await sha256(payloadJson) !== snapshot.payload_sha256");
     expect(worker).toContain("Date.now() - sourceAsOf > 90 * 60 * 1000");
     expect(worker).toContain('"x-geomacro-serving-store": "cloudflare-d1"');
+    expect(worker).toContain("PARENT_PROJECTION_PROOF_SCHEMA");
+    expect(worker).toContain('"x-geomacro-verification-mode"');
+    expect(worker).toContain('"parent-full-readback-hash-exact-restore"');
     expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot(env)");
     expect(publisher).not.toContain('LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz"');
   });
@@ -31,6 +34,10 @@ describe("independent verified Risk Indices edge", () => {
     expect(publisher).toContain("exact_gzip_restore_verified: true");
     expect(publisher).toContain("RISK_INDICES_PUBLISHED_LIVE_ARTIFACT_PATH");
     expect(publisher).toContain("JSON.stringify(restoredLive, null, 2)");
+    expect(publisher).toContain("publishParentProjectionRecovery");
+    expect(publisher).toContain("geomacro.public-risk-indices-parent-projection-proof.v1");
+    expect(publisher).toContain("current_b2_snapshot_promoted: false");
+    expect(publisher).toContain("parent_b2_readback_verified: true");
     expect(refresh).toContain("RISK_INDICES_PUBLISHED_LIVE_ARTIFACT_PATH: /tmp/risk-indices-published-live.json");
     expect(refresh).toContain("/tmp/risk-indices-published-live.json");
     expect(worker).toContain("proof?.compressed_sha256 !== liveDigest");
@@ -58,6 +65,9 @@ describe("independent verified Risk Indices edge", () => {
     expect(refresh).toContain('"scripts/ops/publish-b2-risk-indices-direct-postgres.mjs"');
     expect(refresh).toContain('"src/lib/risk-indices-from-global-risk.ts"');
     expect(refresh).toContain("publish-b2-risk-indices-direct-postgres.mjs");
+    expect(refresh).toContain("set -euo pipefail");
+    expect(refresh).toContain("workflow_run:");
+    expect(refresh).toContain('"GRI Realtime Direct Postgres"');
     expect(refresh).not.toContain("scripts/ingest-news.js");
     expect(refresh).not.toContain("GUARDIAN_QUERY_BUDGET_PER_CATEGORY");
     expect(refresh).not.toContain("GROQ_API_KEY");
@@ -67,6 +77,9 @@ describe("independent verified Risk Indices edge", () => {
 
   it("deploys only after materializing a successful B2-readback-verified continuity artifact", () => {
     expect(deploy).toContain("prepare-edge-continuity.sh");
+    expect(deploy).toContain('"Risk Indices Realtime Direct Postgres"');
+    expect(deploy).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(deploy).toContain("github.event.workflow_run.head_branch == 'main'");
     expect(deploy).toContain("risk-indices-realtime-direct-postgres.yml");
     expect(deploy).toContain("geomacro.public-risk-indices-direct-postgres-publish.v1");
     expect(deploy).not.toContain("Bootstrap isolated verified Risk Indices package");
