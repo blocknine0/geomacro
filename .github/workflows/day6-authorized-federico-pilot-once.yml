@@ -193,6 +193,7 @@ jobs:
             .ok == true and
             .transport == "canonical_direct_postgres" and
             .edge_function_dependency == false and
+            .source_summary.configured_source_count == 5 and
             .partial_source_failure_tolerance_enabled == true and
             .source_summary.configured_source_count >= .source_summary.completed_source_count and
             .source_summary.completed_source_count >= 2 and
@@ -294,6 +295,7 @@ jobs:
             .ok == true and
             .transport == "canonical_direct_postgres" and
             .edge_function_dependency == false and
+            .source_summary.configured_source_count == 18 and
             .partial_source_failure_tolerance_enabled == true and
             .source_summary.configured_source_count >= .source_summary.completed_source_count and
             .source_summary.completed_source_count >= 2 and
