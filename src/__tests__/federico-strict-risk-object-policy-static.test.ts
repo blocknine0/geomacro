@@ -39,6 +39,22 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(policy).toContain(
       '?? normalized',
     );
+    expect(policy).toContain('ecb_press_rss: "european_central_bank"');
+    expect(policy).toContain('ecb_market_information_rss: "european_central_bank"');
+    expect(policy).toContain('bis_rss_media_releases: "bank_for_international_settlements"');
+    expect(policy).toContain('bis_rss_central_banker_speeches: "bank_for_international_settlements"');
+    expect(policy).toContain('un_geneva_press_rss: "united_nations"');
+    expect(policy).toContain('"nrcan_news_atom"');
+    expect(policy).toContain('"usgs_minerals_news_rss"');
+
+    const corroborator = read(
+      "supabase/functions/live-flash-corroborate/index.ts",
+    );
+    expect(corroborator).toContain("FEDERICO_STRICT_PROVIDER_FAMILY_BY_SOURCE_ID");
+    expect(corroborator).toContain('ecb_market_information_rss: "european_central_bank"');
+    expect(corroborator).toContain('bis_rss_central_banker_speeches: "bank_for_international_settlements"');
+    expect(corroborator).toContain('return FEDERICO_STRICT_PROVIDER_FAMILY_BY_SOURCE_ID[sourceId] ?? sourceId');
+    expect(corroborator).not.toContain("return row.source_id");
   });
 
   it("pins the two-independent-source Federico verification contract", () => {
