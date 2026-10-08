@@ -106,6 +106,9 @@ describe("global realtime source proof health classification", () => {
     expect(workflow).toContain("realtime-corroborate-direct.json");
     expect(workflow).toContain('local_canonical_corroboration_direct_postgres');
     expect(workflow).toContain(".threshold_weakening == false");
+    expect(workflow).toContain("COUNTRY_RAW_SOURCE_SYNC_OUTPUT");
+    expect(workflow).toContain("category-acceptance-${category}.log");
+    expect(workflow).not.toContain('sync-country-raw-source-mesh.mjs > "country-raw-source-acceptance-${category}.json" 2>&1');
     expect(workflow).not.toContain("Validate scoped OIDC claims");
     expect(workflow).not.toContain("oidc-claims-summary.json");
     expect(workflow).not.toContain(".supabase.co/functions/v1/live-flash-corroborate");
