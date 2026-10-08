@@ -19,6 +19,8 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(refresh).toBeGreaterThan(preflight);
     expect(hydrate).toBeGreaterThan(refresh);
     expect(workflow).toContain("scripts/ops/verify-country-gro-hot-serving.ts");
+    expect(workflow).toContain('"scripts/ops/verify-country-gro-hot-serving.ts"');
+    expect(workflow).toContain('"src/lib/d1-country-gro-hot.server.ts"');
     expect(workflow).toContain("geomacro.country-gro-d1-hot-canary.v1");
     expect(select).toBeGreaterThan(hydrate);
     expect(corroborate).toBeGreaterThan(select);
