@@ -12,6 +12,10 @@ describe("Global Risk B2-cap current-proof recovery", () => {
     expect(publisher).toContain("B2_DOWNLOAD_CAP_EXCEEDED");
     expect(publisher).toContain("B2_TRANSACTION_CAP_EXCEEDED");
     expect(publisher).toContain("if (!isB2CapError(error)) throw error");
+    expect(publisher).toContain("function errorChainText(error)");
+    expect(publisher).toContain('"cause" in value');
+    expect(publisher).toContain("Array.isArray(value.errors)");
+    expect(publisher).toContain('parts.push(value.stack)');
   });
 
   it("never promotes or claims current B2 readback in recovery mode", () => {

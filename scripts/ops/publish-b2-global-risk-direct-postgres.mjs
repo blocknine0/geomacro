@@ -26,8 +26,31 @@ const CURRENT_PROOF_SCHEMA = "geomacro.public-global-risk-current-proof.v1";
 const CURRENT_PROOF_PUBLISH_SCHEMA = "geomacro.public-global-risk-current-proof-publish.v1";
 const CURRENT_PROOF_MODE = "independent-gri-proof-over-b2-baseline";
 
+function errorChainText(error) {
+  const parts = [];
+  const seen = new Set();
+  const visit = (value, depth = 0) => {
+    if (value == null || depth > 5) return;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      parts.push(String(value));
+      return;
+    }
+    if (typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    if (typeof value.message === "string") parts.push(value.message);
+    if (typeof value.stack === "string") parts.push(value.stack);
+    if ("cause" in value) visit(value.cause, depth + 1);
+    if (Array.isArray(value.errors)) {
+      for (const nested of value.errors) visit(nested, depth + 1);
+    }
+  };
+  visit(error);
+  if (!parts.length) parts.push(String(error ?? ""));
+  return parts.join("\n");
+}
+
 function isB2CapError(error) {
-  const message = error instanceof Error ? error.message : String(error ?? "");
+  const message = errorChainText(error);
   return message.includes("B2_DOWNLOAD_CAP_EXCEEDED") ||
     message.includes("B2_TRANSACTION_CAP_EXCEEDED") ||
     message.includes("B2_NATIVE_GET_FAILED_403_download_cap_exceeded");
