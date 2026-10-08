@@ -9,7 +9,7 @@ import { validateGlobalRiskContinuity } from "../../src/lib/global-risk-continui
 import { riskIndicesFromGlobalRisk } from "../../src/lib/risk-indices-from-global-risk.ts";
 import { PUBLIC_RISK_INDICES_CONTRACT_VERSION } from "../../src/lib/risk-indices.types.ts";
 import { createB2Client } from "./b2-s3-client.mjs";
-import { publishB2VerifiedHotSnapshot } from "./publish-b2-verified-hot-snapshot.mjs";
+import { publishB2VerifiedHotSnapshot, publishParentVerifiedRiskIndicesHotSnapshot } from "./publish-b2-verified-hot-snapshot.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
@@ -17,6 +17,10 @@ const B2_BUCKET = "geomacro-private-archive";
 const METHODOLOGY = "gri-v1.2.0";
 const LIVE_KEY = "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz";
 const LIVE_PROOF_KEY = "geomacro-evidence/v1/live/risk-indices-independent/latest-proof.json";
+const GLOBAL_RISK_HOT_URL = "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/hot-snapshot/global-risk";
+const GLOBAL_RISK_LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz";
+const PARENT_PROJECTION_PROOF_SCHEMA = "geomacro.public-risk-indices-parent-projection-proof.v1";
+const PARENT_PROJECTION_PUBLISH_SCHEMA = "geomacro.public-risk-indices-parent-projection-publish.v1";
 const HISTORY_PREFIX = `geomacro-evidence/v1/history/risk-indices/${METHODOLOGY}`;
 const SNAPSHOT_LIMIT = 1000;
 const EVENT_LIMIT = 24;
@@ -166,6 +170,125 @@ function assertIndices(data) {
   if (expected.size !== 0) throw new Error("RISK_INDICES_DOMAIN_MISSING");
 }
 
+
+function isB2CapError(error) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("B2_DOWNLOAD_CAP_EXCEEDED") ||
+    message.includes("B2_TRANSACTION_CAP_EXCEEDED") ||
+    message.includes("B2_NATIVE_GET_FAILED_403_download_cap_exceeded");
+}
+
+async function readVerifiedGlobalRiskParent() {
+  const response = await fetch(GLOBAL_RISK_HOT_URL, {
+    headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`RISK_INDICES_PARENT_GLOBAL_RISK_HTTP_${response.status}`);
+  const snapshot = await response.json();
+  const payloadJson = String(snapshot?.payload_json ?? "");
+  const sourceAsOfMs = Date.parse(String(snapshot?.source_as_of ?? ""));
+  const expiresAtMs = Date.parse(String(snapshot?.expires_at ?? ""));
+  const now = Date.now();
+  if (
+    snapshot?.ok !== true ||
+    snapshot?.product !== "global-risk" ||
+    snapshot?.schema !== "geomacro.public-global-risk-live.v1" ||
+    snapshot?.proof_schema !== "geomacro.public-global-risk-live-proof.v1" ||
+    snapshot?.b2_object_key !== GLOBAL_RISK_LIVE_KEY ||
+    snapshot?.full_b2_readback_verified !== true ||
+    snapshot?.exact_gzip_restore_verified !== true ||
+    !/^[0-9a-f]{64}$/.test(String(snapshot?.b2_sha256 ?? "")) ||
+    !/^[0-9a-f]{64}$/.test(String(snapshot?.payload_sha256 ?? "")) ||
+    sha256(payloadJson) !== snapshot.payload_sha256 ||
+    !Number.isFinite(sourceAsOfMs) ||
+    !Number.isFinite(expiresAtMs) ||
+    sourceAsOfMs > now + 5 * 60_000 ||
+    now - sourceAsOfMs > 90 * 60_000 ||
+    expiresAtMs <= now
+  ) throw new Error("RISK_INDICES_PARENT_GLOBAL_RISK_PROOF_INVALID");
+  let payload;
+  try { payload = JSON.parse(payloadJson); } catch {
+    throw new Error("RISK_INDICES_PARENT_GLOBAL_RISK_JSON_INVALID");
+  }
+  if (
+    payload?.schema !== "geomacro.public-global-risk-live.v1" ||
+    payload?.source_project !== PROJECT_REF ||
+    payload?.generated_at !== snapshot.generated_at ||
+    Date.parse(String(payload?.data?.snapshotAsOf ?? "")) !== sourceAsOfMs ||
+    !validateGlobalRiskContinuity(payload?.data).ok
+  ) throw new Error("RISK_INDICES_PARENT_GLOBAL_RISK_PAYLOAD_INVALID");
+  return { snapshot, payload };
+}
+
+async function publishParentProjectionRecovery(error) {
+  if (!isB2CapError(error)) throw error;
+  const { snapshot, payload } = await readVerifiedGlobalRiskParent();
+  const indices = riskIndicesFromGlobalRisk(payload.data);
+  assertIndices(indices);
+  const generatedAt = new Date().toISOString();
+  const liveValue = {
+    schema: "geomacro.public-risk-indices-live.v1",
+    generated_at: generatedAt,
+    source_project: PROJECT_REF,
+    verification_mode: "global-risk-parent-projection",
+    parent_product: "global-risk",
+    parent_b2_sha256: snapshot.b2_sha256,
+    parent_payload_sha256: snapshot.payload_sha256,
+    data: indices,
+  };
+  const proof = {
+    schema: PARENT_PROJECTION_PROOF_SCHEMA,
+    generated_at: generatedAt,
+    source_project: PROJECT_REF,
+    parent_product: "global-risk",
+    live_key: GLOBAL_RISK_LIVE_KEY,
+    parent_generated_at: snapshot.generated_at,
+    parent_source_as_of: snapshot.source_as_of,
+    parent_payload_sha256: snapshot.payload_sha256,
+    snapshot_id: indices.snapshotId,
+    snapshot_as_of: indices.snapshotAsOf,
+    compressed_sha256: snapshot.b2_sha256,
+    full_b2_readback_verified: true,
+    exact_gzip_restore_verified: true,
+  };
+  const hotSnapshot = await publishParentVerifiedRiskIndicesHotSnapshot({ value: liveValue, proof });
+
+  const publishedLiveArtifactPath = String(
+    process.env.RISK_INDICES_PUBLISHED_LIVE_ARTIFACT_PATH ?? "",
+  ).trim();
+  if (publishedLiveArtifactPath) {
+    mkdirSync(dirname(publishedLiveArtifactPath), { recursive: true });
+    writeFileSync(
+      publishedLiveArtifactPath,
+      JSON.stringify(liveValue, null, 2) + "\n",
+      "utf8",
+    );
+  }
+
+  console.log(JSON.stringify({
+    ok: true,
+    schema: PARENT_PROJECTION_PUBLISH_SCHEMA,
+    authority_read: "cloudflare-d1-b2-readback-verified-global-risk",
+    authority_serve: "cloudflare-d1-risk-indices-parent-projection",
+    verification_mode: "global-risk-parent-projection",
+    snapshot_id: indices.snapshotId,
+    snapshot_as_of: indices.snapshotAsOf,
+    live_sha256: snapshot.b2_sha256,
+    parent_b2_sha256: snapshot.b2_sha256,
+    parent_payload_sha256: snapshot.payload_sha256,
+    destructive_change: false,
+    synthetic_history: false,
+    synthetic_current_score: false,
+    b2_readback_verified: false,
+    parent_b2_readback_verified: true,
+    parent_exact_gzip_restore_verified: true,
+    current_b2_snapshot_promoted: false,
+    d1_hot_snapshot_published: true,
+    d1_payload_sha256: hotSnapshot.payload_sha256,
+    d1_expires_at: hotSnapshot.expires_at,
+  }));
+}
+
 const dbUrl = authoritativeDbUrl();
 assertB2Config();
 const snapshots = readSnapshots(dbUrl);
@@ -196,7 +319,11 @@ const b2 = createB2Client({
   bucket: B2_BUCKET,
 });
 
-const snapshotId = safeSnapshotId(indices.snapshotId);
+try {
+  // Fail before any Risk Indices B2 write when the free-tier readback cap is already exhausted.
+  await b2.getOptional(LIVE_PROOF_KEY);
+
+  const snapshotId = safeSnapshotId(indices.snapshotId);
 const historyKey = `${HISTORY_PREFIX}/${snapshotId}.json.gz`;
 const historyValue = {
   schema: "geomacro.public-risk-indices-history.v1",
@@ -318,3 +445,6 @@ console.log(JSON.stringify({
   d1_payload_sha256: hotSnapshot.payload_sha256,
   d1_expires_at: hotSnapshot.expires_at,
 }));
+} catch (error) {
+  await publishParentProjectionRecovery(error);
+}
