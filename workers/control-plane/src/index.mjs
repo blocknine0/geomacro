@@ -257,6 +257,13 @@ async function getPublicIntelligenceOverlay(env) {
 }
 
 
+function sameNullableNumber(left, right) {
+  if (left == null || right == null) return left == null && right == null;
+  const a = Number(left);
+  const b = Number(right);
+  return Number.isFinite(a) && Number.isFinite(b) && a === b;
+}
+
 function riskIndicesProjectionMatchesGlobalRisk(indices, risk) {
   if (
     !indices ||
@@ -294,15 +301,17 @@ function riskIndicesProjectionMatchesGlobalRisk(indices, risk) {
       index.readingStatus !== domain.readingStatus ||
       index.readingSnapshotId !== domain.readingSnapshotId ||
       Date.parse(String(index.readingAsOf ?? "")) !== Date.parse(String(domain.readingAsOf ?? "")) ||
-      Number(index.score) !== Number(domain.score) ||
-      Number(index.rawScore) !== Number(domain.rawScore) ||
-      Number(index.previousScore) !== Number(domain.previousScore) ||
-      Number(index.changePoints) !== Number(domain.changePoints) ||
-      Number(index.confidence) !== Number(domain.confidence) ||
+      !sameNullableNumber(index.score, domain.score) ||
+      !sameNullableNumber(index.rawScore, domain.rawScore) ||
+      !sameNullableNumber(index.previousScore, domain.previousScore) ||
+      !sameNullableNumber(index.changePoints, domain.changePoints) ||
+      !sameNullableNumber(index.confidence, domain.confidence) ||
       Number(index.eventCount) !== Number(domain.eventCount) ||
       Number(index.sourceCount) !== Number(domain.sourceCount) ||
       Number(index.independentStoryCount) !== Number(domain.independentStoryCount) ||
-      JSON.stringify(index.series) !== JSON.stringify(domain.series)
+      JSON.stringify(index.series) !== JSON.stringify(domain.series) ||
+      JSON.stringify(index.topEvent ?? null) !==
+        JSON.stringify(risk.drivers?.find((driver) => driver?.category === domainKey)?.topEvent ?? null)
     ) return false;
   }
   return true;
