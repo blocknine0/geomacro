@@ -54,7 +54,7 @@ describe("commercial public surface v2", () => {
     expect(home).toContain("Know what changed.");
     expect(home).toContain("Know why it matters.");
     expect(home).toContain("Three risk domains");
-    expect(home).toContain("Not another raw-data feed.");
+    expect(home).toContain("Clarity without the noise.");
     expect(home).toContain("Built for real workflows");
     expect(home).toContain("Critical minerals & rare earths");
     expect(home).toContain("Machine and commercial access lives in dedicated product surfaces with explicit availability and product boundaries.");
