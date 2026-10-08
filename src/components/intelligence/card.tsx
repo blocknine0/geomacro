@@ -2,7 +2,6 @@ import { prettyCategory, type IntelEvent } from "@/lib/use-intelligence";
 
 export function EventIntelCard({
   event,
-  compact = false,
   note,
 }: {
   event: IntelEvent;
