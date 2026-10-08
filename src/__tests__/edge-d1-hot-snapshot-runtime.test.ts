@@ -134,6 +134,53 @@ describe("B2 cap resilient public edge reads", () => {
     expect(b2Reads).toBe(0);
   });
 
+  it.each([
+    ["intelligence", intelligenceWorker, "/intelligence"],
+    ["global-risk", globalRiskWorker, "/global-risk"],
+    ["risk-indices", riskIndicesWorker, "/risk-indices"],
+  ])("promotes a fresh verified D1 %s snapshot over an older cached B2 response", async (product, worker, path) => {
+    const cachedBody = livePackage(product as string);
+    const cached = new Response(JSON.stringify(cachedBody), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+        "x-geomacro-b2-sha256": b2Sha,
+      },
+    });
+    let cachePuts = 0;
+    let b2Reads = 0;
+    vi.stubGlobal("caches", {
+      default: {
+        match: async () => cached.clone(),
+        put: async () => { cachePuts += 1; },
+      },
+    });
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/v1/public/hot-snapshot/")) {
+        return Response.json(hotSnapshot(product as string));
+      }
+      if (url.includes("/v1/public/intelligence-overlay")) {
+        return Response.json({ ok: false }, { status: 503 });
+      }
+      b2Reads += 1;
+      return new Response("unexpected", { status: 500 });
+    });
+
+    const response = await worker.fetch(
+      new Request(`https://edge.test${path}`),
+      { B2_KEY_ID: "read-key", B2_APPLICATION_KEY: "read-secret" },
+      { waitUntil: (promise: Promise<unknown>) => { void promise; } },
+    );
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.schema).toBe(cachedBody.schema);
+    expect(response.headers.get("x-geomacro-serving-store")).toBe("cloudflare-d1");
+    expect(response.headers.get("x-geomacro-b2-verification")).toBe("full-readback-hash-exact-restore");
+    expect(cachePuts).toBe(1);
+    expect(b2Reads).toBe(0);
+  });
+
   it("projects a fresh Intelligence overlay over an older verified B2 baseline when baseline time is explicitly bound", async () => {
     const baselineAt = new Date(Date.now() - 19 * 60 * 60 * 1000).toISOString();
     const overlayAt = new Date(Date.now() - 60_000).toISOString();
