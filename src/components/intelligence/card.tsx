@@ -1,4 +1,5 @@
 import { prettyCategory, type IntelEvent } from "@/lib/use-intelligence";
+import { publicIntelligenceClarification } from "@/lib/public-intelligence-clarification";
 
 export function EventIntelCard({
   event,
@@ -9,6 +10,7 @@ export function EventIntelCard({
   note?: string;
 }) {
   const timestamp = event.publishedAt ?? event.createdAt;
+  const clarification = publicIntelligenceClarification(event);
 
   return (
     <article className="h-full rounded-[var(--radius-card)] border border-border/70 bg-card/40 p-4">
@@ -32,6 +34,8 @@ export function EventIntelCard({
         ) : null}
       </div>
 
+
+      {clarification && <p className="mt-2 text-xs leading-5 text-muted-foreground">{clarification}</p>}
 
       {note ? (
         <p className="mt-2 type-meta text-muted-foreground">
