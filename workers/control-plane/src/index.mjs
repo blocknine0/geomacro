@@ -322,8 +322,8 @@ async function loadVerifiedGlobalRiskParent(env, expected = {}, now = Date.now()
   const row = await env.DB.prepare(`
     SELECT product, schema_name, generated_at, source_as_of, expires_at, b2_object_key, b2_sha256,
       payload_sha256, proof_schema, verified_at, source_run_id, payload_json
-    FROM public_b2_hot_snapshot WHERE product = 'global-risk' LIMIT 1
-  `).first();
+    FROM public_b2_hot_snapshot WHERE product = ? LIMIT 1
+  `).bind("global-risk").first();
   if (!row) return null;
 
   const generatedMs = Date.parse(String(row.generated_at ?? ""));
