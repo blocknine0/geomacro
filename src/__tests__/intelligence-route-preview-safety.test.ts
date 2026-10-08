@@ -6,7 +6,9 @@ describe("public intelligence preview route failure boundary", () => {
 
   it("defers the server-only reader import until inside the guarded handler", () => {
     expect(route).not.toMatch(/^import\s+\{\s*readProductionPublicIntelligence\s*\}/m);
-    expect(route).toContain("try {\n    // Resolve the server-only reader");
+    expect(route).toContain("const verified = await fetchVerifiedIntelligenceEdge()");
+    expect(route).toContain("buildVerifiedIntelligenceApiPayload(verified)");
+    expect(route.indexOf("fetchVerifiedIntelligenceEdge()")).toBeLessThan(route.indexOf("await import("));
     expect(route).toContain('await import(\n      "../../../src/lib/public-intelligence-production.server"');
   });
 
