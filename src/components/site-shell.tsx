@@ -5,6 +5,7 @@ import { Wordmark } from "@/components/wordmark";
 import { Button } from "@/components/ui/button";
 import { AnimatedBackground } from "@/components/animated-background";
 import { ProductionCoverageProof } from "@/components/production-coverage-proof";
+import { CommercialAccessGuide } from "@/components/commercial-access-guide";
 import {
   Sheet,
   SheetContent,
@@ -211,6 +212,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
         {showProductionEvidence ? <ProductionCoverageProof /> : null}
 
         <div id="main-content" className="flex-1">{children}</div>
+
+        {pathname === "/pricing" ? null : <CommercialAccessGuide />}
 
         <footer className="border-t border-border/60 bg-background/45 backdrop-blur-sm">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 text-sm text-muted-foreground sm:px-6 lg:grid-cols-[1.15fr_2fr] lg:py-14">
