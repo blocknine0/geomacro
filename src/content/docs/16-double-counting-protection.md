@@ -21,7 +21,7 @@ After source capping, observations are grouped into immutable story clusters rep
 The story evidence budget is based on the strongest constituent source total and is capped at `1.0`. Member observations share that budget proportionally.
 
 ```text
-articles
+published reports
   ↓
 source cap
   ↓
