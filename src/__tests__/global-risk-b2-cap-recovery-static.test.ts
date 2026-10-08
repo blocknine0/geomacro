@@ -56,5 +56,9 @@ describe("Global Risk B2-cap current-proof recovery", () => {
     expect(publisher).toContain('verification_mode: "direct-b2-readback"');
     expect(publisher).toContain("b2_readback_verified: true");
     expect(publisher).toContain("exact_gzip_restore_verified: true");
+    expect(publisher).toContain("GLOBAL_RISK_PUBLISHED_LIVE_ARTIFACT_PATH");
+    expect(publisher).toContain("JSON.stringify(restoredLive, null, 2)");
+    expect(workflow).toContain("GLOBAL_RISK_PUBLISHED_LIVE_ARTIFACT_PATH: /tmp/global-risk-published-live.json");
+    expect(workflow).toContain("/tmp/global-risk-published-live.json");
   });
 });
