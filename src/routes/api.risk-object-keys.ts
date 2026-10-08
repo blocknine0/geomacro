@@ -9,6 +9,7 @@ import {
 import {
   assertRiskObjectJsonKeysSafe,
   publicRiskObjectVerificationKeySet,
+  type RiskObjectVerificationKeys,
 } from "../lib/risk-object-signing.server";
 
 import {
@@ -37,6 +38,125 @@ function jsonResponse(
       },
     },
   );
+}
+
+async function deployedPublicVerificationKeys(
+  request: Request,
+): Promise<
+  RiskObjectVerificationKeys | null
+> {
+  const registryUrl =
+    new URL(
+      "/api/risk-object-keys",
+      request.url,
+    );
+
+  try {
+    const response =
+      await fetch(
+        registryUrl,
+        {
+          method: "GET",
+          headers: {
+            accept:
+              "application/json",
+            "cache-control":
+              "no-cache",
+          },
+          signal:
+            AbortSignal.timeout(
+              5_000,
+            ),
+        },
+      );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const body =
+      await response.json() as {
+        ok?: boolean;
+        keys?: Array<{
+          key_id?: unknown;
+          public_key_spki_b64?: unknown;
+          status?: unknown;
+          not_before?: unknown;
+          not_after?: unknown;
+        }>;
+      };
+
+    if (
+      body?.ok !== true ||
+      !Array.isArray(
+        body.keys,
+      ) ||
+      body.keys.length === 0
+    ) {
+      return null;
+    }
+
+    const keySet:
+      RiskObjectVerificationKeys =
+      {};
+
+    for (const item of body.keys) {
+      const keyId =
+        String(
+          item?.key_id ??
+            "",
+        ).trim();
+      const publicKey =
+        String(
+          item?.public_key_spki_b64 ??
+            "",
+        ).trim();
+      const status =
+        String(
+          item?.status ??
+            "",
+        ).trim();
+
+      if (
+        !keyId ||
+        !publicKey ||
+        (
+          status !==
+            "active" &&
+          status !==
+            "retired" &&
+          status !==
+            "revoked"
+        )
+      ) {
+        return null;
+      }
+
+      keySet[keyId] = {
+        public_key_spki_b64:
+          publicKey,
+        status,
+        not_before:
+          item?.not_before ==
+            null
+            ? null
+            : String(
+                item.not_before,
+              ),
+        not_after:
+          item?.not_after ==
+            null
+            ? null
+            : String(
+                item.not_after,
+              ),
+      };
+    }
+
+    return keySet;
+  } catch {
+    return null;
+  }
 }
 
 async function verifyRequest(
@@ -160,14 +280,17 @@ async function verifyRequest(
     );
   }
 
-  try {
-    ensureRiskObjectRuntimePublicKey();
-  } catch {
+  const verificationKeys =
+    await deployedPublicVerificationKeys(
+      request,
+    );
+
+  if (!verificationKeys) {
     return jsonResponse(
       {
         ok: false,
         error:
-          "verification_key_registry_invalid",
+          "verification_key_registry_unavailable",
       },
       503,
       {
@@ -183,6 +306,10 @@ async function verifyRequest(
           risk_object: unknown;
         }
       ).risk_object,
+      {
+        verification_keys:
+          verificationKeys,
+      },
     );
 
   if (

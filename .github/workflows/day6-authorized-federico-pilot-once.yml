@@ -22,6 +22,7 @@ name: Day 6 Authorized Federico Pilot Once
 # Final bounded retrigger after local assurance moved from synchronous B2 GET
 # to B2 write-ack plus isolated D1 exact readback verification.
 # Retrigger when the shared partner-assurance verifier/diagnostic adapter changes.
+# Retrigger when the deployed public verifier route changes; local gates still precede allowance.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
@@ -38,6 +39,7 @@ on:
       - "scripts/day6-direct-live-federico-gro.ts"
       - ".github/workflows/day6-partner-assurance-final.yml"
       - "scripts/partner-assurance-adapter.ts"
+      - "src/routes/api.risk-object-keys.ts"
       - "workers/control-plane/migrations/0013_partner_assurance_gro_verified.sql"
 
 permissions:
