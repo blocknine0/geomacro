@@ -53,10 +53,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${APP_SUPABASE_URL:-}"
-          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          test -n "${SUPABASE_DB_URL:-}"
+          test "${SUPABASE_PROJECT_ID:-}" = "ldpwajisioljyjtojvfx"
+          test "${GRI_DB_MODE:-}" = "direct_postgres"
+          test "${LIVE_STRUCTURE_EXECUTION_MODE:-}" = "local_direct_postgres"
+          test "${B2_S3_ENDPOINT:-}" = "https://s3.us-east-005.backblazeb2.com"
+          test -n "${B2_KEY_ID:-}"
+          test -n "${B2_APPLICATION_KEY:-}"
+          if [[ -n "${B2_ARCHIVE_READ_KEY_ID:-}" || -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" ]]; then
+            test -n "${B2_ARCHIVE_READ_KEY_ID:-}" && test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || {
+              echo "::error::Dedicated B2 archive read credentials must be supplied as a complete pair."
+              exit 2
+            }
+          fi
+          if [[ -n "${B2_ARCHIVE_WRITE_KEY_ID:-}" || -n "${B2_ARCHIVE_WRITE_APPLICATION_KEY:-}" ]]; then
+            test -n "${B2_ARCHIVE_WRITE_KEY_ID:-}" && test -n "${B2_ARCHIVE_WRITE_APPLICATION_KEY:-}" || {
+              echo "::error::Archive B2 read/write credentials must be supplied as a complete pair."
+              exit 2
+            }
+          fi
           test -n "${LIVE_STRUCTURE_TOKEN:-}"
-          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
           timeout 30s node --check scripts/sync-country-raw-source-mesh.mjs
           timeout 30s node --check scripts/audit-global-raw-source-coverage.mjs
           timeout 30s node --check scripts/audit-global-raw-source-runtime.mjs
@@ -99,10 +115,12 @@ jobs:
           grep -q '"ok": true' country-raw-rights-reconcile.log
 
       - name: Verify fresh raw runtime coverage
+        env:
+          NODE_OPTIONS: ${{ env.DIRECT_NODE_OPTIONS }}
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/audit-global-raw-source-runtime.mjs
+          node scripts/audit-global-raw-source-runtime.mjs
 
       - name: Prove raw source health boundaries
         shell: bash
@@ -110,9 +128,8 @@ jobs:
           set -euo pipefail
           test -f country-raw-source-sync.json
           jq -e '.selected_targets >= 1' country-raw-source-sync.json >/dev/null
-          if [ -f country-raw-structure-summary.ndjson ]; then
-            while IFS= read -r line; do jq -e '.ok == true' <<<"$line" >/dev/null; done < country-raw-structure-summary.ndjson
-          fi
+          test -f country-raw-structure-drain.log
+          jq -e '.structured_via == "local_direct_postgres_b2"' country-raw-structure-summary.json >/dev/null
           test -f country-raw-rights-reconcile.log
 
       - name: Upload private raw-source operational evidence
