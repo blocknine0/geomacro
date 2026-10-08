@@ -21,6 +21,7 @@ name: Day 6 Authorized Federico Pilot Once
 # No threshold, source policy, allowance, payment, or execution boundary changes in this retrigger.
 # Final bounded retrigger after local assurance moved from synchronous B2 GET
 # to B2 write-ack plus isolated D1 exact readback verification.
+# Final bounded retrigger after #1798 exposed exact deployed-verifier parity diagnostics.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
@@ -37,6 +38,7 @@ on:
       - "scripts/day6-direct-live-federico-gro.ts"
       - ".github/workflows/day6-partner-assurance-final.yml"
       - "workers/control-plane/migrations/0013_partner_assurance_gro_verified.sql"
+      - "scripts/partner-assurance-adapter.ts"
 
 permissions:
   contents: read
