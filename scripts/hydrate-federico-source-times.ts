@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import {
+  extractTrustedBbcRssPublishedAt,
   extractTrustedPublishedAt,
   isTrustedFedericoTimestampUrlForSource,
   trustedFedericoTimestampFetchUrlForSource,
@@ -12,6 +13,8 @@ const SOURCE_IDS = [
   "aljazeera_rss",
   "forexlive_rss",
 ] as const;
+const BBC_WORLD_RSS_URL = "https://feeds.bbci.co.uk/news/world/rss.xml";
+const BBC_RSS_MAX_BYTES = 5 * 1024 * 1024;
 const LOOKBACK_HOURS = 6;
 const VERIFIED_FAMILY_ONLY =
   String(process.env.FEDERICO_HYDRATE_VERIFIED_FAMILY_ONLY ?? "")
@@ -64,6 +67,35 @@ const result = await query
 
 if (result.error) throw result.error;
 
+let bbcRssXml: string | null = null;
+let bbcRssFetchAttempted = false;
+let bbcRssFetchOk = false;
+let bbcRssHydrated = 0;
+
+if ((result.data ?? []).some((row) => String(row.source_id ?? "") === "bbc_world_rss")) {
+  bbcRssFetchAttempted = true;
+  try {
+    const response = await fetch(BBC_WORLD_RSS_URL, {
+      headers: {
+        Accept: "application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.5",
+        "User-Agent":
+          "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)",
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (response.ok) {
+      const rssXml = await response.text();
+      if (Buffer.byteLength(rssXml, "utf8") <= BBC_RSS_MAX_BYTES) {
+        bbcRssXml = rssXml;
+        bbcRssFetchOk = true;
+      }
+    }
+  } catch {
+    // Fail closed. Article-level trusted metadata remains the fallback.
+  }
+}
+
 let attempted = 0;
 let hydrated = 0;
 const bySource: Record<string, { attempted: number; hydrated: number }> = {};
@@ -91,24 +123,39 @@ for (const row of result.data ?? []) {
   if (!timestampFetchUrl) continue;
 
   try {
-    const response = await fetch(timestampFetchUrl, {
-      headers: {
-        Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
-        "User-Agent":
-          "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)",
-      },
-      redirect: "follow",
-      signal: AbortSignal.timeout(12_000),
-    });
+    let publishedAt: string | null = null;
+    let timestampBasis: "bbc_rss_pubdate" | "publisher_article_metadata" =
+      "publisher_article_metadata";
 
-    if (!response.ok) continue;
+    if (sourceId === "bbc_world_rss" && bbcRssXml) {
+      publishedAt = extractTrustedBbcRssPublishedAt(
+        bbcRssXml,
+        sourceUrl,
+        asOf,
+      );
+      if (publishedAt) timestampBasis = "bbc_rss_pubdate";
+    }
 
-    const html = await response.text();
-    const publishedAt = extractTrustedPublishedAt(
-      html,
-      timestampFetchUrl,
-      asOf,
-    );
+    if (!publishedAt) {
+      const response = await fetch(timestampFetchUrl, {
+        headers: {
+          Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
+          "User-Agent":
+            "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)",
+        },
+        redirect: "follow",
+        signal: AbortSignal.timeout(12_000),
+      });
+
+      if (!response.ok) continue;
+
+      const html = await response.text();
+      publishedAt = extractTrustedPublishedAt(
+        html,
+        timestampFetchUrl,
+        asOf,
+      );
+    }
     if (!publishedAt) continue;
 
     const publishedMs = Date.parse(publishedAt);
@@ -131,6 +178,7 @@ for (const row of result.data ?? []) {
     if ((update.data ?? []).length === 1) {
       hydrated += 1;
       bySource[sourceId].hydrated += 1;
+      if (timestampBasis === "bbc_rss_pubdate") bbcRssHydrated += 1;
     }
   } catch {
     // Fail closed: fetch/parse/update failure leaves published_at null and
@@ -149,6 +197,13 @@ console.log(JSON.stringify({
   attempted,
   hydrated,
   by_source: bySource,
+  bbc_rss_pubdate_fallback: {
+    feed_url: BBC_WORLD_RSS_URL,
+    fetch_attempted: bbcRssFetchAttempted,
+    fetch_ok: bbcRssFetchOk,
+    hydrated: bbcRssHydrated,
+    feed_fetch_time_used_as_publication_time: false,
+  },
   threshold_weakening: false,
   fake_freshness: false,
   payment_performed: false,
