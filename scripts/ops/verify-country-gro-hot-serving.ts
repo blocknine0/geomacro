@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { verifyRiskObjectSignature, canonicalRiskObjectJson } from "../../src/lib/risk-object-signing.server";
 import { verifyCommercialRiskObjectArtifact } from "../../src/lib/commercial-risk-object-policy";
-import { readD1VerifiedHotCountryGro } from "../../src/lib/d1-country-gro-hot.server";
+import { loadPublicRiskObjectVerificationKeys, readD1VerifiedHotCountryGro } from "../../src/lib/d1-country-gro-hot.server";
 import { createHash } from "node:crypto";
 
 const iso3 = String(process.env.GRO_CONTINUITY_COUNTRY_ISO3 ?? "USA").trim().toUpperCase();
@@ -19,8 +19,13 @@ delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 const at = new Date().toISOString();
 const object = await readD1VerifiedHotCountryGro(iso3, at);
 if (!object) throw new Error("COUNTRY_GRO_HOT_CANARY_UNAVAILABLE");
-const signature = verifyRiskObjectSignature(object);
-const commercial = verifyCommercialRiskObjectArtifact(object, { now: new Date(at) });
+const verificationKeys = await loadPublicRiskObjectVerificationKeys();
+if (!verificationKeys) throw new Error("COUNTRY_GRO_HOT_CANARY_TRUST_REGISTRY_UNAVAILABLE");
+const signature = verifyRiskObjectSignature(object, verificationKeys);
+const commercial = verifyCommercialRiskObjectArtifact(object, {
+  now: new Date(at),
+  verification_keys: verificationKeys,
+});
 if (!signature.valid || !commercial.deliverable) throw new Error("COUNTRY_GRO_HOT_CANARY_VERIFY_FAILED");
 const recordSha256 = createHash("sha256").update(canonicalRiskObjectJson(object), "utf8").digest("hex");
 
