@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: "38 * * * *"
   workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/risk-indices-realtime-direct-postgres.yml"
+      - "scripts/ops/publish-b2-risk-indices-direct-postgres.mjs"
+      - "scripts/ops/publish-b2-verified-hot-snapshot.mjs"
+      - "src/lib/risk-indices-from-global-risk.ts"
+      - "src/lib/risk-indices.types.ts"
 
 permissions:
   contents: read
