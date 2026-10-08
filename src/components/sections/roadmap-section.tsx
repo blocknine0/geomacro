@@ -15,7 +15,7 @@ const PHASES = [
     ],
   },
   {
-    status: "ROADMAP · IN PROGRESS",
+    status: "COMING SOON · IN PROGRESS",
     tone: "text-amber-300",
     title: "Commercial hardening",
     body: "These capabilities are being hardened for controlled commercial use. They are not presented as generally available production services yet.",
@@ -29,7 +29,7 @@ const PHASES = [
     ],
   },
   {
-    status: "ROADMAP · NEXT",
+    status: "COMING SOON · EARLY ACCESS",
     tone: "text-sky-300",
     title: "Institutional Early Access",
     body: "Controlled design-partner pilots will validate usefulness, integration fit, operational friction and willingness to pay before broader commercial availability.",
@@ -42,7 +42,7 @@ const PHASES = [
     ],
   },
   {
-    status: "ROADMAP · LATER",
+    status: "COMING SOON · FUTURE",
     tone: "text-muted-foreground",
     title: "Production expansion",
     body: "Broader production availability comes only after security, reliability, legal, source-rights and customer-validation gates are met.",
