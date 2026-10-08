@@ -28,6 +28,8 @@ For a fresh signed object, Geomacro can create an interoperability review reques
 
 A returned signed proof is accepted only after verification against both the primary proof verifier and an independent verifier node. Partner verdicts and proofs do not authorize an irreversible action. They are evidence for a receiver-controlled admission process.
 
+For local preflight, Geomacro normally requires the deployed bounded POST verifier to verify the original signed GRO and reject a tampered clone. If that transport returns exactly HTTP 503 while the deployed GET trust registry is healthy, the adapter may use a fail-closed parity path only when the original passes the local public verifier against the deployed active key set and the tampered clone fails against that same key set. Other HTTP failures do not qualify. A live Federico review still cannot succeed without the partner's signed proof and independent proof verification.
+
 ## 4. Commercial progression
 
 The intended progression is:
