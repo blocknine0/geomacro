@@ -78,7 +78,7 @@ function parseLastJson(stdout, label) {
   throw new Error(`${label}_JSON_OUTPUT_MISSING`);
 }
 
-function verifyWorkerSources(stdout, { allowPartial = false } = {}) {
+function verifyWorkerSources(stdout, { allowPartial = false, stderr = "" } = {}) {
   let ready = null;
   const lastState = new Map();
   const hadError = new Set();
@@ -87,15 +87,22 @@ function verifyWorkerSources(stdout, { allowPartial = false } = {}) {
     try {
       const event = JSON.parse(raw);
       if (event?.rss === "ready") ready = event;
-      if ((event?.kind === "rss_source_complete" || event?.kind === "rss_error") && event?.source_id) {
-        const sourceId = String(event.source_id);
-        if (event.kind === "rss_error") {
-          hadError.add(sourceId);
-          lastState.set(sourceId, "error");
-        } else if (event.ok === true) {
-          lastState.set(sourceId, "success");
-        }
+      if (event?.kind === "rss_source_complete" && event?.source_id && event.ok === true) {
+        lastState.set(String(event.source_id), "success");
       }
+    } catch {}
+  }
+
+  // Worker emits bounded per-source rss_error JSON on stderr. Never expose or
+  // forward arbitrary stderr; parse only the exact structured error shape
+  // needed to prove that a missing source was explicitly classified.
+  for (const raw of String(stderr ?? "").split(/\r?\n/)) {
+    try {
+      const event = JSON.parse(raw);
+      if (event?.kind !== "rss_error" || !event?.source_id) continue;
+      const sourceId = String(event.source_id);
+      hadError.add(sourceId);
+      if (lastState.get(sourceId) !== "success") lastState.set(sourceId, "error");
     } catch {}
   }
 
@@ -221,6 +228,7 @@ async function main() {
     }
     const sourceSummary = verifyWorkerSources(worker.stdout, {
       allowPartial: ALLOW_PARTIAL_SOURCE_FAILURES,
+      stderr: worker.stderr,
     });
     if (worker.code !== 0 && sourceSummary.partial_refresh !== true) {
       throw new Error("RSS_WORKER_FAILED");
