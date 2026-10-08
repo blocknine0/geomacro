@@ -24,7 +24,8 @@ describe("independent verified Risk Indices edge", () => {
     expect(worker).toContain('"x-geomacro-verification-mode"');
     expect(worker).toContain('"parent-full-readback-hash-exact-restore"');
     expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot(env)");
-    expect(publisher).not.toContain('LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz"');
+    expect(publisher).not.toContain('const LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz"');
+    expect(publisher).toContain('GLOBAL_RISK_LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz"');
   });
 
   it("binds each live package to readback-verified proof and immutable per-snapshot history", () => {
