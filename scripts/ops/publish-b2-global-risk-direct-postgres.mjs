@@ -5,7 +5,11 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { assemblePublicGlobalRisk } from "../../src/lib/global-risk-assemble.ts";
 import { validateGlobalRiskContinuity } from "../../src/lib/global-risk-continuity.ts";
 import { createB2Client } from "./b2-s3-client.mjs";
-import { publishB2VerifiedHotSnapshot } from "./publish-b2-verified-hot-snapshot.mjs";
+import {
+  publishB2VerifiedHotSnapshot,
+  publishVerifiedCurrentGlobalRiskHotSnapshot,
+  readGlobalRiskB2Anchor,
+} from "./publish-b2-verified-hot-snapshot.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
@@ -17,6 +21,17 @@ const HISTORY_PREFIX = `geomacro-evidence/v1/history/global-risk/${METHODOLOGY}`
 const SNAPSHOT_LIMIT = 1000;
 const EVENT_LIMIT = 24;
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+
+const CURRENT_PROOF_SCHEMA = "geomacro.public-global-risk-current-proof.v1";
+const CURRENT_PROOF_PUBLISH_SCHEMA = "geomacro.public-global-risk-current-proof-publish.v1";
+const CURRENT_PROOF_MODE = "independent-gri-proof-over-b2-baseline";
+
+function isB2CapError(error) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("B2_DOWNLOAD_CAP_EXCEEDED") ||
+    message.includes("B2_TRANSACTION_CAP_EXCEEDED") ||
+    message.includes("B2_NATIVE_GET_FAILED_403_download_cap_exceeded");
+}
 
 function authoritativeDbUrl() {
   const raw = String(process.env.SUPABASE_DB_URL ?? "").trim();
@@ -157,6 +172,92 @@ const b2 = createB2Client({
   bucket: B2_BUCKET,
 });
 
+async function publishCurrentProofRecovery(error) {
+  if (!isB2CapError(error)) throw error;
+  const anchor = await readGlobalRiskB2Anchor();
+  const generatedAt = new Date().toISOString();
+  const currentProof = {
+    proofHash: risk.proofHash,
+    evidenceHash: risk.evidenceHash,
+    calculationHash: risk.calculationHash,
+    dispositionHash: risk.dispositionHash,
+    inputHash: risk.inputHash,
+    methodologyHash: risk.methodologyHash,
+    changeHash: risk.changeHash,
+    candidateEventCount: risk.candidateEventCount,
+    reconciliationResidual: risk.reconciliationResidual,
+    changeResidual: risk.changeResidual,
+  };
+  const liveValue = {
+    schema: "geomacro.public-global-risk-live.v1",
+    generated_at: generatedAt,
+    source_project: PROJECT_REF,
+    verification_mode: CURRENT_PROOF_MODE,
+    baseline_b2_sha256: anchor.b2_sha256,
+    baseline_payload_sha256: anchor.payload_sha256,
+    baseline_source_run_id: anchor.source_run_id,
+    baseline_generated_at: anchor.generated_at,
+    current_b2_snapshot_promoted: false,
+    current_proof: currentProof,
+    data: risk,
+  };
+  const proof = {
+    schema: CURRENT_PROOF_SCHEMA,
+    verification_mode: CURRENT_PROOF_MODE,
+    generated_at: generatedAt,
+    source_project: PROJECT_REF,
+    live_key: LIVE_KEY,
+    snapshot_id: risk.snapshotId,
+    snapshot_as_of: risk.snapshotAsOf,
+    methodology_version: risk.methodologyVersion,
+    proof_hash: risk.proofHash,
+    evidence_hash: risk.evidenceHash,
+    calculation_hash: risk.calculationHash,
+    disposition_hash: risk.dispositionHash,
+    input_hash: risk.inputHash,
+    methodology_hash: risk.methodologyHash,
+    change_hash: risk.changeHash,
+    candidate_event_count: risk.candidateEventCount,
+    reconciliation_residual: risk.reconciliationResidual,
+    change_residual: risk.changeResidual,
+    independent_gri_proof_verified: true,
+    baseline_b2_sha256: anchor.b2_sha256,
+    baseline_payload_sha256: anchor.payload_sha256,
+    baseline_source_run_id: anchor.source_run_id,
+    baseline_generated_at: anchor.generated_at,
+    baseline_b2_readback_verified: true,
+    baseline_exact_gzip_restore_verified: true,
+    current_b2_readback_verified: false,
+    current_b2_snapshot_promoted: false,
+  };
+  const hotSnapshot = await publishVerifiedCurrentGlobalRiskHotSnapshot({ value: liveValue, proof });
+  console.log(JSON.stringify({
+    ok: true,
+    schema: CURRENT_PROOF_PUBLISH_SCHEMA,
+    authority_read: "direct-postgres-read-only",
+    authority_serve: "cloudflare-d1-current-proof-over-b2-baseline",
+    verification_mode: CURRENT_PROOF_MODE,
+    methodology_version: risk.methodologyVersion,
+    snapshot_id: risk.snapshotId,
+    snapshot_as_of: risk.snapshotAsOf,
+    destructive_change: false,
+    synthetic_history: false,
+    synthetic_current_score: false,
+    b2_readback_verified: false,
+    baseline_b2_readback_verified: true,
+    baseline_b2_sha256: anchor.b2_sha256,
+    baseline_payload_sha256: anchor.payload_sha256,
+    current_b2_snapshot_promoted: false,
+    d1_hot_snapshot_published: true,
+    d1_payload_sha256: hotSnapshot.payload_sha256,
+    d1_expires_at: hotSnapshot.expires_at,
+  }));
+}
+
+try {
+  // Fail before any B2 write when the free-tier readback cap is already exhausted.
+  await b2.getOptional(LIVE_PROOF_KEY);
+
 // Immutable archive: one exact verified continuity package per snapshot. The
 // package includes every verified same-methodology snapshot row used to build
 // the chart, so B2 preserves the auditable historical source material rather
@@ -255,6 +356,7 @@ console.log(JSON.stringify({
   schema: "geomacro.public-global-risk-direct-postgres-publish.v1",
   authority_read: "direct-postgres-read-only",
   authority_serve: "backblaze-b2",
+  verification_mode: "direct-b2-readback",
   history_anchor: "latest-verified-snapshot",
   methodology_version: risk.methodologyVersion,
   snapshot_id: risk.snapshotId,
@@ -270,7 +372,11 @@ console.log(JSON.stringify({
   synthetic_history: false,
   synthetic_current_score: false,
   b2_readback_verified: true,
+  exact_gzip_restore_verified: true,
   d1_hot_snapshot_published: true,
   d1_payload_sha256: hotSnapshot.payload_sha256,
   d1_expires_at: hotSnapshot.expires_at,
 }));
+} catch (error) {
+  await publishCurrentProofRecovery(error);
+}
