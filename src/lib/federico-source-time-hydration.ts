@@ -14,6 +14,29 @@ const TRUSTED_TIMESTAMP_HOSTS_BY_SOURCE = new Map<string, ReadonlySet<string>>([
       "scmp.com",
     ]),
   ],
+  [
+    "bbc_world_rss",
+    new Set([
+      "www.bbc.co.uk",
+      "bbc.co.uk",
+      "www.bbc.com",
+      "bbc.com",
+    ]),
+  ],
+  [
+    "aljazeera_rss",
+    new Set([
+      "www.aljazeera.com",
+      "aljazeera.com",
+    ]),
+  ],
+  [
+    "forexlive_rss",
+    new Set([
+      "investinglive.com",
+      "www.investinglive.com",
+    ]),
+  ],
 ]);
 
 const TRUSTED_TIMESTAMP_HOSTS = new Set(
@@ -113,17 +136,31 @@ function hasExplicitTimeOfDay(value: string) {
   return /(?:T|\s)\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?/.test(value);
 }
 
+function isXinhuaTimestampUrl(sourceUrl: string) {
+  try {
+    const hostname = new URL(sourceUrl).hostname.toLowerCase();
+    return (
+      hostname === "english.news.cn" ||
+      hostname === "www.xinhuanet.com" ||
+      hostname === "xinhuanet.com"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function normalizeTimestampCandidate(raw: string, sourceUrl: string) {
   const value = raw.trim();
   if (!value || !hasExplicitTimeOfDay(value)) return null;
 
-  // Xinhua's English pages emit their visible publication timestamp as a local
-  // China wall clock. Convert that source-specific form explicitly instead of
-  // relying on the runner locale.
-  if (
-    /^(?:\d{4}-\d{2}-\d{2})[ T]\d{2}:\d{2}(?::\d{2})?$/.test(value) &&
-    isTrustedFedericoTimestampUrl(sourceUrl)
-  ) {
+  const timezoneLess =
+    /^(?:\d{4}-\d{2}-\d{2})[ T]\d{2}:\d{2}(?::\d{2})?$/.test(value);
+
+  // Only Xinhua's English article pages are allowed to interpret a precise
+  // timezone-less publisher wall clock as China Standard Time. Other trusted
+  // publishers must supply an explicit offset/zone; we never infer one.
+  if (timezoneLess) {
+    if (!isXinhuaTimestampUrl(sourceUrl)) return null;
     return `${value.replace(" ", "T")}+08:00`;
   }
 
@@ -181,13 +218,14 @@ export function extractTrustedPublishedAt(
     if (match[1]) candidates.push(match[1]);
   }
 
-  // Xinhua's rendered article header visibly carries a timestamp such as
-  // "2026-10-01 19:21:31" even when generic metadata contains only the date.
-  // Search only the bounded leading document region so body/archive dates do
-  // not become publication evidence.
-  const leadingHtml = html.slice(0, 120_000);
-  for (const match of leadingHtml.matchAll(/\b(20\d{2}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})\b/g)) {
-    if (match[1]) candidates.push(match[1]);
+  // Xinhua's rendered article header visibly carries a timezone-less local
+  // publication timestamp. This fallback is Xinhua-only; adding other trusted
+  // hosts must never make an arbitrary body timestamp publication evidence.
+  if (isXinhuaTimestampUrl(sourceUrl)) {
+    const leadingHtml = html.slice(0, 120_000);
+    for (const match of leadingHtml.matchAll(/\b(20\d{2}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})\b/g)) {
+      if (match[1]) candidates.push(match[1]);
+    }
   }
 
   for (const candidate of candidates) {
