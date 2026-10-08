@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "28 */6 * * *"
   workflow_dispatch: {}
+  workflow_run:
+    workflows:
+      - "Risk Indices Realtime Direct Postgres"
+    types:
+      - completed
   push:
     branches:
       - main
@@ -27,7 +32,19 @@ concurrency:
 
 jobs:
   deploy-accept:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      (
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main'
+        ) ||
+        (
+          github.event_name != 'workflow_run' &&
+          github.ref == 'refs/heads/main'
+        )
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: production
