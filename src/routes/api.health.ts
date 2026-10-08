@@ -9,66 +9,169 @@ import { readRiskIndicesEdge } from "../lib/risk-indices-edge.server";
 import { geomacroSupabaseRuntimeMode } from "../lib/supabase-runtime-mode.server";
 
 const SUPABASE_RECOVERY_PROJECT_REF = "ldpwajisioljyjtojvfx";
-const VERIFIED_HOT_EDGE_PROOF = "full-readback-hash-exact-restore";
-const HOT_EDGE_PROBES = [
+const CONTROL_PLANE_PUBLIC_URL =
+  "https://geomacro-control-plane.daspallab202391.workers.dev";
+const HOT_SNAPSHOT_PROBES = [
   {
+    key: "intelligence",
     product: "intelligence",
-    url: "https://geomacro-intelligence.daspallab202391.workers.dev/intelligence",
-    authority: "backblaze-b2-intelligence-edge",
     schema: "geomacro.public-intelligence-live.v1",
+    proofSchema: "geomacro.public-intelligence-live-proof.v1",
+    b2Key: "geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
     maxAgeMs: 6 * 60 * 60 * 1000,
   },
   {
-    product: "global_risk",
-    url: "https://geomacro-global-risk.daspallab202391.workers.dev/global-risk",
-    authority: "backblaze-b2-verified-edge",
+    key: "global_risk",
+    product: "global-risk",
     schema: "geomacro.public-global-risk-live.v1",
+    proofSchema: "geomacro.public-global-risk-live-proof.v1",
+    b2Key: "geomacro-evidence/v1/live/global-risk/latest.json.gz",
     maxAgeMs: 90 * 60 * 1000,
   },
   {
-    product: "risk_indices",
-    url: "https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices",
-    authority: "backblaze-b2-risk-indices-edge",
+    key: "risk_indices",
+    product: "risk-indices",
     schema: "geomacro.public-risk-indices-live.v1",
+    proofSchema: "geomacro.public-risk-indices-live-proof.v1",
+    b2Key: "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz",
     maxAgeMs: 90 * 60 * 1000,
   },
-];
+] as const;
 
-async function verifyHotEdge(probe: (typeof HOT_EDGE_PROBES)[number]) {
+const HASH_RE = /^[0-9a-f]{64}$/;
+
+async function sha256Hex(value: string) {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
+  );
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
+  const unavailable = () => ({
+    ok: false,
+    serving_store: null,
+    b2_sha256: null,
+    payload_sha256: null,
+    source_as_of: null,
+  });
+
   try {
-    const response = await fetch(probe.url, {
-      headers: { Accept: "application/json", "Cache-Control": "no-cache" },
-      signal: AbortSignal.timeout(4_500),
-    });
-    if (
-      !response.ok ||
-      response.headers.get("x-geomacro-authority") !== probe.authority ||
-      response.headers.get("x-geomacro-serving-store") !== "cloudflare-d1" ||
-      response.headers.get("x-geomacro-b2-verification") !== VERIFIED_HOT_EDGE_PROOF
-    ) return { ok: false, serving_store: null, b2_sha256: null, payload_sha256: null };
-    const b2Sha256 = String(response.headers.get("x-geomacro-b2-sha256") ?? "");
-    const payloadSha256 = String(response.headers.get("x-geomacro-d1-payload-sha256") ?? "");
-    const sourceAsOf = String(response.headers.get("x-geomacro-source-as-of") ?? "");
-    const body = await response.json() as { schema?: string; generated_at?: string };
-    const generatedAt = Date.parse(String(body.generated_at ?? ""));
+    const response = await fetch(
+      `${CONTROL_PLANE_PUBLIC_URL}/v1/public/hot-snapshot/${probe.product}`,
+      {
+        headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+        signal: AbortSignal.timeout(4_500),
+      },
+    );
+    if (!response.ok) return unavailable();
+
+    const snapshot = await response.json() as {
+      ok?: boolean;
+      product?: string;
+      schema?: string;
+      generated_at?: string;
+      source_as_of?: string;
+      expires_at?: string;
+      b2_object_key?: string;
+      b2_sha256?: string;
+      payload_sha256?: string;
+      proof_schema?: string;
+      full_b2_readback_verified?: boolean;
+      exact_gzip_restore_verified?: boolean;
+      payload_json?: string;
+    };
+
+    const b2Sha256 = String(snapshot.b2_sha256 ?? "");
+    const payloadSha256 = String(snapshot.payload_sha256 ?? "");
+    const sourceAsOf = String(snapshot.source_as_of ?? "");
+    const payloadJson = String(snapshot.payload_json ?? "");
+    const generatedAtMs = Date.parse(String(snapshot.generated_at ?? ""));
     const sourceAsOfMs = Date.parse(sourceAsOf);
-    const age = Date.now() - generatedAt;
-    const sourceAge = Date.now() - sourceAsOfMs;
-    const ok =
-      body.schema === probe.schema &&
-      /^[0-9a-f]{64}$/.test(b2Sha256) &&
-      /^[0-9a-f]{64}$/.test(payloadSha256) &&
-      Number.isFinite(age) && age >= -5 * 60_000 && age <= 30 * 24 * 60 * 60 * 1000 &&
-      Number.isFinite(sourceAge) && sourceAge >= -5 * 60_000 && sourceAge <= probe.maxAgeMs;
+    const expiresAtMs = Date.parse(String(snapshot.expires_at ?? ""));
+    const now = Date.now();
+
+    if (
+      snapshot.ok !== true ||
+      snapshot.product !== probe.product ||
+      snapshot.schema !== probe.schema ||
+      snapshot.proof_schema !== probe.proofSchema ||
+      snapshot.b2_object_key !== probe.b2Key ||
+      snapshot.full_b2_readback_verified !== true ||
+      snapshot.exact_gzip_restore_verified !== true ||
+      !HASH_RE.test(b2Sha256) ||
+      !HASH_RE.test(payloadSha256) ||
+      !payloadJson ||
+      !Number.isFinite(generatedAtMs) ||
+      !Number.isFinite(sourceAsOfMs) ||
+      !Number.isFinite(expiresAtMs) ||
+      generatedAtMs > now + 5 * 60_000 ||
+      now - generatedAtMs > 30 * 24 * 60 * 60 * 1000 ||
+      sourceAsOfMs > now + 5 * 60_000 ||
+      now - sourceAsOfMs > probe.maxAgeMs ||
+      expiresAtMs <= now ||
+      expiresAtMs <= sourceAsOfMs ||
+      expiresAtMs > sourceAsOfMs + probe.maxAgeMs ||
+      await sha256Hex(payloadJson) !== payloadSha256
+    ) return unavailable();
+
+    let payload: {
+      schema?: string;
+      generated_at?: string;
+      source_project?: string;
+      rows?: Array<{ category?: string }>;
+      data?: {
+        snapshotAsOf?: string;
+        verificationStatus?: string;
+        auditPersisted?: boolean;
+        indices?: Array<{ status?: string }>;
+      };
+    };
+    try {
+      payload = JSON.parse(payloadJson);
+    } catch {
+      return unavailable();
+    }
+
+    if (
+      payload.schema !== probe.schema ||
+      payload.generated_at !== snapshot.generated_at ||
+      payload.source_project !== SUPABASE_RECOVERY_PROJECT_REF
+    ) return unavailable();
+
+    if (probe.product === "intelligence") {
+      const categories = new Set(
+        (payload.rows ?? []).map((row) => String(row.category ?? "").toLowerCase()),
+      );
+      if (!["geopolitics", "macro", "rare_earth"].every((category) => categories.has(category))) {
+        return unavailable();
+      }
+    } else {
+      if (
+        Date.parse(String(payload.data?.snapshotAsOf ?? "")) !== sourceAsOfMs ||
+        payload.data?.verificationStatus !== "verified"
+      ) return unavailable();
+      if (probe.product === "global-risk" && payload.data?.auditPersisted !== true) {
+        return unavailable();
+      }
+      if (
+        probe.product === "risk-indices" &&
+        (
+          payload.data?.indices?.length !== 3 ||
+          payload.data.indices.some((index) => index.status !== "available")
+        )
+      ) return unavailable();
+    }
+
     return {
-      ok,
-      serving_store: ok ? "cloudflare-d1" : null,
-      b2_sha256: ok ? b2Sha256 : null,
-      payload_sha256: ok ? payloadSha256 : null,
-      source_as_of: ok ? sourceAsOf : null,
+      ok: true,
+      serving_store: "cloudflare-d1",
+      b2_sha256: b2Sha256,
+      payload_sha256: payloadSha256,
+      source_as_of: sourceAsOf,
     };
   } catch {
-    return { ok: false, serving_store: null, b2_sha256: null, payload_sha256: null };
+    return unavailable();
   }
 }
 
@@ -140,11 +243,11 @@ async function getPublicProductionReadiness(deep: boolean) {
     };
   }
 
-  const [intelligence, globalRisk, riskIndices, ...hotEdges] = await Promise.all([
+  const [intelligence, globalRisk, riskIndices, ...hotSnapshots] = await Promise.all([
     configured ? readB2PublicIntelligence() : Promise.resolve(null),
     configured ? readB2PublicRisk() : Promise.resolve(null),
     readRiskIndicesEdge(),
-    ...HOT_EDGE_PROBES.map(verifyHotEdge),
+    ...HOT_SNAPSHOT_PROBES.map(verifyHotSnapshot),
   ]);
 
   const categories = new Set(
@@ -160,9 +263,11 @@ async function getPublicProductionReadiness(deep: boolean) {
     riskIndices.indices.length === 3 &&
     riskIndices.indices.every((index) => index.status === "available");
   const hotSnapshotServing = Object.fromEntries(
-    HOT_EDGE_PROBES.map((probe, index) => [probe.product, hotEdges[index]]),
+    HOT_SNAPSHOT_PROBES.map((probe, index) => [probe.key, hotSnapshots[index]]),
   );
-  const d1HotServingReady = hotEdges.length === HOT_EDGE_PROBES.length && hotEdges.every((proof) => proof.ok);
+  const d1HotServingReady =
+    hotSnapshots.length === HOT_SNAPSHOT_PROBES.length &&
+    hotSnapshots.every((proof) => proof.ok);
 
   return {
     deep_checked: true,
@@ -195,7 +300,7 @@ export const Route = createFileRoute("/api/health")({
             publicProduction.global_risk_ready === true &&
             publicProduction.risk_indices_ready === true &&
             publicProduction.risk_verification_status === "verified" &&
-            Object.values(publicProduction.hot_snapshot_serving ?? {}).length === HOT_EDGE_PROBES.length &&
+            Object.values(publicProduction.hot_snapshot_serving ?? {}).length === HOT_SNAPSHOT_PROBES.length &&
             Object.values(publicProduction.hot_snapshot_serving ?? {}).every((proof) => proof.ok));
 
         return Response.json(
