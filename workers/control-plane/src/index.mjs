@@ -628,6 +628,72 @@ async function getPublicHotSnapshot(env, product, now = Date.now()) {
   }
 }
 
+
+async function getCountryGroVerifiedHot(env, country, url, now = Date.now()) {
+  if (!COUNTRY_RE.test(country)) return json({ ok: false, error: "INVALID_COUNTRY" }, 400);
+  const atRaw = String(url.searchParams.get("at_or_before") ?? new Date(now).toISOString()).trim();
+  const atMs = Date.parse(atRaw);
+  if (!Number.isFinite(atMs) || atMs > now + 5 * 60_000) {
+    return json({ ok: false, error: "INVALID_TIMESTAMP" }, 400);
+  }
+  try {
+    const row = await env.DB.prepare(`
+      SELECT country_iso3, object_id, schema_version, generated_at, expires_at,
+        signing_key_id, payload_hash, record_sha256, archive_key, archive_sha256,
+        archive_write_acknowledged, archive_readback_verified, object_json, verified_at
+      FROM country_gro_verified_hot
+      WHERE country_iso3 = ? AND generated_at <= ? AND expires_at > ?
+      LIMIT 1
+    `).bind(country, new Date(atMs).toISOString(), new Date(atMs).toISOString()).first();
+    if (!row) return json({ ok: false, error: "COUNTRY_GRO_HOT_UNAVAILABLE" }, 404);
+    const objectJson = String(row.object_json ?? "");
+    if (
+      row.country_iso3 !== country ||
+      row.archive_write_acknowledged !== 1 ||
+      !HASH_RE.test(String(row.payload_hash ?? "")) ||
+      !HASH_RE.test(String(row.record_sha256 ?? "")) ||
+      !HASH_RE.test(String(row.archive_sha256 ?? "")) ||
+      new TextEncoder().encode(objectJson).byteLength > 512 * 1024
+    ) return json({ ok: false, error: "COUNTRY_GRO_HOT_INVALID" }, 503);
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(objectJson));
+    const digestHex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    if (digestHex !== row.record_sha256) return json({ ok: false, error: "COUNTRY_GRO_HOT_HASH_MISMATCH" }, 503);
+    let object;
+    try { object = JSON.parse(objectJson); } catch {
+      return json({ ok: false, error: "COUNTRY_GRO_HOT_INVALID" }, 503);
+    }
+    if (
+      object?.object_id !== row.object_id ||
+      object?.schema_version !== row.schema_version ||
+      object?.subject?.type !== "country" ||
+      object?.subject?.id !== country ||
+      object?.integrity?.signing_key_id !== row.signing_key_id ||
+      object?.integrity?.payload_hash !== row.payload_hash ||
+      object?.generated_at !== row.generated_at ||
+      object?.expires_at !== row.expires_at
+    ) return json({ ok: false, error: "COUNTRY_GRO_HOT_BINDING_INVALID" }, 503);
+    return json({
+      ok: true,
+      serving_store: "cloudflare-d1",
+      archive_store: "backblaze-b2",
+      archive_write_acknowledged: true,
+      archive_readback_verified: row.archive_readback_verified === 1,
+      archive_readback_required_for_serving: false,
+      country_iso3: country,
+      object_id: row.object_id,
+      signing_key_id: row.signing_key_id,
+      payload_hash: row.payload_hash,
+      record_sha256: row.record_sha256,
+      archive_key: row.archive_key,
+      archive_sha256: row.archive_sha256,
+      verified_at: row.verified_at,
+      object,
+    });
+  } catch {
+    return json({ ok: false, error: "D1_UNAVAILABLE" }, 503);
+  }
+}
+
 async function health(env) {
   if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
   try {
@@ -842,6 +908,12 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      if (
+        request.method === "GET" &&
+        parts[0] === "v1" &&
+        parts[1] === "country-gro-hot" &&
+        parts.length === 3
+      ) return getCountryGroVerifiedHot(env, parts[2].toUpperCase(), url);
       if (
         request.method === "GET" &&
         parts[0] === "v1" &&
