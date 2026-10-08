@@ -19,6 +19,8 @@ name: Day 6 Authorized Federico Pilot Once
 # No policy or allowance boundary changes in this retrigger.
 # Exact-main retrigger after VEN became a current VERIFIED same-event two-provider-family strict candidate.
 # No threshold, source policy, allowance, payment, or execution boundary changes in this retrigger.
+# Final bounded retrigger after local assurance moved from synchronous B2 GET
+# to B2 write-ack plus isolated D1 exact readback verification.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
@@ -32,6 +34,9 @@ on:
       - "src/lib/public-demo-risk-profile.ts"
       - "scripts/hydrate-federico-source-times.ts"
       - "src/lib/federico-source-time-hydration.ts"
+      - "scripts/day6-direct-live-federico-gro.ts"
+      - ".github/workflows/day6-partner-assurance-final.yml"
+      - "workers/control-plane/migrations/0013_partner_assurance_gro_verified.sql"
 
 permissions:
   contents: read
