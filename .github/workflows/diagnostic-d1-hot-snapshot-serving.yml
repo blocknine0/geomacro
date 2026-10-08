@@ -1,0 +1,45 @@
+name: Diagnostic D1 Hot Snapshot Serving
+
+on:
+  push:
+    branches:
+      - fix/1414-d1-hot-snapshot-health-proof
+    paths:
+      - ".github/workflows/diagnostic-d1-hot-snapshot-serving.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Probe public D1 hot snapshots and edge proof headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONTROL="https://geomacro-control-plane.daspallab202391.workers.dev"
+          declare -A SNAP=(
+            [intelligence]="$CONTROL/v1/public/hot-snapshot/intelligence"
+            [global-risk]="$CONTROL/v1/public/hot-snapshot/global-risk"
+            [risk-indices]="$CONTROL/v1/public/hot-snapshot/risk-indices"
+          )
+          declare -A EDGE=(
+            [intelligence]="https://geomacro-intelligence.daspallab202391.workers.dev/intelligence"
+            [global-risk]="https://geomacro-global-risk.daspallab202391.workers.dev/global-risk"
+            [risk-indices]="https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices"
+          )
+
+          for product in intelligence global-risk risk-indices; do
+            echo "=== SNAPSHOT $product ==="
+            curl -sS -D "/tmp/$product.snapshot.headers" -o "/tmp/$product.snapshot.json" -w 'HTTP %{http_code}\n' --max-time 15 "${SNAP[$product]}" || true
+            cat "/tmp/$product.snapshot.headers" || true
+            head -c 3000 "/tmp/$product.snapshot.json" || true
+            echo
+            echo "=== EDGE $product ==="
+            curl -sS -D "/tmp/$product.edge.headers" -o "/tmp/$product.edge.json" -w 'HTTP %{http_code}\n' --max-time 15 -H 'Cache-Control: no-cache' "${EDGE[$product]}" || true
+            grep -iE '^(HTTP/|x-geomacro-|cache-control:|content-type:)' "/tmp/$product.edge.headers" || true
+            node -e 'const fs=require("fs"); try { const b=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); console.log(JSON.stringify({schema:b?.schema,generated_at:b?.generated_at,snapshotAsOf:b?.data?.snapshotAsOf,current_overlay_source_batch_at:b?.current_overlay_source_batch_at})); } catch {}' "/tmp/$product.edge.json"
+            echo
+          done
