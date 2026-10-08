@@ -112,7 +112,7 @@ export function AskWorkspace() {
         </div>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">Ask Geomacro</h1>
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Ask one clear question. Geomacro answers the point you asked, using verified risk context and approved intelligence evidence.
+          Ask a public risk question for free. Geomacro uses approved intelligence context to answer what is supported. For applications, recurring use or integrations, <Link to="/pricing" className="text-primary hover:underline">compare API and monthly access</Link>.
         </p>
       </header>
 
