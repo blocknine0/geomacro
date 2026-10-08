@@ -38,6 +38,15 @@ describe(
           "verifyPublicRiskObjectArtifact",
         );
         expect(route).toContain(
+          "deployedPublicVerificationKeys",
+        );
+        expect(route).toContain(
+          'new URL(\n      "/api/risk-object-keys",\n      request.url',
+        );
+        expect(route).toContain(
+          "verification_keys:\n          verificationKeys",
+        );
+        expect(route).toContain(
           "MAX_VERIFY_BODY_BYTES",
         );
         expect(route).toContain(
@@ -58,11 +67,20 @@ describe(
     it(
       "never exposes a caller-supplied verification key bypass",
       () => {
-        expect(route).not.toMatch(
-          /verification_keys\s*:/,
+        expect(route).toContain(
+          '!("risk_object" in body)',
+        );
+        expect(route).not.toContain(
+          '"verification_keys" in body',
+        );
+        expect(route).not.toContain(
+          "body.verification_keys",
         );
         expect(route).not.toContain(
           "RISK_OBJECT_SIGNING_PRIVATE_KEY",
+        );
+        expect(route).toContain(
+          "verification_key_registry_unavailable",
         );
       },
     );
