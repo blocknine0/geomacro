@@ -14,6 +14,6 @@ Reliability controls include:
 - story concentration capping
 - freshness and publication rules
 
-A large number of repeated articles is not treated as the same thing as a large number of independent developments.
+A high volume of repeated coverage is not treated as the same thing as a large number of independent developments.
 
 Event severity remains a risk signal. Evidence weight is determined separately by confidence, recency and concentration controls.
