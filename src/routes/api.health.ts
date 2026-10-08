@@ -155,6 +155,7 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
       baseline_b2_sha256?: string;
       baseline_payload_sha256?: string;
       baseline_source_run_id?: string;
+      baseline_generated_at?: string;
       current_b2_snapshot_promoted?: boolean;
       current_proof?: Record<string, unknown>;
       data?: {
@@ -222,6 +223,8 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
             payload.baseline_b2_sha256 !== b2Sha256 ||
             !HASH_RE.test(String(payload.baseline_payload_sha256 ?? "")) ||
             !/^\d{1,20}$/.test(String(payload.baseline_source_run_id ?? "")) ||
+            !Number.isFinite(Date.parse(String(payload.baseline_generated_at ?? ""))) ||
+            Date.now() - Date.parse(String(payload.baseline_generated_at ?? "")) > 30 * 24 * 60 * 60 * 1000 ||
             !hashes.every(([dataKey, proofKey]) =>
               HASH_RE.test(String(payload.data?.[dataKey] ?? "")) &&
               currentProof[proofKey] === payload.data?.[dataKey]
