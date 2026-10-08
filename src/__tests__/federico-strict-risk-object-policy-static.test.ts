@@ -597,6 +597,27 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(publisher).not.toContain(
       "FEDERICO_STRICT_CHINA_NEXUS_TERMS",
     );
+    expect(publisher).toContain(
+      "const tupleBySourceId = new Map",
+    );
+    expect(publisher).toContain(
+      "const sourceTuples = [...tupleBySourceId.values()]",
+    );
+    expect(publisher).toContain(
+      "const sourceIds = sourceTuples.map",
+    );
+    expect(publisher).toContain(
+      "const sourceRecordIds = sourceTuples.map",
+    );
+    expect(publisher).toContain(
+      "const contentHashes = sourceTuples.map",
+    );
+    expect(publisher).toContain(
+      "const latestTuple = [...sourceTuples].sort",
+    );
+    expect(publisher).toContain(
+      "evidence_count: sourceTuples.length",
+    );
     expect(publisher).not.toContain(
       "const fallback = await loadFedericoStructuredFallback(db, asOf, iso3);",
     );
