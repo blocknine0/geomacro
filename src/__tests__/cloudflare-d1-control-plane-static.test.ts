@@ -48,8 +48,8 @@ describe("Cloudflare D1 permanent control plane", () => {
     expect(worker).toContain("proof.full_b2_readback_verified === true");
     expect(worker).toContain("proof.exact_gzip_restore_verified === true");
     expect(worker).toContain('GLOBAL_RISK_CURRENT_PROOF_MODE = "independent-gri-proof-over-b2-baseline"');
-    expect(worker).toContain("proof.current_b2_readback_verified !== false");
-    expect(worker).toContain("proof.current_b2_snapshot_promoted !== false");
+    expect(worker).toContain("proof?.current_b2_readback_verified !== false");
+    expect(worker).toContain("proof?.current_b2_snapshot_promoted !== false");
     expect(worker).toContain("HOT_SNAPSHOT_GLOBAL_RISK_B2_ANCHOR_MISMATCH");
     expect(worker).toContain("HOT_SNAPSHOT_PROOF_BINDING_INVALID");
     expect(worker).toContain("HOT_SNAPSHOT_PAYLOAD_HASH_MISMATCH");
