@@ -77,7 +77,10 @@ jobs:
       - name: Publish verified Risk Indices package to isolated B2 namespace
         env:
           RISK_INDICES_PUBLISHED_LIVE_ARTIFACT_PATH: /tmp/risk-indices-published-live.json
-        run: bun scripts/ops/publish-b2-risk-indices-direct-postgres.mjs | tee /tmp/risk-indices-publish.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/publish-b2-risk-indices-direct-postgres.mjs | tee /tmp/risk-indices-publish.json
 
       - name: Require verified dedicated Risk Indices edge
         shell: bash
