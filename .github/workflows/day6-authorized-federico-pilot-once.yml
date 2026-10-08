@@ -28,6 +28,8 @@ on:
       - "scripts/run-gdelt-gal-cycle.mjs"
       - "supabase/functions/live-flash-corroborate/index.ts"
       - "src/lib/public-demo-risk-profile.ts"
+      - "scripts/hydrate-federico-source-times.ts"
+      - "src/lib/federico-source-time-hydration.ts"
 
 permissions:
   contents: read
