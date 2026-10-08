@@ -8,6 +8,7 @@ import {
   type RiskObjectVerificationKeys,
 } from "../src/lib/risk-object-signing.server";
 import type { GeomacroRiskObject } from "../src/lib/risk-object-contract";
+import { verifyPublicRiskObjectArtifact } from "../src/lib/risk-object-verification.server";
 
 type PartnerConfig = {
   status: string;
@@ -141,6 +142,23 @@ const localSignature = verifyRiskObjectSignature(object, verificationKeys);
 if (core.require_local_signature_verification && !localSignature.valid) fail("LOCAL_SIGNATURE_VERIFICATION_FAILED", localSignature.reason);
 
 const trustedNow = Date.parse(trustedHttpDate);
+
+const localPublicVerification = verifyPublicRiskObjectArtifact(object, {
+  now: new Date(trustedNow),
+  verification_keys: verificationKeys,
+});
+if (!localPublicVerification.valid || localPublicVerification.status !== "VERIFIED") {
+  fail(
+    "LOCAL_PUBLIC_VERIFIER_REJECTED_ORIGINAL",
+    JSON.stringify({
+      status: localPublicVerification.status,
+      valid: localPublicVerification.valid,
+      reason_codes: localPublicVerification.reason_codes,
+      checks: localPublicVerification.checks,
+    }),
+  );
+}
+
 const generatedAt = Date.parse(object.generated_at);
 const expiresAt = Date.parse(object.expires_at);
 if (!Number.isFinite(generatedAt) || !Number.isFinite(expiresAt)) fail("INVALID_OBJECT_TIME");
@@ -163,7 +181,19 @@ const deployed = await deployedVerify(geomacroOrigin, object);
 if (
   core.require_deployed_verifier &&
   (deployed.status !== 200 || deployed.body?.verification?.valid !== true || deployed.body?.verification?.status !== "VERIFIED")
-) fail("DEPLOYED_VERIFIER_REJECTED_ORIGINAL");
+) {
+  fail(
+    "DEPLOYED_VERIFIER_REJECTED_ORIGINAL",
+    JSON.stringify({
+      http_status: deployed.status,
+      error: deployed.body?.error ?? null,
+      verification_status: deployed.body?.verification?.status ?? null,
+      verification_valid: deployed.body?.verification?.valid ?? null,
+      reason_codes: deployed.body?.verification?.reason_codes ?? null,
+      checks: deployed.body?.verification?.checks ?? null,
+    }),
+  );
+}
 
 const tampered = structuredClone(object) as any;
 if (!tampered.risk || typeof tampered.risk.score !== "number") fail("TAMPER_VECTOR_UNAVAILABLE");
