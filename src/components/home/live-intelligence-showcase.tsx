@@ -121,7 +121,7 @@ export function LiveIntelligenceShowcase() {
               <div>
                 <h3 className="font-semibold text-foreground">Why · Derived context</h3>
                 <p className="mt-1 text-muted-foreground">
-                  {summary || "Specific causal drivers are not published in the verified public event summary."}
+                  {summary && summary.toLowerCase() !== story?.toLowerCase() ? summary : "Specific causal drivers have not been independently established in this public preview."}
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   A development summary does not by itself establish causation.
