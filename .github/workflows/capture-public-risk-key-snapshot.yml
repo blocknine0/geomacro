@@ -1,0 +1,42 @@
+name: Capture Public Risk Key Snapshot
+
+on:
+  push:
+    branches:
+      - ops/capture-public-risk-key-1efa-20261008
+    paths:
+      - ".github/workflows/capture-public-risk-key-snapshot.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch deployed public key registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 4 --retry-all-errors --retry-delay 2 \
+            https://geomacro.live/api/risk-object-keys > /tmp/keys.json
+          jq -e '
+            .ok == true and
+            ([.keys[] | select(.key_id == "geomacro-risk-2026-03" and .status == "active")] | length == 1)
+          ' /tmp/keys.json >/dev/null
+          node - <<'NODE'
+          const fs=require("node:fs");
+          const crypto=require("node:crypto");
+          const body=JSON.parse(fs.readFileSync("/tmp/keys.json","utf8"));
+          const key=body.keys.find(x=>x.key_id==="geomacro-risk-2026-03");
+          const spki=Buffer.from(key.public_key_spki_b64,"base64");
+          console.log(JSON.stringify({
+            key_id:key.key_id,
+            status:key.status,
+            not_before:key.not_before??null,
+            not_after:key.not_after??null,
+            public_key_spki_b64:key.public_key_spki_b64,
+            public_key_fingerprint_sha256:crypto.createHash("sha256").update(spki).digest("hex")
+          }));
+          NODE
