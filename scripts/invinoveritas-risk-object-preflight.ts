@@ -34,6 +34,16 @@ import {
   type RiskObjectVerificationKeys,
 } from "../src/lib/risk-object-signing.server";
 import { verifyPublicRiskObjectArtifact } from "../src/lib/risk-object-verification.server";
+import {
+  GRO_CANONICALIZATION_SPEC_SHA256,
+  GRO_CANONICALIZATION_SPEC_URL,
+  GRO_INDEPENDENT_VERIFIER_SHA256,
+  GRO_INDEPENDENT_VERIFIER_URL,
+  GRO_NORMATIVE_VECTORS_SHA256,
+  GRO_SIGNATURE_PREIMAGE_VERSION,
+  GRO_SOURCE_TUPLE_BINDING_VERSION,
+  GRO_VERIFICATION_CONTRACT_VERSION,
+} from "../src/lib/risk-object-contract";
 
 const file = process.argv[2];
 if (!file) {
@@ -124,7 +134,8 @@ if (
   (
     riskObject?.integrity?.trust_registry_url !==
       "https://geomacro.live/api/risk-object-keys" ||
-    !riskObject?.integrity?.canonicalization_url ||
+    riskObject?.integrity?.canonicalization_url !==
+      GRO_CANONICALIZATION_SPEC_URL ||
     !riskObject?.integrity?.public_key_spki_b64
   )
 ) {
@@ -238,11 +249,34 @@ if (strictProfile) {
     !manifest?.score_components ||
     !manifest?.selection_policy?.max_included_evidence_items ||
     !manifest?.selection_policy?.source_family_map_version ||
-    !manifest?.selection_policy?.source_family_map
+    !manifest?.selection_policy?.source_family_map ||
+    manifest?.selection_policy?.source_tuple_binding_version !==
+      GRO_SOURCE_TUPLE_BINDING_VERSION ||
+    manifest?.selection_policy?.source_record_id_scheme !==
+      "geomacro-source-id-plus-sha256-v1" ||
+    !manifest?.verification_contract
   ) {
     throw new Error(
       "Federico strict object is missing the signed compact reproducibility manifest",
     );
+  }
+
+  const verificationContract = manifest.verification_contract;
+  if (
+    verificationContract.contract_version !== GRO_VERIFICATION_CONTRACT_VERSION ||
+    verificationContract.canonicalization_identifier !== "geomacro-canonical-json-v1" ||
+    verificationContract.canonicalization_spec_url !== GRO_CANONICALIZATION_SPEC_URL ||
+    verificationContract.canonicalization_spec_sha256 !== GRO_CANONICALIZATION_SPEC_SHA256 ||
+    verificationContract.independent_verifier_url !== GRO_INDEPENDENT_VERIFIER_URL ||
+    verificationContract.independent_verifier_sha256 !== GRO_INDEPENDENT_VERIFIER_SHA256 ||
+    verificationContract.normative_vectors_sha256 !== GRO_NORMATIVE_VECTORS_SHA256 ||
+    verificationContract.signature_preimage_version !== GRO_SIGNATURE_PREIMAGE_VERSION ||
+    verificationContract.receiver_runtime_policy !==
+      "receiver_owned_implementation_must_pass_normative_vectors" ||
+    JSON.stringify(verificationContract.excluded_fields) !==
+      JSON.stringify(["integrity.payload_hash", "integrity.signature"])
+  ) {
+    throw new Error("Federico strict immutable verification contract mismatch");
   }
 
   const recomputedInputHash =
@@ -453,6 +487,13 @@ if (strictProfile) {
         item.source_record_ids.length === 0 ||
         !Array.isArray(item.content_hashes) ||
         item.content_hashes.length === 0 ||
+        item.source_ids.length !== item.source_record_ids.length ||
+        item.source_ids.length !== item.content_hashes.length ||
+        item.source_record_ids.some(
+          (recordId: unknown, index: number) =>
+            String(recordId ?? "") !==
+              `${String(item.source_ids[index] ?? "").trim().toLowerCase()}:sha256:${String(item.content_hashes[index] ?? "").trim().toLowerCase()}`,
+        ) ||
         typeof item.subject_attribution_confidence !== "number" ||
         !item.subject_attribution_method ||
         typeof item.relevance_weight !== "number" ||
