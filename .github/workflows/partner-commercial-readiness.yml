@@ -58,6 +58,15 @@ jobs:
       - name: Verify partner commercial contract
         run: node scripts/check-partner-commercial-readiness.mjs
 
+      - name: Compile Federico provider preflight without executing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun build scripts/invinoveritas-risk-object-preflight.ts \
+            --target=bun \
+            --outfile=/tmp/federico-provider-preflight-smoke.js
+          test -s /tmp/federico-provider-preflight-smoke.js
+
       - name: Run partner static tests
         run: |
           bunx vitest run src/__tests__/partner-commercial-readiness-static.test.ts
