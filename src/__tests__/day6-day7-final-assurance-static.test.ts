@@ -47,6 +47,11 @@ describe("Day 6 generic partner assurance", () => {
     expect(adapter).toContain("SIGNED_PARTNER_PROOF_MISSING");
     expect(adapter).toContain("INDEPENDENT_PARTNER_PROOF_VERIFICATION_FAILED");
     expect(adapter).toContain("TAMPER_NOT_REJECTED");
+    expect(adapter).toContain("verifyPublicRiskObjectArtifact");
+    expect(adapter).toContain("LOCAL_PUBLIC_VERIFIER_REJECTED_ORIGINAL");
+    expect(adapter).toContain("verification_keys: verificationKeys");
+    expect(adapter).toContain("reason_codes: deployed.body?.verification?.reason_codes");
+    expect(adapter).toContain("checks: deployed.body?.verification?.checks");
   });
 
   it("generates a country-agnostic strict GRO while keeping the Federico allowance explicit", () => {
