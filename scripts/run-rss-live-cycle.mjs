@@ -11,6 +11,12 @@ const DB_URL = String(process.env.SUPABASE_DB_URL ?? "").trim();
 const DB_MODE = String(process.env.GRI_DB_MODE ?? "").trim().toLowerCase();
 const SUMMARY_OUT = String(process.env.RSS_LIVE_CYCLE_SUMMARY_OUT ?? "").trim();
 const SKIP_CORROBORATION = String(process.env.RSS_LIVE_SKIP_CORROBORATION ?? "").trim().toLowerCase() === "true";
+const ALLOW_PARTIAL_SOURCE_FAILURES =
+  String(process.env.RSS_LIVE_ALLOW_PARTIAL_SOURCE_FAILURES ?? "").trim().toLowerCase() === "true";
+const MIN_PARTIAL_COMPLETED_SOURCES = Math.max(
+  2,
+  Math.min(50, Number(process.env.RSS_LIVE_MIN_PARTIAL_COMPLETED_SOURCES ?? 2)),
+);
 
 if (!DB_URL || DB_MODE !== "direct_postgres") {
   throw new Error("RSS_LIVE_CYCLE_REQUIRES_DIRECT_POSTGRES");
@@ -72,7 +78,7 @@ function parseLastJson(stdout, label) {
   throw new Error(`${label}_JSON_OUTPUT_MISSING`);
 }
 
-function verifyWorkerSources(stdout) {
+function verifyWorkerSources(stdout, { allowPartial = false } = {}) {
   let ready = null;
   const lastState = new Map();
   const hadError = new Set();
@@ -98,13 +104,21 @@ function verifyWorkerSources(stdout) {
   }
 
   const expected = [...new Set(ready.feeds.map(String).filter(Boolean))];
+  const completed = expected.filter((id) => lastState.get(id) === "success");
   const missing = expected.filter((id) => lastState.get(id) !== "success");
-  if (missing.length) throw new Error("RSS_SOURCES_INCOMPLETE");
+  if (missing.length && !allowPartial) throw new Error("RSS_SOURCES_INCOMPLETE");
+  if (allowPartial && completed.length < MIN_PARTIAL_COMPLETED_SOURCES) {
+    throw new Error("RSS_PARTIAL_SOURCE_FLOOR_NOT_MET");
+  }
 
   return {
     configured_source_count: expected.length,
-    completed_source_count: expected.filter((id) => lastState.get(id) === "success").length,
-    recovered_source_count: expected.filter((id) => lastState.get(id) === "success" && hadError.has(id)).length,
+    completed_source_count: completed.length,
+    recovered_source_count: completed.filter((id) => hadError.has(id)).length,
+    failed_source_count: missing.length,
+    failed_sources: missing.sort(),
+    partial_refresh: missing.length > 0,
+    minimum_partial_completed_sources: MIN_PARTIAL_COMPLETED_SOURCES,
     sources: expected.sort(),
   };
 }
@@ -198,10 +212,15 @@ async function main() {
     await closeServer(server);
     server = null;
 
-    if (worker.code !== 0) {
+    if (worker.code !== 0 && !ALLOW_PARTIAL_SOURCE_FAILURES) {
       throw new Error("RSS_WORKER_FAILED");
     }
-    const sourceSummary = verifyWorkerSources(worker.stdout);
+    const sourceSummary = verifyWorkerSources(worker.stdout, {
+      allowPartial: ALLOW_PARTIAL_SOURCE_FAILURES,
+    });
+    if (worker.code !== 0 && sourceSummary.partial_refresh !== true) {
+      throw new Error("RSS_WORKER_FAILED");
+    }
 
     const ingest = await runCommand(
       "bun",
@@ -246,6 +265,7 @@ async function main() {
       transport: "canonical_direct_postgres",
       edge_function_dependency: false,
       source_summary: sourceSummary,
+      partial_source_failure_tolerance_enabled: ALLOW_PARTIAL_SOURCE_FAILURES,
       spool: {
         payloads: local.spooledCount(),
         durable_authority: "canonical_live_flash_tables",
