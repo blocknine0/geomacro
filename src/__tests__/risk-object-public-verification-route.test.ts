@@ -56,10 +56,22 @@ describe(
     );
 
     it(
-      "never exposes a caller-supplied verification key bypass",
+      "uses only the server-validated registry and never accepts caller-supplied verification keys",
       () => {
-        expect(route).not.toMatch(
-          /verification_keys\s*:/,
+        expect(route).toContain(
+          "validatedRuntimeVerificationRegistry",
+        );
+        expect(route).toContain(
+          "verification_keys:",
+        );
+        expect(route).toContain(
+          "verificationKeys",
+        );
+        expect(route).not.toContain(
+          "body.verification_keys",
+        );
+        expect(route).not.toContain(
+          '"verification_keys" in body',
         );
         expect(route).not.toContain(
           "RISK_OBJECT_SIGNING_PRIVATE_KEY",
