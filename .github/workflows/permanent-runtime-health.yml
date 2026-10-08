@@ -98,7 +98,7 @@ jobs:
             BODY="$(curl -fsS --max-time 10 "$CONTROL_PLANE_URL/health" || true)"
             if printf '%s' "$BODY" | node -e '
               let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
-                try { const b=JSON.parse(s); process.exit(b?.ok===true && b?.store==="d1" && Number(b?.schema_version)>=2 && b?.durable_payload_store==="b2" && b?.commerce_ledger==="durable_object" ? 0 : 1); } catch { process.exit(1); }
+                try { const b=JSON.parse(s); process.exit(b?.ok===true && b?.store==="d1" && Number(b?.schema_version)>=3 && b?.durable_payload_store==="b2" && b?.commerce_ledger==="durable_object" ? 0 : 1); } catch { process.exit(1); }
               });
             '; then break; fi
             sleep $((attempt * 2))
@@ -106,7 +106,7 @@ jobs:
           printf '%s' "$BODY" | node -e '
             let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{
               const b=JSON.parse(s);
-              if (b?.ok!==true || b?.store!=="d1" || Number(b?.schema_version)<2 || b?.durable_payload_store!=="b2" || b?.commerce_ledger!=="durable_object") process.exit(4);
+              if (b?.ok!==true || b?.store!=="d1" || Number(b?.schema_version)<3 || b?.durable_payload_store!=="b2" || b?.commerce_ledger!=="durable_object") process.exit(4);
             });
           '
           printf '%s' "$BODY" > /tmp/d1-health.json
