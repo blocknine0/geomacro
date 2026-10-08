@@ -253,7 +253,7 @@ function IntelligencePage() {
                   <p className="text-sm text-muted-foreground">{previous.length} verified record{previous.length === 1 ? "" : "s"}</p>
                 </div>
                 <div className="grid gap-3">
-                  {previous.map((event) => <IntelCard key={`verified-context-${event.id}`} event={event} />}
+                  {previous.map((event) => <IntelCard key={`verified-context-${event.id}`} event={event} />)}
                 </div>
               </section>
             ) : null}
