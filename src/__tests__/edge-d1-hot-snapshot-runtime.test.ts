@@ -94,8 +94,13 @@ function hotSnapshot(product: string, validHash = true) {
         : "geomacro.public-risk-indices-live-proof.v1",
     verified_at: new Date(now).toISOString(),
     source_run_id: "17201234567",
+    verification_mode: "direct-b2-readback",
     full_b2_readback_verified: true,
     exact_gzip_restore_verified: true,
+    baseline_b2_readback_verified: true,
+    baseline_exact_gzip_restore_verified: true,
+    current_b2_readback_verified: true,
+    current_b2_snapshot_promoted: true,
     payload_json: payloadJson,
   };
 }
