@@ -63,7 +63,7 @@ function AboutPage() {
             <TrustCard icon={Lock} title="Keep execution separate" text="Risk Gate remains non-authorizing. Customer identity, permissions, policy, funds and final execution stay outside Geomacro." />
             <TrustCard icon={Github} title="Make implementation inspectable" text="The public repository exposes technical implementation for review. Public visibility does not grant unrestricted reuse; repository and upstream rights still apply." />
           </div>
-          <p className="mt-6 font-mono text-xs text-muted-foreground">execution_authorized=false</p>
+          <p className="mt-6 text-sm text-muted-foreground">Geomacro provides a recommendation. The customer remains responsible for any decision or action.</p>
         </div>
       </section>
 
