@@ -40,116 +40,41 @@ function jsonResponse(
   );
 }
 
-async function deployedPublicVerificationKeys(
-  request: Request,
-): Promise<
-  RiskObjectVerificationKeys | null
-> {
-  const registryUrl =
-    new URL(
-      "/api/risk-object-keys",
-      request.url,
-    );
-
+function deployedPublicVerificationKeys(): RiskObjectVerificationKeys | null {
   try {
-    const response =
-      await fetch(
-        registryUrl,
-        {
-          method: "GET",
-          headers: {
-            accept:
-              "application/json",
-            "cache-control":
-              "no-cache",
-          },
-          signal:
-            AbortSignal.timeout(
-              5_000,
-            ),
-        },
-      );
+    ensureRiskObjectRuntimePublicKey();
 
-    if (!response.ok) {
+    const registry =
+      publicRiskObjectVerificationKeySet();
+
+    if (!Array.isArray(registry.keys) || registry.keys.length === 0) {
       return null;
     }
 
-    const body =
-      await response.json() as {
-        ok?: boolean;
-        keys?: Array<{
-          key_id?: unknown;
-          public_key_spki_b64?: unknown;
-          status?: unknown;
-          not_before?: unknown;
-          not_after?: unknown;
-        }>;
-      };
+    const keySet: RiskObjectVerificationKeys = {};
 
-    if (
-      body?.ok !== true ||
-      !Array.isArray(
-        body.keys,
-      ) ||
-      body.keys.length === 0
-    ) {
-      return null;
-    }
-
-    const keySet:
-      RiskObjectVerificationKeys =
-      {};
-
-    for (const item of body.keys) {
-      const keyId =
-        String(
-          item?.key_id ??
-            "",
-        ).trim();
-      const publicKey =
-        String(
-          item?.public_key_spki_b64 ??
-            "",
-        ).trim();
-      const status =
-        String(
-          item?.status ??
-            "",
-        ).trim();
-
+    for (const item of registry.keys) {
       if (
-        !keyId ||
-        !publicKey ||
+        !item.key_id ||
+        !item.public_key_spki_b64 ||
         (
-          status !==
-            "active" &&
-          status !==
-            "retired" &&
-          status !==
-            "revoked"
+          item.status !== "active" &&
+          item.status !== "retired" &&
+          item.status !== "revoked"
         )
       ) {
         return null;
       }
 
-      keySet[keyId] = {
+      keySet[item.key_id] = {
         public_key_spki_b64:
-          publicKey,
-        status,
+          item.public_key_spki_b64,
+        status:
+          item.status,
         not_before:
-          item?.not_before ==
-            null
-            ? null
-            : String(
-                item.not_before,
-              ),
+          item.not_before ?? null,
         not_after:
-          item?.not_after ==
-            null
-            ? null
-            : String(
-                item.not_after,
-              ),
+          item.not_after ?? null,
       };
     }
 
@@ -281,9 +206,7 @@ async function verifyRequest(
   }
 
   const verificationKeys =
-    await deployedPublicVerificationKeys(
-      request,
-    );
+    deployedPublicVerificationKeys();
 
   if (!verificationKeys) {
     return jsonResponse(
