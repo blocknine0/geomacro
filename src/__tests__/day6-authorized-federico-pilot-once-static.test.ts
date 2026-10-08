@@ -61,6 +61,8 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("min(coalesce(e.verification_score,0)) >= 65");
     expect(workflow).toContain("current VERIFIED strict pair already exists");
     expect(workflow).toContain("steps.pre_ready.outputs.country");
+    expect(workflow).toContain('prioritizing the already VERIFIED strict pre-refresh candidate');
+    expect(workflow).toContain('printf \'%s\\n\' "${{ steps.pre_ready.outputs.country }}" > /tmp/day6-candidates.txt');
     expect(workflow).toContain("Re-poll full audited governed RSS cohort only when fast evidence is insufficient");
     expect(workflow).toContain("Re-hydrate trusted publisher times after broad fallback");
     expect(workflow).toContain("steps.fast_ready.outputs.ready != 'true'");
