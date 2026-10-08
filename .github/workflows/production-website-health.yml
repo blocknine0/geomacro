@@ -46,11 +46,15 @@ jobs:
             echo "::error title=Browser refresh time leaked into Intelligence freshness::useIntelligence must display production evidence time."
             exit 1
           fi
-          grep -Fq 'Score dates remain the original verified evidence times.' src/routes/intelligence.tsx
-          grep -Fq 'Free to explore. Pay only for successful commercial machine delivery.' src/routes/pricing.tsx
+          grep -Fq 'Earlier assessments retain their original dates.' src/routes/intelligence.tsx
+          grep -Fq 'Explore for free. Choose the access that fits.' src/routes/pricing.tsx
           grep -Fq 'Failed, stale, unavailable, replayed, refunded, internal and unpaid requests do not count as successful paid deliveries.' src/routes/pricing.tsx
           grep -Fq 'Risk Gate, paid agent/x402 production access and broader machine delivery remain roadmap or controlled capabilities until separately promoted.' src/routes/institutional.tsx
-          grep -Fq 'Payment availability is runtime-authoritative. Commercial revenue begins only after production settlement is explicitly authorized and verified.' src/routes/pricing.tsx
+          grep -Fq 'Pay-per-call availability is confirmed by the live checkout, not the advertised price.' src/routes/pricing.tsx
+          grep -Fq 'Monthly self-service checkout is not yet available' src/routes/pricing.tsx
+          grep -Fq 'Structured intelligence for APIs and AI agents' src/components/commercial-access-guide.tsx
+          grep -Fq 'Monthly access is an enquiry, not an active self-service subscription.' src/components/commercial-access-guide.tsx
+          grep -Fq 'Pay only when a verified delivery succeeds' src/components/commercial-access-guide.tsx
           echo "PASS: evidence-time and commercial-truth source contracts match the exact checked-out SHA."
 
       - name: Verify locked production presentation and product truth
@@ -59,8 +63,8 @@ jobs:
           set -euo pipefail
 
           grep -Fq 'Three risks. Three separate indices.' src/components/gri/global-risk-domain-indices.tsx
-          grep -Fq 'Score dates remain the original verified evidence times.' src/routes/intelligence.tsx
-          grep -Fq 'Feed refreshed ' src/routes/intelligence.tsx
+          grep -Fq 'Earlier assessments retain their original dates.' src/routes/intelligence.tsx
+          grep -Fq 'Last update ' src/routes/intelligence.tsx
           grep -Fq 'Ask Geomacro' src/components/ask/ask-workspace.tsx
           grep -Fq 'Geomacro turns global developments into clear risk intelligence for teams, decisions and AI agents.' src/components/home/commercial-home.tsx
 
@@ -68,7 +72,7 @@ jobs:
           grep -Fq 'USDC / successful delivery' src/routes/pricing.tsx
           grep -Fq 'first 20,000' src/routes/pricing.tsx
           grep -Fq 'No-charge failure boundary' src/routes/pricing.tsx
-          grep -Fq 'Payment availability is runtime-authoritative. Commercial revenue begins only after production settlement is explicitly authorized and verified.' src/routes/pricing.tsx
+          grep -Fq 'Pay-per-call availability is confirmed by the live checkout, not the advertised price.' src/routes/pricing.tsx
 
           grep -Fq 'COMMERCIAL RISK INTELLIGENCE' src/routes/institutional.tsx
           grep -Fq 'Risk Gate' src/routes/risk-gate.tsx
