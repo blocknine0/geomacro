@@ -144,25 +144,31 @@ jobs:
             exit 1
           fi
 
-      - name: Refresh governed GDELT structured evidence before strict corroboration
-        env:
-          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
-          B2_GDELT_PRIMARY: "1"
-          LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres
-          LIVE_STRUCTURE_DRAIN_CONCURRENCY: "1"
-          LIVE_STRUCTURE_MAX_CYCLES: "12"
-          GDELT_GAL_CYCLE_OUTPUT_DIR: /tmp/day6-gdelt-gal-cycle
-          GDELT_GAL_CYCLE_MAX_ATTEMPTS: "3"
-          GDELT_GAL_CYCLE_BACKOFF_SECONDS: "20"
+      - name: Assess governed GDELT structured evidence without making it a prerequisite
+        id: gdelt
         shell: bash
         run: |
           set -euo pipefail
-          timeout 18m node scripts/run-gdelt-gal-cycle.mjs 2>&1 | tee /tmp/day6-gdelt-gal-cycle.log
-          jq -e '
-            .ok == true and
-            (.status == "healthy" or .status == "fresh_prior_cycle")
-          ' /tmp/day6-gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
-          echo "PASS: governed GDELT structured evidence is fresh before Federico corroboration; no partner allowance or user payment used."
+          state="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL'
+          select case
+            when last_success_at is not null
+             and last_success_at >= now() - interval '30 minutes'
+             and status in ('healthy','degraded')
+             and coalesce(consecutive_failures,0) = 0
+            then 'fresh'
+            else 'unavailable'
+          end
+          from public.live_ingestion_cursors
+          where source_key='gdelt_gal' and stream_key='global-relevant';
+          SQL
+          )"
+          if [[ "$state" == "fresh" ]]; then
+            echo "fresh=true" >> "$GITHUB_OUTPUT"
+            echo "PASS: recent governed GDELT structured evidence may participate in corroboration."
+          else
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GDELT structured lane is stale/degraded. Day 6 continues with audited publisher-native RSS only; no synthetic GDELT freshness or credit is created."
+          fi
 
       - name: Re-poll governed RSS without partner allowance
         env:
