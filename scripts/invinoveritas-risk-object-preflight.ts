@@ -989,7 +989,7 @@ if (reviewArtifactBytes > 20_000) {
 }
 
 const reviewContext =
-  "Neutral review of a fail-closed admission plan. The exact signed gro-1.1 record is supplied as external evidence, but issuer-provided verification, source-count, readiness, confidence, and historical freshness claims are not trust roots. The receiver must independently verify exact bytes, canonical payload hash, Ed25519 signature, receiver-controlled key trust, source provenance policy, and fresh receiver-controlled trusted UTC time strictly before expires_at at admission, then repeat the expiry check immediately before any irreversible action. This review never authorizes execution.";
+  "Neutral review of a fail-closed admission plan. The signed gro-1.1 record is read-only external evidence. Its supplied record_sha256 is transport/audit metadata, not a trust root. Authentication requires the receiver-preapproved Ed25519 key fingerprint plus the receiver-preapproved immutable parser/canonicalization commit and source digests. Parallel evidence arrays are accepted only under the explicit equal-length positional tuple rule. Source fetches are HTTPS allowlist-only with redirect/DNS/private-range/size/timeout controls. receiver_purpose=country_risk_context is local policy metadata, not a signed GRO field. Fresh receiver-controlled trusted UTC time must be strictly before expires_at. This review never authorizes execution.";
 const reviewContextBytes = Buffer.byteLength(reviewContext, "utf8");
 if (reviewContextBytes > 4_000) {
   throw new Error(
