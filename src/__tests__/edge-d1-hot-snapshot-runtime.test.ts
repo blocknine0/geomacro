@@ -92,6 +92,7 @@ function hotSnapshot(product: string, validHash = true) {
       : product === "global-risk"
         ? "geomacro.public-global-risk-live-proof.v1"
         : "geomacro.public-risk-indices-live-proof.v1",
+    verification_mode: "direct-b2-readback",
     verified_at: new Date(now).toISOString(),
     source_run_id: "17201234567",
     full_b2_readback_verified: true,
