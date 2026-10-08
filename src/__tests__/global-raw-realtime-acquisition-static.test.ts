@@ -33,6 +33,12 @@ describe("global raw realtime acquisition",()=>{
     expect(worker).toContain("await Promise.all(");
     expect(worker).toContain("RAW_SOURCE_CATEGORY_ALLOWLIST");
     expect(worker).toContain("processed_cells: successfulCells");
+    expect(worker).toContain("COUNTRY_RAW_SOURCE_SYNC_OUTPUT");
+    expect(worker).toContain("classifyRunFailure");
+    expect(worker).toContain("await writeFile(OUTPUT_PATH");
+    const proof=read(".github/workflows/global-realtime-source-proof.yml");
+    expect(proof).toContain('export COUNTRY_RAW_SOURCE_SYNC_OUTPUT="country-raw-source-acceptance-${category}.json"');
+    expect(proof).not.toContain('sync-country-raw-source-mesh.mjs > "country-raw-source-acceptance-${category}.json" 2>&1');
   });
 
   it("keeps GDELT country fallback as a fallback, not the global first-break backbone",()=>{
