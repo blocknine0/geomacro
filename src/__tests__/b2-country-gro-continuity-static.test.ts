@@ -50,6 +50,10 @@ describe("country GRO zero-cost continuity", () => {
     expect(publisher).toContain("d1_parameterized_writes: true");
     expect(publisher).not.toContain("country-gro-hot.sql");
     expect(publisher).not.toContain("sqlText(row.object_json)");
+    const productCi = read(".github/workflows/product-ci.yml");
+    expect(productCi).toContain("Compile critical GRO hot publisher without executing it");
+    expect(productCi).toContain("bun build scripts/ops/publish-country-gro-hot-bundle.ts");
+    expect(productCi).toContain("--target=bun");
     expect(publisher).not.toContain("await b2.get(");
   });
 

@@ -392,7 +392,6 @@ for (let index = 0; index < entries.length; index += D1_READBACK_BATCH_SIZE) {
 }
 
 const expected = new Map(entries.map((row) => [row.country_iso3, row]));
-const actual = readback.filter((row) => expected.has(String(row.country_iso3)));
 if (actual.length !== entries.length) {
   throw new Error(`COUNTRY_GRO_HOT_D1_READBACK_CARDINALITY_INVALID:${actual.length}`);
 }
