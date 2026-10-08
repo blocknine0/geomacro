@@ -1148,13 +1148,69 @@ async function loadFedericoStrictEvents(
       continue;
     }
 
-    const sourceIds = [
-      ...new Set(
-        auditableMembers
-          .map((member) => String(member.source_id ?? "").trim().toLowerCase())
-          .filter(Boolean),
-      ),
-    ];
+    // Strict provenance is one deterministic tuple per governed source.
+    // Never deduplicate source IDs, record IDs and content hashes independently:
+    // signed index i must always describe the same source record.
+    const tupleBySourceId = new Map<
+      string,
+      {
+        source_id: string;
+        source_record_id: string;
+        content_hash: string;
+        source_url: string;
+        published_at: string;
+        member: Record<string, unknown>;
+      }
+    >();
+
+    const tupleCandidates = auditableMembers
+      .map((member) => {
+        const sourceId = String(member.source_id ?? "").trim().toLowerCase();
+        const contentHash = String(member.content_hash ?? "").trim().toLowerCase();
+        return {
+          source_id: sourceId,
+          // Stable content-addressed governed record identifier. The strict
+          // receiver contract does not treat mutable publisher URLs as record IDs.
+          source_record_id:
+            sourceId && /^[a-f0-9]{64}$/.test(contentHash)
+              ? `${sourceId}:sha256:${contentHash}`
+              : "",
+          content_hash: contentHash,
+          source_url: String(member.source_url ?? "").trim(),
+          published_at:
+            federicoStrictPublishedAt(member.published_at, asOf) ?? "",
+          member,
+        };
+      })
+      .filter(
+        (item) =>
+          Boolean(item.source_id) &&
+          Boolean(item.source_record_id) &&
+          /^[a-f0-9]{64}$/.test(item.content_hash) &&
+          Boolean(item.published_at),
+      )
+      .sort(
+        (a, b) =>
+          a.source_id.localeCompare(b.source_id) ||
+          Date.parse(b.published_at) - Date.parse(a.published_at) ||
+          a.source_record_id.localeCompare(b.source_record_id),
+      );
+
+    for (const tuple of tupleCandidates) {
+      if (!tupleBySourceId.has(tuple.source_id)) {
+        tupleBySourceId.set(tuple.source_id, tuple);
+      }
+    }
+
+    const sourceTuples = [...tupleBySourceId.values()].sort(
+      (a, b) => a.source_id.localeCompare(b.source_id),
+    );
+    const sourceIds = sourceTuples.map((item) => item.source_id);
+    const sourceRecordIds = sourceTuples.map((item) => item.source_record_id);
+    const contentHashes = sourceTuples.map((item) => item.content_hash);
+    const sourceUrls = sourceTuples
+      .map((item) => item.source_url)
+      .filter((value) => /^https?:\/\//i.test(value));
 
     const sourceFamilies = [
       ...new Set(sourceIds.map((sourceId) =>
@@ -1165,50 +1221,22 @@ async function loadFedericoStrictEvents(
     const independentSourceCount =
       sourceFamilies.length;
 
-    const sourceRecordIds = [
-      ...new Set(
-        auditableMembers
-          .map((member) => String(member.source_record_id ?? "").trim())
-          .filter(Boolean),
-      ),
-    ];
-
-    const contentHashes = [
-      ...new Set(
-        auditableMembers
-          .map((member) => String(member.content_hash ?? "").trim())
-          .filter((value) => /^[a-f0-9]{64}$/.test(value)),
-      ),
-    ];
-
-    const sourceUrls = [
-      ...new Set(
-        auditableMembers
-          .map((member) => String(member.source_url ?? "").trim())
-          .filter((value) => /^https?:\/\//i.test(value)),
-      ),
-    ];
-
-    if (!sourceUrls.length || !sourceRecordIds.length || !contentHashes.length) {
+    if (
+      sourceTuples.length < FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES ||
+      sourceIds.length !== sourceRecordIds.length ||
+      sourceIds.length !== contentHashes.length
+    ) {
       continue;
     }
 
-    const latestAuditableMember = [...auditableMembers].sort(
+    const latestTuple = [...sourceTuples].sort(
       (a, b) =>
-        Date.parse(
-          federicoStrictPublishedAt(
-            b.published_at,
-            asOf,
-          ) ?? "",
-        ) -
-        Date.parse(
-          federicoStrictPublishedAt(
-            a.published_at,
-            asOf,
-          ) ?? "",
-        ),
+        Date.parse(b.published_at) -
+          Date.parse(a.published_at) ||
+        a.source_id.localeCompare(b.source_id),
     )[0];
 
+    const latestAuditableMember = latestTuple.member;
     const latest = latestAuditableMember;
 
     const targetAttributions =
@@ -1364,7 +1392,7 @@ async function loadFedericoStrictEvents(
       ),
       material_evidence_at:
         lastSeen.toISOString(),
-      evidence_count: auditableMembers.length,
+      evidence_count: sourceTuples.length,
       independent_source_count: independentSourceCount,
       evidence_refs: sourceUrls.length ? sourceUrls : members.map(
         (member) => String(member.content_hash ?? ""),
