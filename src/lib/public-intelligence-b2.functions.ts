@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { assertPublicReadOrigin } from "./origin-guard";
 import { readB2PublicIntelligence } from "./b2-live.server";
+import { sanitizePublicIntelligenceRow } from "./public-intelligence-gist";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 
 const EmptyInput = z.object({}).strict();
@@ -14,7 +15,10 @@ const EmptyInput = z.object({}).strict();
  */
 export async function readPublicIntelligenceRowsFromB2(): Promise<PublicIntelligenceRow[]> {
   const rows = await readB2PublicIntelligence();
-  return rows ?? [];
+  return (rows ?? []).flatMap((row) => {
+    const safe = sanitizePublicIntelligenceRow(row);
+    return safe ? [safe] : [];
+  });
 }
 
 export const getPublicIntelligenceFromB2 = createServerFn({ method: "POST" })
