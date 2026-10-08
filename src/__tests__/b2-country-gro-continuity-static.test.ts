@@ -95,6 +95,10 @@ describe("country GRO zero-cost continuity", () => {
     expect(canary).toContain("delete process.env.APP_SUPABASE_URL");
     expect(canary).toContain("delete process.env.SUPABASE_DB_URL");
     expect(canary).toContain("readD1VerifiedHotCountryGro(iso3, at)");
+    expect(canary).toContain("fetchPublicRiskObjectVerificationKeys()");
+    expect(canary).toContain("verifyRiskObjectSignature(object, verificationKeys)");
+    expect(canary).toContain("verification_keys: verificationKeys");
+    expect(canary).toContain('trust_registry: "https://geomacro.live/api/risk-object-keys"');
     expect(canary).not.toContain("RISK_OBJECT_VERIFY_KEYS_JSON");
     expect(canary).not.toContain("RISK_OBJECT_SIGNING_PRIVATE_KEY");
     expect(canary).toContain('serving_store: "cloudflare-d1"');
