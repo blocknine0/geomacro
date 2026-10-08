@@ -57,7 +57,7 @@ describe("country GRO zero-cost continuity", () => {
     const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
     const audit = read("scripts/ops/verify-country-gro-cold-bundle.ts");
     expect(workflow).not.toContain("Preflight private B2 read capacity");
-    expect(workflow).toContain("Publish one bundled cold archive and verified D1 hot GRO set");
+    expect(workflow).toContain("Publish all currently VERIFIED GROs after refresh");
     expect(workflow).toContain("Audit bundled B2 cold archive when read capacity is available");
     expect(workflow).toContain("B2_DOWNLOAD_CAP_EXCEEDED");
     expect(workflow).toContain("hot_serving_blocked\":false");
@@ -84,11 +84,35 @@ describe("country GRO zero-cost continuity", () => {
     const runner = read("scripts/refresh-global-canonical-risk-objects.ts");
     expect(workflow).toContain('GLOBAL_CANONICAL_MIN_READY: "195"');
     expect(workflow).toContain('GLOBAL_CANONICAL_MIN_COUNTRY_LIKE_DENOMINATOR: "195"');
+    expect(workflow).toContain('.country_count >= 1');
+    expect(workflow).toContain('GLOBAL_GRO_D1_MIN_INDEXED: "1"');
+    expect(workflow).toContain("global_195_coverage_claimed == false");
+    expect(workflow).toContain("Only ${ready:-0} country-like subjects are commercially deliverable; 195 are required.");
     expect(workflow).toContain(".country_count >= 195");
     expect(workflow).toContain(".d1_signed_gro_hot_verified == true");
     expect(runner).toContain('const COUNTRY_LIKE_SPECIALS = new Set(["PSE", "TWN"])');
     expect(runner).toContain("unverified_objects_signed_for_gap_fill: false");
     expect(runner).toContain("raw_source_material_emitted: false");
+  });
+
+  it("seeds only already-current VERIFIED GROs before the long refresh and skips the seed when hot serving exists", () => {
+    const workflow = read(".github/workflows/b2-country-gro-continuity.yml");
+    const publisher = read("scripts/ops/publish-country-gro-hot-bundle.ts");
+    const hotCheck = workflow.indexOf("Check whether verified D1 country GRO hot serving already exists");
+    const seed = workflow.indexOf("Seed existing VERIFIED current GROs before the long global refresh");
+    const refresh = workflow.indexOf("Refresh global commercially governed canonical GROs");
+    expect(hotCheck).toBeGreaterThan(-1);
+    expect(seed).toBeGreaterThan(hotCheck);
+    expect(refresh).toBeGreaterThan(seed);
+    expect(workflow).toContain("if: steps.hot.outputs.ready != 'true'");
+    expect(workflow).toContain('GLOBAL_GRO_D1_MIN_INDEXED: "1"');
+    expect(workflow).toContain("COUNTRY_GRO_HOT_READY_FLOOR_BREACH:0<1");
+    expect(workflow).toContain("No pre-existing current VERIFIED GRO is available");
+    expect(workflow).toContain("publishable=true");
+    expect(workflow).toContain("coverage_floor_met=false");
+    expect(publisher).toContain('process.env.COUNTRY_GRO_HOT_PUBLISH_OUTPUT');
+    expect(publisher).toContain("only_verified_current_objects_admitted: true");
+    expect(publisher).toContain("global_195_coverage_claimed: false");
   });
 
   it("protects the D1 country GRO read behind the server-only control-plane token", () => {
