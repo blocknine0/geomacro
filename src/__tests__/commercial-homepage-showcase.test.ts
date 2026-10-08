@@ -9,7 +9,10 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(card).toContain("selectHomepageShowcase(intelligence.data.all)");
     expect(card).toContain("useIntelligence(null, 5 * 60_000)");
     expect(card).toContain("publicHeadline(event.title)");
-    expect(card).toContain("categoryLeads(intelligence.data.all)");
+    expect(card).not.toContain("categoryLeads(intelligence.data.all)");
+    expect(card).not.toContain("categoryHighlights");
+    expect(card).not.toContain("Global coverage · Three intelligence domains");
+    expect(card).toContain("<AccessOptions />");
     expect(card).toContain("winner.observedAt");
     expect(card).toContain("dateTime={winner.observedAt}");
     expect(card).not.toContain("Top verified · Last 24h");

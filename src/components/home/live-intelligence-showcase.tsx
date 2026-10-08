@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, CalendarDays, Clock3, Mail, Radio, Zap } from "lucide-react";
 import { useIntelligence } from "@/lib/use-intelligence";
 import { selectHomepageShowcase } from "@/lib/homepage-intelligence-showcase";
-import { categoryLeads, publicHeadline } from "@/lib/intelligence-editorial";
+import { publicHeadline } from "@/lib/intelligence-editorial";
 import { RiskBadge } from "@/components/foundation/risk";
 
 const DOMAINS: Record<string, string> = {
@@ -89,7 +89,6 @@ export function LiveIntelligenceShowcase() {
     : null;
   const event = winner?.event;
   const gist = event ? publicHeadline(event.title) : null;
-  const categoryHighlights = intelligence.data ? categoryLeads(intelligence.data.all) : [];
 
   return (
     <div className="relative mx-auto w-full min-w-0 max-w-xl lg:mx-0 lg:max-w-none">
@@ -155,24 +154,6 @@ export function LiveIntelligenceShowcase() {
           </div>
         )}
 
-        {categoryHighlights.length > 0 && (
-          <div className="mt-5 border-t border-border/55 pt-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Global coverage · Three intelligence domains</p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              {categoryHighlights.map(({ key, label, event: lead, isCurrent }) => (
-                <Link key={key} to="/intelligence" className="group rounded-lg border border-border/65 bg-background/25 p-3 transition hover:border-primary/50">
-                  <p className="text-[11px] font-semibold text-primary">{label}</p>
-                  {lead ? (
-                    <>
-                      <p className="mt-2 line-clamp-3 text-xs leading-5 text-foreground group-hover:text-primary">{publicHeadline(lead.title)}</p>
-                      <p className="mt-2 font-mono text-[10px] text-muted-foreground">{isCurrent ? "Current" : "Historical"} · {eventDate(lead.publishedAt ?? lead.createdAt)} · {lead.severity}/100</p>
-                    </>
-                  ) : <p className="mt-2 text-xs text-muted-foreground">Awaiting a verified scored headline.</p>}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
         <AccessOptions />
       </div>
     </div>
