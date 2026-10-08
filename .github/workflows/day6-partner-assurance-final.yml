@@ -280,7 +280,7 @@ jobs:
             bun scripts/ops/sanitize-federico-review-diagnostic.mjs \
               /tmp/federico-review-response.json \
               artifacts/day6-federico-review-diagnostic/redacted-review.json
-            jq -r '"Federico receiver verdict: \\(.verdict), issue count: \\(.issue_count). Full original response is deliberately NOT published to GitHub Actions artifacts."' \
+            jq -r '"Federico receiver verdict: " + .verdict + ", issue count: " + (.issue_count|tostring) + ". Full original response is deliberately NOT published to GitHub Actions artifacts."' \
               artifacts/day6-federico-review-diagnostic/redacted-review.json >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Federico live review failed before a structured response was captured; no issue descriptions can be inferred." >> "$GITHUB_STEP_SUMMARY"
