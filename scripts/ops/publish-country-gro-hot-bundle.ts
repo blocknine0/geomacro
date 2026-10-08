@@ -45,11 +45,19 @@ if (
 ) throw new Error("COUNTRY_GRO_HOT_CONFIG_INVALID");
 
 function wrangler(args: string[], cwd = process.cwd()) {
+  // The parent publisher may need NODE_OPTIONS for the direct-Postgres
+  // Supabase compatibility loader. Wrangler/npx is an independent Cloudflare
+  // control-plane process and must never inherit that application loader.
+  // In production the inherited relative loader caused `wrangler d1 list`
+  // to exit before returning JSON even though Cloudflare credentials were
+  // valid. Preserve all credentials but remove only NODE_OPTIONS.
+  const childEnv = { ...process.env };
+  delete childEnv.NODE_OPTIONS;
   return execFileSync("npx", ["-y", `wrangler@${WRANGLER_VERSION}`, ...args], {
     cwd,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
-    env: process.env,
+    env: childEnv,
   });
 }
 
