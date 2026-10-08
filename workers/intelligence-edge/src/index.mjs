@@ -168,14 +168,15 @@ function validHotOverlayRows(rows, now = Date.now()) {
   return true;
 }
 
-async function readHotOverlay(verifiedB2Sha256, expectedGeneratedAt) {
+async function readHotOverlay(env, verifiedB2Sha256, expectedGeneratedAt) {
   if (!/^[0-9a-f]{64}$/u.test(String(verifiedB2Sha256 ?? "")) || !expectedGeneratedAt) return null;
   try {
-    const response = await fetch(HOT_OVERLAY_URL, {
+    if (!env?.CONTROL_PLANE || typeof env.CONTROL_PLANE.fetch !== "function") return null;
+    const response = await env.CONTROL_PLANE.fetch(new Request(HOT_OVERLAY_URL, {
       method: "GET",
       headers: { Accept: "application/json", "Cache-Control": "no-cache" },
       signal: AbortSignal.timeout(3_500),
-    });
+    }));
     if (!response.ok) return null;
     const payload = await response.json();
     const generatedAt = Date.parse(String(payload?.generated_at ?? ""));
@@ -212,12 +213,13 @@ async function readHotOverlay(verifiedB2Sha256, expectedGeneratedAt) {
   }
 }
 
-async function readD1HotSnapshot() {
+async function readD1HotSnapshot(env) {
   try {
-    const response = await fetch(D1_HOT_SNAPSHOT_URL, {
+    if (!env?.CONTROL_PLANE || typeof env.CONTROL_PLANE.fetch !== "function") return null;
+    const response = await env.CONTROL_PLANE.fetch(new Request(D1_HOT_SNAPSHOT_URL, {
       headers: { Accept: "application/json", "Cache-Control": "no-cache" },
       signal: AbortSignal.timeout(3_500),
-    });
+    }));
     if (!response.ok) return null;
     const snapshot = await response.json();
     const generatedAt = Date.parse(String(snapshot?.generated_at ?? ""));
@@ -251,7 +253,7 @@ async function readD1HotSnapshot() {
       live?.generated_at !== snapshot.generated_at ||
       !validRows(live?.rows)
     ) return null;
-    const projected = await applyHotOverlay(live, snapshot.b2_sha256);
+    const projected = await applyHotOverlay(env, live, snapshot.b2_sha256);
     return new Response(JSON.stringify(projected.live), {
       status: 200,
       headers: {
@@ -275,8 +277,8 @@ async function readD1HotSnapshot() {
   }
 }
 
-async function applyHotOverlay(live, verifiedB2Sha256) {
-  const overlay = await readHotOverlay(verifiedB2Sha256, live?.generated_at);
+async function applyHotOverlay(env, live, verifiedB2Sha256) {
+  const overlay = await readHotOverlay(env, verifiedB2Sha256, live?.generated_at);
   if (!overlay) return { live, used: false };
 
   const scoredRows = Array.isArray(live?.rows)
@@ -298,7 +300,7 @@ async function applyHotOverlay(live, verifiedB2Sha256) {
   };
 }
 
-async function buildContinuityResponse() {
+async function buildContinuityResponse(env) {
   if (
     continuity?.schema !== "geomacro.edge-continuity.v1" ||
     continuity?.product !== "intelligence" ||
@@ -322,7 +324,7 @@ async function buildContinuityResponse() {
     !validRows(live?.rows)
   ) throw new Error("INTELLIGENCE_CONTINUITY_PAYLOAD_INVALID");
 
-  const projected = await applyHotOverlay(live, continuity.source_live_sha256);
+  const projected = await applyHotOverlay(env, live, continuity.source_live_sha256);
   return new Response(JSON.stringify(projected.live), {
     status: 200,
     headers: {
@@ -396,7 +398,7 @@ async function buildResponse(env) {
     !validRows(rows)
   ) throw new Error("INTELLIGENCE_EDGE_BINDING_INVALID");
 
-  const projected = await applyHotOverlay(live, proof.compressed_sha256);
+  const projected = await applyHotOverlay(env, live, proof.compressed_sha256);
   return new Response(JSON.stringify(projected.live), {
     status: 200,
     headers: {
@@ -412,7 +414,7 @@ async function buildResponse(env) {
   });
 }
 
-async function projectCachedResponse(cached) {
+async function projectCachedResponse(cached, env) {
   let live;
   try {
     live = await cached.clone().json();
@@ -426,7 +428,7 @@ async function projectCachedResponse(cached) {
     !validRows(live?.rows)
   ) throw new Error("INTELLIGENCE_EDGE_CACHE_PAYLOAD_INVALID");
 
-  const projected = await applyHotOverlay(live, cached.headers.get("x-geomacro-b2-sha256"));
+  const projected = await applyHotOverlay(env, live, cached.headers.get("x-geomacro-b2-sha256"));
   const headers = new Headers(cached.headers);
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("x-geomacro-current-overlay", projected.used ? "cloudflare-d1-hot" : "none");
@@ -454,7 +456,7 @@ export default {
     // wrangler and sits in front of this entrypoint as the global L1.
     const cache = caches.default;
     const cacheKey = new Request(`${url.origin}/intelligence?projection=d1-hot-v1`, { method: "GET" });
-    const hotSnapshot = await readD1HotSnapshot();
+    const hotSnapshot = await readD1HotSnapshot(env);
     if (hotSnapshot) {
       ctx.waitUntil(cache.put(cacheKey, hotSnapshot.clone()));
       return hotSnapshot;
@@ -463,7 +465,7 @@ export default {
     const cached = await cache.match(cacheKey);
     if (cached) {
       try {
-        return await projectCachedResponse(cached);
+        return await projectCachedResponse(cached, env);
       } catch (error) {
         console.error(
           "intelligence-edge cached projection invalid",
@@ -479,7 +481,7 @@ export default {
     } catch (error) {
       console.error("intelligence-edge origin unavailable", error instanceof Error ? error.message : "unknown");
       try {
-        const response = await buildContinuityResponse();
+        const response = await buildContinuityResponse(env);
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
         return response;
       } catch (continuityError) {
