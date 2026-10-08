@@ -27,6 +27,8 @@ name: Day 6 Authorized Federico Pilot Once
 # No policy, threshold, allowance, payment, or execution boundary changes in this retrigger.
 # Exact-main retrigger after #1814 removed the stale deployed-verifier dependency from the Federico provider preflight.
 # No policy, threshold, allowance, payment, or execution boundary changes here.
+# Retrigger after receiver-contract hardening: signed tuple binding, immutable verifier/spec pins,
+# no receiver-side source fetch, and transport-hash trust-root clarification.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
@@ -43,6 +45,11 @@ on:
       - "scripts/day6-direct-live-federico-gro.ts"
       - ".github/workflows/day6-partner-assurance-final.yml"
       - "scripts/partner-assurance-adapter.ts"
+      - "scripts/invinoveritas-risk-object-preflight.ts"
+      - "src/lib/country-risk-engine.ts"
+      - "src/lib/risk-object-contract.ts"
+      - "src/lib/risk-object-signing.server.ts"
+      - "schemas/gro-1.1.schema.json"
       - "src/routes/api.risk-object-keys.ts"
       - "src/lib/risk-object-public-registry.ts"
       - "workers/control-plane/migrations/0013_partner_assurance_gro_verified.sql"
