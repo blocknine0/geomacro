@@ -21,6 +21,8 @@ describe("verified Global Risk edge serving boundary", () => {
     expect(worker).toContain("await sha256(payloadJson) !== snapshot.payload_sha256");
     expect(worker).toContain("Date.now() - sourceAsOf > 90 * 60 * 1000");
     expect(worker).toContain('"x-geomacro-serving-store": "cloudflare-d1"');
+    expect(worker).toContain('cached.headers.get("x-geomacro-serving-store") === "cloudflare-d1"');
+    expect(worker).toContain("ctx.waitUntil(cache.put(cacheKey, hotSnapshot.clone()))");
     expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot()");
     expect(worker).not.toContain("risk-indices-independent");
     expect(worker).not.toContain("request.json()");
