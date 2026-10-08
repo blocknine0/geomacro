@@ -35,8 +35,10 @@ describe("production public serving boundary", () => {
     expect(health).toContain('"backblaze-b2-durable-truth-cloudflare-d1-verified-hot"');
     expect(health).toContain("CONTROL_PLANE_PUBLIC_URL");
     expect(health).toContain("/v1/public/hot-snapshot/");
-    expect(health).toContain("full_b2_readback_verified !== true");
-    expect(health).toContain("exact_gzip_restore_verified !== true");
+    expect(health).toContain("snapshot.full_b2_readback_verified === true");
+    expect(health).toContain("snapshot.exact_gzip_restore_verified === true");
+    expect(health).toContain("snapshot.current_b2_readback_verified !== false");
+    expect(health).toContain("snapshot.current_b2_snapshot_promoted !== false");
     expect(health).toContain("await sha256Hex(payloadJson) !== payloadSha256");
     expect(health).not.toContain('response.headers.get("x-geomacro-serving-store") !== "cloudflare-d1"');
     expect(health).toContain("hot_snapshot_serving");
