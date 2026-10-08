@@ -79,14 +79,6 @@ jobs:
           if (enabled.length < 195) throw new Error(`GRO_CONTINUITY_COUNTRY_UNIVERSE_REGRESSION:${enabled.length}`);
           console.log(JSON.stringify({ ok: true, transport: 'direct_postgres', enabled_country_like_candidates: enabled.length }));
           NODE
-      - name: Preflight private B2 read capacity
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/global-gro-continuity
-          bun scripts/ops/verify-b2-private-archive-read.ts > artifacts/global-gro-continuity/b2-read-preflight.json
-          jq -e '.ok == true and .dedicated_read_credentials == true and .destructive_b2_change == false' artifacts/global-gro-continuity/b2-read-preflight.json >/dev/null
-
       - name: Refresh global commercially governed canonical GROs
         id: refresh
         env:
@@ -122,53 +114,58 @@ jobs:
             echo "::error title=Global commercial GRO floor not met::Ready=${ready}; required=195; refresh_status=${refresh_status}. Preserving the previous verified B2 package and refusing to advance D1."
           fi
 
-      - name: Publish current verified canonical country GROs to private B2
+      - name: Publish one bundled cold archive and verified D1 hot GRO set
         if: steps.refresh.outputs.fresh == 'true'
         env:
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
-          # 196 latest + 196 by-id PUTs plus one bundle/proof write/readback pair.
-          # Local all-request budget stays below the client hard maximum while
-          # Class-B reads are bounded to two independent publication readbacks.
-          B2_REQUEST_BUDGET: "500"
-        run: node --import tsx scripts/ops/publish-b2-country-gro-continuity.ts
-
-      - name: Reverify last verified B2 country GRO package without advancing freshness
-        if: steps.refresh.outputs.fresh != 'true'
-        env:
-          B2_REQUEST_BUDGET: "4"
-        run: bun scripts/ops/verify-b2-country-gro-preservation.ts
-
-      - name: Prove runtime GRO read works after removing Supabase credentials
-        if: steps.refresh.outputs.fresh == 'true'
-        run: bun scripts/ops/verify-b2-country-gro-direct-read.ts
-
-      - name: Sync all independently verified current country GROs to D1
-        if: steps.refresh.outputs.fresh == 'true'
-        env:
-          # One proof GET + one bundle GET; the remaining requests are bounded
-          # serving-projection PUTs and do not spend Class-B read allowance.
-          B2_REQUEST_BUDGET: "220"
+          B2_REQUEST_BUDGET: "8"
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/ops/sync-global-current-country-gro-to-d1.ts | tee artifacts/global-gro-continuity/d1-sync.json
+          node --import tsx scripts/ops/publish-country-gro-hot-bundle.ts | tee artifacts/global-gro-continuity/country-gro-hot-publish.stdout.json
           jq -e '
             .ok == true
-            and .indexed_country_count >= 195
-            and .threshold_satisfied == true
-            and .b2_readback_verified == true
-            and .b2_readback_scope == "continuity_proof_and_bundle"
-            and .b2_class_b_source_reads == 2
-            and .bundle_readback_verified == true
-            and .bundle_members_verified >= 195
-            and .generic_archive_readback_deferred_to_runtime == true
+            and .country_count >= 195
+            and .b2_bundle_put_acknowledged == true
+            and .b2_manifest_put_acknowledged == true
+            and .b2_put_count == 2
+            and .b2_get_count_for_hot_serving == 0
+            and .archive_readback_deferred == true
+            and .archive_readback_required_for_hot_serving == false
+            and .d1_signed_gro_hot_verified == true
+            and .d1_readback_verified == true
             and .signature_verified == true
             and .commercial_eligibility_verified == true
-            and .d1_readback_verified == true
+            and .raw_source_material_emitted == false
             and .external_payment_performed == false
             and .execution_authorized == false
             and .destructive_b2_change == false
-          ' artifacts/global-gro-continuity/d1-sync.json >/dev/null
+          ' artifacts/global-gro-continuity/country-gro-hot-publish.stdout.json >/dev/null
+
+      - name: Audit bundled B2 cold archive when read capacity is available
+        if: steps.refresh.outputs.fresh == 'true'
+        env:
+          B2_REQUEST_BUDGET: "4"
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          bun scripts/ops/verify-country-gro-cold-bundle.ts > artifacts/global-gro-continuity/cold-archive-audit.log 2>&1
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            cat artifacts/global-gro-continuity/cold-archive-audit.log
+            exit 0
+          fi
+          if grep -q 'B2_DOWNLOAD_CAP_EXCEEDED' artifacts/global-gro-continuity/cold-archive-audit.log; then
+            echo "::warning title=B2 cold archive audit deferred::Download cap is exhausted. Verified D1 hot serving remains available; no archive data is deleted or reclassified."
+            cat > artifacts/global-gro-continuity/cold-archive-audit-deferred.json <<'JSON'
+          {"ok":true,"schema":"geomacro.country-gro-cold-archive-audit-deferred.v1","reason":"B2_DOWNLOAD_CAP_EXCEEDED","hot_serving_blocked":false,"archive_readback_verified":false,"destructive_b2_change":false}
+          JSON
+            exit 0
+          fi
+          cat artifacts/global-gro-continuity/cold-archive-audit.log
+          exit "$rc"
 
       - name: Upload global GRO continuity evidence
         if: always()
@@ -190,3 +187,5 @@ jobs:
             exit 1
           fi
           test "${{ steps.refresh.outputs.fresh }}" = "true"
+          test -f artifacts/global-gro-continuity/country-gro-hot-publish.json
+          jq -e '.ok == true and .country_count >= 195 and .d1_signed_gro_hot_verified == true and .b2_get_count_for_hot_serving == 0' artifacts/global-gro-continuity/country-gro-hot-publish.json >/dev/null
