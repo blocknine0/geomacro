@@ -54,6 +54,11 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("dedicated read pair, else archive read/write pair, else existing B2 pair");
     expect(workflow).toContain(".b2_network_read_required == false");
     expect(workflow).toContain(".serving_store == \"cloudflare-d1\"");
+    expect(workflow).toContain("for attempt in $(seq 1 12);");
+    expect(workflow).toContain("sleep 10");
+    expect(workflow).toContain("HOT_READY=false");
+    expect(workflow).toContain("No Federico allowance was used.");
+    expect(workflow).toContain("independent main-push deploy/publish lane");
     expect(workflow).toContain("SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY");
     expect(workflow).toContain("Dedicated B2 archive read credentials must be supplied as a complete pair.");
     expect(workflow).toContain("e.published_at as evidence_at");

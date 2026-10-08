@@ -89,21 +89,45 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/ops/verify-country-gro-hot-serving.ts | tee /tmp/day6-d1-gro-hot-preflight.json
-          jq -e '
-            .ok == true and
-            .schema == "geomacro.country-gro-d1-hot-canary.v1" and
-            .serving_store == "cloudflare-d1" and
-            .archive_store == "backblaze-b2" and
-            .b2_credentials_present == false and
-            .b2_network_read_required == false and
-            .supabase_credentials_present == false and
-            .signature_valid == true and
-            .commercial_eligibility_verified == true and
-            .external_payment_performed == false and
-            .execution_authorized == false
-          ' /tmp/day6-d1-gro-hot-preflight.json >/dev/null
-          echo "PASS: verified signed country GRO hot serving works with B2/Supabase credentials removed."
+          HOT_READY=false
+          : > /tmp/day6-d1-gro-hot-preflight.err
+          for attempt in $(seq 1 12); do
+            set +e
+            bun scripts/ops/verify-country-gro-hot-serving.ts \
+              > /tmp/day6-d1-gro-hot-preflight.json \
+              2> /tmp/day6-d1-gro-hot-preflight.err
+            rc=$?
+            set -e
+
+            if [[ "$rc" -eq 0 ]] && jq -e '
+              .ok == true and
+              .schema == "geomacro.country-gro-d1-hot-canary.v1" and
+              .serving_store == "cloudflare-d1" and
+              .archive_store == "backblaze-b2" and
+              .b2_credentials_present == false and
+              .b2_network_read_required == false and
+              .supabase_credentials_present == false and
+              .signature_valid == true and
+              .commercial_eligibility_verified == true and
+              .external_payment_performed == false and
+              .execution_authorized == false
+            ' /tmp/day6-d1-gro-hot-preflight.json >/dev/null; then
+              HOT_READY=true
+              echo "PASS: verified signed country GRO hot serving works with B2/Supabase credentials removed (attempt ${attempt}/12)."
+              break
+            fi
+
+            if [[ "$attempt" -lt 12 ]]; then
+              echo "D1 verified-hot country GRO is not ready yet; waiting for the independent main-push deploy/publish lane (attempt ${attempt}/12)."
+              sleep 10
+            fi
+          done
+
+          if [[ "$HOT_READY" != "true" ]]; then
+            echo "::error title=Verified D1 country GRO hot set unavailable::The independent deploy/publish lane did not make a verified signed country GRO available within the bounded readiness window. No Federico allowance was used."
+            tail -n 20 /tmp/day6-d1-gro-hot-preflight.err || true
+            exit 1
+          fi
 
       - name: Re-poll governed RSS without partner allowance
         env:
