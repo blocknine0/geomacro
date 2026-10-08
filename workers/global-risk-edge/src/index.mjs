@@ -154,6 +154,7 @@ function validCurrentProofValue(live) {
     !/^[0-9a-f]{64}$/.test(String(live?.baseline_payload_sha256 ?? "")) ||
     !/^\d{1,20}$/.test(String(live?.baseline_source_run_id ?? "")) ||
     !Number.isFinite(Date.parse(String(live?.baseline_generated_at ?? ""))) ||
+    Date.now() - Date.parse(String(live?.baseline_generated_at ?? "")) > 30 * 24 * 60 * 60 * 1000 ||
     data?.verificationStatus !== "verified" ||
     data?.methodologyVersion !== METHOD ||
     data?.auditPersisted !== true ||
