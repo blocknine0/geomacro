@@ -50,6 +50,9 @@ describe("independent verified Risk Indices edge", () => {
   it("keeps publisher quota-free and separate from Global Risk and Intelligence workflows", () => {
     expect(refresh).toContain("group: geomacro-risk-indices-realtime");
     expect(refresh).toContain('cron: "38 * * * *"');
+    expect(refresh).toContain("push:");
+    expect(refresh).toContain('"scripts/ops/publish-b2-risk-indices-direct-postgres.mjs"');
+    expect(refresh).toContain('"src/lib/risk-indices-from-global-risk.ts"');
     expect(refresh).toContain("publish-b2-risk-indices-direct-postgres.mjs");
     expect(refresh).not.toContain("scripts/ingest-news.js");
     expect(refresh).not.toContain("GUARDIAN_QUERY_BUDGET_PER_CATEGORY");
