@@ -11,7 +11,12 @@
     "canonicalization": "geomacro-canonical-json-v1",
     "signature_scheme": "Ed25519",
     "tamper_detection_required": true,
-    "freshness_recheck_required": true
+    "freshness_recheck_required": true,
+    "canonicalization_spec_url": "https://github.com/blocknine0/geomacro/blob/28445a9f37018cd49c0374bef5beacef559f2b52/docs/GRO_CANONICAL_JSON_V1.md",
+    "canonicalization_spec_sha256": "fabfdf4044e5b35c9a0a742138b68bdf4af76d9aee16b22130868346ff301fd9",
+    "independent_verifier_url": "https://github.com/blocknine0/geomacro/blob/28445a9f37018cd49c0374bef5beacef559f2b52/scripts/verify-gro-independent.mjs",
+    "independent_verifier_sha256": "701f2f47f02bfd3337dcc85cfc2cf15f3369f3fa20be0534ed3ede8a2045ba71",
+    "signature_preimage": "full-gro-null-payload-hash-and-signature-v1"
   },
   "federation": {
     "supported_profile": "federico-strict-evidence-v1",
@@ -19,14 +24,15 @@
     "positive_control_ci": "Federico Strict Positive Control",
     "minimum_independent_source_families": 2,
     "receiver_side_verification_required": true,
-    "issuer_attestations_are_not_trust_roots": true,
-    "fail_closed": true
+    "fail_closed": true,
+    "receiver_pinned_issuer_signature_is_authentication_root": true,
+    "third_party_source_network_fetch_required": false
   },
   "partner_handoff": {
     "interoperability_preflight": "scripts/invinoveritas-risk-object-preflight.ts",
     "commercial_readiness_check": "scripts/check-partner-commercial-readiness.mjs",
     "documentation": "docs/PARTNER_VERIFICATION_AND_COMMERCIAL_INTEGRATION.md",
-    "external_evidence_binding": "sha256-exact-record",
+    "external_evidence_binding": "receiver-pinned-ed25519-authentication + sha256-transport-consistency",
     "signed_review_proof_supported": true,
     "independent_proof_verification_required": true
   },
@@ -42,6 +48,7 @@
     "no_execution_authority": true,
     "no_partner_secret_in_public_artifacts": true,
     "receiver_controls_admission_policy": true,
-    "receiver_controls_key_pin_and_revocation_policy": true
+    "receiver_controls_key_pin_and_revocation_policy": true,
+    "receiver_third_party_source_fetch": "disabled"
   }
 }
