@@ -49,6 +49,8 @@ describe("RSS live partner bootstrap boundary", () => {
     expect(script).toContain("RSS_LIVE_MIN_PARTIAL_COMPLETED_SOURCES");
     expect(script).toContain("allowPartial: ALLOW_PARTIAL_SOURCE_FAILURES");
     expect(script).toContain("RSS_PARTIAL_SOURCE_FLOOR_NOT_MET");
+    expect(script).toContain("RSS_PARTIAL_SOURCE_STATE_UNPROVEN");
+    expect(script).toContain("const unprovenMissing = missing.filter((id) => !hadError.has(id))");
     expect(script).toContain("failed_sources: missing.sort()");
     expect(script).toContain("partial_refresh: missing.length > 0");
     expect(script).toContain("partial_source_failure_tolerance_enabled: ALLOW_PARTIAL_SOURCE_FAILURES");
