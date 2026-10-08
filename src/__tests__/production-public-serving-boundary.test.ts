@@ -40,6 +40,10 @@ describe("production public serving boundary", () => {
     expect(health).toContain("await sha256Hex(payloadJson) !== payloadSha256");
     expect(health).not.toContain('response.headers.get("x-geomacro-serving-store") !== "cloudflare-d1"');
     expect(health).toContain("hot_snapshot_serving");
+    expect(health).toContain("geomacro.public-global-risk-current-proof.v1");
+    expect(health).toContain("independent-gri-proof-over-b2-baseline");
+    expect(health).toContain("baseline_b2_readback_verified");
+    expect(health).toContain("current_b2_snapshot_promoted");
     expect(health).toContain("supabase_required_for_serving: false");
     expect(health).toContain("readB2PublicIntelligence");
     expect(health).toContain("readB2PublicRisk");
@@ -53,6 +57,8 @@ describe("production public serving boundary", () => {
     expect(workflow).toContain("/ask-geomacro");
     expect(workflow).toContain('"serving_authority":"backblaze-b2-durable-truth-cloudflare-d1-verified-hot"');
     expect(workflow).toContain("x-geomacro-b2-verification: full-readback-hash-exact-restore");
+    expect(workflow).toContain("baseline-full-readback-current-gri-proof");
+    expect(workflow).toContain("independent-gri-proof-over-b2-baseline");
     expect(workflow).toContain("hot_snapshot_serving");
   });
 });
