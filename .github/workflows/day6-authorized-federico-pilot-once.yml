@@ -22,6 +22,9 @@ on:
       - ".github/workflows/day6-authorized-federico-pilot-once.yml"
       - "scripts/ops/verify-country-gro-hot-serving.ts"
       - "src/lib/d1-country-gro-hot.server.ts"
+      - "src/lib/public-demo-risk-profile.ts"
+      - "supabase/functions/live-flash-corroborate/**"
+      - "workers/telegram-flash/worker.py"
 
 permissions:
   contents: read
@@ -144,7 +147,7 @@ jobs:
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
           BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
-          BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"
+          BREAKING_RSS_SOURCE_IDS: "un_all_documents_rss,un_human_rights_council_rss,un_geneva_press_rss,un_security_council_docs_rss,un_geneva_meeting_summaries_rss,eu_council_press_rss,ecb_press_rss,ecb_market_information_rss,aljazeera_rss,bbc_world_rss,xinhua_english_china_rss,scmp_china_rss,federal_reserve_press_rss,forexlive_rss,bis_rss_media_releases,bis_rss_central_banker_speeches,nrcan_news_atom,usgs_minerals_news_rss"
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
           RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-cycle.json
           RSS_LIVE_SKIP_CORROBORATION: "true"
@@ -190,21 +193,37 @@ jobs:
         run: |
           set -euo pipefail
           psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL' > /tmp/day6-candidates.txt
-          with recent as (
+          with source_map(source_id, source_family) as (
+            values
+              ('un_all_documents_rss','united_nations'),
+              ('un_human_rights_council_rss','united_nations'),
+              ('un_geneva_press_rss','united_nations'),
+              ('un_security_council_docs_rss','united_nations'),
+              ('un_geneva_meeting_summaries_rss','united_nations'),
+              ('eu_council_press_rss','council_of_the_european_union'),
+              ('ecb_press_rss','european_central_bank'),
+              ('ecb_market_information_rss','european_central_bank'),
+              ('aljazeera_rss','aljazeera'),
+              ('bbc_world_rss','bbc_world'),
+              ('xinhua_english_china_rss','xinhua_english_china'),
+              ('scmp_china_rss','scmp_china'),
+              ('federal_reserve_press_rss','federal_reserve'),
+              ('forexlive_rss','forexlive'),
+              ('bis_rss_media_releases','bank_for_international_settlements'),
+              ('bis_rss_central_banker_speeches','bank_for_international_settlements'),
+              ('nrcan_news_atom','natural_resources_canada'),
+              ('usgs_minerals_news_rss','usgs')
+          ),
+          recent as (
             select
               c.country_iso3,
               e.source_id,
+              m.source_family,
               e.published_at as evidence_at
             from public.live_flash_events e
             join public.live_flash_event_countries c on c.flash_id=e.flash_id
-            where e.source_id in (
-              'xinhua_english_china_rss',
-              'scmp_china_rss',
-              'forexlive_rss',
-              'aljazeera_rss',
-              'bbc_world_rss'
-            )
-              and e.published_at is not null
+            join source_map m on m.source_id=e.source_id
+            where e.published_at is not null
               and e.published_at >= now() - interval '6 hours'
               and e.published_at <= now()
               and c.country_iso3 ~ '^[A-Z]{3}$'
@@ -212,8 +231,8 @@ jobs:
           select country_iso3
           from recent
           group by country_iso3
-          having count(distinct source_id) >= 2
-          order by count(distinct source_id) desc, count(*) desc, max(evidence_at) desc, country_iso3
+          having count(distinct source_family) >= 2
+          order by count(distinct source_family) desc, count(*) desc, max(evidence_at) desc, country_iso3
           limit 8;
           SQL
           test -s /tmp/day6-candidates.txt || {
