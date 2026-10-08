@@ -182,6 +182,8 @@ jobs:
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
           RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-cycle.json
           RSS_LIVE_SKIP_CORROBORATION: "true"
+          RSS_LIVE_ALLOW_PARTIAL_SOURCE_FAILURES: "true"
+          RSS_LIVE_MIN_PARTIAL_COMPLETED_SOURCES: "2"
         shell: bash
         run: |
           set -euo pipefail
@@ -191,7 +193,11 @@ jobs:
             .ok == true and
             .transport == "canonical_direct_postgres" and
             .edge_function_dependency == false and
-            .source_summary.configured_source_count == .source_summary.completed_source_count and
+            .partial_source_failure_tolerance_enabled == true and
+            .source_summary.configured_source_count >= .source_summary.completed_source_count and
+            .source_summary.completed_source_count >= 2 and
+            .source_summary.failed_source_count == (.source_summary.failed_sources | length) and
+            .source_summary.partial_refresh == (.source_summary.failed_source_count > 0) and
             .corroboration.ok == true and
             .corroboration.skipped == true and
             .corroboration.reason == "explicit_partner_bootstrap_country_corroboration_follows" and
@@ -199,7 +205,8 @@ jobs:
             .payment_performed == false and
             .execution_authorized == false
           ' /tmp/day6-rss-cycle.json >/dev/null
-          echo "PASS: governed RSS refresh completed through canonical direct-Postgres transport; global corroboration was explicitly skipped because country-specific strict corroboration follows; no partner allowance used."
+          jq -c '{configured:.source_summary.configured_source_count,completed:.source_summary.completed_source_count,failed:.source_summary.failed_sources,partial:.source_summary.partial_refresh}' /tmp/day6-rss-cycle.json
+          echo "PASS: governed RSS refresh completed through canonical direct-Postgres transport; individual unavailable feeds are explicit degraded evidence only, while country-specific FEDERICO_STRICT corroboration still decides admission; no partner allowance used."
 
       - name: Hydrate trusted publisher times before strict candidate selection
         env:
