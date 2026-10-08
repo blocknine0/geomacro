@@ -156,12 +156,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set +e
           timeout 18m node scripts/run-gdelt-gal-cycle.mjs 2>&1 | tee /tmp/day6-gdelt-gal-cycle.log
-          jq -e '
+          rc=${PIPESTATUS[0]}
+          set -e
+
+          if [[ "$rc" -eq 0 ]] && jq -e '
             .ok == true and
             (.status == "healthy" or .status == "fresh_prior_cycle")
-          ' /tmp/day6-gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
-          echo "PASS: governed GDELT structured evidence is fresh before Federico corroboration; no partner allowance or user payment used."
+          ' /tmp/day6-gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null; then
+            echo "PASS: governed GDELT structured evidence is fresh before Federico corroboration; no partner allowance or user payment used."
+          elif jq -e '
+            .ok == false and
+            .failure_class == "B2_DOWNLOAD_CAP_EXCEEDED"
+          ' /tmp/day6-gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null; then
+            echo "::warning title=GDELT archive readback deferred by B2 download cap::The new GDELT fragment was not promoted to structured evidence. Continue only with independently verified existing evidence and governed RSS; FEDERICO_STRICT thresholds remain unchanged."
+          else
+            cat /tmp/day6-gdelt-gal-cycle/gdelt-gal-cycle-summary.json || true
+            exit "$rc"
+          fi
 
       - name: Re-poll governed RSS without partner allowance
         env:
