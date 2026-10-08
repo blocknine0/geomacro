@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canUseProductionIntelligenceBackup,
+  buildVerifiedIntelligenceApiPayload,
   parseVerifiedIntelligenceEdgePayload,
   PUBLIC_INTELLIGENCE_EDGE_URL,
 } from "./public-intelligence-edge";
@@ -79,6 +80,40 @@ describe("verified Intelligence edge-first preview recovery", () => {
       summary: null,
       public_status: "live_observed",
     });
+  });
+
+  it("serves a successful public API payload from the verified edge in preview", () => {
+    const rows = parseVerifiedIntelligenceEdgePayload(payload(), NOW);
+    const response = buildVerifiedIntelligenceApiPayload(rows, NOW);
+    expect(response.mode).toBe("verified_b2");
+    expect(response.verified_rows).toBe(3);
+    expect(response.live_observed_rows).toBe(0);
+    expect(response.current_within_24h).toBe(true);
+    expect(response.rows.every((r) => r.public_status === "verified_b2")).toBe(true);
+  });
+
+  it("suppresses discovery overlays only when all scored domains are current", () => {
+    const rows = categories.map((c) => verified(c));
+    rows.push(verified("geopolitics", {
+      id: "observed",
+      source_title: "Geomacro observes regional tensions near the border",
+      summary: null,
+      severity: null,
+      delta: null,
+      public_status: "live_observed",
+    }));
+    const projected = buildVerifiedIntelligenceApiPayload(
+      parseVerifiedIntelligenceEdgePayload(payload(rows), NOW), NOW);
+    expect(projected.mode).toBe("verified_b2");
+    expect(projected.live_observed_rows).toBe(0);
+    expect(projected.rows).toHaveLength(3);
+
+    const olderRows = rows.map((r) => r.category === "macro"
+      ? { ...r, created_at: "2026-10-06T07:00:00Z", published_at: "2026-10-06T07:00:00Z" } : r);
+    const fallback = buildVerifiedIntelligenceApiPayload(
+      parseVerifiedIntelligenceEdgePayload(payload(olderRows), NOW), NOW);
+    expect(fallback.mode).toBe("verified_b2_plus_live_observed");
+    expect(fallback.live_observed_rows).toBe(1);
   });
 
   it("filters unsafe editorial labels rather than showing source prose", () => {
