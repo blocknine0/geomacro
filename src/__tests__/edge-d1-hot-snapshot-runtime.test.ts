@@ -183,6 +183,102 @@ describe("B2 cap resilient public edge reads", () => {
     expect(cacheWrites).toBe(1);
   });
 
+  it("serves a parent-verified Risk Indices projection from D1 without claiming a Risk Indices B2 readback", async () => {
+    const value: any = livePackage("risk-indices");
+    value.verification_mode = "global-risk-parent-projection";
+    value.parent_product = "global-risk";
+    value.parent_b2_sha256 = "c".repeat(64);
+    value.parent_payload_sha256 = "d".repeat(64);
+    const payloadJson = JSON.stringify(value);
+    const snapshot = {
+      ok: true,
+      product: "risk-indices",
+      schema: value.schema,
+      generated_at: value.generated_at,
+      source_as_of: value.data.snapshotAsOf,
+      expires_at: new Date(Date.parse(value.data.snapshotAsOf) + 90 * 60 * 1000).toISOString(),
+      b2_object_key: "geomacro-evidence/v1/live/global-risk/latest.json.gz",
+      b2_sha256: value.parent_b2_sha256,
+      payload_sha256: createHash("sha256").update(payloadJson).digest("hex"),
+      proof_schema: "geomacro.public-risk-indices-parent-projection-proof.v1",
+      verification_mode: "global-risk-parent-projection",
+      verified_at: freshAt,
+      source_run_id: "17201234567",
+      full_b2_readback_verified: true,
+      exact_gzip_restore_verified: true,
+      payload_json: payloadJson,
+    };
+    let b2Reads = 0;
+    vi.stubGlobal("caches", { default: { match: async () => null, put: async () => undefined } });
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/v1/public/hot-snapshot/risk-indices")) {
+        return Response.json(snapshot);
+      }
+      b2Reads += 1;
+      return new Response("B2_DOWNLOAD_CAP_EXCEEDED", { status: 403 });
+    });
+
+    const response = await riskIndicesWorker.fetch(
+      new Request("https://edge.test/risk-indices"),
+      {
+        B2_KEY_ID: "read-key",
+        B2_APPLICATION_KEY: "read-secret",
+        CONTROL_PLANE: { fetch: (request: Request) => fetch(request.url) },
+      },
+      { waitUntil: () => undefined },
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-geomacro-serving-store")).toBe("cloudflare-d1");
+    expect(response.headers.get("x-geomacro-verification-mode")).toBe("global-risk-parent-projection");
+    expect(response.headers.get("x-geomacro-b2-verification")).toBe("parent-full-readback-hash-exact-restore");
+    expect(response.headers.get("x-geomacro-b2-sha256")).toBe(value.parent_b2_sha256);
+    expect(b2Reads).toBe(0);
+  });
+
+  it("rejects malformed Risk Indices parent-projection metadata before using D1", async () => {
+    const value: any = livePackage("risk-indices");
+    value.verification_mode = "global-risk-parent-projection";
+    value.parent_product = "global-risk";
+    value.parent_b2_sha256 = "c".repeat(64);
+    value.parent_payload_sha256 = "not-a-hash";
+    const payloadJson = JSON.stringify(value);
+    vi.stubGlobal("caches", { default: { match: async () => null, put: async () => undefined } });
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/v1/public/hot-snapshot/risk-indices")) {
+        return Response.json({
+          ok: true,
+          product: "risk-indices",
+          schema: value.schema,
+          generated_at: value.generated_at,
+          source_as_of: value.data.snapshotAsOf,
+          expires_at: new Date(Date.parse(value.data.snapshotAsOf) + 90 * 60 * 1000).toISOString(),
+          b2_object_key: "geomacro-evidence/v1/live/global-risk/latest.json.gz",
+          b2_sha256: value.parent_b2_sha256,
+          payload_sha256: createHash("sha256").update(payloadJson).digest("hex"),
+          proof_schema: "geomacro.public-risk-indices-parent-projection-proof.v1",
+          verification_mode: "global-risk-parent-projection",
+          full_b2_readback_verified: true,
+          exact_gzip_restore_verified: true,
+          payload_json: payloadJson,
+        });
+      }
+      return new Response("B2_DOWNLOAD_CAP_EXCEEDED", { status: 403 });
+    });
+
+    const response = await riskIndicesWorker.fetch(
+      new Request("https://edge.test/risk-indices"),
+      {
+        B2_KEY_ID: "read-key",
+        B2_APPLICATION_KEY: "read-secret",
+        CONTROL_PLANE: { fetch: (request: Request) => fetch(request.url) },
+      },
+      { waitUntil: () => undefined },
+    );
+    expect(response.status).toBe(503);
+  });
+
   it("projects a fresh Intelligence overlay over an older verified B2 baseline when baseline time is explicitly bound", async () => {
     const baselineAt = new Date(Date.now() - 19 * 60 * 60 * 1000).toISOString();
     const overlayAt = new Date(Date.now() - 60_000).toISOString();
