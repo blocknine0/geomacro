@@ -123,17 +123,17 @@ function IntelligencePage() {
       <header className="max-w-4xl">
         <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em]">
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-primary">
-            <Radio className="h-3 w-3" aria-hidden /> {hasLiveObserved ? "LIVE OBSERVED + VERIFIED" : latestVerifiedFallback ? "LATEST VERIFIED" : "LIVE INTELLIGENCE"}
+            <Radio className="h-3 w-3" aria-hidden /> {hasLiveObserved ? "LATEST DEVELOPMENTS" : latestVerifiedFallback ? "PREVIOUSLY VERIFIED" : "CURRENT INTELLIGENCE"}
           </span>
           <span className="text-muted-foreground">
             {intel.status === "updating"
               ? "Updating"
               : hasLiveObserved
                 ? usesVerifiedContext
-                  ? "Fresh live observations + latest verified scored B2 context"
-                  : "Fresh live observations + verified B2 continuity"
+                  ? "New developments alongside earlier risk assessments"
+                  : "New developments ready to explore"
                 : latestVerifiedFallback
-                  ? "Live refresh pending · showing latest verified records"
+                  ? "Showing previous verified updates while new assessments are prepared"
                   : intel.updatedAt
                     ? `Updated ${formatTime(intel.updatedAt)}`
                     : "Current feed"}
@@ -141,9 +141,9 @@ function IntelligencePage() {
         </div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Follow the geopolitical, macroeconomic and critical-mineral developments currently shaping risk. Verified stored events retain their recorded score and movement; fresh live observations are shown unscored until they pass the durable verification pipeline.
+          Explore meaningful geopolitical, macroeconomic and critical-mineral developments. See the latest updates alongside verified risk assessments, each with its actual date.
         </p>
-        <p className="mt-3 text-sm text-muted-foreground">You do not need a wallet to read or research this intelligence.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Explore public intelligence freely.</p>
       </header>
 
       <section className="mt-8 grid gap-3 rounded-2xl border border-border/70 bg-card/40 p-4 sm:grid-cols-[minmax(0,1fr)_180px_170px_auto]">
@@ -203,7 +203,7 @@ function IntelligencePage() {
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                  {hasLiveObserved ? "Fresh observed event set" : latestVerifiedFallback ? "Latest verified event set" : "Current event set"}
+                  {hasLiveObserved ? "New developments" : latestVerifiedFallback ? "Previous verified updates" : "Latest developments"}
                 </p>
                 <h2 className="mt-1 text-2xl font-semibold">
                   {query.trim() || category !== "all"
@@ -233,10 +233,10 @@ function IntelligencePage() {
               <section className="mt-10 border-t border-border/60 pt-8" aria-labelledby="verified-risk-context-heading">
                 <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Verified B2 continuity</p>
-                    <h2 id="verified-risk-context-heading" className="mt-1 text-2xl font-semibold">Latest verified scored context</h2>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Earlier intelligence</p>
+                    <h2 id="verified-risk-context-heading" className="mt-1 text-2xl font-semibold">Previous risk assessments</h2>
                     <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                      Recent durable scored records are shown separately from today&apos;s live observations. Their original timestamps are preserved; they are context, not current-event claims.
+                      Previous verified risk assessments remain available for comparison. Their dates are preserved, and they are not presented as today&apos;s risk conditions.
                     </p>
                   </div>
                   <p className="text-sm text-muted-foreground">{intel.data.verifiedRiskContext.length} verified record{intel.data.verifiedRiskContext.length === 1 ? "" : "s"}</p>
@@ -322,7 +322,7 @@ function IntelligencePage() {
               </div>
               {intel.updatedAt ? (
                 <p className="mt-4 border-t border-border/50 pt-3 text-xs leading-5 text-muted-foreground">
-                  Feed refreshed {formatTime(intel.updatedAt)}. Score dates remain the original verified evidence times.
+                  Last update {formatTime(intel.updatedAt)}. Earlier assessments retain their original dates.
                 </p>
               ) : null}
             </div>
@@ -330,7 +330,7 @@ function IntelligencePage() {
             <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Ask Geomacro</p>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Ask a question using verified stored intelligence, current Risk Indices and bounded live retrieval when freshness is required.
+                Ask what changed, why it matters and which risk signals deserve attention.
               </p>
               <Button asChild variant="outline" className="mt-4 w-full gap-2">
                 <Link to="/ask-geomacro">Ask a question <ArrowRight className="h-4 w-4" /></Link>
@@ -354,7 +354,7 @@ function IntelCard({ event }: { event: IntelEvent }) {
           </span>
           {liveObserved ? (
             <span className="rounded-full border border-primary/25 bg-primary/5 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-primary">
-              Live observed · unscored
+              New development
             </span>
           ) : null}
         </div>
@@ -370,7 +370,7 @@ function IntelCard({ event }: { event: IntelEvent }) {
         )}
       </h3>
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5 text-xs text-muted-foreground">
-        <span>{liveObserved ? "Live discovery" : event.isCurrent ? "Verified current score" : "Last verified score"} · {formatDate(event.publishedAt ?? event.createdAt)}</span>
+        <span>{liveObserved ? "Latest update" : event.isCurrent ? "Current assessment" : "Earlier assessment"} · {formatDate(event.publishedAt ?? event.createdAt)}</span>
         {event.delta !== null && event.delta !== 0 ? <RiskTrend delta={Math.round(event.delta)} /> : null}
       </div>
     </article>
