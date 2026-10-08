@@ -41,10 +41,22 @@ describe(
           "deployedPublicVerificationKeys",
         );
         expect(route).toContain(
-          "ensureRiskObjectRuntimePublicKey();",
+          "pinnedRiskObjectVerificationKeys",
         );
         expect(route).toContain(
-          "publicRiskObjectVerificationKeySet();",
+          "pinnedRiskObjectVerificationKeySet",
+        );
+        expect(route).toContain(
+          "pinnedRiskObjectVerificationKeys();",
+        );
+        expect(route).toContain(
+          "pinnedRiskObjectVerificationKeySet();",
+        );
+        expect(route).not.toContain(
+          "ensureRiskObjectRuntimePublicKey",
+        );
+        expect(route).not.toContain(
+          "publicRiskObjectVerificationKeySet",
         );
         expect(route).not.toContain(
           'new URL(\n      "/api/risk-object-keys",\n      request.url',
@@ -74,7 +86,7 @@ describe(
     );
 
     it(
-      "uses the deployed runtime registry in-process instead of a same-origin self-fetch",
+      "uses the source-pinned public registry instead of signing-runtime env or same-origin self-fetch",
       () => {
         expect(route).toContain(
           "function deployedPublicVerificationKeys()",
