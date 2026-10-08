@@ -25,6 +25,8 @@ name: Day 6 Authorized Federico Pilot Once
 # Retrigger when the deployed public verifier route changes; local gates still precede allowance.
 # Fresh exact-main retrigger after #1808 was published to production.
 # No policy, threshold, allowance, payment, or execution boundary changes in this retrigger.
+# Exact-main retrigger after #1814 removed the stale deployed-verifier dependency from the Federico provider preflight.
+# No policy, threshold, allowance, payment, or execution boundary changes here.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
