@@ -20,14 +20,15 @@ function database(
   sources: string[],
   count?: number,
   publishedAt: string | null = "2026-09-25T10:00:00.000Z",
+  eventScoring: { severity?: number | null; event_type?: string } = {},
 ) {
   const urls: URL[] = [];
   const flashes = sources.map((source_id, i) => ({
     flash_id: `flash-${i}`, source_id, source_record_id: `source-record-${i}`,
     verification_status: "VERIFIED", event_family_id: "family-1",
     headline: "China announces trade policy", source_url: `https://example.com/${i}`,
-    content_hash: String(i).repeat(64), severity: 40, source_reliability: 95,
-    event_type: "trade_policy", first_seen_at: "2026-09-25T10:00:00.000Z",
+    content_hash: String(i).repeat(64), severity: eventScoring.severity === undefined ? 40 : eventScoring.severity, source_reliability: 95,
+    event_type: eventScoring.event_type ?? "trade_policy", first_seen_at: "2026-09-25T10:00:00.000Z",
     last_seen_at: "2026-09-25T11:00:00.000Z", published_at: publishedAt,
     material_update: false,
   }));
@@ -68,6 +69,41 @@ describe("Federico publication safety", () => {
     await expect(publishCountryRiskObject(input)).rejects.toThrow(/publication blocked.*no_fresh_evidence/);
     expect(mocks.sign).not.toHaveBeenCalled();
     expect(mocks.persist).not.toHaveBeenCalled();
+  });
+
+  it("rejects the actual Federico receiver regression: signed zero severity/CALM for corroborated material evidence", async () => {
+    database(["scmp_china_rss", "bbc_world_rss"], undefined,
+      "2026-09-25T10:00:00.000Z", { severity: 0, event_type: "GEOPOLITICS_BREAKING" });
+    const preview = await dryRunCountryRiskObject(input);
+    expect(preview.object.risk.score).toBe(0);
+    expect(preview.object.evidence.length).toBeGreaterThan(0);
+    expect(() => assertFedericoPublicationReady(preview.object))
+      .toThrow(/unclassified_material_risk_driver|unsupported_zero_or_missing_severity/);
+    await expect(publishCountryRiskObject(input))
+      .rejects.toThrow("FEDERICO_STRICT publication blocked before signing/persistence");
+    expect(mocks.sign).not.toHaveBeenCalled();
+    expect(mocks.persist).not.toHaveBeenCalled();
+  });
+
+  it("rejects nonzero issuer severity when the signed strict driver is still unclassified", async () => {
+    database(["scmp_china_rss", "bbc_world_rss"], undefined,
+      "2026-09-25T10:00:00.000Z", { severity: 55, event_type: "GEOPOLITICS_BREAKING" });
+    await expect(publishCountryRiskObject(input))
+      .rejects.toThrow("unclassified_material_risk_driver");
+    expect(mocks.sign).not.toHaveBeenCalled();
+    expect(mocks.persist).not.toHaveBeenCalled();
+  });
+
+  it("rejects manipulation of scoring fields after the signed evidence projection is built", async () => {
+    database(["scmp_china_rss", "bbc_world_rss"]);
+    const preview = await dryRunCountryRiskObject(input);
+    const forged = structuredClone(preview.object);
+    const calc = forged.provenance.reproducibility!.calculation_input as
+      { events: Array<{ severity: number; relevance_weight: number }> };
+    calc.events[0].severity = 0;
+    calc.events[0].relevance_weight = 0.88;
+    expect(() => assertFedericoPublicationReady(forged))
+      .toThrow("semantic_calculation_evidence_mismatch");
   });
 
   it("does not admit a DEGRADED object with only one independent source", async () => {
