@@ -153,7 +153,7 @@ function IntelligencePage() {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search events, sources or categories"
+            placeholder="Search intelligence or categories"
             className="pl-9"
           />
         </label>
@@ -369,9 +369,6 @@ function IntelCard({ event }: { event: IntelEvent }) {
           </Link>
         )}
       </h3>
-      {event.summary && event.summary !== event.title ? (
-        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{event.summary}</p>
-      ) : null}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5 text-xs text-muted-foreground">
         <span>{liveObserved ? "Live discovery" : event.isCurrent ? "Verified current score" : "Last verified score"} · {formatDate(event.publishedAt ?? event.createdAt)}</span>
         {event.delta !== null && event.delta !== 0 ? <RiskTrend delta={Math.round(event.delta)} /> : null}
