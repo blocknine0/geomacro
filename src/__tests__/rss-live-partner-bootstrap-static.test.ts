@@ -44,6 +44,17 @@ describe("RSS live partner bootstrap boundary", () => {
     expect(mainCatch).not.toContain("console.error(message");
   });
 
+  it("keeps partial RSS tolerance opt-in and explicit", () => {
+    expect(script).toContain("RSS_LIVE_ALLOW_PARTIAL_SOURCE_FAILURES");
+    expect(script).toContain("RSS_LIVE_MIN_PARTIAL_COMPLETED_SOURCES");
+    expect(script).toContain("allowPartial: ALLOW_PARTIAL_SOURCE_FAILURES");
+    expect(script).toContain("RSS_PARTIAL_SOURCE_FLOOR_NOT_MET");
+    expect(script).toContain("failed_sources: missing.sort()");
+    expect(script).toContain("partial_refresh: missing.length > 0");
+    expect(script).toContain("partial_source_failure_tolerance_enabled: ALLOW_PARTIAL_SOURCE_FAILURES");
+    expect(script).toContain("worker.code !== 0 && !ALLOW_PARTIAL_SOURCE_FAILURES");
+  });
+
   it("keeps global corroboration enabled by default and skips it only on explicit opt-in", () => {
     expect(script).toContain("RSS_LIVE_SKIP_CORROBORATION");
     expect(script).toContain('=== "true"');
