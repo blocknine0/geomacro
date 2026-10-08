@@ -50,6 +50,10 @@ describe("independent verified Risk Indices edge", () => {
   it("keeps publisher quota-free and separate from Global Risk and Intelligence workflows", () => {
     expect(refresh).toContain("group: geomacro-risk-indices-realtime");
     expect(refresh).toContain('cron: "38 * * * *"');
+    expect(refresh).toContain("workflow_run:");
+    expect(refresh).toContain('"GRI Realtime Direct Postgres"');
+    expect(refresh).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(refresh).toContain("github.event.workflow_run.head_branch == 'main'");
     expect(refresh).toContain("push:");
     expect(refresh).toContain('"scripts/ops/publish-b2-risk-indices-direct-postgres.mjs"');
     expect(refresh).toContain('"src/lib/risk-indices-from-global-risk.ts"');
