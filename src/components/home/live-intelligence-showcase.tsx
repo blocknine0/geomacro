@@ -93,7 +93,7 @@ export function LiveIntelligenceShowcase() {
     ? selectHomepageShowcase(intelligence.data.all)
     : null;
   const event = winner?.event;
-  const gist = event?.title.replace(/^Geomacro finds\s+/u, "") ?? null;
+  const gist = event?.title.replace(/^Geomacro (?:finds|observes)\s+/u, "") ?? null;
   const themes = FOCUS[event?.category ?? ""] ?? [];
 
   return (
