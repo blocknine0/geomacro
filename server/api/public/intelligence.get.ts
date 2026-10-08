@@ -1,4 +1,8 @@
 import {
+  fetchVerifiedIntelligenceEdge,
+  buildVerifiedIntelligenceApiPayload,
+} from "../../../src/lib/public-intelligence-edge";
+import {
   defineEventHandler,
   setResponseHeaders,
   setResponseStatus,
@@ -19,6 +23,17 @@ export default defineEventHandler(async (event) => {
   });
 
   try {
+    // Lovable preview does not have private B2 credentials. Its public route
+    // must serve the same authoritative proof-verified Cloudflare projection
+    // used by production before touching any server-only storage runtime.
+    try {
+      const verified = await fetchVerifiedIntelligenceEdge();
+      const payload = buildVerifiedIntelligenceApiPayload(verified);
+      return { ok: true, ...payload };
+    } catch {
+      // The existing B2-backed server reader is a canonical-production
+      // fallback only. Never expose a forged or downgraded package.
+    }
     // Resolve the server-only reader inside the error boundary. In preview,
     // module evaluation itself can fail before the handler's catch executes.
     // Return controlled 503 (never fabricated verified rows) in that case.

@@ -11,6 +11,10 @@ import {
   type PublicIntelligenceRow,
 } from "@/lib/public-intelligence.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
+import {
+  fetchVerifiedIntelligenceEdge,
+  canUseProductionIntelligenceBackup,
+} from "@/lib/public-intelligence-edge";
 import { sanitizePublicIntelligenceRow } from "@/lib/public-intelligence-gist";
 import {
   PUBLIC_DATA_REQUEST_TIMEOUT_MS,
@@ -257,7 +261,7 @@ export function buildPublicIntelligence(rows: PublicIntelligenceRow[], now: numb
   return build(mapPublicRows(rows), now);
 }
 
-async function fetchPublicIntelligence(): Promise<PublicIntelligenceApiRow[]> {
+async function fetchSameOriginPublicIntelligence(): Promise<PublicIntelligenceApiRow[]> {
   const response = await fetch("/api/public/intelligence", {
     method: "GET",
     headers: { Accept: "application/json" },
@@ -282,6 +286,22 @@ async function fetchPublicIntelligence(): Promise<PublicIntelligenceApiRow[]> {
     throw new Error(payload.error ?? "Verified intelligence feed unavailable.");
   }
   return payload.rows;
+}
+
+async function fetchPublicIntelligence(): Promise<PublicIntelligenceApiRow[]> {
+  // Edge-first matches the existing Risk Indices serving architecture and
+  // avoids requesting /api/public/intelligence in Lovable preview, where
+  // private server-only B2 dependencies are intentionally unavailable.
+  try {
+    return await fetchVerifiedIntelligenceEdge();
+  } catch (edgeError) {
+    // In production, preserve the existing verified B2-backed canonical
+    // same-origin failover. Never hit this route from Lovable preview.
+    if (!canUseProductionIntelligenceBackup(window.location.hostname)) {
+      throw edgeError;
+    }
+    return fetchSameOriginPublicIntelligence();
+  }
 }
 
 export function useIntelligence(
