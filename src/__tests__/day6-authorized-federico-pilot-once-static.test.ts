@@ -10,6 +10,8 @@ describe("one-time Day 6 Federico pilot authorization", () => {
   it("refreshes and proves local readiness before partner allowance", () => {
     const preflight = workflow.indexOf("Prove verified D1 signed GRO hot serving before Federico work");
     const gdelt = workflow.indexOf("Assess governed GDELT structured evidence without making it a prerequisite");
+    const existingHydrate = workflow.indexOf("Hydrate already-verified event-family timestamps before any RSS refresh");
+    const existingReady = workflow.indexOf("Check for strict recent evidence before any RSS network refresh");
     const fastRefresh = workflow.indexOf("Re-poll active Federico corroborators without partner allowance");
     const fastHydrate = workflow.indexOf("Hydrate trusted publisher times after fast refresh");
     const fastReady = workflow.indexOf("Check for an already strict recent two-family event");
@@ -21,7 +23,9 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     const live = workflow.indexOf("Dispatch exactly one authorized Federico pilot allowance review");
     expect(preflight).toBeGreaterThan(-1);
     expect(gdelt).toBeGreaterThan(preflight);
-    expect(fastRefresh).toBeGreaterThan(gdelt);
+    expect(existingHydrate).toBeGreaterThan(gdelt);
+    expect(existingReady).toBeGreaterThan(existingHydrate);
+    expect(fastRefresh).toBeGreaterThan(existingReady);
     expect(fastHydrate).toBeGreaterThan(fastRefresh);
     expect(fastReady).toBeGreaterThan(fastHydrate);
     expect(broadRefresh).toBeGreaterThan(fastReady);
@@ -48,6 +52,13 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("use_partner_allowance=true");
     expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs");
     expect(workflow).toContain("Re-poll active Federico corroborators without partner allowance");
+    expect(workflow).toContain("Hydrate already-verified event-family timestamps before any RSS refresh");
+    expect(workflow).toContain("Check for strict recent evidence before any RSS network refresh");
+    expect(workflow).toContain('FEDERICO_HYDRATE_VERIFIED_FAMILY_ONLY: "true"');
+    expect(workflow).toContain('FEDERICO_HYDRATE_MAX_ROWS: "24"');
+    expect(workflow).toContain(".verified_family_only == true");
+    expect(workflow).toContain(".max_rows == 24");
+    expect(workflow).toContain("steps.existing_ready.outputs.ready != 'true'");
     expect(workflow).toContain("Check for an already strict recent two-family event");
     expect(workflow).toContain("Re-poll full audited governed RSS cohort only when fast evidence is insufficient");
     expect(workflow).toContain("Re-hydrate trusted publisher times after broad fallback");
