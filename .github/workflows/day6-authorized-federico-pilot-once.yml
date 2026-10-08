@@ -39,7 +39,10 @@ permissions:
   issues: write
 
 concurrency:
-  group: day6-authorized-federico-pilot-once
+  # A stale long-running evidence refresh must never block the latest exact-main
+  # run. Live allowance safety is fenced again in the child workflow by
+  # requiring an allowance candidate SHA to equal the workflow-dispatch SHA.
+  group: day6-authorized-federico-pilot-once-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:

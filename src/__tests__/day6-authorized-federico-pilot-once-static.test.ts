@@ -6,6 +6,11 @@ const workflow = readFileSync(
   "utf8",
 );
 
+const childWorkflow = readFileSync(
+  ".github/workflows/day6-partner-assurance-final.yml",
+  "utf8",
+);
+
 describe("one-time Day 6 Federico pilot authorization", () => {
   it("refreshes and proves local readiness before partner allowance", () => {
     const preflight = workflow.indexOf("Prove verified D1 signed GRO hot serving before Federico work");
@@ -128,6 +133,18 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("('un_all_documents_rss', 'united_nations')");
     expect(workflow).toContain("('un_security_council_docs_rss', 'united_nations')");
     expect(workflow).toContain("cancel-in-progress: true");
+    expect(workflow).toContain(
+      'group: day6-authorized-federico-pilot-once-${{ github.sha }}',
+    );
+    expect(childWorkflow).toContain(
+      'ALLOWANCE_REQUESTED: ${{ inputs.use_partner_allowance }}',
+    );
+    expect(childWorkflow).toContain(
+      '[[ "$ALLOWANCE_REQUESTED" == "true" && "$CANDIDATE_SHA" != "$DISPATCH_SHA" ]]',
+    );
+    expect(childWorkflow).toContain(
+      "Federico live allowance refused for stale candidate SHA",
+    );
     expect(workflow).toContain("issues: write");
     expect(workflow).toContain("Record Day 6 outcome on migration tracker");
     expect(workflow).toContain("gh issue comment 1354");
