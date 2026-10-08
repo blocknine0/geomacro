@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, CalendarDays, Clock3, Mail, Radio, Zap } from "lucide-react";
 import { useIntelligence } from "@/lib/use-intelligence";
 import { selectHomepageShowcase } from "@/lib/homepage-intelligence-showcase";
+import { publicIntelligenceClarification } from "@/lib/public-intelligence-clarification";
 
 const DOMAINS: Record<string, string> = {
   geopolitics: "Geopolitical",
@@ -95,6 +96,7 @@ export function LiveIntelligenceShowcase() {
   const event = winner?.event;
   const gist = event?.title.replace(/^Geomacro (?:finds|observes)\s+/u, "") ?? null;
   const themes = FOCUS[event?.category ?? ""] ?? [];
+  const clarification = event ? publicIntelligenceClarification(event) : null;
 
   return (
     <div className="relative mx-auto w-full min-w-0 max-w-xl lg:mx-0 lg:max-w-none">
@@ -120,6 +122,9 @@ export function LiveIntelligenceShowcase() {
             <h2 className="max-w-[34rem] text-[clamp(1.25rem,2vw,1.7rem)] font-semibold leading-snug tracking-[-0.025em]">
               {gist}
             </h2>
+            {clarification && (
+              <p className="mt-2 max-w-[34rem] text-sm leading-6 text-muted-foreground">{clarification}</p>
+            )}
             <div className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Clock3 className="h-3 w-3 shrink-0" aria-hidden="true" />
               <time dateTime={winner.observedAt}>{eventDate(winner.observedAt)}</time>
