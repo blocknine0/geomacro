@@ -283,7 +283,13 @@ jobs:
           test "$global_code" = "200" || { echo "Global Risk edge HTTP $global_code"; cat "$global_edge"; exit 1; }
           grep -qi '^x-geomacro-authority: backblaze-b2-verified-edge' "$global_headers"
           grep -qi '^x-geomacro-serving-store: cloudflare-d1' "$global_headers"
-          grep -qi '^x-geomacro-b2-verification: full-readback-hash-exact-restore' "$global_headers"
+          global_mode="$(awk -F': ' 'tolower($1)=="x-geomacro-verification-mode" {gsub("\\r","",$2); print $2}' "$global_headers" | tail -n1)"
+          global_b2_verification="$(awk -F': ' 'tolower($1)=="x-geomacro-b2-verification" {gsub("\\r","",$2); print $2}' "$global_headers" | tail -n1)"
+          case "$global_mode:$global_b2_verification" in
+            direct-b2-readback:full-readback-hash-exact-restore) ;;
+            independent-gri-proof-over-b2-baseline:baseline-full-readback-current-gri-proof) ;;
+            *) echo "Global Risk verification mode invalid: $global_mode / $global_b2_verification"; exit 1 ;;
+          esac
           grep -Eqi '^x-geomacro-b2-sha256: [0-9a-f]{64}' "$global_headers"
           grep -Eqi '^x-geomacro-d1-payload-sha256: [0-9a-f]{64}' "$global_headers"
           grep -Fq '"schema":"geomacro.public-global-risk-live.v1"' "$global_edge"
