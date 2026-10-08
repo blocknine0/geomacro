@@ -271,6 +271,22 @@ jobs:
           test -s /tmp/federico-review-request.json
           test -s /tmp/federico-review-response.json
 
+      - name: Preserve Federico live-review diagnostics on failure
+        if: ${{ always() && inputs.use_partner_allowance == true }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: day6-federico-live-diagnostics-${{ github.run_id }}
+          path: |
+            /tmp/day6-risk-object.json
+            /tmp/day6-direct-evidence.json
+            /tmp/day6-direct-result.json
+            /tmp/day6-local-assurance.json
+            /tmp/day6-live-assurance.json
+            /tmp/federico-review-request.json
+            /tmp/federico-review-response.json
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Record no-allowance mode
         if: ${{ inputs.use_partner_allowance != true }}
         shell: bash
