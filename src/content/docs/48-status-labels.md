@@ -14,9 +14,9 @@ Implemented capability available only through controlled customer access, with v
 
 Commercial capability whose runtime remains fail-closed until explicit production activation and required acceptance gates pass.
 
-## PLANNED
+## PLANNED / COMING SOON
 
-A roadmap or commercial direction that is not currently available.
+A roadmap or commercial direction that is not currently available. Customer-facing pages may display **Coming Soon**; no working checkout, entitlement or production service should be implied. **Coming Soon** can also describe general access for a production-gated or Private Pilot feature, while its actual gate remains visible.
 
 ## LEGACY
 
