@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "d3953599bce3c6917d7d626cd2cada520fa1a815",
-  "published_baseline": "Founder-approved all-public-page commercial access and independently corroborated public documentation with no editorial publication-format labels, retained from #1752. Inactive customer products explicitly labeled Coming Soon: monthly self-service subscription, standalone Geomacro AI Agent, general-access Risk Gate and roadmap services. Risk Gate remains Private Pilot for controlled partners. x402 remains runtime-authoritative and shows Coming Soon only when gated; annual enterprise email enquiry remains available. No raw source data, fake subscription price, invented entitlement, testnet offering, or unauthorized real-money activation. Independent Global Risk immutable presentation and commercial fail-closed source/rights/payment gates remain unchanged. Manual Lovable publish and exact deployed build acceptance required.",
+  "baseline_sha": "30f1f7b773616ac7cf6e6a7c782ab7db66036390",
+  "published_baseline": "Founder-approved Geomacro Finds and Intelligence presentation: when the canonical, derived-only GDELT root-13 public geopolitical observation is labelled 'threat activity', add one concise shared plain-English threat-type line explaining that it describes reported threats or warnings of possible action but does not identify the specific actor or target. All other event labels stay unchanged. Same shared explanation in homepage and Intelligence cards; never invent a cyberattack, terrorist incident, military strike, or raw-source fact. Existing access, coming-soon, x402 and Global Risk locked presentation preserved. Lovable publish and exact production proof remain independent.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-08T08:16:00Z",
   "published_source_sha": "87fe2e9dd4d1f6c7abeb2af8cbe2029d5b9b4f14",
-  "lock_revision": "founder-approved-docs-plus-coming-soon-commercial-status-20261008"
+  "lock_revision": "founder-approved-evidence-bounded-threat-context-20261008"
 }

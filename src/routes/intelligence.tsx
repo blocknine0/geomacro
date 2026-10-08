@@ -16,6 +16,7 @@ import {
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
 import { useRiskIndices } from "@/lib/use-risk-indices";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
+import { publicEventExplanation } from "@/lib/public-intelligence-explanation";
 
 const TITLE = "Live Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
 const DESCRIPTION =
@@ -345,6 +346,7 @@ function IntelligencePage() {
 
 function IntelCard({ event }: { event: IntelEvent }) {
   const liveObserved = event.publicStatus === "live_observed";
+  const explanation = publicEventExplanation(event);
   return (
     <article className="flex min-h-[230px] flex-col rounded-2xl border border-border/70 bg-card/40 p-5 transition hover:border-primary/30">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -369,6 +371,12 @@ function IntelCard({ event }: { event: IntelEvent }) {
           </Link>
         )}
       </h3>
+      {explanation && (
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          <span className="font-semibold text-foreground">{explanation.label}:</span>{" "}
+          {explanation.text}
+        </p>
+      )}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5 text-xs text-muted-foreground">
         <span>{liveObserved ? "Latest update" : event.isCurrent ? "Current assessment" : "Earlier assessment"} · {formatDate(event.publishedAt ?? event.createdAt)}</span>
         {event.delta !== null && event.delta !== 0 ? <RiskTrend delta={Math.round(event.delta)} /> : null}
