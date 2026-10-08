@@ -67,6 +67,14 @@ describe("partner commercial readiness", () => {
     expect(preflight).toContain('receiver_policy_id: "federico-global-country-risk-v1"');
     expect(preflight).toContain("subject_id: reviewSubjectId");
     expect(preflight).not.toContain('subject_id: "CHN"');
+    expect(preflight).toContain("verifyRiskObjectSignature");
+    expect(preflight).toContain("verifyPublicRiskObjectArtifact");
+    expect(preflight).toContain('verifier_mode: "live_registry_client_local"');
+    expect(preflight).toContain("registryResponseSha256");
+    expect(preflight).toContain("tamperedSignature");
+    expect(preflight).toContain("tamperedVerification");
+    expect(preflight).not.toContain("async function verify(object: unknown)");
+    expect(preflight).not.toContain("Original Risk Object failed deployed verification");
   });
 
   it("documents the path from evaluation to a commercial agreement", () => {
