@@ -140,8 +140,8 @@ describe("production website runtime contract", () => {
     expect(intelligenceHook).toContain("setUpdatedAt(latestEvidenceAt(next.all))");
     expect(intelligenceHook).not.toContain("setUpdatedAt(Date.now())");
     expect(intelligenceRoute).toContain("Score dates remain the original verified evidence times.");
-    expect(pricing).toContain("Free to explore. Pay only for successful commercial machine delivery.");
-    expect(pricing).toContain("Commercial revenue begins only after production settlement is explicitly authorized and verified.");
+    expect(pricing).toContain("Explore for free. Choose the access that fits.");
+    expect(pricing).toContain("Pay-per-call availability is confirmed by the live checkout, not the advertised price.");
     expect(institutional).toContain("Institutional delivery is limited to governed Geomacro risk intelligence");
   });
 
