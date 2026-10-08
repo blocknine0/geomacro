@@ -125,6 +125,9 @@ describe("B2 cap resilient public edge reads", () => {
     const response = await worker.fetch(new Request(`https://edge.test${path}`), {
       B2_KEY_ID: "read-key",
       B2_APPLICATION_KEY: "read-secret",
+      CONTROL_PLANE: {
+        fetch: (request: Request) => fetch(request.url),
+      },
     }, { waitUntil: () => undefined });
     const body = await response.json();
     expect(response.status).toBe(200);
@@ -166,6 +169,9 @@ describe("B2 cap resilient public edge reads", () => {
     const response = await worker.fetch(new Request(`https://edge.test${path}`), {
       B2_KEY_ID: "read-key",
       B2_APPLICATION_KEY: "read-secret",
+      CONTROL_PLANE: {
+        fetch: (request: Request) => fetch(request.url),
+      },
     }, { waitUntil: () => undefined });
     const body = await response.json();
 
@@ -245,7 +251,11 @@ describe("B2 cap resilient public edge reads", () => {
 
     const response = await intelligenceWorker.fetch(
       new Request("https://edge.test/intelligence"),
-      { B2_KEY_ID: "read-key", B2_APPLICATION_KEY: "read-secret" },
+      {
+        B2_KEY_ID: "read-key",
+        B2_APPLICATION_KEY: "read-secret",
+        CONTROL_PLANE: { fetch: (request: Request) => fetch(request.url) },
+      },
       { waitUntil: () => undefined },
     );
     const body = await response.json();
@@ -324,7 +334,11 @@ describe("B2 cap resilient public edge reads", () => {
 
     const response = await intelligenceWorker.fetch(
       new Request("https://edge.test/intelligence"),
-      { B2_KEY_ID: "read-key", B2_APPLICATION_KEY: "read-secret" },
+      {
+        B2_KEY_ID: "read-key",
+        B2_APPLICATION_KEY: "read-secret",
+        CONTROL_PLANE: { fetch: (request: Request) => fetch(request.url) },
+      },
       { waitUntil: () => undefined },
     );
     const body = await response.json();
@@ -345,6 +359,9 @@ describe("B2 cap resilient public edge reads", () => {
     const response = await globalRiskWorker.fetch(new Request("https://edge.test/global-risk"), {
       B2_KEY_ID: "read-key",
       B2_APPLICATION_KEY: "read-secret",
+      CONTROL_PLANE: {
+        fetch: (request: Request) => fetch(request.url),
+      },
     }, { waitUntil: () => undefined });
     expect(response.status).toBe(503);
   });

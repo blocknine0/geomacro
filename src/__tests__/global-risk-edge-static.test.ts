@@ -17,11 +17,11 @@ describe("verified Global Risk edge serving boundary", () => {
     expect(worker).toContain('B2_BUCKET = "geomacro-private-archive"');
     expect(worker).toContain('LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz"');
     expect(worker).toContain('PROOF_KEY = "geomacro-evidence/v1/live/global-risk/latest-proof.json"');
-    expect(worker).toContain("async function readD1HotSnapshot()");
+    expect(worker).toContain("async function readD1HotSnapshot(env)");
     expect(worker).toContain("await sha256(payloadJson) !== snapshot.payload_sha256");
     expect(worker).toContain("Date.now() - sourceAsOf > 90 * 60 * 1000");
     expect(worker).toContain('"x-geomacro-serving-store": "cloudflare-d1"');
-    expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot()");
+    expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot(env)");
     expect(worker).not.toContain("risk-indices-independent");
     expect(worker).not.toContain("request.json()");
     expect(worker).not.toContain("PUT\"");
