@@ -29,6 +29,10 @@ describe("independent verified Risk Indices edge", () => {
     expect(publisher).toContain("B2_RISK_INDICES_HISTORY_IMMUTABILITY_VIOLATION");
     expect(publisher).toContain("full_b2_readback_verified: true");
     expect(publisher).toContain("exact_gzip_restore_verified: true");
+    expect(publisher).toContain("RISK_INDICES_PUBLISHED_LIVE_ARTIFACT_PATH");
+    expect(publisher).toContain("JSON.stringify(restoredLive, null, 2)");
+    expect(refresh).toContain("RISK_INDICES_PUBLISHED_LIVE_ARTIFACT_PATH: /tmp/risk-indices-published-live.json");
+    expect(refresh).toContain("/tmp/risk-indices-published-live.json");
     expect(worker).toContain("proof?.compressed_sha256 !== liveDigest");
     expect(worker).toContain("proof?.full_b2_readback_verified !== true");
     expect(worker).toContain("proof?.exact_gzip_restore_verified !== true");
