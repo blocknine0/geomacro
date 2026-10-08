@@ -1,0 +1,71 @@
+name: Diagnostic Global Risk Cap Recovery
+
+on:
+  push:
+    branches:
+      - diag/1414-global-risk-cap-edge
+    paths:
+      - ".github/workflows/diagnostic-global-risk-cap-recovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Probe D1 recovery snapshot and public edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          SNAP="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/hot-snapshot/global-risk"
+          EDGE="https://geomacro-global-risk.daspallab202391.workers.dev/global-risk"
+
+          echo "=== D1 SNAPSHOT ==="
+          curl -sS -D /tmp/snap.h -o /tmp/snap.json -w 'HTTP %{http_code}\n' --max-time 15 "$SNAP"
+          grep -iE '^(HTTP/|content-type:|cache-control:)' /tmp/snap.h || true
+          node <<'NODE'
+          const fs=require("fs"), crypto=require("crypto");
+          const s=JSON.parse(fs.readFileSync("/tmp/snap.json","utf8"));
+          const payload=String(s.payload_json??"");
+          let live=null; try{live=JSON.parse(payload)}catch{}
+          console.log(JSON.stringify({
+            ok:s.ok,
+            product:s.product,
+            schema:s.schema,
+            verification_mode:s.verification_mode,
+            generated_at:s.generated_at,
+            source_as_of:s.source_as_of,
+            expires_at:s.expires_at,
+            b2_sha256:s.b2_sha256,
+            payload_sha256:s.payload_sha256,
+            baseline_b2_readback_verified:s.baseline_b2_readback_verified,
+            baseline_exact_gzip_restore_verified:s.baseline_exact_gzip_restore_verified,
+            current_b2_readback_verified:s.current_b2_readback_verified,
+            current_b2_snapshot_promoted:s.current_b2_snapshot_promoted,
+            payload_hash_match: payload ? crypto.createHash("sha256").update(payload).digest("hex")===s.payload_sha256 : false,
+            live_schema:live?.schema,
+            live_verification_mode:live?.verification_mode,
+            live_generated_at:live?.generated_at,
+            live_snapshot_id:live?.data?.snapshotId,
+            live_snapshot_as_of:live?.data?.snapshotAsOf,
+            live_current_b2_snapshot_promoted:live?.current_b2_snapshot_promoted
+          }));
+          NODE
+
+          echo "=== EDGE ==="
+          curl -sS -D /tmp/edge.h -o /tmp/edge.json -w 'HTTP %{http_code}\n' --max-time 15 -H 'Cache-Control: no-cache' "$EDGE"
+          grep -iE '^(HTTP/|x-geomacro-|content-type:|cache-control:)' /tmp/edge.h || true
+          node <<'NODE'
+          const fs=require("fs");
+          const b=JSON.parse(fs.readFileSync("/tmp/edge.json","utf8"));
+          console.log(JSON.stringify({
+            schema:b?.schema,
+            verification_mode:b?.verification_mode,
+            generated_at:b?.generated_at,
+            snapshot_id:b?.data?.snapshotId,
+            snapshot_as_of:b?.data?.snapshotAsOf,
+            current_b2_snapshot_promoted:b?.current_b2_snapshot_promoted
+          }));
+          NODE
