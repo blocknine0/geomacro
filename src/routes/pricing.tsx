@@ -155,12 +155,13 @@ function PricingPage() {
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <div className="flex flex-col rounded-2xl border border-border/65 bg-background/35 p-6 sm:p-8">
               <CalendarDays className="h-5 w-5 text-primary" aria-hidden="true" />
-              <h3 className="mt-4 text-2xl font-semibold">Monthly access</h3>
+              <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-amber-300">Coming Soon · Monthly checkout</p>
+              <h3 className="mt-2 text-2xl font-semibold">Monthly access</h3>
               <p className="mt-3 flex-1 text-sm leading-7 text-muted-foreground">
                 Recurring API and AI-agent usage with usage limits and delivery requirements agreed before activation.
               </p>
               <p className="mt-4 text-xs leading-5 text-muted-foreground">
-                Monthly self-service checkout is not yet available. Request a scoped plan and quote.
+                Monthly subscriptions are Coming Soon. You can request a tailored plan and quote now.
               </p>
               <Button asChild variant="outline" className="mt-6 self-start">
                 <a href="mailto:contact@geomacro.live?subject=Geomacro%20monthly%20intelligence%20access">
