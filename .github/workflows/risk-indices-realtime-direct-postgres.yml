@@ -49,6 +49,8 @@ jobs:
           test -n "${B2_APPLICATION_KEY:-}" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
 
       - name: Publish verified Risk Indices package to isolated B2 namespace
+        env:
+          RISK_INDICES_PUBLISHED_LIVE_ARTIFACT_PATH: /tmp/risk-indices-published-live.json
         run: bun scripts/ops/publish-b2-risk-indices-direct-postgres.mjs | tee /tmp/risk-indices-publish.json
 
       - name: Require verified dedicated Risk Indices edge
@@ -103,6 +105,7 @@ jobs:
           name: risk-indices-realtime-${{ github.run_id }}
           path: |
             /tmp/risk-indices-publish.json
+            /tmp/risk-indices-published-live.json
             /tmp/risk-indices-edge.json
           if-no-files-found: warn
           retention-days: 30
