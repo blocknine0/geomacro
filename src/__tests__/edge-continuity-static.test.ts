@@ -23,7 +23,7 @@ describe("cap-independent verified edge continuity", () => {
     expect(prepare).toContain("No coherent B2-readback-verified continuity source found");
     expect(prepare).toContain("SELECTED_RUN_ID");
     expect(prepare).toContain('.sort((a, b) => Date.parse(String(a?.created_at ?? "")) - Date.parse(String(b?.created_at ?? "")))');
-    expect(prepare).toContain('repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip');
+    expect(prepare).toContain('repos/$REPO/actions/artifacts/$artifact_id/zip');
     expect(materialize).toContain('findFile("global-risk-published-live.json")');
     expect(materialize).toContain('findFile("global-risk-three-index.json")');
     expect(materialize).toContain('findFile("risk-indices-published-live.json")');
