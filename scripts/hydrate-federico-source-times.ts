@@ -12,8 +12,18 @@ const SOURCE_IDS = [
   "aljazeera_rss",
   "forexlive_rss",
 ] as const;
-const MAX_ROWS = 180;
 const LOOKBACK_HOURS = 6;
+const VERIFIED_FAMILY_ONLY =
+  String(process.env.FEDERICO_HYDRATE_VERIFIED_FAMILY_ONLY ?? "")
+    .trim()
+    .toLowerCase() === "true";
+const MAX_ROWS = Math.max(
+  1,
+  Math.min(
+    180,
+    Number(process.env.FEDERICO_HYDRATE_MAX_ROWS ?? 180),
+  ),
+);
 
 function requireEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -34,13 +44,21 @@ const cutoff = new Date(
   asOf.getTime() - LOOKBACK_HOURS * 3_600_000,
 ).toISOString();
 
-const result = await db
+let query = db
   .from("live_flash_events")
   .select("flash_id,source_id,source_url,published_at,last_seen_at")
   .in("source_id", [...SOURCE_IDS])
   .is("published_at", null)
   .gte("last_seen_at", cutoff)
-  .lte("last_seen_at", asOf.toISOString())
+  .lte("last_seen_at", asOf.toISOString());
+
+if (VERIFIED_FAMILY_ONLY) {
+  query = query
+    .eq("verification_status", "VERIFIED")
+    .not("event_family_id", "is", null);
+}
+
+const result = await query
   .order("last_seen_at", { ascending: false })
   .limit(MAX_ROWS);
 
@@ -126,6 +144,8 @@ console.log(JSON.stringify({
   execution_mode: process.env.GRI_DB_MODE ?? null,
   policy: "trusted_publisher_metadata_only",
   lookback_hours: LOOKBACK_HOURS,
+  verified_family_only: VERIFIED_FAMILY_ONLY,
+  max_rows: MAX_ROWS,
   attempted,
   hydrated,
   by_source: bySource,
