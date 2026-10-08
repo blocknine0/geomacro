@@ -38,7 +38,7 @@ describe("commercial website source-of-truth contract", () => {
   });
 
   it("keeps commercial delivery bounded and production-gated", () => {
-    expect(read("src/routes/data-api.tsx")).toContain("Real-money x402 access stays fail-closed");
+    expect(read("src/routes/data-api.tsx")).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(read("src/routes/pricing.tsx")).toContain("0.05");
     expect(read("src/routes/risk-gate.tsx")).toContain("PRIVATE PILOT");
     expect(read("src/routes/risk-gate.tsx")).toContain("execution_authorized = false");
