@@ -15,7 +15,19 @@ export type HomepageShowcaseWinner = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ALLOWED = new Set(["geopolitics", "macro", "rare_earth"]);
 const SCORED_TITLE = /^Geomacro finds\s+\S/u;
-const OBSERVED_TITLE = /^Geomacro observes\s+\S/u;
+// A classifier class or vague risk label is not an exact news development.
+// Only publish a feature when the already-approved derived text identifies
+// a specific action, actor or policy rather than just a time/place bucket.
+const UNSPECIFIC_STORY = [
+  /\b(?:threat|protest|force-posture|relationship deterioration|coercive|assault|fighting|mass-violence)\s+activity\s+in\b/iu,
+  /\bcurrent conflict-related media coverage from\b/iu,
+  /^(?:a|an|the)?\s*(?:(?:verified|monitored|current|reported|recent)\s+)*(?:geopolitical|macroeconomic|macro|critical[- ]minerals?|cross[- ]border|global)\s+(?:development|event|signal|activity|change|update|risk)\b/iu,
+  /\b(?:developments?|events?|signals?)\s+(?:detected|observed|reported)\s+in\b/iu,
+];
+export function isStorySpecificHeadline(title: string): boolean {
+  const text = title.replace(/^Geomacro (?:finds|observes)\s+/iu, "").trim();
+  return text.length >= 12 && !UNSPECIFIC_STORY.some((pattern) => pattern.test(text));
+}
 
 function timestamp(event: IntelEvent): number {
   const published = event.publishedAt ? Date.parse(event.publishedAt) : NaN;
@@ -35,19 +47,16 @@ export function isHomepageShowcaseEligible(event: IntelEvent, now: number): bool
   if (!common) return false;
   if (event.publicStatus === "verified_b2") {
     return SCORED_TITLE.test(event.title) &&
+      isStorySpecificHeadline(event.title) &&
       typeof event.severity === "number" &&
       Number.isFinite(event.severity) &&
       event.severity >= 0 && event.severity <= 100;
   }
-  // Only the canonical, explicitly unscored geopolitical discovery layer
-  // may be considered, and only for a genuinely fresh event. This path
-  // cannot produce a score, delta, inferred cause, or forecast.
-  return event.publicStatus === "live_observed" &&
-    event.category === "geopolitics" &&
-    OBSERVED_TITLE.test(event.title) &&
-    event.severity === null &&
-    event.delta === null &&
-    observedAt >= now - DAY_MS;
+  // GDELT event-export observations currently carry a classification, place
+  // and timestamp but no independently verified article-level facts. Even
+  // though they are valid for /intelligence monitoring, they are NOT an
+  // evidence-bound news story fit for the homepage spotlight. Fail closed.
+  return false;
 }
 
 /**
@@ -74,13 +83,12 @@ function bestScored(events: IntelEvent[], anchor: number): IntelEvent | null {
 /**
  * One free story across all three domains:
  *   (1) best eligible verified scored event from the last 24 hours;
- *   (2) otherwise the newest verified current observation, explicitly
- *       unscored (no invented cross-domain severity ranking);
- *   (3) otherwise the latest available historical scored winner, keeping
+ *   (2) otherwise the latest available historical scored winner, keeping
  *       its real date rather than inventing a "today" publication.
  *
- * Only the verified D1/edge public projection can supply current
- * observations. A partial or stale source never becomes a synthetic score.
+ * Bare live classifier observations remain in /intelligence but cannot
+ * masquerade as exact headline news. A partial or stale source never becomes
+ * a synthetic score or a fabricated story.
  */
 export function selectHomepageShowcase(
   events: IntelEvent[],
@@ -94,14 +102,6 @@ export function selectHomepageShowcase(
     const event = bestScored(currentScored, now);
     if (!event) return null;
     return { event, isCurrent: true, observedAt: new Date(timestamp(event)).toISOString(), kind: "scored" };
-  }
-
-  const currentObserved = eligible
-    .filter((event) => event.publicStatus === "live_observed")
-    .sort((a, b) => timestamp(b) - timestamp(a) || a.id.localeCompare(b.id));
-  if (currentObserved.length) {
-    const event = currentObserved[0];
-    return { event, isCurrent: true, observedAt: new Date(timestamp(event)).toISOString(), kind: "observed" };
   }
 
   if (!scored.length) return null;
