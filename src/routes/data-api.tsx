@@ -77,10 +77,10 @@ function DataApiPage() {
         <div className="relative mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-18 lg:grid-cols-[1.02fr_.98fr] lg:items-center lg:py-22">
           <div className="max-w-3xl">
             <Badge variant="outline" className="border-primary/25 bg-primary/5 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-              GOVERNED DATA · CONTROLLED API · AGENT ACCESS
+              INTELLIGENCE API · AI AGENTS
             </Badge>
             <h1 className="mt-5 text-[clamp(2.7rem,6vw,5.5rem)] font-semibold leading-[0.96] tracking-[-0.05em]">
-              Risk intelligence machines can consume without the raw-data noise.
+              Risk intelligence, ready for your applications.
             </h1>
             <p className="mt-6 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
               Geomacro delivers decision-ready geopolitical, macroeconomic and critical-mineral intelligence through governed machine interfaces. The intelligence stays canonical; API and x402 are delivery layers around the same verified product state.
@@ -98,13 +98,13 @@ function DataApiPage() {
             <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-4">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Commercial delivery status</p>
-                <p className="mt-1 text-sm font-medium">Runtime truth, not marketing copy</p>
+                <p className="mt-1 text-sm font-medium">Access follows live availability</p>
               </div>
               <Bot className="h-5 w-5 text-primary" />
             </div>
             <div className="mt-5"><AgentCommerceStatus /></div>
             <p className="mt-4 text-xs leading-5 text-muted-foreground">
-              Real-money x402 access stays fail-closed until the production endpoint itself advertises an authorized production configuration.
+              Paid API requests become available only when the live payment and delivery service confirms activation.
             </p>
           </div>
         </div>
@@ -113,7 +113,7 @@ function DataApiPage() {
       <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
         <div className="max-w-3xl">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">One commercial path</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Request → verify → settle → deliver.</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Request. Access. Decide.</h2>
           <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
             Payment never bypasses evidence, freshness, source-rights or product controls. If the requested capability cannot deliver, Geomacro fails closed instead of manufacturing a paid answer.
           </p>
@@ -133,9 +133,9 @@ function DataApiPage() {
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">What a machine receives</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Decision context, not an upstream payload dump.</h2>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">The intelligence your workflow needs.</h2>
             <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
-              Commercial machine responses contain derived Geomacro intelligence. Upstream source URLs, publisher identities, raw provider payloads, raw article text and internal provenance blobs stay inside the governed evidence system.
+              Get concise, structured Geomacro intelligence built for decisions, while underlying evidence remains protected.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
