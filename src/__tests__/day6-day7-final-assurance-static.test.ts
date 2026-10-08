@@ -50,6 +50,14 @@ describe("Day 6 generic partner assurance", () => {
     expect(adapter).toContain('provider?.gates?.partner_admission !== "PASS"');
     expect(adapter).toContain('provider?.live_review?.verdict !== "approve"');
     expect(adapter).toContain('"LIVE_PARTNER_ADMISSION_REJECTED"');
+    expect(adapter).toContain("provider_issue_details_redacted_from_log");
+    expect(adapter).toContain("review_response_available");
+    expect(adapter).not.toContain("provider_stderr:");
+    expect(day6Workflow).toContain("Summarize rejected Federico review without exposing raw evidence");
+    expect(day6Workflow).toContain("sanitize-federico-review-diagnostic.mjs");
+    expect(day6Workflow).toContain("Upload redacted Federico rejection diagnostics on failure");
+    expect(day6Workflow).toContain("day6-federico-redacted-diagnostic-");
+    expect(day6Workflow).not.toContain("day6-federico-live-diagnostics-");
     expect(adapter).toContain("TAMPER_NOT_REJECTED");
     expect(adapter).toContain("verifyPublicRiskObjectArtifact");
     expect(adapter).toContain("LOCAL_PUBLIC_VERIFIER_REJECTED_ORIGINAL");

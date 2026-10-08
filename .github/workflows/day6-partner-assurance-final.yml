@@ -271,6 +271,30 @@ jobs:
           test -s /tmp/federico-review-request.json
           test -s /tmp/federico-review-response.json
 
+      - name: Summarize rejected Federico review without exposing raw evidence
+        if: ${{ failure() && inputs.use_partner_allowance == true }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -s /tmp/federico-review-response.json ]; then
+            bun scripts/ops/sanitize-federico-review-diagnostic.mjs \
+              /tmp/federico-review-response.json \
+              artifacts/day6-federico-review-diagnostic/redacted-review.json
+            jq -r '"Federico receiver verdict: " + .verdict + ", issue count: " + (.issue_count|tostring) + ". Full original response is deliberately NOT published to GitHub Actions artifacts."' \
+              artifacts/day6-federico-review-diagnostic/redacted-review.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Federico live review failed before a structured response was captured; no issue descriptions can be inferred." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload redacted Federico rejection diagnostics on failure
+        if: ${{ failure() && inputs.use_partner_allowance == true }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: day6-federico-redacted-diagnostic-${{ github.run_id }}
+          path: artifacts/day6-federico-review-diagnostic/redacted-review.json
+          if-no-files-found: warn
+          retention-days: 3
+
       - name: Record no-allowance mode
         if: ${{ inputs.use_partner_allowance != true }}
         shell: bash

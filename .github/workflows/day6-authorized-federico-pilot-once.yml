@@ -62,7 +62,7 @@ concurrency:
 
 jobs:
   authorize-and-run:
-    if: github.repository == 'blocknine0/geomacro' && github.run_attempt == 1
+    if: github.repository == 'blocknine0/geomacro' && github.run_attempt == 1 && !contains(github.event.head_commit.message, '[federico-diagnostics-only]')
     runs-on: ubuntu-latest
     timeout-minutes: 75
     environment: production
