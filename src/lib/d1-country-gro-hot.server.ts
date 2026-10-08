@@ -36,7 +36,7 @@ function recordSha256(object: GeomacroRiskObject) {
     .digest("hex");
 }
 
-async function publicVerificationKeys(): Promise<RiskObjectVerificationKeys | null> {
+export async function fetchPublicRiskObjectVerificationKeys(): Promise<RiskObjectVerificationKeys | null> {
   const now = Date.now();
   if (trustCache && trustCache.expires_at_ms > now) {
     return trustCache.keys;
@@ -161,7 +161,7 @@ export async function readD1VerifiedHotCountryGro(
       recordSha256(object) !== payload.record_sha256
     ) return null;
 
-    const verificationKeys = await publicVerificationKeys();
+    const verificationKeys = await fetchPublicRiskObjectVerificationKeys();
     if (!verificationKeys) return null;
 
     const signature = verifyRiskObjectSignature(object, verificationKeys);
