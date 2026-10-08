@@ -112,7 +112,62 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("e.published_at is not null");
     expect(workflow).toContain("e.published_at >= now() - interval '6 hours'");
     expect(workflow).toContain("e.published_at <= now()");
-    expect(workflow).toContain("c.country_iso3 ~ " + "'^[A-Z]{3}$'");
+    expect(workflow).toContain("c.country_iso3 ~ " + "'^[A-Z]{3}
+    expect(workflow).not.toContain("coalesce(e.published_at,e.last_seen_at,e.ingested_at)");
+    expect(workflow).not.toContain(".supabase.co/functions/v1/");
+    expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_URL");
+  });
+
+  it("does not authorize user funds or irreversible execution", () => {
+    expect(workflow).toContain('"user_funds_authorized":false');
+    expect(workflow).toContain('"real_money_payment_authorized":false');
+    expect(workflow).toContain('"execution_authorized":false');
+    expect(workflow).toContain("github.run_attempt == 1");
+  });
+
+  it("pins both child assurance runs to the parent SHA and exact artifact contract", () => {
+    expect(workflow).toContain('-f candidate_sha="$MAIN_SHA" -f use_partner_allowance=false');
+    expect(workflow).toContain('-f candidate_sha="$MAIN_SHA" -f use_partner_allowance=true');
+    expect(workflow).toContain("--json databaseId,createdAt,displayTitle,status");
+    expect(workflow).not.toContain("--json databaseId,createdAt,headSha,status");
+    expect(workflow).toContain("day6-global-partner-assurance-${RUN_ID}");
+    expect(workflow).not.toContain("federico-handoff-${RUN_ID}");
+    expect(workflow).toContain('RSS_LIVE_SKIP_CORROBORATION: "true"');
+    expect(workflow).toContain('BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"');
+    expect(workflow).toContain('BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss,federal_reserve_press_rss,ecb_press_rss,ecb_market_information_rss,bis_rss_media_releases,bis_rss_central_banker_speeches,eu_council_press_rss,un_all_documents_rss,un_human_rights_council_rss,un_geneva_press_rss,un_security_council_docs_rss,un_geneva_meeting_summaries_rss,usgs_minerals_news_rss,nrcan_news_atom"');
+    expect(workflow).toContain("('ecb_press_rss', 'european_central_bank')");
+    expect(workflow).toContain("('ecb_market_information_rss', 'european_central_bank')");
+    expect(workflow).toContain("('bis_rss_media_releases', 'bank_for_international_settlements')");
+    expect(workflow).toContain("('bis_rss_central_banker_speeches', 'bank_for_international_settlements')");
+    expect(workflow).toContain("('un_all_documents_rss', 'united_nations')");
+    expect(workflow).toContain("('un_security_council_docs_rss', 'united_nations')");
+    expect(workflow).toContain("cancel-in-progress: true");
+    expect(workflow).toContain(
+      'group: day6-authorized-federico-pilot-once-${{ github.sha }}',
+    );
+    expect(childWorkflow).toContain(
+      'ALLOWANCE_REQUESTED: ${{ inputs.use_partner_allowance }}',
+    );
+    expect(childWorkflow).toContain(
+      '[[ "$ALLOWANCE_REQUESTED" == "true" && "$CANDIDATE_SHA" != "$DISPATCH_SHA" ]]',
+    );
+    expect(childWorkflow).toContain(
+      "Federico live allowance refused for stale candidate SHA",
+    );
+    expect(workflow).toContain("issues: write");
+    expect(workflow).toContain("Record Day 6 outcome on migration tracker");
+    expect(workflow).toContain("gh issue comment 1354");
+    expect(workflow).toContain('.corroboration.skipped == true');
+    expect(workflow).toContain('explicit_partner_bootstrap_country_corroboration_follows');
+  });
+});
+");
+    // YAML block indentation is stripped by 10 spaces at runtime, so the
+    // heredoc terminator must be exactly at the run-block base indentation.
+    // Two extra spaces previously produced "unexpected end of file" before
+    // the already-VERIFIED VEN strict candidate could reach local assurance.
+    expect(workflow).toContain("\n          SQL\n          fi\n");
+    expect(workflow).not.toContain("\n            SQL\n          fi\n");
     expect(workflow).not.toContain("coalesce(e.published_at,e.last_seen_at,e.ingested_at)");
     expect(workflow).not.toContain(".supabase.co/functions/v1/");
     expect(workflow).not.toContain("ACTIONS_ID_TOKEN_REQUEST_URL");
