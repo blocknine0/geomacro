@@ -2,7 +2,7 @@
 
 **Status: FOUNDATION / IN DEVELOPMENT**
 
-The Global Evidence Mesh is Geomacro's provenance-aware evidence architecture. The objective is not to mirror the internet or archive complete third-party articles. It is to retain the structured evidence needed to reproduce, challenge and defend a risk assessment.
+The Global Evidence Mesh is Geomacro's provenance-aware evidence architecture. The objective is not to mirror the internet or archive complete third-party publications. It is to retain the structured evidence needed to reproduce, challenge and defend a risk assessment.
 
 ```mermaid
 flowchart TD
@@ -30,4 +30,4 @@ Depending on the source and product policy, Geomacro can retain:
 
 ## What Geomacro is not building
 
-Geomacro does not need to persist full third-party article bodies, publisher images or mirrored pages to produce structured intelligence. Commercial source rights and redistribution rights are separate from ingestion capability.
+Geomacro does not need to persist complete third-party publication text, publisher images or mirrored pages to produce structured intelligence. Commercial source rights and redistribution rights are separate from ingestion capability.
