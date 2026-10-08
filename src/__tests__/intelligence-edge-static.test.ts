@@ -38,6 +38,8 @@ describe("verified public edge hot-cache contract", () => {
     expect(worker).toContain('"x-geomacro-b2-sha256": proof.compressed_sha256');
     expect(worker).toContain('cached.headers.get("x-geomacro-b2-sha256")');
     expect(worker).toContain("projectCachedResponse");
+    expect(worker).toContain('cached.headers.get("x-geomacro-serving-store") !== "cloudflare-d1"');
+    expect(worker).toContain("ctx.waitUntil(cache.put(cacheKey, hotSnapshot.clone()))");
     expect(worker).toContain("return await projectCachedResponse(cached)");
     expect(worker).not.toContain("if (cached) return cached");
     expect(worker).toContain('"x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none"');
