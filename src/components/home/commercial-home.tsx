@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LiveIntelligenceShowcase } from "@/components/home/live-intelligence-showcase";
 
 const DOMAINS = [
   {
@@ -86,44 +87,7 @@ export function CommercialHome() {
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-xl lg:mx-0 lg:max-w-none">
-            <div className="absolute -inset-6 rounded-[2.25rem] bg-primary/6 blur-3xl" />
-            <div className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-card/70 p-5 shadow-2xl shadow-black/20 backdrop-blur sm:p-7">
-              <div className="flex items-start justify-between gap-4 border-b border-border/60 pb-5">
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Decision context</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">Critical-mineral supply pressure</h2>
-                </div>
-                <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">
-                  Elevated
-                </span>
-              </div>
-
-              <div className="grid gap-3 py-5 sm:grid-cols-2">
-                <div className="rounded-xl border border-border/60 bg-background/30 p-4">
-                  <p className="text-xs text-muted-foreground">What changed</p>
-                  <p className="mt-2 text-sm font-medium leading-6">Supplier concentration and policy pressure increased.</p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-background/30 p-4">
-                  <p className="text-xs text-muted-foreground">Confidence</p>
-                  <p className="mt-2 font-mono text-2xl font-semibold tabular-nums text-primary">87%</p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-background/30 p-4 sm:col-span-2">
-                  <p className="text-xs text-muted-foreground">Why it matters</p>
-                  <p className="mt-2 text-sm leading-6 text-foreground/90">Concentrated processing and limited short-term substitution can raise procurement and lead-time risk.</p>
-                </div>
-              </div>
-
-              <div className="border-t border-border/60 pt-5">
-                <p className="text-xs text-muted-foreground">Watch next</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {["Export licensing", "Alternative capacity", "Inventory drawdown"].map((item) => (
-                    <span key={item} className="rounded-full border border-border/70 bg-background/25 px-3 py-1.5 text-xs text-muted-foreground">{item}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          <LiveIntelligenceShowcase />
         </div>
       </section>
 
