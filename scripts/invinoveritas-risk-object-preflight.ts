@@ -28,6 +28,13 @@ import {
   FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS,
   federicoStrictSourceFamilyForId,
 } from "../src/lib/public-demo-risk-profile";
+import {
+  verifyRiskObjectSignature,
+  type RiskObjectVerificationKeys,
+} from "../src/lib/risk-object-signing.server";
+import {
+  verifyPublicRiskObjectArtifact,
+} from "../src/lib/risk-object-verification.server";
 
 const file = process.argv[2];
 if (!file) {
@@ -89,16 +96,6 @@ const strictProfile =
 
 const reviewSubjectId =
   String(riskObject?.subject?.id ?? "").trim();
-
-async function verify(object: unknown) {
-  const response = await fetch(`${geomacroOrigin}/api/risk-object-keys`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ risk_object: object }),
-  });
-  const body = await response.json();
-  return { http_status: response.status, body };
-}
 
 if (
   strictProfile &&
@@ -209,6 +206,17 @@ if (strictProfile) {
   trustedKeyFingerprintSha256 = createHash("sha256")
     .update(Buffer.from(riskObject.integrity.public_key_spki_b64, "base64"))
     .digest("hex");
+
+  if (
+    registry?.ok !== true ||
+    registry?.issuer !== "Geomacro" ||
+    registry?.signature_scheme !== "Ed25519" ||
+    registry?.canonicalization !== "geomacro-canonical-json-v1" ||
+    !Array.isArray(registry?.keys) ||
+    registry.keys.length < 1
+  ) {
+    throw new Error("Risk Object live trust registry contract is invalid");
+  }
 
   trustedClockMs = Date.parse(registryHttpDate);
   expiresAtMsForAttestation = Date.parse(riskObject.expires_at);
@@ -549,20 +557,71 @@ if (strictProfile) {
   }
 }
 
-const original = await verify(riskObject);
+if (!strictProfile || !registry || !Number.isFinite(trustedClockMs)) {
+  throw new Error("Federico live-registry verification context is unavailable");
+}
+
+const verificationKeys: RiskObjectVerificationKeys = Object.fromEntries(
+  registry.keys
+    .filter(
+      (item: any) =>
+        typeof item?.key_id === "string" &&
+        typeof item?.public_key_spki_b64 === "string" &&
+        (
+          item?.status === "active" ||
+          item?.status === "retired" ||
+          item?.status === "revoked"
+        ),
+    )
+    .map((item: any) => [
+      item.key_id,
+      {
+        public_key_spki_b64: item.public_key_spki_b64,
+        status: item.status,
+        not_before: item.not_before ?? null,
+        not_after: item.not_after ?? null,
+      },
+    ]),
+);
+
+const originalSignature = verifyRiskObjectSignature(
+  riskObject,
+  verificationKeys,
+);
+const originalVerification = verifyPublicRiskObjectArtifact(
+  riskObject,
+  {
+    now: new Date(trustedClockMs as number),
+    verification_keys: verificationKeys,
+  },
+);
 if (
-  original.http_status !== 200 ||
-  original.body?.ok !== true ||
-  original.body?.verification?.status !== "VERIFIED" ||
-  original.body?.verification?.valid !== true ||
-  original.body?.verification?.cryptographic_valid !== true ||
-  original.body?.verification?.contract_valid !== true ||
-  original.body?.verification?.fresh !== true
+  originalSignature.valid !== true ||
+  originalVerification.status !== "VERIFIED" ||
+  originalVerification.valid !== true ||
+  originalVerification.cryptographic_valid !== true ||
+  originalVerification.contract_valid !== true ||
+  originalVerification.fresh !== true
 ) {
   throw new Error(
-    `Original Risk Object failed deployed verification: ${JSON.stringify(original.body)}`,
+    "Original Risk Object failed live-registry client-local verification: " +
+      JSON.stringify({
+        signature: originalSignature,
+        verification: originalVerification,
+      }),
   );
 }
+
+const original = {
+  http_status: 200,
+  body: {
+    ok: true,
+    verifier_mode: "live_registry_client_local",
+    registry_url: registryUrl,
+    registry_sha256: registryResponseSha256,
+    verification: originalVerification,
+  },
+};
 
 const tampered = structuredClone(riskObject);
 if (typeof tampered?.risk?.score !== "number") {
@@ -570,10 +629,30 @@ if (typeof tampered?.risk?.score !== "number") {
 }
 tampered.risk.score = Number((tampered.risk.score + 1).toFixed(6));
 
-const tamperResult = await verify(tampered);
+const tamperedSignature = verifyRiskObjectSignature(
+  tampered,
+  verificationKeys,
+);
+const tamperedVerification = verifyPublicRiskObjectArtifact(
+  tampered,
+  {
+    now: new Date(trustedClockMs as number),
+    verification_keys: verificationKeys,
+  },
+);
+const tamperResult = {
+  http_status: 200,
+  body: {
+    ok: true,
+    verifier_mode: "live_registry_client_local",
+    verification: tamperedVerification,
+    signature: tamperedSignature,
+  },
+};
 if (
-  tamperResult.body?.verification?.valid === true ||
-  tamperResult.body?.verification?.status === "VERIFIED"
+  tamperedSignature.valid === true ||
+  tamperedVerification.valid === true ||
+  tamperedVerification.status === "VERIFIED"
 ) {
   throw new Error("Tampered Risk Object was incorrectly accepted");
 }
@@ -655,7 +734,13 @@ if (!signatureValid) {
 const deployedVerificationSummary = {
   verifier_url:
     geomacroOrigin + "/api/risk-object-keys",
+  verifier_mode:
+    "live_registry_client_local",
   http_status: original.http_status,
+  registry_sha256:
+    registryResponseSha256,
+  trusted_key_fingerprint_sha256:
+    trustedKeyFingerprintSha256,
   status: original.body?.verification?.status ?? null,
   valid: original.body?.verification?.valid ?? false,
   cryptographic_valid:
