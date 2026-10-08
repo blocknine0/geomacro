@@ -17,6 +17,13 @@ describe("Federico refresh contract", () => {
     expect(profile).toContain('"whtc.com": "whtc.com"');
     expect(profile).toContain('"hani.co.kr": "hani.co.kr"');
     expect(profile).toContain('"koreaherald.com": "koreaherald.com"');
+    expect(profile).toContain('ecb_press_rss: "european_central_bank"');
+    expect(profile).toContain('ecb_market_information_rss: "european_central_bank"');
+    expect(profile).toContain('bis_rss_media_releases: "bank_for_international_settlements"');
+    expect(profile).toContain('bis_rss_central_banker_speeches: "bank_for_international_settlements"');
+    expect(profile).toContain('un_all_documents_rss: "united_nations"');
+    expect(profile).toContain('un_security_council_docs_rss: "united_nations"');
+    expect(profile).toContain('nrcan_news_atom: "natural_resources_canada"');
   });
 
   it("keeps new governed hostname identities self-describing", () => {
