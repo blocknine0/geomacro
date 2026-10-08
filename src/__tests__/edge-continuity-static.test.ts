@@ -8,10 +8,14 @@ describe("cap-independent verified edge continuity", () => {
     const prepare = read("scripts/ops/prepare-edge-continuity.sh");
     const materialize = read("scripts/ops/materialize-edge-continuity.mjs");
     expect(prepare).toContain("branch=main&status=success&per_page=1");
-    expect(prepare).toContain('proof.b2_readback_verified !== true');
-    expect(prepare).toContain('proof.destructive_change !== false');
-    expect(materialize).toContain('proof?.b2_readback_verified !== true');
-    expect(materialize).toContain('proof?.destructive_change !== false');
+    expect(prepare).toContain('proof.b2_readback_verified === true');
+    expect(prepare).toContain('proof.parent_b2_readback_verified === true');
+    expect(prepare).toContain('proof.current_b2_snapshot_promoted === false');
+    expect(prepare).toContain('"geomacro.public-risk-indices-parent-projection-publish.v1"');
+    expect(materialize).toContain("parentProjectionProof");
+    expect(materialize).toContain('"verified-parent-projection"');
+    expect(materialize).toContain('parent_b2_readback_verified: parentProjectionProof');
+    expect(materialize).toContain('parent_payload_sha256');
     expect(materialize).toContain('"geomacro.edge-continuity.v1"');
     expect(materialize).toContain("payload_sha256");
     expect(materialize).toContain("source_live_sha256");
@@ -45,6 +49,8 @@ describe("cap-independent verified edge continuity", () => {
     const intelligence = read(".github/workflows/deploy-intelligence-edge.yml");
     expect(global).toContain('cron: "13 */6 * * *"');
     expect(indices).toContain('cron: "28 */6 * * *"');
+    expect(indices).toContain('"Risk Indices Realtime Direct Postgres"');
+    expect(indices).toContain("github.event.workflow_run.conclusion == 'success'");
     expect(intelligence).toContain('cron: "43 */6 * * *"');
     for (const workflow of [global, indices, intelligence]) {
       expect(workflow).toContain("prepare-edge-continuity.sh");
