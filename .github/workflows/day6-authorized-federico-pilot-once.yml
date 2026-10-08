@@ -14,6 +14,7 @@ name: Day 6 Authorized Federico Pilot Once
 # Final bounded retrigger after the D1 hot reader was made independent of risk-object
 # verification-key secrets by validating against the deployed public trust registry.
 # The no-B2/no-Supabase canary still runs before any Federico allowance step.
+# Provider independence is counted by normalized provider family, never raw endpoint/source-id count.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
@@ -190,21 +191,23 @@ jobs:
         run: |
           set -euo pipefail
           psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL' > /tmp/day6-candidates.txt
-          with recent as (
+          with strict_source_map(source_id, source_family) as (
+            values
+              ('xinhua_english_china_rss', 'xinhua_english_china'),
+              ('scmp_china_rss', 'scmp_china'),
+              ('forexlive_rss', 'forexlive'),
+              ('aljazeera_rss', 'aljazeera'),
+              ('bbc_world_rss', 'bbc_world')
+          ),
+          recent as (
             select
               c.country_iso3,
-              e.source_id,
+              m.source_family,
               e.published_at as evidence_at
             from public.live_flash_events e
+            join strict_source_map m on m.source_id = lower(trim(e.source_id))
             join public.live_flash_event_countries c on c.flash_id=e.flash_id
-            where e.source_id in (
-              'xinhua_english_china_rss',
-              'scmp_china_rss',
-              'forexlive_rss',
-              'aljazeera_rss',
-              'bbc_world_rss'
-            )
-              and e.published_at is not null
+            where e.published_at is not null
               and e.published_at >= now() - interval '6 hours'
               and e.published_at <= now()
               and c.country_iso3 ~ '^[A-Z]{3}$'
@@ -212,8 +215,8 @@ jobs:
           select country_iso3
           from recent
           group by country_iso3
-          having count(distinct source_id) >= 2
-          order by count(distinct source_id) desc, count(*) desc, max(evidence_at) desc, country_iso3
+          having count(distinct source_family) >= 2
+          order by count(distinct source_family) desc, count(*) desc, max(evidence_at) desc, country_iso3
           limit 8;
           SQL
           test -s /tmp/day6-candidates.txt || {

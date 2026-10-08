@@ -34,7 +34,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       'country_bridge_attribution_v1',
     );
     expect(policy).toContain(
-      'federico-source-family-map-v8',
+      'federico-source-family-map-v9',
     );
     expect(policy).toContain(
       '?? normalized',
@@ -54,6 +54,21 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
     expect(corroborator).toContain(
       "FEDERICO_STRICT_VERIFICATION_SCORE_THRESHOLD = 65",
+    );
+    expect(corroborator).toContain(
+      "FEDERICO_PROVIDER_FAMILY_BY_SOURCE_ID",
+    );
+    expect(corroborator).toContain(
+      'ecb_press_rss: "european_central_bank"',
+    );
+    expect(corroborator).toContain(
+      'ecb_market_information_rss: "european_central_bank"',
+    );
+    expect(corroborator).toContain(
+      'bis_rss_media_releases: "bank_for_international_settlements"',
+    );
+    expect(corroborator).toContain(
+      'bis_rss_central_banker_speeches: "bank_for_international_settlements"',
     );
     expect(corroborator).toContain(
       "distinctSourceCount >= FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES",

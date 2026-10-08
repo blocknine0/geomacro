@@ -63,6 +63,10 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("independent main-push deploy/publish lane");
     expect(workflow).toContain("SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY");
     expect(workflow).toContain("Dedicated B2 archive read credentials must be supplied as a complete pair.");
+    expect(workflow).toContain("strict_source_map(source_id, source_family)");
+    expect(workflow).toContain("m.source_family");
+    expect(workflow).toContain("count(distinct source_family) >= 2");
+    expect(workflow).not.toContain("count(distinct source_id) >= 2");
     expect(workflow).toContain("e.published_at as evidence_at");
     expect(workflow).toContain("e.published_at is not null");
     expect(workflow).toContain("e.published_at >= now() - interval '6 hours'");
