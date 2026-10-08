@@ -535,13 +535,16 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "decision_time_revalidation_required: true",
     );
     expect(preflight).toContain(
-      "receiver-controlled trusted UTC time",
+      "receiver-controlled current UTC clock",
     );
     expect(preflight).toContain(
       "receiver-controlled approved key fingerprint",
     );
     expect(preflight).toContain(
-      "issuer_attestations_are_not_trust_roots",
+      "receiver_trust_model",
+    );
+    expect(preflight).toContain(
+      "receiver-pinned Geomacro signing-key fingerprint",
     );
     expect(preflight).toContain(
       "receiver_policy_id: \"federico-global-country-risk-v2\"",
@@ -562,7 +565,10 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "federico-china-country-risk-v1",
     );
     expect(preflight).toContain(
-      "maximum_inter_source_spread_ms: 2000",
+      'receiver_network_fetch_policy:',
+    );
+    expect(preflight).toContain(
+      '"disabled_for_admission"',
     );
     expect(preflight).toContain(
       "reject_duplicate_keys: true",
