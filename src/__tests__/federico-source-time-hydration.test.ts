@@ -195,7 +195,12 @@ describe("Federico trusted source publication-time hydration", () => {
     ]) {
       expect(script).toContain(`"${sourceId}"`);
     }
-    expect(script).toContain("const MAX_ROWS = 180");
+    expect(script).toContain("FEDERICO_HYDRATE_VERIFIED_FAMILY_ONLY");
+    expect(script).toContain("FEDERICO_HYDRATE_MAX_ROWS");
+    expect(script).toContain("verified_family_only: VERIFIED_FAMILY_ONLY");
+    expect(script).toContain("max_rows: MAX_ROWS");
+    expect(script).toContain('.eq("verification_status", "VERIFIED")');
+    expect(script).toContain('.not("event_family_id", "is", null)');
     expect(script).toContain('.is("published_at", null)');
     expect(script).toContain("update({ published_at: publishedAt })");
     expect(script).not.toContain("published_at: row.last_seen_at");
