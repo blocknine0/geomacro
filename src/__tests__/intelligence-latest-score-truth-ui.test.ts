@@ -62,8 +62,8 @@ describe("#1414 Intelligence latest-score display truth", () => {
 
   it("separates feed refresh from the original score evidence timestamp", () => {
     expect(route).toContain('latest.isCurrent ? "Latest verified score" : "Last verified score"');
-    expect(route).toContain('event.isCurrent ? "Current assessment" : "Earlier assessment"');
-    expect(route).toContain("Last update");
+    expect(route).toContain('event.isCurrent ? "Current verified assessment" : "Historical verified assessment"');
+    expect(route).toContain("Monitoring updated");
     expect(route).toContain("Earlier assessments retain their original dates.");
   });
 

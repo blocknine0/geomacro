@@ -2,7 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, CalendarDays, Clock3, Mail, Radio, Zap } from "lucide-react";
 import { useIntelligence } from "@/lib/use-intelligence";
 import { selectHomepageShowcase } from "@/lib/homepage-intelligence-showcase";
-import { publicEventExplanation } from "@/lib/public-intelligence-explanation";
+import { categoryLeads, publicHeadline } from "@/lib/intelligence-editorial";
+import { RiskBadge } from "@/components/foundation/risk";
 
 const DOMAINS: Record<string, string> = {
   geopolitics: "Geopolitical",
@@ -10,18 +11,11 @@ const DOMAINS: Record<string, string> = {
   rare_earth: "Critical minerals",
 };
 
-// Monitoring themes, not claims of an event-specific prediction.
-const FOCUS: Record<string, string[]> = {
-  geopolitics: ["Policy responses", "Regional stability", "Cross-border impact"],
-  macro: ["Monetary policy", "FX pressure", "Economic outlook"],
-  rare_earth: ["Export policies", "Supply capacity", "Procurement risk"],
-};
-
 const BUSINESS_EMAIL = "contact@geomacro.live";
 const MONTHLY_MAIL =
-  `mailto:${BUSINESS_EMAIL}?subject=${encodeURIComponent("Geomacro monthly intelligence access")}`;
+  `mailto:${BUSINESS_EMAIL}?subject=${encodeURIComponent("Request: Geomacro Monthly Intelligence Plan")}&body=${encodeURIComponent("Hello Geomacro,\n\nI would like to discuss a recurring intelligence plan.\nCompany/team:\nCountries/corridors:\nGeopolitical, Macro/FX or Critical Minerals:\nEstimated API calls per month:\n\nPlease contact me with the suitable plan.")}`;
 const ANNUAL_MAIL =
-  `mailto:${BUSINESS_EMAIL}?subject=${encodeURIComponent("Geomacro annual and enterprise intelligence access")}`;
+  `mailto:${BUSINESS_EMAIL}?subject=${encodeURIComponent("Request: Geomacro Enterprise Intelligence")}`;
 
 function eventDate(value: string): string {
   return new Date(value).toLocaleString("en-GB", {
@@ -36,10 +30,10 @@ function AccessOptions() {
   return (
     <div className="mt-5 border-t border-border/55 pt-5">
       <h3 className="text-sm font-semibold tracking-tight sm:text-base">
-        Intelligence for your workflow
+        Move from headlines to decisions
       </h3>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        For teams, applications and AI agents. Choose how you access it.
+        Give your team or AI agents structured severity, dated intelligence and decision context—without processing raw news feeds.
       </p>
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Link
@@ -48,10 +42,10 @@ function AccessOptions() {
         >
           <span className="flex items-center gap-2 text-xs font-semibold">
             <Zap className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-            Pay per call
+            Decision-ready API · Pay per call
           </span>
           <span className="inline-flex items-center justify-between gap-2 text-sm font-semibold text-primary">
-            From 0.05 USDC
+            From 0.05 USDC / successful call
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </span>
         </Link>
@@ -61,10 +55,10 @@ function AccessOptions() {
         >
           <span className="flex items-center gap-2 text-xs font-semibold">
             <CalendarDays className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-            Monthly access · Coming Soon
+            Monthly intelligence · Coming Soon
           </span>
           <span className="inline-flex items-center justify-between gap-2 text-sm font-medium">
-            Discuss a plan
+            Request a tailored plan
             <ArrowRight className="h-3.5 w-3.5 text-primary transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </span>
         </a>
@@ -75,7 +69,7 @@ function AccessOptions() {
       >
         <span className="inline-flex items-center gap-2">
           <Mail className="h-3.5 w-3.5" aria-hidden="true" />
-          Annual & enterprise · Contact sales
+          Need country, corridor or enterprise coverage? Talk to us
         </span>
         <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       </a>
@@ -94,9 +88,8 @@ export function LiveIntelligenceShowcase() {
     ? selectHomepageShowcase(intelligence.data.all)
     : null;
   const event = winner?.event;
-  const gist = event?.title.replace(/^Geomacro (?:finds|observes)\s+/u, "") ?? null;
-  const themes = FOCUS[event?.category ?? ""] ?? [];
-  const explanation = publicEventExplanation(event);
+  const gist = event ? publicHeadline(event.title) : null;
+  const categoryHighlights = intelligence.data ? categoryLeads(intelligence.data.all) : [];
 
   return (
     <div className="relative mx-auto w-full min-w-0 max-w-xl lg:mx-0 lg:max-w-none">
@@ -122,56 +115,64 @@ export function LiveIntelligenceShowcase() {
             <h2 className="max-w-[34rem] text-[clamp(1.25rem,2vw,1.7rem)] font-semibold leading-snug tracking-[-0.025em]">
               {gist}
             </h2>
-            {explanation && (
+            {event.summary && (
               <p className="mt-3 max-w-[34rem] text-sm leading-6 text-muted-foreground">
-                <span className="font-semibold text-foreground">{explanation.label}:</span>{" "}
-                {explanation.text}
+                <span className="font-semibold text-foreground">Geomacro intelligence:</span>{" "}
+                {event.summary}
               </p>
             )}
             <div className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Clock3 className="h-3 w-3 shrink-0" aria-hidden="true" />
               <time dateTime={winner.observedAt}>{eventDate(winner.observedAt)}</time>
+              <span className="ml-2">{winner.isCurrent ? "Verified within 24h" : "Historical verified assessment"}</span>
             </div>
 
-            {themes.length > 0 && (
-              <div className="mt-5">
-                <h3 className="text-xs font-semibold">What to watch</h3>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {themes.map((theme) => (
-                    <span
-                      key={theme}
-                      className="rounded-full border border-border/65 bg-background/30 px-2.5 py-1.5 text-[11px] text-muted-foreground"
-                    >
-                      {theme}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div className="mt-4 flex items-center gap-3">
+              <span className="text-xs font-medium text-muted-foreground">Geomacro severity</span>
+              {event.severity !== null && <RiskBadge score={event.severity} showScore />}
+            </div>
 
             <Link
               to="/intelligence"
               className="group mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline hover:underline-offset-4"
             >
-              Explore the risk context
+              Read this intelligence assessment
               <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </Link>
           </div>
         ) : (
           <div className="mt-5 rounded-xl border border-border/50 bg-background/25 p-4">
             <p className="text-sm font-medium">
-              {intelligence.status === "loading" ? "Finding your next global insight…" : "Explore global risk intelligence"}
+              {intelligence.status === "loading" ? "Checking the verified global intelligence feed…" : "Verified story being prepared"}
             </p>
             <Link
               to="/intelligence"
               className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
-              Explore Intelligence
+              Browse scored Intelligence
               <ArrowRight className="h-3 w-3" aria-hidden="true" />
             </Link>
           </div>
         )}
 
+        {categoryHighlights.length > 0 && (
+          <div className="mt-5 border-t border-border/55 pt-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Global coverage · Three intelligence domains</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {categoryHighlights.map(({ key, label, event: lead, isCurrent }) => (
+                <Link key={key} to="/intelligence" className="group rounded-lg border border-border/65 bg-background/25 p-3 transition hover:border-primary/50">
+                  <p className="text-[11px] font-semibold text-primary">{label}</p>
+                  {lead ? (
+                    <>
+                      <p className="mt-2 line-clamp-3 text-xs leading-5 text-foreground group-hover:text-primary">{publicHeadline(lead.title)}</p>
+                      <p className="mt-2 font-mono text-[10px] text-muted-foreground">{isCurrent ? "Current" : "Historical"} · {eventDate(lead.publishedAt ?? lead.createdAt)} · {lead.severity}/100</p>
+                    </>
+                  ) : <p className="mt-2 text-xs text-muted-foreground">Awaiting a verified scored headline.</p>}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
         <AccessOptions />
       </div>
     </div>

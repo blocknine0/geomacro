@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "30f1f7b773616ac7cf6e6a7c782ab7db66036390",
-  "published_baseline": "Founder-approved Geomacro Finds and Intelligence presentation: when the canonical, derived-only GDELT root-13 public geopolitical observation is labelled 'threat activity', add one concise shared plain-English threat-type line explaining that it describes reported threats or warnings of possible action but does not identify the specific actor or target. All other event labels stay unchanged. Same shared explanation in homepage and Intelligence cards; never invent a cyberattack, terrorist incident, military strike, or raw-source fact. Existing access, coming-soon, x402 and Global Risk locked presentation preserved. Lovable publish and exact production proof remain independent.",
+  "baseline_sha": "eff3a18425a0f32dcc72b3a476ffe5d5feb3037f",
+  "published_baseline": "Founder-approved TARGET presentation for October 8 global scored-news newsroom update: homepage highlights one highest-impact verified, event-specific scored intelligence story across geopolitical, macro/FX and critical minerals; three per-domain summaries, original timestamps, no generic GDELT class as news; Intelligence page shows actual derived news statements with a verified 0-100 severity on each displayed story and excludes unscored classifier observations; monthly-plan enquiry remains Coming Soon; no raw/source disclosures, fabricated scores, or fake recency. Dedicated PR #1799. Preview/publish and exact deployed-source acceptance are still pending; published_source_sha continues to identify the previous published site until separately verified.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-08T08:16:00Z",
   "published_source_sha": "87fe2e9dd4d1f6c7abeb2af8cbe2029d5b9b4f14",
-  "lock_revision": "founder-approved-evidence-bounded-threat-context-20261008"
+  "lock_revision": "founder-approved-global-scored-newsroom-target-20261008"
 }

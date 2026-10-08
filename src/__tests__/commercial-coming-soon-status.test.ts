@@ -21,7 +21,7 @@ describe("Coming Soon status is truthful across commercial website", () => {
     expect(pricing).toContain("Coming Soon · Monthly checkout");
     expect(pricing).toContain("Monthly subscriptions are Coming Soon");
     expect(pricing).toContain("Request monthly access");
-    expect(homepage).toContain("Monthly access · Coming Soon");
+    expect(homepage).toContain("Monthly intelligence · Coming Soon");
     expect(pricing).not.toContain("Subscribe now");
   });
 
