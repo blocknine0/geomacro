@@ -292,9 +292,34 @@ if (mode === "live") {
   } catch {
     fail("PARTNER_PROVIDER_OUTPUT_NOT_JSON");
   }
-  if (provider?.ok !== true || provider?.gates?.live_partner_review !== "PASS") fail("LIVE_PARTNER_REVIEW_FAILED");
-  if (partner.signed_partner_proof_required && provider?.live_review?.proof_present !== true) fail("SIGNED_PARTNER_PROOF_MISSING");
-  if (partner.independent_proof_verification_required && provider?.gates?.partner_proof_verification !== "PASS") {
+  if (provider?.ok !== true || provider?.gates?.live_partner_review !== "PASS") {
+    fail("LIVE_PARTNER_REVIEW_FAILED");
+  }
+  if (
+    provider?.gates?.partner_admission !== "PASS" ||
+    provider?.live_review?.admission_clear !== true ||
+    provider?.live_review?.verdict !== "approve" ||
+    Number(provider?.live_review?.issue_count ?? -1) !== 0
+  ) {
+    fail(
+      "PARTNER_ADMISSION_REJECTED",
+      JSON.stringify({
+        verdict: provider?.live_review?.verdict ?? null,
+        issue_count: provider?.live_review?.issue_count ?? null,
+        blocker_count: provider?.live_review?.blocker_count ?? null,
+        high_count: provider?.live_review?.high_count ?? null,
+        medium_count: provider?.live_review?.medium_count ?? null,
+        low_count: provider?.live_review?.low_count ?? null,
+      }),
+    );
+  }
+  if (partner.signed_partner_proof_required && provider?.live_review?.proof_present !== true) {
+    fail("SIGNED_PARTNER_PROOF_MISSING");
+  }
+  if (
+    partner.independent_proof_verification_required &&
+    provider?.gates?.partner_proof_verification !== "PASS"
+  ) {
     fail("INDEPENDENT_PARTNER_PROOF_VERIFICATION_FAILED");
   }
   localSummary.live_review = {
@@ -303,8 +328,14 @@ if (mode === "live") {
     allowance_used: 1,
     provider: partner.provider,
     review_status: "PASS",
+    verdict: "approve",
+    issue_count: 0,
+    admission_clear: true,
     signed_proof_present: provider?.live_review?.proof_present === true,
-    independent_proof_verification: provider?.gates?.partner_proof_verification === "PASS" ? "PASS" : "NOT_REQUIRED",
+    independent_proof_verification:
+      provider?.gates?.partner_proof_verification === "PASS"
+        ? "PASS"
+        : "NOT_REQUIRED",
   };
 }
 
