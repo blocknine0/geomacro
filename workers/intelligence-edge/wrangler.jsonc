@@ -4,6 +4,12 @@
   "main": "src/index.mjs",
   "compatibility_date": "2026-10-03",
   "workers_dev": true,
+  "services": [
+    {
+      "binding": "CONTROL_PLANE",
+      "service": "geomacro-control-plane"
+    }
+  ],
   "cache": {
     "enabled": true,
     "cross_version_cache": true
