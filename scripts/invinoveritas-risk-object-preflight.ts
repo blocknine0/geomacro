@@ -24,6 +24,7 @@ import {
   verify as verifySignatureBytes,
 } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import {
   FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS,
   federicoStrictSourceFamilyForId,
@@ -559,6 +560,7 @@ let original: {
   body: any;
 };
 let verificationMode: "live_registry_client_local" | "legacy_deployed_post";
+let tamperVerificationSummary: any = null;
 
 if (strictProfile) {
   const trustKeys =
@@ -639,6 +641,14 @@ if (strictProfile) {
     throw new Error("Tampered Risk Object was incorrectly accepted");
   }
 
+  tamperVerificationSummary = {
+    status: tamperedPublicVerification.status,
+    valid: tamperedPublicVerification.valid,
+    signature_valid: tamperedSignature.valid,
+    reason_codes: tamperedPublicVerification.reason_codes,
+    checks: tamperedPublicVerification.checks,
+  };
+
   original = {
     http_status: 200,
     body: {
@@ -684,6 +694,8 @@ if (strictProfile) {
   ) {
     throw new Error("Tampered Risk Object was incorrectly accepted");
   }
+  tamperVerificationSummary =
+    tamperResult.body?.verification ?? tamperResult.body;
   verificationMode = "legacy_deployed_post";
 }
 
@@ -1208,8 +1220,7 @@ console.log(
         },
       },
       geomacro_verification: original.body.verification,
-      tamper_verification:
-        tamperResult.body?.verification ?? tamperResult.body,
+      tamper_verification: tamperVerificationSummary,
       invinoveritas_request: {
         artifact_type: reviewRequest.artifact_type,
         sign: reviewRequest.sign,
