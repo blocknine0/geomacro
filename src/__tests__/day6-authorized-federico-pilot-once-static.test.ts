@@ -54,6 +54,10 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("use_partner_allowance=false");
     expect(workflow).not.toContain("use_partner_allowance=true");
     expect(workflow).toContain("allowance_dispatches=0");
+    expect(workflow).toContain('cron: "25 0,6,12 9 10 *"');
+    expect(workflow).toContain('test "$(date -u +%F)" = "2026-10-09"');
+    expect(workflow).toContain("Retire the three-slot preflight schedule after the final slot");
+    expect(workflow).toContain("gh workflow disable day6-authorized-federico-pilot-once.yml");
     expect(workflow).toContain('"owner_authorized_pilot_allowance":false');
     expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs");
     expect(workflow).toContain("Re-poll active Federico corroborators without partner allowance");
