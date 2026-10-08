@@ -399,6 +399,11 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(preflight).toContain(
       "partner_proof_verification",
     );
+    expect(preflight).toContain("source_locator_policy");
+    expect(preflight).toContain("semantic_validation");
+    expect(preflight).toContain("methodology_replay_policy");
+    expect(preflight).toContain("ownership_registry_policy");
+    expect(preflight).toContain("content_hash only as signed continuity metadata");
     expect(preflight).toContain(
       "independentNode",
     );
