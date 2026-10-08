@@ -4,6 +4,14 @@ import {
   COUNTRY_RISK_METHOD_VERSION,
   COUNTRY_RISK_OBJECT_TTL_HOURS,
   GRO_SCHEMA_VERSION,
+  GRO_CANONICALIZATION_VERSION,
+  GRO_CANONICALIZATION_SPEC_SHA256,
+  GRO_CANONICALIZATION_SPEC_URL,
+  GRO_INDEPENDENT_VERIFIER_SHA256,
+  GRO_INDEPENDENT_VERIFIER_URL,
+  GRO_SIGNATURE_PREIMAGE_VERSION,
+  GRO_SOURCE_TUPLE_BINDING_VERSION,
+  GRO_VERIFICATION_CONTRACT_VERSION,
   riskLabel,
   type GeomacroRiskObject,
   type RiskAttribution,
@@ -928,6 +936,23 @@ export async function buildCountryRiskObject(
           ),
       }),
     );
+  if (strictProfile) {
+    for (const item of evidence) {
+      const sourceIds = item.source_ids ?? [];
+      const recordIds = item.source_record_ids ?? [];
+      const contentHashes = item.content_hashes ?? [];
+      if (
+        sourceIds.length === 0 ||
+        sourceIds.length !== recordIds.length ||
+        sourceIds.length !== contentHashes.length
+      ) {
+        throw new Error(
+          "FEDERICO_STRICT_SOURCE_TUPLE_BINDING_INVALID",
+        );
+      }
+    }
+  }
+
   const structureVersions =
     normalizeStringArray(
       selectedWeighted.map(
@@ -1440,7 +1465,39 @@ export async function buildCountryRiskObject(
                 ]),
             )
           : {},
+
+      source_tuple_binding_version:
+        strictProfile
+          ? GRO_SOURCE_TUPLE_BINDING_VERSION
+          : "not_applicable",
     },
+    ...(strictProfile
+      ? {
+          verification_contract: {
+            contract_version:
+              GRO_VERIFICATION_CONTRACT_VERSION,
+            canonicalization_identifier:
+              GRO_CANONICALIZATION_VERSION,
+            canonicalization_spec_url:
+              GRO_CANONICALIZATION_SPEC_URL,
+            canonicalization_spec_sha256:
+              GRO_CANONICALIZATION_SPEC_SHA256,
+            independent_verifier_url:
+              GRO_INDEPENDENT_VERIFIER_URL,
+            independent_verifier_sha256:
+              GRO_INDEPENDENT_VERIFIER_SHA256,
+            signature_preimage_version:
+              GRO_SIGNATURE_PREIMAGE_VERSION,
+            excluded_fields: [
+              "integrity.payload_hash",
+              "integrity.signature",
+            ] as [
+              "integrity.payload_hash",
+              "integrity.signature",
+            ],
+          },
+        }
+      : {}),
     calculation_input:
       calculationInput,
     score_components: {
