@@ -52,5 +52,7 @@ describe("Federico rejected review diagnostics", () => {
     expect(workflow).toContain("sanitiz" + "e-federico-review-diagnostic.mjs");
     expect(workflow).toContain(".live_review.verdict == \"approve\"");
     expect(workflow).toContain(".live_review.issue_count == 0");
+    const orchestrator = readFileSync(".github/workflows/day6-authorized-federico-pilot-once.yml", "utf8");
+    expect(orchestrator).toContain("!contains(github.event.head_commit.message, '[federico-diagnostics-only]')");
   });
 });
