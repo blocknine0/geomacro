@@ -25,6 +25,30 @@ export const GRO_CANONICALIZATION_VERSION =
 export const GRO_SIGNATURE_SCHEME =
   "Ed25519" as const;
 
+export const GRO_VERIFICATION_CONTRACT_VERSION =
+  "gro-verification-contract-v1" as const;
+
+export const GRO_SOURCE_TUPLE_BINDING_VERSION =
+  "parallel-arrays-same-index-v1" as const;
+
+export const GRO_SIGNATURE_PREIMAGE_VERSION =
+  "full-gro-null-payload-hash-and-signature-v1" as const;
+
+export const GRO_REFERENCE_CONTRACT_COMMIT =
+  "28445a9f37018cd49c0374bef5beacef559f2b52" as const;
+
+export const GRO_CANONICALIZATION_SPEC_SHA256 =
+  "fabfdf4044e5b35c9a0a742138b68bdf4af76d9aee16b22130868346ff301fd9" as const;
+
+export const GRO_INDEPENDENT_VERIFIER_SHA256 =
+  "701f2f47f02bfd3337dcc85cfc2cf15f3369f3fa20be0534ed3ede8a2045ba71" as const;
+
+export const GRO_CANONICALIZATION_SPEC_URL =
+  "https://github.com/blocknine0/geomacro/blob/28445a9f37018cd49c0374bef5beacef559f2b52/docs/GRO_CANONICAL_JSON_V1.md" as const;
+
+export const GRO_INDEPENDENT_VERIFIER_URL =
+  "https://github.com/blocknine0/geomacro/blob/28445a9f37018cd49c0374bef5beacef559f2b52/scripts/verify-gro-independent.mjs" as const;
+
 export const COUNTRY_RISK_METHOD_VERSION =
   "country-risk-v0.1.0-pilot" as const;
 
@@ -296,6 +320,17 @@ export type GeomacroRiskObject = {
         relevance_method: string;
         source_family_map_version: string;
         source_family_map: Record<string, string>;
+        source_tuple_binding_version: string;
+      };
+      verification_contract?: {
+        contract_version: typeof GRO_VERIFICATION_CONTRACT_VERSION;
+        canonicalization_identifier: typeof GRO_CANONICALIZATION_VERSION;
+        canonicalization_spec_url: typeof GRO_CANONICALIZATION_SPEC_URL;
+        canonicalization_spec_sha256: typeof GRO_CANONICALIZATION_SPEC_SHA256;
+        independent_verifier_url: typeof GRO_INDEPENDENT_VERIFIER_URL;
+        independent_verifier_sha256: typeof GRO_INDEPENDENT_VERIFIER_SHA256;
+        signature_preimage_version: typeof GRO_SIGNATURE_PREIMAGE_VERSION;
+        excluded_fields: ["integrity.payload_hash", "integrity.signature"];
       };
       calculation_input: unknown;
       score_components: {
