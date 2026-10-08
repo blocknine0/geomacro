@@ -77,6 +77,10 @@ jobs:
             --target=bun \
             --outfile=/tmp/geomacro-day6-direct-federico-smoke.js
           test -s /tmp/geomacro-day6-direct-federico-smoke.js
+          bun build scripts/invinoveritas-risk-object-preflight.ts \
+            --target=bun \
+            --outfile=/tmp/geomacro-invino-preflight-smoke.js
+          test -s /tmp/geomacro-invino-preflight-smoke.js
 
       - name: Production build
         run: bun run build

@@ -2,8 +2,8 @@
 /**
  * Geomacro -> invinoveritas interoperability preflight.
  *
- * The script verifies the exact signed Risk Object against Geomacro's deployed
- * verifier, proves a one-field tamper is rejected, requires freshness, and
+ * The script verifies the exact signed Risk Object against Geomacro's live
+ * public trust registry and local verifier, proves a one-field tamper is rejected, requires freshness, and
  * constructs the documented invinoveritas /review request contract.
  *
  * It never modifies the signed input artifact.
@@ -28,6 +28,11 @@ import {
   FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS,
   federicoStrictSourceFamilyForId,
 } from "../src/lib/public-demo-risk-profile";
+import {
+  verifyRiskObjectSignature,
+  type RiskObjectVerificationKeys,
+} from "../src/lib/risk-object-signing.server";
+import { verifyPublicRiskObjectArtifact } from "../src/lib/risk-object-verification.server";
 
 const file = process.argv[2];
 if (!file) {
@@ -90,7 +95,7 @@ const strictProfile =
 const reviewSubjectId =
   String(riskObject?.subject?.id ?? "").trim();
 
-async function verify(object: unknown) {
+async function deployedVerify(object: unknown) {
   const response = await fetch(`${geomacroOrigin}/api/risk-object-keys`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -549,33 +554,137 @@ if (strictProfile) {
   }
 }
 
-const original = await verify(riskObject);
-if (
-  original.http_status !== 200 ||
-  original.body?.ok !== true ||
-  original.body?.verification?.status !== "VERIFIED" ||
-  original.body?.verification?.valid !== true ||
-  original.body?.verification?.cryptographic_valid !== true ||
-  original.body?.verification?.contract_valid !== true ||
-  original.body?.verification?.fresh !== true
-) {
-  throw new Error(
-    `Original Risk Object failed deployed verification: ${JSON.stringify(original.body)}`,
+let original: {
+  http_status: number;
+  body: any;
+};
+let verificationMode: "live_registry_client_local" | "legacy_deployed_post";
+
+if (strictProfile) {
+  const trustKeys =
+    Array.isArray(registry?.keys)
+      ? registry.keys
+      : [];
+  const verificationKeys: RiskObjectVerificationKeys = Object.fromEntries(
+    trustKeys
+      .filter(
+        (item: any) =>
+          typeof item?.key_id === "string" &&
+          typeof item?.public_key_spki_b64 === "string",
+      )
+      .map((item: any) => [
+        item.key_id,
+        {
+          public_key_spki_b64: item.public_key_spki_b64,
+          status: item.status,
+          not_before: item.not_before ?? null,
+          not_after: item.not_after ?? null,
+        },
+      ]),
   );
-}
 
-const tampered = structuredClone(riskObject);
-if (typeof tampered?.risk?.score !== "number") {
-  throw new Error("Risk Object does not contain numeric risk.score for tamper vector");
-}
-tampered.risk.score = Number((tampered.risk.score + 1).toFixed(6));
+  const localSignature = verifyRiskObjectSignature(
+    riskObject,
+    verificationKeys,
+  );
+  const localPublicVerification = verifyPublicRiskObjectArtifact(
+    riskObject,
+    {
+      now: new Date(Number(trustedClockMs)),
+      verification_keys: verificationKeys,
+    },
+  );
 
-const tamperResult = await verify(tampered);
-if (
-  tamperResult.body?.verification?.valid === true ||
-  tamperResult.body?.verification?.status === "VERIFIED"
-) {
-  throw new Error("Tampered Risk Object was incorrectly accepted");
+  if (
+    !localSignature.valid ||
+    !localPublicVerification.valid ||
+    localPublicVerification.status !== "VERIFIED"
+  ) {
+    throw new Error(
+      "Original Risk Object failed live-registry local verification: " +
+        JSON.stringify({
+          signature_valid: localSignature.valid,
+          signature_reason: localSignature.reason,
+          verification_status: localPublicVerification.status,
+          verification_valid: localPublicVerification.valid,
+          reason_codes: localPublicVerification.reason_codes,
+          checks: localPublicVerification.checks,
+        }),
+    );
+  }
+
+  const tampered = structuredClone(riskObject);
+  if (typeof tampered?.risk?.score !== "number") {
+    throw new Error("Risk Object does not contain numeric risk.score for tamper vector");
+  }
+  tampered.risk.score = Number((tampered.risk.score + 1).toFixed(6));
+
+  const tamperedSignature = verifyRiskObjectSignature(
+    tampered,
+    verificationKeys,
+  );
+  const tamperedPublicVerification = verifyPublicRiskObjectArtifact(
+    tampered,
+    {
+      now: new Date(Number(trustedClockMs)),
+      verification_keys: verificationKeys,
+    },
+  );
+
+  if (
+    tamperedSignature.valid === true ||
+    tamperedPublicVerification.valid === true ||
+    tamperedPublicVerification.status === "VERIFIED"
+  ) {
+    throw new Error("Tampered Risk Object was incorrectly accepted");
+  }
+
+  original = {
+    http_status: 200,
+    body: {
+      ok: true,
+      verification: {
+        status: "VERIFIED",
+        valid: true,
+        cryptographic_valid: true,
+        contract_valid: true,
+        fresh: true,
+        reason_codes: localPublicVerification.reason_codes,
+        checks: localPublicVerification.checks,
+      },
+    },
+  };
+  verificationMode = "live_registry_client_local";
+} else {
+  original = await deployedVerify(riskObject);
+  if (
+    original.http_status !== 200 ||
+    original.body?.ok !== true ||
+    original.body?.verification?.status !== "VERIFIED" ||
+    original.body?.verification?.valid !== true ||
+    original.body?.verification?.cryptographic_valid !== true ||
+    original.body?.verification?.contract_valid !== true ||
+    original.body?.verification?.fresh !== true
+  ) {
+    throw new Error(
+      `Original Risk Object failed deployed verification: ${JSON.stringify(original.body)}`,
+    );
+  }
+
+  const tampered = structuredClone(riskObject);
+  if (typeof tampered?.risk?.score !== "number") {
+    throw new Error("Risk Object does not contain numeric risk.score for tamper vector");
+  }
+  tampered.risk.score = Number((tampered.risk.score + 1).toFixed(6));
+
+  const tamperResult = await deployedVerify(tampered);
+  if (
+    tamperResult.body?.verification?.valid === true ||
+    tamperResult.body?.verification?.status === "VERIFIED"
+  ) {
+    throw new Error("Tampered Risk Object was incorrectly accepted");
+  }
+  verificationMode = "legacy_deployed_post";
 }
 
 const expiresAt = Date.parse(riskObject.expires_at);
@@ -654,7 +763,10 @@ if (!signatureValid) {
 
 const deployedVerificationSummary = {
   verifier_url:
-    geomacroOrigin + "/api/risk-object-keys",
+    verificationMode === "live_registry_client_local"
+      ? registryUrl
+      : geomacroOrigin + "/api/risk-object-keys",
+  verification_mode: verificationMode,
   http_status: original.http_status,
   status: original.body?.verification?.status ?? null,
   valid: original.body?.verification?.valid ?? false,
