@@ -60,7 +60,7 @@ function AccessOptions() {
         >
           <span className="flex items-center gap-2 text-xs font-semibold">
             <CalendarDays className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-            Monthly access
+            Monthly access · Coming Soon
           </span>
           <span className="inline-flex items-center justify-between gap-2 text-sm font-medium">
             Discuss a plan

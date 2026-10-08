@@ -147,7 +147,7 @@ function InstitutionalPage() {
       <section className="border-y border-border/55 bg-card/15">
         <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1fr_.85fr]">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Commercial progression</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Coming Soon · Commercial expansion</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">The intelligence comes first. Automation follows the evidence.</h2>
             <p className="mt-4 text-sm leading-7 text-muted-foreground">Risk Gate, paid agent/x402 production access and broader machine delivery remain roadmap or controlled capabilities until separately promoted.</p>
           </div>

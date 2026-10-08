@@ -33,7 +33,7 @@ const PRIMARY_NAV = [
 
 const EXPLORE_NAV = [
   { to: "/global-risk", label: "Global Risk History", description: "Historical global risk conditions and context" },
-  { to: "/risk-gate", label: "Risk Gate · Private Pilot", description: "Controlled country and corridor decision context" },
+  { to: "/risk-gate", label: "Risk Gate · Private Pilot", description: "Public access Coming Soon · request a controlled pilot" },
   { to: "/ecosystem", label: "Ecosystem & Partnerships", description: "Integrations, partnerships and commercial ecosystem" },
   { to: "/research", label: "Research & Evidence", description: "Methodology, coverage evidence and limitations" },
   { to: "/docs", label: "Documentation", description: "Product architecture and technical reference" },

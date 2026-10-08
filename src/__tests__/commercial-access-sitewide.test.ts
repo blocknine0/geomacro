@@ -29,8 +29,8 @@ describe("commercial access is explained sitewide", () => {
     expect(guide).toContain("Monthly access");
     expect(guide).toContain("Recurring intelligence for teams and workflows");
     expect(guide).toContain('mailto:contact@geomacro.live?subject=Geomacro%20monthly');
-    expect(guide).toContain("Monthly access is an enquiry, not an active self-service subscription");
-    expect(pricing).toContain("Monthly self-service checkout is not yet available");
+    expect(guide).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
+    expect(pricing).toContain("Monthly subscriptions are Coming Soon. You can request a tailored plan and quote now.");
     expect(pricing).toContain("Annual & enterprise");
   });
 

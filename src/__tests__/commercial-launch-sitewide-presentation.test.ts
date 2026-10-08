@@ -33,7 +33,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     expect(pricing).toContain("mailto:contact@geomacro.live?subject=Geomacro%20monthly");
     expect(pricing).toContain("Annual & enterprise");
     expect(pricing).toContain("mailto:contact@geomacro.live?subject=Geomacro%20annual");
-    expect(pricing).toContain("Monthly self-service checkout is not yet available");
+    expect(pricing).toContain("Monthly subscriptions are Coming Soon. You can request a tailored plan and quote now.");
     expect(pricing).toContain("Pay-per-call availability is confirmed by the live checkout");
   });
 
