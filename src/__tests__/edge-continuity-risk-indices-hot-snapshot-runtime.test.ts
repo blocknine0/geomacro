@@ -90,11 +90,15 @@ describe("Risk Indices edge continuity from verified D1 hot snapshot", () => {
     const args = fixture();
     materialize(args);
     const output = readFileSync(args.outputPath, "utf8");
-    expect(output).toContain('"schema":"geomacro.edge-continuity.v1"');
-    expect(output).toContain('"product":"risk-indices"');
-    expect(output).toContain('"source_run_id":"37716849253"');
-    expect(output).toContain(`"snapshotId":"${args.snapshotId}"`);
-    expect(output).toContain('"b2_readback_verified":true');
+    const continuity = JSON.parse(
+      output.replace(/^export default\s+/u, "").replace(/;\s*$/u, ""),
+    );
+    const payload = JSON.parse(continuity.payload_json);
+    expect(continuity.schema).toBe("geomacro.edge-continuity.v1");
+    expect(continuity.product).toBe("risk-indices");
+    expect(continuity.source_run_id).toBe("37716849253");
+    expect(continuity.b2_readback_verified).toBe(true);
+    expect(payload.data.snapshotId).toBe(args.snapshotId);
   });
 
   it("rejects a D1 hot payload whose B2 SHA does not match the selected publisher proof", () => {
