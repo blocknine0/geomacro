@@ -33,11 +33,6 @@ export function EventIntelCard({
         ) : null}
       </div>
 
-      {!compact && event.summary ? (
-        <p className="mt-2 type-body text-muted-foreground">
-          {event.summary}
-        </p>
-      ) : null}
 
       {note ? (
         <p className="mt-2 type-meta text-muted-foreground">
