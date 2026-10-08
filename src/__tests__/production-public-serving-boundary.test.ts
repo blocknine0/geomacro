@@ -33,7 +33,12 @@ describe("production public serving boundary", () => {
     expect(health).toContain("supabase_recovery_project_ref");
     expect(health).toContain('serving_authority: "backblaze-b2"');
     expect(health).toContain('"backblaze-b2-durable-truth-cloudflare-d1-verified-hot"');
-    expect(health).toContain('response.headers.get("x-geomacro-serving-store") !== "cloudflare-d1"');
+    expect(health).toContain("CONTROL_PLANE_PUBLIC_URL");
+    expect(health).toContain("/v1/public/hot-snapshot/");
+    expect(health).toContain("full_b2_readback_verified !== true");
+    expect(health).toContain("exact_gzip_restore_verified !== true");
+    expect(health).toContain("await sha256Hex(payloadJson) !== payloadSha256");
+    expect(health).not.toContain('response.headers.get("x-geomacro-serving-store") !== "cloudflare-d1"');
     expect(health).toContain("hot_snapshot_serving");
     expect(health).toContain("supabase_required_for_serving: false");
     expect(health).toContain("readB2PublicIntelligence");
