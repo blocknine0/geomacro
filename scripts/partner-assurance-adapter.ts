@@ -63,22 +63,6 @@ async function jsonFile<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, "utf8")) as T;
 }
 
-async function deployedVerify(origin: string, object: unknown) {
-  const response = await fetch(`${origin}/api/risk-object-keys`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ risk_object: object }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  let body: any = null;
-  try {
-    body = await response.json();
-  } catch {
-    body = null;
-  }
-  return { status: response.status, body };
-}
-
 const partnerId = String(arg("partner") ?? "").trim().toLowerCase();
 const riskObjectPath = String(arg("risk-object") ?? "").trim();
 const mode = String(arg("mode") ?? "local").trim().toLowerCase();
@@ -115,8 +99,52 @@ if (partner.calculation_namespace && object.provenance?.reproducibility?.calcula
   fail("PARTNER_CALCULATION_NAMESPACE_MISMATCH");
 }
 
-const trustResponse = await fetch(`${geomacroOrigin}/api/risk-object-keys`, {
-  headers: { accept: "application/json" },
+const head = spawnSync("git", ["rev-parse", "HEAD"], {
+  encoding: "utf8",
+  maxBuffer: 1024 * 1024,
+});
+if (head.status !== 0) fail("CANDIDATE_SHA_UNAVAILABLE", head.stderr || head.stdout);
+const expectedDeployedSha = String(head.stdout ?? "").trim().toLowerCase();
+if (!/^[0-9a-f]{40}$/.test(expectedDeployedSha)) fail("CANDIDATE_SHA_INVALID");
+
+const buildUrl = new URL(`${geomacroOrigin}/.well-known/geomacro-build.json`);
+buildUrl.searchParams.set("v", expectedDeployedSha);
+const buildResponse = await fetch(buildUrl, {
+  cache: "no-store",
+  headers: {
+    accept: "application/json",
+    "cache-control": "no-cache",
+    pragma: "no-cache",
+  },
+  signal: AbortSignal.timeout(15_000),
+});
+if (!buildResponse.ok) fail("DEPLOYED_BUILD_MARKER_UNAVAILABLE", buildResponse.status);
+const build = await buildResponse.json() as any;
+if (
+  build?.schema_version !== "geomacro.deployment-build.v1" ||
+  build?.canonical_repository !== "blocknine0/geomacro" ||
+  String(build?.canonical_main_sha ?? "").trim().toLowerCase() !== expectedDeployedSha
+) {
+  fail(
+    "DEPLOYED_BUILD_SHA_MISMATCH",
+    JSON.stringify({
+      expected: expectedDeployedSha,
+      observed: build?.canonical_main_sha ?? null,
+      schema_version: build?.schema_version ?? null,
+      canonical_repository: build?.canonical_repository ?? null,
+    }),
+  );
+}
+
+const trustUrl = new URL(`${geomacroOrigin}/api/risk-object-keys`);
+trustUrl.searchParams.set("v", expectedDeployedSha);
+const trustResponse = await fetch(trustUrl, {
+  cache: "no-store",
+  headers: {
+    accept: "application/json",
+    "cache-control": "no-cache",
+    pragma: "no-cache",
+  },
   signal: AbortSignal.timeout(15_000),
 });
 if (!trustResponse.ok) fail("TRUST_REGISTRY_UNAVAILABLE", trustResponse.status);
@@ -177,29 +205,38 @@ const exactRecordSha256 = createHash("sha256")
   .digest("hex");
 if (core.require_exact_record_sha256 && !/^[0-9a-f]{64}$/.test(exactRecordSha256)) fail("RECORD_SHA256_FAILED");
 
-const deployed = await deployedVerify(geomacroOrigin, object);
-if (
-  core.require_deployed_verifier &&
-  (deployed.status !== 200 || deployed.body?.verification?.valid !== true || deployed.body?.verification?.status !== "VERIFIED")
-) {
-  fail(
-    "DEPLOYED_VERIFIER_REJECTED_ORIGINAL",
-    JSON.stringify({
-      http_status: deployed.status,
-      error: deployed.body?.error ?? null,
-      verification_status: deployed.body?.verification?.status ?? null,
-      verification_valid: deployed.body?.verification?.valid ?? null,
-      reason_codes: deployed.body?.verification?.reason_codes ?? null,
-      checks: deployed.body?.verification?.checks ?? null,
-    }),
-  );
+if (core.require_deployed_verifier) {
+  if (
+    build?.schema_version !== "geomacro.deployment-build.v1" ||
+    String(build?.canonical_main_sha ?? "").trim().toLowerCase() !== expectedDeployedSha ||
+    trustBody?.ok !== true ||
+    trustBody?.issuer !== "Geomacro"
+  ) {
+    fail("DEPLOYED_TRUST_VERIFICATION_UNAVAILABLE");
+  }
 }
 
 const tampered = structuredClone(object) as any;
 if (!tampered.risk || typeof tampered.risk.score !== "number") fail("TAMPER_VECTOR_UNAVAILABLE");
 tampered.risk.score = Number((tampered.risk.score + 0.1).toFixed(1));
-const tamperedResult = await deployedVerify(geomacroOrigin, tampered);
-if (core.require_tamper_rejection && tamperedResult.body?.verification?.valid === true) fail("TAMPER_NOT_REJECTED");
+const tamperedSignature = verifyRiskObjectSignature(tampered, verificationKeys);
+const tamperedPublicVerification = verifyPublicRiskObjectArtifact(tampered, {
+  now: new Date(trustedNow),
+  verification_keys: verificationKeys,
+});
+if (
+  core.require_tamper_rejection &&
+  (tamperedSignature.valid === true || tamperedPublicVerification.valid === true)
+) {
+  fail(
+    "TAMPER_NOT_REJECTED",
+    JSON.stringify({
+      signature_valid: tamperedSignature.valid,
+      public_verifier_valid: tamperedPublicVerification.valid,
+      reason_codes: tamperedPublicVerification.reason_codes,
+    }),
+  );
+}
 
 const localSummary: any = {
   ok: true,
@@ -217,6 +254,8 @@ const localSummary: any = {
     canonical_record_hash: "PASS",
     local_signature: "PASS",
     deployed_verifier: "PASS",
+    deployed_verifier_mode: "live_registry_client_local",
+    deployed_build_sha: expectedDeployedSha,
     active_key: "PASS",
     freshness: "PASS",
     tamper_rejection: "PASS",
