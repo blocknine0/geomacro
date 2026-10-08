@@ -6,7 +6,7 @@ name: Day 6 Authorized Federico Pilot Once
 # Final bounded retrigger after #1557 added allowlisted direct-Postgres inner-relationship parity; #1554 pins child assurance to its exact dispatched SHA.
 # Final bounded retrigger after direct-Postgres `.contains()` parity fixes country-specific corroboration.
 # Final bounded retrigger after #1571 made archived GRO recovery B2-native and split B2 read/write credentials.
-# Final bounded retrigger after permanent same-host SCMP /plus article timestamp canonicalization.\n# Partner bootstrap is intentionally limited to the exact five source families used by strict candidate selection.
+# Final bounded retrigger after permanent same-host SCMP /plus article timestamp canonicalization.\n# Partner bootstrap uses the full audited governed-source cohort plus a bounded GDELT structured refresh; provider-family normalization prevents same-institution double counting.
 # Final bounded retrigger after #1767 proved production verified-hot country GRO publication:
 # 112 current VERIFIED GROs are D1-hot, B2 GET is no longer a synchronous serving gate,
 # and B2 download-cap exhaustion only defers the cold-archive audit.
@@ -23,6 +23,9 @@ on:
       - ".github/workflows/day6-authorized-federico-pilot-once.yml"
       - "scripts/ops/verify-country-gro-hot-serving.ts"
       - "src/lib/d1-country-gro-hot.server.ts"
+      - "scripts/run-gdelt-gal-cycle.mjs"
+      - "supabase/functions/live-flash-corroborate/index.ts"
+      - "src/lib/public-demo-risk-profile.ts"
 
 permissions:
   contents: read
@@ -139,13 +142,33 @@ jobs:
             exit 1
           fi
 
+      - name: Refresh governed GDELT structured evidence before strict corroboration
+        env:
+          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
+          B2_GDELT_PRIMARY: "1"
+          LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres
+          LIVE_STRUCTURE_DRAIN_CONCURRENCY: "1"
+          LIVE_STRUCTURE_MAX_CYCLES: "12"
+          GDELT_GAL_CYCLE_OUTPUT_DIR: /tmp/day6-gdelt-gal-cycle
+          GDELT_GAL_CYCLE_MAX_ATTEMPTS: "3"
+          GDELT_GAL_CYCLE_BACKOFF_SECONDS: "20"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 18m node scripts/run-gdelt-gal-cycle.mjs 2>&1 | tee /tmp/day6-gdelt-gal-cycle.log
+          jq -e '
+            .ok == true and
+            (.status == "healthy" or .status == "fresh_prior_cycle")
+          ' /tmp/day6-gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
+          echo "PASS: governed GDELT structured evidence is fresh before Federico corroboration; no partner allowance or user payment used."
+
       - name: Re-poll governed RSS without partner allowance
         env:
           TELEGRAM_ENABLED: "false"
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
           BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
-          BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"
+          BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss,federal_reserve_press_rss,ecb_press_rss,ecb_market_information_rss,bis_rss_media_releases,bis_rss_central_banker_speeches,eu_council_press_rss,un_all_documents_rss,un_human_rights_council_rss,un_geneva_press_rss,un_security_council_docs_rss,un_geneva_meeting_summaries_rss,usgs_minerals_news_rss,nrcan_news_atom"
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
           RSS_LIVE_CYCLE_SUMMARY_OUT: /tmp/day6-rss-cycle.json
           RSS_LIVE_SKIP_CORROBORATION: "true"
@@ -197,7 +220,20 @@ jobs:
               ('scmp_china_rss', 'scmp_china'),
               ('forexlive_rss', 'forexlive'),
               ('aljazeera_rss', 'aljazeera'),
-              ('bbc_world_rss', 'bbc_world')
+              ('bbc_world_rss', 'bbc_world'),
+              ('federal_reserve_press_rss', 'federal_reserve'),
+              ('ecb_press_rss', 'european_central_bank'),
+              ('ecb_market_information_rss', 'european_central_bank'),
+              ('bis_rss_media_releases', 'bank_for_international_settlements'),
+              ('bis_rss_central_banker_speeches', 'bank_for_international_settlements'),
+              ('eu_council_press_rss', 'council_of_the_european_union'),
+              ('un_all_documents_rss', 'united_nations'),
+              ('un_human_rights_council_rss', 'united_nations'),
+              ('un_geneva_press_rss', 'united_nations'),
+              ('un_security_council_docs_rss', 'united_nations'),
+              ('un_geneva_meeting_summaries_rss', 'united_nations'),
+              ('usgs_minerals_news_rss', 'usgs'),
+              ('nrcan_news_atom', 'natural_resources_canada')
           ),
           recent as (
             select

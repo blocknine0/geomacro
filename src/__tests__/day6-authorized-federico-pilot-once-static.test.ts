@@ -9,6 +9,7 @@ const workflow = readFileSync(
 describe("one-time Day 6 Federico pilot authorization", () => {
   it("refreshes and proves local readiness before partner allowance", () => {
     const preflight = workflow.indexOf("Prove verified D1 signed GRO hot serving before Federico work");
+    const gdelt = workflow.indexOf("Refresh governed GDELT structured evidence before strict corroboration");
     const refresh = workflow.indexOf("Re-poll governed RSS without partner allowance");
     const hydrate = workflow.indexOf("Hydrate trusted publisher times before strict candidate selection");
     const select = workflow.indexOf("Select strongest fresh strict candidate set");
@@ -16,7 +17,8 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     const local = workflow.indexOf("Dispatch no-allowance current-head local assurance");
     const live = workflow.indexOf("Dispatch exactly one authorized Federico pilot allowance review");
     expect(preflight).toBeGreaterThan(-1);
-    expect(refresh).toBeGreaterThan(preflight);
+    expect(gdelt).toBeGreaterThan(preflight);
+    expect(refresh).toBeGreaterThan(gdelt);
     expect(hydrate).toBeGreaterThan(refresh);
     expect(workflow).toContain("scripts/ops/verify-country-gro-hot-serving.ts");
     expect(workflow).toContain('"scripts/ops/verify-country-gro-hot-serving.ts"');
@@ -41,6 +43,12 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("node scripts/run-rss-live-cycle.mjs");
     expect(workflow).toContain("scripts/run-live-flash-corroborate-local.ts");
     expect(workflow).toContain("scripts/hydrate-federico-source-times.ts");
+    expect(workflow).toContain("scripts/run-gdelt-gal-cycle.mjs");
+    expect(workflow).toContain("B2_GDELT_PRIMARY: \"1\"");
+    expect(workflow).toContain('(.status == "healthy" or .status == "fresh_prior_cycle")');
+    expect(workflow).toContain('"scripts/run-gdelt-gal-cycle.mjs"');
+    expect(workflow).toContain('"supabase/functions/live-flash-corroborate/index.ts"');
+    expect(workflow).toContain('"src/lib/public-demo-risk-profile.ts"');
     expect(workflow).toContain("--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs");
     expect(workflow).toContain('policy == "trusted_publisher_metadata_only"');
     expect(workflow).toContain(".fake_freshness == false");
@@ -92,7 +100,13 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("day6-global-partner-assurance-${RUN_ID}");
     expect(workflow).not.toContain("federico-handoff-${RUN_ID}");
     expect(workflow).toContain('RSS_LIVE_SKIP_CORROBORATION: "true"');
-    expect(workflow).toContain('BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss"');
+    expect(workflow).toContain('BREAKING_RSS_SOURCE_IDS: "xinhua_english_china_rss,scmp_china_rss,forexlive_rss,aljazeera_rss,bbc_world_rss,federal_reserve_press_rss,ecb_press_rss,ecb_market_information_rss,bis_rss_media_releases,bis_rss_central_banker_speeches,eu_council_press_rss,un_all_documents_rss,un_human_rights_council_rss,un_geneva_press_rss,un_security_council_docs_rss,un_geneva_meeting_summaries_rss,usgs_minerals_news_rss,nrcan_news_atom"');
+    expect(workflow).toContain("('ecb_press_rss', 'european_central_bank')");
+    expect(workflow).toContain("('ecb_market_information_rss', 'european_central_bank')");
+    expect(workflow).toContain("('bis_rss_media_releases', 'bank_for_international_settlements')");
+    expect(workflow).toContain("('bis_rss_central_banker_speeches', 'bank_for_international_settlements')");
+    expect(workflow).toContain("('un_all_documents_rss', 'united_nations')");
+    expect(workflow).toContain("('un_security_council_docs_rss', 'united_nations')");
     expect(workflow).toContain("cancel-in-progress: true");
     expect(workflow).toContain("issues: write");
     expect(workflow).toContain("Record Day 6 outcome on migration tracker");
