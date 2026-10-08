@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
+import { writeFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 
 const REF="ldpwajisioljyjtojvfx", SOURCE="country_raw_web_mesh", BUCKET="geomacro-live-intelligence";
@@ -13,6 +14,7 @@ const HOST_MIN_INTERVAL_MS=new Map([
   ["www.usgs.gov",300],
 ]);
 const UA="Geomacro-Country-Raw-Source-Mesh/1.0 (+https://geomacro.live)";
+const OUTPUT_PATH=String(process.env.COUNTRY_RAW_SOURCE_SYNC_OUTPUT??"").trim();
 const SOURCE_HTTP_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_HTTP_TIMEOUT_MS??30000)));
 const DB_REQUEST_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_DB_TIMEOUT_MS??30000)));
 function fetchWithTimeout(input,init={}){
@@ -24,6 +26,12 @@ const projectRef=(u)=>{try{return new URL(u).hostname.split(".")[0]??"";}catch{r
 const hash=(b)=>createHash("sha256").update(b).digest("hex");
 const txt=(v)=>String(v??"").replace(/\s+/g," ").trim();
 const safe=(v)=>String(v).replace(/[^A-Za-z0-9._-]+/g,"_").slice(0,160);
+function classifyRunFailure(error){
+  const raw=error instanceof Error?String(error.message??"").trim():"";
+  if(/^(?:RAW_SOURCE_[A-Z0-9_]+|HTTP_[1-5][0-9]{2}|NON_AUTHORITATIVE_SUPABASE_PROJECT|SUPABASE_[A-Z0-9_]+)$/.test(raw))return raw;
+  if(/(?:timeout|timed out|AbortError)/i.test(raw))return "UPSTREAM_TIMEOUT";
+  return "COUNTRY_RAW_SOURCE_SYNC_FAILED";
+}
 function pageTitle(html){const m=html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);return txt(m?.[1]?.replace(/<[^>]+>/g," ")).slice(0,800);}
 function links(html,base,limit=80){const out=[];const seen=new Set();const re=/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;let m;const host=new URL(base).hostname;while((m=re.exec(html))&&out.length<limit){try{const u=new URL(m[1],base);if(!/^https?:$/.test(u.protocol)||u.hostname!==host)continue;const t=txt(m[2].replace(/<[^>]+>/g," "));if(t.length<8||seen.has(u.href)||!/(news|press|media|release|statement|announcement|update|bulletin|publication|202[4-9]|latest|minister|econom|trade|mineral|mine|energy|security)/i.test(u.href))continue;seen.add(u.href);out.push({u:u.href,t:t.slice(0,800)});}catch{}}return out;}
 function rssItems(xml, baseUrl, limit=100){
@@ -769,7 +777,25 @@ async function main() {
     },
   };
 
-  console.log(JSON.stringify(result, null, 2));
+  const resultJson = JSON.stringify(result, null, 2) + "\n";
+  if (OUTPUT_PATH) {
+    await writeFile(OUTPUT_PATH, resultJson, "utf8");
+  }
+  process.stdout.write(resultJson);
   if (!result.ok) process.exit(1);
 }
-main().catch(e=>{console.error(e instanceof Error?e.stack??e.message:String(e));process.exit(1);});
+main().catch(async (error)=>{
+  const failureCode=classifyRunFailure(error);
+  const failure={
+    ok:false,
+    generated_at:new Date().toISOString(),
+    error:failureCode,
+  };
+  if(OUTPUT_PATH){
+    try{
+      await writeFile(OUTPUT_PATH,JSON.stringify(failure,null,2)+"\n","utf8");
+    }catch{}
+  }
+  console.error(failureCode);
+  process.exit(1);
+});
