@@ -420,6 +420,15 @@ jobs:
             echo "::error::No country currently has at least two fresh auditable partner source families after governed RSS refresh. Federico allowance was not used."
             exit 3
           }
+          preferred_country="${{ steps.fast_ready.outputs.country }}"
+          if [[ "${{ steps.fast_ready.outputs.ready }}" == "true" && -n "$preferred_country" ]] && grep -qx "$preferred_country" /tmp/day6-candidates.txt; then
+            {
+              printf '%s\n' "$preferred_country"
+              grep -vx "$preferred_country" /tmp/day6-candidates.txt || true
+            } > /tmp/day6-candidates-prioritized.txt
+            mv /tmp/day6-candidates-prioritized.txt /tmp/day6-candidates.txt
+            echo "PASS: strict-ready country $preferred_country prioritized before exploratory candidates."
+          fi
           printf 'Candidate countries: '; tr '\n' ' ' < /tmp/day6-candidates.txt; echo
 
       - name: Corroborate candidates and select first genuinely strict-ready country
