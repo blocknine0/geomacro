@@ -1,5 +1,6 @@
 import { readB2PublicIntelligence } from "./b2-live.server";
 import { dedupePublicIntelligenceRows } from "./public-intelligence-dedupe";
+import { sanitizePublicIntelligenceRow } from "./public-intelligence-gist";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 
 export type ProductionPublicIntelligenceRow = PublicIntelligenceRow & {
@@ -42,16 +43,7 @@ function normalizedScoredRow(row: PublicIntelligenceRow): ProductionPublicIntell
   if (!(REQUIRED_CATEGORIES as readonly string[]).includes(category)) return null;
   if (!title.startsWith(SCORED_TITLE_PREFIX)) return null;
   if (!Number.isFinite(severity) || severity < 0 || severity > 100) return null;
-  return {
-    ...row,
-    source_title: title,
-    category,
-    severity,
-    delta: row.delta === null || row.delta === undefined || !Number.isFinite(Number(row.delta))
-      ? null
-      : Number(row.delta),
-    public_status: "verified_b2",
-  };
+  return sanitizePublicIntelligenceRow(row) as ProductionPublicIntelligenceRow | null;
 }
 
 function normalizedLiveObservedRow(
@@ -71,14 +63,7 @@ function normalizedLiveObservedRow(
     timestamp > now + 5 * 60_000 ||
     now - timestamp > LIVE_OBSERVED_MAX_AGE_MS
   ) return null;
-  return {
-    ...row,
-    source_title: title,
-    category,
-    severity: null,
-    delta: null,
-    public_status: "live_observed",
-  };
+  return sanitizePublicIntelligenceRow(row) as ProductionPublicIntelligenceRow | null;
 }
 
 function normalizedRows(rows: PublicIntelligenceRow[]): ProductionPublicIntelligenceRow[] {

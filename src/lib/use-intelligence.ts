@@ -11,6 +11,7 @@ import {
   type PublicIntelligenceRow,
 } from "@/lib/public-intelligence.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
+import { sanitizePublicIntelligenceRow } from "@/lib/public-intelligence-gist";
 import {
   PUBLIC_DATA_REQUEST_TIMEOUT_MS,
   withPublicRuntimeTimeout,
@@ -104,7 +105,9 @@ function timeOf(e: Pick<IntelEvent, "publishedAt" | "createdAt">) {
 
 function mapPublicRows(rows: PublicIntelligenceApiRow[]): IntelEvent[] {
   const allowed = new Set<string>(PUBLIC_INTELLIGENCE_CATEGORIES);
-  return rows.flatMap((r) => {
+  return rows.flatMap((input) => {
+    const r = sanitizePublicIntelligenceRow(input);
+    if (!r) return [];
     const title = String(r.source_title ?? "").replace(/\s+/g, " ").trim();
     const category = String(r.category ?? "").trim().toLowerCase();
     const createdAt = String(r.created_at ?? "");
