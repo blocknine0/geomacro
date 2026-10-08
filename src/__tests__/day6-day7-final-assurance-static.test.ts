@@ -7,6 +7,7 @@ const adapter = read("scripts/partner-assurance-adapter.ts");
 const directDay6 = read("scripts/day6-direct-live-federico-gro.ts");
 const day6Workflow = read(".github/workflows/day6-partner-assurance-final.yml");
 const migration = read("workers/control-plane/migrations/0002_primary_runtime_authority.sql");
+const partnerAssuranceMigration = read("workers/control-plane/migrations/0013_partner_assurance_gro_verified.sql");
 const finalGate = read("scripts/ops/final-launch-gate-core.mjs");
 const simulations = read("scripts/ops/simulate-final-launch-failures.mjs");
 
@@ -61,6 +62,8 @@ describe("Day 6 generic partner assurance", () => {
     expect(day6Workflow).toContain("GRI_DB_MODE: direct_postgres");
     expect(day6Workflow).toContain("B2_ARCHIVE_READ_KEY_ID");
     expect(day6Workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
+    expect(day6Workflow).toContain("CLOUDFLARE_API_TOKEN");
+    expect(day6Workflow).toContain("CLOUDFLARE_ACCOUNT_ID");
     expect(day6Workflow).toContain("DAY6_COUNTRY_ISO3");
     expect(day6Workflow).toContain("partner_allowance_spent == false");
     expect(directDay6).not.toContain('const COUNTRY_ISO3 = "CHN"');
@@ -70,9 +73,23 @@ describe("Day 6 generic partner assurance", () => {
     expect(directDay6).toContain("withRiskObjectObservationTimestamp");
     expect(directDay6).toContain("assertFedericoPublicationReady(dryRun.object)");
     expect(directDay6).toContain("signRiskObject(observationBound)");
-    expect(directDay6).toContain("b2_readback_verified: true");
+    expect(directDay6).toContain("archive_write_acknowledged: true");
+    expect(directDay6).toContain("b2_readback_verified: false");
+    expect(directDay6).toContain("b2_readback_deferred: true");
+    expect(directDay6).toContain("b2_get_required_for_assurance: false");
+    expect(directDay6).toContain("d1_readback_verified: true");
+    expect(directDay6).toContain("d1_exact_canonical_record_verified: true");
+    expect(directDay6).toContain("d1_signature_verified: true");
+    expect(directDay6).toContain("partner_assurance_gro_verified");
+    expect(directDay6).toContain("loadPublicRiskObjectVerificationKeys");
+    expect(directDay6).not.toContain("await b2.get(");
     expect(directDay6).toContain("raw_source_payload_stored: false");
     expect(directDay6).toContain("partner_allowance_spent: false");
+    expect(partnerAssuranceMigration).toContain("CREATE TABLE IF NOT EXISTS partner_assurance_gro_verified");
+    expect(partnerAssuranceMigration).toContain("PRIMARY KEY (partner, object_id)");
+    expect(partnerAssuranceMigration).toContain("archive_write_acknowledged INTEGER NOT NULL");
+    expect(partnerAssuranceMigration).toContain("archive_readback_verified INTEGER NOT NULL DEFAULT 0");
+    expect(partnerAssuranceMigration).toContain("object_json TEXT NOT NULL");
   });
 });
 
