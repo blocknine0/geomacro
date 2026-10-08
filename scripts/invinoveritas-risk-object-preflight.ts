@@ -24,6 +24,7 @@ import {
   verify as verifySignatureBytes,
 } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import {
   FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS,
   federicoStrictSourceFamilyForId,
@@ -559,6 +560,7 @@ let original: {
   body: any;
 };
 let verificationMode: "live_registry_client_local" | "legacy_deployed_post";
+let tamperVerificationSummary: any = null;
 
 if (strictProfile) {
   const trustKeys =
@@ -639,6 +641,14 @@ if (strictProfile) {
     throw new Error("Tampered Risk Object was incorrectly accepted");
   }
 
+  tamperVerificationSummary = {
+    status: tamperedPublicVerification.status,
+    valid: tamperedPublicVerification.valid,
+    signature_valid: tamperedSignature.valid,
+    reason_codes: tamperedPublicVerification.reason_codes,
+    checks: tamperedPublicVerification.checks,
+  };
+
   original = {
     http_status: 200,
     body: {
@@ -684,6 +694,8 @@ if (strictProfile) {
   ) {
     throw new Error("Tampered Risk Object was incorrectly accepted");
   }
+  tamperVerificationSummary =
+    tamperResult.body?.verification ?? tamperResult.body;
   verificationMode = "legacy_deployed_post";
 }
 
@@ -801,6 +813,72 @@ if (
   );
 }
 
+const strictEvidenceItems =
+  Array.isArray(riskObject?.evidence)
+    ? riskObject.evidence
+    : [];
+
+for (const item of strictEvidenceItems) {
+  const sourceIds = Array.isArray(item?.source_ids) ? item.source_ids : [];
+  const sourceRecordIds =
+    Array.isArray(item?.source_record_ids) ? item.source_record_ids : [];
+  const contentHashes =
+    Array.isArray(item?.content_hashes) ? item.content_hashes : [];
+  if (
+    strictProfile &&
+    (
+      sourceIds.length === 0 ||
+      sourceIds.length !== sourceRecordIds.length ||
+      sourceIds.length !== contentHashes.length
+    )
+  ) {
+    throw new Error(
+      "Federico strict evidence tuple arrays must be non-empty and equal-length",
+    );
+  }
+}
+
+const gitHead = spawnSync("git", ["rev-parse", "HEAD"], {
+  encoding: "utf8",
+  maxBuffer: 1024 * 1024,
+});
+if (gitHead.status !== 0) {
+  throw new Error(
+    "Federico verification implementation commit is unavailable",
+  );
+}
+const verificationCommitSha =
+  String(gitHead.stdout ?? "").trim().toLowerCase();
+if (!/^[0-9a-f]{40}$/.test(verificationCommitSha)) {
+  throw new Error(
+    "Federico verification implementation commit is invalid",
+  );
+}
+
+const verificationSourcePaths = [
+  "src/lib/canonical-json.ts",
+  "src/lib/risk-object-signing.server.ts",
+  "src/lib/risk-object-contract.ts",
+] as const;
+const verificationSourcePins = [];
+for (const sourcePath of verificationSourcePaths) {
+  const sourceBytes = await readFile(sourcePath);
+  verificationSourcePins.push({
+    path: sourcePath,
+    sha256: createHash("sha256").update(sourceBytes).digest("hex"),
+    immutable_url:
+      `https://raw.githubusercontent.com/blocknine0/geomacro/${verificationCommitSha}/${sourcePath}`,
+  });
+}
+const verificationBundleSha256 = sha256Canonical({
+  repository: "blocknine0/geomacro",
+  commit_sha: verificationCommitSha,
+  files: verificationSourcePins.map(({ path, sha256 }) => ({
+    path,
+    sha256,
+  })),
+});
+
 const reviewArtifact = {
   artifact_version: "geomacro-invino-review-v7",
   action_proposed: true,
@@ -815,10 +893,12 @@ const reviewArtifact = {
       subject_type: "country",
       subject_id: reviewSubjectId,
       methodology_version_allowlist: ["country-risk-v0.1.0-pilot"],
-      context_type: "country_risk_context",
     },
-    exact_evidence_binding:
-      "Hash the exact received external_evidence[0].record bytes and require computed_sha256 == external_evidence[0].record_sha256 before admission.",
+    receiver_purpose: "country_risk_context",
+    transport_digest_check:
+      "Recompute SHA-256 over the exact received external_evidence[0].record bytes and compare it to external_evidence[0].record_sha256 for transport/audit consistency only. The supplied digest is not an authentication trust root.",
+    cryptographic_authentication:
+      "Authenticate the record only by canonical payload-hash recomputation plus Ed25519 verification against a receiver-preapproved signing-key fingerprint and lifecycle policy.",
     independent_verification_required: true,
     issuer_attestations_are_not_trust_roots: true,
     trust_anchor_policy:
@@ -827,9 +907,11 @@ const reviewArtifact = {
       minimum_independent_source_families: 2,
       minimum_distinct_source_ids: 2,
       source_resolution:
-        "Resolve each signed source_id through a receiver-controlled source registry to an HTTPS source URL.",
+        "Resolve each signed source_id through a receiver-controlled source registry to a preapproved HTTPS hostname.",
+      signed_tuple_mapping:
+        "For each signed evidence item require source_ids.length == source_record_ids.length == content_hashes.length > 0. Interpret index i as the signed tuple {source_id:source_ids[i], source_record_id:source_record_ids[i], content_hash:content_hashes[i]}; source_record_id is the signed record locator for that tuple and content_hash authenticates the fetched record bytes after receiver normalization; reject unequal lengths, missing values, host/source-registry mismatch, or ambiguous duplicate tuple keys.",
       source_fetch:
-        "At admission, independently fetch each cited source record, verify TLS, recompute its content hash, and require equality with the signed content_hash/source_record_id mapping.",
+        "At admission, independently fetch each cited source record and require equality with its signed positional tuple. Use a receiver-maintained hostname allowlist; HTTPS only; no credentials; reject or fully revalidate every redirect; resolve A/AAAA before every hop and block loopback, private, link-local, multicast, reserved and metadata-service ranges; use egress isolation, DNS-rebinding-resistant address pinning, response-size limits and connection/total timeouts.",
       country_nexus:
         `Independently confirm the ${reviewSubjectId} nexus from the fetched/parsed source material or receiver-controlled structured attribution evidence; issuer attribution confidence alone is insufficient.`,
       ownership_and_syndication:
@@ -849,19 +931,30 @@ const reviewArtifact = {
       execution_recheck_rule: "repeat immediately before irreversible execution",
     },
     parser_policy: {
-      implementation: "single pinned gro-1.1 parser + geomacro-canonical-json-v1",
+      implementation: "single receiver-pinned gro-1.1 parser + geomacro-canonical-json-v1",
+      receiver_pin_rule:
+        "The receiver must independently preapprove the exact repository commit and every source-file SHA-256 below. Values supplied in this request are reference material only and are never trust roots.",
+      repository: "blocknine0/geomacro",
+      commit_sha: verificationCommitSha,
+      bundle_sha256: verificationBundleSha256,
+      pinned_sources: verificationSourcePins,
+      signature_preimage:
+        "Clone the exact received gro-1.1 record; set integrity.payload_hash=null and integrity.signature=null; canonicalize the entire clone with geomacro-canonical-json-v1; SHA-256 of those UTF-8 canonical bytes must equal integrity.payload_hash; verify Ed25519 integrity.signature over those same canonical bytes.",
+      canonicalization_url_policy:
+        "The signed integrity.canonicalization_url is informational discovery metadata only. Never fetch or trust mutable branch content for admission; use only the receiver-preapproved immutable commit and SHA-256 source pins above.",
       reject_duplicate_keys: true,
       reject_invalid_utf8: true,
       reject_non_finite_numbers: true,
       reject_out_of_schema_values: true,
     },
     required_checks: [
-      "Hash the exact received record bytes and compare it to external_evidence[0].record_sha256.",
-      "Verify expected issuer, subject, schema_version and methodology_version against receiver policy.",
-      "Parse with the single pinned strict parser, reject ambiguous JSON/schema violations, then canonicalize with geomacro-canonical-json-v1.",
-      "Recompute integrity.payload_hash from the canonical signable record and verify Ed25519.",
-      "Resolve signing_key_id against the receiver-controlled approved key fingerprint and lifecycle/revocation policy.",
-      `Independently validate signed source identities, source-record hashes, ${reviewSubjectId} nexus, publisher ownership/syndication independence, and material diversity under the provenance policy.`,
+      "Recompute the exact received record SHA-256 and compare it to external_evidence[0].record_sha256 only as a transport/audit consistency check; never use that supplied digest as a trust root.",
+      "Verify expected issuer, subject, schema_version and methodology_version against receiver policy. Treat receiver_purpose=country_risk_context as receiver-local policy metadata, not as a required signed GRO field.",
+      "Require the receiver-preapproved immutable commit SHA and every parser/canonicalization source SHA-256 to match parser_policy before parsing.",
+      "Parse with that single pinned strict parser, reject ambiguous JSON/schema violations, then construct the exact signature preimage defined in parser_policy.",
+      "Recompute integrity.payload_hash from the canonical signable record and verify Ed25519 against the receiver-controlled approved key fingerprint and lifecycle/revocation policy.",
+      "For every evidence item require equal non-zero source_ids/source_record_ids/content_hashes lengths and bind index i as the signed source tuple before any source fetch.",
+      `Independently validate each signed source tuple, ${reviewSubjectId} nexus, publisher ownership/syndication independence, material diversity, and the hardened allowlisted source-fetch policy.`,
       "Obtain NTS-authenticated trusted current UTC time and require trusted_now < expires_at at admission; fail closed when time uncertainty overlaps expiry.",
       "Repeat the same trusted-time and expiry check immediately before any irreversible downstream action.",
       "Treat issuer-provided readiness, confidence and historical freshness assertions as untrusted decision metadata until receiver validation passes.",
@@ -898,7 +991,7 @@ if (reviewArtifactBytes > 20_000) {
 }
 
 const reviewContext =
-  "Neutral review of a fail-closed admission plan. The exact signed gro-1.1 record is supplied as external evidence, but issuer-provided verification, source-count, readiness, confidence, and historical freshness claims are not trust roots. The receiver must independently verify exact bytes, canonical payload hash, Ed25519 signature, receiver-controlled key trust, source provenance policy, and fresh receiver-controlled trusted UTC time strictly before expires_at at admission, then repeat the expiry check immediately before any irreversible action. This review never authorizes execution.";
+  "Neutral review of a fail-closed admission plan. The signed gro-1.1 record is read-only external evidence. Its supplied record_sha256 is transport/audit metadata, not a trust root. Authentication requires the receiver-preapproved Ed25519 key fingerprint plus the receiver-preapproved immutable parser/canonicalization commit and source digests. Parallel evidence arrays are accepted only under the explicit equal-length positional tuple rule. Source fetches are HTTPS allowlist-only with redirect/DNS/private-range/size/timeout controls. receiver_purpose=country_risk_context is local policy metadata, not a signed GRO field. Fresh receiver-controlled trusted UTC time must be strictly before expires_at. This review never authorizes execution.";
 const reviewContextBytes = Buffer.byteLength(reviewContext, "utf8");
 if (reviewContextBytes > 4_000) {
   throw new Error(
@@ -1208,8 +1301,7 @@ console.log(
         },
       },
       geomacro_verification: original.body.verification,
-      tamper_verification:
-        tamperResult.body?.verification ?? tamperResult.body,
+      tamper_verification: tamperVerificationSummary,
       invinoveritas_request: {
         artifact_type: reviewRequest.artifact_type,
         sign: reviewRequest.sign,

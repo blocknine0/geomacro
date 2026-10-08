@@ -71,6 +71,18 @@ describe("Day 6 generic partner assurance", () => {
     expect(providerPreflight).toContain('verificationMode = "live_registry_client_local"');
     expect(providerPreflight).not.toContain("const original = await verify(riskObject)");
     expect(providerPreflight).not.toContain("const tamperResult = await verify(tampered)");
+    expect(providerPreflight).toContain('receiver_purpose: "country_risk_context"');
+    expect(providerPreflight).not.toContain('context_type: "country_risk_context"');
+    expect(providerPreflight).toContain("signed_tuple_mapping");
+    expect(providerPreflight).toContain("source_ids.length == source_record_ids.length == content_hashes.length > 0");
+    expect(providerPreflight).toContain("receiver-maintained hostname allowlist");
+    expect(providerPreflight).toContain("DNS-rebinding-resistant address pinning");
+    expect(providerPreflight).toContain("verificationCommitSha");
+    expect(providerPreflight).toContain("verificationSourcePins");
+    expect(providerPreflight).toContain("verificationBundleSha256");
+    expect(providerPreflight).toContain("receiver-preapproved immutable commit SHA");
+    expect(providerPreflight).toContain("tamper_verification: tamperVerificationSummary");
+    expect(providerPreflight).not.toContain("tamperResult.body?.verification ?? tamperResult.body,");
   });
 
   it("generates a country-agnostic strict GRO while keeping the Federico allowance explicit", () => {
