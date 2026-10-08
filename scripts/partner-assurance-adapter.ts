@@ -163,7 +163,31 @@ const deployed = await deployedVerify(geomacroOrigin, object);
 if (
   core.require_deployed_verifier &&
   (deployed.status !== 200 || deployed.body?.verification?.valid !== true || deployed.body?.verification?.status !== "VERIFIED")
-) fail("DEPLOYED_VERIFIER_REJECTED_ORIGINAL");
+) {
+  const report = deployed.body?.verification ?? null;
+  fail(
+    "DEPLOYED_VERIFIER_REJECTED_ORIGINAL",
+    JSON.stringify({
+      http_status: deployed.status,
+      reason_codes: Array.isArray(report?.reason_codes) ? report.reason_codes : [],
+      checks: report?.checks ?? null,
+      artifact: report?.artifact
+        ? {
+            object_id: report.artifact.object_id ?? null,
+            schema_version: report.artifact.schema_version ?? null,
+            subject: report.artifact.subject ?? null,
+            methodology_version: report.artifact.methodology_version ?? null,
+            observed_at: report.artifact.observed_at ?? null,
+            generated_at: report.artifact.generated_at ?? null,
+            expires_at: report.artifact.expires_at ?? null,
+            signing_key_id: report.artifact.signing_key_id ?? null,
+            commercial_eligibility_status: report.artifact.commercial_eligibility_status ?? null,
+            internal_verification_status: report.artifact.internal_verification_status ?? null,
+          }
+        : null,
+    }),
+  );
+}
 
 const tampered = structuredClone(object) as any;
 if (!tampered.risk || typeof tampered.risk.score !== "number") fail("TAMPER_VECTOR_UNAVAILABLE");
