@@ -52,6 +52,22 @@ NODE
 mkdir -p "$TMP_ROOT/artifacts"
 gh run download "$SOURCE_RUN_ID" --repo "$REPO" --dir "$TMP_ROOT/artifacts"
 
+# Risk Indices source-run edge evidence can be stale when a warm Workers Cache
+# shadows a newer B2-readback-verified D1 hot snapshot. Capture the public D1
+# projection as a proof-bound fallback; materialization still validates its
+# B2 SHA, payload SHA, schema, snapshot id/as-of, and readback/restore flags
+# against the selected successful publisher proof before trusting it.
+if [[ "$PRODUCT" == "risk-indices" ]]; then
+  HOT_SNAPSHOT="$TMP_ROOT/artifacts/risk-indices-hot-snapshot.json"
+  CODE="$(curl -sS -o "$HOT_SNAPSHOT" -w '%{http_code}' --max-time 15 \
+    -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+    'https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/hot-snapshot/risk-indices' || true)"
+  if [[ "$CODE" != "200" ]]; then
+    rm -f "$HOT_SNAPSHOT"
+    echo "Risk Indices D1 hot snapshot unavailable for continuity fallback (HTTP $CODE)." >&2
+  fi
+fi
+
 node scripts/ops/materialize-edge-continuity.mjs \
   --product "$PRODUCT" \
   --artifact-dir "$TMP_ROOT/artifacts" \
