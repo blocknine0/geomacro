@@ -40,123 +40,130 @@ function jsonResponse(
   );
 }
 
-async function deployedPublicVerificationKeys(
-  request: Request,
-): Promise<
-  RiskObjectVerificationKeys | null
-> {
-  const registryUrl =
-    new URL(
-      "/api/risk-object-keys",
-      request.url,
-    );
+function deployedPublicVerificationKeys():
+  RiskObjectVerificationKeys | null {
+  const keySet:
+    RiskObjectVerificationKeys = {};
 
-  try {
-    const response =
-      await fetch(
-        registryUrl,
-        {
-          method: "GET",
-          headers: {
-            accept:
-              "application/json",
-            "cache-control":
-              "no-cache",
-          },
-          signal:
-            AbortSignal.timeout(
-              5_000,
-            ),
-        },
+  const rawRegistry =
+    process.env
+      .RISK_OBJECT_VERIFY_KEYS_JSON
+      ?.trim();
+
+  if (rawRegistry) {
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(
+        rawRegistry,
       );
-
-    if (!response.ok) {
+    } catch {
       return null;
     }
 
-    const body =
-      await response.json() as {
-        ok?: boolean;
-        keys?: Array<{
-          key_id?: unknown;
-          public_key_spki_b64?: unknown;
-          status?: unknown;
-          not_before?: unknown;
-          not_after?: unknown;
-        }>;
-      };
-
     if (
-      body?.ok !== true ||
-      !Array.isArray(
-        body.keys,
-      ) ||
-      body.keys.length === 0
+      !parsed ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
     ) {
       return null;
     }
 
-    const keySet:
-      RiskObjectVerificationKeys =
-      {};
-
-    for (const item of body.keys) {
-      const keyId =
-        String(
-          item?.key_id ??
-            "",
-        ).trim();
-      const publicKey =
-        String(
-          item?.public_key_spki_b64 ??
-            "",
-        ).trim();
-      const status =
-        String(
-          item?.status ??
-            "",
-        ).trim();
-
+    for (
+      const [keyId, value] of
+      Object.entries(parsed)
+    ) {
       if (
-        !keyId ||
-        !publicKey ||
+        typeof value !== "string" &&
         (
-          status !==
-            "active" &&
-          status !==
-            "retired" &&
-          status !==
-            "revoked"
+          !value ||
+          typeof value !== "object" ||
+          Array.isArray(value)
         )
       ) {
         return null;
       }
 
-      keySet[keyId] = {
+      keySet[keyId] =
+        value as
+          RiskObjectVerificationKeys[string];
+    }
+  }
+
+  const currentKeyId =
+    process.env
+      .RISK_OBJECT_SIGNING_KEY_ID
+      ?.trim();
+
+  const currentPublicKey =
+    process.env
+      .RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64
+      ?.trim();
+
+  if (
+    Boolean(currentKeyId) !==
+    Boolean(currentPublicKey)
+  ) {
+    return null;
+  }
+
+  if (
+    currentKeyId &&
+    currentPublicKey
+  ) {
+    const existing =
+      keySet[currentKeyId];
+
+    if (existing) {
+      const existingPublicKey =
+        typeof existing === "string"
+          ? existing.trim()
+          : existing
+              .public_key_spki_b64
+              ?.trim();
+
+      if (
+        existingPublicKey !==
+        currentPublicKey
+      ) {
+        return null;
+      }
+    } else {
+      keySet[currentKeyId] = {
         public_key_spki_b64:
-          publicKey,
-        status,
+          currentPublicKey,
+        status: "active",
         not_before:
-          item?.not_before ==
-            null
-            ? null
-            : String(
-                item.not_before,
-              ),
+          process.env
+            .RISK_OBJECT_SIGNING_KEY_NOT_BEFORE
+            ?.trim() ||
+          null,
         not_after:
-          item?.not_after ==
-            null
-            ? null
-            : String(
-                item.not_after,
-              ),
+          process.env
+            .RISK_OBJECT_SIGNING_KEY_NOT_AFTER
+            ?.trim() ||
+          null,
       };
     }
+  }
 
-    return keySet;
+  if (
+    Object.keys(keySet).length === 0
+  ) {
+    return null;
+  }
+
+  try {
+    // Validate every configured public key, lifecycle state and validity
+    // window without initializing or deriving any signing private key.
+    publicRiskObjectVerificationKeySet(
+      keySet,
+    );
   } catch {
     return null;
   }
+
+  return keySet;
 }
 
 async function verifyRequest(
@@ -281,9 +288,7 @@ async function verifyRequest(
   }
 
   const verificationKeys =
-    await deployedPublicVerificationKeys(
-      request,
-    );
+    deployedPublicVerificationKeys();
 
   if (!verificationKeys) {
     return jsonResponse(
