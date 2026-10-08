@@ -8,7 +8,8 @@ describe("Geomacro Finds commercial homepage presentation", () => {
   it("retains one canonical derived winner with a truthful actual event date", () => {
     expect(card).toContain("selectHomepageShowcase(intelligence.data.all)");
     expect(card).toContain("useIntelligence(null, 5 * 60_000)");
-    expect(card).toContain("event?.title.replace");
+    expect(card).toContain("publicHeadline(event.title)");
+    expect(card).toContain("categoryLeads(intelligence.data.all)");
     expect(card).toContain("winner.observedAt");
     expect(card).toContain("dateTime={winner.observedAt}");
     expect(card).not.toContain("Top verified · Last 24h");
@@ -16,33 +17,22 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(card).not.toContain("Current as of today");
   });
 
-  it("never invents event causes, historic baselines, impact forecasts or confidence", () => {
-    for (const forbidden of [
-      "Event severity",
-      "Severity {",
-      "Recorded movement",
-      "Earlier comparable state not provided",
-      "Case-specific forward-impact",
-      "Potential next impact",
-      "Derived public intelligence only",
-      "No invented confidence",
-      "A development summary does not by itself establish causation",
-      "Specific causal drivers have not",
-      "No static story",
-      "article",
-    ]) {
-      expect(card.toLowerCase()).not.toContain(forbidden.toLowerCase());
-    }
-    expect(card).toContain("const themes = FOCUS[event?.category ?? \"\"] ?? []");
-    expect(card).toContain("Monitoring themes, not claims of an event-specific prediction.");
+  it("never invents detail, scores or predictions, and only renders verified canonical summary", () => {
+    expect(card).toContain("selectHomepageShowcase(intelligence.data.all)");
+    expect(card).toContain("event.summary");
+    expect(card).toContain("event.severity !== null");
+    expect(card).toContain('winner.isCurrent ? "Verified within 24h" : "Historical verified assessment"');
+    expect(card).not.toContain("FOCUS[event");
+    expect(card).not.toContain("Potential next impact");
+    expect(card).not.toContain("Specific causal drivers have not");
   });
 
-  it("keeps direct commercial paths while avoiding nonexistent subscription checkout", () => {
+  it("keeps sales enquiries open without suggesting an active monthly checkout", () => {
     expect(card).toContain('to="/pricing"');
     expect(card).toContain("0.05 USDC");
-    expect(card).toContain("Monthly access");
-    expect(card).toContain("Discuss a plan");
-    expect(card).toContain("Annual & enterprise · Contact sales");
+    expect(card).toContain("Monthly intelligence · Coming Soon");
+    expect(card).toContain("Request a tailored plan");
+    expect(card).toContain("enterprise coverage? Talk to us");
     expect(card).toContain("contact@geomacro.live");
     expect(card).toContain("mailto:");
   });
