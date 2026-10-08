@@ -11,6 +11,9 @@ name: Day 6 Authorized Federico Pilot Once
 # 112 current VERIFIED GROs are D1-hot, B2 GET is no longer a synchronous serving gate,
 # and B2 download-cap exhaustion only defers the cold-archive audit.
 # This retrigger must still pass the no-B2/no-Supabase signed-GRO canary before any Federico allowance use.
+# Final bounded retrigger after the D1 hot reader was made independent of risk-object
+# verification-key secrets by validating against the deployed public trust registry.
+# The no-B2/no-Supabase canary still runs before any Federico allowance step.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:

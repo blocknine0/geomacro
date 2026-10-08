@@ -13,7 +13,12 @@ describe("country GRO zero-cost continuity", () => {
     expect(client).toContain("geomacro-control-plane-v1");
     expect(client).toContain('authorization: `Bearer ${token}`');
     expect(client).toContain("canonicalRiskObjectJson(object)");
-    expect(client).toContain("verifyRiskObjectSignature(object).valid");
+    expect(client).toContain("PUBLIC_TRUST_REGISTRY_URL");
+    expect(client).toContain("https://geomacro.live/api/risk-object-keys");
+    expect(client).toContain("TRUST_CACHE_MS");
+    expect(client).toContain("publicVerificationKeys()");
+    expect(client).toContain("verifyRiskObjectSignature(object, verificationKeys)");
+    expect(client).toContain("verification_keys: verificationKeys");
     expect(client).toContain("verifyCommercialRiskObjectArtifact(object");
     expect(client).toContain('payload?.archive_readback_required_for_serving !== false');
   });
@@ -90,6 +95,8 @@ describe("country GRO zero-cost continuity", () => {
     expect(canary).toContain("delete process.env.APP_SUPABASE_URL");
     expect(canary).toContain("delete process.env.SUPABASE_DB_URL");
     expect(canary).toContain("readD1VerifiedHotCountryGro(iso3, at)");
+    expect(canary).not.toContain("RISK_OBJECT_VERIFY_KEYS_JSON");
+    expect(canary).not.toContain("RISK_OBJECT_SIGNING_PRIVATE_KEY");
     expect(canary).toContain('serving_store: "cloudflare-d1"');
     expect(canary).toContain("b2_network_read_required: false");
   });
