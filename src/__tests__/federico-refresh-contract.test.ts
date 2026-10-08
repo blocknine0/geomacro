@@ -82,6 +82,12 @@ describe("Federico refresh contract", () => {
     expect(corroborator).toContain('un_geneva_press_rss: "united_nations"');
     expect(corroborator).toContain("FEDERICO_PROVIDER_FAMILY_BY_SOURCE_ID[sourceId] ?? sourceId");
     expect(corroborator).not.toContain("return row.source_id");
+    expect(corroborator).toContain('.upsert({');
+    expect(corroborator).toContain('onConflict: "family_id,flash_id"');
+    expect(corroborator).toContain("ignoreDuplicates: true");
+    expect(corroborator).toContain('error: "family_member_touch_failed"');
+    expect(corroborator).toContain(".eq(\"family_id\", family.family_id)");
+    expect(corroborator).toContain(".eq(\"flash_id\", flash.flash_id)");
   });
 
   it("treats absent qualifying strict evidence as a successful fail-closed no-publication outcome", () => {
