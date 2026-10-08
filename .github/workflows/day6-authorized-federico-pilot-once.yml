@@ -27,6 +27,10 @@ name: Day 6 Authorized Federico Pilot Once
 # No policy, threshold, allowance, payment, or execution boundary changes in this retrigger.
 # Exact-main retrigger after #1814 removed the stale deployed-verifier dependency from the Federico provider preflight.
 # No policy, threshold, allowance, payment, or execution boundary changes here.
+# Controlled one-time evidence capture after #1821: no user funds, no execution,
+# exactly one platform-allowance /review only after current-head strict GRO,
+# signature/canonical/freshness/tamper and no-allowance gates all pass.
+# The receiver's redacted reasons are retained even when verdict is reject.
 # This file is deleted after the resulting partner proof is verified.
 on:
   push:
