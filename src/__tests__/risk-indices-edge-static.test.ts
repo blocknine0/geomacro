@@ -20,6 +20,8 @@ describe("independent verified Risk Indices edge", () => {
     expect(worker).toContain("await sha256(payloadJson) !== snapshot.payload_sha256");
     expect(worker).toContain("Date.now() - sourceAsOf > 90 * 60 * 1000");
     expect(worker).toContain('"x-geomacro-serving-store": "cloudflare-d1"');
+    expect(worker).toContain('cached.headers.get("x-geomacro-serving-store") === "cloudflare-d1"');
+    expect(worker).toContain("ctx.waitUntil(cache.put(cacheKey, hotSnapshot.clone()))");
     expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot()");
     expect(publisher).not.toContain('LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz"');
   });
