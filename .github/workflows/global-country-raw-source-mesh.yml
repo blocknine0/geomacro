@@ -54,7 +54,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json
+          COUNTRY_RAW_SOURCE_SYNC_OUTPUT=country-raw-source-sync.json \
+            bun scripts/sync-country-raw-source-mesh.mjs > country-raw-source-sync.log 2>&1
+          cat country-raw-source-sync.json
           jq -e '.country_contract.countries == 195' country-raw-source-sync.json >/dev/null
           jq -e '.country_contract.categories | length == 3' country-raw-source-sync.json >/dev/null
 
