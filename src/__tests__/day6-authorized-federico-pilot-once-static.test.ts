@@ -56,6 +56,12 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain("e.event_family_id is not null");
     expect(workflow).toContain("having count(distinct m.source_family) >= 2");
     expect(workflow).toContain(".source_summary.configured_source_count == 5");
+    expect(workflow).toContain(".source_summary.configured_source_count == 18");
+    expect(workflow.match(/RSS_LIVE_ALLOW_PARTIAL_SOURCE_FAILURES: "true"/g)?.length).toBe(2);
+    expect(workflow.match(/RSS_LIVE_MIN_PARTIAL_COMPLETED_SOURCES: "2"/g)?.length).toBe(2);
+    expect(workflow.match(/\.source_summary\.completed_source_count >= 2/g)?.length).toBe(2);
+    expect(workflow.match(/\.source_summary\.failed_source_count == \(\.source_summary\.failed_sources \| length\)/g)?.length).toBe(2);
+    expect(workflow.match(/\.source_summary\.partial_refresh == \(\.source_summary\.failed_source_count > 0\)/g)?.length).toBe(2);
     expect(workflow).toContain("scripts/run-live-flash-corroborate-local.ts");
     expect(workflow).toContain("scripts/hydrate-federico-source-times.ts");
     expect(workflow).toContain("live_ingestion_cursors");
