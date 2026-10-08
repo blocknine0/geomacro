@@ -132,7 +132,8 @@ if (
   (
     riskObject?.integrity?.trust_registry_url !==
       "https://geomacro.live/api/risk-object-keys" ||
-    !riskObject?.integrity?.canonicalization_url ||
+    riskObject?.integrity?.canonicalization_url !==
+      GRO_CANONICALIZATION_SPEC_URL ||
     !riskObject?.integrity?.public_key_spki_b64
   )
 ) {
