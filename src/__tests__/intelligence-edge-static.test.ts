@@ -12,6 +12,9 @@ describe("verified public edge hot-cache contract", () => {
 
     expect(wrangler).toContain('"name": "geomacro-intelligence"');
     expect(wrangler).toContain('"enabled": true');
+    expect(wrangler).toContain('"binding": "CONTROL_PLANE"');
+    expect(wrangler).toContain('"service": "geomacro-control-plane"');
+    expect(worker).toContain('env.CONTROL_PLANE.fetch(new Request(');
     expect(wrangler).toContain('"cross_version_cache": true');
     expect(worker).toContain('LIVE_KEY = "geomacro-evidence/v1/live/public-intelligence/latest.json.gz"');
     expect(worker).toContain('PROOF_KEY = "geomacro-evidence/v1/live/public-intelligence/latest-proof.json"');
@@ -22,12 +25,12 @@ describe("verified public edge hot-cache contract", () => {
     expect(worker).toContain('proof?.synthetic_score !== false');
     expect(worker).toContain('"x-geomacro-authority": "backblaze-b2-intelligence-edge"');
     expect(worker).toContain('HOT_OVERLAY_URL =');
-    expect(worker).toContain("async function readD1HotSnapshot()");
+    expect(worker).toContain("async function readD1HotSnapshot(env)");
     expect(worker).toContain("await sha256(payloadJson) !== snapshot.payload_sha256");
     expect(worker).toContain('snapshot?.full_b2_readback_verified !== true');
     expect(worker).toContain('snapshot?.exact_gzip_restore_verified !== true');
     expect(worker).toContain('"x-geomacro-serving-store": "cloudflare-d1"');
-    expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot()");
+    expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot(env)");
     expect(worker).toContain("/v1/public/intelligence-overlay");
     expect(worker).toContain("validHotOverlayRows");
     expect(worker).toContain("applyHotOverlay");
