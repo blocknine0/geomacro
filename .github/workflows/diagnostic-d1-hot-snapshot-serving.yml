@@ -43,3 +43,63 @@ jobs:
             node -e 'const fs=require("fs"); try { const b=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); console.log(JSON.stringify({schema:b?.schema,generated_at:b?.generated_at,snapshotAsOf:b?.data?.snapshotAsOf,current_overlay_source_batch_at:b?.current_overlay_source_batch_at})); } catch {}' "/tmp/$product.edge.json"
             echo
           done
+
+          node <<'NODE'
+          const fs = require("fs");
+          const crypto = require("crypto");
+          const now = Date.now();
+          const config = {
+            intelligence: {
+              schema: "geomacro.public-intelligence-live.v1",
+              proof: "geomacro.public-intelligence-live-proof.v1",
+              key: "geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
+              maxAgeMs: 6 * 60 * 60 * 1000,
+            },
+            "global-risk": {
+              schema: "geomacro.public-global-risk-live.v1",
+              proof: "geomacro.public-global-risk-live-proof.v1",
+              key: "geomacro-evidence/v1/live/global-risk/latest.json.gz",
+              maxAgeMs: 90 * 60 * 1000,
+            },
+            "risk-indices": {
+              schema: "geomacro.public-risk-indices-live.v1",
+              proof: "geomacro.public-risk-indices-live-proof.v1",
+              key: "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz",
+              maxAgeMs: 90 * 60 * 1000,
+            },
+          };
+          for (const product of Object.keys(config)) {
+            const s = JSON.parse(fs.readFileSync(`/tmp/${product}.snapshot.json`, "utf8"));
+            const cfg = config[product];
+            const generatedAt = Date.parse(String(s.generated_at ?? ""));
+            const sourceAsOf = Date.parse(String(s.source_as_of ?? ""));
+            const expiresAt = Date.parse(String(s.expires_at ?? ""));
+            const payloadJson = String(s.payload_json ?? "");
+            const actualHash = crypto.createHash("sha256").update(payloadJson).digest("hex");
+            const live = JSON.parse(payloadJson);
+            const checks = {
+              ok: s.ok === true,
+              product: s.product === product,
+              schema: s.schema === cfg.schema,
+              proof_schema: s.proof_schema === cfg.proof,
+              key: s.b2_object_key === cfg.key,
+              b2_sha: /^[0-9a-f]{64}$/.test(String(s.b2_sha256 ?? "")),
+              payload_sha: /^[0-9a-f]{64}$/.test(String(s.payload_sha256 ?? "")),
+              readback: s.full_b2_readback_verified === true,
+              restore: s.exact_gzip_restore_verified === true,
+              generated_finite: Number.isFinite(generatedAt),
+              source_finite: Number.isFinite(sourceAsOf),
+              expires_finite: Number.isFinite(expiresAt),
+              source_not_future: sourceAsOf <= now + 5 * 60_000,
+              source_fresh: now - sourceAsOf <= cfg.maxAgeMs,
+              not_expired: expiresAt > now,
+              expiry_bound: expiresAt <= sourceAsOf + cfg.maxAgeMs,
+              payload_hash_match: actualHash === s.payload_sha256,
+              live_schema: live?.schema === cfg.schema,
+              live_project: live?.source_project === "ldpwajisioljyjtojvfx",
+              live_generated_match: live?.generated_at === s.generated_at,
+              snapshot_asof_match: product === "intelligence" ? true : Date.parse(String(live?.data?.snapshotAsOf ?? "")) === sourceAsOf,
+            };
+            console.log("VALIDATION", product, JSON.stringify({checks,generated_at:s.generated_at,source_as_of:s.source_as_of,expires_at:s.expires_at,actualHash,expectedHash:s.payload_sha256}));
+          }
+          NODE
