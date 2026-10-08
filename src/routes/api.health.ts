@@ -39,6 +39,8 @@ const HOT_SNAPSHOT_PROBES = [
 ] as const;
 
 const HASH_RE = /^[0-9a-f]{64}$/;
+const GLOBAL_RISK_CURRENT_PROOF_SCHEMA = "geomacro.public-global-risk-current-proof.v1";
+const GLOBAL_RISK_CURRENT_PROOF_MODE = "independent-gri-proof-over-b2-baseline";
 
 async function sha256Hex(value: string) {
   const digest = new Uint8Array(
@@ -77,8 +79,13 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
       b2_sha256?: string;
       payload_sha256?: string;
       proof_schema?: string;
+      verification_mode?: string;
       full_b2_readback_verified?: boolean;
       exact_gzip_restore_verified?: boolean;
+      baseline_b2_readback_verified?: boolean;
+      baseline_exact_gzip_restore_verified?: boolean;
+      current_b2_readback_verified?: boolean;
+      current_b2_snapshot_promoted?: boolean;
       payload_json?: string;
     };
 
@@ -91,14 +98,28 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
     const expiresAtMs = Date.parse(String(snapshot.expires_at ?? ""));
     const now = Date.now();
 
+    const globalRiskRecovery =
+      probe.product === "global-risk" &&
+      snapshot.proof_schema === GLOBAL_RISK_CURRENT_PROOF_SCHEMA &&
+      snapshot.verification_mode === GLOBAL_RISK_CURRENT_PROOF_MODE;
+    const directB2 =
+      snapshot.proof_schema === probe.proofSchema &&
+      snapshot.full_b2_readback_verified === true &&
+      snapshot.exact_gzip_restore_verified === true &&
+      snapshot.current_b2_readback_verified !== false &&
+      snapshot.current_b2_snapshot_promoted !== false;
+
     if (
       snapshot.ok !== true ||
       snapshot.product !== probe.product ||
       snapshot.schema !== probe.schema ||
-      snapshot.proof_schema !== probe.proofSchema ||
+      !(
+        snapshot.proof_schema === probe.proofSchema ||
+        probe.product === "global-risk" &&
+          snapshot.proof_schema === GLOBAL_RISK_CURRENT_PROOF_SCHEMA &&
+          snapshot.verification_mode === GLOBAL_RISK_CURRENT_PROOF_MODE
+      ) ||
       snapshot.b2_object_key !== probe.b2Key ||
-      snapshot.full_b2_readback_verified !== true ||
-      snapshot.exact_gzip_restore_verified !== true ||
       !HASH_RE.test(b2Sha256) ||
       !HASH_RE.test(payloadSha256) ||
       !payloadJson ||
@@ -112,7 +133,17 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
       expiresAtMs <= now ||
       expiresAtMs <= sourceAsOfMs ||
       expiresAtMs > sourceAsOfMs + probe.maxAgeMs ||
-      await sha256Hex(payloadJson) !== payloadSha256
+      await sha256Hex(payloadJson) !== payloadSha256 ||
+      (!directB2 && !globalRiskRecovery) ||
+      (
+        globalRiskRecovery &&
+        (
+          snapshot.baseline_b2_readback_verified !== true ||
+          snapshot.baseline_exact_gzip_restore_verified !== true ||
+          snapshot.current_b2_readback_verified !== false ||
+          snapshot.current_b2_snapshot_promoted !== false
+        )
+      )
     ) return unavailable();
 
     let payload: {
@@ -120,10 +151,29 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
       generated_at?: string;
       source_project?: string;
       rows?: Array<{ category?: string }>;
+      verification_mode?: string;
+      baseline_b2_sha256?: string;
+      baseline_payload_sha256?: string;
+      baseline_source_run_id?: string;
+      baseline_generated_at?: string;
+      current_b2_snapshot_promoted?: boolean;
+      current_proof?: Record<string, unknown>;
       data?: {
         snapshotAsOf?: string;
         verificationStatus?: string;
         auditPersisted?: boolean;
+        methodologyVersion?: string;
+        proofHash?: string;
+        evidenceHash?: string;
+        calculationHash?: string;
+        dispositionHash?: string;
+        inputHash?: string;
+        methodologyHash?: string;
+        changeHash?: string;
+        candidateEventCount?: number;
+        reconciliationResidual?: number;
+        changeResidual?: number;
+        domainIndices?: Record<string, { series?: Record<string, { buckets?: unknown[] }> }>;
         indices?: Array<{ status?: string }>;
       };
     };
@@ -151,8 +201,46 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
         Date.parse(String(payload.data?.snapshotAsOf ?? "")) !== sourceAsOfMs ||
         payload.data?.verificationStatus !== "verified"
       ) return unavailable();
-      if (probe.product === "global-risk" && payload.data?.auditPersisted !== true) {
-        return unavailable();
+      if (probe.product === "global-risk") {
+        if (payload.data?.auditPersisted !== true || payload.data?.methodologyVersion !== "gri-v1.2.0") {
+          return unavailable();
+        }
+        if (globalRiskRecovery) {
+          const currentProof = payload.current_proof ?? {};
+          const domains = payload.data?.domainIndices ?? {};
+          const hashes = [
+            ["proofHash", "proofHash"],
+            ["evidenceHash", "evidenceHash"],
+            ["calculationHash", "calculationHash"],
+            ["dispositionHash", "dispositionHash"],
+            ["inputHash", "inputHash"],
+            ["methodologyHash", "methodologyHash"],
+            ["changeHash", "changeHash"],
+          ] as const;
+          if (
+            payload.verification_mode !== GLOBAL_RISK_CURRENT_PROOF_MODE ||
+            payload.current_b2_snapshot_promoted !== false ||
+            payload.baseline_b2_sha256 !== b2Sha256 ||
+            !HASH_RE.test(String(payload.baseline_payload_sha256 ?? "")) ||
+            !/^\d{1,20}$/.test(String(payload.baseline_source_run_id ?? "")) ||
+            !Number.isFinite(Date.parse(String(payload.baseline_generated_at ?? ""))) ||
+            Date.now() - Date.parse(String(payload.baseline_generated_at ?? "")) > 30 * 24 * 60 * 60 * 1000 ||
+            !hashes.every(([dataKey, proofKey]) =>
+              HASH_RE.test(String(payload.data?.[dataKey] ?? "")) &&
+              currentProof[proofKey] === payload.data?.[dataKey]
+            ) ||
+            Number(currentProof.candidateEventCount) !== Number(payload.data?.candidateEventCount) ||
+            Number(currentProof.reconciliationResidual) !== Number(payload.data?.reconciliationResidual) ||
+            Number(currentProof.changeResidual) !== Number(payload.data?.changeResidual) ||
+            !["geopolitics", "macro", "rare_earth"].every((key) => {
+              const domain = domains[key];
+              const seven = domain?.series?.["7D"]?.buckets;
+              const thirty = domain?.series?.["30D"]?.buckets;
+              return Array.isArray(seven) && seven.length >= 2 &&
+                Array.isArray(thirty) && thirty.length >= seven.length;
+            })
+          ) return unavailable();
+        }
       }
       if (
         probe.product === "risk-indices" &&
@@ -169,6 +257,7 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
       b2_sha256: b2Sha256,
       payload_sha256: payloadSha256,
       source_as_of: sourceAsOf,
+      verification_mode: globalRiskRecovery ? GLOBAL_RISK_CURRENT_PROOF_MODE : "direct-b2-readback",
     };
   } catch {
     return unavailable();

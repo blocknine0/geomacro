@@ -41,12 +41,16 @@ describe("Cloudflare D1 permanent control plane", () => {
     expect(worker).toContain('value.exact_gzip_restore_verified !== true');
   });
 
-  it("stores public hot projections only with current full B2 readback and exact restore proof", () => {
+  it("stores public hot projections only with direct B2 proof or the explicit Global Risk recovery proof", () => {
     const worker = read("workers/control-plane/src/index.mjs");
     expect(worker).toContain("MAX_HOT_SNAPSHOT_BODY_BYTES = 1024 * 1024");
     expect(worker).toContain("MAX_HOT_SNAPSHOT_BYTES = 768 * 1024");
-    expect(worker).toContain("proof.full_b2_readback_verified !== true");
-    expect(worker).toContain("proof.exact_gzip_restore_verified !== true");
+    expect(worker).toContain("proof.full_b2_readback_verified === true");
+    expect(worker).toContain("proof.exact_gzip_restore_verified === true");
+    expect(worker).toContain('GLOBAL_RISK_CURRENT_PROOF_MODE = "independent-gri-proof-over-b2-baseline"');
+    expect(worker).toContain("proof?.current_b2_readback_verified !== false");
+    expect(worker).toContain("proof?.current_b2_snapshot_promoted !== false");
+    expect(worker).toContain("HOT_SNAPSHOT_GLOBAL_RISK_B2_ANCHOR_MISMATCH");
     expect(worker).toContain("HOT_SNAPSHOT_PROOF_BINDING_INVALID");
     expect(worker).toContain("HOT_SNAPSHOT_PAYLOAD_HASH_MISMATCH");
     expect(worker).toContain("now - sourceAsOfMs > config.maxAgeMs");

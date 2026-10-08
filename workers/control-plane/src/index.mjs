@@ -12,6 +12,9 @@ const PUBLIC_INTELLIGENCE_OVERLAY_SCHEMA = "geomacro.public-intelligence-live-ob
 const PUBLIC_INTELLIGENCE_OVERLAY_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 const PUBLIC_INTELLIGENCE_VERIFIED_BASELINE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const PUBLIC_INTELLIGENCE_OVERLAY_MAX_ROWS = 24;
+const GLOBAL_RISK_CURRENT_PROOF_SCHEMA = "geomacro.public-global-risk-current-proof.v1";
+const GLOBAL_RISK_CURRENT_PROOF_MODE = "independent-gri-proof-over-b2-baseline";
+const GLOBAL_RISK_B2_BASELINE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const HOT_SNAPSHOT_PRODUCTS = Object.freeze({
   intelligence: {
     schema: "geomacro.public-intelligence-live.v1",
@@ -254,6 +257,164 @@ async function getPublicIntelligenceOverlay(env) {
   }
 }
 
+
+function validGlobalRiskCurrentProof(value, proof) {
+  const data = value?.data;
+  const domains = data?.domainIndices;
+  const hashPairs = [
+    ["proofHash", "proof_hash"],
+    ["evidenceHash", "evidence_hash"],
+    ["calculationHash", "calculation_hash"],
+    ["dispositionHash", "disposition_hash"],
+    ["inputHash", "input_hash"],
+    ["methodologyHash", "methodology_hash"],
+    ["changeHash", "change_hash"],
+  ];
+  if (
+    value?.verification_mode !== GLOBAL_RISK_CURRENT_PROOF_MODE ||
+    value?.current_b2_snapshot_promoted !== false ||
+    !HASH_RE.test(String(value?.baseline_b2_sha256 ?? "")) ||
+    !HASH_RE.test(String(value?.baseline_payload_sha256 ?? "")) ||
+    !/^\d{1,20}$/.test(String(value?.baseline_source_run_id ?? "")) ||
+    proof?.schema !== GLOBAL_RISK_CURRENT_PROOF_SCHEMA ||
+    proof?.verification_mode !== GLOBAL_RISK_CURRENT_PROOF_MODE ||
+    proof?.independent_gri_proof_verified !== true ||
+    proof?.baseline_b2_readback_verified !== true ||
+    proof?.baseline_exact_gzip_restore_verified !== true ||
+    proof?.current_b2_readback_verified !== false ||
+    proof?.current_b2_snapshot_promoted !== false ||
+    proof?.baseline_b2_sha256 !== value?.baseline_b2_sha256 ||
+    proof?.baseline_payload_sha256 !== value?.baseline_payload_sha256 ||
+    String(proof?.baseline_source_run_id ?? "") !== String(value?.baseline_source_run_id ?? "") ||
+    data?.verificationStatus !== "verified" ||
+    data?.methodologyVersion !== "gri-v1.2.0" ||
+    data?.auditPersisted !== true ||
+    proof?.snapshot_id !== data?.snapshotId ||
+    Date.parse(String(proof?.snapshot_as_of ?? "")) !== Date.parse(String(data?.snapshotAsOf ?? "")) ||
+    !domains || typeof domains !== "object" || Array.isArray(domains)
+  ) return false;
+
+  for (const [dataKey, proofKey] of hashPairs) {
+    if (!HASH_RE.test(String(data?.[dataKey] ?? "")) || proof?.[proofKey] !== data?.[dataKey]) return false;
+  }
+  if (
+    Number(proof?.candidate_event_count) !== Number(data?.candidateEventCount) ||
+    Number(proof?.reconciliation_residual) !== Number(data?.reconciliationResidual) ||
+    Number(proof?.change_residual) !== Number(data?.changeResidual)
+  ) return false;
+
+  return ["geopolitics", "macro", "rare_earth"].every((key) => {
+    const domain = domains[key];
+    return domain && typeof domain === "object" &&
+      Array.isArray(domain?.series?.["7D"]?.buckets) &&
+      domain.series["7D"].buckets.length >= 2 &&
+      Array.isArray(domain?.series?.["30D"]?.buckets) &&
+      domain.series["30D"].buckets.length >= domain.series["7D"].buckets.length;
+  });
+}
+
+async function readGlobalRiskB2Anchor(env, now = Date.now()) {
+  const row = await env.DB.prepare(`
+    SELECT product, schema_name, generated_at, source_as_of, expires_at, b2_object_key, b2_sha256,
+      payload_sha256, proof_schema, verified_at, source_run_id, payload_json
+    FROM public_b2_hot_snapshot WHERE product = ? LIMIT 1
+  `).bind("global-risk").first();
+  if (!row) return null;
+
+  const payloadJson = String(row.payload_json ?? "");
+  const actualPayloadSha256 = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payloadJson));
+  const actualHex = Array.from(new Uint8Array(actualPayloadSha256), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  if (
+    row.product !== "global-risk" ||
+    row.schema_name !== HOT_SNAPSHOT_PRODUCTS["global-risk"].schema ||
+    row.b2_object_key !== HOT_SNAPSHOT_PRODUCTS["global-risk"].b2Key ||
+    !HASH_RE.test(String(row.b2_sha256 ?? "")) ||
+    !HASH_RE.test(String(row.payload_sha256 ?? "")) ||
+    !/^\d{1,20}$/.test(String(row.source_run_id ?? "")) ||
+    actualHex !== row.payload_sha256
+  ) return null;
+
+  let value;
+  try { value = JSON.parse(payloadJson); } catch { return null; }
+  if (
+    value?.schema !== HOT_SNAPSHOT_PRODUCTS["global-risk"].schema ||
+    value?.source_project !== "ldpwajisioljyjtojvfx"
+  ) return null;
+
+  if (row.proof_schema === HOT_SNAPSHOT_PRODUCTS["global-risk"].proofSchema) {
+    const generatedMs = Date.parse(String(row.generated_at ?? ""));
+    if (!Number.isFinite(generatedMs) || generatedMs > now + 5 * 60_000 || now - generatedMs > GLOBAL_RISK_B2_BASELINE_MAX_AGE_MS) {
+      return null;
+    }
+    return {
+      b2_sha256: String(row.b2_sha256),
+      payload_sha256: String(row.payload_sha256),
+      source_run_id: String(row.source_run_id),
+      generated_at: String(row.generated_at),
+    };
+  }
+
+  if (
+    row.proof_schema === GLOBAL_RISK_CURRENT_PROOF_SCHEMA &&
+    validGlobalRiskCurrentProof(value, {
+      schema: GLOBAL_RISK_CURRENT_PROOF_SCHEMA,
+      verification_mode: GLOBAL_RISK_CURRENT_PROOF_MODE,
+      independent_gri_proof_verified: true,
+      baseline_b2_readback_verified: true,
+      baseline_exact_gzip_restore_verified: true,
+      current_b2_readback_verified: false,
+      current_b2_snapshot_promoted: false,
+      baseline_b2_sha256: value?.baseline_b2_sha256,
+      baseline_payload_sha256: value?.baseline_payload_sha256,
+      baseline_source_run_id: value?.baseline_source_run_id,
+      snapshot_id: value?.data?.snapshotId,
+      snapshot_as_of: value?.data?.snapshotAsOf,
+      proof_hash: value?.data?.proofHash,
+      evidence_hash: value?.data?.evidenceHash,
+      calculation_hash: value?.data?.calculationHash,
+      disposition_hash: value?.data?.dispositionHash,
+      input_hash: value?.data?.inputHash,
+      methodology_hash: value?.data?.methodologyHash,
+      change_hash: value?.data?.changeHash,
+      candidate_event_count: value?.data?.candidateEventCount,
+      reconciliation_residual: value?.data?.reconciliationResidual,
+      change_residual: value?.data?.changeResidual,
+    })
+  ) {
+    const baselineGeneratedMs = Date.parse(String(value?.baseline_generated_at ?? ""));
+    if (
+      !Number.isFinite(baselineGeneratedMs) ||
+      baselineGeneratedMs > now + 5 * 60_000 ||
+      now - baselineGeneratedMs > GLOBAL_RISK_B2_BASELINE_MAX_AGE_MS
+    ) return null;
+    return {
+      b2_sha256: String(value.baseline_b2_sha256),
+      payload_sha256: String(value.baseline_payload_sha256),
+      source_run_id: String(value.baseline_source_run_id),
+      generated_at: String(value.baseline_generated_at),
+    };
+  }
+  return null;
+}
+
+async function getGlobalRiskB2Anchor(env) {
+  try {
+    const anchor = await readGlobalRiskB2Anchor(env);
+    if (!anchor) return json({ ok: false, error: "GLOBAL_RISK_B2_ANCHOR_UNAVAILABLE" }, 503);
+    return json({
+      ok: true,
+      schema: "geomacro.global-risk-b2-anchor.v1",
+      product: "global-risk",
+      b2_object_key: HOT_SNAPSHOT_PRODUCTS["global-risk"].b2Key,
+      ...anchor,
+      baseline_b2_readback_verified: true,
+      baseline_exact_gzip_restore_verified: true,
+    });
+  } catch {
+    return json({ ok: false, error: "D1_UNAVAILABLE" }, 503);
+  }
+}
+
 function validateHotSnapshot(body, product, now = Date.now()) {
   const config = HOT_SNAPSHOT_PRODUCTS[product];
   if (!config || !body || typeof body !== "object" || Array.isArray(body)) throw new Error("INVALID_HOT_SNAPSHOT");
@@ -268,14 +429,21 @@ function validateHotSnapshot(body, product, now = Date.now()) {
   const generatedMs = Date.parse(generatedAt);
   const sourceAsOf = iso(product === "intelligence" ? proof.current_source_batch_at : proof.snapshot_as_of, true);
   const sourceAsOfMs = Date.parse(sourceAsOf);
+  const globalRiskRecovery =
+    product === "global-risk" &&
+    proof.schema === GLOBAL_RISK_CURRENT_PROOF_SCHEMA &&
+    proof.verification_mode === GLOBAL_RISK_CURRENT_PROOF_MODE;
+  const directB2 =
+    proof.schema === config.proofSchema &&
+    proof.live_key === config.b2Key &&
+    HASH_RE.test(String(proof.compressed_sha256 ?? "")) &&
+    proof.full_b2_readback_verified === true &&
+    proof.exact_gzip_restore_verified === true;
+
   if (
     value.schema !== config.schema ||
     value.source_project !== "ldpwajisioljyjtojvfx" ||
-    proof.schema !== config.proofSchema ||
     proof.live_key !== config.b2Key ||
-    !HASH_RE.test(String(proof.compressed_sha256 ?? "")) ||
-    proof.full_b2_readback_verified !== true ||
-    proof.exact_gzip_restore_verified !== true ||
     proof.generated_at !== generatedAt ||
     (product === "intelligence" && proof.current_source_id !== "gdelt_v2_events") ||
     (product !== "intelligence" && (
@@ -284,8 +452,13 @@ function validateHotSnapshot(body, product, now = Date.now()) {
     )) ||
     generatedMs > now + 5 * 60_000 ||
     sourceAsOfMs > now + 5 * 60_000 ||
-    now - sourceAsOfMs > config.maxAgeMs
+    now - sourceAsOfMs > config.maxAgeMs ||
+    (!directB2 && !globalRiskRecovery)
   ) throw new Error("HOT_SNAPSHOT_PROOF_BINDING_INVALID");
+
+  if (globalRiskRecovery && !validGlobalRiskCurrentProof(value, proof)) {
+    throw new Error("HOT_SNAPSHOT_GLOBAL_RISK_CURRENT_PROOF_INVALID");
+  }
 
   const sourceRunId = boundedText(body.source_run_id, 32);
   if (!/^\d{1,20}$/.test(sourceRunId)) throw new Error("INVALID_HOT_SNAPSHOT_RUN_ID");
@@ -298,9 +471,13 @@ function validateHotSnapshot(body, product, now = Date.now()) {
     sourceAsOf,
     expiresAt: new Date(sourceAsOfMs + config.maxAgeMs).toISOString(),
     b2Key: config.b2Key,
-    b2Sha256: String(proof.compressed_sha256),
+    b2Sha256: globalRiskRecovery ? String(proof.baseline_b2_sha256) : String(proof.compressed_sha256),
     payloadSha256,
-    proofSchema: config.proofSchema,
+    proofSchema: globalRiskRecovery ? GLOBAL_RISK_CURRENT_PROOF_SCHEMA : config.proofSchema,
+    verificationMode: globalRiskRecovery ? GLOBAL_RISK_CURRENT_PROOF_MODE : "direct-b2-readback",
+    baselinePayloadSha256: globalRiskRecovery ? String(proof.baseline_payload_sha256) : payloadSha256,
+    baselineSourceRunId: globalRiskRecovery ? String(proof.baseline_source_run_id) : sourceRunId,
+    baselineGeneratedAt: globalRiskRecovery ? String(proof.baseline_generated_at) : generatedAt,
     verifiedAt: nowIso(),
     sourceRunId,
     payloadJson,
@@ -312,6 +489,16 @@ async function putPublicHotSnapshot(env, product, body) {
   const actualPayloadSha256 = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(row.payloadJson));
   const actualHex = Array.from(new Uint8Array(actualPayloadSha256), (byte) => byte.toString(16).padStart(2, "0")).join("");
   if (actualHex !== row.payloadSha256) throw new Error("HOT_SNAPSHOT_PAYLOAD_HASH_MISMATCH");
+  if (row.verificationMode === GLOBAL_RISK_CURRENT_PROOF_MODE) {
+    const anchor = await readGlobalRiskB2Anchor(env);
+    if (
+      !anchor ||
+      anchor.b2_sha256 !== row.b2Sha256 ||
+      anchor.payload_sha256 !== row.baselinePayloadSha256 ||
+      anchor.source_run_id !== row.baselineSourceRunId ||
+      Date.parse(String(anchor.generated_at ?? "")) !== Date.parse(String(row.baselineGeneratedAt ?? ""))
+    ) throw new Error("HOT_SNAPSHOT_GLOBAL_RISK_B2_ANCHOR_MISMATCH");
+  }
   await env.DB.prepare(`
     INSERT INTO public_b2_hot_snapshot (
       product, schema_name, generated_at, source_as_of, expires_at, b2_object_key, b2_sha256,
@@ -334,6 +521,7 @@ async function putPublicHotSnapshot(env, product, body) {
     row.product, row.schema, row.generatedAt, row.sourceAsOf, row.expiresAt, row.b2Key, row.b2Sha256,
     row.payloadSha256, row.proofSchema, row.verifiedAt, row.sourceRunId, row.payloadJson, row.verifiedAt,
   ).run();
+  const recovery = row.verificationMode === GLOBAL_RISK_CURRENT_PROOF_MODE;
   return json({
     ok: true,
     product: row.product,
@@ -343,8 +531,14 @@ async function putPublicHotSnapshot(env, product, body) {
     b2_object_key: row.b2Key,
     b2_sha256: row.b2Sha256,
     payload_sha256: row.payloadSha256,
-    full_b2_readback_verified: true,
-    exact_gzip_restore_verified: true,
+    proof_schema: row.proofSchema,
+    verification_mode: row.verificationMode,
+    full_b2_readback_verified: recovery ? false : true,
+    exact_gzip_restore_verified: recovery ? false : true,
+    baseline_b2_readback_verified: true,
+    baseline_exact_gzip_restore_verified: true,
+    current_b2_readback_verified: recovery ? false : true,
+    current_b2_snapshot_promoted: recovery ? false : true,
   });
 }
 
@@ -365,7 +559,10 @@ async function getPublicHotSnapshot(env, product, now = Date.now()) {
     if (
       row.product !== product ||
       row.schema_name !== config.schema ||
-      row.proof_schema !== config.proofSchema ||
+      !(
+        row.proof_schema === config.proofSchema ||
+        product === "global-risk" && row.proof_schema === GLOBAL_RISK_CURRENT_PROOF_SCHEMA
+      ) ||
       row.b2_object_key !== config.b2Key ||
       !HASH_RE.test(String(row.b2_sha256 ?? "")) ||
       !HASH_RE.test(String(row.payload_sha256 ?? "")) ||
@@ -390,6 +587,21 @@ async function getPublicHotSnapshot(env, product, now = Date.now()) {
     if (actualHex !== row.payload_sha256 || value?.schema !== config.schema || value?.generated_at !== row.generated_at) {
       return json({ ok: false, error: "HOT_SNAPSHOT_HASH_MISMATCH" }, 503);
     }
+    const globalRiskRecovery =
+      product === "global-risk" &&
+      row.proof_schema === GLOBAL_RISK_CURRENT_PROOF_SCHEMA;
+    if (globalRiskRecovery) {
+      if (
+        value?.verification_mode !== GLOBAL_RISK_CURRENT_PROOF_MODE ||
+        value?.current_b2_snapshot_promoted !== false ||
+        value?.baseline_b2_sha256 !== row.b2_sha256 ||
+        !HASH_RE.test(String(value?.baseline_payload_sha256 ?? "")) ||
+        !/^\d{1,20}$/.test(String(value?.baseline_source_run_id ?? "")) ||
+        value?.data?.verificationStatus !== "verified" ||
+        value?.data?.methodologyVersion !== "gri-v1.2.0" ||
+        value?.data?.auditPersisted !== true
+      ) return json({ ok: false, error: "HOT_SNAPSHOT_GLOBAL_RISK_CURRENT_PROOF_INVALID" }, 503);
+    }
     return json({
       ok: true,
       product,
@@ -401,9 +613,14 @@ async function getPublicHotSnapshot(env, product, now = Date.now()) {
       b2_sha256: row.b2_sha256,
       payload_sha256: row.payload_sha256,
       proof_schema: row.proof_schema,
+      verification_mode: globalRiskRecovery ? GLOBAL_RISK_CURRENT_PROOF_MODE : "direct-b2-readback",
       verified_at: row.verified_at,
-      full_b2_readback_verified: true,
-      exact_gzip_restore_verified: true,
+      full_b2_readback_verified: globalRiskRecovery ? false : true,
+      exact_gzip_restore_verified: globalRiskRecovery ? false : true,
+      baseline_b2_readback_verified: true,
+      baseline_exact_gzip_restore_verified: true,
+      current_b2_readback_verified: globalRiskRecovery ? false : true,
+      current_b2_snapshot_promoted: globalRiskRecovery ? false : true,
       payload_json: payloadJson,
     });
   } catch {
@@ -625,6 +842,13 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      if (
+        request.method === "GET" &&
+        parts[0] === "v1" &&
+        parts[1] === "hot-snapshot-anchor" &&
+        parts[2] === "global-risk" &&
+        parts.length === 3
+      ) return getGlobalRiskB2Anchor(env);
       if (request.method !== "PUT") return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
       if (parts[0] === "v1" && parts[1] === "hot-snapshot" && parts.length === 3) {
         const body = await readJson(request, MAX_HOT_SNAPSHOT_BODY_BYTES);
