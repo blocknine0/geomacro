@@ -33,6 +33,15 @@ import {
   type RiskObjectVerificationKeys,
 } from "../src/lib/risk-object-signing.server";
 import { verifyPublicRiskObjectArtifact } from "../src/lib/risk-object-verification.server";
+import {
+  GRO_CANONICALIZATION_SPEC_SHA256,
+  GRO_CANONICALIZATION_SPEC_URL,
+  GRO_INDEPENDENT_VERIFIER_SHA256,
+  GRO_INDEPENDENT_VERIFIER_URL,
+  GRO_SIGNATURE_PREIMAGE_VERSION,
+  GRO_SOURCE_TUPLE_BINDING_VERSION,
+  GRO_VERIFICATION_CONTRACT_VERSION,
+} from "../src/lib/risk-object-contract";
 
 const file = process.argv[2];
 if (!file) {
@@ -237,10 +246,30 @@ if (strictProfile) {
     !manifest?.score_components ||
     !manifest?.selection_policy?.max_included_evidence_items ||
     !manifest?.selection_policy?.source_family_map_version ||
-    !manifest?.selection_policy?.source_family_map
+    !manifest?.selection_policy?.source_family_map ||
+    manifest?.selection_policy?.source_tuple_binding_version !==
+      GRO_SOURCE_TUPLE_BINDING_VERSION ||
+    !manifest?.verification_contract
   ) {
     throw new Error(
       "Federico strict object is missing the signed compact reproducibility manifest",
+    );
+  }
+
+  const verificationContract = manifest.verification_contract;
+  if (
+    verificationContract.contract_version !== GRO_VERIFICATION_CONTRACT_VERSION ||
+    verificationContract.canonicalization_identifier !== "geomacro-canonical-json-v1" ||
+    verificationContract.canonicalization_spec_url !== GRO_CANONICALIZATION_SPEC_URL ||
+    verificationContract.canonicalization_spec_sha256 !== GRO_CANONICALIZATION_SPEC_SHA256 ||
+    verificationContract.independent_verifier_url !== GRO_INDEPENDENT_VERIFIER_URL ||
+    verificationContract.independent_verifier_sha256 !== GRO_INDEPENDENT_VERIFIER_SHA256 ||
+    verificationContract.signature_preimage_version !== GRO_SIGNATURE_PREIMAGE_VERSION ||
+    JSON.stringify(verificationContract.excluded_fields) !==
+      JSON.stringify(["integrity.payload_hash", "integrity.signature"])
+  ) {
+    throw new Error(
+      "Federico strict immutable verification contract mismatch",
     );
   }
 
@@ -452,6 +481,8 @@ if (strictProfile) {
         item.source_record_ids.length === 0 ||
         !Array.isArray(item.content_hashes) ||
         item.content_hashes.length === 0 ||
+        item.source_ids.length !== item.source_record_ids.length ||
+        item.source_ids.length !== item.content_hashes.length ||
         typeof item.subject_attribution_confidence !== "number" ||
         !item.subject_attribution_method ||
         typeof item.relevance_weight !== "number" ||
@@ -559,6 +590,7 @@ let original: {
   body: any;
 };
 let verificationMode: "live_registry_client_local" | "legacy_deployed_post";
+let tamperVerificationSummary: any = null;
 
 if (strictProfile) {
   const trustKeys =
@@ -638,6 +670,12 @@ if (strictProfile) {
   ) {
     throw new Error("Tampered Risk Object was incorrectly accepted");
   }
+  tamperVerificationSummary = {
+    signature_valid: tamperedSignature.valid,
+    public_verification_valid: tamperedPublicVerification.valid,
+    public_verification_status: tamperedPublicVerification.status,
+    reason_codes: tamperedPublicVerification.reason_codes,
+  };
 
   original = {
     http_status: 200,
@@ -684,6 +722,8 @@ if (strictProfile) {
   ) {
     throw new Error("Tampered Risk Object was incorrectly accepted");
   }
+  tamperVerificationSummary =
+    tamperResult.body?.verification ?? tamperResult.body;
   verificationMode = "legacy_deployed_post";
 }
 
@@ -1209,7 +1249,7 @@ console.log(
       },
       geomacro_verification: original.body.verification,
       tamper_verification:
-        tamperResult.body?.verification ?? tamperResult.body,
+        tamperVerificationSummary,
       invinoveritas_request: {
         artifact_type: reviewRequest.artifact_type,
         sign: reviewRequest.sign,
