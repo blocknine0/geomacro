@@ -67,7 +67,13 @@ describe("global country raw source mesh",()=>{
     expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("ldpwajisioljyjtojvfx");
     expect(workflow).toContain("sync-country-raw-source-mesh.mjs");
-    expect(workflow).toContain("live-structure-intelligence");
+    expect(workflow).toContain("COUNTRY_RAW_SOURCE_SYNC_OUTPUT=country-raw-source-sync.json");
+    expect(workflow).toContain("country-raw-source-sync.log");
+    expect(workflow).not.toContain("sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json");
+    expect(workflow).toContain("LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres");
+    expect(workflow).toContain("B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com");
+    expect(workflow).toContain("drain-live-structure.mjs --fragment-ids-file country-raw-source-sync.json");
+    expect(workflow).not.toContain("/functions/v1/live-structure-intelligence");
     expect(workflow.indexOf("Reconcile and capture country web/API sources")).toBeLessThan(
       workflow.indexOf("Verify 195-country three-category raw mesh"),
     );
