@@ -143,8 +143,20 @@ for (const required of [
   "proof_verification",
   "independent_node",
   "execution_authorized: false",
+  "verifyRiskObjectSignature",
+  "verifyPublicRiskObjectArtifact",
+  "live_registry_client_local",
+  "registryResponseSha256",
+  "tamperedSignature",
+  "tamperedVerification",
 ]) {
   if (!preflight.includes(required)) fail(`preflight missing required contract marker: ${required}`);
+}
+if (
+  preflight.includes("async function verify(object: unknown)") ||
+  preflight.includes("Original Risk Object failed deployed verification")
+) {
+  fail("Federico provider preflight must not depend on Geomacro central POST verification");
 }
 
 for (const required of [
