@@ -85,6 +85,8 @@ describe("one-time Day 6 Federico pilot authorization", () => {
     expect(workflow).toContain('"src/lib/public-demo-risk-profile.ts"');
     expect(workflow).toContain('"scripts/hydrate-federico-source-times.ts"');
     expect(workflow).toContain('"src/lib/federico-source-time-hydration.ts"');
+    expect(workflow).toContain('"scripts/partner-assurance-adapter.ts"');
+    expect(workflow).toContain('"scripts/invinoveritas-risk-object-preflight.ts"');
     expect(workflow).toContain("--experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs");
     expect(workflow).toContain('policy == "trusted_publisher_metadata_only"');
     expect(workflow).toContain(".fake_freshness == false");
