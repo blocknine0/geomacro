@@ -121,7 +121,12 @@ export async function publishVerifiedCurrentGlobalRiskHotSnapshot({ value, proof
     proof.current_b2_snapshot_promoted !== false ||
     !/^[0-9a-f]{64}$/.test(String(proof.baseline_b2_sha256 ?? "")) ||
     !/^[0-9a-f]{64}$/.test(String(proof.baseline_payload_sha256 ?? "")) ||
-    !/^\d{1,20}$/.test(String(proof.baseline_source_run_id ?? ""))
+    !/^\d{1,20}$/.test(String(proof.baseline_source_run_id ?? "")) ||
+    !Number.isFinite(Date.parse(String(proof.baseline_generated_at ?? ""))) ||
+    proof.baseline_b2_sha256 !== value.baseline_b2_sha256 ||
+    proof.baseline_payload_sha256 !== value.baseline_payload_sha256 ||
+    String(proof.baseline_source_run_id) !== String(value.baseline_source_run_id) ||
+    Date.parse(String(proof.baseline_generated_at)) !== Date.parse(String(value.baseline_generated_at))
   ) throw new Error("GLOBAL_RISK_CURRENT_PROOF_INVALID");
 
   const token = controlPlaneAuth();
