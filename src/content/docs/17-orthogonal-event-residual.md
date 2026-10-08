@@ -16,4 +16,4 @@ The calculation then applies:
 
 Current story-correlation contract values are versioned separately from the GRI formula and are included in public proof verification.
 
-This design makes independent underlying developments the important unit of repeated-evidence control, rather than raw article count.
+This design makes independent underlying developments the important unit of repeated-evidence control, rather than repeated publication volume.
