@@ -9,6 +9,7 @@ import {
 
 import {
   GRO_CANONICALIZATION_VERSION,
+  GRO_CANONICALIZATION_SPEC_URL,
   GRO_SCHEMA_VERSION,
   GRO_SIGNATURE_SCHEME,
   type GeomacroRiskObject,
@@ -851,7 +852,7 @@ export function signRiskObject(
           "https://geomacro.live/api/risk-object-keys",
 
         canonicalization_url:
-          "https://github.com/blocknine0/geomacro/blob/main/docs/GRO_CANONICAL_JSON_V1.md",
+          GRO_CANONICALIZATION_SPEC_URL,
 
         public_key_spki_b64:
           publicKeyBase64(derivedPublicKey),
