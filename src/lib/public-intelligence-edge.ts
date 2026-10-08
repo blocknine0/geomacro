@@ -96,3 +96,47 @@ export async function fetchVerifiedIntelligenceEdge(): Promise<PublicIntelligenc
 export function canUseProductionIntelligenceBackup(hostname: string): boolean {
   return hostname === "geomacro.live" || hostname === "www.geomacro.live";
 }
+
+
+/**
+ * Preserve the canonical public API envelope when Lovable's same-origin Nitro
+ * runtime has no private B2 environment. Data authority stays the exact same
+ * signed/proof-verified Cloudflare edge used by production.
+ */
+export function buildVerifiedIntelligenceApiPayload(
+  verifiedEdgeRows: PublicIntelligenceRow[],
+  now = Date.now(),
+) {
+  const scored = verifiedEdgeRows.filter((r) => r.public_status === "verified_b2");
+  const latestScoredByDomain = new Map<string, number>();
+  let newestAt = -Infinity;
+  for (const row of verifiedEdgeRows) {
+    const timestamp = Date.parse(row.published_at ?? row.created_at);
+    if (!Number.isFinite(timestamp) || timestamp > now + 5 * 60_000) continue;
+    newestAt = Math.max(newestAt, timestamp);
+    if (row.public_status === "verified_b2") {
+      const category = String(row.category);
+      latestScoredByDomain.set(
+        category,
+        Math.max(latestScoredByDomain.get(category) ?? -Infinity, timestamp),
+      );
+    }
+  }
+  const currentAcrossDomains = ["geopolitics", "macro", "rare_earth"].every(
+    (domain) => (latestScoredByDomain.get(domain) ?? -Infinity) >= now - 24 * 60 * 60 * 1000,
+  );
+  const rows = currentAcrossDomains ? scored : verifiedEdgeRows;
+  const liveCount = rows.filter((r) => r.public_status === "live_observed").length;
+  return {
+    rows,
+    mode: liveCount > 0
+      ? "verified_b2_plus_live_observed" as const
+      : "verified_b2" as const,
+    verified_rows: scored.length,
+    live_observed_rows: liveCount,
+    newest_at: Number.isFinite(newestAt) ? new Date(newestAt).toISOString() : null,
+    current_within_24h: Number.isFinite(newestAt) &&
+      newestAt >= now - 24 * 60 * 60 * 1000,
+    generated_at: new Date(now).toISOString(),
+  };
+}
