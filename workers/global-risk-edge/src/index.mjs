@@ -6,6 +6,8 @@ const LIVE_KEY = "geomacro-evidence/v1/live/global-risk/latest.json.gz";
 const PROOF_KEY = "geomacro-evidence/v1/live/global-risk/latest-proof.json";
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const METHOD = "gri-v1.2.0";
+const CURRENT_PROOF_SCHEMA = "geomacro.public-global-risk-current-proof.v1";
+const CURRENT_PROOF_MODE = "independent-gri-proof-over-b2-baseline";
 const D1_HOT_SNAPSHOT_URL = "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/hot-snapshot/global-risk";
 const MAX_COMPRESSED_BYTES = 12_000_000;
 const MAX_DECOMPRESSED_BYTES = 40_000_000;
@@ -141,6 +143,39 @@ async function buildContinuityResponse() {
   });
 }
 
+function validCurrentProofValue(live) {
+  const data = live?.data;
+  const proof = live?.current_proof;
+  const domains = data?.domainIndices;
+  if (
+    live?.verification_mode !== CURRENT_PROOF_MODE ||
+    live?.current_b2_snapshot_promoted !== false ||
+    !/^[0-9a-f]{64}$/.test(String(live?.baseline_b2_sha256 ?? "")) ||
+    !/^[0-9a-f]{64}$/.test(String(live?.baseline_payload_sha256 ?? "")) ||
+    !/^\d{1,20}$/.test(String(live?.baseline_source_run_id ?? "")) ||
+    !Number.isFinite(Date.parse(String(live?.baseline_generated_at ?? ""))) ||
+    data?.verificationStatus !== "verified" ||
+    data?.methodologyVersion !== METHOD ||
+    data?.auditPersisted !== true ||
+    !proof ||
+    proof.proofHash !== data.proofHash ||
+    proof.evidenceHash !== data.evidenceHash ||
+    proof.calculationHash !== data.calculationHash ||
+    proof.dispositionHash !== data.dispositionHash ||
+    proof.inputHash !== data.inputHash ||
+    proof.methodologyHash !== data.methodologyHash ||
+    proof.changeHash !== data.changeHash ||
+    Number(proof.candidateEventCount) !== Number(data.candidateEventCount) ||
+    Number(proof.reconciliationResidual) !== Number(data.reconciliationResidual) ||
+    Number(proof.changeResidual) !== Number(data.changeResidual) ||
+    !domains || typeof domains !== "object" || Array.isArray(domains)
+  ) return false;
+  for (const key of ["proofHash","evidenceHash","calculationHash","dispositionHash","inputHash","methodologyHash","changeHash"]) {
+    if (!/^[0-9a-f]{64}$/.test(String(data?.[key] ?? ""))) return false;
+  }
+  return validDomains(data);
+}
+
 async function readD1HotSnapshot(env) {
   try {
     if (!env?.CONTROL_PLANE || typeof env.CONTROL_PLANE.fetch !== "function") return null;
@@ -154,16 +189,20 @@ async function readD1HotSnapshot(env) {
     const sourceAsOf = Date.parse(String(snapshot?.source_as_of ?? ""));
     const expiresAt = Date.parse(String(snapshot?.expires_at ?? ""));
     const payloadJson = String(snapshot?.payload_json ?? "");
+    const recovery =
+      snapshot?.proof_schema === CURRENT_PROOF_SCHEMA &&
+      snapshot?.verification_mode === CURRENT_PROOF_MODE;
+    const direct =
+      snapshot?.proof_schema === "geomacro.public-global-risk-live-proof.v1" &&
+      snapshot?.verification_mode === "direct-b2-readback";
     if (
       snapshot?.ok !== true ||
       snapshot?.product !== "global-risk" ||
       snapshot?.schema !== "geomacro.public-global-risk-live.v1" ||
-      snapshot?.proof_schema !== "geomacro.public-global-risk-live-proof.v1" ||
+      (!direct && !recovery) ||
       snapshot?.b2_object_key !== LIVE_KEY ||
       !/^[0-9a-f]{64}$/.test(String(snapshot?.b2_sha256 ?? "")) ||
       !/^[0-9a-f]{64}$/.test(String(snapshot?.payload_sha256 ?? "")) ||
-      snapshot?.full_b2_readback_verified !== true ||
-      snapshot?.exact_gzip_restore_verified !== true ||
       !Number.isFinite(generatedAt) ||
       !Number.isFinite(sourceAsOf) ||
       !Number.isFinite(expiresAt) ||
@@ -172,7 +211,25 @@ async function readD1HotSnapshot(env) {
       Date.now() - sourceAsOf > 90 * 60 * 1000 ||
       expiresAt <= Date.now() ||
       expiresAt > sourceAsOf + 90 * 60 * 1000 ||
-      await sha256(payloadJson) !== snapshot.payload_sha256
+      await sha256(payloadJson) !== snapshot.payload_sha256 ||
+      (
+        direct &&
+        (
+          snapshot?.full_b2_readback_verified !== true ||
+          snapshot?.exact_gzip_restore_verified !== true ||
+          snapshot?.current_b2_readback_verified !== true ||
+          snapshot?.current_b2_snapshot_promoted !== true
+        )
+      ) ||
+      (
+        recovery &&
+        (
+          snapshot?.baseline_b2_readback_verified !== true ||
+          snapshot?.baseline_exact_gzip_restore_verified !== true ||
+          snapshot?.current_b2_readback_verified !== false ||
+          snapshot?.current_b2_snapshot_promoted !== false
+        )
+      )
     ) return null;
     const live = JSON.parse(payloadJson);
     const data = live?.data;
@@ -184,7 +241,11 @@ async function readD1HotSnapshot(env) {
       data?.verificationStatus !== "verified" ||
       data?.auditPersisted !== true ||
       Date.parse(String(data?.snapshotAsOf ?? "")) !== sourceAsOf ||
-      !validDomains(data)
+      (recovery && (
+        live?.baseline_b2_sha256 !== snapshot.b2_sha256 ||
+        !validCurrentProofValue(live)
+      )) ||
+      (!recovery && !validDomains(data))
     ) return null;
     return new Response(payloadJson, {
       status: 200,
@@ -198,9 +259,12 @@ async function readD1HotSnapshot(env) {
         "x-geomacro-source-as-of": snapshot.source_as_of,
         "x-geomacro-b2-sha256": snapshot.b2_sha256,
         "x-geomacro-d1-payload-sha256": snapshot.payload_sha256,
-        "x-geomacro-b2-verification": "full-readback-hash-exact-restore",
+        "x-geomacro-b2-verification":
+          recovery ? "baseline-full-readback-current-gri-proof" : "full-readback-hash-exact-restore",
+        "x-geomacro-verification-mode":
+          recovery ? CURRENT_PROOF_MODE : "direct-b2-readback",
         "access-control-allow-origin": "*",
-        "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity, x-geomacro-serving-store, x-geomacro-source-as-of, x-geomacro-b2-sha256, x-geomacro-d1-payload-sha256, x-geomacro-b2-verification",
+        "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity, x-geomacro-serving-store, x-geomacro-source-as-of, x-geomacro-b2-sha256, x-geomacro-d1-payload-sha256, x-geomacro-b2-verification, x-geomacro-verification-mode",
       },
     });
   } catch {
