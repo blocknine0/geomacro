@@ -122,8 +122,14 @@ jobs:
           bounded_heartbeat=false
           while IFS= read -r file; do
             case "$file" in
-              scripts/audit-global-realtime-intelligence-100.mjs|scripts/audit-global-raw-source-runtime.mjs|scripts/audit-realtime-scope-fanout.mjs|scripts/audit-gdelt-dependency-live.mjs|scripts/run-gdelt-gal-cycle.mjs|scripts/verify-gdelt-gal-cycle.mjs|scripts/sync-country-raw-source-mesh.mjs|scripts/drain-live-structure.mjs|scripts/run-rss-live-cycle.mjs|scripts/run-live-flash-ingest-local.ts|scripts/run-live-flash-corroborate-local.ts|scripts/classify-realtime-corroborate-health.mjs|supabase/functions/live-flash-ingest/*|supabase/functions/live-flash-corroborate/*|supabase/migrations/920_multi_source_commercial_registry.sql)
+              scripts/audit-global-realtime-intelligence-100.mjs|scripts/audit-global-raw-source-runtime.mjs|scripts/audit-realtime-scope-fanout.mjs|scripts/audit-gdelt-dependency-live.mjs|scripts/run-gdelt-gal-cycle.mjs|scripts/verify-gdelt-gal-cycle.mjs|scripts/sync-country-raw-source-mesh.mjs|scripts/drain-live-structure.mjs|scripts/run-rss-live-cycle.mjs|scripts/run-live-flash-ingest-local.ts|scripts/run-live-flash-corroborate-local.ts|scripts/classify-realtime-corroborate-health.mjs|supabase/functions/live-flash-ingest/*|supabase/migrations/920_multi_source_commercial_registry.sql)
                 full_raw=true
+                ;;
+              supabase/functions/live-flash-corroborate/*)
+                # Corroborator-only changes are accepted by the always-on
+                # direct-Postgres corroboration transport proof below. They do
+                # not mutate the 195x3 raw-source pipeline, so do not fan out
+                # into unrelated raw/B2 acceptance work.
                 ;;
               scripts/ops/phase-a-runtime-freshness-repair.mjs|scripts/intelligence-orchestrator.mjs|.github/workflows/intelligence-orchestrator.yml)
                 bounded_heartbeat=true
