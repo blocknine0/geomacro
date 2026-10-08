@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractTrustedPublishedAt,
   isTrustedFedericoTimestampUrl,
+  isTrustedFedericoTimestampUrlForSource,
   trustedFedericoTimestampFetchUrlForSource,
 } from "../lib/federico-source-time-hydration";
 
@@ -59,6 +60,61 @@ describe("Federico trusted source publication-time hydration", () => {
         "https://www.scmp.com/plus/account/preferences",
       ),
     ).toBe("https://www.scmp.com/plus/account/preferences");
+  });
+
+  it("trusts only the mapped publisher hosts for active Federico sources", () => {
+    expect(
+      isTrustedFedericoTimestampUrlForSource(
+        "bbc_world_rss",
+        "https://www.bbc.co.uk/news/articles/example",
+      ),
+    ).toBe(true);
+    expect(
+      isTrustedFedericoTimestampUrlForSource(
+        "aljazeera_rss",
+        "https://www.aljazeera.com/news/2026/10/8/example",
+      ),
+    ).toBe(true);
+    expect(
+      isTrustedFedericoTimestampUrlForSource(
+        "forexlive_rss",
+        "https://investinglive.com/news/example/",
+      ),
+    ).toBe(true);
+    expect(
+      isTrustedFedericoTimestampUrlForSource(
+        "bbc_world_rss",
+        "https://www.aljazeera.com/news/example",
+      ),
+    ).toBe(false);
+  });
+
+  it("accepts explicit publisher timestamps for BBC Al Jazeera and InvestingLive", () => {
+    const asOf = new Date("2026-10-08T15:30:00.000Z");
+    const html =
+      '<meta property="article:published_time" content="2026-10-08T14:19:00Z">';
+    for (const url of [
+      "https://www.bbc.co.uk/news/articles/example",
+      "https://www.aljazeera.com/news/2026/10/8/example",
+      "https://investinglive.com/news/example/",
+    ]) {
+      expect(extractTrustedPublishedAt(html, url, asOf)).toBe(
+        "2026-10-08T14:19:00.000Z",
+      );
+    }
+  });
+
+  it("rejects timezone-less timestamps for non-Xinhua trusted publishers", () => {
+    const asOf = new Date("2026-10-08T15:30:00.000Z");
+    const html =
+      '<meta itemprop="datePublished" content="2026-10-08 14:19:00">';
+    for (const url of [
+      "https://www.bbc.co.uk/news/articles/example",
+      "https://www.aljazeera.com/news/2026/10/8/example",
+      "https://investinglive.com/news/example/",
+    ]) {
+      expect(extractTrustedPublishedAt(html, url, asOf)).toBeNull();
+    }
   });
 
   it("accepts precise SCMP publisher metadata with an explicit offset", () => {
@@ -126,6 +182,24 @@ describe("Federico trusted source publication-time hydration", () => {
         AS_OF,
       ),
     ).toBeNull();
+  });
+
+  it("hydrates the active audited sources without substituting seen time for publication time", () => {
+    const script = readFileSync("scripts/hydrate-federico-source-times.ts", "utf8");
+    for (const sourceId of [
+      "xinhua_english_china_rss",
+      "scmp_china_rss",
+      "bbc_world_rss",
+      "aljazeera_rss",
+      "forexlive_rss",
+    ]) {
+      expect(script).toContain(`"${sourceId}"`);
+    }
+    expect(script).toContain("const MAX_ROWS = 180");
+    expect(script).toContain('.is("published_at", null)');
+    expect(script).toContain("update({ published_at: publishedAt })");
+    expect(script).not.toContain("published_at: row.last_seen_at");
+    expect(script).not.toContain("published_at: row.ingested_at");
   });
 
   it("keeps readiness fail-closed and re-corroborates only after trusted hydration", () => {
