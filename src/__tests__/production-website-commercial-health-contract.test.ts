@@ -30,7 +30,7 @@ describe("production website health validates real commercial promises", () => {
     expect(job).toContain("Structured intelligence for APIs and AI agents");
     expect(guide).toContain("Structured intelligence for APIs and AI agents");
     expect(job).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
-    expect(guide).toContain("Monthly access is an enquiry, not an active self-service subscription.");
+    expect(guide).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
     expect(job).toContain("Failed, stale, unavailable, replayed, refunded, internal and unpaid requests do not count as successful paid deliveries.");
   });
 
