@@ -73,6 +73,10 @@ jobs:
             --target=bun \
             --outfile=/tmp/geomacro-gro-hot-publisher-smoke.js
           test -s /tmp/geomacro-gro-hot-publisher-smoke.js
+          bun build scripts/day6-direct-live-federico-gro.ts \
+            --target=bun \
+            --outfile=/tmp/geomacro-day6-direct-federico-smoke.js
+          test -s /tmp/geomacro-day6-direct-federico-smoke.js
 
       - name: Production build
         run: bun run build

@@ -9,12 +9,14 @@ describe("Cloudflare D1 permanent control plane", () => {
       read("workers/control-plane/migrations/0001_core.sql"),
       read("workers/control-plane/migrations/0011_public_b2_verified_hot_snapshots.sql"),
       read("workers/control-plane/migrations/0012_country_gro_verified_hot.sql"),
+      read("workers/control-plane/migrations/0013_partner_assurance_gro_verified.sql"),
     ].join("\n");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS source_state");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS country_domain_state");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS risk_object_index");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS public_b2_hot_snapshot");
     expect(schema).toContain("CREATE TABLE IF NOT EXISTS country_gro_verified_hot");
+    expect(schema).toContain("CREATE TABLE IF NOT EXISTS partner_assurance_gro_verified");
     expect(schema).toContain("archive_write_acknowledged INTEGER NOT NULL");
     expect(schema).toContain("archive_readback_verified INTEGER NOT NULL DEFAULT 0");
     expect(schema).toContain("object_json TEXT NOT NULL");

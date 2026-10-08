@@ -41,6 +41,8 @@ jobs:
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       GRI_DB_MODE: direct_postgres
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
@@ -124,7 +126,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_URL CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID B2_KEY_ID B2_APPLICATION_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
             test -n "${!name:-}" || { echo "::error::$name is required"; exit 2; }
           done
           if [[ -n "${B2_ARCHIVE_READ_KEY_ID:-}" || -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" ]]; then
@@ -167,7 +169,7 @@ jobs:
           console.log('PASS: signer matches deployed active Ed25519 key');
           NODE
 
-      - name: Generate fresh global-strict signed GRO and verify B2 readback
+      - name: Generate fresh global-strict signed GRO and verify D1 readback after B2 write
         env:
           DAY6_COUNTRY_ISO3: ${{ steps.country.outputs.iso3 }}
           NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
@@ -188,7 +190,15 @@ jobs:
             .integrity.signing_key_id == $key_id and
             .evidence_summary.independent_source_count >= 2 and
             .persistence.authority == "b2" and
-            .persistence.readback_verified == true and
+            .persistence.archive_authority == "backblaze-b2" and
+            .persistence.hot_verification_authority == "cloudflare-d1" and
+            .persistence.archive_write_acknowledged == true and
+            .persistence.b2_readback_verified == false and
+            .persistence.b2_readback_deferred == true and
+            .persistence.b2_get_required_for_assurance == false and
+            .persistence.d1_readback_verified == true and
+            .persistence.d1_exact_canonical_record_verified == true and
+            .persistence.d1_signature_verified == true and
             .partner_review_attempted == false and
             .partner_allowance_spent == false and
             .payment_performed == false and
