@@ -62,6 +62,7 @@ jobs:
         env:
           RAW_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           DISPATCH_SHA: ${{ github.sha }}
+          ALLOWANCE_REQUESTED: ${{ inputs.use_partner_allowance }}
         shell: bash
         run: |
           set -euo pipefail
@@ -74,6 +75,10 @@ jobs:
             echo "::error::candidate_sha must be an exact 40-hex commit SHA"
             exit 2
           }
+          if [[ "$ALLOWANCE_REQUESTED" == "true" && "$CANDIDATE_SHA" != "$DISPATCH_SHA" ]]; then
+            echo "::error::Federico live allowance refused for stale candidate SHA. candidate=$CANDIDATE_SHA current_dispatch_main=$DISPATCH_SHA"
+            exit 3
+          fi
           echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Checkout exact candidate SHA
