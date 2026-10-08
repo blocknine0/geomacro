@@ -14,7 +14,7 @@ const PROOF_KEY="geomacro-evidence/v1/live/country-gro/hot-bundle-proof.json";
 const WRANGLER_VERSION=String(process.env.WRANGLER_VERSION??"4.136.3");
 const D1_DATABASE_NAME=String(process.env.D1_DATABASE_NAME??"geomacro-control-plane");
 const OUT=join(process.cwd(),"artifacts","global-gro-continuity");
-const CONFIG=join(OUT,"wrangler.country-gro-audit.jsonc");
+const CONFIG=join(process.cwd(),"workers","control-plane","wrangler.country-gro-audit.runtime.jsonc");
 const sha=(v:Buffer|string)=>createHash("sha256").update(v).digest("hex");
 const access=String(process.env.B2_ARCHIVE_READ_KEY_ID??process.env.B2_KEY_ID??"").trim();
 const secret=String(process.env.B2_ARCHIVE_READ_APPLICATION_KEY??process.env.B2_APPLICATION_KEY??"").trim();
