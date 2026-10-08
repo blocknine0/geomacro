@@ -134,6 +134,49 @@ describe("B2 cap resilient public edge reads", () => {
     expect(b2Reads).toBe(0);
   });
 
+  it.each([
+    ["intelligence", intelligenceWorker, "/intelligence"],
+    ["global-risk", globalRiskWorker, "/global-risk"],
+    ["risk-indices", riskIndicesWorker, "/risk-indices"],
+  ])("prefers the verified D1 %s hot snapshot over an already-warm Workers cache", async (product, worker, path) => {
+    let cacheReads = 0;
+    let cacheWrites = 0;
+    vi.stubGlobal("caches", {
+      default: {
+        match: async () => {
+          cacheReads += 1;
+          return new Response(JSON.stringify({ stale: true }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+        put: async () => {
+          cacheWrites += 1;
+        },
+      },
+    });
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/v1/public/hot-snapshot/")) {
+        return Response.json(hotSnapshot(product as string));
+      }
+      throw new Error(`UNEXPECTED_ORIGIN_FETCH:${url}`);
+    });
+
+    const response = await worker.fetch(new Request(`https://edge.test${path}`), {
+      B2_KEY_ID: "read-key",
+      B2_APPLICATION_KEY: "read-secret",
+    }, { waitUntil: () => undefined });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.schema).toBe(livePackage(product as string).schema);
+    expect(response.headers.get("x-geomacro-serving-store")).toBe("cloudflare-d1");
+    expect(response.headers.get("x-geomacro-b2-verification")).toBe("full-readback-hash-exact-restore");
+    expect(cacheReads).toBe(0);
+    expect(cacheWrites).toBe(1);
+  });
+
   it("projects a fresh Intelligence overlay over an older verified B2 baseline when baseline time is explicitly bound", async () => {
     const baselineAt = new Date(Date.now() - 19 * 60 * 60 * 1000).toISOString();
     const overlayAt = new Date(Date.now() - 60_000).toISOString();
