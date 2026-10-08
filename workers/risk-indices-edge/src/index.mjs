@@ -307,8 +307,9 @@ async function buildResponse(env) {
       "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-risk-indices-edge",
+      "x-geomacro-verification-mode": "direct-b2-readback",
       "access-control-allow-origin": "*",
-      "access-control-expose-headers": "x-geomacro-authority",
+      "access-control-expose-headers": "x-geomacro-authority, x-geomacro-verification-mode",
     },
   });
 }
