@@ -141,6 +141,9 @@ jobs:
               and .b2_manifest_put_acknowledged == true
               and .b2_get_count_for_hot_serving == 0
               and .d1_signed_gro_hot_verified == true
+              and .d1_parameterized_writes == true
+              and .d1_write_batch_count >= 1
+              and .d1_readback_batch_count >= 1
               and .d1_readback_verified == true
               and .signature_verified == true
               and .commercial_eligibility_verified == true
