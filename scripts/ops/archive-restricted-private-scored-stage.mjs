@@ -3,6 +3,7 @@ import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { createB2Client } from "./b2-s3-client.mjs";
 import { createD1ControlPlaneStateClient } from "../lib/d1-control-plane-state.mjs";
+import { verifyPrivateScoringD1Checkpoint } from "../lib/private-scoring-d1-checkpoint-proof.mjs";
 import {
   STAGE_DOMAINS,
   CANONICAL_CLASSIFIER_VERSION,
@@ -131,6 +132,16 @@ await control.persist("private_stage", {
   last_success_at: now,
 });
 
+// D1 write acknowledgement is insufficient: fetch the exact original row
+// and verify B2 key/sha256 and independent per-domain counts, fail-closed.
+const checkpoint = (await control.loadRows()).get("private_stage");
+verifyPrivateScoringD1Checkpoint(checkpoint, {
+  b2Key: key,
+  compressedSha256: digest,
+  counts: stage.counts,
+  lastSuccessAt: now,
+});
+
 const receipt = {
   ok: true,
   schema: "geomacro.restricted-private-scoring-archive-proof.v1",
@@ -145,6 +156,7 @@ const receipt = {
   b2_requests_started: b2.usage().requests_started,
   b2_request_budget: b2.usage().request_budget,
   d1_compact_checkpoint_persisted: true,
+  d1_checkpoint_readback_verified: true,
   supabase_writes: 0,
   public_published: false,
   commercial_eligible: false,
