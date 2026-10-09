@@ -17,7 +17,6 @@ on:
       - "scripts/lib/intelligence-scheduler.mjs"
       - "scripts/lib/direct-postgres-supabase-loader.mjs"
       - "scripts/lib/d1-control-plane-state.mjs"
-      - "scripts/lib/d1-orchestrator-supabase-shim.mjs"
       - "scripts/ops/supabase-free-tier-budget.mjs"
       - "scripts/ops/phase-a-runtime-freshness-repair.mjs"
       - "scripts/sync-country-raw-source-mesh.mjs"
@@ -170,7 +169,10 @@ jobs:
           test "${RAW_SOURCE_ARCHIVE_MODE:-}" = "b2"
           test "${LIVE_STRUCTURE_EXECUTION_MODE:-}" = "local_direct_postgres"
           node --check scripts/lib/d1-control-plane-state.mjs
-          node --check scripts/lib/d1-orchestrator-supabase-shim.mjs
+          # The scheduled canonical orchestrator now imports D1 directly,
+          # with no app Supabase SDK, compat shim or synthetic service role.
+          ! grep -q '@supabase/supabase-js' scripts/intelligence-orchestrator.mjs
+          ! grep -q 'APP_SUPABASE_SERVICE_ROLE_KEY' scripts/intelligence-orchestrator.mjs
           node --check scripts/intelligence-orchestrator.mjs
           echo "PASS: D1/B2 scheduler runtime validated without requiring Supabase availability."
 
