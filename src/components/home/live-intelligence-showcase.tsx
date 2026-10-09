@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, CalendarDays, Clock3, Mail, Radio, Zap } from "lucide-react";
 import { useIntelligence } from "@/lib/use-intelligence";
 import { selectHomepageShowcase } from "@/lib/homepage-intelligence-showcase";
+import { intelligenceDomainPulse } from "@/lib/intelligence-domain-pulse";
 import { publicHeadline } from "@/lib/intelligence-editorial";
 import { RiskBadge } from "@/components/foundation/risk";
 
@@ -87,6 +88,7 @@ export function LiveIntelligenceShowcase() {
   const winner = intelligence.data
     ? selectHomepageShowcase(intelligence.data.all)
     : null;
+  const pulse = intelligenceDomainPulse(intelligence.data?.all ?? []);
   const event = winner?.event;
   const gist = event ? publicHeadline(event.title) : null;
 
@@ -153,6 +155,24 @@ export function LiveIntelligenceShowcase() {
             </Link>
           </div>
         )}
+
+        <div className="mt-5 border-t border-border/55 pt-4" aria-label="Live monitoring coverage">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            Evidence freshness · three global domains
+          </p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {pulse.map((domain) => (
+              <div key={domain.key} className="min-w-0 rounded-lg border border-border/60 bg-background/30 p-2">
+                <p className="text-[11px] font-semibold leading-4">{domain.label}</p>
+                <p className="mt-1 text-[10px] leading-4 text-muted-foreground">
+                  {domain.state === "current_scored" ? "Current verified score" :
+                    domain.state === "current_observed" ? "Fresh signal · unscored" :
+                    domain.state === "historical_verified" ? "Historical verified" : "Awaiting verification"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <AccessOptions />
       </div>
