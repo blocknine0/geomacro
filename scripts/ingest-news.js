@@ -3,10 +3,15 @@ import Groq from 'groq-sdk';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import { createHash } from 'node:crypto';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { makePrivateStageRecord } from './lib/restricted-private-scored-stage.mjs';
 
 dotenv.config();
 
-const supabase = createClient(
+// Private staging reuses the exact canonical classifier and source gates, but
+// never constructs or queries a Supabase data-plane client.
+const PRIVATE_B2_STAGE = process.argv.includes('--private-scored-stage');
+const supabase = PRIVATE_B2_STAGE ? null : createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
@@ -536,6 +541,10 @@ function guardianQueryPlan(
   queries,
   priorityQueries = [],
 ) {
+  if (PRIVATE_B2_STAGE || String(process.env.GEOMACRO_GDELT_ONLY ?? '').toLowerCase() === 'true') {
+    return { queries: [], totalQueries: Array.isArray(queries) ? queries.length : 0,
+      budget: 0, totalChunks: 0, chunkIndex: 0, startIndex: 0, endIndex: 0, priorityQueries: [] };
+  }
   const allQueries =
     Array.isArray(queries)
       ? queries
@@ -660,6 +669,13 @@ const GDELT_DISCOVERY_CATEGORY_ORDER = Object.freeze([
  * which prevents an operator retry from silently creating a new request pattern.
  */
 function gdeltCategoryForCurrentRun(now = new Date()) {
+  if (PRIVATE_B2_STAGE) {
+    const requested = String(process.env.GDELT_FORCE_CATEGORY ?? '').trim();
+    if (!GDELT_DISCOVERY_CATEGORY_ORDER.includes(requested)) {
+      throw new Error('PRIVATE_SCORING_DOMAIN_REQUIRED');
+    }
+    return requested;
+  }
   const twoHourSlot = Math.floor(
     now.getTime() / (2 * 60 * 60 * 1000),
   );
@@ -2336,6 +2352,31 @@ async function fetchGdeltArticles(query) {
     );
 }
 
+async function fetchGdeltArticlesWithGalFallback(query, categoryName) {
+  const enabled = String(process.env.GDELT_GAL_FALLBACK_ENABLED ?? '').toLowerCase() === 'true';
+  let primaryError = null;
+  try {
+    const primary = await fetchGdeltArticles(query);
+    if (primary.length > 0 || !enabled) return primary;
+    console.log('  GDELT DOC returned no current candidates; trying governed GAL fallback.');
+  } catch (error) {
+    primaryError = error;
+    if (!enabled) throw error;
+    console.log(`  GDELT DOC failed (${String(error?.message ?? error)}); trying governed GAL fallback.`);
+  }
+  const { fetchGdeltGalFastlaneArticles } = await import('./lib/gdelt-gal-fastlane-fallback.mjs');
+  const fallback = await fetchGdeltGalFastlaneArticles({
+    categoryName,
+    maxArticleAgeMs: MAX_ARTICLE_AGE_MS,
+    maxCandidates: Math.max(1, Math.min(2, safeCandidatesPerCategory())),
+  });
+  console.log(`  GDELT GAL fallback: ${fallback.length} current candidate(s) for ${categoryName}.`);
+  if (fallback.length === 0 && primaryError) {
+    console.warn('  Original GDELT DOC discovery unavailable.');
+  }
+  return fallback;
+}
+
 async function fetchArticlesFromApis(query, categoryName) {
   const fromDate = new Date(Date.now() - MAX_ARTICLE_AGE_MS).toISOString().slice(0, 10);
   const articles = [];
@@ -2842,6 +2883,17 @@ async function reclassifyExistingEvents() {
 async function ingestNews() {
   const dryRun =
     process.argv.includes('--dry-run');
+  if (PRIVATE_B2_STAGE && (dryRun || process.argv.includes('--reclassify-existing'))) {
+    throw new Error('PRIVATE_SCORING_MODE_CONFLICT');
+  }
+  if (PRIVATE_B2_STAGE && (
+    process.env.GEOMACRO_GDELT_ONLY !== 'true' ||
+    process.env.GDACS_ENABLED !== 'false' ||
+    process.env.RELIEFWEB_ENABLED !== 'false'
+  )) {
+    throw new Error('PRIVATE_SCORING_GOVERNED_DISCOVERY_REQUIRED');
+  }
+  const privateStagedRows = [];
 
   const reclassifyExisting =
     process.argv.includes('--reclassify-existing');
@@ -2874,7 +2926,7 @@ async function ingestNews() {
   );
 
   let existingEvents = [];
-  {
+  if (!PRIVATE_B2_STAGE) {
     const PAGE_SIZE = 1000;
     let from = 0;
     while (true) {
@@ -2925,7 +2977,7 @@ async function ingestNews() {
     const seenCandidatesThisCategory = new Set();
 
     let baselineSeverity = null;
-    try {
+    if (!PRIVATE_B2_STAGE) try {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: baselineRows, error: baselineError } = await supabase
         .from('events')
@@ -3223,7 +3275,7 @@ async function ingestNews() {
         );
 
         const gdeltArticles =
-          await fetchGdeltArticles(gdeltQuery);
+          await fetchGdeltArticlesWithGalFallback(gdeltQuery, category.name);
 
         providerTelemetry('gdelt', 'success');
         providerTelemetry(
@@ -3422,6 +3474,23 @@ async function ingestNews() {
           continue;
         }
 
+        if (PRIVATE_B2_STAGE) {
+          try {
+            const staged = makePrivateStageRecord({
+              article, assessment, category: category.name,
+            });
+            privateStagedRows.push(staged);
+            markSeen(article, existingUrls, existingTitles, seenInCurrentRun);
+            categoryInserted++;
+            totalInserted++;
+          } catch (error) {
+            totalRejectedByGate++;
+            console.warn(`  Private stage refused: ${error instanceof Error ? error.message : 'invalid provenance'}`);
+          }
+          // Never construct or write a public.events row while frozen.
+          continue;
+        }
+
         if (baselineSeverity === null) baselineSeverity = assessment.severity;
         const delta = Math.round(assessment.severity - baselineSeverity);
 
@@ -3520,10 +3589,24 @@ async function ingestNews() {
   }
 
   console.log(
-    dryRun
-      ? `\nDone. Total unique would-insert: ${totalInserted} event(s).`
-      : `\nDone. Total unique inserted: ${totalInserted} event(s).`
+    PRIVATE_B2_STAGE
+      ? `\nPrivate staged canonical scores: ${totalInserted} event(s).`
+      : dryRun
+        ? `\nDone. Total unique would-insert: ${totalInserted} event(s).`
+        : `\nDone. Total unique inserted: ${totalInserted} event(s).`
   );
+  if (PRIVATE_B2_STAGE) {
+    const domain = String(process.env.GDELT_FORCE_CATEGORY ?? '');
+    const outDir = 'artifacts/restricted-current-scoring';
+    mkdirSync(outDir, { recursive: true });
+    writeFileSync(`${outDir}/${domain}.json`, JSON.stringify({
+      schema: 'geomacro.private-scoring-candidates.v1',
+      category: domain,
+      classifier_version: CLASSIFICATION_VERSION,
+      private_only: true,
+      records: privateStagedRows,
+    }) + '\n', { mode: 0o600 });
+  }
   console.log(
     `Rejected by gate: ${totalRejectedByGate}. ` +
       `Groq requests this run: ${groqRequestsThisRun}.`
