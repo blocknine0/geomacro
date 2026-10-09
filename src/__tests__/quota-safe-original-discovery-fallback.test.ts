@@ -90,7 +90,7 @@ describe("#1827 low-quota GDELT original publisher backup", () => {
     const dup = official();
     dup.categories[2].category = "macro";
     expect(summarizeOriginalFallback(dup).state).toBe("BACKUP_AUDIT_INVALID");
-    expect(JSON.stringify(summarizeOriginalFallback(dup))).not.toContain("private");
+    expect(JSON.stringify(summarizeOriginalFallback(dup))).not.toContain("secret.example");
   });
 
   it("does not falsely mark primary failures green when backup throws", async () => {
