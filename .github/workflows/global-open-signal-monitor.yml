@@ -1,0 +1,51 @@
+name: Global Open Signal Monitor (Discovery Only)
+
+# Open-web observability only, NOT canonical commercial publication.
+on:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "scripts/lib/market-signal-discovery.mjs"
+      - "scripts/ops/probe-market-signal-discovery.mjs"
+      - "src/__tests__/market-open-global-signal-discovery.test.ts"
+      - ".github/workflows/global-open-signal-monitor.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-open-signal-mesh-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  monitor-attempt-not-verified-event:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact revision (no credentials persisted)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Node 22 without paid packages
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Poll 3 open GDELT discovery categories (no original-date inference)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/open-discovery-mesh
+          chmod 700 artifacts/open-discovery-mesh
+          node scripts/ops/probe-market-signal-discovery.mjs
+      - name: Retain counts-only receipt, including upstream degraded states
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: global-open-discovery-monitor-${{ github.run_id }}
+          path: artifacts/open-discovery-mesh/three-domain-signal-receipt.json
+          if-no-files-found: warn
+          retention-days: 2
