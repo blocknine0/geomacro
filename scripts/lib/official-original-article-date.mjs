@@ -44,16 +44,43 @@ export function verifiedPublisherPageDate(html, now = new Date()) {
   const ms = now.getTime();
   if (!Number.isFinite(ms)) return null;
   const candidates = [];
-  for (const match of html.matchAll(/<meta\b[^>]{0,1100}>/giu)) {
-    const name = attr(match[0], "name").toLowerCase();
-    const property = attr(match[0], "property").toLowerCase();
+  // Linear, explicitly capped scans rather than potentially quadratic HTML
+  // regex matching on untrusted original-publisher markup.
+  const lowered = html.toLowerCase();
+  let offset = 0;
+  for (let scanned = 0; scanned < 60; scanned += 1) {
+    const begin = lowered.indexOf("<meta", offset);
+    if (begin < 0) break;
+    offset = begin + 5;
+    const next = lowered[offset];
+    if (next !== " " && next !== "\n" && next !== "\t" && next !== ">") continue;
+    const end = lowered.indexOf(">", offset);
+    if (end < 0 || end - begin > 1100) continue;
+    const tag = html.slice(begin, end + 1);
+    offset = end + 1;
+    const name = attr(tag, "name").toLowerCase();
+    const property = attr(tag, "property").toLowerCase();
     if (property === "article:published_time" || name === "datepublished") {
-      candidates.push(attr(match[0], "content"));
+      candidates.push(attr(tag, "content"));
     }
   }
-  for (const match of html.matchAll(/<script\b([^>]{0,500})>([\s\S]{0,30000}?)<\/script>/giu)) {
-    if (!/^(?:application\/ld\+json)(?:;|$)/iu.test(attr(match[1], "type"))) continue;
-    try { walkArticleJsonLd(JSON.parse(match[2]), candidates); } catch { /* never parse markup as code */ }
+  offset = 0;
+  for (let scanned = 0; scanned < 20; scanned += 1) {
+    const begin = lowered.indexOf("<script", offset);
+    if (begin < 0) break;
+    offset = begin + 7;
+    const next = lowered[offset];
+    if (next !== " " && next !== "\n" && next !== "\t" && next !== ">") continue;
+    const openingEnd = lowered.indexOf(">", offset);
+    if (openingEnd < 0 || openingEnd - begin > 500) continue;
+    const closingBegin = lowered.indexOf("</script>", openingEnd + 1);
+    if (closingBegin < 0) break;
+    offset = closingBegin + 9;
+    if (closingBegin - openingEnd > 30000) continue;
+    const tag = html.slice(begin, openingEnd + 1);
+    if (!/^(?:application\/ld\+json)(?:;|$)/iu.test(attr(tag, "type"))) continue;
+    const body = html.slice(openingEnd + 1, closingBegin);
+    try { walkArticleJsonLd(JSON.parse(body), candidates); } catch { /* no script execution */ }
   }
   // No original precise timestamp, invalid timestamp, or conflicting publisher
   // timestamps means no admission. Never substitute updated/dateModified.
