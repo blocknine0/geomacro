@@ -9,6 +9,106 @@
       "classification": "PRODUCTION",
       "status": "LIVE"
     },
+    "/api/agent/risk": {
+      "classification": "REMOVE",
+      "status": "REMOVED"
+    },
+    "/api/demo/feedback": {
+      "classification": "REMOVE",
+      "status": "REMOVED"
+    },
+    "/api/demo/preflight": {
+      "classification": "REMOVE",
+      "status": "REMOVED"
+    },
+    "/api/early-warning": {
+      "classification": "PRODUCTION",
+      "status": "LIVE"
+    },
+    "/api/goat/pilot/artifact": {
+      "classification": "REMOVE",
+      "status": "REMOVED"
+    },
+    "/api/goat/pilot/order": {
+      "classification": "REMOVE",
+      "status": "REMOVED"
+    },
+    "/api/goat/pilot/status": {
+      "classification": "REMOVE",
+      "status": "REMOVED"
+    },
+    "/api/health": {
+      "classification": "PRODUCTION",
+      "status": "LIVE"
+    },
+    "/api/intelligence/capabilities": {
+      "classification": "PRODUCTION",
+      "status": "LIVE"
+    },
+    "/api/intelligence/state": {
+      "classification": "PRODUCTION",
+      "status": "LIVE"
+    },
+    "/api/mcp": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/public-data-proxy": {
+      "classification": "PRODUCTION",
+      "status": "LIVE"
+    },
+    "/api/risk-gate": {
+      "classification": "PRODUCTION",
+      "status": "PRIVATE_PILOT"
+    },
+    "/api/risk-gate-readiness": {
+      "classification": "PRODUCTION",
+      "status": "PRIVATE_PILOT"
+    },
+    "/api/risk-object-keys": {
+      "classification": "PRODUCTION",
+      "status": "LIVE"
+    },
+    "/api/tameion/approve": {
+      "classification": "REMOVE",
+      "status": "REMOVED"
+    },
+    "/api/tameion/confirm": {
+      "classification": "REMOVE",
+      "status": "REMOVED"
+    },
+    "/api/tameion/decision": {
+      "classification": "REMOVE",
+      "status": "REMOVED"
+    },
+    "/api/testnet-tester/$": {
+      "classification": "REMOVE",
+      "status": "REMOVED"
+    },
+    "/api/v1/intelligence/query": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/x402/circle/intelligence": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/x402/intelligence": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/x402/nevermined/intelligence": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/x402/risk": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/x402/risk/availability": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
     "/arena": {
       "classification": "REMOVE",
       "status": "REMOVED"
@@ -120,102 +220,6 @@
     "/testnet-console": {
       "classification": "REMOVE",
       "status": "REMOVED"
-    },
-    "/api/agent/risk": {
-      "classification": "REMOVE",
-      "status": "REMOVED"
-    },
-    "/api/demo/feedback": {
-      "classification": "REMOVE",
-      "status": "REMOVED"
-    },
-    "/api/demo/preflight": {
-      "classification": "REMOVE",
-      "status": "REMOVED"
-    },
-    "/api/early-warning": {
-      "classification": "PRODUCTION",
-      "status": "LIVE"
-    },
-    "/api/goat/pilot/artifact": {
-      "classification": "REMOVE",
-      "status": "REMOVED"
-    },
-    "/api/goat/pilot/order": {
-      "classification": "REMOVE",
-      "status": "REMOVED"
-    },
-    "/api/goat/pilot/status": {
-      "classification": "REMOVE",
-      "status": "REMOVED"
-    },
-    "/api/health": {
-      "classification": "PRODUCTION",
-      "status": "LIVE"
-    },
-    "/api/intelligence/capabilities": {
-      "classification": "PRODUCTION",
-      "status": "LIVE"
-    },
-    "/api/intelligence/state": {
-      "classification": "PRODUCTION",
-      "status": "LIVE"
-    },
-    "/api/public-data-proxy": {
-      "classification": "PRODUCTION",
-      "status": "LIVE"
-    },
-    "/api/risk-gate": {
-      "classification": "PRODUCTION",
-      "status": "PRIVATE_PILOT"
-    },
-    "/api/risk-gate-readiness": {
-      "classification": "PRODUCTION",
-      "status": "PRIVATE_PILOT"
-    },
-    "/api/risk-object-keys": {
-      "classification": "PRODUCTION",
-      "status": "LIVE"
-    },
-    "/api/tameion/approve": {
-      "classification": "REMOVE",
-      "status": "REMOVED"
-    },
-    "/api/tameion/confirm": {
-      "classification": "REMOVE",
-      "status": "REMOVED"
-    },
-    "/api/tameion/decision": {
-      "classification": "REMOVE",
-      "status": "REMOVED"
-    },
-    "/api/testnet-tester/$": {
-      "classification": "REMOVE",
-      "status": "REMOVED"
-    },
-    "/api/x402/circle/intelligence": {
-      "classification": "PRODUCTION",
-      "status": "CONTROLLED_PRELAUNCH"
-    },
-    "/api/v1/intelligence/query": {
-      "classification": "PRODUCTION",
-      "status": "CONTROLLED_PRELAUNCH"
-    },
-    "/api/x402/intelligence": {
-      "classification": "PRODUCTION",
-      "status": "CONTROLLED_PRELAUNCH"
-    },
-    "/api/x402/nevermined/intelligence": {
-      "classification": "PRODUCTION",
-      "status": "CONTROLLED_PRELAUNCH"
-    },
-    "/api/x402/risk": {
-      "classification": "PRODUCTION",
-      "status": "CONTROLLED_PRELAUNCH"
-    },
-    "/api/x402/risk/availability": {
-      "classification": "PRODUCTION",
-      "status": "CONTROLLED_PRELAUNCH"
     }
   }
 }
