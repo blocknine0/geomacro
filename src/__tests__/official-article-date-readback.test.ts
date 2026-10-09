@@ -27,6 +27,23 @@ describe("bounded original-publisher article precise-date fallback", () => {
   it("requires explicit precise publication time, not merely date or update time", () => {
     expect(verifiedPublisherPageDate(page("2026-10-09T12:45:00Z"), now))
       .toBe("2026-10-09T12:45:00.000Z");
+    // The HTML closing tag permits whitespace before '>'; an earlier
+    // regexp accepted only the exact spelling '</script>' and lost evidence.
+    expect(verifiedPublisherPageDate(
+      '<script type="application/ld+json">' +
+      '{"@type":"NewsArticle","datePublished":"2026-10-09T12:45:00Z"}' +
+      '</script >', now,
+    )).toBe("2026-10-09T12:45:00.000Z");
+    expect(verifiedPublisherPageDate(
+      '<script type="application/ld+json">' +
+      '{"@type":"NewsArticle","datePublished":"2026-10-09T12:45:00Z"}' +
+      '</SCRIPT  \t>', now,
+    )).toBe("2026-10-09T12:45:00.000Z");
+    expect(verifiedPublisherPageDate(
+      '<script type="application/ld+json">' +
+      '{"@type":"NewsArticle","datePublished":"2026-10-09T12:45:00Z"}' +
+      '</script-x>', now,
+    )).toBeNull();
     expect(verifiedPublisherPageDate('<meta property="article:published_time" content="2026-10-09T12:45:00+00:00">', now))
       .toBe("2026-10-09T12:45:00.000Z");
     expect(verifiedPublisherPageDate('<meta property="article:modified_time" content="2026-10-09T12:00:00Z">', now)).toBeNull();
