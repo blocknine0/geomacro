@@ -13,6 +13,8 @@ on:
       - "scripts/sync-country-raw-source-mesh.mjs"
       - "scripts/drain-live-structure.mjs"
       - "scripts/lib/official-native-rss.mjs"
+      - "scripts/lib/official-native-alternates.mjs"
+      - "src/__tests__/official-native-alternates.test.ts"
       - "scripts/ops/probe-official-native-rss-three-domains.mjs"
       - "src/__tests__/official-native-rss-three-domains.test.ts"
       - "scripts/intelligence-orchestrator.mjs"
@@ -216,6 +218,10 @@ jobs:
           ' phase-a-bounded-heartbeat.json >/dev/null
 
       - name: Verify canonical direct-Postgres RSS corroboration transport
+        # Heavy production DB corroboration belongs to RAW/transport-changing
+        # PRs, not fixed read-only source discovery/Atom parser edits. Source
+        # changes have an independent live URL+native date acceptance job.
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         env:
           GRI_DB_MODE: direct_postgres
         shell: bash
