@@ -177,18 +177,28 @@ export function buildPrivateSupabaseFreeGriProof({
 
   const seen = new Set();
   const latestByDomain = new Map();
+  const latestOriginalPublicationByDomain = new Map();
   for (const row of admission.events) {
     validateRow(row, asOfMs);
     privateAssertion(!seen.has(row.id), "GRI_PRIVATE_EVENT_DUPLICATE");
     seen.add(row.id);
     latestByDomain.set(row.category,
       Math.max(latestByDomain.get(row.category) ?? 0, Date.parse(row.created_at)));
+    latestOriginalPublicationByDomain.set(row.category,
+      Math.max(latestOriginalPublicationByDomain.get(row.category) ?? 0,
+        Date.parse(row.published_at)));
   }
   for (const category of GRI_CATEGORIES) {
     privateAssertion(
       latestByDomain.has(category) &&
       asOfMs - latestByDomain.get(category) <= MAX_SNAPSHOT_AGE_MS,
       "GRI_PRIVATE_DOMAIN_NOT_CURRENT:" + category,
+    );
+    // Recently ingested OLD news is not recently published news.
+    // Do not let a fresh collection timestamp re-date old original reporting.
+    privateAssertion(
+      asOfMs - latestOriginalPublicationByDomain.get(category) <= MAX_SNAPSHOT_AGE_MS,
+      "GRI_PRIVATE_ORIGINAL_PUBLICATION_STALE:" + category,
     );
   }
   const calculation = calculateGri(admission.events, new Date(asOfMs));
