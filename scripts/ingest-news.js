@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { makePrivateStageRecord } from './lib/restricted-private-scored-stage.mjs';
+import { classifyPrivateDerivedTextQuality } from './lib/private-derived-text-quality.mjs';
 import {
   privatePublisherPreAdmission, privateSingleDomainCandidateLimit,
 } from './lib/private-scoring-candidate-admission.mjs';
@@ -3512,7 +3513,12 @@ async function ingestNews() {
               article, assessment, category: category.name,
             });
             privateStagedRows.push(staged);
-            if (privateDiagnostic) privateDiagnostic.private_staged_count++;
+            if (privateDiagnostic) {
+              privateDiagnostic.private_staged_count++;
+              if (staged.editorial_review_pending) {
+                privateDiagnostic.editorial_review_pending_count++;
+              }
+            }
             markSeen(article, existingUrls, existingTitles, seenInCurrentRun);
             categoryInserted++;
             totalInserted++;
@@ -3521,6 +3527,15 @@ async function ingestNews() {
             if (privateDiagnostic) {
               addDiagnosticCount(privateDiagnostic.private_stage_rejections,
                 safePrivateStageErrorCode(error));
+              if (/^PRIVATE_SCORING_DERIVED_/u.test(String(error?.message ?? ""))) {
+                const quality = classifyPrivateDerivedTextQuality(assessment);
+                for (const field of ['narrative', 'summary']) {
+                  if (quality[field] !== 'valid') {
+                    addDiagnosticCount(privateDiagnostic.derived_quality_rejections,
+                      `${field}_${quality[field]}`);
+                  }
+                }
+              }
             }
             console.warn(`  Private stage refused: ${error instanceof Error ? error.message : 'invalid provenance'}`);
           }

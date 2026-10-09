@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { preparePrivateDerivedText, validatePrivateDerivedRecord } from "./private-derived-text-quality.mjs";
 
 export const PRIVATE_STAGE_SCHEMA = "geomacro.restricted-private-scored-stage.v1";
 export const CANONICAL_CLASSIFIER_VERSION = "event-severity-v1.0.5";
@@ -20,15 +21,6 @@ function safeTime(value, nowMs) {
     throw new Error("PRIVATE_SCORING_ORIGINAL_PUBLISH_TIME_INVALID");
   }
   return new Date(millis).toISOString();
-}
-
-function safeText(value, max) {
-  const normalized = String(value ?? "").replace(/<[^>]*>/gu, " ").replace(/\s+/gu, " ").trim();
-  if (normalized.length < 12 || normalized.length > max ||
-      /[\u0000-\u001f]/u.test(normalized)) {
-    throw new Error("PRIVATE_SCORING_DERIVED_TEXT_INVALID");
-  }
-  return normalized;
 }
 
 function sourceIdentity(article) {
@@ -86,6 +78,7 @@ export function makePrivateStageRecord({ article, assessment, category, now = ne
   }
   const timestamp = safeTime(article?.publishedAt, now.getTime());
   const identity = sourceIdentity(article);
+  const derived = preparePrivateDerivedText(assessment);
   const id = sha256([category, identity.source_url, identity.source_title_sha256, timestamp].join("\n"));
   return {
     id,
@@ -93,8 +86,9 @@ export function makePrivateStageRecord({ article, assessment, category, now = ne
     observed_at: timestamp,
     severity,
     confidence,
-    narrative: safeText(assessment.narrative, 300),
-    summary: safeText(assessment.summary, 850),
+    narrative: derived.narrative,
+    summary: derived.summary,
+    editorial_review_pending: derived.editorial_review_pending,
     classifier: {
       version: CANONICAL_CLASSIFIER_VERSION,
       prompt_version: CANONICAL_PROMPT_VERSION,
@@ -138,8 +132,7 @@ export function makePrivateStageBundle(records, { now = new Date() } = {}) {
         source.source_url !== row.private_source.source_url) {
       throw new Error("PRIVATE_SCORING_STAGE_SOURCE_INVALID");
     }
-    safeText(row.narrative, 300);
-    safeText(row.summary, 850);
+    validatePrivateDerivedRecord(row);
     if (seen.has(row.id)) throw new Error("PRIVATE_SCORING_STAGE_DUPLICATE");
     seen.add(row.id);
     return row;

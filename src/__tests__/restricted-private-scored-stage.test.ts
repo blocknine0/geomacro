@@ -100,7 +100,7 @@ describe("#1803 restricted canonical private score archive", () => {
     const archive = readFileSync("scripts/ops/archive-restricted-private-scored-stage.mjs", "utf8");
     const client = readFileSync("scripts/ops/b2-s3-client.mjs", "utf8");
     expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1830')");
+    expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1833')");
     expect(workflow).toContain(".github/workflows/restricted-private-current-scoring.yml");
     expect(workflow).not.toContain("schedule:");
     expect(workflow).not.toContain("workflow_run:");
