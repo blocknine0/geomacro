@@ -140,6 +140,38 @@ describe("#1827 market-style three-category open-discovery receipts", () => {
       .toThrow("MARKET_DISCOVERY_PAYLOAD_INVALID");
   });
 
+  it("diagnoses upstream rate limits and response-format drift without exposing provider data", async () => {
+    const code429 = await pollOpenDiscovery("macro", {
+      now, fetchImpl: async () => new Response("upstream secret text", { status: 429 }),
+    });
+    expect(code429).toMatchObject({
+      state: "SOURCE_UNAVAILABLE", source_failure_reason: "HTTP_429",
+      publicly_scored: false, chargeable: false,
+    });
+    expect(JSON.stringify(code429)).not.toContain("secret");
+    const invalidMedia = await pollOpenDiscovery("macro", {
+      now, fetchImpl: async () => new Response("<html>invalid body</html>", {
+        headers: { "content-type": "text/html" },
+      }),
+    });
+    expect(invalidMedia.source_failure_reason).toBe("UNEXPECTED_CONTENT_TYPE");
+    const invalidJson = await pollOpenDiscovery("macro", {
+      now, fetchImpl: async () => new Response("upstream invalid json", {
+        headers: { "content-type": "text/plain; charset=utf-8" },
+      }),
+    });
+    expect(invalidJson.source_failure_reason).toBe("INVALID_JSON");
+    const validPlainJson = await pollOpenDiscovery("macro", {
+      now, fetchImpl: async () => new Response(JSON.stringify({ articles: good }), {
+        headers: { "content-type": "text/plain; charset=utf-8" },
+      }),
+    });
+    expect(validPlainJson).toMatchObject({
+      source_transport_ok: true, source_failure_reason: null,
+      state: "MULTI_OUTLET_DISCOVERY_ONLY", publicly_scored: false,
+    });
+  });
+
   it("registers a dedicated recurring no-secrets low-cost monitoring lane", () => {
     const job = readFileSync(".github/workflows/global-open-signal-monitor.yml", "utf8");
     expect(job).toContain("17,47 * * * *");
