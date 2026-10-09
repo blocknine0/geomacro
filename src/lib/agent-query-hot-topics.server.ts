@@ -7,7 +7,7 @@ import {
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 const MIN_SOURCE_LAG_BUDGET_SECONDS = 60;
-const MAX_SOURCE_CADENCE_MISSES = 3;
+const MAX_SOURCE_CADENCE_INTERVALS = 1;
 const MAX_RECENT_ROWS = 500;
 const MAX_DELIVERED_EVENTS = 25;
 const DELIVERABLE_STATUSES = new Set(["VERIFIED", "DERIVED_ONLY"]);
@@ -266,7 +266,7 @@ export async function loadAgentHotTopics(input: {
       // most three missed cycles (with a 60-second floor for scheduler jitter),
       // never a blanket 30-minute grace that could hide a stalled fast source.
       allowedLagSeconds: cadenceValid
-        ? Math.max(MIN_SOURCE_LAG_BUDGET_SECONDS, cadenceSeconds * MAX_SOURCE_CADENCE_MISSES)
+        ? Math.max(MIN_SOURCE_LAG_BUDGET_SECONDS, cadenceSeconds * MAX_SOURCE_CADENCE_INTERVALS)
         : 0,
     };
   });
