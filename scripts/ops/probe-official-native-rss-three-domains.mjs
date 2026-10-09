@@ -9,6 +9,33 @@ import { fetchOfficialNativeArticles } from "../lib/official-native-rss.mjs";
 const CATEGORIES = ["geopolitics", "macro", "rare_earth"];
 const OUTPUT = "artifacts/official-native-rss/three-domains.json";
 
+/**
+ * These are three sampled official publisher feeds, NOT a global-news census.
+ * Even a feed with 0 eligible items cannot prove that a domain had no news.
+ * Report distinct evidence-gate failures without exposing article/source text.
+ */
+export function classifyNativeFeedGap({ articlesCount, diagnostics }) {
+  if (articlesCount > 0) return "ORIGINAL_NATIVE_EVENTS_PRIVATE_ONLY";
+  const primaryItems = Number(diagnostics.item_count ?? 0);
+  const alternateItems = Number(diagnostics.alternate_feed_items_seen ?? 0);
+  const recentNative = Number(diagnostics.item_native_date_in_window_count ?? 0) +
+    Number(diagnostics.alternate_native_current_items ?? 0);
+  const updatedOnly = Number(diagnostics.alternate_atom_updated_only_items ?? 0);
+  const nativeDates = Number(diagnostics.item_native_pubdate_count ?? 0) +
+    Number(diagnostics.alternate_original_pubdate_items ?? 0);
+  const topicMatches = Number(diagnostics.domain_topic_title_count ?? 0) +
+    Number(diagnostics.alternate_topic_match_items ?? 0);
+
+  if (recentNative > 0) return "RECENT_NATIVE_EVENT_REJECTED_BY_TOPIC_OR_PROVENANCE";
+  if (updatedOnly > 0 && Number(diagnostics.alternate_original_pubdate_items ?? 0) === 0) {
+    return "PUBLISHER_ARTICLE_DATE_UNVERIFIED";
+  }
+  if (primaryItems + alternateItems === 0) return "SAMPLED_FEED_NO_ITEMS";
+  if (nativeDates === 0) return "SAMPLED_FEED_MISSING_NATIVE_PUBLISH_DATES";
+  if (topicMatches === 0) return "SAMPLED_FEED_NO_RELEVANT_TOPIC_MATCH";
+  return "SAMPLED_FEED_HAS_ONLY_STALE_OR_INELIGIBLE_EVENTS";
+}
+
 export async function probeOfficialThreeDomains({
   fetchArticles = fetchOfficialNativeArticles, now = new Date(),
 } = {}) {
@@ -53,7 +80,10 @@ export async function probeOfficialThreeDomains({
         alternate_article_page_precise: diagnostics.alternate_article_page_precise ?? null,
         alternate_article_page_admitted: diagnostics.alternate_article_page_admitted ?? null,
         latest_original_at: dates.length ? new Date(Math.max(...dates)).toISOString() : null,
-        current_native_source_state: articles.length > 0 ? "ORIGINAL_FEED_EVENT_PRESENT_PRIVATE" : "NO_RECENT_ORIGINAL_EVENT",
+        current_native_source_state: articles.length > 0 ? "ORIGINAL_FEED_EVENT_PRESENT_PRIVATE" : "NO_ELIGIBLE_PRIVATE_CANDIDATE",
+        bounded_feed_gap_reason: classifyNativeFeedGap({ articlesCount: articles.length, diagnostics }),
+        source_scope: "THREE_SAMPLED_OFFICIAL_PUBLISHER_FEEDS_ONLY",
+        global_news_absence_proven: false,
         public_scored_verified: false,
         commerce_eligible: false,
       });
@@ -78,6 +108,9 @@ export async function probeOfficialThreeDomains({
         alternate_article_page_precise: null,
         alternate_article_page_admitted: null,
         latest_original_at: null, current_native_source_state: "SOURCE_UNAVAILABLE",
+        bounded_feed_gap_reason: "ALL_CONFIGURED_FEEDS_UNAVAILABLE",
+        source_scope: "THREE_SAMPLED_OFFICIAL_PUBLISHER_FEEDS_ONLY",
+        global_news_absence_proven: false,
         public_scored_verified: false, commerce_eligible: false,
       });
     }
@@ -88,6 +121,8 @@ export async function probeOfficialThreeDomains({
     status: results.every((row) => row.fetch_ok) ? "SOURCE_POLL_COMPLETE" : "SOURCE_POLL_DEGRADED",
     all_three_feeds_reached: results.every((row) => row.fetch_ok),
     current_private_original_event_domains: results.filter((row) => row.recent_original_count > 0).length,
+    measured_source_scope: "THREE_SAMPLED_OFFICIAL_PUBLISHER_FEEDS_ONLY",
+    implies_no_global_news: false,
     proves_public_scored_intelligence: false,
     public_published: false,
     funds_touched: false,
