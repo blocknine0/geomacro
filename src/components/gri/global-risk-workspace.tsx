@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -19,76 +19,9 @@ import {
 const TIMEFRAMES: Timeframe[] = ["24H", "7D", "30D"];
 const FRESH_SNAPSHOT_MS = 6 * 60 * 60 * 1000;
 
-// Separate historical PROVENANCE channel, not a substitute for a current GRI
-// snapshot. It returns no risk scores, article texts, publisher URLs or
-// chargeable customer intelligence.
-const HISTORICAL_GRI_METADATA_URL =
-  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/historical-continuity/global-risk";
-
-type HistoricalGriMetadata = {
-  ok: true;
-  schema: "geomacro.public-global-risk-historical-continuity.v1";
-  product: "global-risk";
-  historical_only: true;
-  current_snapshot_available: false;
-  commercial_eligible: false;
-  archive_generated_at: string;
-  original_snapshot_as_of: string | null;
-  independently_rechecked_b2_now: false;
-  hot_freshness_not_asserted: true;
-  source_news_freshness_not_asserted: true;
-  source_rights_not_recertified: true;
-  x402_chargeable: false;
-};
-function acceptHistoricalGriMetadata(value: unknown): HistoricalGriMetadata | null {
-  if(!value || typeof value!=="object" || Array.isArray(value))return null;
-  const candidate=value as Partial<HistoricalGriMetadata>;
-  const date=Date.parse(String(candidate.archive_generated_at??""));
-  const age=Date.now()-date;
-  if(candidate.ok!==true ||
-    candidate.schema!=="geomacro.public-global-risk-historical-continuity.v1" ||
-    candidate.product!=="global-risk" ||
-    candidate.historical_only!==true ||
-    candidate.current_snapshot_available!==false ||
-    candidate.commercial_eligible!==false ||
-    candidate.independently_rechecked_b2_now!==false ||
-    candidate.hot_freshness_not_asserted!==true ||
-    candidate.source_news_freshness_not_asserted!==true ||
-    candidate.source_rights_not_recertified!==true ||
-    candidate.x402_chargeable!==false ||
-    !Number.isFinite(date) || age < -5*60_000 ||
-    age > 30*24*60*60_000 ||
-    (candidate.original_snapshot_as_of!==null &&
-      (!Number.isFinite(Date.parse(String(candidate.original_snapshot_as_of??""))) ||
-        Date.parse(String(candidate.original_snapshot_as_of)) > date+5*60_000))
-  )return null;
-  return candidate as HistoricalGriMetadata;
-}
-
 export function GlobalRiskWorkspace() {
   const risk = useGlobalRisk();
   const [timeframe, setTimeframe] = useState<Timeframe>("7D");
-  const [historicalArchive,setHistoricalArchive] = useState<HistoricalGriMetadata|null>(null);
-  useEffect(()=>{
-    // One bounded metadata-only D1 request when current verified UI data is
-    // missing; do not poll B2 or substitute any historical GRI score.
-    if(risk.data || risk.status==="loading")return;
-    const controller=new AbortController();
-    const timeout=AbortSignal.timeout(4_500);
-    const combined=AbortSignal.any([controller.signal,timeout]);
-    void fetch(HISTORICAL_GRI_METADATA_URL,{
-      method:"GET",headers:{Accept:"application/json"},
-      credentials:"omit",cache:"no-store",signal:combined,
-    }).then(async response=>{
-      if(!response.ok)return null;
-      return acceptHistoricalGriMetadata(await response.json());
-    }).then(value=>{
-      if(!controller.signal.aborted)setHistoricalArchive(value);
-    }).catch(()=>{
-      if(!controller.signal.aborted)setHistoricalArchive(null);
-    });
-    return ()=>controller.abort();
-  },[risk.data,risk.status]);
 
   if (risk.status === "loading" && !risk.data) {
     return (
@@ -112,32 +45,6 @@ export function GlobalRiskWorkspace() {
         <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
           {risk.error?.message ?? "Geomacro could not load the canonical verified GRI reading."}
         </p>
-        {historicalArchive ? (
-          <section aria-label="Verified historical archive" className="mt-6 max-w-2xl rounded-xl border border-border/70 bg-muted/20 p-5">
-            <p className="text-sm font-semibold">Historical archive provenance available</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Geomacro retains a previously B2-verified Global Risk archive generated on{" "}
-              <time dateTime={historicalArchive.archive_generated_at}>
-                {formatDate(historicalArchive.archive_generated_at)}
-              </time>. This metadata does not mean that a current verified risk
-              reading is available. The historical score and graph remain hidden
-              until their full canonical continuity package can be verified.
-            </p>
-            {historicalArchive.original_snapshot_as_of ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Original risk snapshot as of:{" "}
-                <time dateTime={historicalArchive.original_snapshot_as_of}>
-                  {formatDate(historicalArchive.original_snapshot_as_of)}
-                </time>. Not refreshed or extrapolated.
-              </p>
-            ) : (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Original baseline risk snapshot time is not independently
-                established by this archive reference.
-              </p>
-            )}
-          </section>
-        ) : null}
         <Button type="button" variant="outline" onClick={risk.retry} className="mt-6 gap-2">
           <RefreshCw className="h-4 w-4" /> Retry canonical read
         </Button>
