@@ -1,0 +1,45 @@
+name: Public Three Domain Freshness Audit
+
+# Three unauthenticated public GETs only, never B2 direct/DB/Groq/payment.
+# A degraded or stale source makes this workflow RED, not fake current scores.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/public-three-domain-freshness-audit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-public-three-domain-freshness
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Checkout canonical repo for audit only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Inspect live three-domain scored dates plus D1 overlay binding (no charge)
+        run: node scripts/ops/audit-live-public-intelligence-three-domains.mjs
+      - name: Upload safe aggregate evidence, even when current scoring missing
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: public-intelligence-three-domain-freshness-${{ github.run_id }}
+          path: artifacts/public-intelligence-freshness/three-domains.json
+          if-no-files-found: warn
+          retention-days: 7
