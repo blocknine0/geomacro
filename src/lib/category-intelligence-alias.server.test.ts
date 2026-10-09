@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bindCategoryAliasPayload } from "./category-intelligence-alias.server";
+import { classifyCentralSecurityRoute } from "./central-security.server";
 
 const subject = { type: "country", country_iso3: "IND" as const };
 
@@ -99,5 +100,16 @@ describe("fixed-scope category intelligence aliases", () => {
       cases[1].config,
     );
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("category intelligence security routing", () => {
+  it.each([
+    "/api/v1/intelligence/geopolitics",
+    "/api/v1/intelligence/macro-fx",
+    "/api/v1/intelligence/critical-minerals",
+  ])("classifies %s as payment protected", (pathname) => {
+    expect(classifyCentralSecurityRoute(pathname, "POST")).toBe("payment");
+    expect(classifyCentralSecurityRoute(pathname, "GET")).toBe("payment");
   });
 });
