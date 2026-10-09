@@ -41,7 +41,12 @@ const countrySubject = z.object({
 const corridorSubject = z.object({
   origin_country_iso3: iso3,
   destination_country_iso3: iso3,
-}).superRefine((value, ctx) => {
+});
+
+function rejectSameCountryCorridor(
+  value: { origin_country_iso3: string; destination_country_iso3: string },
+  ctx: z.RefinementCtx,
+) {
   if (value.origin_country_iso3 === value.destination_country_iso3) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -49,7 +54,7 @@ const corridorSubject = z.object({
       message: "Corridor endpoints must differ",
     });
   }
-});
+}
 
 const genericSubject = z.discriminatedUnion("type", [
   z.object({ type: z.literal("country"), country_iso3: iso3 }),
@@ -58,7 +63,9 @@ const genericSubject = z.discriminatedUnion("type", [
     origin_country_iso3: iso3,
     destination_country_iso3: iso3,
   }),
-]);
+]).superRefine((value, ctx) => {
+  if (value.type === "corridor") rejectSameCountryCorridor(value, ctx);
+});
 
 export const countryRiskToolSchema = countrySubject.extend({
   domains,
@@ -72,7 +79,7 @@ export const corridorRiskToolSchema = corridorSubject.extend({
   max_age_seconds: maxAgeSeconds,
   detail,
   client_request_id: clientRequestId,
-}).strict();
+}).strict().superRefine(rejectSameCountryCorridor);
 
 export const subjectIntelligenceToolSchema = z.object({
   subject: genericSubject,
