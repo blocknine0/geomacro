@@ -9,6 +9,7 @@ on:
     paths:
       - ".github/workflows/intelligence-current-scoring-all-domains.yml"
       - "scripts/ops/run-intelligence-current-scoring-cycle.mjs"
+      - "scripts/ops/supabase-free-tier-budget.mjs"
       - "scripts/ops/sync-fastlane-scored-intelligence.mjs"
       - "scripts/ops/republish-b2-public-intelligence-scored-only.mjs"
       - "src/lib/public-intelligence-production.server.ts"
@@ -116,6 +117,14 @@ jobs:
             throw new Error('CURRENT_SCORING_DB_NOT_AUTHORITATIVE');
           }
           NODE
+
+      - name: Require real authoritative Supabase write headroom
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Legacy classifier writes public.events; do not run when the
+          # frozen/free-tier guard says bulk_write_allowed=false.
+          node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal
 
       - name: Score stale current domains and publish verified B2 state
         shell: bash

@@ -35,6 +35,30 @@ describe("#1414 current scored Intelligence across all launch domains", () => {
     expect(workflow).toContain('GROQ_MAX_REQUESTS_PER_RUN: "3"');
   });
 
+  it("rejects frozen or unavailable Supabase write budgets before every legacy scorer", () => {
+    const budgetGate = "requireCanonicalScoringWriteHeadroom()";
+    expect(script).toContain('const FREE_TIER_BUDGET_CHECK = "scripts/ops/supabase-free-tier-budget.mjs"');
+    expect(script).toContain('"--require-bulk-write", "--require-normal"');
+    expect(script).toContain('code: "CURRENT_SCORING_CANONICAL_WRITE_HEADROOM_REQUIRED"');
+    expect(script).toContain('code: "CURRENT_SCORING_CANONICAL_WRITE_BUDGET_INVALID"');
+    expect(script).toContain('budget.mode !== "normal"');
+    expect(script).toContain('budget.bulk_write_allowed !== true');
+    expect(script).toContain('budget.policy?.recurring_ingest_allowed !== true');
+    expect(script).toContain('process.exit(78);');
+    expect(script.indexOf(`if (!${budgetGate})`)).toBeLessThan(
+      script.indexOf("patchCanonicalScorer();"),
+    );
+    expect(script.indexOf(`if (!${budgetGate})`)).toBeLessThan(
+      script.indexOf("for (const category of DOMAINS)"),
+    );
+    expect(workflow).toContain("Require real authoritative Supabase write headroom");
+    const check = "node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal";
+    expect(workflow).toContain(check);
+    expect(workflow.indexOf(check)).toBeLessThan(
+      workflow.indexOf("node scripts/ops/run-intelligence-current-scoring-cycle.mjs"),
+    );
+  });
+
   it("fails closed on stale launch domains and republishes the canonical B2 projection only after scoring", () => {
     expect(script).toContain("CURRENT_SCORING_REQUIRED_FRESHNESS_MISSING");
     expect(script).toContain("runPublicationSync();");
