@@ -189,6 +189,13 @@ describe("Geomacro MCP + thin agent contract", () => {
     expect(mcpSource).not.toContain("settleCoinbaseX402");
   });
 
+  it("never reports an invalid or tampered Risk Object as verified", () => {
+    expect(mcpSource).toContain("ok: verification.valid");
+    expect(mcpSource).toContain("toolResult(id, payload, !payload.ok)");
+    expect(mcpSource).not.toContain('reason_codes.includes("verification_key_registry_error")');
+    expect(mcpSource).toContain('error: "Risk Object verification failed"');
+  });
+
   it("rejects modern MCP header/body mismatches fail closed", async () => {
     const request = modernRequest("tools/list");
     const badHeaders = new Headers(request.headers);
