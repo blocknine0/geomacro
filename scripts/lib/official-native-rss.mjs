@@ -196,6 +196,7 @@ export async function fetchOfficialNativeArticles(category, {
   if (diagnostics && typeof diagnostics === "object") {
     diagnostics.third_feed_attempted = false;
     diagnostics.third_feed_ok = null;
+    diagnostics.third_feed_failure_code = null;
   }
   if (combined.length>0 || !includeThirdPublisher) {
     if (!combined.length && primaryUnavailable && alternateUnavailable)
@@ -214,9 +215,29 @@ export async function fetchOfficialNativeArticles(category, {
     if (diagnostics && typeof diagnostics === "object")
       diagnostics.third_feed_ok = true;
     return third;
-  } catch {
-    if (diagnostics && typeof diagnostics === "object")
+  } catch (error) {
+    if (diagnostics && typeof diagnostics === "object") {
       diagnostics.third_feed_ok = false;
+      const code = error instanceof Error ? error.message : "";
+      // Explicit closed enum. Catch never prints arbitrary host, URL, HTML
+      // or third-party error messages as operational diagnostics.
+      const allowed = new Set([
+        "OFFICIAL_THIRD_HTTP_FORBIDDEN",
+        "OFFICIAL_THIRD_HTTP_NOT_FOUND",
+        "OFFICIAL_THIRD_HTTP_RATE_LIMITED",
+        "OFFICIAL_THIRD_HTTP_UPSTREAM_FAILURE",
+        "OFFICIAL_THIRD_HTTP_NOT_OK",
+        "OFFICIAL_THIRD_CONTENT_TYPE_INVALID",
+        "OFFICIAL_THIRD_BODY_INVALID",
+        "OFFICIAL_THIRD_TOO_LARGE",
+        "OFFICIAL_THIRD_RSS_INVALID",
+        "OFFICIAL_THIRD_CLOCK_INVALID",
+        "ORIGINAL_FEED_NETWORK_UNAVAILABLE",
+        "ORIGINAL_FEED_RECOVERY_EXHAUSTED",
+      ]);
+      diagnostics.third_feed_failure_code = allowed.has(code)
+        ? code : "OFFICIAL_THIRD_UNEXPECTED_FAILURE";
+    }
     if (primaryUnavailable && alternateUnavailable)
       throw new Error("OFFICIAL_ORIGINAL_FEEDS_UNAVAILABLE");
     return [];

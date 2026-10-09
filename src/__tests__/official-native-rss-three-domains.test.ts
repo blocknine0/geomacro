@@ -104,6 +104,33 @@ describe("three official publishers' original-event RSS discovery", () => {
     expect(JSON.stringify(audit)).not.toContain("https://");
   });
 
+  it("carries only a stable minerals third-feed failure code into hourly source audit",async()=>{
+    const fetchArticles=vi.fn(async (_category:string, {diagnostics}:{
+      diagnostics:Record<string,unknown>
+    })=>{
+      Object.assign(diagnostics,{
+        item_count:0,alternate_feed_items_seen:12,
+        alternate_native_date_items:0,
+        alternate_atom_updated_only_items:12,
+        third_feed_attempted:true,
+        third_feed_ok:false,
+        third_feed_failure_code:"OFFICIAL_THIRD_HTTP_FORBIDDEN",
+      });
+      return [];
+    });
+    const proof=await probeOfficialThreeDomains({now,fetchArticles});
+    expect(proof.all_three_feeds_reached).toBe(true);
+    for(const row of proof.categories) {
+      expect(row.third_feed_failure_code).toBe("OFFICIAL_THIRD_HTTP_FORBIDDEN");
+      expect(row.third_feed_ok).toBe(false);
+      expect(row.commerce_eligible).toBe(false);
+    }
+    expect(JSON.stringify(proof)).not.toContain("https://");
+    expect(proof.b2_requests).toBe(0);
+    expect(proof.supabase_writes).toBe(0);
+    expect(proof.funds_touched).toBe(false);
+  });
+
   it("counts actual alternate-native published tags, not the stale diagnostic alias", () => {
     const classify = (extra: Record<string,number>) =>
       classifyNativeFeedGap({articlesCount:0,diagnostics:{

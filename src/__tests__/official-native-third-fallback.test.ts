@@ -154,6 +154,68 @@ describe("#1827 three-domain third publisher cold-source RSS",()=>{
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
+  it.each([
+    [403, "OFFICIAL_THIRD_HTTP_FORBIDDEN"],
+    [404, "OFFICIAL_THIRD_HTTP_NOT_FOUND"],
+    [503, "OFFICIAL_THIRD_HTTP_UPSTREAM_FAILURE"],
+  ])("surfaces only bounded third-family HTTP %i diagnostics, no source URL/body leak",
+    async(status,expectedCode)=>{
+      const body="SENSITIVE_HTML_OR_ARTICLE_NOT_FOR_DIAGNOSTICS";
+      const fetchImpl=vi.fn(async (u:string)=>{
+        if(u===OFFICIAL_NATIVE_FEEDS.rare_earth.url)return res(emptyRss);
+        if(u===ORIGINAL_PUBLISHER_ALTERNATES.rare_earth.url)
+          return res(emptyAtom,"application/atom+xml");
+        return new Response(body,{status,headers:{"content-type":"text/html"}});
+      });
+      const diagnostics:Record<string,unknown>={};
+      const rows=await fetchOfficialNativeArticles("rare_earth",{
+        now,fetchImpl,includeSecondPublisher:true,includeThirdPublisher:true,
+        diagnostics,
+      });
+      expect(rows).toEqual([]);
+      expect(diagnostics).toMatchObject({
+        primary_feed_ok:true,alternate_feed_ok:true,
+        third_feed_attempted:true,third_feed_ok:false,
+        third_feed_failure_code:expectedCode,
+      });
+      const safe=JSON.stringify(diagnostics);
+      expect(safe).not.toContain(body);
+      expect(safe).not.toContain(OFFICIAL_NATIVE_THIRD_FEEDS.rare_earth.url);
+      expect(safe).not.toContain("SENSITIVE_HTML");
+      expect(safe).not.toContain("https://");
+    },
+  );
+
+  it("distinguishes an official feed's wrong MIME from publisher HTTP/network failures",async()=>{
+    const fetchImpl=vi.fn(async (u:string)=>{
+      if(u===OFFICIAL_NATIVE_FEEDS.rare_earth.url)return res(emptyRss);
+      if(u===ORIGINAL_PUBLISHER_ALTERNATES.rare_earth.url)
+        return res(emptyAtom,"application/atom+xml");
+      return res("<html>publisher login unavailable</html>","text/html");
+    });
+    const diagnostics:Record<string,unknown>={};
+    const rows=await fetchOfficialNativeArticles("rare_earth",{
+      now,fetchImpl,includeSecondPublisher:true,includeThirdPublisher:true,diagnostics,
+    });
+    expect(rows).toEqual([]);
+    expect(diagnostics.third_feed_failure_code).toBe("OFFICIAL_THIRD_CONTENT_TYPE_INVALID");
+
+    const throwNetwork=vi.fn(async (u:string)=>{
+      if(u===OFFICIAL_NATIVE_FEEDS.macro.url)return res(emptyRss);
+      if(u===ORIGINAL_PUBLISHER_ALTERNATES.macro.url)
+        return res(emptyAtom,"application/atom+xml");
+      throw new Error("CLOUDFLARE_AUTH_HTML_SENSITIVE_UPSTREAM_DETAILS");
+    });
+    const d:Record<string,unknown>={};
+    const macro=await fetchOfficialNativeArticles("macro",{
+      now,fetchImpl:throwNetwork,includeSecondPublisher:true,
+      includeThirdPublisher:true,diagnostics:d,
+    });
+    expect(macro).toEqual([]);
+    expect(d.third_feed_failure_code).toBe("ORIGINAL_FEED_NETWORK_UNAVAILABLE");
+    expect(JSON.stringify(d)).not.toContain("SENSITIVE_UPSTREAM");
+  });
+
   it("enforces fixed HTTPS endpoints, no redirects, bounded bodies and private-only integration",async()=>{
     const calls:any[]=[];
     const fetchImpl=vi.fn(async (u:string,opts:RequestInit)=>{
