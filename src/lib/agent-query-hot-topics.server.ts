@@ -6,7 +6,8 @@ import {
 } from "./hot-topic-taxonomy";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
-const HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS = 30 * 60;
+const MIN_SOURCE_LAG_BUDGET_SECONDS = 60;
+const MAX_SOURCE_CADENCE_MISSES = 3;
 const MAX_RECENT_ROWS = 500;
 const MAX_DELIVERED_EVENTS = 25;
 const DELIVERABLE_STATUSES = new Set(["VERIFIED", "DERIVED_ONLY"]);
@@ -253,13 +254,20 @@ export async function loadAgentHotTopics(input: {
   const sourceLag = sourceRows.map((source: { source_key: string; cadence_seconds: number }) => {
     const cursor = cursorBySource.get(String(source.source_key));
     const lastSuccess = cursor?.last_success_at ? Date.parse(String(cursor.last_success_at)) : NaN;
+    const cadenceSeconds = Number(source.cadence_seconds);
+    const cadenceValid = Number.isFinite(cadenceSeconds) && cadenceSeconds > 0;
     return {
       sourceKey: String(source.source_key),
-      healthy: cursor?.status === "healthy" && Number.isFinite(lastSuccess),
+      healthy: cursor?.status === "healthy" && Number.isFinite(lastSuccess) && cadenceValid,
       lagSeconds: Number.isFinite(lastSuccess)
         ? Math.max(0, Math.floor((now.getTime() - lastSuccess) / 1000))
         : null,
-      allowedLagSeconds: Math.max(HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS, Number(source.cadence_seconds || 0) * 3),
+      // Freshness follows each source's configured update cadence. Allow at
+      // most three missed cycles (with a 60-second floor for scheduler jitter),
+      // never a blanket 30-minute grace that could hide a stalled fast source.
+      allowedLagSeconds: cadenceValid
+        ? Math.max(MIN_SOURCE_LAG_BUDGET_SECONDS, cadenceSeconds * MAX_SOURCE_CADENCE_MISSES)
+        : 0,
     };
   });
   const pipelineHealthy =
@@ -298,7 +306,7 @@ export async function loadAgentHotTopics(input: {
       limitations: baseLimitations(input.subject),
     };
   }
-  if (pipeline.lag_seconds === null || pipeline.lag_seconds > HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS) {
+  if (pipeline.lag_seconds === null) {
     return {
       deliverable: false,
       code: "HOT_TOPIC_PIPELINE_STALE",
