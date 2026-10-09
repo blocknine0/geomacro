@@ -99,7 +99,9 @@ describe("#1803 restricted canonical private score archive", () => {
     const scorer = readFileSync("scripts/ingest-news.js", "utf8");
     const archive = readFileSync("scripts/ops/archive-restricted-private-scored-stage.mjs", "utf8");
     const client = readFileSync("scripts/ops/b2-s3-client.mjs", "utf8");
-    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("private_gri_singleton:");
+    expect(workflow).toContain("default: false");
     expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1842')");
     expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1843')");
     expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1841')");
