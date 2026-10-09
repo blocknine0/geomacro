@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { makePrivateStageRecord } from './lib/restricted-private-scored-stage.mjs';
+import { fetchOfficialNativeArticles } from './lib/official-native-rss.mjs';
 import { GLOBAL_CRITICAL_MINERALS_DOMAIN_ANCHOR } from './lib/critical-minerals-domain-anchor.mjs';
 import { classifyPrivateDerivedTextQuality } from './lib/private-derived-text-quality.mjs';
 import {
@@ -2357,6 +2358,15 @@ async function fetchGdeltArticles(query) {
 }
 
 async function fetchGdeltArticlesWithGalFallback(query, categoryName, privateDiagnostic = null) {
+  // GDELT DOC seendate / GAL file minute is an indexing/observation clock,
+  // not an independent original publisher publication time. Do not score it
+  // as an article-specific "latest" item in Supabase-free PRIVATE staging.
+  // Real publisher RSS items supply original per-item pubDate instead.
+  if (PRIVATE_B2_STAGE) {
+    console.log('  GDELT indexed-seen timestamps are not original publisher dates; private article scoring uses original-publisher RSS.');
+    return [];
+  }
+
   const admitPrivate = (articles) => {
     if (!PRIVATE_B2_STAGE) return articles;
     return articles.filter(article => {
@@ -3385,6 +3395,42 @@ async function ingestNews() {
       console.log(
         `  GDELT discovery skipped for ${category.name}; current deterministic slot is ${gdeltCategory}.`,
       );
+    }
+
+    // Bounded official first-party publisher RSS is the private, Supabase-free
+    // source-native date lane for all THREE categories. No unknown URL fetch,
+    // no public/payed source grant, no B2 cost, and no synthesized score.
+    if (PRIVATE_B2_STAGE) {
+      try {
+        const nativeCandidates = await fetchOfficialNativeArticles(category.name, {
+          maxAgeMs: MAX_ARTICLE_AGE_MS,
+        });
+        let accepted = 0;
+        for (const article of nativeCandidates) {
+          const admitted = privatePublisherPreAdmission(article, {
+            freshnessMs: MAX_ARTICLE_AGE_MS,
+          });
+          if (!admitted.ok) {
+            if (privateDiagnostic) {
+              addDiagnosticCount(privateDiagnostic.preclassification_rejections, admitted.reason);
+            }
+            continue;
+          }
+          const normTitle = normalizeTitle(article.title);
+          if (DENY.test(article.title) || !ALLOW[category.name]?.test(article.title) ||
+              existingUrls.has(article.url) || existingTitles.has(normTitle) ||
+              seenInCurrentRun.has(normTitle) || seenCandidatesThisCategory.has(normTitle)) {
+            continue;
+          }
+          seenCandidatesThisCategory.add(normTitle);
+          candidateArticles.push(article);
+          accepted++;
+        }
+        console.log(`  Original-publisher RSS: ${accepted} eligible PRIVATE discovery candidate(s) for ${category.name}; source rights/corroboration not granted.`);
+      } catch (error) {
+        if (privateDiagnostic) privateDiagnostic.discovery_failure_count++;
+        console.warn(`  Original-publisher RSS unavailable for ${category.name}; no timestamp fallback.`);
+      }
     }
 
     candidateArticles.sort(
