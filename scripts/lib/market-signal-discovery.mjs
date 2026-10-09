@@ -182,9 +182,23 @@ export async function pollOpenDiscovery(category, { now = new Date(), fetchImpl 
 
 export async function probeOpenDiscoveryMesh({ now = new Date(), fetchCategory = pollOpenDiscovery } = {}) {
   const categories = [];
+  let gdeltRateLimited = false;
   for (const category of DISCOVERY_CATEGORIES) {
-    try { categories.push(await fetchCategory(category, { now })); }
-    catch { categories.push(unavailableOpenDiscovery(category)); }
+    // One upstream 429 blocks *further* same-provider queries for this cycle.
+    // Do not hammer the free DOC API, disguise 429 as an empty valid article
+    // feed, or spend reserve calls for an alternative GDELT topic.
+    if (gdeltRateLimited) {
+      categories.push({
+        ...unavailableOpenDiscovery(category, "UPSTREAM_RATE_LIMIT_BACKOFF"),
+        state: "BUDGET_HELD",
+      });
+      continue;
+    }
+    let result;
+    try { result = await fetchCategory(category, { now }); }
+    catch { result = unavailableOpenDiscovery(category); }
+    categories.push(result);
+    if (result.source_failure_reason === "HTTP_429") gdeltRateLimited = true;
   }
   return {
     schema: MARKET_SIGNAL_SCHEMA,
