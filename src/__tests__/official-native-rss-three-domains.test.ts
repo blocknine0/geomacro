@@ -23,7 +23,15 @@ describe("three official publishers' original-event RSS discovery", () => {
   for (const [category, host, title] of fixtures) {
     it(`accepts ONLY independently source-native, private ${category} articles`, async () => {
       const xml = rss(title, `https://${host}/news/verified-original-report`);
-      const rows = parseOfficialNativeRss(xml, category, now);
+      const diagnostics: Record<string, number> = {};
+      const rows = parseOfficialNativeRss(xml, category, now,
+        24 * 60 * 60 * 1000, diagnostics);
+      expect(diagnostics).toEqual({
+        item_count: 1, item_native_pubdate_count: 1,
+        item_native_date_in_window_count: 1,
+        exact_publisher_host_count: 1, domain_topic_title_count: 1,
+        admitted_private_count: 1,
+      });
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
         publishedAt: "2026-10-09T11:30:00.000Z",
@@ -41,6 +49,19 @@ describe("three official publishers' original-event RSS discovery", () => {
         expect.objectContaining({ redirect: "error" }));
     });
   }
+
+  it("identifies native-time failure separately from transport and title filtering", () => {
+    const diagnostic: Record<string, number> = {};
+    const xml = rss(fixtures[0][2], "https://news.un.org/en/story/2026/10/conflict", "");
+    const rows = parseOfficialNativeRss(xml, "geopolitics", now,
+      24 * 60 * 60 * 1000, diagnostic);
+    expect(rows).toHaveLength(0);
+    expect(diagnostic.item_count).toBe(1);
+    expect(diagnostic.item_native_pubdate_count).toBe(0);
+    expect(diagnostic.domain_topic_title_count).toBe(1);
+    expect(diagnostic.admitted_private_count).toBe(0);
+    expect(JSON.stringify(diagnostic)).not.toContain("news.un.org");
+  });
 
   it("does not turn RSS feed refresh, discovery timestamps, or missing pubDate into news", () => {
     const xml = rss(fixtures[1][2], "https://www.federalreserve.gov/news/report", "");
