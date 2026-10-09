@@ -70,6 +70,31 @@ jobs:
           if (!db.password || db.pathname !== "/postgres") throw new Error("Invalid production database URL");
           NODE
 
+      # Alignment issues direct PostgreSQL UPDATEs; source QA may not bypass
+      # the authoritative free-tier budget while the primary DB is frozen.
+      - name: Fail closed on frozen production budget before source writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$(psql "${SUPABASE_DB_URL}" -X -v ON_ERROR_STOP=1 -Atqc "select public.geomacro_free_tier_budget_state()::text")"
+          SUPABASE_BUDGET_STATE_JSON="$state" node --input-type=module <<'NODE'
+          const budget = JSON.parse(process.env.SUPABASE_BUDGET_STATE_JSON ?? "null");
+          if (!budget || typeof budget !== "object" ||
+              budget.mode !== "normal" ||
+              budget.bulk_write_allowed !== true ||
+              !Number.isSafeInteger(Number(budget.database_bytes)) ||
+              !Number.isSafeInteger(Number(budget.warn_bytes)) ||
+              Number(budget.database_bytes) >= Number(budget.warn_bytes)) {
+            console.error(JSON.stringify({
+              ok: false,
+              code: "SOURCE_ALIGNMENT_SUPABASE_BUDGET_FROZEN",
+              mode: typeof budget?.mode === "string" ? budget.mode : "unknown",
+              bulk_write_allowed: budget?.bulk_write_allowed === true,
+            }));
+            process.exit(78);
+          }
+          console.log("PASS: canonical budget permits production source alignment writes.");
+          NODE
       - name: Reconcile every required source into an explicit production state
         run: node scripts/ops/reconcile-production-source-certification.mjs
 
