@@ -69,7 +69,16 @@ describe("independent verified Risk Indices edge", () => {
   });
 
   it("deploys only after materializing a successful B2-readback-verified continuity artifact", () => {
-    expect(deploy).toContain("prepare-edge-continuity.sh");
+    expect(deploy).not.toContain('cron: "28 */6 * * *"');
+    expect(deploy).not.toContain("  schedule:");
+    expect(deploy).not.toContain("  push:");
+    expect(deploy).toContain('workflows: ["Risk Indices Realtime Direct Postgres"]');
+    expect(deploy).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(deploy).toContain("github.event.workflow_run.head_branch == 'main'");
+    expect(deploy).toContain("github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'");
+    expect(deploy).toContain("SOURCE_RUN_ID: ${{ github.event.workflow_run.id || '' }}");
+    expect(deploy).toContain("github.event_name == 'workflow_dispatch'");
+        expect(deploy).toContain("prepare-edge-continuity.sh");
     expect(deploy).toContain("risk-indices-realtime-direct-postgres.yml");
     expect(deploy).toContain("geomacro.public-risk-indices-direct-postgres-publish.v1");
     expect(deploy).not.toContain("Bootstrap isolated verified Risk Indices package");
