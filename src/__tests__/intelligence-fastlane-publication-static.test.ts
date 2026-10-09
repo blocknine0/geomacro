@@ -5,10 +5,15 @@ const workflow = readFileSync(".github/workflows/intelligence-fastlane-publicati
 const script = readFileSync("scripts/ops/sync-fastlane-scored-intelligence.mjs", "utf8");
 
 describe("#1414 fastlane scored Intelligence publication", () => {
-  it("chains publication from the canonical scoring fastlane without adding another schedule", () => {
-    expect(workflow).toContain('workflows: ["Intelligence Current Scoring Fastlane"]');
-    expect(workflow).toContain("types: [completed]");
-    expect(workflow).not.toContain("schedule:");
+  it("holds the Supabase-dependent fastlane B2 publisher for shared-D1-governed manual recovery", () => {
+    expect(workflow).not.toContain("\n  workflow_run:");
+    expect(workflow).not.toContain("\n  push:");
+    expect(workflow).not.toContain("\n  schedule:");
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch'");
+    expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "12"');
+    expect(workflow).toContain("intelligence_fastlane_legacy_recovery");
     expect(workflow).toContain("group: geomacro-intelligence-scored-realtime");
   });
 

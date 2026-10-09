@@ -20,8 +20,11 @@ describe("public product surface failure-domain isolation", () => {
     const workflow = read(".github/workflows/intelligence-scored-refresh.yml");
 
     expect(workflow).toContain("group: geomacro-intelligence-scored-realtime");
-    expect(workflow).toContain('cron: "8,28,48 * * * *"');
-    expect(workflow).toContain("publish-b2-public-intelligence-direct-postgres.mjs");
+    expect(workflow).not.toContain('cron: "8,28,48 * * * *"');
+    expect(workflow).not.toContain("\n  schedule:");
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(workflow).toContain("run-b2-public-intelligence-publisher.mjs");
     expect(workflow).not.toContain("publish-b2-global-risk-direct-postgres.mjs");
     expect(workflow).not.toContain("compute-gri-v12.js");
     expect(workflow).not.toContain("verify-gri-snapshot-v12.js");

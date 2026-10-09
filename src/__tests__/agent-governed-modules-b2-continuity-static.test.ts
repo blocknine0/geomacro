@@ -101,9 +101,14 @@ describe("verified B2 governed agent module continuity", () => {
     }
   });
 
-  it("runs quota-independent permanent production maintenance without exposing B2 credentials", () => {
-    expect(workflow).toContain("schedule:");
-    expect(workflow).toContain('cron: "37 4,16 * * *"');
+  it("holds frozen-Supabase publication, requiring shared D1 quota for manual recovery", () => {
+    expect(workflow).not.toContain("\n  schedule:");
+    expect(workflow).not.toContain("\n  push:");
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch'");
+    expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(workflow).toContain("B2_ACCOUNT_QUOTA_WORKFLOW_ID: governed_agent_modules_legacy_recovery");
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "12"');
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("secrets.SUPABASE_DB_URL");
     expect(workflow).not.toContain("secrets.SUPABASE_SERVICE_ROLE_KEY");
@@ -112,8 +117,8 @@ describe("verified B2 governed agent module continuity", () => {
     expect(workflow).toContain("secrets.B2_ARCHIVE_READ_KEY_ID");
     expect(workflow).toContain("secrets.B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(workflow).toContain("run-b2-governed-direct-postgres.mjs");
-    expect(workflow).toContain("scripts/ops/b2-s3-client.mjs");
-    expect(workflow).toContain("src/lib/b2-private-archive-read.server.ts");
+    expect(workflow).toContain("scripts/ops/b2-d1-account-governor.mjs");
+    expect(reader).toContain("b2PrivateArchiveReadConfigured");
     expect(workflow).toContain("verify-b2-agent-governed-runtime.ts");
     expect(workflow).not.toContain("run-b2-snapshot-maintenance-with-preservation.mjs governed-modules");
     expect(workflow).not.toContain("VITE_B2");
