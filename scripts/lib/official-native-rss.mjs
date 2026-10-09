@@ -25,7 +25,6 @@ export const OFFICIAL_NATIVE_FEEDS = Object.freeze({
 const MAX_RESPONSE_BYTES = 384 * 1024;
 const MAX_ITEM_COUNT = 100;
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
-const MAX_FUTURE_MS = 5 * 60 * 1000;
 const VALID_TYPES = /^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
 
 function unescapeXml(value) {
@@ -86,8 +85,7 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
     const original = field(block, "pubDate");
     const at = Date.parse(original);
     if (Number.isFinite(at)) stats.item_native_pubdate_count += 1;
-    const current = Number.isFinite(at) && at <= asOfMs + MAX_FUTURE_MS &&
-      asOfMs - at <= maxAgeMs;
+    // Publication dates later than the evaluation clock are not evidence of\n    // a published event; even short future skew must fail closed.\n    const current = Number.isFinite(at) && at <= asOfMs &&\n      asOfMs - at <= maxAgeMs;
     if (current) stats.item_native_date_in_window_count += 1;
     if (url) stats.exact_publisher_host_count += 1;
     if (config.topics.test(title)) stats.domain_topic_title_count += 1;
