@@ -1,3 +1,4 @@
+import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_HOT_SNAPSHOT_BODY_BYTES = 1024 * 1024;
 const MAX_HOT_SNAPSHOT_BYTES = 768 * 1024;
@@ -921,6 +922,14 @@ export default {
         parts[2] === "global-risk" &&
         parts.length === 3
       ) return getGlobalRiskB2Anchor(env);
+      if (request.method === "GET" && url.pathname === "/v1/b2-quota/status") {
+        return json(await readB2AccountQuota(env.DB));
+      }
+      if (request.method === "POST" && url.pathname === "/v1/b2-quota/reserve") {
+        const body = await readJson(request, 1024);
+        const receipt = await reserveB2AccountQuota(env.DB, body);
+        return json(receipt, receipt.ok ? 200 : 429);
+      }
       if (request.method !== "PUT") return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
       if (parts[0] === "v1" && parts[1] === "hot-snapshot" && parts.length === 3) {
         const body = await readJson(request, MAX_HOT_SNAPSHOT_BODY_BYTES);
@@ -946,7 +955,7 @@ export default {
       return json({ ok: false, error: "NOT_FOUND" }, 404);
     } catch (error) {
       const code = error instanceof Error ? error.message : "CONTROL_PLANE_FAILURE";
-      const clientError = /^(BODY_|INVALID_|MISSING_|VALUE_|METADATA_|DURABLE_|HOT_SNAPSHOT_)/.test(code);
+      const clientError = /^(BODY_|INVALID_|MISSING_|VALUE_|METADATA_|DURABLE_|HOT_SNAPSHOT_|B2_QUOTA_KIND_|B2_QUOTA_WORKFLOW_)/.test(code);
       if (!clientError) console.error("[control-plane] request failed", code);
       return json({ ok: false, error: clientError ? code : "CONTROL_PLANE_FAILURE" }, clientError ? 400 : 500);
     }

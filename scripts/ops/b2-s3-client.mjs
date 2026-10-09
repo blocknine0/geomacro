@@ -1,5 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
 import { parseB2Endpoint } from "./b2-archive-contract.mjs";
+import { createB2D1AccountGovernor } from "./b2-d1-account-governor.mjs";
 
 const sha = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const hmac = (key, value) => createHmac("sha256", key).update(value).digest();
@@ -114,6 +115,10 @@ export function createB2Client({
 
   const allowedPrefixes = normalizeAllowedPrefixes(allowedKeyPrefixes);
   const requestBudget = parseRequestBudget();
+  // Explicit gated rollout: existing production jobs must be wired one by one,
+  // otherwise their ungoverned requests cannot count towards the shared cap.
+  const globalAccountGovernor = process.env.B2_ACCOUNT_QUOTA_REQUIRED === "1"
+    ? createB2D1AccountGovernor() : null;
   let requestsStarted = 0;
   let s3RequestsStarted = 0;
   let nativeReadRequestsStarted = 0;
@@ -143,6 +148,7 @@ export function createB2Client({
 
     const promise = (async () => {
       const authHeader = Buffer.from(`${credential.accessKey}:${credential.secretKey}`, "utf8").toString("base64");
+      if (globalAccountGovernor) await globalAccountGovernor.reserve("NATIVE_AUTH");
       let response;
       try {
         response = await fetch(B2_NATIVE_AUTHORIZE_URL, {
@@ -226,6 +232,7 @@ export function createB2Client({
       .map(encodeURIComponent)
       .join("/")}`;
     consumeRequestBudget("native-read");
+    if (globalAccountGovernor) await globalAccountGovernor.reserve("GET");
     let response;
     try {
       response = await fetch(`${auth.downloadUrl}${nativePath}`, {
@@ -316,6 +323,7 @@ export function createB2Client({
 
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       consumeRequestBudget("s3");
+      if (globalAccountGovernor) await globalAccountGovernor.reserve(method);
 
       const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
       const day = timestamp.slice(0, 8);
@@ -391,6 +399,8 @@ export function createB2Client({
           } catch (nativeCause) {
             const nativeMessage =
               nativeCause instanceof Error ? nativeCause.message : "B2_NATIVE_READ_FAILED";
+            if (nativeMessage === "B2_GLOBAL_DAILY_QUOTA_EXHAUSTED" ||
+                nativeMessage.startsWith("B2_ACCOUNT_GLOBAL_QUOTA_")) throw nativeCause;
             if (nativeMessage === "B2_NATIVE_GET_FAILED_403_download_cap_exceeded") {
               nativeReadFatalError = "B2_DOWNLOAD_CAP_EXCEEDED";
               throw new Error(nativeReadFatalError);
@@ -494,6 +504,7 @@ export function createB2Client({
     usage: () => ({
       requests_started: requestsStarted,
       request_budget: requestBudget,
+      global_account_quota_guard_enabled: globalAccountGovernor !== null,
       default_request_budget: DEFAULT_REQUEST_BUDGET,
       max_request_budget: MAX_REQUEST_BUDGET,
       s3_requests_started: s3RequestsStarted,
