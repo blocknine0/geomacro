@@ -452,7 +452,7 @@ async function getHistoricalGlobalRiskContinuity(env) {
  * even after the strict 90-minute hot snapshot expires. A D1 row is not a
  * fresh B2 GET and cannot create current scoring or a chargeable receipt.
  */
-async function getHistoricalRiskIndicesContinuity(env) {
+async async function getHistoricalRiskIndicesContinuity(env) {
   const unavailable = () => json({
     ok: false, error: "RISK_INDICES_VERIFIED_ARCHIVE_UNAVAILABLE",
     historical_only: true, current_snapshot_available: false,
