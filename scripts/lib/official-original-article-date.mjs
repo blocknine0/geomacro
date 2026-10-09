@@ -51,7 +51,7 @@ export function verifiedPublisherPageDate(html, now = new Date()) {
       candidates.push(attr(match[0], "content"));
     }
   }
-  for (const match of html.matchAll(/<script\b([^>]{0,500})>([\s\S]{0,30_000}?)<\/script>/giu)) {
+  for (const match of html.matchAll(/<script\b([^>]{0,500})>([\s\S]{0,30000}?)<\/script>/giu)) {
     if (!/^(?:application\/ld\+json)(?:;|$)/iu.test(attr(match[1], "type"))) continue;
     try { walkArticleJsonLd(JSON.parse(match[2]), candidates); } catch { /* never parse markup as code */ }
   }
