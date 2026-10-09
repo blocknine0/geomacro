@@ -1,6 +1,6 @@
 name: Restricted Private Current Scoring Staging
 
-# Single bounded verified-publisher pre-admission canary on the #1833 merge; optional manual
+# Single bounded verified-publisher pre-admission canary on the #1836 merge; optional manual
 # recovery later. No cron and NO public intelligence projection or commerce.
 on:
   workflow_dispatch: {}
@@ -23,7 +23,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (
         github.event_name == 'workflow_dispatch' ||
-        (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge #1833'))
+        (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge #1836'))
       )
     runs-on: ubuntu-24.04
     timeout-minutes: 20
