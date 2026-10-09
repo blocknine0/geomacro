@@ -148,6 +148,7 @@ async function boundedRssFetch(url, fetchImpl) {
 
 export async function fetchOfficialNativeArticles(category, {
   now = new Date(), fetchImpl = fetch, maxAgeMs = MAX_AGE_MS, diagnostics = null,
+  includeSecondPublisher = false,
 } = {}) {
   const config = OFFICIAL_NATIVE_FEEDS[category];
   if (!config) throw new Error("OFFICIAL_NATIVE_RSS_CATEGORY_INVALID");
@@ -167,14 +168,21 @@ export async function fetchOfficialNativeArticles(category, {
   // The primary official USGS mineral RSS may be empty, and agency monetary
   // and UN specialist feeds are intermittent. A SECOND FIXED original
   // publisher feed can add genuine new events without date laundering.
-  if (primary.length > 0) return primary;
+  // Default stays source-budget minimal. Explicit private dual-family staging
+  // probes the fixed alternate even with eligible primary items. This widens
+  // discovery ONLY: shared articles or distinct hosts do not prove corroboration,
+  // commercial rights, severity, or any public publication eligibility.
+  if (primary.length > 0 && !includeSecondPublisher) return primary;
   if (diagnostics && typeof diagnostics === "object") diagnostics.alternate_feed_attempted = true;
   try {
     const alternate = await fetchOriginalAlternate(category, {
       now, fetchImpl, diagnostics,
     });
     if (diagnostics && typeof diagnostics === "object") diagnostics.alternate_feed_ok = true;
-    return alternate;
+    if (!primary.length) return alternate;
+    const seen = new Set(primary.map((row) => row.url));
+    return [...primary, ...alternate.filter((row) => !seen.has(row.url))]
+      .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
   } catch {
     if (diagnostics && typeof diagnostics === "object") diagnostics.alternate_feed_ok = false;
     // Only fail the domain when NEITHER official source was reachable. No

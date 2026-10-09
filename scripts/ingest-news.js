@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { makePrivateStageRecord } from './lib/restricted-private-scored-stage.mjs';
 import { fetchOfficialNativeArticles } from './lib/official-native-rss.mjs';
+import { selectPrivatePublisherDiverseCandidates } from './lib/private-publisher-diverse-candidates.mjs';
 import { GLOBAL_CRITICAL_MINERALS_DOMAIN_ANCHOR } from './lib/critical-minerals-domain-anchor.mjs';
 import { classifyPrivateDerivedTextQuality } from './lib/private-derived-text-quality.mjs';
 import {
@@ -3404,6 +3405,9 @@ async function ingestNews() {
       try {
         const nativeCandidates = await fetchOfficialNativeArticles(category.name, {
           maxAgeMs: MAX_ARTICLE_AGE_MS,
+          // The other original publisher cannot be skipped merely because
+          // primary had an item. Candidates remain private/unlicensed.
+          includeSecondPublisher: true,
         });
         let accepted = 0;
         for (const article of nativeCandidates) {
@@ -3481,16 +3485,20 @@ async function ingestNews() {
       const remainingLimit =
         safeCandidatesPerCategory() - gdeltLimit;
 
-      const primaryCandidates = [
+      const privateEligibleQueue = [
         ...guardianCandidates,
         ...otherCandidates,
-      ]
-        .sort(
-          (a, b) =>
-            Date.parse(b.publishedAt || 0) -
-            Date.parse(a.publishedAt || 0)
-        )
-        .slice(0, remainingLimit);
+      ];
+      // Two new stories from ONE original publisher must not crowd out the
+      // alternate official family in our two-slot private classifier budget.
+      // Scheduling diversity alone never grants independent corroboration.
+      const primaryCandidates = PRIVATE_B2_STAGE
+        ? selectPrivatePublisherDiverseCandidates(privateEligibleQueue, remainingLimit)
+        : privateEligibleQueue.sort(
+            (a, b) =>
+              Date.parse(b.publishedAt || 0) -
+              Date.parse(a.publishedAt || 0)
+          ).slice(0, remainingLimit);
 
       candidateArticles = [
         ...primaryCandidates,
