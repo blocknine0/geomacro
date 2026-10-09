@@ -129,6 +129,11 @@ describe("#1827 no-Supabase private deterministic GRI v1.2 intake",()=>{
     stale.events[2].created_at=minutesAgo(120);
     stale.events[2].published_at=minutesAgo(125);
     expect(()=>compute(stale)).toThrow("GRI_PRIVATE_DOMAIN_NOT_CURRENT:rare_earth");
+    // Newly ingested but originally OLD news cannot be marketed as current.
+    const backdated=admission();
+    backdated.events[0].published_at=minutesAgo(121);
+    expect(()=>compute(backdated)).toThrow(
+      "GRI_PRIVATE_ORIGINAL_PUBLICATION_STALE:geopolitics");
     const future=admission();
     future.events[0].published_at=minutesAgo(-5);
     expect(()=>compute(future)).toThrow("GRI_PRIVATE_TIME_ORDER_OR_LOOKBACK_INVALID");
