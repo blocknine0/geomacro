@@ -39,11 +39,8 @@ for (let attempt = 1; attempt <= 6; attempt++) {
       probe(URLs.edge), probe(URLs.site), probe(URLs.overlay),
     ]);
     const proof = summarizePublicIntelligenceFreshness({ edge, site, overlay });
-    const overlayBatch = Date.parse(String(proof.d1_overlay_batch_at ?? ""));
-    const siteAsOf = Date.parse(String(site?.payload?.newest_at ?? ""));
-    const siteVisible = proof.public_site_api_ok === true &&
-      Number.isFinite(overlayBatch) && Number.isFinite(siteAsOf) &&
-      siteAsOf >= overlayBatch;
+    // Verified public row parity is independent of publisher-event vs collection times.
+    const siteVisible = proof.site_overlay_converged === true;
     last = {
       schema: "geomacro.intelligence-overlay-deploy-convergence.v1",
       attempt,
@@ -53,7 +50,10 @@ for (let attempt = 1; attempt <= 6; attempt++) {
       overlay_state: proof.current_overlay_state,
       d1_overlay_http_status: proof.d1_overlay_http_status,
       overlay_batch_at: proof.d1_overlay_batch_at,
-      site_observed_source_batch: siteVisible,
+      site_observed_source_batch: proof.site_observed_source_batch,
+      site_overlay_intentionally_suppressed: proof.site_overlay_intentionally_suppressed,
+      site_overlay_converged: siteVisible,
+      site_current_scored_domains_matched: proof.site_current_scored_domains_matched,
       site_current_within_24h: site?.payload?.current_within_24h === true,
       // This deploy proof does NOT turn historical scored events into current.
       scored_domains: proof.scored_domains,
