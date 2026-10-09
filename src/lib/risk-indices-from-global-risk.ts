@@ -1,3 +1,4 @@
+import { GRI_CURRENT_READING_WINDOW_HOURS } from "./gri-current-contract";
 import type { GlobalRisk, RiskDomainKey } from "./global-risk.types";
 import {
   PUBLIC_RISK_INDICES_CONTRACT_VERSION,
@@ -70,15 +71,23 @@ export function riskIndicesFromGlobalRisk(
       };
     }
 
+    const readingAge = ageHours(domain.readingAsOf, now);
+    const readingStatus =
+      domain.readingStatus === "current" &&
+      readingAge !== null &&
+      readingAge <= GRI_CURRENT_READING_WINDOW_HOURS
+        ? "current"
+        : "last_verified";
+
     return {
       key: spec.key,
       name: spec.name,
       sourceCategory: spec.sourceCategory,
       status: "available",
-      readingStatus: domain.readingStatus,
+      readingStatus,
       readingSnapshotId: domain.readingSnapshotId,
       readingAsOf: domain.readingAsOf,
-      readingAgeHours: ageHours(domain.readingAsOf, now),
+      readingAgeHours: readingAge,
       score: domain.score,
       rawScore: domain.rawScore,
       previousScore: domain.previousScore,
