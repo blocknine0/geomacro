@@ -1,23 +1,17 @@
 name: Risk Indices Realtime Direct Postgres
 
+# Current Risk Indices are a derived product of *verified current* GRI.
+# A successful upstream GRI publication triggers a new index publish.
+# No independent hourly/push retry is allowed while Supabase GRI is frozen:
+# republishing yesterday's immutable source_as_of as current is forbidden.
+# Operator may dispatch manually for recovery, which still fails on stale GRI.
 on:
-  schedule:
-    - cron: "38 * * * *"
   workflow_dispatch: {}
   workflow_run:
     workflows:
       - "GRI Realtime Direct Postgres"
     types:
       - completed
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/risk-indices-realtime-direct-postgres.yml"
-      - "scripts/ops/publish-b2-risk-indices-direct-postgres.mjs"
-      - "scripts/ops/publish-b2-verified-hot-snapshot.mjs"
-      - "src/lib/risk-indices-from-global-risk.ts"
-      - "src/lib/risk-indices.types.ts"
 
 permissions:
   contents: read
@@ -37,7 +31,7 @@ jobs:
           github.event.workflow_run.head_branch == 'main'
         ) ||
         (
-          github.event_name != 'workflow_run' &&
+          github.event_name == 'workflow_dispatch' &&
           github.ref == 'refs/heads/main'
         )
       )
