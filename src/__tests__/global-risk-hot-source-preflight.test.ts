@@ -29,13 +29,18 @@ describe("#1827 genuine Global Risk hot snapshot preflight (no stale re-publicat
       .toThrow("GLOBAL_RISK_SOURCE_AS_OF_IN_FUTURE");
   });
 
-  it("checks original source freshness before any B2 client initialization and writes", () => {
-    const publisher = readFileSync("scripts/ops/publish-b2-global-risk-direct-postgres.mjs", "utf8");
-    const check = publisher.indexOf("assertCurrentGlobalRiskSourceForHotPublish(latestSnapshot.as_of);");
-    const b2 = publisher.indexOf("const b2 = createB2Client(");
-    const put = publisher.indexOf("await b2.put(");
-    expect(check).toBeGreaterThan(0);
-    expect(b2).toBeGreaterThan(check);
-    expect(put).toBeGreaterThan(b2);
+  it("checks original source freshness before any Global Risk or Risk Indices B2 network operation", () => {
+    for (const path of [
+      "scripts/ops/publish-b2-global-risk-direct-postgres.mjs",
+      "scripts/ops/publish-b2-risk-indices-direct-postgres.mjs",
+    ]) {
+      const publisher = readFileSync(path, "utf8");
+      const check = publisher.indexOf("assertCurrentGlobalRiskSourceForHotPublish(latestSnapshot.as_of);");
+      const b2 = publisher.indexOf("const b2 = createB2Client(");
+      const put = publisher.indexOf("await b2.put(");
+      expect(check, path).toBeGreaterThan(0);
+      expect(b2, path).toBeGreaterThan(check);
+      expect(put, path).toBeGreaterThan(b2);
+    }
   });
 });
