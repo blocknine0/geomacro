@@ -117,7 +117,7 @@ function adapters({missingQuota=false,corruptReadback=false,badCheckpoint=false,
       };
     },
   };
-  return {b2,control,order,key,getWrites:()=>writes,getCheckpoint:()=>row};
+  return {b2,control,order,getKey:()=>key,getWrites:()=>writes,getCheckpoint:()=>row};
 }
 
 describe("#1827 B2+Cloudflare D1 private GRI portable proof continuity",()=>{
@@ -141,9 +141,9 @@ describe("#1827 B2+Cloudflare D1 private GRI portable proof continuity",()=>{
     expect(env.order).toEqual([
       "d1-get","b2-put","b2-full-readback","d1-persist","d1-get",
     ]);
-    expect(env.key).toBe(GRI_PRIVATE_B2_PREFIX+result.compressed_sha256+".json.gz");
+    expect(env.getKey()).toBe(GRI_PRIVATE_B2_PREFIX+result.compressed_sha256+".json.gz");
     expect(verifyPrivateGriD1Checkpoint(env.getCheckpoint(),{
-      key:env.key,digest:result.compressed_sha256,inputHash:hash,
+      key:env.getKey(),digest:result.compressed_sha256,inputHash:hash,
       proofHash:stage.portable_proof_hash,bundleHash:stage.portable_bundle_hash,
       eventCount:3,sourceAsOf:NOW.toISOString(),
       lastSuccessAt:env.getCheckpoint().last_success_at,
