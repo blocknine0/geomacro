@@ -67,7 +67,11 @@ describe("cap-independent verified edge continuity", () => {
     expect(indices).toContain("github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'");
     expect(indices).toContain("SOURCE_RUN_ID: ${{ github.event.workflow_run.id || '' }}");
     expect(indices).toContain("github.event_name == 'workflow_dispatch'");
-    expect(intelligence).toContain('cron: "43 */6 * * *"');
+    expect(intelligence).not.toContain('cron: "43 */6 * * *"');
+    expect(intelligence).not.toContain("  schedule:");
+    expect(intelligence).toContain("  push:");
+    expect(intelligence).toContain("  workflow_dispatch:");
+    expect(intelligence).toContain("INTELLIGENCE_SHARED_B2_D1_SCHEMA_V5_REQUIRED");
     for (const workflow of [global, indices, intelligence]) {
       expect(workflow).toContain("prepare-edge-continuity.sh");
       expect(workflow).toContain("B2_ARCHIVE_READ_KEY_ID");
