@@ -61,6 +61,9 @@ import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilo
 import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
 import { Route as ApiV1IntelligenceQueryRouteImport } from './routes/api.v1.intelligence.query'
+import { Route as ApiV1IntelligenceGeopoliticsRouteImport } from './routes/api.v1.intelligence.geopolitics'
+import { Route as ApiV1IntelligenceMacroFxRouteImport } from './routes/api.v1.intelligence.macro-fx'
+import { Route as ApiV1IntelligenceCriticalMineralsRouteImport } from './routes/api.v1.intelligence.critical-minerals'
 import { Route as ApiX402CircleIntelligenceRouteImport } from './routes/api.x402.circle_.intelligence'
 import { Route as ApiX402NeverminedIntelligenceRouteImport } from './routes/api.x402.nevermined_.intelligence'
 import { Route as ApiX402RiskAvailabilityRouteImport } from './routes/api.x402.risk_.availability'
@@ -326,6 +329,21 @@ const ApiV1IntelligenceQueryRoute = ApiV1IntelligenceQueryRouteImport.update({
   path: '/api/v1/intelligence/query',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1IntelligenceGeopoliticsRoute = ApiV1IntelligenceGeopoliticsRouteImport.update({
+  id: '/api/v1/intelligence/geopolitics',
+  path: '/api/v1/intelligence/geopolitics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1IntelligenceMacroFxRoute = ApiV1IntelligenceMacroFxRouteImport.update({
+  id: '/api/v1/intelligence/macro-fx',
+  path: '/api/v1/intelligence/macro-fx',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1IntelligenceCriticalMineralsRoute = ApiV1IntelligenceCriticalMineralsRouteImport.update({
+  id: '/api/v1/intelligence/critical-minerals',
+  path: '/api/v1/intelligence/critical-minerals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiX402CircleIntelligenceRoute =
   ApiX402CircleIntelligenceRouteImport.update({
     id: '/api/x402/circle_/intelligence',
@@ -397,6 +415,9 @@ export interface FileRoutesByFullPath {
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
+  '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
+  '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
+  '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
@@ -454,6 +475,9 @@ export interface FileRoutesByTo {
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
+  '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
+  '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
+  '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
@@ -512,6 +536,9 @@ export interface FileRoutesById {
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
+  '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
+  '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
+  '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/x402/circle_/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined_/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk_/availability': typeof ApiX402RiskAvailabilityRoute
@@ -571,6 +598,9 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
     | '/api/v1/intelligence/query'
+    | '/api/v1/intelligence/geopolitics'
+    | '/api/v1/intelligence/macro-fx'
+    | '/api/v1/intelligence/critical-minerals'
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
     | '/api/x402/risk/availability'
@@ -628,6 +658,9 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
     | '/api/v1/intelligence/query'
+    | '/api/v1/intelligence/geopolitics'
+    | '/api/v1/intelligence/macro-fx'
+    | '/api/v1/intelligence/critical-minerals'
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
     | '/api/x402/risk/availability'
@@ -685,6 +718,9 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
     | '/api/v1/intelligence/query'
+    | '/api/v1/intelligence/geopolitics'
+    | '/api/v1/intelligence/macro-fx'
+    | '/api/v1/intelligence/critical-minerals'
     | '/api/x402/circle_/intelligence'
     | '/api/x402/nevermined_/intelligence'
     | '/api/x402/risk_/availability'
@@ -1114,6 +1150,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1IntelligenceQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/intelligence/geopolitics': {
+      id: '/api/v1/intelligence/geopolitics'
+      path: '/api/v1/intelligence/geopolitics'
+      fullPath: '/api/v1/intelligence/geopolitics'
+      preLoaderRoute: typeof ApiV1IntelligenceGeopoliticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/intelligence/macro-fx': {
+      id: '/api/v1/intelligence/macro-fx'
+      path: '/api/v1/intelligence/macro-fx'
+      fullPath: '/api/v1/intelligence/macro-fx'
+      preLoaderRoute: typeof ApiV1IntelligenceMacroFxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/intelligence/critical-minerals': {
+      id: '/api/v1/intelligence/critical-minerals'
+      path: '/api/v1/intelligence/critical-minerals'
+      fullPath: '/api/v1/intelligence/critical-minerals'
+      preLoaderRoute: typeof ApiV1IntelligenceCriticalMineralsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/x402/circle_/intelligence': {
       id: '/api/x402/circle_/intelligence'
       path: '/api/x402/circle/intelligence'
@@ -1191,6 +1248,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
   ApiV1IntelligenceQueryRoute: ApiV1IntelligenceQueryRoute,
+  ApiV1IntelligenceGeopoliticsRoute: ApiV1IntelligenceGeopoliticsRoute,
+  ApiV1IntelligenceMacroFxRoute: ApiV1IntelligenceMacroFxRoute,
+  ApiV1IntelligenceCriticalMineralsRoute: ApiV1IntelligenceCriticalMineralsRoute,
   ApiX402CircleIntelligenceRoute: ApiX402CircleIntelligenceRoute,
   ApiX402NeverminedIntelligenceRoute: ApiX402NeverminedIntelligenceRoute,
   ApiX402RiskAvailabilityRoute: ApiX402RiskAvailabilityRoute,
