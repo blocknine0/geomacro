@@ -88,6 +88,8 @@ describe("#1827 bounded first-party publisher identity before expensive classifi
     const summary = sanitizedDiagnosticSummary(diagnostics);
     expect(summary.status).toBe("BLOCKED_NO_QUALIFIED_CANONICAL_SCORES");
     expect(row.preclassification_rejections.publisher_url_invalid).toBe(1);
+    addDiagnosticCount(row.preclassification_rejections, "domain_anchor_missing");
+    expect(row.preclassification_rejections.domain_anchor_missing).toBe(1);
     expect(JSON.stringify(summary)).not.toContain("example.org");
   });
 
@@ -103,9 +105,11 @@ describe("#1827 bounded first-party publisher identity before expensive classifi
     expect(source).toContain("const gated = passesGates(article, assessment, category.name)");
     expect(source).toContain("makePrivateStageRecord({");
     expect(summary).toContain("preclassification_rejections: safeReasons");
+    expect(summary).toContain("domain_anchor_missing");
     expect(workflow).toContain('GROQ_MAX_REQUESTS_PER_RUN: "3"');
     expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "2"');
     expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1842')");
+    expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1843')");
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).not.toContain("schedule:");
     expect(workflow).not.toContain("SUPABASE_DB_URL: ${{ secrets.");

@@ -64,7 +64,7 @@ for (const domain of domains) {
     domain,
     ...Object.fromEntries(counts.map(x => [x, item[x]])),
     preclassification_rejections: safeReasons(item.preclassification_rejections,
-      /^(?:publisher_url_invalid|publisher_domain_mismatch|publisher_title_missing|publisher_time_unavailable)$/u, 64),
+      /^(?:publisher_url_invalid|publisher_domain_mismatch|publisher_title_missing|publisher_time_unavailable|domain_anchor_missing)$/u, 64),
     gate_rejections: safeReasons(item.gate_rejections, /^[a-z_]{3,45}$/u),
     derived_quality_rejections: safeReasons(item.derived_quality_rejections,
       /^(?:narrative|summary)_(?:missing|too_short|too_long_private|control_invalid)$/u),

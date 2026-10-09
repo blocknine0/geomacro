@@ -23,7 +23,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (
         github.event_name == 'workflow_dispatch' ||
-        (github.event_name == 'push' && (contains(github.event.head_commit.message, 'Merge #1842') || contains(github.event.head_commit.message, 'Merge #1841')))
+        (github.event_name == 'push' && (contains(github.event.head_commit.message, 'Merge #1842') || contains(github.event.head_commit.message, 'Merge #1841') || contains(github.event.head_commit.message, 'Merge #1843')))
       )
     runs-on: ubuntu-24.04
     timeout-minutes: 20
