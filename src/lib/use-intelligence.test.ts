@@ -46,6 +46,45 @@ describe("public intelligence recency contract", () => {
     expect(applyIntelFilters(result.all, { category: "all", query: "historical", sort: "risk" }).map((event) => event.id)).toEqual(["historical-import"]);
   });
 
+  it("retains a single dated verified story for each stale domain when another domain is current", () => {
+    const rows = [
+      row({ id: "geo-current", category: "geopolitics", severity: 70, published_at: "2026-09-22T11:00:00.000Z" }),
+      row({ id: "geo-old", category: "geopolitics", severity: 95, published_at: "2026-09-20T11:00:00.000Z" }),
+      row({ id: "macro-old", category: "macro", severity: 66, published_at: "2026-09-19T11:00:00.000Z" }),
+      row({ id: "macro-older", category: "macro", severity: 90, published_at: "2026-09-17T11:00:00.000Z" }),
+      row({ id: "minerals-old", category: "rare_earth", severity: 88, published_at: "2026-09-18T11:00:00.000Z" }),
+    ];
+    const result = buildPublicIntelligence(rows, NOW);
+    const displayed = applyIntelFilters(result.all, { category: "all", query: "", sort: "newest" });
+    expect(displayed.map((event) => event.id)).toEqual(["geo-current", "macro-old", "minerals-old"]);
+    expect(displayed.map((event) => [event.category, event.isCurrent])).toEqual([
+      ["geopolitics", true], ["macro", false], ["rare_earth", false],
+    ]);
+    expect(displayed.every((event) => event.publicStatus === "verified_b2")).toBe(true);
+    expect(displayed.every((event) => event.severity !== null)).toBe(true);
+    expect(displayed.every((event) => !event.title.includes("synthetic"))).toBe(true);
+    // Explicit category research still shows original history, not only the lead.
+    expect(applyIntelFilters(result.all, { category: "macro", query: "", sort: "newest" })
+      .map((event) => event.id)).toEqual(["macro-old", "macro-older"]);
+  });
+
+  it("reserves room for absent-domain verified context when one fresh domain has 50 stories", () => {
+    const geo = Array.from({ length: 50 }, (_, n) => row({
+      id: `geo-${n}`, category: "geopolitics",
+      published_at: new Date(NOW - (n + 1) * 60_000).toISOString(),
+    }));
+    const result = buildPublicIntelligence([
+      ...geo,
+      row({ id: "macro-stale", category: "macro", published_at: "2026-09-15T00:00:00Z" }),
+      row({ id: "minerals-stale", category: "rare_earth", published_at: "2026-09-16T00:00:00Z" }),
+    ], NOW);
+    const displayed = applyIntelFilters(result.all, { category: "all", query: "", sort: "newest" });
+    expect(displayed).toHaveLength(24);
+    expect(displayed.map((x) => x.id)).toContain("macro-stale");
+    expect(displayed.map((x) => x.id)).toContain("minerals-stale");
+    expect(displayed.find((x) => x.id === "macro-stale")?.isCurrent).toBe(false);
+  });
+
   it("shows the newest verified records instead of an empty page when the 24h window is quiet", () => {
     const older = row({ id: "older", source_title: "older verified event", severity: 90, created_at: "2026-09-19T10:00:00.000Z", published_at: "2026-09-19T10:00:00.000Z" });
     const newer = row({ id: "newer", source_title: "newer verified event", severity: 40, created_at: "2026-09-21T10:00:00.000Z", published_at: "2026-09-21T10:00:00.000Z" });
