@@ -115,7 +115,10 @@ describe("#1827 account-wide Intelligence edge Backblaze GET guard",()=>{
       expect(options.method).toBe("GET");
       const receipts=operations.filter(x=>x.sql.includes("b2_request_quota_workflow_receipt"));
       expect(receipts.length).toBeGreaterThanOrEqual(requests);
-      return new Response("B2_DOWNLOAD_CAP_EXCEEDED",{status:403});
+      // Return two successful *transport* responses containing invalid JSON,
+      // so Promise.all awaits both ticketed HTTP requests. Crypto/publisher
+      // proof validation must still fail closed at the subsequent boundary.
+      return new Response("UNVERIFIED_TEST_BYTES",{status:200});
     });
     vi.stubGlobal("fetch",b2);
     const response=await worker.fetch(request(),env(db),ctx);
