@@ -443,7 +443,7 @@ export function createB2Client({
     return promise;
   }
 
-  async function putWithMetadataVerification(key, bytes) {
+  async function putWithMetadataVerification(key, bytes, { verifyRestored } = {}) {
     const body = Buffer.from(bytes);
     const digest = sha(body);
 
@@ -467,6 +467,15 @@ export function createB2Client({
     }
     if (sha(readback) !== digest) {
       throw new Error("B2_READBACK_SHA256_MISMATCH");
+    }
+    // Callers may validate gzip/member restoration against these exact
+    // independently fetched bytes, avoiding a second billable Class-B GET.
+    // No verification result is returned if restoration fails.
+    if (verifyRestored !== undefined) {
+      if (typeof verifyRestored !== "function") {
+        throw new Error("B2_RESTORE_VERIFIER_INVALID");
+      }
+      await verifyRestored(readback);
     }
 
     return {
