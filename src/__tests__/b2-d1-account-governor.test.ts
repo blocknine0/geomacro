@@ -119,8 +119,5 @@ describe("#1827 D1-account B2 preflight bridge",()=>{
     delete process.env.B2_ACCOUNT_QUOTA_REQUIRED;
     const b2=makeClient();
     expect(b2.usage().global_account_quota_guard_enabled).toBe(false);
-    const wf=String(requireNoop);
-    expect(wf).toContain("noop");
   });
 });
-const requireNoop = "noop";
