@@ -61,6 +61,8 @@ for (const domain of domains) {
     schema: PRIVATE_SCORING_DIAGNOSTIC_SCHEMA,
     domain,
     ...Object.fromEntries(counts.map(x => [x, item[x]])),
+    preclassification_rejections: safeReasons(item.preclassification_rejections,
+      /^(?:publisher_url_invalid|publisher_domain_mismatch|publisher_title_missing|publisher_time_unavailable)$/u),
     gate_rejections: safeReasons(item.gate_rejections, /^[a-z_]{3,45}$/u),
     private_stage_rejections: safeReasons(item.private_stage_rejections,
       /^(?:private_scoring_[a-z_]{2,65}|private_stage_rejected_unknown)$/u),
