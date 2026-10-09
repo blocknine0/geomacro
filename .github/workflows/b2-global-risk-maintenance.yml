@@ -36,6 +36,7 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -58,6 +59,7 @@ jobs:
           test -n "${SUPABASE_DB_URL:-}"
           test -n "${B2_KEY_ID:-}"
           test -n "${B2_APPLICATION_KEY:-}"
+          test -n "${GEOMACRO_COMMERCE_LEDGER_TOKEN:-}" || { echo "GEOMACRO_COMMERCE_LEDGER_TOKEN is required for verified D1 hot publication"; exit 2; }
 
       - name: Publish latest verified Global Risk continuity package
         id: publish
