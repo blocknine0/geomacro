@@ -61,6 +61,10 @@ describe("non-destructive B2 live read boundary", () => {
     expect(globalPublisher).toContain("B2_GLOBAL_RISK_HISTORY_IMMUTABILITY_VIOLATION");
     expect(globalPublisher).not.toContain(".delete(");
     expect(globalWorkflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
-    expect(globalWorkflow).toContain('cron: "17 */2 * * *"');
+    expect(globalWorkflow).not.toContain('cron: "17 */2 * * *"');
+    expect(globalWorkflow).not.toContain("\n  schedule:\n");
+    expect(globalWorkflow).not.toContain("\n  push:\n");
+    expect(globalWorkflow).toContain("workflow_dispatch: {}");
+    expect(globalWorkflow).toContain("github.event_name == 'workflow_dispatch'");
   });
 });
