@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { makePrivateStageRecord } from './lib/restricted-private-scored-stage.mjs';
+import { GLOBAL_CRITICAL_MINERALS_DOMAIN_ANCHOR } from './lib/critical-minerals-domain-anchor.mjs';
 import { classifyPrivateDerivedTextQuality } from './lib/private-derived-text-quality.mjs';
 import {
   privatePublisherPreAdmission, privateSingleDomainCandidateLimit,
@@ -413,8 +414,7 @@ const GEOPOLITICS_ANCHOR =
 const MACRO_ANCHOR =
   /\b(federal reserve|the fed|fed\b|central banks?|bank of england|boe\b|ecb\b|boj\b|rbi\b|pboc\b|imf\b|world bank|inflation|cpi\b|pce\b|interest rates?|rate cuts?|rate hikes?|monetary policy|sovereign debt|sovereign default|bond markets?|bond yields?|treasur(?:y|ies)|yield curve|recession|stagflation|economic downturn|economic slowdown|economic contraction|gdp\b|unemployment|payrolls?|house prices?|home prices?|property prices?|shop prices?|retail prices?|consumer prices?|price rises?|cost of living|financial hit|economic impact|economic cost|household costs?|household finances?|currency devaluation|devaluation|fiscal deficit|trade deficit|stimulus|liquidity|credit crunch|bank failure|opec\b|brent\b|wti\b|oil prices?|wholesale gas|gas stor(?:age|es)|lng\b|energy shock|energy crisis|tariffs?)\b/i;
 
-const RARE_EARTH_ANCHOR =
-  /\b(rare[- ]earths?|ree\b|rare[- ]earth elements?|critical minerals?|strategic minerals?|neodymium|praseodymium|dysprosium|terbium|ndfeb|permanent magnets?|gallium|germanium|antimony|tungsten|graphite|lithium|cobalt|nickel|lynas|mp materials|iluka)\b/i;
+const RARE_EARTH_ANCHOR = GLOBAL_CRITICAL_MINERALS_DOMAIN_ANCHOR;
 
 // Exclusion-only detector. Crypto is not an active Geomacro intelligence domain.
 const CRYPTO_ANCHOR =
