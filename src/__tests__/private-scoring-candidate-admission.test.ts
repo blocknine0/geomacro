@@ -108,7 +108,7 @@ describe("#1827 bounded first-party publisher identity before expensive classifi
     expect(summary).toContain("domain_anchor_missing");
     expect(workflow).toContain('GROQ_MAX_REQUESTS_PER_RUN: "3"');
     expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY:');
-    expect(workflow).toContain("'1' || '2'");
+    expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "1"');
     expect(workflow).toContain("private_gri_singleton:");
     expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1842')");
     expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1843')");
