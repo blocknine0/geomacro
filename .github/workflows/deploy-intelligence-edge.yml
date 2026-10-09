@@ -151,10 +151,15 @@ jobs:
           test "$CODE" = "405" || { echo "Unexpected write surface: HTTP $CODE"; exit 5; }
           echo "Intelligence edge serves live B2 or bounded B2-readback-verified public continuity; no B2 write/delete, Supabase mutation, or payment action occurred."
 
-      - name: Prove production edge D1 overlay matches latest B2 digest and website
+      - name: Verify deployed Intelligence Worker has live hash-bound B2/D1 overlay
         shell: bash
         run: |
           set -euo pipefail
-          # 3 public GETs per attempt, no Cloudflare API/B2 GET/Supabase/money.
-          # If a stale edge cache points to an older B2 hash, fail closed.
-          node scripts/ops/verify-live-intelligence-overlay-convergence.mjs
+          # This deploy job certifies ONLY the Worker it just deployed.
+          # Two read-only public GETs per bounded attempt; no B2, SQL,
+          # Supabase or payment. A stale/mismatched D1 B2 anchor stays RED.
+          # Website published-build parity, original source freshness and
+          # current classifier-scored 3-domain readiness remain separate
+          # FAIL-CLOSED gates in Production Website Health and commercial
+          # launch acceptance. Never mark them green from a Worker deploy.
+          node scripts/ops/verify-intelligence-edge-b2-d1-deploy.mjs
