@@ -2391,6 +2391,17 @@ async function fetchGdeltArticlesWithGalFallback(query, categoryName, privateDia
     categoryName,
     maxArticleAgeMs: MAX_ARTICLE_AGE_MS,
     maxCandidates: Math.max(1, Math.min(2, safeCandidatesPerCategory())),
+    privateArticleAdmission: PRIVATE_B2_STAGE
+      ? (article) => {
+          const result = privatePublisherPreAdmission(article, {
+            freshnessMs: MAX_ARTICLE_AGE_MS,
+          });
+          if (!result.ok && privateDiagnostic) {
+            addDiagnosticCount(privateDiagnostic.preclassification_rejections, result.reason);
+          }
+          return result.ok;
+        }
+      : null,
   });
   console.log(`  GDELT GAL fallback: ${fallback.length} current candidate(s) for ${categoryName}.`);
   if (fallback.length === 0 && primaryError) {
