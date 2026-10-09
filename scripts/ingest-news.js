@@ -2367,7 +2367,13 @@ async function fetchGdeltArticlesWithGalFallback(query, categoryName, privateDia
         addDiagnosticCount(privateDiagnostic.preclassification_rejections, result.reason);
       }
       return result.ok;
-    });
+    }).map(article => ({
+      // Preserve the actual HTTPS publisher hostname from the validated
+      // original URL, not the discovery-layer alias missing the www. label.
+      // URL/text itself remains private and no cross-host mapping is allowed.
+      ...article,
+      sourceDomain: new URL(article.url).hostname.toLowerCase(),
+    }));
   };
   const enabled = String(process.env.GDELT_GAL_FALLBACK_ENABLED ?? '').toLowerCase() === 'true';
   let primaryError = null;
