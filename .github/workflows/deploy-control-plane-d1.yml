@@ -188,6 +188,38 @@ jobs:
           test "$CODE" = "200" || { echo "Authenticated control-plane write failed: HTTP $CODE"; cat /tmp/auth.json; exit 9; }
           grep -q '"ok":true' /tmp/auth.json || { echo "Authenticated response missing ok=true"; exit 9; }
 
+      - name: Verify authenticated account-wide B2 budget reservation without contacting B2
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CONTROL_PLANE_URL"
+          unauth="$(curl --silent --show-error -o /tmp/b2-quota-unauth.json -w '%{http_code}' --max-time 15 "$CONTROL_PLANE_URL/v1/b2-quota/status")"
+          test "$unauth" = 401 || { echo "B2 quota status must be authenticated"; exit 10; }
+          curl --fail --silent --show-error --max-time 15 "$CONTROL_PLANE_URL/v1/b2-quota/status" \
+            -H "authorization: Bearer $CONTROL_PLANE_TOKEN" > /tmp/b2-quota-before.json
+          jq -e '.ok==true and .limits.total==80 and .limits.GET==25 and .limits.PUT==55' /tmp/b2-quota-before.json >/dev/null
+          before="$(jq -r '.used.total' /tmp/b2-quota-before.json)"
+          code="$(curl --silent --show-error -o /tmp/b2-quota-reservation.json -w '%{http_code}' --max-time 15 \
+            -X POST "$CONTROL_PLANE_URL/v1/b2-quota/reserve" \
+            -H "authorization: Bearer $CONTROL_PLANE_TOKEN" \
+            -H 'content-type: application/json' \
+            --data '{"kind":"HEAD","workflow_id":"deploy_quota_smoke"}')"
+          # An exhausted *existing* shared budget is correct fail-closed behavior.
+          if [ "$code" = "200" ]; then
+            jq -e '.ok==true and .reserved==true and .kind=="HEAD" and .b2_operation_performed==false and .chargeable==false' /tmp/b2-quota-reservation.json >/dev/null
+          elif [ "$code" = "429" ]; then
+            jq -e '.ok==false and .reserved==false and .error=="B2_GLOBAL_DAILY_QUOTA_EXHAUSTED"' /tmp/b2-quota-reservation.json >/dev/null
+          else
+            echo "D1 B2 account quota endpoint failed status $code"; exit 11
+          fi
+          curl --fail --silent --show-error --max-time 15 "$CONTROL_PLANE_URL/v1/b2-quota/status" \
+            -H "authorization: Bearer $CONTROL_PLANE_TOKEN" > /tmp/b2-quota-after.json
+          jq -e --argjson before "$before" --argjson success "$([ "$code" = 200 ] && echo 1 || echo 0)" \
+            '.used.total==($before+$success)' /tmp/b2-quota-after.json >/dev/null
+          echo "PASS: account-wide D1 reservation is authenticated, atomic and never calls B2, Supabase or commerce."
+
       - name: Remove bootstrap smoke row directly from D1
         if: success()
         working-directory: workers/control-plane
