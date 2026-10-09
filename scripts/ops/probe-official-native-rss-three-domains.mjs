@@ -15,7 +15,8 @@ export async function probeOfficialThreeDomains({
   const results = [];
   for (const category of CATEGORIES) {
     try {
-      const articles = await fetchArticles(category, { now });
+      const diagnostics = {};
+      const articles = await fetchArticles(category, { now, diagnostics });
       const dates = articles.map((row) => Date.parse(row.publishedAt));
       if (!Array.isArray(articles) ||
           articles.some((row) => row.discoveryProvider !== "official_native_rss" ||
@@ -28,6 +29,12 @@ export async function probeOfficialThreeDomains({
         category,
         fetch_ok: true,
         recent_original_count: articles.length,
+        // Numeric, whitelist-only publisher-feed diagnostics. No source text/URL.
+        feed_items_seen: diagnostics.item_count ?? null,
+        source_native_pubdate_items: diagnostics.item_native_pubdate_count ?? null,
+        native_date_current_items: diagnostics.item_native_date_in_window_count ?? null,
+        trusted_original_host_items: diagnostics.exact_publisher_host_count ?? null,
+        topic_title_match_items: diagnostics.domain_topic_title_count ?? null,
         latest_original_at: dates.length ? new Date(Math.max(...dates)).toISOString() : null,
         current_native_source_state: articles.length > 0 ? "ORIGINAL_FEED_EVENT_PRESENT_PRIVATE" : "NO_RECENT_ORIGINAL_EVENT",
         public_scored_verified: false,
@@ -37,6 +44,9 @@ export async function probeOfficialThreeDomains({
       // Fixed-shape errors only; no URLs, raw headlines, source body or secrets.
       results.push({
         category, fetch_ok: false, recent_original_count: 0,
+        feed_items_seen: null, source_native_pubdate_items: null,
+        native_date_current_items: null, trusted_original_host_items: null,
+        topic_title_match_items: null,
         latest_original_at: null, current_native_source_state: "SOURCE_UNAVAILABLE",
         public_scored_verified: false, commerce_eligible: false,
       });
