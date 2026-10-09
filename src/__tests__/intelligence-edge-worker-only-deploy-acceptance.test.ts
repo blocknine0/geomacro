@@ -109,16 +109,16 @@ describe("#1827 distinguish Intelligence Worker deploy from unpublished website"
 
   it("fails closed on B2/D1 SHA mismatch, absent projection or forged synthetic score",()=>{
     const alterations=[
-      (o:ReturnType<typeof fixture>)=>{o.edge.b2_sha256="b".repeat(64);},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.verified_b2_sha256="b".repeat(64);},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.verified_b2_sha256="b".repeat(64);},
-      (o:ReturnType<typeof fixture>)=>{o.edge.current_overlay="none";},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.status=503;},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.synthetic_score=true;},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.full_b2_readback_verified=false;},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.exact_gzip_restore_verified=false;},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.raw_source_headlines_exposed=true;},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.provider_identity_exposed=true;},
+      (o:any)=>{o.edge.b2_sha256="b".repeat(64);},
+      (o:any)=>{o.overlay.payload.verified_b2_sha256="b".repeat(64);},
+      (o:any)=>{o.overlay.verified_b2_sha256="b".repeat(64);},
+      (o:any)=>{o.edge.current_overlay="none";},
+      (o:any)=>{o.overlay.status=503;},
+      (o:any)=>{o.overlay.payload.synthetic_score=true;},
+      (o:any)=>{o.overlay.payload.full_b2_readback_verified=false;},
+      (o:any)=>{o.overlay.payload.exact_gzip_restore_verified=false;},
+      (o:any)=>{o.overlay.payload.raw_source_headlines_exposed=true;},
+      (o:any)=>{o.overlay.payload.provider_identity_exposed=true;},
     ];
     for(const mutate of alterations){
       const o=fixture();mutate(o);
@@ -128,17 +128,17 @@ describe("#1827 distinguish Intelligence Worker deploy from unpublished website"
 
   it("rejects forged current source dates, wrong source family or wrong sealed event contract",()=>{
     const changes=[
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.current_source_batch_at=hist;},
-      (o:ReturnType<typeof fixture>)=>{o.edge.payload.current_overlay_source_batch_at=hist;},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.source_id="untrusted_source";},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.current_evidence_contract="untrusted";},
-      (o:ReturnType<typeof fixture>)=>{o.edge.payload.current_overlay_authority="untrusted";},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.rows[0].severity=91;},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.rows[0].delta=2;},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.rows[0].source_title="Raw source publisher headline";},
-      (o:ReturnType<typeof fixture>)=>{o.overlay.payload.rows[0].source_url="https://example.org/private";},
-      (o:ReturnType<typeof fixture>)=>{o.edge.payload.rows[0].id="not-the-overlay-observation";},
-      (o:ReturnType<typeof fixture>)=>{o.edge.payload.rows[2].category="unknown";},
+      (o:any)=>{o.overlay.payload.current_source_batch_at=hist;},
+      (o:any)=>{o.edge.payload.current_overlay_source_batch_at=hist;},
+      (o:any)=>{o.overlay.payload.source_id="untrusted_source";},
+      (o:any)=>{o.overlay.payload.current_evidence_contract="untrusted";},
+      (o:any)=>{o.edge.payload.current_overlay_authority="untrusted";},
+      (o:any)=>{o.overlay.payload.rows[0].severity=91;},
+      (o:any)=>{o.overlay.payload.rows[0].delta=2;},
+      (o:any)=>{o.overlay.payload.rows[0].source_title="Raw source publisher headline";},
+      (o:any)=>{o.overlay.payload.rows[0].source_url="https://example.org/private";},
+      (o:any)=>{o.edge.payload.rows[0].id="not-the-overlay-observation";},
+      (o:any)=>{o.edge.payload.rows[2].category="unknown";},
     ];
     for(const mutate of changes){
       const input=fixture();mutate(input);
