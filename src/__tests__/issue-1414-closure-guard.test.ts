@@ -3,55 +3,75 @@ import { describe, expect, it } from "vitest";
 import {
   acceptanceScope,
   evaluateIssue1414Acceptance,
+  MASTER_LAUNCH_ISSUE,
 } from "../../scripts/lib/issue-1414-closure-guard.mjs";
 
 const workflow = readFileSync(".github/workflows/issue-1414-closure-guard.yml", "utf8");
 const runner = readFileSync("scripts/ops/enforce-issue-1414-closure.mjs", "utf8");
 
-describe("#1414 closure guard", () => {
-  it("ignores non-blocking legacy checkboxes in section 14", () => {
-    const body = `# 10. x402 pay-per-call readiness\n- [x] First live real-money purchase succeeds at **0.05 USDC**.\n- [x] Real paid response is received and verified end-to-end.\n# 12. CI / launch gates\n- [x] real x402 live payment acceptance\n# 14. Legacy launch issues absorbed as partial workstreams\n- [ ] #976 legacy scope may remain open\n`;
-    expect(acceptanceScope(body)).not.toContain("#976");
-    expect(evaluateIssue1414Acceptance(body).accepted).toBe(true);
+// The old filename remains a compatibility path; it now guards #1827.
+const headings = [
+  "# GEOMACRO — UNIFIED MASTER",
+  "## Stage 0",
+  ...Array.from({ length: 9 }, (_, i) => "## P" + i),
+  "## Migrated inventory: previously open ISSUES (7 of 7)",
+  "## Migrated inventory: currently open PRs (12 of 12)",
+].join("\n");
+
+const requiredProof = [
+  "- [x] Owner mainnet ACK → first real 0.05 USDC x402 paid purchase and signed derived response verified.",
+  "- [x] **Federico receiver must return independently verifiable signed approve and ZERO unresolved findings**.",
+  "- [x] All required exact-head GitHub Actions/build/security on deployed main.",
+  "- [x] Only after all mandatory launch gates pass: label commercial **LIVE**.",
+].join("\n");
+
+describe("#1827 unified production and Federico launch guard", () => {
+  it("guards the new canonical master, not the administratively merged #1414", () => {
+    expect(MASTER_LAUNCH_ISSUE).toBe(1827);
+    expect(workflow).toContain("github.event.issue.number == 1827");
+    expect(runner).toContain("eventIssueNumber !== 1827");
+    expect(runner).toContain("issues/1827");
   });
 
-  it("rejects closure while any Sections 1–13 acceptance checkbox remains open", () => {
-    const body = `# 8. Product alignment\n- [ ] Ask Geomacro uses canonical B2/current evidence first.\n# 10. x402 pay-per-call readiness\n- [x] First live real-money purchase succeeds at **0.05 USDC**.\n- [x] Real paid response is received and verified end-to-end.\n# 12. CI / launch gates\n- [x] real x402 live payment acceptance\n# 14. Legacy launch issues absorbed as partial workstreams\n- [ ] #976 legacy scope\n`;
-    const result = evaluateIssue1414Acceptance(body);
-    expect(result.accepted).toBe(false);
-    expect(result.uncheckedAcceptanceCount).toBe(1);
+  it("requires every outstanding production and open-PR checkbox", () => {
+    const body = headings + "\n" + requiredProof + "\n- [ ] #1739 Risk Indices B2-cap repair";
+    const evaluation = evaluateIssue1414Acceptance(body);
+    expect(evaluation.accepted).toBe(false);
+    expect(evaluation.uncheckedAcceptanceCount).toBe(1);
+    expect(acceptanceScope(body)).toContain("#1739");
   });
 
-  it("rejects closure if live-money acceptance markers are absent even when no unchecked boxes remain", () => {
-    const body = `# 12. CI / launch gates\n- [x] Product CI / build\n# 14. Legacy launch issues absorbed as partial workstreams\n- [ ] #976 legacy scope\n`;
-    const result = evaluateIssue1414Acceptance(body);
-    expect(result.accepted).toBe(false);
-    expect(result.missingRequiredLiveAcceptance.length).toBe(3);
+  it("cannot be closed by simply deleting the old checklist or partner/payment evidence", () => {
+    const noSections = evaluateIssue1414Acceptance(requiredProof);
+    expect(noSections.accepted).toBe(false);
+    expect(noSections.missingRequiredSections.length).toBeGreaterThan(0);
+
+    const noMoney = evaluateIssue1414Acceptance(
+      headings + "\n" + requiredProof.replace("[x] Owner", "[ ] Owner"),
+    );
+    expect(noMoney.accepted).toBe(false);
+    expect(noMoney.missingRequiredLiveAcceptance.length).toBe(1);
+
+    const noFederico = evaluateIssue1414Acceptance(
+      headings + "\n" + requiredProof.replace("[x] **Federico", "[ ] **Federico"),
+    );
+    expect(noFederico.accepted).toBe(false);
+    expect(noFederico.missingRequiredLiveAcceptance.length).toBe(1);
   });
 
-  it("supports immediate issue-close enforcement plus periodic and manual self-heal", () => {
+  it("accepts only explicit full sections, all ticks and final proofs", () => {
+    expect(evaluateIssue1414Acceptance(headings + "\n" + requiredProof).accepted).toBe(true);
+    expect(evaluateIssue1414Acceptance(headings).missingRequiredLiveAcceptance.length).toBe(4);
+  });
+
+  it("keeps periodic and on-close fail-closed reopening for only #1827", () => {
     expect(workflow).toContain("types: [closed]");
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain('cron: "*/15 * * * *"');
     expect(workflow).toContain("issues: write");
-    expect(workflow).toContain("contents: read");
-    expect(workflow).toContain("github.event_name != 'issues' || github.event.issue.number == 1414");
-    expect(workflow).toContain("node scripts/ops/enforce-issue-1414-closure.mjs");
-  });
-
-  it("reads the canonical issue API before deciding whether a reopen is required", () => {
-    expect(runner).toContain('`${apiBase}/repos/${repository}/issues/1414`');
-    expect(runner).toContain("const issueResponse = await fetch(issueUrl, { headers })");
-    expect(runner).toContain("const state = String(issue?.state ?? \"\").toLowerCase()");
-    expect(runner).toContain("evaluateIssue1414Acceptance(issue?.body ?? \"\")");
-    expect(runner).toContain('reason: "master_tracker_already_open"');
-  });
-
-  it("reopens through the issue API and records why", () => {
+    expect(runner).toContain("evaluateIssue1414Acceptance(issue?.body ??");
     expect(runner).toContain('JSON.stringify({ state: "open" })');
-    expect(runner).toContain('`${issueUrl}/comments`');
-    expect(runner).toContain("Sections 1–13");
+    expect(runner).toContain("Federico");
     expect(runner).toContain("0.05 USDC");
-    expect(runner).toContain("runs periodically");
   });
 });
