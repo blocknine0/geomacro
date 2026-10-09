@@ -116,8 +116,19 @@ export async function fetchOfficialThirdPublisherArticles(category,{
     headers:{accept:"application/rss+xml, application/xml;q=0.9, text/xml;q=0.8",
       "user-agent":"Geomacro-Private-Original-Publisher-Discovery/1.0"},
   });
-  if(!response.ok||!RSS_TYPE.test(response.headers.get("content-type")??""))
-    throw new Error("OFFICIAL_THIRD_TRANSPORT_INVALID");
+  if(!response.ok) {
+    const status = response.status;
+    const failure = status === 403 ? "OFFICIAL_THIRD_HTTP_FORBIDDEN" :
+      status === 404 ? "OFFICIAL_THIRD_HTTP_NOT_FOUND" :
+      status === 429 ? "OFFICIAL_THIRD_HTTP_RATE_LIMITED" :
+      status >= 500 && status <= 599 ? "OFFICIAL_THIRD_HTTP_UPSTREAM_FAILURE" :
+      "OFFICIAL_THIRD_HTTP_NOT_OK";
+    // Stable reasons only: never include response bodies, article URLs,
+    // upstream infrastructure messages, authentication or raw feed contents.
+    throw new Error(failure);
+  }
+  if(!RSS_TYPE.test(response.headers.get("content-type")??""))
+    throw new Error("OFFICIAL_THIRD_CONTENT_TYPE_INVALID");
   if(Number(response.headers.get("content-length")||0)>MAX_BYTES||!response.body)
     throw new Error("OFFICIAL_THIRD_BODY_INVALID");
   const reader=response.body.getReader(),chunks=[];
