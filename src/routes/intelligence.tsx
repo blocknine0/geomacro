@@ -17,6 +17,7 @@ import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.function
 import { useRiskIndices } from "@/lib/use-risk-indices";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import { categoryLeads, publicHeadline, scoredNews, COMMERCIAL_DOMAINS } from "@/lib/intelligence-editorial";
+import { intelligenceDomainPulse } from "@/lib/intelligence-domain-pulse";
 
 const TITLE = "Live Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
 const DESCRIPTION = "Source-governed geopolitical, macro/FX and critical minerals intelligence: specific scored events, decision context and verified severity from 0 to 100.";
@@ -96,6 +97,10 @@ function IntelligencePage() {
   const pool = useMemo(() => scoredNews(intel.data?.all ?? []), [intel.data]);
   const leads = useMemo(() => categoryLeads(pool), [pool]);
   const currentScored = pool.some((event) => event.isCurrent);
+  const domainPulse = useMemo(() => intelligenceDomainPulse(intel.data?.all ?? []), [intel.data]);
+  const currentObserved = useMemo(() => (intel.data?.all ?? []).filter((event) =>
+    event.publicStatus === "live_observed" && event.isCurrent && event.severity === null && event.delta === null,
+  ).slice(0, 6), [intel.data]);
   const available = useMemo(() => availableSorts(pool), [pool]);
   const activeSort = available.includes(sort) ? sort : "newest";
   const filtered = useMemo(
@@ -138,6 +143,49 @@ function IntelligencePage() {
         </p>
         <p className="mt-3 text-sm text-muted-foreground">Free to browse. For structured API delivery or monthly intelligence access, <Link to="/pricing" className="font-medium text-primary hover:underline">compare access options</Link>.</p>
       </header>
+
+      <section className="mt-8" aria-labelledby="intelligence-freshness-heading">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Three-domain monitoring</p>
+        <h2 id="intelligence-freshness-heading" className="mt-1 text-xl font-semibold">Evidence freshness by risk domain</h2>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+          Updated monitoring is not the same as a new risk assessment. Every domain keeps its last verified severity and original evidence date; newly observed but unscored signals are shown separately.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {domainPulse.map((pulse) => (
+            <article key={pulse.key} className="rounded-xl border border-border/70 bg-card/40 p-4">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-primary">{pulse.label}</p>
+              <p className="mt-2 text-sm font-semibold">
+                {pulse.state === "current_scored" ? "Current verified score" :
+                  pulse.state === "current_observed" ? "Current monitoring signal · unscored" :
+                  pulse.state === "historical_verified" ? "Historical verified assessment" :
+                  "Current verified evidence unavailable"}
+              </p>
+              {pulse.lastScored?.severity !== null && pulse.lastScored?.severity !== undefined ? (
+                <div className="mt-3 flex items-center gap-2">
+                  <RiskBadge score={pulse.lastScored.severity} showScore />
+                  <span className="text-xs text-muted-foreground">
+                    {pulse.currentScoredCount > 0 ? "Current assessment" : "Last verified historical score"}
+                  </span>
+                </div>
+              ) : null}
+              {pulse.lastScored ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Score evidence: {formatDate(pulse.lastScored.publishedAt ?? pulse.lastScored.createdAt)}
+                </p>
+              ) : null}
+              {pulse.newestObserved ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  New observation: {formatDate(pulse.newestObserved.publishedAt ?? pulse.newestObserved.createdAt)} · No severity assigned
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  No current independently eligible monitoring signal in this domain.
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="mt-8 grid gap-3 rounded-2xl border border-border/70 bg-card/40 p-4 sm:grid-cols-[minmax(0,1fr)_180px_170px_auto]">
         <label className="relative min-w-0">
@@ -215,6 +263,27 @@ function IntelligencePage() {
             ))}
           </div>
         </section>
+        {currentObserved.length > 0 ? (
+          <section className="mt-8" aria-labelledby="current-observation-heading">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Verified current monitoring</p>
+            <h2 id="current-observation-heading" className="mt-1 text-xl font-semibold">New developments observed · not risk-scored</h2>
+            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+              These are independently admitted, time-stamped source-free observations. They do not have a Geomacro severity score until the separate classifier, source-rights and corroboration checks pass.
+            </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {currentObserved.map((event) => (
+                <article key={event.id} className="rounded-xl border border-border/70 bg-card/40 p-4">
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-primary">{prettyCategory(event.category ?? "")} · Verified observation</p>
+                  <h3 className="mt-2 text-sm font-semibold leading-6">{publicHeadline(event.title)}</h3>
+                  {event.summary ? <p className="mt-2 text-xs leading-5 text-muted-foreground">{event.summary}</p> : null}
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Observed {formatDate(event.publishedAt ?? event.createdAt)} · Severity pending independent verification
+                  </p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
         <div className="mt-8 grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
