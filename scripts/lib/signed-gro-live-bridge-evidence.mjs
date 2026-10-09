@@ -40,7 +40,8 @@ export function classifySignedGroLiveBridge({ backendCanary, status, body }) {
     site_secret_config: "NOT_OBSERVABLE_FROM_GITHUB",
     site_build_revision: "NOT_INFERRED_FROM_BACKEND",
   };
-  if (status === 200 && a?.deliverable === true && a.code === "AVAILABLE") {
+  if (status === 200 && a?.deliverable === true && a.code === "AVAILABLE" &&
+      body?.exact_price?.network === "eip155:84532") {
     return { ...summary, outcome: "LIVE_TESTNET_NO_CHARGE_AVAILABLE", action: "MAINNET_AND_GLOBAL_COVERAGE_STILL_UNVERIFIED" };
   }
   if (status === 422 && a?.deliverable === false && SAFE_CODES.has(a.code)) {
