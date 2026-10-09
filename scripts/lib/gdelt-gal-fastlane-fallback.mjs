@@ -229,7 +229,7 @@ async function fetchGalFile(stamp, timeoutMs) {
   return { stamp, sourceUrl, text: gunzipSync(compressed).toString('utf8') };
 }
 
-function collectRelevantArticles(file, categoryName, now, freshnessMs, seen) {
+export function collectRelevantArticles(file, categoryName, now, freshnessMs, seen, privateArticleAdmission = null) {
   const found = [];
   for (const line of file.text.split('\n')) {
     if (!line.trim()) continue;
@@ -245,8 +245,7 @@ function collectRelevantArticles(file, categoryName, now, freshnessMs, seen) {
     if (!Number.isFinite(publishedMs) || now.getTime() - publishedMs > freshnessMs || publishedMs - now.getTime() > 5 * 60_000) continue;
     const sourceDomain = domainFromUrl(url) || String(row.domain || '').trim().toLowerCase();
     if (!sourceDomain) continue;
-    seen.add(url);
-    found.push({
+    const candidate = {
       title: String(row.title).trim(),
       description: String(row.desc || '').trim(),
       url,
@@ -256,7 +255,13 @@ function collectRelevantArticles(file, categoryName, now, freshnessMs, seen) {
       discoveryProvider: 'gdelt_gal',
       gdeltGalSourceStamp: file.stamp,
       topicScore,
-    });
+    };
+    // Private source publisher HTTPS/identity/date checks happen BEFORE
+    // taking a bounded top-2 candidate or adding to the de-duplication set.
+    // An unverified GAL row must not starve a real qualified publisher.
+    if (privateArticleAdmission && !privateArticleAdmission(candidate)) continue;
+    seen.add(url);
+    found.push(candidate);
   }
   return found;
 }
@@ -268,6 +273,7 @@ export async function fetchGdeltGalFastlaneArticles({
   now = new Date(),
   lookbackMinutes = null,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  privateArticleAdmission = null,
 } = {}) {
   if (!STRONG_TOPIC_PATTERNS[categoryName]) throw new Error(`GDELT_GAL_CATEGORY_UNSUPPORTED:${categoryName}`);
   const boundedMax = Math.max(1, Math.min(5, Number(maxCandidates) || 2));
@@ -293,7 +299,7 @@ export async function fetchGdeltGalFastlaneArticles({
       .sort((a, b) => b.stamp.localeCompare(a.stamp));
 
     for (const file of files) {
-      candidates.push(...collectRelevantArticles(file, categoryName, now, freshnessMs, seen));
+      candidates.push(...collectRelevantArticles(file, categoryName, now, freshnessMs, seen, privateArticleAdmission));
     }
 
     if (candidates.length >= Math.max(boundedMax * 3, 6)) break;
