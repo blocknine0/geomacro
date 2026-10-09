@@ -2,6 +2,8 @@
 // Hourly fixed-URL, read-only, Supabase/B2-free source-native coverage probe.
 // This is not an editorial, corroboration, score or commerce publisher.
 import { mkdirSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+import { resolve } from "node:path";
 import { fetchOfficialNativeArticles } from "../lib/official-native-rss.mjs";
 
 const CATEGORIES = ["geopolitics", "macro", "rare_earth"];
@@ -54,7 +56,7 @@ export async function probeOfficialThreeDomains({
   };
 }
 
-if (import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const proof = await probeOfficialThreeDomains();
   mkdirSync("artifacts/official-native-rss", { recursive: true });
   writeFileSync(OUTPUT, JSON.stringify(proof, null, 2) + "\n", { mode: 0o600 });
