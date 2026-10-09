@@ -220,6 +220,18 @@
     "/testnet-console": {
       "classification": "REMOVE",
       "status": "REMOVED"
+    },
+    "/api/v1/intelligence/geopolitics": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/v1/intelligence/macro-fx": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/v1/intelligence/critical-minerals": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
     }
   }
 }
