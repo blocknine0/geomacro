@@ -1,4 +1,5 @@
 import continuity from "./continuity.mjs";
+import { reserveB2AccountQuota } from "../../control-plane/src/b2-account-quota.mjs";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
@@ -36,6 +37,16 @@ async function signedGet(key, env) {
   const accessKey = String(env.B2_KEY_ID ?? "").trim();
   const secretKey = String(env.B2_APPLICATION_KEY ?? "").trim();
   if (!accessKey || !secretKey) throw new Error("B2_RISK_INDICES_EDGE_CONFIG_REQUIRED");
+  // Account-wide D1 quota admission BEFORE any external Backblaze HTTP GET.
+  // Only the infrequent D1-hot/cache-miss path reaches this function;
+  // untrusted public traffic can never bypass or set its own quota.
+  const reservation = await reserveB2AccountQuota(env.B2_QUOTA_DB, {
+    kind: "GET",
+    workflow_id: "risk_indices_public_edge",
+  });
+  if (reservation.ok !== true || reservation.reserved !== true) {
+    throw new Error("B2_RISK_INDICES_EDGE_SHARED_QUOTA_EXHAUSTED");
+  }
 
   const path = `/${[B2_BUCKET, ...key.split("/")].map(encodeURIComponent).join("/")}`;
   const host = new URL(B2_ENDPOINT).host;
