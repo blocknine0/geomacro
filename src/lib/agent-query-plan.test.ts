@@ -210,7 +210,8 @@ describe("adaptive agent query planner", () => {
       topics: ["hot_topics"],
       max_age_seconds: 30 * 86_400,
     });
-    expect(relaxed.module_max_age_seconds.hot_topics).toBe(AGENT_MODULE_MAX_AGE_SECONDS.hot_topics);
+    expect(AGENT_MODULE_MAX_AGE_SECONDS.hot_topics).toBe(2 * 3_600);
+    expect(relaxed.module_max_age_seconds.hot_topics).toBe(2 * 3_600);
 
     const strict = buildAgentQueryPlan({
       subjects: [{ type: "country", country_iso3: "IND" }],
