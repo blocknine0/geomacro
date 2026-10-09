@@ -349,19 +349,22 @@ async function readGlobalRiskB2Anchor(env, now = Date.now()) {
     // cannot be replaced with a later archive/check/retry timestamp.
     const sourceMs = Date.parse(String(row.source_as_of ?? ""));
     if (!Number.isFinite(generatedMs) ||
-        !Number.isFinite(sourceMs) ||
-        value?.data?.snapshotAsOf !== row.source_as_of ||
-        sourceMs > generatedMs + 5 * 60_000 ||
         generatedMs > now + 5 * 60_000 ||
         now - generatedMs > GLOBAL_RISK_B2_BASELINE_MAX_AGE_MS) {
       return null;
     }
+    // Preserve the existing authenticated B2 anchor semantics for old
+    // publishers, but NEVER show original source_as_of in the new public
+    // historical view unless the D1 row and SHA-bound body agree precisely.
+    const originalTimeProved = Number.isFinite(sourceMs) &&
+      value?.data?.snapshotAsOf === row.source_as_of &&
+      sourceMs <= generatedMs + 5 * 60_000;
     return {
       b2_sha256: String(row.b2_sha256),
       payload_sha256: String(row.payload_sha256),
       source_run_id: String(row.source_run_id),
       generated_at: String(row.generated_at),
-      snapshot_as_of: String(row.source_as_of),
+      snapshot_as_of: originalTimeProved ? String(row.source_as_of) : null,
       anchor_kind: "direct_verified_b2_snapshot",
     };
   }
