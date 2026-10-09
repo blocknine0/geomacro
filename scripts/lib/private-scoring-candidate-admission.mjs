@@ -12,7 +12,7 @@ export function privatePublisherPreAdmission(article, {
   catch { return { ok: false, reason: "publisher_url_invalid" }; }
   if (url.protocol !== "https:" || url.username || url.password ||
       url.hostname.length < 4 || !url.hostname.includes(".") ||
-      /^(?:\\d{1,3}\\.){3}\\d{1,3}$/u.test(url.hostname) ||
+      /^(?:\d{1,3}\.){3}\d{1,3}$/u.test(url.hostname) ||
       url.hostname.startsWith("[") || url.href.length > 2048) {
     return { ok: false, reason: "publisher_url_invalid" };
   }
