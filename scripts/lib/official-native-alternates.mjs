@@ -78,11 +78,25 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     alternate_native_current_items: 0,
     alternate_host_match_items: 0,
     alternate_topic_match_items: 0,
+    // Counts only. These indicate whether original publisher Atom feeds have
+    // <published> or only <updated>/date-like metadata; neither updated nor
+    // undocumented fields ever become publication time.
+    alternate_atom_published_elements: 0,
+    alternate_atom_updated_elements: 0,
+    alternate_atom_dc_date_elements: 0,
+    alternate_atom_publishedDate_elements: 0,
+    alternate_original_date_topic_and_host_items: 0,
     alternate_admitted_private_count: 0,
   };
   const out=[];
   const seen=new Set();
   for (const [,block] of entries) {
+    if (config.format === "atom") {
+      if (/<(?:atom:)?published(?:\\s|>)/iu.test(block)) stats.alternate_atom_published_elements++;
+      if (/<(?:atom:)?updated(?:\\s|>)/iu.test(block)) stats.alternate_atom_updated_elements++;
+      if (/<dc:date(?:\\s|>)/iu.test(block)) stats.alternate_atom_dc_date_elements++;
+      if (/<(?:atom:)?publishedDate(?:\\s|>)/iu.test(block)) stats.alternate_atom_publishedDate_elements++;
+    }
     const title=tag(block,"title");
     const dateText=config.format === "rss" ? tag(block,"pubDate") : tag(block,"published");
     const time=Date.parse(dateText);
@@ -93,6 +107,7 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     if (dated) stats.alternate_native_current_items++;
     if (uri) stats.alternate_host_match_items++;
     if (config.topics.test(title)) stats.alternate_topic_match_items++;
+    if (dated && uri && config.topics.test(title)) stats.alternate_original_date_topic_and_host_items++;
     if (!dated || !uri || !config.topics.test(title) ||
         title.length < 16 || title.length > 500 || seen.has(uri.href)) continue;
     seen.add(uri.href);
