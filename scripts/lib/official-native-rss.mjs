@@ -3,9 +3,9 @@
 // GDELT seendate/index timestamps are explicitly NOT publication evidence.
 export const OFFICIAL_NATIVE_FEEDS = Object.freeze({
   geopolitics: Object.freeze({
-    url: "https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
-    host: "www.ungeneva.org",
-    source_id: "ungeneva_press_rss_pending_review",
+    url: "https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml",
+    host: "news.un.org",
+    source_id: "un_news_peace_security_rss_pending_review",
     topics: /\b(?:security council|ceasefire|sanctions?|armed conflict|border conflict|military|missile|airstrikes?|invasion|displacement|peace talks|humanitarian crisis|war crimes|hostilities|geopolitical|peacekeeping)\b/iu,
   }),
   macro: Object.freeze({
