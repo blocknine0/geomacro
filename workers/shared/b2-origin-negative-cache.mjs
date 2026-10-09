@@ -8,7 +8,7 @@ const PRODUCTS = new Set(["/intelligence","/global-risk","/risk-indices"]);
 
 export function b2OriginFailureCacheKey(origin,product) {
   const url=new URL(origin);
-  if(url.protocol!=="https:" && url.hostname!=="edge.test")
+  if(url.protocol!=="https:")
     throw new Error("B2_ORIGIN_CACHE_ORIGIN_INVALID");
   if(!PRODUCTS.has(product)) throw new Error("B2_ORIGIN_CACHE_PRODUCT_INVALID");
   // Public Worker route rejects all queries. A customer cannot fetch the
