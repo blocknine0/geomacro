@@ -127,6 +127,21 @@ describe("Geomacro MCP + thin agent contract", () => {
     ]);
   });
 
+  it("rejects same-country corridor subjects across paid MCP tools", () => {
+    expect(() => geomacroAgentToolToCanonicalQuery("corridor_risk", {
+      origin_country_iso3: "ind",
+      destination_country_iso3: "IND",
+    })).toThrow("Corridor endpoints must differ");
+
+    expect(() => geomacroAgentToolToCanonicalQuery("three_domain_state", {
+      subject: {
+        type: "corridor",
+        origin_country_iso3: "usa",
+        destination_country_iso3: "USA",
+      },
+    })).toThrow("Corridor endpoints must differ");
+  });
+
   it("locks change and cause tools to the previous published verified state", () => {
     for (const name of [
       "change_since_last_verified",
