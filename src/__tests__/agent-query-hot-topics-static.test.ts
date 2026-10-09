@@ -12,7 +12,12 @@ describe("adaptive hot-topic commercial delivery", () => {
   it("requires a registered subject and healthy fresh live pipeline", () => {
     expect(loader).toContain('from("live_country_registry")');
     expect(loader).toContain('from("live_ingestion_cursors")');
-    expect(loader).toContain('HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS = 30 * 60');
+    expect(loader).toContain('const MAX_SOURCE_CADENCE_INTERVALS = 1;');
+    expect(loader).toContain('cadenceSeconds * MAX_SOURCE_CADENCE_INTERVALS');
+    expect(loader).toContain('export function evaluateHotTopicSourceFreshness');
+    expect(loader).toContain('lastSuccessMs <= input.nowMs');
+    expect(loader).not.toContain('HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS');
+    expect(loader).not.toContain('pipeline.lag_seconds >');
     expect(loader).toContain('pipelineHealthy');
     expect(loader).toContain('HOT_TOPIC_PIPELINE_UNHEALTHY');
     expect(loader).toContain('HOT_TOPIC_PIPELINE_STALE');
