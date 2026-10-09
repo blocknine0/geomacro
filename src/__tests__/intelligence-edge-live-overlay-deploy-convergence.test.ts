@@ -92,7 +92,8 @@ describe("#1827 production edge worker/website B2-bound D1 overlay convergence",
     expect(worker).toContain("/intelligence?projection=d1-hot-v2");
     expect(worker).not.toContain("/intelligence?projection=d1-hot-v1");
     expect(worker).toContain("const hotSnapshot = await readD1HotSnapshot(env);");
-    expect(workflow).toContain("scripts/ops/verify-live-intelligence-overlay-convergence.mjs");
+    expect(workflow).toContain("scripts/ops/verify-intelligence-edge-b2-d1-deploy.mjs");
+    expect(workflow).not.toContain("node scripts/ops/verify-live-intelligence-overlay-convergence.mjs");
     expect(workflow).toContain("Materialize latest B2-readback-verified Intelligence continuity");
     expect(workflow).toContain("wrangler@");
     expect(probe).toContain("D1_CURRENT_OVERLAY_BOUND_TO_B2_VISIBLE");

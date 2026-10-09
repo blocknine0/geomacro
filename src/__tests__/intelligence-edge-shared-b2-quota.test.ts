@@ -156,7 +156,9 @@ describe("#1827 account-wide Intelligence edge Backblaze GET guard",()=>{
     expect(wf).toContain("configure-intelligence-edge-d1-quota.mjs");
     expect(wf).toContain("wrangler.runtime.jsonc");
     expect(wf).toContain("d1 execute B2_QUOTA_DB");
-    expect(wf).toContain("scripts/ops/verify-live-intelligence-overlay-convergence.mjs");
+    expect(wf).toContain("scripts/ops/verify-intelligence-edge-b2-d1-deploy.mjs");
+    expect(readFileSync("scripts/ops/verify-live-intelligence-overlay-convergence.mjs","utf8"))
+      .toContain("INTELLIGENCE_EDGE_D1_B2_SITE_OVERLAY_NOT_CONVERGED");
     expect(wf).not.toContain("wrangler d1 create");
   });
 });
