@@ -1,3 +1,4 @@
+import { fetchPublisherOriginalPublication } from "./official-publisher-article-publication.mjs";
 // Original-publisher second-family news/Atom discovery when the primary feed
 // has no dated, topical events. These are PRIVATE, NOT rights-certified sources.
 // Feed updated/index/retrieval time never substitutes for per-entry publication.
@@ -11,7 +12,7 @@ export const ORIGINAL_PUBLISHER_ALTERNATES = Object.freeze({
   macro: Object.freeze({
     url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/18-eng.atom",
     format: "atom",
-    articleHosts: Object.freeze(["www150.statcan.gc.ca"]),
+    articleHosts: Object.freeze(["www150.statcan.gc.ca", "www.statcan.gc.ca"]),
     topics: /\b(?:inflation|consumer prices?|producer prices?|price indices?|price index|cost of living|exchange rate|interest rates?|currency|prices?)\b/iu,
   }),
   rare_earth: Object.freeze({
@@ -147,6 +148,55 @@ export async function fetchOriginalAlternate(category, { now=new Date(), fetchIm
       chunks.push(value);
     }
   } finally {reader.releaseLock()}
-  return parseOfficialAlternate(new TextDecoder("utf-8",{fatal:true}).decode(
-    Buffer.concat(chunks.map(x=>Buffer.from(x)))), category, now, diagnostics);
+  const xml = new TextDecoder("utf-8",{fatal:true}).decode(
+    Buffer.concat(chunks.map(x=>Buffer.from(x))));
+  const accepted = parseOfficialAlternate(xml, category, now, diagnostics);
+  if (accepted.length || cfg.format !== "atom") return accepted;
+
+  // Explicit per-entry <published> is absent on some official Atom feeds.
+  // Recover *only* original first-party article HTML publication metadata,
+  // NEVER <updated>, feed refresh, D1 crawl time or inferred day/hour.
+  // Hard bounded to 2 already topical first-party article GETs per poll
+  // even if the provider returns hundreds of noisy entries.
+  const MAX_PRIVATE_PAGE_LOOKUPS = 2;
+  const entries = [...xml.matchAll(
+    /<(?:atom:)?entry(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:atom:)?entry>/giu,
+  )].slice(0, MAX_ITEMS);
+  let attempted = 0, verified = 0;
+  const candidates = [];
+  const seen = new Set();
+  for (const [,entry] of entries) {
+    if (attempted >= MAX_PRIVATE_PAGE_LOOKUPS) break;
+    if (tag(entry, "published")) continue;
+    const title = tag(entry, "title");
+    const original = officialUrl(atomOriginalLink(entry), cfg.articleHosts);
+    if (!original || !cfg.topics.test(title) ||
+        title.length < 16 || title.length > 500 ||
+        seen.has(original.href)) continue;
+    seen.add(original.href);
+    attempted++;
+    try {
+      const publishedAt = await fetchPublisherOriginalPublication(original.href,
+        cfg.articleHosts, { fetchImpl, now });
+      if (!publishedAt) continue;
+      verified++;
+      candidates.push({
+        title, description: "", url: original.href, publishedAt,
+        source: original.hostname, sourceDomain: original.hostname,
+        discoveryProvider: "official_native_rss",
+        nativePublishedAtVerified: true,
+        nativeTimeEvidence: "publisher_first_party_article_publication_metadata",
+        privateOnly: true, rightsVerified: false, commercialEligible: false,
+      });
+    } catch {
+      // A publisher page error is NOT authority to infer the first date.
+    }
+  }
+  if (diagnostics && typeof diagnostics === "object" && !Array.isArray(diagnostics)) {
+    diagnostics.alternate_publisher_page_attempted = attempted;
+    diagnostics.alternate_publisher_page_original_date_verified = verified;
+    diagnostics.alternate_admitted_private_count =
+      Number(diagnostics.alternate_admitted_private_count || 0) + candidates.length;
+  }
+  return candidates.sort((a,b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
 }
