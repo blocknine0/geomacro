@@ -68,7 +68,7 @@ jobs:
 
           grep -Fq 'Three risks. Three separate indices.' src/components/gri/global-risk-domain-indices.tsx
           grep -Fq 'Earlier assessments retain their original dates.' src/routes/intelligence.tsx
-          grep -Fq 'Last update ' src/routes/intelligence.tsx
+          grep -Fq 'Monitoring updated ' src/routes/intelligence.tsx
           grep -Fq 'Ask Geomacro' src/components/ask/ask-workspace.tsx
           grep -Fq 'Geomacro turns global developments into clear risk intelligence for teams, decisions and AI agents.' src/components/home/commercial-home.tsx
 
@@ -503,7 +503,7 @@ jobs:
           /global-risk|Geomacro Global Risk
           /risk-indices|Geomacro Risk Indices
           /ask-geomacro|Ask Geomacro
-          /data-api|GOVERNED DATA
+          /data-api|INTELLIGENCE API · AI AGENTS
           /pricing|Access & pricing
           /institutional|COMMERCIAL RISK INTELLIGENCE
           /risk-gate|Risk Gate
