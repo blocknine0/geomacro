@@ -180,10 +180,12 @@ describe("#1827 distinguish Intelligence Worker deploy from unpublished website"
     expect(report.ok).toBe(true);
     expect(report.attempt).toBe(1);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
-    expect(urls.every(url=>url.endsWith("/intelligence") ||
-      url.endsWith("/v1/public/intelligence-overlay"))).toBe(true);
-    expect(urls.every(url=>!url.includes("geomacro.live") &&
-      !url.includes("backblazeb2.com"))).toBe(true);
+    // Use exact full URL allowlisting: string substring matching may accept
+    // malicious lookalike/suffixed hostnames. No website/B2 request is allowed.
+    expect(urls).toEqual([
+      "https://geomacro-intelligence.daspallab202391.workers.dev/intelligence",
+      "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/intelligence-overlay",
+    ]);
   });
 
   it("never accepts unavailable old revision after bounded attempts",async()=>{
