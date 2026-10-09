@@ -1,29 +1,10 @@
 name: B2 governed agent modules snapshot maintenance
 
+# QUOTA-HELD: This legacy publisher reads frozen Supabase Postgres, and B2
+# writes must not be scheduled on unchanged/older inputs. Existing verified
+# B2/D1 serving is NOT removed. Recovery is explicit main-only dispatch.
 on:
   workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - "scripts/ops/publish-b2-agent-governed-modules.ts"
-      - "scripts/ops/direct-postgres-supabase-lite.ts"
-      - "scripts/ops/run-b2-governed-direct-postgres.mjs"
-      - "scripts/ops/b2-s3-client.mjs"
-      - "src/lib/b2-private-archive-read.server.ts"
-      - "scripts/ops/verify-b2-agent-governed-runtime.ts"
-      - "src/lib/b2-agent-governed-modules.server.ts"
-      - "src/lib/agent-query-political-governance.server.ts"
-      - "src/lib/agent-query-world-bank-modules.server.ts"
-      - "src/lib/agent-query-critical-minerals.server.ts"
-      - "src/lib/commercial-source-eligibility.server.ts"
-      - "src/lib/early-warning-source-eligibility.server.ts"
-      - "src/lib/risk-gate-v2-*.ts"
-      - "src/lib/risk-gate-v2-*.server.ts"
-      - "src/lib/country-risk-v02-*.ts"
-      - "src/lib/country-risk-v02-*.server.ts"
-      - ".github/workflows/b2-agent-governed-modules-snapshot.yml"
-  schedule:
-    - cron: "37 4,16 * * *"
 
 permissions:
   contents: read
@@ -34,11 +15,20 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: production
     env:
+      # Mandatory shared account quota; without verified D1 reservation the
+      # B2 client fails BEFORE issuing network GET/PUT.
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: governed_agent_modules_legacy_recovery
+      B2_REQUEST_BUDGET: "12"
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
@@ -61,6 +51,27 @@ jobs:
 
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Resolve canonical D1 account-wide B2 quota ledger BEFORE legacy publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${B2_ACCOUNT_QUOTA_REQUIRED:-}" = "1"
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "D1 quota token missing: fail closed"; exit 2; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "D1 quota account missing: fail closed"; exit 2; }
+          list="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          id="$(printf '%s' "$list" | node -e '
+            let s="";
+            process.stdin.on("data",d=>s+=d);
+            process.stdin.on("end",()=>{
+              const row=JSON.parse(s).find(x=>x.name===process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid??row?.id??"");
+            });
+          ')"
+          test -n "$id" || { echo "Canonical D1 quota ledger missing: fail closed"; exit 2; }
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+          node --check scripts/ops/b2-d1-account-governor.mjs
+          echo "D1 account-wide quota reservation required for every canonical B2 request."
 
       - name: Require direct Postgres and B2 credentials without printing them
         shell: bash
