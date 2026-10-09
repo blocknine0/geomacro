@@ -80,6 +80,7 @@ export function verifyIntelligenceWorkerB2D1Deployment({
     o?.raw_source_headlines_exposed!==false ||
     o?.provider_identity_exposed!==false ||
     o?.synthetic_score!==false ||
+    JSON.stringify(o).length>OVERLAY_MAX_BYTES ||
     !Array.isArray(o?.rows) || o.rows.length<1 || o.rows.length>MAX_ROWS ||
     !o.rows.every(row=>validUnscoredRow(row,now)) ||
     !Array.isArray(e?.rows) ||
