@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { sourceNativeObservationTime } from "./source-native-observation-time";
 
 export const GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA =
   "geomacro.adaptive-intelligence-response.v1" as const;
@@ -319,12 +320,11 @@ export function computeGeomacroIntelligenceProductHash(
   return sha256(payloadWithoutProductHash);
 }
 
-function ageSeconds(value: string | null, asOf: string) {
-  if (!value) return null;
-  const observed = Date.parse(value);
+function ageSeconds(valueMs: number | null, asOf: string) {
+  if (valueMs === null) return null;
   const reference = Date.parse(asOf);
-  if (!Number.isFinite(observed) || !Number.isFinite(reference)) return null;
-  return Math.max(0, Math.floor((reference - observed) / 1000));
+  if (!Number.isFinite(reference) || valueMs > reference) return null;
+  return Math.floor((reference - valueMs) / 1000);
 }
 
 function freshnessStatus(age: number | null) {
@@ -347,9 +347,10 @@ export function publicStructuralObservation(
     status: "CURRENT" | "AGING" | "STALE" | "UNKNOWN";
   };
 } {
-  const observationTimestamp =
-    row.observed_at ?? row.published_at ?? row.retrieved_at;
-  const age = ageSeconds(observationTimestamp, asOf);
+  // Consistent with the pre-payment check: retrieval never proves a source
+  // observation is fresh. Future/invalid native timestamps become UNKNOWN.
+  const originalTime = sourceNativeObservationTime(row, Date.parse(asOf));
+  const age = ageSeconds(originalTime, asOf);
   return {
     observation_id: row.observation_id,
     dimension: row.dimension,
