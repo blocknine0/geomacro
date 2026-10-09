@@ -1524,6 +1524,13 @@ Reject:
 Severity and confidence must describe the supplied article only.
 Do not invent missing facts.
 
+DERIVED TEXT CONTRACT:
+- narrative: one concise event-specific explanation, 40-260 characters.
+- summary: a concise account of the material change and supported consequence, 80-700 characters.
+- Both fields must be plain text, complete, factual, and grounded only in the article.
+- Do not copy the headline verbatim, add unsupported actors or figures, or include URLs.
+- If the article cannot support both fields, set relevant=false instead of returning filler.
+
 You MUST return exactly ${articles.length} results with index 0 through ${articles.length - 1}.
 
 Return JSON only:
