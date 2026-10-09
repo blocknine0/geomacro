@@ -158,19 +158,19 @@ describe("#1827 historical archived Global Risk metadata never masquerades as fr
     expect(fallback.x402_chargeable).toBe(false);
   });
 
-  it("website unavailable state only reads historical metadata; it never shows history as a fresh score",()=>{
+  it("website lock remains untouched and historical status does not alter public current-serving routes",()=>{
     const ui=readFileSync("src/components/gri/global-risk-workspace.tsx","utf8");
     const worker=readFileSync("workers/control-plane/src/index.mjs","utf8");
     expect(worker).toContain('url.pathname === "/v1/public/historical-continuity/global-risk"');
     expect(worker.indexOf('url.pathname === "/v1/public/historical-continuity/global-risk"'))
       .toBeLessThan(worker.indexOf("const auth = authorized(request, env)"));
+    expect(worker).toContain("return getPublicHotSnapshot(env, decodeURIComponent(parts[3]));");
     expect(ui).toContain("Global Risk Index");
     expect(ui).toContain("Verified GRI unavailable");
-    expect(ui).toContain("Historical archive provenance available");
-    expect(ui).toContain("The historical score and graph remain hidden");
-    expect(ui).toContain("source_news_freshness_not_asserted");
-    expect(ui).toContain("current_snapshot_available!==false");
     expect(ui).not.toContain("historicalArchive.score");
     expect(ui).not.toContain("setData(historicalArchive");
+    // UI presentation is intentionally NOT changed: an explicit founder
+    // website lock requires a separate authorized visual/UI change.
+    expect(ui).not.toContain("HISTORICAL_GRI_METADATA_URL");
   });
 });
