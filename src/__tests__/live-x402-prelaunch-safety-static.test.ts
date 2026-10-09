@@ -7,6 +7,9 @@ describe("live x402 prelaunch safety probe", () => {
 
     expect(source).toContain('const BASE_SEPOLIA_NETWORK = "eip155:84532"');
     expect(source).toContain("response.status === 422");
+    expect(source).toContain('"STALE_REQUIRED_DATA"');
+    const census = readFileSync("scripts/agentic/verify-live-x402-country-availability-census.mjs", "utf8");
+    expect(census).toContain('"STALE_REQUIRED_DATA"');
     expect(source).toContain("result.deliverable === false");
     expect(source).toContain("response.status === 200");
     expect(source).toContain("result.deliverable === true");
