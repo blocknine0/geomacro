@@ -105,7 +105,7 @@ describe("#1827 bounded first-party publisher identity before expensive classifi
     expect(summary).toContain("preclassification_rejections: safeReasons");
     expect(workflow).toContain('GROQ_MAX_REQUESTS_PER_RUN: "3"');
     expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "2"');
-    expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1840')");
+    expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1842')");
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).not.toContain("schedule:");
     expect(workflow).not.toContain("SUPABASE_DB_URL: ${{ secrets.");
