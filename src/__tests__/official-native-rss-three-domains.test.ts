@@ -40,7 +40,7 @@ describe("three official publishers' original-event RSS discovery", () => {
     const audit = await probeOfficialThreeDomains({ fetchArticles, now });
     expect(audit.current_private_original_event_domains).toBe(0);
     expect(audit.implies_no_global_news).toBe(false);
-    expect(audit.measured_source_scope).toBe("THREE_SAMPLED_OFFICIAL_PUBLISHER_FEEDS_ONLY");
+    expect(audit.measured_source_scope).toBe("THREE_DOMAINS_UP_TO_THREE_FIXED_OFFICIAL_PUBLISHERS_EACH");
     for (const row of audit.categories) {
       expect(row.current_native_source_state).toBe("NO_ELIGIBLE_PRIVATE_CANDIDATE");
       expect(row.bounded_feed_gap_reason).toBe("PUBLISHER_ARTICLE_DATE_UNVERIFIED");
@@ -48,6 +48,79 @@ describe("three official publishers' original-event RSS discovery", () => {
     }
     expect(JSON.stringify(audit)).not.toContain("https://");
     expect(audit.proves_public_scored_intelligence).toBe(false);
+  });
+
+  it("hourly probe requests all three fixed publisher families only through conditional cold fallback", async () => {
+    const requested: Array<{category:string; includeSecondPublisher?:boolean; includeThirdPublisher?:boolean}> = [];
+    const fetchArticles = vi.fn(async (category: string, options: {
+      diagnostics: Record<string, number | boolean>;
+      includeSecondPublisher?: boolean;
+      includeThirdPublisher?: boolean;
+    }) => {
+      requested.push({category,includeSecondPublisher: options.includeSecondPublisher,
+        includeThirdPublisher: options.includeThirdPublisher});
+      Object.assign(options.diagnostics, {
+        item_count: 4,
+        item_native_pubdate_count: 3,
+        item_native_date_in_window_count: 0,
+        alternate_feed_items_seen: 2,
+        alternate_native_date_items: 2,
+        alternate_native_current_items: 0,
+        alternate_feed_attempted: true,
+        alternate_feed_ok: true,
+        third_feed_attempted: true,
+        third_feed_ok: true,
+        third_items_seen: 3,
+        third_native_pubdate_seen: 3,
+        third_original_current_count: 1,
+        third_exact_host_count: 3,
+        third_topic_match_count: 0,
+        third_private_eligible_count: 0,
+      });
+      return [];
+    });
+    const audit = await probeOfficialThreeDomains({fetchArticles,now});
+    expect(requested).toEqual([
+      {category:"geopolitics",includeSecondPublisher:true,includeThirdPublisher:true},
+      {category:"macro",includeSecondPublisher:true,includeThirdPublisher:true},
+      {category:"rare_earth",includeSecondPublisher:true,includeThirdPublisher:true},
+    ]);
+    expect(audit.measured_source_scope).toBe("THREE_DOMAINS_UP_TO_THREE_FIXED_OFFICIAL_PUBLISHERS_EACH");
+    expect(audit.current_private_original_event_domains).toBe(0);
+    expect(audit.implies_no_global_news).toBe(false);
+    for (const row of audit.categories) {
+      expect(row.bounded_feed_gap_reason).toBe("RECENT_NATIVE_EVENT_REJECTED_BY_TOPIC_OR_PROVENANCE");
+      expect(row.third_feed_attempted).toBe(true);
+      expect(row.third_feed_ok).toBe(true);
+      expect(row.third_items_seen).toBe(3);
+      expect(row.third_native_pubdate_items).toBe(3);
+      expect(row.third_private_candidates).toBe(0);
+      expect(row.commerce_eligible).toBe(false);
+      expect(row.public_scored_verified).toBe(false);
+    }
+    expect(audit.b2_requests).toBe(0);
+    expect(audit.supabase_writes).toBe(0);
+    expect(audit.funds_touched).toBe(false);
+    expect(JSON.stringify(audit)).not.toContain("https://");
+  });
+
+  it("counts actual alternate-native published tags, not the stale diagnostic alias", () => {
+    const classify = (extra: Record<string,number>) =>
+      classifyNativeFeedGap({articlesCount:0,diagnostics:{
+        item_count:1,item_native_pubdate_count:0,
+        alternate_feed_items_seen:2,
+        alternate_native_date_items:2,
+        alternate_native_current_items:0,
+        third_items_seen:0,
+        ...extra,
+      }});
+    expect(classify({})).toBe("SAMPLED_FEED_HAS_ONLY_STALE_OR_INELIGIBLE_EVENTS");
+    expect(classify({alternate_atom_updated_only_items:2})).toBe("SAMPLED_FEED_HAS_ONLY_STALE_OR_INELIGIBLE_EVENTS");
+    expect(classifyNativeFeedGap({articlesCount:0,diagnostics:{
+      item_count:0,alternate_feed_items_seen:0,
+      third_items_seen:2,third_native_pubdate_seen:2,
+      third_original_current_count:0,
+    }})).toBe("SAMPLED_FEED_HAS_ONLY_STALE_OR_INELIGIBLE_EVENTS");
   });
 
   it("distinguishes off-topic recent native events, empty feeds, and old publications", () => {
