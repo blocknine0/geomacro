@@ -1,21 +1,11 @@
 name: B2 canonical Global Risk maintenance
 
+# QUOTA-HELD while the current canonical GRI source_as_of is stale.
+# Standalone two-hour/push maintenance retries fail before B2 publication and
+# consume GitHub quota. Resume only on genuine source proof or explicit owner
+# dispatch; no synthetic new timestamps, archive mutation or payment.
 on:
   workflow_dispatch: {}
-  schedule:
-    - cron: "17 */2 * * *"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/b2-global-risk-maintenance.yml"
-      - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
-      - "scripts/ops/verify-global-risk-public-convergence.mjs"
-      - "scripts/ops/b2-s3-client.mjs"
-      - "src/lib/global-risk-assemble.ts"
-      - "src/lib/global-risk-continuity.ts"
-      - "src/lib/b2-live.server.ts"
-      - "server/api/public/global-risk.get.ts"
-      - "src/__tests__/global-risk-public-convergence-static.test.ts"
 
 permissions:
   contents: read
@@ -26,7 +16,7 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ github.repository == 'blocknine0/geomacro' }}
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     environment: production

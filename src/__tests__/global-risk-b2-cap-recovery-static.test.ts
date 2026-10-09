@@ -51,7 +51,9 @@ describe("Global Risk B2-cap current-proof recovery", () => {
   });
 
   it("keeps the normal hourly GRI workflow and direct B2 path unchanged", () => {
-    expect(workflow).toContain('cron: "23 * * * *"');
+    expect(workflow).not.toContain('cron: "23 * * * *"');
+    expect(workflow).not.toContain("\n  schedule:\n");
+    expect(workflow).toContain("workflow_dispatch: {}");
     expect(publisher).toContain('schema: "geomacro.public-global-risk-direct-postgres-publish.v1"');
     expect(publisher).toContain('verification_mode: "direct-b2-readback"');
     expect(publisher).toContain("b2_readback_verified: true");
