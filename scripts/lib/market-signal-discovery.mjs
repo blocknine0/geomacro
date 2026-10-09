@@ -85,7 +85,7 @@ export function summarizeOpenDiscovery(category, payload, {
     hosts.size === 1 ? "SINGLE_OUTLET_DISCOVERY_ONLY" :
       "NO_RECENT_OPEN_DISCOVERY";
   return Object.freeze({
-    category, source_transport_ok: true, state,
+    category, source_transport_ok: true, state, source_failure_reason: null,
     gdelt_articles_sampled: articles.length,
     freshly_indexed_articles: freshObserved,
     distinct_outlet_domains: hosts.size,
@@ -103,10 +103,11 @@ export function summarizeOpenDiscovery(category, payload, {
   });
 }
 
-export function unavailableOpenDiscovery(category) {
+export function unavailableOpenDiscovery(category, reason = "UNKNOWN_TRANSPORT_FAILURE") {
   if (!DISCOVERY_CATEGORIES.includes(category)) throw new Error("MARKET_DISCOVERY_CATEGORY_INVALID");
   return {
     category, source_transport_ok: false, state: "SOURCE_UNAVAILABLE",
+    source_failure_reason: reason,
     gdelt_articles_sampled: 0, freshly_indexed_articles: 0,
     distinct_outlet_domains: 0, future_index_timestamps_rejected: 0,
     old_or_missing_index_timestamps: 0, latest_index_seen_at: null,
@@ -149,20 +150,34 @@ export async function pollOpenDiscovery(category, { now = new Date(), fetchImpl 
   endpoint.searchParams.set("timespan", "2h");
   endpoint.searchParams.set("sort", "datedesc");
   endpoint.searchParams.set("format", "json");
+  let response;
   try {
-    const response = await fetchImpl(endpoint.href, {
+    response = await fetchImpl(endpoint.href, {
       redirect: "error",
-      headers: { accept: "application/json", "user-agent": "Geomacro-Private-Global-Signal-Discovery/1.0" },
+      headers: { accept: "application/json, text/plain;q=0.6", "user-agent": "Geomacro-Private-Global-Signal-Discovery/1.0" },
       signal: AbortSignal.timeout(12_000),
     });
-    if (!response.ok || !/^(?:application\/json|text\/json)(?:;|$)/iu.test(
-      response.headers.get("content-type") ?? "")) throw new Error("MARKET_DISCOVERY_SOURCE_UNAVAILABLE");
-    const raw = await boundedBody(response);
-    return summarizeOpenDiscovery(category, JSON.parse(raw), { now });
   } catch {
-    // No raw response or upstream URLs are echoed to Actions logs.
-    return unavailableOpenDiscovery(category);
+    return unavailableOpenDiscovery(category, "NETWORK_OR_TIMEOUT");
   }
+  if (!response?.ok) {
+    // Status code is safe; never print upstream response bodies or request URLs.
+    const code = Number(response?.status);
+    return unavailableOpenDiscovery(category,
+      Number.isInteger(code) && code >= 100 && code <= 599 ? "HTTP_" + code : "HTTP_FAILURE");
+  }
+  const mediaType = response.headers.get("content-type") ?? "";
+  if (!/^(?:application\/json|text\/json|text\/plain)(?:;|$)/iu.test(mediaType)) {
+    return unavailableOpenDiscovery(category, "UNEXPECTED_CONTENT_TYPE");
+  }
+  let raw;
+  try { raw = await boundedBody(response); }
+  catch { return unavailableOpenDiscovery(category, "BODY_REJECTED"); }
+  let payload;
+  try { payload = JSON.parse(raw); }
+  catch { return unavailableOpenDiscovery(category, "INVALID_JSON"); }
+  try { return summarizeOpenDiscovery(category, payload, { now }); }
+  catch { return unavailableOpenDiscovery(category, "INVALID_SCHEMA_OR_CLOCK"); }
 }
 
 export async function probeOpenDiscoveryMesh({ now = new Date(), fetchCategory = pollOpenDiscovery } = {}) {
