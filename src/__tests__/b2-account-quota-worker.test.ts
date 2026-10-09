@@ -58,6 +58,8 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
   it("uses one server-owned bounded atomic UPSERT, not a read/update race", () => {
     const sql=readFileSync("workers/control-plane/migrations/0014_b2_account_daily_request_quota.sql","utf8");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS b2_account_daily_request_quota");
+    // A literal backslash-n in SQL is not whitespace; Wrangler remote fails.
+    expect(sql.split(String.fromCharCode(92) + "n")).toHaveLength(1);
     expect(sql).toContain("PRIMARY KEY");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS b2_request_quota_workflow_receipt");
     expect(sql).toContain("version = 5");
