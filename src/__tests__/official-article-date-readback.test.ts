@@ -49,6 +49,11 @@ describe("bounded original-publisher article precise-date fallback", () => {
       "https://www.canada.ca.evil.example/en/natural-resources-canada/news/abc",
       "https://www.canada.ca/en/other-agency/news/abc",
       statcan,
+      "https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals.html?redirect=https://evil.test",
+      "https://www.canada.ca/en/natural-resources-canada/news/2026/10/%2F%2Fevil.html",
+      "https://www.canada.ca/en/natural-resources-canada/news/2026/10/fake.html#fragment",
+      "https://www.canada.ca/en/natural-resources-canada/news/2026/10/../../../evil.html",
+      "https://natural-resources.canada.ca/other/news/2026/example.html",
     ]) {
       expect(await fetchVerifiedPublisherPageDate(url, "rare_earth", { now, fetchImpl })).toBeNull();
     }
