@@ -44,7 +44,7 @@ describe("verified public edge hot-cache contract", () => {
     expect(worker).toContain("return await projectCachedResponse(cached, env)");
     expect(worker).not.toContain("if (cached) return cached");
     expect(worker).toContain('"x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none"');
-    expect(worker).toContain("/intelligence?projection=d1-hot-v1");
+    expect(worker).toContain("/intelligence?projection=d1-hot-v2");
     expect(worker).toContain("stale-while-revalidate=3600");
     expect(worker).toContain("stale-if-error=86400");
     expect(worker).toContain('import continuity from "./continuity.mjs"');
