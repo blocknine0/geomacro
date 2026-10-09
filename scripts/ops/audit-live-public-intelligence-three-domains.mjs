@@ -45,6 +45,7 @@ mkdirSync("artifacts/public-intelligence-freshness", {recursive: true});
 writeFileSync(OUTPUT, JSON.stringify(proof,null,2)+"\n", {mode:0o600});
 console.log(JSON.stringify(proof));
 if (!proof.three_domain_current_scored_ready ||
-    proof.current_overlay_state !== "D1_CURRENT_OVERLAY_BOUND_TO_B2_VISIBLE") {
+    proof.current_overlay_state !== "D1_CURRENT_OVERLAY_BOUND_TO_B2_VISIBLE" ||
+    proof.site_overlay_converged !== true) {
   process.exitCode = 3; // No fake green when only dated verified context exists.
 }
