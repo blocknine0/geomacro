@@ -35,10 +35,10 @@ describe("#1827 unified production and Federico launch guard", () => {
   });
 
   it("resolves its real canonical guard module before any scheduled or issue-close run", () => {
-    const imported = runner.match(/from\\s+["'](\\.\\.\\/lib\\/[^"']+\\.mjs)["']/)?.[1];
+    const imported = runner.match(/from\s+["'](\.\.\/lib\/[^"']+\.mjs)["']/)?.[1];
     expect(imported).toBe("../lib/issue-1414-closure-guard.mjs");
     expect(existsSync(resolve("scripts/ops", imported!))).toBe(true);
-    expect(evaluateIssue1414Acceptance(headings + "\\n- [ ] Pending current production gate").accepted).toBe(false);
+    expect(evaluateIssue1414Acceptance(headings + "\n- [ ] Pending current production gate").accepted).toBe(false);
   });
 
   it("requires every outstanding production and open-PR checkbox", () => {
