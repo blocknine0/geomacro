@@ -79,14 +79,29 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     alternate_host_match_items: 0,
     alternate_topic_match_items: 0,
     alternate_admitted_private_count: 0,
+    // Aggregate tag-shape counters only; no raw article text, URLs or dates.
+    // Diagnose vendor Atom format without laundering <updated> as <published>.
+    alternate_atom_published_tag_items: 0,
+    alternate_atom_updated_only_items: 0,
+    alternate_atom_dc_date_tag_items: 0,
+    alternate_atom_dcterms_issued_tag_items: 0,
+    alternate_atom_link_href_items: 0,
   };
   const out=[];
   const seen=new Set();
   for (const [,block] of entries) {
     const title=tag(block,"title");
-    const dateText=config.format === "rss" ? tag(block,"pubDate") : tag(block,"published");
+    const publishedTag=config.format === "atom" ? tag(block,"published") : "";
+    if (config.format === "atom") {
+      if (publishedTag) stats.alternate_atom_published_tag_items++;
+      else if (tag(block,"updated")) stats.alternate_atom_updated_only_items++;
+      if (tag(block,"dc:date")) stats.alternate_atom_dc_date_tag_items++;
+      if (tag(block,"dcterms:issued")) stats.alternate_atom_dcterms_issued_tag_items++;
+    }
+    const dateText=config.format === "rss" ? tag(block,"pubDate") : publishedTag;
     const time=Date.parse(dateText);
     const raw=config.format === "rss" ? tag(block,"link") : atomOriginalLink(block);
+    if (config.format === "atom" && raw) stats.alternate_atom_link_href_items++;
     const uri=officialUrl(raw,config.articleHosts);
     if (Number.isFinite(time)) stats.alternate_native_date_items++;
     const dated=Number.isFinite(time) && time <= nowMs+FIVE_MINUTES && nowMs-time<=DAY_MS;

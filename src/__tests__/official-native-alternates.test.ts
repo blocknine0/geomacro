@@ -72,6 +72,42 @@ describe("original publisher alternate feed with source-native Atom dates", () =
       "2026-10-09T12:15:00Z");
     expect(parseOfficialAlternate(ca, "macro", now)).toHaveLength(1);
   });
+  it("counts original Atom tag formats without using metadata-only dates for admission", () => {
+    const updateOnly = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:dc="http://purl.org/dc/elements/1.1/"
+      xmlns:dcterms="http://purl.org/dc/terms/">
+      <entry><title>${title}</title><link rel="alternate" href="${uri}"/>
+      <updated>2026-10-09T13:29:00Z</updated>
+      <dc:date>2026-10-09T12:00:00Z</dc:date>
+      <dcterms:issued>2026-10-09T12:00:00Z</dcterms:issued></entry></feed>`;
+    const diagnostics: Record<string, number> = {};
+    expect(parseOfficialAlternate(updateOnly, "rare_earth", now, diagnostics)).toEqual([]);
+    expect(diagnostics).toMatchObject({
+      alternate_feed_items_seen: 1,
+      alternate_native_date_items: 0,
+      alternate_admitted_private_count: 0,
+      alternate_atom_published_tag_items: 0,
+      alternate_atom_updated_only_items: 1,
+      alternate_atom_dc_date_tag_items: 1,
+      alternate_atom_dcterms_issued_tag_items: 1,
+      alternate_atom_link_href_items: 1,
+    });
+    expect(JSON.stringify(diagnostics)).not.toContain(uri);
+    expect(JSON.stringify(diagnostics)).not.toContain(title);
+  });
+  it("does not confuse a feed-level updated timestamp with entry original publication", () => {
+    const updatedOnly = atom(title, uri, "").replace("<published></published>", "");
+    const stats: Record<string, number> = {};
+    expect(parseOfficialAlternate(updatedOnly, "rare_earth", now, stats)).toEqual([]);
+    expect(stats.alternate_atom_published_tag_items).toBe(0);
+    expect(stats.alternate_atom_updated_only_items).toBe(0);
+    expect(stats.alternate_admitted_private_count).toBe(0);
+    const valid: Record<string, number> = {};
+    expect(parseOfficialAlternate(atom(title, uri, "2026-10-09T12:15:00Z"),
+      "rare_earth", now, valid)).toHaveLength(1);
+    expect(valid.alternate_atom_published_tag_items).toBe(1);
+    expect(valid.alternate_atom_updated_only_items).toBe(0);
+  });
   it("not even successful alternate discovery grants public or paid source rights", async () => {
     const doc = atom(title, uri, "2026-10-09T12:15:00Z");
     const rows = await fetchOriginalAlternate("rare_earth", {
