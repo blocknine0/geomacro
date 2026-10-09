@@ -77,7 +77,13 @@ jobs:
       - name: Publish verified Risk Indices package to isolated B2 namespace
         env:
           RISK_INDICES_PUBLISHED_LIVE_ARTIFACT_PATH: /tmp/risk-indices-published-live.json
-        run: bun scripts/ops/publish-b2-risk-indices-direct-postgres.mjs | tee /tmp/risk-indices-publish.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/publish-b2-risk-indices-direct-postgres.mjs | tee /tmp/risk-indices-publish.json
+          # A previous validated edge cache is NOT a substitute for this run.
+          # The publisher must have just completed verified D1 hot publication.
+          grep -q '"d1_hot_snapshot_published":true' /tmp/risk-indices-publish.json
 
       - name: Require verified dedicated Risk Indices edge
         shell: bash
