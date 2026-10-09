@@ -30,13 +30,15 @@ for (const domain of domains) {
   const item = data.diagnostics;
   const counts = ["discovered_candidate_count", "classifier_attempted_count",
     "classifier_returned_count", "classifier_failed_batch_count",
-    "canonical_gate_pass_count", "discovery_failure_count", "private_staged_count"];
+    "canonical_gate_pass_count", "discovery_failure_count", "private_staged_count",
+    "editorial_review_pending_count"];
   for (const name of counts) {
     if (!Number.isSafeInteger(item[name]) || item[name] < 0) {
       throw new Error("PRIVATE_SCORING_DIAGNOSTIC_COUNTER_INVALID");
     }
   }
-  if (item.private_staged_count > item.canonical_gate_pass_count ||
+  if (item.editorial_review_pending_count > item.private_staged_count ||
+      item.private_staged_count > item.canonical_gate_pass_count ||
       item.canonical_gate_pass_count > item.classifier_returned_count ||
       item.classifier_returned_count > item.classifier_attempted_count ||
       item.classifier_attempted_count > item.discovered_candidate_count) {
@@ -64,6 +66,8 @@ for (const domain of domains) {
     preclassification_rejections: safeReasons(item.preclassification_rejections,
       /^(?:publisher_url_invalid|publisher_domain_mismatch|publisher_title_missing|publisher_time_unavailable)$/u, 64),
     gate_rejections: safeReasons(item.gate_rejections, /^[a-z_]{3,45}$/u),
+    derived_quality_rejections: safeReasons(item.derived_quality_rejections,
+      /^(?:narrative|summary)_(?:missing|too_short|too_long_private|control_invalid)$/u),
     private_stage_rejections: safeReasons(item.private_stage_rejections,
       /^(?:private_scoring_[a-z_]{2,65}|private_stage_rejected_unknown)$/u),
     public_published: false,
