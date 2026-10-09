@@ -9,6 +9,78 @@ function safeIso(value, now) {
     : null;
 }
 
+
+/**
+ * Compare actual public derived row identities, never a collection batch
+ * timestamp with the publisher's original event timestamp. No raw content,
+ * private origin reads, payments or new source claims are involved.
+ */
+function publicRowKey(row, now) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+  const original = safeIso(row.published_at ?? row.created_at, now);
+  if (!original || !String(row.id ?? "").trim() ||
+      !String(row.source_title ?? "").trim() ||
+      !CATEGORIES.includes(row.category) ||
+      !["verified_b2", "live_observed"].includes(row.public_status)) return null;
+  const severity = row.public_status === "live_observed"
+    ? (row.severity === null && row.delta === null ? null : undefined)
+    : row.severity;
+  if (severity === undefined ||
+      (severity !== null && (!Number.isFinite(severity) || severity < 0 || severity > 100))) return null;
+  return JSON.stringify([
+    String(row.id), row.category, row.public_status, original,
+    String(row.source_title).replace(/\s+/g, " ").trim(), severity,
+  ]);
+}
+
+export function assessPublicIntelligenceSiteConvergence({ edge, site, overlay, now = Date.now() } = {}) {
+  const edgeRows = Array.isArray(edge?.payload?.rows) ? edge.payload.rows : [];
+  const siteRows = site?.status === 200 && site?.payload?.ok === true &&
+    Array.isArray(site?.payload?.rows) ? site.payload.rows : [];
+  const overlayRows = Array.isArray(overlay?.payload?.rows) ? overlay.payload.rows : [];
+  const edgeKeys = new Set(edgeRows.map(row => publicRowKey(row, now)).filter(Boolean));
+  const siteKeys = new Set(siteRows.map(row => publicRowKey(row, now)).filter(Boolean));
+  const matchingBaseline = overlay?.status === 200 &&
+    HASH.test(String(edge?.b2_sha256 ?? "")) &&
+    edge?.b2_sha256 === overlay?.verified_b2_sha256 &&
+    edge?.current_overlay === "cloudflare-d1-hot";
+  const observationKeys = overlayRows.map(row =>
+    row?.category === "geopolitics" &&
+    row?.public_status === "live_observed" &&
+    row?.severity === null && row?.delta === null &&
+    String(row?.source_title ?? "").startsWith("Geomacro observes ")
+      ? publicRowKey(row, now) : null,
+  );
+  const validObservations = overlayRows.length > 0 && overlayRows.length <= 300 &&
+    observationKeys.every(Boolean) && new Set(observationKeys).size === observationKeys.length;
+  const observed = matchingBaseline && validObservations &&
+    observationKeys.every(key => edgeKeys.has(key) && siteKeys.has(key));
+
+  // The public API intentionally hides unscored observations when every domain
+  // has a genuinely current scored assessment. Accept only if the site shows
+  // an independently matching current score in ALL THREE domains instead.
+  const currentScoredSiteDomains = CATEGORIES.filter(category =>
+    siteRows.some(row => {
+      const original = safeIso(row?.published_at ?? row?.created_at, now);
+      const key = publicRowKey(row, now);
+      return row?.category === category && row?.public_status === "verified_b2" &&
+        typeof row.severity === "number" && key && edgeKeys.has(key) &&
+        original && now - Date.parse(original) <= DAY_MS;
+    }),
+  );
+  const suppressedByCurrentScoring = matchingBaseline && validObservations &&
+    site?.payload?.mode === "verified_b2" &&
+    currentScoredSiteDomains.length === CATEGORIES.length &&
+    siteRows.every(row => row?.public_status === "verified_b2");
+  return {
+    site_observed_source_batch: observed,
+    site_current_scored_domains_matched: currentScoredSiteDomains.length,
+    site_overlay_intentionally_suppressed: suppressedByCurrentScoring,
+    site_overlay_converged: observed || suppressedByCurrentScoring,
+    overlay_row_count: overlayRows.length,
+  };
+}
+
 export function summarizePublicIntelligenceFreshness({
   edge,
   site,
@@ -61,7 +133,9 @@ export function summarizePublicIntelligenceFreshness({
   const siteStatus = Number(site?.status ?? 0);
   const siteOk = siteStatus === 200 && site?.payload?.ok === true &&
     Array.isArray(site?.payload?.rows);
-  const freshThree = CATEGORIES.every(c => scoredByCategory[c].state === "CURRENT_VERIFIED");
+  const siteConvergence = assessPublicIntelligenceSiteConvergence({ edge, site, overlay, now });
+  const freshThree = CATEGORIES.every(c => scoredByCategory[c].state === "CURRENT_VERIFIED") &&
+    siteConvergence.site_current_scored_domains_matched === CATEGORIES.length;
   return {
     schema: "geomacro.public-intelligence-three-domain-audit.v1",
     checked_at: new Date(now).toISOString(),
@@ -74,6 +148,7 @@ export function summarizePublicIntelligenceFreshness({
     public_site_mode: site?.payload?.mode === "verified_b2" ||
       site?.payload?.mode === "verified_b2_plus_live_observed" ? site.payload.mode : null,
     public_site_total_rows: siteOk ? site.payload.rows.length : 0,
+    ...siteConvergence,
     b2_bound_edge_authority_verified: known,
     current_overlay_state: pipeline,
     edge_current_overlay: edge?.current_overlay ?? "unknown",
