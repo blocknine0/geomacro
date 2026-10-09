@@ -1,5 +1,6 @@
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
+import { makeRiskIndicesHistoricalMetadata } from "./risk-indices-historical-status.mjs";
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_HOT_SNAPSHOT_BODY_BYTES = 1024 * 1024;
 const MAX_HOT_SNAPSHOT_BYTES = 768 * 1024;
@@ -442,6 +443,80 @@ async function getHistoricalGlobalRiskContinuity(env) {
   } catch {
     return json({ok:false,error:"GLOBAL_RISK_VERIFIED_ARCHIVE_UNAVAILABLE",
       historical_only:true,current_snapshot_available:false},503);
+  }
+}
+
+
+/**
+ * Risk Indices retain the last independently B2-readback-verified D1 anchor
+ * even after the strict 90-minute hot snapshot expires. A D1 row is not a
+ * fresh B2 GET and cannot create current scoring or a chargeable receipt.
+ */
+async function getHistoricalRiskIndicesContinuity(env) {
+  const unavailable = () => json({
+    ok: false, error: "RISK_INDICES_VERIFIED_ARCHIVE_UNAVAILABLE",
+    historical_only: true, current_snapshot_available: false,
+  }, 503);
+  try {
+    const row = await env.DB.prepare(`
+      SELECT product, schema_name, generated_at, source_as_of, expires_at, b2_object_key, b2_sha256,
+        payload_sha256, proof_schema, verified_at, source_run_id, payload_json
+      FROM public_b2_hot_snapshot WHERE product = ? LIMIT 1
+    `).bind("risk-indices").first();
+    if (!row) return unavailable();
+    const config = HOT_SNAPSHOT_PRODUCTS["risk-indices"];
+    const payloadJson = String(row.payload_json ?? "");
+    if (new TextEncoder().encode(payloadJson).byteLength > MAX_HOT_SNAPSHOT_BYTES ||
+        row.product !== "risk-indices" ||
+        row.schema_name !== config.schema ||
+        row.proof_schema !== config.proofSchema ||
+        row.b2_object_key !== config.b2Key ||
+        !HASH_RE.test(String(row.b2_sha256 ?? "")) ||
+        !HASH_RE.test(String(row.payload_sha256 ?? "")) ||
+        !/^\d{1,20}$/u.test(String(row.source_run_id ?? ""))) return unavailable();
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payloadJson));
+    const actualHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+    if (actualHash !== row.payload_sha256) return unavailable();
+    let value;
+    try { value = JSON.parse(payloadJson); } catch { return unavailable(); }
+    const data = value?.data;
+    if (value?.schema !== config.schema ||
+        value?.source_project !== "ldpwajisioljyjtojvfx" ||
+        value?.generated_at !== row.generated_at ||
+        data?.snapshotAsOf !== row.source_as_of ||
+        data?.verificationStatus !== "verified" ||
+        data?.contractVersion !== "risk-indices-v1.1.0" ||
+        data?.parentMethodologyVersion !== "gri-v1.2.0" ||
+        !Array.isArray(data?.indices) || data.indices.length !== 3) return unavailable();
+    const expected = new Set(["geopolitics", "macro", "critical_minerals"]);
+    for (const index of data.indices) {
+      if (!expected.delete(index?.key) || index?.status !== "available" ||
+          !Array.isArray(index?.series?.["7D"]?.buckets) ||
+          index.series["7D"].buckets.length < 2 ||
+          !Array.isArray(index?.series?.["30D"]?.buckets) ||
+          index.series["30D"].buckets.length < index.series["7D"].buckets.length) return unavailable();
+    }
+    if (expected.size) return unavailable();
+    const metadata = makeRiskIndicesHistoricalMetadata({
+      anchor_kind: "direct_verified_b2_snapshot",
+      b2_sha256: row.b2_sha256,
+      payload_sha256: row.payload_sha256,
+      source_run_id: row.source_run_id,
+      generated_at: row.generated_at,
+      snapshot_as_of: row.source_as_of,
+    });
+    return new Response(JSON.stringify(metadata), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Access-Control-Allow-Origin": "*",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+      },
+    });
+  } catch {
+    return unavailable();
   }
 }
 
@@ -950,6 +1025,9 @@ export default {
     }
     if (request.method === "GET" && url.pathname === "/v1/public/historical-continuity/global-risk") {
       return getHistoricalGlobalRiskContinuity(env);
+    }
+    if (request.method === "GET" && url.pathname === "/v1/public/historical-continuity/risk-indices") {
+      return getHistoricalRiskIndicesContinuity(env);
     }
     if (request.method === "GET" && parts[0] === "v1" && parts[1] === "public" && parts[2] === "hot-snapshot" && parts.length === 4) {
       return getPublicHotSnapshot(env, decodeURIComponent(parts[3]));

@@ -243,6 +243,59 @@ jobs:
             echo "Historical-only endpoint returned unexpected HTTP $code"; exit 12
           fi
 
+      - name: Verify Risk Indices historical D1 status without B2 or payment
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$CONTROL_PLANE_URL/v1/public/historical-continuity/risk-indices"
+          code=""
+          # Bounded revision propagation checks; an old 401/404 is never PASS.
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            code="$(curl -sS -o /tmp/indices-historical.json -w '%{http_code}' --max-time 15 "$URL" || true)"
+            if [ "$code" = "200" ] || [ "$code" = "503" ]; then break; fi
+            if [ "$code" != "401" ] && [ "$code" != "404" ]; then
+              echo "Unexpected historical Risk Indices status HTTP $code"; exit 12
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "Risk Indices historical route not propagated (HTTP $code)"; exit 12
+            fi
+            sleep 4
+          done
+          if [ "$code" = "200" ]; then
+            jq -e '
+              .ok == true and
+              .schema == "geomacro.public-risk-indices-historical-continuity.v1" and
+              .product == "risk-indices" and
+              .historical_only == true and
+              .current_snapshot_available == false and
+              .commercial_eligible == false and
+              .x402_chargeable == false and
+              .independently_rechecked_b2_now == false and
+              .source_news_freshness_not_asserted == true and
+              .prior_verified_domains == ["geopolitics","macro","critical_minerals"] and
+              (.original_snapshot_as_of | type == "string") and
+              (has("indices") | not) and
+              (has("score") | not) and
+              (has("payload_json") | not) and
+              (has("b2_sha256") | not) and
+              (has("b2_object_key") | not) and
+              (has("source_url") | not)
+            ' /tmp/indices-historical.json >/dev/null
+            echo "PASS: risk indices historical D1 anchor only; no current or payment claim."
+          elif [ "$code" = "503" ]; then
+            jq -e '
+              .ok == false and
+              .error == "RISK_INDICES_VERIFIED_ARCHIVE_UNAVAILABLE" and
+              .historical_only == true and
+              .current_snapshot_available == false
+            ' /tmp/indices-historical.json >/dev/null
+            echo "PASS: no qualifying prior Risk Indices D1 archive; fail-closed."
+          else
+            echo "Unexpected risk indices historical HTTP $code"; exit 12
+          fi
+
       - name: Verify authenticated account-wide B2 budget reservation without contacting B2
         env:
           CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
