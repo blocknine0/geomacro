@@ -31,13 +31,13 @@ import { sha256 } from "../../scripts/lib/restricted-private-scored-stage.mjs";
 const NOW=new Date("2026-10-09T17:30:00.000Z");
 const mins=n=>new Date(NOW.getTime()-n*60_000).toISOString();
 const CATEGORIES=["geopolitics","macro","rare_earth"];
-function article(category) {
+function article(category,now=NOW) {
   const hostname="official-"+category.replace("_","-")+".example.org";
   return {
     url:"https://"+hostname+"/material-update",
     sourceDomain:hostname,
     title:"Original verified publisher reports a distinct material "+category+" development",
-    publishedAt:mins(22),
+    publishedAt:new Date(now.getTime()-22*60_000).toISOString(),
     discoveryProvider:"official_native_rss",
     nativePublishedAtVerified:true,
   };
@@ -54,18 +54,18 @@ function assessment(category) {
     classificationInputHash:"a".repeat(64),
   };
 }
-function makeEvidence() {
+function makeEvidence(now=NOW) {
   const staged=[],sources=[];
   for(const category of CATEGORIES) {
-    const a=article(category),out=assessment(category);
-    const row=makePrivateStageRecord({article:a,assessment:out,category,now:NOW});
+    const a=article(category,now),out=assessment(category);
+    const row=makePrivateStageRecord({article:a,assessment:out,category,now});
     const source=capturePrivateGriSourceCompanion({
-      article:a,staged:row,capturedAt:NOW,
+      article:a,staged:row,capturedAt:now,
     });
     staged.push(row);sources.push(source);
   }
-  const stage=makePrivateStageBundle(staged,{now:NOW});
-  const sourceCompanion=makePrivateGriCompanionBundle(stage,sources,{now:NOW});
+  const stage=makePrivateStageBundle(staged,{now});
+  const sourceCompanion=makePrivateGriCompanionBundle(stage,sources,{now});
   const stageBytes=Buffer.from(JSON.stringify(stage));
   const companionBytes=Buffer.from(JSON.stringify(sourceCompanion));
   const stageDigest=sha256(gzipSync(stageBytes,{level:9}));
@@ -182,7 +182,7 @@ describe("#1827 zero-Supabase strict private original-source -> GRI v1.2 bridge"
   });
 
   it("CLI consumes only exact local verified B2 stage and companion, saves private proof 0600",()=>{
-    const e=makeEvidence();
+    const e=makeEvidence(new Date(Date.now()-15*60_000));
     const cwd=mkdtempSync(join(tmpdir(),"geomacro-private-gri-bridge-"));
     try {
       const privateRoot=join(cwd,"artifacts/restricted-current-scoring");
@@ -190,20 +190,12 @@ describe("#1827 zero-Supabase strict private original-source -> GRI v1.2 bridge"
       writeFileSync(join(privateRoot,"verified-stage.json"),e.stageBytes);
       writeFileSync(join(privateRoot,"verified-source-companion.json"),e.companionBytes);
       writeFileSync(join(privateRoot,"archive-proof.json"),JSON.stringify(e.receipt));
-      // CLI uses actual clock. Rebuild real-time fixture using same 3-domain
-      // semantics by running it against current date, not a synthetic future
-      // timestamp, so it can never claim 2026-10-09 data is current tomorrow.
+      // Date-relative real-time fixture remains valid across future CI runs.
       const script=resolve("scripts/ops/prepare-private-griv12-singleton-proof.mjs");
       const child=spawnSync(process.execPath,[script,"--private-singleton-only"],{
         cwd,env:{PATH:process.env.PATH},encoding:"utf8",timeout:15000,
       });
-      // Existing fixed-date input MUST be stale relative to actual wall
-      // clock when the suite is run in the future; never fudge that fact.
-      if(Date.now()-NOW.getTime()>24*60*60_000) {
-        expect(child.status).not.toBe(0);
-        expect(child.stdout).toBe("");
-      } else {
-        expect(child.status).toBe(0);
+      expect(child.status).toBe(0);
         const result=JSON.parse(child.stdout.trim());
         expect(result.ok).toBe(true);
         expect(result.public_published).toBe(false);
@@ -219,7 +211,6 @@ describe("#1827 zero-Supabase strict private original-source -> GRI v1.2 bridge"
         const raw=readFileSync(join(cwd,"artifacts/private-gri-v12",
           result.portable_bundle_hash+".json"),"utf8");
         expect(JSON.parse(raw).commercial_eligible).toBe(false);
-      }
       const denied=spawnSync(process.execPath,[script,"--public"],{
         cwd,env:{PATH:process.env.PATH},encoding:"utf8",timeout:15000,
       });
