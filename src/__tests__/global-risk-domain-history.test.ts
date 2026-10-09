@@ -153,6 +153,22 @@ describe("verified Global Risk domain history", () => {
       readingAgeHours: 7,
     });
     expect(validateGlobalRiskContinuity(risk, now)).toEqual({ ok: true });
+
+    const historicalRisk = assemblePublicGlobalRisk(
+      [
+        snapshot("latest", latestAt, { geopolitics: 72, macro: 64, rare_earth: 68 }),
+        snapshot("previous", "2026-10-01T11:00:00.000Z", {
+          geopolitics: 70,
+          macro: 65,
+          rare_earth: 66,
+        }),
+      ],
+      [],
+      Date.parse(latestAt),
+    );
+    expect(historicalRisk.domainIndices.geopolitics?.readingStatus).toBe("current");
+    expect(riskIndicesFromGlobalRisk(historicalRisk, Date.parse(latestAt)).indices[0])
+      .toMatchObject({ readingStatus: "current", readingAsOf: latestAt });
   });
 
   it("projects a category with no verified history as unavailable with a null as-of", () => {

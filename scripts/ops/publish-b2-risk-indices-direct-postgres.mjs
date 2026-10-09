@@ -175,17 +175,26 @@ if (snapshots.some((snapshot) => snapshot.verification_status !== "verified")) {
 }
 const latestSnapshot = snapshots[0];
 const recentEvents = readRecentEvents(dbUrl, latestSnapshot.as_of);
-const canonicalRisk = assemblePublicGlobalRisk(snapshots, recentEvents);
-const continuity = validateGlobalRiskContinuity(canonicalRisk);
-if (!continuity.ok) throw new Error(`RISK_INDICES_CANONICAL_CONTINUITY_REJECTED_${continuity.code}`);
-
-// The immutable archive must not change merely because wall-clock age changed.
-// Anchor its projection to the verified snapshot timestamp. The live projection
-// remains wall-clock aware so it can label old evidence as last_verified.
-const immutableProjectionAt = Date.parse(canonicalRisk.snapshotAsOf);
+const immutableProjectionAt = Date.parse(latestSnapshot.as_of);
 if (!Number.isFinite(immutableProjectionAt)) throw new Error("RISK_INDICES_SNAPSHOT_TIME_INVALID");
-const immutableIndices = riskIndicesFromGlobalRisk(canonicalRisk, immutableProjectionAt);
-const indices = riskIndicesFromGlobalRisk(canonicalRisk);
+
+// Archive status is anchored to the verified snapshot time so re-publishing
+// cannot mutate immutable history when wall-clock freshness advances.
+const historicalRisk = assemblePublicGlobalRisk(snapshots, recentEvents, immutableProjectionAt);
+const archiveContinuity = validateGlobalRiskContinuity(historicalRisk, immutableProjectionAt);
+if (!archiveContinuity.ok) {
+  throw new Error(`RISK_INDICES_ARCHIVE_CONTINUITY_REJECTED_${archiveContinuity.code}`);
+}
+const immutableIndices = riskIndicesFromGlobalRisk(historicalRisk, immutableProjectionAt);
+
+// The live serving projection is evaluated at wall-clock time and may mark the
+// exact same preserved score last_verified after the current-reading window.
+const liveRisk = assemblePublicGlobalRisk(snapshots, recentEvents);
+const liveContinuity = validateGlobalRiskContinuity(liveRisk);
+if (!liveContinuity.ok) {
+  throw new Error(`RISK_INDICES_LIVE_CONTINUITY_REJECTED_${liveContinuity.code}`);
+}
+const indices = riskIndicesFromGlobalRisk(liveRisk);
 assertIndices(immutableIndices);
 assertIndices(indices);
 
