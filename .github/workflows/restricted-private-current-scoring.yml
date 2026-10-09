@@ -1,0 +1,115 @@
+name: Restricted Private Current Scoring Staging
+
+# Operator-only bounded proof. This MUST NOT become a second scheduled scorer:
+# NO public intelligence projection and NO commerce or partner allowance.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-intelligence-orchestrator
+  cancel-in-progress: false
+
+jobs:
+  private-stage:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    env:
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_REQUEST_BUDGET: "6"
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
+
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+      GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
+      MISTRAL_MODEL: ${{ vars.MISTRAL_MODEL }}
+      CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+      CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
+      GEOMACRO_GDELT_ONLY: "true"
+      GDELT_GAL_FALLBACK_ENABLED: "true"
+      GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "0"
+      GDACS_ENABLED: "false"
+      RELIEFWEB_ENABLED: "false"
+      MAX_CANDIDATES_PER_CATEGORY: "2"
+      MAX_ARTICLE_AGE_MS: "21600000"
+      GROQ_BATCH_SIZE: "1"
+      GROQ_MAX_REQUESTS_PER_RUN: "3"
+      GROQ_MAX_WAIT_MS: "45000"
+      NEWS_QUERY_DELAY_MS: "0"
+
+    steps:
+      - name: Checkout exact canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Resolve authorized production D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" && test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          test -n "${B2_KEY_ID:-}" && test -n "${B2_APPLICATION_KEY:-}"
+          test -n "${GROQ_API_KEY:-}"
+          LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let s="";
+            process.stdin.on("data", d => s += d);
+            process.stdin.on("end", () => {
+              const rows = JSON.parse(s);
+              const row = rows.find(x => x.name === process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid ?? row?.id ?? "");
+            });
+          ')"
+          test -n "$DB_ID" || { echo "D1 database not available"; exit 3; }
+          echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
+
+      - name: Score three bounded domains using canonical classifier, no Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "${SUPABASE_DB_URL:-}${SUPABASE_SERVICE_ROLE_KEY:-}${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          for domain in geopolitics macro rare_earth; do
+            GDELT_FORCE_CATEGORY="$domain" node scripts/ingest-news.js --private-scored-stage
+          done
+
+      - name: Verify one private B2 bundle then write compact D1 checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/archive-restricted-private-scored-stage.mjs --private-stage-only
+
+      - name: Upload metadata-only staging proof
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: restricted-private-scored-proof-${{ github.run_id }}
+          path: artifacts/restricted-current-scoring/archive-proof.json
+          if-no-files-found: warn
+          retention-days: 7
