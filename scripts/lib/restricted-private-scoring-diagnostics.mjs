@@ -37,6 +37,7 @@ export function emptyPrivateScoringDiagnostic(domain) {
     classifier_failed_batch_count: 0,
     canonical_gate_pass_count: 0,
     gate_rejections: {},
+    preclassification_rejections: {},
     private_stage_rejections: {},
     discovery_failure_count: 0,
     private_staged_count: 0,
