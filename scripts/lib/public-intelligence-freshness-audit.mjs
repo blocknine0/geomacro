@@ -29,7 +29,7 @@ function publicRowKey(row, now) {
       (severity !== null && (!Number.isFinite(severity) || severity < 0 || severity > 100))) return null;
   return JSON.stringify([
     String(row.id), row.category, row.public_status, original,
-    String(row.source_title).replace(/\\s+/g, " ").trim(), severity,
+    String(row.source_title).replace(/\s+/g, " ").trim(), severity,
   ]);
 }
 
