@@ -29,10 +29,18 @@ describe("original publisher alternate feed with source-native Atom dates", () =
     expect(result[0]).not.toHaveProperty("severity");
     expect(stats.alternate_admitted_private_count).toBe(1);
     expect(stats.alternate_native_current_items).toBe(1);
+    expect(stats.alternate_atom_published_elements).toBe(1);
+    expect(stats.alternate_atom_updated_elements).toBe(0);
+    expect(stats.alternate_original_date_topic_and_host_items).toBe(1);
   });
   it("rejects updated-only entries, old, future, cross-host, and unrelated news", () => {
     const emptyDate = atom(title, uri, "").replace("<published></published>", "");
-    expect(parseOfficialAlternate(emptyDate, "rare_earth", now)).toEqual([]);
+    const diagnostics: Record<string, number> = {};
+    expect(parseOfficialAlternate(emptyDate, "rare_earth", now, diagnostics)).toEqual([]);
+    expect(diagnostics.alternate_atom_published_elements).toBe(0);
+    expect(diagnostics.alternate_atom_updated_elements).toBe(0);
+    expect(diagnostics.alternate_native_current_items).toBe(0);
+    expect(diagnostics.alternate_admitted_private_count).toBe(0);
     expect(parseOfficialAlternate(atom(title, uri, "2026-10-05T12:15:00Z"),
       "rare_earth", now)).toEqual([]);
     expect(parseOfficialAlternate(atom(title, uri, "2026-10-10T12:15:00Z"),
@@ -42,6 +50,31 @@ describe("original publisher alternate feed with source-native Atom dates", () =
     expect(parseOfficialAlternate(atom("Local school vegetable garden wins prize", uri,
       "2026-10-09T12:15:00Z"), "rare_earth", now)).toEqual([]);
   });
+  it("diagnoses updated-only Atom without turning update time into publisher publication", () => {
+    const uri = "https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals.html";
+    const xml = `<feed xmlns="http://www.w3.org/2005/Atom">
+      <entry><title>Critical minerals lithium processing and mining strategy announced</title>
+      <link href="${uri}" rel="alternate"/>
+      <updated>2026-10-09T13:29:00Z</updated>
+      <dc:date>2026-10-09T12:15:00Z</dc:date>
+      <publishedDate>2026-10-09T12:15:00Z</publishedDate>
+      </entry></feed>`;
+    const stats: Record<string, number> = {};
+    const rows = parseOfficialAlternate(xml, "rare_earth", now, stats);
+    expect(rows).toEqual([]);
+    expect(stats).toMatchObject({
+      alternate_feed_items_seen: 1,
+      alternate_atom_published_elements: 0,
+      alternate_atom_updated_elements: 1,
+      alternate_atom_dc_date_elements: 1,
+      alternate_atom_publishedDate_elements: 1,
+      alternate_original_date_topic_and_host_items: 0,
+      alternate_admitted_private_count: 0,
+    });
+    expect(JSON.stringify(stats)).not.toContain("lithium");
+    expect(JSON.stringify(stats)).not.toContain("canada.ca");
+  });
+
   it("probes and admits only fixed government source URL without redirects", async () => {
     const xml = atom(title, uri, "2026-10-09T12:15:00Z");
     const fetchImpl = vi.fn(async () => Response.json({}, { status: 404 }));
