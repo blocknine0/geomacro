@@ -72,16 +72,18 @@ function siteView(result,now) {
       p?.serving_authority==="backblaze-b2-durable-truth-cloudflare-d1-verified-hot",
   };
 }
-function snapshotView(result,now) {
+function snapshotView(result,now,product) {
   const b=result.body ?? {};
   const sourceAsOf=safeTime(b.source_as_of,now);
   const expiresAt=safeTime(b.expires_at,now);
   const ok=result.http_status===200 && b.ok===true &&
-    sourceAsOf!==null && expiresAt!==null &&
+    b.product===product && sourceAsOf!==null && expiresAt!==null &&
     Date.parse(expiresAt)>now &&
     SAFE_PROOF_MODES.has(String(b.verification_mode??"")) &&
-    b.serving_store==="cloudflare-d1" &&
-    b.archive_store===undefined; // never assume private archive metadata
+    b.baseline_b2_readback_verified===true &&
+    b.baseline_exact_gzip_restore_verified===true &&
+    (b.verification_mode==="independent-gri-proof-over-b2-baseline" ||
+     (b.full_b2_readback_verified===true && b.exact_gzip_restore_verified===true));
   return {
     http_status:result.http_status,
     ok,
@@ -116,7 +118,7 @@ export async function diagnosePublicHotServing({
       ?Number(results[1].body.schema_version):null,
   };
   const products=Object.fromEntries(PRODUCTS.map((p,i)=>[
-    p,snapshotView(results[i+2],nowMs),
+    p,snapshotView(results[i+2],nowMs,p),
   ]));
   const failing=PRODUCTS.filter(p=>!products[p].ok);
   const siteHealthy=site.http_status===200 && site.ok && site.deep_checked &&
