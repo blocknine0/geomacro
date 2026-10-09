@@ -60,7 +60,7 @@ describe("#1827 one-shot governed 3-domain GRI pre-B2 canary",()=>{
       accepted:true,private_only:true,commercial_eligible:false,
       public_published:false,singleton_per_category:true,
       source_rights_verified:false,
-      independent_corroborated:false,
+      independently_corroborated:false,
       b2_requests:0,d1_writes:0,supabase_writes:0,usdc_spent:0,
     });
     expect(receipt.current_categories).toEqual(domains);
