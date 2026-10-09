@@ -12,8 +12,8 @@ describe("adaptive hot-topic commercial delivery", () => {
   it("requires a registered subject and healthy fresh live pipeline", () => {
     expect(loader).toContain('from("live_country_registry")');
     expect(loader).toContain('from("live_ingestion_cursors")');
-    expect(loader).toContain('const MAX_SOURCE_CADENCE_MISSES = 3;');
-    expect(loader).toContain('cadenceSeconds * MAX_SOURCE_CADENCE_MISSES');
+    expect(loader).toContain('const MAX_SOURCE_CADENCE_INTERVALS = 1;');
+    expect(loader).toContain('cadenceSeconds * MAX_SOURCE_CADENCE_INTERVALS');
     expect(loader).toContain('never a blanket 30-minute grace');
     expect(loader).toContain('pipelineHealthy');
     expect(loader).not.toContain('HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS');
