@@ -81,6 +81,15 @@ jobs:
           console.log(JSON.stringify({ ok: true, transport: 'direct_postgres', enabled_country_like_candidates: enabled.length }));
           NODE
 
+      # The canonical GRO refresh calls publishCountryRiskObject, which writes
+      # signed risk objects back to Supabase. B2/D1 seed/publish also incur
+      # per-request costs. Do not enter either path while the authoritative
+      # production database is over its free-tier write budget.
+      - name: Enforce canonical Supabase budget before country GRO writers and B2 seed
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal
       - name: Check whether verified D1 country GRO hot serving already exists
         id: hot
         shell: bash
