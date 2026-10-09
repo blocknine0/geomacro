@@ -118,9 +118,6 @@ function IntelligencePage() {
     }
     return latest;
   }, [pool]);
-  const waitingDomains = COMMERCIAL_DOMAINS
-    .filter(({ key }) => !latestScoredByCategory.get(key)?.isCurrent)
-    .map(({ label }) => label);
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 md:py-12">
@@ -141,20 +138,6 @@ function IntelligencePage() {
         </p>
         <p className="mt-3 text-sm text-muted-foreground">Free to browse. For structured API delivery or monthly intelligence access, <Link to="/pricing" className="font-medium text-primary hover:underline">compare access options</Link>.</p>
       </header>
-
-      {intel.data && waitingDomains.length > 0 ? (
-        <p role="status" className="mt-6 rounded-xl border border-border/70 bg-card/40 px-4 py-3 text-sm leading-6 text-muted-foreground">
-          <span className="font-medium text-foreground">Live verification pending:</span>{" "}
-          {waitingDomains.join(", ")}. The latest approved assessments remain
-          visible with their original dates; older scores are not current signals.
-          Refresh checks the feed again without inventing new risk events.
-        </p>
-      ) : null}
-      {intel.data && intel.error ? (
-        <p role="alert" className="mt-3 rounded-lg border border-border/70 px-4 py-3 text-xs text-muted-foreground">
-          Feed refresh failed. Preserving the last verified records until the next successful check.
-        </p>
-      ) : null}
 
       <section className="mt-8 grid gap-3 rounded-2xl border border-border/70 bg-card/40 p-4 sm:grid-cols-[minmax(0,1fr)_180px_170px_auto]">
         <label className="relative min-w-0">
