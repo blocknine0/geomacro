@@ -18,7 +18,10 @@ export function privatePublisherPreAdmission(article, {
   }
   const hostname = url.hostname.toLowerCase();
   const domain = String(article?.sourceDomain ?? "").trim().toLowerCase();
-  // GDELT discovery strips the leading www. label, but the signed private\n  // source identity must preserve the exact article URL hostname. Accept\n  // ONLY this one verified hostname alias; never another host/subdomain.\n  const wwwAlias = hostname.startsWith("www.") && domain === hostname.slice(4);\n  if (!domain || (hostname !== domain && !wwwAlias)) {
+  // GDELT discovery strips the leading www. label, but the signed private
+  // source identity must preserve the exact article URL hostname. Accept
+  // ONLY this one verified hostname alias; never another host/subdomain.
+  const wwwAlias = hostname.startsWith("www.") && domain === hostname.slice(4);\n  if (!domain || (hostname !== domain && !wwwAlias)) {
     return { ok: false, reason: "publisher_domain_mismatch" };
   }
   const title = String(article?.title ?? "").trim().replace(/\s+/gu, " ");
