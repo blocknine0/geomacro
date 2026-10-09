@@ -1,3 +1,4 @@
+import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
 // Original-publisher second-family news/Atom discovery when the primary feed
 // has no dated, topical events. These are PRIVATE, NOT rights-certified sources.
 // Feed updated/index/retrieval time never substitutes for per-entry publication.
@@ -127,8 +128,8 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
 export async function fetchOriginalAlternate(category, { now=new Date(), fetchImpl=fetch, diagnostics=null }={}) {
   const cfg=ORIGINAL_PUBLISHER_ALTERNATES[category];
   if (!cfg) throw new Error("OFFICIAL_ALTERNATE_CATEGORY_INVALID");
-  const res=await fetchImpl(cfg.url,{
-    redirect:"error", signal:AbortSignal.timeout(10_000),
+  const res=await fetchOriginalPublisherWithRecovery(cfg.url,{
+    fetchImpl,
     headers:{ accept:"application/atom+xml, application/rss+xml;q=0.9, application/xml;q=0.8",
       "user-agent":"Geomacro-Original-Feed-Private-Discovery/1.0" },
   });
