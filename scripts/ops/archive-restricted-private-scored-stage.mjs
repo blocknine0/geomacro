@@ -244,7 +244,14 @@ const receipt = {
   rights_verification_pending: true,
   verified_at: now,
 };
-mkdirSync(ARTIFACT_DIR, { recursive: true });
+mkdirSync(ARTIFACT_DIR, { recursive: true, mode: 0o700 });
+// Never upload these files as Actions artifacts. They are exact, verified B2
+// gzip-restored local representations for the optional PRIVATE GRI producer.
+// Save ONLY after both full B2 readbacks and independent D1 readback succeeded.
+writeFileSync(`${ARTIFACT_DIR}/verified-stage.json`,
+  raw, { mode: 0o600, flag: "wx" });
+writeFileSync(`${ARTIFACT_DIR}/verified-source-companion.json`,
+  sourceCompanionRaw, { mode: 0o600, flag: "wx" });
 writeFileSync(`${ARTIFACT_DIR}/archive-proof.json`,
   JSON.stringify(receipt, null, 2) + "\n", { mode: 0o600 });
 console.log(JSON.stringify(receipt));
