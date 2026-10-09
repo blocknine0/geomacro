@@ -6,7 +6,7 @@ const categories = ["geopolitics", "macro", "rare_earth"] as const;
 const healthy = () => ({
   source_reachability: "ALL_POLL_OK",
   categories: categories.map((category) => ({
-    category, source_transport_ok: true, source_failure_reason: null,
+    category, source_transport_ok: true, source_failure_reason: null as string | null,
     publicly_scored: false, chargeable: false,
   })),
 });
