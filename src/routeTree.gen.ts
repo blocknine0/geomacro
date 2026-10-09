@@ -1253,7 +1253,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
-  ApiV1IntelligenceCriticalMineralsRoute: ApiV1IntelligenceCriticalMineralsRoute,
+  ApiV1IntelligenceCriticalMineralsRoute:
+    ApiV1IntelligenceCriticalMineralsRoute,
   ApiV1IntelligenceGeopoliticsRoute: ApiV1IntelligenceGeopoliticsRoute,
   ApiV1IntelligenceMacroFxRoute: ApiV1IntelligenceMacroFxRoute,
   ApiV1IntelligenceQueryRoute: ApiV1IntelligenceQueryRoute,
