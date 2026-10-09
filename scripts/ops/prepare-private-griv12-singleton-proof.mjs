@@ -9,6 +9,7 @@ import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
 import { resolve, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { buildPrivateGriSingletonSourceBridge } from
   "../lib/private-gri-singleton-source-bridge.mjs";
 import { validatePrivateStageBundle } from
@@ -143,13 +144,16 @@ function main() {
     supabase_writes:0,b2_requests:0,d1_writes:0,usdc_spent:0,
   };
 }
-try {console.log(JSON.stringify(main()));}
-catch(error) {
-  const value=error instanceof Error?error.message:"";
-  const code=/^GRI_PRIVATE_[A-Z0-9_:]+$/u.test(value)
-    ?value:"GRI_PRIVATE_BRIDGE_FAILED_CLOSED";
-  console.error(JSON.stringify({ok:false,error:code,public_published:false,
-    commercial_eligible:false,supabase_writes:0,b2_requests:0,
-    d1_writes:0,usdc_spent:0}));
-  process.exitCode=1;
+// Safe to import the deterministic validator in Vitest: no CLI side effects.
+if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
+  try {console.log(JSON.stringify(main()));}
+  catch(error) {
+    const value=error instanceof Error?error.message:"";
+    const code=/^GRI_PRIVATE_[A-Z0-9_:]+$/u.test(value)
+      ?value:"GRI_PRIVATE_BRIDGE_FAILED_CLOSED";
+    console.error(JSON.stringify({ok:false,error:code,public_published:false,
+      commercial_eligible:false,supabase_writes:0,b2_requests:0,
+      d1_writes:0,usdc_spent:0}));
+    process.exitCode=1;
+  }
 }
