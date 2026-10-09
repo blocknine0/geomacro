@@ -13,6 +13,8 @@ on:
       - "scripts/sync-country-raw-source-mesh.mjs"
       - "scripts/drain-live-structure.mjs"
       - "scripts/lib/official-native-rss.mjs"
+      - "scripts/lib/official-native-alternates.mjs"
+      - "src/__tests__/official-native-alternates.test.ts"
       - "scripts/ops/probe-official-native-rss-three-domains.mjs"
       - "src/__tests__/official-native-rss-three-domains.test.ts"
       - "scripts/intelligence-orchestrator.mjs"
