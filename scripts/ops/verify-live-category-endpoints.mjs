@@ -14,11 +14,18 @@ const sameSet = (actual, expected) => Array.isArray(actual) && actual.length ===
 export function assessCategory(config, discovery, query, origin) {
   const path = `/api/v1/intelligence/${config.category}`;
   const metadata = discovery.body;
+  // Only source-free, fixed-shape booleans and codes leave this local probe.
+  // In particular do not persist the live discovery body or a payment challenge.
+  const discoveryJsonVerified = discovery.body !== null &&
+    typeof discovery.body === 'object' && !Array.isArray(discovery.body);
+  const routeIdentityVerified = metadata?.category === config.category &&
+    metadata?.endpoint === `${origin}${path}` &&
+    metadata?.canonical_endpoint === `${origin}/api/v1/intelligence/query`;
+  const topicsVerified = sameSet(metadata?.topics, config.topics);
+  const modulesVerified = sameSet(metadata?.required_modules, config.modules);
+  const executionDisabledVerified = metadata?.execution_authorized === false;
   const scopeVerified = discovery.status === 200 && metadata?.ok === true &&
-    metadata.category === config.category && metadata.endpoint === `${origin}${path}` &&
-    metadata.canonical_endpoint === `${origin}/api/v1/intelligence/query` &&
-    sameSet(metadata.topics, config.topics) && sameSet(metadata.required_modules, config.modules) &&
-    metadata.execution_authorized === false;
+    routeIdentityVerified && topicsVerified && modulesVerified && executionDisabledVerified;
   const mainnet = metadata?.environment === 'production' && metadata?.network === 'eip155:8453';
   const challenge = query.body;
   const accepts = challenge?.accepts;
@@ -30,10 +37,18 @@ export function assessCategory(config, discovery, query, origin) {
     challenge?.payment_required_now === false && challenge?.availability?.deliverable === false &&
     challenge?.execution_authorized === false;
   const blockers = [];
-  if (!scopeVerified) blockers.push('CATEGORY_DISCOVERY_NOT_VERIFIED');
+  if (!discoveryJsonVerified) blockers.push('CATEGORY_DISCOVERY_JSON_NOT_VERIFIED');
+  if (discovery.status !== 200 || metadata?.ok !== true) blockers.push('CATEGORY_DISCOVERY_NOT_VERIFIED');
+  if (!routeIdentityVerified) blockers.push('CATEGORY_ROUTE_IDENTITY_MISMATCH');
+  if (!topicsVerified) blockers.push('CATEGORY_TOPIC_SCOPE_MISMATCH');
+  if (!modulesVerified) blockers.push('CATEGORY_MODULE_SCOPE_MISMATCH');
+  if (!executionDisabledVerified) blockers.push('CATEGORY_EXECUTION_SAFETY_NOT_VERIFIED');
   if (!mainnet) blockers.push('MAINNET_CONFIGURATION_NOT_VERIFIED');
   if (!mainnetDeliverable) blockers.push(safelyUnavailable ? 'CURRENT_REQUEST_NOT_DELIVERABLE' : 'LIVE_DELIVERABILITY_NOT_VERIFIED');
   return { category: config.category, discovery_http: discovery.status, query_http: query.status,
+    discovery_json_verified: discoveryJsonVerified, route_identity_verified: routeIdentityVerified,
+    topic_scope_verified: topicsVerified, module_scope_verified: modulesVerified,
+    execution_disabled_verified: executionDisabledVerified,
     scope_verified: scopeVerified, mainnet_configured: mainnet,
     no_funds_deliverability_verified: mainnetDeliverable, safely_unavailable: safelyUnavailable,
     ready_for_no_funds_preflight: blockers.length === 0, blockers };

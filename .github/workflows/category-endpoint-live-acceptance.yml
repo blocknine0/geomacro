@@ -2,6 +2,10 @@ name: Category Endpoint No-Funds Acceptance
 
 on:
   workflow_dispatch: {}
+  # Read-only, six HTTP requests, no signature, no payment. Low-quota watch
+  # complements (but cannot replace) the separate live-source freshness audit.
+  schedule:
+    - cron: '23 */6 * * *'
   push:
     branches: [main]
     paths:

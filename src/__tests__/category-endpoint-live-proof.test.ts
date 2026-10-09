@@ -21,6 +21,29 @@ describe('category no-funds live proof', () => {
     expect(result.ready_for_no_funds_preflight).toBe(false);
     expect(JSON.stringify(result)).not.toContain('must-not-appear');
   });
+  it('pinpoints stale deployment metadata without exposing live responses', () => {
+    const oldBuild = { ...discovery, body: {
+      ...discovery.body, category: undefined, endpoint: `${origin}/api/v1/intelligence/query`,
+      topics: ['risk_object'], required_modules: ['risk_gate'],
+      private_payload: 'never-expose',
+    } };
+    const result = assessCategory(config, oldBuild, query, origin);
+    expect(result.discovery_json_verified).toBe(true);
+    expect(result.route_identity_verified).toBe(false);
+    expect(result.topic_scope_verified).toBe(false);
+    expect(result.module_scope_verified).toBe(false);
+    expect(result.blockers).toContain('CATEGORY_ROUTE_IDENTITY_MISMATCH');
+    expect(result.blockers).toContain('CATEGORY_TOPIC_SCOPE_MISMATCH');
+    expect(result.blockers).toContain('CATEGORY_MODULE_SCOPE_MISMATCH');
+    expect(result.ready_for_no_funds_preflight).toBe(false);
+    expect(JSON.stringify(result)).not.toContain('never-expose');
+  });
+  it('distinguishes HTML route fallbacks from real JSON discovery', () => {
+    const result = assessCategory(config, { status: 200, body: null }, query, origin);
+    expect(result.discovery_json_verified).toBe(false);
+    expect(result.blockers).toContain('CATEGORY_DISCOVERY_JSON_NOT_VERIFIED');
+    expect(result.ready_for_no_funds_preflight).toBe(false);
+  });
   it('never sends payment signatures or retries into redirects', async () => {
     const fetchImpl = vi.fn(async () => Response.json({}, { status: 503 }));
     const result = await verifyLiveCategories({ fetchImpl });
