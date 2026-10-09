@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { createClient } from "@supabase/supabase-js";
+import { createD1ControlPlaneStateClient } from "./lib/d1-control-plane-state.mjs";
 import {
   DEFAULT_HEARTBEAT_BUDGET_MS,
   DEFAULT_HEARTBEAT_RESERVE_MS,
@@ -10,15 +10,8 @@ import {
   taskFitsWithinBudget,
 } from "./lib/intelligence-scheduler.mjs";
 
-const APP_SUPABASE_URL = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
-const APP_SUPABASE_SERVICE_ROLE_KEY = String(
-  process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-).trim();
-
-if (!APP_SUPABASE_URL || !APP_SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
-}
-
+// Canonical scheduler/control-plane authority is Cloudflare D1 directly.
+// Never require or synthesize a Supabase service role for orchestration.
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const CONTROL_SOURCE = "geomacro_intelligence_orchestrator";
 const STATE_SOURCE = CONTROL_SOURCE;
@@ -29,10 +22,6 @@ const RETRY_SECONDS = Math.max(60, Math.min(900, Number(process.env.INTELLIGENCE
 const TASK_TIMEOUT_MS = Math.max(60_000, Math.min(3_600_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_TASK_TIMEOUT_MS ?? 1_500_000)));
 const HEARTBEAT_BUDGET_MS = Math.max(10 * 60_000, Math.min(50 * 60_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_BUDGET_MS ?? DEFAULT_HEARTBEAT_BUDGET_MS)));
 const HEARTBEAT_RESERVE_MS = Math.max(60_000, Math.min(10 * 60_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_RESERVE_MS ?? DEFAULT_HEARTBEAT_RESERVE_MS)));
-const DB_REQUEST_TIMEOUT_MS = Math.max(
-  5_000,
-  Math.min(120_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_DB_TIMEOUT_MS ?? 30_000)),
-);
 
 const TASK_ALLOWLIST = new Set(
   String(process.env.INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST ?? "")
@@ -54,30 +43,9 @@ const restrictedDataPlane =
 const governedTelegramEnabled = () =>
   String(process.env.TELEGRAM_ENABLED ?? "false").trim().toLowerCase() === "true";
 
-function fetchWithTimeout(input, init = {}) {
-  const timeoutSignal = AbortSignal.timeout(DB_REQUEST_TIMEOUT_MS);
-  const signal = init?.signal
-    ? AbortSignal.any([init.signal, timeoutSignal])
-    : timeoutSignal;
-  return fetch(input, { ...init, signal });
-}
-
-function projectRef(url) {
-  try {
-    return new URL(url).hostname.split(".")[0] ?? "";
-  } catch {
-    return "";
-  }
-}
-
-if (projectRef(APP_SUPABASE_URL) !== PROJECT_REF) {
-  throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
-}
-
-const db = createClient(APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-  global: { fetch: fetchWithTimeout },
-});
+// D1 client enforces CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN and the
+// already resolved canonical D1_DATABASE_ID. No Supabase network fallback.
+const d1State = createD1ControlPlaneStateClient();
 
 const TASKS = [
   {
@@ -370,18 +338,11 @@ async function persistState(task, state, update = {}) {
     },
     ...(update.payload ?? {}),
   };
-  const row = {
-    source_id: taskKey(task),
-    source_kind: CONTROL_SOURCE,
-    payload,
+  await d1State.persist(task.key, payload, {
+    cursor: payload.cursor,
     last_attempt_at: update.last_attempt_at ?? null,
     last_success_at: update.last_success_at ?? null,
-    updated_at: new Date().toISOString(),
-  };
-  const { error } = await db
-    .from("live_intelligence_scheduler_state")
-    .upsert(row, { onConflict: "source_id" });
-  if (error) throw error;
+  });
   return payload;
 }
 
@@ -441,12 +402,11 @@ async function runTask(task) {
 }
 
 async function loadStateRows() {
-  const { data, error } = await db
-    .from("live_intelligence_scheduler_state")
-    .select("source_id,payload,last_attempt_at,last_success_at")
-    .like("source_id", `${STATE_PREFIX}%`);
-  if (error) throw error;
-  return new Map((data ?? []).map((row) => [row.source_id, row]));
+  // D1 adapter maps rows by bare scope; scheduler taskKey() uses the fully
+  // qualified "orchestrator:<scope>" source_id. Normalize explicitly to
+  // preserve existing cursor/next_due_at and NEVER re-bootstrap good state.
+  const rows = await d1State.loadRows();
+  return new Map([...rows.values()].map((row) => [row.source_id, row]));
 }
 
 async function main() {

@@ -7,7 +7,6 @@ const orchestratorWorkflowPath = ".github/workflows/intelligence-orchestrator.ym
 const orchestratorPath = "scripts/intelligence-orchestrator.mjs";
 const loaderPath = "scripts/lib/direct-postgres-supabase-loader.mjs";
 const d1StatePath = "scripts/lib/d1-control-plane-state.mjs";
-const d1ShimPath = "scripts/lib/d1-orchestrator-supabase-shim.mjs";
 const helperPath = "scripts/invoke-live-structure-with-retry.mjs";
 const freshnessProbePath = "scripts/ops/probe-public-intelligence-live-fallback.ts";
 const productionReaderPath = "src/lib/public-intelligence-production.server.ts";
@@ -17,7 +16,6 @@ const orchestratorWorkflow = fs.readFileSync(orchestratorWorkflowPath, "utf8");
 const orchestrator = fs.readFileSync(orchestratorPath, "utf8");
 const loader = fs.readFileSync(loaderPath, "utf8");
 const d1State = fs.readFileSync(d1StatePath, "utf8");
-const d1Shim = fs.readFileSync(d1ShimPath, "utf8");
 const helper = fs.readFileSync(helperPath, "utf8");
 const freshnessProbe = fs.readFileSync(freshnessProbePath, "utf8");
 const productionReader = fs.readFileSync(productionReaderPath, "utf8");
@@ -42,13 +40,16 @@ describe("Auto Ingest News reliability contract", () => {
     expect(orchestratorWorkflow).toContain("Supabase restricted: D1 plus fixed-cardinality source heartbeat remains live");
     expect(orchestratorWorkflow).toContain("GEOMACRO_SUPABASE_RESTRICTED_MODE=true");
     expect(orchestratorWorkflow).not.toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only");
-    expect(loader).toContain('ORCHESTRATOR_SHIM_URL = "geomacro:d1-orchestrator-supabase"');
-    expect(loader).toContain("d1-orchestrator-supabase-shim.mjs");
+    expect(orchestrator).toContain("const d1State = createD1ControlPlaneStateClient()");
+    expect(orchestrator).toContain("await d1State.loadRows()");
+    expect(orchestrator).toContain("await d1State.persist(task.key, payload");
+    expect(orchestrator).not.toContain('from "@supabase/supabase-js"');
+    expect(orchestrator).not.toContain("APP_SUPABASE_SERVICE_ROLE_KEY");
+    expect(loader).not.toContain("ORCHESTRATOR_SHIM_URL");
+    expect(loader).not.toContain("d1-orchestrator-supabase-shim.mjs");
     expect(d1State).toContain("pipeline_checkpoint");
     expect(d1State).toContain("CLOUDFLARE_API_TOKEN");
     expect(d1State).toContain("D1_DATABASE_ID");
-    expect(d1Shim).toContain('const TABLE = "live_intelligence_scheduler_state"');
-    expect(d1Shim).toContain("d1-control-state-no-supabase");
   });
 
   it("preserves the canonical news ingestion and bounded structure handoff inside the single owner", () => {
