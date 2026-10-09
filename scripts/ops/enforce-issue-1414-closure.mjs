@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { readFileSync } from "node:fs";
-import { evaluateIssue1414Acceptance } from "../lib/issue-1414-closure-guard.mjs";
+import { evaluateIssue1414Acceptance } from "../lib/issue-1827-closure-guard.mjs";
 
 const eventPath = String(process.env.GITHUB_EVENT_PATH ?? "").trim();
 const token = String(process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? "").trim();
@@ -17,12 +17,12 @@ if (eventPath) {
 
 const eventIssueNumber = Number(event?.issue?.number ?? 0);
 const eventName = String(process.env.GITHUB_EVENT_NAME ?? "").trim();
-if (eventName === "issues" && eventIssueNumber !== 1414) {
-  console.log(JSON.stringify({ ok: true, skipped: true, reason: "not_issue_1414" }));
+if (eventName === "issues" && eventIssueNumber !== 1827) {
+  console.log(JSON.stringify({ ok: true, skipped: true, reason: "not_issue_1827" }));
   process.exit(0);
 }
 
-if (!token) throw new Error("GITHUB_TOKEN_REQUIRED_FOR_ISSUE_1414_GUARD");
+if (!token) throw new Error("GITHUB_TOKEN_REQUIRED_FOR_ISSUE_1827_GUARD");
 
 const repository = String(event?.repository?.full_name ?? process.env.GITHUB_REPOSITORY ?? "").trim();
 if (!repository || !/^[^/]+\/[^/]+$/.test(repository)) {
@@ -36,10 +36,10 @@ const headers = {
   "x-github-api-version": "2022-11-28",
 };
 
-const issueUrl = `${apiBase}/repos/${repository}/issues/1414`;
+const issueUrl = `${apiBase}/repos/${repository}/issues/1827`;
 const issueResponse = await fetch(issueUrl, { headers });
 if (!issueResponse.ok) {
-  throw new Error(`ISSUE_1414_READ_FAILED:${issueResponse.status}:${(await issueResponse.text()).slice(0, 500)}`);
+  throw new Error(`ISSUE_1827_READ_FAILED:${issueResponse.status}:${(await issueResponse.text()).slice(0, 500)}`);
 }
 const issue = await issueResponse.json();
 const state = String(issue?.state ?? "").toLowerCase();
@@ -52,6 +52,7 @@ if (state !== "closed") {
     reason: "master_tracker_already_open",
     unchecked_acceptance_count: evaluation.uncheckedAcceptanceCount,
     missing_required_live_acceptance: evaluation.missingRequiredLiveAcceptance.length,
+    missing_required_sections: evaluation.missingRequiredSections.length,
   }));
   process.exit(0);
 }
@@ -67,18 +68,18 @@ const reopenResponse = await fetch(issueUrl, {
   body: JSON.stringify({ state: "open" }),
 });
 if (!reopenResponse.ok) {
-  throw new Error(`ISSUE_1414_REOPEN_FAILED:${reopenResponse.status}:${(await reopenResponse.text()).slice(0, 500)}`);
+  throw new Error(`ISSUE_1827_REOPEN_FAILED:${reopenResponse.status}:${(await reopenResponse.text()).slice(0, 500)}`);
 }
 
 const details = evaluation.uncheckedAcceptance.slice(0, 12);
 const commentLines = [
-  "## Automatic closure guard reopened #1414",
+  "## Automatic closure guard reopened #1827",
   "",
-  "The master commercial-launch tracker was closed before its acceptance contract was complete.",
+  "The unified production, commercial and Federico master tracker was closed before its acceptance contract was complete.",
   "",
-  `- unchecked acceptance items in Sections 1–13: **${evaluation.uncheckedAcceptanceCount}**`,
-  `- required live-payment acceptance markers missing: **${evaluation.missingRequiredLiveAcceptance.length}**`,
-  "- Section 14 legacy-workstream checkboxes are intentionally excluded from this closure decision because the tracker says they may remain open after launch.",
+  `- unchecked acceptance items in unified P0–P8 and legacy PR inventory: **${evaluation.uncheckedAcceptanceCount}**`,
+  `- required live-payment, Federico approval and production acceptance markers missing: **${evaluation.missingRequiredLiveAcceptance.length}**`,
+  "- All migrated old open PR checkboxes stay closure-blocking until safely merged or superseded with proof.",
   "- The guard also runs periodically, so a delayed issue-close event cannot leave the incomplete tracker closed indefinitely.",
   "",
 ];
@@ -90,7 +91,7 @@ if (details.length > 0) {
   }
   commentLines.push("");
 }
-commentLines.push("#1414 may be closed only after Sections 1–13 are fully checked **and** the explicit 0.05 USDC live-payment/paid-response acceptance is recorded.");
+commentLines.push("#1827 may close only after all P0–P8 and migrated PR gates, owner-authorized 0.05 USDC settlement, exact deployed production and signed Federico approve/zero findings are verified.");
 
 const commentResponse = await fetch(`${issueUrl}/comments`, {
   method: "POST",
@@ -98,7 +99,7 @@ const commentResponse = await fetch(`${issueUrl}/comments`, {
   body: JSON.stringify({ body: commentLines.join("\n") }),
 });
 if (!commentResponse.ok) {
-  throw new Error(`ISSUE_1414_GUARD_COMMENT_FAILED:${commentResponse.status}:${(await commentResponse.text()).slice(0, 500)}`);
+  throw new Error(`ISSUE_1827_GUARD_COMMENT_FAILED:${commentResponse.status}:${(await commentResponse.text()).slice(0, 500)}`);
 }
 
 console.log(JSON.stringify({
