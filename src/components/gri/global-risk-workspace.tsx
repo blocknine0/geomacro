@@ -35,6 +35,10 @@ type HistoricalGriMetadata = {
   archive_generated_at: string;
   original_snapshot_as_of: string | null;
   independently_rechecked_b2_now: false;
+  hot_freshness_not_asserted: true;
+  source_news_freshness_not_asserted: true;
+  source_rights_not_recertified: true;
+  x402_chargeable: false;
 };
 function acceptHistoricalGriMetadata(value: unknown): HistoricalGriMetadata | null {
   if(!value || typeof value!=="object" || Array.isArray(value))return null;
@@ -48,6 +52,10 @@ function acceptHistoricalGriMetadata(value: unknown): HistoricalGriMetadata | nu
     candidate.current_snapshot_available!==false ||
     candidate.commercial_eligible!==false ||
     candidate.independently_rechecked_b2_now!==false ||
+    candidate.hot_freshness_not_asserted!==true ||
+    candidate.source_news_freshness_not_asserted!==true ||
+    candidate.source_rights_not_recertified!==true ||
+    candidate.x402_chargeable!==false ||
     !Number.isFinite(date) || age < -5*60_000 ||
     age > 30*24*60*60_000 ||
     (candidate.original_snapshot_as_of!==null &&
