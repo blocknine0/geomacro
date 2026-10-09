@@ -44,6 +44,9 @@ export async function probeOfficialThreeDomains({
         alternate_trusted_host_items: diagnostics.alternate_host_match_items ?? null,
         alternate_topic_title_items: diagnostics.alternate_topic_match_items ?? null,
         alternate_private_candidates: diagnostics.alternate_admitted_private_count ?? null,
+        publisher_page_read_count: diagnostics.alternate_publisher_page_attempted ?? null,
+        publisher_page_original_publication_verified:
+          diagnostics.alternate_publisher_page_original_date_verified ?? null,
         alternate_atom_published_tag_items: diagnostics.alternate_atom_published_tag_items ?? null,
         alternate_atom_updated_only_items: diagnostics.alternate_atom_updated_only_items ?? null,
         alternate_atom_dc_date_tag_items: diagnostics.alternate_atom_dc_date_tag_items ?? null,
@@ -66,6 +69,8 @@ export async function probeOfficialThreeDomains({
         alternate_original_pubdate_items: null, alternate_current_native_date_items: null,
         alternate_trusted_host_items: null, alternate_topic_title_items: null,
         alternate_private_candidates: null,
+        publisher_page_read_count: null,
+        publisher_page_original_publication_verified: null,
         alternate_atom_published_tag_items: null,
         alternate_atom_updated_only_items: null,
         alternate_atom_dc_date_tag_items: null,
