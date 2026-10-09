@@ -29,6 +29,16 @@ describe("#1827 genuine Global Risk hot snapshot preflight (no stale re-publicat
       .toThrow("GLOBAL_RISK_SOURCE_AS_OF_IN_FUTURE");
   });
 
+  it("blocks legacy GRI Supabase snapshot writers when the authoritative budget is frozen", () => {
+    const workflow = readFileSync(".github/workflows/gri-realtime-direct-postgres.yml", "utf8");
+    const guard = workflow.indexOf("node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
+    const cluster = workflow.indexOf("run: node scripts/cluster-gri-stories-v12.js");
+    const compute = workflow.indexOf("run: node scripts/compute-gri-v12.js");
+    expect(guard).toBeGreaterThan(0);
+    expect(cluster).toBeGreaterThan(guard);
+    expect(compute).toBeGreaterThan(cluster);
+  });
+
   it("checks original source freshness before any Global Risk or Risk Indices B2 network operation", () => {
     for (const path of [
       "scripts/ops/publish-b2-global-risk-direct-postgres.mjs",
