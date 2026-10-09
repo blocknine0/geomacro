@@ -113,6 +113,8 @@ describe("#1803 restricted canonical private score archive", () => {
     expect(scorer).toContain("if (!PRIVATE_B2_STAGE) {");
     expect(scorer).toContain("if (!PRIVATE_B2_STAGE) try");
     expect(scorer).toContain("privateStagedRows.push(staged)");
+    expect(scorer).toContain("narrative: one concise event-specific explanation, 40-260 characters.");
+    expect(scorer).toContain("summary: a concise account of the material change and supported consequence, 60-700 characters.");
     expect(archive).toContain("PRIVATE_SCORING_SUPABASE_CREDENTIALS_FORBIDDEN");
     expect(archive).toContain("putWithMetadataVerification(key, packed, {");
     expect(archive).toContain("validatePrivateStageBundle(parsed);");
