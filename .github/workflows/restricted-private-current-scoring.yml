@@ -95,8 +95,27 @@ jobs:
         run: |
           set -euo pipefail
           test -z "${SUPABASE_DB_URL:-}${SUPABASE_SERVICE_ROLE_KEY:-}${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          mkdir -p artifacts/restricted-current-scoring
+          chmod 700 artifacts/restricted-current-scoring
           for domain in geopolitics macro rare_earth; do
-            GDELT_FORCE_CATEGORY="$domain" node scripts/ingest-news.js --private-scored-stage
+            # Upstream text and article URLs are PRIVATE. Never publish raw
+            # classifier/discovery stdout in public GitHub Actions logs.
+            if ! GDELT_FORCE_CATEGORY="$domain" node scripts/ingest-news.js --private-scored-stage \
+              > "artifacts/restricted-current-scoring/$domain.log" 2>&1; then
+              echo "::error::PRIVATE_SCORING_CANONICAL_DOMAIN_FAILED:$domain"
+              exit 1
+            fi
+            DOMAIN="$domain" node --input-type=module -e '
+              import { readFileSync } from "node:fs";
+              const category = process.env.DOMAIN;
+              const stage = JSON.parse(readFileSync(
+                `artifacts/restricted-current-scoring/${category}.json`, "utf8"));
+              console.log(JSON.stringify({
+                domain: category,
+                private_staged_candidates: stage.records?.length ?? 0,
+                public_published: false,
+              }));
+            '
           done
 
       - name: Verify one private B2 bundle then write compact D1 checkpoint
