@@ -1,5 +1,6 @@
 import continuity from "./continuity.mjs";
 import { reserveB2AccountQuota } from "../../control-plane/src/b2-account-quota.mjs";
+import { b2OriginFailureCacheKey, failedB2OriginRecently, rememberFailedB2Origin } from "../../shared/b2-origin-negative-cache.mjs";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
@@ -363,6 +364,12 @@ export default {
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
 
+    // Only after D1 hot and verified positive POP cache miss. A short private
+    // failure marker prevents repeated B2 GETs for the same unavailable state.
+    // Public users ALWAYS receive 503; no negative cache value is served.
+    const negativeKey = b2OriginFailureCacheKey(url.origin, "/global-risk");
+    if (await failedB2OriginRecently(cache, negativeKey)) return unavailable(503);
+
     try {
       const response = await buildResponse(env);
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
@@ -375,6 +382,9 @@ export default {
         return response;
       } catch (continuityError) {
         console.error("global-risk-edge continuity unavailable", continuityError instanceof Error ? continuityError.message : "unknown");
+        // Both source and verified continuity failed: avoid burning two
+        // new Backblaze GET tickets on each subsequent cold request in this POP.
+        ctx.waitUntil(rememberFailedB2Origin(cache, negativeKey));
         return unavailable(503);
       }
     }
