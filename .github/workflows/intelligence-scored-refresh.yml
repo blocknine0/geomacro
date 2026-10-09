@@ -1,26 +1,10 @@
 name: Intelligence Scored + Current Evidence
 
+# QUOTA-HELD: This legacy publisher reads frozen Supabase Postgres, and B2
+# writes must not be scheduled on unchanged/older inputs. Existing verified
+# B2/D1 serving is NOT removed. Recovery is explicit main-only dispatch.
 on:
-  schedule:
-    - cron: "8,28,48 * * * *"
   workflow_dispatch: {}
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/intelligence-scored-refresh.yml"
-      - "scripts/lib/gri-db-client.mjs"
-      - "scripts/ops/publish-b2-public-intelligence-direct-postgres.mjs"
-      - "scripts/ops/publish-b2-verified-hot-snapshot.mjs"
-      - "scripts/ops/run-b2-public-intelligence-publisher.mjs"
-      - "scripts/ops/refresh-gdelt-coverage-runtime-after-b2.mjs"
-      - "scripts/ops/probe-public-intelligence-live-fallback.ts"
-      - "src/lib/public-intelligence-production.server.ts"
-      - "src/lib/public-intelligence.functions.ts"
-      - "src/lib/use-intelligence.ts"
-      - "server/api/public/intelligence.get.ts"
-      - "src/__tests__/intelligence-scored-convergence-policy.test.ts"
-      - "src/__tests__/intelligence-b2-cap-hot-overlay-recovery-static.test.ts"
 
 permissions:
   contents: read
@@ -31,11 +15,20 @@ concurrency:
 
 jobs:
   publish-scored-intelligence:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: production
     env:
+      # Mandatory shared account quota; without verified D1 reservation the
+      # B2 client fails BEFORE issuing network GET/PUT.
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: intelligence_scored_legacy_recovery
+      B2_REQUEST_BUDGET: "12"
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
       GRI_DB_MODE: direct_postgres
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -66,6 +59,27 @@ jobs:
 
       - name: Install locked runtime dependencies
         run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Resolve canonical D1 account-wide B2 quota ledger BEFORE legacy publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${B2_ACCOUNT_QUOTA_REQUIRED:-}" = "1"
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "D1 quota token missing: fail closed"; exit 2; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "D1 quota account missing: fail closed"; exit 2; }
+          list="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          id="$(printf '%s' "$list" | node -e '
+            let s="";
+            process.stdin.on("data",d=>s+=d);
+            process.stdin.on("end",()=>{
+              const row=JSON.parse(s).find(x=>x.name===process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid??row?.id??"");
+            });
+          ')"
+          test -n "$id" || { echo "Canonical D1 quota ledger missing: fail closed"; exit 2; }
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+          node --check scripts/ops/b2-d1-account-governor.mjs
+          echo "D1 account-wide quota reservation required for every canonical B2 request."
 
       - name: Require production read and B2 publish credentials
         shell: bash
