@@ -69,7 +69,7 @@ describe("#1827 market-style three-category open-discovery receipts", () => {
     expect(result.latest_index_seen_at).toBe("2026-10-09T13:50:00.000Z");
   });
 
-  it("reports source heartbeat as distinct from new verified news (even with zero articles)", () => {
+  it("reports source heartbeat as distinct from new verified news (even with zero articles)", async () => {
     expect(summarizeOpenDiscovery("macro", { articles: [] }, { now }))
       .toMatchObject({ source_transport_ok: true, state: "NO_RECENT_OPEN_DISCOVERY",
         freshly_indexed_articles: 0, publicly_scored: false });
