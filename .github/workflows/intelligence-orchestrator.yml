@@ -267,6 +267,7 @@ jobs:
             supabase-budget.stderr
             gdelt-gal-cycle/**
             country-raw-source-sync.json
+            artifacts/official-native-rss/**
             artifacts/intelligence-current-scoring-cycle/**
             artifacts/intelligence-fastlane-publication.json
           if-no-files-found: warn

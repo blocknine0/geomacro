@@ -93,6 +93,20 @@ const TASKS = [
     ],
   },
   {
+    // Original publisher pubDate, no processing-time laundering. Safe lane:
+    // read-only fixed HTTPS feeds, no Supabase/B2/paid API/public scoring.
+    key: "official_native_rss",
+    restrictedDirectPostgresSafe: true,
+    cadenceSeconds: 3600,
+    offsetSeconds: 120,
+    priority: 8,
+    timeoutMs: 75_000,
+    requiredEnv: [],
+    steps: [
+      ["node", ["scripts/ops/probe-official-native-rss-three-domains.mjs"], "."],
+    ],
+  },
+  {
     key: "gdelt_gal",
     restrictedDirectPostgresSafe: true,
     cadenceSeconds: 900,

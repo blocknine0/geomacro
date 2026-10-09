@@ -32,6 +32,30 @@ permissions:
   contents: read
 
 jobs:
+  official-native-rss-live-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact candidate for original-publication source proof
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Probe all three fixed official feeds, zero funds and zero B2
+        run: node scripts/ops/probe-official-native-rss-three-domains.mjs
+      - name: Keep sanitized evidence even if upstream blocks a feed
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: official-native-rss-three-domain-evidence-${{ github.run_id }}
+          path: artifacts/official-native-rss/three-domains.json
+          if-no-files-found: warn
+          retention-days: 7
   proof:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -214,7 +238,7 @@ jobs:
           const fs = require("node:fs");
           const workflow = fs.readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
           const orchestrator = fs.readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
-          const safe = ["phase_a_heartbeat", "gdelt_gal"];
+          const safe = ["phase_a_heartbeat", "official_native_rss", "gdelt_gal"];
           if (!workflow.includes("GEOMACRO_SUPABASE_RESTRICTED_MODE=true")) throw new Error("RESTRICTED_MODE_WORKFLOW_MISSING");
           if (workflow.includes("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only")) throw new Error("D1_ONLY_FREEZE_STILL_PRESENT");
           if (!orchestrator.includes("restrictedDataPlane && task.restrictedDirectPostgresSafe !== true")) throw new Error("RESTRICTED_FILTER_MISSING");
