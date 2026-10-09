@@ -6,6 +6,7 @@ const legacyGri=read(".github/workflows/gri-realtime-direct-postgres.yml");
 const legacyB2=read(".github/workflows/b2-global-risk-maintenance.yml");
 const canonicalIngestion=read(".github/workflows/intelligence-orchestrator.yml");
 const publisher=read("scripts/ops/publish-b2-global-risk-direct-postgres.mjs");
+const preflight=read("scripts/lib/global-risk-hot-source-preflight.mjs");
 const offline=read("scripts/ops/compute-supabase-free-private-gri-v12.mjs");
 const archive=read("scripts/ops/archive-supabase-free-private-gri-v12.mjs");
 
@@ -36,7 +37,8 @@ describe("#1827 frozen Supabase GRI quota hold (no fake currentness)",()=>{
   });
 
   it("preserves fail-closed current as-of proof without re-dating existing B2 history",()=>{
-    expect(publisher).toContain("GLOBAL_RISK_SOURCE_STALE_FOR_D1_HOT_PUBLISH");
+    expect(publisher).toContain("assertCurrentGlobalRiskSourceForHotPublish(latestSnapshot.as_of)");
+    expect(preflight).toContain("GLOBAL_RISK_SOURCE_STALE_FOR_D1_HOT_PUBLISH");
     expect(legacyB2).toContain("verify-global-risk-public-convergence.mjs");
     expect(legacyB2).toContain("publish-b2-global-risk-direct-postgres.mjs");
     expect(offline).toContain("--private-stage-only");
