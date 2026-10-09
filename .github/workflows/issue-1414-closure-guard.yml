@@ -1,4 +1,4 @@
-name: Issue 1414 Closure Guard
+name: Unified Commercial and Federico Launch Guard 1827
 
 on:
   issues:
@@ -12,12 +12,12 @@ permissions:
   issues: write
 
 concurrency:
-  group: issue-1414-closure-guard
+  group: issue-1827-closure-guard
   cancel-in-progress: false
 
 jobs:
   enforce-master-acceptance:
-    if: ${{ github.repository == 'blocknine0/geomacro' && (github.event_name != 'issues' || github.event.issue.number == 1414) }}
+    if: ${{ github.repository == 'blocknine0/geomacro' && (github.event_name != 'issues' || github.event.issue.number == 1827) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
