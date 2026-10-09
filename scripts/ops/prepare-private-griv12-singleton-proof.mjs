@@ -78,7 +78,8 @@ export function compileVerifiedPrivateSingletonProof({
   });
   return {
     ...result,
-    prior_archive_b2_d1_readback_verified:true,
+    prior_archive_readback_receipt_consistent:true,
+    archive_readback_independently_rechecked:false,
     source_authenticity_independently_verified:false,
     independent_history_story_continuity_verified:false,
     source_rights_verified:false,
@@ -137,7 +138,8 @@ function main() {
     original_input_sha256:result.expected_input_sha256,
     portable_bundle_hash:result.private_proof.portable_bundle_hash,
     portable_proof_hash:result.private_proof.portable_proof_hash,
-    prior_archive_b2_d1_readback_verified:true,
+    prior_archive_readback_receipt_consistent:true,
+    archive_readback_independently_rechecked:false,
     source_authenticity_independently_verified:false,
     independent_history_story_continuity_verified:false,
     source_rights_verified:false,
