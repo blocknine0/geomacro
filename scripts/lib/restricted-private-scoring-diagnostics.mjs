@@ -39,6 +39,8 @@ export function emptyPrivateScoringDiagnostic(domain) {
     gate_rejections: {},
     preclassification_rejections: {},
     private_stage_rejections: {},
+    derived_quality_rejections: {},
+    editorial_review_pending_count: 0,
     discovery_failure_count: 0,
     private_staged_count: 0,
     public_published: false,
@@ -65,6 +67,9 @@ export function safePrivateStageErrorCode(error) {
     "PRIVATE_SCORING_ORIGINAL_PUBLISHER_UNVERIFIED",
     "PRIVATE_SCORING_SOURCE_TITLE_MISSING",
     "PRIVATE_SCORING_DERIVED_TEXT_INVALID",
+    "PRIVATE_SCORING_DERIVED_BOTH_FIELDS_INVALID",
+    "PRIVATE_SCORING_DERIVED_CONTROL_INVALID",
+    "PRIVATE_SCORING_DERIVED_RECORD_INVALID",
   ]);
   return allowed.has(code) ? code.toLowerCase() : "private_stage_rejected_unknown";
 }
