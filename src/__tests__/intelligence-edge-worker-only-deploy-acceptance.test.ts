@@ -206,7 +206,7 @@ describe("#1827 distinguish Intelligence Worker deploy from unpublished website"
     expect(workerOnly).not.toContain("geomacro.live");
     expect(workerOnly).not.toContain("SUPABASE_DB_URL");
     expect(workerOnly).not.toContain("B2_APPLICATION_KEY");
-    expect(strict).toContain("siteAsOf >= overlayBatch");
+    expect(strict).toContain("proof.site_overlay_converged === true");
     expect(strict).toContain("site?.payload?.current_within_24h === true");
     expect(strict).toContain("INTELLIGENCE_EDGE_D1_B2_SITE_OVERLAY_NOT_CONVERGED");
     expect(website).toContain("Verify live build marker matches canonical main");
