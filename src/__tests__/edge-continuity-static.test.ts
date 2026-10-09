@@ -45,12 +45,20 @@ describe("cap-independent verified edge continuity", () => {
     }
   });
 
-  it("refreshes continuity at bounded six-hour cadence without a deploy-time B2 publisher", () => {
+  it("keeps general edge continuity bounded and deploys Risk Indices only after a successful new source proof", () => {
     const global = read(".github/workflows/deploy-global-risk-edge.yml");
     const indices = read(".github/workflows/deploy-risk-indices-edge.yml");
     const intelligence = read(".github/workflows/deploy-intelligence-edge.yml");
     expect(global).toContain('cron: "13 */6 * * *"');
-    expect(indices).toContain('cron: "28 */6 * * *"');
+    expect(indices).not.toContain('cron: "28 */6 * * *"');
+    expect(indices).not.toContain("  schedule:");
+    expect(indices).not.toContain("  push:");
+    expect(indices).toContain('workflows: ["Risk Indices Realtime Direct Postgres"]');
+    expect(indices).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(indices).toContain("github.event.workflow_run.head_branch == 'main'");
+    expect(indices).toContain("github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'");
+    expect(indices).toContain("SOURCE_RUN_ID: ${{ github.event.workflow_run.id || '' }}");
+    expect(indices).toContain("github.event_name == 'workflow_dispatch'");
     expect(intelligence).toContain('cron: "43 */6 * * *"');
     for (const workflow of [global, indices, intelligence]) {
       expect(workflow).toContain("prepare-edge-continuity.sh");
