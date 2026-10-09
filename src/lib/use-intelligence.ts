@@ -381,10 +381,31 @@ export function applyIntelFilters(
   const q = query.trim().toLowerCase();
   const explicitResearch = Boolean(q) || category !== "all";
   const current = rows.filter((r) => r.isCurrent);
+  // An up-to-date result from ONE domain must never hide the last genuinely
+  // verified scored assessment for the other two domains in the all-domain
+  // desk. Keep its ORIGINAL publication timestamp and isCurrent=false.
+  // Do not manufacture live severity or duplicate any present current domain.
+  const currentDomains = new Set(current.map((r) => r.category));
+  const latestMissingDomain = new Map<string, IntelEvent>();
+  for (const row of [...rows].sort((a, b) => timeOf(b) - timeOf(a))) {
+    if (
+      row.isCurrent ||
+      row.publicStatus !== "verified_b2" ||
+      row.severity === null ||
+      !PUBLIC_INTELLIGENCE_CATEGORIES.includes(row.category as typeof PUBLIC_INTELLIGENCE_CATEGORIES[number]) ||
+      currentDomains.has(row.category) ||
+      latestMissingDomain.has(row.category ?? "")
+    ) continue;
+    latestMissingDomain.set(row.category as string, row);
+  }
+  const verifiedHistory = [...latestMissingDomain.values()];
   let out = explicitResearch
     ? rows
     : current.length > 0
-      ? current
+      ? [
+          ...current.slice(0, Math.max(0, 24 - verifiedHistory.length)),
+          ...verifiedHistory,
+        ]
       : [...rows]
           .filter((r) => Number.isFinite(timeOf(r)))
           .sort((a, b) => timeOf(b) - timeOf(a))
