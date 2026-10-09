@@ -1,4 +1,5 @@
 import { fetchOriginalAlternate } from "./official-native-alternates.mjs";
+import { fetchOfficialThirdPublisherArticles } from "./official-native-third-fallback.mjs";
 import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
 // Read-only original-publisher RSS evidence discovery. NO commercial admission,
 // source-certification bypass, scoring, B2 writes or public/paid output.
@@ -149,6 +150,7 @@ async function boundedRssFetch(url, fetchImpl) {
 export async function fetchOfficialNativeArticles(category, {
   now = new Date(), fetchImpl = fetch, maxAgeMs = MAX_AGE_MS, diagnostics = null,
   includeSecondPublisher = false,
+  includeThirdPublisher = false,
 } = {}) {
   const config = OFFICIAL_NATIVE_FEEDS[category];
   if (!config) throw new Error("OFFICIAL_NATIVE_RSS_CATEGORY_INVALID");
@@ -173,21 +175,50 @@ export async function fetchOfficialNativeArticles(category, {
   // discovery ONLY: shared articles or distinct hosts do not prove corroboration,
   // commercial rights, severity, or any public publication eligibility.
   if (primary.length > 0 && !includeSecondPublisher) return primary;
-  if (diagnostics && typeof diagnostics === "object") diagnostics.alternate_feed_attempted = true;
+  if (diagnostics && typeof diagnostics === "object")
+    diagnostics.alternate_feed_attempted = true;
+  let alternate = [];
+  let alternateUnavailable = false;
   try {
-    const alternate = await fetchOriginalAlternate(category, {
-      now, fetchImpl, diagnostics,
+    alternate = await fetchOriginalAlternate(category,{
+      now,fetchImpl,diagnostics,
     });
-    if (diagnostics && typeof diagnostics === "object") diagnostics.alternate_feed_ok = true;
-    if (!primary.length) return alternate;
-    const seen = new Set(primary.map((row) => row.url));
-    return [...primary, ...alternate.filter((row) => !seen.has(row.url))]
-      .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+    if (diagnostics && typeof diagnostics === "object")
+      diagnostics.alternate_feed_ok = true;
   } catch {
-    if (diagnostics && typeof diagnostics === "object") diagnostics.alternate_feed_ok = false;
-    // Only fail the domain when NEITHER official source was reachable. No
-    // observation-time fabrication, generic old news or unverified URLs.
-    if (primaryUnavailable) throw new Error("OFFICIAL_ORIGINAL_FEEDS_UNAVAILABLE");
-    return primary;
+    alternateUnavailable = true;
+    if (diagnostics && typeof diagnostics === "object")
+      diagnostics.alternate_feed_ok = false;
+  }
+  const seen = new Set(primary.map(row => row.url));
+  const combined = [...primary,...alternate.filter(row => !seen.has(row.url))]
+    .sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
+  if (diagnostics && typeof diagnostics === "object") {
+    diagnostics.third_feed_attempted = false;
+    diagnostics.third_feed_ok = null;
+  }
+  if (combined.length>0 || !includeThirdPublisher) {
+    if (!combined.length && primaryUnavailable && alternateUnavailable)
+      throw new Error("OFFICIAL_ORIGINAL_FEEDS_UNAVAILABLE");
+    return combined;
+  }
+  // This third publisher is consulted ONLY when primary and alternate
+  // yield zero qualifying original-publisher, in-window domain events.
+  // Never fill quiet periods using stale feed clocks or GDELT seen dates.
+  if (diagnostics && typeof diagnostics === "object")
+    diagnostics.third_feed_attempted = true;
+  try {
+    const third=await fetchOfficialThirdPublisherArticles(category,{
+      now,fetchImpl,maxAgeMs,diagnostics,
+    });
+    if (diagnostics && typeof diagnostics === "object")
+      diagnostics.third_feed_ok = true;
+    return third;
+  } catch {
+    if (diagnostics && typeof diagnostics === "object")
+      diagnostics.third_feed_ok = false;
+    if (primaryUnavailable && alternateUnavailable)
+      throw new Error("OFFICIAL_ORIGINAL_FEEDS_UNAVAILABLE");
+    return [];
   }
 }
