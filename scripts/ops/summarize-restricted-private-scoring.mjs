@@ -42,7 +42,7 @@ for (const domain of domains) {
       item.classifier_attempted_count > item.discovered_candidate_count) {
     throw new Error("PRIVATE_SCORING_DIAGNOSTIC_COUNTER_INCONSISTENT");
   }
-  const safeReasons = (candidate, regex) => {
+  const safeReasons = (candidate, regex, limit = item.classifier_attempted_count) => {
     if (!candidate || typeof candidate !== "object" ||
         Array.isArray(candidate) || Object.keys(candidate).length > 20) {
       throw new Error("PRIVATE_SCORING_DIAGNOSTIC_REASON_INVALID");
@@ -50,7 +50,7 @@ for (const domain of domains) {
     const safe = {};
     for (const [key, value] of Object.entries(candidate)) {
       if (!regex.test(key) || !Number.isSafeInteger(value) || value < 1 ||
-          value > item.classifier_attempted_count) {
+          value > limit) {
         throw new Error("PRIVATE_SCORING_DIAGNOSTIC_REASON_INVALID");
       }
       safe[key] = value;
@@ -61,6 +61,8 @@ for (const domain of domains) {
     schema: PRIVATE_SCORING_DIAGNOSTIC_SCHEMA,
     domain,
     ...Object.fromEntries(counts.map(x => [x, item[x]])),
+    preclassification_rejections: safeReasons(item.preclassification_rejections,
+      /^(?:publisher_url_invalid|publisher_domain_mismatch|publisher_title_missing|publisher_time_unavailable)$/u, 64),
     gate_rejections: safeReasons(item.gate_rejections, /^[a-z_]{3,45}$/u),
     private_stage_rejections: safeReasons(item.private_stage_rejections,
       /^(?:private_scoring_[a-z_]{2,65}|private_stage_rejected_unknown)$/u),

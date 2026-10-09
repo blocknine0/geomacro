@@ -6,6 +6,9 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { makePrivateStageRecord } from './lib/restricted-private-scored-stage.mjs';
 import {
+  privatePublisherPreAdmission, privateSingleDomainCandidateLimit,
+} from './lib/private-scoring-candidate-admission.mjs';
+import {
   emptyPrivateScoringDiagnostic, addDiagnosticCount,
   safeGateReasonCode, safePrivateStageErrorCode,
 } from './lib/restricted-private-scoring-diagnostics.mjs';
@@ -195,10 +198,9 @@ const MAX_CANDIDATES_PER_CATEGORY = Number(
  *
  * Reserve 20% of the request budget for retries / ungrounded solo checks.
  */
-const CLASSIFICATION_REQUEST_RESERVE = Math.max(
-  2,
-  Math.ceil(GROQ_MAX_REQUESTS_PER_RUN * 0.2)
-);
+const CLASSIFICATION_REQUEST_RESERVE = PRIVATE_B2_STAGE
+  ? 1 // two bounded candidates + one retry; each private process handles one domain
+  : Math.max(2, Math.ceil(GROQ_MAX_REQUESTS_PER_RUN * 0.2));
 
 const CLASSIFICATION_REQUEST_BUDGET = Math.max(
   1,
@@ -207,18 +209,15 @@ const CLASSIFICATION_REQUEST_BUDGET = Math.max(
 );
 
 function safeCandidatesPerCategory() {
-  return Math.max(
-    1,
-    Math.min(
-      MAX_CANDIDATES_PER_CATEGORY,
-      Math.floor(
-        (
-          CLASSIFICATION_REQUEST_BUDGET *
-          BATCH_SIZE
-        ) / ALLOWED_CATEGORIES.length
-      )
-    )
-  );
+  return PRIVATE_B2_STAGE
+    ? privateSingleDomainCandidateLimit({
+        requestBudget: GROQ_MAX_REQUESTS_PER_RUN,
+        batchSize: BATCH_SIZE,
+        maxCandidates: MAX_CANDIDATES_PER_CATEGORY,
+        privateMode: true,
+      })
+    : Math.max(1, Math.min(MAX_CANDIDATES_PER_CATEGORY,
+        Math.floor(CLASSIFICATION_REQUEST_BUDGET * BATCH_SIZE / ALLOWED_CATEGORIES.length)));
 }
 
 let groqRequestsThisRun = 0;
@@ -2356,11 +2355,23 @@ async function fetchGdeltArticles(query) {
     );
 }
 
-async function fetchGdeltArticlesWithGalFallback(query, categoryName) {
+async function fetchGdeltArticlesWithGalFallback(query, categoryName, privateDiagnostic = null) {
+  const admitPrivate = (articles) => {
+    if (!PRIVATE_B2_STAGE) return articles;
+    return articles.filter(article => {
+      const result = privatePublisherPreAdmission(article, {
+        freshnessMs: MAX_ARTICLE_AGE_MS,
+      });
+      if (!result.ok && privateDiagnostic) {
+        addDiagnosticCount(privateDiagnostic.preclassification_rejections, result.reason);
+      }
+      return result.ok;
+    });
+  };
   const enabled = String(process.env.GDELT_GAL_FALLBACK_ENABLED ?? '').toLowerCase() === 'true';
   let primaryError = null;
   try {
-    const primary = await fetchGdeltArticles(query);
+    const primary = admitPrivate(await fetchGdeltArticles(query));
     if (primary.length > 0 || !enabled) return primary;
     console.log('  GDELT DOC returned no current candidates; trying governed GAL fallback.');
   } catch (error) {
@@ -2378,7 +2389,7 @@ async function fetchGdeltArticlesWithGalFallback(query, categoryName) {
   if (fallback.length === 0 && primaryError) {
     console.warn('  Original GDELT DOC discovery unavailable.');
   }
-  return fallback;
+  return admitPrivate(fallback);
 }
 
 async function fetchArticlesFromApis(query, categoryName) {
@@ -3284,7 +3295,7 @@ async function ingestNews() {
         );
 
         const gdeltArticles =
-          await fetchGdeltArticlesWithGalFallback(gdeltQuery, category.name);
+          await fetchGdeltArticlesWithGalFallback(gdeltQuery, category.name, privateDiagnostic);
 
         providerTelemetry('gdelt', 'success');
         providerTelemetry(
