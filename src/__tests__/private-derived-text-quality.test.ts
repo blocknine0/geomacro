@@ -98,7 +98,7 @@ describe("private model-derived text quality without invented or published facts
     expect(ingest).toContain("classifyPrivateDerivedTextQuality(assessment)");
     expect(ingest).toContain("privateDiagnostic.editorial_review_pending_count++");
     expect(diag).toContain("PRIVATE_SCORING_DERIVED_BOTH_FIELDS_INVALID");
-    expect(workflow).toContain("Merge #1836");
+    expect(workflow).toContain("Merge #1839");
     expect(workflow).toContain("diagnostics-summary.json");
     expect(workflow).not.toContain("schedule:");
   });
