@@ -1,9 +1,13 @@
 name: Restricted Private Current Scoring Staging
 
-# Operator-only bounded proof. This MUST NOT become a second scheduled scorer:
-# NO public intelligence projection and NO commerce or partner allowance.
+# Single bounded deployment canary on the #1826 merge; optional manual
+# recovery later. No cron and NO public intelligence projection or commerce.
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/restricted-private-current-scoring.yml"
 
 permissions:
   contents: read
@@ -14,7 +18,13 @@ concurrency:
 
 jobs:
   private-stage:
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge #1826'))
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: production
