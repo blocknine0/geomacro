@@ -14,7 +14,8 @@ describe("adaptive hot-topic commercial delivery", () => {
     expect(loader).toContain('from("live_ingestion_cursors")');
     expect(loader).toContain('const MAX_SOURCE_CADENCE_INTERVALS = 1;');
     expect(loader).toContain('cadenceSeconds * MAX_SOURCE_CADENCE_INTERVALS');
-    expect(loader).toContain('never a blanket 30-minute grace');
+    expect(loader).toContain('export function evaluateHotTopicSourceFreshness');
+    expect(loader).toContain('lastSuccessMs <= input.nowMs');
     expect(loader).toContain('pipelineHealthy');
     expect(loader).not.toContain('HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS');
     expect(loader).not.toContain('pipeline.lag_seconds >');
