@@ -13,7 +13,16 @@ CREATE TABLE IF NOT EXISTS b2_account_daily_request_quota (
   native_auth_requests INTEGER NOT NULL DEFAULT 0 CHECK (native_auth_requests >= 0),
   updated_at TEXT NOT NULL
 );
-CREATE TABLE IF NOT EXISTS b2_request_quota_workflow_receipt (\n  day_utc TEXT NOT NULL,\n  workflow_id TEXT NOT NULL,\n  operation TEXT NOT NULL CHECK (operation IN ('GET','PUT','HEAD','NATIVE_AUTH')),\n  requests INTEGER NOT NULL CHECK (requests >= 0),\n  updated_at TEXT NOT NULL,\n  PRIMARY KEY(day_utc, workflow_id, operation)\n);\n\nCREATE INDEX IF NOT EXISTS idx_b2_account_daily_request_quota_updated
+CREATE TABLE IF NOT EXISTS b2_request_quota_workflow_receipt (
+  day_utc TEXT NOT NULL,
+  workflow_id TEXT NOT NULL,
+  operation TEXT NOT NULL CHECK (operation IN ('GET','PUT','HEAD','NATIVE_AUTH')),
+  requests INTEGER NOT NULL CHECK (requests >= 0),
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY(day_utc, workflow_id, operation)
+);
+
+CREATE INDEX IF NOT EXISTS idx_b2_account_daily_request_quota_updated
   ON b2_account_daily_request_quota(updated_at);
 
 UPDATE schema_meta
