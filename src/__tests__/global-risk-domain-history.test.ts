@@ -112,6 +112,75 @@ describe("verified Global Risk domain history", () => {
     expect(validateGlobalRiskContinuity(risk, Date.parse(latestAt) + 10 * 60 * 1000)).toEqual({ ok: true });
   });
 
+  it("retains a category omitted by the newest snapshot with its original timestamp", () => {
+    const previousAt = "2026-10-01T11:00:00.000Z";
+    const latestAt = "2026-10-01T12:00:00.000Z";
+    const latest = snapshot("latest", latestAt, { geopolitics: 72, macro: 64, rare_earth: 68 });
+    latest.category_breakdown = (latest.category_breakdown as Array<Record<string, unknown>>)
+      .filter((row) => row.category !== "macro");
+    const risk = assemblePublicGlobalRisk(
+      [
+        latest,
+        snapshot("previous", previousAt, { geopolitics: 70, macro: 65, rare_earth: 66 }),
+      ],
+      [],
+      Date.parse(latestAt) + 10 * 60 * 1000,
+    );
+    const macro = risk.domainIndices.macro;
+    expect(macro?.rawScore).toBe(65);
+    expect(macro?.readingStatus).toBe("last_verified");
+    expect(macro?.readingAsOf).toBe(previousAt);
+    expect(riskIndicesFromGlobalRisk(risk, Date.parse(latestAt) + 10 * 60 * 1000).indices
+      .find((index) => index.key === "macro")?.readingAsOf).toBe(previousAt);
+  });
+
+  it("labels a wall-clock-old verified snapshot as last verified without changing as-of", () => {
+    const latestAt = "2026-10-01T12:00:00.000Z";
+    const now = Date.parse(latestAt) + 7 * 60 * 60 * 1000;
+    const risk = assemblePublicGlobalRisk(
+      [
+        snapshot("latest", latestAt, { geopolitics: 72, macro: 64, rare_earth: 68 }),
+        snapshot("previous", "2026-10-01T11:00:00.000Z", { geopolitics: 70, macro: 65, rare_earth: 66 }),
+      ],
+      [],
+      now,
+    );
+    expect(risk.domainIndices.geopolitics?.readingStatus).toBe("last_verified");
+    expect(risk.domainIndices.geopolitics?.readingAsOf).toBe(latestAt);
+    expect(riskIndicesFromGlobalRisk(risk, now).indices[0]).toMatchObject({
+      readingStatus: "last_verified",
+      readingAsOf: latestAt,
+      readingAgeHours: 7,
+    });
+    expect(validateGlobalRiskContinuity(risk, now)).toEqual({ ok: true });
+  });
+
+  it("projects a category with no verified history as unavailable with a null as-of", () => {
+    const latestAt = "2026-10-01T12:00:00.000Z";
+    const latest = snapshot("latest", latestAt, { geopolitics: 72, macro: 64, rare_earth: 68 });
+    const previous = snapshot("previous", "2026-10-01T11:00:00.000Z", {
+      geopolitics: 70,
+      macro: 65,
+      rare_earth: 66,
+    });
+    for (const row of [latest, previous]) {
+      row.category_breakdown = (row.category_breakdown as Array<Record<string, unknown>>)
+        .filter((category) => category.category !== "macro");
+    }
+    const risk = assemblePublicGlobalRisk([latest, previous], [], Date.parse(latestAt) + 10 * 60 * 1000);
+    const indices = riskIndicesFromGlobalRisk(risk, Date.parse(latestAt) + 10 * 60 * 1000);
+    const macro = indices.indices.find((index) => index.key === "macro");
+    expect(risk.domainIndices.macro).toBeNull();
+    expect(macro).toMatchObject({
+      status: "unavailable",
+      readingAsOf: null,
+      readingSnapshotId: null,
+      rawScore: null,
+      score: null,
+    });
+    expect(validateGlobalRiskContinuity(risk, Date.parse(latestAt) + 10 * 60 * 1000)).toEqual({ ok: true });
+  });
+
   it("fails closed if a current domain still exists but its verified history is stripped", () => {
     const latestAt = "2026-10-01T12:00:00.000Z";
     const risk = assemblePublicGlobalRisk(
