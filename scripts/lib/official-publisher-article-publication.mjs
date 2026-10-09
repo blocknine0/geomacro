@@ -8,7 +8,6 @@ const ORIGINAL_KEYS = new Set([
   "dcterms.issued", "citation_publication_date",
 ]);
 const STRICT_ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/iu;
-const STRICT_DAY = /^\d{4}-\d{2}-\d{2}$/u;
 
 function parseMetaAttrs(meta) {
   const attrs = {};
@@ -20,24 +19,19 @@ function parseMetaAttrs(meta) {
 
 function originalDateMillis(raw, nowMs, windowMs) {
   const value = String(raw ?? "").trim();
-  let ageAnchor;
-  if (STRICT_ISO_STAMP.test(value)) {
-    ageAnchor = Date.parse(value);
-    if (!Number.isFinite(ageAnchor)) return null;
-    // Roundtrip validation of calendar overflow (e.g. 2026-02-30).
-    const valid = new Date(ageAnchor);
-    if (Number.isNaN(valid.getTime())) return null;
-  } else if (STRICT_DAY.test(value)) {
-    // Date only is not an exact event instant. The earliest plausible UTC
-    // instant for the published calendar day anywhere is D-14 hours.
-    // Use the earliest instant, so no uncertain date can appear fresher.
-    const date = new Date(value + "T00:00:00Z");
-    if (date.toISOString?.().slice(0, 10) !== value) return null;
-    ageAnchor = date.getTime() - 14 * 60 * 60_000;
-  } else return null;
-
-  if (ageAnchor > nowMs || nowMs - ageAnchor > windowMs) return null;
-  return ageAnchor;
+  // Date-only publisher metadata cannot establish a current hour. Never
+  // invent midnight/locale times to turn a modified older page into news.
+  if (!STRICT_ISO_STAMP.test(value)) return null;
+  const publishedMs = Date.parse(value);
+  if (!Number.isFinite(publishedMs) || publishedMs > nowMs ||
+      nowMs - publishedMs > windowMs) return null;
+  // Check the exact calendar day after parsing, not a JS rollover date.
+  const yyyy = Number(value.slice(0, 4));
+  const mm = Number(value.slice(5, 7));
+  const dd = Number(value.slice(8, 10));
+  if (mm < 1 || mm > 12 ||
+      dd < 1 || dd > new Date(Date.UTC(yyyy, mm, 0)).getUTCDate()) return null;
+  return publishedMs;
 }
 
 /** Returns source-native publication evidence only, NEVER an updated time. */
