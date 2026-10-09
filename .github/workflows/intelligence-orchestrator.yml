@@ -60,6 +60,10 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      # Every canonical Node B2 request in this scheduler must first reserve
+      # an account-wide D1 ticket. D1 ID is resolved below before tasks run.
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: intelligence_orchestrator
       RAW_SOURCE_ARCHIVE_MODE: b2
       GRI_DB_MODE: direct_postgres
       LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres
@@ -155,6 +159,9 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${D1_DATABASE_ID:-}"
+          test "${B2_ACCOUNT_QUOTA_REQUIRED:-}" = "1"
+          test "${B2_ACCOUNT_QUOTA_WORKFLOW_ID:-}" = "intelligence_orchestrator"
+          node --check scripts/ops/b2-d1-account-governor.mjs
           test -n "${CLOUDFLARE_API_TOKEN:-}"
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
           test -n "${B2_KEY_ID:-}"
