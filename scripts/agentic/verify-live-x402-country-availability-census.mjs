@@ -13,6 +13,7 @@ const SAFE_FAIL_CLOSED_CODES = new Set([
   "NOT_AVAILABLE",
   "INSUFFICIENT_COVERAGE",
   "COMMERCIAL_SOURCE_NOT_ELIGIBLE",
+  "STALE_REQUIRED_DATA",
 ]);
 
 const classification = readFileSync(
