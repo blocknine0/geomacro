@@ -102,9 +102,9 @@ describe("#1803 restricted canonical private score archive", () => {
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("private_gri_singleton:");
     expect(workflow).toContain("default: false");
-    expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1842')");
-    expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1843')");
-    expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge #1841')");
+    expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge pull request #1891')");
+    expect(workflow).toContain("github.event.inputs.private_gri_singleton == 'true'");
+    expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "1"');
     expect(workflow).toContain(".github/workflows/restricted-private-current-scoring.yml");
     expect(workflow).not.toContain("schedule:");
     expect(workflow).not.toContain("workflow_run:");

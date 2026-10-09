@@ -96,7 +96,7 @@ describe("#1827 prevalidate governed GAL publisher identity BEFORE rare-earth ca
     expect(ingest).toContain("domain_anchor_missing");
     expect(workflow).toContain('GROQ_MAX_REQUESTS_PER_RUN: "3"');
     expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY:');
-    expect(workflow).toContain("'1' || '2'");
+    expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "1"');
     expect(workflow).toContain("private_gri_singleton:");
     expect(workflow).not.toContain("schedule:");
   });

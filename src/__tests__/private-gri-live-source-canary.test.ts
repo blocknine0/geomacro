@@ -92,13 +92,14 @@ describe("#1827 one-shot governed 3-domain GRI pre-B2 canary",()=>{
     const workflow=readFileSync(
       ".github/workflows/restricted-private-current-scoring.yml","utf8");
     const source=readFileSync("scripts/ops/preflight-private-griv12-singleton.mjs","utf8");
-    expect(workflow).toContain("Merge pull request #1890");
+    expect(workflow).toContain("Merge pull request #1891");
     expect(workflow).toContain("private_gri_singleton:");
     expect(workflow).toContain("default: false");
     expect(workflow).not.toContain("  schedule:");
     expect(workflow).not.toContain("  workflow_run:");
     expect(workflow).toContain("MAX_CANDIDATES_PER_CATEGORY:");
-    expect(workflow).toContain("'1' || '2'");
+    expect(workflow).toContain("github.event.inputs.private_gri_singleton");
+    expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "1"');
     const preflightIdx=workflow.indexOf(
       "Prove genuine original-source three-domain singleton eligibility BEFORE B2 PUT");
     const stageIdx=workflow.indexOf("Verify one private B2 bundle then write compact D1 checkpoint");
