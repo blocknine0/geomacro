@@ -1,27 +1,12 @@
 name: GRI Realtime Direct Postgres
 
+# QUOTA-HELD until canonical verified GRI v1.2 event clustering and proofs
+# have migrated fully from frozen Supabase into B2/D1. The old hourly/push
+# source writes to Supabase and always fails the required --require-bulk-write
+# budget gate (verified ~543 MiB). Keep explicit main-only owner dispatch for
+# post-recovery verification; do not unfreeze, backdate or fake publication.
 on:
-  schedule:
-    - cron: "23 * * * *"
   workflow_dispatch: {}
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/gri-realtime-direct-postgres.yml"
-      - "scripts/lib/gri-db-client.mjs"
-      - "scripts/lib/direct-postgres-supabase-loader.mjs"
-      - "scripts/cluster-gri-stories-v12.js"
-      - "scripts/compute-gri-v12.js"
-      - "scripts/verify-gri-snapshot-v12.js"
-      - "scripts/ops/publish-b2-global-risk-direct-postgres.mjs"
-      - "scripts/ops/publish-b2-verified-hot-snapshot.mjs"
-      - "src/lib/global-risk-assemble.ts"
-      - "src/lib/global-risk-continuity.ts"
-      - "src/lib/global-risk-edge.server.ts"
-      - "src/lib/use-global-risk.ts"
-      - "server/api/public/global-risk.get.ts"
-      - "workers/global-risk-edge/src/index.mjs"
 
 permissions:
   contents: read
@@ -32,7 +17,7 @@ concurrency:
 
 jobs:
   refresh-three-domain-gri:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: production
