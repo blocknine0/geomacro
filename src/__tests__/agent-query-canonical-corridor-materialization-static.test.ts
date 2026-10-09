@@ -5,23 +5,33 @@ const source = fs.readFileSync(
   "src/lib/agent-query-external-modules.server.ts",
   "utf8",
 );
+const resolver = source.slice(
+  source.indexOf("export async function loadCommercialRiskObjectForAgentQuery("),
+  source.indexOf("function hasPreviousPublicationChange("),
+);
 
-describe("adaptive agent canonical corridor materialization", () => {
-  it("uses cached canonical corridor objects before materializing", () => {
-    expect(source).toContain("getLatestCompatibleCorridorRiskObjectAtOrBefore");
-    expect(source).toContain("if (cached) return cached");
-  });
-
-  it("materializes only CANONICAL signed corridor objects for adaptive delivery", () => {
-    expect(source).toContain("publishCorridorRiskObject");
-    expect(source).toContain('delivery_profile: "CANONICAL"');
-    expect(source).not.toContain('delivery_profile: "PUBLIC_DEMO"');
-  });
-
-  it("keeps publication fail-closed and commercially verified", () => {
+describe("#1827 adaptive agent canonical corridor is read-only before x402", () => {
+  it("only resolves previously published canonical corridor signed objects", () => {
+    expect(resolver).toContain("getLatestCompatibleCorridorRiskObjectAtOrBefore");
+    expect(resolver).toContain("corridorSubjectId(");
+    expect(resolver).toContain("commerciallyDeliverable(");
     expect(source).toContain("verifyCommercialRiskObjectArtifact");
-    expect(source).toContain("catch {");
-    expect(source).toContain("return null;");
-    expect(source).toContain("No payment or execution is performed");
+  });
+
+  it("never creates or materializes country/corridor GRO on paid availability", () => {
+    expect(source).not.toContain('from "./country-risk-publisher.server"');
+    expect(source).not.toContain('from "./corridor-risk-publisher.server"');
+    expect(source).not.toContain("publishCountryRiskObject");
+    expect(source).not.toContain("publishCorridorRiskObject");
+    expect(resolver).not.toContain('delivery_profile: "PUBLIC_DEMO"');
+    expect(resolver).not.toContain(".insert(");
+    expect(resolver).not.toContain(".upsert(");
+  });
+
+  it("missing, expired, unsigned or unauthorized data remains a no-charge failure", () => {
+    expect(resolver).toContain("return commerciallyDeliverable(");
+    expect(source).toContain("verifyCommercialRiskObjectArtifact(object");
+    expect(source).toContain("No payment or execution is performed here");
+    expect(source).not.toContain("execution_authorized = true");
   });
 });
