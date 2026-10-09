@@ -30,6 +30,8 @@ Master acceptance: GitHub issue #1827. This is an original Geomacro operating mo
 - A three-domain GDELT DOC observation monitor (3 fixed public queries, max 75 articles each, 2-hour index-time window, strict 512KiB response and 12-second timeout, no redirect).
 - A GitHub Actions cron at minutes 17 and 47, best-effort every 30 minutes. The environment contains no Supabase, D1, B2 or x402 credentials.
 - Only numeric per-category counts and provider transport states are retained in a 2-day artifact. Source outage is DEGRADED, empty healthy feed is NO_RECENT_OPEN_DISCOVERY, multiple outlet domains are DISCOVERY_ONLY and cannot become a paid event.
+- **2026-10-09 observed production gap:** run [#37946988588](https://github.com/blocknine0/geomacro/actions/runs/37946988588) emitted `HTTP_429` for geopolitics and `UPSTREAM_RATE_LIMIT_BACKOFF` for macro and critical minerals, but was incorrectly green. The operational monitor now exits nonzero on any unhealthy or missing category; its `always()` upload still records safe counts. A red monitor means open discovery transport is degraded, *not* that risk is zero. This is diagnostic only and does not recover fresh scored events.
+- **Next required architecture:** independent licensed/allowed original-publisher sources per category, diverse provider families, native publish times, event-level corroboration and jurisdiction/commodity mapping, independent D1/B2 evidence, and public score gating. GDELT-only polling may not be advertised as resilient real-time intelligence.
 - This does not turn an index hit into a fresh news story. It is a first discovery layer, NOT the currently blocked independent commercial event scorer/issuer and not a 24/7 hard SLA.
 
 ## Do not mark launch complete

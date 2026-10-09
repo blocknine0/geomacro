@@ -8,15 +8,29 @@ import { probeOpenDiscoveryMesh } from "../lib/market-signal-discovery.mjs";
 
 export const MARKET_SIGNAL_ARTIFACT = "artifacts/open-discovery-mesh/three-domain-signal-receipt.json";
 
+// A successful process must prove that all three discovery polls reached the
+// provider. Actual event verification, commercial rights and freshness remain
+// independent, fail-closed gates elsewhere. No secrets or source URLs exposed.
+export function discoveryMonitorExitCode(receipt) {
+  return receipt?.source_reachability === "ALL_POLL_OK" &&
+    Array.isArray(receipt?.categories) && receipt.categories.length === 3 &&
+    ["geopolitics", "macro", "rare_earth"].every((category) =>
+      receipt.categories.some((item) => item.category === category &&
+        item.source_transport_ok === true && !item.source_failure_reason)
+    ) ? 0 : 1;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const receipt = await probeOpenDiscoveryMesh();
   mkdirSync("artifacts/open-discovery-mesh", { recursive: true, mode: 0o700 });
   writeFileSync(MARKET_SIGNAL_ARTIFACT, JSON.stringify(receipt, null, 2) + "\n",
     { mode: 0o600 });
   console.log(JSON.stringify(receipt));
-  if (receipt.source_reachability !== "ALL_POLL_OK") {
-    console.warn("SOURCE_MONITOR_DEGRADED: upstream discovery temporarily unavailable; no scored/current claims made");
+  if (discoveryMonitorExitCode(receipt) !== 0) {
+    console.error("SOURCE_MONITOR_DEGRADED: open-signal upstream unhealthy; counts-only receipt preserved, commercial/current claims remain false");
+    process.exitCode = 1;
   }
-  // Upstream transient loss is *not* a test failure, but the receipt must
-  // preserve DEGRADED status so nobody labels it healthy production coverage.
+  // Operational cron/watch must be RED when the upstream returns 429 or is
+  // unavailable. The always() artifact step still preserves the actual
+  // counts-only receipt. A green command is never evidence of paid readiness.
 }
