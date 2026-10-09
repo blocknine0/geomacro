@@ -1,0 +1,74 @@
+name: Live Signed GRO Bridge Proof
+
+# Bounded operator/merge canary; NO cron, payment, database mutation, or B2 GET.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/live-signed-gro-bridge-proof.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-live-signed-gro-bridge-proof
+  cancel-in-progress: false
+
+jobs:
+  compare-live:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge #1848'))
+      )
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    env:
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GRO_CONTINUITY_COUNTRY_ISO3: USA
+    steps:
+      - name: Checkout exact canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Prove authenticated D1 hot signed GRO with full signature and commercial policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${GEOMACRO_COMMERCE_LEDGER_TOKEN:-}" || {
+            echo "::error::SIGNED_GRO_BACKEND_CONTROL_PLANE_TOKEN_MISSING"
+            exit 2
+          }
+          mkdir -p artifacts/signed-gro-live-bridge
+          chmod 700 artifacts/signed-gro-live-bridge
+          if ! bun scripts/ops/verify-country-gro-hot-serving.ts > artifacts/signed-gro-live-bridge/backend-country-canary.json 2>/dev/null; then
+            echo "::error::SIGNED_GRO_BACKEND_CANARY_NOT_VERIFIED"
+            exit 2
+          fi
+          echo "PASS: authenticated country GRO D1 hot, public trust signing and commercial policy verified; no secret or GRO body logged."
+
+      - name: Compare live website no-charge signed-GRO availability
+        run: node scripts/ops/verify-signed-gro-live-bridge.mjs
+
+      - name: Upload safe source-free bridge status only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: signed-gro-live-bridge-${{ github.run_id }}
+          path: artifacts/signed-gro-live-bridge/bridge-evidence.json
+          if-no-files-found: warn
+          retention-days: 7
