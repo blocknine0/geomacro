@@ -186,6 +186,16 @@ if (snapshots.some((snapshot) => snapshot.verification_status !== "verified")) {
 }
 const latestSnapshot = snapshots[0];
 const recentEvents = readRecentEvents(dbUrl, latestSnapshot.as_of);
+const snapshotAsOfMs = Date.parse(latestSnapshot.as_of);
+if (!Number.isFinite(snapshotAsOfMs)) throw new Error("GLOBAL_RISK_SNAPSHOT_TIME_INVALID");
+
+// Keep the content-addressed snapshot archive deterministic at snapshot time.
+// Its status records what was current when the snapshot was produced; the live
+// projection below uses wall-clock time to label older evidence last_verified.
+const archivedRisk = assemblePublicGlobalRisk(snapshots, recentEvents, snapshotAsOfMs);
+const archiveContinuity = validateGlobalRiskContinuity(archivedRisk, snapshotAsOfMs);
+if (!archiveContinuity.ok) throw new Error(`GLOBAL_RISK_ARCHIVE_CONTINUITY_REJECTED_${archiveContinuity.code}`);
+
 const risk = assemblePublicGlobalRisk(snapshots, recentEvents);
 const continuity = validateGlobalRiskContinuity(risk);
 if (!continuity.ok) throw new Error(`GLOBAL_RISK_CONTINUITY_REJECTED_${continuity.code}`);
@@ -292,11 +302,11 @@ const historyKey = `${HISTORY_PREFIX}/${snapshotId}.json.gz`;
 const historyValue = {
   schema: "geomacro.public-global-risk-history.v1",
   source_project: PROJECT_REF,
-  methodology_version: risk.methodologyVersion,
-  snapshot_id: risk.snapshotId,
-  snapshot_as_of: risk.snapshotAsOf,
+  methodology_version: archivedRisk.methodologyVersion,
+  snapshot_id: archivedRisk.snapshotId,
+  snapshot_as_of: archivedRisk.snapshotAsOf,
   verified_snapshot_rows: snapshots,
-  data: risk,
+  data: archivedRisk,
 };
 const historyRaw = JSON.stringify(historyValue);
 const existingHistory = await b2.getOptional(historyKey);
