@@ -53,6 +53,9 @@ describe("Geomacro intelligence contract v1", () => {
     expect(row).not.toHaveProperty("source_url");
     expect(row).not.toHaveProperty("provenance");
     expect(JSON.stringify(row)).not.toContain("internal-source");
+    // Old observed_at / earlier original published_at governs freshness,
+    // not a newer retrieval or a later processing timestamp.
+    expect(row.freshness.age_seconds).toBe(5_400);
   });
 
   it("turns an event into a versioned structural development without raw text", () => {

@@ -96,6 +96,60 @@ describe("adaptive query pre-payment deliverability", () => {
     expect(result.missing_modules).toContain("sovereign_fiscal");
   });
 
+  it("never treats a new retrieval as fresh original macro evidence", async () => {
+    const base = context();
+    mocks.loadStructuralContext.mockResolvedValue({
+      ...base,
+      observations: base.observations.map((row) => ({
+        ...row,
+        observed_at: null,
+        published_at: null,
+        retrieved_at: "2026-09-16T00:00:00.000Z",
+      })),
+    });
+    const plan = buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "USA" }],
+      topics: ["macro_risk"],
+      max_age_seconds: 3600,
+    });
+    const result = await checkAgentQueryDeliverability(plan, {
+      now: new Date("2026-09-16T00:00:00.000Z"),
+      sourceEligibilityChecker: commercialOk,
+    });
+    expect(result.deliverable).toBe(false);
+    expect(result.stale_modules).toEqual(expect.arrayContaining(["macro_monetary", "sovereign_fiscal"]));
+  });
+
+  it("never offers payment on future source-native or coverage observation timestamps", async () => {
+    const base = context();
+    mocks.loadStructuralContext.mockResolvedValue({
+      ...base,
+      observations: base.observations.map((row) => ({
+        ...row, observed_at: "2026-09-16T00:01:00.000Z",
+      })),
+      metadata: {
+        ...base.metadata,
+        coverage: [{
+          source_id: "world_bank_wdi", dimension: "macro_monetary",
+          country_iso3: "USA", coverage_year: 2026,
+          coverage_status: "AVAILABLE", observation_count: 1,
+          latest_observed_at: "2026-09-16T00:01:00.000Z",
+          updated_at: "2026-09-16T00:01:00.000Z", audit_metadata: {},
+        }],
+      },
+    });
+    const plan = buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "USA" }],
+      topics: ["macro_risk"],
+      max_age_seconds: 3600,
+    });
+    const result = await checkAgentQueryDeliverability(plan, {
+      now: new Date("2026-09-16T00:00:00.000Z"),
+      sourceEligibilityChecker: commercialOk,
+    });
+    expect(result.deliverable).toBe(false);
+  });
+
   it("fails closed when required evidence is stale", async () => {
     mocks.loadStructuralContext.mockResolvedValue(context());
     const plan = buildAgentQueryPlan({ subjects: [{ type: "country", country_iso3: "USA" }], topics: ["macro_risk"], max_age_seconds: 3600 });

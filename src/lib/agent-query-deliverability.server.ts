@@ -1,4 +1,5 @@
 import type { AgentQueryPlan } from "./agent-query-plan";
+import { sourceNativeObservationTime } from "./source-native-observation-time";
 import {
   assertCommercialSourcesEligible,
   type CommercialSourceEligibility,
@@ -78,11 +79,8 @@ const STRUCTURAL_MODULE_ALIASES: Record<string, readonly string[]> = {
 
 const EXTERNAL_MODULES = new Set(["signed_risk_object", "risk_gate", "gri_context", "hot_topics"]);
 
-function observationTime(row: StructuralObservation): number | null {
-  const raw = row.observed_at ?? row.published_at ?? row.retrieved_at;
-  if (!raw) return null;
-  const parsed = Date.parse(raw);
-  return Number.isFinite(parsed) ? parsed : null;
+function observationTime(row: StructuralObservation, asOfMs: number): number | null {
+  return sourceNativeObservationTime(row, asOfMs);
 }
 
 function moduleMatchesDimension(module: string, dimension: string) {
@@ -111,17 +109,20 @@ function structuralModulesFor(context: StructuralContext) {
   return modules;
 }
 
-function latestModuleTime(context: StructuralContext, module: string): number | null {
+function latestModuleTime(context: StructuralContext, module: string, asOfMs: number): number | null {
   let latest: number | null = null;
   for (const row of context.observations) {
     if (!moduleMatchesDimension(module, row.dimension)) continue;
-    const time = observationTime(row);
+    const time = observationTime(row, asOfMs);
     if (time !== null && (latest === null || time > latest)) latest = time;
   }
   for (const row of context.metadata.coverage) {
     if (!moduleMatchesDimension(module, row.dimension) || !row.latest_observed_at) continue;
     const time = Date.parse(row.latest_observed_at);
-    if (Number.isFinite(time) && (latest === null || time > latest)) latest = time;
+    // The governed coverage timestamp is an observation clock, not updated_at.
+    // Reject future data rather than allowing negative source ages.
+    if (Number.isFinite(time) && time <= asOfMs &&
+        (latest === null || time > latest)) latest = time;
   }
   return latest;
 }
@@ -186,7 +187,7 @@ export async function checkAgentQueryDeliverability(
       let structuralLatest: number | null = null;
 
       if (context.status === "AVAILABLE" && available.has(module)) {
-        structuralLatest = latestModuleTime(context, module);
+        structuralLatest = latestModuleTime(context, module, now.getTime());
         const maxAgeSeconds = plan.module_max_age_seconds[module];
         structuralUsable =
           structuralLatest !== null &&
