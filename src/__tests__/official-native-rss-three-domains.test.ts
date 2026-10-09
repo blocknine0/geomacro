@@ -111,15 +111,17 @@ describe("three official publishers' original-event RSS discovery", () => {
         alternate_feed_items_seen:2,
         alternate_native_date_items:2,
         alternate_native_current_items:0,
+        alternate_topic_match_items:1,
         third_items_seen:0,
         ...extra,
       }});
     expect(classify({})).toBe("SAMPLED_FEED_HAS_ONLY_STALE_OR_INELIGIBLE_EVENTS");
     expect(classify({alternate_atom_updated_only_items:2})).toBe("SAMPLED_FEED_HAS_ONLY_STALE_OR_INELIGIBLE_EVENTS");
+    expect(classify({alternate_topic_match_items:0})).toBe("SAMPLED_FEED_NO_RELEVANT_TOPIC_MATCH");
     expect(classifyNativeFeedGap({articlesCount:0,diagnostics:{
       item_count:0,alternate_feed_items_seen:0,
       third_items_seen:2,third_native_pubdate_seen:2,
-      third_original_current_count:0,
+      third_original_current_count:0,third_topic_match_count:1,
     }})).toBe("SAMPLED_FEED_HAS_ONLY_STALE_OR_INELIGIBLE_EVENTS");
   });
 
