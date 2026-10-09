@@ -1,15 +1,25 @@
 name: B2 country GRO continuity
 
+# Hourly read-only D1 *observation*, NOT an hourly Supabase publisher.
+# Actual signing/publication remains owner-dispatched and continues to obey
+# the existing frozen Supabase bulk-write gate, source rights and no-funds.
 on:
   schedule:
     - cron: "41 * * * *"
-  workflow_dispatch: {}
-  # The final commercial gate is exact-head and may start immediately after a
-  # canonical merge. Refresh the full country-like commercial subject universe
-  # on every main advance so B2/D1 serving does not collapse to a single USA
-  # object. The hourly schedule remains the steady-state freshness owner.
+  # An explicitly scoped main push checks the new observer immediately
+  # after merger, never triggering the frozen Supabase writer.
   push:
     branches: [main]
+    paths:
+      - ".github/workflows/b2-country-gro-continuity.yml"
+      - "scripts/ops/audit-country-gro-d1-hot-readonly.ts"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Read-only D1 audit (default) or explicitly requested legacy GRO writer recovery"
+        type: choice
+        options: [audit, publisher_recovery]
+        default: audit
 
 permissions:
   contents: read
@@ -19,8 +29,75 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  observe-existing-d1-hot:
+    name: D1 signed GRO read-only coverage (NOT commercial release)
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'audit')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout canonical main without saved credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Setup Bun for the existing canonical Ed25519/GRO verifier
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked verification dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Read D1 hot GRO rows; independently verify signatures and live commercial eligibility (NO B2)
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p artifacts/global-gro-continuity
+          bun scripts/ops/audit-country-gro-d1-hot-readonly.ts --read-only \
+            > artifacts/global-gro-continuity/d1-hot-readonly-coverage.json
+          jq -e '
+            .ok == true
+            and .schema == "geomacro.country-gro-d1-hot-readonly-coverage-audit.v1"
+            and .audit_only == true
+            and .commercial_launch_accepted == false
+            and .global_195_country_coverage_claimed == false
+            and .three_domain_195_country_coverage_claimed == false
+            and .public_freshness_advanced == false
+            and .b2_get_requests == 0
+            and .b2_put_requests == 0
+            and .supabase_reads == 0
+            and .supabase_writes == 0
+            and .d1_writes == 0
+            and .signing_operations == 0
+            and .external_payment_performed == false
+          ' artifacts/global-gro-continuity/d1-hot-readonly-coverage.json >/dev/null
+          count="$(jq -r '.cryptographically_verified_current_d1_hot_count' \
+            artifacts/global-gro-continuity/d1-hot-readonly-coverage.json)"
+          echo "Verified D1 current signed commercial GRO hot records: ${count}."
+          if [ "${count}" -lt 195 ]; then
+            echo "::warning title=195-country coverage NOT VERIFIED::${count} independently signed current D1 hot records. Legacy Supabase publisher remains quota-held; this observer does not create or charge for any GRO."
+          else
+            echo "::warning title=Universe proof still required::D1 has at least 195 current signed country records, but exact canonical 195-subject + 3-domain readiness is NOT established by this observer."
+          fi
+      - name: Upload aggregate-only, source-free D1 audit
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: global-country-gro-d1-readonly-${{ github.run_id }}
+          path: artifacts/global-gro-continuity/d1-hot-readonly-coverage.json
+          if-no-files-found: warn
+          retention-days: 2
+
   publish:
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    # No more hourly/main-push attempts against a known frozen Supabase DB:
+    # 546,991,251 bytes vs 471,859,200-byte write freeze on 9 Oct 2026.
+    # Owner recovery still checks original budget before any D1/B2 mutation.
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'publisher_recovery' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
