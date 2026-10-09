@@ -21,7 +21,8 @@ export function privatePublisherPreAdmission(article, {
   // GDELT discovery strips the leading www. label, but the signed private
   // source identity must preserve the exact article URL hostname. Accept
   // ONLY this one verified hostname alias; never another host/subdomain.
-  const wwwAlias = hostname.startsWith("www.") && domain === hostname.slice(4);\n  if (!domain || (hostname !== domain && !wwwAlias)) {
+  const wwwAlias = hostname.startsWith("www.") && domain === hostname.slice(4);
+  if (!domain || (hostname !== domain && !wwwAlias)) {
     return { ok: false, reason: "publisher_domain_mismatch" };
   }
   const title = String(article?.title ?? "").trim().replace(/\s+/gu, " ");
