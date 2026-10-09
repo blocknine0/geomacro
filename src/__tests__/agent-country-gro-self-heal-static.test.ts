@@ -2,40 +2,41 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync("src/lib/agent-query-external-modules.server.ts", "utf8");
+const resolver = source.slice(
+  source.indexOf("export async function loadCommercialRiskObjectForAgentQuery("),
+  source.indexOf("function hasPreviousPublicationChange("),
+);
 
-describe("adaptive country GRO self-heal", () => {
-  it("remains cache-first and publishes only a missing or expired current country GRO", () => {
-    expect(source).toContain('from "./country-gro-resolver.server"');
-    const cacheRead = source.indexOf("resolveCountryGroAtOrBefore");
-    const cachedReturn = source.indexOf("if (cached) return cached");
-    const publish = source.indexOf("publishCountryRiskObject({");
-    expect(cacheRead).toBeGreaterThanOrEqual(0);
-    expect(cachedReturn).toBeGreaterThan(cacheRead);
-    expect(publish).toBeGreaterThan(cachedReturn);
-    expect(source).toContain('delivery_profile: "CANONICAL"');
-    expect(source).toContain("verifyCommercialRiskObjectArtifact(published.object");
+describe("#1827 paid and no-funds country GRO availability is strictly read-only", () => {
+  it("uses previously signed canonical country objects, with independent commercial verification", () => {
+    expect(resolver).toContain("resolveCountryGroAtOrBefore(");
+    expect(resolver).toContain("commerciallyDeliverable(");
+    expect(source).toContain("verifyCommercialRiskObjectArtifact(object");
+    expect(resolver).not.toContain("delivery_profile: \"PUBLIC_DEMO\"");
   });
 
-  it("never mutates production for historical/future replay outside a narrow live clock window", () => {
-    expect(source).toContain("LIVE_COUNTRY_SELF_HEAL_MAX_CLOCK_SKEW_MS = 5 * 60 * 1_000");
-    expect(source).toContain("Math.abs(requested - now.getTime()) <= LIVE_COUNTRY_SELF_HEAL_MAX_CLOCK_SKEW_MS");
-    expect(source).toContain("if (!liveSelfHealAllowed(asOf)) return null");
+  it("forbids live, future and historic GRO regeneration by any external request", () => {
+    expect(source).not.toContain('from "./country-risk-publisher.server"');
+    expect(source).not.toContain('from "./corridor-risk-publisher.server"');
+    expect(source).not.toContain("publishCountryRiskObject");
+    expect(source).not.toContain("publishCorridorRiskObject");
+    expect(source).not.toContain("liveSelfHealAllowed");
+    expect(source).not.toContain("LIVE_COUNTRY_SELF_HEAL_MAX_CLOCK_SKEW_MS");
+    expect(resolver).not.toContain(".insert(");
+    expect(resolver).not.toContain(".upsert(");
   });
 
-  it("fails closed when signing, evidence or persistence fails", () => {
-    const countryBlock = source.slice(
-      source.indexOf('if (subject.type === "country")'),
-      source.indexOf("const corridorId"),
-    );
-    expect(countryBlock).toContain("try {");
-    expect(countryBlock).toContain("catch {");
-    expect(countryBlock).toContain("return null");
-    expect(countryBlock).not.toContain("execution_authorized");
-    expect(countryBlock).not.toContain("payment");
+  it("does not create or settle payments in an availability probe", () => {
+    expect(resolver).not.toContain("payment_signature");
+    expect(resolver).not.toContain("execution_authorized");
+    expect(resolver).not.toContain("settlement");
+    expect(source).toContain("No payment or execution is performed here");
+    expect(resolver).toContain("return commerciallyDeliverable(");
   });
 
-  it("does not broaden the corridor materialization boundary", () => {
-    expect(source).toContain("publishCorridorRiskObject({");
-    expect(source).toContain("corridorSubjectId(");
+  it("reads only existing corridor GROs, never materializing a new one", () => {
+    expect(resolver).toContain("corridorSubjectId(");
+    expect(resolver).toContain("getLatestCompatibleCorridorRiskObjectAtOrBefore(");
+    expect(resolver).not.toContain("publishCorridorRiskObject(");
   });
 });
