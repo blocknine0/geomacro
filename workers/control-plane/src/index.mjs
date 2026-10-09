@@ -473,7 +473,7 @@ async function getHistoricalRiskIndicesContinuity(env) {
         row.b2_object_key !== config.b2Key ||
         !HASH_RE.test(String(row.b2_sha256 ?? "")) ||
         !HASH_RE.test(String(row.payload_sha256 ?? "")) ||
-        !/^\\d{1,20}$/u.test(String(row.source_run_id ?? ""))) return unavailable();
+        !/^\d{1,20}$/u.test(String(row.source_run_id ?? ""))) return unavailable();
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payloadJson));
     const actualHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
     if (actualHash !== row.payload_sha256) return unavailable();
