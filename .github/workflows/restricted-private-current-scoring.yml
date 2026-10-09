@@ -1,6 +1,6 @@
 name: Restricted Private Current Scoring Staging
 
-# Single bounded deployment canary on the #1826 merge; optional manual
+# Single bounded diagnostics canary on the #1829 merge; optional manual
 # recovery later. No cron and NO public intelligence projection or commerce.
 on:
   workflow_dispatch: {}
@@ -23,7 +23,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (
         github.event_name == 'workflow_dispatch' ||
-        (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge #1826'))
+        (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge #1829'))
       )
     runs-on: ubuntu-24.04
     timeout-minutes: 20
