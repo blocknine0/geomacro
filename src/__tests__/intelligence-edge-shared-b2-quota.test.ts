@@ -135,7 +135,7 @@ describe("#1827 account-wide Intelligence edge Backblaze GET guard",()=>{
       .toBeLessThan(serving.indexOf("const response = await buildResponse(env);"));
     expect(code.indexOf("reserveB2AccountQuota(env.B2_QUOTA_DB"))
       .toBeLessThan(code.indexOf("const path ="));
-    expect(code).toContain("const proofBytes =");
+    expect(code).toContain("signedGet(PROOF_KEY, env)");
     expect(code).toContain('proof?.raw_source_headlines_exposed !== false');
     expect(code).toContain('proof?.provider_identity_exposed !== false');
     expect(code).toContain('Date.now() - verifiedB2GeneratedAt > MAX_AGE_MS');
