@@ -7,6 +7,7 @@ const DOMAINS = ["geopolitics", "macro", "rare_earth"];
 const CLASSIFICATION_VERSION = "event-severity-v1.0.5";
 const CLASSIFICATION_PROMPT_VERSION = "risk-desk-filter-v1.0.5";
 const SCORER = "scripts/ingest-news.js";
+const FREE_TIER_BUDGET_CHECK = "scripts/ops/supabase-free-tier-budget.mjs";
 const PUBLICATION_SYNC = "scripts/ops/sync-fastlane-scored-intelligence.mjs";
 const ARTIFACT_DIR = "artifacts/intelligence-current-scoring-cycle";
 const PROOF_PATH = `${ARTIFACT_DIR}/proof.json`;
@@ -181,6 +182,62 @@ function runPublicationSync() {
   if (child.status !== 0) throw new Error(`CURRENT_SCORING_PUBLICATION_FAILED:${child.status ?? "unknown"}`);
 }
 
+function requireCanonicalScoringWriteHeadroom() {
+  // This legacy scorer still inserts into public.events in authoritative Supabase.
+  // It must NEVER run while Supabase is frozen, even when manually triggered or
+  // when an isolated all-domain workflow bypasses the scheduled orchestrator.
+  // Frozen-mode B2/D1-only scoring needs a separate verified writer contract.
+  const child = spawnSync(
+    process.execPath,
+    [FREE_TIER_BUDGET_CHECK, "--require-bulk-write", "--require-normal"],
+    {
+      encoding: "utf8",
+      env: process.env,
+      maxBuffer: 1024 * 1024,
+      timeout: 30_000,
+    },
+  );
+  if (child.error || child.status !== 0) {
+    console.error(JSON.stringify({
+      ok: false,
+      code: "CURRENT_SCORING_CANONICAL_WRITE_HEADROOM_REQUIRED",
+      scoring_performed: false,
+      publication_performed: false,
+      required_mode: "normal",
+    }));
+    process.exitCode = 78;
+    return false;
+  }
+  let budget;
+  try {
+    const lines = child.stdout.trim().split(/\r?\n/).filter(Boolean);
+    budget = JSON.parse(lines.at(-1));
+  } catch {
+    budget = null;
+  }
+  if (
+    budget?.ok !== true ||
+    budget.mode !== "normal" ||
+    budget.bulk_write_allowed !== true ||
+    budget.policy?.recurring_ingest_allowed !== true
+  ) {
+    console.error(JSON.stringify({
+      ok: false,
+      code: "CURRENT_SCORING_CANONICAL_WRITE_BUDGET_INVALID",
+      scoring_performed: false,
+      publication_performed: false,
+    }));
+    process.exitCode = 78;
+    return false;
+  }
+  return true;
+}
+
+if (!requireCanonicalScoringWriteHeadroom()) {
+  // Explicitly end the process before patching or running ANY scorer;
+  // a frozen database is never made writable by an environment flag.
+  process.exit(78);
+}
 mkdirSync(ARTIFACT_DIR, { recursive: true });
 patchCanonicalScorer();
 
