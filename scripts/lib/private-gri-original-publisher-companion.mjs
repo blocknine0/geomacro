@@ -133,8 +133,8 @@ function validateCompanionRow(row,staged,nowMs) {
     staged?.classifier?.provider===row.classifier_provider &&
     staged?.classifier?.model===row.classifier_model &&
     staged?.classifier?.input_sha256===row.classifier_input_sha256 &&
-    row.original_publisher_native_timestamp_hint===true ||
-    false,"PRIVATE_GRI_COMPANION_BINDING_INVALID");
+    typeof row.original_publisher_native_timestamp_hint==="boolean",
+    "PRIVATE_GRI_COMPANION_BINDING_INVALID");
   check(row.source_authenticity_independently_verified===false &&
     row.rights_verified===false &&
     row.independently_corroborated===false &&
