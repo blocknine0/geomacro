@@ -38,6 +38,24 @@ function walkArticleJsonLd(value, found, depth = 0) {
   if (value["@graph"]) walkArticleJsonLd(value["@graph"], found, depth + 1);
 }
 
+// Accept HTML-permitted whitespace in closing script tags without an unbounded
+// HTML regexp. Never treat a partial '</script-other>' as a terminator.
+function closingScriptTag(source, from) {
+  let offset = from;
+  for (let scan = 0; scan < 24; scan += 1) {
+    const begin = source.indexOf("</script", offset);
+    if (begin < 0) return null;
+    let end = begin + 8; // '</script'
+    while (end < source.length && end - begin <= 24 &&
+        (source[end] === " " || source[end] === "\t" ||
+         source[end] === "\n" || source[end] === "\r" ||
+         source[end] === "\f")) end += 1;
+    if (source[end] === ">") return { begin, end: end + 1 };
+    offset = begin + 8;
+  }
+  return null;
+}
+
 export function verifiedPublisherPageDate(html, now = new Date()) {
   if (typeof html !== "string" || html.length > PAGE_BYTES_MAX ||
       /<!DOCTYPE\s+[^>]*\[/iu.test(html)) return null;
@@ -73,13 +91,13 @@ export function verifiedPublisherPageDate(html, now = new Date()) {
     if (next !== " " && next !== "\n" && next !== "\t" && next !== ">") continue;
     const openingEnd = lowered.indexOf(">", offset);
     if (openingEnd < 0 || openingEnd - begin > 500) continue;
-    const closingBegin = lowered.indexOf("</script>", openingEnd + 1);
-    if (closingBegin < 0) break;
-    offset = closingBegin + 9;
-    if (closingBegin - openingEnd > 30000) continue;
+    const closing = closingScriptTag(lowered, openingEnd + 1);
+    if (!closing) break;
+    offset = closing.end;
+    if (closing.begin - openingEnd > 30000) continue;
     const tag = html.slice(begin, openingEnd + 1);
     if (!/^(?:application\/ld\+json)(?:;|$)/iu.test(attr(tag, "type"))) continue;
-    const body = html.slice(openingEnd + 1, closingBegin);
+    const body = html.slice(openingEnd + 1, closing.begin);
     try { walkArticleJsonLd(JSON.parse(body), candidates); } catch { /* no script execution */ }
   }
   // No original precise timestamp, invalid timestamp, or conflicting publisher
