@@ -1,4 +1,5 @@
 import continuity from "./continuity.mjs";
+import { reserveB2AccountQuota } from "../../control-plane/src/b2-account-quota.mjs";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
@@ -37,6 +38,19 @@ async function signedGet(key, env) {
   const accessKey = String(env.B2_KEY_ID ?? "").trim();
   const secretKey = String(env.B2_APPLICATION_KEY ?? "").trim();
   if (!accessKey || !secretKey) throw new Error("B2_EDGE_CONFIG_REQUIRED");
+  // D1 hot and verified edge cache are preferred and do not spend B2 quota.
+  // Every public cold-origin Backblaze GET must reserve one globally atomic
+  // account-wide D1 ticket BEFORE outbound network I/O. The event/proof
+  // package requires TWO separately metered GET attempts.
+  // Missing D1, quota exhaustion or receipt write errors all fail closed;
+  // existing SHA-pinned continuity fallback is never marked current.
+  const admission = await reserveB2AccountQuota(env.B2_QUOTA_DB, {
+    kind: "GET",
+    workflow_id: "global_risk_public_edge",
+  });
+  if (admission.ok !== true || admission.reserved !== true) {
+    throw new Error("GLOBAL_RISK_B2_SHARED_ACCOUNT_QUOTA_EXHAUSTED");
+  }
 
   const path = `/${[B2_BUCKET, ...key.split("/")].map(encodeURIComponent).join("/")}`;
   const host = new URL(B2_ENDPOINT).host;
