@@ -5,6 +5,10 @@ import { createB2Client } from "./b2-s3-client.mjs";
 import { createD1ControlPlaneStateClient } from "../lib/d1-control-plane-state.mjs";
 import { verifyPrivateScoringD1Checkpoint } from "../lib/private-scoring-d1-checkpoint-proof.mjs";
 import {
+  makePrivateGriCompanionBundle,
+  validatePrivateGriCompanionBundle,
+} from "../lib/private-gri-original-publisher-companion.mjs";
+import {
   STAGE_DOMAINS,
   CANONICAL_CLASSIFIER_VERSION,
   makePrivateStageBundle,
@@ -15,6 +19,7 @@ import {
 const ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const BUCKET = "geomacro-private-archive";
 const PRIVATE_PREFIX = "geomacro-evidence/v1/private/restricted-current-scoring/";
+const PRIVATE_SOURCE_PREFIX = "geomacro-evidence/v1/private/gri-original-source-companions/";
 const ARTIFACT_DIR = "artifacts/restricted-current-scoring";
 const MAX_INPUT_BYTES = 80 * 1024;
 const MAX_B2_REQUESTS = 6;
@@ -28,7 +33,9 @@ function ensureConfig() {
     String(process.env.B2_S3_ENDPOINT ?? "").trim() !== ENDPOINT ||
     !process.env.B2_KEY_ID || !process.env.B2_APPLICATION_KEY ||
     !process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID ||
-    !process.env.D1_DATABASE_ID
+    !process.env.D1_DATABASE_ID ||
+    process.env.B2_ACCOUNT_QUOTA_REQUIRED !== "1" ||
+    process.env.B2_ACCOUNT_QUOTA_WORKFLOW_ID !== "restricted_private_scoring"
   ) {
     throw new Error("PRIVATE_SCORING_B2_D1_CONFIG_MISSING");
   }
@@ -72,9 +79,43 @@ function loadCandidates() {
   return collected;
 }
 
+function loadPrivateSourceCandidates() {
+  const collected=[];
+  for(const category of STAGE_DOMAINS) {
+    const bytes=readFileSync(`${ARTIFACT_DIR}/${category}-source.json`);
+    if(bytes.length > MAX_INPUT_BYTES)
+      throw new Error("PRIVATE_GRI_COMPANION_INPUT_TOO_LARGE");
+    let parsed;
+    try { parsed=JSON.parse(bytes.toString("utf8")); }
+    catch { throw new Error("PRIVATE_GRI_COMPANION_INPUT_INVALID"); }
+    if(parsed?.schema!=="geomacro.private-gri-source-candidates.v1" ||
+      parsed.category!==category ||
+      parsed.private_only!==true ||
+      parsed.public_published!==false ||
+      parsed.commercial_eligible!==false ||
+      !Array.isArray(parsed.records) ||
+      parsed.records.length>2 ||
+      parsed.records.some(row=>row?.category!==category)) {
+      throw new Error("PRIVATE_GRI_COMPANION_INPUT_CONTRACT_INVALID");
+    }
+    collected.push(...parsed.records);
+  }
+  return collected;
+}
+
 ensureConfig();
 const stage = makePrivateStageBundle(loadCandidates());
 validatePrivateStageBundle(stage);
+const sourceCompanion = makePrivateGriCompanionBundle(
+  stage, loadPrivateSourceCandidates(),
+);
+validatePrivateGriCompanionBundle(sourceCompanion, stage);
+const sourceCompanionRaw=Buffer.from(JSON.stringify(sourceCompanion),"utf8");
+if(sourceCompanionRaw.length > MAX_INPUT_BYTES)
+  throw new Error("PRIVATE_GRI_COMPANION_BUNDLE_TOO_LARGE");
+const sourceCompanionPacked=gzipSync(sourceCompanionRaw,{level:9});
+const sourceCompanionDigest=sha256(sourceCompanionPacked);
+const sourceCompanionKey=`${PRIVATE_SOURCE_PREFIX}${sourceCompanionDigest}.json.gz`;
 const raw = Buffer.from(JSON.stringify(stage), "utf8");
 if (raw.byteLength > MAX_INPUT_BYTES) {
   throw new Error("PRIVATE_SCORING_STAGE_BUNDLE_TOO_LARGE");
@@ -111,6 +152,30 @@ if (b2Receipt.sha256 !== digest ||
   throw new Error("PRIVATE_SCORING_B2_READBACK_PROOF_INVALID");
 }
 
+// Persist ORIGINAL private publisher titles only in the separately named,
+// content-addressed companion. A D1 checkpoint is forbidden until BOTH the
+// scoring stage AND the companion independently survive full B2 readback.
+let sourceCompanionRestored=false;
+const sourceCompanionReceipt=await b2.putWithMetadataVerification(
+  sourceCompanionKey, sourceCompanionPacked, {
+    verifyRestored(readback) {
+      let restoredSource;
+      try { restoredSource=JSON.parse(gunzipSync(readback).toString("utf8")); }
+      catch { throw new Error("PRIVATE_GRI_COMPANION_B2_GZIP_RESTORE_INVALID"); }
+      validatePrivateGriCompanionBundle(restoredSource, stage);
+      if(JSON.stringify(restoredSource)!==JSON.stringify(sourceCompanion))
+        throw new Error("PRIVATE_GRI_COMPANION_B2_EXACT_RESTORE_INVALID");
+      sourceCompanionRestored=true;
+    },
+  },
+);
+if(sourceCompanionReceipt.sha256!==sourceCompanionDigest ||
+   sourceCompanionReceipt.full_body_readback_verified!==true ||
+   !sourceCompanionRestored ||
+   b2.usage().requests_started > MAX_B2_REQUESTS) {
+  throw new Error("PRIVATE_GRI_COMPANION_B2_READBACK_PROOF_INVALID");
+}
+
 // Durable control-plane metadata is compact, source-free, and written ONLY
 // after B2 full byte readback + gzip/JSON/contract exact restore succeeded.
 // No public overlay, scored-only projection, or paid API reads this checkpoint.
@@ -125,6 +190,11 @@ await control.persist("private_stage", {
     sha256: digest,
     classifier_version: CANONICAL_CLASSIFIER_VERSION,
     counts: stage.counts,
+    source_companion_key: sourceCompanionKey,
+    source_companion_sha256: sourceCompanionDigest,
+    source_companion_stage_sha256: sourceCompanion.stage_bundle_sha256,
+    source_companion_full_readback_verified: true,
+    source_companion_exact_gzip_restore_verified: true,
     publication_authorized: false,
   },
 }, {
@@ -140,6 +210,10 @@ verifyPrivateScoringD1Checkpoint(checkpoint, {
   compressedSha256: digest,
   counts: stage.counts,
   lastSuccessAt: now,
+  sourceCompanion: {
+    key: sourceCompanionKey, compressedSha256: sourceCompanionDigest,
+    stageSha256: sourceCompanion.stage_bundle_sha256,
+  },
 });
 
 const receipt = {
@@ -153,6 +227,12 @@ const receipt = {
   counts: stage.counts,
   b2_full_readback_sha256_verified: true,
   b2_exact_gzip_restore_verified: true,
+  private_original_source_companion_b2_key: sourceCompanionKey,
+  private_original_source_companion_sha256: sourceCompanionDigest,
+  private_original_source_companion_restored: true,
+  private_original_source_companion_d1_bound: true,
+  original_headlines_public_published: false,
+  source_authenticity_independently_verified: false,
   b2_requests_started: b2.usage().requests_started,
   b2_request_budget: b2.usage().request_budget,
   d1_compact_checkpoint_persisted: true,

@@ -8,6 +8,7 @@ export function verifyPrivateScoringD1Checkpoint(checkpoint, {
   compressedSha256,
   counts,
   lastSuccessAt,
+  sourceCompanion = null,
 } = {}) {
   const cursor = checkpoint?.payload?.cursor;
   if (
@@ -41,5 +42,20 @@ export function verifyPrivateScoringD1Checkpoint(checkpoint, {
   if (expectedKeys.some((key) => cursor.counts[key] !== counts[key])) {
     throw new Error("PRIVATE_SCORING_D1_READBACK_COUNTS_MISMATCH");
   }
+  if(sourceCompanion!==null && (
+    typeof sourceCompanion!=="object" ||
+    !/^geomacro-evidence\/v1\/private\/gri-original-source-companions\/[a-f0-9]{64}\.json\.gz$/u.test(
+      String(sourceCompanion.key ?? "")) ||
+    !SHA_RE.test(String(sourceCompanion.compressedSha256 ?? "")) ||
+    !SHA_RE.test(String(sourceCompanion.stageSha256 ?? "")) ||
+    sourceCompanion.key !==
+      "geomacro-evidence/v1/private/gri-original-source-companions/" +
+      sourceCompanion.compressedSha256 + ".json.gz" ||
+    cursor?.source_companion_key !== sourceCompanion.key ||
+    cursor?.source_companion_sha256 !== sourceCompanion.compressedSha256 ||
+    cursor?.source_companion_stage_sha256 !== sourceCompanion.stageSha256 ||
+    cursor?.source_companion_full_readback_verified !== true ||
+    cursor?.source_companion_exact_gzip_restore_verified !== true
+  )) throw new Error("PRIVATE_GRI_COMPANION_D1_READBACK_INVALID");
   return true;
 }
