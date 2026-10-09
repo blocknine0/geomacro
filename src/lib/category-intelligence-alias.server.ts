@@ -5,8 +5,10 @@ const MAX_BODY_BYTES = 32 * 1024;
 const CANONICAL_PATH = "/api/v1/intelligence/query";
 
 type CategoryConfig = {
-  topics: AgentQueryTopic[];
-  requiredModules: string[];
+  category?: string;
+  path?: string;
+  topics: readonly AgentQueryTopic[];
+  requiredModules: readonly string[];
 };
 
 export function bindCategoryAliasPayload(
@@ -99,8 +101,30 @@ function canonicalGetRequest(request: Request) {
 export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
   return {
     OPTIONS: async () => mainnetIntelligenceHandlers.OPTIONS(),
-    GET: async ({ request }: { request: Request }) =>
-      mainnetIntelligenceHandlers.GET({ request: canonicalGetRequest(request) }),
+    GET: async ({ request }: { request: Request }) => {
+      const response = await mainnetIntelligenceHandlers.GET({ request: canonicalGetRequest(request) });
+      // Keep configuration failures and the actual payment environment intact.
+      // Discovery describes this fixed scope; it is not evidence of fresh data.
+      if (!response.ok) return response;
+      const discovery = await response.json();
+      return Response.json({
+        ...discovery,
+        endpoint: new URL(config.path ?? new URL(request.url).pathname, request.url).toString(),
+        canonical_endpoint: new URL(CANONICAL_PATH, request.url).toString(),
+        ...(config.category ? { category: config.category } : {}),
+        topics: [...config.topics],
+        required_modules: [...config.requiredModules],
+        supported_subject_types: ["country"],
+        supported_intents: ["single_subject"],
+        availability_check: "POST_WITHOUT_PAYMENT_SIGNATURE",
+        freshness: {
+          policy: "PER_MODULE_SOURCE_NATIVE_CADENCE",
+          request_override: "max_age_seconds",
+          override_can_only_tighten: true,
+          discovery_proves_current_data: false,
+        },
+      }, { status: response.status, headers: response.headers });
+    },
     POST: async ({ request }: { request: Request }) => {
       const contentType = request.headers.get("content-type") ?? "";
       if (!contentType.toLowerCase().includes("application/json")) {

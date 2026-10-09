@@ -4,6 +4,8 @@ import { createCategoryIntelligenceHandlers } from "../lib/category-intelligence
 export const Route = createFileRoute("/api/v1/intelligence/geopolitics")({
   server: {
     handlers: createCategoryIntelligenceHandlers({
+      category: "geopolitics",
+      path: "/api/v1/intelligence/geopolitics",
       topics: ["conflict_geopolitics"],
       requiredModules: ["geopolitical_security"],
     }),
