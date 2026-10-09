@@ -103,7 +103,8 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     if (config.format === "atom" && raw) stats.alternate_atom_link_href_items++;
     const uri=officialUrl(raw,config.articleHosts);
     if (Number.isFinite(time)) stats.alternate_native_date_items++;
-    // Strict original time: reject any source timestamp later than our clock.\n    const dated=Number.isFinite(time) && time <= nowMs && nowMs-time<=DAY_MS;
+    // Strict original time: reject any source timestamp later than our clock.
+    const dated=Number.isFinite(time) && time <= nowMs && nowMs-time<=DAY_MS;
     if (dated) stats.alternate_native_current_items++;
     if (uri) stats.alternate_host_match_items++;
     if (config.topics.test(title)) stats.alternate_topic_match_items++;
