@@ -1,18 +1,13 @@
 name: Deploy Global Risk Edge
 
+# Do not spend GitHub minutes or B2 quota attempting deployments from
+# frozen-Supabase/stale GRI. A successful NEW canonical publisher run or
+# explicit recovery dispatch is the only production materialization trigger.
 on:
-  schedule:
-    - cron: "13 */6 * * *"
   workflow_dispatch: {}
-  push:
-    branches:
-      - main
-    paths:
-      - "workers/global-risk-edge/**"
-      - ".github/workflows/deploy-global-risk-edge.yml"
-      - "scripts/ops/materialize-edge-continuity.mjs"
-      - "scripts/ops/prepare-edge-continuity.sh"
-      - "src/__tests__/global-risk-edge-static.test.ts"
+  workflow_run:
+    workflows: ["GRI Realtime Direct Postgres"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -24,7 +19,18 @@ concurrency:
 
 jobs:
   deploy-accept:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'
+        )
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: production
@@ -53,6 +59,8 @@ jobs:
           test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo "B2_ARCHIVE_READ_APPLICATION_KEY is required"; exit 2; }
 
       - name: Materialize latest B2-readback-verified Global Risk continuity
+        env:
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id || '' }}
         shell: bash
         run: |
           bash scripts/ops/prepare-edge-continuity.sh \
@@ -61,6 +69,42 @@ jobs:
             geomacro.public-global-risk-direct-postgres-publish.v1 \
             workers/global-risk-edge/src/continuity.mjs
 
+      - name: Bind main-owned D1 global B2 quota and verify schema v5
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          D1_DATABASE_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let data="";
+            process.stdin.on("data", part=>data+=part);
+            process.stdin.on("end",()=>{
+              const databases=JSON.parse(data);
+              const matched=databases.filter(x=>x.name==="geomacro-control-plane");
+              if(matched.length!==1)process.exit(2);
+              process.stdout.write(String(matched[0].uuid??matched[0].id??""));
+            });
+          ')"
+          test -n "$D1_DATABASE_ID" || { echo "Shared D1 control plane missing"; exit 2; }
+          export D1_DATABASE_ID
+          node scripts/ops/configure-global-risk-edge-d1-quota.mjs
+          PROOF="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute B2_QUOTA_DB \
+            --remote --json \
+            --config workers/global-risk-edge/wrangler.runtime.jsonc \
+            --command "SELECT (SELECT version FROM schema_meta WHERE name='control-plane') AS version, (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='b2_account_daily_request_quota') AS quota_table;")"
+          printf '%s' "$PROOF" | node -e '
+            let data="";
+            process.stdin.on("data",part=>data+=part);
+            process.stdin.on("end",()=>{
+              const body=JSON.parse(data);
+              const result=Array.isArray(body)?body:body?.result;
+              const rows=Array.isArray(result)?result.flatMap(x=>x?.results??[]):[];
+              if(rows.length!==1 || Number(rows[0].version)<5 ||
+                Number(rows[0].quota_table)!==1)
+                throw new Error("GLOBAL_RISK_SHARED_B2_D1_SCHEMA_V5_REQUIRED");
+              console.log("PASS: Global Risk origin fallback uses main-owned shared B2 GET ledger.");
+            });
+          '
+
       - name: Deploy read-only Global Risk Worker with pinned Wrangler
         id: deploy
         working-directory: workers/global-risk-edge
@@ -68,12 +112,12 @@ jobs:
         run: |
           set -euo pipefail
           DEPLOY_LOG="$(mktemp)"
-          npx -y "wrangler@${WRANGLER_VERSION}" deploy --config wrangler.jsonc 2>&1 | tee "$DEPLOY_LOG"
+          npx -y "wrangler@${WRANGLER_VERSION}" deploy --config wrangler.runtime.jsonc 2>&1 | tee "$DEPLOY_LOG"
           DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
           test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev URL"; exit 3; }
           test "$DEPLOYMENT_URL" = "$EXPECTED_URL" || { echo "Unexpected worker URL: $DEPLOYMENT_URL"; exit 3; }
-          printf '%s' "$B2_ARCHIVE_READ_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_KEY_ID --config wrangler.jsonc >/tmp/global-risk-edge-b2-key.log
-          printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.jsonc >/tmp/global-risk-edge-b2-secret.log
+          printf '%s' "$B2_ARCHIVE_READ_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_KEY_ID --config wrangler.runtime.jsonc >/tmp/global-risk-edge-b2-key.log
+          printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.runtime.jsonc >/tmp/global-risk-edge-b2-secret.log
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
       - name: Require verified package through public-safe edge
