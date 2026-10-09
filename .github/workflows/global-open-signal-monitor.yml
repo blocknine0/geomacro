@@ -9,6 +9,9 @@ on:
     paths:
       - "scripts/lib/market-signal-discovery.mjs"
       - "scripts/ops/probe-market-signal-discovery.mjs"
+      - "scripts/lib/quota-safe-original-discovery-fallback.mjs"
+      - "scripts/ops/probe-official-native-rss-three-domains.mjs"
+      - "src/__tests__/quota-safe-original-discovery-fallback.test.ts"
       - "src/__tests__/market-open-global-signal-discovery.test.ts"
       - ".github/workflows/global-open-signal-monitor.yml"
 
@@ -40,8 +43,9 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/lib/market-signal-discovery.mjs
+          node --check scripts/lib/quota-safe-original-discovery-fallback.mjs
           node --check scripts/ops/probe-market-signal-discovery.mjs
-      - name: Poll 3 open GDELT discovery categories (no original-date inference)
+      - name: Poll GDELT and on degradation use bounded original-publisher discovery
         if: github.event_name != 'pull_request'
         shell: bash
         run: |
@@ -49,7 +53,7 @@ jobs:
           mkdir -p artifacts/open-discovery-mesh
           chmod 700 artifacts/open-discovery-mesh
           node scripts/ops/probe-market-signal-discovery.mjs
-      - name: Retain counts-only receipt, including upstream degraded states
+      - name: Retain counts-only dual-source receipt, preserving upstream degraded states
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

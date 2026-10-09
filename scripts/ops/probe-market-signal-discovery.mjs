@@ -4,7 +4,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
-import { probeOpenDiscoveryMesh } from "../lib/market-signal-discovery.mjs";
+import { probeQuotaSafeDiscovery } from "../lib/quota-safe-original-discovery-fallback.mjs";
 
 export const MARKET_SIGNAL_ARTIFACT = "artifacts/open-discovery-mesh/three-domain-signal-receipt.json";
 
@@ -21,7 +21,7 @@ export function discoveryMonitorExitCode(receipt) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const receipt = await probeOpenDiscoveryMesh();
+  const receipt = await probeQuotaSafeDiscovery();
   mkdirSync("artifacts/open-discovery-mesh", { recursive: true, mode: 0o700 });
   writeFileSync(MARKET_SIGNAL_ARTIFACT, JSON.stringify(receipt, null, 2) + "\n",
     { mode: 0o600 });
