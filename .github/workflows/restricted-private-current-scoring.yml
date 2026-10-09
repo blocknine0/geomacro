@@ -164,6 +164,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          umask 077
           mkdir -p artifacts/private-gri-v12
           chmod 700 artifacts/private-gri-v12
           # Explicitly strip all privileged credentials from offline validator.
@@ -208,6 +209,7 @@ jobs:
           B2_ACCOUNT_QUOTA_WORKFLOW_ID: gri_private_v12
         run: |
           set -euo pipefail
+          umask 077
           node scripts/ops/archive-supabase-free-private-gri-v12.mjs \
             --private-archive-only > artifacts/private-gri-v12/archive-receipt.json
           node --input-type=module <<'NODE'
