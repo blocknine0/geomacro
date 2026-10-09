@@ -93,10 +93,9 @@ const TASKS = [
     ],
   },
   {
+    // Original publisher pubDate, no processing-time laundering. Safe lane:
+    // read-only fixed HTTPS feeds, no Supabase/B2/paid API/public scoring.
     key: "official_native_rss",
-    // Original-publisher item pubDate, never discovery/retrieval time.
-    // Read-only bounded HTTPS GETs and metadata-only artifact; ZERO B2 requests,
-    // Supabase reads/writes, public promotion or AI classifier charges.
     restrictedDirectPostgresSafe: true,
     cadenceSeconds: 3600,
     offsetSeconds: 120,
