@@ -1,21 +1,14 @@
 name: Deploy Risk Indices Edge
 
+# Derived Risk Indices can only be redeployed after a successfully verified
+# upstream Risk Indices B2 readback artifact exists. Do not waste GitHub/B2
+# quota by trying six-hour or source-push deploys against stale/unavailable GRI.
+# Manual recovery remains available; the same artifact-proof check still applies.
 on:
-  schedule:
-    - cron: "28 */6 * * *"
   workflow_dispatch: {}
-  push:
-    branches:
-      - main
-    paths:
-      - "workers/risk-indices-edge/**"
-      - ".github/workflows/deploy-risk-indices-edge.yml"
-      - "scripts/ops/materialize-edge-continuity.mjs"
-      - "scripts/ops/prepare-edge-continuity.sh"
-      - "src/lib/risk-indices-edge.server.ts"
-      - "src/lib/use-risk-indices.ts"
-      - "server/api/public/risk-indices.get.ts"
-      - "src/__tests__/risk-indices-edge-static.test.ts"
+  workflow_run:
+    workflows: ["Risk Indices Realtime Direct Postgres"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -27,7 +20,18 @@ concurrency:
 
 jobs:
   deploy-accept:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'
+        )
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: production
@@ -56,6 +60,10 @@ jobs:
           test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo "B2_ARCHIVE_READ_APPLICATION_KEY is required"; exit 2; }
 
       - name: Materialize latest B2-readback-verified Risk Indices continuity
+        # The triggering successful source run is mandatory for workflow_run,
+        # avoiding fallback to a different/stale artifact on production re-deploy.
+        env:
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id || '' }}
         shell: bash
         run: |
           bash scripts/ops/prepare-edge-continuity.sh \
