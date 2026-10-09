@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { parseOfficialNativeRss, fetchOfficialNativeArticles, OFFICIAL_NATIVE_FEEDS }
   from "../../scripts/lib/official-native-rss.mjs";
-import { probeOfficialThreeDomains }
+import { probeOfficialThreeDomains, classifyNativeFeedGap }
   from "../../scripts/ops/probe-official-native-rss-three-domains.mjs";
 
 const now = new Date("2026-10-09T12:00:00.000Z");
@@ -20,6 +20,54 @@ function rss(title: string, link: string, pubDate = "Fri, 09 Oct 2026 11:30:00 G
 }
 
 describe("three official publishers' original-event RSS discovery", () => {
+  it("does not claim there is no global news when three sampled feeds have no qualified item", async () => {
+    const fetchArticles = vi.fn(async (_category: string, { diagnostics }: {
+      diagnostics: Record<string, number>;
+    }) => {
+      Object.assign(diagnostics, {
+        item_count: 15,
+        item_native_pubdate_count: 15,
+        item_native_date_in_window_count: 0,
+        domain_topic_title_count: 7,
+        alternate_feed_items_seen: 60,
+        alternate_original_pubdate_items: 0,
+        alternate_native_current_items: 0,
+        alternate_atom_updated_only_items: 60,
+        alternate_topic_match_items: 51,
+      });
+      return [];
+    });
+    const audit = await probeOfficialThreeDomains({ fetchArticles, now });
+    expect(audit.current_private_original_event_domains).toBe(0);
+    expect(audit.implies_no_global_news).toBe(false);
+    expect(audit.measured_source_scope).toBe("THREE_SAMPLED_OFFICIAL_PUBLISHER_FEEDS_ONLY");
+    for (const row of audit.categories) {
+      expect(row.current_native_source_state).toBe("NO_ELIGIBLE_PRIVATE_CANDIDATE");
+      expect(row.bounded_feed_gap_reason).toBe("PUBLISHER_ARTICLE_DATE_UNVERIFIED");
+      expect(row.global_news_absence_proven).toBe(false);
+    }
+    expect(JSON.stringify(audit)).not.toContain("https://");
+    expect(audit.proves_public_scored_intelligence).toBe(false);
+  });
+
+  it("distinguishes off-topic recent native events, empty feeds, and old publications", () => {
+    const reason = (diagnostics: Record<string, number>) =>
+      classifyNativeFeedGap({ articlesCount: 0, diagnostics });
+    expect(reason({ item_count: 30, item_native_pubdate_count: 30,
+      item_native_date_in_window_count: 0, alternate_native_current_items: 1,
+      domain_topic_title_count: 4 })).toBe("RECENT_NATIVE_EVENT_REJECTED_BY_TOPIC_OR_PROVENANCE");
+    expect(reason({ item_count: 0, alternate_feed_items_seen: 0 }))
+      .toBe("SAMPLED_FEED_NO_ITEMS");
+    expect(reason({ item_count: 30, item_native_pubdate_count: 30,
+      item_native_date_in_window_count: 0, domain_topic_title_count: 4 }))
+      .toBe("SAMPLED_FEED_HAS_ONLY_STALE_OR_INELIGIBLE_EVENTS");
+    expect(reason({ item_count: 10, item_native_pubdate_count: 0,
+      alternate_feed_items_seen: 0 }))
+      .toBe("SAMPLED_FEED_MISSING_NATIVE_PUBLISH_DATES");
+    expect(classifyNativeFeedGap({ articlesCount: 1, diagnostics: {} }))
+      .toBe("ORIGINAL_NATIVE_EVENTS_PRIVATE_ONLY");
+  });
+
   for (const [category, host, title] of fixtures) {
     it(`accepts ONLY independently source-native, private ${category} articles`, async () => {
       const xml = rss(title, `https://${host}/news/verified-original-report`);
