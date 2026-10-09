@@ -349,7 +349,7 @@ async function callVerifyRiskObject(id: JsonRpcId, rawArguments: unknown) {
     ensureRiskObjectRuntimePublicKey();
     const verification = verifyPublicRiskObjectArtifact(input.risk_object);
     const payload = {
-      ok: !verification.reason_codes.includes("verification_key_registry_error"),
+      ok: verification.valid,
       verification,
       execution_authorized: false,
     };
@@ -371,7 +371,7 @@ async function callVerifyRiskObject(id: JsonRpcId, rawArguments: unknown) {
         id,
         {
           ok: false,
-          error: error instanceof Error ? error.message : "Risk Object verification failed",
+          error: "Risk Object verification failed",
           execution_authorized: false,
         },
         true,
