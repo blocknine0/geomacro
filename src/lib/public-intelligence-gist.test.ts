@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { derivedPublicGist, sanitizePublicIntelligenceRow } from "./public-intelligence-gist";
+import { derivedPublicGist, isUnsupportedEventClassObservation, sanitizePublicIntelligenceRow } from "./public-intelligence-gist";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 
 const base: PublicIntelligenceRow = {
@@ -62,6 +62,48 @@ describe("Geomacro public gist and no-raw projection", () => {
     expect(out?.source_title).toBe("Geomacro observes cross-border tension in a monitored region");
     expect(out?.summary).toBeNull();
     expect(out?.severity).toBeNull();
+  });
+
+  it("does not turn GDELT event-root code and action geography into a reported news headline", () => {
+    const unsafe = [
+      "fighting in Indian Embassy, Yemen",
+      "fighting in Riyadh, Saudi Arabia",
+      "fighting in United States",
+      "threat activity in India",
+      "protest activity in Missouri, United States",
+      "force-posture activity near Kyiv",
+      "relationship deterioration in the region",
+      "coercive activity at the border",
+      "assault activity in Delhi, Delhi, India",
+      "mass-violence activity around the capital",
+    ];
+    for (const label of unsafe) {
+      expect(isUnsupportedEventClassObservation(label), label).toBe(true);
+      expect(derivedPublicGist("Geomacro observes " + label, null, "live_observed"), label).toBeNull();
+      expect(sanitizePublicIntelligenceRow({
+        ...base, id: "observed-gdelt",
+        source_title: "Geomacro observes " + label,
+        category: "geopolitics", severity: null, delta: null,
+        public_status: "live_observed",
+      }), label).toBeNull();
+    }
+  });
+
+  it("preserves scored historical items and already-governed specific unscored observations", () => {
+    const text = "fighting in United States";
+    expect(sanitizePublicIntelligenceRow({
+      ...base, source_title: "Geomacro finds " + text,
+      summary: "Published historically verified GRI conflict finding",
+    })?.severity).toBe(80);
+    const specific = sanitizePublicIntelligenceRow({
+      ...base, id: "approved-observed",
+      category: "geopolitics", severity: null, delta: null,
+      source_title: "Geomacro observes Ministry announces new customs controls for freight crossing",
+      public_status: "live_observed",
+    });
+    expect(specific?.source_title).toContain("Ministry announces new customs controls");
+    expect(specific?.severity).toBeNull();
+    expect(specific?.published_at).toBe(base.published_at);
   });
 
   it("rejects unapproved, malformed and upstream direct headlines", () => {

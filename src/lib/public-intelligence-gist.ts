@@ -6,6 +6,22 @@ const PUBLIC_DOMAINS = new Set(["geopolitics", "macro", "rare_earth"]);
 const EDITORIAL_LABEL = /\b(?:articles?|pieces?)\b/iu;
 const SOURCE_MARKUP = /(?:https?:\/\/|www\.|<[^>]*>|\[(?:source|publisher|provider)\])/iu;
 
+/**
+ * GDELT event-export root codes describe event *types* and action geographies,
+ * not independently established article-level news. Statements such as
+ * "fighting in [location]" cannot be presented as confirmed breaking news:
+ * the root code does not identify an action, publisher, actor, or target.
+ * Keep those discovery-only records private until genuinely governed article
+ * evidence exists. This only suppresses unsupported public observations:
+ * verified canonical historical scored assessments are preserved untouched.
+ */
+export function isUnsupportedEventClassObservation(value: string): boolean {
+  return /^(?:threat|protest|force-posture|relationship deterioration|coercive|assault|fighting|mass-violence)(?:\s+activity)?\s+(?:in|at|near|around)\b/iu.test(
+    value.trim().replace(/^Geomacro observes\s+/iu, ""),
+  );
+}
+
+
 function singleLine(value: unknown, maxLength: number): string | null {
   if (typeof value !== "string") return null;
   const text = value.replace(/\s+/gu, " ").trim();
@@ -34,6 +50,7 @@ export function derivedPublicGist(
   const prefix = status === "live_observed" ? OBSERVED_PREFIX : SCORED_PREFIX;
   if (typeof title !== "string" || !title.trim().startsWith(prefix)) return null;
   const canonical = singleLine(title.trim().slice(prefix.length), 280);
+  if (status === "live_observed" && canonical && isUnsupportedEventClassObservation(canonical)) return null;
   const approvedSummary = singleLine(summary, 190);
   const gist = status === "verified_b2"
     ? approvedSummary ?? (canonical && canonical.length <= 190 ? canonical : null)

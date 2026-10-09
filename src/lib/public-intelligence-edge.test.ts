@@ -39,6 +39,20 @@ describe("verified Intelligence edge-first preview recovery", () => {
     expect(result.every((r) => r.source_title?.startsWith("Geomacro finds "))).toBe(true);
   });
 
+  it("retains verified three-domain history but suppresses uncorroborated GDELT root-code place labels", () => {
+    const rows = categories.map((c) => verified(c));
+    rows.push(verified("geopolitics", {
+      id: "gdelt-root-only",
+      source_title: "Geomacro observes fighting in Indian Embassy, Yemen",
+      summary: null, severity: null, delta: null,
+      public_status: "live_observed",
+    }));
+    const result = parseVerifiedIntelligenceEdgePayload(payload(rows), NOW);
+    expect(result).toHaveLength(3);
+    expect(result.map((r) => r.category).sort()).toEqual([...categories].sort());
+    expect(result.every((r) => r.public_status === "verified_b2")).toBe(true);
+  });
+
   it("keeps Lovable preview away from failing same-origin server APIs", () => {
     expect(canUseProductionIntelligenceBackup("id-preview.lovable.app")).toBe(false);
     expect(canUseProductionIntelligenceBackup("localhost")).toBe(false);
