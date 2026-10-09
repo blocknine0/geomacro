@@ -161,7 +161,13 @@ describe("#1827 zero-Supabase/B2 D1 GRO current signed hot observer",()=>{
     expect(parsed).toContain("observe-existing-d1-hot:");
     expect(parsed).toContain("publish:");
     expect(workflow).toContain('cron: "41 * * * *"');
-    expect(workflow).not.toContain("  push:\n");
+    expect(workflow).toContain("  push:\\n".replace("\\\\n","\\n"));
+    expect(workflow).toContain('- ".github/workflows/b2-country-gro-continuity.yml"');
+    expect(workflow).toContain('- "scripts/ops/audit-country-gro-d1-hot-readonly.ts"');
+    expect(workflow).toContain("github.event_name == 'push'");
+    expect(workflow).toContain("github.event.inputs.mode == 'audit'");
+    expect(workflow).toContain("github.event.inputs.mode == 'publisher_recovery'");
+    expect(workflow).toContain("default: audit");
     expect(workflow).toContain("github.event_name == 'schedule'");
     expect(workflow).toContain("github.event_name == 'workflow_dispatch'");
     expect(workflow).toContain("Read D1 hot GRO rows; independently verify signatures");
