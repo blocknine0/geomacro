@@ -1,22 +1,15 @@
 const SHIM_URL = "geomacro:gri-direct-postgres-supabase";
-const ORCHESTRATOR_SHIM_URL = "geomacro:d1-orchestrator-supabase";
 const NO_GUARDIAN_FETCH_URL = "geomacro:no-guardian-node-fetch";
 const HELPER_SUFFIX = "/scripts/lib/gri-db-client.mjs";
 const INGEST_SUFFIX = "/scripts/ingest-news.js";
-const ORCHESTRATOR_SUFFIX = "/scripts/intelligence-orchestrator.mjs";
 
 export async function resolve(specifier, context, nextResolve) {
   const direct = String(process.env.GRI_DB_MODE ?? "").trim().toLowerCase() === "direct_postgres";
   const parentUrl = String(context.parentURL ?? "");
   const helperSelfImport = parentUrl.endsWith(HELPER_SUFFIX);
   const ingestImport = parentUrl.endsWith(INGEST_SUFFIX);
-  const orchestratorImport = parentUrl.endsWith(ORCHESTRATOR_SUFFIX);
   const guardianDisabled =
     String(process.env.GEOMACRO_DISABLE_GUARDIAN ?? "").trim().toLowerCase() === "true";
-
-  if (direct && specifier === "@supabase/supabase-js" && orchestratorImport) {
-    return { url: ORCHESTRATOR_SHIM_URL, shortCircuit: true };
-  }
 
   if (direct && specifier === "@supabase/supabase-js" && !helperSelfImport) {
     return { url: SHIM_URL, shortCircuit: true };
@@ -30,15 +23,6 @@ export async function resolve(specifier, context, nextResolve) {
 }
 
 export async function load(url, context, nextLoad) {
-  if (url === ORCHESTRATOR_SHIM_URL) {
-    const helperUrl = new URL("./d1-orchestrator-supabase-shim.mjs", import.meta.url).href;
-    return {
-      format: "module",
-      shortCircuit: true,
-      source: `export { createClient } from ${JSON.stringify(helperUrl)};`,
-    };
-  }
-
   if (url === SHIM_URL) {
     const helperUrl = new URL("./gri-db-client.mjs", import.meta.url).href;
     return {
