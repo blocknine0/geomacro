@@ -107,7 +107,9 @@ export const AGENT_MODULE_MAX_AGE_SECONDS: Readonly<Record<string, number>> = {
   banking_financial_system: 400 * 86_400,
   food_agriculture: 180 * 86_400,
   natural_hazards: 30 * 86_400,
-  hot_topics: 2 * 86_400,
+  // Live event intelligence is stale after two hours, independent of the slower
+  // publication cadence of structural macro/minerals baselines.
+  hot_topics: 2 * 3_600,
 };
 
 // The current structural serving views and public GRI reader are latest-state
