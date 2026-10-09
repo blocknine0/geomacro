@@ -214,7 +214,7 @@ jobs:
           const fs = require("node:fs");
           const workflow = fs.readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
           const orchestrator = fs.readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
-          const safe = ["phase_a_heartbeat", "gdelt_gal"];
+          const safe = ["phase_a_heartbeat", "official_native_rss", "gdelt_gal"];
           if (!workflow.includes("GEOMACRO_SUPABASE_RESTRICTED_MODE=true")) throw new Error("RESTRICTED_MODE_WORKFLOW_MISSING");
           if (workflow.includes("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only")) throw new Error("D1_ONLY_FREEZE_STILL_PRESENT");
           if (!orchestrator.includes("restrictedDataPlane && task.restrictedDirectPostgresSafe !== true")) throw new Error("RESTRICTED_FILTER_MISSING");
