@@ -102,8 +102,8 @@ describe("verified B2 governed agent module continuity", () => {
   });
 
   it("holds frozen-Supabase publication, requiring shared D1 quota for manual recovery", () => {
-    expect(workflow).not.toContain("\\n  schedule:");
-    expect(workflow).not.toContain("\\n  push:");
+    expect(workflow).not.toContain("\n  schedule:");
+    expect(workflow).not.toContain("\n  push:");
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).toContain("github.event_name == 'workflow_dispatch'");
     expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
