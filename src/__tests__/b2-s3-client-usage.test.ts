@@ -528,6 +528,60 @@ describe("B2 signed PUT plus full readback verification", () => {
     });
   });
 
+  it("restores exact payload using the existing readback without a second billable GET", async () => {
+    clearOptionalReadCredentials();
+    process.env.B2_REQUEST_BUDGET = "3";
+    const body = Buffer.from('{"hello":"private-stage"}', "utf8");
+    const methods: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_input, init = {}) => {
+      const method = String(init.method ?? "GET");
+      methods.push(method);
+      if (method === "PUT") return new Response(null, { status: 200 });
+      if (method === "GET") return new Response(body, { status: 200 });
+      return new Response("unexpected", { status: 500 });
+    }));
+    const client = createB2Client({
+      endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+      accessKey: "primary-key",
+      secretKey: "primary-secret",
+      bucket: "geomacro-private-archive",
+    });
+    let verified = false;
+    await client.putWithMetadataVerification(
+      "geomacro-evidence/v1/private/restricted-current-scoring/test.json",
+      body,
+      {
+        verifyRestored(readback: Buffer) {
+          expect(readback.toString("utf8")).toBe(body.toString("utf8"));
+          verified = true;
+        },
+      },
+    );
+    expect(verified).toBe(true);
+    expect(methods).toEqual(["PUT", "GET"]);
+    expect(client.usage().requests_started).toBe(2);
+  });
+
+  it("does not return verified metadata if archive restoration fails", async () => {
+    clearOptionalReadCredentials();
+    const body = Buffer.from("original", "utf8");
+    vi.stubGlobal("fetch", vi.fn(async (_input, init = {}) => {
+      if (init.method === "PUT") return new Response(null, { status: 200 });
+      return new Response(body, { status: 200 });
+    }));
+    const client = createB2Client({
+      endpointUrl: "https://s3.us-east-005.backblazeb2.com",
+      accessKey: "primary-key",
+      secretKey: "primary-secret",
+      bucket: "geomacro-private-archive",
+    });
+    await expect(client.putWithMetadataVerification(
+      "geomacro-evidence/v1/private/restricted-current-scoring/bad.json",
+      body,
+      { verifyRestored() { throw new Error("EXACT_RESTORE_FAILED"); } },
+    )).rejects.toThrow("EXACT_RESTORE_FAILED");
+  });
+
   it("fails closed when full readback bytes do not match the uploaded payload", async () => {
     clearOptionalReadCredentials();
 
