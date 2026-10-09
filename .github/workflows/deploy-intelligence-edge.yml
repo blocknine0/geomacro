@@ -1,8 +1,9 @@
 name: Deploy Intelligence Edge
 
+# A new Worker/code recovery may deploy from a previously verified source
+# artifact; do not waste six-hour recurring checks trying to deploy when the
+# frozen-Supabase publisher has no new verified successful run.
 on:
-  schedule:
-    - cron: "43 */6 * * *"
   workflow_dispatch: {}
   push:
     branches:
@@ -62,6 +63,42 @@ jobs:
             geomacro.public-intelligence-direct-postgres-publish.v2 \
             workers/intelligence-edge/src/continuity.mjs
 
+      - name: Bind main-owned D1 account GET quota and verify schema v5
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          D1_DATABASE_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let data="";
+            process.stdin.on("data",part=>data+=part);
+            process.stdin.on("end",()=>{
+              const databases=JSON.parse(data);
+              const matched=databases.filter(x=>x.name==="geomacro-control-plane");
+              if(matched.length!==1)process.exit(2);
+              process.stdout.write(String(matched[0].uuid??matched[0].id??""));
+            });
+          ')"
+          test -n "$D1_DATABASE_ID" || { echo "Shared D1 control plane missing"; exit 2; }
+          export D1_DATABASE_ID
+          node scripts/ops/configure-intelligence-edge-d1-quota.mjs
+          PROOF="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute B2_QUOTA_DB \
+            --remote --json \
+            --config workers/intelligence-edge/wrangler.runtime.jsonc \
+            --command "SELECT (SELECT version FROM schema_meta WHERE name='control-plane') AS version, (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='b2_account_daily_request_quota') AS quota_table;")"
+          printf '%s' "$PROOF" | node -e '
+            let data="";
+            process.stdin.on("data",part=>data+=part);
+            process.stdin.on("end",()=>{
+              const body=JSON.parse(data);
+              const result=Array.isArray(body)?body:body?.result;
+              const rows=Array.isArray(result)?result.flatMap(x=>x?.results??[]):[];
+              if(rows.length!==1 || Number(rows[0].version)<5 ||
+                Number(rows[0].quota_table)!==1)
+                throw new Error("INTELLIGENCE_SHARED_B2_D1_SCHEMA_V5_REQUIRED");
+              console.log("PASS: Intelligence B2 fallback shares main-owned D1 GET ledger.");
+            });
+          '
+
       - name: Deploy read-only Intelligence Worker with pinned Wrangler
         id: deploy
         working-directory: workers/intelligence-edge
@@ -69,12 +106,12 @@ jobs:
         run: |
           set -euo pipefail
           DEPLOY_LOG="$(mktemp)"
-          npx -y "wrangler@${WRANGLER_VERSION}" deploy --config wrangler.jsonc 2>&1 | tee "$DEPLOY_LOG"
+          npx -y "wrangler@${WRANGLER_VERSION}" deploy --config wrangler.runtime.jsonc 2>&1 | tee "$DEPLOY_LOG"
           DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
           test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev URL"; exit 3; }
           test "$DEPLOYMENT_URL" = "$EXPECTED_URL" || { echo "Unexpected worker URL: $DEPLOYMENT_URL"; exit 3; }
-          printf '%s' "$B2_ARCHIVE_READ_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_KEY_ID --config wrangler.jsonc >/tmp/intelligence-edge-b2-key.log
-          printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.jsonc >/tmp/intelligence-edge-b2-secret.log
+          printf '%s' "$B2_ARCHIVE_READ_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_KEY_ID --config wrangler.runtime.jsonc >/tmp/intelligence-edge-b2-key.log
+          printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.runtime.jsonc >/tmp/intelligence-edge-b2-secret.log
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
       - name: Require verified package through Intelligence edge
