@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "a6bec53e574dd658689b536486de4881943bd461",
-  "published_baseline": "Founder-approved homepage-only follow-up (2026-10-08): remove the 'Global coverage · Three intelligence domains' three-card teaser from Geomacro Finds. Keep exactly the existing one verified featured global story with its score and honest timestamps, and preserve existing pay-per-call, monthly Coming Soon, tailored-plan and enterprise contact calls to action; all other website pages including /intelligence and finalized /global-risk remain unchanged. The Website Lock remains enforced; Lovable Publish and exact deployed-source acceptance are independent and pending.",
+  "baseline_sha": "71b2606a25a133d39ba3c37709e53bf1b1f38157",
+  "published_baseline": "Founder-authorized freshness correction (2026-10-09): accurately label domain scores older than the canonical 6-hour current-reading window as last verified while preserving their original as-of timestamps; distinguish unavailable history from a last-verified score in the Risk Indices stale banner. No score, source-rights, or paid-access behavior changes. Exact deployment acceptance remains separate.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
-  "locked_at_utc": "2026-10-08T08:16:00Z",
-  "published_source_sha": "87fe2e9dd4d1f6c7abeb2af8cbe2029d5b9b4f14",
-  "lock_revision": "founder-approved-homepage-remove-domain-teasers-20261008"
+  "locked_at_utc": "2026-10-09T10:01:00Z",
+  "published_source_sha": "71b2606a25a133d39ba3c37709e53bf1b1f38157",
+  "lock_revision": "founder-authorized-risk-index-freshness-20261009"
 }
