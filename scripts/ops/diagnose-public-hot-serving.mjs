@@ -17,10 +17,10 @@ const SAFE_ERRORS = new Set([
 const SAFE_PROOF_MODES = new Set([
   "direct-b2-readback","independent-gri-proof-over-b2-baseline",
 ]);
-function safeTime(value, now) {
+function safeTime(value, now, maxFutureMs=5*60_000) {
   if (typeof value !== "string" || value.length > 40) return null;
   const ms=Date.parse(value);
-  if (!Number.isFinite(ms) || ms > now + 5*60_000 || now-ms > 366*86400_000) return null;
+  if (!Number.isFinite(ms) || ms > now + maxFutureMs || now-ms > 366*86400_000) return null;
   return new Date(ms).toISOString();
 }
 function ageMinutes(timestamp,now) {
@@ -75,7 +75,7 @@ function siteView(result,now) {
 function snapshotView(result,now,product) {
   const b=result.body ?? {};
   const sourceAsOf=safeTime(b.source_as_of,now);
-  const expiresAt=safeTime(b.expires_at,now);
+  const expiresAt=safeTime(b.expires_at,now,30*86400_000);
   const ok=result.http_status===200 && b.ok===true &&
     b.product===product && sourceAsOf!==null && expiresAt!==null &&
     Date.parse(expiresAt)>now &&
