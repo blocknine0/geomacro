@@ -1,4 +1,3 @@
-import { isIP } from "node:net";
 
 // PRIVATE staging accepts ONLY a source HTTPS URL whose host is the original
 // publisher host; GDELT is not counted as the publisher. Never "repair"
@@ -13,7 +12,8 @@ export function privatePublisherPreAdmission(article, {
   catch { return { ok: false, reason: "publisher_url_invalid" }; }
   if (url.protocol !== "https:" || url.username || url.password ||
       url.hostname.length < 4 || !url.hostname.includes(".") ||
-      isIP(url.hostname) || url.href.length > 2048) {
+      /^(?:\\d{1,3}\\.){3}\\d{1,3}$/u.test(url.hostname) ||
+      url.hostname.startsWith("[") || url.href.length > 2048) {
     return { ok: false, reason: "publisher_url_invalid" };
   }
   const hostname = url.hostname.toLowerCase();
