@@ -85,7 +85,10 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
     const original = field(block, "pubDate");
     const at = Date.parse(original);
     if (Number.isFinite(at)) stats.item_native_pubdate_count += 1;
-    // Publication dates later than the evaluation clock are not evidence of\n    // a published event; even short future skew must fail closed.\n    const current = Number.isFinite(at) && at <= asOfMs &&\n      asOfMs - at <= maxAgeMs;
+    // Publication dates later than the evaluation clock are not evidence of
+    // a published event; even short future skew must fail closed.
+    const current = Number.isFinite(at) && at <= asOfMs &&
+      asOfMs - at <= maxAgeMs;
     if (current) stats.item_native_date_in_window_count += 1;
     if (url) stats.exact_publisher_host_count += 1;
     if (config.topics.test(title)) stats.domain_topic_title_count += 1;
