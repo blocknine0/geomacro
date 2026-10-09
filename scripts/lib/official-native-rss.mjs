@@ -1,3 +1,4 @@
+import { fetchOriginalAlternate } from "./official-native-alternates.mjs";
 // Read-only original-publisher RSS evidence discovery. NO commercial admission,
 // source-certification bypass, scoring, B2 writes or public/paid output.
 // GDELT seendate/index timestamps are explicitly NOT publication evidence.
@@ -149,6 +150,35 @@ export async function fetchOfficialNativeArticles(category, {
 } = {}) {
   const config = OFFICIAL_NATIVE_FEEDS[category];
   if (!config) throw new Error("OFFICIAL_NATIVE_RSS_CATEGORY_INVALID");
-  return parseOfficialNativeRss(await boundedRssFetch(config.url, fetchImpl),
-    category, now, maxAgeMs, diagnostics);
+  let primary = [];
+  let primaryUnavailable = false;
+  try {
+    primary = parseOfficialNativeRss(await boundedRssFetch(config.url, fetchImpl),
+      category, now, maxAgeMs, diagnostics);
+  } catch {
+    primaryUnavailable = true;
+  }
+  if (diagnostics && typeof diagnostics === "object") {
+    diagnostics.primary_feed_ok = !primaryUnavailable;
+    diagnostics.alternate_feed_attempted = false;
+    diagnostics.alternate_feed_ok = null;
+  }
+  // The primary official USGS mineral RSS may be empty, and agency monetary
+  // and UN specialist feeds are intermittent. A SECOND FIXED original
+  // publisher feed can add genuine new events without date laundering.
+  if (primary.length > 0) return primary;
+  if (diagnostics && typeof diagnostics === "object") diagnostics.alternate_feed_attempted = true;
+  try {
+    const alternate = await fetchOriginalAlternate(category, {
+      now, fetchImpl, diagnostics,
+    });
+    if (diagnostics && typeof diagnostics === "object") diagnostics.alternate_feed_ok = true;
+    return alternate;
+  } catch {
+    if (diagnostics && typeof diagnostics === "object") diagnostics.alternate_feed_ok = false;
+    // Only fail the domain when NEITHER official source was reachable. No
+    // observation-time fabrication, generic old news or unverified URLs.
+    if (primaryUnavailable) throw new Error("OFFICIAL_ORIGINAL_FEEDS_UNAVAILABLE");
+    return primary;
+  }
 }
