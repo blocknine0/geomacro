@@ -24,7 +24,7 @@ describe("public product surface failure-domain isolation", () => {
     expect(workflow).not.toContain("\n  schedule:");
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
-    expect(workflow).toContain("publish-b2-public-intelligence-direct-postgres.mjs");
+    expect(workflow).toContain("run-b2-public-intelligence-publisher.mjs");
     expect(workflow).not.toContain("publish-b2-global-risk-direct-postgres.mjs");
     expect(workflow).not.toContain("compute-gri-v12.js");
     expect(workflow).not.toContain("verify-gri-snapshot-v12.js");
