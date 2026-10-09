@@ -218,6 +218,10 @@ jobs:
           ' phase-a-bounded-heartbeat.json >/dev/null
 
       - name: Verify canonical direct-Postgres RSS corroboration transport
+        # Heavy production DB corroboration belongs to RAW/transport-changing
+        # PRs, not fixed read-only source discovery/Atom parser edits. Source
+        # changes have an independent live URL+native date acceptance job.
+        if: env.FULL_RAW_ACCEPTANCE == 'true'
         env:
           GRI_DB_MODE: direct_postgres
         shell: bash
