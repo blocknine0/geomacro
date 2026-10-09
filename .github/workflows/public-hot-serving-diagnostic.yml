@@ -1,0 +1,56 @@
+name: Public D1 Hot Serving Root Cause
+
+# Isolated, bounded, unauthenticated read-only production health diagnosis.
+# This workflow does not mutate B2, Supabase, D1, x402, or website deployment.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/public-hot-serving-diagnostic.yml"
+      - "scripts/ops/diagnose-public-hot-serving.mjs"
+      - "src/__tests__/diagnose-public-hot-serving.test.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-public-hot-serving-diagnostic
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout immutable candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        with:
+          node-version: '22'
+
+      - name: Verify read-only diagnostic script syntax
+        run: node --check scripts/ops/diagnose-public-hot-serving.mjs
+
+      - name: Diagnose public site and all 3 D1 hot-snapshot products
+        id: diagnose
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Nonzero means production NOT ready, not "CI flaky". No raw JSON
+          # payload, API token, paid request or direct B2 GET is printed.
+          node scripts/ops/diagnose-public-hot-serving.mjs
+
+      - name: Upload scrubbed production status regardless of health
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: public-serving-diagnostic-${{ github.run_id }}
+          path: artifacts/public-serving/diagnostic.json
+          if-no-files-found: warn
+          retention-days: 7
