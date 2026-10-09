@@ -56,7 +56,7 @@ function fixture() {
     current_overlay_authority:"cloudflare-d1-control-plane",
     current_overlay_source_batch_at:batch,
     current_evidence_contract:"gdelt-v2-event-export-conflict-root-v1",
-    rows:[...observations,...scored],
+    rows:[...observations.map(row=>({...row})),...scored],
   };
   return {
     edge:{
