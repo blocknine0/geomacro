@@ -41,6 +41,13 @@ export function bindCategoryAliasPayload(
     }
   }
 
+  if (typeof body.question === "string") {
+    const inferredTopics = inferAgentQueryTopics(body.question);
+    if (inferredTopics.some((topic) => !config.topics.includes(topic))) {
+      return { ok: false, code: "CATEGORY_QUESTION_SCOPE_MISMATCH" };
+    }
+  }
+
   const payload = { ...body, topics: [...config.topics] };
   try {
     const plan = buildAgentQueryPlan(payload);
@@ -54,12 +61,6 @@ export function bindCategoryAliasPayload(
       return { ok: false, code: "CATEGORY_INTENT_SCOPE_MISMATCH" };
     }
 
-    if (typeof body.question === "string") {
-      const inferredTopics = inferAgentQueryTopics(body.question);
-      if (inferredTopics.some((topic) => !config.topics.includes(topic))) {
-        return { ok: false, code: "CATEGORY_QUESTION_SCOPE_MISMATCH" };
-      }
-    }
   } catch {
     return { ok: false, code: "INVALID_CATEGORY_QUERY" };
   }
