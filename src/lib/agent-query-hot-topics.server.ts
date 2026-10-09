@@ -12,6 +12,35 @@ const MAX_RECENT_ROWS = 500;
 const MAX_DELIVERED_EVENTS = 25;
 const DELIVERABLE_STATUSES = new Set(["VERIFIED", "DERIVED_ONLY"]);
 
+export function evaluateHotTopicSourceFreshness(input: {
+  status?: string | null;
+  lastSuccessAt?: string | null;
+  cadenceSeconds: number;
+  nowMs: number;
+}) {
+  const cadenceSeconds = Number(input.cadenceSeconds);
+  const cadenceValid = Number.isFinite(cadenceSeconds) && cadenceSeconds > 0;
+  const lastSuccessMs = input.lastSuccessAt ? Date.parse(input.lastSuccessAt) : NaN;
+  const timestampValid = Number.isFinite(lastSuccessMs) && lastSuccessMs <= input.nowMs;
+  const lagSeconds = timestampValid
+    ? Math.floor((input.nowMs - lastSuccessMs) / 1000)
+    : null;
+  const allowedLagSeconds = cadenceValid
+    ? Math.max(MIN_SOURCE_LAG_BUDGET_SECONDS, cadenceSeconds * MAX_SOURCE_CADENCE_INTERVALS)
+    : 0;
+
+  return {
+    healthy:
+      input.status === "healthy" &&
+      cadenceValid &&
+      timestampValid &&
+      lagSeconds !== null &&
+      lagSeconds <= allowedLagSeconds,
+    lagSeconds,
+    allowedLagSeconds,
+  };
+}
+
 export type AgentHotTopicEvent = {
   event_id: string;
   story_key: string;
@@ -253,21 +282,14 @@ export async function loadAgentHotTopics(input: {
 
   const sourceLag = sourceRows.map((source: { source_key: string; cadence_seconds: number }) => {
     const cursor = cursorBySource.get(String(source.source_key));
-    const lastSuccess = cursor?.last_success_at ? Date.parse(String(cursor.last_success_at)) : NaN;
-    const cadenceSeconds = Number(source.cadence_seconds);
-    const cadenceValid = Number.isFinite(cadenceSeconds) && cadenceSeconds > 0;
     return {
       sourceKey: String(source.source_key),
-      healthy: cursor?.status === "healthy" && Number.isFinite(lastSuccess) && cadenceValid,
-      lagSeconds: Number.isFinite(lastSuccess)
-        ? Math.max(0, Math.floor((now.getTime() - lastSuccess) / 1000))
-        : null,
-      // Freshness follows each source's configured update cadence. Allow at
-      // most three missed cycles (with a 60-second floor for scheduler jitter),
-      // never a blanket 30-minute grace that could hide a stalled fast source.
-      allowedLagSeconds: cadenceValid
-        ? Math.max(MIN_SOURCE_LAG_BUDGET_SECONDS, cadenceSeconds * MAX_SOURCE_CADENCE_INTERVALS)
-        : 0,
+      ...evaluateHotTopicSourceFreshness({
+        status: cursor?.status,
+        lastSuccessAt: cursor?.last_success_at ? String(cursor.last_success_at) : null,
+        cadenceSeconds: source.cadence_seconds,
+        nowMs: now.getTime(),
+      }),
     };
   });
   const pipelineHealthy =
