@@ -49,7 +49,15 @@ describe("cap-independent verified edge continuity", () => {
     const global = read(".github/workflows/deploy-global-risk-edge.yml");
     const indices = read(".github/workflows/deploy-risk-indices-edge.yml");
     const intelligence = read(".github/workflows/deploy-intelligence-edge.yml");
-    expect(global).toContain('cron: "13 */6 * * *"');
+    expect(global).not.toContain('cron: "13 */6 * * *"');
+    expect(global).not.toContain("  schedule:");
+    expect(global).not.toContain("  push:");
+    expect(global).toContain('workflows: ["GRI Realtime Direct Postgres"]');
+    expect(global).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(global).toContain("github.event.workflow_run.head_branch == 'main'");
+    expect(global).toContain("github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'");
+    expect(global).toContain("SOURCE_RUN_ID: ${{ github.event.workflow_run.id || '' }}");
+    expect(global).toContain("GLOBAL_RISK_SHARED_B2_D1_SCHEMA_V5_REQUIRED");
     expect(indices).not.toContain('cron: "28 */6 * * *"');
     expect(indices).not.toContain("  schedule:");
     expect(indices).not.toContain("  push:");
