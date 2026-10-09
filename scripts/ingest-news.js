@@ -3410,6 +3410,9 @@ async function ingestNews() {
           // The other original publisher cannot be skipped merely because
           // primary had an item. Candidates remain private/unlicensed.
           includeSecondPublisher: true,
+          // Only after BOTH original-publisher families have no qualifying
+          // current article. No 195-country fanout, no simulated timestamps.
+          includeThirdPublisher: true,
         });
         let accepted = 0;
         for (const article of nativeCandidates) {
