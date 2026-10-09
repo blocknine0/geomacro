@@ -1,4 +1,5 @@
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
+import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_HOT_SNAPSHOT_BODY_BYTES = 1024 * 1024;
 const MAX_HOT_SNAPSHOT_BYTES = 768 * 1024;
@@ -344,14 +345,27 @@ async function readGlobalRiskB2Anchor(env, now = Date.now()) {
 
   if (row.proof_schema === HOT_SNAPSHOT_PRODUCTS["global-risk"].proofSchema) {
     const generatedMs = Date.parse(String(row.generated_at ?? ""));
-    if (!Number.isFinite(generatedMs) || generatedMs > now + 5 * 60_000 || now - generatedMs > GLOBAL_RISK_B2_BASELINE_MAX_AGE_MS) {
+    // The original snapshot timestamp is checked against the payload. It
+    // cannot be replaced with a later archive/check/retry timestamp.
+    const sourceMs = Date.parse(String(row.source_as_of ?? ""));
+    if (!Number.isFinite(generatedMs) ||
+        generatedMs > now + 5 * 60_000 ||
+        now - generatedMs > GLOBAL_RISK_B2_BASELINE_MAX_AGE_MS) {
       return null;
     }
+    // Preserve the existing authenticated B2 anchor semantics for old
+    // publishers, but NEVER show original source_as_of in the new public
+    // historical view unless the D1 row and SHA-bound body agree precisely.
+    const originalTimeProved = Number.isFinite(sourceMs) &&
+      value?.data?.snapshotAsOf === row.source_as_of &&
+      sourceMs <= generatedMs + 5 * 60_000;
     return {
       b2_sha256: String(row.b2_sha256),
       payload_sha256: String(row.payload_sha256),
       source_run_id: String(row.source_run_id),
       generated_at: String(row.generated_at),
+      snapshot_as_of: originalTimeProved ? String(row.source_as_of) : null,
+      anchor_kind: "direct_verified_b2_snapshot",
     };
   }
 
@@ -393,9 +407,42 @@ async function readGlobalRiskB2Anchor(env, now = Date.now()) {
       payload_sha256: String(value.baseline_payload_sha256),
       source_run_id: String(value.baseline_source_run_id),
       generated_at: String(value.baseline_generated_at),
+      // This is the original B2 baseline, NOT the recently recomputed GRI
+      // snapshot. Its source_as_of is not proved by the overlay metadata.
+      snapshot_as_of: null,
+      anchor_kind: "prior_b2_baseline_of_independent_gri_proof",
     };
   }
   return null;
+}
+
+/** Public read-only provenance. The CURRENT GRI/paid hot route stays 503
+ * if original source evidence is stale. This adds ZERO B2 requests/writes. */
+async function getHistoricalGlobalRiskContinuity(env) {
+  try {
+    const now=Date.now();
+    const anchor=await readGlobalRiskB2Anchor(env,now);
+    if(!anchor) return json({
+      ok:false,error:"GLOBAL_RISK_VERIFIED_ARCHIVE_UNAVAILABLE",
+      historical_only:true,current_snapshot_available:false,
+    },503);
+    const metadata=makeGriHistoricalContinuityMetadata(anchor,{now});
+    // Metadata-only route is intentionally public. Never return the original
+    // D1 JSON, source URL/title, B2 object key, private hashes or raw scores.
+    return new Response(JSON.stringify(metadata),{
+      status:200,
+      headers:{
+        "Content-Type":"application/json; charset=utf-8",
+        "Cache-Control":"no-store",
+        "Access-Control-Allow-Origin":"*",
+        "X-Content-Type-Options":"nosniff",
+        "Referrer-Policy":"no-referrer",
+      },
+    });
+  } catch {
+    return json({ok:false,error:"GLOBAL_RISK_VERIFIED_ARCHIVE_UNAVAILABLE",
+      historical_only:true,current_snapshot_available:false},503);
+  }
 }
 
 async function getGlobalRiskB2Anchor(env) {
@@ -900,6 +947,9 @@ export default {
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
     if (request.method === "GET" && url.pathname === "/v1/public/intelligence-overlay") {
       return getPublicIntelligenceOverlay(env);
+    }
+    if (request.method === "GET" && url.pathname === "/v1/public/historical-continuity/global-risk") {
+      return getHistoricalGlobalRiskContinuity(env);
     }
     if (request.method === "GET" && parts[0] === "v1" && parts[1] === "public" && parts[2] === "hot-snapshot" && parts.length === 4) {
       return getPublicHotSnapshot(env, decodeURIComponent(parts[3]));
