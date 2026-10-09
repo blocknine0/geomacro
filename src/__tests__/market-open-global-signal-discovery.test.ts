@@ -109,6 +109,32 @@ describe("#1827 market-style three-category open-discovery receipts", () => {
     expect(JSON.stringify(receipt)).not.toContain("remote error");
   });
 
+  it("halts all same-provider follow-up categories after the first HTTP429", async () => {
+    const calls: string[] = [];
+    const receipt = await probeOpenDiscoveryMesh({
+      now,
+      fetchCategory: async (category: string) => {
+        calls.push(category);
+        if (category === "macro") {
+          return unavailableOpenDiscovery(category, "HTTP_429");
+        }
+        return summarizeOpenDiscovery(category, { articles: [] }, { now });
+      },
+    });
+    expect(calls).toEqual(["geopolitics", "macro"]);
+    expect(receipt.source_reachability).toBe("DEGRADED");
+    expect(receipt.categories[0].source_transport_ok).toBe(true);
+    expect(receipt.categories[1].source_failure_reason).toBe("HTTP_429");
+    expect(receipt.categories[2]).toMatchObject({
+      category: "rare_earth",
+      source_transport_ok: false,
+      source_failure_reason: "UPSTREAM_RATE_LIMIT_BACKOFF",
+      state: "BUDGET_HELD",
+      chargeable: false,
+      publicly_scored: false,
+    });
+  });
+
   it("polls three fixed bounded topic queries, no remote source URL from input", async () => {
     const fetchImpl = vi.fn(async () => new Response(
       JSON.stringify({ articles: good }), { headers: { "content-type": "application/json" } },
