@@ -128,6 +128,12 @@ jobs:
             '
           done
 
+      - name: Publish privacy-safe stage rejection diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/summarize-restricted-private-scoring.mjs
+
       - name: Verify one private B2 bundle then write compact D1 checkpoint
         shell: bash
         run: |
@@ -139,6 +145,8 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: restricted-private-scored-proof-${{ github.run_id }}
-          path: artifacts/restricted-current-scoring/archive-proof.json
+          path: |
+            artifacts/restricted-current-scoring/archive-proof.json
+            artifacts/restricted-current-scoring/diagnostics-summary.json
           if-no-files-found: warn
           retention-days: 7
