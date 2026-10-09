@@ -7,7 +7,7 @@ import { probeOfficialThreeDomains }
 
 const now = new Date("2026-10-09T12:00:00.000Z");
 const fixtures = [
-  ["geopolitics", "www.ungeneva.org", "Security Council demands ceasefire after renewed border conflict"],
+  ["geopolitics", "news.un.org", "Security Council demands ceasefire after renewed border conflict"],
   ["macro", "www.federalreserve.gov", "Federal Reserve FOMC announces monetary policy interest rate decision"],
   ["rare_earth", "www.usgs.gov", "USGS finds newly surveyed lithium and critical minerals deposits"],
 ] as const;
