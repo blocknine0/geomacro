@@ -1,4 +1,7 @@
-import { GRI_METHOD_VERSION } from "./gri-current-contract";
+import {
+  GRI_CURRENT_READING_WINDOW_HOURS,
+  GRI_METHOD_VERSION,
+} from "./gri-current-contract";
 import type {
   Bucket,
   GlobalRisk,
@@ -131,7 +134,10 @@ function validateDomainReading(
   ) {
     return { ok: false, code: `RISK_DOMAIN_${domain.toUpperCase()}_TIME_INVALID` };
   }
-  const shouldBeCurrent = Math.abs(readingMs - snapshotMs) <= 1_000;
+  const isLatestSnapshotReading = Math.abs(readingMs - snapshotMs) <= 1_000;
+  const withinCurrentReadingWindow =
+    now - readingMs <= GRI_CURRENT_READING_WINDOW_HOURS * 60 * 60 * 1000;
+  const shouldBeCurrent = isLatestSnapshotReading && withinCurrentReadingWindow;
   if (
     (shouldBeCurrent && reading.readingStatus !== "current") ||
     (!shouldBeCurrent && reading.readingStatus !== "last_verified")
