@@ -402,8 +402,11 @@ async function runTask(task) {
 }
 
 async function loadStateRows() {
-  // The D1 adapter already returns the same source_id-keyed row Map.
-  return await d1State.loadRows();
+  // D1 adapter maps rows by bare scope; scheduler taskKey() uses the fully
+  // qualified "orchestrator:<scope>" source_id. Normalize explicitly to
+  // preserve existing cursor/next_due_at and NEVER re-bootstrap good state.
+  const rows = await d1State.loadRows();
+  return new Map([...rows.values()].map((row) => [row.source_id, row]));
 }
 
 async function main() {
