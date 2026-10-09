@@ -14,6 +14,17 @@ const title = "Canada announces funding for critical minerals lithium refining a
 const uri = "https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals.html";
 
 describe("original publisher alternate feed with source-native Atom dates", () => {
+  it("rejects two-minute future native Atom publication without accepting clock skew", () => {
+    const stats: Record<string, number> = {};
+    const future = atom(title, uri, "2026-10-09T13:32:00Z");
+    expect(parseOfficialAlternate(future, "rare_earth", now, stats)).toEqual([]);
+    expect(stats.alternate_native_date_items).toBe(1);
+    expect(stats.alternate_native_current_items).toBe(0);
+    expect(stats.alternate_admitted_private_count).toBe(0);
+    expect(parseOfficialAlternate(atom(title, uri, "2026-10-09T13:30:00Z"),
+      "rare_earth", now)).toHaveLength(1);
+  });
+
   it("admits Canadian mineral-news ORIGINAL Atom published time only as private", () => {
     const stats: Record<string, number> = {};
     const result = parseOfficialAlternate(atom(title, uri, "2026-10-09T12:15:00Z"),

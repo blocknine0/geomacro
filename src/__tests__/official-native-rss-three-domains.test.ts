@@ -50,6 +50,20 @@ describe("three official publishers' original-event RSS discovery", () => {
     });
   }
 
+  it("rejects even two-minute future native publication dates without a grace period", () => {
+    const url = "https://news.un.org/en/story/2026/10/conflict";
+    const headline = fixtures[0][2];
+    const diagnostic: Record<string, number> = {};
+    const future = rss(headline, url, "Fri, 09 Oct 2026 12:02:00 GMT");
+    expect(parseOfficialNativeRss(future, "geopolitics", now,
+      24 * 60 * 60 * 1000, diagnostic)).toEqual([]);
+    expect(diagnostic.item_native_pubdate_count).toBe(1);
+    expect(diagnostic.item_native_date_in_window_count).toBe(0);
+    expect(diagnostic.admitted_private_count).toBe(0);
+    expect(parseOfficialNativeRss(rss(headline, url, "Fri, 09 Oct 2026 12:00:00 GMT"),
+      "geopolitics", now)).toHaveLength(1);
+  });
+
   it("identifies native-time failure separately from transport and title filtering", () => {
     const diagnostic: Record<string, number> = {};
     const xml = rss(fixtures[0][2], "https://news.un.org/en/story/2026/10/conflict", "");

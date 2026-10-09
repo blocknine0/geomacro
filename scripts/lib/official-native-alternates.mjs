@@ -24,7 +24,6 @@ export const ORIGINAL_PUBLISHER_ALTERNATES = Object.freeze({
 const MAX_FEED_BYTES = 384 * 1024;
 const MAX_ITEMS = 100;
 const DAY_MS = 86_400_000;
-const FIVE_MINUTES = 300_000;
 const XML_TYPE = /^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
 const unescape = (x) => String(x ?? "").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gu, "$1")
   .replace(/&(?:amp|lt|gt|quot|apos|#(\d+)|#x([\da-f]+));/giu, (v,d,h) => {
@@ -104,7 +103,8 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     if (config.format === "atom" && raw) stats.alternate_atom_link_href_items++;
     const uri=officialUrl(raw,config.articleHosts);
     if (Number.isFinite(time)) stats.alternate_native_date_items++;
-    const dated=Number.isFinite(time) && time <= nowMs+FIVE_MINUTES && nowMs-time<=DAY_MS;
+    // Strict original time: reject any source timestamp later than our clock.
+    const dated=Number.isFinite(time) && time <= nowMs && nowMs-time<=DAY_MS;
     if (dated) stats.alternate_native_current_items++;
     if (uri) stats.alternate_host_match_items++;
     if (config.topics.test(title)) stats.alternate_topic_match_items++;
