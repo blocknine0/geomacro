@@ -60,7 +60,9 @@ export function RiskIndicesWorkspace() {
   }
 
   const data = risk.data;
-  const hasLastVerified = data.indices.some((index) => index.readingStatus === "last_verified");
+  const hasLastVerified = data.indices.some(
+    (index) => index.status === "available" && index.readingStatus === "last_verified",
+  );
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 pb-20 pt-10 sm:px-6 md:pt-14">
