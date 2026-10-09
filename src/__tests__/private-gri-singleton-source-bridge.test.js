@@ -123,7 +123,8 @@ describe("#1827 zero-Supabase strict private original-source -> GRI v1.2 bridge"
     expect(verifyPortableGriProofBundle(r.private_proof.portable_proof,{
       expectedProofHash:r.private_proof.portable_proof_hash,
     }).valid).toBe(true);
-    expect(verified(e).prior_archive_b2_d1_readback_verified).toBe(true);
+    expect(verified(e).prior_archive_readback_receipt_consistent).toBe(true);
+    expect(verified(e).archive_readback_independently_rechecked).toBe(false);
     expect(verified(e).independent_history_story_continuity_verified).toBe(false);
   });
 
