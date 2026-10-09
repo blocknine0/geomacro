@@ -10,7 +10,10 @@ const verify = readFileSync("scripts/verify-gri-snapshot-v12.js", "utf8");
 
 describe("GRI realtime direct Postgres freshness", () => {
   it("runs a bounded verified refresh every hour from canonical evidence without re-owning source ingestion", () => {
-    expect(workflow).toContain('cron: "23 * * * *"');
+    expect(workflow).not.toContain('cron: "23 * * * *"');
+    expect(workflow).not.toContain("\n  schedule:\n");
+    expect(workflow).not.toContain("\n  push:\n");
+    expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
     expect(workflow).toContain("SUPABASE_DB_URL");
