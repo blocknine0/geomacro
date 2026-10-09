@@ -1,19 +1,9 @@
 name: Intelligence Fastlane Publication Sync
 
+# Supabase-scored B2 fastlane remains OWNER-RECOVERY only while new
+# Supabase-free scored evidence and full B2 ledger coverage are incomplete.
+# No automatic chained B2 GET/PUT on successful legacy workflows or push.
 on:
-  workflow_run:
-    workflows: ["Intelligence Current Scoring Fastlane"]
-    types: [completed]
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/intelligence-fastlane-publication.yml"
-      - "scripts/ops/sync-fastlane-scored-intelligence.mjs"
-      - "scripts/ops/republish-b2-public-intelligence-preserve-live.mjs"
-      - "scripts/ops/republish-b2-public-intelligence-scored-only.mjs"
-      - "src/__tests__/intelligence-fastlane-publication-static.test.ts"
-      - "src/__tests__/intelligence-fastlane-preserve-live-publication-static.test.ts"
-      - "src/__tests__/intelligence-fastlane-scored-only-publication-static.test.ts"
   workflow_dispatch: {}
 
 permissions:
@@ -27,19 +17,19 @@ jobs:
   publish-fastlane-scored-state:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
-      (
-        github.event_name == 'workflow_dispatch' ||
-        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-        (
-          github.event_name == 'workflow_run' &&
-          github.event.workflow_run.conclusion == 'success' &&
-          github.event.workflow_run.head_branch == 'main'
-        )
-      )
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 16
     environment: production
     env:
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: intelligence_fastlane_legacy_recovery
+      B2_REQUEST_BUDGET: "12"
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
       GRI_DB_MODE: direct_postgres
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -53,7 +43,7 @@ jobs:
       - name: Checkout canonical scoring revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          ref: main
           persist-credentials: false
 
       - name: Set up Node.js
@@ -68,6 +58,27 @@ jobs:
 
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Require shared D1 B2 ledger before any fastlane B2 request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${B2_ACCOUNT_QUOTA_REQUIRED:-}" = "1"
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "D1 token missing"; exit 2; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "D1 account missing"; exit 2; }
+          list="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          id="$(printf '%s' "$list" | node -e '
+            let s="";
+            process.stdin.on("data",d=>s+=d);
+            process.stdin.on("end",()=>{
+              const row=JSON.parse(s).find(x=>x.name===process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid??row?.id??"");
+            });
+          ')"
+          test -n "$id" || { echo "Canonical D1 quota ledger missing"; exit 2; }
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+          node --check scripts/ops/b2-d1-account-governor.mjs
+          echo "Manual fastlane B2 quota guard ready."
 
       - name: Require authoritative production publication credentials
         shell: bash
