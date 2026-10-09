@@ -5,6 +5,10 @@ import dotenv from 'dotenv';
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { makePrivateStageRecord } from './lib/restricted-private-scored-stage.mjs';
+import {
+  emptyPrivateScoringDiagnostic, addDiagnosticCount,
+  safeGateReasonCode, safePrivateStageErrorCode,
+} from './lib/restricted-private-scoring-diagnostics.mjs';
 
 dotenv.config();
 
@@ -2894,6 +2898,10 @@ async function ingestNews() {
     throw new Error('PRIVATE_SCORING_GOVERNED_DISCOVERY_REQUIRED');
   }
   const privateStagedRows = [];
+  const privateScoringDomain = String(process.env.GDELT_FORCE_CATEGORY ?? '');
+  const privateDiagnostic = PRIVATE_B2_STAGE
+    ? emptyPrivateScoringDiagnostic(privateScoringDomain)
+    : null;
 
   const reclassifyExisting =
     process.argv.includes('--reclassify-existing');
@@ -2960,6 +2968,7 @@ async function ingestNews() {
   let stopRun = false;
 
   for (const category of CATEGORIES) {
+    if (PRIVATE_B2_STAGE && category.name !== privateScoringDomain) continue;
     if (stopRun) {
       console.log(
         'Skipping remaining categories because no healthy classification path remains.'
@@ -3325,6 +3334,7 @@ async function ingestNews() {
         );
       } catch (e) {
         providerTelemetry('gdelt', 'failed');
+        if (privateDiagnostic) privateDiagnostic.discovery_failure_count++;
 
         console.log(
           `  GDELT discovery failed for ${category.name} (${e.message}).`
@@ -3428,6 +3438,9 @@ async function ingestNews() {
 
     totalClassifierCandidates += candidateArticles.length;
     totalDiscoveryCandidates += candidateArticles.length;
+    if (privateDiagnostic) {
+      privateDiagnostic.discovered_candidate_count += candidateArticles.length;
+    }
 
     console.log(
       `  ${candidateArticles.length} new unique candidate article(s) to classify. ` +
@@ -3437,9 +3450,12 @@ async function ingestNews() {
     const batches = chunk(candidateArticles, BATCH_SIZE);
     for (const [batchIndex, batch] of batches.entries()) {
       let assessments;
+      if (privateDiagnostic) privateDiagnostic.classifier_attempted_count += batch.length;
       try {
         assessments = await assessWithRetry(batch, category.name);
+        if (privateDiagnostic) privateDiagnostic.classifier_returned_count += assessments.length;
       } catch (batchErr) {
+        if (privateDiagnostic) privateDiagnostic.classifier_failed_batch_count++;
         const noHealthyClassifier =
           !hasHealthyClassifierProvider();
 
@@ -3470,9 +3486,14 @@ async function ingestNews() {
         const gated = passesGates(article, assessment, category.name);
         if (!gated.ok) {
           totalRejectedByGate++;
+          if (privateDiagnostic) {
+            addDiagnosticCount(privateDiagnostic.gate_rejections,
+              safeGateReasonCode(gated.reason));
+          }
           console.log(`  Rejected by gate (${gated.reason}): "${article.title}"`);
           continue;
         }
+        if (privateDiagnostic) privateDiagnostic.canonical_gate_pass_count++;
 
         if (PRIVATE_B2_STAGE) {
           try {
@@ -3480,11 +3501,16 @@ async function ingestNews() {
               article, assessment, category: category.name,
             });
             privateStagedRows.push(staged);
+            if (privateDiagnostic) privateDiagnostic.private_staged_count++;
             markSeen(article, existingUrls, existingTitles, seenInCurrentRun);
             categoryInserted++;
             totalInserted++;
           } catch (error) {
             totalRejectedByGate++;
+            if (privateDiagnostic) {
+              addDiagnosticCount(privateDiagnostic.private_stage_rejections,
+                safePrivateStageErrorCode(error));
+            }
             console.warn(`  Private stage refused: ${error instanceof Error ? error.message : 'invalid provenance'}`);
           }
           // Never construct or write a public.events row while frozen.
@@ -3605,6 +3631,7 @@ async function ingestNews() {
       classifier_version: CLASSIFICATION_VERSION,
       private_only: true,
       records: privateStagedRows,
+      diagnostics: privateDiagnostic,
     }) + '\n', { mode: 0o600 });
   }
   console.log(
