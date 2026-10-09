@@ -2396,10 +2396,22 @@ async function fetchGdeltArticlesWithGalFallback(query, categoryName, privateDia
           const result = privatePublisherPreAdmission(article, {
             freshnessMs: MAX_ARTICLE_AGE_MS,
           });
-          if (!result.ok && privateDiagnostic) {
-            addDiagnosticCount(privateDiagnostic.preclassification_rejections, result.reason);
+          if (!result.ok) {
+            if (privateDiagnostic) {
+              addDiagnosticCount(privateDiagnostic.preclassification_rejections, result.reason);
+            }
+            return false;
           }
-          return result.ok;
+          // Apply the very same title+description anchor required by passesGates
+          // before bounded candidate ranking, so broad GAL matches cannot occupy top-2.
+          const sourceText = `${stripHtml(article.title)} ${stripHtml(article.description)}`;
+          if (!ALLOW[categoryName]?.test(sourceText)) {
+            if (privateDiagnostic) {
+              addDiagnosticCount(privateDiagnostic.preclassification_rejections, "domain_anchor_missing");
+            }
+            return false;
+          }
+          return true;
         }
       : null,
   });
