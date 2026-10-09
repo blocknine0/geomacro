@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { readFileSync } from "node:fs";
-import { evaluateIssue1414Acceptance } from "../lib/issue-1827-closure-guard.mjs";
+import { evaluateIssue1414Acceptance } from "../lib/issue-1414-closure-guard.mjs";
 
 const eventPath = String(process.env.GITHUB_EVENT_PATH ?? "").trim();
 const token = String(process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? "").trim();
