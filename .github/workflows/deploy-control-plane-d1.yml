@@ -195,7 +195,25 @@ jobs:
         run: |
           set -euo pipefail
           URL="$CONTROL_PLANE_URL/v1/public/historical-continuity/global-risk"
-          code="$(curl --silent --show-error -o /tmp/gri-historical.json -w '%{http_code}' --max-time 15 "$URL")"
+          # Deploy + secret put are separate Cloudflare edge revisions. The
+          # previous worker still authenticates unknown routes with HTTP 401
+          # during propagation; never mistake that for a successful public
+          # historical endpoint. Retry ONLY bounded old-revision 401/404.
+          code=""
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            code="$(curl --silent --show-error -o /tmp/gri-historical.json -w '%{http_code}' --max-time 15 "$URL" || true)"
+            if [ "$code" = "200" ] || [ "$code" = "503" ]; then
+              break
+            fi
+            if [ "$code" != "401" ] && [ "$code" != "404" ]; then
+              echo "Unexpected historical endpoint response HTTP $code"; exit 12
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "Historical endpoint not propagated after bounded retries (HTTP $code)"; exit 12
+            fi
+            echo "Historical endpoint old revision HTTP $code; propagation check $attempt/10"
+            sleep 4
+          done
           if [ "$code" = "200" ]; then
             jq -e '
               .ok == true and
