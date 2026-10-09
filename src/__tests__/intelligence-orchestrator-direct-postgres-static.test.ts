@@ -5,7 +5,6 @@ const workflow = readFileSync(".github/workflows/intelligence-orchestrator.yml",
 const orchestrator = readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
 const budget = readFileSync("scripts/ops/supabase-free-tier-budget.mjs", "utf8");
 const loader = readFileSync("scripts/lib/direct-postgres-supabase-loader.mjs", "utf8");
-const d1Shim = readFileSync("scripts/lib/d1-orchestrator-supabase-shim.mjs", "utf8");
 const d1State = readFileSync("scripts/lib/d1-control-plane-state.mjs", "utf8");
 
 describe("Intelligence orchestrator D1 control transport", () => {
@@ -29,23 +28,24 @@ describe("Intelligence orchestrator D1 control transport", () => {
       .toBeLessThan(workflow.indexOf("Run due intelligence tasks serially"));
   });
 
-  it("routes only orchestrator scheduler-state createClient calls through the D1 compatibility shim", () => {
-    expect(orchestrator).toContain('createClient(APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY');
-    expect(orchestrator).toContain('.from("live_intelligence_scheduler_state")');
-    expect(orchestrator).toContain('.like("source_id", `${STATE_PREFIX}%`)');
-
-    expect(loader).toContain('const ORCHESTRATOR_SHIM_URL = "geomacro:d1-orchestrator-supabase"');
-    expect(loader).toContain('const ORCHESTRATOR_SUFFIX = "/scripts/intelligence-orchestrator.mjs"');
-    expect(loader).toContain('specifier === "@supabase/supabase-js" && orchestratorImport');
-    expect(loader).toContain('d1-orchestrator-supabase-shim.mjs');
-
-    expect(d1Shim).toContain('const TABLE = "live_intelligence_scheduler_state"');
-    expect(d1Shim).toContain('createD1ControlPlaneStateClient');
-    expect(d1Shim).toContain('return { data: [...rows.values()], error: null }');
-    expect(d1Shim).toContain('await state.persist(scope, payload');
-
-    expect(d1State).toContain('pipeline_checkpoint');
-    expect(d1State).toContain('D1_CONTROL_STATE_QUERY_FAILED');
+  it("uses canonical D1 pipeline_checkpoint natively without any Supabase SDK, fake service-role or loader shim", () => {
+    expect(orchestrator).toContain('import { createD1ControlPlaneStateClient } from "./lib/d1-control-plane-state.mjs";');
+    expect(orchestrator).toContain("const d1State = createD1ControlPlaneStateClient()");
+    expect(orchestrator).toContain("await d1State.loadRows()");
+    expect(orchestrator).toContain("await d1State.persist(task.key, payload");
+    expect(orchestrator).not.toContain('from("@supabase/supabase-js")');
+    expect(orchestrator).not.toContain('from "@supabase/supabase-js"');
+    expect(orchestrator).not.toContain("createClient(APP_SUPABASE_URL");
+    expect(orchestrator).not.toContain("APP_SUPABASE_SERVICE_ROLE_KEY");
+    expect(orchestrator).not.toContain("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
+    expect(orchestrator).not.toContain(".from(\"live_intelligence_scheduler_state\")");
+    expect(loader).not.toContain("ORCHESTRATOR_SHIM_URL");
+    expect(loader).not.toContain("ORCHESTRATOR_SUFFIX");
+    expect(loader).not.toContain("d1-orchestrator-supabase-shim.mjs");
+    expect(workflow).not.toContain("node --check scripts/lib/d1-orchestrator-supabase-shim.mjs");
+    expect(d1State).toContain("pipeline_checkpoint");
+    expect(d1State).toContain("D1_CONTROL_STATE_QUERY_FAILED");
+    expect(d1State).toContain("D1_DATABASE_ID");
   });
 
   it("preserves direct-Postgres data compatibility and single-owner scheduler invariants", () => {
