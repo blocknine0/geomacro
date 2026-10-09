@@ -32,7 +32,10 @@ describe("Global Risk three-domain visibility", () => {
   it("retains the newest verified reading for each domain instead of dropping a missing current-domain update", () => {
     expect(assembler).toContain("snapshots.findIndex");
     expect(assembler).toContain('snapshot.verification_status === "verified"');
-    expect(assembler).toContain('readingStatus: currentIndex === 0 ? "current" : "last_verified"');
+    expect(assembler).toContain("now - readingAt <= GRI_CURRENT_READING_WINDOW_HOURS * HOUR");
+    expect(assembler).toContain('? "current"');
+    expect(assembler).toContain(': "last_verified"');
+    expect(assembler).toContain("readingStatus:");
     expect(assembler).toContain("readingSnapshotId: currentSnapshot.id");
     expect(assembler).toContain("readingAsOf: currentSnapshot.as_of");
   });

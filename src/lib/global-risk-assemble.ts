@@ -1,4 +1,5 @@
 import {
+  GRI_CURRENT_READING_WINDOW_HOURS,
   GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS,
   GRI_METHOD_VERSION,
   GRI_PROOF_VERSION,
@@ -170,6 +171,7 @@ function domainReading(
   snapshots: SnapshotRow[],
   domain: RiskDomainKey,
   latestAt: number,
+  now: number,
 ): RiskDomainReading | null {
   const currentIndex = snapshots.findIndex(
     (snapshot) =>
@@ -200,7 +202,10 @@ function domainReading(
     independentStoryCount: current.storyCount,
     readingSnapshotId: currentSnapshot.id,
     readingAsOf: currentSnapshot.as_of,
-    readingStatus: currentIndex === 0 ? "current" : "last_verified",
+    readingStatus:
+      currentIndex === 0 && now - readingAt <= GRI_CURRENT_READING_WINDOW_HOURS * HOUR
+        ? "current"
+        : "last_verified",
     series: {
       "24H": seriesForDomain(snapshots, domain, "24H", readingAt),
       "7D": seriesForDomain(snapshots, domain, "7D", readingAt),
@@ -347,7 +352,7 @@ export function assemblePublicGlobalRisk(
     "30D": seriesForSnapshots(snapshots, "30D", latestAt),
   };
   const domainIndices = Object.fromEntries(
-    DOMAIN_KEYS.map((domain) => [domain, domainReading(snapshots, domain, latestAt)]),
+    DOMAIN_KEYS.map((domain) => [domain, domainReading(snapshots, domain, latestAt, now)]),
   ) as Record<RiskDomainKey, RiskDomainReading | null>;
   const active = series["24H"].buckets ? series["24H"] : series["7D"];
   const drivers = snapshotDrivers(latest);

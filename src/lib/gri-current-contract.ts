@@ -31,6 +31,9 @@ export const GRI_STORY_CORRELATION_VERSION = "story-correlation-v1.0.0";
 export const GRI_STORY_CORRELATION_PROMPT_VERSION = "story-match-title-v1.0.0";
 
 export const GRI_LOOKBACK_HOURS = 72;
+// A domain reading is "current" for at most six hours; older verified
+// continuity remains available but must be labeled last_verified.
+export const GRI_CURRENT_READING_WINDOW_HOURS = 6;
 export const GRI_HALF_LIFE_HOURS = 24;
 
 // Public surfaces always serve the newest verified snapshot for the current
