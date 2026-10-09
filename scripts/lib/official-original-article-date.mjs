@@ -64,20 +64,31 @@ export function verifiedPublisherPageDate(html, now = new Date()) {
   return new Date(Math.min(...times)).toISOString();
 }
 
-function fixedPublisherArticle(url, category) {
+// The upstream Atom URL is untrusted input even with an agency-supplied link.
+// Never fetch its href: rebuild only exact publisher paths from validated,
+// ASCII-only, fixed-shape components on compile-time origins.
+function fixedPublisherArticle(rawUrl, category) {
+  if (typeof rawUrl !== "string" || rawUrl.length > 350) return null;
   try {
-    const candidate = new URL(url);
+    const candidate = new URL(rawUrl);
     if (candidate.protocol !== "https:" || candidate.username || candidate.password ||
-        candidate.href.length > 2048) return null;
-    if (category === "macro" &&
-        candidate.hostname === "www150.statcan.gc.ca" &&
-        candidate.pathname.startsWith("/n1/daily-quotidien/")) return candidate;
+        candidate.port || candidate.search || candidate.hash) return null;
+    const path = candidate.pathname;
+    if (category === "macro" && candidate.hostname === "www150.statcan.gc.ca") {
+      const match = /^\/n1\/daily-quotidien\/([0-9]{6})\/([a-z0-9-]{1,80})\.(htm|html)$/u.exec(path);
+      if (!match) return null;
+      return "https://www150.statcan.gc.ca/n1/daily-quotidien/" +
+        match[1] + "/" + match[2] + "." + match[3];
+    }
     if (category === "rare_earth" &&
-        ["www.canada.ca", "canada.ca"].includes(candidate.hostname) &&
-        candidate.pathname.startsWith("/en/natural-resources-canada/news/")) return candidate;
-    if (category === "rare_earth" &&
-        candidate.hostname === "natural-resources.canada.ca" &&
-        candidate.pathname.includes("/news/")) return candidate;
+        (candidate.hostname === "www.canada.ca" || candidate.hostname === "canada.ca")) {
+      const match = /^\/en\/natural-resources-canada\/news\/([0-9]{4})\/(0[1-9]|1[0-2])\/([a-z0-9-]{1,140})\.html$/u.exec(path);
+      if (!match) return null;
+      const origin = candidate.hostname === "www.canada.ca"
+        ? "https://www.canada.ca" : "https://canada.ca";
+      return origin + "/en/natural-resources-canada/news/" +
+        match[1] + "/" + match[2] + "/" + match[3] + ".html";
+    }
     return null;
   } catch { return null; }
 }
@@ -85,11 +96,11 @@ function fixedPublisherArticle(url, category) {
 export async function fetchVerifiedPublisherPageDate(url, category, {
   now = new Date(), fetchImpl = fetch,
 } = {}) {
-  const article = fixedPublisherArticle(url, category);
-  if (!article) return null;
+  const articleUrl = fixedPublisherArticle(url, category);
+  if (!articleUrl) return null;
   let response;
   try {
-    response = await fetchImpl(article.href, {
+    response = await fetchImpl(articleUrl, {
       redirect: "error",
       signal: AbortSignal.timeout(PAGE_TIMEOUT_MS),
       headers: {
