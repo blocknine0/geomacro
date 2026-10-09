@@ -43,6 +43,27 @@ describe("#1827 bounded first-party publisher identity before expensive classifi
       .toBe("publisher_time_unavailable");
   });
 
+  it("accepts ONLY the exact verified www. discovery alias but binds the real HTTPS URL hostname", () => {
+    expect(admit({
+      url: "https://www.publisher.example.org/2026/10/09/policy",
+      sourceDomain: "publisher.example.org",
+    })).toEqual({ ok: true, reason: "transport_admitted" });
+    expect(admit({
+      url: "https://www.evilpublisher.example.org/2026/10/09/policy",
+      sourceDomain: "publisher.example.org",
+    }).reason).toBe("publisher_domain_mismatch");
+    expect(admit({
+      url: "https://blog.publisher.example.org/2026/10/09/policy",
+      sourceDomain: "publisher.example.org",
+    }).reason).toBe("publisher_domain_mismatch");
+    expect(admit({
+      url: "http://www.publisher.example.org/2026/10/09/policy",
+      sourceDomain: "publisher.example.org",
+    }).reason).toBe("publisher_url_invalid");
+    const ingest = readFileSync("scripts/ingest-news.js", "utf8");
+    expect(ingest).toContain("sourceDomain: new URL(article.url).hostname.toLowerCase()");
+  });
+
   it("reserves one classifier retry at a hard cap of 3 in each single-domain process", () => {
     expect(privateSingleDomainCandidateLimit({
       requestBudget: 3, batchSize: 1, maxCandidates: 2, privateMode: true,
