@@ -45,6 +45,9 @@ describe("#1827 market signal cron operational truth", () => {
     const workflow = readFileSync(".github/workflows/global-open-signal-monitor.yml", "utf8");
     const script = readFileSync("scripts/ops/probe-market-signal-discovery.mjs", "utf8");
     expect(workflow).toContain("if: always()");
+    expect(workflow).toContain("if: github.event_name == 'pull_request'");
+    expect(workflow).toContain("if: github.event_name != 'pull_request'");
+    expect(workflow).toContain("node --check scripts/ops/probe-market-signal-discovery.mjs");
     expect(workflow).toContain("three-domain-signal-receipt.json");
     expect(script).toContain("writeFileSync(MARKET_SIGNAL_ARTIFACT");
     expect(script).toContain("process.exitCode = 1");
