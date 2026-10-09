@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { makePrivateStageRecord } from './lib/restricted-private-scored-stage.mjs';
+import { capturePrivateGriSourceCompanion } from './lib/private-gri-original-publisher-companion.mjs';
 import { fetchOfficialNativeArticles } from './lib/official-native-rss.mjs';
 import { selectPrivatePublisherDiverseCandidates } from './lib/private-publisher-diverse-candidates.mjs';
 import { GLOBAL_CRITICAL_MINERALS_DOMAIN_ANCHOR } from './lib/critical-minerals-domain-anchor.mjs';
@@ -2950,6 +2951,7 @@ async function ingestNews() {
     throw new Error('PRIVATE_SCORING_GOVERNED_DISCOVERY_REQUIRED');
   }
   const privateStagedRows = [];
+  const privateGriSourceRows = [];
   const privateScoringDomain = String(process.env.GDELT_FORCE_CATEGORY ?? '');
   const privateDiagnostic = PRIVATE_B2_STAGE
     ? emptyPrivateScoringDiagnostic(privateScoringDomain)
@@ -3592,10 +3594,15 @@ async function ingestNews() {
 
         if (PRIVATE_B2_STAGE) {
           try {
+            const capturedAt = new Date();
             const staged = makePrivateStageRecord({
-              article, assessment, category: category.name,
+              article, assessment, category: category.name, now: capturedAt,
+            });
+            const source = capturePrivateGriSourceCompanion({
+              article, staged, capturedAt,
             });
             privateStagedRows.push(staged);
+            privateGriSourceRows.push(source);
             if (privateDiagnostic) {
               privateDiagnostic.private_staged_count++;
               if (staged.editorial_review_pending) {
@@ -3741,6 +3748,17 @@ async function ingestNews() {
       private_only: true,
       records: privateStagedRows,
       diagnostics: privateDiagnostic,
+    }) + '\n', { mode: 0o600 });
+    // Never upload this headline-bearing private file as a GH artifact.
+    // The B2 archiver validates exact stage title hashes and stores it only
+    // after a guarded PUT and full-byte independent GET restoration.
+    writeFileSync(`${outDir}/${domain}-source.json`, JSON.stringify({
+      schema: 'geomacro.private-gri-source-candidates.v1',
+      category: domain,
+      private_only: true,
+      public_published: false,
+      commercial_eligible: false,
+      records: privateGriSourceRows,
     }) + '\n', { mode: 0o600 });
   }
   console.log(
