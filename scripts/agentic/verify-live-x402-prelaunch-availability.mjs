@@ -7,6 +7,9 @@ const SAFE_FAIL_CLOSED_CODES = new Set([
   "NOT_AVAILABLE",
   "INSUFFICIENT_COVERAGE",
   "COMMERCIAL_SOURCE_NOT_ELIGIBLE",
+  // A strict stale-data refusal is safe only with unchanged HTTP 422,
+  // non-deliverable, no-charge and no-execution checks below.
+  "STALE_REQUIRED_DATA",
 ]);
 const REQUIRED_REGIONS = new Set([
   "north_america",
