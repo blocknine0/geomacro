@@ -28,7 +28,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (
         github.event_name == 'workflow_dispatch' ||
-        (github.event_name == 'push' && (contains(github.event.head_commit.message, 'Merge #1842') || contains(github.event.head_commit.message, 'Merge #1841') || contains(github.event.head_commit.message, 'Merge #1843') || contains(github.event.head_commit.message, 'Merge pull request #1890')))
+        (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge pull request #1891'))
       )
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -62,10 +62,9 @@ jobs:
       GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "0"
       GDACS_ENABLED: "false"
       RELIEFWEB_ENABLED: "false"
-      # A single source per category avoids self-asserted cross-story matching.
-      # This is a ONE-TIME private canary or an explicitly opted-in manual run.
-      GEOMACRO_PRIVATE_GRI_SINGLETON: ${{ (github.event_name == 'workflow_dispatch' && inputs.private_gri_singleton == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge pull request #1890')) }}
-      MAX_CANDIDATES_PER_CATEGORY: ${{ ((github.event_name == 'workflow_dispatch' && inputs.private_gri_singleton == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge pull request #1890'))) && '1' || '2' }}
+      # One original item/domain is the maximum for the private singleton
+      # pre-GRI path; no expression-valued job env on push (GitHub parser).
+      MAX_CANDIDATES_PER_CATEGORY: "1"
       MAX_ARTICLE_AGE_MS: "21600000"
       GROQ_BATCH_SIZE: "1"
       GROQ_MAX_REQUESTS_PER_RUN: "3"
@@ -147,7 +146,11 @@ jobs:
           node scripts/ops/summarize-restricted-private-scoring.mjs
 
       - name: Prove genuine original-source three-domain singleton eligibility BEFORE B2 PUT
-        if: env.GEOMACRO_PRIVATE_GRI_SINGLETON == 'true'
+        if: >-
+          (github.event_name == 'push' &&
+            contains(github.event.head_commit.message, 'Merge pull request #1891')) ||
+          (github.event_name == 'workflow_dispatch' &&
+            github.event.inputs.private_gri_singleton == 'true')
         shell: bash
         run: |
           set -euo pipefail
@@ -160,7 +163,11 @@ jobs:
           node scripts/ops/archive-restricted-private-scored-stage.mjs --private-stage-only
 
       - name: Prepare source-bound canonical private GRI v1.2 proof locally (no network)
-        if: env.GEOMACRO_PRIVATE_GRI_SINGLETON == 'true'
+        if: >-
+          (github.event_name == 'push' &&
+            contains(github.event.head_commit.message, 'Merge pull request #1891')) ||
+          (github.event_name == 'workflow_dispatch' &&
+            github.event.inputs.private_gri_singleton == 'true')
         shell: bash
         run: |
           set -euo pipefail
@@ -200,7 +207,11 @@ jobs:
           NODE
 
       - name: Independently verify private GRI proof B2 restore then D1 checkpoint
-        if: env.GEOMACRO_PRIVATE_GRI_SINGLETON == 'true'
+        if: >-
+          (github.event_name == 'push' &&
+            contains(github.event.head_commit.message, 'Merge pull request #1891')) ||
+          (github.event_name == 'workflow_dispatch' &&
+            github.event.inputs.private_gri_singleton == 'true')
         shell: bash
         env:
           # Preserve strict global shared D1 account-level B2 tickets.
