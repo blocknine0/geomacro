@@ -86,7 +86,7 @@ describe("#1827 private original-publisher title lineage to canonical GRI",()=>{
     expect(()=>capturePrivateGriSourceCompanion({
       article:{...article,publishedAt:"2026-10-08T03:00:00Z"},
       staged,capturedAt:now,
-    })).toThrow("PRIVATE_GRI_COMPANION_ORIGINAL_PUBLISH_TIME_INVALID");
+    })).toThrow("PRIVATE_GRI_COMPANION_TIME_INVALID");
     expect(()=>capturePrivateGriSourceCompanion({
       article,staged:{...staged,id:"f".repeat(64)},capturedAt:now,
     })).toThrow("PRIVATE_GRI_COMPANION_STAGE_BINDING_INVALID");
