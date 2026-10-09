@@ -123,6 +123,12 @@ jobs:
           console.log(JSON.stringify({ ok: true, required_sources: Object.keys(required), source_discovery_owner: 'auto-ingest-news' }));
           NODE
 
+      # This workflow writes GRI correlation/snapshots into Supabase in the
+      # next two steps. A frozen DB must never be mutated merely because a
+      # main-branch push or hourly schedule triggered the legacy producer.
+      - name: Enforce canonical Supabase budget before every GRI writer
+        run: node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal
+
       - name: Correlate current canonical evidence through direct PostgreSQL
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}

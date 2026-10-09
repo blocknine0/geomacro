@@ -9,6 +9,7 @@ import { validateGlobalRiskContinuity } from "../../src/lib/global-risk-continui
 import { riskIndicesFromGlobalRisk } from "../../src/lib/risk-indices-from-global-risk.ts";
 import { PUBLIC_RISK_INDICES_CONTRACT_VERSION } from "../../src/lib/risk-indices.types.ts";
 import { createB2Client } from "./b2-s3-client.mjs";
+import { assertCurrentGlobalRiskSourceForHotPublish } from "../lib/global-risk-hot-source-preflight.mjs";
 import { publishB2VerifiedHotSnapshot } from "./publish-b2-verified-hot-snapshot.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
@@ -177,6 +178,9 @@ const latestSnapshot = snapshots[0];
 const recentEvents = readRecentEvents(dbUrl, latestSnapshot.as_of);
 const immutableProjectionAt = Date.parse(latestSnapshot.as_of);
 if (!Number.isFinite(immutableProjectionAt)) throw new Error("RISK_INDICES_SNAPSHOT_TIME_INVALID");
+// Risk Indices hot publication inherits exactly the same 90-minute original
+// GRI source-time contract. Reject stale verified history before spending B2 quota.
+assertCurrentGlobalRiskSourceForHotPublish(latestSnapshot.as_of);
 
 // Archive status is anchored to the verified snapshot time so re-publishing
 // cannot mutate immutable history when wall-clock freshness advances.

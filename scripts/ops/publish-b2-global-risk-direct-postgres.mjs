@@ -7,6 +7,7 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { assemblePublicGlobalRisk } from "../../src/lib/global-risk-assemble.ts";
 import { validateGlobalRiskContinuity } from "../../src/lib/global-risk-continuity.ts";
 import { createB2Client } from "./b2-s3-client.mjs";
+import { assertCurrentGlobalRiskSourceForHotPublish } from "../lib/global-risk-hot-source-preflight.mjs";
 import {
   publishB2VerifiedHotSnapshot,
   publishVerifiedCurrentGlobalRiskHotSnapshot,
@@ -188,6 +189,10 @@ const latestSnapshot = snapshots[0];
 const recentEvents = readRecentEvents(dbUrl, latestSnapshot.as_of);
 const snapshotAsOfMs = Date.parse(latestSnapshot.as_of);
 if (!Number.isFinite(snapshotAsOfMs)) throw new Error("GLOBAL_RISK_SNAPSHOT_TIME_INVALID");
+// Critical: D1 rejects >90-minute-old original source evidence. Stop before any
+// B2 reads/writes, so stale retries cannot exhaust free-tier Class B or
+// overwrite the last independently verified current B2 package.
+assertCurrentGlobalRiskSourceForHotPublish(latestSnapshot.as_of);
 
 // Keep the content-addressed snapshot archive deterministic at snapshot time.
 // Its status records what was current when the snapshot was produced; the live
