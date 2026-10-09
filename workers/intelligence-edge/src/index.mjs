@@ -455,7 +455,7 @@ export default {
     // L2 continuity for any already-warm POP. Workers Cache is enabled in
     // wrangler and sits in front of this entrypoint as the global L1.
     const cache = caches.default;
-    const cacheKey = new Request(`${url.origin}/intelligence?projection=d1-hot-v1`, { method: "GET" });
+    const cacheKey = new Request(`${url.origin}/intelligence?projection=d1-hot-v2`, { method: "GET" });
     const hotSnapshot = await readD1HotSnapshot(env);
     if (hotSnapshot) {
       ctx.waitUntil(cache.put(cacheKey, hotSnapshot.clone()));
