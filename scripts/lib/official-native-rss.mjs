@@ -56,7 +56,7 @@ function safeOriginalUrl(raw, host) {
 
 // Does not infer a timestamp from feed updated, retrieval or GDELT discovery.
 // A SOURCE-NATIVE per-item <pubDate> is essential.
-export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs = MAX_AGE_MS) {
+export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs = MAX_AGE_MS, diagnostics = null) {
   const config = OFFICIAL_NATIVE_FEEDS[category];
   if (!config || typeof xml !== "string" || xml.length > MAX_RESPONSE_BYTES ||
       !xml.includes("<rss") || /<!DOCTYPE|<!ENTITY/iu.test(xml)) {
@@ -70,17 +70,31 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
   const items = [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0, MAX_ITEM_COUNT);
   const dedupe = new Set();
   const rows = [];
+  const stats = {
+    item_count: items.length,
+    item_native_pubdate_count: 0,
+    item_native_date_in_window_count: 0,
+    exact_publisher_host_count: 0,
+    domain_topic_title_count: 0,
+    admitted_private_count: 0,
+  };
   for (const match of items) {
     const block = match[1];
     const title = field(block, "title");
     const url = safeOriginalUrl(field(block, "link"), config.host);
     const original = field(block, "pubDate");
     const at = Date.parse(original);
+    if (Number.isFinite(at)) stats.item_native_pubdate_count += 1;
+    const current = Number.isFinite(at) && at <= asOfMs + MAX_FUTURE_MS &&
+      asOfMs - at <= maxAgeMs;
+    if (current) stats.item_native_date_in_window_count += 1;
+    if (url) stats.exact_publisher_host_count += 1;
+    if (config.topics.test(title)) stats.domain_topic_title_count += 1;
     if (!url || title.length < 16 || title.length > 500 ||
-        !config.topics.test(title) || !Number.isFinite(at) ||
-        at > asOfMs + MAX_FUTURE_MS || asOfMs - at > maxAgeMs ||
+        !config.topics.test(title) || !current ||
         dedupe.has(url)) continue;
     dedupe.add(url);
+    stats.admitted_private_count += 1;
     rows.push({
       title, description: "", url, publishedAt: new Date(at).toISOString(),
       source: config.host, sourceDomain: config.host,
@@ -91,6 +105,9 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
       rightsVerified: false,
       commercialEligible: false,
     });
+  }
+  if (diagnostics && typeof diagnostics === "object" && !Array.isArray(diagnostics)) {
+    Object.assign(diagnostics, stats);
   }
   return rows.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
 }
@@ -128,9 +145,10 @@ async function boundedRssFetch(url, fetchImpl) {
 }
 
 export async function fetchOfficialNativeArticles(category, {
-  now = new Date(), fetchImpl = fetch, maxAgeMs = MAX_AGE_MS,
+  now = new Date(), fetchImpl = fetch, maxAgeMs = MAX_AGE_MS, diagnostics = null,
 } = {}) {
   const config = OFFICIAL_NATIVE_FEEDS[category];
   if (!config) throw new Error("OFFICIAL_NATIVE_RSS_CATEGORY_INVALID");
-  return parseOfficialNativeRss(await boundedRssFetch(config.url, fetchImpl), category, now, maxAgeMs);
+  return parseOfficialNativeRss(await boundedRssFetch(config.url, fetchImpl),
+    category, now, maxAgeMs, diagnostics);
 }
