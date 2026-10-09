@@ -1,4 +1,5 @@
 import { fetchOriginalAlternate } from "./official-native-alternates.mjs";
+import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
 // Read-only original-publisher RSS evidence discovery. NO commercial admission,
 // source-certification bypass, scoring, B2 writes or public/paid output.
 // GDELT seendate/index timestamps are explicitly NOT publication evidence.
@@ -115,11 +116,10 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
 }
 
 async function boundedRssFetch(url, fetchImpl) {
-  const response = await fetchImpl(url, {
-    redirect: "error",
+  const response = await fetchOriginalPublisherWithRecovery(url, {
+    fetchImpl,
     headers: { accept: "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8",
       "user-agent": "Geomacro-Official-Source-Private-Discovery/1.0" },
-    signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok || !VALID_TYPES.test(response.headers.get("content-type") ?? "")) {
     throw new Error("OFFICIAL_NATIVE_RSS_TRANSPORT_INVALID");
