@@ -38,6 +38,7 @@ import { Route as TestnetAccessRouteImport } from './routes/testnet-access'
 import { Route as TestnetConsoleRouteImport } from './routes/testnet-console'
 import { Route as ApiEarlyWarningRouteImport } from './routes/api.early-warning'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiMcpRouteImport } from './routes/api.mcp'
 import { Route as ApiPublicDataProxyRouteImport } from './routes/api.public-data-proxy'
 import { Route as ApiRiskGateRouteImport } from './routes/api.risk-gate'
 import { Route as ApiRiskGateReadinessRouteImport } from './routes/api.risk-gate-readiness'
@@ -209,6 +210,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMcpRoute = ApiMcpRouteImport.update({
+  id: '/api/mcp',
+  path: '/api/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicDataProxyRoute = ApiPublicDataProxyRouteImport.update({
   id: '/api/public-data-proxy',
   path: '/api/public-data-proxy',
@@ -368,6 +374,7 @@ export interface FileRoutesByFullPath {
   '/testnet-console': typeof TestnetConsoleRoute
   '/api/early-warning': typeof ApiEarlyWarningRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
@@ -424,6 +431,7 @@ export interface FileRoutesByTo {
   '/testnet-console': typeof TestnetConsoleRoute
   '/api/early-warning': typeof ApiEarlyWarningRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
@@ -481,6 +489,7 @@ export interface FileRoutesById {
   '/testnet-console': typeof TestnetConsoleRoute
   '/api/early-warning': typeof ApiEarlyWarningRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
@@ -539,6 +548,7 @@ export interface FileRouteTypes {
     | '/testnet-console'
     | '/api/early-warning'
     | '/api/health'
+    | '/api/mcp'
     | '/api/public-data-proxy'
     | '/api/risk-gate'
     | '/api/risk-gate-readiness'
@@ -595,6 +605,7 @@ export interface FileRouteTypes {
     | '/testnet-console'
     | '/api/early-warning'
     | '/api/health'
+    | '/api/mcp'
     | '/api/public-data-proxy'
     | '/api/risk-gate'
     | '/api/risk-gate-readiness'
@@ -651,6 +662,7 @@ export interface FileRouteTypes {
     | '/testnet-console'
     | '/api/early-warning'
     | '/api/health'
+    | '/api/mcp'
     | '/api/public-data-proxy'
     | '/api/risk-gate'
     | '/api/risk-gate-readiness'
@@ -708,6 +720,7 @@ export interface RootRouteChildren {
   TestnetConsoleRoute: typeof TestnetConsoleRoute
   ApiEarlyWarningRoute: typeof ApiEarlyWarningRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiMcpRoute: typeof ApiMcpRoute
   ApiPublicDataProxyRoute: typeof ApiPublicDataProxyRoute
   ApiRiskGateRoute: typeof ApiRiskGateRoute
   ApiRiskGateReadinessRoute: typeof ApiRiskGateReadinessRoute
@@ -940,6 +953,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mcp': {
+      id: '/api/mcp'
+      path: '/api/mcp'
+      fullPath: '/api/mcp'
+      preLoaderRoute: typeof ApiMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public-data-proxy': {
       id: '/api/public-data-proxy'
       path: '/api/public-data-proxy'
@@ -1148,6 +1168,7 @@ const rootRouteChildren: RootRouteChildren = {
   TestnetConsoleRoute: TestnetConsoleRoute,
   ApiEarlyWarningRoute: ApiEarlyWarningRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiMcpRoute: ApiMcpRoute,
   ApiPublicDataProxyRoute: ApiPublicDataProxyRoute,
   ApiRiskGateRoute: ApiRiskGateRoute,
   ApiRiskGateReadinessRoute: ApiRiskGateReadinessRoute,
