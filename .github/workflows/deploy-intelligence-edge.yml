@@ -113,3 +113,11 @@ jobs:
           CODE="$(curl -sS -X POST -o /tmp/intelligence-edge-post.json -w '%{http_code}' --max-time 10 "$EXPECTED_URL/intelligence" || true)"
           test "$CODE" = "405" || { echo "Unexpected write surface: HTTP $CODE"; exit 5; }
           echo "Intelligence edge serves live B2 or bounded B2-readback-verified public continuity; no B2 write/delete, Supabase mutation, or payment action occurred."
+
+      - name: Prove production edge D1 overlay matches latest B2 digest and website
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 3 public GETs per attempt, no Cloudflare API/B2 GET/Supabase/money.
+          # If a stale edge cache points to an older B2 hash, fail closed.
+          node scripts/ops/verify-live-intelligence-overlay-convergence.mjs
