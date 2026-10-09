@@ -11,7 +11,7 @@ const env:Record<string,string>={
   CLOUDFLARE_ACCOUNT_ID:"account-test-id",
   CLOUDFLARE_API_TOKEN:"test-no-production-secret-token-123",
   D1_DATABASE_ID:"12345678-1234-1234-1234-123456789abc",
-  INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST:"__no_existing_tasks__",
+  INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST:"official_native_rss",
   GEOMACRO_SUPABASE_RESTRICTED_MODE:"true",
   TELEGRAM_ENABLED:"false",
   GRI_PUBLISH_ENABLED:"false",
@@ -19,7 +19,7 @@ const env:Record<string,string>={
 const source=readFileSync(SCRIPT,"utf8");
 
 describe("#1827 scheduled intelligence control-plane requires only canonical D1, never fake Supabase login",()=>{
-  it("runs D1 scheduler with ZERO Supabase credentials and ZERO external B2/paid/Supabase requests",()=>{
+  it("preserves a preexisting future-due D1 cursor with ZERO Supabase credentials or B2/paid requests",()=>{
     const dir=mkdtempSync(join(tmpdir(),"geomacro-d1-direct-"));
     try {
       const mock=join(dir,"mock-d1-fetch.mjs");
@@ -34,7 +34,15 @@ globalThis.fetch=async (url,init)=>{
      JSON.parse(init.body).params[0]!=="intelligence_orchestrator") {
     throw Error("UNAUTHORIZED_NETWORK_OR_QUERY");
   }
-  return Response.json({success:true,result:[{success:true,results:[]}]});
+  const timestamp=new Date().toISOString();
+  const due=new Date(Date.now()+60*60*1000).toISOString();
+  return Response.json({success:true,result:[{success:true,results:[{
+    scope:"official_native_rss",status:"HEALTHY",
+    last_attempt_at:timestamp,last_success_at:timestamp,
+    updated_at:timestamp,
+    cursor:JSON.stringify({next_due_at:due,bootstrap_pending:false,status:"healthy"}),
+    metadata_json:JSON.stringify({source:"geomacro_intelligence_orchestrator",task:"official_native_rss"}),
+  }]}]});
 };
 `,{mode:0o600});
       const result=spawnSync(process.execPath,[
@@ -44,7 +52,7 @@ globalThis.fetch=async (url,init)=>{
       const report=JSON.parse(result.stdout);
       expect(report).toMatchObject({
         ok:true,restricted_data_plane:true,selected:[],
-        task_allowlist:["__no_existing_tasks__"],
+        task_allowlist:["official_native_rss"],
       });
       expect(JSON.stringify(report)).not.toContain("test-no-production");
       expect(JSON.stringify(report)).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
@@ -73,6 +81,7 @@ globalThis.fetch=async (url,init)=>{
     expect(source).toContain("const d1State = createD1ControlPlaneStateClient()");
     expect(source).toContain("await d1State.persist(task.key, payload");
     expect(source).toContain("await d1State.loadRows()");
+    expect(source).toContain("new Map([...rows.values()].map((row) => [row.source_id, row]))");
     expect(source).not.toContain('from "@supabase/supabase-js"');
     expect(source).not.toContain("APP_SUPABASE_URL");
     expect(source).not.toContain("APP_SUPABASE_SERVICE_ROLE_KEY");
