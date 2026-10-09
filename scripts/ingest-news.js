@@ -1526,7 +1526,7 @@ Do not invent missing facts.
 
 DERIVED TEXT CONTRACT:
 - narrative: one concise event-specific explanation, 40-260 characters.
-- summary: a concise account of the material change and supported consequence, 80-700 characters.
+- summary: a concise account of the material change and supported consequence, 60-700 characters.
 - Both fields must be plain text, complete, factual, and grounded only in the article.
 - Do not copy the headline verbatim, add unsupported actors or figures, or include URLs.
 - If the article cannot support both fields, set relevant=false instead of returning filler.
