@@ -118,7 +118,7 @@ describe("verified B2 governed agent module continuity", () => {
     expect(workflow).toContain("secrets.B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(workflow).toContain("run-b2-governed-direct-postgres.mjs");
     expect(workflow).toContain("scripts/ops/b2-d1-account-governor.mjs");
-    expect(workflow).toContain("src/lib/b2-private-archive-read.server.ts");
+    expect(reader).toContain("b2PrivateArchiveReadConfigured");
     expect(workflow).toContain("verify-b2-agent-governed-runtime.ts");
     expect(workflow).not.toContain("run-b2-snapshot-maintenance-with-preservation.mjs governed-modules");
     expect(workflow).not.toContain("VITE_B2");
