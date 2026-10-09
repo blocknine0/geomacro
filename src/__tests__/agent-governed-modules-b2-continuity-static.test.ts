@@ -101,9 +101,14 @@ describe("verified B2 governed agent module continuity", () => {
     }
   });
 
-  it("runs quota-independent permanent production maintenance without exposing B2 credentials", () => {
-    expect(workflow).toContain("schedule:");
-    expect(workflow).toContain('cron: "37 4,16 * * *"');
+  it("holds frozen-Supabase publication, requiring shared D1 quota for manual recovery", () => {
+    expect(workflow).not.toContain("\\n  schedule:");
+    expect(workflow).not.toContain("\\n  push:");
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch'");
+    expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(workflow).toContain("B2_ACCOUNT_QUOTA_WORKFLOW_ID: governed_agent_modules_legacy_recovery");
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "12"');
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("secrets.SUPABASE_DB_URL");
     expect(workflow).not.toContain("secrets.SUPABASE_SERVICE_ROLE_KEY");
