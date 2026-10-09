@@ -1,3 +1,7 @@
+import {
+  fetchVerifiedPublisherPageDate,
+  ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN,
+} from "./official-original-article-date.mjs";
 import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
 // Original-publisher second-family news/Atom discovery when the primary feed
 // has no dated, topical events. These are PRIVATE, NOT rights-certified sources.
@@ -86,6 +90,9 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     alternate_atom_dc_date_tag_items: 0,
     alternate_atom_dcterms_issued_tag_items: 0,
     alternate_atom_link_href_items: 0,
+    alternate_article_page_probes: 0,
+    alternate_article_page_precise: 0,
+    alternate_article_page_admitted: 0,
   };
   const out=[];
   const seen=new Set();
@@ -125,6 +132,25 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
   return out.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
 }
 
+function undatedOriginalArticleCandidates(xml, category) {
+  const config = ORIGINAL_PUBLISHER_ALTERNATES[category];
+  if (!config || config.format !== "atom") return [];
+  const seen = new Set(), out = [];
+  const items = [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)]
+    .slice(0, MAX_ITEMS);
+  for (const [, block] of items) {
+    if (tag(block, "published")) continue;
+    const title = tag(block, "title");
+    if (title.length < 16 || title.length > 500 || !config.topics.test(title)) continue;
+    const uri = officialUrl(atomOriginalLink(block), config.articleHosts);
+    if (!uri || seen.has(uri.href)) continue;
+    seen.add(uri.href);
+    out.push({ title, uri });
+    if (out.length >= ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN) break;
+  }
+  return out;
+}
+
 export async function fetchOriginalAlternate(category, { now=new Date(), fetchImpl=fetch, diagnostics=null }={}) {
   const cfg=ORIGINAL_PUBLISHER_ALTERNATES[category];
   if (!cfg) throw new Error("OFFICIAL_ALTERNATE_CATEGORY_INVALID");
@@ -148,6 +174,29 @@ export async function fetchOriginalAlternate(category, { now=new Date(), fetchIm
       chunks.push(value);
     }
   } finally {reader.releaseLock()}
-  return parseOfficialAlternate(new TextDecoder("utf-8",{fatal:true}).decode(
-    Buffer.concat(chunks.map(x=>Buffer.from(x)))), category, now, diagnostics);
+  const xml = new TextDecoder("utf-8",{fatal:true}).decode(
+    Buffer.concat(chunks.map(x=>Buffer.from(x))));
+  const parsed = parseOfficialAlternate(xml, category, now, diagnostics);
+  if (parsed.length || cfg.format !== "atom") return parsed;
+  // Only two SAME-PUBLISHER article pages maximum per category (<=4s each).
+  // Article-level precise datePublished, never Atom updated, can admit PRIVATE
+  // evidence; zero source rights or paid/scoring approval is inferred.
+  const candidates = undatedOriginalArticleCandidates(xml, category);
+  for (const { title, uri } of candidates) {
+    if (diagnostics) diagnostics.alternate_article_page_probes++;
+    const publishedAt = await fetchVerifiedPublisherPageDate(uri.href, category, { now, fetchImpl });
+    if (!publishedAt) continue;
+    if (diagnostics) {
+      diagnostics.alternate_article_page_precise++;
+      diagnostics.alternate_article_page_admitted++;
+    }
+    parsed.push({
+      title, description: "", url: uri.href, publishedAt,
+      source: uri.hostname, sourceDomain: uri.hostname,
+      discoveryProvider: "official_native_rss", nativePublishedAtVerified: true,
+      nativeTimeEvidence: "publisher_original_article_datePublished",
+      privateOnly: true, rightsVerified: false, commercialEligible: false,
+    });
+  }
+  return parsed.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
 }
