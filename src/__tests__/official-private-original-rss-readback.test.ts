@@ -101,6 +101,10 @@ describe("#1827 first-party no-raw native original-page recovery to actual priva
   expect(source).toContain("includeOriginalPageDateFallback = false");
   expect(source).toContain("original_page_precise_date_admitted");
   expect(source).toContain('commercialEligible:false');
+  const stage=readFileSync(".github/workflows/restricted-private-current-scoring.yml","utf8");
+  expect(stage).toContain("contains(github.event.head_commit.message, '(#1929)')");
+  expect(stage).toContain("B2_ACCOUNT_QUOTA_REQUIRED: \"1\"");
+  expect(stage).not.toContain("schedule:");
   expect(source).not.toContain("source_title_public");
  });
 });
