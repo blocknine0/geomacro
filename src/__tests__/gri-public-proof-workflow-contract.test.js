@@ -34,7 +34,7 @@ function expectMasterScheduleOrQuotaRecoveryHold(source) {
     expect(source).not.toContain("schedule:");
     return;
   }
-  expect(source).toContain('cron: "7,22,37,52 * * * *"');
+  expect(source).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
 }
 
 describe("GRI public proof consistency workflow contract", () => {

@@ -13,7 +13,7 @@ function expectScheduledOrExplicitQuotaHold(workflow: string) {
     expect(workflow).not.toContain("schedule:");
     return;
   }
-  expect(workflow).toContain('cron: "7,22,37,52 * * * *"');
+  expect(workflow).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
 }
 
 describe("permanent intelligence orchestration contract", () => {

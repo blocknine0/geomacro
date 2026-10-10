@@ -85,7 +85,7 @@ describe("commercial runtime security baseline", () => {
       expect(source, path).not.toMatch(/\bnpm install\b/);
     }
 
-    expect(orchestrator).toContain('cron: "7,22,37,52 * * * *"');
+    expect(orchestrator).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
     expect(orchestrator).toContain("group: geomacro-intelligence-orchestrator");
     expect(orchestrator).toContain("Resolve production D1 control-plane database");
     expect(orchestrator).toContain("Validate Supabase-independent scheduler runtime");

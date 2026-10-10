@@ -242,6 +242,12 @@ async function refreshTargets(observed) {
 }
 
 async function main() {
+  // P0: HEARTBEAT_ONLY is not read-only. Its refreshTargets() performs
+  // per-country PostgreSQL target upserts. No fallback writes are allowed
+  // once Supabase free quota is exhausted, including manual invocations.
+  if (String(process.env.GEOMACRO_SUPABASE_RESTRICTED_MODE ?? "")
+      .trim().toLowerCase() === "true")
+    throw Error("PHASE_A_SUPABASE_FREE_TIER_RESTRICTED_NO_WRITES");
   assertConfig();
   await execFileAsync("psql", ["--version"]);
   const registrySources = await verifyRegistry();

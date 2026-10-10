@@ -61,3 +61,13 @@ A **10-day** cohort with 2,000 successful calls/day, and an assumed upper estima
 - x402 delivery cannot prove current rights, GRO signature, replay-safe settlement and product hash -> no funds accepted.
 
 No part of this document changes upstream licensing or constitutes a 24/7 data SLA.
+
+### 2026-10-10 P0: frozen Supabase control-plane execution boundary
+
+The existing `phase_a_heartbeat` task was mislabeled safe during the restricted Supabase free quota state, despite its `PHASE_A_HEARTBEAT_ONLY=1` path executing `refreshTargets()` with per-country PostgreSQL upserts to `public.live_raw_source_targets`. `gdelt_gal` was also mislabeled restricted-safe, but its downstream ingestion/structure/right-reconciliation and its fallback Supabase SDK still depend on the quota-restricted project. **A D1 scheduler and B2 credentials do not make these producers Supabase-independent.**
+
+Permanent fix: neither task may run in `GEOMACRO_SUPABASE_RESTRICTED_MODE=true`. The pure original-publisher read-only `official_native_rss` remains eligible; all existing recurring raw-event/scoring/publishing writers remain fail-closed. Both underlying scripts independently refuse restricted-mode execution **before database, source-network or B2 operations** even if invoked directly. Preserve all existing Supabase rows and verified archives; never attempt cleanup of unverified B2 backups, rewrite database timestamps or bypass source rights.
+
+The D1 scheduler's recurring workflow is reduced from 4 runs/hour (96 nominal/day) to **16 nominal 90-minute runs/day** to preserve GitHub Actions free quotas and offset by 30 minutes from the independent 90-minute official source monitor. That is a **notional reduction of 80 orchestrator runs/day**, not a reduction of scored business-event guarantees. Direct manual recovery remains possible only after project quota is demonstrably healthy and authorized; `main` cron is best effort, not a hard SLA.
+
+**Still open:** a verified Supabase-independent producer for genuinely current, licensed, 2+ independent same-event review packages; Ed25519 reviewer-signed commercial qualification; then quota-ticketed B2 full readback/hash and fresh D1 hot products. There is no waiver for original publication age, source licence, risk score, product signature or explicit USDC ACK.
