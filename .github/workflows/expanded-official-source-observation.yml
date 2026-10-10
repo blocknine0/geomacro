@@ -1,0 +1,81 @@
+name: Expanded Official Three-Domain Source Observation
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "src/__tests__/expanded-official-source-observation.test.ts"
+      - ".github/workflows/expanded-official-source-observation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - ".github/workflows/expanded-official-source-observation.yml"
+  schedule:
+    # Four bounded cycles/day, four GETs/cycle; complement existing hourly
+    # original-source probe without depleting Actions or B2 free quotas.
+    - cron: "17 0,6,12,18 * * *"
+  workflow_dispatch:
+concurrency:
+  group: geomacro-expanded-official-source-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  contract-and-live-transport:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Probe three additional fixed official transports without secrets
+        shell: bash
+        run: |
+          set -uo pipefail
+          rc=0
+          node scripts/ops/probe-expanded-official-source-mesh.mjs || rc=$?
+          proof=artifacts/expanded-official-source/transport.json
+          jq -e '
+            .schema == "geomacro.expanded-official-source-observation.v1" and
+            (.sources|length)==4 and
+            .domains_observed==["geopolitics","macro","rare_earth"] and
+            .globally_current_scored_coverage_verified == false and
+            .verified_country_count==0 and
+            .verified_current_event_domains==0 and
+            .commercial_eligible==false and
+            .source_rights_verified==false and
+            .source_family_independence_verified==false and
+            .supabase_reads==0 and .supabase_writes==0 and
+            .d1_writes==0 and .b2_requests==0 and
+            .payment_performed==false and
+            ([.sources[] | .commercial_eligible]|all(.==false)) and
+            ([.sources[] | .current_scored_intelligence_verified]|all(.==false))
+          ' "$proof" >/dev/null || exit 1
+          if [[ "$rc" == "0" ]]; then
+            jq -e '.status=="SOURCE_TRANSPORT_OBSERVED" and
+              ([.sources[] | .format_valid]|all(.==true))' "$proof" >/dev/null
+          elif [[ "$rc" == "3" ]]; then
+            jq -e '.status=="SOURCE_TRANSPORT_DEGRADED" and
+              ([.sources[] | .format_valid]|any(.==false))' "$proof" >/dev/null
+            echo "::warning title=Additional official publisher unavailable::SOURCE_TRANSPORT_DEGRADED; no current event or paid intelligence claimed."
+          else
+            exit 1
+          fi
+          # Expected upstream transport failures are NOT a code regression on
+          # PR; production/scheduled/manual run must stay fail-closed (RED).
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            exit "$rc"
+          fi
+      - name: Retain sanitized private transport receipt for 3 days
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: expanded-official-source-transport-${{ github.run_id }}
+          path: artifacts/expanded-official-source/transport.json
+          if-no-files-found: warn
+          retention-days: 3
