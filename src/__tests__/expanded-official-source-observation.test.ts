@@ -18,10 +18,12 @@ const xml=`<rss version="2.0"><channel>
   <item><title>Undated is not an event</title></item>
 </channel></rss>`;
 const response=(body:string,type:string)=>new Response(body,{headers:{"content-type":type}});
+const atomCanada="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-10T06:59:00Z</updated>\n  <entry><title>Critical minerals and consumer prices inflation update from government</title>\n  <published>2026-10-10T06:05:00Z</published>\n  <updated>2026-10-10T06:59:00Z</updated>\n  <link rel=\"alternate\" href=\"https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals-update.html\" />\n  </entry></feed>";
+const atomStatcan="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-10T06:59:00Z</updated>\n  <entry><title>Consumer price index inflation and industrial product price update</title>\n  <published>2026-10-10T06:05:00Z</published>\n  <link rel=\"alternate\" href=\"https://www150.statcan.gc.ca/n1/daily-quotidien/261010/dq261010a-eng.htm\" />\n  </entry></feed>";
 describe("#1827 expanded official three-domain private observation lane",()=>{
-  it("has six fixed official source observations across exactly three domains",()=>{
+  it("has nine fixed official observations and exactly three domains",()=>{
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.domain))
-      .toEqual(["geopolitics","macro","macro","rare_earth","rare_earth","rare_earth"]);
+      .toEqual(["geopolitics","macro","macro","rare_earth","rare_earth","rare_earth","geopolitics","macro","rare_earth"]);
     for(const s of EXPANDED_OFFICIAL_SOURCES){
       expect(new URL(s.url).protocol).toBe("https:");
       expect(s.rights).toBe("UNVERIFIED");
@@ -33,7 +35,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       .toBe("https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/de/statistics-update.rss");
     expect(EXPANDED_OFFICIAL_SOURCES.filter((s:any)=>s.alternate_url)).toHaveLength(1);
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
-      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca"]);
+      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca"]);
   });
   it("samples only fixed official sources; release dates cannot prove scored current events",async()=>{
     const seen:string[]=[];
@@ -43,10 +45,12 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(options.credentials).toBeUndefined();
       if(new URL(url).hostname === "eiti.org")
         return response(JSON.stringify({data:[{id:1,year:2024}]}),"application/json");
+      if(url.includes("www150.statcan.gc.ca"))return response(atomStatcan,"application/atom+xml");
+      if(url.includes("api.io.canada.ca"))return response(atomCanada,"application/atom+xml");
       return response(xml,"application/rss+xml");
     });
     const res=await probeExpandedOfficialMesh({fetchImpl,now});
-    expect(fetchImpl).toHaveBeenCalledTimes(6);
+    expect(fetchImpl).toHaveBeenCalledTimes(9);
     expect(seen).toEqual(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.url));
     expect(res.status).toBe("SOURCE_TRANSPORT_OBSERVED");
     for(const x of res.sources){
@@ -62,6 +66,11 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(res.sources[5].source_native_24h_release_items).toBe(1);
     expect(res.sources[4].topical_private_release_links_24h).toBe(1);
     expect(res.sources[4].same_event_independent_corroboration_verified).toBe(false);
+    expect(res.sources[7].topical_private_release_links_24h).toBe(1);
+    expect(res.sources[8].topical_private_release_links_24h).toBe(1);
+    expect(res.original_publisher_native_24h_topic_counts).toEqual({
+      geopolitics:0,macro:1,rare_earth:1,
+    });
     expect(res.verified_country_count).toBe(0);
     expect(res.verified_current_event_domains).toBe(0);
     expect(res.globally_current_scored_coverage_verified).toBe(false);
@@ -200,12 +209,86 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     const res=await probeExpandedOfficialMesh({now,fetchImpl:async(url:string)=>{
       if(url.includes("ecb.europa.eu"))throw Error("down");
       if(new URL(url).hostname === "eiti.org")return response('{"data":[]}',"application/json");
+      if(url.includes("www150.statcan.gc.ca"))return response(atomStatcan,"application/atom+xml");
+      if(url.includes("api.io.canada.ca"))return response(atomCanada,"application/atom+xml");
       return response(xml,"application/rss+xml");
     }});
     expect(res.status).toBe("SOURCE_TRANSPORT_DEGRADED");
-    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true,true,true,true]);
+    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true,true,true,true,true,true,true]);
     expect(res.globally_current_scored_coverage_verified).toBe(false);
     expect(res.commercial_eligible).toBe(false);
+  });
+
+  it("accepts only native Atom published and exact government original publisher hosts",async()=>{
+    const macro=EXPANDED_OFFICIAL_SOURCES[7],minerals=EXPANDED_OFFICIAL_SOURCES[8];
+    const goodM=await probeExpandedSource(macro,{now,fetchImpl:async()=>response(atomStatcan,"application/atom+xml")});
+    const goodR=await probeExpandedSource(minerals,{now,fetchImpl:async()=>response(atomCanada,"application/atom+xml")});
+    for(const row of [goodM,goodR]){
+      expect(row.format_valid).toBe(true);
+      expect(row.source_native_release_items).toBe(1);
+      expect(row.source_native_24h_release_items).toBe(1);
+      expect(row.topical_private_release_links_24h).toBe(1);
+      expect(row.commercial_rights_verified).toBe(false);
+      expect(row.commercial_eligible).toBe(false);
+    }
+    const updatedOnly=atomCanada.replace("<published>2026-10-10T06:05:00Z</published>","");
+    const noPublication=await probeExpandedSource(minerals,{now,fetchImpl:async()=>response(updatedOnly,"application/atom+xml")});
+    expect(noPublication.format_valid).toBe(true);
+    expect(noPublication.source_native_24h_release_items).toBe(0);
+    expect(noPublication.topical_private_release_links_24h).toBe(0);
+    const future=atomCanada.replace("2026-10-10T06:05:00Z","2026-10-11T06:05:00Z");
+    expect((await probeExpandedSource(minerals,{now,fetchImpl:async()=>response(future,"application/atom+xml")}))
+      .source_native_24h_release_items).toBe(0);
+    const evil=atomCanada.replace("https://www.canada.ca/","https://www.canada.ca.evil.example/");
+    const rejected=await probeExpandedSource(minerals,{now,fetchImpl:async()=>response(evil,"application/atom+xml")});
+    expect(rejected.source_native_release_items).toBe(0);
+    expect(rejected.topical_private_release_links_24h).toBe(0);
+    const fake=documentType();
+    function documentType(){return atomCanada.replace("<feed ","<!DOCTYPE atom><feed ");}
+    expect((await probeExpandedSource(minerals,{now,fetchImpl:async()=>response(fake,"application/atom+xml")})).reason)
+      .toBe("SOURCE_SHAPE_UNVERIFIED");
+    expect((await probeExpandedSource(minerals,{now,fetchImpl:async()=>response(atomCanada,"text/html")})).reason)
+      .toBe("SOURCE_CONTENT_TYPE_INVALID");
+  });
+
+  it("recovers exact 24h first-party article date when Atom only has updated, never from updated",async()=>{
+    const src=EXPANDED_OFFICIAL_SOURCES[8];
+    const source=atomCanada.replace("<published>2026-10-10T06:05:00Z</published>","");
+    const page="<html><head><meta property='article:published_time' "+
+      "content='2026-10-10T06:05:00Z'/></head><body>Government report</body></html>";
+    const requests:string[]=[];
+    const fetchImpl=async(url:string,opts:RequestInit)=>{
+      requests.push(url);
+      if(url===src.url)return response(source,"application/atom+xml");
+      expect(opts.redirect).toBe("error");
+      expect(url).toBe("https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals-update.html");
+      return response(page,"text/html");
+    };
+    const result=await probeExpandedSource(src,{now,fetchImpl});
+    expect(requests).toHaveLength(2);
+    expect(result.source_native_24h_release_items).toBe(0);
+    expect(result.original_page_precise_date_checks).toBe(1);
+    expect(result.original_page_precise_date_24h).toBe(1);
+    expect(result.topical_private_release_links_24h).toBe(1);
+    expect(result.commercial_eligible).toBe(false);
+    const futurePage=page.replace("2026-10-10T06:05:00Z","2026-10-11T06:05:00Z");
+    const rejected=await probeExpandedSource(src,{now,fetchImpl:async(url:string)=>
+      url===src.url?response(source,"application/atom+xml"):response(futurePage,"text/html")});
+    expect(rejected.original_page_precise_date_checks).toBe(1);
+    expect(rejected.topical_private_release_links_24h).toBe(0);
+  });
+  it("independently proves UN news native clocks without automatic risk promotion",async()=>{
+    const un=EXPANDED_OFFICIAL_SOURCES[6];
+    const nativeRss='<rss><channel><item><title>Security Council discusses ceasefire and armed conflict</title>'+
+      '<link>https://news.un.org/en/story/2026/10/security-council</link>'+
+      '<pubDate>Sat, 10 Oct 2026 06:00:00 GMT</pubDate></item></channel></rss>';
+    const res=await probeExpandedSource(un,{now,fetchImpl:async()=>response(nativeRss,"application/rss+xml")});
+    expect(res.topical_private_release_links_24h).toBe(1);
+    expect(res.source_native_24h_release_items).toBe(1);
+    expect(res.current_scored_intelligence_verified).toBe(false);
+    const untrusted=nativeRss.replace("news.un.org","news.un.org.evil.test");
+    const bad=await probeExpandedSource(un,{now,fetchImpl:async()=>response(untrusted,"application/rss+xml")});
+    expect(bad.topical_private_release_links_24h).toBe(0);
   });
   it("workflow has no cloud secrets, no database writes and no auto paid promotion",()=>{
     const yaml=readFileSync(".github/workflows/expanded-official-source-observation.yml","utf8");

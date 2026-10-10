@@ -4,7 +4,7 @@
 
 The live Geomacro three-domain original-publisher probe already observes up to 3
 source families per category on its existing cadence. This separate, additive
-six-hourly monitor observes **six official observation endpoints across three domains** without
+six-hourly monitor observes **nine official observation endpoints across three domains** without
 consuming B2, D1, frozen Supabase, paid AI/model or USDC quotas. All source
 data remains PRIVATE. It does not score events or edit risk objects.
 
@@ -16,6 +16,9 @@ data remains PRIVATE. It does not score events or edit risk objects.
 | Critical Minerals | EITI country metadata API | https://eiti.org/api/v2.0/implementing_country | Test whether official extractives-country listing JSON is accessible; initial GitHub probe returned 403 | Real-time extraction, prices, supply shock or 195-country coverage |
 | Critical Minerals | Natural Resources Canada Simply Science RSS | https://natural-resources.canada.ca/simply-science/rss.xml | Source-native government science publication release time when present | An independently confirmed rare-earth export shock, mineral event or global supply coverage |
 | Critical Minerals | EU official featured-news RSS | https://european-union.europa.eu/node/309/rss_en | EU official news-discovery metadata, count of 24h mineral-related titles only | Direct originating publisher, exact original article publication time, source rights or corroboration |
+| Geopolitics | UN News original peace/security RSS | https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml | Dated UN-originated article links, topic-matched 24h counts | Global country coverage, commercial rights, verified geopolitical risk scoring |
+| Macro/FX | Statistics Canada Daily price releases | https://www150.statcan.gc.ca/n1/rss/dai-quo/18-eng.atom | Native Atom `entry/published` + strict original government article origin; topical 24h counts | Live global FX rates, corroborated inflation surprise, country coverage |
+| Critical Minerals | NRCan official government news-release Atom | https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada | Native Atom `entry/published` + strict first-party original article host; mineral topical 24h counts | Real-time global mineral supply, independent same-event verification, commercial rights |
 
 Supporting official references:
 - https://www.ecb.europa.eu/home/html/rss.en.html
@@ -25,6 +28,8 @@ Supporting official references:
 - https://eiti.org/api
 - https://eiti.org/open-data
 - https://natural-resources.canada.ca/corporate/rss-feeds
+- https://www.statcan.gc.ca/en/sc/rss
+- https://www.ungeneva.org/en/news-media
 
 ### Three domain production acceptance contract
 
@@ -50,11 +55,11 @@ Supporting official references:
 
 - Existing official event feeds: continue their established hourly sampling.
 - Additional official release/structural probes: **4 times per UTC day**,
-  six GET requests per cycle, plus at most one documented same-publisher
+  nine feed GET requests per cycle, plus at most four bounded original article date GETs (two per Atom source), plus at most one documented same-publisher
   Eurostat German-language alternative following primary HTTP 404/5xx only
-  (~24–28 total GETs/day). No locale retry on 401/403/429, redirect/network
+  (~36–56 total GETs/day). No locale retry on 401/403/429, redirect/network
   errors or wrong MIME/body/schema. Each attempt has a 5s timeout and 192-KiB
-  maximum body for the other five sources; Eurostat catalogue RSS alone
+  maximum body for the other eight sources; Eurostat catalogue RSS alone
   has a 1 MiB hard cap (both primary and conditional same-publisher
   alternative). Bodies above either cap fail closed without parsing or
   recording data. No other retries and no paid credentials.
@@ -97,3 +102,7 @@ announcement and project list are available at:
 
 No mineral risk object or commercial right is activated until a source-origin
 precise publication time, independent corroboration and rights evidence pass.
+
+### Added original-publisher native-article observation lanes (2026-10-10)
+
+The additional 3 fixed native article feeds **do not remove or hide** EITI HTTP 403 or NRCan Simply Science transport failure. All 9 official sources are independently sampled, and any unavailable source leaves the producer `SOURCE_TRANSPORT_DEGRADED`. For the 3 newly added originating publisher feeds, an in-window topical article is counted only if the **RSS `item/pubDate`**, **Atom `entry/published`**, or narrowly verified same-original-article HTML `datePublished` (two-page maximum per Atom publisher) is a real precise past clock (within 24h) AND its link has an exact allowlisted publisher host. Atom `updated`, channel clock, feed retrieval, topic-only aggregation and third-party hosts are rejected. A count is private original discovery, **not scored Geomacro risk, commercial license proof or 195-country coverage**. The sanitized observation has `original_publisher_native_24h_topic_counts` by domain; zero may mean a quiet publisher, not absence of news globally. No source RSS body or article title is re-served to customers. Production cannot pass a stale D1 hot-snapshot requirement from observation alone.

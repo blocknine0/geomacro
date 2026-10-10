@@ -5,6 +5,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "../lib/official-original-article-date.mjs";
 
 const MAX_BODY_BYTES=192*1024;
 // Eurostat twice-daily official catalogue feed can exceed the small news-RSS
@@ -58,13 +59,42 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     media:"rss",rights:"UNVERIFIED",poll:"six_hourly",
     event_intelligence:false,country_coverage_verified:false,
   }),
+  // Additional independent original publisher lanes. Existing EITI and
+  // Simply Science failures remain observable; never silently replace them.
+  Object.freeze({
+    id:"un_news_security_original_rss_review",
+    domain:"geopolitics",kind:"original_publisher_peace_security_release",
+    url:"https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml",
+    media:"rss",rights:"UNVERIFIED",poll:"six_hourly",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["news.un.org"]),
+    topic:/\b(?:security council|ceasefire|sanctions?|conflict|war|airstrikes?|military|peace talks|peacekeeping|armed groups?|displacement|border)\b/iu,
+  }),
+  Object.freeze({
+    id:"statcan_prices_original_atom_review",
+    domain:"macro",kind:"original_publisher_prices_release",
+    url:"https://www150.statcan.gc.ca/n1/rss/dai-quo/18-eng.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"six_hourly",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www150.statcan.gc.ca","www.statcan.gc.ca"]),
+    topic:/\b(?:consumer prices?|producer prices?|price index|price indices|inflation|cost of living|industrial product price|raw materials price)\b/iu,
+  }),
+  Object.freeze({
+    id:"nrcan_government_news_original_atom_review",
+    domain:"rare_earth",kind:"original_publisher_government_minerals_release",
+    url:"https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+    media:"atom",rights:"UNVERIFIED",poll:"six_hourly",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.canada.ca","canada.ca","natural-resources.canada.ca"]),
+    topic:/\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|neodymium|dysprosium|terbium|strategic minerals?|mining|minerals? (?:supply|production|processing|trade|projects?|sector))\b/iu,
+  }),
 ]);
 
 const XML_MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
 const JSON_MIME=/^(?:application\/(?:json|[a-z0-9.+-]+\+json))(?:;|$)/iu;
 const SOURCE_DOMAINS=["geopolitics","macro","rare_earth"];
 
-function rssDateCounts(xml,now,topic=null) {
+function rssDateCounts(xml,now,topic=null,hosts=null) {
   if (!/<rss(?:\s|>)/iu.test(xml) || /<!DOCTYPE|<!ENTITY/iu.test(xml)) return null;
   const entries=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80);
   let dated=0,recent=0,topicalRecent=0;
@@ -73,6 +103,8 @@ function rssDateCounts(xml,now,topic=null) {
     // Only a source-native per-item date. Never the channel clock, retrieval,
     // processing time, or feed update time; and never an event risk claim.
     if (!date) continue;
+    const originalLink=item.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/iu)?.[1]?.trim()??"";
+    if(!originalHref(originalLink,hosts))continue;
     const ms=Date.parse(date.trim());
     if (!Number.isFinite(ms) || ms>now.getTime()) continue;
     dated++;
@@ -85,6 +117,73 @@ function rssDateCounts(xml,now,topic=null) {
     }
   }
   return {seen:entries.length,native_dated:dated,within_24h:recent,topical_within_24h:topicalRecent};
+}
+
+// For these three original-publisher lanes an item must have a fixed HTTPS
+// publisher article link. A governmental syndication API hostname is NOT an
+// acceptable article origin, and Atom <updated> is NOT <published>.
+function originalHref(href, hosts) {
+  if (!hosts?.length) return true;
+  try {
+    const link=new URL(String(href??"").replace(/&amp;/giu,"&"));
+    return link.protocol==="https:" && !link.username && !link.password &&
+      !link.hash && link.href.length<=2048 &&
+      hosts.includes(link.hostname.toLowerCase());
+  } catch {return false;}
+}
+
+function atomDateCounts(xml,now,topic,hosts) {
+  if(!/<(?:atom:)?feed(?:\s|>)/iu.test(xml) ||
+      /<!DOCTYPE|<!ENTITY/iu.test(xml))return null;
+  const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,80);
+  let dated=0,recent=0,topicalRecent=0;
+  for(const [,item] of entries){
+    const publication=item.match(/<(?:atom:)?published(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?published>/iu)?.[1];
+    if(!publication)continue;
+    const at=Date.parse(publication.trim());
+    if(!Number.isFinite(at)||at>now.getTime())continue;
+    const tag=[...item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)]
+      .map(x=>x[1]).find(attr=>{
+        const rel=attr.match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
+        return rel==="alternate"||rel==="canonical";
+      })??"";
+    const href=tag.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??"";
+    if(!originalHref(href,hosts))continue;
+    dated++;
+    if(now.getTime()-at<=DAY_MS){
+      recent++;
+      const title=item.match(/<(?:atom:)?title(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?title>/iu)?.[1]??"";
+      if(topic?.test(title))topicalRecent++;
+    }
+  }
+  return {seen:entries.length,native_dated:dated,
+    within_24h:recent,topical_within_24h:topicalRecent};
+}
+
+// Only Atom entries with NO per-entry publication date may receive bounded
+// original-article same-host date verification. Do not use feed <updated>.
+function undatedAtomArticleCandidates(xml,source) {
+  if(source.media!=="atom"||!source.original_hosts)return [];
+  const list=[];
+  for(const [,item] of [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,80)){
+    if(/<(?:atom:)?published(?:\s[^>]*)?>/iu.test(item))continue;
+    const title=item.match(/<(?:atom:)?title(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?title>/iu)?.[1]??"";
+    if(!source.topic?.test(title))continue;
+    const hrefs=[...item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)]
+      .map(x=>x[1]).filter(tag=>{
+        const rel=tag.match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
+        return rel==="alternate"||rel==="canonical";
+      });
+    for(const attr of hrefs){
+      const href=attr.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??"";
+      if(originalHref(href,source.original_hosts)){
+        list.push(href);
+        break;
+      }
+    }
+    if(list.length>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
+  }
+  return [...new Set(list)].slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
 }
 
 function jsonShape(value) {
@@ -103,6 +202,7 @@ export async function probeExpandedSource(source,{
     publisher_reachable:false,format_valid:false,
     source_native_release_items:null,source_native_24h_release_items:null,
     topical_private_release_links_24h:null,
+    original_page_precise_date_checks:0,original_page_precise_date_24h:0,
     official_locale_fallback_attempted:false,
     official_locale_fallback_used:false,
     // Sanitized numeric transport status only; never forward upstream bodies.
@@ -121,6 +221,8 @@ export async function probeExpandedSource(source,{
     // XML MIME + RSS shape checks below still deny HTML/untrusted content.
     headers:{accept:source.alternate_url?"*/*":source.media==="rss"
       ?"application/rss+xml, application/xml;q=0.9, text/xml;q=0.8"
+      :source.media==="atom"
+      ?"application/atom+xml, application/xml;q=0.9, text/xml;q=0.8"
       :"application/json","user-agent":"Geomacro-Official-Expanded-Source-Private-Monitor/1.0"},
   });
   let response;
@@ -142,7 +244,7 @@ export async function probeExpandedSource(source,{
   }
   const mime=response.headers.get("content-type")??"";
   const maxBodyBytes=source.alternate_url?EUROSTAT_MAX_BODY_BYTES:MAX_BODY_BYTES;
-  if(!(source.media==="rss"?XML_MIME:JSON_MIME).test(mime)) {
+  if(!(source.media==="rss"||source.media==="atom"?XML_MIME:JSON_MIME).test(mime)) {
     row.reason="SOURCE_CONTENT_TYPE_INVALID";return row;
   }
   if(Number(response.headers.get("content-length")||0)>maxBodyBytes||!response.body) {
@@ -164,7 +266,10 @@ export async function probeExpandedSource(source,{
   catch{row.reason="SOURCE_ENCODING_INVALID";return row;}
   let valid=false,counts=null;
   if(source.media==="rss"){
-    counts=rssDateCounts(body,now,source.topic??null);
+    counts=rssDateCounts(body,now,source.topic??null,source.original_hosts??null);
+    valid=counts!==null;
+  }else if(source.media==="atom"){
+    counts=atomDateCounts(body,now,source.topic??null,source.original_hosts);
     valid=counts!==null;
   }else{
     try{valid=jsonShape(JSON.parse(body));}catch{valid=false;}
@@ -178,6 +283,20 @@ export async function probeExpandedSource(source,{
     row.source_native_release_items=counts.native_dated;
     row.source_native_24h_release_items=counts.within_24h;
     if(source.topic)row.topical_private_release_links_24h=counts.topical_within_24h;
+  }
+  // Strict 2-page max per ORIGINAL Atom source, only if the government feed
+  // gave no currently topical original per-entry publication time.
+  // The helper reconstructs fixed official article URL paths and does not
+  // follow redirects, trust feed updated clocks or leak publisher HTML.
+  if(source.media==="atom" && counts?.topical_within_24h===0){
+    for(const article of undatedAtomArticleCandidates(body,source)){
+      const published=await fetchVerifiedPublisherPageDate(article,source.domain,{
+        now,fetchImpl,
+      });
+      row.original_page_precise_date_checks++;
+      if(published)row.original_page_precise_date_24h++;
+    }
+    row.topical_private_release_links_24h+=row.original_page_precise_date_24h;
   }
   return row;
 }
@@ -199,6 +318,12 @@ export async function probeExpandedOfficialMesh({fetchImpl=fetch,now=new Date()}
     source_rights_verified:false,source_family_independence_verified:false,
     supabase_reads:0,supabase_writes:0,d1_writes:0,b2_requests:0,
     payment_performed:false,
+    original_publisher_native_24h_topic_counts:Object.fromEntries(
+      SOURCE_DOMAINS.map(domain=>[domain,entries.filter(x=>
+        x.domain===domain &&
+        EXPANDED_OFFICIAL_SOURCES.find(source=>source.id===x.source_id)?.original_hosts
+      ).reduce((n,x)=>n+(x.topical_private_release_links_24h??0),0)])),
+    // These counts have no country, rights, corroboration or severity proof.
     sources:entries,
   };
 }
