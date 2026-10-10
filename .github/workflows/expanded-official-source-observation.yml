@@ -55,6 +55,13 @@ jobs:
             .payment_performed==false and
             (.original_publisher_native_24h_topic_counts | keys)==["geopolitics","macro","rare_earth"] and
             ([.original_publisher_native_24h_topic_counts[]]|all(.>=0)) and
+            ([.sources[] | select(.source_id=="eurostat_stats_update_official_rss_review")] |
+              (.eurostat_native_dataset_data_updates_24h | type)=="number" and
+              (.eurostat_other_catalogue_changes_24h | type)=="number" and
+              .eurostat_native_dataset_data_updates_24h >= 0 and
+              .eurostat_other_catalogue_changes_24h >= 0 and
+              (.eurostat_native_dataset_data_updates_24h +
+               .eurostat_other_catalogue_changes_24h) == .source_native_24h_release_items] | all) and
             ([.sources[] | .original_page_precise_date_checks]|all(.>=0 and .<=2)) and
             ([.sources[] | .commercial_eligible]|all(.==false)) and
             ([.sources[] | .current_scored_intelligence_verified]|all(.==false))
