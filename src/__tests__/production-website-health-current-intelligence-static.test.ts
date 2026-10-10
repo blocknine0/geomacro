@@ -35,6 +35,10 @@ describe("Production Website Health current Intelligence contract", () => {
     expect(hook).toContain("setUpdatedAt(latestOriginalEvidenceAt(next.all))");
     expect(hook).not.toContain("setUpdatedAt(Date.now())");
     expect(workflow).toContain("Browser refresh time leaked into Intelligence freshness");
+    expect(workflow).toContain("grep -Fq 'Latest original evidence ' src/routes/intelligence.tsx");
+    expect(workflow).toContain("if grep -Fq 'Monitoring updated ' src/routes/intelligence.tsx; then");
+    expect(readFileSync("src/routes/intelligence.tsx", "utf8")).toContain("Latest original evidence ");
+    expect(readFileSync("src/routes/intelligence.tsx", "utf8")).not.toContain("Monitoring updated ");
   });
 
   it("covers publisher and deployment changes through the every-main-push acceptance contract", () => {
