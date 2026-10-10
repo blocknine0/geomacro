@@ -109,7 +109,9 @@ describe("#1827 authoritative statistical source clocks, domain and zero-cost ad
     const script=readFileSync("scripts/ingest-certified-sources.mjs","utf8");
     const workflow=readFileSync(".github/workflows/governed-source-ingestion.yml","utf8");
     const testScript=readFileSync("scripts/test-governed-source-ingestion.mjs","utf8");
-    expect(script).toContain("noaaRollingNativeWindow({ now: new Date(now) })");
+    expect(script).toContain("await fetchNoaaLatestNativeDayRows({");
+    expect(readFileSync("scripts/lib/governed-source-native-time.mjs","utf8"))
+      .toContain("noaaLatestNativeDayCandidates({now});");
     expect(script).toContain("sort[0][column]=period&sort[0][direction]=desc&length=12");
     expect(script).not.toContain("startdate=2026-09-01");
     expect(script).not.toContain("enddate=2026-09-02");

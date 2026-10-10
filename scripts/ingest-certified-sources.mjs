@@ -6,7 +6,7 @@ import { createB2Client } from "./ops/b2-s3-client.mjs";
 import {
   governedMetricCategory,
   governedSourceNativeSpan,
-  noaaRollingNativeWindow,
+  fetchNoaaLatestNativeDayRows,
   sourceNativeMeasurementTime,
 } from "./lib/governed-source-native-time.mjs";
 
@@ -163,21 +163,12 @@ async function eia() {
 async function noaa() {
   const source = governedSource("noaa_ncei_cdo_api");
   const token = env("NOAA_NCEI_TOKEN");
-  // Provider observation dates come from NOAA row.date; the bounded rolling
-  // window selects candidate measurements, not a news publication timestamp.
-  const window = noaaRollingNativeWindow({ now: new Date(now) });
-  const params = new URLSearchParams({
-    datasetid: "GHCND",
-    locationid: "FIPS:US",
-    startdate: window.startdate,
-    enddate: window.enddate,
-    limit: "25",
+  // Fetch the most recent available provider-native date, bounded to a
+  // fixed four-date schedule and zero B2/paid activity on empty/invalid data.
+  // Do not treat the NOAA retrieval clock as a news publication clock.
+  const {rows}=await fetchNoaaLatestNativeDayRows({
+    now:new Date(now),token,
   });
-  const url = `https://www.ncei.noaa.gov/cdo-web/api/v2/data?${params}`;
-  const response = await fetch(url, { headers: { token }, signal: AbortSignal.timeout(30_000) });
-  if (!response.ok) throw new Error(`NOAA_NCEI_HTTP_${response.status}`);
-  const rows = (await response.json())?.results ?? [];
-  if (!rows.length) throw new Error("NOAA_NCEI_RETURNED_NO_ROWS");
   return rows.map((row) => observation({
     sourceId: source.source_id,
     category: source.category,
