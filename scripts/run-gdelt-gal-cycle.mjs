@@ -93,6 +93,12 @@ async function runSyncAttempt(attempt) {
 }
 
 async function main() {
+  // The GAL sub-pipeline still performs Supabase ingest, structure and
+  // reconciliation; B2 tickets do not make its database work quota-free.
+  // Refuse BEFORE the first upstream GET, PostgREST or B2 request.
+  if (String(process.env.GEOMACRO_SUPABASE_RESTRICTED_MODE ?? "")
+      .trim().toLowerCase() === "true")
+    throw Error("GDELT_GAL_SUPABASE_FREE_TIER_RESTRICTED_NO_WRITES");
   await mkdir(OUTPUT_DIR, { recursive: true });
   const attempts = [];
   let sync = null;
