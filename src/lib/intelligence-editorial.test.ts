@@ -43,6 +43,15 @@ describe("commercial Intelligence news desk", () => {
     expect(categoryLeads([generic], NOW).every((domain) => domain.event === null)).toBe(true);
   });
 
+  it("shows one story for an independently repeated claim but retains distinct news", () => {
+    const rows = scoredNews([
+      story({ id: "first", title: "Geomacro finds India imposes new export restrictions on gallium shipments" }),
+      story({ id: "repeat", title: "Geomacro finds India imposes new export restrictions on gallium shipments", publishedAt: "2026-10-08T07:00:00Z" }),
+      story({ id: "different", title: "Geomacro finds India lifts export restrictions on gallium shipments" }),
+    ], NOW);
+    expect(rows.map(x => x.id)).toEqual(["first", "different"]);
+  });
+
   it("returns the best eligible scored report in each of exactly three launch domains", () => {
     const oldMacro = story({
       id: "old-macro", category: "macro", severity: 90,
@@ -62,10 +71,17 @@ describe("commercial Intelligence news desk", () => {
   });
 
   it("ranks severity only among timely scored stories, retaining original publication dates", () => {
-    const recentLow = story({ id: "newer", severity: 55, publishedAt: "2026-10-08T09:00:00Z" });
-    const recentHigh = story({ id: "older", severity: 85, publishedAt: "2026-10-08T04:00:00Z" });
+    const recentLow = story({
+      id: "newer", severity: 55, publishedAt: "2026-10-08T09:00:00Z",
+      title: "Geomacro finds India announces a new export licensing review for graphite",
+    });
+    const recentHigh = story({
+      id: "older", severity: 85, publishedAt: "2026-10-08T04:00:00Z",
+      title: "Geomacro finds Brazil suspends nickel shipments after a port closure",
+    });
     const pastHigh = story({
       id: "past", severity: 95, publishedAt: "2026-10-03T08:00:00Z",
+      title: "Geomacro finds Indonesia revises mineral processing rules",
     });
     expect(categoryLeads([pastHigh, recentLow, recentHigh], NOW)[0].event?.id).toBe("older");
   });
