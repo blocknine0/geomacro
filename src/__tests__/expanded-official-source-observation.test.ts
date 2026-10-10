@@ -19,9 +19,9 @@ const xml=`<rss version="2.0"><channel>
 </channel></rss>`;
 const response=(body:string,type:string)=>new Response(body,{headers:{"content-type":type}});
 describe("#1827 expanded official three-domain private observation lane",()=>{
-  it("has exactly 3 fixed first-party HTTPS publisher sources with explicit noncommercial rights",()=>{
+  it("has four fixed first-party HTTPS sources spanning exactly three domains",()=>{
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.domain))
-      .toEqual(["geopolitics","macro","rare_earth"]);
+      .toEqual(["geopolitics","macro","rare_earth","rare_earth"]);
     for(const s of EXPANDED_OFFICIAL_SOURCES){
       expect(new URL(s.url).protocol).toBe("https:");
       expect(s.rights).toBe("UNVERIFIED");
@@ -30,7 +30,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(s.poll).toBe("six_hourly");
     }
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
-      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","eiti.org"]);
+      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","eiti.org","natural-resources.canada.ca"]);
   });
   it("samples only fixed official sources; release dates cannot prove scored current events",async()=>{
     const seen:string[]=[];
@@ -43,7 +43,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       return response(xml,"application/rss+xml");
     });
     const res=await probeExpandedOfficialMesh({fetchImpl,now});
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
     expect(seen).toEqual(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.url));
     expect(res.status).toBe("SOURCE_TRANSPORT_OBSERVED");
     for(const x of res.sources){
@@ -56,6 +56,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(res.sources[0].source_native_release_items).toBe(2);
     expect(res.sources[0].source_native_24h_release_items).toBe(1);
     expect(res.sources[2].source_native_24h_release_items).toBeNull();
+    expect(res.sources[3].source_native_24h_release_items).toBe(1);
     expect(res.verified_country_count).toBe(0);
     expect(res.verified_current_event_domains).toBe(0);
     expect(res.globally_current_scored_coverage_verified).toBe(false);
@@ -95,7 +96,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       return response(xml,"application/rss+xml");
     }});
     expect(res.status).toBe("SOURCE_TRANSPORT_DEGRADED");
-    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true]);
+    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true,true]);
     expect(res.globally_current_scored_coverage_verified).toBe(false);
     expect(res.commercial_eligible).toBe(false);
   });
