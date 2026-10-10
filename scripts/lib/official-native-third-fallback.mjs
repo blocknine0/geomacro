@@ -176,8 +176,8 @@ export async function fetchOfficialThirdPublisherArticles(category,{
   // authoritative datePublished. Never substitute feed updated or crawl time.
   let probes=0,admitted=0;
   const seen=new Set();
-  for(const [,block] of [...xml.matchAll(/<(?:atom:)?entry(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:atom:)?entry>/giu)].slice(0,MAX_ITEMS)){
-    if(/<(?:atom:)?published(?:\\s[^>]*)?>/iu.test(block))continue;
+  for(const [,block] of [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,MAX_ITEMS)){
+    if(/<(?:atom:)?published(?:\s[^>]*)?>/iu.test(block))continue;
     const title=field(block,"title");
     const url=originalAtomHref(block,cfg.host);
     if(!url||title.length<16||title.length>500||!cfg.topics.test(title)||seen.has(url))continue;
