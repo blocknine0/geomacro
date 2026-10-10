@@ -40,6 +40,8 @@ describe("#1827 public Intelligence current desk never replays archive data", ()
     expect(route).toContain("visibleFiltered = showHistoricalArchive ? filtered : currentVerifiedDeskEvents(filtered)");
     expect(route).toContain("Current verified developments");
     expect(route).toContain("No current verified risk assessment is available");
+    expect(route).toContain("Live Intelligence refresh unavailable");
+    expect(route).toContain("Retry live verification");
     expect(route).toContain("View historical archive");
     expect(route).toContain("Hide historical archive");
     expect(route).toContain("Historical verified assessment");
