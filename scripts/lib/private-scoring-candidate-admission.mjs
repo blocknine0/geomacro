@@ -3,9 +3,21 @@
 // publisher host; GDELT is not counted as the publisher. Never "repair"
 // unverified http: origins by changing the scheme, or silently follow a redirect.
 // Source-native publication time is a separate mandatory PUBLIC gate.
+// Only the native publication-time evidence types that the bounded
+// first-party RSS/Atom/original-article verifiers actually emit. A naked
+// nativePublishedAtVerified=true boolean must not suffice.
+export const PRIVATE_NATIVE_PUBLICATION_EVIDENCE = Object.freeze([
+  "publisher_rss_item_pubDate",
+  "publisher_atom_entry_published",
+  "publisher_original_article_datePublished",
+]);
+
 export function privatePublisherPreAdmission(article, {
   now = new Date(),
   freshnessMs = 24 * 60 * 60 * 1000,
+  // Only on the original-publisher PRIVATE model-budget path; do not conflate
+  // indexed-seen times or third-party timestamps with publication evidence.
+  requireOriginalPublisherProof = false,
 } = {}) {
   let url;
   try { url = new URL(String(article?.url ?? "")); }
@@ -29,10 +41,24 @@ export function privatePublisherPreAdmission(article, {
   if (title.length < 16) {
     return { ok: false, reason: "publisher_title_missing" };
   }
+  // Standard event-coding separation: discovery first; only first-party
+  // observed publisher-time evidence is eligible to consume the scarce
+  // canonical classifier quota. This is still PRIVATE PRE-ADMISSION only.
+  // Actual authenticity, exact event identity, same-event corroboration,
+  // rights and signed commercial readiness are checked downstream.
+  if (requireOriginalPublisherProof && (
+      article?.discoveryProvider !== "official_native_rss" ||
+      article?.nativePublishedAtVerified !== true ||
+      !PRIVATE_NATIVE_PUBLICATION_EVIDENCE.includes(article?.nativeTimeEvidence) ||
+      article?.privateOnly !== true ||
+      article?.rightsVerified !== false ||
+      article?.commercialEligible !== false)) {
+    return { ok: false, reason: "publisher_native_publication_unverified" };
+  }
   const stamped = Date.parse(String(article?.publishedAt ?? ""));
   if (!Number.isFinite(stamped) ||
       now.getTime() - stamped > freshnessMs ||
-      stamped - now.getTime() > 5 * 60_000) {
+      stamped - now.getTime() > (requireOriginalPublisherProof ? 0 : 5 * 60_000)) {
     return { ok: false, reason: "publisher_time_unavailable" };
   }
   return { ok: true, reason: "transport_admitted" };

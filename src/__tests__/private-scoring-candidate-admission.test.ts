@@ -64,6 +64,64 @@ describe("#1827 bounded first-party publisher identity before expensive classifi
     expect(ingest).toContain("sourceDomain: new URL(article.url).hostname.toLowerCase()");
   });
 
+  it("qualifies only first-party native published PRIVATE evidence before model spend", () => {
+    const native = {
+      ...article, discoveryProvider: "official_native_rss",
+      nativePublishedAtVerified: true,
+      nativeTimeEvidence: "publisher_rss_item_pubDate", privateOnly: true,
+      rightsVerified: false, commercialEligible: false,
+    };
+    const check = (patch: Record<string, unknown> = {}) =>
+      privatePublisherPreAdmission({...native, ...patch}, {
+        now, freshnessMs: 6 * 60 * 60 * 1000,
+        requireOriginalPublisherProof: true,
+      });
+    expect(check()).toEqual({ok:true,reason:"transport_admitted"});
+    for (const nativeTimeEvidence of ["publisher_atom_entry_published",
+      "publisher_original_article_datePublished"]) {
+      expect(check({nativeTimeEvidence})).toEqual({ok:true,reason:"transport_admitted"});
+    }
+    for(const invalid of [
+      {discoveryProvider:"gdelt"},
+      {discoveryProvider:"guardian"},
+      {nativePublishedAtVerified:false},
+      {nativePublishedAtVerified:undefined},
+      {nativeTimeEvidence:undefined},
+      {nativeTimeEvidence:"gdelt_first_seen_index"},
+      {nativeTimeEvidence:"publisher_updated_feed_clock"},
+      {privateOnly:false},
+      {rightsVerified:true},
+      {commercialEligible:true},
+      {rightsVerified:undefined},
+      {commercialEligible:undefined},
+    ]) {
+      expect(check(invalid)).toEqual({
+        ok:false,reason:"publisher_native_publication_unverified",
+      });
+    }
+    expect(check({publishedAt:"2026-10-09T12:01:00Z"}).reason)
+      .toBe("publisher_time_unavailable");
+    expect(check({publishedAt:"2026-10-09T05:59:00Z"}).reason)
+      .toBe("publisher_time_unavailable");
+    expect(check({url:"https://publisher.example.org.evil.test/event"}).reason)
+      .toBe("publisher_domain_mismatch");
+    const summary = JSON.stringify(check());
+    expect(summary).not.toContain("publisher.example.org");
+    expect(summary).not.toContain(article.title);
+  });
+
+  it("routes the official source-native gate into private scorer without changing no-payment or paid promotion gates", () => {
+    const ingest=readFileSync("scripts/ingest-news.js","utf8");
+    expect(ingest).toContain("requireOriginalPublisherProof: true");
+    expect(ingest).toContain("privateDiagnostic.preclassification_rejections");
+    expect(ingest).toContain("if (PRIVATE_B2_STAGE)");
+    expect(ingest).toContain("makePrivateStageRecord({");
+    const stage=readFileSync("scripts/lib/restricted-private-scored-stage.mjs","utf8");
+    expect(stage).toContain("rights_verified: false");
+    expect(stage).toContain("independently_corroborated: false");
+    expect(stage).toContain("public_eligible: false");
+  });
+
   it("reserves one classifier retry at a hard cap of 3 in each single-domain process", () => {
     expect(privateSingleDomainCandidateLimit({
       requestBudget: 3, batchSize: 1, maxCandidates: 2, privateMode: true,

@@ -3437,6 +3437,11 @@ async function ingestNews() {
         for (const article of nativeCandidates) {
           const admitted = privatePublisherPreAdmission(article, {
             freshnessMs: MAX_ARTICLE_AGE_MS,
+            // Publisher-original RSS/Atom and strict article datePublished
+            // alone can enter PRIVATE scoring. Index-seen times, titles
+            // lacking original publication evidence, and falsely promoted
+            // licensing metadata must fail before consuming model quota.
+            requireOriginalPublisherProof: true,
           });
           if (!admitted.ok) {
             if (privateDiagnostic) {
