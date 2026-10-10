@@ -125,6 +125,17 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     original_hosts:Object.freeze(["www.usgs.gov","usgs.gov"]),
     topic:/\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|copper|tungsten|mineral deposits?|mining|rare earth elements?|mineral supply|strategic minerals?)\b/iu,
   }),
+  // Australian Government ministerial release feed, independently published
+  // from USGS/NRCan. Public RSS subscription is not commercial rights proof.
+  Object.freeze({
+    id:"australia_industry_minister_original_rss_review",
+    domain:"rare_earth",kind:"original_publisher_australian_industry_minerals_release",
+    url:"https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
+    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.minister.industry.gov.au"]),
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|copper|strategic minerals?|mineral supply|mineral processing|mineral project|mining projects?|Arafura)\b/iu,
+  }),
 ]);
 
 const XML_MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
@@ -140,6 +151,7 @@ const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
   uk_fcdo_original_foreign_policy_atom_review:"uk_fcdo",
   fed_monetary_original_press_rss_review:"federal_reserve",
   usgs_minerals_original_news_rss_review:"usgs",
+  australia_industry_minister_original_rss_review:"australian_industry_minister",
 });
 // Source-native event articles require the actual first-party article path;
 // a link to the publisher homepage, Atom/RSS endpoint or other press index
@@ -152,6 +164,7 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   uk_fcdo_original_foreign_policy_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
   fed_monetary_original_press_rss_review:/^\/newsevents\/pressreleases\/[A-Za-z0-9][^/?#]*/u,
   usgs_minerals_original_news_rss_review:/^\/(?:news|programs\/mineral-resources-program\/news)(?:\/|$)/u,
+  australia_industry_minister_original_rss_review:/^\/(?:t-ayres|king)\/media\//u,
 });
 
 function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
