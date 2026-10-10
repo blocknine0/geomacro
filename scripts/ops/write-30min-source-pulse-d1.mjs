@@ -111,8 +111,28 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
     writeFileSync("artifacts/private-intake/three-domain-30m-d1-readback.json",
       JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
     console.log(JSON.stringify(receipt));
-  }catch{
-    console.error("::error::SOURCE_PULSE_D1_CHECKPOINT_NOT_VERIFIED");
+  }catch(error){
+    // Never print Cloudflare IDs, endpoint URLs, API payloads, SQL,
+    // publisher raw data or secret values into Actions logs.
+    const msg=error instanceof Error?String(error.message):"";
+    const known=[
+      "SOURCE_PULSE_CLOUDFLARE_ACCESS_MISSING",
+      "SOURCE_PULSE_D1_DATABASE_DISCOVERY_FAILED",
+      "SOURCE_PULSE_D1_DATABASE_DISCOVERY_INVALID",
+      "SOURCE_PULSE_D1_DATABASE_MISSING_OR_AMBIGUOUS",
+      "SOURCE_PULSE_D1_READBACK_MISMATCH",
+      "SOURCE_PULSE_CHECKPOINT_PROOF_INVALID",
+      "SOURCE_PULSE_CHECKPOINT_DOMAIN_INVALID",
+      "SOURCE_PULSE_CHECKPOINT_RISK_BYPASS",
+      "SOURCE_PULSE_CHECKPOINT_30M_COUNT_INVALID",
+      "SOURCE_PULSE_CHECKPOINT_DEGRADED_COUNT_INVALID",
+    ];
+    const query=msg.match(/^D1_CONTROL_STATE_QUERY_FAILED:([0-9]{1,5})$/u);
+    const code=known.includes(msg)?msg:
+      query?"D1_CONTROL_STATE_QUERY_FAILED_HTTP_"+query[1]:
+      /^D1_CONTROL_STATE_[A-Z_]+_REQUIRED$/u.test(msg)?msg:
+      "SOURCE_PULSE_D1_UNCLASSIFIED_FAILURE";
+    console.error("::error::"+code);
     process.exitCode=2;
   }
 }
