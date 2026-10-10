@@ -134,7 +134,7 @@ function observation({ sourceId, category, record, country, metric, value, unit,
 async function eia() {
   const source = governedSource("eia_api_v2");
   const key = env("EIA_API_KEY");
-  const url = `https://api.eia.gov/v2/electricity/retail-sales/data/?api_key=${encodeURIComponent(key)}&frequency=monthly&data[]=price&facets[stateid][]=CO&length=12`;
+  const url = `https://api.eia.gov/v2/electricity/retail-sales/data/?api_key=${encodeURIComponent(key)}&frequency=monthly&data[]=price&facets[stateid][]=CO&sort[0][column]=period&sort[0][direction]=desc&length=12`;
   const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
   if (!response.ok) throw new Error(`EIA_HTTP_${response.status}`);
   const rows = (await response.json())?.response?.data ?? [];
