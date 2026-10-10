@@ -100,7 +100,7 @@ function normalizeLiveObservedRow(row: PublicIntelligenceRow): PublicIntelligenc
     !title.startsWith(LIVE_TITLE_PREFIX) ||
     row.severity !== null ||
     row.delta !== null ||
-    !Number.isFinite(rowTime(row))
+    !Number.isFinite(Date.parse(String(row.published_at ?? "")))
   ) return null;
   return sanitizePublicIntelligenceRow(row);
 }
