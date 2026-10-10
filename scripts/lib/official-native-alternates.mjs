@@ -16,7 +16,7 @@ export const ORIGINAL_PUBLISHER_ALTERNATES = Object.freeze({
   macro: Object.freeze({
     url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/18-eng.atom",
     format: "atom",
-    articleHosts: Object.freeze(["www150.statcan.gc.ca", "www.statcan.gc.ca"]),
+    articleHosts: Object.freeze(["www150.statcan.gc.ca"]),
     topics: /\b(?:inflation|consumer prices?|producer prices?|price indices?|price index|cost of living|exchange rate|interest rates?|currency|prices?)\b/iu,
   }),
   rare_earth: Object.freeze({
@@ -48,6 +48,8 @@ function tag(block, name) {
 // never resolve arbitrary paths, network-path URLs, schemes, escapes or ports.
 const STATCAN_DAILY_RELATIVE =
   /^\/n1\/daily-quotidien\/[0-9]{6}\/[a-z0-9-]{1,80}\.html?$/u;
+const STATCAN_WWW_OFFICIAL_DAILY_ALIAS =
+  /^\/daily-quotidien\/([0-9]{6})\/([a-z0-9-]{1,80})\.(htm|html)$/u;
 // Aggregate-only classifier for actual official feed link shape. Never
 // expose, allowlist, fetch, or log a host merely because it is classified.
 function macroAtomLinkShape(value) {
@@ -69,14 +71,17 @@ function officialUrl(value, hosts, category) {
       ? "https://www150.statcan.gc.ca"+text : text;
     const u = new URL(full);
     if (u.protocol !== "https:" || u.username || u.password ||
-        !hosts.includes(u.hostname.toLowerCase()) ||
         u.href.length > 2048) return null;
-    // The newly observed www host is official, but admit only exact Daily
-    // articles and no query, fragment, nonstandard port or redirect target.
-    // Other www.statcan.gc.ca pages are not a free-form ingest authority.
-    if (category === "macro" && u.hostname === "www.statcan.gc.ca" &&
-        (!STATCAN_DAILY_RELATIVE.test(u.pathname) ||
-          Boolean(u.search || u.hash || u.port))) return null;
+    // Official www.statcan.gc.ca Daily article links use /daily-quotidien/
+    // and redirect to the same first-party www150 /n1/daily-quotidien/.
+    // Avoid following any redirect: reconstitute ONLY this proven fixed path.
+    if (category==="macro" && u.hostname==="www.statcan.gc.ca") {
+      const matched=STATCAN_WWW_OFFICIAL_DAILY_ALIAS.exec(u.pathname);
+      if (!matched || u.search || u.hash || u.port) return null;
+      return new URL("https://www150.statcan.gc.ca/n1/daily-quotidien/"+
+        matched[1]+"/"+matched[2]+"."+matched[3]);
+    }
+    if (!hosts.includes(u.hostname.toLowerCase())) return null;
     return u;
   } catch { return null; }
 }
@@ -173,7 +178,7 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
       if (linkClass==="www") {
         let original;
         try {original=new URL(raw);} catch { /* already classified */ }
-        const exact=original && STATCAN_DAILY_RELATIVE.test(original.pathname) &&
+        const exact=original && STATCAN_WWW_OFFICIAL_DAILY_ALIAS.test(original.pathname) &&
           !original.search && !original.hash && !original.port;
         if (exact) stats.alternate_macro_href_www_daily_path_items++;
         else stats.alternate_macro_href_www_other_path_items++;
