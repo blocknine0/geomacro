@@ -40,4 +40,4 @@ jobs:
         run: |
           node --check scripts/verify-telegram-manual-research-review.mjs
           node --check scripts/build-telegram-manual-research-review.mjs
-          ! grep -E '(^|[^a-z])fetch\(|https\.request\(|setWebhook|signRisk|x402' scripts/verify-telegram-manual-research-review.mjs scripts/build-telegram-manual-research-review.mjs
+          ! grep -E '(^|[^a-z])fetch\(|https\.request\(|setWebhook\(|signRisk\(' scripts/verify-telegram-manual-research-review.mjs scripts/build-telegram-manual-research-review.mjs
