@@ -98,6 +98,7 @@ function rssDateCounts(xml,now,topic=null,hosts=null) {
   if (!/<rss(?:\s|>)/iu.test(xml) || /<!DOCTYPE|<!ENTITY/iu.test(xml)) return null;
   const entries=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80);
   let dated=0,recent=0,topicalRecent=0;
+  let nativeDataUpdates=0,otherCatalogueChanges=0;
   for(const [,item] of entries) {
     const date=item.match(/<pubDate(?:\s[^>]*)?>([\s\S]*?)<\/pubDate>/iu)?.[1];
     // Only a source-native per-item date. Never the channel clock, retrieval,
@@ -114,9 +115,19 @@ function rssDateCounts(xml,now,topic=null,hosts=null) {
       // The official aggregator is a discovery pointer, not an independent
       // original publisher, and headline relevance is NOT event acceptance.
       if(topic?.test(headline))topicalRecent++;
+      // Eurostat documents these item-native category values. A catalogue
+      // change to a code list or structure is NOT a new macro datapoint, and
+      // even a genuine dataset update is NOT by itself a scored macro shock.
+      const category=item.match(/<category(?:\s[^>]*)?>([\s\S]*?)<\/category>/iu)?.[1]?.trim()??"";
+      if(/^(?:UPDATED_DATASET_DATA|UPDATED_DATASET_STRUCTURE_DATA)$/u.test(category))
+        nativeDataUpdates++;
+      else otherCatalogueChanges++;
     }
   }
-  return {seen:entries.length,native_dated:dated,within_24h:recent,topical_within_24h:topicalRecent};
+  return {seen:entries.length,native_dated:dated,within_24h:recent,
+    topical_within_24h:topicalRecent,
+    native_dataset_data_updates_24h:nativeDataUpdates,
+    other_catalogue_changes_24h:otherCatalogueChanges};
 }
 
 // For these three original-publisher lanes an item must have a fixed HTTPS
@@ -201,6 +212,9 @@ export async function probeExpandedSource(source,{
     source_id:source.id,domain:source.domain,kind:source.kind,
     publisher_reachable:false,format_valid:false,
     source_native_release_items:null,source_native_24h_release_items:null,
+    // Populated only for the Eurostat dataset catalogue, not RSS headlines.
+    eurostat_native_dataset_data_updates_24h:null,
+    eurostat_other_catalogue_changes_24h:null,
     topical_private_release_links_24h:null,
     original_page_precise_date_checks:0,original_page_precise_date_24h:0,
     official_locale_fallback_attempted:false,
@@ -283,6 +297,10 @@ export async function probeExpandedSource(source,{
     row.source_native_release_items=counts.native_dated;
     row.source_native_24h_release_items=counts.within_24h;
     if(source.topic)row.topical_private_release_links_24h=counts.topical_within_24h;
+    if(source.id==="eurostat_stats_update_official_rss_review"){
+      row.eurostat_native_dataset_data_updates_24h=counts.native_dataset_data_updates_24h;
+      row.eurostat_other_catalogue_changes_24h=counts.other_catalogue_changes_24h;
+    }
   }
   // Strict 2-page max per ORIGINAL Atom source, only if the government feed
   // gave no currently topical original per-entry publication time.
