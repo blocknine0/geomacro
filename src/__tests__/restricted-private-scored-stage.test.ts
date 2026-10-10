@@ -117,6 +117,16 @@ describe("#1803 restricted canonical private score archive", () => {
     expect(scorer).toContain("if (!PRIVATE_B2_STAGE) {");
     expect(scorer).toContain("if (!PRIVATE_B2_STAGE) try");
     expect(scorer).toContain("privateStagedRows.push(staged)");
+    // Prompt quality is shared across geopolitics, macro and rare_earth.
+    // These are LLM targets, never a parser rewrite or reduced stage gate.
+    expect(scorer).toContain("DERIVED TEXT QUALITY CONTRACT (all three categories):");
+    expect(scorer).toContain("narrative should be 40-260 characters");
+    expect(scorer).toContain("summary should be 60-700 characters");
+    expect(scorer).toContain("canonical relevance, severity, source-native timestamp");
+    expect(scorer).toContain("independent corroboration remain separate fail-closed gates");
+    expect(scorer).toContain("return relevant=false");
+    expect(scorer).not.toContain("If private text is invalid, pad it");
+
     expect(archive).toContain("PRIVATE_SCORING_SUPABASE_CREDENTIALS_FORBIDDEN");
     expect(archive).toContain("putWithMetadataVerification(key, packed, {");
     expect(archive).toContain("validatePrivateStageBundle(parsed);");
