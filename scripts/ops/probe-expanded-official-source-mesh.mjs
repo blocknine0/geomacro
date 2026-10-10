@@ -14,6 +14,7 @@ const EUROSTAT_MAX_BODY_BYTES=1024*1024;
 const DAY_MS=86_400_000;
 const SIX_HOURS_MS=6*60*60*1000;
 const NINETY_MINUTES_MS=90*60*1000;
+const THIRTY_MINUTES_MS=30*60*1000;
 export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
   Object.freeze({
     id:"eu_sanctions_guidance_official_rss_review",
@@ -157,7 +158,7 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
   const entries=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80);
   let dated=0,recent=0,topicalRecent=0;
   let nativeDataUpdates=0,otherCatalogueChanges=0;
-  let topicalSixHours=0,topicalNinetyMinutes=0;
+  let topicalSixHours=0,topicalNinetyMinutes=0,topicalThirtyMinutes=0;
   for(const [,item] of entries) {
     const date=item.match(/<pubDate(?:\s[^>]*)?>([\s\S]*?)<\/pubDate>/iu)?.[1];
     // Only a source-native per-item date. Never the channel clock, retrieval,
@@ -177,6 +178,7 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
         topicalRecent++;
         if(now.getTime()-ms<=SIX_HOURS_MS)topicalSixHours++;
         if(now.getTime()-ms<=NINETY_MINUTES_MS)topicalNinetyMinutes++;
+        if(now.getTime()-ms<=THIRTY_MINUTES_MS)topicalThirtyMinutes++;
       }
       // Eurostat documents these item-native category values. A catalogue
       // change to a code list or structure is NOT a new macro datapoint, and
@@ -191,6 +193,7 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
     topical_within_24h:topicalRecent,
     topical_within_6h:topicalSixHours,
     topical_within_90m:topicalNinetyMinutes,
+    topical_within_30m:topicalThirtyMinutes,
     native_dataset_data_updates_24h:nativeDataUpdates,
     other_catalogue_changes_24h:otherCatalogueChanges};
 }
@@ -220,7 +223,7 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
       /<!DOCTYPE|<!ENTITY/iu.test(xml))return null;
   const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,80);
   let dated=0,recent=0,topicalRecent=0;
-  let topicalSixHours=0,topicalNinetyMinutes=0;
+  let topicalSixHours=0,topicalNinetyMinutes=0,topicalThirtyMinutes=0;
   for(const [,item] of entries){
     const publication=item.match(/<(?:atom:)?published(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?published>/iu)?.[1];
     if(!publication)continue;
@@ -241,13 +244,15 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
         topicalRecent++;
         if(now.getTime()-at<=SIX_HOURS_MS)topicalSixHours++;
         if(now.getTime()-at<=NINETY_MINUTES_MS)topicalNinetyMinutes++;
+        if(now.getTime()-at<=THIRTY_MINUTES_MS)topicalThirtyMinutes++;
       }
     }
   }
   return {seen:entries.length,native_dated:dated,
     within_24h:recent,topical_within_24h:topicalRecent,
     topical_within_6h:topicalSixHours,
-    topical_within_90m:topicalNinetyMinutes};
+    topical_within_90m:topicalNinetyMinutes,
+    topical_within_30m:topicalThirtyMinutes};
 }
 
 // Only Atom entries with NO per-entry publication date may receive bounded
@@ -313,6 +318,7 @@ export async function probeExpandedSource(source,{
     topical_private_release_links_24h:null,
     original_publisher_topical_6h:null,
     original_publisher_topical_90m:null,
+    original_publisher_topical_30m:null,
     original_page_precise_date_checks:0,original_page_precise_date_24h:0,
     official_locale_fallback_attempted:false,
     official_locale_fallback_used:false,
@@ -397,6 +403,7 @@ export async function probeExpandedSource(source,{
     if(source.original_hosts){
       row.original_publisher_topical_6h=counts.topical_within_6h;
       row.original_publisher_topical_90m=counts.topical_within_90m;
+      row.original_publisher_topical_30m=counts.topical_within_30m;
     }
     if(source.id==="eurostat_stats_update_official_rss_review"){
       row.eurostat_native_dataset_data_updates_24h=counts.native_dataset_data_updates_24h;
@@ -424,6 +431,8 @@ export async function probeExpandedSource(source,{
           row.original_publisher_topical_6h++;
         if(ageMs>=0&&ageMs<=NINETY_MINUTES_MS)
           row.original_publisher_topical_90m++;
+        if(ageMs>=0&&ageMs<=THIRTY_MINUTES_MS)
+          row.original_publisher_topical_30m++;
       }
     }
     row.topical_private_release_links_24h+=row.original_page_precise_date_24h;
