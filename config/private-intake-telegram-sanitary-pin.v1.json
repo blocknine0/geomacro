@@ -1,0 +1,1072 @@
+{
+  "schema": "geomacro.telegram-source-registry.v1",
+  "private_repo": "blocknine0/geomacro-telegram-signals",
+  "repo_commit_pin": "ac0723bcd85fe5480cadb05466c8fd9961be1151",
+  "source_ids_replaced_by_pseudonyms": true,
+  "sources": [
+    {
+      "candidate_key": "tgref_bbc8f11745ca2c68e8622c8cc1fe5ff5",
+      "category": "CRITICAL_MINERALS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_2e45bad493567dcdc423099efc10ac0a",
+      "category": "CRITICAL_MINERALS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_1f2a80309032a972a7aa7ad483ccde79",
+      "category": "CRITICAL_MINERALS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_31cb128ddb5a21e24ba1f6e41bb0725b",
+      "category": "CRITICAL_MINERALS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_fca7878da577ce399bf2475663679c92",
+      "category": "CRITICAL_MINERALS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_3fff6b2178ca58e2a3be83639915b1c1",
+      "category": "CRITICAL_MINERALS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_ee768ff0c23f6d83309995db3b0309dc",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_0cc403de9b379170d507acf06ba630b9",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_cae49c67c1553774bdd9d80120c71f3f",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_01cd7d9063cda6c553e99abf9c7431ba",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_0150804fee9f6c6e5ee0a5767f53672d",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_c56b6fa31ac14b5f5b3dc1c62bd42426",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_db149330ee3475c9c50461c39e9e204a",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_ae14ee8c7499d8aec1b091ad927ec969",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_a7f703a2e40b1b570c1443bc986afc36",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_7e3467a76dce9c60f3af2b57a449dc2d",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_22203efe0d57e0114c363202aed5a724",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_59e2770a50bd2fba77737c582fd52943",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_b4604668e80a6ada39bb6eb869453681",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_797668a2c45c0938f0d7087974ee2f25",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_be0597cc1c46900f38dcc3f0f78ee8c8",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_258394a739222c4f445dc1ea64debe8a",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_df05fb3b9c1e5ecf3e13bcf63a27f002",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_6d3f38b1d5daffbaac7bf5f6c8668efd",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_5b4f98574759e243ce9a7267e8965b70",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_23de39ec8ab7b91db7b3304ca5274f78",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_d02ab0fbb6c19552894178419c7bbf3d",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_728c26df5e422be45350d253ecd645c1",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_4fed139320ebad28c96806bbbd3435f1",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_699ef8b3efd18c883950c43371fb1e0f",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_d3c8a105f4fde8b9bbc3d351839a1372",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_57ae49439d52d0482567c88ec2d4e495",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_ca4d41333b613b1f83060882b793d55c",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_ca43482aa28a4d1677f6f82b9630f92b",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_001c35c5d7edf5d4e3f4da013c058ea1",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_0f52efa344f7c3d272acce0e6cc4b063",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_6f3b74448a6fa2eab6102f75803622bf",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_47b902d90267592796211910395c5622",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_8340a305a1a5c393df00967bb12ec758",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_1243aafb07c2a59e8631bc5f2e0ae845",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_b2b6e2caefc41530c926b1adfd7c58cd",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_40b683c75eee2add02a60933de570a5c",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_08beeff789b66f855f797c024ac67d76",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_8e01dd7d61bd5ca9c0be66c0c0de1d2e",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_2ea63e010e4f7954f65f25042aa903d7",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_2434c94e931edec4b22cec81c6499bf7",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_4c6a413397fe7529e700ed9c83dfb098",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_6305b78af4ebd70314a03278dc5321d4",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_df419a32f9df07925e3f0d4d20ab3057",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_6c68f638725b769dec58c75b4bb9033a",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_266582890f01608e604a60c2cc2ae1b3",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_e951555216b15fb1ffb4443289e2d67e",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_0cec3b55fa5fb3f7b9455bb00a71887c",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_479e3b5c6a9cc991c2f5e8a08079a2e4",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_5f72671fe2254fdf2bffd4c1af4dfac2",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_c3aa2a980b7896f503d42c8e9e8ebed0",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_fea38b3f960c7db0028e8050649f07ab",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_d183e9cbd953883aa8dda1bc6e634e5d",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_11312f28de16ff04d60a7f9abdd41173",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_b743d6680b06ebe7bae6873d8f04ad42",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_11e93992f086eaa1e55a5b024c338f66",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_07af43cd5354c4877a1db1013584f26c",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_98f58e5c81fa1ebbaec78698242ef962",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_891ec325c0e0043bd3754db81295d088",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_523a3c14894e5b4c4ddabfd3ace26b21",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_989cd58185b3c725d259e2007783057a",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_0d90c5461561e689a26e5981a07a7d42",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_047868dbb35a78ce3ba99c9f2a06ff5b",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_9ddcd809cea0f29cbafc6ad2beaa2559",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_0b027b74798c679fdb9cf00dbc006a3e",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_3c34ccda5f3b36112be8347648b8fb7a",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_db797a591947b7cde3ac179c24d0bc96",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_f8e435ac4caf12e27e185643c9d002ed",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_306d20d83c353cf9a16d9b779b6b0332",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_b468fd0d63ed05ad11716aefedbf55ea",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_d70a07f7a22e5dfefeddd87bc04ddcc5",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_444088542134a8f8aae0816fba7ed5c3",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_e73c6c9211d03d0f3f35f02c3a4947a6",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_a67cc0602787605db0c04e88dccff14e",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_233dae52d8464d132e9ead50e4b8f1ce",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_407933fead60f7bec689f75b244efc05",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_6485d5e0874ea665afe39e874d30e4d6",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_acb6bbca6ee4b00cbc05902fca6d9c17",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_45082b22232ed17709e446be0ad5870e",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_aad920edd1777a694ee8cbe55732204c",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_dbc99ef99d45efa19904c1a9bd37712a",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_01c82d558452a7711cff27013603b48e",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_890752631540717af56c80a62f94d98d",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_c85933a5ae0217a090d7ed4850627113",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_836e3b4683160a43814d1b0e1a125564",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_630786b918bb949c65d322d8625bc631",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_e71e7f7c03fad25773cc385dad3b06ce",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_b33804da614bb4e99df20a0758fad63a",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_20b1b7ca343d53917e87534395dc02b6",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_dfbbb86f5b4c221920de1f19f7f3f8a6",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_9c94e4f868b7e5419d9250bbcc066210",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_3da61bc4db2eb67ecce5da2fdca8979f",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_c592cf9dee2feaa6ece79bc169724e33",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_93ab56d9460028a9e2bc183adb7d82fc",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_2fe6f4cfc08c036bace51ae9b517f4ba",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_d7cca5fb5a6d50b35d1d926c701a0626",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_9f9444e5b7cab8bae50fdab3f5ac525b",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_924876557356e998058f86118674f653",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_061053ec9791289d7f35a5f2110e1bf6",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_ea25c66ca04785159c1e878bb057bf3c",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_10208bb78924c6c2a7be8a2999bba9bb",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_519313776486ef5126ab693d263b46ba",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_a51d6da0171233a143a40f9ae5051f86",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_d6af72ca6d8fdb3db0f581b748a1e4c0",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_d3de246ee5e8c58fd3cc8e141e9ff578",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_9b9eea0096d0c99288e755fcf3bad3f7",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_f64e0dc6bca5f46aa8b7730314420d37",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_31d720963e4775422ec383a82a68b579",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_859e721cd4eb6366b08340d8f29e2e83",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_c4fff3a78cdb0d5f135d66037f9669ee",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_affb3d6411cdf7eedcea9f41e4a822f5",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_82bc60a4065412f288a837d07f81d4ef",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_f9552228343c6874e5f7d004198dd099",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_58609fe12467e399aacb6845b4937730",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_910fd45903eb8f135ac8c9f92515adb0",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_a4f8419dfab8fb98d3e7a5a9e7401409",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_996e2c97ea143bd21e8aa55d21ecdd0f",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_edc0dc7a061f8fe44338fb855c3f9d49",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_9faaf049da2d7e29f5194b462d05b0f0",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_c5e5c7f3d2419168f113e7fd21b552fb",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_0b1bb6432e0ee6df33271f13dfbb199e",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_f91ddcf6769ac4c64061b382a1cbc9bd",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_1219236945dfbe70519fa58f69e04897",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_957f8fb2d9a65f6a6c150b55ec72b54f",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_d1d0efa0608f3be1de29d476a2e63c58",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_f43c2b7c6541ece3d772778cb967b86e",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_7b3ddb97fc9419f8f4d54aef1c869661",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_8cb2891a0cc4f5512f32b80ca6765286",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_53a8f6ec4e9e59716c98ce503f68d234",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_c0e93cc5bc978c2d87c1ab85302d3a9a",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_faa40cd42543d4f7d13b590fdb81b1e2",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_ab63aab60afe8d700d61157742c27fe7",
+      "category": "GEOPOLITICS",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_6898bcbceeb8d4079711c17227b95e5e",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_688ac8bceeacab0f971fd57227c5bdb6",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_6865c1bcee8d82ed96e5cc7227943624",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_d2e73f0f2133cc5588181a20473d6212",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_d4eb0e21c88b71e1c0a450b0ad03985a",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_ae83cc07179a340becf32d07834f25e6",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_7fff375f1ecf60391936bdad88941068",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_d18b77ce06cd1c3e7b49604ae241d70f",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_aa45e4783423b584354c99ed40d5ef15",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_91134dd1963f14d65209f739824e3b7f",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_54c501d002ca77487f87b7e060963b23",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_cf68a4a1c492a49720006c52dd14985c",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_5a79b4ed7b3c7244675997fe0e040abf",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_24f36841c6f198b9bc149a00488ebee0",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    },
+    {
+      "candidate_key": "tgref_7540c6067de993e14fcd20f9d07b0db0",
+      "category": "MACRO",
+      "publisher_authorized": false,
+      "authorization_reference": null,
+      "activation_status": "DISABLED"
+    }
+  ]
+}

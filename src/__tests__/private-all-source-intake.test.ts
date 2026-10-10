@@ -115,8 +115,35 @@ describe("#1827 collect all sources BEFORE qualification, privately and honestly
     expect(report.lane_counts.telegram).toBe(2);
     expect(report.lane_counts.historical).toBe(1);
     expect(seen).toHaveLength(2);
-    expect(seen.every(url => url.startsWith("https://raw.githubusercontent.com/blocknine0/"))).toBe(true);
+    expect(seen.every(url => url.startsWith("https://api.github.com/repos/blocknine0/") && url.includes("/contents/"))).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("stages all current private catalogs from sanitized pinned snapshots when no cross-repo token is installed", async () => {
+    const old=process.env.SOURCE_INTAKE_READ_TOKEN;
+    process.env.SOURCE_INTAKE_READ_TOKEN="";
+    try {
+      const report=await gatherPrivateIntakeSnapshot(now);
+      expect(report.source_catalog_provenance.current_private_repository_catalogs_fetched).toBe(false);
+      expect(report.source_catalog_provenance.source_catalog_mode).toBe("PINNED_SANITIZED_REPOSITORY_SNAPSHOT");
+      expect(report.source_catalog_provenance.remote_new_sources_after_pins_unverified).toBe(true);
+      expect(report.lane_counts.telegram).toBe(152);
+      expect(report.lane_counts.historical).toBe(15);
+      expect(report.historical_crypto_legacy_excluded).toBe(1);
+      expect(report.sources_catalogued).toBeGreaterThan(700);
+      expect(report.status_counts.TELEGRAM_CANDIDATE_NOT_AUTHORIZED).toBe(152);
+      expect(report.boundaries.public_published).toBe(false);
+      expect(report.boundaries.payment_performed).toBe(false);
+    } finally {
+      if(old===undefined) delete process.env.SOURCE_INTAKE_READ_TOKEN;
+      else process.env.SOURCE_INTAKE_READ_TOKEN=old;
+    }
+  });
+
+  it("does not hide a failed authenticated private-source fetch behind a pinned snapshot", async () => {
+    await expect(gatherPrivateIntakeSnapshot(now, async () => {
+      throw Error("PRIVATE_INTAKE_PRIVATE_REPO_ACCESS_DENIED");
+    })).rejects.toThrow("PRIVATE_INTAKE_PRIVATE_REPO_ACCESS_DENIED");
   });
 
   it("keeps source observation separate from Telegram authorization and external payments", () => {

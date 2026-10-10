@@ -1,0 +1,88 @@
+{
+  "schema": "1.0.0",
+  "private_repo": "blocknine0/geomacro-historical-data",
+  "repo_commit_pin": "aaf70e319edbb7e74e194a92372ec498b6825261",
+  "source_ids_replaced_by_pseudonyms": true,
+  "sources": [
+    {
+      "source_id": "histref_b49a3370318c6213982e06876c7a5f70",
+      "category": "geopolitics",
+      "status": "PRODUCTION_APPROVED"
+    },
+    {
+      "source_id": "histref_a06e82cb72c842ece6b3bf2b86c96f49",
+      "category": "critical_minerals",
+      "status": "PRODUCTION_APPROVED"
+    },
+    {
+      "source_id": "histref_9405eb57e0fff3684fe89dbb65b315ab",
+      "category": "critical_minerals",
+      "status": "LICENSE_REVIEW"
+    },
+    {
+      "source_id": "histref_33798ac31a1c7df5dda2c96623fcce02",
+      "category": "critical_minerals",
+      "status": "LICENSE_REVIEW"
+    },
+    {
+      "source_id": "histref_9f6f20156918143e1686e1b91ca92409",
+      "category": "macro",
+      "status": "RESEARCH_ONLY"
+    },
+    {
+      "source_id": "histref_f856f5d8aa7343cea776e7e5567fc571",
+      "category": "macro",
+      "status": "PRODUCTION_APPROVED"
+    },
+    {
+      "source_id": "histref_edb35cd9fa65937af974902fa161d57d",
+      "category": "macro",
+      "status": "PRODUCTION_APPROVED"
+    },
+    {
+      "source_id": "histref_90b6e6ee7a80d686452c93505e63ca9d",
+      "category": "macro",
+      "status": "LICENSE_REVIEW"
+    },
+    {
+      "source_id": "histref_52c8383bd0a87d9c4aefe43b9b9b0aab",
+      "category": "macro",
+      "status": "LICENSE_REVIEW"
+    },
+    {
+      "source_id": "histref_77758b8762e5bf2e436a21c9f6b13d81",
+      "category": "crypto",
+      "status": "NON_COMMERCIAL"
+    },
+    {
+      "source_id": "histref_cfc0ad4d8138e8bff9d2f8cfe1ceb0a4",
+      "category": "geopolitics",
+      "status": "PRODUCTION_APPROVED"
+    },
+    {
+      "source_id": "histref_32bda3180ab2ee56ddd09be8837574d5",
+      "category": "geopolitics",
+      "status": "PRODUCTION_APPROVED"
+    },
+    {
+      "source_id": "histref_b9978f3aae72da2ceb05844fa36eba19",
+      "category": "geopolitics",
+      "status": "PRODUCTION_APPROVED"
+    },
+    {
+      "source_id": "histref_32f39f812c5772244b239dcfe5e234e7",
+      "category": "geopolitics",
+      "status": "PRODUCTION_APPROVED"
+    },
+    {
+      "source_id": "histref_4c807ddc15c8ab51662828a48682a28a",
+      "category": "geopolitics",
+      "status": "LICENSE_REVIEW"
+    },
+    {
+      "source_id": "histref_299ceafd91ed7291097378077e3fae9a",
+      "category": "geopolitics",
+      "status": "LICENSE_REVIEW"
+    }
+  ]
+}

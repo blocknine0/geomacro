@@ -15,11 +15,15 @@ on:
       - ".github/workflows/three-domain-private-source-intake.yml"
       - "scripts/ops/assemble-private-all-source-intake.mjs"
       - "src/__tests__/private-all-source-intake.test.ts"
+      - "config/private-intake-telegram-sanitary-pin.v1.json"
+      - "config/private-intake-historical-sanitary-pin.v1.json"
   pull_request:
     paths:
       - ".github/workflows/three-domain-private-source-intake.yml"
       - "scripts/ops/assemble-private-all-source-intake.mjs"
       - "src/__tests__/private-all-source-intake.test.ts"
+      - "config/private-intake-telegram-sanitary-pin.v1.json"
+      - "config/private-intake-historical-sanitary-pin.v1.json"
 
 permissions:
   contents: read
@@ -53,6 +57,7 @@ jobs:
     needs: contract
     runs-on: ubuntu-24.04
     timeout-minutes: 4
+    environment: production
     steps:
       - name: Checkout canonical main without persisted credentials
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -63,6 +68,11 @@ jobs:
         with:
           node-version: "22"
       - name: Stage every registered official, free, governed-root, Telegram and historical source
+        env:
+          # Optional fine-grained read-only Contents token for TWO private repos.
+          # Without this token, use checked-in sanitized, SHA-pinned metadata
+          # snapshots and visibly mark private registry currency UNVERIFIED.
+          SOURCE_INTAKE_READ_TOKEN: ${{ secrets.SOURCE_INTAKE_READ_TOKEN }}
         run: |
           set -euo pipefail
           node scripts/ops/assemble-private-all-source-intake.mjs
