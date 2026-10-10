@@ -30,9 +30,9 @@ describe("Production Website Health current Intelligence contract", () => {
 
   it("binds displayed freshness to production evidence time rather than browser refresh time", () => {
     const hook = readFileSync("src/lib/use-intelligence.ts", "utf8");
-    expect(hook).toContain("function latestEvidenceAt(rows: IntelEvent[]): number | null");
-    expect(hook).toContain("initialData ? latestEvidenceAt(initialData.all) : null");
-    expect(hook).toContain("setUpdatedAt(latestEvidenceAt(next.all))");
+    expect(hook).toContain("function latestOriginalEvidenceAt(rows: IntelEvent[]): number | null");
+    expect(hook).toContain("initialData ? latestOriginalEvidenceAt(initialData.all) : null");
+    expect(hook).toContain("setUpdatedAt(latestOriginalEvidenceAt(next.all))");
     expect(hook).not.toContain("setUpdatedAt(Date.now())");
     expect(workflow).toContain("Browser refresh time leaked into Intelligence freshness");
   });

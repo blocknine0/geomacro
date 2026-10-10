@@ -10,8 +10,8 @@ describe("production website health validates real commercial promises", () => {
   const guide = read("src/components/commercial-access-guide.tsx");
 
   it("accepts current customer-facing text without relaxing evidence-time truth", () => {
-    expect(job).toContain("function latestEvidenceAt(rows: IntelEvent[]): number | null");
-    expect(job).toContain("setUpdatedAt(latestEvidenceAt(next.all));");
+    expect(job).toContain("function latestOriginalEvidenceAt(rows: IntelEvent[]): number | null");
+    expect(job).toContain("setUpdatedAt(latestOriginalEvidenceAt(next.all));");
     expect(job).toContain("setUpdatedAt(Date.now())");
     expect(job).toContain("Earlier assessments retain their original dates.");
     expect(intelligence).toContain("Earlier assessments retain their original dates.");

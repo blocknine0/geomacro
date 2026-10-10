@@ -18,7 +18,9 @@ describe("B2 public data parity", () => {
 
   it("does not present stale verified rows as current or promote live observations into scoring", () => {
     const source = read("src/lib/use-intelligence.ts");
-    expect(source).toContain("isCurrent: timeOf(row) >= now - DAY && timeOf(row) <= now + 5 * 60_000");
+    expect(source).toContain("isCurrent: originalEvidenceTime(row) >= now - DAY &&");
+    expect(source).toContain("originalEvidenceTime(row) <= now + 5 * 60_000");
+    expect(source).not.toContain("isCurrent: timeOf(row) >= now - DAY");
     expect(source).toContain("usedFallbackWindow = currentRows.length === 0");
     expect(source).toContain("currentScored");
     expect(source).toContain("verifiedRiskContext");

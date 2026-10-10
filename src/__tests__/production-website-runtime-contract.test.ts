@@ -135,9 +135,9 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain("iPhone; CPU iPhone OS 18_0");
 
     expect(intelligenceCard).toContain("event.publishedAt ?? event.createdAt");
-    expect(intelligenceHook).toContain("function latestEvidenceAt(rows: IntelEvent[]): number | null");
-    expect(intelligenceHook).toContain("initialData ? latestEvidenceAt(initialData.all) : null");
-    expect(intelligenceHook).toContain("setUpdatedAt(latestEvidenceAt(next.all))");
+    expect(intelligenceHook).toContain("function latestOriginalEvidenceAt(rows: IntelEvent[]): number | null");
+    expect(intelligenceHook).toContain("initialData ? latestOriginalEvidenceAt(initialData.all) : null");
+    expect(intelligenceHook).toContain("setUpdatedAt(latestOriginalEvidenceAt(next.all))");
     expect(intelligenceHook).not.toContain("setUpdatedAt(Date.now())");
     expect(intelligenceRoute).toContain("Earlier assessments retain their original dates.");
     expect(pricing).toContain("Explore for free. Choose the access that fits.");

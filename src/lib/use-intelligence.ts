@@ -100,9 +100,18 @@ function median(values: number[]): number | null {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
+// IMPORTANT: stored/restore/re-ingestion createdAt may order archived rows,
+// but NEVER attests to the native publication time of new intelligence.
+function originalEvidenceTime(e: Pick<IntelEvent, "publishedAt">): number {
+  if (typeof e.publishedAt !== "string" || !e.publishedAt.trim()) return -Infinity;
+  const ms = Date.parse(e.publishedAt);
+  return Number.isFinite(ms) ? ms : -Infinity;
+}
+
 function timeOf(e: Pick<IntelEvent, "publishedAt" | "createdAt">) {
-  const published = e.publishedAt ? new Date(e.publishedAt).getTime() : NaN;
-  if (Number.isFinite(published)) return published;
+  const original = originalEvidenceTime(e);
+  if (Number.isFinite(original)) return original;
+  // Historical archive ordering only, never current scoring or source freshness.
   const created = new Date(e.createdAt).getTime();
   return Number.isFinite(created) ? created : -Infinity;
 }
@@ -160,8 +169,12 @@ function mapPublicRows(rows: PublicIntelligenceApiRow[]): IntelEvent[] {
   });
 }
 
-function latestEvidenceAt(rows: IntelEvent[]): number | null {
-  const latest = rows.reduce((best, row) => Math.max(best, timeOf(row)), -Infinity);
+export function latestOriginalEvidenceAt(rows: IntelEvent[]): number | null {
+  // A re-created B2 row is not new evidence. Missing native dates are unknown,
+  // not "updated just now" evidence, regardless of database createdAt.
+  const latest = rows.reduce(
+    (best, row) => Math.max(best, originalEvidenceTime(row)), -Infinity,
+  );
   return Number.isFinite(latest) ? latest : null;
 }
 
@@ -170,7 +183,9 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .filter((row) => Number.isFinite(timeOf(row)) && timeOf(row) <= now + 5 * 60_000)
     .map((row) => ({
       ...row,
-      isCurrent: timeOf(row) >= now - DAY && timeOf(row) <= now + 5 * 60_000,
+      // Missing/invalid original publication time always means historical.
+      isCurrent: originalEvidenceTime(row) >= now - DAY &&
+        originalEvidenceTime(row) <= now + 5 * 60_000,
     }))
     .sort((a, b) => timeOf(b) - timeOf(a));
 
@@ -212,8 +227,8 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     : currentScored.filter(
         (r) =>
           (r.severity as number) >= med &&
-          timeOf(r) >= now - EMERGING_WINDOW &&
-          timeOf(r) <= now + 5 * 60_000,
+          originalEvidenceTime(r) >= now - EMERGING_WINDOW &&
+          originalEvidenceTime(r) <= now + 5 * 60_000,
       );
 
   const counts = new Map<string, { count: number; scoredCount: number; sum: number }>();
@@ -312,7 +327,7 @@ export function useIntelligence(
   const [status, setStatus] = useState<IntelStatus>(initialData ? "ready" : "loading");
   const [error, setError] = useState<UserError | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(() =>
-    initialData ? latestEvidenceAt(initialData.all) : null,
+    initialData ? latestOriginalEvidenceAt(initialData.all) : null,
   );
   const [reloadKey, setReloadKey] = useState(0);
   const hasData = useRef(Boolean(initialData));
@@ -350,7 +365,7 @@ export function useIntelligence(
         hasData.current = true;
         const next = build(mapped, now);
         setData(next);
-        setUpdatedAt(latestEvidenceAt(next.all));
+        setUpdatedAt(latestOriginalEvidenceAt(next.all));
         setError(null);
         setStatus("ready");
       } catch (e) {

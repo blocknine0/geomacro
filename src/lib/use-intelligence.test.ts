@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyIntelFilters,
   buildPublicIntelligence,
+  latestOriginalEvidenceAt,
 } from "./use-intelligence";
 import {
   PUBLIC_INTELLIGENCE_CATEGORIES,
@@ -110,9 +111,45 @@ describe("public intelligence recency contract", () => {
     expect(result.topRisks.map((event) => event.id)).toEqual(["republished"]);
   });
 
-  it("falls back to created_at when publication time is absent", () => {
-    const result = buildPublicIntelligence([row({ id: "recorded-only", created_at: "2026-09-22T11:45:00.000Z", published_at: null })], NOW);
-    expect(result.today.map((event) => event.id)).toEqual(["recorded-only"]);
-    expect(result.topRisks.map((event) => event.id)).toEqual(["recorded-only"]);
+  it("never promotes recently restored scored rows with missing original published_at", () => {
+    const result = buildPublicIntelligence([
+      row({
+        id: "recorded-only",
+        severity: 99,
+        delta: 30,
+        created_at: "2026-09-22T11:45:00.000Z",
+        published_at: null,
+      }),
+    ], NOW);
+    // Preserve context in the explicit archive; never make it today's risk,
+    // emerging risk, fastest-moving risk, or a fresh monitoring/evidence time.
+    expect(result.all).toEqual([expect.objectContaining({
+      id: "recorded-only", isCurrent: false, publicStatus: "verified_b2",
+    })]);
+    expect(result.today).toHaveLength(0);
+    expect(result.topRisks).toHaveLength(0);
+    expect(result.fastestMoving).toBeNull();
+    expect(result.emerging).toBeNull();
+    expect(result.usedFallbackWindow).toBe(true);
+    expect(result.verifiedRiskContext).toEqual([
+      expect.objectContaining({ id: "recorded-only", isCurrent: false }),
+    ]);
+    expect(latestOriginalEvidenceAt(result.all)).toBeNull();
+  });
+
+  it("retains older original evidence time instead of the newest B2 restore time", () => {
+    const result = buildPublicIntelligence([
+      row({ id: "missing-original", category: "geopolitics",
+        severity: 98, published_at: null, created_at: "2026-09-22T11:59:00Z" }),
+      row({ id: "real-original", category: "macro",
+        severity: 64, published_at: "2026-09-18T08:00:00Z",
+        created_at: "2026-09-22T11:58:00Z" }),
+    ], NOW);
+    expect(result.all.every((event) => !event.isCurrent)).toBe(true);
+    expect(result.today).toHaveLength(0);
+    expect(result.topRisks).toHaveLength(0);
+    expect(latestOriginalEvidenceAt(result.all)).toBe(
+      Date.parse("2026-09-18T08:00:00Z"),
+    );
   });
 });
