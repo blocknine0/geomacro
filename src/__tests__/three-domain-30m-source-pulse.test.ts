@@ -55,6 +55,7 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     expect(x.target_poll_minutes).toBe(30);
     expect(x.schedule_guaranteed).toBe(false);
     expect(x.status).toBe("THREE_DOMAIN_ORIGINAL_PUBLISHER_TRANSPORT_OBSERVED");
+    expect(x.independent_origin_pairs_healthy).toBe(true);
     expect(x.actual_original_publisher_rows.map(row=>row.domain)).toEqual(DOMAINS);
     expect(x.actual_original_publisher_rows.every(row=>row.original_publisher_30m_topic_count===2)).toBe(true);
     expect(x.actual_original_publisher_rows.every(row=>row.independent_origin_pair_transport_healthy===true)).toBe(true);
@@ -89,6 +90,7 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     expect(calls).toHaveLength(6);
     expect(r.actual_original_publisher_rows[0].publisher_failover_attempted).toBe(true);
     expect(r.actual_original_publisher_rows[0].independent_origin_pair_transport_healthy).toBe(false);
+    expect(r.independent_origin_pairs_healthy).toBe(false);
     expect(r.actual_original_publisher_rows[0].event_same_subject_independent_corroboration_verified).toBe(false);
   });
 
@@ -138,6 +140,7 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     expect(result.actual_original_publisher_rows.every(row=>row.original_publishers_successful===2)).toBe(true);
     expect(result.actual_original_publisher_rows.every(row=>row.original_publisher_30m_topic_count===4)).toBe(true);
     expect(result.actual_original_publisher_rows.every(row=>row.independent_origin_pair_transport_healthy===true)).toBe(true);
+    expect(result.independent_origin_pairs_healthy).toBe(true);
     expect(result.actual_original_publisher_rows.every(row=>row.publisher_zero_result_expansion_attempted===false)).toBe(true);
     expect(result.actual_original_publisher_rows.every(row=>row.event_same_subject_independent_corroboration_verified===false)).toBe(true);
     expect(result.independently_verified_current_intelligence_count).toBe(0);
@@ -155,6 +158,7 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     expect(x.actual_original_publisher_rows[0].status).toBe("ORIGINAL_PUBLISHER_DATE_OBSERVED");
     expect(x.actual_original_publisher_rows[0].original_publisher_30m_topic_count).toBe(0);
     expect(x.actual_original_publisher_rows[0].publisher_pair_sample_complete).toBe(false);
+    expect(x.independent_origin_pairs_healthy).toBe(false);
     expect(x.actual_original_publisher_rows[0].no_new_30m_original_topic_item_observed).toBe(false);
     expect(x.actual_original_publisher_rows[0].original_publishers_attempted).toBe(2);
     expect(x.actual_original_publisher_rows[0].original_publishers_successful).toBe(1);
