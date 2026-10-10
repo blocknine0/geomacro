@@ -50,7 +50,10 @@ const d1State = createD1ControlPlaneStateClient();
 const TASKS = [
   {
     key: "phase_a_heartbeat",
-    restrictedDirectPostgresSafe: true,
+    // Heartbeat-only still calls refreshTargets() which executes SQL INSERT/
+    // UPDATE for every country × source in frozen Supabase; NOT read-only.
+    // Its requiredEnv contains SUPABASE_DB_URL. Never run while restricted.
+    restrictedDirectPostgresSafe: false,
     cadenceSeconds: 3600,
     offsetSeconds: 300,
     priority: 9,
@@ -76,7 +79,9 @@ const TASKS = [
   },
   {
     key: "gdelt_gal",
-    restrictedDirectPostgresSafe: true,
+    // GAL imports the live structure loader, Supabase SDK and reconciliation.
+    // Having a B2 account ticket does NOT make the task Supabase-independent.
+    restrictedDirectPostgresSafe: false,
     cadenceSeconds: 900,
     offsetSeconds: 0,
     priority: 10,
@@ -416,7 +421,13 @@ async function main() {
   const disabled = [];
   for (const task of TASKS) {
     if (TASK_ALLOWLIST.size > 0 && !TASK_ALLOWLIST.has(task.key)) continue;
-    if (restrictedDataPlane && task.restrictedDirectPostgresSafe !== true) continue;
+    // Defense in depth: only D1/HTTP source-only tasks may run when frozen.
+    // A mislabeled safe flag must not unlock a Supabase-dependent task.
+    if (restrictedDataPlane &&
+        (task.restrictedDirectPostgresSafe !== true ||
+         task.requiredEnv?.some((name) => /SUPABASE|POSTGRES|PGHOST|PGUSER|PGPASSWORD/i.test(name)) ||
+         task.key === "phase_a_heartbeat" ||
+         task.key === "gdelt_gal")) continue;
     const row = rows.get(taskKey(task));
     const enabled = typeof task.enabled === "function" ? task.enabled() : true;
     let state;
