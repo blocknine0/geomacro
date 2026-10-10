@@ -119,8 +119,15 @@ describe("three official publishers' original-event RSS discovery", () => {
       return [];
     });
     const proof=await probeOfficialThreeDomains({now,fetchArticles});
-    expect(proof.all_three_feeds_reached).toBe(true);
+    // Each category function resolves, but third publisher HTTP failed.
+    // This must NOT become SOURCE_POLL_COMPLETE or a healthy fallback.
+    expect(proof.all_three_categories_checked).toBe(true);
+    expect(proof.all_three_feeds_reached).toBe(false);
+    expect(proof.publisher_transport_failure_domains).toBe(3);
+    expect(proof.status).toBe("SOURCE_POLL_DEGRADED");
     for(const row of proof.categories) {
+      expect(row.fetch_ok).toBe(true);
+      expect(row.publisher_transport_ok).toBe(false);
       expect(row.third_feed_failure_code).toBe("OFFICIAL_THIRD_HTTP_FORBIDDEN");
       expect(row.third_feed_ok).toBe(false);
       expect(row.commerce_eligible).toBe(false);
@@ -129,6 +136,34 @@ describe("three official publishers' original-event RSS discovery", () => {
     expect(proof.b2_requests).toBe(0);
     expect(proof.supabase_writes).toBe(0);
     expect(proof.funds_touched).toBe(false);
+  });
+
+  it("preserves legitimate private originals but reports one degraded publisher family", async () => {
+    const fetchArticles = vi.fn(async (category:string, {diagnostics}:{
+      diagnostics:Record<string,unknown>
+    }) => {
+      Object.assign(diagnostics, {
+        primary_feed_ok:true,alternate_feed_attempted:true,alternate_feed_ok:true,
+        third_feed_attempted:category==="rare_earth",
+        third_feed_ok:category==="rare_earth" ? false : null,
+        third_feed_failure_code:category==="rare_earth"
+          ? "ORIGINAL_FEED_NETWORK_UNAVAILABLE" : null,
+      });
+      const [c,host,title]=fixtures.find(([c])=>c===category)!;
+      return parseOfficialNativeRss(rss(title,`https://${host}/news/private-evidence`),c,now);
+    });
+    const proof=await probeOfficialThreeDomains({fetchArticles,now});
+    expect(proof.current_private_original_event_domains).toBe(3);
+    expect(proof.all_three_categories_checked).toBe(true);
+    expect(proof.all_three_feeds_reached).toBe(false);
+    expect(proof.publisher_transport_failure_domains).toBe(1);
+    expect(proof.status).toBe("SOURCE_POLL_DEGRADED");
+    expect(proof.categories.map((r:any)=>r.publisher_transport_ok))
+      .toEqual([true,true,false]);
+    expect(proof.categories.every((r:any)=>r.commerce_eligible===false)).toBe(true);
+    expect(proof.supabase_writes).toBe(0);
+    expect(proof.b2_requests).toBe(0);
+    expect(JSON.stringify(proof)).not.toContain("private-evidence");
   });
 
   it("counts actual alternate-native published tags, not the stale diagnostic alias", () => {
@@ -262,13 +297,19 @@ describe("three official publishers' original-event RSS discovery", () => {
   });
 
   it("never leaks article titles, URLs or raw upstream in the aggregate D1 scheduler receipt", async () => {
-    const fetchArticles = vi.fn(async (category: string) => {
+    const fetchArticles = vi.fn(async (category: string, {diagnostics}: {
+      diagnostics:Record<string,unknown>
+    }) => {
+      diagnostics.primary_feed_ok = true;
       const [c, host, title] = fixtures.find(([c]) => c === category)!;
       return parseOfficialNativeRss(rss(title, `https://${host}/news/private-evidence`), c, now);
     });
     const proof = await probeOfficialThreeDomains({ fetchArticles, now });
     expect(proof.current_private_original_event_domains).toBe(3);
+    expect(proof.all_three_categories_checked).toBe(true);
     expect(proof.all_three_feeds_reached).toBe(true);
+    expect(proof.publisher_transport_failure_domains).toBe(0);
+    expect(proof.status).toBe("SOURCE_POLL_COMPLETE");
     expect(proof.proves_public_scored_intelligence).toBe(false);
     expect(proof.supabase_writes).toBe(0);
     expect(proof.b2_requests).toBe(0);
