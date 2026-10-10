@@ -57,6 +57,11 @@ export function clusterPrivateIndependentEventCandidates({
   const groups=new Map();
   const articleUnique=new Set();
   const observedPositions=new Map();
+  // A single original byte-for-byte article cannot silently stand for two
+  // different precisely identified event claims in the *same batch*.
+  // Reject ambiguous cross-claim reuse instead of discarding the later
+  // structured claim by first-seen insertion order.
+  const articleClaimBindings=new Map();
   for(const c of candidates) {
     if(!c||typeof c!=="object"||Array.isArray(c)||
       !isCanonicalSameEventIdentity(c.category,c.event)||
@@ -76,6 +81,10 @@ export function clusterPrivateIndependentEventCandidates({
     const occurred=epoch(c.event.occurred_at,nowMs);
     if(time<occurred-5*60000)reject();
     const articleKey=org+"|"+c.original_article_sha256;
+    const priorClaim=articleClaimBindings.get(articleKey);
+    if(priorClaim!==undefined&&priorClaim!==c.same_event_claim_sha256)
+      reject();
+    articleClaimBindings.set(articleKey,c.same_event_claim_sha256);
     // Two contradictory dispositions of IDENTICAL bytes are impossible as
     // independent evidence. Refuse to mask a retraction behind the earlier
     // duplicate and never infer independence from publisher URL aliases.
