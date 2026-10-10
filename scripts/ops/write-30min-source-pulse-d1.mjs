@@ -58,7 +58,8 @@ export async function write30MinSourcePulseToD1({
   createClient=createD1ControlPlaneStateClient,
 }){
   const rows=projectSourcePulseForD1(report);
-  if(!process.env.D1_DATABASE_ID) {
+  // The in-memory injected client for tests needs no live Cloudflare account.
+  if(createClient===createD1ControlPlaneStateClient && !process.env.D1_DATABASE_ID) {
     const account=String(process.env.CLOUDFLARE_ACCOUNT_ID||"").trim();
     const token=String(process.env.CLOUDFLARE_API_TOKEN||"").trim();
     if(!account||!token)throw Error("SOURCE_PULSE_CLOUDFLARE_ACCESS_MISSING");
