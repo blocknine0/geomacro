@@ -11,6 +11,15 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const FUTURE_SKEW_MS = 5 * 60 * 1000;
 export const NOAA_END_LAG_DAYS = 2;
 export const NOAA_LOOKBACK_DAYS = 14;
+/**
+ * NOAA CDO /data defaults to the first 25 returned records, which sampled
+ * only the OLDEST 2026-09-24 measurements in a Sep 24-Oct 8 window.
+ * Query exactly one native DATE at a time, newest-first; 4 bounded attempts
+ * at most and ZERO B2 requests until both EIA+NOAA batches qualify.
+ * Dates are provider measurement days, never original article published_at.
+ */
+export const NOAA_NATIVE_DAY_SAMPLE_OFFSETS = Object.freeze([2, 5, 9, 14]);
+
 
 function requireValid(condition, reason) {
   if (!condition) throw new Error(reason);
@@ -32,6 +41,48 @@ export function noaaRollingNativeWindow({ now = new Date() } = {}) {
     lookback_days: NOAA_LOOKBACK_DAYS,
     availability_lag_days: NOAA_END_LAG_DAYS,
   };
+}
+
+export function noaaLatestNativeDayCandidates({now=new Date()}={}) {
+  const window=noaaRollingNativeWindow({now});
+  const midnight=Date.UTC(now.getUTCFullYear(),
+    now.getUTCMonth(),now.getUTCDate());
+  const dates=NOAA_NATIVE_DAY_SAMPLE_OFFSETS.map(offset=>
+    new Date(midnight-offset*DAY_MS).toISOString().slice(0,10));
+  requireValid(dates.length===4 &&
+    new Set(dates).size===dates.length &&
+    dates.every((date,i)=>
+      date>=window.startdate && date<=window.enddate &&
+      (i===0 || date<dates[i-1])),
+    "GOVERNED_NOAA_BOUNDED_DAY_SELECTION_INVALID");
+  return dates;
+}
+
+/** Require the provider to return only records for the exact requested date.
+ * An empty day means not yet available, NOT a new signal or a zero reading. */
+export function validateNoaaNativeDailyRows(rows,day) {
+  requireValid(typeof day==="string" &&
+    /^\\d{4}-\\d{2}-\\d{2}$/u.test(day) &&
+    Number.isFinite(Date.parse(day)) &&
+    Array.isArray(rows) && rows.length<=25,
+    "GOVERNED_NOAA_DAY_RESPONSE_INVALID");
+  if(!rows.length)return [];
+  requireValid(rows.every(row=>
+    row && typeof row==="object" &&
+    typeof row.date==="string" &&
+    row.date.slice(0,10)===day &&
+    Number.isFinite(Date.parse(row.date)) &&
+    new Date(Date.parse(row.date)).toISOString().slice(0,10)===day &&
+    typeof row.station==="string" &&
+    row.station.length>=4 && row.station.length<=128 &&
+    typeof row.datatype==="string" &&
+    /^[A-Z0-9]{2,12}$/u.test(row.datatype) &&
+    row.value!==null && row.value!==undefined &&
+    (typeof row.value==="number" || typeof row.value==="string") &&
+    String(row.value).trim()!=="" &&
+    Number.isFinite(Number(row.value))),
+    "GOVERNED_NOAA_NATIVE_DAY_PROVENANCE_INVALID");
+  return rows;
 }
 
 export function sourceNativeMeasurementTime(value, sourceId, {
