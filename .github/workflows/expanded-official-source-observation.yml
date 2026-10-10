@@ -11,7 +11,7 @@ on:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - ".github/workflows/expanded-official-source-observation.yml"
   schedule:
-    # Four bounded cycles/day, four GETs/cycle; complement existing hourly
+    # Four bounded cycles/day, six GETs/cycle; complement existing hourly
     # original-source probe without depleting Actions or B2 free quotas.
     - cron: "17 0,6,12,18 * * *"
   workflow_dispatch:
@@ -42,7 +42,7 @@ jobs:
           proof=artifacts/expanded-official-source/transport.json
           jq -e '
             .schema == "geomacro.expanded-official-source-observation.v1" and
-            (.sources|length)==4 and
+            (.sources|length)==6 and
             .domains_observed==["geopolitics","macro","rare_earth"] and
             .globally_current_scored_coverage_verified == false and
             .verified_country_count==0 and
