@@ -44,7 +44,9 @@ export function select30MinPublishers(now=new Date()) {
     // Two sources per 30m window. A third independent minerals publisher
     // rotates into the pair, rather than tripling per-run origin GET traffic.
     const idx=slot%pair.length;
-    return [domain,[lookup[pair[idx]],lookup[pair[(idx+1)%pair.length]]];
+    const current=lookup[pair[idx]];
+    const next=lookup[pair[(idx+1)%pair.length]];
+    return [domain,[current,next]];
   }));
 }
 function safeInt(x) {return Number.isSafeInteger(x)&&x>=0?x:null}
