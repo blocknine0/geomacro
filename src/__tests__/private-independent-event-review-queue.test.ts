@@ -74,7 +74,13 @@ describe("#1827 private source-native same-event candidate queue",()=>{
     expect(duplicated.review_candidates[0].independent_origin_count).toBe(1);
     const copied=grouped([fed,{...ecb,original_article_sha256:fed.original_article_sha256}]);
     expect(copied.review_candidates[0].state).toBe("SAME_CONTENT");
-    const tooSpread=grouped([fed,{...ecb,original_published_at:"2026-10-10T08:33:00Z"}]);
+    const earlier={...event,occurred_at:"2026-10-10T07:20:00Z"};
+    const earlierHash=sameEventClaimHash("macro",earlier);
+    const tooSpread=grouped([
+      {...fed,event:earlier,same_event_claim_sha256:earlierHash,
+        original_published_at:"2026-10-10T08:30:00Z"},
+      {...ecb,event:earlier,same_event_claim_sha256:earlierHash},
+    ]);
     expect(tooSpread.review_candidates[0].state).toBe("TEMPORAL_SPREAD");
   });
   it("holds one verified original or zero originals as UNQUALIFIED",()=>{
