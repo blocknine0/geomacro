@@ -27,6 +27,9 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     id:"eurostat_stats_update_official_rss_review",
     domain:"macro",kind:"statistical_dataset_release",
     url:"https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/en/statistics-update.rss",
+    // Same originating publisher, NOT independent corroboration. One alternate
+    // only for a primary 404 or server-side error (never a 401/403/429 bypass).
+    alternate_url:"https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/de/statistics-update.rss",
     media:"rss",rights:"UNVERIFIED",poll:"six_hourly",
     event_intelligence:false,country_coverage_verified:false,
   }),
@@ -97,22 +100,31 @@ export async function probeExpandedSource(source,{
     publisher_reachable:false,format_valid:false,
     source_native_release_items:null,source_native_24h_release_items:null,
     topical_private_release_links_24h:null,
+    official_locale_fallback_attempted:false,
+    official_locale_fallback_used:false,
     same_event_independent_corroboration_verified:false,
     source_native_release_is_scored_event:false,
     country_coverage_verified:false,commercial_rights_verified:false,
     current_scored_intelligence_verified:false,
     commercial_eligible:false,reason:"TRANSPORT_UNAVAILABLE",
   };
+  const fetchOfficial=async url=>fetchImpl(url,{
+    redirect:"error",
+    signal:AbortSignal.timeout(timeoutMs),
+    headers:{accept:source.media==="rss"
+      ?"application/rss+xml, application/xml;q=0.9, text/xml;q=0.8"
+      :"application/json","user-agent":"Geomacro-Official-Expanded-Source-Private-Monitor/1.0"},
+  });
   let response;
-  try {
-    response=await fetchImpl(source.url,{
-      redirect:"error",
-      signal:AbortSignal.timeout(timeoutMs),
-      headers:{accept:source.media==="rss"
-        ?"application/rss+xml, application/xml;q=0.9, text/xml;q=0.8"
-        :"application/json","user-agent":"Geomacro-Official-Expanded-Source-Private-Monitor/1.0"},
-    });
-  }catch{return row;}
+  try{response=await fetchOfficial(source.url);}catch{return row;}
+  // Documented language variant at the SAME official publisher. Do not
+  // retry on 401/403/429, network/redirect error or MIME/body/shape rejection.
+  // Strictly one extra request; primary or alternate stays fail-closed.
+  if(source.alternate_url && (response.status===404 ||
+    (response.status>=500 && response.status<=599))){
+    row.official_locale_fallback_attempted=true;
+    try{response=await fetchOfficial(source.alternate_url);}catch{return row;}
+  }
   if(!response.ok) {
     row.reason=response.status===429?"PUBLISHER_RATE_LIMITED":
       response.status===401||response.status===403?"PUBLISHER_DENIED":"PUBLISHER_HTTP_NOT_OK";
@@ -149,6 +161,7 @@ export async function probeExpandedSource(source,{
   if(!valid){row.reason="SOURCE_SHAPE_UNVERIFIED";return row;}
   row.publisher_reachable=true;
   row.format_valid=true;
+  row.official_locale_fallback_used=row.official_locale_fallback_attempted;
   row.reason="PRIVATE_SOURCE_TRANSPORT_ONLY";
   if(counts){
     row.source_native_release_items=counts.native_dated;
