@@ -122,6 +122,44 @@ describe("bounded original-publisher article precise-date fallback", () => {
     expect(denied).toEqual({code:"URL_UNAPPROVED"});
   });
 
+  it("restricts new UK FCDO, Fed and USGS HTML date fallbacks to fixed first-party article paths",async()=>{
+    const valid=[
+      ["geopolitics","https://www.gov.uk/government/news/uk-foreign-policy-security-statement"],
+      ["macro","https://www.federalreserve.gov/newsevents/pressreleases/monetary20261009a.htm"],
+      ["rare_earth","https://www.usgs.gov/news/national-news-release/critical-minerals-supply-chain"],
+    ] as const;
+    const timestamp="2026-10-09T12:45:00Z";
+    const fetchImpl=vi.fn(async(url:string,opts:RequestInit)=>{
+      expect(valid.some(([,value])=>value===url)).toBe(true);
+      expect(opts.redirect).toBe("error");
+      return new Response(page(timestamp),{headers:{"content-type":"text/html"}});
+    });
+    for(const [domain,url] of valid){
+      expect(await fetchVerifiedPublisherPageDate(url,domain,{
+        now,fetchImpl,
+      })).toBe("2026-10-09T12:45:00.000Z");
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    for(const [domain,url] of valid){
+      for(const attempted of [
+        url.replace("https://","http://"),
+        url.replace("https://www.","https://www.evil."),
+        url+"?forward=https://evil.example",
+        url+"#section",
+      ]){
+        expect(await fetchVerifiedPublisherPageDate(attempted,domain,{
+          now,fetchImpl,
+        })).toBeNull();
+      }
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    for(const [domain,url] of valid){
+      expect(await fetchVerifiedPublisherPageDate(url,"macro"===domain
+        ?"rare_earth":"macro",{now,fetchImpl})).toBeNull();
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
   it("uses a maximum two original publisher pages; outputs only private derived evidence", async () => {
     const third = "https://www.canada.ca/en/natural-resources-canada/news/2026/10/third-project.html";
     const fetchImpl = vi.fn()
