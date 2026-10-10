@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { fetchBoundedNoFunds } from "./bounded-live-x402-no-funds-fetch.mjs";
 const BASE = "https://geomacro.live";
 const URL = `${BASE}/api/x402/risk/availability`;
 const BASE_SEPOLIA_NETWORK = "eip155:84532";
@@ -144,7 +145,7 @@ async function main() {
     throw new Error(`representative global x402 preflight is missing regions: ${missingRegions.join(",")}`);
   }
 
-  const discoveryResponse = await fetch(`${BASE}/.well-known/x402.json`, {
+  const discoveryResponse = await fetchBoundedNoFunds(`${BASE}/.well-known/x402.json`, {
     method: "GET",
     headers: { accept: "application/json" },
     redirect: "error",
@@ -169,7 +170,7 @@ async function main() {
   let allAvailableCasesTestnetOnly = true;
 
   for (const testCase of cases) {
-    const response = await fetch(URL, {
+    const response = await fetchBoundedNoFunds(URL, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify(testCase.body),
