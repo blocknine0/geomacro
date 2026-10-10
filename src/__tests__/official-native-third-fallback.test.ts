@@ -12,26 +12,32 @@ import {
 
 const now = new Date("2026-10-09T18:10:00.000Z");
 const title: Record<string,string> = {
-  geopolitics:"United Nations Security Council discusses ceasefire after border conflict",
+  geopolitics:"United Kingdom Foreign Secretary statement on ceasefire after border conflict",
   macro:"European Central Bank discusses inflation and interest rates in the euro area",
   rare_earth:"USGS releases assessment of critical minerals deposits and lithium reserves",
 };
 const url: Record<string,string> = {
-  geopolitics:"https://www.ungeneva.org/en/news-media/press/2026/10/latest-security",
+  geopolitics:"https://www.gov.uk/government/news/uk-foreign-policy-security-statement",
   macro:"https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp261009.en.html",
   rare_earth:"https://www.usgs.gov/news/national-news-release/minerals-lithium",
 };
 const rss=(category:string,link=url[category],pubdate="Fri, 09 Oct 2026 17:55:00 GMT",
   headline=title[category])=>
-  '<rss version="2.0"><channel><item><title>'+headline+
-  '</title><link>'+link+'</link><pubDate>'+pubdate+
-  '</pubDate></item></channel></rss>';
+  category==="geopolitics"
+    ? '<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>'+headline+
+      '</title><link rel="alternate" href="'+link+'"/>'+
+      '<published>'+(Number.isFinite(Date.parse(pubdate))?
+        new Date(pubdate).toISOString():pubdate)+
+      '</published></entry></feed>'
+    : '<rss version="2.0"><channel><item><title>'+headline+
+      '</title><link>'+link+'</link><pubDate>'+pubdate+
+      '</pubDate></item></channel></rss>';
 const emptyRss='<rss version="2.0"><channel></channel></rss>';
 const emptyAtom='<feed xmlns="http://www.w3.org/2005/Atom"></feed>';
 const res=(body:string,type="application/rss+xml")=>
   new Response(body,{headers:{"content-type":type}});
 
-describe("#1827 three-domain third publisher cold-source RSS",()=>{
+describe("#1827 three-domain third publisher RSS/Atom strict private originals",()=>{
   it.each(["geopolitics","macro","rare_earth"])(
     "%s accepts ONLY original native-published current article, private/unlicensed",
     domain=>{
@@ -41,7 +47,7 @@ describe("#1827 three-domain third publisher cold-source RSS",()=>{
       expect(rows[0]).toMatchObject({
         sourceDomain:OFFICIAL_NATIVE_THIRD_FEEDS[domain].host,
         publishedAt:"2026-10-09T17:55:00.000Z",
-        nativeTimeEvidence:"publisher_rss_item_pubDate",
+        nativeTimeEvidence:domain==="geopolitics"?"publisher_atom_entry_published":"publisher_rss_item_pubDate",
         discoveryProvider:"official_native_rss",
         nativePublishedAtVerified:true,privateOnly:true,
         rightsVerified:false,commercialEligible:false,
@@ -86,6 +92,53 @@ describe("#1827 three-domain third publisher cold-source RSS",()=>{
       "geopolitics",{now})).toThrow("OFFICIAL_THIRD_RSS_INVALID");
   });
 
+  it("gates UK FCDO Atom on native original published, never updated, forged host or future",()=>{
+    const valid=parseOfficialThirdRss(rss("geopolitics"),"geopolitics",{now});
+    expect(valid).toHaveLength(1);
+    expect(valid[0].sourceDomain).toBe("www.gov.uk");
+    expect(valid[0].nativeTimeEvidence).toBe("publisher_atom_entry_published");
+    const future=rss("geopolitics",url.geopolitics,"Fri, 09 Oct 2026 18:12:00 GMT");
+    expect(parseOfficialThirdRss(future,"geopolitics",{now})).toHaveLength(0);
+    const forged=rss("geopolitics","https://www.gov.uk.evil.test/government/news/unsafe");
+    expect(parseOfficialThirdRss(forged,"geopolitics",{now})).toHaveLength(0);
+    const updatedOnly=rss("geopolitics")
+      .replace("<published>2026-10-09T17:55:00.000Z</published>",
+        "<updated>2026-10-09T17:55:00.000Z</updated>");
+    expect(parseOfficialThirdRss(updatedOnly,"geopolitics",{now})).toHaveLength(0);
+  });
+  it("bounded same-original GOV.UK datePublished rescues only missing Atom publication",async()=>{
+    const atom='<feed><entry><title>UK Foreign Secretary conflict and ceasefire statement</title>'+
+      '<updated>2026-10-09T18:09:00Z</updated>'+
+      '<link rel="alternate" href="'+url.geopolitics+'"/></entry></feed>';
+    const fetched:string[]=[];
+    const page="<html><head><meta property='article:published_time' "+
+      "content='2026-10-09T17:55:00Z'/></head></html>";
+    const fetchImpl=vi.fn(async(u:string,options:RequestInit)=>{
+      fetched.push(u);
+      expect(options.redirect).toBe("error");
+      if(u===OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url)
+        return res(atom,"application/atom+xml");
+      if(u===url.geopolitics)return res(page,"text/html");
+      throw Error("NO_ARBITRARY_OFFICIAL_URL");
+    });
+    const counts:Record<string,number>={};
+    const admitted=await fetchOfficialThirdPublisherArticles("geopolitics",{
+      now,fetchImpl,diagnostics:counts,maxAgeMs:6*60*60*1000,
+    });
+    expect(fetched).toEqual([OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url,url.geopolitics]);
+    expect(admitted).toHaveLength(1);
+    expect(admitted[0]).toMatchObject({privateOnly:true,commercialEligible:false,
+      nativePublishedAtVerified:true,
+      nativeTimeEvidence:"publisher_original_article_datePublished"});
+    expect(counts.third_original_page_date_checks).toBe(1);
+    expect(counts.third_original_page_date_admitted).toBe(1);
+    const noDate=await fetchOfficialThirdPublisherArticles("geopolitics",{
+      now,maxAgeMs:6*60*60*1000,
+      fetchImpl:async(u:string)=>u===OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url?
+        res(atom,"application/atom+xml"):res("<html>no native time</html>","text/html"),
+    });
+    expect(noDate).toEqual([]);
+  });
   it("only fetches third source if BOTH first and second have no eligible original events",async()=>{
     const requests:string[]=[];
     const fetchImpl=vi.fn(async (u:string)=>{
