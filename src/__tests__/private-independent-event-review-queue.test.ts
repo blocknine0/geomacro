@@ -22,6 +22,7 @@ const fed={
   original_publisher_url_verified:true,
   independently_authored_reporting_verified:true,
   syndicated_from:null,commercial_eligible:false,
+  reporting_position:"confirms",
   original_article_sha256:sha("fed-original-article-body"),
   original_published_at:"2026-10-10T10:05:00Z",
 };
@@ -83,6 +84,35 @@ describe("#1827 private source-native same-event candidate queue",()=>{
     ]);
     expect(tooSpread.review_candidates[0].state).toBe("TEMPORAL_SPREAD");
   });
+  it("vetoes paid qualification when any credible original contradicts or retracts the exact claim",()=>{
+    const case1=grouped([fed,ecb,{
+      ...fed,original_article_url:
+        "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261010b.htm",
+      original_article_sha256:sha("independent later correction"),
+      original_published_at:"2026-10-10T10:20:00Z",
+      reporting_position:"retracts",
+    }]);
+    expect(case1.review_candidates[0]).toMatchObject({
+      state:"MATERIAL_CONTRADICTION",
+      confirming_origin_count:2,
+      retracting_origin_count:1,
+      materially_disputed_or_retracted:true,
+      commercial_eligible:false,
+    });
+    const case2=grouped([fed,{...ecb,reporting_position:"disputes"}]);
+    expect(case2.review_candidates[0]).toMatchObject({
+      state:"MATERIAL_CONTRADICTION",
+      confirming_origin_count:1,
+      disputing_origin_count:1,
+      commercial_eligible:false,
+    });
+    for(const row of [case1,case2]){
+      expect(row.paid_data_eligible).toBe(false);
+      expect(JSON.stringify(row)).not.toContain("federalreserve.gov");
+      expect(JSON.stringify(row)).not.toContain("ecb.europa.eu");
+      expect(JSON.stringify(row)).not.toContain("monetary20261010");
+    }
+  });
   it("holds one verified original or zero originals as UNQUALIFIED",()=>{
     expect(grouped([])).toMatchObject({matched_event_claims:0,paid_data_eligible:false});
     expect(grouped([fed]).review_candidates[0].state).toBe("SINGLE_ORIGIN");
@@ -101,6 +131,8 @@ describe("#1827 private source-native same-event candidate queue",()=>{
       {...fed,syndicated_from:"some-other-wire"},
       {...fed,private_only:false},
       {...fed,commercial_eligible:true},
+      {...fed,reporting_position:"synthetic"},
+      {...fed,reporting_position:null},
       {...fed,original_published_at:"2026-10-11T10:05:00Z"},
       {...fed,original_published_at:"2026-10-09T02:05:00Z"},
       {...fed,same_event_claim_sha256:sha("unrelated-event")},
