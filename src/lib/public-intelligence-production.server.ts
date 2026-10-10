@@ -31,8 +31,14 @@ function rowTime(row: Pick<PublicIntelligenceRow, "published_at" | "created_at">
   return Number.isFinite(created) ? created : -Infinity;
 }
 
+// Freshness is ALWAYS from the original published event, never the date the
+// same historical row was re-ingested, restored from B2 or re-generated.
+function originalPublishedTime(row: Pick<PublicIntelligenceRow, "published_at">): number {
+  const time = Date.parse(String(row.published_at ?? ""));
+  return Number.isFinite(time) ? time : -Infinity;
+}
 function newestAt(rows: Array<Pick<PublicIntelligenceRow, "published_at" | "created_at">>): string | null {
-  const latest = rows.reduce((best, row) => Math.max(best, rowTime(row)), -Infinity);
+  const latest = rows.reduce((best, row) => Math.max(best, originalPublishedTime(row)), -Infinity);
   return Number.isFinite(latest) ? new Date(latest).toISOString() : null;
 }
 
@@ -53,7 +59,7 @@ function normalizedLiveObservedRow(
   if (row.public_status !== "live_observed") return null;
   const category = String(row.category ?? "").trim().toLowerCase();
   const title = String(row.source_title ?? "").replace(/\s+/g, " ").trim();
-  const timestamp = rowTime(row);
+  const timestamp = originalPublishedTime(row);
   if (
     category !== "geopolitics" ||
     !title.startsWith(LIVE_TITLE_PREFIX) ||
@@ -106,8 +112,8 @@ function hasCurrentScoredCoverage(
     if (row.public_status !== "verified_b2" || row.severity === null) continue;
     const category = String(row.category ?? "").toLowerCase();
     if (!(REQUIRED_CATEGORIES as readonly string[]).includes(category)) continue;
-    const timestamp = rowTime(row);
-    if (!Number.isFinite(timestamp) || timestamp > now + 5 * 60_000) continue;
+    const timestamp = originalPublishedTime(row);
+    if (!Number.isFinite(timestamp) || timestamp > now) continue;
     latest.set(category, Math.max(latest.get(category) ?? -Infinity, timestamp));
   }
   return REQUIRED_CATEGORIES.every((category) => {
@@ -144,8 +150,10 @@ export async function readProductionPublicIntelligence(): Promise<ProductionPubl
 
   const newest = newestAt(rows);
   const newestMs = newest ? Date.parse(newest) : -Infinity;
-  const currentWithin24h =
-    Number.isFinite(newestMs) && newestMs <= Date.now() + 5 * 60_000 && Date.now() - newestMs <= DAY_MS;
+  // Three-domain public freshness can never be certified by ONE recent
+  // geopolitical story while Macro/FX or Critical Minerals is historical.
+  const currentWithin24h = scoredCurrentAcrossAllDomains &&
+    Number.isFinite(newestMs) && newestMs <= Date.now() && Date.now() - newestMs <= DAY_MS;
 
   return {
     rows,

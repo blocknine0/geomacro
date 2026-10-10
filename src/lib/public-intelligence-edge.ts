@@ -110,7 +110,8 @@ export function buildVerifiedIntelligenceApiPayload(
   const scored = verifiedEdgeRows.filter((r) => r.public_status === "verified_b2");
   const latestScoredByDomain = new Map<string, number>();
   for (const row of verifiedEdgeRows) {
-    const timestamp = Date.parse(row.published_at ?? row.created_at);
+    // The archive/write clock is NOT an originating event clock.
+    const timestamp = Date.parse(String(row.published_at ?? ""));
     if (!Number.isFinite(timestamp) || timestamp > now + 5 * 60_000) continue;
     if (row.public_status === "verified_b2") {
       const category = String(row.category);
@@ -125,8 +126,8 @@ export function buildVerifiedIntelligenceApiPayload(
   );
   const rows = currentAcrossDomains ? scored : verifiedEdgeRows;
   const newestAt = rows.reduce((latest, row) => {
-    const timestamp = Date.parse(row.published_at ?? row.created_at);
-    return Number.isFinite(timestamp) && timestamp <= now + 5 * 60_000
+    const timestamp = Date.parse(String(row.published_at ?? ""));
+    return Number.isFinite(timestamp) && timestamp <= now
       ? Math.max(latest, timestamp)
       : latest;
   }, -Infinity);
@@ -139,7 +140,9 @@ export function buildVerifiedIntelligenceApiPayload(
     verified_rows: scored.length,
     live_observed_rows: liveCount,
     newest_at: Number.isFinite(newestAt) ? new Date(newestAt).toISOString() : null,
-    current_within_24h: Number.isFinite(newestAt) &&
+    // Public 'current' means current scored evidence in ALL three domains,
+    // not merely the newest article from any one category.
+    current_within_24h: currentAcrossDomains && Number.isFinite(newestAt) &&
       newestAt >= now - 24 * 60 * 60 * 1000,
     generated_at: new Date(now).toISOString(),
   };

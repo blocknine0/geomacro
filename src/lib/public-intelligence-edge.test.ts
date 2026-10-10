@@ -125,6 +125,60 @@ describe("verified Intelligence edge-first preview recovery", () => {
     expect(fallback.live_observed_rows).toBe(0);
   });
 
+  it("does not relabel an old or undated event as current after a fresh B2 restore", () => {
+    const archivedToday = categories.map((c) => verified(c, {
+      // Current archive/rebuild timestamp is not an event publication clock.
+      created_at: "2026-10-08T09:59:00Z",
+      published_at: null,
+    }));
+    const received = parseVerifiedIntelligenceEdgePayload(payload(archivedToday), NOW);
+    expect(received).toHaveLength(3); // historical verified data remains readable
+    const fromEdge = buildVerifiedIntelligenceApiPayload(received, NOW);
+    expect(fromEdge.current_within_24h).toBe(false);
+    expect(fromEdge.newest_at).toBeNull();
+    expect(fromEdge.rows).toHaveLength(3);
+    expect(fromEdge.mode).toBe("verified_b2");
+
+    const oldOriginal = categories.map((c) => verified(c, {
+      created_at: "2026-10-08T09:59:00Z",
+      published_at: "2026-10-04T07:00:00Z",
+    }));
+    const stale = buildVerifiedIntelligenceApiPayload(
+      parseVerifiedIntelligenceEdgePayload(payload(oldOriginal), NOW), NOW);
+    expect(stale.current_within_24h).toBe(false);
+    expect(stale.newest_at).toBe("2026-10-04T07:00:00.000Z");
+    expect(stale.verified_rows).toBe(3);
+    expect(JSON.stringify(stale)).not.toMatch(/source_url|raw_payload|publisher_host/u);
+  });
+
+  it("rejects future-published row freshness even when archive/retrieval is current", () => {
+    const rows = categories.map((c) => verified(c, {
+      created_at: "2026-10-08T09:55:00Z",
+      published_at: "2026-10-09T06:00:00Z",
+    }));
+    const response = buildVerifiedIntelligenceApiPayload(
+      parseVerifiedIntelligenceEdgePayload(payload(rows), NOW), NOW);
+    expect(response.current_within_24h).toBe(false);
+    expect(response.newest_at).toBeNull();
+  });
+
+  it("never calls the combined 3-domain feed current when just one category is fresh", () => {
+    const rows = [
+      verified("geopolitics", { published_at: "2026-10-08T09:55:00Z" }),
+      verified("macro", { published_at: "2026-10-07T08:00:00Z" }),
+      verified("rare_earth", { published_at: "2026-10-06T06:00:00Z" }),
+    ];
+    const projected = buildVerifiedIntelligenceApiPayload(
+      parseVerifiedIntelligenceEdgePayload(payload(rows), NOW), NOW);
+    expect(projected.newest_at).toBe("2026-10-08T09:55:00.000Z");
+    expect(projected.current_within_24h).toBe(false);
+    expect(projected.verified_rows).toBe(3);
+    expect(projected.rows).toHaveLength(3); // historical derived rows retained
+    const allCurrent = buildVerifiedIntelligenceApiPayload(
+      parseVerifiedIntelligenceEdgePayload(payload(), NOW), NOW);
+    expect(allCurrent.current_within_24h).toBe(true);
+  });
+
   it("filters unsafe editorial labels rather than showing source prose", () => {
     const rows = categories.map((c) => verified(c));
     rows[0] = verified("geopolitics", {
