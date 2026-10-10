@@ -85,6 +85,57 @@ export function validateNoaaNativeDailyRows(rows,day) {
   return rows;
 }
 
+/**
+ * Pure-provider adapter (explicit injectable fetch): never a B2 operation.
+ * Exactly one native observation-day per NOAA CDO query. Stop at the most
+ * recent available day; if no day is reported, fail closed BEFORE B2 PUT.
+ * HTTP 401/403/429/5xx and wrong MIME/data contracts are not retried into
+ * a misleading "current" statistical measurement.
+ */
+export async function fetchNoaaLatestNativeDayRows({
+  now=new Date(),
+  token,
+  fetchImpl=fetch,
+}={}) {
+  requireValid(typeof token==="string" && token.trim().length>0 &&
+    typeof fetchImpl==="function",
+    "GOVERNED_NOAA_CREDENTIAL_OR_FETCH_INVALID");
+  const dates=noaaLatestNativeDayCandidates({now});
+  let attempts=0;
+  for(const day of dates) {
+    attempts+=1;
+    const params=new URLSearchParams({
+      datasetid:"GHCND",locationid:"FIPS:US",
+      startdate:day,enddate:day,limit:"25",
+    });
+    const url=`https://www.ncei.noaa.gov/cdo-web/api/v2/data?${params}`;
+    const response=await fetchImpl(url,{
+      headers:{token},signal:AbortSignal.timeout(30_000),
+    });
+    if(!response?.ok) {
+      const status=Number(response?.status);
+      throw new Error(
+        Number.isInteger(status) && status>=100 && status<=599
+          ? `NOAA_NCEI_HTTP_${status}` : "NOAA_NCEI_TRANSPORT_INVALID");
+    }
+    let body;
+    try {body=await response.json();}
+    catch {throw new Error("GOVERNED_NOAA_PROVIDER_JSON_INVALID");}
+    requireValid(body && typeof body==="object" &&
+      !Array.isArray(body) &&
+      (body.results===undefined || Array.isArray(body.results)),
+      "GOVERNED_NOAA_PROVIDER_ROWS_INVALID");
+    const rows=validateNoaaNativeDailyRows(body.results??[],day);
+    if(rows.length) {
+      return {rows,source_native_day:day,provider_http_requests:attempts,
+        publisher_article_published_at_verified:false,
+        current_intelligence_available:false,
+        commercial_eligible:false};
+    }
+  }
+  throw new Error("NOAA_NCEI_NO_RECENT_NATIVE_DAY_ROWS");
+}
+
 export function sourceNativeMeasurementTime(value, sourceId, {
   now = new Date(),
 } = {}) {
