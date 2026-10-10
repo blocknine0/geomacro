@@ -83,6 +83,70 @@ describe("original publisher alternate feed with source-native Atom dates", () =
       "2026-10-09T12:15:00Z");
     expect(parseOfficialAlternate(ca, "macro", now)).toHaveLength(1);
   });
+  it("accepts only exact-rooted StatCan Daily Atom href as a trusted original article path",()=>{
+    const headline="Consumer price inflation accelerates in September in Canada";
+    const relative="/n1/daily-quotidien/261009/abc-eng.htm";
+    const counts:Record<string,number>={};
+    const rows=parseOfficialAlternate(
+      atom(headline,relative,"2026-10-09T12:15:00Z"),"macro",now,counts);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      url:"https://www150.statcan.gc.ca"+relative,
+      sourceDomain:"www150.statcan.gc.ca",
+      publishedAt:"2026-10-09T12:15:00.000Z",
+      nativeTimeEvidence:"publisher_atom_entry_published",
+      privateOnly:true,rightsVerified:false,commercialEligible:false,
+    });
+    expect(counts.alternate_statcan_exact_root_relative_items).toBe(1);
+    expect(counts.alternate_other_relative_href_rejected_items).toBe(0);
+    for(const unsafe of [
+      "//www150.statcan.gc.ca/n1/daily-quotidien/261009/abc-eng.htm",
+      "/n1/daily-quotidien/261009/../abc-eng.htm",
+      "/n1/daily-quotidien/261009/abc-eng.htm?next=evil.example",
+      "/n1/daily-quotidien/261009/%2e%2e%2fsecret.htm",
+      "/n1/daily-quotidien/261009/ABC-eng.htm",
+      "/random/daily-report.htm",
+      "https://www150.statcan.gc.ca.evil.example/n1/daily-quotidien/261009/abc-eng.htm",
+    ]) {
+      expect(parseOfficialAlternate(
+        atom(headline,unsafe,"2026-10-09T12:15:00Z"),"macro",now))
+        .toHaveLength(0);
+    }
+  });
+
+  it("hydrates StatCan updated-only relative link only with precise original article date",async()=>{
+    const relative="/n1/daily-quotidien/261009/abc-eng.htm";
+    const headline="Consumer price inflation accelerates in September in Canada";
+    const xml=atom(headline,relative,"").replace("<published></published>","");
+    const article='<html><head><meta property="article:published_time" content="2026-10-09T12:15:00Z"></head></html>';
+    const urls:string[]=[];
+    const fetchImpl=vi.fn(async (u:string)=>{
+      urls.push(u);
+      if(u===ORIGINAL_PUBLISHER_ALTERNATES.macro.url)
+        return new Response(xml,{headers:{"content-type":"application/atom+xml"}});
+      if(u==="https://www150.statcan.gc.ca"+relative)
+        return new Response(article,{headers:{"content-type":"text/html"}});
+      throw Error("NO_THIRD_PARTY_OR_REDIRECT_ALLOWED");
+    });
+    const diagnostics:Record<string,number>={};
+    const rows=await fetchOriginalAlternate("macro",{now,fetchImpl,diagnostics});
+    expect(urls).toEqual([
+      ORIGINAL_PUBLISHER_ALTERNATES.macro.url,
+      "https://www150.statcan.gc.ca"+relative,
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      url:"https://www150.statcan.gc.ca"+relative,
+      publishedAt:"2026-10-09T12:15:00.000Z",
+      nativeTimeEvidence:"publisher_original_article_datePublished",
+      privateOnly:true,rightsVerified:false,commercialEligible:false,
+    });
+    expect(diagnostics.alternate_article_page_probes).toBe(1);
+    expect(diagnostics.alternate_article_page_admitted).toBe(1);
+    expect(diagnostics.alternate_statcan_exact_root_relative_items).toBe(1);
+    expect(rows[0]).not.toHaveProperty("severity");
+  });
+
   it("counts original Atom tag formats without using metadata-only dates for admission", () => {
     const updateOnly = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"
       xmlns:dc="http://purl.org/dc/elements/1.1/"
