@@ -152,7 +152,11 @@ export async function runTelegramConsumerAdmission({
   try {source=JSON.parse(readFileSync(queueFile,"utf8"));}
   catch {throw new Error("TELEGRAM_ADMISSION_QUEUE_FILE_INVALID");}
   const pending=readTelegramConsumerQueue(source);
-  if(stage==="queue")return evaluateTelegramConsumerAdmission({pending,now});
+  if(stage==="queue") {
+    const preliminary=evaluateTelegramConsumerAdmission({pending,now});
+    return pending===0 ? preliminary :
+      {...preliminary,status:"PENDING_QUEUE_AWAITING_BUDGET_CHECK"};
+  }
   if(pending===0)return evaluateTelegramConsumerAdmission({pending,now});
   const supabase=readBudget();
   if(supabase.mode!=="normal"||supabase.bulk_write_allowed!==true)
