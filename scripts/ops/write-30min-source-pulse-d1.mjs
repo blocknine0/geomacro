@@ -47,6 +47,11 @@ export function projectSourcePulseForD1(report) {
         domain,checked_at:report.observed_at,
         original_publisher_date_observed:healthy,
         original_publisher_30m_topic_count:healthy?row.original_publisher_30m_topic_count:null,
+        publisher_pair_sample_complete:row.publisher_pair_sample_complete===true,
+        original_publishers_attempted:Number.isInteger(row.original_publishers_attempted)
+          ?row.original_publishers_attempted:null,
+        original_publishers_successful:Number.isInteger(row.original_publishers_successful)
+          ?row.original_publishers_successful:null,
         commercial_eligible:false,
       },
     });
