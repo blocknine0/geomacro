@@ -5,6 +5,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "../lib/official-original-article-date.mjs";
 
 const MAX_BODY_BYTES=192*1024;
 // Eurostat twice-daily official catalogue feed can exceed the small news-RSS
@@ -159,6 +160,32 @@ function atomDateCounts(xml,now,topic,hosts) {
     within_24h:recent,topical_within_24h:topicalRecent};
 }
 
+// Only Atom entries with NO per-entry publication date may receive bounded
+// original-article same-host date verification. Do not use feed <updated>.
+function undatedAtomArticleCandidates(xml,source) {
+  if(source.media!=="atom"||!source.original_hosts)return [];
+  const list=[];
+  for(const [,item] of [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,80)){
+    if(/<(?:atom:)?published(?:\s[^>]*)?>/iu.test(item))continue;
+    const title=item.match(/<(?:atom:)?title(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?title>/iu)?.[1]??"";
+    if(!source.topic?.test(title))continue;
+    const hrefs=[...item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)]
+      .map(x=>x[1]).filter(tag=>{
+        const rel=tag.match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
+        return rel==="alternate"||rel==="canonical";
+      });
+    for(const attr of hrefs){
+      const href=attr.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??"";
+      if(originalHref(href,source.original_hosts)){
+        list.push(href);
+        break;
+      }
+    }
+    if(list.length>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
+  }
+  return [...new Set(list)].slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
+}
+
 function jsonShape(value) {
   // A structural country listing only; no annual series or event time inferred.
   if (!value || typeof value!=="object" || Array.isArray(value)) return false;
@@ -175,6 +202,7 @@ export async function probeExpandedSource(source,{
     publisher_reachable:false,format_valid:false,
     source_native_release_items:null,source_native_24h_release_items:null,
     topical_private_release_links_24h:null,
+    original_page_precise_date_checks:0,original_page_precise_date_24h:0,
     official_locale_fallback_attempted:false,
     official_locale_fallback_used:false,
     // Sanitized numeric transport status only; never forward upstream bodies.
@@ -255,6 +283,20 @@ export async function probeExpandedSource(source,{
     row.source_native_release_items=counts.native_dated;
     row.source_native_24h_release_items=counts.within_24h;
     if(source.topic)row.topical_private_release_links_24h=counts.topical_within_24h;
+  }
+  // Strict 2-page max per ORIGINAL Atom source, only if the government feed
+  // gave no currently topical original per-entry publication time.
+  // The helper reconstructs fixed official article URL paths and does not
+  // follow redirects, trust feed updated clocks or leak publisher HTML.
+  if(source.media==="atom" && counts?.topical_within_24h===0){
+    for(const article of undatedAtomArticleCandidates(body,source)){
+      const published=await fetchVerifiedPublisherPageDate(article,source.domain,{
+        now,fetchImpl,
+      });
+      row.original_page_precise_date_checks++;
+      if(published)row.original_page_precise_date_24h++;
+    }
+    row.topical_private_release_links_24h+=row.original_page_precise_date_24h;
   }
   return row;
 }
