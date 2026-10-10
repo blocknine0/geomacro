@@ -148,6 +148,19 @@ function IntelligencePage() {
         <p className="mt-3 text-sm text-muted-foreground">Free to browse. For structured API delivery or monthly intelligence access, <Link to="/pricing" className="font-medium text-primary hover:underline">compare access options</Link>.</p>
       </header>
 
+      {intel.data && intel.error ? (
+        <section className="mt-6 rounded-xl border border-border/70 bg-card/30 p-4" role="status"
+          aria-label="Intelligence live refresh status">
+          <h2 className="text-sm font-semibold">Live Intelligence refresh unavailable</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            A fresh verified feed could not be confirmed. Earlier assessments remain dated historical context, not new risk alerts. The original evidence clock is never reset by a browser refresh.
+          </p>
+          <Button type="button" variant="outline" size="sm" onClick={intel.retry} className="mt-3">
+            <RefreshCw className="mr-2 h-4 w-4" aria-hidden /> Retry live verification
+          </Button>
+        </section>
+      ) : null}
+
       <section className="mt-8" aria-labelledby="intelligence-freshness-heading">
         <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Three-domain monitoring</p>
         <h2 id="intelligence-freshness-heading" className="mt-1 text-xl font-semibold">Evidence freshness by risk domain</h2>
