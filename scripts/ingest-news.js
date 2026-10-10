@@ -1528,6 +1528,22 @@ Reject:
 Severity and confidence must describe the supplied article only.
 Do not invent missing facts.
 
+DERIVED TEXT QUALITY CONTRACT (all three categories):
+- For relevant=true, narrative should be 40-260 characters: one grounded,
+  plain-text explanation of the actual material risk development.
+- For relevant=true, summary should be 60-700 characters: the verified
+  change, directly supported cause and possible risk transmission channel.
+- Use the article's actual actors, countries and dates only when supported.
+- Never invent quotations, exact dates, amounts, impacts or causal links.
+- Never copy the publisher headline verbatim, paste raw article text, use
+  hyperlinks, generic filler or unsupported predictions.
+- Both fields must be substantive and distinct. When the article does NOT
+  support a meaningful domain-specific risk explanation, return relevant=false
+  rather than inventing text to meet a length range.
+- These are MODEL QUALITY TARGETS, not relaxed admission thresholds:
+  canonical relevance, severity, source-native timestamp, commercial source
+  rights and independent corroboration remain separate fail-closed gates.
+
 You MUST return exactly ${articles.length} results with index 0 through ${articles.length - 1}.
 
 Return JSON only:
