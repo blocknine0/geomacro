@@ -89,7 +89,7 @@ export async function write30MinSourcePulseToD1({
   for(const row of rows){
     const stored=readback.get(row.domain);
     if(stored?.last_attempt_at!==row.checked_at||
-       stored?.cursor?.status!==row.status||
+       stored?.payload?.cursor?.status!==row.status||
        stored?.payload?.checked_at!==row.checked_at||
        stored?.payload?.original_publisher_30m_topic_count!==
          row.metadata.original_publisher_30m_topic_count)
