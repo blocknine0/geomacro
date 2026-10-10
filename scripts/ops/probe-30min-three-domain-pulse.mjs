@@ -41,8 +41,9 @@ export function select30MinPublishers(now=new Date()) {
        pair.some(id=>lookup[id]?.domain!==domain||!lookup[id]?.original_hosts?.length)||
        new Set(pair).size!==pair.length)
       throw Error("30M_MONITOR_PUBLISHER_PAIR_INVALID");
-    // Two sources per 30m window. A third independent minerals publisher
-    // rotates into the pair, rather than tripling per-run origin GET traffic.
+    // Two independent official organizations per 30m window, including when
+    // primary already has new items. A third minerals organization rotates
+    // into the pair, rather than tripling per-run origin GET traffic.
     const idx=slot%pair.length;
     const current=lookup[pair[idx]];
     const next=lookup[pair[(idx+1)%pair.length]];
@@ -73,12 +74,12 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
     const first=await observe(primary);
     const firstValid=valid(first,primary);
     let second=null,secondValid=false;
-    // Previously a healthy publisher with 0 articles suppressed inspection
-    // of an entirely different original publisher until the next hour.
-    // Check that publisher in the SAME 30m window for better discovery.
-    // Do not re-route access-denied or throttled upstream (401/403/429).
-    if((firstValid && first.original_publisher_topical_30m===0) ||
-       (!firstValid && ![401,403,429].includes(first.primary_http_status))) {
+    // Always probe the second independent originating publisher when primary
+    // transport succeeds, INCLUDING if the primary already had topical items:
+    // previously this skipped independent discovery during busy news windows.
+    // For degraded primary origins, do not reroute explicit 401/403/429.
+    // A second publisher is a separate source, not verified same-event proof.
+    if(firstValid || ![401,403,429].includes(first.primary_http_status)) {
       second=await observe(standby);
       secondValid=valid(second,standby);
     }
@@ -97,7 +98,9 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       original_publisher_id:healthy?observed[0].source_id:null,
       primary_publisher_id:primary.id,
       publisher_failover_attempted:attempted.length===2&&!firstValid,
-      publisher_zero_result_expansion_attempted:attempted.length===2&&firstValid,
+      publisher_zero_result_expansion_attempted:attempted.length===2&&firstValid&&first.original_publisher_topical_30m===0,
+      independent_origin_crosscheck_attempted:attempted.length===2&&firstValid,
+      independent_origin_pair_transport_healthy:complete,
       original_publishers_attempted:attempted.length,
       original_publishers_successful:observed.length,
       publisher_pair_sample_complete:complete,
@@ -110,6 +113,7 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       checked_at:now.toISOString(),
       // Private hashed article identities; never the raw news or a GRO.
       private_original_article_candidates:observed.flatMap(r=>r.private_original_article_candidates??[]).slice(0,80),
+      // Two healthy originating publishers ≠ confirmation of one real event.
       event_same_subject_independent_corroboration_verified:false,
       commercial_rights_verified:false,
       signed_current_gro_verified:false,
