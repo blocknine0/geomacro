@@ -292,7 +292,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       return response(xml,"application/rss+xml");
     }});
     expect(res.status).toBe("SOURCE_TRANSPORT_DEGRADED");
-    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true,true,true,true,true,true,true,true,true,true]);
+    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true,true,true,true,true,true,true,true,true,true,true]);
     expect(res.globally_current_scored_coverage_verified).toBe(false);
     expect(res.commercial_eligible).toBe(false);
   });
