@@ -76,7 +76,7 @@ describe("verified Intelligence edge-first preview recovery", () => {
     ]), NOW)).toThrow("unapproved fields");
   });
 
-  it("keeps current observations unscored without inventing risk values", () => {
+  it("suppresses current observations lacking two-source independent qualification", () => {
     const rows = categories.map((c) => verified(c));
     rows.push(verified("geopolitics", {
       id: "observed",
@@ -87,13 +87,8 @@ describe("verified Intelligence edge-first preview recovery", () => {
       public_status: "live_observed",
     }));
     const result = parseVerifiedIntelligenceEdgePayload(payload(rows), NOW);
-    expect(result).toHaveLength(4);
-    expect(result.find((r) => r.id === "observed")).toMatchObject({
-      severity: null,
-      delta: null,
-      summary: null,
-      public_status: "live_observed",
-    });
+    expect(result).toHaveLength(3);
+    expect(result.find((r) => r.id === "observed")).toBeUndefined();
   });
 
   it("serves a successful public API payload from the verified edge in preview", () => {
@@ -106,7 +101,7 @@ describe("verified Intelligence edge-first preview recovery", () => {
     expect(response.rows.every((r) => r.public_status === "verified_b2")).toBe(true);
   });
 
-  it("suppresses discovery overlays only when all scored domains are current", () => {
+  it("never reintroduces single-source live observations when scored domains are stale", () => {
     const rows = categories.map((c) => verified(c));
     rows.push(verified("geopolitics", {
       id: "observed",
@@ -126,8 +121,8 @@ describe("verified Intelligence edge-first preview recovery", () => {
       ? { ...r, created_at: "2026-10-06T07:00:00Z", published_at: "2026-10-06T07:00:00Z" } : r);
     const fallback = buildVerifiedIntelligenceApiPayload(
       parseVerifiedIntelligenceEdgePayload(payload(olderRows), NOW), NOW);
-    expect(fallback.mode).toBe("verified_b2_plus_live_observed");
-    expect(fallback.live_observed_rows).toBe(1);
+    expect(fallback.mode).toBe("verified_b2");
+    expect(fallback.live_observed_rows).toBe(0);
   });
 
   it("filters unsafe editorial labels rather than showing source prose", () => {

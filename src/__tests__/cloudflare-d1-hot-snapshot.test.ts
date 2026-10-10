@@ -58,6 +58,43 @@ function request(path: string, method: "GET" | "PUT", body?: unknown) {
 }
 
 describe("D1 B2-verified hot snapshots", () => {
+  it("refuses a current Intelligence PUT without independently corroborated private event receipt", async () => {
+    const db=fakeDb();
+    const now=new Date().toISOString();
+    const value={
+      schema:"geomacro.public-intelligence-live.v1",
+      source_project:"ldpwajisioljyjtojvfx",
+      generated_at:now,
+      rows:[{id:"unverified",category:"geopolitics",
+        public_status:"live_observed",severity:null}],
+    };
+    const proof={
+      schema:"geomacro.public-intelligence-live-proof.v1",
+      live_key:"geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
+      generated_at:now,current_source_batch_at:now,
+      current_source_id:"gdelt_v2_events",
+      compressed_sha256:"a".repeat(64),
+      full_b2_readback_verified:true,exact_gzip_restore_verified:true,
+    };
+    const env={DB:db,CONTROL_PLANE_TOKEN:TOKEN};
+    const requestBody=(p:unknown)=>({
+      value,proof:p,source_run_id:"38046724438",
+      payload_sha256:createHash("sha256").update(JSON.stringify(value)).digest("hex"),
+    });
+    const missing=await controlPlane.fetch(request(
+      "/v1/hot-snapshot/intelligence","PUT",requestBody(proof)),env);
+    expect(missing.ok).toBe(false);
+    expect(db.rows.has("intelligence")).toBe(false);
+    const forged={...proof,commercial_multi_source_verified:true,
+      commercial_multi_source_receipt_sha256:"b".repeat(64),
+      commercial_multi_source_checked_at:now,
+      commercial_multi_source_qualified_count:1};
+    const spoofed=await controlPlane.fetch(request(
+      "/v1/hot-snapshot/intelligence","PUT",requestBody(forged)),env);
+    expect(spoofed.ok).toBe(false);
+    expect(db.rows.has("intelligence")).toBe(false);
+  });
+
   it("publishes only a hash-bound snapshot with full B2 readback proof and serves its exact bytes", async () => {
     const db = fakeDb();
     const env = { DB: db, CONTROL_PLANE_TOKEN: TOKEN };

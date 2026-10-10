@@ -28,16 +28,16 @@ const fixtures: PublicIntelligenceRow[] = [
   },
 ];
 describe("#1827 website Intelligence freshness visibility without invented three-domain scores", () => {
-  it("keeps all three verified scores historical, displays real current observation only in geopolitics", () => {
+  it("keeps historical scores but does not display uncorroborated current observation", () => {
     const model = buildPublicIntelligence(fixtures, now);
     const pulse = intelligenceDomainPulse(model.all, now);
     expect(pulse.map(x => x.key)).toEqual(["geopolitics","macro","rare_earth"]);
-    expect(pulse.map(x => x.state)).toEqual(["current_observed","historical_verified","historical_verified"]);
+    expect(pulse.map(x => x.state)).toEqual(["historical_verified","historical_verified","historical_verified"]);
     expect(pulse.map(x => x.currentScoredCount)).toEqual([0,0,0]);
-    expect(pulse.map(x => x.currentObservedCount)).toEqual([1,0,0]);
+    expect(pulse.map(x => x.currentObservedCount)).toEqual([0,0,0]);
     expect(pulse.map(x => x.lastScored?.severity)).toEqual([67,58,71]);
     expect(pulse.map(x => x.lastScored?.publishedAt)).toEqual([past,past,past]);
-    expect(pulse[0].newestObserved?.severity).toBeNull();
+    expect(pulse[0].newestObserved).toBeNull();
     expect(pulse[1].newestObserved).toBeNull();
     expect(pulse[2].newestObserved).toBeNull();
   });
@@ -54,8 +54,8 @@ describe("#1827 website Intelligence freshness visibility without invented three
       },
     ], now);
     const pulse = intelligenceDomainPulse(model.all,now);
-    expect(pulse.map(x=>x.state)).toEqual(["current_observed","unavailable","unavailable"]);
-    expect(pulse[0].currentObservedCount).toBe(1);
+    expect(pulse.map(x=>x.state)).toEqual(["unavailable","unavailable","unavailable"]);
+    expect(pulse[0].currentObservedCount).toBe(0);
     expect(pulse[0].currentScoredCount).toBe(0);
     expect(pulse[0].lastScored).toBeNull();
   });

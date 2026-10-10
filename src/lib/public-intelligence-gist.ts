@@ -77,6 +77,11 @@ export function sanitizePublicIntelligenceRow(
       (input.published_at != null && !eventTime(input.published_at))) return null;
 
   const observed = input.public_status === "live_observed";
+  // #1827: a GDELT/first-seen observation or one original publisher is NOT
+  // an independently corroborated news event. Until a signed, source-bound
+  // two-origin qualification can be proven, suppress observation-only rows
+  // from the public website rather than presenting unverified current news.
+  if (observed) return null;
   const status = observed ? "live_observed" as const : "verified_b2" as const;
   const headline = derivedPublicGist(input.source_title, input.summary, status);
   if (!headline) return null;
