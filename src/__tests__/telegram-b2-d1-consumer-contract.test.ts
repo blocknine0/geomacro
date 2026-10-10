@@ -60,7 +60,7 @@ describe("Telegram B2/D1 governed consumer", () => {
 
   it("acknowledges an exact delivery only after canonical ingestion succeeds", () => {
     const workflow = read(".github/workflows/telegram-b2-d1-consumer.yml");
-    expect(workflow).toContain("WHERE state='PENDING' ORDER BY created_at ASC, delivery_id ASC LIMIT 25");
+    expect(workflow).toContain("WHERE state='PENDING' ORDER BY created_at ASC, delivery_id ASC LIMIT 4");
     expect(workflow).toContain("CANONICAL_INGEST_IN_PROGRESS");
     expect(workflow).toContain("CANONICAL_INGEST_FAILED");
     expect(workflow).toContain("WHERE delivery_id='$delivery' AND state='PENDING'");
