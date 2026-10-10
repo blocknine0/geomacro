@@ -4,7 +4,7 @@
 
 The live Geomacro three-domain original-publisher probe already observes up to 3
 source families per category on its existing cadence. This separate, additive
-six-hourly monitor observes **three additional official endpoints** without
+six-hourly monitor observes **four additional official endpoints across three domains** without
 consuming B2, D1, frozen Supabase, paid AI/model or USDC quotas. All source
 data remains PRIVATE. It does not score events or edit risk objects.
 
@@ -12,13 +12,15 @@ data remains PRIVATE. It does not score events or edit risk objects.
 |---|---|---|---|---|
 | Geopolitics | European Commission sanctions guidance updates | https://finance.ec.europa.eu/node/1296/rss_en | Publisher RSS reachable; optionally source-native item release `pubDate` in 24h | A new legal sanctions designation, worldwide coverage or scored conflict event |
 | Macro/FX | ECB statistical press releases | https://www.ecb.europa.eu/rss/statpress.html | Publisher RSS reachable; source-native release clock when present | Live global FX ticks, full national balance sheets or a verified macro-shock |
-| Critical Minerals | EITI country metadata API | https://eiti.org/api/v2.0/implementing_country | Official extractives-country listing JSON accessible | Real-time extraction, prices, supply shock or 195-country coverage |
+| Critical Minerals | EITI country metadata API | https://eiti.org/api/v2.0/implementing_country | Test whether official extractives-country listing JSON is accessible; initial GitHub probe returned 403 | Real-time extraction, prices, supply shock or 195-country coverage |
+| Critical Minerals | Natural Resources Canada Simply Science RSS | https://natural-resources.canada.ca/simply-science/rss.xml | Source-native government science publication release time when present | An independently confirmed rare-earth export shock, mineral event or global supply coverage |
 
 Supporting official references:
 - https://www.ecb.europa.eu/home/html/rss.en.html
 - https://finance.ec.europa.eu/eu-and-world/sanctions-restrictive-measures/sanctions-adopted-following-russias-military-aggression-against-ukraine/guidance-documents_en
 - https://eiti.org/api
 - https://eiti.org/open-data
+- https://natural-resources.canada.ca/corporate/rss-feeds
 
 ### Three domain production acceptance contract
 
@@ -44,7 +46,7 @@ Supporting official references:
 
 - Existing official event feeds: continue their established hourly sampling.
 - Additional official release/structural probes: **4 times per UTC day**,
-  three GET requests per cycle (~12 total requests/day), 5s timeout and
+  four GET requests per cycle (~16 total requests/day), 5s timeout and
   192-KiB maximum body per endpoint, no retries and no paid credentials.
   This is low-cost, not instantaneous distribution, and may be held by
   upstream rate limits. Event-specific frequency must match actual publishers.
