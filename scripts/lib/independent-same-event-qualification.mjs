@@ -320,6 +320,11 @@ export function qualifyIndependentSameEvent({
       err("INDEPENDENT_REVIEW_SIGNATURE_INVALID");
     }
     qualified.push({event_id:row.id,category:row.category,
+      // This country is taken ONLY from the independently signed, checked
+      // same-event identity, never inferred from a headline or source host.
+      country_iso3:pkg.event.country_iso3,
+      native_event_occurred_at:pkg.event.occurred_at,
+      latest_independent_original_at:new Date(Math.max(...sources.map(source=>source.ms))).toISOString(),
       event_claim_sha256:identityHash,
       reviewed_derived_row_sha256:reviewedRowHash,
       independent_reporting_organizations:independentOrganizations.size,
