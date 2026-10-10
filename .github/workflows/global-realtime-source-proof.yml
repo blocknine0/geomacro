@@ -16,6 +16,8 @@ on:
       - "scripts/lib/official-native-alternates.mjs"
       - "src/__tests__/official-native-alternates.test.ts"
       - "scripts/ops/probe-official-native-rss-three-domains.mjs"
+      - "scripts/lib/official-native-third-fallback.mjs"
+      - "scripts/lib/official-original-article-date.mjs"
       - "src/__tests__/official-native-rss-three-domains.test.ts"
       - "scripts/intelligence-orchestrator.mjs"
       - "scripts/ops/phase-a-runtime-freshness-repair.mjs"
@@ -32,6 +34,8 @@ on:
     branches: [main]
     paths:
       - "scripts/ops/probe-official-native-rss-three-domains.mjs"
+      - "scripts/lib/official-native-third-fallback.mjs"
+      - "scripts/lib/official-original-article-date.mjs"
       - "scripts/lib/quota-safe-original-discovery-fallback.mjs"
       - ".github/workflows/global-realtime-source-proof.yml"
   workflow_dispatch:
