@@ -29,6 +29,18 @@ export const THIRTY_MIN_PUBLISHER_PAIRS=Object.freeze({
     "australia_industry_minister_original_rss_review",
   ]),
 });
+// Reviewed issuing institutions (not hostnames); this proves distinct
+// operator identities for transport diversity, not independently confirmed
+// reporting or legal rights for any shared event.
+const ORIGINAL_PUBLISHER_ORG=Object.freeze({
+  un_news_security_original_rss_review:"united_nations",
+  uk_fcdo_original_foreign_policy_atom_review:"united_kingdom_fcdo",
+  fed_monetary_original_press_rss_review:"federal_reserve",
+  statcan_prices_original_atom_review:"statistics_canada",
+  nrcan_government_news_original_atom_review:"natural_resources_canada",
+  usgs_minerals_original_news_rss_review:"us_geological_survey",
+  australia_industry_minister_original_rss_review:"australian_industry_department",
+});
 const DOMAINS=Object.keys(THIRTY_MIN_PUBLISHER_PAIRS);
 const lookup=Object.fromEntries(EXPANDED_OFFICIAL_SOURCES.map(s=>[s.id,s]));
 
@@ -39,7 +51,9 @@ export function select30MinPublishers(now=new Date()) {
     const pair=THIRTY_MIN_PUBLISHER_PAIRS[domain];
     if(![2,3].includes(pair.length)||
        pair.some(id=>lookup[id]?.domain!==domain||!lookup[id]?.original_hosts?.length)||
-       new Set(pair).size!==pair.length)
+       new Set(pair).size!==pair.length ||
+       pair.some(id=>!ORIGINAL_PUBLISHER_ORG[id]) ||
+       new Set(pair.map(id=>ORIGINAL_PUBLISHER_ORG[id])).size!==pair.length)
       throw Error("30M_MONITOR_PUBLISHER_PAIR_INVALID");
     // Two independent official organizations per 30m window, including when
     // primary already has new items. A third minerals organization rotates
