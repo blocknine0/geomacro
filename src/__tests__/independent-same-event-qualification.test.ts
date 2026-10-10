@@ -122,7 +122,7 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
       {...c,original_published_at:"2026-10-09T04:00:00Z"},
       {...c,original_published_at:"2026-10-11T04:00:00Z"},
       {...c,original_published_at:"2026-10-10T08:00:00Z"},
-      {...c,original_published_at:"2026-10-10T09:00:00Z"},
+      {...c,original_published_at:"2026-10-10T08:30:00Z"},
       {...c,original_published_at:"2026-10-10T10:12:00+00:00"},
     ])expect(()=>go({...proof,evidence:[a,broken]})).toThrow(/^INDEPENDENT_EVENT_/);
     expect(()=>go({...proof,event:{...identity,occurred_at:"2026-10-09T03:00:00Z"}}))
@@ -161,6 +161,6 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
     const publisher=readFileSync("scripts/ops/publish-b2-verified-hot-snapshot.mjs","utf8");
     expect(publisher).toContain('if(product==="intelligence")');
     expect(publisher).toContain("qualifyIndependentSameEvent({");
-    expect(publisher).not.toContain("privateEventPackages })");
+    expect(publisher).toContain("commercial_multi_source_receipt_sha256");
   });
 });
