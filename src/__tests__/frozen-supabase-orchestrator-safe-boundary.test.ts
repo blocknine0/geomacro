@@ -55,6 +55,24 @@ describe("#1827 frozen-Supabase hard boundary, derived-only 90-minute operation"
     }finally{rmSync(dir,{recursive:true,force:true});}
   });
 
+
+  it("never injects exhausted Supabase credentials or probes data on scheduled D1/B2 heartbeat",()=>{
+    for(const prohibited of [
+      "secrets.APP_SUPABASE_URL","secrets.SUPABASE_SERVICE_ROLE_KEY",
+      "secrets.SUPABASE_DB_URL","supabase-free-tier-budget.mjs --require-bulk-write",
+      "NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs",
+    ])expect(workflow).not.toContain(prohibited);
+    const source=workflow.slice(workflow.indexOf("jobs:"));
+    expect(source).toContain("Enforce permanent frozen Supabase zero-probe source heartbeat");
+    expect(source).toContain("FROZEN_SUPABASE_NO_NETWORK");
+    expect(source).toContain('"supabase_requests":0');
+    const contract=source.indexOf("Enforce permanent frozen Supabase zero-probe source heartbeat");
+    const task=source.indexOf("Run due intelligence tasks serially");
+    expect(contract).toBeGreaterThan(0);
+    expect(task).toBeGreaterThan(contract);
+    expect(source).toContain('GEOMACRO_SUPABASE_RESTRICTED_MODE: "true"');
+  });
+
   it("provides exactly 16 90-minute slots without overlapping the official source monitor",()=>{
     expect(workflow).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
     expect(workflow).toContain('cron: "17 2,5,8,11,14,17,20,23 * * *"');
@@ -70,6 +88,6 @@ describe("#1827 frozen-Supabase hard boundary, derived-only 90-minute operation"
     expect(official).toContain('cron: "17 0,3,6,9,12,15,18,21 * * *"');
     expect(official).toContain('cron: "47 1,4,7,10,13,16,19,22 * * *"');
     expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
-    expect(workflow).toContain('GEOMACRO_SUPABASE_RESTRICTED_MODE=true');
+    expect(workflow).toContain('GEOMACRO_SUPABASE_RESTRICTED_MODE: "true"');
   });
 });
