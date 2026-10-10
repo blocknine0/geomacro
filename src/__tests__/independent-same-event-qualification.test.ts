@@ -354,9 +354,37 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
           live_key:"geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
           full_b2_readback_verified:true,exact_gzip_restore_verified:true,
           generated_at:iso,compressed_sha256:"a".repeat(64),
+          current_source_id:"qualified_independent_original_publishers_v1",
+          current_evidence_contract:"geomacro.qualified-original-event-claims.v1",
           commercial_multi_source_checked_at:iso,commercial_multi_source_verified:true,
           commercial_multi_source_receipt_sha256:"a".repeat(64)},
       })).rejects.toThrow(/^INDEPENDENT_EVENT_INPUT_INVALID/);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    }finally{fetchSpy.mockRestore();}
+  });
+  it("refuses legacy GDELT-only and fake independent-original source IDs BEFORE any publisher authentication or network",async()=>{
+    const fetchSpy=vi.spyOn(globalThis,"fetch");
+    try{
+      const date=new Date().toISOString();
+      const base={
+        schema:"geomacro.public-intelligence-live-proof.v1",
+        live_key:"geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
+        generated_at:date,compressed_sha256:"a".repeat(64),
+        full_b2_readback_verified:true,exact_gzip_restore_verified:true,
+        commercial_multi_source_checked_at:date,
+      };
+      for(const proof of [
+        {...base,current_source_id:"gdelt_v2_events",
+          current_evidence_contract:"geomacro.qualified-original-event-claims.v1"},
+        {...base,current_source_id:"qualified_independent_original_publishers_v1",
+          current_evidence_contract:"gdelt-only-index-events"},
+        {...base,current_source_id:"publisher_claimed_but_unreviewed"},
+      ]){
+        await expect(publishB2VerifiedHotSnapshot({
+          product:"intelligence",value:{generated_at:date,rows},
+          proof,privateEventPackages:[signReview(proof)],
+        })).rejects.toThrow("HOT_SNAPSHOT_ORIGINAL_PUBLISHER_CONTRACT_REQUIRED");
+      }
       expect(fetchSpy).not.toHaveBeenCalled();
     }finally{fetchSpy.mockRestore();}
   });
