@@ -3,7 +3,9 @@ name: Telegram B2 D1 Governed Consumer
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"
+    # Hourly safety observation, not 288 costly five-minute GitHub jobs/day.
+    # Urgent verified producer recovery remains available via manual dispatch.
+    - cron: "17 * * * *"
   pull_request:
     paths:
       - ".github/workflows/telegram-b2-d1-consumer.yml"
@@ -36,6 +38,7 @@ concurrency:
 
 jobs:
   contract:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -57,6 +60,10 @@ jobs:
           grep -q 'source_channel_key' scripts/run-live-flash-ingest-local.ts
           grep -q '6da33ed2a966d58122039ba38d83e801476a6318bc89634d0b3d951e8ad017c9' config/telegram-private-signal-bridge.json
           grep -q 'geomacro.telegram-lead-envelope.v2' scripts/verify-telegram-lead-envelope.mjs
+          grep -q 'B2_ACCOUNT_QUOTA_REQUIRED: "1"' .github/workflows/telegram-b2-d1-consumer.yml
+          grep -q 'B2_ACCOUNT_QUOTA_WORKFLOW_ID: telegram_b2_d1_consumer' .github/workflows/telegram-b2-d1-consumer.yml
+          grep -q 'check-telegram-b2-d1-admission.mjs --stage budget' .github/workflows/telegram-b2-d1-consumer.yml
+          grep -q 'steps.admission.outputs.can_consume' .github/workflows/telegram-b2-d1-consumer.yml
 
   consume:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -73,7 +80,11 @@ jobs:
       B2_BUCKET: geomacro-private-archive
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      B2_REQUEST_BUDGET: "60"
+      # No unreserved Backblaze GETs: every HTTP attempt requires atomic D1
+      # shared-account budget reservation on the same main-owned D1 ledger.
+      B2_REQUEST_BUDGET: "4"
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: telegram_b2_d1_consumer
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       GRI_DB_MODE: direct_postgres
       FLASH_INGEST_TOKEN: telegram-main-local-consumer
@@ -108,6 +119,7 @@ jobs:
           DB_ID="$(printf '%s' "$LIST_JSON" | node -e 'let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{const rows=JSON.parse(s); const row=rows.find(x=>x.name===process.env.D1_DATABASE_NAME); process.stdout.write(row?.uuid ?? row?.id ?? "");});')"
           test -n "$DB_ID" || { echo "::error::geomacro-control-plane D1 database is not bootstrapped"; exit 6; }
           echo "database_id=$DB_ID" >> "$GITHUB_OUTPUT"
+          echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
       - name: Build ephemeral D1 config
         env:
           D1_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
@@ -129,6 +141,23 @@ jobs:
         run: |
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config "$D1_CONFIG"
+      - name: Require existing shared D1 v5 B2 account quota ledger (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          proof="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT (SELECT version FROM schema_meta WHERE name='control-plane') AS version, (SELECT count(*) FROM sqlite_master WHERE type='table' AND name='b2_account_daily_request_quota') AS quota_table;")"
+          printf '%s' "$proof" | node -e '
+            let raw=""; process.stdin.on("data",x=>raw+=x);
+            process.stdin.on("end",()=>{
+              const data=JSON.parse(raw);
+              const rows=(Array.isArray(data)?data:[data]).flatMap(x=>x?.results??[]);
+              if(rows.length!==1 || Number(rows[0].version)<5 ||
+                Number(rows[0].quota_table)!==1)
+                throw new Error("TELEGRAM_SHARED_D1_B2_QUOTA_V5_REQUIRED");
+              console.log("PASS: main-owned D1 account-wide quota ledger available.");
+            });
+          '
+
       - name: Verify accepted private producer and queue schema in D1
         shell: bash
         run: |
@@ -152,10 +181,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT delivery_id,signal_id,source_channel_key,source_record_id,published_at,b2_object_key,b2_sha256,state,created_at,attempt_count FROM telegram_signal_lead_queue WHERE state='PENDING' ORDER BY created_at ASC, delivery_id ASC LIMIT 25;" > artifacts/telegram-lead-intake/d1-queue.json
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT delivery_id,signal_id,source_channel_key,source_record_id,published_at,b2_object_key,b2_sha256,state,created_at,attempt_count FROM telegram_signal_lead_queue WHERE state='PENDING' ORDER BY created_at ASC, delivery_id ASC LIMIT 4;" > artifacts/telegram-lead-intake/d1-queue.json
+      - name: Verify zero-B2 work admission for the pending Telegram D1 queue
+        id: queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/check-telegram-b2-d1-admission.mjs --stage queue \
+            --queue-file artifacts/telegram-lead-intake/d1-queue.json
+
+      - name: Hold B2 reads if canonical Supabase writer is frozen or shared D1 GET budget unavailable
+        id: admission
+        if: steps.queue.outputs.pending == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/check-telegram-b2-d1-admission.mjs --stage budget \
+            --queue-file artifacts/telegram-lead-intake/d1-queue.json
+
       - name: Verify D1 queue pointers against B2 and sanitize leads
-        run: node scripts/ops/drain-telegram-b2-leads.mjs --queue-file artifacts/telegram-lead-intake/d1-queue.json --out-dir artifacts/telegram-lead-intake/verified --max 25
+        if: steps.admission.outputs.can_consume == 'true'
+        run: node scripts/ops/drain-telegram-b2-leads.mjs --queue-file artifacts/telegram-lead-intake/d1-queue.json --out-dir artifacts/telegram-lead-intake/verified --max 4
       - name: Ingest verified leads through canonical direct-Postgres handler and acknowledge exact delivery
+        if: steps.admission.outputs.can_consume == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -181,6 +229,7 @@ jobs:
             npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET state='CONSUMED',consumed_at=datetime('now'),last_error_code=NULL,last_attempt_at=datetime('now') WHERE delivery_id='$delivery' AND state='PENDING';" >/tmp/telegram-consumed.json
           done < /tmp/telegram-queue-items.tsv
       - name: Assert no Telegram pre-promotion occurred and prune old consumed pointers
+        if: steps.admission.outputs.can_consume == 'true'
         shell: bash
         run: |
           set -euo pipefail
