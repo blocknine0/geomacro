@@ -108,3 +108,40 @@ source verification. The trusted publisher continues requiring signed
 independent original same-event reviewer packages, rights, original timestamps
 and B2 readback before any live PUT. No source URL, full original content or
 provider identifier is allowed in customer-facing D1 output.
+
+### Supabase-free publisher-to-D1 original-source protocol (2026-10-10)
+
+The legacy Cloudflare `public_b2_hot_snapshot` Intelligence validator
+previously required `proof.current_source_id="gdelt_v2_events"` even for a
+fully independently reviewed current event. That misattributed a real original
+two-publisher evidence package to a GDELT index and would reject properly
+declared current-original producers. The new exact producer + D1 protocol
+requires BOTH:
+
+- `current_source_id="qualified_independent_original_publishers_v1"`
+- `current_evidence_contract="geomacro.qualified-original-event-claims.v1"`
+
+The private trusted publisher **first** verifies each current exact
+same-event structured claim, two independently authored first-party
+originating organizations, original item bytes and native timestamps,
+source-specific commercial derived-use rights, signed Ed25519 reviewer
+decision/counterevidence and the **exact customer-derived row digest**.
+The authoritative D1 worker only sees the approved **no-raw** derived
+envelope, SHA receipt and bounded verified count, never an original article
+URL or confidential human/legal receipt. Independently signed GRO/B2
+readback is still necessary. A legacy GDELT-only source ID, invented
+unregistered source, wrong versioned contract, old/unsupported publisher
+clock or unsigned private package **must not pass**.
+
+Furthermore the D1 hot `source_as_of` time (which controls real public
+TTL) must equal the **latest actual reviewed row `published_at` instant**
+in the supplied batch. This prevents a scheduler tick, website deploy,
+archive upload/readback, or B2/D1 write time from sliding an old event into
+a fresh six-hour paid window. The trusted publisher enforces the same
+clock equality **before contacting authenticated D1**. Both sides retain
+the no-raw customer-API field allowlist and all three current categories.
+
+This is a necessary versioned protocol for future Supabase-independent
+current original publication, **not proof a live authorized producer exists,
+source-rights clearance is complete, B2 write/readback succeeded, or 195+×3
+signed current data are already being produced**.
