@@ -13,6 +13,14 @@ const MAX_ITEMS=40;
 const MAX_AGE_MS=6*60*60*1000;
 const MAX_TITLE=300;
 const MAX_URL=1600;
+const ORIGINAL_ARTICLE_PATHS=Object.freeze({
+  un_news_security_original_rss_review:/^\/en\/story\/\d{4}\/\d{1,2}\//u,
+  uk_fcdo_original_foreign_policy_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+  fed_monetary_original_press_rss_review:/^\/newsevents\/pressreleases\/[A-Za-z0-9][^/?#]*/u,
+  statcan_prices_original_atom_review:/^\/n1\/daily-quotidien\/\d{6}\//u,
+  nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
+  usgs_minerals_original_news_rss_review:/^\/(?:news|programs\/mineral-resources-program\/news)(?:\/|$)/u,
+});
 const APPROVED_SOURCE_ORGS=Object.freeze({
   un_news_security_original_rss_review:"un_news",
   uk_fcdo_original_foreign_policy_atom_review:"uk_fcdo",
@@ -39,7 +47,8 @@ function canonicalOriginalUrl(raw,source) {
   try {url=new URL(raw.replace(/&amp;/giu,"&"))}catch{return null}
   if(url.protocol!=="https:"||url.username||url.password||url.port||url.hash||
      !source.original_hosts.includes(url.hostname) ||
-     !/^\/(?!\/)/u.test(url.pathname)) return null;
+     (!/^\/(?!\/)/u.test(url.pathname) ||
+     !ORIGINAL_ARTICLE_PATHS[source.id]?.test(url.pathname))) return null;
   // Tracking parameters are not article identity. Preserve nontracking query.
   for(const key of [...url.searchParams.keys()]) {
     if(/^utm_|^(?:fbclid|gclid|mc_cid|mc_eid)$/iu.test(key))
