@@ -220,6 +220,35 @@ describe("original publisher alternate feed with source-native Atom dates", () =
     expect(rows[0]).not.toHaveProperty("severity");
   });
 
+  it("records only two publisher-page rejection enums in public-safe aggregate evidence",async()=>{
+    const alias="https://www.statcan.gc.ca/daily-quotidien/261009/dq261009a-eng.htm";
+    const canonical="https://www150.statcan.gc.ca/n1/daily-quotidien/261009/dq261009a-eng.htm";
+    const atomUpdated=atom("Consumer price inflation accelerates in September in Canada",alias,"")
+      .replace("<published></published>","");
+    const fetched:string[]=[];
+    const diagnostics:Record<string,any>={};
+    const candidate=await fetchOriginalAlternate("macro",{now,diagnostics,
+      fetchImpl:async (url:string)=>{
+        fetched.push(url);
+        if(url===ORIGINAL_PUBLISHER_ALTERNATES.macro.url)
+          return new Response(atomUpdated,{headers:{"content-type":"application/atom+xml"}});
+        if(url===canonical)
+          return new Response("<html>Only updated metadata</html>",{
+            headers:{"content-type":"text/html"}});
+        throw new Error("UNAUTHORIZED_ORIGINAL_PAGE_FETCH");
+      },
+    });
+    expect(candidate).toHaveLength(0);
+    expect(fetched).toEqual([ORIGINAL_PUBLISHER_ALTERNATES.macro.url,canonical]);
+    expect(diagnostics.alternate_article_page_probes).toBe(1);
+    expect(diagnostics.alternate_article_page_admitted).toBe(0);
+    expect(diagnostics.alternate_article_page_probe_outcomes)
+      .toEqual(["PRECISE_PUBLICATION_UNVERIFIED"]);
+    expect(JSON.stringify(diagnostics)).not.toContain(canonical);
+    expect(JSON.stringify(diagnostics)).not.toContain("Only updated metadata");
+    expect(JSON.stringify(diagnostics)).not.toContain(alias);
+  });
+
   it("counts original Atom tag formats without using metadata-only dates for admission", () => {
     const updateOnly = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"
       xmlns:dc="http://purl.org/dc/elements/1.1/"

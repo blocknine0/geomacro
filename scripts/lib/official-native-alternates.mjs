@@ -1,6 +1,7 @@
 import {
   fetchVerifiedPublisherPageDate,
   ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN,
+  SAFE_PUBLISHER_PAGE_PROBE_CODES,
 } from "./official-original-article-date.mjs";
 import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
 // Original-publisher second-family news/Atom discovery when the primary feed
@@ -140,6 +141,8 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     alternate_article_page_probes: 0,
     alternate_article_page_precise: 0,
     alternate_article_page_admitted: 0,
+    // Exactly <=2 bounded status enums; zero URL/title/body or headers.
+    alternate_article_page_probe_outcomes: [],
   };
   const out=[];
   const seen=new Set();
@@ -259,7 +262,18 @@ export async function fetchOriginalAlternate(category, { now=new Date(), fetchIm
   const candidates = undatedOriginalArticleCandidates(xml, category);
   for (const { title, uri } of candidates) {
     if (diagnostics) diagnostics.alternate_article_page_probes++;
-    const publishedAt = await fetchVerifiedPublisherPageDate(uri.href, category, { now, fetchImpl });
+    const pageDiagnostic = {};
+    const publishedAt = await fetchVerifiedPublisherPageDate(uri.href, category, {
+      now, fetchImpl, diagnostics: pageDiagnostic,
+    });
+    if (diagnostics) {
+      // The verifier supplies only closed enum codes. Never serialize the
+      // source page, publisher URL, headers or arbitrary failure messages.
+      diagnostics.alternate_article_page_probe_outcomes.push(
+        SAFE_PUBLISHER_PAGE_PROBE_CODES.includes(pageDiagnostic.code)
+          ? pageDiagnostic.code : "DIAGNOSTIC_UNAVAILABLE",
+      );
+    }
     if (!publishedAt) continue;
     if (diagnostics) {
       diagnostics.alternate_article_page_precise++;
