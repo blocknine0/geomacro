@@ -1,0 +1,94 @@
+name: Three-Domain 30-Minute Original Publisher Pulse
+
+# This is a lightweight source-native transport observation. It is NOT a
+# signed GRO producer or permission to invoice when source qualification lacks.
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Intended UTC 30-minute checks; GitHub Actions cron is best-effort.
+    - cron: "12,42 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/three-domain-30m-original-publisher-pulse.yml"
+      - "scripts/ops/probe-30min-three-domain-pulse.mjs"
+      - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "src/__tests__/three-domain-30m-source-pulse.test.ts"
+  pull_request:
+    paths:
+      - ".github/workflows/three-domain-30m-original-publisher-pulse.yml"
+      - "scripts/ops/probe-30min-three-domain-pulse.mjs"
+      - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "src/__tests__/three-domain-30m-source-pulse.test.ts"
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-30m-original-source-pulse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        with:
+          node-version: "22"
+      - name: Validate three-domain official publisher read-only poll contract
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/probe-30min-three-domain-pulse.mjs
+          node --check scripts/ops/probe-expanded-official-source-mesh.mjs
+          test -f src/__tests__/three-domain-30m-source-pulse.test.ts
+
+  original-publisher-pulse:
+    needs: source-contract
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        with:
+          node-version: "22"
+      - name: Bounded, origin-validated half-hour source observation across all 3 domains
+        run: |
+          set -uo pipefail
+          rc=0
+          node scripts/ops/probe-30min-three-domain-pulse.mjs || rc=$?
+          file=artifacts/private-intake/three-domain-30m-source-pulse.json
+          test -s "$file" || exit 2
+          jq -e '.schema=="geomacro.private-three-domain-source-pulse-30m.v1" and
+            .target_poll_minutes==30 and .schedule_guaranteed==false and
+            (.actual_original_publisher_rows|length)==3 and
+            ([.actual_original_publisher_rows[].domain]|sort)==["geopolitics","macro","rare_earth"] and
+            .source_catalog_entries_are_not_events==true and
+            .independently_verified_current_intelligence_count==0 and
+            .user_api_delivery_verified==false and
+            .publisher_rights_verified==false and
+            .b2_reads==0 and .b2_writes==0 and .d1_writes==0 and
+            .supabase_requests==0 and .payments_performed==0' "$file" >/dev/null || exit 2
+          # Even on upstream rate limiting, persist a truthful DEGRADED
+          # receipt while the action stays red for production monitoring.
+          if test "$rc" -ne 0; then
+            echo "::warning::Original-source pulse degraded; not scored current intelligence."
+            exit "$rc"
+          fi
+      - name: Preserve two-day source-native counts, never raw news or session tokens
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: original-source-pulse-${{ github.run_id }}
+          path: artifacts/private-intake/three-domain-30m-source-pulse.json
+          if-no-files-found: warn
+          retention-days: 2
