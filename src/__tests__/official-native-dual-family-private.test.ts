@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fetchOfficialNativeArticles, OFFICIAL_NATIVE_FEEDS } from "../../scripts/lib/official-native-rss.mjs";
 import { ORIGINAL_PUBLISHER_ALTERNATES } from "../../scripts/lib/official-native-alternates.mjs";
-import { selectPrivatePublisherDiverseCandidates } from "../../scripts/lib/private-publisher-diverse-candidates.mjs";
+import { selectPrivatePublisherDiverseCandidates, allocatePrivateScoringSlots } from "../../scripts/lib/private-publisher-diverse-candidates.mjs";
 
 const now = new Date("2026-10-09T15:00:00Z");
 const primary = (name: string, timestamp: string) =>
@@ -80,5 +80,80 @@ describe("#1827 private original-publisher dual-family queue", () => {
     expect(selectPrivatePublisherDiverseCandidates(same, 2).map((item: { id: number }) => item.id))
       .toEqual([1, 3]);
     expect(() => selectPrivatePublisherDiverseCandidates(same, -1)).toThrow();
+  });
+
+  it("reserves the one-slot private classifier for a real source-native original, never GDELT index",()=>{
+    const original={
+      discoveryProvider:"official_native_rss",
+      nativePublishedAtVerified:true,privateOnly:true,rightsVerified:false,
+      commercialEligible:false,
+      sourceDomain:"news.un.org",
+      url:"https://news.un.org/en/story/2026/10/1234",
+      publishedAt:"2026-10-09T14:00:00Z",
+    };
+    const gdelt={discoveryProvider:"gdelt",url:"https://example.org/index",
+      publishedAt:"2026-10-09T14:55:00Z"};
+    const picked=allocatePrivateScoringSlots({
+      guardianCandidates:[],otherCandidates:[original],
+      gdeltCandidates:[gdelt],limit:1,
+    });
+    expect(picked.primary).toEqual([original]);
+    expect(picked.gdelt).toEqual([]);
+    expect(picked.native_original_singleton_prioritized).toBe(true);
+    expect(picked.primary[0].commercialEligible).toBe(false);
+    // A GDELT index article can still be classified if there are no
+    // qualified original publisher source-native candidates.
+    const fallback=allocatePrivateScoringSlots({
+      otherCandidates:[],gdeltCandidates:[gdelt],limit:1,
+    });
+    expect(fallback.primary).toEqual([]);
+    expect(fallback.gdelt).toEqual([gdelt]);
+  });
+
+  it("does not let a forged, stale-unknown or rights-promoted source acquire singleton priority",()=>{
+    const base={
+      discoveryProvider:"official_native_rss",privateOnly:true,
+      rightsVerified:false,commercialEligible:false,
+      nativePublishedAtVerified:true,sourceDomain:"www.usgs.gov",
+      url:"https://www.usgs.gov/news/critical-minerals",
+      publishedAt:"2026-10-09T14:00:00Z",
+    };
+    const gdelt={discoveryProvider:"gdelt",publishedAt:"2026-10-09T14:55:00Z"};
+    for(const bad of [
+      {...base,url:"https://www.usgs.gov.evil.test/news"},
+      {...base,url:"http://www.usgs.gov/news/critical-minerals"},
+      {...base,nativePublishedAtVerified:false},
+      {...base,privateOnly:false},
+      {...base,rightsVerified:true},
+      {...base,commercialEligible:true},
+      {...base,publishedAt:"not a native date"},
+    ]){
+      const decision=allocatePrivateScoringSlots({
+        otherCandidates:[bad],gdeltCandidates:[gdelt],limit:1,
+      });
+      expect(decision.native_original_singleton_prioritized).toBe(false);
+      expect(decision.gdelt).toEqual([gdelt]);
+    }
+  });
+
+  it("preserves existing multi-slot allocation and exact cap without rights promotion",()=>{
+    const original={
+      discoveryProvider:"official_native_rss",nativePublishedAtVerified:true,
+      privateOnly:true,rightsVerified:false,commercialEligible:false,
+      sourceDomain:"www.federalreserve.gov",
+      url:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261009a.htm",
+      publishedAt:"2026-10-09T14:00:00Z",
+    };
+    const gdelt={discoveryProvider:"gdelt",publishedAt:"2026-10-09T14:50:00Z"};
+    const choice=allocatePrivateScoringSlots({
+      otherCandidates:[original],gdeltCandidates:[gdelt],limit:2,
+    });
+    expect(choice.primary).toEqual([original]);
+    expect(choice.gdelt).toEqual([gdelt]);
+    expect(choice.native_original_singleton_prioritized).toBe(false);
+    expect(choice.primary.length+choice.gdelt.length).toBeLessThanOrEqual(2);
+    for(const badLimit of [0,-1,101,1.1,NaN]){
+      expect(()=>allocatePrivateScoringSlots({limit:badLimit})).toThrow();
+    }
   });
 });
