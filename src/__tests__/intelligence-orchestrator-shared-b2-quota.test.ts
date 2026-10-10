@@ -30,7 +30,7 @@ describe("#1827 intelligence orchestrator shared Backblaze account safety", () =
   });
 
   it("preserves restricted source-only work, signed/private source boundary and unchanged cron",()=>{
-    expect(job).toContain('cron: "7,22,37,52 * * * *"');
+    expect(job).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
     expect(job).toContain('GEOMACRO_SUPABASE_RESTRICTED_MODE=true');
     expect(job).toContain('TELEGRAM_ENABLED: "false"');
     expect(job).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
