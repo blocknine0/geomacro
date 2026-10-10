@@ -48,6 +48,7 @@ describe("#1827 native article discovery, deterministic dedup, secure private sc
   it("never accepts off-domain, HTTP, future, old, undated or non-topic feed entries",()=>{
     const mixed=rss(
       item("https://evil.test/en/story/2026/10/111")+
+      item("https://news.un.org/en/news/topic/peace-and-security")+
       item("http://news.un.org/en/story/2026/10/112")+
       item("https://news.un.org/en/story/2026/10/113","Sun, 11 Oct 2026 18:00:00 GMT")+
       item("https://news.un.org/en/story/2026/10/114","Fri, 09 Oct 2026 18:00:00 GMT")+
