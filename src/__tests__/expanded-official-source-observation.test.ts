@@ -71,6 +71,11 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(res.original_publisher_native_24h_topic_counts).toEqual({
       geopolitics:0,macro:1,rare_earth:1,
     });
+    expect(res.original_publisher_freshness_windows).toEqual({
+      geopolitics:{within_90m:0,within_6h:0,within_24h:0,original_publisher_transport_healthy:true},
+      macro:{within_90m:1,within_6h:1,within_24h:1,original_publisher_transport_healthy:true},
+      rare_earth:{within_90m:1,within_6h:1,within_24h:1,original_publisher_transport_healthy:true},
+    });
     expect(res.verified_country_count).toBe(0);
     expect(res.verified_current_event_domains).toBe(0);
     expect(res.globally_current_scored_coverage_verified).toBe(false);
@@ -297,6 +302,8 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(result.original_page_precise_date_checks).toBe(1);
     expect(result.original_page_precise_date_24h).toBe(1);
     expect(result.topical_private_release_links_24h).toBe(1);
+    expect(result.original_publisher_topical_90m).toBe(1);
+    expect(result.original_publisher_topical_6h).toBe(1);
     expect(result.commercial_eligible).toBe(false);
     const futurePage=page.replace("2026-10-10T06:05:00Z","2026-10-11T06:05:00Z");
     const rejected=await probeExpandedSource(src,{now,fetchImpl:async(url:string)=>
@@ -316,6 +323,35 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     const untrusted=nativeRss.replace("news.un.org","news.un.org.evil.test");
     const bad=await probeExpandedSource(un,{now,fetchImpl:async()=>response(untrusted,"application/rss+xml")});
     expect(bad.topical_private_release_links_24h).toBe(0);
+  });
+
+  it("distinguishes true 90min, 6h and 24h original publication windows without moving clocks",async()=>{
+    const geo=EXPANDED_OFFICIAL_SOURCES[6];
+    const rssAt=(time:string)=>'<rss><channel><item>'+
+      '<title>Security Council security crisis and ceasefire update</title>'+
+      '<link>https://news.un.org/en/story/2026/10/security-crisis</link>'+
+      '<pubDate>'+time+'</pubDate></item></channel></rss>';
+    const older=await probeExpandedSource(geo,{now,
+      fetchImpl:async()=>response(rssAt("Sat, 10 Oct 2026 00:30:00 GMT"),"application/rss+xml")});
+    expect(older.topical_private_release_links_24h).toBe(1);
+    expect(older.original_publisher_topical_6h).toBe(0);
+    expect(older.original_publisher_topical_90m).toBe(0);
+    const within6=await probeExpandedSource(geo,{now,
+      fetchImpl:async()=>response(rssAt("Sat, 10 Oct 2026 04:00:00 GMT"),"application/rss+xml")});
+    expect(within6.original_publisher_topical_6h).toBe(1);
+    expect(within6.original_publisher_topical_90m).toBe(0);
+    const recent=await probeExpandedSource(geo,{now,
+      fetchImpl:async()=>response(rssAt("Sat, 10 Oct 2026 06:30:00 GMT"),"application/rss+xml")});
+    expect(recent.original_publisher_topical_6h).toBe(1);
+    expect(recent.original_publisher_topical_90m).toBe(1);
+    const forged=await probeExpandedSource(geo,{now,
+      fetchImpl:async()=>response(rssAt("Sun, 11 Oct 2026 06:30:00 GMT"),"application/rss+xml")});
+    expect(forged.original_publisher_topical_6h).toBe(0);
+    expect(forged.original_publisher_topical_90m).toBe(0);
+    for(const x of [older,within6,recent,forged]){
+      expect(x.current_scored_intelligence_verified).toBe(false);
+      expect(x.commercial_eligible).toBe(false);
+    }
   });
   it("workflow has no cloud secrets, no database writes and no auto paid promotion",()=>{
     const yaml=readFileSync(".github/workflows/expanded-official-source-observation.yml","utf8");
