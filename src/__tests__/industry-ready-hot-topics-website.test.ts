@@ -17,8 +17,12 @@ describe("industry-ready live-topic website contract", () => {
   it("fails visibly instead of synthesizing a hot-topic fallback", () => {
     const section = read("src/components/home/hot-topics-live.tsx");
 
-    expect(section).toContain("Current scored events are temporarily unavailable");
-    expect(section).toContain("does not fill the gap with synthetic headlines or a fallback risk claim");
+    // Empty current feed is a truthful dated-archive disclosure. Never
+    // return to showing high-scoring old records merely to fill a hero slot.
+    expect(section).toContain("No current, originally dated and verified scored development is available");
+    expect(section).toContain("Historical risk assessments remain in the dated Intelligence archive");
+    expect(section).toContain("currentVerifiedDeskEvents(intelligence.data?.all ?? [])");
+    expect(section).not.toContain("intelligence.data?.topRisks.slice(0, 6)");
   });
 
   it("locks the paid hot-topic freshness and commercial-eligibility boundary", () => {
