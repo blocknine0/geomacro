@@ -165,7 +165,8 @@ export function qualifyIndependentSameEvent({
       source_native_freshness_verified:true,
       same_event_structured_identity_verified:true,
       review_and_derived_use_rights_receipts_present:true,
-      source_bytes_private_only:true});
+      source_bytes_private_only:true,
+      trusted_ed25519_review_signature_verified:true});
   }
   const receipt={
     schema:"geomacro.commercial-independent-event-admission.v1",
