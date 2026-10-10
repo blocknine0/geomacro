@@ -9,6 +9,7 @@ on:
     paths:
       - "scripts/ingest-certified-sources.mjs"
       - "scripts/lib/governed-source-native-time.mjs"
+      - "scripts/ops/verify-governed-d1-checkpoint.mjs"
       - "scripts/test-governed-source-ingestion.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "workers/control-plane/**"
@@ -105,20 +106,10 @@ jobs:
         run: |
           set -euo pipefail
           OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT (SELECT version FROM schema_meta WHERE name='control-plane') AS version, (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='b2_account_daily_request_quota') AS quota_table;")"
-          printf '%s' "$OUT" | node -e '
-            let s="";
-            process.stdin.on("data", d => s += d);
-            process.stdin.on("end", () => {
-              const parsed = JSON.parse(s);
-              const envelopes = Array.isArray(parsed) ? parsed : [parsed];
-              const rows = envelopes.flatMap(x => Array.isArray(x?.results) ? x.results : []);
-              if (rows.length !== 1 || Number(rows[0]?.version) < 5 ||
-                  Number(rows[0]?.quota_table) !== 1) {
-                throw new Error("GOVERNED_INGESTION_SHARED_B2_D1_SCHEMA_V5_REQUIRED");
-              }
-            });
-          '
-
+          # No shell-quoted JS: the verifier is a real independently tested
+          # Node module with bounded input and a fail-closed source/B2/D1
+          # hash + native measurement-age contract.
+          printf '%s' "$OUT" | node scripts/ops/verify-governed-d1-checkpoint.mjs
       - name: Export governed source admission state from D1
         shell: bash
         run: |
