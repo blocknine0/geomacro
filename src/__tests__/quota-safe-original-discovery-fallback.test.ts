@@ -25,7 +25,8 @@ const official = () => ({
   supabase_reads: 0, supabase_writes: 0, b2_requests: 0,
   public_published: false, proves_public_scored_intelligence: false,
   categories: ["geopolitics", "macro", "rare_earth"].map((category, index) => ({
-    category, fetch_ok: true, recent_original_count: index + 1,
+    category, fetch_ok: true, publisher_transport_ok: true,
+    recent_original_count: index + 1,
     public_scored_verified: false, commerce_eligible: false,
     // Sensitive fields must NEVER appear in the public receipt.
     article_url: "https://secret.example/item", title: "private source material",
@@ -80,6 +81,23 @@ describe("#1827 low-quota GDELT original publisher backup", () => {
     expect(discoveryMonitorExitCode(receipt)).toBe(1);
   });
 
+  it("does not turn one failed third publisher into full original-source success",async()=>{
+    const audit=official();
+    audit.categories[2].publisher_transport_ok=false;
+    const receipt=await probeQuotaSafeDiscovery({
+      now,primaryProbe:async()=>primary(false),officialProbe:async()=>audit,
+    });
+    expect(receipt.independent_original_publisher_fallback).toMatchObject({
+      state:"ORIGINAL_SOURCE_DEGRADED",
+      domains_reached:3,
+      all_attempted_publisher_transports_ok:false,
+      private_candidate_counts:{geopolitics:1,macro:2,rare_earth:3},
+      chargeable:false,public_scored:false,
+    });
+    expect(receipt.source_reachability).toBe("DEGRADED");
+    expect(discoveryMonitorExitCode(receipt)).toBe(1);
+  });
+
   it("drops malformed, wrong-rights, or leaking private backup receipts entirely", () => {
     const bad = official();
     bad.categories[1].commerce_eligible = true;
@@ -87,6 +105,10 @@ describe("#1827 low-quota GDELT original publisher backup", () => {
     bad.categories[1].commerce_eligible = false;
     bad.categories[1].recent_original_count = 1000000;
     expect(summarizeOriginalFallback(bad).state).toBe("BACKUP_AUDIT_INVALID");
+    const missingTransport = official();
+    delete (missingTransport.categories[0] as any).publisher_transport_ok;
+    expect(summarizeOriginalFallback(missingTransport).state)
+      .toBe("BACKUP_AUDIT_INVALID");
     const dup = official();
     dup.categories[2].category = "macro";
     expect(summarizeOriginalFallback(dup).state).toBe("BACKUP_AUDIT_INVALID");

@@ -25,6 +25,7 @@ export function summarizeOriginalFallback(audit) {
   for (const row of rows) {
     if (!DOMAINS.includes(row?.category) || byCategory.has(row.category) ||
         typeof row.fetch_ok !== "boolean" ||
+        typeof row.publisher_transport_ok !== "boolean" ||
         !Number.isSafeInteger(row.recent_original_count) ||
         row.recent_original_count < 0 || row.recent_original_count > 100 ||
         row.public_scored_verified !== false ||
@@ -35,9 +36,13 @@ export function summarizeOriginalFallback(audit) {
   }
   if (byCategory.size !== 3) return { ...NOT_NEEDED, state: "BACKUP_AUDIT_INVALID" };
   const domainsReached = DOMAINS.filter(d => byCategory.get(d).fetch_ok).length;
+  const allAttemptedPublisherTransportsOk = DOMAINS.every(
+    d => byCategory.get(d).publisher_transport_ok === true);
   return {
-    state: domainsReached === 3 ? "ORIGINAL_SOURCE_POLL_OK" : "ORIGINAL_SOURCE_DEGRADED",
+    state: domainsReached === 3 && allAttemptedPublisherTransportsOk
+      ? "ORIGINAL_SOURCE_POLL_OK" : "ORIGINAL_SOURCE_DEGRADED",
     domains_reached: domainsReached,
+    all_attempted_publisher_transports_ok: allAttemptedPublisherTransportsOk,
     // One publisher is not independent event corroboration.
     private_candidate_counts: Object.fromEntries(DOMAINS.map(d =>
       [d, byCategory.get(d).fetch_ok ? byCategory.get(d).recent_original_count : 0])),
