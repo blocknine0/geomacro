@@ -30,6 +30,13 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     media:"json",rights:"UNVERIFIED",poll:"six_hourly",
     event_intelligence:false,country_coverage_verified:false,
   }),
+  Object.freeze({
+    id:"nrcan_simply_science_official_rss_review",
+    domain:"rare_earth",kind:"natural_resources_science_release",
+    url:"https://natural-resources.canada.ca/simply-science/rss.xml",
+    media:"rss",rights:"UNVERIFIED",poll:"six_hourly",
+    event_intelligence:false,country_coverage_verified:false,
+  }),
 ]);
 
 const XML_MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
