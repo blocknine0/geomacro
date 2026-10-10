@@ -57,15 +57,15 @@ describe("#1827 public source discovery vs real paid intelligence boundary", () 
     expect(handlers).toContain("availability_check: \"POST_WITHOUT_PAYMENT_SIGNATURE\"");
   });
 
-  it("shows the pinned snapshot as source discovery on Intelligence, separate from the live feed", () => {
+  it("publishes catalog counts ONLY in endpoint discovery, not as customer-facing news stories", () => {
     const page = readFileSync("src/routes/intelligence.tsx", "utf8");
-    expect(page).toContain("PUBLIC_SOURCE_COVERAGE_DOMAINS.map");
-    expect(page).toContain("Catalogued source entries · not published intelligence");
-    expect(page).toContain("Current independently verified scored events: not available");
-    expect(page).toContain("Private Telegram/historical registries are pinned snapshots");
-    expect(page).toContain("intelligence_query_path");
-    expect(page).toContain("livePulse?.currentScoredCount");
-    expect(page).toContain("every five minutes while open");
+    expect(page).not.toContain("PUBLIC_SOURCE_COVERAGE_DOMAINS.map");
+    expect(page).not.toContain("Catalogued source entries · not published intelligence");
+    expect(page).not.toContain("source-intake-coverage-heading");
+    expect(page).toContain("Verified news developments");
+    expect(page).toContain("publicHeadline(event.title)");
     expect(page).toContain("currentVerifiedDeskEvents(pool)");
+    const handlers = readFileSync("src/lib/category-intelligence-alias.server.ts", "utf8");
+    expect(handlers).toContain("source_intake: publicIntelligenceSourceCoverage(");
   });
 });
