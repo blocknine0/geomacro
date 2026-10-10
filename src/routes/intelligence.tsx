@@ -18,6 +18,7 @@ import { useRiskIndices } from "@/lib/use-risk-indices";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import { categoryLeads, publicHeadline, scoredNews, COMMERCIAL_DOMAINS } from "@/lib/intelligence-editorial";
 import { intelligenceDomainPulse } from "@/lib/intelligence-domain-pulse";
+import { currentVerifiedDeskEvents } from "@/lib/intelligence-current-desk";
 
 const TITLE = "Live Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
 const DESCRIPTION = "Source-governed geopolitical, macro/FX and critical minerals intelligence: specific scored events, decision context and verified severity from 0 to 100.";
@@ -93,10 +94,12 @@ function IntelligencePage() {
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<IntelSort>("newest");
+  const [showHistoricalArchive, setShowHistoricalArchive] = useState(false);
 
   const pool = useMemo(() => scoredNews(intel.data?.all ?? []), [intel.data]);
-  const leads = useMemo(() => categoryLeads(pool), [pool]);
-  const currentScored = pool.some((event) => event.isCurrent);
+  const currentDesk = currentVerifiedDeskEvents(pool);
+  const leads = categoryLeads(currentDesk);
+  const currentScored = currentDesk.length > 0;
   const domainPulse = useMemo(() => intelligenceDomainPulse(intel.data?.all ?? []), [intel.data]);
   const currentObserved = useMemo(() => (intel.data?.all ?? []).filter((event) =>
     event.publicStatus === "live_observed" && event.isCurrent && event.severity === null && event.delta === null,
@@ -108,7 +111,8 @@ function IntelligencePage() {
     [pool, category, query, activeSort],
   );
   const latestVerifiedFallback = pool.length > 0 && !currentScored;
-  const previous = pool.filter((event) => !event.isCurrent).slice(0, 8);
+  const historicalCount = pool.length - currentDesk.length;
+  const visibleFiltered = showHistoricalArchive ? filtered : currentVerifiedDeskEvents(filtered);
   const latestScoredByCategory = useMemo(() => {
     const latest = new Map<string, IntelEvent>();
     for (const event of pool) {
@@ -133,7 +137,7 @@ function IntelligencePage() {
           </span>
           <span className="text-muted-foreground">
             {intel.status === "updating" ? "Updating" : latestVerifiedFallback
-              ? "Historical scores preserved while fresh assessments are prepared"
+              ? "No current scored intelligence · historical archive available"
               : currentScored ? "Fresh verified scored developments" : "No eligible scored headlines yet"}
           </span>
         </div>
@@ -160,7 +164,7 @@ function IntelligencePage() {
                   pulse.state === "historical_verified" ? "Historical verified assessment" :
                   "Current verified evidence unavailable"}
               </p>
-              {pulse.lastScored?.severity !== null && pulse.lastScored?.severity !== undefined ? (
+              {pulse.currentScoredCount > 0 && pulse.lastScored?.severity !== null && pulse.lastScored?.severity !== undefined ? (
                 <div className="mt-3 flex items-center gap-2">
                   <RiskBadge score={pulse.lastScored.severity} showScore />
                   <span className="text-xs text-muted-foreground">
@@ -242,13 +246,18 @@ function IntelligencePage() {
         <>
         <section className="mt-8" aria-labelledby="domain-leads-heading">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Global intelligence desk</p>
-          <h2 id="domain-leads-heading" className="mt-1 text-2xl font-semibold">Leading verified developments</h2>
-          <p className="mt-1 text-sm text-muted-foreground">One leading scored development per domain, ranked from the verified feed. Historical stories are dated, never passed off as breaking news.</p>
+          <h2 id="domain-leads-heading" className="mt-1 text-2xl font-semibold">Current verified developments</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Only scored developments with a genuine original publication date within 24 hours are eligible here. Older intelligence stays in the dated archive.</p>
+          {!currentScored ? (
+            <p className="mt-4 rounded-xl border border-border/70 px-4 py-3 text-sm text-muted-foreground" role="status">
+              No current verified risk assessment is available across the three domains. Monitoring continues, but an unconfirmed source update is not scored intelligence. This does not mean global risk is unchanged.
+            </p>
+          ) : null}
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {leads.map(({ key, label, event, isCurrent }) => (
               <article key={key} className="flex flex-col rounded-xl border border-border/70 bg-card/50 p-4">
                 <p className="font-mono text-[10px] uppercase tracking-widest text-primary">{label}</p>
-                {event && event.severity !== null ? (
+                {isCurrent && event && event.severity !== null ? (
                   <>
                     <Link to="/event/$eventId" params={{ eventId: event.id }} className="mt-3 flex-1 text-sm font-semibold leading-6 hover:text-primary">{publicHeadline(event.title)}</Link>
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
@@ -257,7 +266,7 @@ function IntelligencePage() {
                     </div>
                   </>
                 ) : (
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">No eligible verified scored story yet. No event or severity has been invented.</p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">No current verified scored assessment in the last 24 hours. No new severity is invented.</p>
                 )}
               </article>
             ))}
@@ -289,43 +298,35 @@ function IntelligencePage() {
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                  {latestVerifiedFallback ? "Historical verified assessments" : "Scored news intelligence"}
+                  {showHistoricalArchive ? "Dated historical archive" : "Current scored intelligence"}
                 </p>
                 <h2 className="mt-1 text-2xl font-semibold">
-                  {query.trim() || category !== "all" ? "Matching scored stories" : latestVerifiedFallback ? "Latest verified assessments" : "Verified intelligence feed"}
+                  {showHistoricalArchive ? "Current and historical assessments" : "Current verified assessments"}
                 </h2>
               </div>
-              <p className="text-sm text-muted-foreground">{filtered.length} scored stor{filtered.length === 1 ? "y" : "ies"}</p>
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-muted-foreground">{visibleFiltered.length} scored stor{visibleFiltered.length === 1 ? "y" : "ies"}</p>
+                {historicalCount > 0 ? (
+                  <Button type="button" variant="outline" size="sm" aria-pressed={showHistoricalArchive}
+                    onClick={() => setShowHistoricalArchive((value) => !value)}>
+                    {showHistoricalArchive ? "Hide historical archive" : `View historical archive (${historicalCount})`}
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
-            {filtered.length ? (
+            {visibleFiltered.length ? (
               <div className="grid gap-3">
-                {filtered.slice(0, 24).map((event) => <IntelCard key={event.id} event={event} />)}
+                {visibleFiltered.slice(0, 24).map((event) => <IntelCard key={event.id} event={event} />)}
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-border p-8 text-center">
-                <p className="font-medium">No matching scored news</p>
-                <p className="mt-2 text-sm text-muted-foreground">Try a broader search. Unscored classifier observations are excluded until verified scoring completes.</p>
+                <p className="font-medium">No current verified scored development</p>
+                <p className="mt-2 text-sm text-muted-foreground">Use the dated archive to review previous assessments. New signals require independent corroboration and verified scoring.</p>
               </div>
             )}
 
-            {!query.trim() && category === "all" && previous.length > 0 ? (
-              <section className="mt-10 border-t border-border/60 pt-8" aria-labelledby="verified-risk-context-heading">
-                <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Earlier intelligence</p>
-                    <h2 id="verified-risk-context-heading" className="mt-1 text-2xl font-semibold">Previous risk assessments</h2>
-                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                      Previous verified risk assessments remain available for comparison. Their dates are preserved, and they are not presented as today&apos;s risk conditions.
-                    </p>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{previous.length} verified record{previous.length === 1 ? "" : "s"}</p>
-                </div>
-                <div className="grid gap-3">
-                  {previous.map((event) => <IntelCard key={`verified-context-${event.id}`} event={event} />)}
-                </div>
-              </section>
-            ) : null}
+
           </div>
 
           <aside className="space-y-4" aria-label="Intelligence context">
