@@ -29,3 +29,51 @@ export function selectPrivatePublisherDiverseCandidates(candidates, limit) {
   }
   return [...first, ...remaining].slice(0, limit);
 }
+
+
+// #1827: Private, one-slot canonical scoring cannot reserve that *entire*
+// window for a GDELT INDEX discovery while a publisher-native, already
+// pre-admitted original article exists. This selects only which article
+// receives classifier budget. No news is invented, no rights are granted,
+// and canonical classifier/scoring/GRO gates are wholly unchanged.
+export function allocatePrivateScoringSlots({
+  guardianCandidates=[],otherCandidates=[],gdeltCandidates=[],limit,
+}={}) {
+  if(![guardianCandidates,otherCandidates,gdeltCandidates].every(Array.isArray) ||
+     !Number.isInteger(limit)||limit<1||limit>100)
+    throw Error("PRIVATE_SCORING_SLOT_BUDGET_INVALID");
+
+  const publisherNative=otherCandidates.filter(row=>
+    row?.discoveryProvider==="official_native_rss" &&
+    row?.nativePublishedAtVerified===true &&
+    row?.privateOnly===true &&
+    row?.rightsVerified===false &&
+    row?.commercialEligible===false &&
+    typeof row?.sourceDomain==="string" &&
+    typeof row?.url==="string" &&
+    (()=>{try{
+      const u=new URL(row.url);
+      return u.protocol==="https:" && !u.username && !u.password &&
+        u.hostname.toLowerCase()===row.sourceDomain.toLowerCase() &&
+        Number.isFinite(Date.parse(row.publishedAt));
+    }catch{return false;}})()
+  );
+  if(limit===1 && publisherNative.length) {
+    return {
+      primary:selectPrivatePublisherDiverseCandidates(publisherNative,1),
+      gdelt:[],native_original_singleton_prioritized:true,
+    };
+  }
+
+  // Preserve existing multi-slot 1/3-GDELT budget and guardian ordering.
+  // The single-slot exception is explicitly restricted to publisher-native
+  // already admitted originals, not to arbitrary URLs or paid entitlement.
+  const gdeltLimit=Math.min(gdeltCandidates.length,
+    Math.max(1,Math.floor(limit/3)));
+  const primary=selectPrivatePublisherDiverseCandidates(
+    [...guardianCandidates,...otherCandidates],limit-gdeltLimit);
+  return {
+    primary,gdelt:gdeltCandidates.slice(0,gdeltLimit),
+    native_original_singleton_prioritized:false,
+  };
+}
