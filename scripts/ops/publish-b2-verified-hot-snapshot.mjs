@@ -51,6 +51,7 @@ export async function publishB2VerifiedHotSnapshot({ product, value, proof, priv
     const result=qualifyIndependentSameEvent({
       rows:value.rows,eventPackages:privateEventPackages,
       now:new Date(attestedAt),
+      trustedReviewerPublicKeyPem:process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM,
     });
     if(proof.commercial_multi_source_verified!==true||
        proof.commercial_multi_source_receipt_sha256!==result.receipt_sha256||
