@@ -102,6 +102,8 @@ export async function probeExpandedSource(source,{
     topical_private_release_links_24h:null,
     official_locale_fallback_attempted:false,
     official_locale_fallback_used:false,
+    // Sanitized numeric transport status only; never forward upstream bodies.
+    primary_http_status:null,fallback_http_status:null,
     same_event_independent_corroboration_verified:false,
     source_native_release_is_scored_event:false,
     country_coverage_verified:false,commercial_rights_verified:false,
@@ -117,6 +119,7 @@ export async function probeExpandedSource(source,{
   });
   let response;
   try{response=await fetchOfficial(source.url);}catch{return row;}
+  row.primary_http_status=response.status;
   // Documented language variant at the SAME official publisher. Do not
   // retry on 401/403/429, network/redirect error or MIME/body/shape rejection.
   // Strictly one extra request; primary or alternate stays fail-closed.
@@ -124,6 +127,7 @@ export async function probeExpandedSource(source,{
     (response.status>=500 && response.status<=599))){
     row.official_locale_fallback_attempted=true;
     try{response=await fetchOfficial(source.alternate_url);}catch{return row;}
+    row.fallback_http_status=response.status;
   }
   if(!response.ok) {
     row.reason=response.status===429?"PUBLISHER_RATE_LIMITED":
