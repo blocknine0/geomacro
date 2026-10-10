@@ -147,7 +147,9 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
       expect(()=>derivedCustomerRowSha256(bad)).toThrow(/^INDEPENDENT_EVENT_DERIVED_ROW_/);
       expect(()=>qualifyIndependentSameEvent({rows:[bad],
         eventPackages:[signReview(proof)],now,trustedReviewerPublicKeyPem}))
-        .toThrow(/^INDEPENDENT_EVENT_DERIVED_ROW_/);
+        .toThrow(Number.isInteger(bad.severity)
+          ? /^INDEPENDENT_EVENT_DERIVED_ROW_/
+          : "INDEPENDENT_EVENT_ROW_BINDING_INVALID");
     }
   });
   it("requires exact same structured claim; two titles containing rates are not a same-event proof",()=>{
