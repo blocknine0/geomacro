@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import {
   qualifyIndependentSameEvent,sameEventClaimHash,
   qualificationReviewSigningBytes,SAME_EVENT_QUALIFICATION_SCHEMA,
+  derivedCustomerRowSha256,
 } from "../../scripts/lib/independent-same-event-qualification.mjs";
 import {publishB2VerifiedHotSnapshot} from "../../scripts/ops/publish-b2-verified-hot-snapshot.mjs";
 
@@ -20,12 +21,17 @@ const identity={
 };
 const claim=sameEventClaimHash("macro",identity);
 const rows=[{id:"canonical-scored-001",category:"macro",
-  public_status:"verified_b2",severity:73}];
+  public_status:"verified_b2",severity:73,delta:2,
+  source_title:"Geomacro finds verified monetary-policy rate decision risk elevated",
+  summary:"Corroborated original monetary policy announcement has elevated macro risk",
+  created_at:"2026-10-10T10:44:00Z",
+  published_at:"2026-10-10T10:08:00Z"}];
 const proof={
   schema:SAME_EVENT_QUALIFICATION_SCHEMA,event_id:rows[0].id,
   category:"macro",event:identity,same_event_claim_sha256:claim,
   independent_same_event_review_verified:true,
   same_event_reviewer_receipt_sha256:hex("independent senior editor exact claim review"),
+  reviewed_derived_row_sha256:derivedCustomerRowSha256(rows[0]),
   counterevidence_review:{
     independent_counterevidence_review_completed:true,
     review_receipt_sha256:hex("private source fact check and contradiction screening"),
@@ -92,6 +98,59 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
     expect(serialized).not.toContain("ecb.europa.eu");
     expect(serialized).not.toContain("pressreleases");
     expect(r.receipt_sha256).toMatch(/^[a-f0-9]{64}$/);
+  });
+  it("binds exact derived customer-visible narrative, severity and timestamps into the independent reviewer signature",()=>{
+    const good=go();
+    expect(good.receipt.qualified[0].reviewed_derived_row_sha256)
+      .toBe(derivedCustomerRowSha256(rows[0]));
+    const reOrdered=Object.fromEntries(Object.entries(rows[0]).reverse());
+    expect(derivedCustomerRowSha256(reOrdered))
+      .toBe(derivedCustomerRowSha256(rows[0]));
+    for(const mutated of [
+      {...rows[0],severity:100},
+      {...rows[0],source_title:"Geomacro finds unrelated risk on another corridor"},
+      {...rows[0],summary:"Another geopolitical risk unrelated to reviewed monetary policy event"},
+      {...rows[0],delta:40},
+      {...rows[0],created_at:"2026-10-10T10:50:00Z"},
+      {...rows[0],published_at:"2026-10-10T10:12:00Z"},
+    ]){
+      expect(()=>qualifyIndependentSameEvent({rows:[mutated],
+        eventPackages:[signReview(proof)],now,trustedReviewerPublicKeyPem}))
+        .toThrow("INDEPENDENT_EVENT_DERIVED_ROW_REVIEW_BINDING_INVALID");
+    }
+    // Even if a trusted reviewer signs a NEW modified row, its published
+    // clock cannot be the ingestion or B2 restore time.
+    const laundered={...rows[0],published_at:"2026-10-10T10:44:00Z"};
+    expect(()=>qualifyIndependentSameEvent({rows:[laundered],
+      eventPackages:[signReview({...proof,
+        reviewed_derived_row_sha256:derivedCustomerRowSha256(laundered)})],
+      now,trustedReviewerPublicKeyPem}))
+      .toThrow("INDEPENDENT_EVENT_DERIVED_ROW_ORIGINAL_TIME_MISMATCH");
+    expect(()=>go({...proof,reviewed_derived_row_sha256:"0".repeat(64)}))
+      .toThrow("INDEPENDENT_EVENT_DERIVED_ROW_REVIEW_BINDING_INVALID");
+    expect(()=>go({...proof,reviewed_derived_row_sha256:undefined}))
+      .toThrow("INDEPENDENT_EVENT_DERIVED_ROW_REVIEW_BINDING_INVALID");
+  });
+  it("rejects upstream/source metadata, private URLs and malformed scored customer rows before settlement",()=>{
+    const original=rows[0];
+    for(const bad of [
+      {...original,source_url:"https://www.federalreserve.gov/secret"},
+      {...original,raw_article:"copied from upstream news"},
+      {...original,summary:"Publisher report https://example.com/private"},
+      {...original,source_title:"Original news headline without Geomacro derived status"},
+      {...original,published_at:"2026-10-10T10:08:00+00:00"},
+      {...original,created_at:"not-a-date"},
+      {...original,severity:73.1},
+      {...original,delta:Number.NaN},
+      {...original,summary:{raw:"report"}},
+    ]){
+      expect(()=>derivedCustomerRowSha256(bad)).toThrow(/^INDEPENDENT_EVENT_DERIVED_ROW_/);
+      expect(()=>qualifyIndependentSameEvent({rows:[bad],
+        eventPackages:[signReview(proof)],now,trustedReviewerPublicKeyPem}))
+        .toThrow(Number.isInteger(bad.severity)
+          ? /^INDEPENDENT_EVENT_DERIVED_ROW_/
+          : "INDEPENDENT_EVENT_ROW_BINDING_INVALID");
+    }
   });
   it("requires exact same structured claim; two titles containing rates are not a same-event proof",()=>{
     const different={

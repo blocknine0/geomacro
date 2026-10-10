@@ -73,6 +73,58 @@ function approvedGlobalEntityIso3() {
 }
 const CANONICAL_COUNTRY_ISO3=approvedGlobalEntityIso3();
 
+// The reviewer must sign the *exact derived customer row* as well as the
+// underlying source/evidence. Otherwise a paid publisher could keep a valid
+// reviewer signature while silently modifying its severity, explanation or
+// published_at (including advancing an expired original event's clock).
+//
+// This explicit allowlist is the same public B2 Intelligence projection, not
+// internal publisher/source identities. Stable fixed ordering avoids object
+// property insertion-order drift without ever using unsafe prototype writes.
+const DERIVED_ROW_FIELDS=Object.freeze([
+  "id","source_title","summary","category","severity",
+  "delta","created_at","published_at","public_status",
+]);
+const UTC_TIME=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u;
+function validUtcTime(s) {
+  return typeof s==="string"&&UTC_TIME.test(s)&&
+    Number.isFinite(Date.parse(s));
+}
+export function derivedCustomerRowSha256(row) {
+  if(!row||typeof row!=="object"||Array.isArray(row)||
+     ![Object.prototype,null].includes(Object.getPrototypeOf(row)))
+    err("DERIVED_ROW_UNAPPROVED_SHAPE");
+  const keys=Object.keys(row);
+  if(keys.length!==DERIVED_ROW_FIELDS.length ||
+     keys.some(k=>!DERIVED_ROW_FIELDS.includes(k))||
+     DERIVED_ROW_FIELDS.some(k=>!Object.hasOwn(row,k)))
+    err("DERIVED_ROW_UNAPPROVED_FIELDS");
+  if(typeof row.id!=="string"||!/^[-_A-Za-z0-9]{1,128}$/u.test(row.id)||
+     row.public_status!=="verified_b2"||!DOMAINS.has(row.category)||
+     !Number.isInteger(row.severity)||row.severity<0||row.severity>100||
+     (row.delta!==null&&
+       (typeof row.delta!=="number"||!Number.isFinite(row.delta)))||
+     !validUtcTime(row.created_at)||!validUtcTime(row.published_at))
+    err("DERIVED_ROW_VALUE_INVALID");
+  // Enforce concise, publisher-free, canonical public narrative. No raw
+  // headlines, links, source metadata, rendered HTML or upstream fragments.
+  if(typeof row.source_title!=="string"||
+     !row.source_title.startsWith("Geomacro finds ")||
+     row.source_title.length<22||row.source_title.length>280||
+     (row.summary!==null&&
+      (typeof row.summary!=="string"||
+       row.summary.length<8||row.summary.length>190))||
+     [row.source_title,row.summary??""].some(t=>
+       /(?:https?:\/\/|www\.|<[^>]*>|\[(?:source|provider|publisher)\])/iu.test(t)))
+    err("DERIVED_ROW_PUBLIC_TEXT_INVALID");
+  const canonical=Object.create(null);
+  for(const key of DERIVED_ROW_FIELDS)canonical[key]=row[key];
+  const encoded=JSON.stringify(canonical);
+  if(Buffer.byteLength(encoded,"utf8")>4096)
+    err("DERIVED_ROW_OVERSIZE");
+  return createHash("sha256").update(encoded,"utf8").digest("hex");
+}
+
 const canonical=value=>JSON.stringify(value);
 const digest=value=>createHash("sha256").update(canonical(value)).digest("hex");
 // Safe server-side shared authority used by unsigned private event grouping.
@@ -204,7 +256,20 @@ export function qualifyIndependentSameEvent({
     if(identityHash!==pkg.same_event_claim_sha256)
       err("EVENT_CLAIM_HASH_MISMATCH");
     const when=nativeTime(identity.occurred_at,nowMs);
+    const reviewedRowHash=derivedCustomerRowSha256(row);
+    // Reviewed output must be bound into the trusted Ed25519 event package;
+    // an original article cannot authorize an unrelated severity or gist.
+    if(!HASH.test(pkg.reviewed_derived_row_sha256)||
+       pkg.reviewed_derived_row_sha256!==reviewedRowHash)
+      err("DERIVED_ROW_REVIEW_BINDING_INVALID");
     const sources=pkg.evidence.map(e=>verifiedArticle(e,identityHash,nowMs));
+    // The customer-facing published clock must describe the original
+    // event or a first-party reviewed article publication, NEVER this
+    // publisher's B2 upload/restore/deployment timestamp.
+    const publishedAt=Date.parse(row.published_at);
+    if(publishedAt>nowMs || nowMs-publishedAt>MAX_SOURCE_AGE ||
+       ![when,...sources.map(s=>s.ms)].includes(publishedAt))
+      err("DERIVED_ROW_ORIGINAL_TIME_MISMATCH");
     if(sources.some(s=>s.ms<when-5*60000)||
       Math.max(...sources.map(s=>s.ms))-Math.min(...sources.map(s=>s.ms))>
         MAX_EVENT_SPREAD)
@@ -239,6 +304,7 @@ export function qualifyIndependentSameEvent({
     }
     qualified.push({event_id:row.id,category:row.category,
       event_claim_sha256:identityHash,
+      reviewed_derived_row_sha256:reviewedRowHash,
       independent_reporting_organizations:independentOrganizations.size,
       counterevidence_review_signed:true,
       unresolved_material_conflicts:0,retractions_detected:0,
