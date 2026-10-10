@@ -3,7 +3,11 @@ name: Geomacro Intelligence Orchestrator
 on:
   workflow_dispatch:
   schedule:
-    - cron: "7,22,37,52 * * * *"
+    # Free-quota recovery: 16 slots/day (90min), 30min offset from
+    # the separate official source monitor. Github cron is best effort.
+    # Legacy frozen Supabase writers are strictly excluded in code.
+    - cron: "47 0,3,6,9,12,15,18,21 * * *"
+    - cron: "17 2,5,8,11,14,17,20,23 * * *"
   push:
     branches: [main]
     paths:
