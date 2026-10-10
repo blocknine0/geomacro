@@ -39,7 +39,7 @@ describe("public product surface failure-domain isolation", () => {
     const globalRisk = read(".github/workflows/gri-realtime-direct-postgres.yml");
 
     expect(orchestrator).toContain("group: geomacro-intelligence-orchestrator");
-    expect(orchestrator).toContain('cron: "7,22,37,52 * * * *"');
+    expect(orchestrator).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
     expect(orchestrator).toContain("node scripts/intelligence-orchestrator.mjs");
     expect(orchestrator).toContain("GUARDIAN_QUERY_BUDGET_PER_CATEGORY");
     expect(orchestrator).toContain("GEMINI_API_KEY");
