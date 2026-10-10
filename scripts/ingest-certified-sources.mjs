@@ -351,10 +351,34 @@ async function archiveSourceBatch(sourceId, rows) {
 
 const handlers = { eia_api_v2: eia, noaa_ncei_cdo_api: noaa };
 const sourceIds = (process.env.SOURCE_INGESTION_SOURCES ?? "eia_api_v2,noaa_ncei_cdo_api").split(",").map((value) => value.trim()).filter(Boolean);
-const summaries = [];
+if (!sourceIds.length || sourceIds.length > 2 ||
+    new Set(sourceIds).size !== sourceIds.length) {
+  throw new Error("GOVERNED_SOURCE_SELECTION_INVALID");
+}
+
+// Stage BOTH providers and verify their actual native statistical measurement
+// clocks/domain *before any Backblaze request*. If rolling NOAA data are
+// unavailable, do not consume B2 quota uploading EIA-only fragments and
+// leave uncheckpointed partial archive work behind.
+const sourceBatches = [];
 for (const sourceId of sourceIds) {
   if (!handlers[sourceId]) throw new Error(`UNSUPPORTED_SOURCE:${sourceId}`);
   const rows = await handlers[sourceId]();
+  if (!Array.isArray(rows) || rows.length < 1 || rows.length > MAX_SOURCE_ROWS) {
+    throw new Error(`GOVERNED_SOURCE_BATCH_NOT_ADMITTED:${sourceId}`);
+  }
+  governedSourceNativeSpan(rows, { sourceId, now: new Date(now) });
+  sourceBatches.push({ sourceId, rows });
+}
+// Budget pessimistically per fragment; large-fragment splits still hit the
+// independent local+shared quota guard before any additional network call.
+const minimumB2Requests = sourceBatches.reduce((total, batch) =>
+  total + Math.ceil(batch.rows.length / MAX_FRAGMENT_MEMBERS) * 2, 0);
+if (minimumB2Requests > Number(process.env.B2_REQUEST_BUDGET ?? 0)) {
+  throw new Error("GOVERNED_SOURCE_MINIMUM_B2_BUDGET_INSUFFICIENT");
+}
+const summaries = [];
+for (const { sourceId, rows } of sourceBatches) {
   const summary = await archiveSourceBatch(sourceId, rows);
   summaries.push(summary);
   console.log(JSON.stringify({ ...summary, status: "PASS" }));
