@@ -55,9 +55,9 @@ Supporting official references:
 
 - Existing official event feeds: continue their established hourly sampling.
 - Additional official release/structural probes: **4 times per UTC day**,
-  nine GET requests per cycle, plus at most one documented same-publisher
+  nine feed GET requests per cycle, plus at most four bounded original article date GETs (two per Atom source), plus at most one documented same-publisher
   Eurostat German-language alternative following primary HTTP 404/5xx only
-  (~36–40 total GETs/day). No locale retry on 401/403/429, redirect/network
+  (~36–56 total GETs/day). No locale retry on 401/403/429, redirect/network
   errors or wrong MIME/body/schema. Each attempt has a 5s timeout and 192-KiB
   maximum body for the other eight sources; Eurostat catalogue RSS alone
   has a 1 MiB hard cap (both primary and conditional same-publisher
@@ -105,4 +105,4 @@ precise publication time, independent corroboration and rights evidence pass.
 
 ### Added original-publisher native-article observation lanes (2026-10-10)
 
-The additional 3 fixed native article feeds **do not remove or hide** EITI HTTP 403 or NRCan Simply Science transport failure. All 9 official sources are independently sampled, and any unavailable source leaves the producer `SOURCE_TRANSPORT_DEGRADED`. For the 3 newly added originating publisher feeds, an in-window topical article is counted only if the **RSS `item/pubDate`** or **Atom `entry/published`** is a real past clock (within 24h) AND its link has an exact allowlisted publisher host. Atom `updated`, channel clock, feed retrieval, topic-only aggregation and third-party hosts are rejected. A count is private original discovery, **not scored Geomacro risk, commercial license proof or 195-country coverage**. The sanitized observation has `original_publisher_native_24h_topic_counts` by domain; zero may mean a quiet publisher, not absence of news globally. No source RSS body or article title is re-served to customers. Production cannot pass a stale D1 hot-snapshot requirement from observation alone.
+The additional 3 fixed native article feeds **do not remove or hide** EITI HTTP 403 or NRCan Simply Science transport failure. All 9 official sources are independently sampled, and any unavailable source leaves the producer `SOURCE_TRANSPORT_DEGRADED`. For the 3 newly added originating publisher feeds, an in-window topical article is counted only if the **RSS `item/pubDate`**, **Atom `entry/published`**, or narrowly verified same-original-article HTML `datePublished` (two-page maximum per Atom publisher) is a real precise past clock (within 24h) AND its link has an exact allowlisted publisher host. Atom `updated`, channel clock, feed retrieval, topic-only aggregation and third-party hosts are rejected. A count is private original discovery, **not scored Geomacro risk, commercial license proof or 195-country coverage**. The sanitized observation has `original_publisher_native_24h_topic_counts` by domain; zero may mean a quiet publisher, not absence of news globally. No source RSS body or article title is re-served to customers. Production cannot pass a stale D1 hot-snapshot requirement from observation alone.
