@@ -3,6 +3,7 @@ import { ArrowRight, Radio, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RiskBadge, RiskTrend } from "@/components/foundation/risk";
 import { prettyCategory, useIntelligence } from "@/lib/use-intelligence";
+import { currentVerifiedDeskEvents } from "@/lib/intelligence-current-desk";
 
 function observedLabel(value: string | null | undefined) {
   if (!value) return "Observed time unavailable";
@@ -19,7 +20,8 @@ function observedLabel(value: string | null | undefined) {
 
 export function HotTopicsLive() {
   const intelligence = useIntelligence();
-  const rows = intelligence.data?.topRisks.slice(0, 6) ?? [];
+  // Only genuine original-date verified scores may occupy current home topics.
+  const rows = currentVerifiedDeskEvents(intelligence.data?.all ?? []).slice(0, 6);
 
   return (
     <div className="mt-10 border-t border-border/60 pt-8">
@@ -61,7 +63,7 @@ export function HotTopicsLive() {
                 </Link>
               </h4>
               <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                {observedLabel(event.publishedAt ?? event.createdAt)}
+                {observedLabel(event.publishedAt)}
               </p>
             </article>
           ))}
@@ -70,7 +72,7 @@ export function HotTopicsLive() {
         <div className="mt-6 flex items-start gap-3 rounded-2xl border border-dashed border-border/70 bg-background/30 p-5 text-sm text-muted-foreground">
           <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
-            Current scored events are temporarily unavailable. Geomacro does not fill the gap with synthetic headlines or a fallback risk claim.
+            No current, originally dated and verified scored development is available. Historical risk assessments remain in the dated Intelligence archive; monitoring does not create new news.
           </p>
         </div>
       )}
