@@ -1,0 +1,76 @@
+name: Three-Domain Unified Private Source Intake
+
+# Private catalog fan-in only. Existing official 90m publisher probe,
+# historical producer and Telegram discovery/authorized consumer remain the
+# separate actual collection lanes; this never invents unapproved authorization.
+on:
+  workflow_dispatch: {}
+  schedule:
+    # 16 best-effort 90-minute UTC windows; ten minutes after official probe.
+    - cron: "27 0,3,6,9,12,15,18,21 * * *"
+    - cron: "57 1,4,7,10,13,16,19,22 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/three-domain-private-source-intake.yml"
+      - "scripts/ops/assemble-private-all-source-intake.mjs"
+      - "src/__tests__/private-all-source-intake.test.ts"
+  pull_request:
+    paths:
+      - ".github/workflows/three-domain-private-source-intake.yml"
+      - "scripts/ops/assemble-private-all-source-intake.mjs"
+      - "src/__tests__/private-all-source-intake.test.ts"
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-private-source-intake-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        with:
+          node-version: "22"
+      - name: Source intake syntax, local catalog contract and isolation
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/assemble-private-all-source-intake.mjs
+          test -f config/telegram-discovery-roots.json
+          test -f global-intelligence/sources/source-registry.v1.json
+          test -f global-intelligence/sources/free-source-catalog.v1.json
+          ! grep -E 'secrets\\.|SUPABASE_DB_URL|service_role|TELEGRAM_SESSION' scripts/ops/assemble-private-all-source-intake.mjs
+  catalog-intake:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Checkout canonical main without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        with:
+          node-version: "22"
+      - name: Stage every registered official, free, governed-root, Telegram and historical source
+        run: |
+          set -euo pipefail
+          node scripts/ops/assemble-private-all-source-intake.mjs
+      - name: Keep a short-lived hashed candidate queue, never raw publisher data
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: private-source-intake-${{ github.run_id }}
+          path: artifacts/private-intake/catalogued-source-intake.json
+          if-no-files-found: warn
+          retention-days: 2
