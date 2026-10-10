@@ -1,0 +1,26 @@
+# Geomacro independent multi-source event qualification — commercial boundary
+
+**Status:** enforced at the source-aware intelligence D1 hot publisher, with separate server-side D1 metadata rejection. **Not a claim of 195+ × 3 current live coverage, not a payment launch approval.**
+
+This is a verifiable internal qualification policy, inspired by industry-style multi-source corroboration (not a reproduction of Dataminr's proprietary detection methods):
+
+```
+New signal (PRIVATE) → genuine first-party original publisher URL/date → event identity (category, country, actor, target, location, event type, occurred_at) → independently authored confirmation by ≥2 registered originating organizations → independent item/content/reviewer hashes → source-specific derived commercial-use rights approval → trusted Ed25519 reviewer signature → canonical severity assessment → private qualification receipt digest → verified B2 readback + D1 current snapshot → independent product/x402 no-funds acceptance → explicit owner real-money ACK → payment
+```
+
+### Rules, non-negotiable
+
+1. **Same event, not same words.** Require an EXACT structured event claim (event type, country ISO3, canonical actor/target/location and original event clock), with a SHA-256 digest matching every article's claim receipt. Two generic keyword headlines, different actions, different countries, or a search index do NOT establish independent corroboration.
+2. **Two actually independent first-party reporting organizations.** Require at least two distinct *registered* originating institutions and original publisher hosts, separately validated first-party native published timestamps, distinct original article content hashes and independent reviewer receipts. A repost, syndicated wire copied across domains, second feed from the same institution, alias, GDELT first-seen time, or single RSS item never qualifies. Zero first-party evidence remains RED.
+3. **Freshness.** Article publication must be genuine, at most six hours old and not in the future; independent original publications must be within 90 minutes of each other. The event clock cannot be manufactured from poll time or a feed `updated` timestamp. A quiet source never implies zero global risk.
+4. **Commercial derived rights.** Both source-specific rights receipts must be positively verified internally. Open RSS or free access is NOT an unrestricted licence. Raw content is always private. Re-use of independently licensed/derived facts and customer-facing transformation must meet applicable legal rights.
+5. **Trusted editorial proof.** The complete reviewed private evidence package must be Ed25519-signed with an independently configured trusted review public key (`GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM`). Arbitrary labels such as `independently_corroborated:true` are not sufficient. No trusted key or invalid signature means RED. The key must come from the authorized production reviewer, not arbitrary third-party text or user input.
+6. **No raw customer outputs.** The result is a metadata-only receipt SHA-256, event IDs/domain/count and proof statuses. Article body, original headline, original publisher URL, private source provenance and rights documents remain behind internal governance. Public `live_observed` rows are suppressed until a separately approved signed, independently corroborated scored publication path exists. Historical signed objects remain governed by their own trust and staleness flags.
+7. **No bypass by using only the publisher client.** The authenticated Cloudflare D1 control plane also rejects Intelligence PUTs lacking a recent multi-source receipt SHA-256/qualified count and refuses unscored `live_observed` row promotion. The control-plane metadata check is **defense in depth only**: the authoritative detailed signature/source verification happens in the trusted publisher before D1. Direct B2 object bytes by themselves are not public/paid availability.
+
+### Source security and launch dependencies
+
+- Current publisher registry has pinned authorities for UN News, UK FCDO, UN Geneva, Federal Reserve, ECB, USGS, NRCan Canada and Statistics Canada. Other global sources require separately verified registry expansion and legal review; identity claims are not accepted just because someone wrote an organization string.
+- Hashes and signatures bind attested evidence but do **not** magically prove real-world publication or source rights if the trusted reviewer has not actually checked the original article bytes and licence. Upstream native original fetch, licensing, independent human/agent factual verification and downstream signed GRO still have separate acceptance.
+- **Production is expected RED** until two qualifying originals for an actual same event, real content/rights/reviewer attestations, a configured authorized Ed25519 review public key, canonical scoring, private verified B2 readback and independent D1 hot product acceptance are available. Fake test fixtures and old timestamps are never production news.
+- Current x402 remains no-charge/no settlement while `/api/health?deep=1` returns 503 or availability rejects current coverage. Pricing and mainnet activation are **not** implied by a passing unit test, source count, static 750 D1 country metadata rows or a build green check.
