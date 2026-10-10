@@ -40,7 +40,10 @@ describe("global raw realtime acquisition",()=>{
     expect(migration).toContain("'GEO:GLOBAL:GDELT:'");
     expect(migration).toContain("true,false,300,20");
     const workflow=read(".github/workflows/gdelt-gal-live-sync.yml");
-    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("permit_legacy_supabase_gal");
+    expect(workflow).not.toContain("\n  push:\n");
+    expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
     expect(workflow).not.toContain("schedule:");
     const orchestrator=read("scripts/intelligence-orchestrator.mjs");
     expect(orchestrator).toContain('key: "gdelt_gal"');

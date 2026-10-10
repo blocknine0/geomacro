@@ -1,24 +1,14 @@
 name: GDELT GAL Live Hot-Topic Sync
 
 on:
-  workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/gdelt-gal-live-sync.yml"
-      - "scripts/run-gdelt-gal-cycle.mjs"
-      - "scripts/run-live-structure-local.ts"
-      - "scripts/drain-live-structure.mjs"
-      - "scripts/sync-gdelt-gal-production.mjs"
-      - "scripts/reconcile-structured-event-commercial-rights.mjs"
-      - "scripts/verify-gdelt-gal-cycle.mjs"
-      - "scripts/audit-agent-hot-topic-readiness.ts"
-      - "scripts/lib/gri-db-client.mjs"
-      - "scripts/lib/direct-postgres-supabase-loader.mjs"
-      - "supabase/functions/live-structure-intelligence/index.ts"
-
-# The recurring scheduler remains quota-held. This self-scoped push trigger gives
-# #1414 one deterministic recovery/proof run when the canonical recovery path changes.
+  # Quota-held: never start legacy PostgreSQL writes from a main push.
+  workflow_dispatch:
+    inputs:
+      permit_legacy_supabase_gal:
+        description: "Explicit owner-approved recovery after independent normal free-tier budget proof"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,7 +19,7 @@ concurrency:
 
 jobs:
   sync:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.permit_legacy_supabase_gal == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: production
@@ -63,6 +53,21 @@ jobs:
 
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Require current Supabase free-tier budget before any recovery SQL writer
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="$(mktemp)"
+          err="$(mktemp)"
+          trap 'rm -f "$report" "$err"' EXIT
+          if ! node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal >"$report" 2>"$err"; then
+            echo "::error::FROZEN_SUPABASE_LEGACY_RECOVERY_QUOTA_HELD"
+            exit 3
+          fi
+          jq -e '.ok == true and .policy.recurring_ingest_allowed == true' "$report" >/dev/null ||
+            { echo "::error::SUPABASE_NORMAL_HEADROOM_NOT_VERIFIED"; exit 3; }
+          echo "PASS: free-tier budget independently cleared before manual legacy writer."
 
       - name: Validate production invocation boundary
         shell: bash

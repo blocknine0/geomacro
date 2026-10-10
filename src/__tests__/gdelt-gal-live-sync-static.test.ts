@@ -19,10 +19,12 @@ const directSync = readFileSync(
 
 describe("GDELT GAL production freshness workflow", () => {
   it("refreshes the canonical hot-topic discovery lane through controlled recovery without restoring a recurring schedule", () => {
-    expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).toContain("push:");
-    expect(workflow).toContain('branches: [main]');
-    expect(workflow).toContain('".github/workflows/gdelt-gal-live-sync.yml"');
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("permit_legacy_supabase_gal");
+    expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
+    expect(workflow).not.toContain("\n  push:\n");
+    expect(workflow).toContain("github.ref == 'refs/heads/main'");
+    expect(workflow).toContain("inputs.permit_legacy_supabase_gal == true");
     expect(workflow).not.toContain("schedule:");
     const orchestrator = readFileSync(join(process.cwd(), "scripts/intelligence-orchestrator.mjs"), "utf8");
     expect(orchestrator).toContain('key: "gdelt_gal"');
