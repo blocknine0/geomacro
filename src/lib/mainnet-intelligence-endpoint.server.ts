@@ -377,7 +377,12 @@ export const mainnetIntelligenceHandlers = {
         let preparedResponseSha256: string;
         try {
           const assembled = await assembleAgentQueryResponse({ plan, requestId, clientRequestId: parsed.client_request_id ?? null, priceUsdc: config.priceUsdc });
-          const intelligence = sanitizeAndRehashPaidPreparedResponse(assembled as Record<string, unknown>);
+          // Reject embedded publisher links in newly assembled intelligence before
+          // ANY durable payment preparation, receipt reservation or settlement.
+          // Already-settled ledger replay uses safe scrub-and-rehash mode.
+          const intelligence = sanitizeAndRehashPaidPreparedResponse(
+            assembled as Record<string, unknown>, { rejectEmbeddedLinks: true },
+          );
           assertGeomacroIntelligenceResponseContract(intelligence);
           prepared = {
             ...intelligence,
