@@ -58,6 +58,9 @@ export async function probeOfficialThreeDomains({
       const articles = await fetchArticles(category, {
         now, diagnostics, includeSecondPublisher: true,
         includeThirdPublisher: true,
+        // Match the exact primary Fed/USGS original-date admission path used
+        // by protected private scoring; still observation-only and bounded.
+        includeOriginalPageDateFallback: true,
       });
       // A resolved fetch can still conceal an attempted publisher transport
       // failure. In particular a failed minerals third feed previously let the
@@ -86,6 +89,10 @@ export async function probeOfficialThreeDomains({
         feed_items_seen: diagnostics.item_count ?? null,
         source_native_pubdate_items: diagnostics.item_native_pubdate_count ?? null,
         native_date_current_items: diagnostics.item_native_date_in_window_count ?? null,
+        private_primary_original_page_checks:
+          diagnostics.original_page_precise_date_checks ?? 0,
+        private_primary_original_page_admitted:
+          diagnostics.original_page_precise_date_admitted ?? 0,
         trusted_original_host_items: diagnostics.exact_publisher_host_count ?? null,
         topic_title_match_items: diagnostics.domain_topic_title_count ?? null,
         original_primary_feed_ok: diagnostics.primary_feed_ok ?? null,
@@ -144,6 +151,8 @@ export async function probeOfficialThreeDomains({
         category, fetch_ok: false, publisher_transport_ok: false, recent_original_count: 0,
         feed_items_seen: null, source_native_pubdate_items: null,
         native_date_current_items: null, trusted_original_host_items: null,
+        private_primary_original_page_checks: null,
+        private_primary_original_page_admitted: null,
         topic_title_match_items: null,
         original_primary_feed_ok: false, alternate_feed_attempted: false,
         alternate_feed_ok: null, alternate_items_seen: null,
