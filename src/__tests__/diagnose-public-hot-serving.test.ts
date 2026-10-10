@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { diagnosePublicHotServing } from "../../scripts/ops/diagnose-public-hot-serving.mjs";
+import { diagnosePublicHotServing, summarizePublicHotServing } from "../../scripts/ops/diagnose-public-hot-serving.mjs";
 
 const NOW=Date.parse("2026-10-09T16:00:00.000Z");
 const recent="2026-10-09T15:35:00.000Z";
@@ -64,6 +64,10 @@ describe("#1827 public B2/D1 503 classification without rights bypass",()=>{
     expect(result.ok).toBe(false);
     expect(result.unavailable_products).toEqual(["global-risk"]);
     expect(result.failure_codes).toContain("PUBLIC_DEEP_HEALTH_503");
+    const redSummary=summarizePublicHotServing(result);
+    expect(redSummary.ok).toBe(false);
+    expect(redSummary.intelligence_hot_snapshot_ready).toBe(true);
+    expect(redSummary.current_scored_domain_coverage.geopolitics).toBeNull();
     expect(result.products["global-risk"]).toMatchObject({
       ok:false,error:"HOT_SNAPSHOT_STALE_OR_INVALID",http_status:503,
     });
@@ -88,6 +92,16 @@ describe("#1827 public B2/D1 503 classification without rights bypass",()=>{
     expect(result.d1).toMatchObject({ok:true,schema_version:5});
     expect(result.products["intelligence"].source_as_of).toBe(recent);
     expect(result.site.public_serving_claim_verified).toBe(true);
+    // Three valid D1 hot products do not establish current 24h per-domain
+    // scored publisher evidence, rights or independent corroboration.
+    const summary=summarizePublicHotServing(result);
+    expect(summary.intelligence_hot_snapshot_ready).toBe(true);
+    expect(summary.current_scored_domain_coverage).toEqual({
+      status:"NOT_ASSESSED_BY_HOT_SERVING_DIAGNOSTIC",
+      geopolitics:null,macro_fx:null,critical_minerals:null,
+    });
+    expect(summary).not.toHaveProperty("public_domain_ready");
+    expect(summary.commercial_eligibility_verified).toBe(false);
   });
 
   it("refuses stale/unknown D1 schema and transport failures, never green",async()=>{
@@ -99,6 +113,10 @@ describe("#1827 public B2/D1 503 classification without rights bypass",()=>{
     const result=await diagnosePublicHotServing({fetchImpl,nowMs:NOW});
     expect(result.ok).toBe(false);
     expect(result.site.http_status).toBe(0);
+    const unreachable=summarizePublicHotServing(result);
+    expect(unreachable.intelligence_hot_snapshot_ready).toBe(false);
+    expect(unreachable.current_scored_domain_coverage.status)
+      .toBe("NOT_ASSESSED_BY_HOT_SERVING_DIAGNOSTIC");
     expect(result.failure_codes).toContain("D1_CONTROL_PLANE_UNAVAILABLE");
     expect(result.failure_codes).toContain("D1_PUBLIC_HOT_SNAPSHOT_UNAVAILABLE");
     expect(result.failure_codes).toContain("PUBLIC_SITE_TRANSPORT_UNAVAILABLE");
