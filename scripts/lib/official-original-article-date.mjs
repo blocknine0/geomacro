@@ -138,11 +138,27 @@ function fixedPublisherArticle(rawUrl, category) {
   } catch { return null; }
 }
 
+// Aggregate-only closed diagnostic. Never copy HTTP headers, URLs, response
+// bodies, private article text or exception messages into Actions artifacts.
+const PAGE_PROBE_CODES = new Set([
+  "URL_UNAPPROVED","NETWORK_OR_REDIRECT_DENIED","HTTP_UNAUTHORIZED",
+  "HTTP_RATE_LIMITED","HTTP_NOT_OK","MIME_NOT_HTML","BODY_TOO_LARGE",
+  "BODY_MISSING","READ_ERROR","UTF8_INVALID",
+  "PRECISE_PUBLICATION_UNVERIFIED","PRECISE_PUBLICATION_VERIFIED",
+]);
+function pageStatus(diagnostics,code) {
+  if (diagnostics && typeof diagnostics === "object" &&
+      !Array.isArray(diagnostics) && PAGE_PROBE_CODES.has(code))
+    diagnostics.code=code;
+}
 export async function fetchVerifiedPublisherPageDate(url, category, {
-  now = new Date(), fetchImpl = fetch,
+  now = new Date(), fetchImpl = fetch, diagnostics = null,
 } = {}) {
   const articleUrl = fixedPublisherArticle(url, category);
-  if (!articleUrl) return null;
+  if (!articleUrl) {
+    pageStatus(diagnostics,"URL_UNAPPROVED");
+    return null;
+  }
   let response;
   try {
     response = await fetchImpl(articleUrl, {
@@ -153,10 +169,29 @@ export async function fetchVerifiedPublisherPageDate(url, category, {
         "user-agent": "Geomacro-Private-Original-Publisher-Date-Verification/1.0",
       },
     });
-  } catch { return null; }
-  if (!response.ok || !HTML_TYPE.test(response.headers.get("content-type") ?? "") ||
-      Number(response.headers.get("content-length") || 0) > PAGE_BYTES_MAX ||
-      !response.body) return null;
+  } catch {
+    pageStatus(diagnostics,"NETWORK_OR_REDIRECT_DENIED");
+    return null;
+  }
+  if (!response.ok) {
+    const code=response.status===401 || response.status===403
+      ? "HTTP_UNAUTHORIZED" :
+      response.status===429 ? "HTTP_RATE_LIMITED" : "HTTP_NOT_OK";
+    pageStatus(diagnostics,code);
+    return null;
+  }
+  if (!HTML_TYPE.test(response.headers.get("content-type") ?? "")) {
+    pageStatus(diagnostics,"MIME_NOT_HTML");
+    return null;
+  }
+  if (Number(response.headers.get("content-length") || 0)>PAGE_BYTES_MAX) {
+    pageStatus(diagnostics,"BODY_TOO_LARGE");
+    return null;
+  }
+  if (!response.body) {
+    pageStatus(diagnostics,"BODY_MISSING");
+    return null;
+  }
   const chunks = [];
   let byteCount = 0;
   const reader = response.body.getReader();
@@ -165,14 +200,25 @@ export async function fetchVerifiedPublisherPageDate(url, category, {
       const { done, value } = await reader.read();
       if (done) break;
       byteCount += value.byteLength;
-      if (byteCount > PAGE_BYTES_MAX) return null;
+      if (byteCount > PAGE_BYTES_MAX) {
+        pageStatus(diagnostics,"BODY_TOO_LARGE");
+        return null;
+      }
       chunks.push(value);
     }
-  } catch { return null; }
-  finally { reader.releaseLock(); }
+  } catch {
+    pageStatus(diagnostics,"READ_ERROR");
+    return null;
+  } finally { reader.releaseLock(); }
   let html;
   try { html = new TextDecoder("utf-8", { fatal: true }).decode(
     Buffer.concat(chunks.map((value) => Buffer.from(value))),
-  ); } catch { return null; }
-  return verifiedPublisherPageDate(html, now);
+  ); } catch {
+    pageStatus(diagnostics,"UTF8_INVALID");
+    return null;
+  }
+  const publishedAt=verifiedPublisherPageDate(html,now);
+  pageStatus(diagnostics,publishedAt
+    ? "PRECISE_PUBLICATION_VERIFIED" : "PRECISE_PUBLICATION_UNVERIFIED");
+  return publishedAt;
 }
