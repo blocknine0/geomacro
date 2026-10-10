@@ -72,8 +72,8 @@ describe("#1827 Supabase-frozen B2 legacy publishers never exhaust free-tier glo
     expect(legacy).toContain("B2_ACCOUNT_GLOBAL_QUOTA_CONFIGURATION_REQUIRED");
   });
 
-  it("keeps the separate genuine 15-min D1-ledger governed orchestrator intact",()=>{
-    expect(canonical).toContain('cron: "7,22,37,52 * * * *"');
+  it("keeps the separate 90-min D1-ledger governed orchestrator without frozen SQL writes",()=>{
+    expect(canonical).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
     expect(canonical).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
     expect(canonical).toContain("B2_ACCOUNT_QUOTA_WORKFLOW_ID: intelligence_orchestrator");
     expect(canonical).toContain("Run due intelligence tasks serially");
