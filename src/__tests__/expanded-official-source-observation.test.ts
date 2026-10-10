@@ -103,6 +103,33 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(JSON.stringify(x)).not.toContain("sensitive");
     }
   });
+  it("counts only documented Eurostat native dataset-data update categories, not all 24h catalog items",async()=>{
+    const e=EXPANDED_OFFICIAL_SOURCES[2];
+    const changeXml='<rss><channel>'+
+      ['UPDATED_DATASET_DATA','UPDATED_DATASET_STRUCTURE_DATA','UPDATED_DATASET_STRUCTURE','NEW_CODE_LIST','DELETED_DATASET']
+      .map((kind,i)=>'<item><title>Eurostat catalogue '+i+'</title><category>'+kind+'</category>'+
+        '<pubDate>Sat, 10 Oct 2026 06:00:00 GMT</pubDate></item>').join("")+
+      '<item><title>Future fake data update</title><category>UPDATED_DATASET_DATA</category>'+
+        '<pubDate>Sun, 11 Oct 2026 06:00:00 GMT</pubDate></item>'+
+      '<item><title>Undated fake data update</title><category>UPDATED_DATASET_DATA</category></item>'+
+      '<item><title>Old data release</title><category>UPDATED_DATASET_DATA</category>'+
+        '<pubDate>Wed, 07 Oct 2026 06:00:00 GMT</pubDate></item>'+
+      '</channel></rss>';
+    const result=await probeExpandedSource(e,{now,
+      fetchImpl:async()=>response(changeXml,"application/rss+xml")});
+    expect(result.format_valid).toBe(true);
+    expect(result.source_native_24h_release_items).toBe(5);
+    expect(result.eurostat_native_dataset_data_updates_24h).toBe(2);
+    expect(result.eurostat_other_catalogue_changes_24h).toBe(3);
+    expect(result.current_scored_intelligence_verified).toBe(false);
+    expect(result.commercial_eligible).toBe(false);
+    // Only the original Eurostat catalogue can receive this typed field;
+    // generic release/press RSS cannot masquerade as Eurostat data updates.
+    const fake=await probeExpandedSource(EXPANDED_OFFICIAL_SOURCES[1],{
+      now,fetchImpl:async()=>response(changeXml,"application/rss+xml")});
+    expect(fake.eurostat_native_dataset_data_updates_24h).toBeNull();
+    expect(fake.eurostat_other_catalogue_changes_24h).toBeNull();
+  });
   it("recovers Eurostat HTTP 406 content negotiation without bypassing RSS MIME and commercial gates",async()=>{
     const source=EXPANDED_OFFICIAL_SOURCES[2];
     const seen:string[]=[];

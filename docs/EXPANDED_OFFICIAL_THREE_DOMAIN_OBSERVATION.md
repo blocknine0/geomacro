@@ -83,6 +83,23 @@ Supporting official references:
   safe fail-closed behavior even during publisher outage; real main/scheduled
   production fails RED and preserves a sanitized three-day receipt.
 
+### Precise Eurostat data-update evidence (2026-10-10)
+
+Eurostat's official documentation separates data changes (`UPDATED_DATASET_DATA`,
+`UPDATED_DATASET_STRUCTURE_DATA`) from catalogue metadata changes
+(`UPDATED_DATASET_STRUCTURE`, code-list creation/removal and deletion).
+The monitoring receipt now reports `eurostat_native_dataset_data_updates_24h`
+and `eurostat_other_catalogue_changes_24h` as **distinct bounded
+counts of items with actual past 24h original item pubDate**. Both are
+private counts, not derived economic values, country risk, surprise or
+severity. None can renew a D1 risk snapshot or activate x402.
+Only exact Eurostat source ID can populate those fields, and the
+sum must equal the existing 24h RSS item count; this is a source taxonomy
+proof and not a corroboration or rights grant.
+
+Official feed category semantics:
+https://ec.europa.eu/eurostat/web/user-guides/data-browser/api-data-access/api-detailed-guidelines/catalogue-api/rss
+
 No redistributable raw source articles or bulk EITI data are produced by this
 workflow. It is a staging increment, not launch acceptance.
 
