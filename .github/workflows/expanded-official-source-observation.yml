@@ -11,7 +11,7 @@ on:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - ".github/workflows/expanded-official-source-observation.yml"
   schedule:
-    # Four bounded cycles/day, six GETs/cycle (max seven with one fixed Eurostat locale fallback); complement existing hourly
+    # Four bounded cycles/day, nine GETs/cycle (max ten with one fixed Eurostat locale fallback); complement existing hourly
     # original-source probe without depleting Actions or B2 free quotas.
     - cron: "17 0,6,12,18 * * *"
   workflow_dispatch:
@@ -33,7 +33,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "22"
-      - name: Probe three additional fixed official transports without secrets
+      - name: Probe nine fixed official transports without secrets
         shell: bash
         run: |
           set -uo pipefail
@@ -42,7 +42,7 @@ jobs:
           proof=artifacts/expanded-official-source/transport.json
           jq -e '
             .schema == "geomacro.expanded-official-source-observation.v1" and
-            (.sources|length)==6 and
+            (.sources|length)==9 and
             .domains_observed==["geopolitics","macro","rare_earth"] and
             .globally_current_scored_coverage_verified == false and
             .verified_country_count==0 and
@@ -53,6 +53,8 @@ jobs:
             .supabase_reads==0 and .supabase_writes==0 and
             .d1_writes==0 and .b2_requests==0 and
             .payment_performed==false and
+            (.original_publisher_native_24h_topic_counts | keys)==["geopolitics","macro","rare_earth"] and
+            ([.original_publisher_native_24h_topic_counts[]]|all(.>=0)) and
             ([.sources[] | .commercial_eligible]|all(.==false)) and
             ([.sources[] | .current_scored_intelligence_verified]|all(.==false))
           ' "$proof" >/dev/null || exit 1
