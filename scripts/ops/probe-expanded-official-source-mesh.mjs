@@ -12,6 +12,8 @@ const MAX_BODY_BYTES=192*1024;
 // ceiling. Explicit one-source 1 MiB hard cap; never allow unlimited bodies.
 const EUROSTAT_MAX_BODY_BYTES=1024*1024;
 const DAY_MS=86_400_000;
+const SIX_HOURS_MS=6*60*60*1000;
+const NINETY_MINUTES_MS=90*60*1000;
 export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
   Object.freeze({
     id:"eu_sanctions_guidance_official_rss_review",
@@ -99,6 +101,7 @@ function rssDateCounts(xml,now,topic=null,hosts=null) {
   const entries=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80);
   let dated=0,recent=0,topicalRecent=0;
   let nativeDataUpdates=0,otherCatalogueChanges=0;
+  let topicalSixHours=0,topicalNinetyMinutes=0;
   for(const [,item] of entries) {
     const date=item.match(/<pubDate(?:\s[^>]*)?>([\s\S]*?)<\/pubDate>/iu)?.[1];
     // Only a source-native per-item date. Never the channel clock, retrieval,
@@ -114,7 +117,11 @@ function rssDateCounts(xml,now,topic=null,hosts=null) {
       const headline=item.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/iu)?.[1]??"";
       // The official aggregator is a discovery pointer, not an independent
       // original publisher, and headline relevance is NOT event acceptance.
-      if(topic?.test(headline))topicalRecent++;
+      if(topic?.test(headline)){
+        topicalRecent++;
+        if(now.getTime()-ms<=SIX_HOURS_MS)topicalSixHours++;
+        if(now.getTime()-ms<=NINETY_MINUTES_MS)topicalNinetyMinutes++;
+      }
       // Eurostat documents these item-native category values. A catalogue
       // change to a code list or structure is NOT a new macro datapoint, and
       // even a genuine dataset update is NOT by itself a scored macro shock.
@@ -126,6 +133,8 @@ function rssDateCounts(xml,now,topic=null,hosts=null) {
   }
   return {seen:entries.length,native_dated:dated,within_24h:recent,
     topical_within_24h:topicalRecent,
+    topical_within_6h:topicalSixHours,
+    topical_within_90m:topicalNinetyMinutes,
     native_dataset_data_updates_24h:nativeDataUpdates,
     other_catalogue_changes_24h:otherCatalogueChanges};
 }
@@ -148,6 +157,7 @@ function atomDateCounts(xml,now,topic,hosts) {
       /<!DOCTYPE|<!ENTITY/iu.test(xml))return null;
   const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,80);
   let dated=0,recent=0,topicalRecent=0;
+  let topicalSixHours=0,topicalNinetyMinutes=0;
   for(const [,item] of entries){
     const publication=item.match(/<(?:atom:)?published(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?published>/iu)?.[1];
     if(!publication)continue;
@@ -164,11 +174,17 @@ function atomDateCounts(xml,now,topic,hosts) {
     if(now.getTime()-at<=DAY_MS){
       recent++;
       const title=item.match(/<(?:atom:)?title(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?title>/iu)?.[1]??"";
-      if(topic?.test(title))topicalRecent++;
+      if(topic?.test(title)){
+        topicalRecent++;
+        if(now.getTime()-at<=SIX_HOURS_MS)topicalSixHours++;
+        if(now.getTime()-at<=NINETY_MINUTES_MS)topicalNinetyMinutes++;
+      }
     }
   }
   return {seen:entries.length,native_dated:dated,
-    within_24h:recent,topical_within_24h:topicalRecent};
+    within_24h:recent,topical_within_24h:topicalRecent,
+    topical_within_6h:topicalSixHours,
+    topical_within_90m:topicalNinetyMinutes};
 }
 
 // Only Atom entries with NO per-entry publication date may receive bounded
@@ -216,6 +232,8 @@ export async function probeExpandedSource(source,{
     eurostat_native_dataset_data_updates_24h:null,
     eurostat_other_catalogue_changes_24h:null,
     topical_private_release_links_24h:null,
+    original_publisher_topical_6h:null,
+    original_publisher_topical_90m:null,
     original_page_precise_date_checks:0,original_page_precise_date_24h:0,
     official_locale_fallback_attempted:false,
     official_locale_fallback_used:false,
@@ -297,6 +315,10 @@ export async function probeExpandedSource(source,{
     row.source_native_release_items=counts.native_dated;
     row.source_native_24h_release_items=counts.within_24h;
     if(source.topic)row.topical_private_release_links_24h=counts.topical_within_24h;
+    if(source.original_hosts){
+      row.original_publisher_topical_6h=counts.topical_within_6h;
+      row.original_publisher_topical_90m=counts.topical_within_90m;
+    }
     if(source.id==="eurostat_stats_update_official_rss_review"){
       row.eurostat_native_dataset_data_updates_24h=counts.native_dataset_data_updates_24h;
       row.eurostat_other_catalogue_changes_24h=counts.other_catalogue_changes_24h;
@@ -312,7 +334,14 @@ export async function probeExpandedSource(source,{
         now,fetchImpl,
       });
       row.original_page_precise_date_checks++;
-      if(published)row.original_page_precise_date_24h++;
+      if(published){
+        row.original_page_precise_date_24h++;
+        const ageMs=now.getTime()-Date.parse(published);
+        if(ageMs>=0&&ageMs<=SIX_HOURS_MS)
+          row.original_publisher_topical_6h++;
+        if(ageMs>=0&&ageMs<=NINETY_MINUTES_MS)
+          row.original_publisher_topical_90m++;
+      }
     }
     row.topical_private_release_links_24h+=row.original_page_precise_date_24h;
   }
@@ -341,6 +370,19 @@ export async function probeExpandedOfficialMesh({fetchImpl=fetch,now=new Date()}
         x.domain===domain &&
         EXPANDED_OFFICIAL_SOURCES.find(source=>source.id===x.source_id)?.original_hosts
       ).reduce((n,x)=>n+(x.topical_private_release_links_24h??0),0)])),
+    original_publisher_freshness_windows:Object.fromEntries(
+      SOURCE_DOMAINS.map(domain=>{
+        const original=entries.filter(x=>x.domain===domain&&
+          EXPANDED_OFFICIAL_SOURCES.find(s=>s.id===x.source_id)?.original_hosts);
+        const bucket=name=>original.reduce((sum,x)=>sum+(x[name]??0),0);
+        return [domain,{
+          within_90m:bucket("original_publisher_topical_90m"),
+          within_6h:bucket("original_publisher_topical_6h"),
+          within_24h:bucket("topical_private_release_links_24h"),
+          // With no available publisher transport, zero is NOT global absence.
+          original_publisher_transport_healthy:original.every(x=>x.format_valid),
+        }];
+      })),
     // These counts have no country, rights, corroboration or severity proof.
     sources:entries,
   };
