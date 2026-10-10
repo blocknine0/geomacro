@@ -4,7 +4,7 @@
 
 The live Geomacro three-domain original-publisher probe already observes up to 3
 source families per category on its existing cadence. This separate, additive
-six-hourly monitor observes **nine official observation endpoints across three domains** without
+six-hourly monitor observes **twelve fixed official observation endpoints across three domains** without
 consuming B2, D1, frozen Supabase, paid AI/model or USDC quotas. All source
 data remains PRIVATE. It does not score events or edit risk objects.
 
@@ -55,7 +55,7 @@ Supporting official references:
 
 - Existing official event feeds: continue their established hourly sampling.
 - Additional official release/structural probes: **4 times per UTC day**,
-  nine feed GET requests per cycle, plus at most four bounded original article date GETs (two per Atom source), plus at most one documented same-publisher
+  twelve feed GET requests per cycle, plus at most four bounded original article date GETs (two per Atom source), plus at most one documented same-publisher
   Eurostat German-language alternative following primary HTTP 404/5xx only
   (~36–56 total GETs/day). No locale retry on 401/403/429, redirect/network
   errors or wrong MIME/body/schema. Each attempt has a 5s timeout and 192-KiB
@@ -122,7 +122,7 @@ precise publication time, independent corroboration and rights evidence pass.
 
 ### Added original-publisher native-article observation lanes (2026-10-10)
 
-The additional 3 fixed native article feeds **do not remove or hide** EITI HTTP 403 or NRCan Simply Science transport failure. All 9 official sources are independently sampled, and any unavailable source leaves the producer `SOURCE_TRANSPORT_DEGRADED`. For the 3 newly added originating publisher feeds, an in-window topical article is counted only if the **RSS `item/pubDate`**, **Atom `entry/published`**, or narrowly verified same-original-article HTML `datePublished` (two-page maximum per Atom publisher) is a real precise past clock (within 24h) AND its link has an exact allowlisted publisher host. Atom `updated`, channel clock, feed retrieval, topic-only aggregation and third-party hosts are rejected. A count is private original discovery, **not scored Geomacro risk, commercial license proof or 195-country coverage**. The sanitized observation has `original_publisher_native_24h_topic_counts` by domain; zero may mean a quiet publisher, not absence of news globally. No source RSS body or article title is re-served to customers. Production cannot pass a stale D1 hot-snapshot requirement from observation alone.
+The additional 3 fixed native article feeds **do not remove or hide** EITI HTTP 403 or NRCan Simply Science transport failure. All 12 fixed official sources are independently sampled, and any unavailable source leaves the producer `SOURCE_TRANSPORT_DEGRADED`. For the 3 newly added originating publisher feeds, an in-window topical article is counted only if the **RSS `item/pubDate`**, **Atom `entry/published`**, or narrowly verified same-original-article HTML `datePublished` (two-page maximum per Atom publisher) is a real precise past clock (within 24h) AND its link has an exact allowlisted publisher host. Atom `updated`, channel clock, feed retrieval, topic-only aggregation and third-party hosts are rejected. A count is private original discovery, **not scored Geomacro risk, commercial license proof or 195-country coverage**. The sanitized observation has `original_publisher_native_24h_topic_counts` by domain; zero may mean a quiet publisher, not absence of news globally. No source RSS body or article title is re-served to customers. Production cannot pass a stale D1 hot-snapshot requirement from observation alone.
 
 ### Real-time admission age buckets (2026-10-10)
 
@@ -130,12 +130,12 @@ The source receipt also exposes `original_publisher_freshness_windows` for all t
 
 ### 90-minute global observation cadence + bounded sovereign matrix audit (2026-10-10)
 
-**Operator target:** all three categories are checked using the SAME set of nine fixed independent/official release/discovery transports on two UTC schedules:
+**Operator target:** all three categories are checked using the SAME set of twelve fixed independent/official release/discovery transports on two UTC schedules:
 
 - `17 0,3,6,9,12,15,18,21 * * *`
 - `47 1,4,7,10,13,16,19,22 * * *`
 
-These establish **16 nominal checks/day, with exactly 90 minutes between scheduled UTC slots**, including midnight. GitHub Actions is best-effort and can delay/skip runs; **not a hard availability SLA**. Each scheduled receipt calculates lag against the last expected slot. Any lag >45 minutes reports `scheduler_late=true` and fails closed. Each cycle requests nine fixed source endpoints, at most four exact first-party article-date pages and at most one official Eurostat locale fallback: **<=14 source HTTP GET/cycle and <=224 source GET/day worst case** at 16 cycles. No Github PR branch cadence, no model inference, no B2 GET/PUT, no public D1 writes, no Supabase, no settlement.
+These establish **16 nominal checks/day, with exactly 90 minutes between scheduled UTC slots**, including midnight. GitHub Actions is best-effort and can delay/skip runs; **not a hard availability SLA**. Each scheduled receipt calculates lag against the last expected slot. Any lag >45 minutes reports `scheduler_late=true` and fails closed. Each cycle requests twelve fixed source endpoints, at most four exact first-party article-date pages and at most one official Eurostat locale fallback: **<=17 source HTTP GET/cycle and <=272 source GET/day worst case** at 16 cycles. No Github PR branch cadence, no model inference, no B2 GET/PUT, no public D1 writes, no Supabase, no settlement.
 
 Separately, an exact-main-only metadata reader issues **one read-only D1 aggregation** over `country_domain_state`, grouped by domain/readiness_status, returning no country IDs, source IDs/URLs, article text, archived fragments, hashes, GRO payloads or provider secrets. Three normalized domains are Geopolitics, Macro/FX and Critical Minerals. The nominal sovereign floor is **195 subjects × 3 domains = 585 potential matrix cells**. This is a **readiness metadata census**, not 195-country live new-event detection, and not signed paid-intelligence coverage proof. In particular the repository's local `countries.v1.json` is a runtime placeholder with zero actual countries; it is **NOT an independently populated 195-country registry**. The current D1 matrix is not treated as equivalent to current source-native scored GRO coverage.
 
@@ -146,3 +146,17 @@ A source may not publish on time, even if all monitored feeds return HTTP 200. A
 ### Fail-closed 195+×3 D1 metadata freshness threshold
 
 **Observed production at 2026-10-10 08:33 UTC:** D1 `country_domain_state` has **250 rows per each of three categories**, all labeled `PRODUCTION_READY`, but **none** has a `last_verified_at` within the last 90 minutes (most recent verification 2026-10-09 20:08 UTC). That is exactly the kind of stale source-certification state that must not receive an operational green light. The 90-minute country-matrix job now returns an explicit failure unless **all three category projections have at least 195 genuinely verified metadata checks within the latest 90-minute window**, plus the existing 195-cell count floor. This gate is *necessary but not sufficient*: even a fresh certification-metadata matrix is not independently signed, 195-country current event-backed GRO coverage. Missing native original evidence, licensed corroboration, event scoring, B2 full readback or D1 signed GRO keeps paid launch closed. It never rewrites D1 timestamps or reports a product current from a job's run time.
+
+### Additive original-publisher redundancy for revenue readiness (2026-10-10)
+
+Three additional **original publisher RSS endpoints** in the existing strictly private 90-minute three-domain source observation lane:
+
+| Domain | Official source RSS | Per-item verification | Scope |
+|---|---|---|---|
+| Geopolitics | UN Geneva: `https://www.ungeneva.org/news-media/press-items-list/rss.xml` | Original `pubDate`, original `ungeneva.org` article, geopolitical title | Original publisher discovery, NOT independent corroboration |
+| Macro/FX | U.S. Federal Reserve: `https://www.federalreserve.gov/feeds/press_all.xml` | Original `pubDate`, `federalreserve.gov` article, economics/monetary topic | U.S. central-bank source, NOT 195-country FX coverage |
+| Critical Minerals | USGS Minerals News: `https://www.usgs.gov/news/minerals/feed` | Original `pubDate`, `usgs.gov` article, minerals topical match | Mineral original-source discovery, NOT global prices/supply verification |
+
+RSS is documented on each publisher's official site. 403/429, timeout, malformed XML, unknown published date and non-original article hosts remain explicitly unverified. **Commercial source rights remain UNVERIFIED** and source bodies, raw headlines and URLs are never served to customers. These are private observation lanes, not automatically scored, rights-approved, independently corroborated signed GRO. Existing EITI HTTP 403 and NRCan Simply Science outage stay visible and fail-closed.
+
+Maximum fixed source budget is **12 feed GETs + 4 publisher-date checks + 1 Eurostat same-publisher alternate = 17 GETs/cycle and 272 GETs/day** at sixteen nominal 90-minute cycles. No Supabase/B2/D1 writes, model inference or x402 settlement.
