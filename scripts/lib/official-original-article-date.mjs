@@ -140,12 +140,13 @@ function fixedPublisherArticle(rawUrl, category) {
 
 // Aggregate-only closed diagnostic. Never copy HTTP headers, URLs, response
 // bodies, private article text or exception messages into Actions artifacts.
-const PAGE_PROBE_CODES = new Set([
+export const SAFE_PUBLISHER_PAGE_PROBE_CODES = Object.freeze([
   "URL_UNAPPROVED","NETWORK_OR_REDIRECT_DENIED","HTTP_UNAUTHORIZED",
   "HTTP_RATE_LIMITED","HTTP_NOT_OK","MIME_NOT_HTML","BODY_TOO_LARGE",
   "BODY_MISSING","READ_ERROR","UTF8_INVALID",
   "PRECISE_PUBLICATION_UNVERIFIED","PRECISE_PUBLICATION_VERIFIED",
 ]);
+const PAGE_PROBE_CODES = new Set(SAFE_PUBLISHER_PAGE_PROBE_CODES);
 function pageStatus(diagnostics,code) {
   if (diagnostics && typeof diagnostics === "object" &&
       !Array.isArray(diagnostics) && PAGE_PROBE_CODES.has(code))
