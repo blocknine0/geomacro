@@ -110,7 +110,8 @@ export function buildVerifiedIntelligenceApiPayload(
   const scored = verifiedEdgeRows.filter((r) => r.public_status === "verified_b2");
   const latestScoredByDomain = new Map<string, number>();
   for (const row of verifiedEdgeRows) {
-    const timestamp = Date.parse(row.published_at ?? row.created_at);
+    // The archive/write clock is NOT an originating event clock.
+    const timestamp = Date.parse(String(row.published_at ?? ""));
     if (!Number.isFinite(timestamp) || timestamp > now + 5 * 60_000) continue;
     if (row.public_status === "verified_b2") {
       const category = String(row.category);
@@ -125,8 +126,8 @@ export function buildVerifiedIntelligenceApiPayload(
   );
   const rows = currentAcrossDomains ? scored : verifiedEdgeRows;
   const newestAt = rows.reduce((latest, row) => {
-    const timestamp = Date.parse(row.published_at ?? row.created_at);
-    return Number.isFinite(timestamp) && timestamp <= now + 5 * 60_000
+    const timestamp = Date.parse(String(row.published_at ?? ""));
+    return Number.isFinite(timestamp) && timestamp <= now
       ? Math.max(latest, timestamp)
       : latest;
   }, -Infinity);
