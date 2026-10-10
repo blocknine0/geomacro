@@ -117,11 +117,13 @@ function sameStory(a: PublicIntelligenceDedupeRow, b: PublicIntelligenceDedupeRo
   // corroborating publisher stories. Equivalent event details are the
   // conservative dedupe boundary; boilerplate summaries never suffice.
   if (!titleIdentityCompatible(a.source_title, b.source_title)) return false;
-  if (titleA.length >= 32 && titleA === titleB) return true;
-
+  // Source-native unscored observations have no signed event identity.
+  // Even identical template text can describe separate recurring events.
   const liveA = String(a.public_status ?? "") === "live_observed";
   const liveB = String(b.public_status ?? "") === "live_observed";
   if (liveA || liveB) return false;
+
+  if (titleA.length >= 32 && titleA === titleB) return true;
 
   const titleOverlap = overlap(tokens(a.source_title), tokens(b.source_title));
   const titleShared = (titleOverlap.containment * titleOverlap.minSize);
