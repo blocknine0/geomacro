@@ -60,12 +60,6 @@ function normalizeCategory(value: unknown): PublicIntelligenceCategory | null {
     : null;
 }
 
-function rowTime(row: PublicIntelligenceRow): number {
-  const published = Date.parse(String(row.published_at ?? ""));
-  if (Number.isFinite(published)) return published;
-  const created = Date.parse(String(row.created_at ?? ""));
-  return Number.isFinite(created) ? created : -Infinity;
-}
 
 function normalizeWhitespace(value: unknown): string {
   return String(value ?? "").replace(/\s+/g, " ").trim();
