@@ -241,7 +241,7 @@ export async function fetchOfficialNativeArticles(category, {
   let alternateUnavailable = false;
   try {
     alternate = await fetchOriginalAlternate(category,{
-      now,fetchImpl,diagnostics,
+      now,fetchImpl,diagnostics,maxAgeMs,
     });
     if (diagnostics && typeof diagnostics === "object")
       diagnostics.alternate_feed_ok = true;
