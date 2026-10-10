@@ -29,6 +29,9 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(s.country_coverage_verified).toBe(false);
       expect(s.poll).toBe("six_hourly");
     }
+    expect(EXPANDED_OFFICIAL_SOURCES[2].alternate_url)
+      .toBe("https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/de/statistics-update.rss");
+    expect(EXPANDED_OFFICIAL_SOURCES.filter((s:any)=>s.alternate_url)).toHaveLength(1);
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
       .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca"]);
   });
@@ -90,6 +93,108 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(JSON.stringify(x)).not.toContain("secret");
       expect(JSON.stringify(x)).not.toContain("sensitive");
     }
+  });
+  it("recovers Eurostat HTTP 406 content negotiation without bypassing RSS MIME and commercial gates",async()=>{
+    const source=EXPANDED_OFFICIAL_SOURCES[2];
+    const seen:string[]=[];
+    const fetchImpl=vi.fn(async(url:string,options:RequestInit)=>{
+      seen.push(url);
+      const accept=(options.headers as Record<string,string>).accept;
+      return accept==="*/*"
+        ?response(xml,"application/xml")
+        :new Response("Not Acceptable",{status:406});
+    });
+    const result=await probeExpandedSource(source,{now,fetchImpl});
+    expect(seen).toEqual([source.url]);
+    expect(result.primary_http_status).toBe(200);
+    expect(result.official_locale_fallback_attempted).toBe(false);
+    expect(result.format_valid).toBe(true);
+    expect(result.source_native_24h_release_items).toBe(1);
+    expect(result.same_event_independent_corroboration_verified).toBe(false);
+    expect(result.commercial_rights_verified).toBe(false);
+    expect(result.current_scored_intelligence_verified).toBe(false);
+    expect(result.commercial_eligible).toBe(false);
+    // HTML must still be blocked, even with permissive Accept header.
+    const wrongMime=await probeExpandedSource(source,{
+      now,fetchImpl:async()=>response("<html>sensitive</html>","text/html"),
+    });
+    expect(wrongMime.reason).toBe("SOURCE_CONTENT_TYPE_INVALID");
+    expect(wrongMime.format_valid).toBe(false);
+  });
+  it("enforces a larger yet strictly finite Eurostat-only RSS body limit",async()=>{
+    const eurostat=EXPANDED_OFFICIAL_SOURCES[2];
+    const ecb=EXPANDED_OFFICIAL_SOURCES[1];
+    const largeXml='<rss><channel><item><title>Data catalogue update</title>'+
+      '<pubDate>Sat, 10 Oct 2026 06:00:00 GMT</pubDate></item>'+
+      '<!--'+ 'a'.repeat(200*1024)+'--></channel></rss>';
+    const fetchImpl=async()=>response(largeXml,"application/xml");
+    const eur=await probeExpandedSource(eurostat,{now,fetchImpl});
+    expect(eur.format_valid).toBe(true);
+    expect(eur.source_native_24h_release_items).toBe(1);
+    expect(eur.commercial_eligible).toBe(false);
+    const other=await probeExpandedSource(ecb,{now,fetchImpl});
+    expect(other.reason).toBe("SOURCE_BODY_UNAVAILABLE_OR_OVERSIZE");
+    expect(other.format_valid).toBe(false);
+    const tooLarge='<rss><channel><!--'+'x'.repeat(1024*1024)+'</channel></rss>';
+    const oversized=await probeExpandedSource(eurostat,{
+      now,fetchImpl:async()=>response(tooLarge,"application/xml"),
+    });
+    expect(oversized.reason).toBe("SOURCE_BODY_UNAVAILABLE_OR_OVERSIZE");
+    expect(oversized.commercial_eligible).toBe(false);
+  });
+  it("uses a single same-publisher Eurostat locale fallback for HTTP 404/5xx, without commercial promotion",async()=>{
+    const source=EXPANDED_OFFICIAL_SOURCES[2];
+    for(const primaryStatus of [404,503]){
+      const seen:string[]=[];
+      const fetchImpl=vi.fn(async(url:string,options:RequestInit)=>{
+        seen.push(url);
+        expect(options.redirect).toBe("error");
+        return seen.length===1
+          ?new Response("server unavailable",{status:primaryStatus})
+          :response(xml,"application/rss+xml");
+      });
+      const result=await probeExpandedSource(source,{now,fetchImpl});
+      expect(seen).toEqual([source.url,source.alternate_url]);
+      expect(result.format_valid).toBe(true);
+      expect(result.official_locale_fallback_attempted).toBe(true);
+      expect(result.official_locale_fallback_used).toBe(true);
+      expect(result.primary_http_status).toBe(primaryStatus);
+      expect(result.fallback_http_status).toBe(200);
+      expect(result.source_native_24h_release_items).toBe(1);
+      expect(result.same_event_independent_corroboration_verified).toBe(false);
+      expect(result.current_scored_intelligence_verified).toBe(false);
+      expect(result.commercial_rights_verified).toBe(false);
+      expect(result.commercial_eligible).toBe(false);
+    }
+  });
+  it("does not evade denial, rate-limits, transport failure or invalid fallback body",async()=>{
+    const source=EXPANDED_OFFICIAL_SOURCES[2];
+    for(const status of [401,403,429]){
+      const fetchImpl=vi.fn(async()=>new Response("denied private content",{status}));
+      const result=await probeExpandedSource(source,{now,fetchImpl});
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(result.official_locale_fallback_attempted).toBe(false);
+      expect(result.primary_http_status).toBe(status);
+      expect(result.fallback_http_status).toBeNull();
+      expect(result.format_valid).toBe(false);
+      expect(result.commercial_eligible).toBe(false);
+      expect(JSON.stringify(result)).not.toContain("denied private content");
+    }
+    const redirect=vi.fn(async()=>{throw Error("redirect blocked sensitive upstream");});
+    const denied=await probeExpandedSource(source,{now,fetchImpl:redirect});
+    expect(redirect).toHaveBeenCalledTimes(1);
+    expect(denied.reason).toBe("TRANSPORT_UNAVAILABLE");
+    const badFallback=vi.fn(async()=>badFallback.mock.calls.length===1
+      ?new Response("down",{status:503})
+      :response("<html>not xml</html>","text/html"));
+    const degraded=await probeExpandedSource(source,{now,fetchImpl:badFallback});
+    expect(badFallback).toHaveBeenCalledTimes(2);
+    expect(degraded.official_locale_fallback_attempted).toBe(true);
+    expect(degraded.official_locale_fallback_used).toBe(false);
+    expect(degraded.primary_http_status).toBe(503);
+    expect(degraded.fallback_http_status).toBe(200);
+    expect(degraded.format_valid).toBe(false);
+    expect(degraded.commercial_eligible).toBe(false);
   });
   it("continues all other domains when one external publisher is offline",async()=>{
     const res=await probeExpandedOfficialMesh({now,fetchImpl:async(url:string)=>{
