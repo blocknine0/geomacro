@@ -145,3 +145,33 @@ This is a necessary versioned protocol for future Supabase-independent
 current original publication, **not proof a live authorized producer exists,
 source-rights clearance is complete, B2 write/readback succeeded, or 195+×3
 signed current data are already being produced**.
+
+### Two-origin operational readiness before same-event review (2026-10-10)
+
+Every bounded 90-minute official-publisher cycle now reports a strictly derived
+`independent_original_origin_lanes` object for Geopolitics, Macro/FX and
+Critical Minerals. An organization counts in the **six-hour** or **90-minute**
+bucket only when an exact original first-party **event article permalink**
+carries a verified native `pubDate`, Atom `published`, or tightly bounded
+same-article `datePublished`. Publisher homepages, feed/self URLs,
+aggregated headline discovery, future-dated posts and unregistered official
+organizations do not count. Separate official feeds belonging to the **same
+reporting organization** cannot create a false second corroborator.
+
+`possible_two_independent_origins_in_6h` is a low-cost source-readiness
+indicator only: **two different genuine original publishers reporting
+different news events are NOT same-event corroboration**. The signed canonical
+`independent-same-event-qualification.mjs` requirement remains the
+independent publisher evidence reviewer, identical event claim, article bytes,
+rights receipt, signed Ed25519 decision, original event timestamp, scored
+approved Geomacro-derived row, B2 readback and current D1 public hot proof.
+Source URLs, articles and publisher metadata remain internally private.
+The monitor cannot authorize x402 settlement. Any zero counts only describe
+this fixed sampled source pool, never the absence of worldwide news.
+
+This change also avoids a subtle catalog error: a feed listing can be
+HTTP 200/XML-valid and even have a recent `pubDate`, but a `<link>` to its
+publisher homepage, index or RSS/Atom URL is **not** an independent
+original event report. Such an item is now explicitly excluded before
+potential corroboration telemetry. This is an added fail-closed upstream
+qualification gate, not a new commercial scoring or payment route.
