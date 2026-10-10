@@ -27,7 +27,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(s.rights).toBe("UNVERIFIED");
       expect(s.event_intelligence).toBe(false);
       expect(s.country_coverage_verified).toBe(false);
-      expect(s.poll).toBe("daily");
+      expect(s.poll).toBe("six_hourly");
     }
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
       .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","eiti.org"]);
