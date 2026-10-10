@@ -19,6 +19,7 @@ const xml=`<rss version="2.0"><channel>
 </channel></rss>`;
 const response=(body:string,type:string)=>new Response(body,{headers:{"content-type":type}});
 const atomCanada="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-10T06:59:00Z</updated>\n  <entry><title>Critical minerals and consumer prices inflation update from government</title>\n  <published>2026-10-10T06:05:00Z</published>\n  <updated>2026-10-10T06:59:00Z</updated>\n  <link rel=\"alternate\" href=\"https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals-update.html\" />\n  </entry></feed>";
+const atomUk=`<feed><entry><title>Routine government notice</title><published>2026-10-10T06:25:00Z</published><link rel="alternate" href="https://www.gov.uk/government/news/routine-notice"/></entry></feed>`;
 const atomStatcan="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-10T06:59:00Z</updated>\n  <entry><title>Consumer price index inflation and industrial product price update</title>\n  <published>2026-10-10T06:05:00Z</published>\n  <link rel=\"alternate\" href=\"https://www150.statcan.gc.ca/n1/daily-quotidien/261010/dq261010a-eng.htm\" />\n  </entry></feed>";
 describe("#1827 expanded official three-domain private observation lane",()=>{
   it("has twelve fixed publisher observations and exactly three domains",()=>{
@@ -35,7 +36,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       .toBe("https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/de/statistics-update.rss");
     expect(EXPANDED_OFFICIAL_SOURCES.filter((s:any)=>s.alternate_url)).toHaveLength(1);
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
-      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca","www.ungeneva.org","www.federalreserve.gov","www.usgs.gov"]);
+      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca","www.gov.uk","www.federalreserve.gov","www.usgs.gov"]);
   });
   it("samples only fixed official sources; release dates cannot prove scored current events",async()=>{
     const seen:string[]=[];
@@ -47,6 +48,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
         return response(JSON.stringify({data:[{id:1,year:2024}]}),"application/json");
       if(url.includes("www150.statcan.gc.ca"))return response(atomStatcan,"application/atom+xml");
       if(url.includes("api.io.canada.ca"))return response(atomCanada,"application/atom+xml");
+      if(url.includes("www.gov.uk"))return response(atomUk,"application/atom+xml");
       return response(xml,"application/rss+xml");
     });
     const res=await probeExpandedOfficialMesh({fetchImpl,now});
@@ -243,6 +245,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       if(new URL(url).hostname === "eiti.org")return response('{"data":[]}',"application/json");
       if(url.includes("www150.statcan.gc.ca"))return response(atomStatcan,"application/atom+xml");
       if(url.includes("api.io.canada.ca"))return response(atomCanada,"application/atom+xml");
+      if(url.includes("www.gov.uk"))return response(atomUk,"application/atom+xml");
       return response(xml,"application/rss+xml");
     }});
     expect(res.status).toBe("SOURCE_TRANSPORT_DEGRADED");
@@ -355,8 +358,8 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
   });
   it("checks three independent original publisher RSS hosts, native times and no-raw commercialization",async()=>{
     const cases=[
-      {index:9,title:"UN Geneva Security Council ceasefire talks and sanctions",
-       article:"https://www.ungeneva.org/en/news-media/press-items/2026/10/peace-talks"},
+      {index:9,title:"UK foreign secretary sanctions conflict statement",
+       article:"https://www.gov.uk/government/news/uk-foreign-policy-security-statement"},
       {index:10,title:"Federal Reserve announces monetary policy interest rates",
        article:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261010a.htm"},
       {index:11,title:"USGS announces critical mineral lithium supply review",
