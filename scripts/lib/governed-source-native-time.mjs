@@ -62,7 +62,7 @@ export function noaaLatestNativeDayCandidates({now=new Date()}={}) {
  * An empty day means not yet available, NOT a new signal or a zero reading. */
 export function validateNoaaNativeDailyRows(rows,day) {
   requireValid(typeof day==="string" &&
-    /^\\d{4}-\\d{2}-\\d{2}$/u.test(day) &&
+    /^\d{4}-\d{2}-\d{2}$/u.test(day) &&
     Number.isFinite(Date.parse(day)) &&
     Array.isArray(rows) && rows.length<=25,
     "GOVERNED_NOAA_DAY_RESPONSE_INVALID");
