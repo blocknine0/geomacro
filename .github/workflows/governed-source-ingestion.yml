@@ -2,17 +2,20 @@ name: Governed production source ingestion
 
 on:
   workflow_dispatch:
-  # Keep this bounded path manual and change-triggered until Day 4 freshness
-  # recovery is accepted. The runtime itself is Supabase-free.
+  # EIA/NOAA native statistics change daily/monthly, not on each worker merge.
+  # One bounded post-UTC-reset cycle is cheaper and avoids exhausting the
+  # global B2 account budget on unrelated control-plane deployments.
+  schedule:
+    - cron: "17 2 * * *"
   push:
     branches: [main]
     paths:
       - "scripts/ingest-certified-sources.mjs"
       - "scripts/lib/governed-source-native-time.mjs"
+      - "scripts/lib/governed-b2-headroom.mjs"
+      - "scripts/ops/check-governed-source-b2-headroom.mjs"
       - "scripts/ops/verify-governed-d1-checkpoint.mjs"
       - "scripts/test-governed-source-ingestion.mjs"
-      - "scripts/ops/b2-s3-client.mjs"
-      - "workers/control-plane/**"
       - ".github/workflows/governed-source-ingestion.yml"
 
 permissions: {contents: read}
@@ -120,7 +123,21 @@ jobs:
             });
           '
 
+      - name: Read shared B2 account headroom before downloading source data
+        id: headroom
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/check-governed-source-b2-headroom.mjs
+
+      - name: Quota-held governed measurements — no B2, no new intelligence
+        if: steps.headroom.outputs.admitted == 'false'
+        shell: bash
+        run: |
+          echo "::notice::Governed measurement import quota-held by shared D1 daily B2 budget; no fresh observation, GRO, x402, or source recertification claimed."
+
       - name: Export governed source admission state from D1
+        if: steps.headroom.outputs.admitted == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -145,12 +162,15 @@ jobs:
           NODE
 
       - name: Verify Supabase-free B2-first ingestion static contract
+        if: steps.headroom.outputs.admitted == 'true'
         run: node scripts/test-governed-source-ingestion.mjs
 
       - name: Run governed B2-first ingestion
+        if: steps.headroom.outputs.admitted == 'true'
         run: bun run scripts/ingest-certified-sources.mjs
 
       - name: Require sealed compressed-fragment verification summary
+        if: steps.headroom.outputs.admitted == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -199,18 +219,21 @@ jobs:
           NODE
 
       - name: Write compact D1 ingestion checkpoints
+        if: steps.headroom.outputs.admitted == 'true'
         shell: bash
         run: |
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config "$D1_CONFIG" --file artifacts/governed-source-ingestion/d1-checkpoints.sql
 
       - name: Replay compact D1 checkpoint upsert
+        if: steps.headroom.outputs.admitted == 'true'
         shell: bash
         run: |
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config "$D1_CONFIG" --file artifacts/governed-source-ingestion/d1-checkpoints.sql
 
       - name: Verify D1 checkpoint readback
+        if: steps.headroom.outputs.admitted == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -221,6 +244,7 @@ jobs:
           printf '%s' "$OUT" | node scripts/ops/verify-governed-d1-checkpoint.mjs
 
       - name: Upload bounded ingestion evidence
+        if: steps.headroom.outputs.admitted == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
         with:
           name: governed-b2-first-ingestion-${{ github.run_id }}
@@ -232,6 +256,7 @@ jobs:
           retention-days: 7
 
       - name: Confirm no Supabase, destructive, or commercial activation occurred
+        if: steps.headroom.outputs.admitted == 'true'
         shell: bash
         run: |
           set -euo pipefail
