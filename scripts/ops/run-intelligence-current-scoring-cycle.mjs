@@ -15,7 +15,9 @@ const FRESH_ENOUGH_MS = Number(process.env.INTELLIGENCE_DOMAIN_SCORE_FRESH_MS ||
 const REQUIRED_FRESH_MS = Number(process.env.INTELLIGENCE_REQUIRED_FRESH_MS || 24 * 60 * 60 * 1000);
 
 function eventTime(row) {
-  const parsed = Date.parse(String(row?.published_at ?? row?.created_at ?? ""));
+  // A row restored/rewritten just now does NOT represent a newly published
+  // event. Even this quota-held legacy reader must never launder history.
+  const parsed = Date.parse(String(row?.published_at ?? ""));
   return Number.isFinite(parsed) ? parsed : -Infinity;
 }
 
