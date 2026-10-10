@@ -47,8 +47,9 @@ describe("#1827 frozen Supabase GRI quota hold (no fake currentness)",()=>{
     expect(archive).not.toContain("publishVerifiedCurrentGlobalRiskHotSnapshot");
   });
 
-  it("does not disable the separate 15-minute, quota-guarded three-domain orchestrator",()=>{
-    expect(canonicalIngestion).toContain('cron: "7,22,37,52 * * * *"');
+  it("keeps a bounded offset 90-minute D1 orchestrator while Supabase remains frozen",()=>{
+    expect(canonicalIngestion).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
+    expect(canonicalIngestion).toContain('cron: "17 2,5,8,11,14,17,20,23 * * *"');
     expect(canonicalIngestion).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
     expect(canonicalIngestion).toContain("B2_ACCOUNT_QUOTA_WORKFLOW_ID: intelligence_orchestrator");
     expect(canonicalIngestion).toContain("GEOMACRO_SUPABASE_RESTRICTED_MODE=true");
