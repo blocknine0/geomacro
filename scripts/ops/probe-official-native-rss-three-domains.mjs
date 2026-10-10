@@ -117,6 +117,10 @@ export async function probeOfficialThreeDomains({
         alternate_article_page_probes: diagnostics.alternate_article_page_probes ?? null,
         alternate_article_page_precise: diagnostics.alternate_article_page_precise ?? null,
         alternate_article_page_admitted: diagnostics.alternate_article_page_admitted ?? null,
+        alternate_article_page_probe_outcomes:
+          Array.isArray(diagnostics.alternate_article_page_probe_outcomes) &&
+          diagnostics.alternate_article_page_probe_outcomes.length <= 2
+            ? diagnostics.alternate_article_page_probe_outcomes : null,
         third_feed_attempted: diagnostics.third_feed_attempted ?? false,
         third_feed_ok: diagnostics.third_feed_ok ?? null,
         third_feed_failure_code: diagnostics.third_feed_failure_code ?? null,
@@ -166,6 +170,7 @@ export async function probeOfficialThreeDomains({
         alternate_article_page_probes: null,
         alternate_article_page_precise: null,
         alternate_article_page_admitted: null,
+        alternate_article_page_probe_outcomes: null,
         third_feed_attempted: false, third_feed_ok: null, third_feed_failure_code: null,
         third_items_seen: null, third_native_pubdate_items: null,
         third_current_native_date_items: null,
