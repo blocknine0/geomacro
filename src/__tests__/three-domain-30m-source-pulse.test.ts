@@ -33,9 +33,11 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     for(const domain of DOMAINS) {
       const registry=THIRTY_MIN_PUBLISHER_PAIRS[domain];
       expect(pairs[domain]).toHaveLength(2);
-      expect(pairs[domain][0].id).toBe(next[domain][registry.length===2?1:0].id);
-      if(registry.length===2)expect(pairs[domain][1].id).toBe(next[domain][0].id);
-      else {
+      if(registry.length===2) {
+        expect(pairs[domain][0].id).toBe(next[domain][1].id);
+        expect(pairs[domain][1].id).toBe(next[domain][0].id);
+      } else {
+        expect(pairs[domain][1].id).toBe(next[domain][0].id);
         expect(registry).toHaveLength(3);
         expect(new Set(registry).size).toBe(3);
         // Three independent minerals publishers rotate as bounded pairs:
