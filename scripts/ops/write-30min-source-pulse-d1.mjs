@@ -8,6 +8,7 @@ import {readFileSync,writeFileSync,mkdirSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {createD1ControlPlaneStateClient} from "../lib/d1-control-plane-state.mjs";
+import {reconcile30mPrivateArticleFingerprints} from "../lib/private-original-cross-poll-dedupe.mjs";
 
 const DOMAINS=["geopolitics","macro","rare_earth"];
 function validCount(value) {return Number.isSafeInteger(value)&&value>=0&&value<=1000;}
@@ -83,8 +84,29 @@ export async function write30MinSourcePulseToD1({
     process.env.D1_DATABASE_ID=matches[0].uuid;
   }
   const client=createClient({pipeline:"official_source_pulse_30m"});
+  // Deduplicate from the previous D1 checkpoint BEFORE writing the next
+  // observation. GitHub concurrency serializes this one producer workflow;
+  // no raw article bodies/URLs/titles or signed paid data enter this ledger.
+  const previousRows=await client.loadRows();
+  const privateDedup=new Map();
   for(const row of rows){
-    const state={cursor:{status:row.status},...row.metadata};
+    const original=report.actual_original_publisher_rows.find(x=>x.domain===row.domain);
+    const prior=previousRows.get(row.domain)?.payload?.recent_private_article_fingerprints;
+    const result=reconcile30mPrivateArticleFingerprints({
+      domain:row.domain,checkedAt:row.checked_at,
+      candidates:original?.private_original_article_candidates ?? [],
+      previousHistory:prior,
+    });
+    privateDedup.set(row.domain,result);
+    const state={
+      cursor:{status:row.status},
+      ...row.metadata,
+      // No raw source URL or title; internal D1 only, not the public API.
+      recent_private_article_fingerprints:result.recent_private_article_fingerprints,
+      new_private_article_fingerprint_count:result.new_article_fingerprint_count,
+      repeated_private_article_fingerprint_count:result.repeated_article_fingerprint_count,
+      newly_seen_private_article_refs:result.newly_seen_private_article_refs,
+    };
     await client.persist(row.domain,state,{
       last_attempt_at:row.checked_at,
       last_success_at:row.last_success_at,
@@ -97,12 +119,24 @@ export async function write30MinSourcePulseToD1({
        stored?.payload?.cursor?.status!==row.status||
        stored?.payload?.checked_at!==row.checked_at||
        stored?.payload?.original_publisher_30m_topic_count!==
-         row.metadata.original_publisher_30m_topic_count)
+         row.metadata.original_publisher_30m_topic_count ||
+       stored?.payload?.new_private_article_fingerprint_count!==
+         privateDedup.get(row.domain).new_article_fingerprint_count ||
+       stored?.payload?.repeated_private_article_fingerprint_count!==
+         privateDedup.get(row.domain).repeated_article_fingerprint_count ||
+       JSON.stringify(stored?.payload?.recent_private_article_fingerprints)!==
+         JSON.stringify(privateDedup.get(row.domain).recent_private_article_fingerprints))
       throw Error("SOURCE_PULSE_D1_READBACK_MISMATCH");
   }
   return {
     schema:"geomacro.private-30m-source-pulse-d1-write-receipt.v1",
     checked_at:report.observed_at,rows_written:3,d1_readback_verified:true,
+    new_private_original_article_fingerprints:
+      [...privateDedup.values()].reduce((n,r)=>n+r.new_article_fingerprint_count,0),
+    repeated_private_original_article_fingerprints:
+      [...privateDedup.values()].reduce((n,r)=>n+r.repeated_article_fingerprint_count,0),
+    // Only hashed, non-reversible, PRIVATE D1 refs are held, never published.
+    original_article_identity_is_risk_event:false,
     source_current_scored_intelligence_verified:false,
     b2_requests:0,supabase_requests:0,payment_performed:false,
   };
