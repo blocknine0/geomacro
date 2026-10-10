@@ -48,7 +48,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
         return response(JSON.stringify({data:[{id:1,year:2024}]}),"application/json");
       if(url.includes("www150.statcan.gc.ca"))return response(atomStatcan,"application/atom+xml");
       if(url.includes("api.io.canada.ca"))return response(atomCanada,"application/atom+xml");
-      if(url.includes("www.gov.uk"))return response(atomUk,"application/atom+xml");
+      if(new URL(url).hostname === "www.gov.uk")return response(atomUk,"application/atom+xml");
       return response(xml,"application/rss+xml");
     });
     const res=await probeExpandedOfficialMesh({fetchImpl,now});
@@ -245,7 +245,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       if(new URL(url).hostname === "eiti.org")return response('{"data":[]}',"application/json");
       if(url.includes("www150.statcan.gc.ca"))return response(atomStatcan,"application/atom+xml");
       if(url.includes("api.io.canada.ca"))return response(atomCanada,"application/atom+xml");
-      if(url.includes("www.gov.uk"))return response(atomUk,"application/atom+xml");
+      if(new URL(url).hostname === "www.gov.uk")return response(atomUk,"application/atom+xml");
       return response(xml,"application/rss+xml");
     }});
     expect(res.status).toBe("SOURCE_TRANSPORT_DEGRADED");
