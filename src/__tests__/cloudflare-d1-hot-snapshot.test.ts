@@ -117,7 +117,8 @@ describe("D1 B2-verified hot snapshots", () => {
       schema:"geomacro.public-intelligence-live-proof.v1",
       live_key:"geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
       generated_at:generatedAt,current_source_batch_at:sourceClock,
-      current_source_id:"gdelt_v2_events",
+      current_source_id:"qualified_independent_original_publishers_v1",
+      current_evidence_contract:"geomacro.qualified-original-event-claims.v1",
       compressed_sha256:"c".repeat(64),
       full_b2_readback_verified:true,exact_gzip_restore_verified:true,
       commercial_multi_source_checked_at:generatedAt,
@@ -142,6 +143,24 @@ describe("D1 B2-verified hot snapshots", () => {
     expect(publicText).not.toContain("source_url");
     expect(publicText).not.toContain("raw_article");
     expect(publicText).not.toContain("publisher");
+    // Even perfectly shaped signed-derived rows cannot be published using
+    // index-derived GDELT-only evidence or a fresh crawler-time timestamp.
+    for(const forged of [
+      {...proof,current_source_id:"gdelt_v2_events"},
+      {...proof,current_source_id:"unreviewed_feed"},
+      {...proof,current_evidence_contract:"gdelt-discovery-only"},
+      {...proof,current_source_batch_at:generatedAt},
+    ]){
+      const db=fakeDb();
+      const response=await controlPlane.fetch(request(
+        "/v1/hot-snapshot/intelligence","PUT",{
+          value:baseValue,proof:forged,source_run_id:"38055113651",
+          payload_sha256:createHash("sha256").update(
+            JSON.stringify(baseValue)).digest("hex"),
+        }),envFor(db));
+      expect(response.status).not.toBe(200);
+      expect(db.rows.has("intelligence")).toBe(false);
+    }
     const changes=[
       {...baseValue,source_url:"https://original.example/secret"},
       {...baseValue,raw_article:"copied upstream text"},
