@@ -114,6 +114,26 @@ describe("original publisher alternate feed with source-native Atom dates", () =
     }
   });
 
+  it("classifies official Atom link host shapes without permitting foreign hosts",()=>{
+    const headline="Consumer price inflation accelerates in September in Canada";
+    const candidates:[string,string][]=[
+      ["https://www150.statcan.gc.ca/n1/daily-quotidien/261009/test.htm","alternate_macro_href_www150_items"],
+      ["https://www.statcan.gc.ca/en/news/latest","alternate_macro_href_www_items"],
+      ["https://statcan.gc.ca/en/news/latest","alternate_macro_href_apex_items"],
+      ["https://archive.statcan.gc.ca/en/latest","alternate_macro_href_other_statcan_items"],
+      ["https://evil.example/en/latest","alternate_macro_href_other_origin_items"],
+      ["http://www150.statcan.gc.ca/en/latest","alternate_macro_href_non_https_items"],
+      ["relative-article.htm","alternate_macro_href_not_absolute_items"],
+    ];
+    for(const [href, field] of candidates) {
+      const diagnostics:Record<string,number>={};
+      const result=parseOfficialAlternate(atom(headline,href,
+        "2026-10-09T12:15:00Z"),"macro",now,diagnostics);
+      expect(diagnostics[field]).toBe(1);
+      if(field!=="alternate_macro_href_www150_items") expect(result).toHaveLength(0);
+    }
+  });
+
   it("hydrates StatCan updated-only relative link only with precise original article date",async()=>{
     const relative="/n1/daily-quotidien/261009/abc-eng.htm";
     const headline="Consumer price inflation accelerates in September in Canada";
