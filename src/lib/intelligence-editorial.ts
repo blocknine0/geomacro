@@ -1,5 +1,6 @@
 import type { IntelEvent } from "./use-intelligence";
 import { isHomepageShowcaseEligible } from "./homepage-intelligence-showcase";
+import { dedupePublicIntelligenceRows } from "./public-intelligence-dedupe";
 
 export const COMMERCIAL_DOMAINS = [
   { key: "geopolitics", label: "Geopolitical" },
@@ -14,9 +15,21 @@ function storyTime(event: IntelEvent): number {
 
 /** The UI must never present an upstream classifier observation as scored news. */
 export function scoredNews(events: IntelEvent[], now = Date.now()): IntelEvent[] {
-  return events
+  const eligible = events
     .filter((event) => event.publicStatus === "verified_b2" && isHomepageShowcaseEligible(event, now))
     .sort((a, b) => storyTime(b) - storyTime(a) || (b.severity ?? 0) - (a.severity ?? 0) || a.id.localeCompare(b.id));
+  // Edge API, same-origin SSR and the browser may receive independently
+  // scored renditions of one event. Keep one customer-facing news story.
+  // Do not collapse different countries, places, numbers or opposing actions.
+  return dedupePublicIntelligenceRows(eligible.map(event => ({
+    event,
+    category: event.category,
+    source_title: event.title,
+    summary: event.summary,
+    public_status: event.publicStatus,
+    published_at: event.publishedAt,
+    created_at: event.createdAt,
+  }))).map(({ event }) => event);
 }
 
 /**

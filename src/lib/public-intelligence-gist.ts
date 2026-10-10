@@ -52,8 +52,14 @@ export function derivedPublicGist(
   const canonical = singleLine(title.trim().slice(prefix.length), 280);
   if (status === "live_observed" && canonical && isUnsupportedEventClassObservation(canonical)) return null;
   const approvedSummary = singleLine(summary, 190);
+  // An approved, concise, EVENT-SPECIFIC derived title is the newsroom
+  // headline. The summary can be generic risk prose and must not replace an
+  // already specific factual event claim. Fall back to the approved short
+  // summary for verbose causal/classifier rationale or unusable titles.
+  const specificCanonical = canonical && canonical.length <= 190 &&
+    !/\b(?:because|material macroeconomic development|this event|risk context|a situation)\b/iu.test(canonical);
   const gist = status === "verified_b2"
-    ? approvedSummary ?? (canonical && canonical.length <= 190 ? canonical : null)
+    ? (specificCanonical ? canonical : approvedSummary ?? null)
     : canonical && canonical.length <= 190 ? canonical : null;
   if (!gist) return null;
   const trimmed = gist.replace(/[.!?]+$/u, "").trim();

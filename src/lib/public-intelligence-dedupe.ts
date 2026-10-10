@@ -50,6 +50,49 @@ function overlap(a: Set<string>, b: Set<string>) {
   };
 }
 
+/**
+ * Public payloads intentionally omit private source identity and the signed
+ * same-event claim key. Text overlap alone is NOT enough to infer a matching
+ * event: named actors, places, numbers and opposing actions must agree.
+ * If they differ, keep both stories rather than erase an independent event.
+ */
+function namedAnchors(title: unknown): Set<string> {
+  const cleaned = String(title ?? "").replace(TITLE_PREFIX, "");
+  const matches = cleaned.match(/\b(?:[A-Z][a-z]{2,}|[A-Z]{2,})\b/gu) ?? [];
+  const ignores = new Set(["The", "This", "That", "After", "Before", "New", "While"]);
+  return new Set(matches.filter(x => !ignores.has(x)).map(x => x.toLowerCase()));
+}
+
+function digitAnchors(title: unknown): Set<string> {
+  return new Set((normalizeText(title).match(/\b\d+(?:\.\d+)?\b/gu) ?? []));
+}
+
+function setsMatch(a: Set<string>, b: Set<string>): boolean {
+  return a.size === b.size && [...a].every(x => b.has(x));
+}
+
+const OPPOSING_CLAIMS: ReadonlyArray<readonly [string, string]> = [
+  ["approves", "rejects"], ["approved", "rejected"],
+  ["raises", "cuts"], ["increases", "decreases"],
+  ["imposes", "lifts"], ["introduces", "withdraws"],
+  ["confirms", "denies"], ["signs", "cancels"],
+  ["expands", "reduces"], ["opens", "closes"],
+];
+
+function claimsContradict(a: unknown, b: unknown): boolean {
+  const x = tokens(a), y = tokens(b);
+  return OPPOSING_CLAIMS.some(([pos, neg]) =>
+    (x.has(pos) && y.has(neg)) || (x.has(neg) && y.has(pos)));
+}
+
+function titleIdentityCompatible(a: unknown, b: unknown): boolean {
+  const namesA = namedAnchors(a), namesB = namedAnchors(b);
+  if (namesA.size > 0 && namesB.size > 0 && !setsMatch(namesA, namesB)) return false;
+  const digitsA = digitAnchors(a), digitsB = digitAnchors(b);
+  if (!setsMatch(digitsA, digitsB)) return false;
+  return !claimsContradict(a, b);
+}
+
 function rowTime(row: PublicIntelligenceDedupeRow): number {
   const published = Date.parse(String(row.published_at ?? ""));
   if (Number.isFinite(published)) return published;
@@ -68,29 +111,36 @@ function sameStory(a: PublicIntelligenceDedupeRow, b: PublicIntelligenceDedupeRo
     return false;
   }
 
-  const summaryA = normalizeText(a.summary);
-  const summaryB = normalizeText(b.summary);
-  if (summaryA.length >= 32 && summaryA === summaryB) return true;
-
   const titleA = normalizeText(a.source_title);
   const titleB = normalizeText(b.source_title);
-  if (titleA.length >= 32 && titleA === titleB) return true;
-
+  // A scored, source-governed event might have parallel independently
+  // corroborating publisher stories. Equivalent event details are the
+  // conservative dedupe boundary; boilerplate summaries never suffice.
+  if (!titleIdentityCompatible(a.source_title, b.source_title)) return false;
+  // Source-native unscored observations have no signed event identity.
+  // Even identical template text can describe separate recurring events.
   const liveA = String(a.public_status ?? "") === "live_observed";
   const liveB = String(b.public_status ?? "") === "live_observed";
   if (liveA || liveB) return false;
 
-  const summaryOverlap = overlap(tokens(a.summary), tokens(b.summary));
-  if (
-    (summaryOverlap.minSize >= 5 && summaryOverlap.jaccard >= 0.82) ||
-    (summaryOverlap.minSize >= 8 && summaryOverlap.containment >= 0.74)
-  ) return true;
+  if (titleA.length >= 32 && titleA === titleB) return true;
 
   const titleOverlap = overlap(tokens(a.source_title), tokens(b.source_title));
-  return (
-    (titleOverlap.minSize >= 6 && titleOverlap.jaccard >= 0.82) ||
-    (titleOverlap.minSize >= 8 && titleOverlap.containment >= 0.82)
-  );
+  const titleShared = (titleOverlap.containment * titleOverlap.minSize);
+  if (titleOverlap.minSize < 4 || titleShared < 3) return false;
+
+  const summaryA = normalizeText(a.summary);
+  const summaryB = normalizeText(b.summary);
+  const exactSummary = summaryA.length >= 32 && summaryA === summaryB;
+  const summaryOverlap = overlap(tokens(a.summary), tokens(b.summary));
+  const compellingSummary = exactSummary ||
+    (summaryOverlap.minSize >= 5 && summaryOverlap.jaccard >= 0.80) ||
+    (summaryOverlap.minSize >= 8 && summaryOverlap.containment >= 0.78);
+  if (compellingSummary && titleOverlap.containment >= 0.38) return true;
+
+  // When summaries are absent, require very high headline agreement.
+  return titleOverlap.minSize >= 6 &&
+    (titleOverlap.jaccard >= 0.86 || titleOverlap.containment >= 0.90);
 }
 
 /**
