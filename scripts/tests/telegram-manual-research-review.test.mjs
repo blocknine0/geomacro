@@ -75,7 +75,8 @@ test("all input and pointer fields must be exactly whitelisted", () => {
   const bad = ["raw_message", "headline", "message_text", "media", "source_url", "telegram_session", "customer_query", "commercial_eligible"];
   for (const extra of bad) {
     const p = packet();p.research_pointer[extra] = "raw";
-    assert.throws(() => buildInternalResearchReviewPacket(p, NOW), /MANUAL_RESEARCH_POINTER_FIELDS_INVALID/);
+    const expected = extra === "commercial_eligible" ? /MANUAL_RESEARCH_BOUNDARY_VIOLATION/ : /MANUAL_RESEARCH_POINTER_FIELDS_INVALID/;
+    assert.throws(() => buildInternalResearchReviewPacket(p, NOW), expected);
   }
   const p = packet();p.raw_data = "secret";
   assert.throws(() => buildInternalResearchReviewPacket(p, NOW), /REVIEW_PACKET_INPUT_INVALID/);
