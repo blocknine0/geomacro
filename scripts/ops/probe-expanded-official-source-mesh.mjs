@@ -95,13 +95,15 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
   // These sources are standalone bounded probes; cannot bypass existing
   // blocked EITI / Simply Science status or generate risk scores.
   Object.freeze({
-    id:"un_geneva_original_press_rss_review",
-    domain:"geopolitics",kind:"original_publisher_un_press_release",
-    url:"https://www.ungeneva.org/news-media/press-items-list/rss.xml",
-    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    id:"uk_fcdo_original_foreign_policy_atom_review",
+    domain:"geopolitics",kind:"original_publisher_uk_foreign_policy",
+    // UN Geneva feed timed out in the real PR runner. FCDO has a publicly
+    // reachable government first-party Atom URL, no off-domain fallback.
+    url:"https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"ninety_minutes",
     event_intelligence:false,country_coverage_verified:false,
-    original_hosts:Object.freeze(["www.ungeneva.org","ungeneva.org"]),
-    topic:/\b(?:security council|ceasefire|armed conflict|sanctions?|conflict|peace talks|war|disarmament|human rights|border|peacekeeping|military|humanitarian crisis|displacement)\b/iu,
+    original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
+    topic:/\b(?:security council|ceasefire|armed conflict|sanctions?|conflict|peace talks|war|diplomatic|foreign policy|disarmament|human rights|border|peacekeeping|military|humanitarian crisis|displacement|attacks?|defence|foreign secretary)\b/iu,
   }),
   Object.freeze({
     id:"fed_monetary_original_press_rss_review",
