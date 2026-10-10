@@ -90,6 +90,37 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     original_hosts:Object.freeze(["www.canada.ca","canada.ca","natural-resources.canada.ca"]),
     topic:/\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|neodymium|dysprosium|terbium|strategic minerals?|mining|minerals? (?:supply|production|processing|trade|projects?|sector))\b/iu,
   }),
+  // Additional original *publisher* sources, three independent public
+  // institutions. RSS discoverability is NEVER commercial licensing.
+  // These sources are standalone bounded probes; cannot bypass existing
+  // blocked EITI / Simply Science status or generate risk scores.
+  Object.freeze({
+    id:"un_geneva_original_press_rss_review",
+    domain:"geopolitics",kind:"original_publisher_un_press_release",
+    url:"https://www.ungeneva.org/news-media/press-items-list/rss.xml",
+    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.ungeneva.org","ungeneva.org"]),
+    topic:/\b(?:security council|ceasefire|armed conflict|sanctions?|conflict|peace talks|war|disarmament|human rights|border|peacekeeping|military|humanitarian crisis|displacement)\b/iu,
+  }),
+  Object.freeze({
+    id:"fed_monetary_original_press_rss_review",
+    domain:"macro",kind:"original_publisher_central_bank_monetary_release",
+    url:"https://www.federalreserve.gov/feeds/press_all.xml",
+    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.federalreserve.gov","federalreserve.gov"]),
+    topic:/\b(?:interest rates?|federal funds|monetary policy|inflation|economic activity|financial stability|foreign exchange|currency|central bank|discount rate|FOMC|liquidity|supervision|banking regulation)\b/iu,
+  }),
+  Object.freeze({
+    id:"usgs_minerals_original_news_rss_review",
+    domain:"rare_earth",kind:"original_publisher_mineral_resources_release",
+    url:"https://www.usgs.gov/news/minerals/feed",
+    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.usgs.gov","usgs.gov"]),
+    topic:/\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|copper|tungsten|mineral deposits?|mining|rare earth elements?|mineral supply|strategic minerals?)\b/iu,
+  }),
 ]);
 
 const XML_MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
