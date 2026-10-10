@@ -59,7 +59,7 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       result?.source_id===source.id &&
       [result.original_publisher_topical_30m,
        result.original_publisher_topical_90m,
-       result.original_publisher_topical_6h].every(safeInt) &&
+       result.original_publisher_topical_6h].every(x=>safeInt(x)!==null) &&
       result.original_publisher_topical_30m<=result.original_publisher_topical_90m &&
       result.original_publisher_topical_90m<=result.original_publisher_topical_6h;
     const first=await observe(primary);
