@@ -136,13 +136,14 @@ describe("original publisher alternate feed with source-native Atom dates", () =
 
   it("accepts actual official www.statcan.gc.ca host only on exact Daily path",async()=>{
     const headline="Consumer price inflation accelerates in September in Canada";
-    const accepted="https://www.statcan.gc.ca/n1/daily-quotidien/261009/dq261009a-eng.htm";
+    const accepted="https://www.statcan.gc.ca/daily-quotidien/261009/dq261009a-eng.htm";
+    const canonical="https://www150.statcan.gc.ca/n1/daily-quotidien/261009/dq261009a-eng.htm";
     const stats:Record<string,number>={};
     const privateRows=parseOfficialAlternate(atom(headline,accepted,
       "2026-10-09T12:15:00Z"),"macro",now,stats);
     expect(privateRows).toHaveLength(1);
     expect(privateRows[0]).toMatchObject({
-      url:accepted,sourceDomain:"www.statcan.gc.ca",
+      url:canonical,sourceDomain:"www150.statcan.gc.ca",
       publishedAt:"2026-10-09T12:15:00.000Z",
       privateOnly:true,rightsVerified:false,commercialEligible:false,
     });
@@ -152,10 +153,10 @@ describe("original publisher alternate feed with source-native Atom dates", () =
 
     for (const href of [
       "https://www.statcan.gc.ca/en/news/latest",
-      "https://www.statcan.gc.ca/n1/daily-quotidien/261009/dq261009a-eng.htm?redirect=evil",
-      "https://www.statcan.gc.ca/n1/daily-quotidien/261009/dq261009a-eng.htm#x",
-      "https://www.statcan.gc.ca:444/n1/daily-quotidien/261009/dq261009a-eng.htm",
-      "https://www.statcan.gc.ca.evil.example/n1/daily-quotidien/261009/dq261009a-eng.htm",
+      "https://www.statcan.gc.ca/daily-quotidien/261009/dq261009a-eng.htm?redirect=evil",
+      "https://www.statcan.gc.ca/daily-quotidien/261009/dq261009a-eng.htm#x",
+      "https://www.statcan.gc.ca:444/daily-quotidien/261009/dq261009a-eng.htm",
+      "https://www.statcan.gc.ca.evil.example/daily-quotidien/261009/dq261009a-eng.htm",
     ]) {
       expect(parseOfficialAlternate(atom(headline,href,
         "2026-10-09T12:15:00Z"),"macro",now)).toHaveLength(0);
@@ -171,14 +172,15 @@ describe("original publisher alternate feed with source-native Atom dates", () =
         urls.push(u);
         if(u===ORIGINAL_PUBLISHER_ALTERNATES.macro.url)
           return new Response(updatedOnly,{headers:{"content-type":"application/atom+xml"}});
-        if(u===accepted)
+        if(u===canonical)
           return new Response(html,{headers:{"content-type":"text/html"}});
         throw Error("UNEXPECTED_NETWORK_TARGET");
       },
     });
-    expect(urls).toEqual([ORIGINAL_PUBLISHER_ALTERNATES.macro.url,accepted]);
+    expect(urls).toEqual([ORIGINAL_PUBLISHER_ALTERNATES.macro.url,canonical]);
     expect(source).toHaveLength(1);
     expect(source[0]).toMatchObject({
+      url:canonical,sourceDomain:"www150.statcan.gc.ca",
       nativeTimeEvidence:"publisher_original_article_datePublished",
       nativePublishedAtVerified:true,rightsVerified:false,
       privateOnly:true,commercialEligible:false,
