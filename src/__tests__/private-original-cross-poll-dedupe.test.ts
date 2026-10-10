@@ -62,9 +62,13 @@ describe("#1827 continuous 30m original article identity, private D1 only",()=>{
     const before=reconcile30mPrivateArticleFingerprints({
       domain:"macro",checkedAt:at,candidates:[make("macro","a".repeat(64))],
     });
-    const after=reconcile30mPrivateArticleFingerprints({
+    expect(()=>reconcile30mPrivateArticleFingerprints({
       domain:"rare_earth",checkedAt:at,
       previousHistory:before.recent_private_article_fingerprints,
+      candidates:[make("rare_earth","b".repeat(64))],
+    })).toThrow("SOURCE_PULSE_PREVIOUS_HISTORY_INVALID");
+    const after=reconcile30mPrivateArticleFingerprints({
+      domain:"rare_earth",checkedAt:at,
       candidates:[make("rare_earth","b".repeat(64))],
     });
     expect(after.new_article_fingerprint_count).toBe(1);
@@ -77,7 +81,7 @@ describe("#1827 continuous 30m original article identity, private D1 only",()=>{
     const result=reconcile30mPrivateArticleFingerprints({
       domain:"geopolitics",checkedAt:at,
       previousHistory:[{
-        article_sha256:"a".repeat(64),
+        domain:"geopolitics",article_sha256:"a".repeat(64),
         native_published_at:"2026-10-09T04:45:00.000Z",
       }],
       candidates:[make("geopolitics","b".repeat(64))],
@@ -107,14 +111,14 @@ describe("#1827 continuous 30m original article identity, private D1 only",()=>{
     })).toThrow();
     expect(()=>reconcile30mPrivateArticleFingerprints({
       domain:"geopolitics",checkedAt:at,previousHistory:[
-        {article_sha256:"a".repeat(64),native_published_at:at},
-        {article_sha256:"a".repeat(64),native_published_at:at},
+        {domain:"geopolitics",article_sha256:"a".repeat(64),native_published_at:at},
+        {domain:"geopolitics",article_sha256:"a".repeat(64),native_published_at:at},
       ],
     })).toThrow();
     expect(()=>reconcile30mPrivateArticleFingerprints({
       domain:"geopolitics",checkedAt:at,
       previousHistory:Array.from({length:241},(_,i)=>({
-        article_sha256:i.toString(16).padStart(64,"0"),native_published_at:at,
+        domain:"geopolitics",article_sha256:i.toString(16).padStart(64,"0"),native_published_at:at,
       })),
     })).toThrow();
   });
