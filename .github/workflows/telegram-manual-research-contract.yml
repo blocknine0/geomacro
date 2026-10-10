@@ -1,0 +1,43 @@
+name: Telegram Manual Research Corroboration Contract
+
+on:
+  pull_request:
+    paths:
+      - "scripts/verify-telegram-manual-research-review.mjs"
+      - "scripts/build-telegram-manual-research-review.mjs"
+      - "scripts/tests/telegram-manual-research-review.test.mjs"
+      - "docs/TELEGRAM_INTERNAL_RESEARCH_HANDOFF.md"
+      - ".github/workflows/telegram-manual-research-contract.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify-telegram-manual-research-review.mjs"
+      - "scripts/build-telegram-manual-research-review.mjs"
+      - "scripts/tests/telegram-manual-research-review.test.mjs"
+      - "docs/TELEGRAM_INTERNAL_RESEARCH_HANDOFF.md"
+      - ".github/workflows/telegram-manual-research-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  fail-closed-manual-research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code (no persistent credentials)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24"
+      - name: Validate offline contract and negative boundaries
+        run: node --test scripts/tests/telegram-manual-research-review.test.mjs
+      - name: Verify no runtime credentials or network needed
+        run: |
+          node --check scripts/verify-telegram-manual-research-review.mjs
+          node --check scripts/build-telegram-manual-research-review.mjs
+          ! grep -E '(^|[^a-z])fetch\(|https\.request\(|setWebhook\(|signRisk\(' scripts/verify-telegram-manual-research-review.mjs scripts/build-telegram-manual-research-review.mjs
