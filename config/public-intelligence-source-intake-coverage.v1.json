@@ -1,0 +1,61 @@
+{
+  "schema": "geomacro.public-source-intake-coverage.v1",
+  "source_receipt": {
+    "observed_at": "2026-10-10T16:21:28.311Z",
+    "workflow_run_url": "https://github.com/blocknine0/geomacro/actions/runs/38067310841",
+    "producer_main_sha": "e0068e8a1d96bf7e5da839cf8ba2614f65905168",
+    "catalog_mode": "PINNED_SANITIZED_REPOSITORY_SNAPSHOT",
+    "latest_private_repo_sync_verified": false,
+    "realtime_event_publication_verified": false,
+    "catalog_entries_are_distinct_publishers": false
+  },
+  "refresh_policy": {
+    "source_catalog": "BEST_EFFORT_90_MINUTE_PRIVATE_WORKFLOW",
+    "intelligence_website": "CLIENT_POLL_EVERY_5_MINUTES",
+    "source_catalog_snapshot_automatically_updates_this_api": false,
+    "qualification_required_for_paid_risk": true
+  },
+  "domains": {
+    "geopolitics": {
+      "label": "Geopolitics",
+      "total": 376,
+      "core": 17,
+      "free": 12,
+      "governed_roots": 209,
+      "telegram_candidates": 131,
+      "historical_sources": 7
+    },
+    "macro-fx": {
+      "label": "Macro / FX",
+      "total": 355,
+      "core": 19,
+      "free": 8,
+      "governed_roots": 308,
+      "telegram_candidates": 15,
+      "historical_sources": 5
+    },
+    "critical-minerals": {
+      "label": "Critical minerals",
+      "total": 47,
+      "core": 12,
+      "free": 8,
+      "governed_roots": 18,
+      "telegram_candidates": 6,
+      "historical_sources": 3
+    }
+  },
+  "totals": {
+    "catalog_entries": 778,
+    "telegram_authorized_in_snapshot": 0,
+    "metadata_only": true,
+    "historical_legacy_crypto_excluded": 1
+  },
+  "separation": {
+    "intake_is_event_feed": false,
+    "intake_is_verified_current_intelligence": false,
+    "intake_is_signed_gro": false,
+    "intake_is_paid_deliverability": false,
+    "verified_current_intelligence_uses_existing_b2_d1_gro_gate": true,
+    "source_permissions_and_licensing_remain_required": true
+  }
+}
