@@ -57,7 +57,7 @@ export function classifySourcePulse(
     topicCount: null,
   };
   const count = obs.publisher_topic_items_in_last_30m;
-  if (!Number.isSafeInteger(count) || typeof count !== "number" || count < 0 || count > 1000) return EMPTY;
+  if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0 || count > 1000) return EMPTY;
   return {
     label: count === 0
       ? "No relevant item in the sampled publisher's last 30 minutes"
