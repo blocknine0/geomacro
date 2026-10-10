@@ -1,0 +1,82 @@
+name: Read-only B2 Account D1 Quota Receipt
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/b2-account-readonly-quota-receipt.yml"
+      - "scripts/ops/report-b2-account-ledger-readonly.mjs"
+      - "src/__tests__/b2-account-readonly-quota-receipt.test.ts"
+  pull_request:
+    paths:
+      - ".github/workflows/b2-account-readonly-quota-receipt.yml"
+      - "scripts/ops/report-b2-account-ledger-readonly.mjs"
+      - "src/__tests__/b2-account-readonly-quota-receipt.test.ts"
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-b2-account-readonly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  syntax:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout exact candidate without stored credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        with:
+          node-version: '22'
+      - name: Validate zero-write D1 ledger report syntax
+        run: node --check scripts/ops/report-b2-account-ledger-readonly.mjs
+
+  production-readonly:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: syntax
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: production
+    steps:
+      - name: Checkout exact main without stored credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        with:
+          node-version: '22'
+      - name: Read ONLY today's D1 account and per-workflow B2 request reservations
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" && test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || {
+            echo "::error::B2_READONLY_D1_ACCOUNT_AUTH_MISSING"
+            exit 2
+          }
+          # One bounded SELECT: no raw source, hashes, object names, signer,
+          # customer account IDs, payment, B2 GET or D1 write.
+          sql="SELECT a.day_utc,a.total_requests,a.get_requests,a.put_requests,a.head_requests,a.native_auth_requests,w.workflow_id,w.operation,COALESCE(w.requests,0) AS workflow_requests FROM b2_account_daily_request_quota a LEFT JOIN b2_request_quota_workflow_receipt w ON w.day_utc=a.day_utc WHERE a.day_utc=strftime('%Y-%m-%d','now') ORDER BY w.workflow_id,w.operation LIMIT 101;"
+          raw="$(mktemp)"; err="$(mktemp)"
+          trap 'rm -f "$raw" "$err"' EXIT
+          if ! npx -y "wrangler@4.136.3" d1 execute geomacro-control-plane             --remote --json --command "$sql" >"$raw" 2>"$err"; then
+            echo "::error::B2_D1_ACCOUNT_QUOTA_READONLY_SELECT_FAILED"
+            exit 2
+          fi
+          node scripts/ops/report-b2-account-ledger-readonly.mjs < "$raw"
+      - name: Archive sanitized D1 ledger receipt only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: b2-account-readonly-quota-${{ github.run_id }}
+          path: artifacts/b2-quota-readonly/account-ledger.json
+          if-no-files-found: warn
+          retention-days: 3
