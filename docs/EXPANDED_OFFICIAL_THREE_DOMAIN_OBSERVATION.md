@@ -12,7 +12,7 @@ data remains PRIVATE. It does not score events or edit risk objects.
 |---|---|---|---|---|
 | Geopolitics | European Commission sanctions guidance updates | https://finance.ec.europa.eu/node/1296/rss_en | Publisher RSS reachable; optionally source-native item release `pubDate` in 24h | A new legal sanctions designation, worldwide coverage or scored conflict event |
 | Macro/FX | ECB statistical press releases | https://www.ecb.europa.eu/rss/statpress.html | Publisher RSS reachable; source-native release clock when present | Live global FX ticks, full national balance sheets or a verified macro-shock |
-| Macro/FX | Eurostat official dataset-update RSS | https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/en/statistics-update.rss | Original dataset publication updates, released about twice per day | Actual macro conditions, economic calendar surprise or instant FX price |
+| Macro/FX | Eurostat official dataset-update RSS | https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/en/statistics-update.rss (fallback, same publisher: https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/de/statistics-update.rss) | Original dataset publication updates, released about twice per day | Actual macro conditions, economic calendar surprise or instant FX price |
 | Critical Minerals | EITI country metadata API | https://eiti.org/api/v2.0/implementing_country | Test whether official extractives-country listing JSON is accessible; initial GitHub probe returned 403 | Real-time extraction, prices, supply shock or 195-country coverage |
 | Critical Minerals | Natural Resources Canada Simply Science RSS | https://natural-resources.canada.ca/simply-science/rss.xml | Source-native government science publication release time when present | An independently confirmed rare-earth export shock, mineral event or global supply coverage |
 | Critical Minerals | EU official featured-news RSS | https://european-union.europa.eu/node/309/rss_en | EU official news-discovery metadata, count of 24h mineral-related titles only | Direct originating publisher, exact original article publication time, source rights or corroboration |
@@ -50,8 +50,11 @@ Supporting official references:
 
 - Existing official event feeds: continue their established hourly sampling.
 - Additional official release/structural probes: **4 times per UTC day**,
-  six GET requests per cycle (~24 total requests/day), 5s timeout and
-  192-KiB maximum body per endpoint, no retries and no paid credentials.
+  six GET requests per cycle, plus at most one documented same-publisher
+  Eurostat German-language alternative following primary HTTP 404/5xx only
+  (~24–28 total GETs/day). No locale retry on 401/403/429, redirect/network
+  errors or wrong MIME/body/schema. Each attempt has a 5s timeout and 192-KiB
+  maximum body; no other retries and no paid credentials.
   This is low-cost, not instantaneous distribution, and may be held by
   upstream rate limits. Event-specific frequency must match actual publishers.
 - ECB is euro-area-focused; EU sanctions is Europe-issued/global-designation
@@ -62,7 +65,7 @@ Supporting official references:
   administrations; event correlation across distinct publisher families and
   actual site/D1 serving must be independently verified.
 - **Status criteria:** an external 403/429, MIME or schema mismatch yields
-  `SOURCE_TRANSPORT_DEGRADED`, not fake source freshness. PR tests validate
+  `SOURCE_TRANSPORT_DEGRADED`, not fake source freshness. Any Eurostat fallback is one publisher family, **not** independent corroboration; even a valid translated RSS is not a risk event. PR tests validate
   safe fail-closed behavior even during publisher outage; real main/scheduled
   production fails RED and preserves a sanitized three-day receipt.
 
