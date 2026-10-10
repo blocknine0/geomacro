@@ -110,6 +110,7 @@ describe("#1827 authoritative statistical source clocks, domain and zero-cost ad
     const workflow=readFileSync(".github/workflows/governed-source-ingestion.yml","utf8");
     const testScript=readFileSync("scripts/test-governed-source-ingestion.mjs","utf8");
     expect(script).toContain("noaaRollingNativeWindow({ now: new Date(now) })");
+    expect(script).toContain("sort[0][column]=period&sort[0][direction]=desc&length=12");
     expect(script).not.toContain("startdate=2026-09-01");
     expect(script).not.toContain("enddate=2026-09-02");
     expect(script).toContain('category: governedMetricCategory(source.source_id, "electricity_retail_price")');
