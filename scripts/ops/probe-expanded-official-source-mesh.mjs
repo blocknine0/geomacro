@@ -207,7 +207,10 @@ function originalHref(href, hosts, source=null) {
       hosts.includes(link.hostname.toLowerCase()) &&
       (!source || (
         Object.hasOwn(ORIGINAL_ARTICLE_PATHS,source.id) &&
-        ORIGINAL_ARTICLE_PATHS[source.id].test(link.pathname)
+        ORIGINAL_ARTICLE_PATHS[source.id].test(link.pathname) &&
+        // A feed cannot attest to itself as a separately dated article.
+        link.pathname!==new URL(source.url).pathname &&
+        !/(?:^|\/)(?:feed|rss|atom)(?:\/|$)/iu.test(link.pathname)
       ));
   } catch {return false;}
 }
