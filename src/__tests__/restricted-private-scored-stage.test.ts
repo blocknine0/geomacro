@@ -104,6 +104,8 @@ describe("#1803 restricted canonical private score archive", () => {
     expect(workflow).toContain("default: false");
     expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge pull request #1891')");
     expect(workflow).toContain("contains(github.event.head_commit.message, '(#1924)')");
+    expect(workflow).toContain("contains(github.event.head_commit.message, '(#1933)')");
+    expect((workflow.match(/contains\(github\.event\.head_commit\.message, '\(#1933\)'\)/gu)??[]).length).toBe(4);
     expect(workflow).toContain("Prove genuine original-source three-domain singleton eligibility BEFORE B2 PUT");
     expect(scorer).toContain("allocatePrivateScoringSlots({");
     expect(scorer).toContain("native_original_singleton_prioritized");
@@ -111,6 +113,8 @@ describe("#1803 restricted canonical private score archive", () => {
     expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "1"');
     expect(workflow).toContain(".github/workflows/restricted-private-current-scoring.yml");
     expect(workflow).not.toContain("schedule:");
+    expect(workflow).not.toContain("payment_required_now: true");
+    expect(workflow).not.toContain("productionFundsAuthorized: true");
     expect(workflow).not.toContain("workflow_run:");
     expect(workflow).not.toContain("SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.");
     expect(workflow).toContain('B2_REQUEST_BUDGET: "6"');
