@@ -174,3 +174,34 @@ Private original alternate parser, fetcher and article-level `datePublished` fal
 ### Original geopolitical third-family scorer alignment (2026-10-10)
 
 The commercial scoring path has an independent *private-only* original-publisher fallback stage `scripts/lib/official-native-third-fallback.mjs`. The legacy UN Geneva press RSS third family repeatedly returned `TRANSPORT_UNAVAILABLE` on real GitHub production runners; the additive 90-minute observation mesh had already switched to GOV.UK Foreign, Commonwealth & Development Office Atom. The **canonical private scorer now uses that same exact fixed GOV.UK publisher Atom URL as geopolitical third family only when the first TWO original-publisher families yield zero current candidates**. It accepts only a first-party GOV.UK article with genuine `entry/published` clock; if `published` is missing, the existing strict original GOV.UK article `datePublished` verifier may check up to two exact-path article pages. `updated`, retrieval time, other UK domains and future dates are never valid publication proof. The original 6-hour stage cutoff, no public raw article, source rights UNVERIFIED, independent corroboration false, and no paid release remain unchanged. It is a source-discovery and private-scoring correctness repair, NOT evidence of current global 195-country events or revenue.
+
+### October 10 extension — additional independently published Australian minerals RSS
+
+A further **13th** *transport-only* original publisher is included in the
+bounded official monitoring set: Australia's Department of Industry, Science
+and Resources ministerial **Tim Ayres media RSS** at
+`https://www.minister.industry.gov.au/feed/t-ayres/rss.xml` (official
+subscription listed at `https://www.minister.industry.gov.au/subscribe`).
+Only an original first-party `www.minister.industry.gov.au/t-ayres/media/`
+or `/king/media/` article, a dated RSS `item/pubDate`, and an actual mineral
+topic match may enter the private observation/fingerprint stage. Any
+homepage, RSS index, non-government link, future/undated item or non-minerals
+content is rejected. **Commercial reuse rights are UNVERIFIED**; a public
+ministerial RSS subscription does not automatically grant license to monetize
+the publisher's text or treat the observation as an independently scored GRO.
+
+Current 90-minute original-transport workload bound increases from the
+**historical 12** to **13 feed GETs** (at most 10 strict article-clock GETs and
+one conditional Eurostat locale fallback): **<=24 HTTP GETs/cycle**, nominal
+**<=384 per day** across 16 best-effort slots. No Supabase/B2/D1 write from
+that 90-minute workflow. The separate 30-minute original-publisher pulse
+rotates **three** mineral institutions (NRCan, USGS and Australia minister)
+using only **two** original feeds per category per cycle; its maximum remains
+**six origin feed reads per cycle across all three categories**. The
+reduced per-slot sampling deliberately does not guarantee every
+publisher in every slot; 30 minutes is a best-effort poll cadence, never a
+promise that a source will publish a new event. Same title/syndication is not
+independent same-event corroboration; current publisher/licensing review,
+signed reviewer-scoring proof, B2 full readback and D1 hot acceptance remain
+the gates for paid output.
+

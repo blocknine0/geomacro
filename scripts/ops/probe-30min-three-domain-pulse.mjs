@@ -26,6 +26,7 @@ export const THIRTY_MIN_PUBLISHER_PAIRS=Object.freeze({
   rare_earth:Object.freeze([
     "nrcan_government_news_original_atom_review",
     "usgs_minerals_original_news_rss_review",
+    "australia_industry_minister_original_rss_review",
   ]),
 });
 const DOMAINS=Object.keys(THIRTY_MIN_PUBLISHER_PAIRS);
@@ -36,10 +37,16 @@ export function select30MinPublishers(now=new Date()) {
   const slot=Math.floor(now.getTime()/INTERVAL_MS);
   return Object.fromEntries(DOMAINS.map(domain=>{
     const pair=THIRTY_MIN_PUBLISHER_PAIRS[domain];
-    if(pair.length!==2||pair.some(id=>lookup[id]?.domain!==domain||!lookup[id]?.original_hosts?.length))
+    if(![2,3].includes(pair.length)||
+       pair.some(id=>lookup[id]?.domain!==domain||!lookup[id]?.original_hosts?.length)||
+       new Set(pair).size!==pair.length)
       throw Error("30M_MONITOR_PUBLISHER_PAIR_INVALID");
-    const idx=slot%2;
-    return [domain,[lookup[pair[idx]],lookup[pair[1-idx]]]];
+    // Two sources per 30m window. A third independent minerals publisher
+    // rotates into the pair, rather than tripling per-run origin GET traffic.
+    const idx=slot%pair.length;
+    const current=lookup[pair[idx]];
+    const next=lookup[pair[(idx+1)%pair.length]];
+    return [domain,[current,next]];
   }));
 }
 function safeInt(x) {return Number.isSafeInteger(x)&&x>=0?x:null}

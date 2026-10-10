@@ -33,6 +33,20 @@ describe("#1827 native article discovery, deterministic dedup, secure private sc
     expect(printable).not.toContain("utm_source");
   });
 
+  it("captures a third independent Australian government minerals article as private-only",()=>{
+    const source=EXPANDED_OFFICIAL_SOURCES.find(x=>x.id==="australia_industry_minister_original_rss_review")!;
+    const feed=rss(item("https://www.minister.industry.gov.au/t-ayres/media/construction-starts-arafura-rare-earths-project",
+      "Sat, 10 Oct 2026 18:00:00 GMT",
+      "Construction starts on Arafura Rare Earths Project"));
+    const rows=originalPublisherPrivateCandidates(feed,source,NOW);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].original_publisher_organization_id).toBe("australian_industry_minister");
+    expect(rows[0].eligible_for_scoring).toBe(false);
+    expect(rows[0].commercial_derived_use_rights_verified).toBe(false);
+    const index=feed.replace("/t-ayres/media/construction-starts-arafura-rare-earths-project","/subscribe");
+    expect(originalPublisherPrivateCandidates(index,source,NOW)).toHaveLength(0);
+  });
+
   it("same URL tracking variants suppressed, separate originals stay separate",()=>{
     const feed=rss(
       item("https://news.un.org/en/story/2026/10/115000?utm_campaign=a")+
