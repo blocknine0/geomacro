@@ -20,6 +20,16 @@ const TOKEN=/^[a-z][a-z0-9_-]{2,79}$/u;
 const MAX_SOURCE_AGE=6*60*60*1000;
 const MAX_EVENT_SPREAD=90*60*1000;
 const DOMAINS=new Set(["geopolitics","macro","rare_earth"]);
+const PUBLISHER_REGISTRY=Object.freeze({
+  "news.un.org":"un_news",
+  "www.gov.uk":"uk_fcdo",
+  "www.ungeneva.org":"un_geneva",
+  "www.federalreserve.gov":"federal_reserve",
+  "www.ecb.europa.eu":"ecb",
+  "www.usgs.gov":"usgs",
+  "www150.statcan.gc.ca":"statistics_canada",
+  "www.canada.ca":"natural_resources_canada",
+});
 const TYPES=new Set([
   "conflict_escalation","ceasefire","sanctions_policy","trade_disruption",
   "central_bank_policy","inflation_release","fx_intervention",
@@ -63,11 +73,24 @@ function verifiedArticle(e,claim,now){
   // ungrounded public candidate's arbitrary organization string).
   if(e.publisher_organization_id!==e.originating_reporting_organization_id)
     err("SYNDICATION_OR_SHARED_ORIGIN");
+  if(PUBLISHER_REGISTRY[uri.hostname]!==e.publisher_organization_id ||
+    (uri.hostname==="www.canada.ca" &&
+     !uri.pathname.startsWith("/en/natural-resources-canada/")))
+    err("UNREGISTERED_ORIGINATING_ORGANIZATION");
   const ms=nativeTime(e.original_published_at,now);
   return {ms,organization:e.originating_reporting_organization_id,
     content:e.original_article_sha256,review:e.independent_review_sha256,
     host:uri.hostname};
 }
+export function sameEventClaimHash(category,identity){
+  return digest({
+    category,country_iso3:identity.country_iso3,
+    event_type:identity.event_type,actor_id:identity.actor_id,
+    target_id:identity.target_id,location_id:identity.location_id,
+    occurred_at:identity.occurred_at,
+  });
+}
+
 export function qualifyIndependentSameEvent({
   rows,eventPackages,now=new Date(),
 }={}) {
@@ -98,12 +121,7 @@ export function qualifyIndependentSameEvent({
       !Array.isArray(pkg.evidence)||pkg.evidence.length<2||
       pkg.evidence.length>6)
       err("EVENT_IDENTITY_OR_REVIEW_INVALID");
-    const identityHash=digest({
-      category:row.category,country_iso3:identity.country_iso3,
-      event_type:identity.event_type,actor_id:identity.actor_id,
-      target_id:identity.target_id,location_id:identity.location_id,
-      occurred_at:identity.occurred_at,
-    });
+    const identityHash=sameEventClaimHash(row.category,identity);
     if(identityHash!==pkg.same_event_claim_sha256)
       err("EVENT_CLAIM_HASH_MISMATCH");
     const when=nativeTime(identity.occurred_at,nowMs);
