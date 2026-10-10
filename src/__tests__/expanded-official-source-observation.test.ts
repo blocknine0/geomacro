@@ -110,6 +110,8 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(result.format_valid).toBe(true);
       expect(result.official_locale_fallback_attempted).toBe(true);
       expect(result.official_locale_fallback_used).toBe(true);
+      expect(result.primary_http_status).toBe(primaryStatus);
+      expect(result.fallback_http_status).toBe(200);
       expect(result.source_native_24h_release_items).toBe(1);
       expect(result.same_event_independent_corroboration_verified).toBe(false);
       expect(result.current_scored_intelligence_verified).toBe(false);
@@ -124,6 +126,8 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       const result=await probeExpandedSource(source,{now,fetchImpl});
       expect(fetchImpl).toHaveBeenCalledTimes(1);
       expect(result.official_locale_fallback_attempted).toBe(false);
+      expect(result.primary_http_status).toBe(status);
+      expect(result.fallback_http_status).toBeNull();
       expect(result.format_valid).toBe(false);
       expect(result.commercial_eligible).toBe(false);
       expect(JSON.stringify(result)).not.toContain("denied private content");
@@ -139,6 +143,8 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(badFallback).toHaveBeenCalledTimes(2);
     expect(degraded.official_locale_fallback_attempted).toBe(true);
     expect(degraded.official_locale_fallback_used).toBe(false);
+    expect(degraded.primary_http_status).toBe(503);
+    expect(degraded.fallback_http_status).toBe(200);
     expect(degraded.format_valid).toBe(false);
     expect(degraded.commercial_eligible).toBe(false);
   });
