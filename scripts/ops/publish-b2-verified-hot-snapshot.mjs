@@ -54,6 +54,7 @@ export async function publishB2VerifiedHotSnapshot({ product, value, proof, priv
     });
     if(proof.commercial_multi_source_verified!==true||
        proof.commercial_multi_source_receipt_sha256!==result.receipt_sha256||
+       proof.commercial_multi_source_qualified_count!==value.rows.length||
        result.receipt.qualified_event_count!==value.rows.length||
        result.receipt.commercial_event_admission!==true)
       throw Error("HOT_SNAPSHOT_MULTI_SOURCE_PROOF_INVALID");
