@@ -2,6 +2,7 @@
 
 import { spawn } from "node:child_process";
 import { createD1ControlPlaneStateClient } from "./lib/d1-control-plane-state.mjs";
+import { officialSourcePollCursorOutcome } from "./lib/official-source-poll-cursor.mjs";
 import {
   DEFAULT_HEARTBEAT_BUDGET_MS,
   DEFAULT_HEARTBEAT_RESERVE_MS,
@@ -520,7 +521,13 @@ async function main() {
     state.cursor.consecutive_failures = success
       ? 0
       : Number(state.cursor.consecutive_failures ?? 0) + 1;
-    if (!success && task.key === "gdelt_gal") {
+    if (task.key === "official_native_rss") {
+      // A failed publisher poll must never leave the persistent D1 cursor
+      // advertising the prior healthy observation or a successful heartbeat.
+      const sourceOutcome = officialSourcePollCursorOutcome(success);
+      state.cursor.status = sourceOutcome.status;
+      state.cursor.failure_class = sourceOutcome.failure_class;
+    } else if (!success && task.key === "gdelt_gal") {
       const detail = result.steps?.find((step) => step && step.ok === false);
       const text = `${detail?.stderr ?? ""}\n${detail?.stdout ?? ""}`;
       const failureClass = text.includes("WORLD_BANK") || text.includes("world bank")
