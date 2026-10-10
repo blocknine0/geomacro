@@ -7,6 +7,7 @@ import {
 import { getCoinbaseX402Config } from "../lib/coinbase-x402.server";
 import { readRiskIndicesEdge } from "../lib/risk-indices-edge.server";
 import { geomacroSupabaseRuntimeMode } from "../lib/supabase-runtime-mode.server";
+import { qualifyPublicCurrentReadiness } from "../lib/public-production-current-readiness";
 
 const SUPABASE_RECOVERY_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const CONTROL_PLANE_PUBLIC_URL =
@@ -320,6 +321,8 @@ async function getPublicProductionReadiness(deep: boolean) {
       deep_checked: false,
       serving_authority: "backblaze-b2",
       hot_snapshot_serving: null,
+      current_hot_product_ready: null,
+      last_verified_baseline_readable: null,
       supabase_required_for_serving: false,
       b2_runtime_configured: configured,
       intelligence_ready: null,
@@ -342,21 +345,34 @@ async function getPublicProductionReadiness(deep: boolean) {
   const categories = new Set(
     (intelligence ?? []).map((row) => String(row.category ?? "").toLowerCase()),
   );
-  const intelligenceReady =
+  // A readable historical B2 baseline is not a CURRENT paid hot snapshot.
+  const baselineIntelligenceReady =
     Boolean(intelligence?.length) &&
     ["geopolitics", "macro", "rare_earth"].every((category) => categories.has(category));
-
-  const globalRiskReady = globalRisk?.verificationStatus === "verified";
-  const riskIndicesReady =
+  const baselineGlobalRiskReady = globalRisk?.verificationStatus === "verified";
+  const baselineRiskIndicesReady =
     riskIndices?.verificationStatus === "verified" &&
     riskIndices.indices.length === 3 &&
     riskIndices.indices.every((index) => index.status === "available");
   const hotSnapshotServing = Object.fromEntries(
     HOT_SNAPSHOT_PROBES.map((probe, index) => [probe.key, hotSnapshots[index]]),
   );
-  const d1HotServingReady =
-    hotSnapshots.length === HOT_SNAPSHOT_PROBES.length &&
-    hotSnapshots.every((proof) => proof.ok);
+  const readiness = qualifyPublicCurrentReadiness(
+    {
+      intelligence: baselineIntelligenceReady,
+      global_risk: baselineGlobalRiskReady,
+      risk_indices: baselineRiskIndicesReady,
+    },
+    {
+      intelligence: hotSnapshots[0],
+      global_risk: hotSnapshots[1],
+      risk_indices: hotSnapshots[2],
+    },
+  );
+  const intelligenceReady = readiness.current_hot_product_ready.intelligence;
+  const globalRiskReady = readiness.current_hot_product_ready.global_risk;
+  const riskIndicesReady = readiness.current_hot_product_ready.risk_indices;
+  const d1HotServingReady = readiness.all_current_hot_products_ready;
 
   return {
     deep_checked: true,
@@ -364,6 +380,8 @@ async function getPublicProductionReadiness(deep: boolean) {
       ? "backblaze-b2-durable-truth-cloudflare-d1-verified-hot"
       : "backblaze-b2-with-d1-hot-snapshot-required",
     hot_snapshot_serving: hotSnapshotServing,
+    current_hot_product_ready: readiness.current_hot_product_ready,
+    last_verified_baseline_readable: readiness.last_verified_baseline_readable,
     supabase_required_for_serving: false,
     b2_runtime_configured: configured,
     intelligence_ready: intelligenceReady,
