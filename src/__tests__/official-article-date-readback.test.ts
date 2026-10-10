@@ -79,6 +79,7 @@ describe("bounded original-publisher article precise-date fallback", () => {
       .toBe("2026-10-09T12:45:00.000Z");
     expect(fetchImpl.mock.calls[0][0]).toBe(statcan);
     expect((fetchImpl.mock.calls[0][1] as RequestInit).redirect).toBe("error");
+
   });
 
   it("uses a maximum two original publisher pages; outputs only private derived evidence", async () => {
