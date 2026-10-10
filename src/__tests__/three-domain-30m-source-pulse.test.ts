@@ -93,7 +93,7 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     const calls:string[]=[];
     const probe=vi.fn(async(source:{id:string,domain:string})=>{
       calls.push(source.id);
-      return verifiedDateResponse(source,source.id==="uk_fcdo_original_foreign_policy_atom_review"?3:0);
+      return verifiedDateResponse(source,source.id==="un_news_security_original_rss_review"?3:0);
     });
     const x=await probe30MinThreeDomainPulse({now:NOW,probe});
     expect(probe).toHaveBeenCalledTimes(6);
@@ -107,7 +107,7 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
 
   it("never reports zero-news complete coverage when the second publisher is unavailable",async()=>{
     const probe=vi.fn(async(source:{id:string,domain:string})=>{
-      if(source.id==="uk_fcdo_original_foreign_policy_atom_review"){
+      if(source.id==="un_news_security_original_rss_review"){
         return {source_id:source.id,domain:source.domain,format_valid:false,primary_http_status:503};
       }
       return verifiedDateResponse(source,0);
