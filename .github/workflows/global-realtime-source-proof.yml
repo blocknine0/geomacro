@@ -31,8 +31,15 @@ on:
   push:
     branches: [main]
     paths:
+      # Main-only source proof must run on the *same* original-source
+      # parser and evidence changes gated by PR tests. Otherwise a
+      # protected squash can pass PR CI without any new production receipt.
       - "scripts/ops/probe-official-native-rss-three-domains.mjs"
       - "scripts/lib/quota-safe-original-discovery-fallback.mjs"
+      - "scripts/lib/official-native-rss.mjs"
+      - "scripts/lib/official-native-alternates.mjs"
+      - "src/__tests__/official-native-rss-three-domains.test.ts"
+      - "src/__tests__/official-native-alternates.test.ts"
       - ".github/workflows/global-realtime-source-proof.yml"
   workflow_dispatch:
 concurrency:
