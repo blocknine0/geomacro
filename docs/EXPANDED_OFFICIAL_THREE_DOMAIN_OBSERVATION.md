@@ -65,7 +65,9 @@ Supporting official references:
   administrations; event correlation across distinct publisher families and
   actual site/D1 serving must be independently verified.
 - **Status criteria:** an external 403/429, MIME or schema mismatch yields
-  `SOURCE_TRANSPORT_DEGRADED`, not fake source freshness. Any Eurostat fallback is one publisher family, **not** independent corroboration; even a valid translated RSS is not a risk event. PR tests validate
+  `SOURCE_TRANSPORT_DEGRADED`, not fake source freshness. The sanitized
+  response may record numeric primary/fallback HTTP status without headers,
+  publisher body, response URL, article text or secrets. Any Eurostat fallback is one publisher family, **not** independent corroboration; even a valid translated RSS is not a risk event. PR tests validate
   safe fail-closed behavior even during publisher outage; real main/scheduled
   production fails RED and preserves a sanitized three-day receipt.
 
