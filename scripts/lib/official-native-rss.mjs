@@ -1,6 +1,7 @@
 import { fetchOriginalAlternate } from "./official-native-alternates.mjs";
 import { fetchOfficialThirdPublisherArticles } from "./official-native-third-fallback.mjs";
 import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
+import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "./official-original-article-date.mjs";
 // Read-only original-publisher RSS evidence discovery. NO commercial admission,
 // source-certification bypass, scoring, B2 writes or public/paid output.
 // GDELT seendate/index timestamps are explicitly NOT publication evidence.
@@ -116,6 +117,58 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
   return rows.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
 }
 
+// Reuse the exact first-party HTML datePublished authority used by the
+// twelve-lane private monitor, but feed recovered candidates into the
+// REAL canonical classifier rather than only emitting observation counts.
+// Maximum 2 exact article pages per category, only for ABSENT item pubDate.
+// Never rescue invalid/future pubDate or use channel, updated or fetch clock.
+// The helper can only reconstruct compile-time Fed/USGS paths; an untrusted
+// URL cannot add a new destination, even with a first-party hostname.
+export async function recoverPrivateOfficialRssMissingDates(xml, category,{
+  now=new Date(),maxAgeMs=MAX_AGE_MS,fetchImpl=fetch,diagnostics=null,
+}={}) {
+  const config=OFFICIAL_NATIVE_FEEDS[category];
+  const nowMs=now.getTime();
+  if(!["macro","rare_earth"].includes(category) || !config ||
+     typeof xml!=="string" || xml.length>MAX_RESPONSE_BYTES ||
+     !/<rss(?:\s|>)/iu.test(xml) || /<!DOCTYPE|<!ENTITY/iu.test(xml) ||
+     !Number.isFinite(nowMs) || !Number.isFinite(maxAgeMs) ||
+     maxAgeMs<60000 || maxAgeMs>MAX_AGE_MS) return [];
+  const candidates=[],seen=new Set();
+  for(const [,block] of [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,MAX_ITEM_COUNT)){
+    if(/<pubDate(?:\s[^>]*)?>/iu.test(block))continue;
+    const title=field(block,"title"),url=safeOriginalUrl(field(block,"link"),config.host);
+    if(!url || !config.topics.test(title) || title.length<16 ||
+       title.length>500 || seen.has(url))continue;
+    seen.add(url);
+    candidates.push({title,url});
+    if(candidates.length>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
+  }
+  const result=[];
+  for(const row of candidates){
+    const date=await fetchVerifiedPublisherPageDate(row.url,category,{
+      now,fetchImpl,
+    });
+    if(diagnostics && typeof diagnostics==="object" && !Array.isArray(diagnostics))
+      diagnostics.original_page_precise_date_checks=
+        (diagnostics.original_page_precise_date_checks??0)+1;
+    if(!date)continue;
+    const asOf=Date.parse(date);
+    if(!Number.isFinite(asOf)||asOf>nowMs||nowMs-asOf>maxAgeMs)continue;
+    result.push({
+      title:row.title,description:"",url:row.url,
+      publishedAt:date,source:config.host,sourceDomain:config.host,
+      discoveryProvider:"official_native_rss",
+      nativePublishedAtVerified:true,
+      nativeTimeEvidence:"publisher_original_article_datePublished",
+      privateOnly:true,rightsVerified:false,commercialEligible:false,
+    });
+  }
+  if(diagnostics && typeof diagnostics==="object" && !Array.isArray(diagnostics))
+    diagnostics.original_page_precise_date_admitted=result.length;
+  return result.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
+}
+
 async function boundedRssFetch(url, fetchImpl) {
   const response = await fetchOriginalPublisherWithRecovery(url, {
     fetchImpl,
@@ -151,14 +204,21 @@ export async function fetchOfficialNativeArticles(category, {
   now = new Date(), fetchImpl = fetch, maxAgeMs = MAX_AGE_MS, diagnostics = null,
   includeSecondPublisher = false,
   includeThirdPublisher = false,
+  includeOriginalPageDateFallback = false,
 } = {}) {
   const config = OFFICIAL_NATIVE_FEEDS[category];
   if (!config) throw new Error("OFFICIAL_NATIVE_RSS_CATEGORY_INVALID");
   let primary = [];
   let primaryUnavailable = false;
   try {
-    primary = parseOfficialNativeRss(await boundedRssFetch(config.url, fetchImpl),
-      category, now, maxAgeMs, diagnostics);
+    const rss=await boundedRssFetch(config.url,fetchImpl);
+    primary=parseOfficialNativeRss(rss,category,now,maxAgeMs,diagnostics);
+    if(primary.length===0 && includeOriginalPageDateFallback &&
+        (category==="macro" || category==="rare_earth")){
+      primary=await recoverPrivateOfficialRssMissingDates(rss,category,{
+        now,maxAgeMs,fetchImpl,diagnostics,
+      });
+    }
   } catch {
     primaryUnavailable = true;
   }
