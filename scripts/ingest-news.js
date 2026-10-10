@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { makePrivateStageRecord } from './lib/restricted-private-scored-stage.mjs';
 import { capturePrivateGriSourceCompanion } from './lib/private-gri-original-publisher-companion.mjs';
 import { fetchOfficialNativeArticles } from './lib/official-native-rss.mjs';
-import { selectPrivatePublisherDiverseCandidates, allocatePrivateScoringSlots } from './lib/private-publisher-diverse-candidates.mjs';
+import { allocatePrivateScoringSlots } from './lib/private-publisher-diverse-candidates.mjs';
 import { GLOBAL_CRITICAL_MINERALS_DOMAIN_ANCHOR } from './lib/critical-minerals-domain-anchor.mjs';
 import { classifyPrivateDerivedTextQuality } from './lib/private-derived-text-quality.mjs';
 import {
