@@ -204,6 +204,21 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
           : "INDEPENDENT_EVENT_ROW_BINDING_INVALID");
     }
   });
+  it("blocks a signed scored row made before the second independent original confirmation or in the future",()=>{
+    for(const time of ["2026-10-10T10:09:00Z","2026-10-10T11:10:00Z"]){
+      const row={...rows[0],created_at:time};
+      const signed=signReview({...proof,
+        reviewed_derived_row_sha256:derivedCustomerRowSha256(row)});
+      // The signer really signed the mutated customer row; only the
+      // independent original-publication chronology must reject it.
+      expect(()=>qualifyIndependentSameEvent({
+        rows:[row],eventPackages:[signed],now,trustedReviewerPublicKeyPem,
+      })).toThrow("INDEPENDENT_EVENT_DERIVED_ROW_PRECONFIRMATION_OR_FUTURE_CLOCK");
+    }
+    // A valid exact-row signature from a time after BOTH original
+    // publishers released their independently reviewed report still passes.
+    expect(go().receipt.qualified_event_count).toBe(1);
+  });
   it("requires exact same structured claim; two titles containing rates are not a same-event proof",()=>{
     const different={
       ...proof,event:{...identity,location_id:"london_city"},

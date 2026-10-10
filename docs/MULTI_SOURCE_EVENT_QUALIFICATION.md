@@ -175,3 +175,11 @@ publisher homepage, index or RSS/Atom URL is **not** an independent
 original event report. Such an item is now explicitly excluded before
 potential corroboration telemetry. This is an added fail-closed upstream
 qualification gate, not a new commercial scoring or payment route.
+
+### Multiple-claim article replay + confirmation-before-scoring (2026-10-10)
+
+The private structured same-event review queue now rejects **identical first-party organization + original article SHA-256** when it is resubmitted in a *different exact WHO/WHAT/WHERE/WHEN claim* in the same bounded batch. Former first-seen dedup silently discarded the second claim, which could conceal ambiguous original reporting or downstream claim-replay. Legitimate distinct events remain separately reviewable when each has its own distinct independently verified article evidence; neither candidate is automatically commercially eligible. Repeated identical article evidence for the **same** claim remains deduplicated. This strictly protects the **private** review stage; it does not assert that any two publishers presently agree or that source rights are licensed.
+
+At commercial publication, an independently valid **Ed25519 signature** on the exact customer row does not excuse impossible chronology. The derived row's `created_at` must be **at or after** the genuine event clock, customer `published_at`, and the **latest first-party publication among the independent confirming sources**, and cannot be more than five minutes in the future. Before-first-confirmation or far-future 'created' timestamps fail even when the source-event package and altered derived row were *freshly signed by a trusted review key*. This prevents an already scored risk object from claiming to predate the factual second confirmation it depends on. Source-native original time, 90-minute interpublisher spread, rights receipts, independent counterevidence/retractions and signed B2/GRO/D1 acceptance remain mandatory.
+
+No source URL, upstream headline, article content, publisher identity, original source article bytes, source-rights record or private reviewer key is returned to end users. These guards do not turn zero original 6-hour events into real-time coverage or authorize x402 charges.

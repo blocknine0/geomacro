@@ -84,6 +84,25 @@ describe("#1827 private source-native same-event candidate queue",()=>{
     ]);
     expect(tooSpread.review_candidates[0].state).toBe("TEMPORAL_SPREAD");
   });
+  it("rejects identical original bytes replayed under two structured event claims",()=>{
+    const claimB={...event,target_id:"us_trade_finance"};
+    const hashB=sameEventClaimHash("macro",claimB);
+    // A source article may mention multiple things in prose, but the same
+    // article identity cannot silently be reused as two different fully
+    // corroborated claims without an explicit distinct independent review.
+    expect(()=>grouped([
+      fed,{...fed,event:claimB,same_event_claim_sha256:hashB},
+    ])).toThrow("PRIVATE_EVENT_ORIGINAL_CANDIDATE_INVALID");
+    // Preserve genuine distinct events with distinct source-native bytes.
+    const valid=grouped([
+      fed,{...fed,event:claimB,same_event_claim_sha256:hashB,
+        original_article_sha256:sha("different independently verified original article"),
+        original_article_url:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261010c.htm"},
+    ]);
+    expect(valid.matched_event_claims).toBe(2);
+    expect(valid.review_candidates.every((c:any)=>c.state==="SINGLE_ORIGIN")).toBe(true);
+    expect(valid.paid_data_eligible).toBe(false);
+  });
   it("vetoes paid qualification when any credible original contradicts or retracts the exact claim",()=>{
     const case1=grouped([fed,ecb,{
       ...fed,original_article_url:
