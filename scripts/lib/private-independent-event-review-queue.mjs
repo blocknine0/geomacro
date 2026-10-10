@@ -12,7 +12,8 @@ const MAX_AGE=6*60*60*1000;
 const PAIR_WINDOW=90*60*1000;
 const MAX_GROUPS=48;
 const REASON=new Set([
-  "SINGLE_ORIGIN","SAME_CONTENT","TEMPORAL_SPREAD","MULTI_ORIGIN_REVIEW_REQUIRED",
+  "SINGLE_ORIGIN","SAME_CONTENT","TEMPORAL_SPREAD",
+  "MATERIAL_CONTRADICTION","MULTI_ORIGIN_REVIEW_REQUIRED",
 ]);
 function reject() {throw Error("PRIVATE_EVENT_ORIGINAL_CANDIDATE_INVALID")}
 function epoch(value,now) {
@@ -55,6 +56,7 @@ export function clusterPrivateIndependentEventCandidates({
      candidates.length>MAX_CANDIDATES)reject();
   const groups=new Map();
   const articleUnique=new Set();
+  const observedPositions=new Map();
   for(const c of candidates) {
     if(!c||typeof c!=="object"||Array.isArray(c)||
       !isCanonicalSameEventIdentity(c.category,c.event)||
@@ -67,19 +69,27 @@ export function clusterPrivateIndependentEventCandidates({
       !HASH.test(String(c.original_article_sha256??""))||
       !HASH.test(String(c.same_event_claim_sha256??""))||
       c.same_event_claim_sha256!==sameEventClaimHash(c.category,c.event)||
-      c.commercial_eligible!==false)reject();
+      c.commercial_eligible!==false||
+      !["confirms","disputes","retracts"].includes(c.reporting_position))reject();
     const org=parseOrigin(c);
     const time=epoch(c.original_published_at,nowMs);
     const occurred=epoch(c.event.occurred_at,nowMs);
     if(time<occurred-5*60000)reject();
     const articleKey=org+"|"+c.original_article_sha256;
+    // Two contradictory dispositions of IDENTICAL bytes are impossible as
+    // independent evidence. Refuse to mask a retraction behind the earlier
+    // duplicate and never infer independence from publisher URL aliases.
+    if(observedPositions.has(articleKey) &&
+       observedPositions.get(articleKey)!==c.reporting_position)reject();
     if(articleUnique.has(articleKey))continue; // one syndicated/replayed artifact
+    observedPositions.set(articleKey,c.reporting_position);
     articleUnique.add(articleKey);
     const key=c.same_event_claim_sha256;
     if(!groups.has(key))groups.set(key,{category:c.category,records:[]});
     const group=groups.get(key);
     if(group.category!==c.category)reject();
-    group.records.push({org,hash:c.original_article_sha256,time});
+    group.records.push({org,hash:c.original_article_sha256,time,
+      position:c.reporting_position});
     if(groups.size>MAX_GROUPS)reject();
   }
   const report=[];
@@ -88,9 +98,21 @@ export function clusterPrivateIndependentEventCandidates({
     const contents=new Set(group.records.map(e=>e.hash));
     const times=group.records.map(e=>e.time);
     const spread=Math.max(...times)-Math.min(...times);
+    const confirming=group.records.filter(e=>e.position==="confirms");
+    const confirmingOrigins=new Set(confirming.map(e=>e.org));
+    const confirmingContents=new Set(confirming.map(e=>e.hash));
+    const disputingOrigins=new Set(group.records.filter(e=>
+      e.position==="disputes").map(e=>e.org));
+    const retractingOrigins=new Set(group.records.filter(e=>
+      e.position==="retracts").map(e=>e.org));
+    // One genuine retraction or original contradiction is sufficient to
+    // block automatic qualification, EVEN if two other sources confirm.
+    // Customer risk scoring must not outrun evidence updates.
     let state="MULTI_ORIGIN_REVIEW_REQUIRED";
-    if(origins.size<2)state="SINGLE_ORIGIN";
-    else if(contents.size<2)state="SAME_CONTENT";
+    if(disputingOrigins.size||retractingOrigins.size)
+      state="MATERIAL_CONTRADICTION";
+    else if(confirmingOrigins.size<2)state="SINGLE_ORIGIN";
+    else if(confirmingContents.size<2)state="SAME_CONTENT";
     else if(spread>PAIR_WINDOW)state="TEMPORAL_SPREAD";
     if(!REASON.has(state))reject();
     report.push({
@@ -98,9 +120,13 @@ export function clusterPrivateIndependentEventCandidates({
       category:group.category,
       independent_origin_count:origins.size,
       distinct_article_hash_count:contents.size,
+      confirming_origin_count:confirmingOrigins.size,
+      disputing_origin_count:disputingOrigins.size,
+      retracting_origin_count:retractingOrigins.size,
       original_publication_spread_minutes:Math.floor(spread/60000),
       state,
       review_required:true,commercial_eligible:false,
+      materially_disputed_or_retracted:state==="MATERIAL_CONTRADICTION",
     });
   }
   report.sort((a,b)=>a.event_claim_sha256.localeCompare(b.event_claim_sha256));

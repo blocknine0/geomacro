@@ -96,6 +96,34 @@ function nativeTime(s,now){
     err("NATIVE_PUBLICATION_TIME_OUTSIDE_WINDOW");
   return ms;
 }
+function checkedCounterevidenceReview(review,nowMs,maxOriginalMs,evidenceCount){
+  // Part of the trusted Ed25519-signed PRIVATE package. No unchecked
+  // counterevidence can be silently dropped during paid risk publication.
+  // A signed "none found" is a bounded reviewer assertion, NOT a claim that
+  // no contradiction exists globally. Source review receipts remain private.
+  if(!review||typeof review!=="object"||Array.isArray(review)||
+     review.independent_counterevidence_review_completed!==true||
+     !HASH.test(review.review_receipt_sha256)||
+     !Number.isInteger(review.sources_screened)||
+     review.sources_screened<evidenceCount||
+     review.sources_screened>200||
+     !Number.isInteger(review.material_conflicts_detected)||
+     review.material_conflicts_detected<0||
+     review.material_conflicts_detected>review.sources_screened||
+     !Number.isInteger(review.material_conflicts_resolved)||
+     review.material_conflicts_resolved<0||
+     review.material_conflicts_resolved>review.material_conflicts_detected||
+     review.unresolved_material_conflicts!==
+       review.material_conflicts_detected-review.material_conflicts_resolved||
+     review.unresolved_material_conflicts!==0||
+     !Number.isInteger(review.retractions_detected)||
+     review.retractions_detected!==0)
+    err("COUNTEREVIDENCE_REVIEW_UNRESOLVED");
+  const at=nativeTime(review.reviewed_at,nowMs);
+  if(at<maxOriginalMs||nowMs-at>90*60*1000)
+    err("COUNTEREVIDENCE_REVIEW_STALE");
+}
+
 function verifiedArticle(e,claim,now){
   if(!e||typeof e!=="object"||Array.isArray(e)||
      !HASH.test(e.original_article_sha256)||!HASH.test(e.rights_receipt_sha256)||
@@ -108,6 +136,7 @@ function verifiedArticle(e,claim,now){
      e.original_article_content_verified!==true||
      e.independently_authored_reporting_verified!==true||
      e.commercial_derived_use_rights_verified!==true||
+     e.reporting_position!=="confirms"||
      e.syndicated_from!==null||
      e.original_publisher_url_verified!==true||
      typeof e.url!=="string") err("SOURCE_ATTESTATION_UNVERIFIED");
@@ -180,11 +209,14 @@ export function qualifyIndependentSameEvent({
       Math.max(...sources.map(s=>s.ms))-Math.min(...sources.map(s=>s.ms))>
         MAX_EVENT_SPREAD)
       err("SAME_EVENT_TEMPORAL_MISMATCH");
-    if(new Set(sources.map(s=>s.organization)).size<2 ||
+    const independentOrganizations=new Set(sources.map(s=>s.organization));
+    if(independentOrganizations.size<2 ||
       new Set(sources.map(s=>s.content)).size<2 ||
       new Set(sources.map(s=>s.review)).size<2 ||
       new Set(sources.map(s=>s.host)).size<2)
       err("SOURCE_FAMILY_NOT_INDEPENDENT");
+    checkedCounterevidenceReview(pkg.counterevidence_review,nowMs,
+      Math.max(...sources.map(s=>s.ms)),sources.length);
     // The reviewed *complete* event package (all source and rights claims)
     // must be signed by a separately trusted Ed25519 review key. Arbitrary
     // booleans, hashes and press syndication are not enough.
@@ -207,7 +239,9 @@ export function qualifyIndependentSameEvent({
     }
     qualified.push({event_id:row.id,category:row.category,
       event_claim_sha256:identityHash,
-      independent_reporting_organizations:sources.length,
+      independent_reporting_organizations:independentOrganizations.size,
+      counterevidence_review_signed:true,
+      unresolved_material_conflicts:0,retractions_detected:0,
       source_native_freshness_verified:true,
       same_event_structured_identity_verified:true,
       review_and_derived_use_rights_receipts_present:true,
