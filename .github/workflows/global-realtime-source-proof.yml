@@ -28,6 +28,12 @@ on:
       - "supabase/functions/live-flash-corroborate/index.ts"
       - "supabase/migrations/920_multi_source_commercial_registry.sql"
       - ".github/workflows/global-realtime-source-proof.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/probe-official-native-rss-three-domains.mjs"
+      - "scripts/lib/quota-safe-original-discovery-fallback.mjs"
+      - ".github/workflows/global-realtime-source-proof.yml"
   workflow_dispatch:
 concurrency:
   group: geomacro-global-realtime-source-proof-${{ github.event.pull_request.number || github.ref }}
