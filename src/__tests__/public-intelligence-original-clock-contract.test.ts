@@ -11,6 +11,8 @@ describe("#1827 current intelligence must be source-native, not ingestion-clock 
     expect(server).toContain("function originalPublishedTime(");
     expect(server).toContain("Math.max(best, originalPublishedTime(row))");
     expect(server).toContain("const timestamp = originalPublishedTime(row);");
+    expect(server).toContain("const currentWithin24h = scoredCurrentAcrossAllDomains &&");
+    expect(edge).toContain("current_within_24h: currentAcrossDomains &&");
     expect(server).not.toContain("Math.max(best, rowTime(row))");
     expect(edge).not.toContain("row.published_at ?? row.created_at");
     expect(edge).toContain('Date.parse(String(row.published_at ?? ""))');
