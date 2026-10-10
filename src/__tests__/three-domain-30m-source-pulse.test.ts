@@ -24,7 +24,7 @@ function verifiedDateResponse(source: {id:string,domain:string},count=0) {
 }
 
 describe("#1827 bounded native 30-minute original-publisher intake",()=>{
-  it("selects one first-party native publisher per domain each half-hour, never 778 catalog candidates",()=>{
+  it("selects a bounded pair of original publishers per domain each half-hour, never 778 catalog candidates",()=>{
     const pairs=select30MinPublishers(NOW);
     expect(Object.keys(pairs)).toEqual(DOMAINS);
     expect(Object.keys(THIRTY_MIN_PUBLISHER_PAIRS)).toEqual(DOMAINS);
@@ -55,6 +55,8 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
   it("distinguishes no-new original-publisher item from missing transport",async()=>{
     const probe=vi.fn(async(source:{id:string,domain:string})=>verifiedDateResponse(source,0));
     const r=await probe30MinThreeDomainPulse({now:NOW,probe});
+    expect(probe).toHaveBeenCalledTimes(6);
+    expect(r.actual_original_publisher_rows.every(row=>row.publisher_pair_sample_complete)).toBe(true);
     expect(r.actual_original_publisher_rows.every(row=>row.no_new_30m_original_topic_item_observed)).toBe(true);
     expect(r.status).toBe("THREE_DOMAIN_ORIGINAL_PUBLISHER_TRANSPORT_OBSERVED");
     expect(r.independently_verified_current_intelligence_count).toBe(0);
@@ -85,6 +87,38 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     expect(r.status).toBe("THREE_DOMAIN_SOURCE_TRANSPORT_DEGRADED");
     expect(r.actual_original_publisher_rows[0].original_publisher_30m_topic_count).toBeNull();
     expect(r.actual_original_publisher_rows[0].publisher_failover_attempted).toBe(false);
+  });
+
+  it("checks an independent publisher in the same 30m window when the first has zero articles",async()=>{
+    const calls:string[]=[];
+    const probe=vi.fn(async(source:{id:string,domain:string})=>{
+      calls.push(source.id);
+      return verifiedDateResponse(source,source.id==="uk_fcdo_original_foreign_policy_atom_review"?3:0);
+    });
+    const x=await probe30MinThreeDomainPulse({now:NOW,probe});
+    expect(probe).toHaveBeenCalledTimes(6);
+    expect(x.actual_original_publisher_rows[0].original_publisher_30m_topic_count).toBe(3);
+    expect(x.actual_original_publisher_rows[0].original_publishers_successful).toBe(2);
+    expect(x.actual_original_publisher_rows[0].publisher_pair_sample_complete).toBe(true);
+    expect(x.actual_original_publisher_rows[0].no_new_30m_original_topic_item_observed).toBe(false);
+    expect(x.independently_verified_current_intelligence_count).toBe(0);
+    expect(x.publisher_rights_verified).toBe(false);
+  });
+
+  it("never reports zero-news complete coverage when the second publisher is unavailable",async()=>{
+    const probe=vi.fn(async(source:{id:string,domain:string})=>{
+      if(source.id==="uk_fcdo_original_foreign_policy_atom_review"){
+        return {source_id:source.id,domain:source.domain,format_valid:false,primary_http_status:503};
+      }
+      return verifiedDateResponse(source,0);
+    });
+    const x=await probe30MinThreeDomainPulse({now:NOW,probe});
+    expect(x.actual_original_publisher_rows[0].status).toBe("ORIGINAL_PUBLISHER_DATE_OBSERVED");
+    expect(x.actual_original_publisher_rows[0].original_publisher_30m_topic_count).toBe(0);
+    expect(x.actual_original_publisher_rows[0].publisher_pair_sample_complete).toBe(false);
+    expect(x.actual_original_publisher_rows[0].no_new_30m_original_topic_item_observed).toBe(false);
+    expect(x.actual_original_publisher_rows[0].original_publishers_attempted).toBe(2);
+    expect(x.actual_original_publisher_rows[0].original_publishers_successful).toBe(1);
   });
 
   it("computes exact 30-minute source-native pubDate windows, not 90m or fetched-at clocks",async()=>{
