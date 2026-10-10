@@ -56,6 +56,7 @@ export function clusterPrivateIndependentEventCandidates({
      candidates.length>MAX_CANDIDATES)reject();
   const groups=new Map();
   const articleUnique=new Set();
+  const observedPositions=new Map();
   for(const c of candidates) {
     if(!c||typeof c!=="object"||Array.isArray(c)||
       !isCanonicalSameEventIdentity(c.category,c.event)||
@@ -75,7 +76,13 @@ export function clusterPrivateIndependentEventCandidates({
     const occurred=epoch(c.event.occurred_at,nowMs);
     if(time<occurred-5*60000)reject();
     const articleKey=org+"|"+c.original_article_sha256;
+    // Two contradictory dispositions of IDENTICAL bytes are impossible as
+    // independent evidence. Refuse to mask a retraction behind the earlier
+    // duplicate and never infer independence from publisher URL aliases.
+    if(observedPositions.has(articleKey) &&
+       observedPositions.get(articleKey)!==c.reporting_position)reject();
     if(articleUnique.has(articleKey))continue; // one syndicated/replayed artifact
+    observedPositions.set(articleKey,c.reporting_position);
     articleUnique.add(articleKey);
     const key=c.same_event_claim_sha256;
     if(!groups.has(key))groups.set(key,{category:c.category,records:[]});
