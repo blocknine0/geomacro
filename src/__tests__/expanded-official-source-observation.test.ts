@@ -367,14 +367,17 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     ];
     for(const sample of cases){
       const source=EXPANDED_OFFICIAL_SOURCES[sample.index];
-      const original='<rss><channel><item><title>'+sample.title+'</title>'+
-        '<link>'+sample.article+'</link>'+
-        '<pubDate>Sat, 10 Oct 2026 06:25:00 GMT</pubDate></item></channel></rss>';
+      const original=source.media==='atom'
+        ? '<feed><entry><title>'+sample.title+'</title><published>2026-10-10T06:25:00Z</published>'+
+          '<link rel="alternate" href="'+sample.article+'"/></entry></feed>'
+        : '<rss><channel><item><title>'+sample.title+'</title>'+
+          '<link>'+sample.article+'</link>'+
+          '<pubDate>Sat, 10 Oct 2026 06:25:00 GMT</pubDate></item></channel></rss>';
       const out=await probeExpandedSource(source,{now,
         fetchImpl:async(url:string,opts:RequestInit)=>{
           expect(url).toBe(source.url);
           expect(opts.redirect).toBe("error");
-          return response(original,"application/rss+xml");
+          return response(original,source.media==="atom"?"application/atom+xml":"application/rss+xml");
         }});
       expect(out.format_valid).toBe(true);
       expect(out.source_native_24h_release_items).toBe(1);
@@ -387,12 +390,13 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       const forged=original.replace(new URL(sample.article).hostname,
         new URL(sample.article).hostname+".evil.example");
       const denied=await probeExpandedSource(source,{now,
-        fetchImpl:async()=>response(forged,"application/rss+xml")});
+        fetchImpl:async()=>response(forged,source.media==="atom"?"application/atom+xml":"application/rss+xml")});
       expect(denied.original_publisher_topical_90m).toBe(0);
-      const future=original.replace("Sat, 10 Oct 2026 06:25:00 GMT",
-        "Sun, 11 Oct 2026 06:25:00 GMT");
+      const future=source.media==="atom"
+        ? original.replace("2026-10-10T06:25:00Z","2026-10-11T06:25:00Z")
+        : original.replace("Sat, 10 Oct 2026 06:25:00 GMT","Sun, 11 Oct 2026 06:25:00 GMT");
       const ignored=await probeExpandedSource(source,{now,
-        fetchImpl:async()=>response(future,"application/rss+xml")});
+        fetchImpl:async()=>response(future,source.media==="atom"?"application/atom+xml":"application/rss+xml")});
       expect(ignored.original_publisher_topical_90m).toBe(0);
     }
   });
