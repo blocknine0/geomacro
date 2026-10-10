@@ -134,6 +134,23 @@ function fixedPublisherArticle(rawUrl, category) {
       return origin + "/en/natural-resources-canada/news/" +
         match[1] + "/" + match[2] + "/" + match[3] + ".html";
     }
+    if (category === "geopolitics" && candidate.hostname === "www.gov.uk") {
+      // A precise original GOV.UK FCDO article path only, never arbitrary
+      // redirect/asset/API URLs or a caller-supplied domain.
+      const match = /^\/government\/(news|speeches|world-location-news|statements)\/([a-z0-9][a-z0-9-]{4,190})$/u.exec(path);
+      if (!match) return null;
+      return "https://www.gov.uk/government/" + match[1] + "/" + match[2];
+    }
+    if (category === "macro" && candidate.hostname === "www.federalreserve.gov") {
+      const match = /^\/newsevents\/pressreleases\/([a-z]{3,36}[0-9]{8}[a-z]?)\.htm$/u.exec(path);
+      if (!match) return null;
+      return "https://www.federalreserve.gov/newsevents/pressreleases/" + match[1] + ".htm";
+    }
+    if (category === "rare_earth" && candidate.hostname === "www.usgs.gov") {
+      const match = /^\/news\/(national-news-release|state-news-release|science-snippet|featured-story|technical-announcement)\/([a-z0-9][a-z0-9-]{5,190})$/u.exec(path);
+      if (!match) return null;
+      return "https://www.usgs.gov/news/" + match[1] + "/" + match[2];
+    }
     return null;
   } catch { return null; }
 }

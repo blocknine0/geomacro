@@ -90,6 +90,39 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     original_hosts:Object.freeze(["www.canada.ca","canada.ca","natural-resources.canada.ca"]),
     topic:/\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|neodymium|dysprosium|terbium|strategic minerals?|mining|minerals? (?:supply|production|processing|trade|projects?|sector))\b/iu,
   }),
+  // Additional original *publisher* sources, three independent public
+  // institutions. RSS discoverability is NEVER commercial licensing.
+  // These sources are standalone bounded probes; cannot bypass existing
+  // blocked EITI / Simply Science status or generate risk scores.
+  Object.freeze({
+    id:"uk_fcdo_original_foreign_policy_atom_review",
+    domain:"geopolitics",kind:"original_publisher_uk_foreign_policy",
+    // UN Geneva feed timed out in the real PR runner. FCDO has a publicly
+    // reachable government first-party Atom URL, no off-domain fallback.
+    url:"https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
+    topic:/\b(?:security council|ceasefire|armed conflict|sanctions?|conflict|peace talks|war|diplomatic|foreign policy|disarmament|human rights|border|peacekeeping|military|humanitarian crisis|displacement|attacks?|defence|foreign secretary)\b/iu,
+  }),
+  Object.freeze({
+    id:"fed_monetary_original_press_rss_review",
+    domain:"macro",kind:"original_publisher_central_bank_monetary_release",
+    url:"https://www.federalreserve.gov/feeds/press_all.xml",
+    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.federalreserve.gov","federalreserve.gov"]),
+    topic:/\b(?:interest rates?|federal funds|monetary policy|inflation|economic activity|financial stability|foreign exchange|currency|central bank|discount rate|FOMC|liquidity|supervision|banking regulation)\b/iu,
+  }),
+  Object.freeze({
+    id:"usgs_minerals_original_news_rss_review",
+    domain:"rare_earth",kind:"original_publisher_mineral_resources_release",
+    url:"https://www.usgs.gov/news/minerals/feed",
+    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.usgs.gov","usgs.gov"]),
+    topic:/\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|copper|tungsten|mineral deposits?|mining|rare earth elements?|mineral supply|strategic minerals?)\b/iu,
+  }),
 ]);
 
 const XML_MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
@@ -213,6 +246,22 @@ function undatedAtomArticleCandidates(xml,source) {
   return [...new Set(list)].slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
 }
 
+function undatedRssArticleCandidates(xml,source) {
+  // Recover only missing original item pubDate via exact first-party
+  // article datePublished; never rescue a future/malformed source pubDate.
+  if(source.media!=="rss"||!source.original_hosts)return [];
+  const list=[];
+  for(const [,item] of [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80)){
+    if(/<pubDate(?:\s[^>]*)?>/iu.test(item))continue;
+    const title=item.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/iu)?.[1]??"";
+    if(!source.topic?.test(title))continue;
+    const href=item.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/iu)?.[1]?.trim()??"";
+    if(originalHref(href,source.original_hosts))list.push(href);
+    if(list.length>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
+  }
+  return [...new Set(list)].slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
+}
+
 function jsonShape(value) {
   // A structural country listing only; no annual series or event time inferred.
   if (!value || typeof value!=="object" || Array.isArray(value)) return false;
@@ -328,8 +377,12 @@ export async function probeExpandedSource(source,{
   // gave no currently topical original per-entry publication time.
   // The helper reconstructs fixed official article URL paths and does not
   // follow redirects, trust feed updated clocks or leak publisher HTML.
-  if(source.media==="atom" && counts?.topical_within_24h===0){
-    for(const article of undatedAtomArticleCandidates(body,source)){
+  if((source.media==="atom"||source.media==="rss") &&
+      source.original_hosts && counts?.topical_within_24h===0){
+    const articles=source.media==="atom"
+      ? undatedAtomArticleCandidates(body,source)
+      : undatedRssArticleCandidates(body,source);
+    for(const article of articles){
       const published=await fetchVerifiedPublisherPageDate(article,source.domain,{
         now,fetchImpl,
       });

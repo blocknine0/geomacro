@@ -19,23 +19,24 @@ const xml=`<rss version="2.0"><channel>
 </channel></rss>`;
 const response=(body:string,type:string)=>new Response(body,{headers:{"content-type":type}});
 const atomCanada="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-10T06:59:00Z</updated>\n  <entry><title>Critical minerals and consumer prices inflation update from government</title>\n  <published>2026-10-10T06:05:00Z</published>\n  <updated>2026-10-10T06:59:00Z</updated>\n  <link rel=\"alternate\" href=\"https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals-update.html\" />\n  </entry></feed>";
+const atomUk=`<feed><entry><title>Routine government notice</title><published>2026-10-10T06:25:00Z</published><link rel="alternate" href="https://www.gov.uk/government/news/routine-notice"/></entry></feed>`;
 const atomStatcan="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-10T06:59:00Z</updated>\n  <entry><title>Consumer price index inflation and industrial product price update</title>\n  <published>2026-10-10T06:05:00Z</published>\n  <link rel=\"alternate\" href=\"https://www150.statcan.gc.ca/n1/daily-quotidien/261010/dq261010a-eng.htm\" />\n  </entry></feed>";
 describe("#1827 expanded official three-domain private observation lane",()=>{
-  it("has nine fixed official observations and exactly three domains",()=>{
+  it("has twelve fixed publisher observations and exactly three domains",()=>{
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.domain))
-      .toEqual(["geopolitics","macro","macro","rare_earth","rare_earth","rare_earth","geopolitics","macro","rare_earth"]);
+      .toEqual(["geopolitics","macro","macro","rare_earth","rare_earth","rare_earth","geopolitics","macro","rare_earth","geopolitics","macro","rare_earth"]);
     for(const s of EXPANDED_OFFICIAL_SOURCES){
       expect(new URL(s.url).protocol).toBe("https:");
       expect(s.rights).toBe("UNVERIFIED");
       expect(s.event_intelligence).toBe(false);
       expect(s.country_coverage_verified).toBe(false);
-      expect(s.poll).toBe("six_hourly");
+      expect(["six_hourly","ninety_minutes"]).toContain(s.poll);
     }
     expect(EXPANDED_OFFICIAL_SOURCES[2].alternate_url)
       .toBe("https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/de/statistics-update.rss");
     expect(EXPANDED_OFFICIAL_SOURCES.filter((s:any)=>s.alternate_url)).toHaveLength(1);
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
-      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca"]);
+      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca","www.gov.uk","www.federalreserve.gov","www.usgs.gov"]);
   });
   it("samples only fixed official sources; release dates cannot prove scored current events",async()=>{
     const seen:string[]=[];
@@ -47,10 +48,11 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
         return response(JSON.stringify({data:[{id:1,year:2024}]}),"application/json");
       if(url.includes("www150.statcan.gc.ca"))return response(atomStatcan,"application/atom+xml");
       if(url.includes("api.io.canada.ca"))return response(atomCanada,"application/atom+xml");
+      if(new URL(url).hostname === "www.gov.uk")return response(atomUk,"application/atom+xml");
       return response(xml,"application/rss+xml");
     });
     const res=await probeExpandedOfficialMesh({fetchImpl,now});
-    expect(fetchImpl).toHaveBeenCalledTimes(9);
+    expect(fetchImpl).toHaveBeenCalledTimes(12);
     expect(seen).toEqual(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.url));
     expect(res.status).toBe("SOURCE_TRANSPORT_OBSERVED");
     for(const x of res.sources){
@@ -243,10 +245,11 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       if(new URL(url).hostname === "eiti.org")return response('{"data":[]}',"application/json");
       if(url.includes("www150.statcan.gc.ca"))return response(atomStatcan,"application/atom+xml");
       if(url.includes("api.io.canada.ca"))return response(atomCanada,"application/atom+xml");
+      if(new URL(url).hostname === "www.gov.uk")return response(atomUk,"application/atom+xml");
       return response(xml,"application/rss+xml");
     }});
     expect(res.status).toBe("SOURCE_TRANSPORT_DEGRADED");
-    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true,true,true,true,true,true,true]);
+    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true,true,true,true,true,true,true,true,true,true]);
     expect(res.globally_current_scored_coverage_verified).toBe(false);
     expect(res.commercial_eligible).toBe(false);
   });
@@ -351,6 +354,84 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     for(const x of [older,within6,recent,forged]){
       expect(x.current_scored_intelligence_verified).toBe(false);
       expect(x.commercial_eligible).toBe(false);
+    }
+  });
+  it("checks three independent original publisher RSS hosts, native times and no-raw commercialization",async()=>{
+    const cases=[
+      {index:9,title:"UK foreign secretary sanctions conflict statement",
+       article:"https://www.gov.uk/government/news/uk-foreign-policy-security-statement"},
+      {index:10,title:"Federal Reserve announces monetary policy interest rates",
+       article:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261010a.htm"},
+      {index:11,title:"USGS announces critical mineral lithium supply review",
+       article:"https://www.usgs.gov/news/national-news-release/critical-mineral-lithium"},
+    ];
+    for(const sample of cases){
+      const source=EXPANDED_OFFICIAL_SOURCES[sample.index];
+      const original=source.media==='atom'
+        ? '<feed><entry><title>'+sample.title+'</title><published>2026-10-10T06:25:00Z</published>'+
+          '<link rel="alternate" href="'+sample.article+'"/></entry></feed>'
+        : '<rss><channel><item><title>'+sample.title+'</title>'+
+          '<link>'+sample.article+'</link>'+
+          '<pubDate>Sat, 10 Oct 2026 06:25:00 GMT</pubDate></item></channel></rss>';
+      const out=await probeExpandedSource(source,{now,
+        fetchImpl:async(url:string,opts:RequestInit)=>{
+          expect(url).toBe(source.url);
+          expect(opts.redirect).toBe("error");
+          return response(original,source.media==="atom"?"application/atom+xml":"application/rss+xml");
+        }});
+      expect(out.format_valid).toBe(true);
+      expect(out.source_native_24h_release_items).toBe(1);
+      expect(out.original_publisher_topical_6h).toBe(1);
+      expect(out.original_publisher_topical_90m).toBe(1);
+      expect(out.commercial_rights_verified).toBe(false);
+      expect(out.same_event_independent_corroboration_verified).toBe(false);
+      expect(out.current_scored_intelligence_verified).toBe(false);
+      expect(out.commercial_eligible).toBe(false);
+      const forged=original.replace(new URL(sample.article).hostname,
+        new URL(sample.article).hostname+".evil.example");
+      const denied=await probeExpandedSource(source,{now,
+        fetchImpl:async()=>response(forged,source.media==="atom"?"application/atom+xml":"application/rss+xml")});
+      expect(denied.original_publisher_topical_90m).toBe(0);
+      const future=source.media==="atom"
+        ? original.replace("2026-10-10T06:25:00Z","2026-10-11T06:25:00Z")
+        : original.replace("Sat, 10 Oct 2026 06:25:00 GMT","Sun, 11 Oct 2026 06:25:00 GMT");
+      const ignored=await probeExpandedSource(source,{now,
+        fetchImpl:async()=>response(future,source.media==="atom"?"application/atom+xml":"application/rss+xml")});
+      expect(ignored.original_publisher_topical_90m).toBe(0);
+    }
+  });
+  it("recovers RSS only from exact first-party article datePublished when pubDate absent",async()=>{
+    for(const sourceIndex of [10,11]){
+      const src=EXPANDED_OFFICIAL_SOURCES[sourceIndex];
+      const article=sourceIndex===10
+        ?"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261010a.htm"
+        :"https://www.usgs.gov/news/national-news-release/critical-minerals-supply-chain";
+      const feed='<rss><channel><item><title>'+(
+        sourceIndex===10?"Federal Reserve monetary policy interest rates"
+          :"USGS critical minerals supply chain")+'</title><link>'+
+          article+'</link></item></channel></rss>';
+      const html='<html><head><meta property="article:published_time" '+
+        'content="2026-10-10T06:25:00Z"/></head><body>private data</body></html>';
+      let requests=0;
+      const fetched=await probeExpandedSource(src,{now,fetchImpl:async(url:string)=>{
+        requests++;
+        if(url===src.url)return response(feed,"application/rss+xml");
+        expect(url).toBe(article);
+        return response(html,"text/html");
+      }});
+      expect(requests).toBe(2);
+      expect(fetched.source_native_release_items).toBe(0);
+      expect(fetched.original_page_precise_date_checks).toBe(1);
+      expect(fetched.original_page_precise_date_24h).toBe(1);
+      expect(fetched.original_publisher_topical_6h).toBe(1);
+      expect(fetched.original_publisher_topical_90m).toBe(1);
+      expect(fetched.commercial_eligible).toBe(false);
+      const onlyModified=html.replace("article:published_time","article:modified_time");
+      const notRecent=await probeExpandedSource(src,{now,fetchImpl:async(url:string)=>
+        url===src.url?response(feed,"application/rss+xml"):
+          response(onlyModified,"text/html")});
+      expect(notRecent.original_page_precise_date_24h).toBe(0);
+      expect(notRecent.original_publisher_topical_6h).toBe(0);
     }
   });
   it("workflow has no cloud secrets, no database writes and no auto paid promotion",()=>{
