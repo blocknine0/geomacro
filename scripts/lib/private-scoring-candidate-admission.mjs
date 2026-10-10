@@ -3,6 +3,15 @@
 // publisher host; GDELT is not counted as the publisher. Never "repair"
 // unverified http: origins by changing the scheme, or silently follow a redirect.
 // Source-native publication time is a separate mandatory PUBLIC gate.
+// Only the native publication-time evidence types that the bounded
+// first-party RSS/Atom/original-article verifiers actually emit. A naked
+// nativePublishedAtVerified=true boolean must not suffice.
+export const PRIVATE_NATIVE_PUBLICATION_EVIDENCE = Object.freeze([
+  "publisher_rss_item_pubDate",
+  "publisher_atom_entry_published",
+  "publisher_original_article_datePublished",
+]);
+
 export function privatePublisherPreAdmission(article, {
   now = new Date(),
   freshnessMs = 24 * 60 * 60 * 1000,
@@ -40,6 +49,7 @@ export function privatePublisherPreAdmission(article, {
   if (requireOriginalPublisherProof && (
       article?.discoveryProvider !== "official_native_rss" ||
       article?.nativePublishedAtVerified !== true ||
+      !PRIVATE_NATIVE_PUBLICATION_EVIDENCE.includes(article?.nativeTimeEvidence) ||
       article?.privateOnly !== true ||
       article?.rightsVerified !== false ||
       article?.commercialEligible !== false)) {
