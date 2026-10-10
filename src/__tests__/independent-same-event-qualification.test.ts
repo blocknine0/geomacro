@@ -26,6 +26,13 @@ const proof={
   category:"macro",event:identity,same_event_claim_sha256:claim,
   independent_same_event_review_verified:true,
   same_event_reviewer_receipt_sha256:hex("independent senior editor exact claim review"),
+  counterevidence_review:{
+    independent_counterevidence_review_completed:true,
+    review_receipt_sha256:hex("private source fact check and contradiction screening"),
+    reviewed_at:"2026-10-10T10:40:00Z",sources_screened:4,
+    material_conflicts_detected:0,material_conflicts_resolved:0,
+    unresolved_material_conflicts:0,retractions_detected:0,
+  },
   evidence:[
     {
       url:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261010a.htm",
@@ -40,6 +47,7 @@ const proof={
       rights_receipt_sha256:hex("specific legal rights approval fed"),
       commercial_derived_use_rights_verified:true,
       independently_authored_reporting_verified:true,
+      reporting_position:"confirms",
       syndicated_from:null,original_publisher_url_verified:true,
       same_event_claim_sha256:claim,
     },
@@ -54,6 +62,7 @@ const proof={
       rights_receipt_sha256:hex("specific ecb legal rights approval"),
       commercial_derived_use_rights_verified:true,
       independently_authored_reporting_verified:true,
+      reporting_position:"confirms",
       syndicated_from:null,original_publisher_url_verified:true,
       same_event_claim_sha256:claim,
     },
@@ -75,6 +84,8 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
     expect(r.receipt.no_raw_news_exposed).toBe(true);
     expect(r.receipt.no_publisher_url_exposed).toBe(true);
     expect(r.receipt.signed_gro_and_b2_verified).toBe(false);
+    expect(r.receipt.qualified[0].counterevidence_review_signed).toBe(true);
+    expect(r.receipt.qualified[0].unresolved_material_conflicts).toBe(0);
     expect(r.receipt.x402_mainnet_ready).toBe(false);
     const serialized=JSON.stringify(r);
     expect(serialized).not.toContain("federalreserve.gov");
@@ -132,6 +143,33 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
       expect(qualifyIndependentSameEvent({rows,eventPackages:[packageSigned],
         now,trustedReviewerPublicKeyPem}).receipt.qualified_event_count).toBe(1);
     }
+  });
+  it("requires signed fresh counterevidence review and no retractions or unresolved conflicts",()=>{
+    const review=proof.counterevidence_review;
+    for(const changed of [
+      undefined,
+      {...review,independent_counterevidence_review_completed:false},
+      {...review,material_conflicts_detected:1,unresolved_material_conflicts:1},
+      {...review,material_conflicts_detected:1,material_conflicts_resolved:1,retractions_detected:1},
+      {...review,sources_screened:1},
+      {...review,review_receipt_sha256:"not-a-hash"},
+      {...review,reviewed_at:"2026-10-10T10:05:00Z"},
+      {...review,reviewed_at:"2026-10-09T06:40:00Z"},
+    ]){
+      expect(()=>go({...proof,counterevidence_review:changed}))
+        .toThrow(/^INDEPENDENT_EVENT_/);
+    }
+    for(const position of ["disputes","retracts","unknown"]){
+      expect(()=>go({...proof,evidence:[
+        {...proof.evidence[0],reporting_position:position},proof.evidence[1],
+      ]})).toThrow("INDEPENDENT_EVENT_SOURCE_ATTESTATION_UNVERIFIED");
+    }
+    const signed=signReview(proof);
+    const changed={...signed,counterevidence_review:{...review,
+      material_conflicts_detected:1,unresolved_material_conflicts:1}};
+    expect(()=>qualifyIndependentSameEvent({
+      rows,eventPackages:[changed],now,trustedReviewerPublicKeyPem,
+    })).toThrow(/^INDEPENDENT_EVENT_/);
   });
   it("blocks same owner, syndicated copies, duplicated source bodies and unverified reviews",()=>{
     const a=proof.evidence[0],c=proof.evidence[1];
