@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { makePrivateStageRecord } from './lib/restricted-private-scored-stage.mjs';
 import { capturePrivateGriSourceCompanion } from './lib/private-gri-original-publisher-companion.mjs';
 import { fetchOfficialNativeArticles } from './lib/official-native-rss.mjs';
-import { selectPrivatePublisherDiverseCandidates } from './lib/private-publisher-diverse-candidates.mjs';
+import { selectPrivatePublisherDiverseCandidates, allocatePrivateScoringSlots } from './lib/private-publisher-diverse-candidates.mjs';
 import { GLOBAL_CRITICAL_MINERALS_DOMAIN_ANCHOR } from './lib/critical-minerals-domain-anchor.mjs';
 import { classifyPrivateDerivedTextQuality } from './lib/private-derived-text-quality.mjs';
 import {
@@ -3493,37 +3493,35 @@ async function ingestNews() {
        * independently discovered publishers without allowing GDELT
        * to crowd out the canonical Guardian lane.
        */
-      const gdeltLimit = Math.min(
-        gdeltCandidates.length,
-        Math.max(
-          1,
-          Math.floor(
-            safeCandidatesPerCategory() / 3
-          )
-        )
-      );
-
-      const remainingLimit =
-        safeCandidatesPerCategory() - gdeltLimit;
-
-      const privateEligibleQueue = [
-        ...guardianCandidates,
-        ...otherCandidates,
-      ];
-      // Two new stories from ONE original publisher must not crowd out the
-      // alternate official family in our two-slot private classifier budget.
-      // Scheduling diversity alone never grants independent corroboration.
-      const primaryCandidates = PRIVATE_B2_STAGE
-        ? selectPrivatePublisherDiverseCandidates(privateEligibleQueue, remainingLimit)
+      // Private singleton: retain one genuine native-published original
+      // publisher candidate ahead of GDELT's index/discovery-only metadata.
+      // Only the candidate-budget order changes; all source, scoring, rights,
+      // provenance, signing and no-payment gates remain unchanged.
+      const privateBudget = PRIVATE_B2_STAGE
+        ? allocatePrivateScoringSlots({
+            guardianCandidates,otherCandidates,gdeltCandidates,
+            limit:safeCandidatesPerCategory(),
+          })
+        : null;
+      const gdeltLimit = privateBudget
+        ? privateBudget.gdelt.length
+        : Math.min(
+            gdeltCandidates.length,
+            Math.max(1,Math.floor(safeCandidatesPerCategory()/3))
+          );
+      const remainingLimit=safeCandidatesPerCategory()-gdeltLimit;
+      const privateEligibleQueue=[...guardianCandidates,...otherCandidates];
+      // For multi-slot runs, spread valid first-party hosts across budget.
+      // Scheduling diversity is NEVER independent corroboration.
+      const primaryCandidates = privateBudget
+        ? privateBudget.primary
         : privateEligibleQueue.sort(
-            (a, b) =>
-              Date.parse(b.publishedAt || 0) -
-              Date.parse(a.publishedAt || 0)
-          ).slice(0, remainingLimit);
+            (a,b)=>Date.parse(b.publishedAt||0)-Date.parse(a.publishedAt||0)
+          ).slice(0,remainingLimit);
 
       candidateArticles = [
         ...primaryCandidates,
-        ...gdeltCandidates.slice(0, gdeltLimit),
+        ...(privateBudget ? privateBudget.gdelt : gdeltCandidates.slice(0,gdeltLimit)),
       ].sort(
         (a, b) =>
           Date.parse(b.publishedAt || 0) -
@@ -3534,7 +3532,8 @@ async function ingestNews() {
         `  Balanced candidate cap: ` +
           `${primaryCandidates.length} primary + ` +
           `${Math.min(gdeltCandidates.length, gdeltLimit)} GDELT-discovered ` +
-          `= ${candidateArticles.length}/${safeCandidatesPerCategory()}.`
+          `= ${candidateArticles.length}/${safeCandidatesPerCategory()}. ` +
+          `Private-original-singleton-protected=${privateBudget?.native_original_singleton_prioritized===true}.`
       );
     }
 
