@@ -98,7 +98,7 @@ function atomOriginalLink(xmlEntry) {
   return "";
 }
 
-export function parseOfficialAlternate(xml, category, now = new Date(), diagnostics = null) {
+export function parseOfficialAlternate(xml, category, now = new Date(), diagnostics = null, maxAgeMs = DAY_MS) {
   const config = ORIGINAL_PUBLISHER_ALTERNATES[category];
   if (!config || typeof xml !== "string" || xml.length > MAX_FEED_BYTES ||
       /<!DOCTYPE|<!ENTITY/iu.test(xml) ||
@@ -107,7 +107,9 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     throw new Error("OFFICIAL_ALTERNATE_DOCUMENT_INVALID");
   }
   const nowMs = now.getTime();
-  if (!Number.isFinite(nowMs)) throw new Error("OFFICIAL_ALTERNATE_CLOCK_INVALID");
+  if (!Number.isFinite(nowMs) || !Number.isFinite(maxAgeMs) ||
+      maxAgeMs < 60_000 || maxAgeMs > DAY_MS)
+    throw new Error("OFFICIAL_ALTERNATE_CLOCK_INVALID");
   const entries = [...xml.matchAll(config.format === "rss"
     ? /<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu
     : /<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,MAX_ITEMS);
@@ -190,7 +192,7 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     const uri=officialUrl(raw,config.articleHosts,category);
     if (Number.isFinite(time)) stats.alternate_native_date_items++;
     // Strict original time: reject any source timestamp later than our clock.
-    const dated=Number.isFinite(time) && time <= nowMs && nowMs-time<=DAY_MS;
+    const dated=Number.isFinite(time) && time <= nowMs && nowMs-time<=maxAgeMs;
     if (dated) stats.alternate_native_current_items++;
     if (uri) stats.alternate_host_match_items++;
     if (config.topics.test(title)) stats.alternate_topic_match_items++;
@@ -229,9 +231,12 @@ function undatedOriginalArticleCandidates(xml, category) {
   return out;
 }
 
-export async function fetchOriginalAlternate(category, { now=new Date(), fetchImpl=fetch, diagnostics=null }={}) {
+export async function fetchOriginalAlternate(category, { now=new Date(), fetchImpl=fetch,
+  diagnostics=null, maxAgeMs=DAY_MS }={}) {
   const cfg=ORIGINAL_PUBLISHER_ALTERNATES[category];
   if (!cfg) throw new Error("OFFICIAL_ALTERNATE_CATEGORY_INVALID");
+  if(!Number.isFinite(maxAgeMs)||maxAgeMs<60_000||maxAgeMs>DAY_MS)
+    throw new Error("OFFICIAL_ALTERNATE_CLOCK_INVALID");
   const res=await fetchOriginalPublisherWithRecovery(cfg.url,{
     fetchImpl,
     headers:{ accept:"application/atom+xml, application/rss+xml;q=0.9, application/xml;q=0.8",
@@ -254,7 +259,7 @@ export async function fetchOriginalAlternate(category, { now=new Date(), fetchIm
   } finally {reader.releaseLock()}
   const xml = new TextDecoder("utf-8",{fatal:true}).decode(
     Buffer.concat(chunks.map(x=>Buffer.from(x))));
-  const parsed = parseOfficialAlternate(xml, category, now, diagnostics);
+  const parsed = parseOfficialAlternate(xml, category, now, diagnostics, maxAgeMs);
   if (parsed.length || cfg.format !== "atom") return parsed;
   // Only two SAME-PUBLISHER article pages maximum per category (<=4s each).
   // Article-level precise datePublished, never Atom updated, can admit PRIVATE
@@ -274,7 +279,7 @@ export async function fetchOriginalAlternate(category, { now=new Date(), fetchIm
           ? pageDiagnostic.code : "DIAGNOSTIC_UNAVAILABLE",
       );
     }
-    if (!publishedAt) continue;
+    if (!publishedAt || now.getTime()-Date.parse(publishedAt)>maxAgeMs) continue;
     if (diagnostics) {
       diagnostics.alternate_article_page_precise++;
       diagnostics.alternate_article_page_admitted++;
