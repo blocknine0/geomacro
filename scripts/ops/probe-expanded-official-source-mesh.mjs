@@ -13,21 +13,21 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     id:"eu_sanctions_guidance_official_rss_review",
     domain:"geopolitics",kind:"policy_guidance_release",
     url:"https://finance.ec.europa.eu/node/1296/rss_en",
-    media:"rss",rights:"UNVERIFIED",poll:"daily",
+    media:"rss",rights:"UNVERIFIED",poll:"six_hourly",
     event_intelligence:false,country_coverage_verified:false,
   }),
   Object.freeze({
     id:"ecb_statistical_press_official_rss_review",
     domain:"macro",kind:"statistical_press_release",
     url:"https://www.ecb.europa.eu/rss/statpress.html",
-    media:"rss",rights:"UNVERIFIED",poll:"daily",
+    media:"rss",rights:"UNVERIFIED",poll:"six_hourly",
     event_intelligence:false,country_coverage_verified:false,
   }),
   Object.freeze({
     id:"eiti_implementing_country_official_api_review",
     domain:"rare_earth",kind:"structural_extractives_country_metadata",
     url:"https://eiti.org/api/v2.0/implementing_country",
-    media:"json",rights:"UNVERIFIED",poll:"daily",
+    media:"json",rights:"UNVERIFIED",poll:"six_hourly",
     event_intelligence:false,country_coverage_verified:false,
   }),
 ]);
@@ -57,7 +57,7 @@ function jsonShape(value) {
   // A structural country listing only; no annual series or event time inferred.
   if (!value || typeof value!=="object" || Array.isArray(value)) return false;
   return Array.isArray(value.data) || Array.isArray(value.results) ||
-    Array.isArray(value.items) || Array.isArray(value);
+    Array.isArray(value.items);
 }
 
 export async function probeExpandedSource(source,{
