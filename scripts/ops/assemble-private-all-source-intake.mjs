@@ -20,8 +20,8 @@ const DOMAIN_ALIAS = Object.freeze({
 });
 const REMOTE_MAX = 512 * 1024;
 const URLS = Object.freeze({
-  telegram: "https://raw.githubusercontent.com/blocknine0/geomacro-telegram-signals/main/config/source_registry.json",
-  historical: "https://raw.githubusercontent.com/blocknine0/geomacro-historical-data/main/config/data_sources.json",
+  telegram: "https://api.github.com/repos/blocknine0/geomacro-telegram-signals/contents/config/source_registry.json?ref=main",
+  historical: "https://api.github.com/repos/blocknine0/geomacro-historical-data/contents/config/data_sources.json?ref=main",
 });
 function domain(input) {
   const normalized = String(input ?? "").trim().toUpperCase();
@@ -127,32 +127,82 @@ export function assemblePrivateIntakeSnapshot(input, now = new Date()) {
     },
   };
 }
-async function fetchPublicManifest(url) {
+/**
+ * Both source repositories are PRIVATE. Anonymous raw.githubusercontent.com
+ * cannot read them; GitHub's default GITHUB_TOKEN is repo-scoped. If an
+ * independently authorized, read-only fine-grained token is installed, refresh
+ * through GitHub Contents API. Otherwise rely on local PINNED REDACTED metadata
+ * snapshots (never claim live producer sync or current source messages).
+ */
+async function fetchPrivateManifest(url) {
+  const token = String(process.env.SOURCE_INTAKE_READ_TOKEN ?? "").trim();
+  if (!token) throw Error("PRIVATE_INTAKE_PRIVATE_REPO_TOKEN_REQUIRED");
   const response = await fetch(url, {
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
     redirect: "error",
     signal: AbortSignal.timeout(12000),
   });
-  if (!response.ok) throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_UNAVAILABLE");
-  const contentLength = Number(response.headers.get("content-length") ?? 0);
-  if (!Number.isFinite(contentLength) || contentLength > REMOTE_MAX) throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_TOO_LARGE");
+  if (!response.ok) throw Error("PRIVATE_INTAKE_PRIVATE_REPO_ACCESS_DENIED");
+  const length = Number(response.headers.get("content-length") ?? 0);
+  if (!Number.isFinite(length) || length > REMOTE_MAX * 2) {
+    throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_TOO_LARGE");
+  }
   const raw = await response.text();
-  if (Buffer.byteLength(raw, "utf8") > REMOTE_MAX) throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_TOO_LARGE");
-  try { return JSON.parse(raw); } catch { throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_INVALID"); }
+  if (Buffer.byteLength(raw, "utf8") > REMOTE_MAX * 2) throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_TOO_LARGE");
+  let envelope;
+  try { envelope = JSON.parse(raw); } catch { throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_INVALID"); }
+  if (envelope?.encoding !== "base64" || typeof envelope.content !== "string" ||
+      envelope.content.length > REMOTE_MAX * 2) throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_INVALID");
+  const decoded = Buffer.from(envelope.content.replace(/\\s/g, ""), "base64");
+  if (decoded.byteLength > REMOTE_MAX) throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_TOO_LARGE");
+  try { return JSON.parse(decoded.toString("utf8")); }
+  catch { throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_INVALID"); }
 }
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
-export async function gatherPrivateIntakeSnapshot(now = new Date(), fetcher = fetchPublicManifest) {
-  const [telegram,historical] = await Promise.all([
-    fetcher(URLS.telegram), fetcher(URLS.historical),
-  ]);
-  return assemblePrivateIntakeSnapshot({
+export async function gatherPrivateIntakeSnapshot(now = new Date(), fetcher = null) {
+  // During PR tests a mock fetcher tests live manifest shape without access.
+  // In production a usable fine-grained PAT enables CURRENT private registry
+  // sync; without it the fallback is an explicitly pinned sanitized snapshot.
+  const tokenConfigured = !!String(process.env.SOURCE_INTAKE_READ_TOKEN ?? "").trim();
+  const remote = typeof fetcher === "function" || tokenConfigured;
+  const get = fetcher ?? fetchPrivateManifest;
+  let telegram, historical, provenance;
+  if (remote) {
+    [telegram, historical] = await Promise.all([
+      get(URLS.telegram), get(URLS.historical),
+    ]);
+    provenance = {
+      current_private_repository_catalogs_fetched: true,
+      source_catalog_mode: "LIVE_PRIVATE_REPOSITORY_REGISTRY",
+      private_repo_read_only_token_required_for_live_sync: true,
+    };
+  } else {
+    telegram = readJson("config/private-intake-telegram-sanitary-pin.v1.json");
+    historical = readJson("config/private-intake-historical-sanitary-pin.v1.json");
+    provenance = {
+      current_private_repository_catalogs_fetched: false,
+      source_catalog_mode: "PINNED_SANITIZED_REPOSITORY_SNAPSHOT",
+      private_repo_read_only_token_required_for_live_sync: true,
+      private_snapshot_commits: {
+        telegram: telegram.repo_commit_pin,
+        historical: historical.repo_commit_pin,
+      },
+      remote_new_sources_after_pins_unverified: true,
+    };
+  }
+  const snapshot = assemblePrivateIntakeSnapshot({
     core: readJson("global-intelligence/sources/source-registry.v1.json"),
     free: readJson("global-intelligence/sources/free-source-catalog.v1.json"),
     roots: readJson("config/telegram-discovery-roots.json"),
     telegram, historical,
   }, now);
+  return { ...snapshot, source_catalog_provenance: provenance };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
@@ -163,8 +213,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     // No raw source URLs, Telegram usernames, sensitive material or headlines in logs.
     const { source_refs, ...safeSummary } = result;
     console.log(JSON.stringify(safeSummary));
-  } catch {
-    console.error("::error::PRIVATE_SOURCE_INTAKE_INVENTORY_INCOMPLETE");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const code = /^PRIVATE_INTAKE_[A-Z_]+$/u.test(message)
+      ? message : "PRIVATE_INTAKE_UNCLASSIFIED_FAILURE";
+    // Never print URLs, payloads or credentials from remote failures.
+    console.error("::error::" + code);
     process.exitCode = 2;
   }
 }
