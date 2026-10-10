@@ -119,14 +119,10 @@ function fixedPublisherArticle(rawUrl, category) {
     if (candidate.protocol !== "https:" || candidate.username || candidate.password ||
         candidate.port || candidate.search || candidate.hash) return null;
     const path = candidate.pathname;
-    if (category === "macro" &&
-        (candidate.hostname === "www150.statcan.gc.ca" ||
-         candidate.hostname === "www.statcan.gc.ca")) {
+    if (category === "macro" && candidate.hostname === "www150.statcan.gc.ca") {
       const match = /^\/n1\/daily-quotidien\/([0-9]{6})\/([a-z0-9-]{1,80})\.(htm|html)$/u.exec(path);
       if (!match) return null;
-      // Retain the actual original official publisher host. Never synthesize
-      // a redirect or request any article URL outside the fixed Daily path.
-      return "https://" + candidate.hostname + "/n1/daily-quotidien/" +
+      return "https://www150.statcan.gc.ca/n1/daily-quotidien/" +
         match[1] + "/" + match[2] + "." + match[3];
     }
     if (category === "rare_earth" &&
