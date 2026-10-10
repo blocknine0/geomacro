@@ -140,7 +140,9 @@ export function buildVerifiedIntelligenceApiPayload(
     verified_rows: scored.length,
     live_observed_rows: liveCount,
     newest_at: Number.isFinite(newestAt) ? new Date(newestAt).toISOString() : null,
-    current_within_24h: Number.isFinite(newestAt) &&
+    // Public 'current' means current scored evidence in ALL three domains,
+    // not merely the newest article from any one category.
+    current_within_24h: currentAcrossDomains && Number.isFinite(newestAt) &&
       newestAt >= now - 24 * 60 * 60 * 1000,
     generated_at: new Date(now).toISOString(),
   };
