@@ -54,7 +54,10 @@ Supporting official references:
   Eurostat German-language alternative following primary HTTP 404/5xx only
   (~24–28 total GETs/day). No locale retry on 401/403/429, redirect/network
   errors or wrong MIME/body/schema. Each attempt has a 5s timeout and 192-KiB
-  maximum body; no other retries and no paid credentials.
+  maximum body for the other five sources; Eurostat catalogue RSS alone
+  has a 1 MiB hard cap (both primary and conditional same-publisher
+  alternative). Bodies above either cap fail closed without parsing or
+  recording data. No other retries and no paid credentials.
   This is low-cost, not instantaneous distribution, and may be held by
   upstream rate limits. Event-specific frequency must match actual publishers.
 - ECB is euro-area-focused; EU sanctions is Europe-issued/global-designation
@@ -70,7 +73,7 @@ Supporting official references:
   publisher body, response URL, article text or secrets. The observed 2026-10-10
   HTTP **406 Not Acceptable** is addressed with a single Eurostat-only
   `Accept: */*` request: broad transport negotiation never bypasses mandatory
-  XML MIME, native RSS shape, size, original-time, rights or scoring gates.
+  XML MIME, native RSS shape, finite per-source size, original-time, rights or scoring gates.
   Any Eurostat fallback is one publisher family, **not** independent corroboration; even a valid translated RSS is not a risk event. PR tests validate
   safe fail-closed behavior even during publisher outage; real main/scheduled
   production fails RED and preserves a sanitized three-day receipt.
