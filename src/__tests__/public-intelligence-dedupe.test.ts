@@ -81,6 +81,36 @@ describe("public Intelligence story dedupe", () => {
     expect(rows).toHaveLength(2);
   });
 
+  it("preserves different actors and locations even if automated summaries are identical", () => {
+    const shared = "Geopolitical security risk rises after a new government announcement.";
+    const rows = dedupePublicIntelligenceRows([
+      { id: "india", category: "geopolitics", source_title: "Geomacro finds India approves a new border security deployment in Delhi", summary: shared, public_status: "verified_b2", published_at: at(0) },
+      { id: "serbia", category: "geopolitics", source_title: "Geomacro finds Serbia approves a new border security deployment in Belgrade", summary: shared, public_status: "verified_b2", published_at: at(-1) },
+      { id: "jaipur", category: "geopolitics", source_title: "Geomacro finds India approves a new border security deployment in Jaipur", summary: shared, public_status: "verified_b2", published_at: at(-1) },
+    ]);
+    expect(rows.map((x) => x.id)).toEqual(["india", "serbia", "jaipur"]);
+  });
+
+  it("preserves distinct amounts and opposing policy decisions", () => {
+    const common = "Federal Reserve policy rate decision changes the economic outlook.";
+    const rows = dedupePublicIntelligenceRows([
+      { id: "raise-25", category: "macro", source_title: "Geomacro finds Federal Reserve raises policy rate by 25 basis points", summary: common, public_status: "verified_b2", published_at: at(0) },
+      { id: "raise-50", category: "macro", source_title: "Geomacro finds Federal Reserve raises policy rate by 50 basis points", summary: common, public_status: "verified_b2", published_at: at(-1) },
+      { id: "cut-25", category: "macro", source_title: "Geomacro finds Federal Reserve cuts policy rate by 25 basis points", summary: common, public_status: "verified_b2", published_at: at(-1) },
+    ]);
+    expect(rows).toHaveLength(3);
+  });
+
+  it("keeps distinct identical generic monitoring observations separate", () => {
+    const rows = dedupePublicIntelligenceRows([
+      { id: "first", category: "geopolitics", source_title: "Geomacro observes sanctions activity in India", summary: "Monitoring only.", public_status: "live_observed", published_at: at(0) },
+      { id: "second", category: "geopolitics", source_title: "Geomacro observes sanctions activity in India", summary: "Monitoring only.", public_status: "live_observed", published_at: at(-2) },
+    ]);
+    // No underlying signed identity. Do not assume recurrent observations
+    // necessarily refer to the same action.
+    expect(rows).toHaveLength(2);
+  });
+
   it("does not dedupe across categories or outside 72 hours", () => {
     const same = {
       source_title: "Geomacro finds Central bank policy shock raises market risk",
