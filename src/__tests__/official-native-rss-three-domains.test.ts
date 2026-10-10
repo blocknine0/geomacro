@@ -320,12 +320,20 @@ describe("three official publishers' original-event RSS discovery", () => {
   it("wires hourly restricted-mode discovery, but not public/paid source certification", () => {
     const orchestration = readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
     const workflow = readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
+    const sourceProof = readFileSync(".github/workflows/global-realtime-source-proof.yml", "utf8");
     const privateIngest = readFileSync("scripts/ingest-news.js", "utf8");
     expect(orchestration).toContain('key: "official_native_rss"');
     expect(orchestration).toContain('cadenceSeconds: 3600');
     expect(orchestration).toContain('restrictedDirectPostgresSafe: true');
     expect(orchestration).toContain("scripts/ops/probe-official-native-rss-three-domains.mjs");
     expect(workflow).toContain("artifacts/official-native-rss/**");
+    // A PR verifies source-audit contract even when an external publisher
+    // is unavailable; manually dispatched production source proof remains RED.
+    expect(sourceProof).toContain('if [[ "${{ github.event_name }}" != "pull_request" ]]');
+    expect(sourceProof).toContain('exit "$rc"');
+    expect(sourceProof).toContain('publisher_transport_failure_domains > 0');
+    expect(sourceProof).toContain('SOURCE_POLL_DEGRADED');
+    expect(sourceProof).toContain('publisher_transport_failure_domains == 0');
     expect(privateIngest).toContain("await fetchOfficialNativeArticles(category.name");
     expect(privateIngest).toContain("GDELT indexed-seen timestamps are not original publisher dates");
     expect(privateIngest).toContain("makePrivateStageRecord({");
