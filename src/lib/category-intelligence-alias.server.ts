@@ -1,6 +1,7 @@
 import { buildAgentQueryPlan, inferAgentQueryTopics, type AgentQueryTopic } from "./agent-query-plan";
 import { mainnetIntelligenceHandlers } from "./mainnet-intelligence-endpoint.server";
 import { publicIntelligenceSourceCoverage, type CommercialIntelligenceCategory } from "./public-intelligence-source-coverage";
+import { categoryOriginalSourcePulse } from "./current-30min-original-source-pulse.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const CANONICAL_PATH = "/api/v1/intelligence/query";
@@ -108,11 +109,15 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
       // Discovery describes this fixed scope; it is not evidence of fresh data.
       if (!response.ok) return response;
       const discovery = await response.json();
+      const sourcePulse = config.category
+        ? await categoryOriginalSourcePulse(config.category as CommercialIntelligenceCategory)
+        : null;
       return Response.json({
         ...discovery,
         endpoint: new URL(config.path ?? new URL(request.url).pathname, request.url).toString(),
         canonical_endpoint: new URL(CANONICAL_PATH, request.url).toString(),
         ...(config.category ? { category: config.category } : {}),
+        ...(sourcePulse ? { original_publisher_observation: sourcePulse } : {}),
         topics: [...config.topics],
         required_modules: [...config.requiredModules],
         supported_subject_types: ["country"],

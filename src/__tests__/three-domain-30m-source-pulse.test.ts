@@ -114,7 +114,14 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     const source=readFileSync("scripts/ops/probe-30min-three-domain-pulse.mjs","utf8");
     expect(flow).toContain('cron: "12,42 * * * *"');
     expect(flow).toContain("retention-days: 2");
-    expect(flow).not.toContain("secrets.");
+    // Cloudflare scoped D1 credentials are used to publish *only* compact
+    // source-check status. The acquisition leg must never hold B2/Supabase,
+    // commerce, Telegram or historical credentials.
+    expect(flow).toContain("secrets.CLOUDFLARE_API_TOKEN");
+    expect(flow).toContain("secrets.CLOUDFLARE_ACCOUNT_ID");
+    expect(flow).not.toContain("secrets.SUPABASE");
+    expect(flow).not.toContain("secrets.B2_");
+    expect(flow).not.toContain("secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN");
     expect(flow).not.toContain("d1 execute");
     expect(flow).not.toContain("B2_KEY_ID");
     expect(source).toContain("source_catalog_entries_are_not_events:true");

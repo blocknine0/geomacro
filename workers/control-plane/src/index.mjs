@@ -1,6 +1,7 @@
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
 import { makeRiskIndicesHistoricalMetadata } from "./risk-indices-historical-status.mjs";
+import { projectPublic30mPulse } from "./source-pulse-public.mjs";
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_HOT_SNAPSHOT_BODY_BYTES = 1024 * 1024;
 const MAX_HOT_SNAPSHOT_BYTES = 768 * 1024;
@@ -1121,6 +1122,18 @@ async function putCheckpoint(env, pipeline, scope, body) {
   return json({ ok: true, pipeline: safePipeline, scope: safeScope, updated_at: updatedAt });
 }
 
+async function getPublicThreeDomain30MinSourcePulse(env) {
+  try {
+    const query = await env.DB.prepare(
+      "SELECT scope,status,last_attempt_at,metadata_json FROM pipeline_checkpoint WHERE pipeline=? AND scope IN ('geopolitics','macro','rare_earth') LIMIT 4"
+    ).bind("official_source_pulse_30m").all();
+    const rows = query?.results;
+    return json(projectPublic30mPulse(rows), 200);
+  } catch {
+    return json({ok:false,error:"THREE_DOMAIN_SOURCE_PULSE_D1_UNAVAILABLE",chargeable:false},503);
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -1128,6 +1141,9 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
+    if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
+      return getPublicThreeDomain30MinSourcePulse(env);
+    }
     if (request.method === "GET" && url.pathname === "/v1/public/intelligence-overlay") {
       return getPublicIntelligenceOverlay(env);
     }

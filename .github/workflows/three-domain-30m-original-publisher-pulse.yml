@@ -14,12 +14,24 @@ on:
       - "scripts/ops/probe-30min-three-domain-pulse.mjs"
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "src/__tests__/three-domain-30m-source-pulse.test.ts"
+      - "scripts/ops/write-30min-source-pulse-d1.mjs"
+      - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/src/source-pulse-public.mjs"
+      - "src/__tests__/three-domain-30m-d1-status.test.ts"
+      - "src/lib/current-30min-original-source-pulse.server.ts"
+      - "src/lib/category-intelligence-alias.server.ts"
   pull_request:
     paths:
       - ".github/workflows/three-domain-30m-original-publisher-pulse.yml"
       - "scripts/ops/probe-30min-three-domain-pulse.mjs"
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "src/__tests__/three-domain-30m-source-pulse.test.ts"
+      - "scripts/ops/write-30min-source-pulse-d1.mjs"
+      - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/src/source-pulse-public.mjs"
+      - "src/__tests__/three-domain-30m-d1-status.test.ts"
+      - "src/lib/current-30min-original-source-pulse.server.ts"
+      - "src/lib/category-intelligence-alias.server.ts"
 
 permissions:
   contents: read
@@ -44,6 +56,8 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/probe-30min-three-domain-pulse.mjs
+          node --check scripts/ops/write-30min-source-pulse-d1.mjs
+          node --check workers/control-plane/src/source-pulse-public.mjs
           node --check scripts/ops/probe-expanded-official-source-mesh.mjs
           test -f src/__tests__/three-domain-30m-source-pulse.test.ts
 
@@ -51,7 +65,8 @@ jobs:
     needs: source-contract
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 4
+    timeout-minutes: 6
+    environment: production
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -84,11 +99,22 @@ jobs:
             echo "::warning::Original-source pulse degraded; not scored current intelligence."
             exit "$rc"
           fi
+      - name: Publish compact observation-only D1 checkpoints and read them back
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -s artifacts/private-intake/three-domain-30m-source-pulse.json
+          node scripts/ops/write-30min-source-pulse-d1.mjs
       - name: Preserve two-day source-native counts, never raw news or session tokens
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
         with:
           name: original-source-pulse-${{ github.run_id }}
-          path: artifacts/private-intake/three-domain-30m-source-pulse.json
+          path: |
+            artifacts/private-intake/three-domain-30m-source-pulse.json
+            artifacts/private-intake/three-domain-30m-d1-readback.json
           if-no-files-found: warn
           retention-days: 2
