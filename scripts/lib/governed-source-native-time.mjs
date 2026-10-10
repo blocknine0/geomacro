@@ -44,6 +44,9 @@ export function sourceNativeMeasurementTime(value, sourceId, {
   const observed = Date.parse(text);
   const clock = now instanceof Date ? now.getTime() : Number.NaN;
   requireValid(Number.isFinite(observed) && Number.isFinite(clock) &&
+    // Date.parse may silently normalize February 30 -> March 2. That is
+    // not a valid native provider measurement day and must never be accepted.
+    new Date(observed).toISOString().slice(0,10) === text.slice(0,10) &&
     observed <= clock + FUTURE_SKEW_MS,
     `GOVERNED_SOURCE_NATIVE_TIMESTAMP_INVALID:${sourceId}`);
   return new Date(observed).toISOString();
