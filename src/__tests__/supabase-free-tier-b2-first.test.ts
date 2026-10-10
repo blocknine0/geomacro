@@ -132,7 +132,7 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(productionCoverageWorkflow).not.toContain("branches: [main]");
     expect(productionCoverageWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write");
     expect(orchestratorWorkflow).toContain("workflow_dispatch:");
-    expect(orchestratorWorkflow).toContain('cron: "7,22,37,52 * * * *"');
+    expect(orchestratorWorkflow).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
     expect(orchestratorWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
     expect(orchestratorWorkflow.indexOf("supabase-free-tier-budget.mjs --require-bulk-write --require-normal"))
       .toBeLessThan(orchestratorWorkflow.indexOf("Run due intelligence tasks serially"));
