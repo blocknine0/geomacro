@@ -20,6 +20,21 @@ describe("Geomacro public gist and no-raw projection", () => {
       .toBe("Geomacro finds Federal Reserve policy change increases funding pressure");
   });
 
+  it("shows the precise approved event headline, not its generic risk-analysis summary", () => {
+    const result = sanitizePublicIntelligenceRow({
+      ...base,
+      id: "policy-specific",
+      source_title: "Geomacro finds India imposes new export licensing restrictions on gallium shipments",
+      summary: "Government trade policy changes increase supply-chain risk.",
+      category: "rare_earth",
+    });
+    expect(result?.source_title).toBe(
+      "Geomacro finds India imposes new export licensing restrictions on gallium shipments",
+    );
+    expect(result?.summary).toBe("Government trade policy changes increase supply-chain risk.");
+    expect(result && Object.keys(result)).not.toContain("source_url");
+  });
+
   it("never publishes editorial naming or upstream full text", () => {
     const article = { ...base, source_title: "Geomacro finds The article describes a situation", summary: "An export rule raises supply concerns" };
     const output = sanitizePublicIntelligenceRow(article);
