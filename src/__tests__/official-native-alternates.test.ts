@@ -14,6 +14,52 @@ const title = "Canada announces funding for critical minerals lithium refining a
 const uri = "https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals.html";
 
 describe("original publisher alternate feed with source-native Atom dates", () => {
+  it("never labels original 21-hour-old UN article current under private six-hour scoring rule",async()=>{
+    const previousDay="2026-10-08T16:30:00Z"; // 21h at 2026-10-09T13:30Z
+    const headline="UN Security Council responds to armed conflict with ceasefire demand";
+    const uri="https://news.un.org/en/story/2026/10/example-conflict";
+    const xml='<rss><channel><item><title>'+headline+'</title><link>'+
+      uri+'</link><pubDate>Thu, 08 Oct 2026 16:30:00 GMT</pubDate></item></channel></rss>';
+    expect(Date.parse(previousDay)).toBe(now.getTime()-21*3600000);
+    expect(parseOfficialAlternate(xml,"geopolitics",now)).toHaveLength(1);
+    const stats:Record<string,number>={};
+    expect(parseOfficialAlternate(xml,"geopolitics",now,stats,6*3600000)).toEqual([]);
+    expect(stats.alternate_native_date_items).toBe(1);
+    expect(stats.alternate_native_current_items).toBe(0);
+    expect(stats.alternate_admitted_private_count).toBe(0);
+    const rows=await fetchOriginalAlternate("geopolitics",{
+      now,maxAgeMs:6*3600000,
+      fetchImpl:async(url:string,opts:RequestInit)=>{
+        expect(url).toBe(ORIGINAL_PUBLISHER_ALTERNATES.geopolitics.url);
+        expect(opts.redirect).toBe("error");
+        return new Response(xml,{headers:{"content-type":"application/rss+xml"}});
+      },
+    });
+    expect(rows).toEqual([]);
+    expect(()=>parseOfficialAlternate(xml,"geopolitics",now,{},25*3600000))
+      .toThrow("OFFICIAL_ALTERNATE_CLOCK_INVALID");
+  });
+
+  it("rejects 20h-old original article HTML fallback under 6h without moving published time",async()=>{
+    const article="https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals.html";
+    const feed=atom(title,article,"").replace("<published></published>","");
+    const html='<html><meta property="article:published_time" content="2026-10-08T17:30:00Z"></html>';
+    let calls=0;
+    const rows=await fetchOriginalAlternate("rare_earth",{
+      now,maxAgeMs:6*3600000,
+      fetchImpl:async(url:string,opts:RequestInit)=>{
+        calls++;
+        expect(opts.redirect).toBe("error");
+        if(url===ORIGINAL_PUBLISHER_ALTERNATES.rare_earth.url)
+          return new Response(feed,{headers:{"content-type":"application/atom+xml"}});
+        expect(url).toBe(article);
+        return new Response(html,{headers:{"content-type":"text/html"}});
+      },
+    });
+    expect(calls).toBe(2);
+    expect(rows).toEqual([]);
+  });
+
   it("rejects two-minute future native Atom publication without accepting clock skew", () => {
     const stats: Record<string, number> = {};
     const future = atom(title, uri, "2026-10-09T13:32:00Z");
