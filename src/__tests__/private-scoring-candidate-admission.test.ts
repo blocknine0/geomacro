@@ -67,7 +67,8 @@ describe("#1827 bounded first-party publisher identity before expensive classifi
   it("qualifies only first-party native published PRIVATE evidence before model spend", () => {
     const native = {
       ...article, discoveryProvider: "official_native_rss",
-      nativePublishedAtVerified: true, privateOnly: true,
+      nativePublishedAtVerified: true,
+      nativeTimeEvidence: "publisher_rss_item_pubDate", privateOnly: true,
       rightsVerified: false, commercialEligible: false,
     };
     const check = (patch: Record<string, unknown> = {}) =>
@@ -76,11 +77,18 @@ describe("#1827 bounded first-party publisher identity before expensive classifi
         requireOriginalPublisherProof: true,
       });
     expect(check()).toEqual({ok:true,reason:"transport_admitted"});
+    for (const nativeTimeEvidence of ["publisher_atom_entry_published",
+      "publisher_original_article_datePublished"]) {
+      expect(check({nativeTimeEvidence})).toEqual({ok:true,reason:"transport_admitted"});
+    }
     for(const invalid of [
       {discoveryProvider:"gdelt"},
       {discoveryProvider:"guardian"},
       {nativePublishedAtVerified:false},
       {nativePublishedAtVerified:undefined},
+      {nativeTimeEvidence:undefined},
+      {nativeTimeEvidence:"gdelt_first_seen_index"},
+      {nativeTimeEvidence:"publisher_updated_feed_clock"},
       {privateOnly:false},
       {rightsVerified:true},
       {commercialEligible:true},
