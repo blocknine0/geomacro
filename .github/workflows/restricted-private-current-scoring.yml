@@ -1,9 +1,9 @@
 name: Restricted Private Current Scoring Staging
 
-# One final bounded new-head private 3-domain current-source scoring canary
-# only on protected PR #1933 merge. Earlier #1924/#1929 merges are historical.
-# No cron; no public projection, money or Supabase; absent strictly source-
-# dated originals fail BEFORE B2 PUT or D1 mutation.
+# A single additional current-head private 3-domain canary on protected
+# PR #1934 merge after FCDO geopolitical third-family source correction.
+# Prior #1933/#1929/#1924 runs are historical. No cron, public projection,
+# Supabase, money; unverified originals fail BEFORE any B2 PUT.
 on:
   workflow_dispatch:
     inputs:
@@ -34,7 +34,8 @@ jobs:
           contains(github.event.head_commit.message, 'Merge pull request #1891') ||
           contains(github.event.head_commit.message, '(#1924)') ||
             contains(github.event.head_commit.message, '(#1929)') ||
-            contains(github.event.head_commit.message, '(#1933)')
+            contains(github.event.head_commit.message, '(#1933)') ||
+            contains(github.event.head_commit.message, '(#1934)')
         ))
       )
     runs-on: ubuntu-24.04
@@ -158,7 +159,8 @@ jobs:
             contains(github.event.head_commit.message, 'Merge pull request #1891') ||
             contains(github.event.head_commit.message, '(#1924)') ||
             contains(github.event.head_commit.message, '(#1929)') ||
-            contains(github.event.head_commit.message, '(#1933)')
+            contains(github.event.head_commit.message, '(#1933)') ||
+            contains(github.event.head_commit.message, '(#1934)')
           )) ||
           (github.event_name == 'workflow_dispatch' &&
             github.event.inputs.private_gri_singleton == 'true')
@@ -179,7 +181,8 @@ jobs:
             contains(github.event.head_commit.message, 'Merge pull request #1891') ||
             contains(github.event.head_commit.message, '(#1924)') ||
             contains(github.event.head_commit.message, '(#1929)') ||
-            contains(github.event.head_commit.message, '(#1933)')
+            contains(github.event.head_commit.message, '(#1933)') ||
+            contains(github.event.head_commit.message, '(#1934)')
           )) ||
           (github.event_name == 'workflow_dispatch' &&
             github.event.inputs.private_gri_singleton == 'true')
@@ -227,7 +230,8 @@ jobs:
             contains(github.event.head_commit.message, 'Merge pull request #1891') ||
             contains(github.event.head_commit.message, '(#1924)') ||
             contains(github.event.head_commit.message, '(#1929)') ||
-            contains(github.event.head_commit.message, '(#1933)')
+            contains(github.event.head_commit.message, '(#1933)') ||
+            contains(github.event.head_commit.message, '(#1934)')
           )) ||
           (github.event_name == 'workflow_dispatch' &&
             github.event.inputs.private_gri_singleton == 'true')

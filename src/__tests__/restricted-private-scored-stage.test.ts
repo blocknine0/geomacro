@@ -105,6 +105,8 @@ describe("#1803 restricted canonical private score archive", () => {
     expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge pull request #1891')");
     expect(workflow).toContain("contains(github.event.head_commit.message, '(#1924)')");
     expect(workflow).toContain("contains(github.event.head_commit.message, '(#1933)')");
+    expect(workflow).toContain("contains(github.event.head_commit.message, '(#1934)')");
+    expect((workflow.match(/contains\(github\.event\.head_commit\.message, '\(#1934\)'\)/gu)??[]).length).toBe(4);
     expect((workflow.match(/contains\(github\.event\.head_commit\.message, '\(#1933\)'\)/gu)??[]).length).toBe(4);
     expect(workflow).toContain("Prove genuine original-source three-domain singleton eligibility BEFORE B2 PUT");
     expect(scorer).toContain("allocatePrivateScoringSlots({");
