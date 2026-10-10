@@ -128,7 +128,12 @@ describe("#1827 latest NOAA source-native daily sampling, not false GRI freshnes
     expect(path).toContain("NOAA_NATIVE_DAY_SAMPLE_OFFSETS");
     expect(path).toContain("NOAA_NCEI_NO_RECENT_NATIVE_DAY_ROWS");
     expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
-    expect(workflow).not.toContain("cron:");
+    // A single daily post-UTC-reset observation import is quota-safe; unlike
+    // push-on-control-plane merges, it does not imply fresh world news.
+    expect(workflow).toContain('cron: "17 2 * * *"');
+    expect(workflow).not.toContain('      - "workers/control-plane/**"');
+    expect(workflow).toContain("Read shared B2 account headroom before downloading source data");
+    expect(workflow).toContain("steps.headroom.outputs.admitted == 'true'");
     expect(workflow).toContain("Verify D1 checkpoint readback");
   });
 });

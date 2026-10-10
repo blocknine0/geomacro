@@ -1,7 +1,7 @@
 // Production opt-in D1 account quota adapter for the canonical B2 Node client.
 // All producer workflows must be migrated before calling this a global guard.
 // It uses the SAME D1 SQL reservation helper as the authenticated Worker route.
-import { reserveB2AccountQuota } from "../../workers/control-plane/src/b2-account-quota.mjs";
+import { reserveB2AccountQuota, readB2AccountQuota } from "../../workers/control-plane/src/b2-account-quota.mjs";
 
 const WORKFLOW_ID = /^[a-z][a-z0-9_-]{1,47}$/u;
 const IDENTIFIER = /^[a-z0-9-]{16,64}$/iu;
@@ -62,6 +62,11 @@ export function createB2D1AccountGovernor({
     },
   };
   return {
+    async status() {
+      // Read-only status never pre-reserves B2 requests; each actual
+      // attempt still calls reserve() atomically via the same D1 database.
+      return readB2AccountQuota(db,{now:now()});
+    },
     async reserve(kind) {
       if (!["GET","PUT","HEAD","NATIVE_AUTH"].includes(kind)) {
         throw new Error("B2_ACCOUNT_GLOBAL_QUOTA_KIND_INVALID");
