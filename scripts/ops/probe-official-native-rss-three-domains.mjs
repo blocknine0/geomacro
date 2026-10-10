@@ -56,7 +56,11 @@ export async function probeOfficialThreeDomains({
       // feed is never requested if primary+secondary already have qualified
       // publication-time evidence. No B2, Supabase, classifier or payment.
       const articles = await fetchArticles(category, {
-        now, diagnostics, includeSecondPublisher: true,
+        now, diagnostics,
+        // Same 6-hour cutoff as actual restricted private scoring. Do not
+        // count old 24-hour publisher originals as score-ready signals.
+        maxAgeMs:6*60*60*1000,
+        includeSecondPublisher: true,
         includeThirdPublisher: true,
         // Match the exact primary Fed/USGS original-date admission path used
         // by protected private scoring; still observation-only and bounded.
