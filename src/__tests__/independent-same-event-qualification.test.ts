@@ -1,13 +1,17 @@
 import {describe,expect,it,vi} from "vitest";
-import {createHash} from "node:crypto";
+import {createHash,generateKeyPairSync,sign} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {
   qualifyIndependentSameEvent,sameEventClaimHash,
-  SAME_EVENT_QUALIFICATION_SCHEMA,
+  qualificationReviewSigningBytes,SAME_EVENT_QUALIFICATION_SCHEMA,
 } from "../../scripts/lib/independent-same-event-qualification.mjs";
 import {publishB2VerifiedHotSnapshot} from "../../scripts/ops/publish-b2-verified-hot-snapshot.mjs";
 
 const now=new Date("2026-10-10T11:00:00Z");
+const keyPair=generateKeyPairSync("ed25519");
+const trustedReviewerPublicKeyPem=keyPair.publicKey.export({type:"spki",format:"pem"}).toString();
+const signReview=(p:any)=>({...p,review_signature_base64:sign(null,
+  qualificationReviewSigningBytes(p),keyPair.privateKey).toString("base64")});
 const hex=(s:string)=>createHash("sha256").update(s).digest("hex");
 const identity={
   country_iso3:"USA",event_type:"central_bank_policy",
@@ -56,7 +60,7 @@ const proof={
   ],
 };
 const go=(p:any=proof)=>
-  qualifyIndependentSameEvent({rows,eventPackages:[p],now});
+  qualifyIndependentSameEvent({rows,eventPackages:[signReview(p)],now,trustedReviewerPublicKeyPem});
 
 describe("#1827 strict multi-publisher same-event commercial gate",()=>{
   it("only admits registered original native-date same-event claim with two distinct signed-off organizations",()=>{
@@ -66,6 +70,7 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
       independent_reporting_organizations:2,
       event_claim_sha256:claim,source_bytes_private_only:true,
       same_event_structured_identity_verified:true,
+      trusted_ed25519_review_signature_verified:true,
     });
     expect(r.receipt.no_raw_news_exposed).toBe(true);
     expect(r.receipt.no_publisher_url_exposed).toBe(true);
@@ -127,6 +132,18 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
     ])expect(()=>go({...proof,evidence:[a,broken]})).toThrow(/^INDEPENDENT_EVENT_/);
     expect(()=>go({...proof,event:{...identity,occurred_at:"2026-10-09T03:00:00Z"}}))
       .toThrow(/^INDEPENDENT_EVENT_/);
+  });
+  it("a forged or altered reviewer signature, or absent trusted key, never qualifies",()=>{
+    const good=signReview(proof);
+    const bad={...good,review_signature_base64:
+      good.review_signature_base64.slice(0,12)+"A"+good.review_signature_base64.slice(13)};
+    expect(()=>qualifyIndependentSameEvent({rows,eventPackages:[bad],now,
+      trustedReviewerPublicKeyPem})).toThrow(/^INDEPENDENT_EVENT_/);
+    expect(()=>qualifyIndependentSameEvent({rows,eventPackages:[good],now}))
+      .toThrow("INDEPENDENT_EVENT_TRUSTED_REVIEW_KEY_REQUIRED");
+    const tampered={...good,event:{...good.event,location_id:"london_city"}};
+    expect(()=>qualifyIndependentSameEvent({rows,eventPackages:[tampered],now,
+      trustedReviewerPublicKeyPem})).toThrow(/^INDEPENDENT_EVENT_/);
   });
   it("blocks live-observed raw/GDELT rows even with two source assertions",()=>{
     expect(()=>qualifyIndependentSameEvent({rows:[
