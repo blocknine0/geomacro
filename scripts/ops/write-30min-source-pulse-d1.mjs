@@ -125,7 +125,9 @@ export async function write30MinSourcePulseToD1({
        stored?.payload?.repeated_private_article_fingerprint_count!==
          privateDedup.get(row.domain).repeated_article_fingerprint_count ||
        JSON.stringify(stored?.payload?.recent_private_article_fingerprints)!==
-         JSON.stringify(privateDedup.get(row.domain).recent_private_article_fingerprints))
+         JSON.stringify(privateDedup.get(row.domain).recent_private_article_fingerprints) ||
+       JSON.stringify(stored?.payload?.newly_seen_private_article_refs)!==
+         JSON.stringify(privateDedup.get(row.domain).newly_seen_private_article_refs))
       throw Error("SOURCE_PULSE_D1_READBACK_MISMATCH");
   }
   return {
@@ -165,6 +167,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       "SOURCE_PULSE_CHECKPOINT_RISK_BYPASS",
       "SOURCE_PULSE_CHECKPOINT_30M_COUNT_INVALID",
       "SOURCE_PULSE_CHECKPOINT_DEGRADED_COUNT_INVALID",
+      "SOURCE_PULSE_CANDIDATE_HISTORY_INVALID",
+      "SOURCE_PULSE_PREVIOUS_HISTORY_INVALID",
+      "SOURCE_PULSE_UNSAFE_OR_UNDATED_CANDIDATE",
+      "SOURCE_PULSE_HISTORY_CAPACITY_EXCEEDED",
     ];
     const query=msg.match(/^D1_CONTROL_STATE_QUERY_FAILED:([0-9]{1,5})$/u);
     const code=known.includes(msg)?msg:
