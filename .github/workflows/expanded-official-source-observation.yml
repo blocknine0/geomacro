@@ -67,6 +67,17 @@ jobs:
               .within_90m >= 0 and .within_90m <= .within_6h and
               .within_6h <= .within_24h and
               (.original_publisher_transport_healthy | type)=="boolean"] | all) and
+            (.independent_original_origin_lanes | keys)==["geopolitics","macro","rare_earth"] and
+            ([.independent_original_origin_lanes[] |
+              (.organizations_with_6h_originals | type)=="number" and
+              (.organizations_with_90m_originals | type)=="number" and
+              .organizations_with_90m_originals>=0 and
+              .organizations_with_90m_originals<=.organizations_with_6h_originals and
+              .organizations_with_6h_originals<=2 and
+              .possible_two_independent_origins_in_6h == (.organizations_with_6h_originals>=2) and
+              .same_event_independent_corroboration_verified==false and
+              .source_rights_verified==false and
+              .commercial_eligible==false] | all) and
             ([.original_publisher_native_24h_topic_counts[]]|all(.>=0)) and
             ([.sources[] | select(.source_id=="eurostat_stats_update_official_rss_review") |
               if .format_valid then
