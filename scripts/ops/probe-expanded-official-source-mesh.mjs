@@ -7,6 +7,9 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const MAX_BODY_BYTES=192*1024;
+// Eurostat twice-daily official catalogue feed can exceed the small news-RSS
+// ceiling. Explicit one-source 1 MiB hard cap; never allow unlimited bodies.
+const EUROSTAT_MAX_BODY_BYTES=1024*1024;
 const DAY_MS=86_400_000;
 export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
   Object.freeze({
@@ -138,10 +141,11 @@ export async function probeExpandedSource(source,{
     return row;
   }
   const mime=response.headers.get("content-type")??"";
+  const maxBodyBytes=source.alternate_url?EUROSTAT_MAX_BODY_BYTES:MAX_BODY_BYTES;
   if(!(source.media==="rss"?XML_MIME:JSON_MIME).test(mime)) {
     row.reason="SOURCE_CONTENT_TYPE_INVALID";return row;
   }
-  if(Number(response.headers.get("content-length")||0)>MAX_BODY_BYTES||!response.body) {
+  if(Number(response.headers.get("content-length")||0)>maxBodyBytes||!response.body) {
     row.reason="SOURCE_BODY_UNAVAILABLE_OR_OVERSIZE";return row;
   }
   const reader=response.body.getReader();
@@ -150,7 +154,7 @@ export async function probeExpandedSource(source,{
     for(;;){
       const {done,value}=await reader.read();if(done)break;
       size+=value.byteLength;
-      if(size>MAX_BODY_BYTES){row.reason="SOURCE_BODY_UNAVAILABLE_OR_OVERSIZE";return row;}
+      if(size>maxBodyBytes){row.reason="SOURCE_BODY_UNAVAILABLE_OR_OVERSIZE";return row;}
       chunks.push(Buffer.from(value));
     }
   }catch{row.reason="SOURCE_BODY_READ_FAILURE";return row;}
