@@ -18,7 +18,8 @@ describe("Intelligence orchestrator D1 control transport", () => {
     expect(workflow).toContain("Run due intelligence tasks serially");
     expect(orchestrator).toContain('key: "phase_a_heartbeat"');
     expect(orchestrator).toContain("PHASE_A_HEARTBEAT_ONLY=1");
-    expect(orchestrator).toContain('key: "gdelt_gal",\n    restrictedDirectPostgresSafe: true');
+    expect(orchestrator).toMatch(/key:\s*"gdelt_gal"[\s\S]{0,380}restrictedDirectPostgresSafe:\s*false/);
+    expect(orchestrator).toMatch(/key:\s*"phase_a_heartbeat"[\s\S]{0,380}restrictedDirectPostgresSafe:\s*false/);
     expect(orchestrator).toContain("restrictedDirectPostgresSafe: true");
     for (const unsafe of ["production_readiness", "gdelt_v2", "current_scoring", "rss_live"]) {
       const marker = 'key: "' + unsafe + '",\n    restrictedDirectPostgresSafe: true';
@@ -49,7 +50,7 @@ describe("Intelligence orchestrator D1 control transport", () => {
   });
 
   it("preserves direct-Postgres data compatibility and single-owner scheduler invariants", () => {
-    expect(workflow).toContain('cron: "7,22,37,52 * * * *"');
+    expect(workflow).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
     expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
     expect(workflow).toContain("cancel-in-progress: false");
     expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
