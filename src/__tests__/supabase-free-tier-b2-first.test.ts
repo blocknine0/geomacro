@@ -46,7 +46,8 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(budget).toContain('transport: "direct_postgres_fallback"');
     expect(budget).toContain('const state = await readViaDataApi() ?? readViaDirectPostgres();');
     expect(budget).toContain('"psql"');
-    expect(orchestratorWorkflow).toContain('SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}');
+    expect(orchestratorWorkflow).not.toContain('SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}');
+    expect(orchestratorWorkflow).toContain('GEOMACRO_SUPABASE_RESTRICTED_MODE: "true"');
   });
 
   it("keeps raw cleanup on the Storage API and never SQL-deletes storage.objects", () => {
@@ -133,9 +134,10 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(productionCoverageWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write");
     expect(orchestratorWorkflow).toContain("workflow_dispatch:");
     expect(orchestratorWorkflow).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
-    expect(orchestratorWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
-    expect(orchestratorWorkflow.indexOf("supabase-free-tier-budget.mjs --require-bulk-write --require-normal"))
+    expect(orchestratorWorkflow).not.toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
+    expect(orchestratorWorkflow.indexOf("Enforce permanent frozen Supabase zero-probe source heartbeat"))
       .toBeLessThan(orchestratorWorkflow.indexOf("Run due intelligence tasks serially"));
+    expect(orchestratorWorkflow).toContain("FROZEN_SUPABASE_NO_NETWORK");
     expect(autoIngestWorkflow).toContain("workflow_dispatch: {}");
     expect(autoIngestWorkflow).not.toContain("schedule:");
     expect(autoIngestWorkflow).not.toContain("\n  push:\n");

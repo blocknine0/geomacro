@@ -38,7 +38,7 @@ describe("Auto Ingest News reliability contract", () => {
     expect(orchestratorWorkflow).toContain("D1_DATABASE_ID=$DB_ID");
     expect(orchestratorWorkflow).toContain("D1/B2 scheduler runtime validated without requiring Supabase availability");
     expect(orchestratorWorkflow).toContain("Supabase restricted: D1 plus fixed-cardinality source heartbeat remains live");
-    expect(orchestratorWorkflow).toContain("GEOMACRO_SUPABASE_RESTRICTED_MODE=true");
+    expect(orchestratorWorkflow).toContain('GEOMACRO_SUPABASE_RESTRICTED_MODE: "true"');
     expect(orchestratorWorkflow).not.toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only");
     expect(orchestrator).toContain("const d1State = createD1ControlPlaneStateClient()");
     expect(orchestrator).toContain("await d1State.loadRows()");

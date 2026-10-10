@@ -312,7 +312,20 @@ jobs:
           const workflow = fs.readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
           const orchestrator = fs.readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
           const safe = ["official_native_rss"];
-          if (!workflow.includes("GEOMACRO_SUPABASE_RESTRICTED_MODE=true")) throw new Error("RESTRICTED_MODE_WORKFLOW_MISSING");
+          if (!workflow.includes('GEOMACRO_SUPABASE_RESTRICTED_MODE: "true"') ||
+              !workflow.includes("Enforce permanent frozen Supabase zero-probe source heartbeat") ||
+              !workflow.includes("FROZEN_SUPABASE_NO_NETWORK")) {
+            throw new Error("RESTRICTED_MODE_ZERO_PROBE_WORKFLOW_MISSING");
+          }
+          for (const forbidden of [
+            "secrets.SUPABASE_DB_URL",
+            "secrets.SUPABASE_SERVICE_ROLE_KEY",
+            "secrets.APP_SUPABASE_URL",
+            "supabase-free-tier-budget.mjs --require-bulk-write --require-normal",
+            "NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs",
+          ]) {
+            if (workflow.includes(forbidden)) throw new Error("SCHEDULED_FROZEN_SUPABASE_PATH_REINTRODUCED");
+          }
           if (workflow.includes("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only")) throw new Error("D1_ONLY_FREEZE_STILL_PRESENT");
           if (!orchestrator.includes("restrictedDataPlane && task.restrictedDirectPostgresSafe !== true")) throw new Error("RESTRICTED_FILTER_MISSING");
           for (const key of safe) {

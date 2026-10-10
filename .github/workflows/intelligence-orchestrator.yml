@@ -45,14 +45,12 @@ jobs:
     timeout-minutes: 55
     environment: production
     env:
-      # Legacy Supabase values remain available only for tasks that have not yet
-      # been migrated. Scheduler/control-state authority is D1, not Supabase.
-      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      # Supabase-free 90-minute scheduled control plane. Do not inject or
+      # even probe exhausted database/REST/storage credentials here.
+      # Separately owner-authorized budget recovery is a manual workflow.
+      GEOMACRO_SUPABASE_EDGE_AVAILABLE: "false"
+      GEOMACRO_SUPABASE_DATA_AVAILABLE: "false"
+      GEOMACRO_SUPABASE_RESTRICTED_MODE: "true"
 
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -180,44 +178,21 @@ jobs:
           node --check scripts/intelligence-orchestrator.mjs
           echo "PASS: D1/B2 scheduler runtime validated without requiring Supabase availability."
 
-      - name: Probe optional Supabase data plane without blocking D1/B2 heartbeat
+      - name: Enforce permanent frozen Supabase zero-probe source heartbeat
         shell: bash
         run: |
           set -euo pipefail
-          rm -f supabase-budget.json
-          set +e
-          node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-normal > supabase-budget.json 2>supabase-budget.stderr
-          rc=$?
-          set -e
-          if [ "$rc" -eq 0 ] && jq -e '.ok == true and .policy.recurring_ingest_allowed == true' supabase-budget.json >/dev/null 2>&1; then
-            transport="$(jq -r '.transport' supabase-budget.json)"
-            case "${transport}" in
-              data_api)
-                echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=true" >> "$GITHUB_ENV"
-                echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=true" >> "$GITHUB_ENV"
-                echo "GEOMACRO_SUPABASE_RESTRICTED_MODE=false" >> "$GITHUB_ENV"
-                ;;
-              direct_postgres_fallback)
-                echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=false" >> "$GITHUB_ENV"
-                echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=true" >> "$GITHUB_ENV"
-                echo "GEOMACRO_SUPABASE_RESTRICTED_MODE=false" >> "$GITHUB_ENV"
-                ;;
-              *)
-                echo "::error::Unknown Supabase budget transport: ${transport}"
-                exit 1
-                ;;
-            esac
-          else
-            # Supabase REST/Storage is optional for the scheduler. When the
-            # free-tier budget is restricted, keep only fixed-cardinality
-            # source-heartbeat/read-only tasks alive. Event/raw/scoring writers
-            # remain fail-closed and cannot be re-enabled by an allowlist.
-            echo "GEOMACRO_SUPABASE_EDGE_AVAILABLE=false" >> "$GITHUB_ENV"
-            echo "GEOMACRO_SUPABASE_DATA_AVAILABLE=false" >> "$GITHUB_ENV"
-            echo "GEOMACRO_SUPABASE_RESTRICTED_MODE=true" >> "$GITHUB_ENV"
-            echo '{"ok":false,"transport":"restricted_direct_postgres","policy":{"recurring_ingest_allowed":false,"fixed_cardinality_source_heartbeat_allowed":true}}' > supabase-budget.json
-            echo "Supabase restricted: D1 plus fixed-cardinality source heartbeat remains live; readiness/event/raw/scoring writers are fail-closed."
-          fi
+          # Permanent free-tier protection: refuse accidental credential
+          # inheritance before ANY scheduler task, even if a repo var flips.
+          for key in APP_SUPABASE_URL SUPABASE_URL SUPABASE_DB_URL APP_SUPABASE_SERVICE_ROLE_KEY SUPABASE_SERVICE_ROLE_KEY SUPABASE_PROJECT_ID; do
+            test -z "${!key:-}" || { echo "::error::FROZEN_SUPABASE_CREDENTIAL_IN_SCHEDULED_JOB"; exit 2; }
+          done
+          test "${GEOMACRO_SUPABASE_RESTRICTED_MODE:-}" = "true"
+          test "${GEOMACRO_SUPABASE_EDGE_AVAILABLE:-}" = "false"
+          test "${GEOMACRO_SUPABASE_DATA_AVAILABLE:-}" = "false"
+          printf '%s\n' '{"ok":false,"transport":"not-probed","reason":"FROZEN_SUPABASE_NO_NETWORK","supabase_requests":0,"policy":{"recurring_ingest_allowed":false,"fixed_cardinality_source_heartbeat_allowed":true}}' > supabase-budget.json
+          echo "Supabase restricted: D1 plus fixed-cardinality source heartbeat remains live; event/raw/scoring writers are fail-closed."
+          echo "PASS: frozen Supabase budget is not probed during scheduled D1/B2 source heartbeat."
 
       - name: Derive current public verification key
         shell: bash
@@ -244,8 +219,6 @@ jobs:
           NODE
 
       - name: Run due intelligence tasks serially
-        env:
-          NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs
         shell: bash
         run: |
           set -euo pipefail
@@ -277,7 +250,6 @@ jobs:
           path: |
             intelligence-orchestrator.json
             supabase-budget.json
-            supabase-budget.stderr
             gdelt-gal-cycle/**
             country-raw-source-sync.json
             artifacts/official-native-rss/**

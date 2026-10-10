@@ -89,8 +89,8 @@ describe("commercial runtime security baseline", () => {
     expect(orchestrator).toContain("group: geomacro-intelligence-orchestrator");
     expect(orchestrator).toContain("Resolve production D1 control-plane database");
     expect(orchestrator).toContain("Validate Supabase-independent scheduler runtime");
-    expect(orchestrator).toContain("Probe optional Supabase data plane without blocking D1/B2 heartbeat");
-    expect(orchestrator).toContain("GEOMACRO_SUPABASE_RESTRICTED_MODE=true");
+    expect(orchestrator).toContain("Enforce permanent frozen Supabase zero-probe source heartbeat");
+    expect(orchestrator).toContain('GEOMACRO_SUPABASE_RESTRICTED_MODE: "true"');
     expect(orchestrator).toContain("fixed-cardinality source heartbeat remains live");
     expect(orchestrator).toContain("event/raw/scoring writers are fail-closed");
     expect(orchestrator).not.toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=__d1_control_only");
