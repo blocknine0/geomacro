@@ -60,6 +60,10 @@ jobs:
           grep -q 'source_channel_key' scripts/run-live-flash-ingest-local.ts
           grep -q '6da33ed2a966d58122039ba38d83e801476a6318bc89634d0b3d951e8ad017c9' config/telegram-private-signal-bridge.json
           grep -q 'geomacro.telegram-lead-envelope.v2' scripts/verify-telegram-lead-envelope.mjs
+          grep -q 'B2_ACCOUNT_QUOTA_REQUIRED: "1"' .github/workflows/telegram-b2-d1-consumer.yml
+          grep -q 'B2_ACCOUNT_QUOTA_WORKFLOW_ID: telegram_b2_d1_consumer' .github/workflows/telegram-b2-d1-consumer.yml
+          grep -q 'check-telegram-b2-d1-admission.mjs --stage budget' .github/workflows/telegram-b2-d1-consumer.yml
+          grep -q 'steps.admission.outputs.can_consume' .github/workflows/telegram-b2-d1-consumer.yml
 
   consume:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
