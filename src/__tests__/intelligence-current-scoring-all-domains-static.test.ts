@@ -5,12 +5,21 @@ const workflow = readFileSync(".github/workflows/intelligence-current-scoring-al
 const script = readFileSync("scripts/ops/run-intelligence-current-scoring-cycle.mjs", "utf8");
 
 describe("#1414 current scored Intelligence across all launch domains", () => {
-  it("runs after the existing fastlane and on canonical main changes without adding an independent timer", () => {
-    expect(workflow).toContain('workflows: ["Intelligence Current Scoring Fastlane"]');
-    expect(workflow).toContain("types: [completed]");
-    expect(workflow).toContain("push:");
-    expect(workflow).not.toContain("schedule:");
+  it("quota-holds frozen Supabase legacy scoring on every main push and workflow completion", () => {
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("permit_legacy_supabase_scoring:");
+    expect(workflow).toContain("default: false");
+    expect(workflow).not.toContain("\n  schedule:");
+    expect(workflow).not.toContain("\n  push:");
+    expect(workflow).not.toContain("\n  workflow_run:");
+    expect(workflow).toContain("github.event.inputs.permit_legacy_supabase_scoring == 'true'");
+    expect(workflow).toContain("vars.GEOMACRO_ENABLE_LEGACY_SUPABASE_SCORING == 'true'");
+    expect(workflow).toContain("github.ref == 'refs/heads/main'");
     expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
+    // The actual fresh first-party discovery workflow is NOT disabled.
+    const source=readFileSync(".github/workflows/expanded-official-source-observation.yml", "utf8");
+    expect(source).toContain('cron: "17 0,3,6,9,12,15,18,21 * * *"');
+    expect(source).toContain('cron: "47 1,4,7,10,13,16,19,22 * * *"');
   });
 
   it("covers geopolitics, macro and rare earth with the canonical classifier contract", () => {
@@ -19,6 +28,8 @@ describe("#1414 current scored Intelligence across all launch domains", () => {
     expect(script).toContain('risk-desk-filter-v1.0.5');
     expect(script).toContain('raw_feature_score_promotion: false');
     expect(script).toContain('raw_event_metadata_score_promotion: false');
+    expect(script).toContain('Date.parse(String(row?.published_at ?? ""))');
+    expect(script).not.toContain("row?.published_at ?? row?.created_at");
   });
 
   it("falls back from any failed or empty GDELT DOC response to governed GAL discovery", () => {
