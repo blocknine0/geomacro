@@ -19,6 +19,9 @@ function report(counts=[0,1,2],degraded:string|null=null) {
       domain,checked_at:at,
       status:degraded===domain?"SOURCE_TRANSPORT_DEGRADED":"ORIGINAL_PUBLISHER_DATE_OBSERVED",
       original_publisher_30m_topic_count:degraded===domain?null:counts[i],
+      publisher_pair_sample_complete:degraded!==domain,
+      original_publishers_attempted:degraded===domain?1:2,
+      original_publishers_successful:degraded===domain?0:2,
       chargeable_intelligence_ready:false,signed_current_gro_verified:false,
       commercial_rights_verified:false,
     })),
@@ -58,6 +61,19 @@ describe("#1827 30m pulse D1 -> public API safe status (not GRO)",()=>{
     expect(stale.categories.geopolitics.original_publisher_topic_items_within_30m).toBeNull();
     const future=projectPublic30mPulse(base,new Date("2026-10-10T16:00:00.000Z"));
     expect(future.categories.macro.status).toBe("STALE_OR_UNAVAILABLE");
+  });
+
+  it("does not turn partial source monitoring into a false whole-category no-news result",()=>{
+    const input=report([0,0,0]);
+    input.actual_original_publisher_rows[0].publisher_pair_sample_complete=false;
+    input.actual_original_publisher_rows[0].original_publishers_successful=1;
+    const records=storedRows(projectSourcePulseForD1(input));
+    const result=projectPublic30mPulse(records,now);
+    expect(result.categories.geopolitics.status).toBe("SOURCE_NATIVE_OBSERVED");
+    expect(result.categories.geopolitics.original_publisher_topic_items_within_30m).toBe(0);
+    expect(result.categories.geopolitics.publisher_pair_sample_complete).toBe(false);
+    expect(result.categories.geopolitics.no_new_original_topic_item_observed).toBe(false);
+    expect(result.categories.macro.no_new_original_topic_item_observed).toBe(true);
   });
 
   it("never changes DEGRADE into healthy or 0 observed articles",()=>{

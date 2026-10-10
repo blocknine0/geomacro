@@ -39,7 +39,15 @@ export function projectPublic30mPulse(rows,now=new Date()) {
         healthy?"SOURCE_NATIVE_OBSERVED":"SOURCE_TRANSPORT_DEGRADED",
       last_checked_at:checked===null?null:new Date(checked).toISOString(),
       original_publisher_topic_items_within_30m:healthy?count:null,
-      no_new_original_topic_item_observed:healthy&&count===0,
+      publisher_pair_sample_complete:healthy&&received?.publisher_pair_sample_complete===true,
+      original_publishers_attempted:healthy&&Number.isSafeInteger(received?.original_publishers_attempted)
+        ?received.original_publishers_attempted:null,
+      original_publishers_successful:healthy&&Number.isSafeInteger(received?.original_publishers_successful)
+        ?received.original_publishers_successful:null,
+      // A checked publisher reporting zero is NOT a whole-domain no-news claim
+      // unless both bounded original publisher sources returned valid dates.
+      no_new_original_topic_item_observed:healthy&&
+        received?.publisher_pair_sample_complete===true&&count===0,
       independent_same_event_confirmation:false,
       source_commercial_rights_verified:false,
       current_signed_intelligence_available:false,

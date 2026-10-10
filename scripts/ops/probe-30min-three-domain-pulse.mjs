@@ -47,34 +47,59 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
   const slot=Math.floor(now.getTime()/INTERVAL_MS);
   const rows=await Promise.all(DOMAINS.map(async domain=>{
     const [primary,standby]=pairs[domain];
-    let result=await probe(primary,{now});
-    let failoverUsed=false;
-    // Do not repeatedly probe rate-limited, auth-denied or blocked publishers.
-    if(!result.format_valid && ![401,403,429].includes(result.primary_http_status)) {
-      result=await probe(standby,{now});
-      failoverUsed=true;
+    const attempted=[];
+    async function observe(source){
+      attempted.push(source.id);
+      // Source-specific transport failure is an unknown, not zero news.
+      try { return await probe(source,{now}); }
+      catch { return {source_id:source.id,domain,format_valid:false,primary_http_status:null}; }
     }
-    const valid=result?.format_valid===true &&
-      result?.publisher_reachable===true &&
-      result?.domain===domain &&
-      (result?.source_id===primary.id||result?.source_id===standby.id);
-    const count=valid?safeInt(result?.original_publisher_topical_30m):null;
-    const ninety=valid?safeInt(result?.original_publisher_topical_90m):null;
-    const sixh=valid?safeInt(result?.original_publisher_topical_6h):null;
-    const healthy=valid&&count!==null&&ninety!==null&&sixh!==null&&
-      count<=ninety&&ninety<=sixh;
+    const valid=(result,source)=>result?.format_valid===true &&
+      result?.publisher_reachable===true && result?.domain===domain &&
+      result?.source_id===source.id &&
+      [result.original_publisher_topical_30m,
+       result.original_publisher_topical_90m,
+       result.original_publisher_topical_6h].every(x=>safeInt(x)!==null) &&
+      result.original_publisher_topical_30m<=result.original_publisher_topical_90m &&
+      result.original_publisher_topical_90m<=result.original_publisher_topical_6h;
+    const first=await observe(primary);
+    const firstValid=valid(first,primary);
+    let second=null,secondValid=false;
+    // Previously a healthy publisher with 0 articles suppressed inspection
+    // of an entirely different original publisher until the next hour.
+    // Check that publisher in the SAME 30m window for better discovery.
+    // Do not re-route access-denied or throttled upstream (401/403/429).
+    if((firstValid && first.original_publisher_topical_30m===0) ||
+       (!firstValid && ![401,403,429].includes(first.primary_http_status))) {
+      second=await observe(standby);
+      secondValid=valid(second,standby);
+    }
+    const observed=[...(firstValid?[first]:[]),...(secondValid?[second]:[])];
+    const healthy=observed.length>0;
+    const count=healthy?observed.reduce((n,x)=>n+x.original_publisher_topical_30m,0):null;
+    const ninety=healthy?observed.reduce((n,x)=>n+x.original_publisher_topical_90m,0):null;
+    const sixh=healthy?observed.reduce((n,x)=>n+x.original_publisher_topical_6h,0):null;
+    const complete=firstValid&&secondValid;
+    if(healthy && (!Number.isSafeInteger(count) || !Number.isSafeInteger(ninety) ||
+       !Number.isSafeInteger(sixh) || count>1000 || ninety>1000 || sixh>1000))
+      throw Error("30M_MONITOR_AGGREGATE_INVALID");
     return {
       domain,
       status:healthy?"ORIGINAL_PUBLISHER_DATE_OBSERVED":"SOURCE_TRANSPORT_DEGRADED",
-      original_publisher_id:healthy?result.source_id:null,
+      original_publisher_id:healthy?observed[0].source_id:null,
       primary_publisher_id:primary.id,
-      publisher_failover_attempted:failoverUsed,
-      original_publisher_30m_topic_count:healthy?count:null,
-      original_publisher_90m_topic_count:healthy?ninety:null,
-      original_publisher_6h_topic_count:healthy?sixh:null,
-      no_new_30m_original_topic_item_observed:healthy&&count===0,
+      publisher_failover_attempted:attempted.length===2&&!firstValid,
+      publisher_zero_result_expansion_attempted:attempted.length===2&&firstValid,
+      original_publishers_attempted:attempted.length,
+      original_publishers_successful:observed.length,
+      publisher_pair_sample_complete:complete,
+      // Counts refer to originating publisher ITEMS, never de-duplicated
+      // same-event intelligence. Do not promote counts to news or GRO.
+      original_publisher_30m_topic_count:count,
+      original_publisher_90m_topic_count:ninety,
+      original_publisher_6h_topic_count:sixh,
+      no_new_30m_original_topic_item_observed:healthy&&complete&&count===0,
       checked_at:now.toISOString(),
-      // Original 30m count is a discovery observation, not event intelligence.
       event_same_subject_independent_corroboration_verified:false,
       commercial_rights_verified:false,
       signed_current_gro_verified:false,

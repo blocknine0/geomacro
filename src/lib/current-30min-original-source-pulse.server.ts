@@ -66,7 +66,11 @@ export async function categoryOriginalSourcePulse(
       status,
       checked_at:typeof row?.last_checked_at==="string"?row.last_checked_at:null,
       publisher_topic_items_in_last_30m:isHealthy?row.original_publisher_topic_items_within_30m:null,
-      no_new_relevant_original_item_observed:isHealthy&&row.original_publisher_topic_items_within_30m===0,
+      publisher_pair_sample_complete:isHealthy&&row.publisher_pair_sample_complete===true,
+      // Never advertise a no-news result from only one of two publishers.
+      no_new_relevant_original_item_observed:isHealthy&&
+        row.publisher_pair_sample_complete===true&&
+        row.original_publisher_topic_items_within_30m===0,
     },
     observational_only:true,
     current_signed_risk_intelligence_verified:false,
