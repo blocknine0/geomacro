@@ -52,6 +52,6 @@ describe("#1827 frozen Supabase GRI quota hold (no fake currentness)",()=>{
     expect(canonicalIngestion).toContain('cron: "17 2,5,8,11,14,17,20,23 * * *"');
     expect(canonicalIngestion).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
     expect(canonicalIngestion).toContain("B2_ACCOUNT_QUOTA_WORKFLOW_ID: intelligence_orchestrator");
-    expect(canonicalIngestion).toContain("GEOMACRO_SUPABASE_RESTRICTED_MODE=true");
+    expect(canonicalIngestion).toContain('GEOMACRO_SUPABASE_RESTRICTED_MODE: "true"');
   });
 });
