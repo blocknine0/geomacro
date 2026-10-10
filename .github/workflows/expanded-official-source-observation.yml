@@ -5,15 +5,20 @@ on:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "src/__tests__/expanded-official-source-observation.test.ts"
       - ".github/workflows/expanded-official-source-observation.yml"
+      - "scripts/ops/audit-90min-three-domain-coverage.mjs"
+      - "src/__tests__/audit-90min-three-domain-coverage.test.ts"
   push:
     branches: [main]
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - ".github/workflows/expanded-official-source-observation.yml"
+      - "scripts/ops/audit-90min-three-domain-coverage.mjs"
   schedule:
-    # Four bounded cycles/day, nine feed GETs/cycle, max four first-party article-date GETs plus one fixed Eurostat locale fallback; complement existing hourly
-    # original-source probe without depleting Actions or B2 free quotas.
-    - cron: "17 0,6,12,18 * * *"
+    # Sixteen intended slots/day: every 90 minutes in UTC. GitHub may
+    # delay or skip runs; monitor reports observed lag, not guaranteed SLA.
+    # 9 source GET + max 4 original date checks + 1 Eurostat fallback per cycle.
+    - cron: "17 0,3,6,9,12,15,18,21 * * *"
+    - cron: "47 1,4,7,10,13,16,19,22 * * *"
   workflow_dispatch:
 concurrency:
   group: geomacro-expanded-official-source-${{ github.ref }}
@@ -100,5 +105,50 @@ jobs:
         with:
           name: expanded-official-source-transport-${{ github.run_id }}
           path: artifacts/expanded-official-source/transport.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  read-only-country-matrix:
+    # Run even when upstream official source fails. One read-only D1 query.
+    if: ${{ always() && github.repository == 'blocknine0/geomacro' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GEOMACRO_EXPECTED_CRON: ${{ github.event.schedule }}
+    steps:
+      - name: Checkout exact canonical monitor
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Prove 195 country x 3 category D1 readiness metadata without identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" && test -n "${CLOUDFLARE_ACCOUNT_ID:-}" \
+            || { echo "::error::D1_AGGREGATE_READ_AUTH_MISSING"; exit 3; }
+          # Exactly one bounded SELECT; no country IDs, source URL, payload,
+          # raw article, hash or signed object is ever retrieved.
+          sql="SELECT lower(domain) AS domain, readiness_status, count(*) AS row_count, sum(CASE WHEN certified_source_count > 0 THEN 1 ELSE 0 END) AS certified_source_cells, sum(CASE WHEN last_verified_at IS NOT NULL AND unixepoch(last_verified_at) BETWEEN unixepoch('now','-90 minutes') AND unixepoch('now','+5 minutes') THEN 1 ELSE 0 END) AS recent_verified_cells, max(last_verified_at) AS last_verified_at FROM country_domain_state GROUP BY lower(domain), readiness_status ORDER BY domain, readiness_status LIMIT 90;"
+          raw="$(mktemp)"; errors="$(mktemp)"
+          trap 'rm -f "$raw" "$errors"' EXIT
+          if ! npx -y wrangler@4.136.3 d1 execute geomacro-control-plane \
+            --remote --json --command "$sql" >"$raw" 2>"$errors"; then
+            echo "::error::D1_AGGREGATED_READ_QUERY_FAILED"
+            exit 3
+          fi
+          node scripts/ops/audit-90min-three-domain-coverage.mjs < "$raw"
+      - name: Retain derived-only 90-minute matrix receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: three-domain-90min-country-matrix-${{ github.run_id }}
+          path: artifacts/expanded-official-source/90min-country-census.json
           if-no-files-found: warn
           retention-days: 3
