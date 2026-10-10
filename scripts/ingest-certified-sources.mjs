@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { createB2Client } from "./ops/b2-s3-client.mjs";
+import { createB2D1AccountGovernor } from "./ops/b2-d1-account-governor.mjs";
+import { evaluateGovernedB2Headroom } from "./lib/governed-b2-headroom.mjs";
 import {
   governedMetricCategory,
   governedSourceNativeSpan,
@@ -340,6 +342,35 @@ async function archiveSourceBatch(sourceId, rows) {
   };
 }
 
+// Compute the actual deterministic gzip fragment count BEFORE the first B2
+// PUT. A tiny 2+2 early D1 headroom check cannot guarantee that larger,
+ // provider-native source batches will fit the remaining daily GET/PUT caps.
+ // Every fragment is partitioned with exactly the same size and member rules
+ // as archiveVerifiedFragment, without making any B2 call or deleting data.
+function plannedSourceFragmentCount(sourceId, rows) {
+  let pending = [...rows].sort((a,b) => a.observation_id.localeCompare(b.observation_id));
+  let count = 0;
+  while (pending.length) {
+    if (count >= MAX_FRAGMENTS_PER_SOURCE)
+      throw new Error(`TOO_MANY_FRAGMENTS:${sourceId}`);
+    let selected = pending.slice(0,Math.min(MAX_FRAGMENT_MEMBERS,pending.length));
+    let accepted = null;
+    while(selected.length) {
+      const candidate=buildFragment(sourceId,selected);
+      if(candidate.bundleBytes.length <= MAX_FRAGMENT_UNCOMPRESSED_BYTES &&
+         candidate.compressed.length <= MAX_FRAGMENT_COMPRESSED_BYTES) {
+        accepted=selected.length;
+        break;
+      }
+      selected=selected.slice(0,-1);
+    }
+    if(!accepted) throw new Error(`NO_SAFE_FRAGMENT_SIZE:${sourceId}`);
+    pending=pending.slice(accepted);
+    count += 1;
+  }
+  return count;
+}
+
 const handlers = { eia_api_v2: eia, noaa_ncei_cdo_api: noaa };
 const sourceIds = (process.env.SOURCE_INGESTION_SOURCES ?? "eia_api_v2,noaa_ncei_cdo_api").split(",").map((value) => value.trim()).filter(Boolean);
 if (!sourceIds.length || sourceIds.length > 2 ||
@@ -363,10 +394,23 @@ for (const sourceId of sourceIds) {
 }
 // Budget pessimistically per fragment; large-fragment splits still hit the
 // independent local+shared quota guard before any additional network call.
-const minimumB2Requests = sourceBatches.reduce((total, batch) =>
-  total + Math.ceil(batch.rows.length / MAX_FRAGMENT_MEMBERS) * 2, 0);
+const exactPlannedFragments = sourceBatches.reduce((total, batch) =>
+  total + plannedSourceFragmentCount(batch.sourceId,batch.rows), 0);
+const minimumB2Requests = exactPlannedFragments * 2;
 if (minimumB2Requests > Number(process.env.B2_REQUEST_BUDGET ?? 0)) {
   throw new Error("GOVERNED_SOURCE_MINIMUM_B2_BUDGET_INSUFFICIENT");
+}
+// Read-only D1 headroom check after BOTH source batches and exact compressed
+// fragment partitioning, before the first irreversible B2 request. The daily
+// ledger is shared with other workflows and Worker edge GETs. The check does
+// NOT authorize a request: every actual GET/PUT still atomically reserves D1.
+const quotaSnapshot=await createB2D1AccountGovernor().status();
+const plannedHeadroom=evaluateGovernedB2Headroom(quotaSnapshot,{
+  getRequests:exactPlannedFragments,
+  putRequests:exactPlannedFragments,
+});
+if(!plannedHeadroom.admitted) {
+  throw new Error("GOVERNED_SOURCE_SHARED_B2_PLAN_QUOTA_HELD");
 }
 const summaries = [];
 for (const { sourceId, rows } of sourceBatches) {
