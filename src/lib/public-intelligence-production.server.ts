@@ -150,7 +150,9 @@ export async function readProductionPublicIntelligence(): Promise<ProductionPubl
 
   const newest = newestAt(rows);
   const newestMs = newest ? Date.parse(newest) : -Infinity;
-  const currentWithin24h =
+  // Three-domain public freshness can never be certified by ONE recent
+  // geopolitical story while Macro/FX or Critical Minerals is historical.
+  const currentWithin24h = scoredCurrentAcrossAllDomains &&
     Number.isFinite(newestMs) && newestMs <= Date.now() && Date.now() - newestMs <= DAY_MS;
 
   return {
