@@ -30,7 +30,7 @@ export function reconcile30mPrivateArticleFingerprints({
   const history = new Map();
   for(const entry of previousHistory ?? []) {
     if(!entry || typeof entry!=="object" || Array.isArray(entry) ||
-       !HEX.test(String(entry.article_sha256)) ||
+       entry.domain!==domain || !HEX.test(String(entry.article_sha256)) ||
        !Number.isFinite(time(entry.native_published_at)) ||
        time(entry.native_published_at)>now ||
        history.has(entry.article_sha256))
@@ -38,7 +38,7 @@ export function reconcile30mPrivateArticleFingerprints({
     const stamped = time(entry.native_published_at);
     if(now-stamped <= RETAIN_MS)
       history.set(entry.article_sha256,{
-        article_sha256: entry.article_sha256,
+        domain, article_sha256: entry.article_sha256,
         native_published_at: entry.native_published_at,
       });
   }
@@ -67,7 +67,7 @@ export function reconcile30mPrivateArticleFingerprints({
       continue;
     }
     history.set(sha,{
-      article_sha256:sha,
+      domain, article_sha256:sha,
       native_published_at:candidate.native_published_at,
     });
     fresh++;
