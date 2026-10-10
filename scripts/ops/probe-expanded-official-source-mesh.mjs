@@ -148,7 +148,7 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   statcan_prices_original_atom_review:/^\/n1\/daily-quotidien\/\d{6}\//u,
   nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
   uk_fcdo_original_foreign_policy_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-  fed_monetary_original_press_rss_review:/^\/newsevents\/pressreleases\//u,
+  fed_monetary_original_press_rss_review:/^\/newsevents\/pressreleases\/[A-Za-z0-9][^/?#]*/u,
   usgs_minerals_original_news_rss_review:/^\/(?:news|programs\/mineral-resources-program\/news)(?:\/|$)/u,
 });
 
