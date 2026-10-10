@@ -1,6 +1,7 @@
 name: Public D1 Hot Serving Root Cause
 
-# Isolated, bounded, unauthenticated read-only production health diagnosis.
+# Isolated read-only production health diagnosis. Public GET plus one narrow
+# authenticated D1 metadata SELECT (no payload_json, hashes, raw sources).
 # This workflow does not mutate B2, Supabase, D1, x402, or website deployment.
 on:
   workflow_dispatch: {}
@@ -9,7 +10,9 @@ on:
     paths:
       - ".github/workflows/public-hot-serving-diagnostic.yml"
       - "scripts/ops/diagnose-public-hot-serving.mjs"
+      - "scripts/ops/classify-d1-hot-metadata.mjs"
       - "src/__tests__/diagnose-public-hot-serving.test.ts"
+      - "src/__tests__/classify-d1-hot-metadata.test.ts"
 
 permissions:
   contents: read
@@ -22,7 +25,8 @@ jobs:
   diagnose:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 9
+    environment: production
     steps:
       - name: Checkout immutable candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,7 +39,9 @@ jobs:
           node-version: '22'
 
       - name: Verify read-only diagnostic script syntax
-        run: node --check scripts/ops/diagnose-public-hot-serving.mjs
+        run: |
+          node --check scripts/ops/diagnose-public-hot-serving.mjs
+          node --check scripts/ops/classify-d1-hot-metadata.mjs
 
       - name: Diagnose public site and all 3 D1 hot-snapshot products
         id: diagnose
@@ -46,11 +52,36 @@ jobs:
           # payload, API token, paid request or direct B2 GET is printed.
           node scripts/ops/diagnose-public-hot-serving.mjs
 
+      - name: Check three D1 publisher timestamps and expiry windows (metadata-only)
+        if: always()
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::D1_READ_TOKEN_REQUIRED"; exit 2; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "::error::D1_READ_ACCOUNT_REQUIRED"; exit 2; }
+          # ONE remote SELECT; do not fetch payload_json or complete hashes.
+          # Never print Wrangler raw response / Cloudflare stderr in logs.
+          sql="SELECT product, schema_name, generated_at, source_as_of, expires_at, b2_object_key, proof_schema, source_run_id, length(b2_sha256) AS b2_hash_length, length(payload_sha256) AS payload_hash_length, length(CAST(payload_json AS BLOB)) AS payload_bytes FROM public_b2_hot_snapshot WHERE product IN ('intelligence','global-risk','risk-indices') LIMIT 3;"
+          raw="$(mktemp)"
+          err="$(mktemp)"
+          trap 'rm -f "$raw" "$err"' EXIT
+          if ! npx -y "wrangler@4.136.3" d1 execute geomacro-control-plane \
+            --remote --json --command "$sql" >"$raw" 2>"$err"; then
+            echo "::error::D1_READONLY_METADATA_SELECT_FAILED"
+            exit 2
+          fi
+          node scripts/ops/classify-d1-hot-metadata.mjs < "$raw"
+
       - name: Upload scrubbed production status regardless of health
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
         with:
           name: public-serving-diagnostic-${{ github.run_id }}
-          path: artifacts/public-serving/diagnostic.json
+          path: |
+            artifacts/public-serving/diagnostic.json
+            artifacts/public-serving/d1-metadata.json
           if-no-files-found: warn
           retention-days: 7
