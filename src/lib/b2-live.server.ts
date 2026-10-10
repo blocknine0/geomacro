@@ -1,3 +1,4 @@
+import { createPerKeySingleFlight } from "./b2-single-flight";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 import type { GlobalRisk } from "./global-risk.types";
 import { validateGlobalRiskContinuity } from "./global-risk-continuity";
@@ -69,6 +70,8 @@ type B2Config = { accessKey: string; secretKey: string };
 type CacheEntry = { expiresAt: number; bytes: Uint8Array };
 
 const cache = new Map<string, CacheEntry>();
+// Prevent one public traffic burst from spawning concurrent B2 Class-B GETs.
+const shareSignedB2Read = createPerKeySingleFlight<string, Uint8Array | null>();
 let failureCount = 0;
 let circuitOpenedAt = 0;
 
@@ -141,6 +144,11 @@ function noteFailure() {
 }
 
 async function signedGet(key: string): Promise<Uint8Array | null> {
+  // Only an in-flight de-duplication. No stale/error-cache promotion.
+  return shareSignedB2Read(key, () => signedGetOnce(key));
+}
+
+async function signedGetOnce(key: string): Promise<Uint8Array | null> {
   const cfg = config();
   if (!cfg || !allowedKey(key) || circuitOpen()) return null;
 
