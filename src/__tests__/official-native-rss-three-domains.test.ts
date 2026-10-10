@@ -51,14 +51,18 @@ describe("three official publishers' original-event RSS discovery", () => {
   });
 
   it("hourly probe requests all three fixed publisher families only through conditional cold fallback", async () => {
-    const requested: Array<{category:string; includeSecondPublisher?:boolean; includeThirdPublisher?:boolean}> = [];
+    const requested: Array<{category:string; includeSecondPublisher?:boolean; includeThirdPublisher?:boolean; includeOriginalPageDateFallback?:boolean}> = [];
     const fetchArticles = vi.fn(async (category: string, options: {
       diagnostics: Record<string, number | boolean>;
       includeSecondPublisher?: boolean;
       includeThirdPublisher?: boolean;
+      includeOriginalPageDateFallback?: boolean;
+      maxAgeMs?: number;
     }) => {
+      expect(options.maxAgeMs).toBe(6*60*60*1000);
       requested.push({category,includeSecondPublisher: options.includeSecondPublisher,
-        includeThirdPublisher: options.includeThirdPublisher});
+        includeThirdPublisher: options.includeThirdPublisher,
+        includeOriginalPageDateFallback:options.includeOriginalPageDateFallback});
       Object.assign(options.diagnostics, {
         item_count: 4,
         item_native_pubdate_count: 3,
@@ -81,9 +85,9 @@ describe("three official publishers' original-event RSS discovery", () => {
     });
     const audit = await probeOfficialThreeDomains({fetchArticles,now});
     expect(requested).toEqual([
-      {category:"geopolitics",includeSecondPublisher:true,includeThirdPublisher:true},
-      {category:"macro",includeSecondPublisher:true,includeThirdPublisher:true},
-      {category:"rare_earth",includeSecondPublisher:true,includeThirdPublisher:true},
+      {category:"geopolitics",includeSecondPublisher:true,includeThirdPublisher:true,includeOriginalPageDateFallback:true},
+      {category:"macro",includeSecondPublisher:true,includeThirdPublisher:true,includeOriginalPageDateFallback:true},
+      {category:"rare_earth",includeSecondPublisher:true,includeThirdPublisher:true,includeOriginalPageDateFallback:true},
     ]);
     expect(audit.measured_source_scope).toBe("THREE_DOMAINS_UP_TO_THREE_FIXED_OFFICIAL_PUBLISHERS_EACH");
     expect(audit.current_private_original_event_domains).toBe(0);
@@ -102,6 +106,37 @@ describe("three official publishers' original-event RSS discovery", () => {
     expect(audit.supabase_writes).toBe(0);
     expect(audit.funds_touched).toBe(false);
     expect(JSON.stringify(audit)).not.toContain("https://");
+  });
+
+  it("reports only safe counts from real canonical first-party missing-date rescue",async()=>{
+    const flags=new Map<string,boolean>();
+    const fetchArticles=async(domain:string,opts:{
+      diagnostics:Record<string,unknown>;
+      includeOriginalPageDateFallback:boolean;
+    })=>{
+      flags.set(domain,opts.includeOriginalPageDateFallback);
+      Object.assign(opts.diagnostics,{
+        primary_feed_ok:true,alternate_feed_attempted:false,
+        original_page_precise_date_checks:domain==="geopolitics"?0:1,
+        original_page_precise_date_admitted:domain==="geopolitics"?0:1,
+      });
+      const info=fixtures.find(([category])=>category===domain)!;
+      return [{title:info[2],description:"secret raw editorial evidence",
+        url:"https://"+info[1]+"/private-original/source",
+        publishedAt:"2026-10-09T11:30:00Z",
+        discoveryProvider:"official_native_rss",
+        nativePublishedAtVerified:true,privateOnly:true,
+        rightsVerified:false,commercialEligible:false}];
+    };
+    const proof=await probeOfficialThreeDomains({now,fetchArticles});
+    expect([...flags.values()]).toEqual([true,true,true]);
+    expect(proof.categories.map((x:any)=>x.private_primary_original_page_checks))
+      .toEqual([0,1,1]);
+    expect(proof.categories.map((x:any)=>x.private_primary_original_page_admitted))
+      .toEqual([0,1,1]);
+    expect(proof.proves_public_scored_intelligence).toBe(false);
+    expect(JSON.stringify(proof)).not.toContain("secret raw editorial evidence");
+    expect(JSON.stringify(proof)).not.toContain("private-original/source");
   });
 
   it("carries only a stable minerals third-feed failure code into hourly source audit",async()=>{
