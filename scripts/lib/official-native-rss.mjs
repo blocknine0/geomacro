@@ -205,6 +205,7 @@ export async function fetchOfficialNativeArticles(category, {
   includeSecondPublisher = false,
   includeThirdPublisher = false,
   includeOriginalPageDateFallback = false,
+  sampleAllPublishers = false,
 } = {}) {
   const config = OFFICIAL_NATIVE_FEEDS[category];
   if (!config) throw new Error("OFFICIAL_NATIVE_RSS_CATEGORY_INVALID");
@@ -234,7 +235,7 @@ export async function fetchOfficialNativeArticles(category, {
   // probes the fixed alternate even with eligible primary items. This widens
   // discovery ONLY: shared articles or distinct hosts do not prove corroboration,
   // commercial rights, severity, or any public publication eligibility.
-  if (primary.length > 0 && !includeSecondPublisher) return primary;
+  if (primary.length > 0 && !includeSecondPublisher && !sampleAllPublishers) return primary;
   if (diagnostics && typeof diagnostics === "object")
     diagnostics.alternate_feed_attempted = true;
   let alternate = [];
@@ -258,13 +259,15 @@ export async function fetchOfficialNativeArticles(category, {
     diagnostics.third_feed_ok = null;
     diagnostics.third_feed_failure_code = null;
   }
-  if (combined.length>0 || !includeThirdPublisher) {
+  if (!sampleAllPublishers && (combined.length>0 || !includeThirdPublisher)) {
     if (!combined.length && primaryUnavailable && alternateUnavailable)
       throw new Error("OFFICIAL_ORIGINAL_FEEDS_UNAVAILABLE");
     return combined;
   }
-  // This third publisher is consulted ONLY when primary and alternate
-  // yield zero qualifying original-publisher, in-window domain events.
+  // Default: consult the third feed only when the earlier feeds are empty.
+  // Complete sampling: always inspect the fixed third feed, even when an
+  // earlier publisher has news. This avoids suppressing unrelated new events.
+  // Still at most three fixed feeds; downstream classifier quota is unchanged.
   // Never fill quiet periods using stale feed clocks or GDELT seen dates.
   if (diagnostics && typeof diagnostics === "object")
     diagnostics.third_feed_attempted = true;
@@ -274,7 +277,12 @@ export async function fetchOfficialNativeArticles(category, {
     });
     if (diagnostics && typeof diagnostics === "object")
       diagnostics.third_feed_ok = true;
-    return third;
+    const urls = new Set(combined.map(row => row.url));
+    const merged = [...combined];
+    for (const row of third) {
+      if (!urls.has(row.url)) { urls.add(row.url); merged.push(row); }
+    }
+    return merged.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
   } catch (error) {
     if (diagnostics && typeof diagnostics === "object") {
       diagnostics.third_feed_ok = false;
@@ -300,6 +308,6 @@ export async function fetchOfficialNativeArticles(category, {
     }
     if (primaryUnavailable && alternateUnavailable)
       throw new Error("OFFICIAL_ORIGINAL_FEEDS_UNAVAILABLE");
-    return [];
+    return combined;
   }
 }
