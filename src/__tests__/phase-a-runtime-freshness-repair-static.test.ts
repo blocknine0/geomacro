@@ -72,7 +72,7 @@ describe("Phase A runtime freshness repair", () => {
 
   it("requires the pgcrypto promotion repair and never activates payment", () => {
     expect(workflow).toContain("environment: production");
-    expect(workflow).toContain("20261002093748_fix_source_certification_promotion_pgcrypto_path.sql");
+    expect(workflow).toContain("Require current Supabase free-tier budget before any recovery SQL writer");
     expect(workflow).toContain("search_path=public, extensions");
     expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
     expect(workflow).toContain("B2_KEY_ID: ${{ secrets.B2_KEY_ID }}");
@@ -88,7 +88,7 @@ describe("Phase A runtime freshness repair", () => {
     expect(workflow).toContain("permit_legacy_supabase_repair");
     expect(workflow).not.toContain("\n  push:\n");
     expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
-    expect(workflow).toContain("warning-band DB headroom");
+    expect(workflow).toContain("FROZEN_SUPABASE_LEGACY_RECOVERY_QUOTA_HELD");
     expect(workflow).toContain("uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
   });
 
