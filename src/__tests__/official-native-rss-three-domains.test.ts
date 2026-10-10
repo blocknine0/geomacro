@@ -329,6 +329,8 @@ describe("three official publishers' original-event RSS discovery", () => {
     expect(workflow).toContain("artifacts/official-native-rss/**");
     // A PR verifies source-audit contract even when an external publisher
     // is unavailable; manually dispatched production source proof remains RED.
+    expect(sourceProof).toContain('push:\n    branches: [main]');
+    expect(sourceProof).toContain('"scripts/ops/probe-official-native-rss-three-domains.mjs"');
     expect(sourceProof).toContain('if [[ "${{ github.event_name }}" != "pull_request" ]]');
     expect(sourceProof).toContain('exit "$rc"');
     expect(sourceProof).toContain('publisher_transport_failure_domains > 0');
