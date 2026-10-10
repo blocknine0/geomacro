@@ -29,6 +29,8 @@ describe("#1827 90m source cadence and no-raw D1 195x3 metadata",()=>{
    const result=classifyCountryMatrixAggregate(response(rows),{nowMs:at});
    expect(result.target_country_domain_cells).toBe(585);
    expect(result.metadata_matrix_floor_met).toBe(true);
+   // 750 D1 rows alone are NOT a freshly verified 195x3 matrix.
+   expect(result.verified_metadata_90m_floor_met).toBe(false);
    expect(result.coverage_matrix.geopolitics.metadata_country_cells).toBe(195);
    expect(result.coverage_matrix.macro.certified_source_cells).toBe(120);
    expect(result.coverage_matrix.rare_earth.verified_within_90m_metadata_cells).toBe(0);
@@ -40,9 +42,20 @@ describe("#1827 90m source cadence and no-raw D1 195x3 metadata",()=>{
    expect(result.customer_source_urls_exported).toBe(false);
    expect(JSON.stringify(result)).not.toContain("DO_NOT_LEAK");
  });
+ it("accepts only metadata clock floor in all three, never commercial scored readiness",()=>{
+   const all=rows.map(r=>({...r,certified_source_cells:195,
+     recent_verified_cells:195,
+     last_verified_at:"2026-10-10T09:03:00.000Z"}));
+   const receipt=classifyCountryMatrixAggregate(response(all),{nowMs:at});
+   expect(receipt.verified_metadata_90m_floor_met).toBe(true);
+   expect(receipt.current_verified_195x3_risk_intelligence).toBe(false);
+   expect(receipt.all_new_global_developments_detected).toBe(false);
+   expect(receipt.paid_coverage_accepted).toBe(false);
+ });
  it("retains RED absent domains with no identity/source leakage",()=>{
    const got=classifyCountryMatrixAggregate(response(rows.slice(0,2)),{nowMs:at});
    expect(got.metadata_matrix_floor_met).toBe(false);
+   expect(got.verified_metadata_90m_floor_met).toBe(false);
    expect(got.coverage_matrix.rare_earth.metadata_country_cells).toBe(0);
    expect(got.d1_writes).toBe(0);
    expect(got.b2_requests).toBe(0);

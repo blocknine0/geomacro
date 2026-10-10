@@ -124,6 +124,12 @@ export function classifyCountryMatrixAggregate(output,{
     required_categories:CATEGORIES,
     coverage_matrix:matrix,
     metadata_matrix_floor_met:CATEGORIES.every(d=>matrix[d].projection_rows_healthy),
+    // Operational audit cannot be healthy solely because 750 old D1 rows
+    // have status PRODUCTION_READY. A truly verified per-domain metadata
+    // checkpoint is the minimum (not sufficient) for 90-minute readiness.
+    verified_metadata_90m_floor_met:CATEGORIES.every(d=>
+      matrix[d].projection_rows_healthy &&
+      matrix[d].verified_within_90m_metadata_cells>=195),
     current_verified_195x3_risk_intelligence:false,
     all_new_global_developments_detected:false,
     freshness_of_each_country_risk_verified:false,
@@ -152,7 +158,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       JSON.stringify(result,null,2)+"\n",{mode:0o600});
     // only whitelisted aggregate; never the unfiltered remote SQL output.
     console.log(JSON.stringify(result));
-    if(result.scheduler_late===true||!result.metadata_matrix_floor_met)
+    if(result.scheduler_late===true||!result.metadata_matrix_floor_met||
+       !result.verified_metadata_90m_floor_met)
       process.exitCode=3;
   }catch{
     console.error("::error::D1_COUNTRY_MATRIX_AGGREGATED_AUDIT_NOT_VERIFIED");
