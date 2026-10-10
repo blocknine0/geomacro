@@ -45,6 +45,9 @@ export async function publishB2VerifiedHotSnapshot({ product, value, proof, priv
   // duplicates or raw GDELT observations. Check private source evidence
   // before using credentials or sending a D1 publication request.
   if(product==="intelligence"){
+    if(proof.current_source_id!=="qualified_independent_original_publishers_v1"||
+       proof.current_evidence_contract!=="geomacro.qualified-original-event-claims.v1")
+      throw Error("HOT_SNAPSHOT_ORIGINAL_PUBLISHER_CONTRACT_REQUIRED");
     const attestedAt=Date.parse(String(proof.commercial_multi_source_checked_at??""));
     if(!Number.isFinite(attestedAt)||Math.abs(Date.now()-attestedAt)>5*60_000)
       throw Error("HOT_SNAPSHOT_MULTI_SOURCE_ATTESTATION_STALE");
@@ -59,6 +62,14 @@ export async function publishB2VerifiedHotSnapshot({ product, value, proof, priv
        result.receipt.qualified_event_count!==value.rows.length||
        result.receipt.commercial_event_admission!==true)
       throw Error("HOT_SNAPSHOT_MULTI_SOURCE_PROOF_INVALID");
+    const batchSourceTime=Date.parse(String(proof.current_source_batch_at??""));
+    const latestReviewedOriginalTime=Math.max(...value.rows.map(row=>
+      Date.parse(String(row.published_at??""))));
+    // The hot snapshot expires from the real reviewed original clock,
+    // never the publisher's poll, restore, Cloudflare or invoice timestamp.
+    if(!Number.isFinite(batchSourceTime)||
+       batchSourceTime!==latestReviewedOriginalTime)
+      throw Error("HOT_SNAPSHOT_NATIVE_ORIGINAL_BATCH_CLOCK_MISMATCH");
     // Private article URLs/title/rights evidence is NEVER serialized into
     // D1, public B2 proof, webhook data or a customer response.
   }
