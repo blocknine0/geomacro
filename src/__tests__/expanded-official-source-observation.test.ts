@@ -94,6 +94,33 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(JSON.stringify(x)).not.toContain("sensitive");
     }
   });
+  it("recovers Eurostat HTTP 406 content negotiation without bypassing RSS MIME and commercial gates",async()=>{
+    const source=EXPANDED_OFFICIAL_SOURCES[2];
+    const seen:string[]=[];
+    const fetchImpl=vi.fn(async(url:string,options:RequestInit)=>{
+      seen.push(url);
+      const accept=(options.headers as Record<string,string>).accept;
+      return accept==="*/*"
+        ?response(xml,"application/xml")
+        :new Response("Not Acceptable",{status:406});
+    });
+    const result=await probeExpandedSource(source,{now,fetchImpl});
+    expect(seen).toEqual([source.url]);
+    expect(result.primary_http_status).toBe(200);
+    expect(result.official_locale_fallback_attempted).toBe(false);
+    expect(result.format_valid).toBe(true);
+    expect(result.source_native_24h_release_items).toBe(1);
+    expect(result.same_event_independent_corroboration_verified).toBe(false);
+    expect(result.commercial_rights_verified).toBe(false);
+    expect(result.current_scored_intelligence_verified).toBe(false);
+    expect(result.commercial_eligible).toBe(false);
+    // HTML must still be blocked, even with permissive Accept header.
+    const wrongMime=await probeExpandedSource(source,{
+      now,fetchImpl:async()=>response("<html>sensitive</html>","text/html"),
+    });
+    expect(wrongMime.reason).toBe("SOURCE_CONTENT_TYPE_INVALID");
+    expect(wrongMime.format_valid).toBe(false);
+  });
   it("uses a single same-publisher Eurostat locale fallback for HTTP 404/5xx, without commercial promotion",async()=>{
     const source=EXPANDED_OFFICIAL_SOURCES[2];
     for(const primaryStatus of [404,503]){
