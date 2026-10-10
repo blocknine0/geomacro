@@ -600,6 +600,10 @@ function validDerivedIntelligencePayload(value,now,maximumOriginalAgeMs) {
   return ["geopolitics","macro","rare_earth"].every(d=>scoredCategories.has(d));
 }
 
+// Two independent reviewed original publishers, NOT GDELT index timestamps.
+const INDEPENDENT_ORIGINALS_SOURCE_ID="qualified_independent_original_publishers_v1";
+const INDEPENDENT_ORIGINALS_EVIDENCE_CONTRACT="geomacro.qualified-original-event-claims.v1";
+
 function validateHotSnapshot(body, product, now = Date.now()) {
   const config = HOT_SNAPSHOT_PRODUCTS[product];
   if (!config || !body || typeof body !== "object" || Array.isArray(body)) throw new Error("INVALID_HOT_SNAPSHOT");
@@ -630,7 +634,10 @@ function validateHotSnapshot(body, product, now = Date.now()) {
     value.source_project !== "ldpwajisioljyjtojvfx" ||
     proof.live_key !== config.b2Key ||
     proof.generated_at !== generatedAt ||
-    (product === "intelligence" && proof.current_source_id !== "gdelt_v2_events") ||
+    (product === "intelligence" && (
+      proof.current_source_id !== INDEPENDENT_ORIGINALS_SOURCE_ID ||
+      proof.current_evidence_contract !== INDEPENDENT_ORIGINALS_EVIDENCE_CONTRACT
+    )) ||
     (product !== "intelligence" && (
       proof.snapshot_id !== value.data?.snapshotId ||
       Date.parse(String(proof.snapshot_as_of ?? "")) !== Date.parse(String(value.data?.snapshotAsOf ?? ""))
@@ -651,6 +658,16 @@ function validateHotSnapshot(body, product, now = Date.now()) {
   if(product==="intelligence" &&
      !validDerivedIntelligencePayload(value,now,config.maxAgeMs))
     throw new Error("HOT_SNAPSHOT_PUBLIC_DERIVED_ONLY_REQUIRED");
+
+  // A poll, B2 write, D1 update or deployment cannot advance this product's
+  // source clock. Tie the hot TTL to the latest REAL original event/article
+  // publication time in the independently reviewed exact customer rows.
+  if(product==="intelligence"){
+    const latestSignedSourceMs=Math.max(...value.rows.map(row=>
+      Date.parse(row.published_at)));
+    if(sourceAsOfMs!==latestSignedSourceMs)
+      throw new Error("HOT_SNAPSHOT_NATIVE_ORIGINAL_BATCH_CLOCK_MISMATCH");
+  }
 
   // Server-side defense-in-depth. A historical/one-outlet/GDELT observation
   // MUST NOT be promoted to a fresh commercial Intelligence hot snapshot.
