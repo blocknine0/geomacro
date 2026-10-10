@@ -52,7 +52,43 @@ jobs:
         with:
           node-version: "22"
       - name: Probe all three fixed official feeds, zero funds and zero B2
-        run: node scripts/ops/probe-official-native-rss-three-domains.mjs
+        shell: bash
+        run: |
+          set -uo pipefail
+          # An upstream publisher outage is genuine RED production evidence,
+          # not a code regression in a pull-request parser/monitoring fix.
+          # Never allow an unexpected process/JSON/schema failure through.
+          rc=0
+          node scripts/ops/probe-official-native-rss-three-domains.mjs || rc=$?
+          proof=artifacts/official-native-rss/three-domains.json
+          jq -e '
+            .schema == "geomacro.official-native-source-audit.v1" and
+            .public_published == false and
+            .proves_public_scored_intelligence == false and
+            .funds_touched == false and
+            .supabase_reads == 0 and .supabase_writes == 0 and
+            .b2_requests == 0 and
+            (.categories | length) == 3 and
+            ((.publisher_transport_failure_domains | type) == "number")
+          ' "$proof" >/dev/null || exit 1
+          if [[ "$rc" == "0" ]]; then
+            jq -e '.status == "SOURCE_POLL_COMPLETE" and
+              .all_three_feeds_reached == true and
+              .publisher_transport_failure_domains == 0' "$proof" >/dev/null
+          elif [[ "$rc" == "3" ]]; then
+            jq -e '.status == "SOURCE_POLL_DEGRADED" and
+              .all_three_feeds_reached == false and
+              .publisher_transport_failure_domains > 0' "$proof" >/dev/null
+            echo "::warning title=External original publisher feed unavailable::SOURCE_POLL_DEGRADED — private-only observed; this is NOT current verified scored intelligence or commercial readiness."
+          else
+            echo "::error title=Unexpected official-source probe failure::Unexpected exit from source audit."
+            exit 1
+          fi
+          # Only PRs can treat expected transport degradation as a
+          # contract-success result; manual/production dispatch remains RED.
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            exit "$rc"
+          fi
       - name: Keep sanitized evidence even if upstream blocks a feed
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
