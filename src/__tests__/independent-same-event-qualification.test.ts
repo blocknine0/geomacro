@@ -99,6 +99,58 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
     expect(serialized).not.toContain("pressreleases");
     expect(r.receipt_sha256).toMatch(/^[a-f0-9]{64}$/);
   });
+  it("rejects a second fully reviewer-signed customer row ID for the SAME canonical event claim",()=>{
+    const duplicateRow={...rows[0],id:"canonical-scored-second-id"};
+    const duplicatePackage=signReview({
+      ...proof,event_id:duplicateRow.id,
+      reviewed_derived_row_sha256:derivedCustomerRowSha256(duplicateRow),
+    });
+    const firstPackage=signReview(proof);
+    // Both complete independent signatures are valid individually.
+    // Publication together must fail BEFORE any B2/D1 or settlement action.
+    expect(qualifyIndependentSameEvent({
+      rows:[duplicateRow],eventPackages:[duplicatePackage],
+      now,trustedReviewerPublicKeyPem,
+    }).receipt.qualified_event_count).toBe(1);
+    expect(()=>qualifyIndependentSameEvent({
+      rows:[rows[0],duplicateRow],
+      eventPackages:[firstPackage,duplicatePackage],
+      now,trustedReviewerPublicKeyPem,
+    })).toThrow("INDEPENDENT_EVENT_DUPLICATE_CANONICAL_EVENT_CLAIM");
+    expect(()=>qualifyIndependentSameEvent({
+      rows:[duplicateRow,rows[0]],
+      eventPackages:[duplicatePackage,firstPackage],
+      now,trustedReviewerPublicKeyPem,
+    })).toThrow("INDEPENDENT_EVENT_DUPLICATE_CANONICAL_EVENT_CLAIM");
+  });
+  it("still accepts two distinct reviewed same-category events without collapsing legitimate updates",()=>{
+    const distinctEvent={...identity,target_id:"us_liquidity_reserves"};
+    const distinctHash=sameEventClaimHash("macro",distinctEvent);
+    const secondRow={...rows[0],id:"canonical-scored-distinct-002",
+      source_title:"Geomacro finds verified liquidity conditions risk elevated",
+      summary:"Independent original policy evidence indicates changed liquidity conditions",
+    };
+    const secondPackage=signReview({
+      ...proof,event_id:secondRow.id,event:distinctEvent,
+      same_event_claim_sha256:distinctHash,
+      reviewed_derived_row_sha256:derivedCustomerRowSha256(secondRow),
+      evidence:proof.evidence.map((e:any,i:number)=>({
+        ...e,same_event_claim_sha256:distinctHash,
+        original_article_sha256:hex("independent distinct event source "+i),
+        independent_review_sha256:hex("distinct event reviewer receipt "+i),
+      })),
+    });
+    const accepted=qualifyIndependentSameEvent({
+      rows:[rows[0],secondRow],
+      eventPackages:[signReview(proof),secondPackage],
+      now,trustedReviewerPublicKeyPem,
+    });
+    expect(accepted.receipt.qualified_event_count).toBe(2);
+    expect(new Set(accepted.receipt.qualified.map((x:any)=>x.event_claim_sha256)).size)
+      .toBe(2);
+    expect(accepted.receipt.no_raw_news_exposed).toBe(true);
+    expect(accepted.receipt.x402_mainnet_ready).toBe(false);
+  });
   it("binds exact derived customer-visible narrative, severity and timestamps into the independent reviewer signature",()=>{
     const good=go();
     expect(good.receipt.qualified[0].reviewed_derived_row_sha256)

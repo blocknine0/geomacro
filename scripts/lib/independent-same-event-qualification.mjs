@@ -233,6 +233,9 @@ export function qualifyIndependentSameEvent({
     rows.length<1||rows.length>80||rows.length!==eventPackages.length)
     err("INPUT_INVALID");
   const seen=new Set();
+  // Prevent one actual development from being sold or ranked multiple times
+  // under distinct derived row IDs within the same signed publication batch.
+  const seenEventClaims=new Set();
   const qualified=[];
   for(let i=0;i<rows.length;i++){
     const row=rows[i],pkg=eventPackages[i];
@@ -255,6 +258,12 @@ export function qualifyIndependentSameEvent({
     const identityHash=sameEventClaimHash(row.category,identity);
     if(identityHash!==pkg.same_event_claim_sha256)
       err("EVENT_CLAIM_HASH_MISMATCH");
+    // Two reviewer signatures and two customer row IDs must not multiply
+    // a single WHO/WHAT/WHERE/WHEN event identity into multiple billable
+    // events. Cross-category product views remain governed separately.
+    if(seenEventClaims.has(identityHash))
+      err("DUPLICATE_CANONICAL_EVENT_CLAIM");
+    seenEventClaims.add(identityHash);
     const when=nativeTime(identity.occurred_at,nowMs);
     const reviewedRowHash=derivedCustomerRowSha256(row);
     // Reviewed output must be bound into the trusted Ed25519 event package;
