@@ -1,12 +1,12 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "709a23f9b162117d4a5c4c1dca66e6ee40fc8782",
-  "published_baseline": "Founder-directed Website Intelligence stale-data correction (2026-10-10): current-only scored original-published event leads and default desk; dated historical risk assessment archive remains available by explicit user action; no source clock refresh, fake news, raw source, B2/D1 refresh or x402 payment. Approved candidate baseline, pending separate Lovable owner Publish and exact-SHA live visual acceptance. The final Global Risk UI remains independently locked.",
+  "baseline_sha": "2ebdacdec36a9d5f7104cfe90f45e894e8148aa4",
+  "published_baseline": "Founder-directed Website Intelligence stale-data correction (2026-10-10): current-only original-published signed scores on default desk, explicit opt-in dated historical archive, and visible live-fetch-error status. No raw publisher data, fabricated current severity, source clock rewrite or payment activation. Candidate source baseline approved but still pending separate Lovable Publish and exact-SHA visual live acceptance. Final Global Risk presentation remains permanently locked.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-10T14:47:56Z",
   "published_source_sha": "0d25ec9ec5e1a88f75f5ddf68d227b536830648a",
-  "lock_revision": "founder-authorized-intelligence-current-only-default-20261010",
+  "lock_revision": "founder-authorized-intelligence-current-only-and-fetch-failure-20261010",
   "pending_publish_acceptance": true
 }
