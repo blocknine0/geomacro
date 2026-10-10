@@ -108,3 +108,50 @@ jobs:
           echo "Real funds touched: false" >> "$GITHUB_STEP_SUMMARY"
           echo "Production activation changed: false" >> "$GITHUB_STEP_SUMMARY"
           echo "Accepted deployed SHA: ${{ steps.release.outputs.sha }}" >> "$GITHUB_STEP_SUMMARY"
+
+  failed-health-no-funds:
+    # Normal main acceptance must remain SKIPPED when the site is unready.
+    # Instead emit an independent, explicitly RED, no-payment production
+    # evidence receipt, without running the paid availability census.
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact failed production health commit, read only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Verify failed health SHA still binds to checkout
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
+          EXPECTED_EVENT: ${{ github.event.workflow_run.event }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          case "$EXPECTED_EVENT" in
+            push|schedule|workflow_dispatch) ;;
+            *) echo "::error::X402_FAILED_HEALTH_UNAPPROVED_SOURCE_EVENT"; exit 3 ;;
+          esac
+      - name: Install Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Prove live x402 remains no-charge while fresh data unavailable
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-failed-health-x402-no-funds.mjs
+          # Returns RED even when it safely proves no funds can be charged.
+          node scripts/ops/verify-failed-health-x402-no-funds.mjs
+      - name: Upload scrubbed failure proof (never raw response or provider URL)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: x402-failed-production-health-no-funds-${{ github.run_id }}
+          path: artifacts/x402/failed-health-no-funds.json
+          retention-days: 7
+          if-no-files-found: warn
