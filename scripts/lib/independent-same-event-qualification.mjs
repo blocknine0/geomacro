@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createPublicKey, verify as verifySignature } from "node:crypto";
 
 /**
  * Commercial pre-publication event qualification. PRIVATE INPUT ONLY.
@@ -91,8 +91,12 @@ export function sameEventClaimHash(category,identity){
   });
 }
 
+export function qualificationReviewSigningBytes(value){
+  const {review_signature_base64:signature,...signed}=value;
+  return Buffer.from(JSON.stringify(signed),"utf8");
+}
 export function qualifyIndependentSameEvent({
-  rows,eventPackages,now=new Date(),
+  rows,eventPackages,now=new Date(),trustedReviewerPublicKeyPem,
 }={}) {
   const nowMs=now instanceof Date?now.getTime():NaN;
   if(!Number.isFinite(nowMs)||!Array.isArray(rows)||!Array.isArray(eventPackages)||
@@ -135,6 +139,26 @@ export function qualifyIndependentSameEvent({
       new Set(sources.map(s=>s.review)).size<2 ||
       new Set(sources.map(s=>s.host)).size<2)
       err("SOURCE_FAMILY_NOT_INDEPENDENT");
+    // The reviewed *complete* event package (all source and rights claims)
+    // must be signed by a separately trusted Ed25519 review key. Arbitrary
+    // booleans, hashes and press syndication are not enough.
+    if(typeof trustedReviewerPublicKeyPem!=="string"||
+       !trustedReviewerPublicKeyPem.includes("BEGIN PUBLIC KEY"))
+      err("TRUSTED_REVIEW_KEY_REQUIRED");
+    if(typeof pkg.review_signature_base64!=="string"||
+       !/^[A-Za-z0-9+/]{86}==$/u.test(pkg.review_signature_base64))
+      err("INDEPENDENT_REVIEW_SIGNATURE_REQUIRED");
+    try{
+      const key=createPublicKey(trustedReviewerPublicKeyPem);
+      if(key.asymmetricKeyType!=="ed25519"||
+         !verifySignature(null,qualificationReviewSigningBytes(pkg),key,
+           Buffer.from(pkg.review_signature_base64,"base64")))
+        err("INDEPENDENT_REVIEW_SIGNATURE_INVALID");
+    }catch(error){
+      if(error instanceof Error && error.message.startsWith("INDEPENDENT_EVENT_"))
+        throw error;
+      err("INDEPENDENT_REVIEW_SIGNATURE_INVALID");
+    }
     qualified.push({event_id:row.id,category:row.category,
       event_claim_sha256:identityHash,
       independent_reporting_organizations:sources.length,
