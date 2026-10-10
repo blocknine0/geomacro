@@ -73,7 +73,13 @@ jobs:
 
           grep -Fq 'Three risks. Three separate indices.' src/components/gri/global-risk-domain-indices.tsx
           grep -Fq 'Earlier assessments retain their original dates.' src/routes/intelligence.tsx
-          grep -Fq 'Monitoring updated ' src/routes/intelligence.tsx
+          # Published UI shows the SOURCE evidence clock. A browser poll or B2
+          # restore must not move the displayed event publication time.
+          grep -Fq 'Latest original evidence ' src/routes/intelligence.tsx
+          if grep -Fq 'Monitoring updated ' src/routes/intelligence.tsx; then
+            echo '::error::Monitoring/restore clock masqueraded as original event time'
+            exit 1
+          fi
           grep -Fq 'Ask Geomacro' src/components/ask/ask-workspace.tsx
           grep -Fq 'Geomacro turns global developments into clear risk intelligence for teams, decisions and AI agents.' src/components/home/commercial-home.tsx
 
