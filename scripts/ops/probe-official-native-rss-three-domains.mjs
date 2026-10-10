@@ -59,6 +59,16 @@ export async function probeOfficialThreeDomains({
         now, diagnostics, includeSecondPublisher: true,
         includeThirdPublisher: true,
       });
+      // A resolved fetch can still conceal an attempted publisher transport
+      // failure. In particular a failed minerals third feed previously let the
+      // three-domain source poll claim COMPLETE. This is distinct from whether
+      // any qualifying article exists and must never imply source rights.
+      const publisherTransportOk =
+        diagnostics.primary_feed_ok === true &&
+        (diagnostics.alternate_feed_attempted !== true ||
+          diagnostics.alternate_feed_ok === true) &&
+        (diagnostics.third_feed_attempted !== true ||
+          diagnostics.third_feed_ok === true);
       const dates = articles.map((row) => Date.parse(row.publishedAt));
       if (!Array.isArray(articles) ||
           articles.some((row) => row.discoveryProvider !== "official_native_rss" ||
@@ -70,6 +80,7 @@ export async function probeOfficialThreeDomains({
       results.push({
         category,
         fetch_ok: true,
+        publisher_transport_ok: publisherTransportOk,
         recent_original_count: articles.length,
         // Numeric, whitelist-only publisher-feed diagnostics. No source text/URL.
         feed_items_seen: diagnostics.item_count ?? null,
@@ -114,7 +125,7 @@ export async function probeOfficialThreeDomains({
     } catch {
       // Fixed-shape errors only; no URLs, raw headlines, source body or secrets.
       results.push({
-        category, fetch_ok: false, recent_original_count: 0,
+        category, fetch_ok: false, publisher_transport_ok: false, recent_original_count: 0,
         feed_items_seen: null, source_native_pubdate_items: null,
         native_date_current_items: null, trusted_original_host_items: null,
         topic_title_match_items: null,
@@ -147,8 +158,14 @@ export async function probeOfficialThreeDomains({
   return {
     schema: "geomacro.official-native-source-audit.v1",
     checked_at: now.toISOString(),
-    status: results.every((row) => row.fetch_ok) ? "SOURCE_POLL_COMPLETE" : "SOURCE_POLL_DEGRADED",
-    all_three_feeds_reached: results.every((row) => row.fetch_ok),
+    // Complete means every attempted official publisher transport succeeded.
+    // A missing, blocked or malformed publisher response is DEGRADED even if
+    // another independent publisher yielded valid *private* articles.
+    status: results.every((row) => row.fetch_ok && row.publisher_transport_ok)
+      ? "SOURCE_POLL_COMPLETE" : "SOURCE_POLL_DEGRADED",
+    all_three_feeds_reached: results.every((row) => row.fetch_ok && row.publisher_transport_ok),
+    all_three_categories_checked: results.every((row) => row.fetch_ok),
+    publisher_transport_failure_domains: results.filter((row) => !row.publisher_transport_ok).length,
     current_private_original_event_domains: results.filter((row) => row.recent_original_count > 0).length,
     measured_source_scope: "THREE_DOMAINS_UP_TO_THREE_FIXED_OFFICIAL_PUBLISHERS_EACH",
     implies_no_global_news: false,
