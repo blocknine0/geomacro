@@ -18,6 +18,8 @@ on:
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/src/source-pulse-public.mjs"
       - "src/__tests__/three-domain-30m-d1-status.test.ts"
+      - "src/lib/current-30min-original-source-pulse.server.ts"
+      - "src/lib/category-intelligence-alias.server.ts"
   pull_request:
     paths:
       - ".github/workflows/three-domain-30m-original-publisher-pulse.yml"
@@ -28,6 +30,8 @@ on:
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/src/source-pulse-public.mjs"
       - "src/__tests__/three-domain-30m-d1-status.test.ts"
+      - "src/lib/current-30min-original-source-pulse.server.ts"
+      - "src/lib/category-intelligence-alias.server.ts"
 
 permissions:
   contents: read
