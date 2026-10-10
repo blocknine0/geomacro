@@ -67,7 +67,7 @@ for (const marker of [
   "GOVERNED_INGESTION_SHARED_B2_D1_SCHEMA_V5_REQUIRED",
   "GOVERNED_B2_SHARED_ACCOUNT_QUOTA_NOT_ACTIVE",
   "global_account_quota_guard_enabled",
-  "Number(row?.version) >= 2",
+  "Number(rows[0]?.version) < 5",
   "Export governed source admission state from D1",
   "Write compact D1 ingestion checkpoints",
   "Replay compact D1 checkpoint upsert",
