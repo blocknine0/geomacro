@@ -32,10 +32,10 @@ const APPROVED_SOURCE_ORGS=Object.freeze({
 const digest=s=>createHash("sha256").update(s,"utf8").digest("hex");
 function textValue(s) {
   if(typeof s!=="string"||s.length>MAX_TITLE*5) return null;
+  // Keep XML entities opaque; never unescape potentially nested HTML
+  // into a second parser/renderer. Only hashed text leaves this function.
   const normalized=s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/giu,"$1")
-    .replace(/&amp;/giu,"&").replace(/&quot;/giu,'"')
-    .replace(/&#39;|&apos;/giu,"'").replace(/&lt;/giu,"<")
-    .replace(/&gt;/giu,">").replace(/\s+/gu," ").trim();
+    .replace(/\s+/gu," ").trim();
   if(normalized.length<8||normalized.length>MAX_TITLE||
      /<[^>]*>|\p{Cc}/u.test(normalized))return null;
   return normalized;
@@ -44,7 +44,7 @@ function canonicalOriginalUrl(raw,source) {
   if(typeof raw!=="string"||raw.length>MAX_URL||
      !Array.isArray(source?.original_hosts))return null;
   let url;
-  try {url=new URL(raw.replace(/&amp;/giu,"&"))}catch{return null}
+  try {url=new URL(raw)}catch{return null}
   if(url.protocol!=="https:"||url.username||url.password||url.port||url.hash||
      !source.original_hosts.includes(url.hostname) ||
      (!/^\/(?!\/)/u.test(url.pathname) ||
