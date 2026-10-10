@@ -5,6 +5,11 @@ import {
 
 const INTERNAL_KEY = /(^|_)(source|provider|licen[cs]e|provenance|retrieval)(_|$)/i;
 const CURRENT_PROVIDER_IDENTITY = /\b(?:world[\s_-]+bank|gdelt|usgs|u\.?s\.?[\s_-]+geological[\s_-]+survey)\b/i;
+// Existing key-based filtering missed source URLs embedded in normal strings
+// such as "answer", "analysis" and "limitations". Paid intelligence is
+// structured DERIVED output, never a third-party publisher link catalogue.
+const EMBEDDED_SOURCE_LOCATOR = /(?:https?:\/\/|www\.)[^\s<>"'\x60]+/iu;
+export type PaidOutputSanitizeOptions = { rejectEmbeddedLinks?: boolean };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -14,7 +19,18 @@ function allowedProviderKey(path: string[], key: string) {
   return key === "provider" && path.at(-1) === "payment";
 }
 
-function sanitizeString(key: string, value: string) {
+function sanitizeString(
+  key: string, value: string, options: PaidOutputSanitizeOptions,
+) {
+  if (EMBEDDED_SOURCE_LOCATOR.test(value)) {
+    // Fresh products must be rejected *before durable preparation/settlement*.
+    // Historical already-settled ledger replays remain safe by replacing
+    // embedded upstream links and re-hashing the delivered derived output.
+    if (options.rejectEmbeddedLinks) {
+      throw new Error("PAID_OUTPUT_EMBEDDED_SOURCE_URL_UNQUALIFIED");
+    }
+    return "governed derived intelligence";
+  }
   if (key === "delivery" && value.startsWith("GOVERNED_")) {
     return "GOVERNED_DERIVED_MODULE_STATE";
   }
@@ -23,18 +39,21 @@ function sanitizeString(key: string, value: string) {
   return "governed derived intelligence";
 }
 
-function sanitize(value: unknown, path: string[] = []): unknown {
+function sanitize(
+  value: unknown, path: string[] = [],
+  options: PaidOutputSanitizeOptions = {},
+): unknown {
   if (Array.isArray(value)) {
-    return value.map((entry, index) => sanitize(entry, [...path, String(index)]));
+    return value.map((entry, index) => sanitize(entry, [...path, String(index)], options));
   }
   if (!isRecord(value)) {
-    return typeof value === "string" ? sanitizeString(path.at(-1) ?? "", value) : value;
+    return typeof value === "string" ? sanitizeString(path.at(-1) ?? "", value, options) : value;
   }
 
   const output: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
     if (INTERNAL_KEY.test(key) && !allowedProviderKey(path, key)) continue;
-    output[key] = sanitize(child, [...path, key]);
+    output[key] = sanitize(child, [...path, key], options);
   }
   return output;
 }
@@ -44,8 +63,10 @@ function sanitize(value: unknown, path: string[] = []): unknown {
  * This is a final defensive boundary; product builders must still avoid adding
  * source-specific fields in the first place.
  */
-export function sanitizePublicPaidOutput<T>(payload: T): T {
-  return sanitize(payload) as T;
+export function sanitizePublicPaidOutput<T>(
+  payload: T, options: PaidOutputSanitizeOptions = {},
+): T {
+  return sanitize(payload, [], options) as T;
 }
 
 /**
@@ -55,8 +76,9 @@ export function sanitizePublicPaidOutput<T>(payload: T): T {
  */
 export function sanitizeAndRehashPaidPreparedResponse(
   prepared: Record<string, unknown>,
+  options: PaidOutputSanitizeOptions = {},
 ): Record<string, unknown> {
-  const sanitized = sanitizePublicPaidOutput(prepared) as Record<string, unknown>;
+  const sanitized = sanitizePublicPaidOutput(prepared, options) as Record<string, unknown>;
   if (sanitized.schema_version !== GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA) return sanitized;
 
   const {
@@ -81,6 +103,9 @@ export function assertPublicPaidOutputBoundary(payload: unknown): void {
       return;
     }
     if (!isRecord(value)) {
+      if (typeof value === "string" && EMBEDDED_SOURCE_LOCATOR.test(value)) {
+        throw new Error(`PAID_OUTPUT_EMBEDDED_SOURCE_URL:${path.join(".")}`);
+      }
       if (typeof value === "string" && CURRENT_PROVIDER_IDENTITY.test(value)) {
         throw new Error(`PAID_OUTPUT_PROVIDER_IDENTITY_LEAK:${path.join(".")}`);
       }
