@@ -55,7 +55,7 @@ Supporting official references:
 
 - Existing official event feeds: continue their established hourly sampling.
 - Additional official release/structural probes: **4 times per UTC day**,
-  twelve feed GET requests per cycle, plus at most four bounded original article date GETs (two per Atom source), plus at most one documented same-publisher
+  twelve feed GET requests per cycle, plus at most ten bounded original article date GETs (two per first-party RSS/Atom source), plus at most one documented same-publisher
   Eurostat German-language alternative following primary HTTP 404/5xx only
   (~36–56 total GETs/day). No locale retry on 401/403/429, redirect/network
   errors or wrong MIME/body/schema. Each attempt has a 5s timeout and 192-KiB
@@ -135,7 +135,7 @@ The source receipt also exposes `original_publisher_freshness_windows` for all t
 - `17 0,3,6,9,12,15,18,21 * * *`
 - `47 1,4,7,10,13,16,19,22 * * *`
 
-These establish **16 nominal checks/day, with exactly 90 minutes between scheduled UTC slots**, including midnight. GitHub Actions is best-effort and can delay/skip runs; **not a hard availability SLA**. Each scheduled receipt calculates lag against the last expected slot. Any lag >45 minutes reports `scheduler_late=true` and fails closed. Each cycle requests twelve fixed source endpoints, at most four exact first-party article-date pages and at most one official Eurostat locale fallback: **<=17 source HTTP GET/cycle and <=272 source GET/day worst case** at 16 cycles. No Github PR branch cadence, no model inference, no B2 GET/PUT, no public D1 writes, no Supabase, no settlement.
+These establish **16 nominal checks/day, with exactly 90 minutes between scheduled UTC slots**, including midnight. GitHub Actions is best-effort and can delay/skip runs; **not a hard availability SLA**. Each scheduled receipt calculates lag against the last expected slot. Any lag >45 minutes reports `scheduler_late=true` and fails closed. Each cycle requests twelve fixed source endpoints, at most ten exact first-party article-date pages and at most one official Eurostat locale fallback: **<=23 source HTTP GET/cycle and <=368 source GET/day worst case** at 16 cycles. No Github PR branch cadence, no model inference, no B2 GET/PUT, no public D1 writes, no Supabase, no settlement.
 
 Separately, an exact-main-only metadata reader issues **one read-only D1 aggregation** over `country_domain_state`, grouped by domain/readiness_status, returning no country IDs, source IDs/URLs, article text, archived fragments, hashes, GRO payloads or provider secrets. Three normalized domains are Geopolitics, Macro/FX and Critical Minerals. The nominal sovereign floor is **195 subjects × 3 domains = 585 potential matrix cells**. This is a **readiness metadata census**, not 195-country live new-event detection, and not signed paid-intelligence coverage proof. In particular the repository's local `countries.v1.json` is a runtime placeholder with zero actual countries; it is **NOT an independently populated 195-country registry**. The current D1 matrix is not treated as equivalent to current source-native scored GRO coverage.
 
@@ -159,6 +159,8 @@ Three additional **original publisher RSS endpoints** in the existing strictly p
 
 RSS is documented on each publisher's official site. 403/429, timeout, malformed XML, unknown published date and non-original article hosts remain explicitly unverified. **Commercial source rights remain UNVERIFIED** and source bodies, raw headlines and URLs are never served to customers. These are private observation lanes, not automatically scored, rights-approved, independently corroborated signed GRO. Existing EITI HTTP 403 and NRCan Simply Science outage stay visible and fail-closed.
 
-Maximum fixed source budget is **12 feed GETs + 4 publisher-date checks + 1 Eurostat same-publisher alternate = 17 GETs/cycle and 272 GETs/day** at sixteen nominal 90-minute cycles. No Supabase/B2/D1 writes, model inference or x402 settlement.
+Maximum fixed source budget is **12 feed GETs + 10 strict publisher-date checks + 1 Eurostat same-publisher alternate = 23 GETs/cycle and 368 GETs/day** at sixteen nominal 90-minute cycles. No Supabase/B2/D1 writes, model inference or x402 settlement.
 
 **Source substitution proof:** the UN Geneva RSS probe could not finish within the bounded timeout on a real GitHub runner in PR #1928. It was therefore replaced by the UK FCDO agency's published official Atom feed instead of wasting 16 timeout slots per day. The GOV.UK feed may include general notices/travel updates; only exact original publication time and geopolitical-topic titles qualify for *private discovery*. UK-government Atom `updated` time alone is not evidence of a newly published risk event. All rights remain UNVERIFIED and public settlement is still blocked.
+
+The revised upper-bound counts up to five source-specific, two-page `datePublished` recovery attempts: StatCan, NRCan, UK FCDO, Federal Reserve and USGS. RSS with missing native `pubDate` may use a bounded first-party original article clock; RSS with a supplied invalid/future `pubDate` cannot be rescued, and feed `updated`/retrieval time is never substituted. GOV.UK, Fed and USGS article paths are rebuilt only from compile-time exact origin+path templates, forbidding arbitrary external domains or redirects.
