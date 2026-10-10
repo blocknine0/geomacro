@@ -101,6 +101,8 @@ function IntelligencePage() {
   const leads = categoryLeads(currentDesk);
   const currentScored = currentDesk.length > 0;
   const domainPulse = useMemo(() => intelligenceDomainPulse(intel.data?.all ?? []), [intel.data]);
+  const currentDomainCount = domainPulse.filter((pulse) => pulse.currentScoredCount > 0).length;
+  const allDomainsCurrent = currentDomainCount === COMMERCIAL_DOMAINS.length;
   const currentObserved = useMemo(() => (intel.data?.all ?? []).filter((event) =>
     event.publicStatus === "live_observed" && event.isCurrent && event.severity === null && event.delta === null,
   ).slice(0, 6), [intel.data]);
@@ -117,10 +119,12 @@ function IntelligencePage() {
     const latest = new Map<string, IntelEvent>();
     for (const event of pool) {
       if (event.publicStatus !== "verified_b2" || event.severity === null || !event.category) continue;
-      const eventTime = Date.parse(event.publishedAt ?? event.createdAt);
+      // A B2 restore/new database createdAt is not original risk evidence.
+      if (!event.publishedAt) continue;
+      const eventTime = Date.parse(event.publishedAt);
       if (!Number.isFinite(eventTime)) continue;
       const existing = latest.get(event.category);
-      const existingTime = existing ? Date.parse(existing.publishedAt ?? existing.createdAt) : -Infinity;
+      const existingTime = existing?.publishedAt ? Date.parse(existing.publishedAt) : -Infinity;
       if (!existing || !Number.isFinite(existingTime) || eventTime > existingTime) {
         latest.set(event.category, event);
       }
@@ -133,12 +137,16 @@ function IntelligencePage() {
       <header className="max-w-4xl">
         <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em]">
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-primary">
-            <Radio className="h-3 w-3" aria-hidden /> {latestVerifiedFallback ? "PREVIOUSLY VERIFIED" : currentScored ? "CURRENT SCORED INTELLIGENCE" : "AWAITING VERIFIED STORIES"}
+            <Radio className="h-3 w-3" aria-hidden /> {latestVerifiedFallback ? "PREVIOUSLY VERIFIED" :
+               allDomainsCurrent ? "THREE-DOMAIN CURRENT SCORED" :
+               currentScored ? "PARTIAL CURRENT SCORED" : "AWAITING VERIFIED STORIES"}
           </span>
           <span className="text-muted-foreground">
             {intel.status === "updating" ? "Updating" : latestVerifiedFallback
               ? "No current scored intelligence · historical archive available"
-              : currentScored ? "Fresh verified scored developments" : "No eligible scored headlines yet"}
+              : allDomainsCurrent ? "All three domains have current original-dated scored evidence" :
+                currentScored ? `Current scored evidence in only ${currentDomainCount}/3 domains` :
+                "No eligible scored headlines yet"
           </span>
         </div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
@@ -187,12 +195,12 @@ function IntelligencePage() {
               ) : null}
               {pulse.lastScored ? (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Score evidence: {formatDate(pulse.lastScored.publishedAt ?? pulse.lastScored.createdAt)}
+                  Score evidence: {pulse.lastScored.publishedAt ? formatDate(pulse.lastScored.publishedAt) : "Original publication time unavailable"}
                 </p>
               ) : null}
               {pulse.newestObserved ? (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  New observation: {formatDate(pulse.newestObserved.publishedAt ?? pulse.newestObserved.createdAt)} · No severity assigned
+                  New observation: {pulse.newestObserved.publishedAt ? formatDate(pulse.newestObserved.publishedAt) : "Original publication time unavailable"} · No severity assigned
                 </p>
               ) : (
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -403,7 +411,7 @@ function IntelligencePage() {
                         <p className="text-sm font-medium">{prettyCategory(domain)}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {latest
-                            ? `${latest.isCurrent ? "Latest verified score" : "Last verified score"} · ${formatDate(latest.publishedAt ?? latest.createdAt)}`
+                            ? `${latest.isCurrent ? "Latest verified score" : "Last verified score"} · ${formatDate(latest.publishedAt!)}`
                             : "Scored news unavailable"}
                         </p>
                         <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
@@ -421,7 +429,7 @@ function IntelligencePage() {
               </div>
               {intel.updatedAt ? (
                 <p className="mt-4 border-t border-border/50 pt-3 text-xs leading-5 text-muted-foreground">
-                  Monitoring updated {formatTime(intel.updatedAt)}; scored news may be older. Earlier assessments retain their original dates.
+                  Latest original evidence {formatTime(intel.updatedAt)}; monitoring or B2 restore time is not a new assessment. Earlier scores remain historical.
                 </p>
               ) : null}
             </div>
@@ -456,7 +464,7 @@ function IntelCard({ event }: { event: IntelEvent }) {
       </h3>
       {event.summary && <p className="mt-2 text-sm leading-6 text-muted-foreground">{event.summary}</p>}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-3 text-xs text-muted-foreground">
-        <span>{event.isCurrent ? "Current verified assessment" : "Historical verified assessment"} · {formatDate(event.publishedAt ?? event.createdAt)}</span>
+        <span>{event.isCurrent ? "Current verified assessment" : "Historical verified assessment"} · {event.publishedAt ? formatDate(event.publishedAt) : "Original publication time unavailable"}</span>
         <div className="flex items-center gap-3">
           {event.delta !== null && event.delta !== 0 ? <RiskTrend delta={Math.round(event.delta)} /> : null}
           <Link to="/event/$eventId" params={{ eventId: event.id }} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">Open assessment <ArrowRight className="h-3 w-3" /></Link>
