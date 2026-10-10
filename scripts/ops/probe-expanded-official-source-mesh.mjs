@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "../lib/official-original-article-date.mjs";
+import { originalPublisherPrivateCandidates } from "../lib/private-original-publisher-candidates.mjs";
 
 const MAX_BODY_BYTES=192*1024;
 // Eurostat twice-daily official catalogue feed can exceed the small news-RSS
@@ -305,7 +306,7 @@ function jsonShape(value) {
 }
 
 export async function probeExpandedSource(source,{
-  fetchImpl=fetch,now=new Date(), timeoutMs=5000,
+  fetchImpl=fetch,now=new Date(), timeoutMs=5000,collectPrivateCandidates=false,
 }={}) {
   if(!EXPANDED_OFFICIAL_SOURCES.includes(source))throw Error("SOURCE_NOT_FIXED");
   const row={
@@ -394,6 +395,10 @@ export async function probeExpandedSource(source,{
   if(!valid){row.reason="SOURCE_SHAPE_UNVERIFIED";return row;}
   row.publisher_reachable=true;
   row.format_valid=true;
+  if(collectPrivateCandidates && source.original_hosts && ["rss","atom"].includes(source.media)){
+    try { row.private_original_article_candidates=originalPublisherPrivateCandidates(body,source,now); }
+    catch { row.private_original_article_candidates=[]; row.private_original_candidate_parse_failed=true; }
+  }
   row.official_locale_fallback_used=row.official_locale_fallback_attempted;
   row.reason="PRIVATE_SOURCE_TRANSPORT_ONLY";
   if(counts){
