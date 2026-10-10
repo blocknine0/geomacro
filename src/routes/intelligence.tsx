@@ -19,6 +19,7 @@ import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import { categoryLeads, publicHeadline, scoredNews, COMMERCIAL_DOMAINS } from "@/lib/intelligence-editorial";
 import { intelligenceDomainPulse } from "@/lib/intelligence-domain-pulse";
 import { currentVerifiedDeskEvents } from "@/lib/intelligence-current-desk";
+import { PUBLIC_SOURCE_COVERAGE_DOMAINS } from "@/lib/public-intelligence-source-coverage";
 
 const TITLE = "Live Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
 const DESCRIPTION = "Source-governed geopolitical, macro/FX and critical minerals intelligence: specific scored events, decision context and verified severity from 0 to 100.";
@@ -212,6 +213,52 @@ function IntelligencePage() {
         </div>
       </section>
 
+      <section className="mt-8" aria-labelledby="source-intake-coverage-heading">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Source discovery • not scored events</p>
+        <h2 id="source-intake-coverage-heading" className="mt-1 text-xl font-semibold">Sources monitored and catalogued</h2>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+          These numbers count registry entries, Telegram candidates, official discovery roots and historical sources,
+          not verified breaking news, independent publishers or customer-ready risk assessments. Source registration
+          precedes verification; new scored intelligence appears above and below only after independent acceptance.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {PUBLIC_SOURCE_COVERAGE_DOMAINS.map((source) => {
+            const riskDomainKey = source.category === "macro-fx"
+              ? "macro" : source.category === "critical-minerals" ? "rare_earth" : "geopolitics";
+            const livePulse = domainPulse.find((pulse) => pulse.key === riskDomainKey);
+            return (
+              <article key={source.category} className="rounded-xl border border-border/70 bg-card/40 p-4">
+                <p className="font-mono text-[10px] uppercase tracking-wide text-primary">{source.label}</p>
+                <p className="mt-2 text-3xl font-semibold tabular-nums">{source.catalogued_entries}</p>
+                <p className="text-xs text-muted-foreground">Catalogued source entries · not published intelligence</p>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {source.catalogued_by_lane.governed_official_discovery_roots} official discovery roots ·{" "}
+                  {source.catalogued_by_lane.telegram_candidates_unapproved} unauthorized Telegram candidates ·{" "}
+                  {source.catalogued_by_lane.historical_evidence_sources} historical sources
+                </p>
+                <p className="mt-2 text-xs font-medium">
+                  {livePulse?.currentScoredCount
+                    ? `${livePulse.currentScoredCount} current verified scored assessment(s) in feed`
+                    : "Current independently verified scored events: not available"}
+                </p>
+                <a
+                  href={source.intelligence_query_path}
+                  className="mt-3 inline-block text-xs font-medium text-primary hover:underline"
+                >
+                  View machine-readable endpoint discovery
+                </a>
+              </article>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          Catalog receipt: {new Date(PUBLIC_SOURCE_COVERAGE_DOMAINS[0].catalogued_as_of).toUTCString()}.
+          Private Telegram/historical registries are pinned snapshots, not independently live-synced.
+          This page checks the separate verified Intelligence feed every five minutes while open;
+          refreshing a source catalog never generates a new risk event.
+        </p>
+      </section>
+
       <section className="mt-8 grid gap-3 rounded-2xl border border-border/70 bg-card/40 p-4 sm:grid-cols-[minmax(0,1fr)_180px_170px_auto]">
         <label className="relative min-w-0">
           <span className="sr-only">Search intelligence</span>
@@ -267,7 +314,7 @@ function IntelligencePage() {
         <>
         <section className="mt-8" aria-labelledby="domain-leads-heading">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Global intelligence desk</p>
-          <h2 id="domain-leads-heading" className="mt-1 text-2xl font-semibold">Verified news developments</h2>
+          <h2 id="domain-leads-heading" className="mt-1 text-2xl font-semibold">Current verified developments</h2>
           <p className="mt-1 text-sm text-muted-foreground">Only scored developments with a genuine original publication date within 24 hours are eligible here. Older intelligence stays in the dated archive.</p>
           {!currentScored ? (
             <p className="mt-4 rounded-xl border border-border/70 px-4 py-3 text-sm text-muted-foreground" role="status">
