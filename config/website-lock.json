@@ -1,12 +1,12 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "2ebdacdec36a9d5f7104cfe90f45e894e8148aa4",
-  "published_baseline": "Founder-directed Website Intelligence stale-data correction (2026-10-10): current-only original-published signed scores on default desk, explicit opt-in dated historical archive, and visible live-fetch-error status. No raw publisher data, fabricated current severity, source clock rewrite or payment activation. Candidate source baseline approved but still pending separate Lovable Publish and exact-SHA visual live acceptance. Final Global Risk presentation remains permanently locked.",
+  "baseline_sha": "98dd59e7329511d510fafea293c726f7eeaf01aa",
+  "published_baseline": "Founder-approved homepage currentness correction (2026-10-10): genuine original event publishedAt is mandatory for current homepage topic, three-domain pulse and Geomacro Finds; an ingest/B2 restore time must never turn an undated/old score into fresh news. Historical signed assessments remain in a transparently dated archive. All customer text remains derived-only, no raw source or upstream URL. The independently finalized Global Risk layout remains byte-for-byte protected. Source accepted subject to independent owner Lovable Publish and exact-SHA production acceptance; no payment activation.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-10T14:47:56Z",
-  "published_source_sha": "0d25ec9ec5e1a88f75f5ddf68d227b536830648a",
-  "lock_revision": "founder-authorized-intelligence-current-only-and-fetch-failure-20261010",
+  "published_source_sha": "98dd59e7329511d510fafea293c726f7eeaf01aa",
+  "lock_revision": "founder-authorized-home-original-event-currentness-20261010",
   "pending_publish_acceptance": true
 }
