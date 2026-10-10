@@ -1,12 +1,12 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "fbc52f06b63fba1cf961b5107560b85505a89f61",
-  "published_baseline": "Owner's explicit 2026-10-10 request: show only factual independently verified event headlines on /intelligence; remove 376/355/47 source catalog count cards from the customer news page. Catalog counts remain clearly labeled as non-news GET discovery sideband on existing 3 API endpoints. No /global-risk presentation modification. Exact live published SHA and health verification remain separately pending owner Lovable Publish.",
+  "baseline_sha": "22a6def63e8edd0298d5205183740eff23d03a5a",
+  "published_baseline": "Owner explicitly requested 2026-10-10: show dated 376/355/47 SOURCE DISCOVERY coverage on Intelligence in a separate monitoring section, not as exact news, verified current risk score, or chargeable data. New original-publisher 30-minute observations fail closed on stale/unavailable checks. Preserve one-story-per-event verified desk, existing historical archive, all Global Risk frozen UI. Exact Lovable Publish and visual acceptance still PENDING.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-10T17:25:00Z",
-  "published_source_sha": "fbc52f06b63fba1cf961b5107560b85505a89f61",
-  "lock_revision": "owner-authorized-intelligence-news-only-catalog-metadata-in-api-20261010",
+  "published_source_sha": "22a6def63e8edd0298d5205183740eff23d03a5a",
+  "lock_revision": "owner-authorized-separate-source-network-discovery-panel-20261010",
   "pending_publish_acceptance": true
 }

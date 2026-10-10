@@ -19,6 +19,7 @@ import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import { categoryLeads, publicHeadline, scoredNews, COMMERCIAL_DOMAINS } from "@/lib/intelligence-editorial";
 import { intelligenceDomainPulse } from "@/lib/intelligence-domain-pulse";
 import { currentVerifiedDeskEvents } from "@/lib/intelligence-current-desk";
+import { SourceNetworkMonitor } from "@/components/intelligence/source-network-monitor";
 
 const TITLE = "Live Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
 const DESCRIPTION = "Source-governed geopolitical, macro/FX and critical minerals intelligence: specific scored events, decision context and verified severity from 0 to 100.";
@@ -211,6 +212,8 @@ function IntelligencePage() {
           ))}
         </div>
       </section>
+
+      <SourceNetworkMonitor />
 
       <section className="mt-8 grid gap-3 rounded-2xl border border-border/70 bg-card/40 p-4 sm:grid-cols-[minmax(0,1fr)_180px_170px_auto]">
         <label className="relative min-w-0">

@@ -57,10 +57,17 @@ describe("#1827 public source discovery vs real paid intelligence boundary", () 
     expect(handlers).toContain("availability_check: \"POST_WITHOUT_PAYMENT_SIGNATURE\"");
   });
 
-  it("retains source catalog counts in API discovery only; Intelligence is a verified news desk", () => {
+  it("shows source counts separately on the website while keeping only independently verified stories in the news desk", () => {
     const page = readFileSync("src/routes/intelligence.tsx", "utf8");
-    expect(page).not.toContain("PUBLIC_SOURCE_COVERAGE_DOMAINS.map");
-    expect(page).not.toContain("source-intake-coverage-heading");
+    expect(page).toContain("<SourceNetworkMonitor />");
+    const monitor = readFileSync("src/components/intelligence/source-network-monitor.tsx", "utf8");
+    expect(monitor).toContain("source-intake-coverage-heading");
+    expect(monitor).toContain("PUBLIC_SOURCE_COVERAGE_DOMAINS.map");
+    expect(monitor).toContain("Registered source-lane entries · historical snapshot");
+    expect(monitor).toContain("not unique news stories or approved publishers");
+    expect(monitor).toContain("classifySourcePulse(data, row.category)");
+    expect(monitor).toContain("method: \"GET\"");
+    expect(monitor).not.toContain("method: \"POST\"");
     expect(page).toContain("Verified news developments");
     expect(page).toContain("publicHeadline(event.title)");
     expect(page).toContain("currentVerifiedDeskEvents(pool)");
