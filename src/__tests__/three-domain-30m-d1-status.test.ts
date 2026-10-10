@@ -2,6 +2,7 @@ import {describe,expect,it,vi} from "vitest";
 import {readFileSync} from "node:fs";
 import {projectSourcePulseForD1,write30MinSourcePulseToD1} from "../../scripts/ops/write-30min-source-pulse-d1.mjs";
 import {projectPublic30mPulse} from "../../workers/control-plane/src/source-pulse-public.mjs";
+import {categoryOriginalSourcePulse} from "../lib/current-30min-original-source-pulse.server";
 
 const at="2026-10-10T16:55:18.010Z";
 const now=new Date("2026-10-10T17:00:00.000Z");
@@ -103,6 +104,31 @@ describe("#1827 30m pulse D1 -> public API safe status (not GRO)",()=>{
     expect(result.b2_requests).toBe(0);
     expect(result.supabase_requests).toBe(0);
     expect(result.payment_performed).toBe(false);
+  });
+
+  it("offers honest 30m publisher-status counts in three category discovery GETs, never a paid result",async()=>{
+    const rows=projectPublic30mPulse(storedRows(projectSourcePulseForD1(report([0,1,2]))),now);
+    const fake=async()=>new Response(JSON.stringify(rows),{status:200,headers:{"content-type":"application/json"}});
+    const byGeo=await categoryOriginalSourcePulse("geopolitics",{fetchImpl:fake as typeof fetch,now:1000});
+    expect(byGeo.observation.publisher_topic_items_in_last_30m).toBe(0);
+    expect(byGeo.observation.no_new_relevant_original_item_observed).toBe(true);
+    expect(byGeo.current_signed_risk_intelligence_verified).toBe(false);
+    expect(byGeo.paid_availability_proven).toBe(false);
+    const byMacro=await categoryOriginalSourcePulse("macro-fx",{fetchImpl:fake as typeof fetch,now:1000});
+    expect(byMacro.observation.publisher_topic_items_in_last_30m).toBe(1);
+    const byMinerals=await categoryOriginalSourcePulse("critical-minerals",{fetchImpl:fake as typeof fetch,now:1000});
+    expect(byMinerals.observation.publisher_topic_items_in_last_30m).toBe(2);
+  });
+
+  it("falls back to UNKNOWN on D1 worker error without changing category discovery or POST paywall",async()=>{
+    const bad=async()=>new Response("unavailable",{status:503});
+    const x=await categoryOriginalSourcePulse("geopolitics",{fetchImpl:bad as typeof fetch,now:90000});
+    expect(x.observation.status).toBe("UNKNOWN_OR_NOT_YET_SYNCED");
+    expect(x.observation.publisher_topic_items_in_last_30m).toBeNull();
+    const handler=readFileSync("src/lib/category-intelligence-alias.server.ts","utf8");
+    expect(handler).toContain("await categoryOriginalSourcePulse(config.category as CommercialIntelligenceCategory)");
+    expect(handler).toContain("original_publisher_observation: sourcePulse");
+    expect(handler).toContain("return mainnetIntelligenceHandlers.POST({ request: canonicalRequest })");
   });
 
   it("locks production D1 public read route and no-Supabase/B2 source monitor admission",()=>{
