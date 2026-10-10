@@ -67,7 +67,11 @@ Supporting official references:
 - **Status criteria:** an external 403/429, MIME or schema mismatch yields
   `SOURCE_TRANSPORT_DEGRADED`, not fake source freshness. The sanitized
   response may record numeric primary/fallback HTTP status without headers,
-  publisher body, response URL, article text or secrets. Any Eurostat fallback is one publisher family, **not** independent corroboration; even a valid translated RSS is not a risk event. PR tests validate
+  publisher body, response URL, article text or secrets. The observed 2026-10-10
+  HTTP **406 Not Acceptable** is addressed with a single Eurostat-only
+  `Accept: */*` request: broad transport negotiation never bypasses mandatory
+  XML MIME, native RSS shape, size, original-time, rights or scoring gates.
+  Any Eurostat fallback is one publisher family, **not** independent corroboration; even a valid translated RSS is not a risk event. PR tests validate
   safe fail-closed behavior even during publisher outage; real main/scheduled
   production fails RED and preserves a sanitized three-day receipt.
 
