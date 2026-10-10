@@ -38,7 +38,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       seen.push(url);
       expect(options.redirect).toBe("error");
       expect(options.credentials).toBeUndefined();
-      if(url.includes("eiti.org"))
+      if(new URL(url).hostname === "eiti.org")
         return response(JSON.stringify({data:[{id:1,year:2024}]}),"application/json");
       return response(xml,"application/rss+xml");
     });
@@ -92,7 +92,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
   it("continues all other domains when one external publisher is offline",async()=>{
     const res=await probeExpandedOfficialMesh({now,fetchImpl:async(url:string)=>{
       if(url.includes("ecb.europa.eu"))throw Error("down");
-      if(url.includes("eiti.org"))return response('{"data":[]}',"application/json");
+      if(new URL(url).hostname === "eiti.org")return response('{"data":[]}',"application/json");
       return response(xml,"application/rss+xml");
     }});
     expect(res.status).toBe("SOURCE_TRANSPORT_DEGRADED");
