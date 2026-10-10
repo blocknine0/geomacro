@@ -162,6 +162,23 @@ describe("verified Intelligence edge-first preview recovery", () => {
     expect(response.newest_at).toBeNull();
   });
 
+  it("never calls the combined 3-domain feed current when just one category is fresh", () => {
+    const rows = [
+      verified("geopolitics", { published_at: "2026-10-08T09:55:00Z" }),
+      verified("macro", { published_at: "2026-10-07T08:00:00Z" }),
+      verified("rare_earth", { published_at: "2026-10-06T06:00:00Z" }),
+    ];
+    const projected = buildVerifiedIntelligenceApiPayload(
+      parseVerifiedIntelligenceEdgePayload(payload(rows), NOW), NOW);
+    expect(projected.newest_at).toBe("2026-10-08T09:55:00.000Z");
+    expect(projected.current_within_24h).toBe(false);
+    expect(projected.verified_rows).toBe(3);
+    expect(projected.rows).toHaveLength(3); // historical derived rows retained
+    const allCurrent = buildVerifiedIntelligenceApiPayload(
+      parseVerifiedIntelligenceEdgePayload(payload(), NOW), NOW);
+    expect(allCurrent.current_within_24h).toBe(true);
+  });
+
   it("filters unsafe editorial labels rather than showing source prose", () => {
     const rows = categories.map((c) => verified(c));
     rows[0] = verified("geopolitics", {
