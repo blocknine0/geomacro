@@ -48,7 +48,7 @@ describe("Geomacro public gist and no-raw projection", () => {
     }
   });
 
-  it("keeps observation-only rows unscored with a single verified gist", () => {
+  it("does not show uncorroborated observation-only news to customers", () => {
     const out = sanitizePublicIntelligenceRow({
       ...base,
       id: "observed",
@@ -59,9 +59,7 @@ describe("Geomacro public gist and no-raw projection", () => {
       delta: null,
       public_status: "live_observed",
     });
-    expect(out?.source_title).toBe("Geomacro observes cross-border tension in a monitored region");
-    expect(out?.summary).toBeNull();
-    expect(out?.severity).toBeNull();
+    expect(out).toBeNull();
   });
 
   it("does not turn GDELT event-root code and action geography into a reported news headline", () => {
@@ -89,7 +87,7 @@ describe("Geomacro public gist and no-raw projection", () => {
     }
   });
 
-  it("preserves scored historical items and already-governed specific unscored observations", () => {
+  it("retains historical scored items but requires corroboration for all live observations", () => {
     const text = "fighting in United States";
     expect(sanitizePublicIntelligenceRow({
       ...base, source_title: "Geomacro finds " + text,
@@ -101,9 +99,7 @@ describe("Geomacro public gist and no-raw projection", () => {
       source_title: "Geomacro observes Ministry announces new customs controls for freight crossing",
       public_status: "live_observed",
     });
-    expect(specific?.source_title).toContain("Ministry announces new customs controls");
-    expect(specific?.severity).toBeNull();
-    expect(specific?.published_at).toBe(base.published_at);
+    expect(specific).toBeNull();
   });
 
   it("rejects unapproved, malformed and upstream direct headlines", () => {
