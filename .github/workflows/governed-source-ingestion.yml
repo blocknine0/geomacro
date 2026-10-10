@@ -213,7 +213,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT pipeline,scope,status,cursor,metadata_json FROM pipeline_checkpoint WHERE pipeline='governed_source_ingestion' AND scope IN ('eia_api_v2','noaa_ncei_cdo_api') ORDER BY scope;")"
+          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT pipeline,scope,status,cursor,metadata_json FROM pipeline_checkpoint WHERE pipeline='governed_source_ingestion' AND scope IN ("eia_api_v2","noaa_ncei_cdo_api") ORDER BY scope;")"
           printf '%s' "$OUT" > artifacts/governed-source-ingestion/d1-readback.json
           printf '%s' "$OUT" | node -e '
             let s="";
@@ -227,11 +227,11 @@ jobs:
               for (const row of rows) {
                 if (row.pipeline !== "governed_source_ingestion" || row.status !== "PASS" || !expected.delete(row.scope) || !/^[a-f0-9]{64}$/.test(String(row.cursor ?? ""))) throw new Error("D1_CHECKPOINT_INVALID");
                 const metadata = JSON.parse(row.metadata_json);
-                const verified = JSON.parse(require('fs').readFileSync(
-                  'artifacts/governed-source-ingestion/verification-summary.json', 'utf8'));
+                const verified = JSON.parse(require("node:fs").readFileSync(
+                  "artifacts/governed-source-ingestion/verification-summary.json", "utf8"));
                 const prior = verified.sources?.find(x => x.source_id === row.scope);
-                const expectedCategory = row.scope === 'eia_api_v2' ? 'MACRO' :
-                  row.scope === 'noaa_ncei_cdo_api' ? 'MULTI_DOMAIN' : null;
+                const expectedCategory = row.scope === "eia_api_v2" ? "MACRO" :
+                  row.scope === "noaa_ncei_cdo_api" ? "MULTI_DOMAIN" : null;
                 if (!prior || !expectedCategory ||
                     row.cursor !== prior.fragment_set_sha256 ||
                     metadata.latest_source_observed_at !== prior.latest_source_observed_at ||
@@ -242,8 +242,8 @@ jobs:
                     metadata.current_intelligence_available !== false ||
                     metadata.current_commercial_signal_eligible !== false ||
                     metadata.checked_at_is_not_source_observed_at !== true ||
-                    metadata.source_data_role !== 'historical_or_latest_native_statistical_measurements_only') {
-                  throw new Error('GOVERNED_D1_STATISTIC_SOURCE_CLOCK_OR_CATEGORY_MISMATCH');
+                    metadata.source_data_role !== "historical_or_latest_native_statistical_measurements_only") {
+                  throw new Error("GOVERNED_D1_STATISTIC_SOURCE_CLOCK_OR_CATEGORY_MISMATCH");
                 }
                 if (metadata?.durable_payload_store !== "backblaze-b2" || metadata?.normalized_data_store !== "backblaze-b2" || metadata?.compact_control_store !== "cloudflare-d1" || metadata?.storage_mode !== "gzip-fragment-bundles" || metadata?.compression !== "gzip-9" || !Number.isInteger(metadata?.fragment_count) || metadata.fragment_count < 1 || metadata?.b2_storage_metadata_verified !== true || metadata?.b2_local_restore_verified !== true || metadata?.b2_full_body_readback_verified !== true || metadata?.verification_mode !== "signed-put-full-readback-sha256" || metadata?.supabase_dependency !== false) throw new Error("D1_CHECKPOINT_METADATA_INVALID");
               }
