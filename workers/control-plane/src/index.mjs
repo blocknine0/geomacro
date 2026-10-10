@@ -538,6 +538,68 @@ async function getGlobalRiskB2Anchor(env) {
   }
 }
 
+// Defense in depth: the authenticated publisher is NOT a license to write
+// news bodies, publisher/source links or internal provenance into public D1.
+// D1 GET serves payload_json directly; browser-side stripping is too late.
+const PUBLIC_DERIVED_ROW_FIELDS=Object.freeze([
+  "id","source_title","summary","category","severity",
+  "delta","created_at","published_at","public_status",
+]);
+const PUBLIC_DERIVED_ROW_FIELD_SET=new Set(PUBLIC_DERIVED_ROW_FIELDS);
+const PUBLIC_INTELLIGENCE_VALUE_FIELDS=new Set([
+  "schema","source_project","generated_at","rows",
+]);
+const PUBLIC_DERIVED_TEXT_LEAK=/(?:https?:\/\/|www\.|<[^>]*>|\[(?:source|provider|publisher)\])/iu;
+const PUBLIC_DERIVED_EDITORIAL=/\b(?:articles?|pieces?)\b/iu;
+const PUBLIC_DERIVED_ISO_TIME=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u;
+function pureDerivedText(value,min,max) {
+  if(typeof value!=="string"||value.length<min||value.length>max||
+     value!==value.replace(/\s+/gu," ").trim()||
+     PUBLIC_DERIVED_TEXT_LEAK.test(value)||
+     PUBLIC_DERIVED_EDITORIAL.test(value))
+    return false;
+  return true;
+}
+function checkedCurrentUtcTime(value,now,maxAgeMs) {
+  if(typeof value!=="string"||!PUBLIC_DERIVED_ISO_TIME.test(value))return false;
+  const ms=Date.parse(value);
+  return Number.isFinite(ms)&&ms<=now+5*60_000&&ms>=0&&
+    now-ms<=maxAgeMs;
+}
+function validDerivedIntelligencePayload(value,now,maximumOriginalAgeMs) {
+  if(!value||typeof value!=="object"||Array.isArray(value)||
+     Object.keys(value).length!==PUBLIC_INTELLIGENCE_VALUE_FIELDS.size||
+     Object.keys(value).some(k=>!PUBLIC_INTELLIGENCE_VALUE_FIELDS.has(k))||
+     !Array.isArray(value.rows)||value.rows.length<1||value.rows.length>300)
+    return false;
+  const seenIds=new Set();
+  const scoredCategories=new Set();
+  for(const row of value.rows){
+    if(!row||typeof row!=="object"||Array.isArray(row)||
+       Object.keys(row).length!==PUBLIC_DERIVED_ROW_FIELDS.length||
+       Object.keys(row).some(k=>!PUBLIC_DERIVED_ROW_FIELD_SET.has(k))||
+       PUBLIC_DERIVED_ROW_FIELDS.some(k=>!Object.hasOwn(row,k))||
+       typeof row.id!=="string"||!/^[-_A-Za-z0-9]{1,128}$/u.test(row.id)||
+       seenIds.has(row.id)||
+       row.public_status!=="verified_b2"||
+       !["geopolitics","macro","rare_earth"].includes(row.category)||
+       !pureDerivedText(row.source_title,22,280)||
+       !row.source_title.startsWith("Geomacro finds ")||
+       (row.summary!==null&&!pureDerivedText(row.summary,8,190))||
+       !Number.isInteger(row.severity)||row.severity<0||row.severity>100||
+       (row.delta!==null&&
+         (typeof row.delta!=="number"||!Number.isFinite(row.delta)))||
+       !checkedCurrentUtcTime(row.created_at,now,30*24*60*60_000)||
+       !checkedCurrentUtcTime(row.published_at,now,maximumOriginalAgeMs))
+      return false;
+    seenIds.add(row.id);
+    scoredCategories.add(row.category);
+  }
+  // A single-source/missing-domain payload cannot masquerade as the public
+  // 3-category Intelligence product, even if it claims a qualified count.
+  return ["geopolitics","macro","rare_earth"].every(d=>scoredCategories.has(d));
+}
+
 function validateHotSnapshot(body, product, now = Date.now()) {
   const config = HOT_SNAPSHOT_PRODUCTS[product];
   if (!config || !body || typeof body !== "object" || Array.isArray(body)) throw new Error("INVALID_HOT_SNAPSHOT");
@@ -582,6 +644,13 @@ function validateHotSnapshot(body, product, now = Date.now()) {
   if (globalRiskRecovery && !validGlobalRiskCurrentProof(value, proof)) {
     throw new Error("HOT_SNAPSHOT_GLOBAL_RISK_CURRENT_PROOF_INVALID");
   }
+
+  // Public D1 is directly readable, so this MUST run before payload_json
+  // is inserted or exposed. The exact whitelisted derived row contract must
+  // hold regardless of who authenticates the producer PUT.
+  if(product==="intelligence" &&
+     !validDerivedIntelligencePayload(value,now,config.maxAgeMs))
+    throw new Error("HOT_SNAPSHOT_PUBLIC_DERIVED_ONLY_REQUIRED");
 
   // Server-side defense-in-depth. A historical/one-outlet/GDELT observation
   // MUST NOT be promoted to a fresh commercial Intelligence hot snapshot.
