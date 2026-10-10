@@ -8,12 +8,12 @@ const loader = readFileSync("scripts/lib/direct-postgres-supabase-loader.mjs", "
 const d1State = readFileSync("scripts/lib/d1-control-plane-state.mjs", "utf8");
 
 describe("Intelligence orchestrator D1 control transport", () => {
-  it("keeps scheduler state on D1 while Supabase data-plane probing remains optional", () => {
+  it("keeps scheduler state on D1 with zero scheduled Supabase probes", () => {
     expect(workflow).toContain("D1_DATABASE_NAME: geomacro-control-plane");
     expect(workflow).toContain("Resolve production D1 control-plane database");
     expect(workflow).toContain("Validate Supabase-independent scheduler runtime");
-    expect(workflow).toContain("Probe optional Supabase data plane without blocking D1/B2 heartbeat");
-    expect(workflow).toContain("GEOMACRO_SUPABASE_RESTRICTED_MODE=true");
+    expect(workflow).toContain("Enforce permanent frozen Supabase zero-probe source heartbeat");
+    expect(workflow).toContain('GEOMACRO_SUPABASE_RESTRICTED_MODE: "true"');
     expect(workflow).toContain("fixed_cardinality_source_heartbeat_allowed");
     expect(workflow).toContain("Run due intelligence tasks serially");
     expect(orchestrator).toContain('key: "phase_a_heartbeat"');
@@ -53,8 +53,8 @@ describe("Intelligence orchestrator D1 control transport", () => {
     expect(workflow).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
     expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
     expect(workflow).toContain("cancel-in-progress: false");
-    expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
-    expect(workflow).toContain("NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs");
+    expect(workflow).not.toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
+    expect(workflow).not.toContain("NODE_OPTIONS: --experimental-loader=./scripts/lib/direct-postgres-supabase-loader.mjs");
     expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
 
     expect(budget).toContain('createClient(url, role');
