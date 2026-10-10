@@ -48,6 +48,20 @@ function tag(block, name) {
 // never resolve arbitrary paths, network-path URLs, schemes, escapes or ports.
 const STATCAN_DAILY_RELATIVE =
   /^\/n1\/daily-quotidien\/[0-9]{6}\/[a-z0-9-]{1,80}\.html?$/u;
+// Aggregate-only classifier for actual official feed link shape. Never
+// expose, allowlist, fetch, or log a host merely because it is classified.
+function macroAtomLinkShape(value) {
+  if (!value) return "missing";
+  if (STATCAN_DAILY_RELATIVE.test(value)) return "exact_root_relative";
+  let u;
+  try { u=new URL(value); } catch { return "not_absolute"; }
+  if (u.protocol!=="https:") return "non_https";
+  if (u.hostname==="www150.statcan.gc.ca") return "www150";
+  if (u.hostname==="www.statcan.gc.ca") return "www";
+  if (u.hostname==="statcan.gc.ca") return "apex";
+  if (u.hostname.endsWith(".statcan.gc.ca")) return "other_statcan";
+  return "other_origin";
+}
 function officialUrl(value, hosts, category) {
   try {
     const text=String(value??"");
@@ -101,6 +115,15 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     alternate_atom_link_href_items: 0,
     alternate_statcan_exact_root_relative_items: 0,
     alternate_other_relative_href_rejected_items: 0,
+    // Count-only, NO discovered URL/hostname/body leaves private discovery.
+    alternate_macro_href_www150_items: 0,
+    alternate_macro_href_www_items: 0,
+    alternate_macro_href_apex_items: 0,
+    alternate_macro_href_other_statcan_items: 0,
+    alternate_macro_href_other_origin_items: 0,
+    alternate_macro_href_not_absolute_items: 0,
+    alternate_macro_href_non_https_items: 0,
+    alternate_macro_href_missing_items: 0,
     alternate_article_page_probes: 0,
     alternate_article_page_precise: 0,
     alternate_article_page_admitted: 0,
@@ -125,6 +148,20 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
         stats.alternate_statcan_exact_root_relative_items++;
       else if (raw.startsWith("/") && !raw.startsWith("//"))
         stats.alternate_other_relative_href_rejected_items++;
+    }
+    if (category==="macro" && config.format==="atom") {
+      const linkClass=macroAtomLinkShape(raw);
+      const fieldByClass={
+        www150:"alternate_macro_href_www150_items",
+        www:"alternate_macro_href_www_items",
+        apex:"alternate_macro_href_apex_items",
+        other_statcan:"alternate_macro_href_other_statcan_items",
+        other_origin:"alternate_macro_href_other_origin_items",
+        not_absolute:"alternate_macro_href_not_absolute_items",
+        non_https:"alternate_macro_href_non_https_items",
+        missing:"alternate_macro_href_missing_items",
+      }[linkClass];
+      if (fieldByClass) stats[fieldByClass]++;
     }
     const uri=officialUrl(raw,config.articleHosts,category);
     if (Number.isFinite(time)) stats.alternate_native_date_items++;
