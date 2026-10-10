@@ -583,6 +583,28 @@ function validateHotSnapshot(body, product, now = Date.now()) {
     throw new Error("HOT_SNAPSHOT_GLOBAL_RISK_CURRENT_PROOF_INVALID");
   }
 
+  // Server-side defense-in-depth. A historical/one-outlet/GDELT observation
+  // MUST NOT be promoted to a fresh commercial Intelligence hot snapshot.
+  // Authenticated producer must supply the hash of its private multi-source
+  // event qualification receipt. Private publisher identities/URLs never
+  // enter public D1 payload_json. This metadata binding is not a replacement
+  // for independent upstream verification or the signed GRO trust chain.
+  if (product === "intelligence") {
+    const checkedMs = Date.parse(String(proof.commercial_multi_source_checked_at ?? ""));
+    if (!Number.isFinite(checkedMs) || checkedMs > now + 5 * 60_000 ||
+        now - checkedMs > 5 * 60_000 ||
+        proof.commercial_multi_source_verified !== true ||
+        !HASH_RE.test(String(proof.commercial_multi_source_receipt_sha256 ?? "")) ||
+        !Array.isArray(value.rows) || value.rows.length < 1 ||
+        value.rows.some(item => item?.public_status !== "verified_b2" ||
+          !["geopolitics", "macro", "rare_earth"].includes(item?.category) ||
+          !Number.isInteger(item?.severity) ||
+          item.severity < 0 || item.severity > 100) ||
+        proof.commercial_multi_source_qualified_count !== value.rows.length) {
+      throw new Error("HOT_SNAPSHOT_INDEPENDENT_MULTI_SOURCE_PROOF_REQUIRED");
+    }
+  }
+
   const sourceRunId = boundedText(body.source_run_id, 32);
   if (!/^\d{1,20}$/.test(sourceRunId)) throw new Error("INVALID_HOT_SNAPSHOT_RUN_ID");
   const payloadSha256 = String(body.payload_sha256 ?? "").trim().toLowerCase();
