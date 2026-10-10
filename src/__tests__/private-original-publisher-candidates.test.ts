@@ -122,6 +122,10 @@ describe("#1827 native article discovery, deterministic dedup, secure private sc
     expect(r.private_original_candidate_dedup.signed_gro_published).toBe(false);
     expect(r.b2_reads+r.b2_writes+r.d1_writes+r.supabase_requests+r.payments_performed).toBe(0);
     const source=readFileSync("scripts/ops/write-30min-source-pulse-d1.mjs","utf8");
-    expect(source).not.toContain("private_original_article_candidates");
+    // The D1 staging lane now keeps SHA-only identities privately between
+    // polling runs to avoid republishing one original article twice.
+    expect(source).toContain("reconcile30mPrivateArticleFingerprints");
+    expect(source).toContain("recent_private_article_fingerprints");
+    expect(source).toContain("source_current_scored_intelligence_verified:false");
   });
 });

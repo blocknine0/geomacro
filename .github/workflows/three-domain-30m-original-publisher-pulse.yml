@@ -17,6 +17,8 @@ on:
       - "scripts/lib/private-original-publisher-candidates.mjs"
       - "src/__tests__/private-original-publisher-candidates.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
+      - "scripts/lib/private-original-cross-poll-dedupe.mjs"
+      - "src/__tests__/private-original-cross-poll-dedupe.test.ts"
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/src/source-pulse-public.mjs"
       - "src/__tests__/three-domain-30m-d1-status.test.ts"
@@ -31,6 +33,8 @@ on:
       - "scripts/lib/private-original-publisher-candidates.mjs"
       - "src/__tests__/private-original-publisher-candidates.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
+      - "scripts/lib/private-original-cross-poll-dedupe.mjs"
+      - "src/__tests__/private-original-cross-poll-dedupe.test.ts"
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/src/source-pulse-public.mjs"
       - "src/__tests__/three-domain-30m-d1-status.test.ts"
@@ -61,6 +65,7 @@ jobs:
           set -euo pipefail
           node --check scripts/lib/private-original-publisher-candidates.mjs
           node --check scripts/ops/probe-30min-three-domain-pulse.mjs
+          node --check scripts/lib/private-original-cross-poll-dedupe.mjs
           node --check scripts/ops/write-30min-source-pulse-d1.mjs
           node --check workers/control-plane/src/source-pulse-public.mjs
           node --check scripts/ops/probe-expanded-official-source-mesh.mjs
