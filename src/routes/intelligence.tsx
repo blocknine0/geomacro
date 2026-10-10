@@ -315,6 +315,11 @@ function IntelligencePage() {
               </div>
             </div>
 
+            {showHistoricalArchive ? (
+              <p className="mb-4 text-sm text-muted-foreground">
+                Previous verified risk assessments remain available for comparison. Their original evidence dates and historical severity scores are preserved; none should be read as a current alert.
+              </p>
+            ) : null}
             {visibleFiltered.length ? (
               <div className="grid gap-3">
                 {visibleFiltered.slice(0, 24).map((event) => <IntelCard key={event.id} event={event} />)}
