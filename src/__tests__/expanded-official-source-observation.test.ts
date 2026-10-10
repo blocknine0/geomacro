@@ -121,6 +121,27 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(wrongMime.reason).toBe("SOURCE_CONTENT_TYPE_INVALID");
     expect(wrongMime.format_valid).toBe(false);
   });
+  it("enforces a larger yet strictly finite Eurostat-only RSS body limit",async()=>{
+    const eurostat=EXPANDED_OFFICIAL_SOURCES[2];
+    const ecb=EXPANDED_OFFICIAL_SOURCES[1];
+    const largeXml='<rss><channel><item><title>Data catalogue update</title>'+
+      '<pubDate>Sat, 10 Oct 2026 06:00:00 GMT</pubDate></item>'+
+      '<!--'+ 'a'.repeat(200*1024)+'--></channel></rss>';
+    const fetchImpl=async()=>response(largeXml,"application/xml");
+    const eur=await probeExpandedSource(eurostat,{now,fetchImpl});
+    expect(eur.format_valid).toBe(true);
+    expect(eur.source_native_24h_release_items).toBe(1);
+    expect(eur.commercial_eligible).toBe(false);
+    const other=await probeExpandedSource(ecb,{now,fetchImpl});
+    expect(other.reason).toBe("SOURCE_BODY_UNAVAILABLE_OR_OVERSIZE");
+    expect(other.format_valid).toBe(false);
+    const tooLarge='<rss><channel><!--'+'x'.repeat(1024*1024)+'</channel></rss>';
+    const oversized=await probeExpandedSource(eurostat,{
+      now,fetchImpl:async()=>response(tooLarge,"application/xml"),
+    });
+    expect(oversized.reason).toBe("SOURCE_BODY_UNAVAILABLE_OR_OVERSIZE");
+    expect(oversized.commercial_eligible).toBe(false);
+  });
   it("uses a single same-publisher Eurostat locale fallback for HTTP 404/5xx, without commercial promotion",async()=>{
     const source=EXPANDED_OFFICIAL_SOURCES[2];
     for(const primaryStatus of [404,503]){
