@@ -9,6 +9,7 @@ import { fetchOriginalAlternate } from "../../scripts/lib/official-native-altern
 const now = new Date("2026-10-09T13:30:00Z");
 const official = "https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals-supply-chain.html";
 const statcan = "https://www150.statcan.gc.ca/n1/daily-quotidien/261009/dq261009a-eng.htm";
+const statcanWww = "https://www.statcan.gc.ca/n1/daily-quotidien/261009/dq261009a-eng.htm";
 const subject = "Natural Resources Canada invests in lithium critical minerals mining resilience";
 const xml = (urls: string[]) => [
   '<feed xmlns="http://www.w3.org/2005/Atom"><updated>2026-10-09T13:29:00Z</updated>',
@@ -79,6 +80,19 @@ describe("bounded original-publisher article precise-date fallback", () => {
       .toBe("2026-10-09T12:45:00.000Z");
     expect(fetchImpl.mock.calls[0][0]).toBe(statcan);
     expect((fetchImpl.mock.calls[0][1] as RequestInit).redirect).toBe("error");
+    expect(await fetchVerifiedPublisherPageDate(statcanWww, "macro", {now,fetchImpl}))
+      .toBe("2026-10-09T12:45:00.000Z");
+    expect(fetchImpl.mock.calls[1][0]).toBe(statcanWww);
+    for(const unsafe of [
+      "https://www.statcan.gc.ca/en/news/latest",
+      statcanWww+"?continue=evil",
+      statcanWww+"#fragment",
+      "https://www.statcan.gc.ca.evil.test/n1/daily-quotidien/261009/dq261009a-eng.htm",
+    ]) {
+      expect(await fetchVerifiedPublisherPageDate(unsafe, "macro", {now,fetchImpl}))
+        .toBeNull();
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("uses a maximum two original publisher pages; outputs only private derived evidence", async () => {
