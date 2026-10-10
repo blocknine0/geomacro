@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - "scripts/ingest-certified-sources.mjs"
+      - "scripts/lib/governed-source-native-time.mjs"
       - "scripts/test-governed-source-ingestion.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "workers/control-plane/**"
