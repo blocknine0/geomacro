@@ -848,6 +848,18 @@ const rows = [...current.rows, ...scoredRows]
   .sort((a, b) => rowTime(b) - rowTime(a));
 validateRows(rows);
 
+// Commercial Intelligence MUST NOT archive single-source current GDELT
+// discoveries as a publishable B2 snapshot. This legacy Supabase-dependent
+// workflow is explicitly quota-held. Reject before B2 client creation, all
+// B2 GET/PUT/readback and the public hot-overlay write. New independently
+// corroborated commercial publishers must use the signed private event
+// admission and source-specific rights proof from #1937, not re-use the
+// old observation-only path. Never spend scarce B2 account quota then
+// discover at D1 that the news was ineligible.
+if (rows.some(row => row.public_status !== "verified_b2")) {
+  throw new Error("LEGACY_INTELLIGENCE_UNCORROBORATED_B2_PUBLISH_BLOCKED");
+}
+
 const generatedAt = new Date().toISOString();
 const value = {
   schema: "geomacro.public-intelligence-live.v1",
