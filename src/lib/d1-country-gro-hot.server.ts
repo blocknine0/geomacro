@@ -6,6 +6,7 @@ import {
   type RiskObjectVerificationKeys,
 } from "./risk-object-signing.server";
 import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-policy";
+import { pinnedRiskObjectVerificationKeys } from "./risk-object-public-registry";
 
 const DEFAULT_CONTROL_PLANE_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev";
@@ -36,6 +37,56 @@ function recordSha256(object: GeomacroRiskObject) {
     .digest("hex");
 }
 
+/**
+ * Independent clients must not let a compromised website trust endpoint
+ * introduce an attacker signing key or revive a retired/revoked signer.
+ * Any approved key rotation requires an explicit canonical pin update AND
+ * a matching public deployment; network failures never select a fallback.
+ */
+export function parsePinnedPublicRiskObjectRegistry(
+  value: unknown,
+): RiskObjectVerificationKeys | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const payload = value as { ok?: unknown; keys?: unknown };
+  if (payload.ok !== true || !Array.isArray(payload.keys) ||
+      payload.keys.length === 0 || payload.keys.length > 16) return null;
+
+  const remote: RiskObjectVerificationKeys = Object.create(null);
+  for (const candidate of payload.keys) {
+    if (!candidate || typeof candidate !== "object" ||
+        Array.isArray(candidate)) return null;
+    const raw = candidate as Record<string, unknown>;
+    if (typeof raw.key_id !== "string" ||
+        !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(raw.key_id) ||
+        raw.key_id === "__proto__" || raw.key_id === "constructor" ||
+        raw.key_id === "prototype" ||
+        Object.hasOwn(remote, raw.key_id) ||
+        typeof raw.public_key_spki_b64 !== "string" ||
+        !["active", "retired", "revoked"].includes(String(raw.status))) return null;
+    remote[raw.key_id] = {
+      public_key_spki_b64: raw.public_key_spki_b64,
+      status: raw.status as "active" | "retired" | "revoked",
+      not_before: raw.not_before == null ? null : String(raw.not_before),
+      not_after: raw.not_after == null ? null : String(raw.not_after),
+    };
+  }
+
+  let pinned: RiskObjectVerificationKeys;
+  try { pinned = pinnedRiskObjectVerificationKeys(); } catch { return null; }
+  const ids = Object.keys(pinned);
+  if (Object.keys(remote).length !== ids.length) return null;
+  for (const id of ids) {
+    const expected = pinned[id];
+    const found = remote[id];
+    if (!found || typeof expected === "string" || typeof found === "string" ||
+        expected.public_key_spki_b64 !== found.public_key_spki_b64 ||
+        expected.status !== found.status ||
+        (expected.not_before ?? null) !== (found.not_before ?? null) ||
+        (expected.not_after ?? null) !== (found.not_after ?? null)) return null;
+  }
+  return remote;
+}
+
 export async function loadPublicRiskObjectVerificationKeys(): Promise<RiskObjectVerificationKeys | null> {
   const now = Date.now();
   if (trustCache && trustCache.expires_at_ms > now) {
@@ -49,48 +100,18 @@ export async function loadPublicRiskObjectVerificationKeys(): Promise<RiskObject
         "cache-control": "no-cache",
       },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      redirect: "error",
     });
     if (!response.ok) return null;
 
-    const payload = (await response.json()) as {
-      ok?: boolean;
-      keys?: Array<{
-        key_id?: unknown;
-        public_key_spki_b64?: unknown;
-        status?: unknown;
-        not_before?: unknown;
-        not_after?: unknown;
-      }>;
-    };
-    if (payload?.ok !== true || !Array.isArray(payload.keys) || payload.keys.length < 1) {
-      return null;
-    }
-
-    const keys: RiskObjectVerificationKeys = {};
-    for (const raw of payload.keys) {
-      const keyId = String(raw?.key_id ?? "").trim();
-      const publicKey = String(raw?.public_key_spki_b64 ?? "").trim();
-      const status = String(raw?.status ?? "").trim();
-      if (
-        !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(keyId) ||
-        !publicKey ||
-        (status !== "active" && status !== "retired" && status !== "revoked")
-      ) {
-        return null;
-      }
-      keys[keyId] = {
-        public_key_spki_b64: publicKey,
-        status,
-        not_before:
-          raw?.not_before == null || String(raw.not_before).trim() === ""
-            ? null
-            : String(raw.not_before),
-        not_after:
-          raw?.not_after == null || String(raw.not_after).trim() === ""
-            ? null
-            : String(raw.not_after),
-      };
-    }
+    const statedSize = Number(response.headers.get("content-length") ?? 0);
+    if (!Number.isFinite(statedSize) || statedSize > 32 * 1024) return null;
+    const raw = await response.text();
+    if (Buffer.byteLength(raw, "utf8") > 32 * 1024) return null;
+    let payload: unknown;
+    try { payload = JSON.parse(raw); } catch { return null; }
+    const keys = parsePinnedPublicRiskObjectRegistry(payload);
+    if (!keys) return null;
 
     trustCache = {
       keys,
