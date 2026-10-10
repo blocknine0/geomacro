@@ -82,6 +82,46 @@ describe("bounded original-publisher article precise-date fallback", () => {
 
   });
 
+  it("returns closed publication-page failure codes without revealing URL/body or promoting updates",async()=>{
+    const cases:[string,(url:string,options:RequestInit)=>Promise<Response>][]=[
+      ["NETWORK_OR_REDIRECT_DENIED",async()=>{throw Error("sensitive token and original page body");}],
+      ["HTTP_UNAUTHORIZED",async()=>new Response("private forbidden response",{status:403})],
+      ["HTTP_RATE_LIMITED",async()=>new Response("private throttled response",{status:429})],
+      ["HTTP_NOT_OK",async()=>new Response("not found",{status:404})],
+      ["MIME_NOT_HTML",async()=>new Response("sensitive",{headers:{"content-type":"application/json"}})],
+      ["BODY_TOO_LARGE",async()=>new Response("private html",{headers:{
+        "content-type":"text/html","content-length":"200000",
+      }})],
+      ["PRECISE_PUBLICATION_UNVERIFIED",async()=>new Response(
+        '<html><meta property="article:modified_time" content="2026-10-09T13:00:00Z"></html>',{
+          headers:{"content-type":"text/html"},
+        })],
+    ];
+    for(const [code,fetchImpl] of cases){
+      const diagnostics:Record<string,unknown>={};
+      const result=await fetchVerifiedPublisherPageDate(statcan,"macro",{
+        now,fetchImpl,diagnostics,
+      });
+      expect(result).toBeNull();
+      expect(diagnostics).toEqual({code});
+      expect(JSON.stringify(diagnostics)).not.toContain("sensitive");
+      expect(JSON.stringify(diagnostics)).not.toContain("statcan");
+    }
+    const verified:Record<string,unknown>={};
+    expect(await fetchVerifiedPublisherPageDate(statcan,"macro",{
+      now,fetchImpl:async()=>new Response(page("2026-10-09T12:45:00Z"),{
+        headers:{"content-type":"text/html"},
+      }),diagnostics:verified,
+    })).toBe("2026-10-09T12:45:00.000Z");
+    expect(verified).toEqual({code:"PRECISE_PUBLICATION_VERIFIED"});
+    const denied:Record<string,unknown>={};
+    expect(await fetchVerifiedPublisherPageDate(
+      "https://evil.example/n1/daily-quotidien/261009/abc.htm",
+      "macro",{now,diagnostics:denied,fetchImpl:async()=>{throw Error("should not fetch");}},
+    )).toBeNull();
+    expect(denied).toEqual({code:"URL_UNAPPROVED"});
+  });
+
   it("uses a maximum two original publisher pages; outputs only private derived evidence", async () => {
     const third = "https://www.canada.ca/en/natural-resources-canada/news/2026/10/third-project.html";
     const fetchImpl = vi.fn()
