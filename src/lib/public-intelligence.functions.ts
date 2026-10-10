@@ -4,6 +4,7 @@ import { assertSameOrigin } from "./origin-guard";
 import { readB2PublicIntelligence } from "./b2-live.server";
 import { getAppSupabase } from "./supabase-app.server";
 import { sanitizePublicIntelligenceRow } from "./public-intelligence-gist";
+import { dedupePublicIntelligenceRows } from "./public-intelligence-dedupe";
 
 const EmptyInput = z.object({}).strict();
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -119,9 +120,9 @@ function sortAndDedupe(rows: PublicIntelligenceRow[]): PublicIntelligenceRow[] {
     const key = `${row.public_status}|${row.category}|${String(row.source_title).toLowerCase().replace(/\s+/g, " ")}`;
     if (!dedupe.has(key)) dedupe.set(key, row);
   }
-  return [...dedupe.values()]
-    .sort((a, b) => rowTime(b) - rowTime(a))
-    .slice(0, MAX_ROWS);
+  // A single verified event reported with different approved wording must
+  // produce one public row. Do not discard distinct actors/places/actions.
+  return dedupePublicIntelligenceRows([...dedupe.values()], MAX_ROWS);
 }
 
 /**
