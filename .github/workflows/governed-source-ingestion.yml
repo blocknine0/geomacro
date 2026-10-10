@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - "scripts/ingest-certified-sources.mjs"
+      - "scripts/lib/governed-source-native-time.mjs"
       - "scripts/test-governed-source-ingestion.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "workers/control-plane/**"
@@ -168,6 +169,26 @@ jobs:
           if (summary?.b2_usage?.global_account_quota_guard_enabled !== true) throw new Error('GOVERNED_B2_SHARED_ACCOUNT_QUOTA_NOT_ACTIVE');
           if (summary?.b2_usage?.requests_started > 20) throw new Error('GOVERNED_B2_WORKFLOW_QUOTA_EXCEEDED');
           for (const source of summary?.sources ?? []) {
+            // Archive integrity is not source-news publication, freshness
+            // certification or critical-minerals supply-risk classification.
+            const category = source?.source_id === 'eia_api_v2' ? 'MACRO'
+              : source?.source_id === 'noaa_ncei_cdo_api' ? 'MULTI_DOMAIN' : null;
+            if (!category || !Array.isArray(source.data_categories) ||
+                source.data_categories.length !== 1 ||
+                source.data_categories[0] !== category ||
+                !Number.isInteger(source.latest_native_observation_lag_days) ||
+                source.latest_native_observation_lag_days < 0 ||
+                !Number.isFinite(Date.parse(String(source.earliest_source_observed_at ?? ''))) ||
+                !Number.isFinite(Date.parse(String(source.latest_source_observed_at ?? ''))) ||
+                Date.parse(source.latest_source_observed_at) < Date.parse(source.earliest_source_observed_at) ||
+                Date.parse(source.latest_source_observed_at) > Date.now() + 5 * 60_000 ||
+                source.publisher_article_published_at_verified !== false ||
+                source.current_intelligence_available !== false ||
+                source.current_commercial_signal_eligible !== false ||
+                source.checked_at_is_not_source_observed_at !== true ||
+                source.source_data_role !== 'historical_or_latest_native_statistical_measurements_only') {
+              throw new Error('GOVERNED_NATIVE_STATISTIC_NOT_PAID_OR_CURRENT');
+            }
             if (source?.storage_mode !== 'gzip-fragment-bundles' || source?.b2_storage_metadata_verified !== true || source?.b2_local_restore_verified !== true || source?.b2_full_body_readback_verified !== true || source?.verification_mode !== 'signed-put-full-readback-sha256' || source?.normalized_observations_durable_in_b2 !== true || source?.supabase_dependency !== false) throw new Error('SOURCE_FRAGMENT_EVIDENCE_INVALID');
             if (!Array.isArray(source?.fragments) || source.fragments.length !== source.fragment_count) throw new Error('SOURCE_FRAGMENT_COUNT_MISMATCH');
             for (const fragment of source.fragments) {
@@ -206,6 +227,24 @@ jobs:
               for (const row of rows) {
                 if (row.pipeline !== "governed_source_ingestion" || row.status !== "PASS" || !expected.delete(row.scope) || !/^[a-f0-9]{64}$/.test(String(row.cursor ?? ""))) throw new Error("D1_CHECKPOINT_INVALID");
                 const metadata = JSON.parse(row.metadata_json);
+                const verified = JSON.parse(require('fs').readFileSync(
+                  'artifacts/governed-source-ingestion/verification-summary.json', 'utf8'));
+                const prior = verified.sources?.find(x => x.source_id === row.scope);
+                const expectedCategory = row.scope === 'eia_api_v2' ? 'MACRO' :
+                  row.scope === 'noaa_ncei_cdo_api' ? 'MULTI_DOMAIN' : null;
+                if (!prior || !expectedCategory ||
+                    row.cursor !== prior.fragment_set_sha256 ||
+                    metadata.latest_source_observed_at !== prior.latest_source_observed_at ||
+                    metadata.earliest_source_observed_at !== prior.earliest_source_observed_at ||
+                    metadata.latest_native_observation_lag_days !== prior.latest_native_observation_lag_days ||
+                    JSON.stringify(metadata.data_categories) !== JSON.stringify([expectedCategory]) ||
+                    metadata.publisher_article_published_at_verified !== false ||
+                    metadata.current_intelligence_available !== false ||
+                    metadata.current_commercial_signal_eligible !== false ||
+                    metadata.checked_at_is_not_source_observed_at !== true ||
+                    metadata.source_data_role !== 'historical_or_latest_native_statistical_measurements_only') {
+                  throw new Error('GOVERNED_D1_STATISTIC_SOURCE_CLOCK_OR_CATEGORY_MISMATCH');
+                }
                 if (metadata?.durable_payload_store !== "backblaze-b2" || metadata?.normalized_data_store !== "backblaze-b2" || metadata?.compact_control_store !== "cloudflare-d1" || metadata?.storage_mode !== "gzip-fragment-bundles" || metadata?.compression !== "gzip-9" || !Number.isInteger(metadata?.fragment_count) || metadata.fragment_count < 1 || metadata?.b2_storage_metadata_verified !== true || metadata?.b2_local_restore_verified !== true || metadata?.b2_full_body_readback_verified !== true || metadata?.verification_mode !== "signed-put-full-readback-sha256" || metadata?.supabase_dependency !== false) throw new Error("D1_CHECKPOINT_METADATA_INVALID");
               }
               if (expected.size) throw new Error("D1_CHECKPOINT_SCOPE_MISSING");

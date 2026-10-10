@@ -3,6 +3,12 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { createB2Client } from "./ops/b2-s3-client.mjs";
+import {
+  governedMetricCategory,
+  governedSourceNativeSpan,
+  noaaRollingNativeWindow,
+  sourceNativeMeasurementTime,
+} from "./lib/governed-source-native-time.mjs";
 
 const MAX_SOURCE_ROWS = 250;
 const MAX_FRAGMENT_MEMBERS = 25;
@@ -81,14 +87,19 @@ const b2 = createB2Client({
   bucket: "geomacro-private-archive",
 });
 
-function sourceObservedAt(value, sourceId) {
-  const normalized = String(value ?? "").trim();
-  if (!normalized || !Number.isFinite(Date.parse(normalized))) throw new Error(`Missing source observation time: ${sourceId}`);
-  return new Date(normalized).toISOString();
-}
 
 function observation({ sourceId, category, record, country, metric, value, unit, observed, url, provenance, raw }) {
-  const observedAt = sourceObservedAt(observed, sourceId);
+  const observedAt = sourceNativeMeasurementTime(observed, sourceId, {
+    now: new Date(now),
+  });
+  if (value === null || value === undefined ||
+      (typeof value === "string" && !value.trim()) ||
+      !Number.isFinite(Number(value))) {
+    throw new Error(`GOVERNED_STATISTIC_VALUE_INVALID:${sourceId}:${metric}`);
+  }
+  if (category !== governedMetricCategory(sourceId, metric)) {
+    throw new Error(`GOVERNED_STATISTIC_CATEGORY_MISMATCH:${sourceId}:${metric}`);
+  }
   const normalized = {
     source_id: sourceId,
     source_record_id: record,
@@ -98,7 +109,7 @@ function observation({ sourceId, category, record, country, metric, value, unit,
     observed_at: observedAt,
     published_at: null,
     metric,
-    value_numeric: value,
+    value_numeric: Number(value),
     value_text: null,
     unit,
     commodity: null,
@@ -123,7 +134,7 @@ function observation({ sourceId, category, record, country, metric, value, unit,
 async function eia() {
   const source = governedSource("eia_api_v2");
   const key = env("EIA_API_KEY");
-  const url = `https://api.eia.gov/v2/electricity/retail-sales/data/?api_key=${encodeURIComponent(key)}&frequency=monthly&data[]=price&facets[stateid][]=CO&length=12`;
+  const url = `https://api.eia.gov/v2/electricity/retail-sales/data/?api_key=${encodeURIComponent(key)}&frequency=monthly&data[]=price&facets[stateid][]=CO&sort[0][column]=period&sort[0][direction]=desc&length=12`;
   const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
   if (!response.ok) throw new Error(`EIA_HTTP_${response.status}`);
   const rows = (await response.json())?.response?.data ?? [];
@@ -132,11 +143,14 @@ async function eia() {
     if (!/^\d{4}-\d{2}$/.test(String(row.period ?? ""))) throw new Error("EIA_PERIOD_INVALID");
     return observation({
       sourceId: source.source_id,
-      category: source.category,
+      // Registered EIA provider can cover minerals, but this *dataset* is
+      // monthly electricity retail price. Never tag an energy-price series
+      // as a critical-minerals extraction/trade risk observation.
+      category: governedMetricCategory(source.source_id, "electricity_retail_price"),
       record: `EIA:electricity-retail:${row.period}:CO`,
       country: "USA",
       metric: "electricity_retail_price",
-      value: Number(row.price),
+      value: row.price,
       unit: row["price-units"] ?? "cents_per_kwh",
       observed: `${row.period}-01T00:00:00.000Z`,
       url: "https://api.eia.gov/v2/electricity/retail-sales/data/",
@@ -149,7 +163,17 @@ async function eia() {
 async function noaa() {
   const source = governedSource("noaa_ncei_cdo_api");
   const token = env("NOAA_NCEI_TOKEN");
-  const url = "https://www.ncei.noaa.gov/cdo-web/api/v2/data?datasetid=GHCND&locationid=FIPS:US&startdate=2026-09-01&enddate=2026-09-02&limit=25";
+  // Provider observation dates come from NOAA row.date; the bounded rolling
+  // window selects candidate measurements, not a news publication timestamp.
+  const window = noaaRollingNativeWindow({ now: new Date(now) });
+  const params = new URLSearchParams({
+    datasetid: "GHCND",
+    locationid: "FIPS:US",
+    startdate: window.startdate,
+    enddate: window.enddate,
+    limit: "25",
+  });
+  const url = `https://www.ncei.noaa.gov/cdo-web/api/v2/data?${params}`;
   const response = await fetch(url, { headers: { token }, signal: AbortSignal.timeout(30_000) });
   if (!response.ok) throw new Error(`NOAA_NCEI_HTTP_${response.status}`);
   const rows = (await response.json())?.results ?? [];
@@ -160,7 +184,7 @@ async function noaa() {
     record: `NCEI:${row.datatype ?? "unknown"}:${row.date ?? "unknown"}:${row.station ?? "unknown"}`,
     country: "USA",
     metric: `noaa_${String(row.datatype ?? "observation").toLowerCase()}`,
-    value: Number(row.value),
+    value: row.value,
     unit: row.datatype ?? null,
     observed: row.date,
     url: "https://www.ncei.noaa.gov/cdo-web/api/v2/data",
@@ -299,8 +323,13 @@ async function archiveSourceBatch(sourceId, rows) {
   const fragmentSetSha256 = hash(fragments.map(({ key, sha256, fingerprint, members }) => ({ key, sha256, fingerprint, members })));
   const uncompressedBytes = fragments.reduce((sum, fragment) => sum + fragment.uncompressed_bytes, 0);
   const compressedBytes = fragments.reduce((sum, fragment) => sum + fragment.compressed_bytes, 0);
+  const sourceNativeSpan = governedSourceNativeSpan(rows, {
+    sourceId,
+    now: new Date(now),
+  });
   return {
     source_id: sourceId,
+    ...sourceNativeSpan,
     normalized_observations: rows.length,
     storage_mode: "gzip-fragment-bundles",
     fragment_count: fragments.length,
@@ -322,10 +351,34 @@ async function archiveSourceBatch(sourceId, rows) {
 
 const handlers = { eia_api_v2: eia, noaa_ncei_cdo_api: noaa };
 const sourceIds = (process.env.SOURCE_INGESTION_SOURCES ?? "eia_api_v2,noaa_ncei_cdo_api").split(",").map((value) => value.trim()).filter(Boolean);
-const summaries = [];
+if (!sourceIds.length || sourceIds.length > 2 ||
+    new Set(sourceIds).size !== sourceIds.length) {
+  throw new Error("GOVERNED_SOURCE_SELECTION_INVALID");
+}
+
+// Stage BOTH providers and verify their actual native statistical measurement
+// clocks/domain *before any Backblaze request*. If rolling NOAA data are
+// unavailable, do not consume B2 quota uploading EIA-only fragments and
+// leave uncheckpointed partial archive work behind.
+const sourceBatches = [];
 for (const sourceId of sourceIds) {
   if (!handlers[sourceId]) throw new Error(`UNSUPPORTED_SOURCE:${sourceId}`);
   const rows = await handlers[sourceId]();
+  if (!Array.isArray(rows) || rows.length < 1 || rows.length > MAX_SOURCE_ROWS) {
+    throw new Error(`GOVERNED_SOURCE_BATCH_NOT_ADMITTED:${sourceId}`);
+  }
+  governedSourceNativeSpan(rows, { sourceId, now: new Date(now) });
+  sourceBatches.push({ sourceId, rows });
+}
+// Budget pessimistically per fragment; large-fragment splits still hit the
+// independent local+shared quota guard before any additional network call.
+const minimumB2Requests = sourceBatches.reduce((total, batch) =>
+  total + Math.ceil(batch.rows.length / MAX_FRAGMENT_MEMBERS) * 2, 0);
+if (minimumB2Requests > Number(process.env.B2_REQUEST_BUDGET ?? 0)) {
+  throw new Error("GOVERNED_SOURCE_MINIMUM_B2_BUDGET_INSUFFICIENT");
+}
+const summaries = [];
+for (const { sourceId, rows } of sourceBatches) {
   const summary = await archiveSourceBatch(sourceId, rows);
   summaries.push(summary);
   console.log(JSON.stringify({ ...summary, status: "PASS" }));
@@ -336,6 +389,15 @@ const checkpointSql = summaries.map((summary) => {
     schema: "geomacro.governed-ingestion-checkpoint.v2",
     source_id: summary.source_id,
     normalized_observations: summary.normalized_observations,
+    earliest_source_observed_at: summary.earliest_source_observed_at,
+    latest_source_observed_at: summary.latest_source_observed_at,
+    latest_native_observation_lag_days: summary.latest_native_observation_lag_days,
+    data_categories: summary.data_categories,
+    publisher_article_published_at_verified: false,
+    current_intelligence_available: false,
+    current_commercial_signal_eligible: false,
+    source_data_role: "historical_or_latest_native_statistical_measurements_only",
+    checked_at_is_not_source_observed_at: true,
     durable_payload_store: "backblaze-b2",
     normalized_data_store: "backblaze-b2",
     compact_control_store: "cloudflare-d1",
