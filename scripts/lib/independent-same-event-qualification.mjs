@@ -1,4 +1,5 @@
 import { createHash, createPublicKey, verify as verifySignature } from "node:crypto";
+import { readFileSync } from "node:fs";
 
 /**
  * Commercial pre-publication event qualification. PRIVATE INPUT ONLY.
@@ -30,13 +31,48 @@ const PUBLISHER_REGISTRY=Object.freeze({
   "www150.statcan.gc.ca":"statistics_canada",
   "www.canada.ca":"natural_resources_canada",
 });
-const TYPES=new Set([
-  "conflict_escalation","ceasefire","sanctions_policy","trade_disruption",
-  "central_bank_policy","inflation_release","fx_intervention",
-  "critical_mineral_supply","critical_mineral_export_control",
-  "critical_mineral_production",
-]);
 const err=code=>{throw Error("INDEPENDENT_EVENT_"+code)};
+// A valid event type in the WRONG category is not commercial intelligence.
+const EVENT_TYPES_BY_CATEGORY=Object.freeze({
+  geopolitics:new Set(["conflict_escalation","ceasefire","sanctions_policy","trade_disruption"]),
+  macro:new Set(["central_bank_policy","inflation_release","fx_intervention","trade_disruption"]),
+  rare_earth:new Set(["critical_mineral_supply","critical_mineral_export_control",
+    "critical_mineral_production","trade_disruption"]),
+});
+
+// Reuse the project's *authoritative, explicit* 250-entity ISO3 registry.
+// Do not mistake any three capital letters for a country, or silently
+// introduce a competing generated country list into commercial admission.
+// The trusted server-side publisher runs this module from the repository;
+// missing/drifted registry is a hard fail BEFORE B2/D1/network/payment.
+function approvedGlobalEntityIso3() {
+  let source;
+  try{
+    source=readFileSync(new URL("../../src/lib/global-entity-classification.ts",
+      import.meta.url),"utf8");
+  }catch{err("CANONICAL_COUNTRY_REGISTRY_UNAVAILABLE")}
+  const groups=[["SOVEREIGN_ISO3",194],["TERRITORY_ISO3",53],
+    ["SPECIAL_ENTITY_ISO3",3]];
+  const union=new Set();
+  for(const [name,count] of groups){
+    const start='const '+name+' = new Set([';
+    const from=source.indexOf(start);
+    const end=from<0?-1:source.indexOf("]);",from+start.length);
+    if(from<0||end<0)err("CANONICAL_COUNTRY_REGISTRY_INVALID");
+    const entries=[...source.slice(from+start.length,end)
+      .matchAll(/"([A-Z]{3})"/gu)].map(x=>x[1]);
+    if(entries.length!==count||new Set(entries).size!==count)
+      err("CANONICAL_COUNTRY_REGISTRY_DRIFT");
+    for(const code of entries){
+      if(union.has(code))err("CANONICAL_COUNTRY_REGISTRY_OVERLAP");
+      union.add(code);
+    }
+  }
+  if(union.size!==250)err("CANONICAL_COUNTRY_REGISTRY_DRIFT");
+  return union;
+}
+const CANONICAL_COUNTRY_ISO3=approvedGlobalEntityIso3();
+
 const canonical=value=>JSON.stringify(value);
 const digest=value=>createHash("sha256").update(canonical(value)).digest("hex");
 function nativeTime(s,now){
@@ -115,8 +151,9 @@ export function qualifyIndependentSameEvent({
       err("ROW_BINDING_INVALID");
     seen.add(row.id);
     const identity=pkg.event;
-    if(!identity||!TYPES.has(identity.event_type)||
+    if(!identity||!EVENT_TYPES_BY_CATEGORY[row.category].has(identity.event_type)||
       !ISO3.test(identity.country_iso3)||
+      !CANONICAL_COUNTRY_ISO3.has(identity.country_iso3)||
       !TOKEN.test(identity.actor_id)||!TOKEN.test(identity.target_id)||
       !TOKEN.test(identity.location_id)||
       !HASH.test(pkg.same_event_claim_sha256)||

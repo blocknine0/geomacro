@@ -93,6 +93,46 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
     expect(()=>go({...proof,event:{...identity,actor_id:"unverified"}}))
       .toThrow("INDEPENDENT_EVENT_EVENT_CLAIM_HASH_MISMATCH");
   });
+  it("blocks an authenticated but wrong-category event even with two perfectly signed originals",()=>{
+    const category="rare_earth";
+    const foreign=sameEventClaimHash(category,identity);
+    const rowsAsMinerals=[{...rows[0],category}];
+    const attested=signReview({...proof,category,same_event_claim_sha256:foreign,
+      evidence:proof.evidence.map(e=>({...e,same_event_claim_sha256:foreign}))});
+    expect(()=>qualifyIndependentSameEvent({
+      rows:rowsAsMinerals,eventPackages:[attested],now,trustedReviewerPublicKeyPem,
+    })).toThrow("INDEPENDENT_EVENT_EVENT_IDENTITY_OR_REVIEW_INVALID");
+    // A geopolitical ceasefire also cannot become a macroeconomic release.
+    const ceasefire={...identity,event_type:"ceasefire"};
+    const newsHash=sameEventClaimHash("macro",ceasefire);
+    const another=signReview({...proof,event:ceasefire,
+      same_event_claim_sha256:newsHash,
+      evidence:proof.evidence.map(e=>({...e,same_event_claim_sha256:newsHash}))});
+    expect(()=>qualifyIndependentSameEvent({rows,eventPackages:[another],
+      now,trustedReviewerPublicKeyPem}))
+      .toThrow("INDEPENDENT_EVENT_EVENT_IDENTITY_OR_REVIEW_INVALID");
+  });
+  it("rejects fabricated ISO3 identities but retains project canonical special entities",()=>{
+    for(const code of ["ZZZ","XXX","AAA","QQQ"]){
+      const nonexistent={...identity,country_iso3:code};
+      const claimHash=sameEventClaimHash("macro",nonexistent);
+      const packageSigned=signReview({...proof,event:nonexistent,
+        same_event_claim_sha256:claimHash,
+        evidence:proof.evidence.map(e=>({...e,same_event_claim_sha256:claimHash}))});
+      expect(()=>qualifyIndependentSameEvent({rows,eventPackages:[packageSigned],
+        now,trustedReviewerPublicKeyPem}))
+        .toThrow("INDEPENDENT_EVENT_EVENT_IDENTITY_OR_REVIEW_INVALID");
+    }
+    for(const country_iso3 of ["GBR","IND","PSE","TWN"]){
+      const valid={...identity,country_iso3};
+      const claimHash=sameEventClaimHash("macro",valid);
+      const packageSigned=signReview({...proof,event:valid,
+        same_event_claim_sha256:claimHash,
+        evidence:proof.evidence.map(e=>({...e,same_event_claim_sha256:claimHash}))});
+      expect(qualifyIndependentSameEvent({rows,eventPackages:[packageSigned],
+        now,trustedReviewerPublicKeyPem}).receipt.qualified_event_count).toBe(1);
+    }
+  });
   it("blocks same owner, syndicated copies, duplicated source bodies and unverified reviews",()=>{
     const a=proof.evidence[0],c=proof.evidence[1];
     for(const pair of [
