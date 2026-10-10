@@ -6,7 +6,8 @@ import { createB2Client } from "./ops/b2-s3-client.mjs";
 import {
   governedMetricCategory,
   governedSourceNativeSpan,
-  noaaRollingNativeWindow,
+  noaaLatestNativeDayCandidates,
+  validateNoaaNativeDailyRows,
   sourceNativeMeasurementTime,
 } from "./lib/governed-source-native-time.mjs";
 
@@ -163,21 +164,31 @@ async function eia() {
 async function noaa() {
   const source = governedSource("noaa_ncei_cdo_api");
   const token = env("NOAA_NCEI_TOKEN");
-  // Provider observation dates come from NOAA row.date; the bounded rolling
-  // window selects candidate measurements, not a news publication timestamp.
-  const window = noaaRollingNativeWindow({ now: new Date(now) });
-  const params = new URLSearchParams({
-    datasetid: "GHCND",
-    locationid: "FIPS:US",
-    startdate: window.startdate,
-    enddate: window.enddate,
-    limit: "25",
-  });
-  const url = `https://www.ncei.noaa.gov/cdo-web/api/v2/data?${params}`;
-  const response = await fetch(url, { headers: { token }, signal: AbortSignal.timeout(30_000) });
-  if (!response.ok) throw new Error(`NOAA_NCEI_HTTP_${response.status}`);
-  const rows = (await response.json())?.results ?? [];
-  if (!rows.length) throw new Error("NOAA_NCEI_RETURNED_NO_ROWS");
+  // NOAA CDO returns the FIRST 25 results by default. A 14-day query in
+  // production returned all 25 from the EARLIEST day (Sep 24), not Oct 8.
+  // Bound to at most 4 exact date requests, newest-first, with NO B2
+  // transaction until an actual provider-native row passes admission.
+  const days=noaaLatestNativeDayCandidates({now:new Date(now)});
+  let rows=[];
+  for(const day of days) {
+    const params=new URLSearchParams({
+      datasetid:"GHCND",locationid:"FIPS:US",
+      startdate:day,enddate:day,limit:"25",
+    });
+    const url=`https://www.ncei.noaa.gov/cdo-web/api/v2/data?${params}`;
+    const response=await fetch(url,{
+      headers:{token},signal:AbortSignal.timeout(30_000),
+    });
+    if(!response.ok)throw new Error(`NOAA_NCEI_HTTP_${response.status}`);
+    const candidates=validateNoaaNativeDailyRows(
+      (await response.json())?.results ?? [],day,
+    );
+    if(candidates.length) {
+      rows=candidates;
+      break;
+    }
+  }
+  if(!rows.length)throw new Error("NOAA_NCEI_NO_RECENT_NATIVE_DAY_ROWS");
   return rows.map((row) => observation({
     sourceId: source.source_id,
     category: source.category,
