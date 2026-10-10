@@ -250,6 +250,33 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect((await probeExpandedSource(minerals,{now,fetchImpl:async()=>response(atomCanada,"text/html")})).reason)
       .toBe("SOURCE_CONTENT_TYPE_INVALID");
   });
+
+  it("recovers exact 24h first-party article date when Atom only has updated, never from updated",async()=>{
+    const src=EXPANDED_OFFICIAL_SOURCES[8];
+    const source=atomCanada.replace("<published>2026-10-10T06:05:00Z</published>","");
+    const page="<html><head><meta property='article:published_time' "+
+      "content='2026-10-10T06:05:00Z'/></head><body>Government report</body></html>";
+    const requests:string[]=[];
+    const fetchImpl=async(url:string,opts:RequestInit)=>{
+      requests.push(url);
+      if(url===src.url)return response(source,"application/atom+xml");
+      expect(opts.redirect).toBe("error");
+      expect(url).toBe("https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals-update.html");
+      return response(page,"text/html");
+    };
+    const result=await probeExpandedSource(src,{now,fetchImpl});
+    expect(requests).toHaveLength(2);
+    expect(result.source_native_24h_release_items).toBe(0);
+    expect(result.original_page_precise_date_checks).toBe(1);
+    expect(result.original_page_precise_date_24h).toBe(1);
+    expect(result.topical_private_release_links_24h).toBe(1);
+    expect(result.commercial_eligible).toBe(false);
+    const futurePage=page.replace("2026-10-10T06:05:00Z","2026-10-11T06:05:00Z");
+    const rejected=await probeExpandedSource(src,{now,fetchImpl:async(url:string)=>
+      url===src.url?response(source,"application/atom+xml"):response(futurePage,"text/html")});
+    expect(rejected.original_page_precise_date_checks).toBe(1);
+    expect(rejected.topical_private_release_links_24h).toBe(0);
+  });
   it("independently proves UN news native clocks without automatic risk promotion",async()=>{
     const un=EXPANDED_OFFICIAL_SOURCES[6];
     const nativeRss='<rss><channel><item><title>Security Council discusses ceasefire and armed conflict</title>'+
