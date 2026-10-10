@@ -32,7 +32,7 @@ describe("#1827 authoritative statistical source clocks, domain and zero-cost ad
     expect(sourceNativeMeasurementTime("2026-07-01T00:00:00.000Z",
       "eia_api_v2",{now:UTC})).toBe("2026-07-01T00:00:00.000Z");
     for (const nativeDate of ["",null,"today","2026-11-01T00:00:00Z",
-      "2026-09-01Tnot-a-time"]) {
+      "2026-09-01Tnot-a-time", "2026-02-30T00:00:00.000Z"]) {
       expect(() => sourceNativeMeasurementTime(nativeDate,
         "noaa_ncei_cdo_api",{now:UTC}))
         .toThrow("GOVERNED_SOURCE_NATIVE_TIMESTAMP_INVALID");
