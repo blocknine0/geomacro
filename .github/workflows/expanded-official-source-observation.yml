@@ -16,7 +16,7 @@ on:
   schedule:
     # Sixteen intended slots/day: every 90 minutes in UTC. GitHub may
     # delay or skip runs; monitor reports observed lag, not guaranteed SLA.
-    # 12 fixed source GETs + max 4 original-page date checks + 1 Eurostat fallback; bounded private source observation only.
+    # 12 source GETs + max 10 first-party article-date checks + 1 Eurostat fallback; private only.
     - cron: "17 0,3,6,9,12,15,18,21 * * *"
     - cron: "47 1,4,7,10,13,16,19,22 * * *"
   workflow_dispatch:
