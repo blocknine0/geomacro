@@ -157,7 +157,7 @@ async function fetchPrivateManifest(url) {
   try { envelope = JSON.parse(raw); } catch { throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_INVALID"); }
   if (envelope?.encoding !== "base64" || typeof envelope.content !== "string" ||
       envelope.content.length > REMOTE_MAX * 2) throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_INVALID");
-  const decoded = Buffer.from(envelope.content.replace(/\\s/g, ""), "base64");
+  const decoded = Buffer.from(envelope.content.replace(/\s/g, ""), "base64");
   if (decoded.byteLength > REMOTE_MAX) throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_TOO_LARGE");
   try { return JSON.parse(decoded.toString("utf8")); }
   catch { throw Error("PRIVATE_INTAKE_REMOTE_MANIFEST_INVALID"); }
