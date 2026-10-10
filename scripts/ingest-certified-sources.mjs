@@ -66,6 +66,14 @@ function governedSource(sourceId) {
   return { ...contract, d1_state: state };
 }
 
+// Fail closed even if a manual runner omits workflow env. The 20-request
+// local cap alone never protects Backblaze's account-wide daily quota.
+if (process.env.B2_ACCOUNT_QUOTA_REQUIRED !== "1" ||
+    process.env.B2_ACCOUNT_QUOTA_WORKFLOW_ID !== "governed_source_ingestion" ||
+    !String(process.env.D1_DATABASE_ID ?? "").trim()) {
+  throw new Error("GOVERNED_INGESTION_B2_SHARED_ACCOUNT_QUOTA_REQUIRED");
+}
+
 const b2 = createB2Client({
   endpointUrl: env("B2_S3_ENDPOINT"),
   accessKey: env("B2_KEY_ID"),

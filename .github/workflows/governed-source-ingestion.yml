@@ -29,6 +29,10 @@ jobs:
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_REQUEST_BUDGET: "20"
+      # Every PUT/GET/retry/native read is reserved from the SAME account-wide
+      # D1 quota ledger as Intelligence, Global Risk, Risk Indices and archive jobs.
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: governed_source_ingestion
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       D1_DATABASE_NAME: geomacro-control-plane
@@ -77,6 +81,7 @@ jobs:
           ')"
           test -n "$DB_ID" || { echo "::error::geomacro-control-plane D1 database is not bootstrapped"; exit 2; }
           echo "database_id=$DB_ID" >> "$GITHUB_OUTPUT"
+          echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
 
       - name: Build ephemeral D1 config
         env:
@@ -94,11 +99,11 @@ jobs:
           fs.writeFileSync(process.env.D1_CONFIG, output);
           NODE
 
-      - name: Require D1 schema v2 or newer before source reads
+      - name: Require D1 schema v5 and account B2 quota ledger before source reads
         shell: bash
         run: |
           set -euo pipefail
-          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT version FROM schema_meta WHERE name='control-plane';")"
+          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "SELECT (SELECT version FROM schema_meta WHERE name='control-plane') AS version, (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='b2_account_daily_request_quota') AS quota_table;")"
           printf '%s' "$OUT" | node -e '
             let s="";
             process.stdin.on("data", d => s += d);
@@ -106,7 +111,10 @@ jobs:
               const parsed = JSON.parse(s);
               const envelopes = Array.isArray(parsed) ? parsed : [parsed];
               const rows = envelopes.flatMap(x => Array.isArray(x?.results) ? x.results : []);
-              if (!rows.some(row => Number(row?.version) >= 2)) process.exit(3);
+              if (rows.length !== 1 || Number(rows[0]?.version) < 5 ||
+                  Number(rows[0]?.quota_table) !== 1) {
+                throw new Error("GOVERNED_INGESTION_SHARED_B2_D1_SCHEMA_V5_REQUIRED");
+              }
             });
           '
 
@@ -157,6 +165,8 @@ jobs:
           if (!Number.isFinite(summary?.compression_ratio) || summary.compression_ratio <= 0 || summary.compression_ratio > 1.05) throw new Error('COMPRESSION_RATIO_INVALID');
           if (summary?.supabase_dependency !== false || summary?.supabase_mirror_attempted !== false || summary?.supabase_raw_payload_written !== false) throw new Error('SUPABASE_INDEPENDENCE_INVALID');
           if (summary?.destructive_change !== false || summary?.payment_performed !== false) throw new Error('SAFETY_FLAG_INVALID');
+          if (summary?.b2_usage?.global_account_quota_guard_enabled !== true) throw new Error('GOVERNED_B2_SHARED_ACCOUNT_QUOTA_NOT_ACTIVE');
+          if (summary?.b2_usage?.requests_started > 20) throw new Error('GOVERNED_B2_WORKFLOW_QUOTA_EXCEEDED');
           for (const source of summary?.sources ?? []) {
             if (source?.storage_mode !== 'gzip-fragment-bundles' || source?.b2_storage_metadata_verified !== true || source?.b2_local_restore_verified !== true || source?.b2_full_body_readback_verified !== true || source?.verification_mode !== 'signed-put-full-readback-sha256' || source?.normalized_observations_durable_in_b2 !== true || source?.supabase_dependency !== false) throw new Error('SOURCE_FRAGMENT_EVIDENCE_INVALID');
             if (!Array.isArray(source?.fragments) || source.fragments.length !== source.fragment_count) throw new Error('SOURCE_FRAGMENT_COUNT_MISMATCH');
