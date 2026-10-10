@@ -9,7 +9,7 @@ import {
 const now=new Date("2026-10-10T07:00:00.000Z");
 const xml=`<rss version="2.0"><channel>
   <lastBuildDate>Sat, 10 Oct 2026 06:59:00 GMT</lastBuildDate>
-  <item><title>EU policy notice</title>
+  <item><title>European Commission critical raw materials strategic projects</title>
     <pubDate>Sat, 10 Oct 2026 06:00:00 GMT</pubDate></item>
   <item><title>Old ECB/statistical notice</title>
     <pubDate>Wed, 07 Oct 2026 06:00:00 GMT</pubDate></item>
@@ -19,9 +19,9 @@ const xml=`<rss version="2.0"><channel>
 </channel></rss>`;
 const response=(body:string,type:string)=>new Response(body,{headers:{"content-type":type}});
 describe("#1827 expanded official three-domain private observation lane",()=>{
-  it("has four fixed first-party HTTPS sources spanning exactly three domains",()=>{
+  it("has six fixed official source observations across exactly three domains",()=>{
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.domain))
-      .toEqual(["geopolitics","macro","rare_earth","rare_earth"]);
+      .toEqual(["geopolitics","macro","macro","rare_earth","rare_earth","rare_earth"]);
     for(const s of EXPANDED_OFFICIAL_SOURCES){
       expect(new URL(s.url).protocol).toBe("https:");
       expect(s.rights).toBe("UNVERIFIED");
@@ -30,7 +30,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(s.poll).toBe("six_hourly");
     }
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
-      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","eiti.org","natural-resources.canada.ca"]);
+      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca"]);
   });
   it("samples only fixed official sources; release dates cannot prove scored current events",async()=>{
     const seen:string[]=[];
@@ -43,7 +43,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       return response(xml,"application/rss+xml");
     });
     const res=await probeExpandedOfficialMesh({fetchImpl,now});
-    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
     expect(seen).toEqual(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.url));
     expect(res.status).toBe("SOURCE_TRANSPORT_OBSERVED");
     for(const x of res.sources){
@@ -55,8 +55,10 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     }
     expect(res.sources[0].source_native_release_items).toBe(2);
     expect(res.sources[0].source_native_24h_release_items).toBe(1);
-    expect(res.sources[2].source_native_24h_release_items).toBeNull();
-    expect(res.sources[3].source_native_24h_release_items).toBe(1);
+    expect(res.sources[3].source_native_24h_release_items).toBeNull();
+    expect(res.sources[5].source_native_24h_release_items).toBe(1);
+    expect(res.sources[4].topical_private_release_links_24h).toBe(1);
+    expect(res.sources[4].same_event_independent_corroboration_verified).toBe(false);
     expect(res.verified_country_count).toBe(0);
     expect(res.verified_current_event_domains).toBe(0);
     expect(res.globally_current_scored_coverage_verified).toBe(false);
@@ -67,7 +69,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
   });
   it("rejects wrong mime, denied publisher, network failures and invalid structural JSON",async()=>{
     const eu=EXPANDED_OFFICIAL_SOURCES[0];
-    const eiti=EXPANDED_OFFICIAL_SOURCES[2];
+    const eiti=EXPANDED_OFFICIAL_SOURCES[3];
     const cases=[
       {source:eu,reply:async()=>{throw Error("sensitive upstream token");},reason:"TRANSPORT_UNAVAILABLE"},
       {source:eu,reply:async()=>new Response("private",{status:403}),reason:"PUBLISHER_DENIED"},
@@ -96,7 +98,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       return response(xml,"application/rss+xml");
     }});
     expect(res.status).toBe("SOURCE_TRANSPORT_DEGRADED");
-    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true,true]);
+    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true,true,true,true]);
     expect(res.globally_current_scored_coverage_verified).toBe(false);
     expect(res.commercial_eligible).toBe(false);
   });
