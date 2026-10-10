@@ -84,7 +84,10 @@ describe("Phase A runtime freshness repair", () => {
   it("keeps recovery off recurring schedules and pins third-party actions", () => {
     expect(workflow).not.toContain("schedule:");
     expect(workflow).not.toContain("cron:");
-    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("permit_legacy_supabase_repair");
+    expect(workflow).not.toContain("\n  push:\n");
+    expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
     expect(workflow).toContain("warning-band DB headroom");
     expect(workflow).toContain("uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
   });
