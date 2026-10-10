@@ -57,7 +57,9 @@ describe("three official publishers' original-event RSS discovery", () => {
       includeSecondPublisher?: boolean;
       includeThirdPublisher?: boolean;
       includeOriginalPageDateFallback?: boolean;
+      maxAgeMs?: number;
     }) => {
+      expect(options.maxAgeMs).toBe(6*60*60*1000);
       requested.push({category,includeSecondPublisher: options.includeSecondPublisher,
         includeThirdPublisher: options.includeThirdPublisher,
         includeOriginalPageDateFallback:options.includeOriginalPageDateFallback});
