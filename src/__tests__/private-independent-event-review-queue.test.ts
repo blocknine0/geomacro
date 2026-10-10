@@ -113,6 +113,14 @@ describe("#1827 private source-native same-event candidate queue",()=>{
       expect(JSON.stringify(row)).not.toContain("monetary20261010");
     }
   });
+  it("rejects inconsistent same-byte disposition instead of hiding a retraction",()=>{
+    expect(()=>grouped([
+      fed,{...fed,reporting_position:"retracts"},
+    ])).toThrow("PRIVATE_EVENT_ORIGINAL_CANDIDATE_INVALID");
+    const a=grouped([fed,{...fed}]);
+    expect(a.distinct_original_artifacts).toBe(1);
+    expect(a.review_candidates[0].state).toBe("SINGLE_ORIGIN");
+  });
   it("holds one verified original or zero originals as UNQUALIFIED",()=>{
     expect(grouped([])).toMatchObject({matched_event_claims:0,paid_data_eligible:false});
     expect(grouped([fed]).review_candidates[0].state).toBe("SINGLE_ORIGIN");
