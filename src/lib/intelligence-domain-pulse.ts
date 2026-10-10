@@ -15,7 +15,9 @@ export type IntelligenceDomainPulse = {
 const DAY = 24 * 60 * 60 * 1000;
 function evidenceTime(value: IntelEvent): number {
   const published = Date.parse(value.publishedAt ?? "");
-  return Number.isFinite(published) ? published : Date.parse(value.createdAt);
+  // The domain pulse must never inherit an ingestion/restore timestamp.
+  // No verified original publication clock => no current risk claim.
+  return Number.isFinite(published) ? published : NaN;
 }
 
 /**

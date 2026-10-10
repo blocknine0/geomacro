@@ -31,7 +31,9 @@ export function isStorySpecificHeadline(title: string): boolean {
 
 function timestamp(event: IntelEvent): number {
   const published = event.publishedAt ? Date.parse(event.publishedAt) : NaN;
-  return Number.isFinite(published) ? published : Date.parse(event.createdAt);
+  // Missing original article publication time is NOT a current event.
+  // Historical storage/ingestion createdAt cannot be used as a news clock.
+  return Number.isFinite(published) ? published : NaN;
 }
 
 export function isHomepageShowcaseEligible(event: IntelEvent, now: number): boolean {
