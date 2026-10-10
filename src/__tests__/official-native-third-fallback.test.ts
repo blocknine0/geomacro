@@ -190,6 +190,53 @@ describe("#1827 three-domain third publisher RSS/Atom strict private originals",
     expect(fetched).toHaveLength(2);
   });
 
+  it("complete sampling retains earlier news and includes independent third publisher news",async()=>{
+    const fetched:string[]=[];
+    const feed='<rss><channel><item><title>Federal funds interest rate policy announcement</title>'+
+      '<link>https://www.federalreserve.gov/newsevents/pressreleases/monetary20261009a.htm</link>'+
+      '<pubDate>Fri, 09 Oct 2026 17:50:00 GMT</pubDate></item></channel></rss>';
+    const diagnostics:Record<string,unknown>={};
+    const rows=await fetchOfficialNativeArticles("macro",{now,sampleAllPublishers:true,diagnostics,
+      fetchImpl:async(u:string)=>{
+        fetched.push(u);
+        if(u===OFFICIAL_NATIVE_FEEDS.macro.url)return res(feed);
+        if(u===ORIGINAL_PUBLISHER_ALTERNATES.macro.url)return res(emptyAtom,"application/atom+xml");
+        if(u===OFFICIAL_NATIVE_THIRD_FEEDS.macro.url)return res(rss("macro"));
+        throw Error("UNEXPECTED_DESTINATION");
+      }});
+    expect(fetched).toHaveLength(3);
+    expect(rows.map(row=>row.sourceDomain)).toEqual(["www.ecb.europa.eu","www.federalreserve.gov"]);
+    expect(rows.every(row=>row.privateOnly && !row.rightsVerified && !row.commercialEligible)).toBe(true);
+    expect(diagnostics.third_feed_attempted).toBe(true);
+  });
+
+  it("complete sampling preserves earlier originals when the third publisher denies access",async()=>{
+    const diagnostics:Record<string,unknown>={};
+    const feed='<rss><channel><item><title>Federal funds interest rate policy announcement</title>'+
+      '<link>https://www.federalreserve.gov/newsevents/pressreleases/monetary20261009a.htm</link>'+
+      '<pubDate>Fri, 09 Oct 2026 17:50:00 GMT</pubDate></item></channel></rss>';
+    let thirdRequests=0;
+    const rows=await fetchOfficialNativeArticles("macro",{now,sampleAllPublishers:true,diagnostics,
+      fetchImpl:async(u:string)=>{
+        if(u===OFFICIAL_NATIVE_FEEDS.macro.url)return res(feed);
+        if(u===ORIGINAL_PUBLISHER_ALTERNATES.macro.url)return res(emptyAtom,"application/atom+xml");
+        thirdRequests++;
+        return new Response("not permitted",{status:403});
+      }});
+    expect(rows).toHaveLength(1);
+    expect(thirdRequests).toBe(1);
+    expect(diagnostics.third_feed_ok).toBe(false);
+    expect(diagnostics.third_feed_failure_code).toBe("OFFICIAL_THIRD_HTTP_FORBIDDEN");
+  });
+
+  it("complete sampling deduplicates the same USGS original across two feeds",async()=>{
+    const rows=await fetchOfficialNativeArticles("rare_earth",{now,sampleAllPublishers:true,
+      fetchImpl:async(u:string)=>u===ORIGINAL_PUBLISHER_ALTERNATES.rare_earth.url
+        ?res(emptyAtom,"application/atom+xml"):res(rss("rare_earth"))});
+    expect(rows).toHaveLength(1);
+    expect(rows[0].url).toBe(url.rare_earth);
+  });
+
   it("never treats third transport errors as real news or overrides rights gate",async()=>{
     const fetchImpl=vi.fn(async (u:string)=>{
       if(u===OFFICIAL_NATIVE_FEEDS.rare_earth.url)return res(emptyRss);

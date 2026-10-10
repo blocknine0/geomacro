@@ -52,14 +52,15 @@ export async function probeOfficialThreeDomains({
     try {
       const diagnostics = {};
       // Explicitly exercise all governed first-party families in the hourly
-      // read-only probe, matching the private scoring cold fallback. A third
-      // feed is never requested if primary+secondary already have qualified
-      // publication-time evidence. No B2, Supabase, classifier or payment.
+      // read-only probe, matching private scoring complete source sampling.
+      // An earlier publisher item does not suppress another publisher.
+      // No B2, Supabase, classifier or payment.
       const articles = await fetchArticles(category, {
         now, diagnostics,
         // Same 6-hour cutoff as actual restricted private scoring. Do not
         // count old 24-hour publisher originals as score-ready signals.
         maxAgeMs:6*60*60*1000,
+        sampleAllPublishers: true,
         includeSecondPublisher: true,
         includeThirdPublisher: true,
         // Match the exact primary Fed/USGS original-date admission path used

@@ -50,7 +50,7 @@ describe("three official publishers' original-event RSS discovery", () => {
     expect(audit.proves_public_scored_intelligence).toBe(false);
   });
 
-  it("hourly probe requests all three fixed publisher families only through conditional cold fallback", async () => {
+  it("probe requests complete fixed-publisher sampling, matching private scoring", async () => {
     const requested: Array<{category:string; includeSecondPublisher?:boolean; includeThirdPublisher?:boolean; includeOriginalPageDateFallback?:boolean}> = [];
     const fetchArticles = vi.fn(async (category: string, options: {
       diagnostics: Record<string, number | boolean>;
@@ -58,8 +58,10 @@ describe("three official publishers' original-event RSS discovery", () => {
       includeThirdPublisher?: boolean;
       includeOriginalPageDateFallback?: boolean;
       maxAgeMs?: number;
+      sampleAllPublishers?: boolean;
     }) => {
       expect(options.maxAgeMs).toBe(6*60*60*1000);
+      expect(options.sampleAllPublishers).toBe(true);
       requested.push({category,includeSecondPublisher: options.includeSecondPublisher,
         includeThirdPublisher: options.includeThirdPublisher,
         includeOriginalPageDateFallback:options.includeOriginalPageDateFallback});

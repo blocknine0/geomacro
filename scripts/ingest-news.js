@@ -3426,8 +3426,9 @@ async function ingestNews() {
           // The other original publisher cannot be skipped merely because
           // primary had an item. Candidates remain private/unlicensed.
           includeSecondPublisher: true,
-          // Only after BOTH original-publisher families have no qualifying
-          // current article. No 195-country fanout, no simulated timestamps.
+          // Inspect all three fixed publisher feeds even if an earlier one
+          // has news. Preserve the existing classifier request/candidate caps.
+          sampleAllPublishers: true,
           includeThirdPublisher: true,
           // Strictly private original article page datePublished rescue for
           // missing Fed/USGS RSS pubDate. Never published from retrieval time.
