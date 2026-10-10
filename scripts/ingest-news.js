@@ -3429,6 +3429,9 @@ async function ingestNews() {
           // Only after BOTH original-publisher families have no qualifying
           // current article. No 195-country fanout, no simulated timestamps.
           includeThirdPublisher: true,
+          // Strictly private original article page datePublished rescue for
+          // missing Fed/USGS RSS pubDate. Never published from retrieval time.
+          includeOriginalPageDateFallback: true,
         });
         let accepted = 0;
         for (const article of nativeCandidates) {
