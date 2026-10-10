@@ -400,6 +400,40 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(ignored.original_publisher_topical_90m).toBe(0);
     }
   });
+  it("recovers RSS only from exact first-party article datePublished when pubDate absent",async()=>{
+    for(const sourceIndex of [10,11]){
+      const src=EXPANDED_OFFICIAL_SOURCES[sourceIndex];
+      const article=sourceIndex===10
+        ?"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261010a.htm"
+        :"https://www.usgs.gov/news/national-news-release/critical-minerals-supply-chain";
+      const feed='<rss><channel><item><title>'+(
+        sourceIndex===10?"Federal Reserve monetary policy interest rates"
+          :"USGS critical minerals supply chain")+'</title><link>'+
+          article+'</link></item></channel></rss>';
+      const html='<html><head><meta property="article:published_time" '+
+        'content="2026-10-10T06:25:00Z"/></head><body>private data</body></html>';
+      let requests=0;
+      const fetched=await probeExpandedSource(src,{now,fetchImpl:async(url:string)=>{
+        requests++;
+        if(url===src.url)return response(feed,"application/rss+xml");
+        expect(url).toBe(article);
+        return response(html,"text/html");
+      }});
+      expect(requests).toBe(2);
+      expect(fetched.source_native_release_items).toBe(0);
+      expect(fetched.original_page_precise_date_checks).toBe(1);
+      expect(fetched.original_page_precise_date_24h).toBe(1);
+      expect(fetched.original_publisher_topical_6h).toBe(1);
+      expect(fetched.original_publisher_topical_90m).toBe(1);
+      expect(fetched.commercial_eligible).toBe(false);
+      const onlyModified=html.replace("article:published_time","article:modified_time");
+      const notRecent=await probeExpandedSource(src,{now,fetchImpl:async(url:string)=>
+        url===src.url?response(feed,"application/rss+xml"):
+          response(onlyModified,"text/html")});
+      expect(notRecent.original_page_precise_date_24h).toBe(0);
+      expect(notRecent.original_publisher_topical_6h).toBe(0);
+    }
+  });
   it("workflow has no cloud secrets, no database writes and no auto paid promotion",()=>{
     const yaml=readFileSync(".github/workflows/expanded-official-source-observation.yml","utf8");
     const probe=readFileSync("scripts/ops/probe-expanded-official-source-mesh.mjs","utf8");
