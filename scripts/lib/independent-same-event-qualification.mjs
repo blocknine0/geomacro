@@ -75,6 +75,19 @@ const CANONICAL_COUNTRY_ISO3=approvedGlobalEntityIso3();
 
 const canonical=value=>JSON.stringify(value);
 const digest=value=>createHash("sha256").update(canonical(value)).digest("hex");
+// Safe server-side shared authority used by unsigned private event grouping.
+// This is an identity/type check, NOT source verification or an approval.
+export function isCanonicalSameEventIdentity(category,identity) {
+  return Boolean(identity&&EVENT_TYPES_BY_CATEGORY[category]?.has(identity.event_type)&&
+    ISO3.test(identity.country_iso3)&&CANONICAL_COUNTRY_ISO3.has(identity.country_iso3)&&
+    TOKEN.test(identity.actor_id)&&TOKEN.test(identity.target_id)&&
+    TOKEN.test(identity.location_id));
+}
+export function registeredOriginalPublisherOrganization(hostname) {
+  if(typeof hostname!=="string")return null;
+  return Object.hasOwn(PUBLISHER_REGISTRY,hostname.toLowerCase())
+    ? PUBLISHER_REGISTRY[hostname.toLowerCase()] : null;
+}
 function nativeTime(s,now){
   if(typeof s!=="string"||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(s))
     err("NATIVE_PUBLICATION_TIME_INVALID");
@@ -151,11 +164,7 @@ export function qualifyIndependentSameEvent({
       err("ROW_BINDING_INVALID");
     seen.add(row.id);
     const identity=pkg.event;
-    if(!identity||!EVENT_TYPES_BY_CATEGORY[row.category].has(identity.event_type)||
-      !ISO3.test(identity.country_iso3)||
-      !CANONICAL_COUNTRY_ISO3.has(identity.country_iso3)||
-      !TOKEN.test(identity.actor_id)||!TOKEN.test(identity.target_id)||
-      !TOKEN.test(identity.location_id)||
+    if(!isCanonicalSameEventIdentity(row.category,identity)||
       !HASH.test(pkg.same_event_claim_sha256)||
       pkg.independent_same_event_review_verified!==true||
       !HASH.test(pkg.same_event_reviewer_receipt_sha256)||
