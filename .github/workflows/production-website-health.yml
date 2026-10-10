@@ -357,7 +357,7 @@ jobs:
             if (row?.public_status === 'verified_b2') {
               verified++;
               const severity = Number(row?.severity);
-              const timestamp = Date.parse(String(row?.published_at ?? row?.created_at ?? ''));
+              const timestamp = Date.parse(String(row?.published_at ?? ''));
               if (!Number.isFinite(severity) || severity < 0 || severity > 100 || !title.startsWith('Geomacro finds ')) ok = false;
               if (!Number.isFinite(timestamp) || timestamp > now + futureToleranceMs) ok = false;
               if (requiredSet.has(category) && Number.isFinite(timestamp)) {
@@ -366,7 +366,7 @@ jobs:
             } else if (row?.public_status === 'live_observed') {
               live++;
               if (category !== 'geopolitics' || row?.severity !== null || row?.delta !== null || !title.startsWith('Geomacro observes ')) ok = false;
-              const timestamp = Date.parse(String(row?.published_at ?? row?.created_at ?? ''));
+              const timestamp = Date.parse(String(row?.published_at ?? ''));
               if (!Number.isFinite(timestamp) || timestamp > now + futureToleranceMs) ok = false;
               else newestLive = Math.max(newestLive, timestamp);
             } else {
