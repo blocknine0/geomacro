@@ -77,7 +77,8 @@ describe("#1827 website Intelligence freshness visibility without invented three
     expect(source).toContain("New developments observed · not risk-scored");
     expect(source).toContain("Last verified historical score");
     expect(source).toContain("No current independently eligible monitoring signal in this domain.");
-    expect(source).toContain("categoryLeads(pool)");
+    expect(source).toContain("categoryLeads(currentDesk)");
+    expect(source).toContain("currentVerifiedDeskEvents(pool)");
     expect(source).toContain("scoredNews(intel.data?.all ?? [])");
     expect(source).not.toContain("severity: 50");
   });
