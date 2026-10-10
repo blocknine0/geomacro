@@ -54,6 +54,14 @@ jobs:
             .d1_writes==0 and .b2_requests==0 and
             .payment_performed==false and
             (.original_publisher_native_24h_topic_counts | keys)==["geopolitics","macro","rare_earth"] and
+            (.original_publisher_freshness_windows | keys)==["geopolitics","macro","rare_earth"] and
+            ([.original_publisher_freshness_windows[] |
+              (.within_90m | type)=="number" and
+              (.within_6h | type)=="number" and
+              (.within_24h | type)=="number" and
+              .within_90m >= 0 and .within_90m <= .within_6h and
+              .within_6h <= .within_24h and
+              (.original_publisher_transport_healthy | type)=="boolean"] | all) and
             ([.original_publisher_native_24h_topic_counts[]]|all(.>=0)) and
             ([.sources[] | select(.source_id=="eurostat_stats_update_official_rss_review") |
               if .format_valid then
