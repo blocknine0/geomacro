@@ -126,7 +126,8 @@ describe("#1827 authoritative statistical source clocks, domain and zero-cost ad
     expect(script).not.toContain("published_at: now");
     expect(script).toContain("latest_source_observed_at: summary.latest_source_observed_at");
     expect(workflow).toContain("GOVERNED_NATIVE_STATISTIC_NOT_PAID_OR_CURRENT");
-    expect(workflow).toContain("GOVERNED_D1_STATISTIC_SOURCE_CLOCK_OR_CATEGORY_MISMATCH");
+    expect(readFileSync("scripts/ops/verify-governed-d1-checkpoint.mjs","utf8"))
+      .toContain("GOVERNED_D1_STATISTIC_SOURCE_CLOCK_OR_CATEGORY_MISMATCH");
     expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
     expect(testScript).toContain("GOVERNED_SOURCE_CONTRACTS");
   });
