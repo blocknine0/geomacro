@@ -16,6 +16,7 @@ import {
   canUseProductionIntelligenceBackup,
 } from "@/lib/public-intelligence-edge";
 import { sanitizePublicIntelligenceRow } from "@/lib/public-intelligence-gist";
+import { dedupePublicIntelligenceRows } from "@/lib/public-intelligence-dedupe";
 import {
   PUBLIC_DATA_REQUEST_TIMEOUT_MS,
   withPublicRuntimeTimeout,
@@ -273,7 +274,8 @@ function build(rows: IntelEvent[], now: number): Intelligence {
 }
 
 export function buildPublicIntelligence(rows: PublicIntelligenceRow[], now: number): Intelligence {
-  return build(mapPublicRows(rows), now);
+  // Edge, SSR and same-origin paths all apply the identical event dedupe.
+  return build(mapPublicRows(dedupePublicIntelligenceRows(rows)), now);
 }
 
 async function fetchSameOriginPublicIntelligence(): Promise<PublicIntelligenceApiRow[]> {
@@ -348,7 +350,7 @@ export function useIntelligence(
         );
         if (cancelled) return;
 
-        const mapped = mapPublicRows(rows);
+        const mapped = mapPublicRows(dedupePublicIntelligenceRows(rows));
         if (mapped.length === 0) {
           if (hasData.current) {
             setStatus("ready");
