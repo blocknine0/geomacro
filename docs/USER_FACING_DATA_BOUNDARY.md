@@ -91,3 +91,11 @@ This policy is permanent unless the product owner deliberately replaces it with 
 This is a repository-level product/security requirement, not an Ask Geomacro-specific implementation detail.
 
 Future contributors and agents must preserve this boundary when changing existing functionality or adding new functionality.
+
+## Paid-mainnet nested publisher URL rejection — before settlement (2026-10-10)
+
+The paid structured response sanitizer previously stripped named `source_*`/`provider_*` fields, but a third-party URL embedded in an otherwise-approved free-text field (`answer.summary`, `analysis`, `limitations`) could survive the field allowlist. This is **not** acceptable for a commercial product that promises no upstream raw links.
+
+The production `mainnet-intelligence-endpoint.server.ts` NEW-response path now invokes `sanitizeAndRehashPaidPreparedResponse(assembled, {rejectEmbeddedLinks:true})` **before durable x402 delivery preparation or settlement**, rejecting ordinary text containing literal `https://`, `http://`, or `www.` locators. The strict `assertPublicPaidOutputBoundary` recursively rejects any surviving publisher URL in user/machine response strings. Already-settled legacy replay stays leak-free through explicit generic-field redaction plus recomputation of `delivered_product_hash`, without touching past on-chain payments. It does **not** grant upstream reuse rights or make original sources commercially eligible.
+
+Raw article text without URL requires independent provenance/content similarity review and cannot be made safe solely through a URL regex. All private source strings remain private B2/evidence; derived response quality, rights and signed GRO must still pass canonical gates. URL checks are a defense in depth and do not establish 195-country or 3-domain live intelligence.
