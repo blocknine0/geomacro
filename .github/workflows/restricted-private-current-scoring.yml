@@ -1,7 +1,9 @@
 name: Restricted Private Current Scoring Staging
 
-# Single bounded verified-publisher pre-admission canary on the #1842 merge; optional manual
-# recovery later. No cron and NO public intelligence projection or commerce.
+# One additional bounded, strictly private original-publisher singleton recovery
+# only on protected PR #1924 merge; optional manual recovery remains. No cron,
+# no public intelligence projection and no commerce; missing current original
+# candidates must fail before B2 PUT or D1 mutation.
 on:
   workflow_dispatch:
     inputs:
@@ -28,7 +30,10 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (
         github.event_name == 'workflow_dispatch' ||
-        (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge pull request #1891'))
+        (github.event_name == 'push' && (
+          contains(github.event.head_commit.message, 'Merge pull request #1891') ||
+          contains(github.event.head_commit.message, '(#1924)')
+        ))
       )
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -147,8 +152,10 @@ jobs:
 
       - name: Prove genuine original-source three-domain singleton eligibility BEFORE B2 PUT
         if: >-
-          (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'Merge pull request #1891')) ||
+          (github.event_name == 'push' && (
+            contains(github.event.head_commit.message, 'Merge pull request #1891') ||
+            contains(github.event.head_commit.message, '(#1924)')
+          )) ||
           (github.event_name == 'workflow_dispatch' &&
             github.event.inputs.private_gri_singleton == 'true')
         shell: bash
@@ -164,8 +171,10 @@ jobs:
 
       - name: Prepare source-bound canonical private GRI v1.2 proof locally (no network)
         if: >-
-          (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'Merge pull request #1891')) ||
+          (github.event_name == 'push' && (
+            contains(github.event.head_commit.message, 'Merge pull request #1891') ||
+            contains(github.event.head_commit.message, '(#1924)')
+          )) ||
           (github.event_name == 'workflow_dispatch' &&
             github.event.inputs.private_gri_singleton == 'true')
         shell: bash
@@ -208,8 +217,10 @@ jobs:
 
       - name: Independently verify private GRI proof B2 restore then D1 checkpoint
         if: >-
-          (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'Merge pull request #1891')) ||
+          (github.event_name == 'push' && (
+            contains(github.event.head_commit.message, 'Merge pull request #1891') ||
+            contains(github.event.head_commit.message, '(#1924)')
+          )) ||
           (github.event_name == 'workflow_dispatch' &&
             github.event.inputs.private_gri_singleton == 'true')
         shell: bash
