@@ -43,11 +43,20 @@ function tag(block, name) {
   return m ? unescape(m[1]) : "";
 }
 
-function officialUrl(value, hosts) {
+// Atom permits relative article hrefs. Only the exact Statistics Canada
+// Daily article path is resolved against a fixed, trusted publisher origin;
+// never resolve arbitrary paths, network-path URLs, schemes, escapes or ports.
+const STATCAN_DAILY_RELATIVE =
+  /^\/n1\/daily-quotidien\/[0-9]{6}\/[a-z0-9-]{1,80}\.html?$/u;
+function officialUrl(value, hosts, category) {
   try {
-    const u = new URL(value);
-    if (u.protocol !== "https:" || u.username || u.password || !hosts.includes(u.hostname.toLowerCase()) ||
-        u.href.length > 2048) return null;
+    const text=String(value??"");
+    const full=category==="macro" && STATCAN_DAILY_RELATIVE.test(text)
+      ? "https://www150.statcan.gc.ca"+text : text;
+    const u = new URL(full);
+    if (u.protocol !== "https:" || u.username || u.password ||
+        !hosts.includes(u.hostname.toLowerCase()) ||
+        u.port || u.hash || u.search || u.href.length > 2048) return null;
     return u;
   } catch { return null; }
 }
@@ -90,6 +99,8 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     alternate_atom_dc_date_tag_items: 0,
     alternate_atom_dcterms_issued_tag_items: 0,
     alternate_atom_link_href_items: 0,
+    alternate_statcan_exact_root_relative_items: 0,
+    alternate_other_relative_href_rejected_items: 0,
     alternate_article_page_probes: 0,
     alternate_article_page_precise: 0,
     alternate_article_page_admitted: 0,
@@ -108,8 +119,14 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     const dateText=config.format === "rss" ? tag(block,"pubDate") : publishedTag;
     const time=Date.parse(dateText);
     const raw=config.format === "rss" ? tag(block,"link") : atomOriginalLink(block);
-    if (config.format === "atom" && raw) stats.alternate_atom_link_href_items++;
-    const uri=officialUrl(raw,config.articleHosts);
+    if (config.format === "atom" && raw) {
+      stats.alternate_atom_link_href_items++;
+      if (category === "macro" && STATCAN_DAILY_RELATIVE.test(raw))
+        stats.alternate_statcan_exact_root_relative_items++;
+      else if (raw.startsWith("/") && !raw.startsWith("//"))
+        stats.alternate_other_relative_href_rejected_items++;
+    }
+    const uri=officialUrl(raw,config.articleHosts,category);
     if (Number.isFinite(time)) stats.alternate_native_date_items++;
     // Strict original time: reject any source timestamp later than our clock.
     const dated=Number.isFinite(time) && time <= nowMs && nowMs-time<=DAY_MS;
@@ -142,7 +159,7 @@ function undatedOriginalArticleCandidates(xml, category) {
     if (tag(block, "published")) continue;
     const title = tag(block, "title");
     if (title.length < 16 || title.length > 500 || !config.topics.test(title)) continue;
-    const uri = officialUrl(atomOriginalLink(block), config.articleHosts);
+    const uri = officialUrl(atomOriginalLink(block), config.articleHosts, category);
     if (!uri || seen.has(uri.href)) continue;
     seen.add(uri.href);
     out.push({ title, uri });
