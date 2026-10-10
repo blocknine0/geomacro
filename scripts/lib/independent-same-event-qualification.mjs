@@ -31,6 +31,7 @@ const PUBLISHER_REGISTRY=Object.freeze({
   "www150.statcan.gc.ca":"statistics_canada",
   "www.canada.ca":"natural_resources_canada",
 });
+const err=code=>{throw Error("INDEPENDENT_EVENT_"+code)};
 // A valid event type in the WRONG category is not commercial intelligence.
 const EVENT_TYPES_BY_CATEGORY=Object.freeze({
   geopolitics:new Set(["conflict_escalation","ceasefire","sanctions_policy","trade_disruption"]),
@@ -71,7 +72,7 @@ function approvedGlobalEntityIso3() {
   return union;
 }
 const CANONICAL_COUNTRY_ISO3=approvedGlobalEntityIso3();
-const err=code=>{throw Error("INDEPENDENT_EVENT_"+code)};
+
 const canonical=value=>JSON.stringify(value);
 const digest=value=>createHash("sha256").update(canonical(value)).digest("hex");
 function nativeTime(s,now){
