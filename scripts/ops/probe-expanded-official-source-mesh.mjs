@@ -113,7 +113,10 @@ export async function probeExpandedSource(source,{
   const fetchOfficial=async url=>fetchImpl(url,{
     redirect:"error",
     signal:AbortSignal.timeout(timeoutMs),
-    headers:{accept:source.media==="rss"
+    // Eurostat returns HTTP 406 to GitHub's explicit RSS negotiation.
+    // Accept any response *format* for this one official endpoint; strict
+    // XML MIME + RSS shape checks below still deny HTML/untrusted content.
+    headers:{accept:source.alternate_url?"*/*":source.media==="rss"
       ?"application/rss+xml, application/xml;q=0.9, text/xml;q=0.8"
       :"application/json","user-agent":"Geomacro-Official-Expanded-Source-Private-Monitor/1.0"},
   });
