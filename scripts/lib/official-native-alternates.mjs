@@ -56,7 +56,7 @@ function officialUrl(value, hosts, category) {
     const u = new URL(full);
     if (u.protocol !== "https:" || u.username || u.password ||
         !hosts.includes(u.hostname.toLowerCase()) ||
-        u.port || u.hash || u.search || u.href.length > 2048) return null;
+        u.href.length > 2048) return null;
     return u;
   } catch { return null; }
 }
