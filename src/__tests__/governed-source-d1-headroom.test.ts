@@ -137,7 +137,7 @@ describe("#1827 read-only B2 daily account quota gate for governed EIA/NOAA",()=
     expect(ingester).toContain("GOVERNED_SOURCE_SHARED_B2_PLAN_QUOTA_HELD");
     expect(ingester).toContain("b2.putWithMetadataVerification");
     expect(ingester).toContain('B2_ACCOUNT_QUOTA_REQUIRED !== "1"');
-    expect(runner).toContain("SHARED_B2_DAILY_BUDGET_HELD");
+    expect(runner).toContain("QUOTA-HELD");
     expect(contract).toContain("GOVERNED_B2_ACCOUNT_QUOTA_PREFLIGHT_ORDER_INVALID");
   });
 });
