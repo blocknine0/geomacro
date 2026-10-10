@@ -24,11 +24,26 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     event_intelligence:false,country_coverage_verified:false,
   }),
   Object.freeze({
+    id:"eurostat_stats_update_official_rss_review",
+    domain:"macro",kind:"statistical_dataset_release",
+    url:"https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/en/statistics-update.rss",
+    media:"rss",rights:"UNVERIFIED",poll:"six_hourly",
+    event_intelligence:false,country_coverage_verified:false,
+  }),
+  Object.freeze({
     id:"eiti_implementing_country_official_api_review",
     domain:"rare_earth",kind:"structural_extractives_country_metadata",
     url:"https://eiti.org/api/v2.0/implementing_country",
     media:"json",rights:"UNVERIFIED",poll:"six_hourly",
     event_intelligence:false,country_coverage_verified:false,
+  }),
+  Object.freeze({
+    id:"eu_official_featured_news_minerals_private_rss_review",
+    domain:"rare_earth",kind:"cross_sector_original_publisher_link_discovery",
+    url:"https://european-union.europa.eu/node/309/rss_en",
+    media:"rss",rights:"UNVERIFIED",poll:"six_hourly",
+    event_intelligence:false,country_coverage_verified:false,
+    topic:/\b(?:critical raw materials?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|tungsten|magnesium|strategic minerals?|mineral (?:supply|projects?|security))\b/iu,
   }),
   Object.freeze({
     id:"nrcan_simply_science_official_rss_review",
@@ -43,10 +58,10 @@ const XML_MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu
 const JSON_MIME=/^(?:application\/(?:json|[a-z0-9.+-]+\+json))(?:;|$)/iu;
 const SOURCE_DOMAINS=["geopolitics","macro","rare_earth"];
 
-function rssDateCounts(xml,now) {
+function rssDateCounts(xml,now,topic=null) {
   if (!/<rss(?:\s|>)/iu.test(xml) || /<!DOCTYPE|<!ENTITY/iu.test(xml)) return null;
   const entries=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80);
-  let dated=0,recent=0;
+  let dated=0,recent=0,topicalRecent=0;
   for(const [,item] of entries) {
     const date=item.match(/<pubDate(?:\s[^>]*)?>([\s\S]*?)<\/pubDate>/iu)?.[1];
     // Only a source-native per-item date. Never the channel clock, retrieval,
@@ -55,9 +70,15 @@ function rssDateCounts(xml,now) {
     const ms=Date.parse(date.trim());
     if (!Number.isFinite(ms) || ms>now.getTime()) continue;
     dated++;
-    if(now.getTime()-ms<=DAY_MS)recent++;
+    if(now.getTime()-ms<=DAY_MS){
+      recent++;
+      const headline=item.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/iu)?.[1]??"";
+      // The official aggregator is a discovery pointer, not an independent
+      // original publisher, and headline relevance is NOT event acceptance.
+      if(topic?.test(headline))topicalRecent++;
+    }
   }
-  return {seen:entries.length,native_dated:dated,within_24h:recent};
+  return {seen:entries.length,native_dated:dated,within_24h:recent,topical_within_24h:topicalRecent};
 }
 
 function jsonShape(value) {
@@ -75,6 +96,8 @@ export async function probeExpandedSource(source,{
     source_id:source.id,domain:source.domain,kind:source.kind,
     publisher_reachable:false,format_valid:false,
     source_native_release_items:null,source_native_24h_release_items:null,
+    topical_private_release_links_24h:null,
+    same_event_independent_corroboration_verified:false,
     source_native_release_is_scored_event:false,
     country_coverage_verified:false,commercial_rights_verified:false,
     current_scored_intelligence_verified:false,
@@ -118,7 +141,7 @@ export async function probeExpandedSource(source,{
   catch{row.reason="SOURCE_ENCODING_INVALID";return row;}
   let valid=false,counts=null;
   if(source.media==="rss"){
-    counts=rssDateCounts(body,now);
+    counts=rssDateCounts(body,now,source.topic??null);
     valid=counts!==null;
   }else{
     try{valid=jsonShape(JSON.parse(body));}catch{valid=false;}
@@ -130,6 +153,7 @@ export async function probeExpandedSource(source,{
   if(counts){
     row.source_native_release_items=counts.native_dated;
     row.source_native_24h_release_items=counts.within_24h;
+    if(source.topic)row.topical_private_release_links_24h=counts.topical_within_24h;
   }
   return row;
 }

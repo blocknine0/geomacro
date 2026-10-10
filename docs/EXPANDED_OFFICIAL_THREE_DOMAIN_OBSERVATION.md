@@ -4,7 +4,7 @@
 
 The live Geomacro three-domain original-publisher probe already observes up to 3
 source families per category on its existing cadence. This separate, additive
-six-hourly monitor observes **four additional official endpoints across three domains** without
+six-hourly monitor observes **six official observation endpoints across three domains** without
 consuming B2, D1, frozen Supabase, paid AI/model or USDC quotas. All source
 data remains PRIVATE. It does not score events or edit risk objects.
 
@@ -12,11 +12,15 @@ data remains PRIVATE. It does not score events or edit risk objects.
 |---|---|---|---|---|
 | Geopolitics | European Commission sanctions guidance updates | https://finance.ec.europa.eu/node/1296/rss_en | Publisher RSS reachable; optionally source-native item release `pubDate` in 24h | A new legal sanctions designation, worldwide coverage or scored conflict event |
 | Macro/FX | ECB statistical press releases | https://www.ecb.europa.eu/rss/statpress.html | Publisher RSS reachable; source-native release clock when present | Live global FX ticks, full national balance sheets or a verified macro-shock |
+| Macro/FX | Eurostat official dataset-update RSS | https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/en/statistics-update.rss | Original dataset publication updates, released about twice per day | Actual macro conditions, economic calendar surprise or instant FX price |
 | Critical Minerals | EITI country metadata API | https://eiti.org/api/v2.0/implementing_country | Test whether official extractives-country listing JSON is accessible; initial GitHub probe returned 403 | Real-time extraction, prices, supply shock or 195-country coverage |
 | Critical Minerals | Natural Resources Canada Simply Science RSS | https://natural-resources.canada.ca/simply-science/rss.xml | Source-native government science publication release time when present | An independently confirmed rare-earth export shock, mineral event or global supply coverage |
+| Critical Minerals | EU official featured-news RSS | https://european-union.europa.eu/node/309/rss_en | EU official news-discovery metadata, count of 24h mineral-related titles only | Direct originating publisher, exact original article publication time, source rights or corroboration |
 
 Supporting official references:
 - https://www.ecb.europa.eu/home/html/rss.en.html
+- https://ec.europa.eu/eurostat/web/user-guides/data-browser/api-data-access/api-detailed-guidelines/catalogue-api/rss
+- https://european-union.europa.eu/news-and-events/featured-news_en
 - https://finance.ec.europa.eu/eu-and-world/sanctions-restrictive-measures/sanctions-adopted-following-russias-military-aggression-against-ukraine/guidance-documents_en
 - https://eiti.org/api
 - https://eiti.org/open-data
@@ -46,7 +50,7 @@ Supporting official references:
 
 - Existing official event feeds: continue their established hourly sampling.
 - Additional official release/structural probes: **4 times per UTC day**,
-  four GET requests per cycle (~16 total requests/day), 5s timeout and
+  six GET requests per cycle (~24 total requests/day), 5s timeout and
   192-KiB maximum body per endpoint, no retries and no paid credentials.
   This is low-cost, not instantaneous distribution, and may be held by
   upstream rate limits. Event-specific frequency must match actual publishers.
@@ -64,3 +68,20 @@ Supporting official references:
 
 No redistributable raw source articles or bulk EITI data are produced by this
 workflow. It is a staging increment, not launch acceptance.
+
+### 2026-10-10 observed mineral-policy gap
+
+On 9 October 2026 the European Commission officially announced 46 additional
+strategic critical raw materials projects in 16 EU Member States. The existing
+strict same-original-publisher precise-date mineral discovery lane observed
+zero qualifying current candidates. An EU official *news-aggregation* RSS is
+therefore sampled for topical native-dated release **counts only**, but the
+aggregator is not a second original-publisher family and its RSS timestamps
+cannot be substituted for the press release's own exact time. The official
+announcement and project list are available at:
+
+- https://single-market-economy.ec.europa.eu/sectors/raw-materials/areas-specific-interest/critical-raw-materials/strategic-projects-under-crma/selected-projects_en
+- https://european-union.europa.eu/news-and-events/featured-news_en
+
+No mineral risk object or commercial right is activated until a source-origin
+precise publication time, independent corroboration and rights evidence pass.
