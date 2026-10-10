@@ -39,9 +39,14 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq 'const timestamp = event.publishedAt ?? event.createdAt;' src/components/intelligence/card.tsx
-          grep -Fq 'function latestEvidenceAt(rows: IntelEvent[]): number | null' src/lib/use-intelligence.ts
-          grep -Fq 'initialData ? latestEvidenceAt(initialData.all) : null' src/lib/use-intelligence.ts
-          grep -Fq 'setUpdatedAt(latestEvidenceAt(next.all));' src/lib/use-intelligence.ts
+          grep -Fq 'function latestOriginalEvidenceAt(rows: IntelEvent[]): number | null' src/lib/use-intelligence.ts
+          grep -Fq 'initialData ? latestOriginalEvidenceAt(initialData.all) : null' src/lib/use-intelligence.ts
+          grep -Fq 'setUpdatedAt(latestOriginalEvidenceAt(next.all));' src/lib/use-intelligence.ts
+          grep -Fq 'isCurrent: originalEvidenceTime(row) >= now - DAY' src/lib/use-intelligence.ts
+          if grep -Fq 'isCurrent: timeOf(row) >= now - DAY' src/lib/use-intelligence.ts; then
+            echo '::error::Database restore time must not qualify current scored news'
+            exit 1
+          fi
           if grep -Fq 'setUpdatedAt(Date.now())' src/lib/use-intelligence.ts; then
             echo "::error title=Browser refresh time leaked into Intelligence freshness::useIntelligence must display production evidence time."
             exit 1
