@@ -149,19 +149,22 @@ export async function diagnosePublicHotServing({
     commercial_eligibility_verified:false,
   };
 }
-if (process.argv[1]?.endsWith("/diagnose-public-hot-serving.mjs")) {
-  const result=await diagnosePublicHotServing();
-  mkdirSync("artifacts/public-serving",{recursive:true});
-  writeFileSync("artifacts/public-serving/diagnostic.json",
-    JSON.stringify(result,null,2)+"\n");
-  console.log(JSON.stringify({
+// Hot-serving health proves infrastructure availability, NOT the presence of
+// current independent, rights-qualified, severity-scored stories per domain.
+// Keep all three coverage cells explicitly UNASSESSED until a separate scored
+// publisher/evidence acceptance confirms them; never fan out one health bit.
+export function summarizePublicHotServing(result) {
+  return {
     schema:result.schema,ok:result.ok,
     site_status:result.site.http_status,d1_status:result.d1.http_status,
     d1_schema_version:result.d1.schema_version,
-    public_domain_ready:{
-      geopolitics:result.site.intelligence_ready,
-      macro_fx:result.site.intelligence_ready,
-      critical_minerals:result.site.intelligence_ready,
+    intelligence_hot_snapshot_ready:
+      result.site.intelligence_ready === true &&
+      result.site.hot_snapshot_proofs.intelligence === true &&
+      result.products.intelligence.ok === true,
+    current_scored_domain_coverage:{
+      status:"NOT_ASSESSED_BY_HOT_SERVING_DIAGNOSTIC",
+      geopolitics:null,macro_fx:null,critical_minerals:null,
     },
     unavailable_products:result.unavailable_products,
     products:Object.fromEntries(Object.entries(result.products).map(([k,v])=>[
@@ -171,6 +174,14 @@ if (process.argv[1]?.endsWith("/diagnose-public-hot-serving.mjs")) {
     failure_codes:result.failure_codes,
     external_payment_performed:false,
     commercial_eligibility_verified:false,
-  }));
+  };
+}
+
+if (process.argv[1]?.endsWith("/diagnose-public-hot-serving.mjs")) {
+  const result=await diagnosePublicHotServing();
+  mkdirSync("artifacts/public-serving",{recursive:true});
+  writeFileSync("artifacts/public-serving/diagnostic.json",
+    JSON.stringify(result,null,2)+"\n");
+  console.log(JSON.stringify(summarizePublicHotServing(result)));
   if (!result.ok) process.exitCode=2;
 }
