@@ -95,6 +95,75 @@ describe("D1 B2-verified hot snapshots", () => {
     expect(db.rows.has("intelligence")).toBe(false);
   });
 
+  it("rejects raw news, source links and foreign fields at the D1 PUT boundary before public API can leak them",async()=>{
+    const generatedAt=new Date().toISOString();
+    const sourceClock=new Date(Date.now()-60_000).toISOString();
+    const categories=["geopolitics","macro","rare_earth"];
+    const baseRows=categories.map((category,i)=>({
+      id:"strictly-derived-"+i,
+      source_title:"Geomacro finds independently reviewed current policy risk elevated",
+      summary:"Verified original evidence supports a measured material risk change",
+      category,severity:55+i,delta:null,
+      created_at:generatedAt,published_at:sourceClock,
+      public_status:"verified_b2",
+    }));
+    const envFor=(db:ReturnType<typeof fakeDb>)=>({DB:db,CONTROL_PLANE_TOKEN:TOKEN});
+    const baseValue={
+      schema:"geomacro.public-intelligence-live.v1",
+      source_project:"ldpwajisioljyjtojvfx",
+      generated_at:generatedAt,rows:baseRows,
+    };
+    const proof={
+      schema:"geomacro.public-intelligence-live-proof.v1",
+      live_key:"geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
+      generated_at:generatedAt,current_source_batch_at:sourceClock,
+      current_source_id:"gdelt_v2_events",
+      compressed_sha256:"c".repeat(64),
+      full_b2_readback_verified:true,exact_gzip_restore_verified:true,
+      commercial_multi_source_checked_at:generatedAt,
+      commercial_multi_source_verified:true,
+      commercial_multi_source_receipt_sha256:"d".repeat(64),
+      commercial_multi_source_qualified_count:3,
+    };
+    const send=async(value:Record<string,unknown>,db:ReturnType<typeof fakeDb>)=>
+      controlPlane.fetch(request("/v1/hot-snapshot/intelligence","PUT",{
+        value,proof,source_run_id:"38055113651",
+        payload_sha256:createHash("sha256").update(JSON.stringify(value)).digest("hex"),
+      }),envFor(db));
+    // This is a deliberately synthetic authenticated D1 contract fixture.
+    // It does NOT attest real original sources or B2 data in production.
+    const happyDb=fakeDb();
+    const good=await send(baseValue,happyDb);
+    expect(good.status).toBe(200);
+    const exposed=await controlPlane.fetch(
+      request("/v1/public/hot-snapshot/intelligence","GET"),envFor(happyDb));
+    expect(exposed.status).toBe(200);
+    const publicText=await exposed.text();
+    expect(publicText).not.toContain("source_url");
+    expect(publicText).not.toContain("raw_article");
+    expect(publicText).not.toContain("publisher");
+    const changes=[
+      {...baseValue,source_url:"https://original.example/secret"},
+      {...baseValue,raw_article:"copied upstream text"},
+      {...baseValue,rows:baseRows.map((x,i)=>i===0?{...x,source_url:"https://original.example/news"}:x)},
+      {...baseValue,rows:baseRows.map((x,i)=>i===0?{...x,raw_article:"copy of private article"}:x)},
+      {...baseValue,rows:baseRows.map((x,i)=>i===0?{...x,source_title:"Geomacro finds https://publisher.example/news now"}:x)},
+      {...baseValue,rows:baseRows.map((x,i)=>i===0?{...x,summary:"Visit www.publisher.example for evidence"}:x)},
+      {...baseValue,rows:baseRows.map((x,i)=>i===0?{...x,source_title:"Publisher private breaking news headline"}:x)},
+      {...baseValue,rows:baseRows.map((x,i)=>i===0?{...x,published_at:generatedAt.replace("Z","+00:00")}:x)},
+      {...baseValue,rows:baseRows.map((x,i)=>i===0?{...x,severity:47.5}:x)},
+      {...baseValue,rows:baseRows.map((x,i)=>i===0?{...x,id:baseRows[1].id}:x)},
+      {...baseValue,rows:baseRows.slice(0,2)},
+      {...baseValue,rows:baseRows.map((x,i)=>i===0?{...x,published_at:"2020-01-01T00:00:00Z"}:x)},
+      {...baseValue,rows:baseRows.map((x,i)=>i===0?{...x,private_review:{publisher:"secret"}}:x)},
+    ];
+    for(const candidate of changes){
+      const db=fakeDb();
+      const res=await send(candidate,db);
+      expect(res.status).not.toBe(200);
+      expect(db.rows.has("intelligence")).toBe(false);
+    }
+  });
   it("publishes only a hash-bound snapshot with full B2 readback proof and serves its exact bytes", async () => {
     const db = fakeDb();
     const env = { DB: db, CONTROL_PLANE_TOKEN: TOKEN };
