@@ -6,8 +6,7 @@ import { createB2Client } from "./ops/b2-s3-client.mjs";
 import {
   governedMetricCategory,
   governedSourceNativeSpan,
-  noaaLatestNativeDayCandidates,
-  validateNoaaNativeDailyRows,
+  fetchNoaaLatestNativeDayRows,
   sourceNativeMeasurementTime,
 } from "./lib/governed-source-native-time.mjs";
 
@@ -164,31 +163,12 @@ async function eia() {
 async function noaa() {
   const source = governedSource("noaa_ncei_cdo_api");
   const token = env("NOAA_NCEI_TOKEN");
-  // NOAA CDO returns the FIRST 25 results by default. A 14-day query in
-  // production returned all 25 from the EARLIEST day (Sep 24), not Oct 8.
-  // Bound to at most 4 exact date requests, newest-first, with NO B2
-  // transaction until an actual provider-native row passes admission.
-  const days=noaaLatestNativeDayCandidates({now:new Date(now)});
-  let rows=[];
-  for(const day of days) {
-    const params=new URLSearchParams({
-      datasetid:"GHCND",locationid:"FIPS:US",
-      startdate:day,enddate:day,limit:"25",
-    });
-    const url=`https://www.ncei.noaa.gov/cdo-web/api/v2/data?${params}`;
-    const response=await fetch(url,{
-      headers:{token},signal:AbortSignal.timeout(30_000),
-    });
-    if(!response.ok)throw new Error(`NOAA_NCEI_HTTP_${response.status}`);
-    const candidates=validateNoaaNativeDailyRows(
-      (await response.json())?.results ?? [],day,
-    );
-    if(candidates.length) {
-      rows=candidates;
-      break;
-    }
-  }
-  if(!rows.length)throw new Error("NOAA_NCEI_NO_RECENT_NATIVE_DAY_ROWS");
+  // Fetch the most recent available provider-native date, bounded to a
+  // fixed four-date schedule and zero B2/paid activity on empty/invalid data.
+  // Do not treat the NOAA retrieval clock as a news publication clock.
+  const {rows}=await fetchNoaaLatestNativeDayRows({
+    now:new Date(now),token,
+  });
   return rows.map((row) => observation({
     sourceId: source.source_id,
     category: source.category,
