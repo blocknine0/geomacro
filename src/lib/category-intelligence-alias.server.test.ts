@@ -1,5 +1,19 @@
-import { describe, expect, it } from "vitest";
-import { bindCategoryAliasPayload } from "./category-intelligence-alias.server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mainnetHandlers = vi.hoisted(() => ({
+  OPTIONS: vi.fn(),
+  GET: vi.fn(),
+  POST: vi.fn(),
+}));
+
+vi.mock("./mainnet-intelligence-endpoint.server", () => ({
+  mainnetIntelligenceHandlers: mainnetHandlers,
+}));
+
+import {
+  bindCategoryAliasPayload,
+  createCategoryIntelligenceHandlers,
+} from "./category-intelligence-alias.server";
 import { classifyCentralSecurityRoute } from "./central-security.server";
 
 const subject = { type: "country", country_iso3: "IND" as const };
@@ -111,5 +125,74 @@ describe("category intelligence security routing", () => {
   ])("classifies %s as payment protected", (pathname) => {
     expect(classifyCentralSecurityRoute(pathname, "POST")).toBe("payment");
     expect(classifyCentralSecurityRoute(pathname, "GET")).toBe("payment");
+  });
+});
+
+describe("category intelligence HTTP handler boundary", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it.each(cases)("forwards the $name query to the canonical handler with payment signature intact", async ({ config, question }) => {
+    const delivered = Response.json({ ok: true, chargeable: false, payment_required_now: false });
+    mainnetHandlers.POST.mockResolvedValue(delivered);
+    const handlers = createCategoryIntelligenceHandlers(config);
+    const request = new Request("https://geomacro.live/api/v1/intelligence/geopolitics", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "payment-signature": "signed-request-token",
+        "x-request-id": "request-123",
+      },
+      body: JSON.stringify({ question, subjects: [subject], detail: "compact" }),
+    });
+
+    const response = await handlers.POST({ request });
+    expect(response).toBe(delivered);
+    expect(mainnetHandlers.POST).toHaveBeenCalledTimes(1);
+    const forwarded = mainnetHandlers.POST.mock.calls[0]?.[0]?.request as Request;
+    expect(forwarded.url).toBe("https://geomacro.live/api/v1/intelligence/query");
+    expect(forwarded.headers.get("payment-signature")).toBe("signed-request-token");
+    expect(forwarded.headers.get("x-request-id")).toBe("request-123");
+    expect(forwarded.headers.get("content-type")).toBe("application/json");
+    expect(await forwarded.json()).toMatchObject({ question, subjects: [subject], topics: config.topics });
+  });
+
+  it("rejects invalid scope before invoking the payment handler", async () => {
+    const handlers = createCategoryIntelligenceHandlers(cases[0].config);
+    const request = new Request("https://geomacro.live/api/v1/intelligence/geopolitics", {
+      method: "POST",
+      headers: { "content-type": "application/json", "payment-signature": "must-not-be-verified" },
+      body: JSON.stringify({ subjects: [subject], topics: ["risk_object"] }),
+    });
+
+    const response = await handlers.POST({ request });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      chargeable: false,
+      payment_required_now: false,
+      execution_authorized: false,
+      error: { code: "CATEGORY_TOPIC_SCOPE_MISMATCH" },
+    });
+    expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+  });
+
+  it("rejects an oversized declared body before parsing or invoking the payment handler", async () => {
+    const handlers = createCategoryIntelligenceHandlers(cases[0].config);
+    const request = new Request("https://geomacro.live/api/v1/intelligence/geopolitics", {
+      method: "POST",
+      headers: { "content-type": "application/json", "content-length": "40000" },
+      body: JSON.stringify({ subjects: [subject] }),
+    });
+
+    const response = await handlers.POST({ request });
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({
+      chargeable: false,
+      payment_required_now: false,
+      error: { code: "CATEGORY_REQUEST_TOO_LARGE" },
+    });
+    expect(mainnetHandlers.POST).not.toHaveBeenCalled();
   });
 });
