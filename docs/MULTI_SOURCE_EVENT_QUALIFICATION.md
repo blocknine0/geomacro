@@ -69,3 +69,21 @@ The trusted independently signed event-review package must now include `reviewed
 Even if an authorized trusted reviewer signs a newly changed row, its customer `published_at` must equal either the signed event's native occurred-at clock or one of the signed genuine original publisher publication clocks and must remain within the six-hour original-current window. It can never advance to an ingestion, B2 upload, D1 restore, website publish or payment timestamp. Signing/hash commitments are derived-only and cannot leak private first-party article URLs or raw article content. Existing unsigned/legacy review packages without this full output-row commitment are intentionally **not backward compatible**: the commercial publisher rejects them; obtain a new authorized source-verified review package rather than bypassing this trust boundary.
 
 This is a necessary security gate, **not** a claim that any real current article has now been sourced, licensed or corroborated. A reviewed row still requires distinct independent originals, counterevidence/retraction review, authorized Ed25519 signature, canonical risk/GRO proof, B2 readback, fresh D1 and x402 no-charge/owner approval. No real-money action is performed by these tests.
+
+### Batch-level exact event deduplication (2026-10-10)
+
+For one signed commercial Intelligence hot-snapshot publication, **each canonical
+WHO/WHAT/WHERE/WHEN event identity and its SHA-256 event claim may appear at most
+once**, regardless of distinct customer row IDs or multiple valid authorized
+reviewer signatures. This prevents one reviewed development from being
+represented as two separate paid event results, double-counted severity evidence
+or duplicated x402 deliverables solely by changing the row identifier.
+`qualifyIndependentSameEvent` rejects any second `same_event_claim_sha256`
+in a batch **before any B2/D1 publication call**, with fail-closed
+`INDEPENDENT_EVENT_DUPLICATE_CANONICAL_EVENT_CLAIM`. Valid separate events
+with genuinely different canonical event identities are still independently
+admitted, each requiring two distinct original reporting organizations, exact
+source-native clocks, rights approval, signed reviewer package and exact
+derived customer-row binding. This is **within-batch** duplicate protection,
+not a claim of persistent cross-batch deduplication, live worldwide event
+corroboration or authorization to collect USDC.
