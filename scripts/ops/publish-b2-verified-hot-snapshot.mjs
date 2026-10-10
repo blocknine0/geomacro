@@ -1,4 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
+import { qualifyIndependentSameEvent } from "../lib/independent-same-event-qualification.mjs";
 
 const CONTROL_PLANE_URL = "https://geomacro-control-plane.daspallab202391.workers.dev";
 
@@ -26,7 +27,7 @@ const EXPECTED = Object.freeze({
   },
 });
 
-export async function publishB2VerifiedHotSnapshot({ product, value, proof }) {
+export async function publishB2VerifiedHotSnapshot({ product, value, proof, privateEventPackages }) {
   const expected = EXPECTED[product];
   if (!expected || !value || typeof value !== "object" || !proof || typeof proof !== "object") {
     throw new Error("HOT_SNAPSHOT_INPUT_INVALID");
@@ -39,6 +40,26 @@ export async function publishB2VerifiedHotSnapshot({ product, value, proof }) {
     proof.generated_at !== value.generated_at ||
     !/^[0-9a-f]{64}$/.test(String(proof.compressed_sha256 ?? ""))
   ) throw new Error("HOT_SNAPSHOT_B2_PROOF_INVALID");
+
+  // Intelligence news must NEVER be promoted from one article, syndication
+  // duplicates or raw GDELT observations. Check private source evidence
+  // before using credentials or sending a D1 publication request.
+  if(product==="intelligence"){
+    const attestedAt=Date.parse(String(proof.commercial_multi_source_checked_at??""));
+    if(!Number.isFinite(attestedAt)||Math.abs(Date.now()-attestedAt)>5*60_000)
+      throw Error("HOT_SNAPSHOT_MULTI_SOURCE_ATTESTATION_STALE");
+    const result=qualifyIndependentSameEvent({
+      rows:value.rows,eventPackages:privateEventPackages,
+      now:new Date(attestedAt),
+    });
+    if(proof.commercial_multi_source_verified!==true||
+       proof.commercial_multi_source_receipt_sha256!==result.receipt_sha256||
+       result.receipt.qualified_event_count!==value.rows.length||
+       result.receipt.commercial_event_admission!==true)
+      throw Error("HOT_SNAPSHOT_MULTI_SOURCE_PROOF_INVALID");
+    // Private article URLs/title/rights evidence is NEVER serialized into
+    // D1, public B2 proof, webhook data or a customer response.
+  }
 
   const token = controlPlaneAuth();
   const payloadJson = JSON.stringify(value);
