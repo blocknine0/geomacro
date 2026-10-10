@@ -28,6 +28,8 @@ describe("#1414 current scored Intelligence across all launch domains", () => {
     expect(script).toContain('risk-desk-filter-v1.0.5');
     expect(script).toContain('raw_feature_score_promotion: false');
     expect(script).toContain('raw_event_metadata_score_promotion: false');
+    expect(script).toContain('Date.parse(String(row?.published_at ?? ""))');
+    expect(script).not.toContain("row?.published_at ?? row?.created_at");
   });
 
   it("falls back from any failed or empty GDELT DOC response to governed GAL discovery", () => {
