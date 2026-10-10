@@ -87,8 +87,10 @@ describe("#1827 30m pulse D1 -> public API safe status (not GRO)",()=>{
     const map=new Map<string,any>();
     const persist=vi.fn(async(domain:string,state:any,update:any)=>{
       map.set(domain,{
-        last_attempt_at:update.last_attempt_at,cursor:state.cursor,
-        payload:{...state,...update.payload},
+        last_attempt_at:update.last_attempt_at,
+        // This precisely matches createD1ControlPlaneStateClient.loadRows:
+        // returned cursor lives inside payload, NOT at the top-level.
+        payload:{...state,...update.payload,cursor:state.cursor},
       });
     });
     const result=await write30MinSourcePulseToD1({
@@ -99,6 +101,8 @@ describe("#1827 30m pulse D1 -> public API safe status (not GRO)",()=>{
       createClient:()=>({persist,loadRows:async()=>map}),
     });
     expect(persist).toHaveBeenCalledTimes(3);
+    expect(map.get("geopolitics").cursor).toBeUndefined();
+    expect(map.get("geopolitics").payload.cursor.status).toBe("OBSERVED");
     expect(result.d1_readback_verified).toBe(true);
     expect(result.source_current_scored_intelligence_verified).toBe(false);
     expect(result.b2_requests).toBe(0);
