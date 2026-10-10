@@ -6,6 +6,9 @@
 export function privatePublisherPreAdmission(article, {
   now = new Date(),
   freshnessMs = 24 * 60 * 60 * 1000,
+  // Only on the original-publisher PRIVATE model-budget path; do not conflate
+  // indexed-seen times or third-party timestamps with publication evidence.
+  requireOriginalPublisherProof = false,
 } = {}) {
   let url;
   try { url = new URL(String(article?.url ?? "")); }
@@ -29,10 +32,23 @@ export function privatePublisherPreAdmission(article, {
   if (title.length < 16) {
     return { ok: false, reason: "publisher_title_missing" };
   }
+  // Standard event-coding separation: discovery first; only first-party
+  // observed publisher-time evidence is eligible to consume the scarce
+  // canonical classifier quota. This is still PRIVATE PRE-ADMISSION only.
+  // Actual authenticity, exact event identity, same-event corroboration,
+  // rights and signed commercial readiness are checked downstream.
+  if (requireOriginalPublisherProof && (
+      article?.discoveryProvider !== "official_native_rss" ||
+      article?.nativePublishedAtVerified !== true ||
+      article?.privateOnly !== true ||
+      article?.rightsVerified !== false ||
+      article?.commercialEligible !== false)) {
+    return { ok: false, reason: "publisher_native_publication_unverified" };
+  }
   const stamped = Date.parse(String(article?.publishedAt ?? ""));
   if (!Number.isFinite(stamped) ||
       now.getTime() - stamped > freshnessMs ||
-      stamped - now.getTime() > 5 * 60_000) {
+      stamped - now.getTime() > (requireOriginalPublisherProof ? 0 : 5 * 60_000)) {
     return { ok: false, reason: "publisher_time_unavailable" };
   }
   return { ok: true, reason: "transport_admitted" };
