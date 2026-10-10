@@ -14,6 +14,8 @@ on:
       - "scripts/ops/probe-30min-three-domain-pulse.mjs"
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "src/__tests__/three-domain-30m-source-pulse.test.ts"
+      - "scripts/lib/private-original-publisher-candidates.mjs"
+      - "src/__tests__/private-original-publisher-candidates.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/src/source-pulse-public.mjs"
@@ -26,6 +28,8 @@ on:
       - "scripts/ops/probe-30min-three-domain-pulse.mjs"
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "src/__tests__/three-domain-30m-source-pulse.test.ts"
+      - "scripts/lib/private-original-publisher-candidates.mjs"
+      - "src/__tests__/private-original-publisher-candidates.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/src/source-pulse-public.mjs"
@@ -55,6 +59,7 @@ jobs:
       - name: Validate three-domain official publisher read-only poll contract
         run: |
           set -euo pipefail
+          node --check scripts/lib/private-original-publisher-candidates.mjs
           node --check scripts/ops/probe-30min-three-domain-pulse.mjs
           node --check scripts/ops/write-30min-source-pulse-d1.mjs
           node --check workers/control-plane/src/source-pulse-public.mjs
