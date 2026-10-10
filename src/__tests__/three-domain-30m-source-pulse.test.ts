@@ -51,12 +51,16 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
   it("reports real source-date topic counts without falsely claiming verified intelligence",async()=>{
     const probe=vi.fn(async (source:{id:string,domain:string})=>verifiedDateResponse(source,1));
     const x=await probe30MinThreeDomainPulse({now:NOW,probe});
-    expect(probe).toHaveBeenCalledTimes(3);
+    expect(probe).toHaveBeenCalledTimes(6);
     expect(x.target_poll_minutes).toBe(30);
     expect(x.schedule_guaranteed).toBe(false);
     expect(x.status).toBe("THREE_DOMAIN_ORIGINAL_PUBLISHER_TRANSPORT_OBSERVED");
     expect(x.actual_original_publisher_rows.map(row=>row.domain)).toEqual(DOMAINS);
-    expect(x.actual_original_publisher_rows.every(row=>row.original_publisher_30m_topic_count===1)).toBe(true);
+    expect(x.actual_original_publisher_rows.every(row=>row.original_publisher_30m_topic_count===2)).toBe(true);
+    expect(x.actual_original_publisher_rows.every(row=>row.independent_origin_pair_transport_healthy===true)).toBe(true);
+    expect(x.actual_original_publisher_rows.every(row=>row.independent_origin_crosscheck_attempted===true)).toBe(true);
+    expect(x.actual_original_publisher_rows.every(row=>row.publisher_zero_result_expansion_attempted===false)).toBe(true);
+    expect(x.actual_original_publisher_rows.every(row=>row.event_same_subject_independent_corroboration_verified===false)).toBe(true);
     expect(x.independently_verified_current_intelligence_count).toBe(0);
     expect(x.user_api_delivery_verified).toBe(false);
     expect(x.publisher_rights_verified).toBe(false);
@@ -82,8 +86,9 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
       return verifiedDateResponse(source,2);
     };
     const r=await probe30MinThreeDomainPulse({now:NOW,probe});
-    expect(calls).toHaveLength(4);
+    expect(calls).toHaveLength(6);
     expect(r.actual_original_publisher_rows[0].publisher_failover_attempted).toBe(true);
+    expect(r.actual_original_publisher_rows[0].independent_origin_pair_transport_healthy).toBe(false);
     expect(r.actual_original_publisher_rows[0].event_same_subject_independent_corroboration_verified).toBe(false);
   });
 
@@ -101,6 +106,7 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     expect(r.status).toBe("THREE_DOMAIN_SOURCE_TRANSPORT_DEGRADED");
     expect(r.actual_original_publisher_rows[0].original_publisher_30m_topic_count).toBeNull();
     expect(r.actual_original_publisher_rows[0].publisher_failover_attempted).toBe(false);
+    expect(r.actual_original_publisher_rows[0].independent_origin_crosscheck_attempted).toBe(false);
   });
 
   it("checks an independent publisher in the same 30m window when the first has zero articles",async()=>{
@@ -114,9 +120,28 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     expect(x.actual_original_publisher_rows[0].original_publisher_30m_topic_count).toBe(3);
     expect(x.actual_original_publisher_rows[0].original_publishers_successful).toBe(2);
     expect(x.actual_original_publisher_rows[0].publisher_pair_sample_complete).toBe(true);
+    expect(x.actual_original_publisher_rows[0].independent_origin_crosscheck_attempted).toBe(true);
     expect(x.actual_original_publisher_rows[0].no_new_30m_original_topic_item_observed).toBe(false);
     expect(x.independently_verified_current_intelligence_count).toBe(0);
     expect(x.publisher_rights_verified).toBe(false);
+  });
+
+  it("always attempts a second independent official publisher on positive original news counts",async()=>{
+    const observed:string[]=[];
+    const probe=vi.fn(async(source:{id:string,domain:string})=>{
+      observed.push(source.id);
+      return verifiedDateResponse(source,2);
+    });
+    const result=await probe30MinThreeDomainPulse({now:NOW,probe});
+    expect(observed).toHaveLength(6);
+    expect(result.actual_original_publisher_rows.every(row=>row.original_publishers_attempted===2)).toBe(true);
+    expect(result.actual_original_publisher_rows.every(row=>row.original_publishers_successful===2)).toBe(true);
+    expect(result.actual_original_publisher_rows.every(row=>row.original_publisher_30m_topic_count===4)).toBe(true);
+    expect(result.actual_original_publisher_rows.every(row=>row.independent_origin_pair_transport_healthy===true)).toBe(true);
+    expect(result.actual_original_publisher_rows.every(row=>row.publisher_zero_result_expansion_attempted===false)).toBe(true);
+    expect(result.actual_original_publisher_rows.every(row=>row.event_same_subject_independent_corroboration_verified===false)).toBe(true);
+    expect(result.independently_verified_current_intelligence_count).toBe(0);
+    expect(result.publisher_rights_verified).toBe(false);
   });
 
   it("never reports zero-news complete coverage when the second publisher is unavailable",async()=>{
