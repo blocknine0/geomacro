@@ -339,8 +339,11 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
   });
   it("a forged or altered reviewer signature, or absent trusted key, never qualifies",()=>{
     const good=signReview(proof);
+    const originalChar=good.review_signature_base64[12];
+    const alteredChar=originalChar==="A"?"B":"A";
     const bad={...good,review_signature_base64:
-      good.review_signature_base64.slice(0,12)+"A"+good.review_signature_base64.slice(13)};
+      good.review_signature_base64.slice(0,12)+alteredChar+good.review_signature_base64.slice(13)};
+    expect(bad.review_signature_base64).not.toBe(good.review_signature_base64);
     expect(()=>qualifyIndependentSameEvent({rows,eventPackages:[bad],now,
       trustedReviewerPublicKeyPem})).toThrow(/^INDEPENDENT_EVENT_/);
     expect(()=>qualifyIndependentSameEvent({rows,eventPackages:[good],now}))
