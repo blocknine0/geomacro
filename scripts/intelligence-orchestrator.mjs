@@ -421,13 +421,15 @@ async function main() {
   const disabled = [];
   for (const task of TASKS) {
     if (TASK_ALLOWLIST.size > 0 && !TASK_ALLOWLIST.has(task.key)) continue;
-    // Defense in depth: only D1/HTTP source-only tasks may run when frozen.
-    // A mislabeled safe flag must not unlock a Supabase-dependent task.
+    // First preserve the canonical D1-only restricted-mode guard.
+    // Additional independent guards prevent accidental "safe" mislabeling.
+    if (restrictedDataPlane && task.restrictedDirectPostgresSafe !== true) continue;
     if (restrictedDataPlane &&
-        (task.restrictedDirectPostgresSafe !== true ||
-         task.requiredEnv?.some((name) => /SUPABASE|POSTGRES|PGHOST|PGUSER|PGPASSWORD/i.test(name)) ||
-         task.key === "phase_a_heartbeat" ||
-         task.key === "gdelt_gal")) continue;
+        task.requiredEnv?.some((name) => /SUPABASE|POSTGRES|PGHOST|PGUSER|PGPASSWORD/i.test(name))) continue;
+    // Known historic quota-consuming tasks always require frozen Supabase SQL
+    // or downstream writers, irrespective of a future task flag regression.
+    if (restrictedDataPlane &&
+        (task.key === "phase_a_heartbeat" || task.key === "gdelt_gal")) continue;
     const row = rows.get(taskKey(task));
     const enabled = typeof task.enabled === "function" ? task.enabled() : true;
     let state;
