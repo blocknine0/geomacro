@@ -246,6 +246,22 @@ function undatedAtomArticleCandidates(xml,source) {
   return [...new Set(list)].slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
 }
 
+function undatedRssArticleCandidates(xml,source) {
+  // Recover only missing original item pubDate via exact first-party
+  // article datePublished; never rescue a future/malformed source pubDate.
+  if(source.media!=="rss"||!source.original_hosts)return [];
+  const list=[];
+  for(const [,item] of [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80)){
+    if(/<pubDate(?:\s[^>]*)?>/iu.test(item))continue;
+    const title=item.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/iu)?.[1]??"";
+    if(!source.topic?.test(title))continue;
+    const href=item.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/iu)?.[1]?.trim()??"";
+    if(originalHref(href,source.original_hosts))list.push(href);
+    if(list.length>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
+  }
+  return [...new Set(list)].slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
+}
+
 function jsonShape(value) {
   // A structural country listing only; no annual series or event time inferred.
   if (!value || typeof value!=="object" || Array.isArray(value)) return false;
@@ -361,8 +377,12 @@ export async function probeExpandedSource(source,{
   // gave no currently topical original per-entry publication time.
   // The helper reconstructs fixed official article URL paths and does not
   // follow redirects, trust feed updated clocks or leak publisher HTML.
-  if(source.media==="atom" && counts?.topical_within_24h===0){
-    for(const article of undatedAtomArticleCandidates(body,source)){
+  if((source.media==="atom"||source.media==="rss") &&
+      source.original_hosts && counts?.topical_within_24h===0){
+    const articles=source.media==="atom"
+      ? undatedAtomArticleCandidates(body,source)
+      : undatedRssArticleCandidates(body,source);
+    for(const article of articles){
       const published=await fetchVerifiedPublisherPageDate(article,source.domain,{
         now,fetchImpl,
       });
