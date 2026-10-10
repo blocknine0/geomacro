@@ -283,6 +283,14 @@ export function qualifyIndependentSameEvent({
       Math.max(...sources.map(s=>s.ms))-Math.min(...sources.map(s=>s.ms))>
         MAX_EVENT_SPREAD)
       err("SAME_EVENT_TEMPORAL_MISMATCH");
+    // A final customer-visible scored object cannot truthfully have been
+    // CREATED before the last required independent original confirmation
+    // existed. Signed source/published clocks must never be swapped for a
+    // pre-confirmation ingestion or future wall-clock timestamp.
+    const scoredAt=Date.parse(row.created_at);
+    if(scoredAt>nowMs+5*60000 ||
+       scoredAt<Math.max(when,...sources.map(s=>s.ms),publishedAt))
+      err("DERIVED_ROW_PRECONFIRMATION_OR_FUTURE_CLOCK");
     const independentOrganizations=new Set(sources.map(s=>s.organization));
     if(independentOrganizations.size<2 ||
       new Set(sources.map(s=>s.content)).size<2 ||
