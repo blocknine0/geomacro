@@ -11,7 +11,7 @@ on:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - ".github/workflows/expanded-official-source-observation.yml"
   schedule:
-    # Four bounded cycles/day, nine GETs/cycle (max ten with one fixed Eurostat locale fallback); complement existing hourly
+    # Four bounded cycles/day, nine feed GETs/cycle, max four first-party article-date GETs plus one fixed Eurostat locale fallback; complement existing hourly
     # original-source probe without depleting Actions or B2 free quotas.
     - cron: "17 0,6,12,18 * * *"
   workflow_dispatch:
@@ -55,6 +55,7 @@ jobs:
             .payment_performed==false and
             (.original_publisher_native_24h_topic_counts | keys)==["geopolitics","macro","rare_earth"] and
             ([.original_publisher_native_24h_topic_counts[]]|all(.>=0)) and
+            ([.sources[] | .original_page_precise_date_checks]|all(.>=0 and .<=2)) and
             ([.sources[] | .commercial_eligible]|all(.==false)) and
             ([.sources[] | .current_scored_intelligence_verified]|all(.==false))
           ' "$proof" >/dev/null || exit 1
