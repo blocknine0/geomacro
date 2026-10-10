@@ -103,6 +103,10 @@ describe("#1803 restricted canonical private score archive", () => {
     expect(workflow).toContain("private_gri_singleton:");
     expect(workflow).toContain("default: false");
     expect(workflow).toContain("contains(github.event.head_commit.message, 'Merge pull request #1891')");
+    expect(workflow).toContain("contains(github.event.head_commit.message, '(#1924)')");
+    expect(workflow).toContain("Prove genuine original-source three-domain singleton eligibility BEFORE B2 PUT");
+    expect(scorer).toContain("allocatePrivateScoringSlots({");
+    expect(scorer).toContain("native_original_singleton_prioritized");
     expect(workflow).toContain("github.event.inputs.private_gri_singleton == 'true'");
     expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "1"');
     expect(workflow).toContain(".github/workflows/restricted-private-current-scoring.yml");
