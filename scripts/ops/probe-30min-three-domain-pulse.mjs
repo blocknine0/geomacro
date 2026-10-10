@@ -146,6 +146,9 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
     schedule_guaranteed:false,
     utc_slot_start:new Date(slot*INTERVAL_MS).toISOString(),
     status,
+    // Stronger cross-original transport health is separate from basic
+    // per-category first-party visibility; it never proves same-event review.
+    independent_origin_pairs_healthy:rows.every(row=>row.independent_origin_pair_transport_healthy===true),
     source_domains_observed:DOMAINS,
     actual_original_publisher_rows:rows,
     private_original_candidate_dedup:privateCandidateDedup,
