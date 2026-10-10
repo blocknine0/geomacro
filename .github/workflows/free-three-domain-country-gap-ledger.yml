@@ -1,0 +1,115 @@
+name: Free Three-Domain ISO3 Source Gap Ledger
+
+# One read-only D1 metadata query daily; no B2, Supabase or per-country polling.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "28 4 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/audit-free-three-domain-country-gaps.mjs"
+      - "scripts/tests/free-three-domain-country-gap-audit.test.mjs"
+      - ".github/workflows/free-three-domain-country-gap-ledger.yml"
+      - "src/lib/global-entity-classification.ts"
+  pull_request:
+    paths:
+      - "scripts/ops/audit-free-three-domain-country-gaps.mjs"
+      - "scripts/tests/free-three-domain-country-gap-audit.test.mjs"
+      - ".github/workflows/free-three-domain-country-gap-ledger.yml"
+      - "src/lib/global-entity-classification.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: free-country-three-domain-gap-ledger
+  cancel-in-progress: true
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Verify fail-closed country domain source metadata contract
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/audit-free-three-domain-country-gaps.mjs
+          node --test scripts/tests/free-three-domain-country-gap-audit.test.mjs
+
+  production-readonly-gap-census:
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout exact main source/ISO3 registry
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: One bounded read-only D1 ISO3 x 3 metadata snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID" \
+            || { echo "::error::D1_READONLY_SOURCE_GAP_AUTH_MISSING"; exit 3; }
+          # 250 canonical geographic entities x 3 domains = 750.
+          sql="SELECT country_code, lower(domain) AS domain, readiness_status, certified_source_count, review_source_count, unavailable_source_count, last_verified_at FROM country_domain_state ORDER BY country_code,domain LIMIT 801;"
+          raw="$(mktemp)"; errs="$(mktemp)"
+          trap 'rm -f "$raw" "$errs"' EXIT
+          if ! npx -y wrangler@4.136.3 d1 execute geomacro-control-plane \
+              --remote --json --command "$sql" >"$raw" 2>"$errs"; then
+            echo "::error::D1_READONLY_SOURCE_GAP_QUERY_FAILED"
+            exit 3
+          fi
+          node scripts/ops/audit-free-three-domain-country-gaps.mjs < "$raw"
+          jq -e '
+            .schema=="geomacro.free-three-domain-geography-gap-ledger.v1" and
+            .geographic_scope.total==250 and
+            .geographic_scope.sovereign==194 and
+            .geographic_scope.territory==53 and
+            .geographic_scope.special_entity==3 and
+            .target_geography_category_cells==750 and
+            (.domains|keys)==["geopolitics","macro","rare_earth"] and
+            .rights_verified_per_country==false and
+            .independent_same_event_corroboration_per_country==false and
+            .current_signed_risk_intelligence_195x3_verified==false and
+            .x402_global_coverage_chargeable==false and
+            .d1_writes==0 and .b2_requests==0 and .supabase_reads==0 and
+            .supabase_writes==0 and .telegram_requests==0 and
+            .model_calls==0 and .payment_performed==false
+          ' artifacts/free-three-domain-gaps/iso3-metadata-gaps.json >/dev/null
+          jq '{
+            observed_at, geographic_scope,domains,gap_count,
+            metadata_country_floor_met,recent_source_metadata_floor_met,
+            current_signed_risk_intelligence_195x3_verified,
+            x402_global_coverage_chargeable
+          }' artifacts/free-three-domain-gaps/iso3-metadata-gaps.json \
+            >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain short-lived ISO3-only metadata receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: free-three-domain-iso3-gaps-${{ github.run_id }}
+          path: artifacts/free-three-domain-gaps/iso3-metadata-gaps.json
+          retention-days: 2
+          if-no-files-found: warn
