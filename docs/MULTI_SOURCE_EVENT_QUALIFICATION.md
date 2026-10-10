@@ -87,3 +87,24 @@ source-native clocks, rights approval, signed reviewer package and exact
 derived customer-row binding. This is **within-batch** duplicate protection,
 not a claim of persistent cross-batch deduplication, live worldwide event
 corroboration or authorization to collect USDC.
+
+### Public D1 direct-GET raw-material firewall (2026-10-10)
+
+The authenticated control-plane Intelligence `PUT /v1/hot-snapshot/intelligence`
+now independently enforces **exactly four outer payload fields**
+(`schema,source_project,generated_at,rows`) and exactly **nine approved
+customer-derived fields** on each scored row:
+`id,source_title,summary,category,severity,delta,created_at,published_at,public_status`.
+No other top-level or nested row keys are permitted—so a private
+`source_url`, publisher identity, article body, raw upstream result, rights
+record or hidden provenance field is rejected **before D1 stores or serves
+`payload_json`**. Browser/edge filtering would be too late. Additional
+negative gates require the existing `Geomacro finds ` derived narrative,
+concise no-link plaintext, integer severity 0–100, null or finite delta,
+strict original publication clock within the canonical six-hour window,
+distinct row IDs, `verified_b2` status and all **three** category families.
+Synthetic fixtures prove the D1 contract; they do not constitute commercial
+source verification. The trusted publisher continues requiring signed
+independent original same-event reviewer packages, rights, original timestamps
+and B2 readback before any live PUT. No source URL, full original content or
+provider identifier is allowed in customer-facing D1 output.
