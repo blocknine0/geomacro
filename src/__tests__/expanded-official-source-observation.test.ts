@@ -78,6 +78,32 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       macro:{within_90m:1,within_6h:1,within_24h:1,original_publisher_transport_healthy:true},
       rare_earth:{within_90m:1,within_6h:1,within_24h:1,original_publisher_transport_healthy:true},
     });
+    expect(res.independent_original_origin_lanes).toEqual({
+      geopolitics:{
+        organizations_with_6h_originals:0,
+        organizations_with_90m_originals:0,
+        possible_two_independent_origins_in_6h:false,
+        same_event_independent_corroboration_verified:false,
+        source_rights_verified:false,
+        current_scored_intelligence_verified:false,commercial_eligible:false,
+      },
+      macro:{
+        organizations_with_6h_originals:1,
+        organizations_with_90m_originals:1,
+        possible_two_independent_origins_in_6h:false,
+        same_event_independent_corroboration_verified:false,
+        source_rights_verified:false,
+        current_scored_intelligence_verified:false,commercial_eligible:false,
+      },
+      rare_earth:{
+        organizations_with_6h_originals:1,
+        organizations_with_90m_originals:1,
+        possible_two_independent_origins_in_6h:false,
+        same_event_independent_corroboration_verified:false,
+        source_rights_verified:false,
+        current_scored_intelligence_verified:false,commercial_eligible:false,
+      },
+    });
     expect(res.verified_country_count).toBe(0);
     expect(res.verified_current_event_domains).toBe(0);
     expect(res.globally_current_scored_coverage_verified).toBe(false);
@@ -434,6 +460,95 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(notRecent.original_publisher_topical_6h).toBe(0);
     }
   });
+  it("only real original first-party article paths can count as independent 6h lanes",async()=>{
+    const cases=new Map([
+      ["un_news_security_original_rss_review",{
+        title:"Security Council conflict ceasefire talks",
+        link:"https://news.un.org/en/story/2026/10/security-council",
+      }],
+      ["uk_fcdo_original_foreign_policy_atom_review",{
+        title:"Foreign secretary sanctions armed conflict",
+        link:"https://www.gov.uk/government/news/foreign-policy-sanctions",
+      }],
+      ["statcan_prices_original_atom_review",{
+        title:"Canada consumer price inflation release",
+        link:"https://www150.statcan.gc.ca/n1/daily-quotidien/261010/dq261010a-eng.htm",
+      }],
+      ["fed_monetary_original_press_rss_review",{
+        title:"Federal Reserve monetary policy interest rates",
+        link:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261010a.htm",
+      }],
+      ["nrcan_government_news_original_atom_review",{
+        title:"Canadian critical minerals lithium mining supply",
+        link:"https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals.html",
+      }],
+      ["usgs_minerals_original_news_rss_review",{
+        title:"USGS critical mineral lithium supply",
+        link:"https://www.usgs.gov/news/national-news-release/critical-mineral-lithium",
+      }],
+    ]);
+    const feed=(src:any,title:string,link:string)=>{
+      if(src.media==="atom")return '<feed><entry><title>'+title+'</title>'+
+        '<published>2026-10-10T06:25:00Z</published>'+
+        '<link rel="alternate" href="'+link+'"/></entry></feed>';
+      return '<rss><channel><item><title>'+title+'</title>'+
+        '<link>'+link+'</link><pubDate>Sat, 10 Oct 2026 06:25:00 GMT</pubDate>'+
+        '</item></channel></rss>';
+    };
+    const privateFetch=async(url:string)=>{
+      const source=EXPANDED_OFFICIAL_SOURCES.find((s:any)=>s.url===url);
+      if(!source)throw Error("UNEXPECTED_OFFICIAL_SOURCE");
+      if(source.media==="json")return response('{"data":[]}',"application/json");
+      const sample=cases.get(source.id);
+      const value=sample?feed(source,sample.title,sample.link)
+        : source.media==="atom"?"<feed></feed>":"<rss><channel></channel></rss>";
+      return response(value,source.media==="atom"?"application/atom+xml":"application/rss+xml");
+    };
+    const grouped=await probeExpandedOfficialMesh({now,fetchImpl:privateFetch});
+    expect(grouped.status).toBe("SOURCE_TRANSPORT_OBSERVED");
+    for(const domain of ["geopolitics","macro","rare_earth"]){
+      const proof=grouped.independent_original_origin_lanes[domain];
+      expect(proof.organizations_with_6h_originals).toBe(2);
+      expect(proof.organizations_with_90m_originals).toBe(2);
+      expect(proof.possible_two_independent_origins_in_6h).toBe(true);
+      // Even two genuine first-party publishers are not necessarily
+      // confirming the SAME event. No unsigned payment/score promotion.
+      expect(proof.same_event_independent_corroboration_verified).toBe(false);
+      expect(proof.source_rights_verified).toBe(false);
+      expect(proof.commercial_eligible).toBe(false);
+    }
+    const fed=EXPANDED_OFFICIAL_SOURCES[10];
+    for(const nonArticle of [
+      "https://www.federalreserve.gov/feeds/press_all.xml",
+      "https://www.federalreserve.gov/newsevents/pressreleases/",
+      "https://www.federalreserve.gov/newsevents/pressreleases/rss/",
+      "https://www.federalreserve.gov.evil.example/newsevents/pressreleases/test",
+    ]){
+      const out=await probeExpandedSource(fed,{
+        now,fetchImpl:async()=>response(feed(fed,
+          "Federal Reserve monetary policy interest rates",nonArticle),
+          "application/rss+xml"),
+      });
+      expect(out.original_publisher_topical_6h).toBe(0);
+      expect(out.original_publisher_topical_90m).toBe(0);
+      expect(out.current_scored_intelligence_verified).toBe(false);
+    }
+    const uk=EXPANDED_OFFICIAL_SOURCES[9];
+    const notArticle=await probeExpandedSource(uk,{now,fetchImpl:async()=>response(
+      feed(uk,"Foreign secretary sanctions armed conflict",
+        "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office"),
+      "application/atom+xml")});
+    expect(notArticle.topical_private_release_links_24h).toBe(0);
+    const usgs=EXPANDED_OFFICIAL_SOURCES[11];
+    const selfFeed=await probeExpandedSource(usgs,{now,fetchImpl:async()=>response(
+      feed(usgs,"USGS critical minerals lithium supply",usgs.url),
+      "application/rss+xml")});
+    expect(selfFeed.original_publisher_topical_6h).toBe(0);
+    expect(JSON.stringify(grouped)).not.toContain("foreign-policy-sanctions");
+    expect(JSON.stringify(grouped)).not.toContain("critical-mineral-lithium");
+    expect(JSON.stringify(grouped)).not.toContain("monetary20261010a");
+  });
+
   it("workflow has no cloud secrets, no database writes and no auto paid promotion",()=>{
     const yaml=readFileSync(".github/workflows/expanded-official-source-observation.yml","utf8");
     const probe=readFileSync("scripts/ops/probe-expanded-official-source-mesh.mjs","utf8");
