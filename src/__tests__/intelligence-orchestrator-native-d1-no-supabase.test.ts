@@ -89,7 +89,8 @@ globalThis.fetch=async (url,init)=>{
     expect(loader).not.toContain("ORCHESTRATOR_SHIM_URL");
     expect(workflow).toContain("GEOMACRO_SUPABASE_RESTRICTED_MODE=true");
     expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
-    expect(workflow).toContain('cron: "7,22,37,52 * * * *"');
+    expect(workflow).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
+    expect(workflow).toContain('cron: "17 2,5,8,11,14,17,20,23 * * *"');
     expect(workflow).toContain("Probe optional Supabase data plane without blocking D1/B2 heartbeat");
   });
 });
