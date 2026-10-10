@@ -153,10 +153,12 @@ Three additional **original publisher RSS endpoints** in the existing strictly p
 
 | Domain | Official source RSS | Per-item verification | Scope |
 |---|---|---|---|
-| Geopolitics | UN Geneva: `https://www.ungeneva.org/news-media/press-items-list/rss.xml` | Original `pubDate`, original `ungeneva.org` article, geopolitical title | Original publisher discovery, NOT independent corroboration |
+| Geopolitics | UK FCDO: `https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom` | Atom entry `published`, original `www.gov.uk` first-party article, geopolitical title; if missing, bounded original-article `datePublished` only | Foreign-policy original publisher discovery, NOT independent corroboration |
 | Macro/FX | U.S. Federal Reserve: `https://www.federalreserve.gov/feeds/press_all.xml` | Original `pubDate`, `federalreserve.gov` article, economics/monetary topic | U.S. central-bank source, NOT 195-country FX coverage |
 | Critical Minerals | USGS Minerals News: `https://www.usgs.gov/news/minerals/feed` | Original `pubDate`, `usgs.gov` article, minerals topical match | Mineral original-source discovery, NOT global prices/supply verification |
 
 RSS is documented on each publisher's official site. 403/429, timeout, malformed XML, unknown published date and non-original article hosts remain explicitly unverified. **Commercial source rights remain UNVERIFIED** and source bodies, raw headlines and URLs are never served to customers. These are private observation lanes, not automatically scored, rights-approved, independently corroborated signed GRO. Existing EITI HTTP 403 and NRCan Simply Science outage stay visible and fail-closed.
 
 Maximum fixed source budget is **12 feed GETs + 4 publisher-date checks + 1 Eurostat same-publisher alternate = 17 GETs/cycle and 272 GETs/day** at sixteen nominal 90-minute cycles. No Supabase/B2/D1 writes, model inference or x402 settlement.
+
+**Source substitution proof:** the UN Geneva RSS probe could not finish within the bounded timeout on a real GitHub runner in PR #1928. It was therefore replaced by the UK FCDO agency's published official Atom feed instead of wasting 16 timeout slots per day. The GOV.UK feed may include general notices/travel updates; only exact original publication time and geopolitical-topic titles qualify for *private discovery*. UK-government Atom `updated` time alone is not evidence of a newly published risk event. All rights remain UNVERIFIED and public settlement is still blocked.
