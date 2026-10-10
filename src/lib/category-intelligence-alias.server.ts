@@ -1,5 +1,6 @@
 import { buildAgentQueryPlan, inferAgentQueryTopics, type AgentQueryTopic } from "./agent-query-plan";
 import { mainnetIntelligenceHandlers } from "./mainnet-intelligence-endpoint.server";
+import { publicIntelligenceSourceCoverage, type CommercialIntelligenceCategory } from "./public-intelligence-source-coverage";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const CANONICAL_PATH = "/api/v1/intelligence/query";
@@ -117,6 +118,11 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
         supported_subject_types: ["country"],
         supported_intents: ["single_subject"],
         availability_check: "POST_WITHOUT_PAYMENT_SIGNATURE",
+        ...(config.category ? {
+          // Informational, dated catalog coverage only. Not scored observations
+          // and NEVER a replacement for POST paid-availability checks.
+          source_intake: publicIntelligenceSourceCoverage(config.category as CommercialIntelligenceCategory),
+        } : {}),
         freshness: {
           policy: "PER_MODULE_SOURCE_NATIVE_CADENCE",
           request_override: "max_age_seconds",
