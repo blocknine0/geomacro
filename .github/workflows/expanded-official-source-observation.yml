@@ -11,7 +11,7 @@ on:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - ".github/workflows/expanded-official-source-observation.yml"
   schedule:
-    # Four bounded cycles/day, six GETs/cycle; complement existing hourly
+    # Four bounded cycles/day, six GETs/cycle (max seven with one fixed Eurostat locale fallback); complement existing hourly
     # original-source probe without depleting Actions or B2 free quotas.
     - cron: "17 0,6,12,18 * * *"
   workflow_dispatch:
