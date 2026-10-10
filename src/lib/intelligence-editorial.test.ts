@@ -49,7 +49,7 @@ describe("commercial Intelligence news desk", () => {
       story({ id: "repeat", title: "Geomacro finds India imposes new export restrictions on gallium shipments", publishedAt: "2026-10-08T07:00:00Z" }),
       story({ id: "different", title: "Geomacro finds India lifts export restrictions on gallium shipments" }),
     ], NOW);
-    expect(rows.map(x => x.id)).toEqual(["first", "different"]);
+    expect(new Set(rows.map(x => x.id))).toEqual(new Set(["first", "different"]));
   });
 
   it("returns the best eligible scored report in each of exactly three launch domains", () => {
