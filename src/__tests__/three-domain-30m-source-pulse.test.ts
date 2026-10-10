@@ -83,7 +83,9 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
       return verifiedDateResponse(source);
     };
     const r=await probe30MinThreeDomainPulse({now:NOW,probe});
-    expect(n).toBe(3);
+    // The denied origin itself is not retried/re-routed; other unrelated
+    // domains can still check their independent original publishers on zero.
+    expect(n).toBe(5);
     expect(r.status).toBe("THREE_DOMAIN_SOURCE_TRANSPORT_DEGRADED");
     expect(r.actual_original_publisher_rows[0].original_publisher_30m_topic_count).toBeNull();
     expect(r.actual_original_publisher_rows[0].publisher_failover_attempted).toBe(false);
