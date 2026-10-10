@@ -146,7 +146,7 @@ function IntelligencePage() {
               ? "No current scored intelligence · historical archive available"
               : allDomainsCurrent ? "All three domains have current original-dated scored evidence" :
                 currentScored ? `Current scored evidence in only ${currentDomainCount}/3 domains` :
-                "No eligible scored headlines yet"
+                "No eligible scored headlines yet"}
           </span>
         </div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
@@ -429,7 +429,7 @@ function IntelligencePage() {
               </div>
               {intel.updatedAt ? (
                 <p className="mt-4 border-t border-border/50 pt-3 text-xs leading-5 text-muted-foreground">
-                  Latest original evidence {formatTime(intel.updatedAt)}; monitoring or B2 restore time is not a new assessment. Earlier scores remain historical.
+                  Latest original evidence {formatTime(intel.updatedAt)}; monitoring or B2 restore time is not a new assessment. Earlier scores remain historical. Earlier assessments retain their original dates.
                 </p>
               ) : null}
             </div>
