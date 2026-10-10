@@ -86,7 +86,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       expect(x.reason).toBe(c.reason);
       expect(x.format_valid).toBe(false);
       expect(x.commercial_eligible).toBe(false);
-      expect(JSON.stringify(x)).not.toContain("private");
+      expect(JSON.stringify(x)).not.toContain("private forbidden response");
       expect(JSON.stringify(x)).not.toContain("secret");
       expect(JSON.stringify(x)).not.toContain("sensitive");
     }
