@@ -11,6 +11,7 @@ import {pathToFileURL} from "node:url";
 import {
   EXPANDED_OFFICIAL_SOURCES, probeExpandedSource,
 } from "./probe-expanded-official-source-mesh.mjs";
+import {classifyPrivateOriginalCandidateDuplicates} from "../lib/private-original-publisher-candidates.mjs";
 
 const INTERVAL_MS=30*60*1000;
 export const THIRTY_MIN_PUBLISHER_PAIRS=Object.freeze({
@@ -51,7 +52,7 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
     async function observe(source){
       attempted.push(source.id);
       // Source-specific transport failure is an unknown, not zero news.
-      try { return await probe(source,{now}); }
+      try { return await probe(source,{now,collectPrivateCandidates:true}); }
       catch { return {source_id:source.id,domain,format_valid:false,primary_http_status:null}; }
     }
     const valid=(result,source)=>result?.format_valid===true &&
@@ -100,6 +101,8 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       original_publisher_6h_topic_count:sixh,
       no_new_30m_original_topic_item_observed:healthy&&complete&&count===0,
       checked_at:now.toISOString(),
+      // Private hashed article identities; never the raw news or a GRO.
+      private_original_article_candidates:observed.flatMap(r=>r.private_original_article_candidates??[]).slice(0,80),
       event_same_subject_independent_corroboration_verified:false,
       commercial_rights_verified:false,
       signed_current_gro_verified:false,
@@ -108,6 +111,9 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
   }));
   const status=rows.every(row=>row.status==="ORIGINAL_PUBLISHER_DATE_OBSERVED")
     ?"THREE_DOMAIN_ORIGINAL_PUBLISHER_TRANSPORT_OBSERVED":"THREE_DOMAIN_SOURCE_TRANSPORT_DEGRADED";
+  const candidates=rows.flatMap(row=>row.private_original_article_candidates);
+  if(candidates.length>240) throw Error("PRIVATE_ORIGINAL_CANDIDATE_BURST_INVALID");
+  const privateCandidateDedup=classifyPrivateOriginalCandidateDuplicates(candidates);
   return {
     schema:"geomacro.private-three-domain-source-pulse-30m.v1",
     observed_at:now.toISOString(),
@@ -117,6 +123,7 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
     status,
     source_domains_observed:DOMAINS,
     actual_original_publisher_rows:rows,
+    private_original_candidate_dedup:privateCandidateDedup,
     source_catalog_entries_are_not_events:true,
     independently_verified_current_intelligence_count:0,
     user_api_delivery_verified:false,
