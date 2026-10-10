@@ -16,7 +16,7 @@ export const ORIGINAL_PUBLISHER_ALTERNATES = Object.freeze({
   macro: Object.freeze({
     url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/18-eng.atom",
     format: "atom",
-    articleHosts: Object.freeze(["www150.statcan.gc.ca"]),
+    articleHosts: Object.freeze(["www150.statcan.gc.ca", "www.statcan.gc.ca"]),
     topics: /\b(?:inflation|consumer prices?|producer prices?|price indices?|price index|cost of living|exchange rate|interest rates?|currency|prices?)\b/iu,
   }),
   rare_earth: Object.freeze({
@@ -71,6 +71,12 @@ function officialUrl(value, hosts, category) {
     if (u.protocol !== "https:" || u.username || u.password ||
         !hosts.includes(u.hostname.toLowerCase()) ||
         u.href.length > 2048) return null;
+    // The newly observed www host is official, but admit only exact Daily
+    // articles and no query, fragment, nonstandard port or redirect target.
+    // Other www.statcan.gc.ca pages are not a free-form ingest authority.
+    if (category === "macro" && u.hostname === "www.statcan.gc.ca" &&
+        (!STATCAN_DAILY_RELATIVE.test(u.pathname) ||
+          Boolean(u.search || u.hash || u.port))) return null;
     return u;
   } catch { return null; }
 }
@@ -118,6 +124,8 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     // Count-only, NO discovered URL/hostname/body leaves private discovery.
     alternate_macro_href_www150_items: 0,
     alternate_macro_href_www_items: 0,
+    alternate_macro_href_www_daily_path_items: 0,
+    alternate_macro_href_www_other_path_items: 0,
     alternate_macro_href_apex_items: 0,
     alternate_macro_href_other_statcan_items: 0,
     alternate_macro_href_other_origin_items: 0,
@@ -162,6 +170,14 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
         missing:"alternate_macro_href_missing_items",
       }[linkClass];
       if (fieldByClass) stats[fieldByClass]++;
+      if (linkClass==="www") {
+        let original;
+        try {original=new URL(raw);} catch { /* already classified */ }
+        const exact=original && STATCAN_DAILY_RELATIVE.test(original.pathname) &&
+          !original.search && !original.hash && !original.port;
+        if (exact) stats.alternate_macro_href_www_daily_path_items++;
+        else stats.alternate_macro_href_www_other_path_items++;
+      }
     }
     const uri=officialUrl(raw,config.articleHosts,category);
     if (Number.isFinite(time)) stats.alternate_native_date_items++;
