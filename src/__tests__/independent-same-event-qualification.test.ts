@@ -7,6 +7,7 @@ import {
   derivedCustomerRowSha256,
 } from "../../scripts/lib/independent-same-event-qualification.mjs";
 import {publishB2VerifiedHotSnapshot} from "../../scripts/ops/publish-b2-verified-hot-snapshot.mjs";
+import {auditTrustedCountryEventEvidence} from "../../scripts/lib/trusted-country-event-evidence-census.mjs";
 
 const now=new Date("2026-10-10T11:00:00Z");
 const keyPair=generateKeyPairSync("ed25519");
@@ -414,5 +415,84 @@ describe("#1827 strict multi-publisher same-event commercial gate",()=>{
     expect(publisher).toContain('if(product==="intelligence")');
     expect(publisher).toContain("qualifyIndependentSameEvent({");
     expect(publisher).toContain("commercial_multi_source_receipt_sha256");
+  });
+});
+
+describe("#1827 195×3 geography: independent reviewed-source evidence is NOT signed GRO coverage",()=>{
+  const census=(pkg:any=proof,key=trustedReviewerPublicKeyPem)=>
+    auditTrustedCountryEventEvidence({
+      rows,eventPackages:[signReview(pkg)],now,trustedReviewerPublicKeyPem:key,
+    });
+
+  it("binds attested country ISO3 to the SAME trusted-reviewed signed event, never the source's country",()=>{
+    const accepted=go();
+    expect(accepted.receipt.qualified[0]).toMatchObject({
+      country_iso3:"USA",category:"macro",
+      native_event_occurred_at:identity.occurred_at,
+      latest_independent_original_at:"2026-10-10T10:12:00.000Z",
+      trusted_ed25519_review_signature_verified:true,
+    });
+    const result=census();
+    expect(result.target_geography_domain_cells).toBe(750);
+    expect(result.canonical_sovereign_count).toBe(194);
+    expect(result.canonical_geographic_entity_count).toBe(250);
+    expect(result.trusted_ed25519_signed_review_count).toBe(1);
+    expect(result.domains.macro.independently_reviewed_event_count).toBe(1);
+    expect(result.domains.macro.country_domain_pairs_with_reviewed_events).toBe(1);
+    expect(result.domains.geopolitics.country_domain_pairs_with_reviewed_events).toBe(0);
+    expect(result.domains.rare_earth.country_domain_pairs_with_reviewed_events).toBe(0);
+    const usaMacro=result.country_domain_cells.find((x:any)=>
+      x.iso3==="USA"&&x.domain==="macro");
+    expect(usaMacro).toMatchObject({
+      signed_reviewed_event_count:1,
+      private_independent_same_event_review_status:"SIGNED_REVIEW_ACCEPTED_NOT_HOT_SERVING",
+      signed_current_gro_b2_d1_verified:false,
+      x402_payable:false,
+    });
+    expect(usaMacro.independently_reviewed_event_claim_hashes).toEqual([claim]);
+    expect(result.real_time_195x3_commercial_intelligence_verified).toBe(false);
+    expect(result.signed_current_gro_and_full_b2_d1_verified).toBe(false);
+    expect(result.x402_charge_authorized).toBe(false);
+  });
+
+  it("returns 750 explicit missing-review cells without invented news or paid readiness",()=>{
+    const census=auditTrustedCountryEventEvidence({rows:[],eventPackages:[],now});
+    expect(census.trusted_ed25519_signed_review_count).toBe(0);
+    expect(census.independent_same_event_checks_executed).toBe(false);
+    expect(census.country_domain_cells).toHaveLength(750);
+    expect(census.country_domain_cells.every((x:any)=>
+      x.signed_reviewed_event_count===0&&x.x402_payable===false)).toBe(true);
+    expect(census.signed_review_receipt_sha256).toBeNull();
+    expect(census.no_current_event_is_not_zero_risk).toBe(true);
+  });
+
+  it("rejects forged country, rights, signature, duplicated event, and mismatched category before census",()=>{
+    expect(()=>auditTrustedCountryEventEvidence({
+      rows,eventPackages:[signReview(proof)],now,
+      trustedReviewerPublicKeyPem:"untrusted",
+    })).toThrow("INDEPENDENT_EVENT_TRUSTED_REVIEW_KEY_REQUIRED");
+    expect(()=>census({...proof,event:{...identity,country_iso3:"ZZZ"}}))
+      .toThrow();
+    expect(()=>census({...proof,event:{...identity,country_iso3:"IND"}}))
+      .toThrow();
+    expect(()=>census({...proof,evidence:proof.evidence.map((e:any)=>
+      ({...e,commercial_derived_use_rights_verified:false}))}))
+      .toThrow("INDEPENDENT_EVENT_SOURCE_ATTESTATION_UNVERIFIED");
+    expect(()=>auditTrustedCountryEventEvidence({
+      rows:[rows[0],rows[0]],
+      eventPackages:[signReview(proof),signReview(proof)],now,trustedReviewerPublicKeyPem,
+    })).toThrow();
+    expect(()=>auditTrustedCountryEventEvidence({
+      rows:[rows[0]],eventPackages:[],now,trustedReviewerPublicKeyPem,
+    })).toThrow("COUNTRY_EVENT_EVIDENCE_INPUT_INVALID");
+  });
+
+  it("exposes only reviewed event identity hashes and geography metadata, not raw source links",()=>{
+    const report=JSON.stringify(census());
+    for(const raw of ["federalreserve.gov","ecb.europa.eu",
+      "/pressreleases/", "fed original bytes","source_url","source_article",
+      "review_signature_base64","rights_receipt_sha256"]) {
+      expect(report).not.toContain(raw);
+    }
   });
 });
