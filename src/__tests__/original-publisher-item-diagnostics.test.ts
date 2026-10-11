@@ -44,6 +44,11 @@ describe("#2041 publisher-origin item rejection diagnostics",()=>{
       item_native_published_missing:1,
       item_native_published_invalid_or_future:1,
       original_article_link_rejected:1,
+      item_native_published_invalid_date:0,
+      item_native_published_future_date:1,
+      original_article_link_wrong_host:1,
+      original_article_link_wrong_path:0,
+      original_article_link_other_invalid:0,
       accepted_first_party_older_than_7d:1,
       accepted_first_party_native_dated:2,
     });
@@ -73,6 +78,11 @@ describe("#2041 publisher-origin item rejection diagnostics",()=>{
       item_native_published_missing:1,
       item_native_published_invalid_or_future:0,
       original_article_link_rejected:1,
+      item_native_published_invalid_date:0,
+      item_native_published_future_date:0,
+      original_article_link_wrong_host:0,
+      original_article_link_wrong_path:1,
+      original_article_link_other_invalid:0,
       accepted_first_party_older_than_7d:0,
       accepted_first_party_native_dated:1,
     });
