@@ -102,7 +102,6 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
           const u=new URL(href);
           return u.protocol==="https:"&&!u.username&&!u.password&&!u.port&&
             !u.hash&&source.original_hosts.includes(u.hostname)&&
-            !/\.(?:rss|atom|xml)$/iu.test(u.pathname)&&
             u.pathname!==new URL(source.url).pathname;
         }catch{return false;}
       });
