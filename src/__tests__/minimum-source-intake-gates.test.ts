@@ -68,6 +68,10 @@ describe("#1827 source-intake minimum gates (PRIVATE discovery only)",()=>{
     expect(ingest).toContain("broadPrivateIntake: true");
     expect(ingest).toContain("requireOriginalPublisherProof: true");
     expect(ingest).toContain("const gated = passesGates(article, assessment, category.name)");
+    expect(ingest).toContain("if (!PRIVATE_B2_STAGE && !ALLOW[category]?.test(blob))");
+    expect(ingest).toContain("if (!assessment.relevant)");
+    expect(ingest).toContain("Number(assessment.confidence) < MIN_CONFIDENCE");
+    expect(ingest).toContain("Number(assessment.severity) < MIN_SEVERITY");
     expect(ingest).toContain("privatePublisherPreAdmission(article,");
     expect(ingest).toContain("if (DENY.test(article.title) ||");
     expect(ingest).not.toContain("!ALLOW[category.name]?.test(article.title)");
