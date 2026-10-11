@@ -45,6 +45,23 @@ describe("#1827 real public-adapter three-domain source health",()=>{
     expect(r.results.every((x:any)=>x.status==="WORKING_EMPTY_DATA_RESPONSE")).toBe(true);
     expect(r.original_events_scored).toBe(0);
   });
+  it("classifies OECD provider HTTP/SDMX faults by code without leaking URL or body",async()=>{
+    const r=await probePublicSourcesIndependently({
+      now:t,probe:async(id:string)=>{
+        if(id==="oecd")throw Error("PUBLIC_SOURCE_HTTP_503");
+        return valid(id);
+      },
+    });
+    expect(r.results.find((x:any)=>x.source_id==="oecd").reason).toBe("HTTP_503");
+    const reason=await probePublicSourcesIndependently({
+      now:t,probe:async(id:string)=>{
+        if(id==="oecd")throw Error("OECD_SDMX_DATAFLOW_UNVERIFIED");
+        return valid(id);
+      },
+    });
+    expect(reason.results.find((x:any)=>x.source_id==="oecd").reason)
+      .toBe("SDMX_DATAFLOW_SHAPE_INVALID");
+  });
   it("does not expose upstream provider URL, text or potential credentials in error",async()=>{
     const r=await probePublicSourcesIndependently({
       now:t,probe:async()=>{
