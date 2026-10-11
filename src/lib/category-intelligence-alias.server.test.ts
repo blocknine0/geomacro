@@ -15,6 +15,7 @@ import {
   createCategoryIntelligenceHandlers,
 } from "./category-intelligence-alias.server";
 import { classifyCentralSecurityRoute } from "./central-security.server";
+import { buildAgentQueryPlan } from "./agent-query-plan";
 
 const subject = { type: "country", country_iso3: "IND" as const };
 
@@ -48,6 +49,33 @@ describe("fixed-scope category intelligence aliases", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.payload.topics).toEqual(config.topics);
+  });
+
+  it.each(cases)("defaults $name to bounded non-chargeable live_on_demand discovery", ({ config, question }) => {
+    const bound = bindCategoryAliasPayload({ question, subjects: [subject] }, config);
+    expect(bound.ok).toBe(true);
+    if (!bound.ok) return;
+    expect(bound.payload.fulfillment_mode).toBe("live_on_demand");
+    const plan = buildAgentQueryPlan(bound.payload);
+    expect(plan.fulfillment_mode).toBe("live_on_demand");
+    expect(plan.topics).toEqual([...config.topics].sort());
+    expect(plan.required_modules).toEqual([...config.requiredModules].sort());
+  });
+
+  it.each(cases)("preserves explicitly requested published_only for $name", ({ config }) => {
+    const bound = bindCategoryAliasPayload({
+      subjects: [subject], fulfillment_mode: "published_only",
+    }, config);
+    expect(bound.ok).toBe(true);
+    if (!bound.ok) return;
+    expect(bound.payload.fulfillment_mode).toBe("published_only");
+    expect(buildAgentQueryPlan(bound.payload).fulfillment_mode).toBe("published_only");
+  });
+
+  it.each(cases)("rejects unsupported fulfillment mode before any payment on $name", ({ config }) => {
+    expect(bindCategoryAliasPayload({
+      subjects: [subject], fulfillment_mode: "unverified_payable",
+    }, config)).toEqual({ ok: false, code: "INVALID_CATEGORY_QUERY" });
   });
 
   it.each(cases)("rejects a topic spoof on $name", ({ config }) => {
@@ -155,7 +183,10 @@ describe("category intelligence HTTP handler boundary", () => {
     expect(forwarded.headers.get("payment-signature")).toBe("signed-request-token");
     expect(forwarded.headers.get("x-request-id")).toBe("request-123");
     expect(forwarded.headers.get("content-type")).toBe("application/json");
-    expect(await forwarded.json()).toMatchObject({ question, subjects: [subject], topics: config.topics });
+    expect(await forwarded.json()).toMatchObject({
+      question, subjects: [subject], topics: config.topics,
+      fulfillment_mode: "live_on_demand",
+    });
   });
 
   it("rejects invalid scope before invoking the payment handler", async () => {
