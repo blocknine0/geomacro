@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeGeomacroIntelligenceProductHash } from "../lib/geomacro-intelligence-contract";
+import { approvedWdiAttribution } from "../lib/world-bank-derived-attribution";
 import {
   assertPublicPaidOutputBoundary,
   sanitizeAndRehashPaidPreparedResponse,
@@ -108,6 +109,52 @@ describe("source-free paid output boundary", () => {
     expect(availability).toEqual({ deliverable: true });
     expect(payment).toEqual({ provider: "coinbase_cdp_x402" });
     expect(JSON.stringify(sanitized)).not.toContain("usgs_mcs");
+  });
+
+  it("preserves *only* exact WDI CC BY licence/data credit in hash-bound derived paid output",()=>{
+    const credit=approvedWdiAttribution(["FP.CPI.TOTL.ZG"]);
+    const prepared={
+      schema_version:"geomacro.adaptive-intelligence-response.v1",
+      product:"geomacro_adaptive_risk_intelligence_v1",
+      request_id:"request-license-123",
+      answer:{summary:"Geomacro-derived inflation assessment."},
+      data_attribution:credit,
+      delivered_product_hash:"0".repeat(64),
+      availability:{deliverable:true},
+      payment:{provider:"coinbase_cdp_x402"},
+    };
+    const payload=sanitizeAndRehashPaidPreparedResponse(prepared,{rejectEmbeddedLinks:true});
+    expect(payload.data_attribution).toEqual(credit);
+    expect(()=>assertPublicPaidOutputBoundary(payload)).not.toThrow();
+    const {delivered_product_hash,availability,payment,...core}=payload;
+    expect(delivered_product_hash).toBe(computeGeomacroIntelligenceProductHash(core));
+    expect(JSON.stringify(payload)).not.toContain("world_bank_indicators");
+    expect(JSON.stringify(payload)).not.toContain("raw_payload");
+  });
+
+  it("does not allow arbitrary upstream links or forged credits to escape the paid source firewall",()=>{
+    const good=approvedWdiAttribution(["FP.CPI.TOTL.ZG"]);
+    const corrupt=[
+      {...good,material_uris:["https://evil.example.org"]},
+      {...good,terms_uri:"https://evil.example.org"},
+      {...good,credit:"GDELT original feed"},
+      {...good,unapproved_field:"exfiltration"},
+      {...good,material_uris:[...good.material_uris,...good.material_uris]},
+    ];
+    for(const value of corrupt){
+      expect(()=>sanitizePublicPaidOutput({data_attribution:value},
+        {rejectEmbeddedLinks:true})).toThrow("PAID_OUTPUT_UNQUALIFIED_DATA_ATTRIBUTION");
+      expect(()=>assertPublicPaidOutputBoundary({data_attribution:value}))
+        .toThrow("PAID_OUTPUT_UNQUALIFIED_DATA_ATTRIBUTION");
+    }
+    expect(()=>assertPublicPaidOutputBoundary({
+      data_attribution:good,answer:{summary:"www.worldbank.org/raw-article"}
+    })).toThrow("PAID_OUTPUT_EMBEDDED_SOURCE_URL");
+    expect(()=>assertPublicPaidOutputBoundary({answer:{summary:"World Bank feed"}}))
+      .toThrow("PAID_OUTPUT_PROVIDER_IDENTITY_LEAK");
+    expect(()=>assertPublicPaidOutputBoundary({
+      structural:{data_attribution:good}
+    })).toThrow("PAID_OUTPUT_EMBEDDED_SOURCE_URL");
   });
 
   it("wires sanitation before durable x402 preparation and on replay", async () => {
