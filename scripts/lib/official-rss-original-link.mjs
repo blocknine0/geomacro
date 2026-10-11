@@ -8,9 +8,21 @@
  */
 const UN_CANONICAL=/^\/en\/story\/([0-9]{4})\/(0?[1-9]|1[0-2])\/([a-z0-9][a-z0-9-]{2,160})\/?$/u;
 const UN_FEED_VIEW=/^\/feed\/view\/en\/story\/([0-9]{4})\/(0?[1-9]|1[0-2])\/([0-9]{5,12})\/?$/u;
+function oneNativeXmlText(raw) {
+  if(typeof raw!=="string"||raw.length>1900)return null;
+  const value=raw.trim();
+  if(value.startsWith("<![CDATA[")) {
+    // Federal Reserve RSS wraps original first-party hrefs in a *single*
+    // CDATA section. Accept only complete markup; never concatenate or
+    // interpret arbitrary XML, and validate the resulting HTTPS URL later.
+    const m=/^<!\[CDATA\[([\s\S]{1,1600})\]\]>$/u.exec(value);
+    return m?.[1]?.trim()??null;
+  }
+  return value;
+}
 function firstTagValue(item,name) {
   const re=new RegExp("<"+name+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/"+name+">","iu");
-  return item.match(re)?.[1]?.trim()??null;
+  return oneNativeXmlText(item.match(re)?.[1]??null);
 }
 function strictUrl(raw, host, allowQuery=false) {
   if(typeof raw!=="string" || raw.length>1500)return null;
@@ -38,7 +50,7 @@ export function officialOriginalRssArticleUrl(item,source) {
   const guidTag=item.match(/<guid\b([^>]*)>([\s\S]*?)<\/guid>/iu);
   if(!guidTag||!/\bisPermaLink\s*=\s*["']true["']/iu.test(guidTag[1]))
     return null;
-  const canonical=strictUrl(guidTag[2].trim(),"news.un.org");
+  const canonical=strictUrl(oneNativeXmlText(guidTag[2]),"news.un.org");
   if(!canonical)return null;
   const match=UN_CANONICAL.exec(canonical.pathname);
   if(!match||match[1]!==feed[1]||Number(match[2])!==Number(feed[2])||
