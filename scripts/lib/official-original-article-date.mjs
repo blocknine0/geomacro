@@ -123,10 +123,13 @@ function fixedPublisherArticle(rawUrl, category) {
         candidate.port || candidate.search || candidate.hash) return null;
     const path = candidate.pathname;
     if (category === "macro" && candidate.hostname === "www150.statcan.gc.ca") {
-      const match = /^\/n1\/daily-quotidien\/([0-9]{6})\/([a-z0-9-]{1,80})\.(htm|html)$/u.exec(path);
+      // StatCan serves original Daily releases under both /n1/ and
+      // /n1/en/ article routes. Same publisher and strict date+filename;
+      // reconstruct the exact supported path, never follow redirects.
+      const match = /^\/n1\/(en\/)?daily-quotidien\/([0-9]{6})\/([a-z0-9-]{1,80})\.(htm|html)$/u.exec(path);
       if (!match) return null;
-      return "https://www150.statcan.gc.ca/n1/daily-quotidien/" +
-        match[1] + "/" + match[2] + "." + match[3];
+      return "https://www150.statcan.gc.ca/n1/" + (match[1]??"") +
+        "daily-quotidien/" + match[2] + "/" + match[3] + "." + match[4];
     }
     if (category === "rare_earth" &&
         (candidate.hostname === "www.canada.ca" || candidate.hostname === "canada.ca")) {
