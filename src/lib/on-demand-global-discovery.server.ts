@@ -174,7 +174,7 @@ async function worldBank(
   const json: unknown = JSON.parse(body);
   const rows = Array.isArray(json) && Array.isArray(json[1]) ? json[1] : [];
   const valid = rows.filter((x: Record<string,unknown>) =>
-    x && Number.isFinite(x.value) &&
+    x && typeof x.value === "number" && Number.isFinite(x.value) &&
     typeof x.date === "string" && /^\d{4}$/.test(x.date));
   // An annual statistical observation is NOT a real-time new event.
   return probe("world_bank_official_" + indicator,valid.length,false);
