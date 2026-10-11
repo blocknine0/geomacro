@@ -122,6 +122,15 @@ function fixedPublisherArticle(rawUrl, category) {
     if (candidate.protocol !== "https:" || candidate.username || candidate.password ||
         candidate.port || candidate.search || candidate.hash) return null;
     const path = candidate.pathname;
+    if (category === "macro" && candidate.hostname === "www.statcan.gc.ca") {
+      // Documented first-party The Daily article route. Six-digit date
+      // must agree with its dq filename; no arbitrary .htm, portal, or
+      // non-publisher URL can be used for page-date verification.
+      const match = /^\/daily-quotidien\/([0-9]{6})\/dq([0-9]{6})([a-z][a-z0-9-]{0,35})-eng\.(htm|html)$/u.exec(path);
+      if (!match || match[1] !== match[2]) return null;
+      return "https://www.statcan.gc.ca/daily-quotidien/" +
+        match[1] + "/dq" + match[2] + match[3] + "-eng." + match[4];
+    }
     if (category === "macro" && candidate.hostname === "www150.statcan.gc.ca") {
       // StatCan serves original Daily releases under both /n1/ and
       // /n1/en/ article routes. Same publisher and strict date+filename;
