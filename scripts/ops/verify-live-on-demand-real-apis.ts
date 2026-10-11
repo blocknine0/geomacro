@@ -49,6 +49,11 @@ const proof={
   })),
   private_original_candidate_count:privateEvidence.private_candidates.length,
   duplicate_original_headlines_suppressed:privateEvidence.duplicate_original_headline_count,
+  // Connectivity != qualifying fresh original, reviewed same-event evidence,
+  // commercially licensed supply-risk scoring or signed paid delivery.
+  qualifying_fresh_original_found:privateEvidence.private_original_review_candidates.length>0,
+  current_lithium_risk_answer_verified:false,
+  x402_commercial_release_authorized:false,
   private_official_annual_change_count:privateEvidence.private_macro_changes.length,
   private_annual_directional_macro_driver_count:privateMacroDrivers.length,
   private_original_candidate_page_dates_verified:
@@ -69,7 +74,9 @@ mkdirSync("artifacts/on-demand-live",{recursive:true});
 writeFileSync("artifacts/on-demand-live/real-api-proof.json",
   JSON.stringify(proof,null,2)+"\n",{mode:0o600});
 console.log(JSON.stringify(proof));
-if(proof.sample_country_iso3!=="CHN" ||
+if(proof.current_lithium_risk_answer_verified!==false ||
+   proof.x402_commercial_release_authorized!==false ||
+   proof.sample_country_iso3!=="CHN" ||
    proof.sample_topic_mineral!=="lithium" ||
    proof.sample_case!=="CHN_LITHIUM_CURRENT_SUPPLY_RISK" ||
    proof.category_count!==3||proof.network_attempts>12 ||
