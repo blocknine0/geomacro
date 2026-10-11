@@ -46,7 +46,7 @@ describe("#2041 exact StatCan original /n1/en/daily-quotidien article alias",()=
     const daily="https://www.statcan.gc.ca/daily-quotidien/261011/dq261011a-eng.htm";
     const catalogue="https://www.statcan.gc.ca/en/subjects-start/prices_and_price_indexes";
     const canonical="https://www150.statcan.gc.ca/n1/daily-quotidien/261011/dq261011a-eng.htm";
-    const actual=feed(entry(daily)+entry(catalogue));
+    const actual=feed(entry(daily)+entry(catalogue)+entry(daily+"?download=1"));
     const called:string[]=[];
     const fetchImpl=vi.fn(async(url:string)=>{
       called.push(url);
@@ -60,7 +60,7 @@ describe("#2041 exact StatCan original /n1/en/daily-quotidien article alias",()=
     expect(called).toEqual([statcan.url,canonical]);
     expect(observed.undated_atom_article_link_candidates).toBe(1);
     expect(observed.undated_atom_link_diagnostic.valid_first_party_article_links).toBe(1);
-    expect(observed.undated_atom_link_diagnostic.rejected_original_path).toBe(1);
+    expect(observed.undated_atom_link_diagnostic.rejected_original_path).toBe(2);
     expect(observed.original_page_precise_date_24h).toBe(1);
     expect(observed.private_original_article_candidates).toHaveLength(1);
     expect(observed.private_original_article_candidates[0].native_published_at)
