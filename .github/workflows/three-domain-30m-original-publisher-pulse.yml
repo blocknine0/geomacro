@@ -21,6 +21,7 @@ on:
       - "src/__tests__/source-native-date-shape-and-original-page-codes.test.ts"
       - "src/__tests__/undated-atom-original-link-diagnostics.test.ts"
       - "src/__tests__/statcan-exact-original-daily-article-path.test.ts"
+      - "src/__tests__/capture-undated-first-party-feeds-before-publication-proof.test.ts"
       - "src/__tests__/govuk-first-published-at-atom-original-page.test.ts"
       - "src/__tests__/federal-reserve-native-cdata-pubdate.test.ts"
       - "src/__tests__/fed-native-cdata-original-article-link.test.ts"
@@ -47,6 +48,7 @@ on:
       - "src/__tests__/source-native-date-shape-and-original-page-codes.test.ts"
       - "src/__tests__/undated-atom-original-link-diagnostics.test.ts"
       - "src/__tests__/statcan-exact-original-daily-article-path.test.ts"
+      - "src/__tests__/capture-undated-first-party-feeds-before-publication-proof.test.ts"
       - "src/__tests__/govuk-first-published-at-atom-original-page.test.ts"
       - "src/__tests__/federal-reserve-native-cdata-pubdate.test.ts"
       - "src/__tests__/fed-native-cdata-original-article-link.test.ts"
@@ -132,12 +134,16 @@ jobs:
               .event_same_subject_independent_corroboration_verified==false] | all) and
             .source_catalog_entries_are_not_events==true and
             .open_original_discovery_enabled==true and
+            .undated_observation_only==true and
+            .undated_entry_publication_clock_verified==false and
             .original_article_keyword_admission_required==false and
             .original_article_source_native_clock_required==true and
             ([.actual_original_publisher_rows[] |
               .open_discovery_keyword_gate_enabled==false and
               .articles_captured_before_relevance_classification==true and
               .unclassified_original_articles_are_verified_events==false and
+              .undated_feed_publication_verified==false and
+              (.undated_first_party_feed_observed_count>=0) and
               (.source_item_provenance_diagnostics | type)=="array" and
               (.source_item_provenance_diagnostics|length)<=2 and
               (.source_feed_recovery_diagnostics | type)=="array" and

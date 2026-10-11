@@ -9,6 +9,7 @@ import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN,
 import { originalPublisherPrivateCandidates, originalPublisherPrivatePageDateCandidate } from "../lib/private-original-publisher-candidates.mjs";
 import { officialOriginalRssArticleUrl } from "../lib/official-rss-original-link.mjs";
 import { officialItemNativePublicationMs } from "../lib/official-native-item-publication-date.mjs";
+import { observeUndatedFirstPartyAtomFeed } from "../lib/private-undated-feed-observations.mjs";
 import { isQuarantinedOfficialRoute, quarantinedOfficialSourceReceipt } from "../lib/official-source-quarantine.mjs";
 
 const MAX_BODY_BYTES=192*1024;
@@ -511,6 +512,8 @@ export async function probeExpandedSource(source,{
     source_native_7d_release_items:null,
     original_publisher_open_24h_count:null,
     source_item_provenance_diagnostics:null,
+    private_undated_feed_observations:[],
+    undated_observed_entry_count:0,
     unparseable_native_rss_date_shapes:null,
     first_party_original_page_probe_codes:null,
     undated_atom_article_link_candidates:null,
@@ -611,6 +614,19 @@ export async function probeExpandedSource(source,{
   if(!valid){row.reason="SOURCE_SHAPE_UNVERIFIED";return row;}
   row.publisher_reachable=true;
   row.format_valid=true;
+  // Original publication may be unknowable at discovery time (notably Atom).
+  // Keep SHA-only first-party observations separate from dated candidates.
+  // Never infer a published_at from Atom updated, retrieval or D1 poll time.
+  if(collectPrivateCandidates && openDiscovery && source.media==="atom" && source.original_hosts){
+    try{
+      row.private_undated_feed_observations=observeUndatedFirstPartyAtomFeed(
+        body,source,{now});
+      row.undated_observed_entry_count=row.private_undated_feed_observations.length;
+    }catch{
+      row.private_undated_feed_observations=[];
+      row.undated_observation_parse_failed=true;
+    }
+  }
   if(collectPrivateCandidates && source.original_hosts && ["rss","atom"].includes(source.media)){
     try { row.private_original_article_candidates=originalPublisherPrivateCandidates(
       body,source,now,{captureAllTopics:openDiscovery}); }
