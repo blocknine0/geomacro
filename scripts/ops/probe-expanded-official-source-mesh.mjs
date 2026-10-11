@@ -189,17 +189,22 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
   if (!/<rss(?:\s|>)/iu.test(xml) || /<!DOCTYPE|<!ENTITY/iu.test(xml)) return null;
   const entries=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80);
   let dated=0,recent=0,openSevenDay=0,topicalRecent=0;
+  let missingNativeDate=0,invalidOrFutureDate=0,rejectedOriginalLink=0;
   let nativeDataUpdates=0,otherCatalogueChanges=0;
   let topicalSixHours=0,topicalNinetyMinutes=0,topicalThirtyMinutes=0;
   for(const [,item] of entries) {
     const date=item.match(/<pubDate(?:\s[^>]*)?>([\s\S]*?)<\/pubDate>/iu)?.[1];
     // Only a source-native per-item date. Never the channel clock, retrieval,
     // processing time, or feed update time; and never an event risk claim.
-    if (!date) continue;
-    const originalLink=item.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/iu)?.[1]?.trim()??"";
-    if(!originalHref(originalLink,hosts,source))continue;
+    if (!date){missingNativeDate++;continue;}
     const ms=Date.parse(date.trim());
-    if (!Number.isFinite(ms) || ms>now.getTime()) continue;
+    if (!Number.isFinite(ms) || ms>now.getTime()){
+      invalidOrFutureDate++;continue;
+    }
+    const originalLink=item.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/iu)?.[1]?.trim()??"";
+    if(!originalHref(originalLink,hosts,source)){
+      rejectedOriginalLink++;continue;
+    }
     dated++;
     if(now.getTime()-ms<=7*DAY_MS)openSevenDay++;
     if(now.getTime()-ms<=DAY_MS){
@@ -228,6 +233,14 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
     topical_within_6h:topicalSixHours,
     topical_within_90m:topicalNinetyMinutes,
     topical_within_30m:topicalThirtyMinutes,
+    item_provenance_diagnostics:{
+      entries_parsed:entries.length,
+      item_native_published_missing:missingNativeDate,
+      item_native_published_invalid_or_future:invalidOrFutureDate,
+      original_article_link_rejected:rejectedOriginalLink,
+      accepted_first_party_older_than_7d:dated-openSevenDay,
+      accepted_first_party_native_dated:dated,
+    },
     native_dataset_data_updates_24h:nativeDataUpdates,
     other_catalogue_changes_24h:otherCatalogueChanges};
 }
@@ -257,19 +270,24 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
       /<!DOCTYPE|<!ENTITY/iu.test(xml))return null;
   const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,80);
   let dated=0,recent=0,openSevenDay=0,topicalRecent=0;
+  let missingNativeDate=0,invalidOrFutureDate=0,rejectedOriginalLink=0;
   let topicalSixHours=0,topicalNinetyMinutes=0,topicalThirtyMinutes=0;
   for(const [,item] of entries){
     const publication=item.match(/<(?:atom:)?published(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?published>/iu)?.[1];
-    if(!publication)continue;
+    if(!publication){missingNativeDate++;continue;}
     const at=Date.parse(publication.trim());
-    if(!Number.isFinite(at)||at>now.getTime())continue;
+    if(!Number.isFinite(at)||at>now.getTime()){
+      invalidOrFutureDate++;continue;
+    }
     const tag=[...item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)]
       .map(x=>x[1]).find(attr=>{
         const rel=attr.match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
         return rel==="alternate"||rel==="canonical";
       })??"";
     const href=tag.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??"";
-    if(!originalHref(href,hosts,source))continue;
+    if(!originalHref(href,hosts,source)){
+      rejectedOriginalLink++;continue;
+    }
     dated++;
     if(now.getTime()-at<=7*DAY_MS)openSevenDay++;
     if(now.getTime()-at<=DAY_MS){
@@ -288,7 +306,16 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
     topical_within_24h:topicalRecent,
     topical_within_6h:topicalSixHours,
     topical_within_90m:topicalNinetyMinutes,
-    topical_within_30m:topicalThirtyMinutes};
+    topical_within_30m:topicalThirtyMinutes,
+    item_provenance_diagnostics:{
+      entries_parsed:entries.length,
+      item_native_published_missing:missingNativeDate,
+      item_native_published_invalid_or_future:invalidOrFutureDate,
+      original_article_link_rejected:rejectedOriginalLink,
+      accepted_first_party_older_than_7d:dated-openSevenDay,
+      accepted_first_party_native_dated:dated,
+    },
+  };
 }
 
 // Only Atom entries with NO per-entry publication date may receive bounded
@@ -351,6 +378,7 @@ export async function probeExpandedSource(source,{
     source_native_release_items:null,source_native_24h_release_items:null,
     source_native_7d_release_items:null,
     original_publisher_open_24h_count:null,
+    source_item_provenance_diagnostics:null,
     // Populated only for the Eurostat dataset catalogue, not RSS headlines.
     eurostat_native_dataset_data_updates_24h:null,
     eurostat_other_catalogue_changes_24h:null,
@@ -459,6 +487,7 @@ export async function probeExpandedSource(source,{
     row.source_native_release_items=counts.native_dated;
     row.source_native_24h_release_items=counts.within_24h;
     row.source_native_7d_release_items=counts.open_original_or_release_within_7d;
+    row.source_item_provenance_diagnostics=counts.item_provenance_diagnostics??null;
     if(source.original_hosts)row.original_publisher_open_24h_count=counts.within_24h;
     if(source.topic)row.topical_private_release_links_24h=counts.topical_within_24h;
     if(source.original_hosts){

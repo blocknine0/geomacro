@@ -106,6 +106,22 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
     const ninety=healthy?observed.reduce((n,x)=>n+x.original_publisher_topical_90m,0):null;
     const sixh=healthy?observed.reduce((n,x)=>n+x.original_publisher_topical_6h,0):null;
     const complete=firstValid&&secondValid;
+    // Numeric-only original feed diagnosis: every source ID is a pinned,
+    // first-party original issuer, never a title, article URL or raw text.
+    const issueFields=[
+      "entries_parsed","item_native_published_missing",
+      "item_native_published_invalid_or_future",
+      "original_article_link_rejected",
+      "accepted_first_party_older_than_7d",
+      "accepted_first_party_native_dated",
+    ];
+    const sourceItemDiagnostics=observed.map(item=>({
+      source_id:item.source_id,
+      ...Object.fromEntries(issueFields.map(key=>[
+        key,safeInt(item.source_item_provenance_diagnostics?.[key])===null
+          ?null:item.source_item_provenance_diagnostics[key],
+      ])),
+    }));
     // These counts are *source-native publisher articles*, including
     // non-topic titles; 7d observations are NOT current 24h developments.
     const open24=healthy && observed.every(x=>safeInt(x.original_publisher_open_24h_count)!==null)
@@ -134,6 +150,7 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       original_publisher_6h_topic_count:sixh,
       original_publisher_all_topics_24h_count:open24,
       original_publisher_all_topics_7d_count:open7d,
+      source_item_provenance_diagnostics:sourceItemDiagnostics,
       open_discovery_keyword_gate_enabled:false,
       articles_captured_before_relevance_classification:true,
       unclassified_original_articles_are_verified_events:false,
