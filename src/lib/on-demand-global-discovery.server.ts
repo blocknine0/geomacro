@@ -59,7 +59,8 @@ async function boundedFetch(
   // arbitrary locations, signed querystrings, credentials or metadata IPs.
   if (target.protocol !== "https:" ||
       !["api.worldbank.org","api.gdeltproject.org","api.reliefweb.int",
-        "www.gov.uk"].includes(target.hostname)) {
+        "www.gov.uk","news.un.org","www.federalreserve.gov",
+        "www.minister.industry.gov.au"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
   const response = await fetchImpl(url, {
@@ -214,6 +215,96 @@ async function govUkMinerals(
   return probe("uk_dbt_original_publisher",accepted,accepted>0);
 }
 
+// Independent first-party fallback feeds: never bypass blocked upstream
+// APIs with mirrored copies from the SAME publisher. This broadens publisher
+// TRANSPORT only, not legal rights, event corroboration or risk eligibility.
+type OriginalFeed = {
+  domain: OnDemandCategory;
+  family:string;
+  url:string;
+  media:"rss"|"atom";
+  originalHost:string;
+  originalPath:RegExp;
+  topic:RegExp;
+};
+const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
+  {
+    domain:"geopolitics",family:"un_news_original_publisher",
+    url:"https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml",
+    media:"rss",originalHost:"news.un.org",
+    originalPath:/^\/en\/story\/\d{4}\/\d{1,2}\//u,
+    topic:/\b(?:security council|ceasefire|conflict|sanctions?|war|airstrike|peace|military)\b/iu,
+  },
+  {
+    domain:"geopolitics",family:"uk_fcdo_original_publisher",
+    url:"https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
+    media:"atom",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:ceasefire|sanctions?|conflict|military|diplomatic|foreign|security|peace)\b/iu,
+  },
+  {
+    domain:"macro",family:"us_federal_reserve_original_publisher",
+    url:"https://www.federalreserve.gov/feeds/press_all.xml",
+    media:"rss",originalHost:"www.federalreserve.gov",
+    originalPath:/^\/newsevents\/pressreleases\/[A-Za-z0-9]/u,
+    topic:/\b(?:monetary policy|interest rates?|inflation|foreign exchange|economic activity|financial stability|liquidity|federal funds)\b/iu,
+  },
+  {
+    domain:"rare_earth",family:"australian_industry_original_publisher",
+    url:"https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
+    media:"rss",originalHost:"www.minister.industry.gov.au",
+    originalPath:/^\/(?:t-ayres|king)\/media\//u,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
+  },
+];
+function originalArticleHref(value:string, def:OriginalFeed) {
+  try {
+    const u=new URL(value.replace(/&amp;/giu,"&"));
+    return u.protocol==="https:" && u.hostname===def.originalHost &&
+      !u.username && !u.password && !u.port && !u.hash &&
+      u.href.length<2048 && def.originalPath.test(u.pathname);
+  }catch {return false;}
+}
+async function originalOfficialFeed(
+  def:OriginalFeed,countryNameValue:string,
+  fetchImpl:typeof fetch,now:Date,
+):Promise<SourceProbe>{
+  const xml=await boundedFetch(fetchImpl,def.url,
+    "application/rss+xml,application/atom+xml,application/xml");
+  if (/<!DOCTYPE|<!ENTITY/iu.test(xml))
+    throw Error("ON_DEMAND_ORIGINAL_FEED_XML_UNSAFE");
+  const atom=def.media==="atom";
+  if(atom ? !/<(?:atom:)?feed(?:\s|>)/iu.test(xml)
+          : !/<rss(?:\s|>)/iu.test(xml))
+    throw Error("ON_DEMAND_ORIGINAL_FEED_FORMAT_INVALID");
+  const entries=atom
+    ? [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)]
+    : [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)];
+  let accepted=0;
+  for(const [,entry] of entries.slice(0,40)){
+    const title=/<(?:atom:)?title(?:\s[^>]*)?>([^<]{1,300})<\/(?:atom:)?title>/iu.exec(entry)?.[1] ?? "";
+    const date=atom
+      ? /<(?:atom:)?published(?:\s[^>]*)?>([^<]+)<\/(?:atom:)?published>/iu.exec(entry)?.[1] ?? ""
+      : /<pubDate(?:\s[^>]*)?>([^<]+)<\/pubDate>/iu.exec(entry)?.[1] ?? "";
+    if (!title.toLowerCase().includes(countryNameValue.toLowerCase()) ||
+        !def.topic.test(title) || !freshPublished(date,now)) continue;
+    let href="";
+    if(atom){
+      const links=[...entry.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)];
+      const first=links.find(x=>{
+        const rel=/\brel\s*=\s*["']([^"']+)["']/iu.exec(x[1])?.[1] ?? "alternate";
+        return rel==="alternate"||rel==="canonical";
+      });
+      href=first ? /\bhref\s*=\s*["']([^"']+)["']/iu.exec(first[1])?.[1] ?? "" : "";
+    }else {
+      href=/<link(?:\s[^>]*)?>([^<]+)<\/link>/iu.exec(entry)?.[1] ?? "";
+    }
+    if(!originalArticleHref(href,def))continue;
+    accepted++;
+  }
+  return probe(def.family,accepted,accepted>0);
+}
+
 /** Never returns upstream text, URLs or source identities for paid output. */
 export async function discoverOnDemandGlobal(
   input: OnDemandSearchInput,
@@ -242,11 +333,17 @@ export async function discoverOnDemandGlobal(
     if (category==="rare_earth")
       tasks.push({name:"uk_dbt_original_publisher",run:()=>govUkMinerals(name,fetchImpl,now)});
   }
+  if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
+    if (categories.includes(source.domain)) tasks.push({
+      name:source.family,
+      run:()=>originalOfficialFeed(source,name,fetchImpl,now),
+    });
+  }
   if (categories.includes("macro")) for (const indicator of [
     "FP.CPI.TOTL.ZG","NY.GDP.MKTP.KD.ZG",
   ]) tasks.push({name:"world_bank_official_" + indicator,
     run:()=>worldBank(country,indicator,fetchImpl)});
-  // Exactly one fixed metadata lookup + at most seven provider requests,
+  // Exactly one fixed metadata lookup + at most eleven provider requests,
   // no 195-country fanout and no user question passed upstream.
   const settled=await Promise.allSettled(tasks.map(t=>t.run()));
   const source_probes=settled.map((result,i)=>result.status==="fulfilled"

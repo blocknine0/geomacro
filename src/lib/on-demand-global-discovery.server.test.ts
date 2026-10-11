@@ -25,9 +25,32 @@ function upstream(url: string) {
     return Response.json({data:[{fields:{date:{original:"2026-10-11T06:00:00Z"}}}]});
   }
   if (address.hostname === "www.gov.uk") {
-    return new Response('<feed><entry><title>India lithium critical minerals agreement</title>'+
-      '<published>2026-10-11T07:00:00Z</published></entry></feed>',
+    const isForeign=address.pathname.includes("foreign-commonwealth");
+    const title=isForeign?"India diplomatic security talks":"India lithium critical minerals agreement";
+    const link=isForeign?"https://www.gov.uk/government/news/india-diplomatic-talks":
+      "https://www.gov.uk/government/news/india-lithium-critical-minerals-agreement";
+    return new Response('<feed><entry><title>'+title+'</title>'+
+      '<published>2026-10-11T07:00:00Z</published>'+
+      '<link rel="alternate" href="'+link+'"/></entry></feed>',
       {headers:{"content-type":"application/atom+xml"}});
+  }
+  if (address.hostname === "news.un.org") {
+    return new Response('<rss><channel><item><title>India conflict security council review</title>'+
+      '<pubDate>Sun, 11 Oct 2026 07:00:00 GMT</pubDate>'+
+      '<link>https://news.un.org/en/story/2026/10/1150000</link></item></channel></rss>',
+      {headers:{"content-type":"application/rss+xml"}});
+  }
+  if (address.hostname === "www.federalreserve.gov") {
+    return new Response('<rss><channel><item><title>India inflation monetary policy review</title>'+
+      '<pubDate>Sun, 11 Oct 2026 07:00:00 GMT</pubDate>'+
+      '<link>https://www.federalreserve.gov/newsevents/pressreleases/monetary20261011a.htm</link>'+
+      '</item></channel></rss>',{headers:{"content-type":"application/rss+xml"}});
+  }
+  if (address.hostname === "www.minister.industry.gov.au") {
+    return new Response('<rss><channel><item><title>India lithium critical minerals cooperation</title>'+
+      '<pubDate>Sun, 11 Oct 2026 07:00:00 GMT</pubDate>'+
+      '<link>https://www.minister.industry.gov.au/t-ayres/media/releases/india-minerals</link>'+
+      '</item></channel></rss>',{headers:{"content-type":"application/rss+xml"}});
   }
   throw Error("UNKNOWN_TEST_SOURCE");
 }
@@ -39,14 +62,19 @@ describe("Global on-demand private retrieval, not pre-generated GRO",()=>{
       country_iso3:"IND",categories:["geopolitics","macro","rare_earth"],
     },{fetchImpl,now});
     expect(result.categories).toEqual(["geopolitics","macro","rare_earth"]);
-    expect(result.reached_source_families).toBe(4);
-    expect(result.network_attempts).toBe(8);
+    expect(result.reached_source_families).toBe(8);
+    expect(result.network_attempts).toBe(12);
     expect(result.source_probes.some(x=>x.family==="world_bank_official_FP.CPI.TOTL.ZG" &&
       x.observed_record_count===2)).toBe(true);
     expect(result.source_probes.find(x=>x.family==="gdelt_doc_discovery")?.publication_clock_verified)
       .toBe(false);
     expect(result.source_probes.every(x=>x.independent_claim_verified===false &&
       x.derived_commercial_rights_verified===false)).toBe(true);
+    expect(result.source_probes.filter(p=>
+      ["un_news_original_publisher","uk_fcdo_original_publisher",
+       "us_federal_reserve_original_publisher",
+       "australian_industry_original_publisher"].includes(p.family) &&
+      p.publication_clock_verified && p.observed_record_count===1)).toHaveLength(4);
     expect(result.payable).toBe(false);
     expect(result.signed_derived_intelligence_created).toBe(false);
     expect(result.settlement_attempted).toBe(false);
@@ -121,8 +149,8 @@ describe("Live source free-tier quota and memory safety",()=>{
     const proof=await discoverOnDemandGlobal({
       country_iso3:"IND",categories:["macro","geopolitics"],
     },{fetchImpl:caller,now});
-    expect(proof.network_attempts).toBe(6);
-    expect(requests).toHaveLength(6);
+    expect(proof.network_attempts).toBe(9);
+    expect(requests).toHaveLength(9);
     expect(requests.every(({url,opts})=>url.startsWith("https://") &&
       opts?.redirect==="error" && opts?.method==="GET")).toBe(true);
     expect(requests.every(({url})=>!url.includes("password") &&
