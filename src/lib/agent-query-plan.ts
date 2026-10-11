@@ -346,11 +346,16 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
     module_max_age_seconds: moduleMaxAge,
     evidence: parsed.evidence,
     detail: parsed.detail,
-    fulfillment_mode: parsed.fulfillment_mode,
+    // Legacy x402 plan hashes are already payment-bound. Only newly opted-in
+    // requests add this field to the hash input; published_only hashes remain
+    // byte-for-byte identical to pre-migration production.
+    ...(parsed.fulfillment_mode === "live_on_demand" ? {
+      fulfillment_mode: parsed.fulfillment_mode,
+    } : {}),
     risk_gate_context: parsed.risk_gate_context ?? null,
     as_of: parsed.as_of ?? null,
   };
-  return { ...normalized, query_plan_hash: stableHash(normalized) };
+  return { ...normalized, fulfillment_mode: parsed.fulfillment_mode, query_plan_hash: stableHash(normalized) };
 }
 
 export function paymentBindingForAgentQuery(input: {
