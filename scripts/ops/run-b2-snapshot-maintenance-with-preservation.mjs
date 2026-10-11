@@ -20,7 +20,7 @@ const LIVE_REQUIRED = new Map([
   ["geomacro-evidence/v1/live/public-intelligence/latest.json.gz", "geomacro.public-intelligence-live.v1"],
   ["geomacro-evidence/v1/live/risk-indices/latest.json.gz", "geomacro.public-risk-live.v1"],
   ["geomacro-evidence/v1/live/source-network-status/latest.json.gz", "geomacro.source-network-live.v1"],
-  ["geomacro-evidence/v1/live/commercial-source-rights/latest.json.gz", "geomacro.commercial-source-rights-live.v1"],
+  ["geomacro-evidence/v1/live/commercial-source-rights/latest.json.gz", "geomacro.commercial-source-rights-live.v2"],
 ]);
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
@@ -165,7 +165,7 @@ async function verifyLivePublicPreservation() {
         if (typeof restored?.data?.[field] !== "boolean") throw new Error("B2_PRESERVED_LIVE_SOURCE_NETWORK_INVALID");
       }
     }
-    if (schema === "geomacro.commercial-source-rights-live.v1") {
+    if (schema === "geomacro.commercial-source-rights-live.v2") {
       if (!Array.isArray(restored.rows) || restored.rows.length === 0) {
         throw new Error("B2_PRESERVED_LIVE_SOURCE_RIGHTS_INVALID");
       }
