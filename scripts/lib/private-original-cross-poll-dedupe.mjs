@@ -9,8 +9,10 @@
  */
 const DOMAINS = new Set(["geopolitics","macro","rare_earth"]);
 const HEX = /^[a-f0-9]{64}$/u;
-const RETAIN_MS = 12 * 60 * 60 * 1000;
-const CANDIDATE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+// Retain SHA identities longer than the actual 24h first-party publication
+// lookback; otherwise 12h history expiry can trigger repeat model/B2 spending.
+const RETAIN_MS = 30 * 60 * 60 * 1000;
+const CANDIDATE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_PER_DOMAIN = 240;
 
 function time(value) {
