@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   originalPublisherPrivateCandidates,
+  originalPublisherPrivatePageDateCandidate,
   classifyPrivateOriginalCandidateDuplicates,
 } from "../../scripts/lib/private-original-publisher-candidates.mjs";
 import { probeExpandedSource, EXPANDED_OFFICIAL_SOURCES } from "../../scripts/ops/probe-expanded-official-source-mesh.mjs";
@@ -14,6 +15,64 @@ const item=(url:string,date="Sat, 10 Oct 2026 18:00:00 GMT",title="Security Coun
   `<item><title>${title}</title><pubDate>${date}</pubDate><link>${url}</link></item>`;
 
 describe("#1827 native article discovery, deterministic dedup, secure private scoring handoff",()=>{
+  it("admits only a real first-party article publication clock into private SHA queue",async()=>{
+    const src=EXPANDED_OFFICIAL_SOURCES.find(x=>x.id==="uk_fcdo_original_foreign_policy_atom_review")!;
+    const url="https://www.gov.uk/government/news/foreign-secretary-announces-sanctions";
+    const feed='<feed><entry><title>Foreign secretary announces sanctions after armed conflict</title>'+
+      '<updated>2026-10-10T18:09:00Z</updated>'+
+      '<link rel="alternate" href="'+url+'"/></entry></feed>';
+    // <updated> alone MUST NOT become native published evidence.
+    expect(originalPublisherPrivateCandidates(feed,src,NOW)).toHaveLength(0);
+    const verified="2026-10-10T18:00:00.000Z";
+    const candidate=originalPublisherPrivatePageDateCandidate(feed,src,{
+      articleUrl:url,publishedAt:verified,now:NOW});
+    expect(candidate).toMatchObject({
+      schema:"geomacro.private-original-article-candidate.v1",
+      native_published_at:verified,
+      publication_clock_evidence:"verified_first_party_original_article_published",
+      eligible_for_scoring:false,eligible_for_publication:false,
+      original_article_content_verified:false,
+      commercial_derived_use_rights_verified:false,
+    });
+    expect(candidate!.original_article_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(candidate)).not.toContain(url);
+    expect(JSON.stringify(candidate)).not.toContain("Foreign secretary");
+    expect(originalPublisherPrivatePageDateCandidate(feed,src,{
+      articleUrl:url,publishedAt:"2026-10-10T18:20:00Z",now:NOW})).toBeNull();
+    expect(originalPublisherPrivatePageDateCandidate(feed,src,{
+      articleUrl:url,publishedAt:"2026-10-09T18:00:00Z",now:NOW})).toBeNull();
+    expect(originalPublisherPrivatePageDateCandidate(feed,src,{
+      articleUrl:"https://evil.example/government/news/foreign-secretary-announces-sanctions",
+      publishedAt:verified,now:NOW})).toBeNull();
+    const filled=feed.replace("<updated>","<published>2026-10-10T18:09:00Z</published><updated>");
+    expect(originalPublisherPrivatePageDateCandidate(filled,src,{
+      articleUrl:url,publishedAt:verified,now:NOW})).toBeNull();
+  });
+
+  it("returns rescued fingerprint via actual page date, never from feed updated",async()=>{
+    const src=EXPANDED_OFFICIAL_SOURCES.find(x=>x.id==="uk_fcdo_original_foreign_policy_atom_review")!;
+    const url="https://www.gov.uk/government/news/foreign-secretary-announces-sanctions";
+    const feed='<feed><entry><title>Foreign secretary announces sanctions after armed conflict</title>'+
+      '<updated>2026-10-10T18:09:00Z</updated>'+
+      '<link rel="alternate" href="'+url+'"/></entry></feed>';
+    const html='<html><head><meta property="article:published_time" '+
+      'content="2026-10-10T18:00:00Z"></head></html>';
+    const fetchImpl=vi.fn(async (requestUrl:string)=>requestUrl===src.url
+      ?new Response(feed,{headers:{"content-type":"application/atom+xml"}})
+      :new Response(html,{headers:{"content-type":"text/html"}}));
+    const observed=await probeExpandedSource(src,{now:NOW,fetchImpl,collectPrivateCandidates:true});
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(observed.original_page_precise_date_24h).toBe(1);
+    expect(observed.private_original_article_candidates).toHaveLength(1);
+    expect(observed.private_original_article_candidates[0].native_published_at).toBe("2026-10-10T18:00:00.000Z");
+    expect(observed.commercial_eligible).toBe(false);
+    const modified=html.replace("article:published_time","article:modified_time");
+    const denied=await probeExpandedSource(src,{now:NOW,collectPrivateCandidates:true,
+      fetchImpl:async(u:string)=>new Response(u===src.url?feed:modified,{
+        headers:{"content-type":u===src.url?"application/atom+xml":"text/html"}})});
+    expect(denied.private_original_article_candidates).toEqual([]);
+  });
+
   it("captures bounded first-party native dated article fingerprints, not headlines or URL",()=>{
     const feed=rss(item("https://news.un.org/en/story/2026/10/115000?utm_source=rss"));
     const candidates=originalPublisherPrivateCandidates(feed,news,NOW);
