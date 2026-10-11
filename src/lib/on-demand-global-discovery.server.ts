@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
 
 /**
  * Query-time, bounded, Supabase/B2-free GLOBAL DISCOVERY for a future paid
@@ -361,7 +362,7 @@ function originalArticleUrl(value:string, def:OriginalFeed):string|null {
 }
 type OriginalFeedResult={probe:SourceProbe;private_candidates:PrivateOriginalCandidate[]};
 async function originalOfficialFeed(
-  def:OriginalFeed,countryNameValue:string,
+  def:OriginalFeed,countryIso3:string,countryNameValue:string,
   fetchImpl:typeof fetch,now:Date,mineral:OnDemandMineral|null,
 ):Promise<OriginalFeedResult>{
   const xml=await boundedFetch(fetchImpl,def.url,
@@ -385,7 +386,7 @@ async function originalOfficialFeed(
     // query just because both are under the broad Critical Minerals topic.
     const mineralMatches = !mineral || def.domain !== "rare_earth" ||
       MINERAL_TERMS.some((term) => term.value === mineral && term.pattern.test(title));
-    if (!title.toLowerCase().includes(countryNameValue.toLowerCase()) ||
+    if (!originalHeadlineMentionsCountry(title,countryIso3,countryNameValue) ||
         !def.topic.test(title) || !mineralMatches || !freshPublished(date,now)) continue;
     let href="";
     if(atom){
@@ -457,7 +458,7 @@ async function discoverOnDemandImpl(
   if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
     if (categories.includes(source.domain)) tasks.push({
       name:source.family,
-      run:()=>originalOfficialFeed(source,name,fetchImpl,now,mineral),
+      run:()=>originalOfficialFeed(source,country,name,fetchImpl,now,mineral),
     });
   }
   if (categories.includes("macro")) for (const indicator of [
