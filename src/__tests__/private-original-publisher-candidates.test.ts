@@ -15,6 +15,24 @@ const item=(url:string,date="Sat, 10 Oct 2026 18:00:00 GMT",title="Security Coun
   `<item><title>${title}</title><pubDate>${date}</pubDate><link>${url}</link></item>`;
 
 describe("#1827 native article discovery, deterministic dedup, secure private scoring handoff",()=>{
+  it("privately observes authentic 6-24h publisher-original articles but never older or future items",()=>{
+    const eighteenHoursBefore="Sat, 10 Oct 2026 00:10:00 GMT";
+    const justOutside="Fri, 09 Oct 2026 17:59:00 GMT";
+    const feed=rss(
+      item("https://news.un.org/en/story/2026/10/115100",eighteenHoursBefore,
+        "Security Council reviews ceasefire after armed conflict")+
+      item("https://news.un.org/en/story/2026/10/115101",justOutside,
+        "Security Council reviews old ceasefire")
+    );
+    const rows=originalPublisherPrivateCandidates(feed,news,NOW);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].native_published_at).toBe("2026-10-10T00:10:00.000Z");
+    expect(rows[0].eligible_for_scoring).toBe(false);
+    expect(rows[0].commercial_derived_use_rights_verified).toBe(false);
+    expect(JSON.stringify(rows)).not.toContain("Security Council");
+    expect(JSON.stringify(rows)).not.toContain("news.un.org");
+  });
+
   it("admits only a real first-party article publication clock into private SHA queue",async()=>{
     const src=EXPANDED_OFFICIAL_SOURCES.find(x=>x.id==="uk_fcdo_original_foreign_policy_atom_review")!;
     const url="https://www.gov.uk/government/news/foreign-secretary-announces-sanctions";

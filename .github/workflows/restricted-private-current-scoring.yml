@@ -83,7 +83,9 @@ jobs:
       # One original item/domain is the maximum for the private singleton
       # pre-GRI path; no expression-valued job env on push (GitHub parser).
       MAX_CANDIDATES_PER_CATEGORY: "1"
-      MAX_ARTICLE_AGE_MS: "21600000"
+      # Same 24h publication window as private SHA-only D1 source intake.
+      # Non-original, unsigned or unlicensed items remain rejected.
+      MAX_ARTICLE_AGE_MS: "86400000"
       GROQ_BATCH_SIZE: "1"
       GROQ_MAX_REQUESTS_PER_RUN: "3"
       GROQ_MAX_WAIT_MS: "45000"
