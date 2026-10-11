@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EXPANDED_OFFICIAL_SOURCES } from "../../scripts/ops/probe-expanded-official-source-mesh.mjs";
 import { auditOfficialStep1Feeds } from "../../scripts/ops/audit-official-step1-feed-redundancy.mjs";
+import { quarantinedOfficialSourceReceipt, QUARANTINED_OFFICIAL_SOURCE_ROUTES } from "../../scripts/lib/official-source-quarantine.mjs";
 
 function fixture() {
   return {
@@ -99,4 +100,39 @@ describe("#1827 Step-1 official first-party publisher source readiness", () => {
       expect(() => auditOfficialStep1Feeds(input)).toThrow("STEP1_SOURCE_RECEIPT_NOT_TRUSTED");
     }
   });
+  it("accepts an explicit historical quarantine without attempting a prohibited new request",()=>{
+    const input=fixture();
+    const ids=Object.keys(QUARANTINED_OFFICIAL_SOURCE_ROUTES);
+    for(const id of ids){
+      const source=EXPANDED_OFFICIAL_SOURCES.find(s=>s.id===id)!;
+      const idx=input.sources.findIndex(x=>x.source_id===id);
+      input.sources[idx]=quarantinedOfficialSourceReceipt(source) as any;
+    }
+    const out=auditOfficialStep1Feeds(input);
+    expect(out.source_transport_live_failure_count).toBe(0);
+    expect(out.source_transport_quarantined_not_polled_count).toBe(3);
+    expect(out.source_transport_healthy_count).toBe(11);
+    expect(out.status).toBe("ORIGINAL_ISSUER_REDUNDANCY_OBSERVED_WITH_QUARANTINE");
+    expect(out.per_category_two_independent_issuers_transport_healthy).toBe(true);
+    expect(out.all_sources_working).toBe(false);
+    expect(out.safe_source_failures.map((row:any)=>row.reason))
+      .toEqual(["QUARANTINED_NOT_POLLED","QUARANTINED_NOT_POLLED","QUARANTINED_NOT_POLLED"]);
+    for(const fail of out.safe_source_failures){
+      expect(fail.http_status).toBeNull();
+      expect(fail.quarantined).toBe(true);
+      expect(fail.no_access_control_bypass).toBe(true);
+    }
+    expect(out.step1_end_to_end_accepted).toBe(false);
+    expect(out.commercial_eligible).toBe(false);
+  });
+
+  it("rejects falsely reporting denied HTTP 403 as a successful quarantine",()=>{
+    const input=fixture();
+    const idx=input.sources.findIndex(x=>x.source_id==="eiti_implementing_country_official_api_review");
+    const src=EXPANDED_OFFICIAL_SOURCES.find(s=>s.id==="eiti_implementing_country_official_api_review")!;
+    input.sources[idx]=quarantinedOfficialSourceReceipt(src) as any;
+    input.sources[idx].primary_http_status=403;
+    expect(()=>auditOfficialStep1Feeds(input)).toThrow("STEP1_SOURCE_RECEIPT_NOT_TRUSTED");
+  });
+
 });
