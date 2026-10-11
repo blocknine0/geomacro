@@ -416,6 +416,55 @@ function originalArticleUrl(value:string, def:OriginalFeed):string|null {
     return u.origin+u.pathname;
   }catch {return null;}
 }
+
+/** RSS items can wrap title, pubDate and link in ONE exact CDATA section. */
+function rssItemText(entry: string, tag: "title" | "pubDate" | "link"): string {
+  const matched = new RegExp("<" + tag + "(?:\\s[^>]*)?>([\\s\\S]*?)<\\/" + tag + ">", "iu").exec(entry);
+  if (!matched) return "";
+  const raw = matched[1].trim();
+  if (raw.startsWith("<![CDATA[")) {
+    const cdata = /^<!\[CDATA\[([\s\S]{1,1600})\]\]>$/u.exec(raw);
+    return cdata?.[1]?.trim() ?? "";
+  }
+  return raw;
+}
+
+/**
+ * UN News feed routing paths are not original articles. Resolve them ONLY
+ * through matching same-publisher isPermaLink GUIDs with identical story IDs.
+ * No redirects, off-host identity or retrieval-clock substitution.
+ */
+function originalRssArticleLink(entry: string, def: OriginalFeed): string {
+  const link = rssItemText(entry, "link");
+  if (def.family !== "un_news_original_publisher") return link;
+  try {
+    const router = new URL(link);
+    if (router.protocol !== "https:" || router.hostname !== "news.un.org" ||
+        router.username || router.password || router.port || router.hash) return "";
+    if (/^\/en\/story\/\d{4}\/(?:0?[1-9]|1[0-2])\/[a-z0-9][a-z0-9-]{2,160}\/?$/u.test(router.pathname))
+      return link;
+    if (router.search) return "";
+    const routed = /^\/feed\/view\/en\/story\/(\d{4})\/(0?[1-9]|1[0-2])\/(\d{5,12})\/?$/u.exec(router.pathname);
+    if (!routed) return "";
+    const guidTag = /<guid\b([^>]*)>([\s\S]*?)<\/guid>/iu.exec(entry);
+    if (!guidTag || !/\bisPermaLink\s*=\s*["']true["']/iu.test(guidTag[1])) return "";
+    const raw = guidTag[2].trim();
+    const unwrapped = raw.startsWith("<![CDATA[")
+      ? /^<!\[CDATA\[([\s\S]{1,1600})\]\]>$/u.exec(raw)?.[1]?.trim() : raw;
+    if (!unwrapped) return "";
+    const canonical = new URL(unwrapped);
+    if (canonical.protocol !== "https:" || canonical.hostname !== "news.un.org" ||
+        canonical.username || canonical.password || canonical.port ||
+        canonical.search || canonical.hash) return "";
+    const id = /^\/en\/story\/(\d{4})\/(0?[1-9]|1[0-2])\/(\d{5,12})\/?$/u.exec(canonical.pathname);
+    if (!id || id[1] !== routed[1] || Number(id[2]) !== Number(routed[2]) ||
+        id[3] !== routed[3]) return "";
+    return canonical.toString();
+  } catch {
+    return "";
+  }
+}
+
 type OriginalFeedResult={probe:SourceProbe;private_candidates:PrivateOriginalCandidate[]};
 async function originalOfficialFeed(
   def:OriginalFeed,countryIso3:string,countryNameValue:string,
@@ -434,10 +483,12 @@ async function originalOfficialFeed(
     : [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)];
   const candidates:PrivateOriginalCandidate[]=[];
   for(const [,entry] of entries.slice(0,40)){
-    const title=/<(?:atom:)?title(?:\s[^>]*)?>([^<]{1,300})<\/(?:atom:)?title>/iu.exec(entry)?.[1] ?? "";
+    const title=atom
+      ? /<(?:atom:)?title(?:\s[^>]*)?>([^<]{1,300})<\/(?:atom:)?title>/iu.exec(entry)?.[1] ?? ""
+      : rssItemText(entry,"title");
     const date=atom
       ? /<(?:atom:)?published(?:\s[^>]*)?>([^<]+)<\/(?:atom:)?published>/iu.exec(entry)?.[1] ?? ""
-      : /<pubDate(?:\s[^>]*)?>([^<]+)<\/pubDate>/iu.exec(entry)?.[1] ?? "";
+      : rssItemText(entry,"pubDate");
     // A different mineral's article must not qualify as evidence for this
     // query just because both are under the broad Critical Minerals topic.
     const mineralMatches = !mineral || def.domain !== "rare_earth" ||
@@ -453,7 +504,7 @@ async function originalOfficialFeed(
       });
       href=first ? /\bhref\s*=\s*["']([^"']+)["']/iu.exec(first[1])?.[1] ?? "" : "";
     }else {
-      href=/<link(?:\s[^>]*)?>([^<]+)<\/link>/iu.exec(entry)?.[1] ?? "";
+      href=originalRssArticleLink(entry,def);
     }
     const article_url=originalArticleUrl(href,def);
     if(!article_url)continue;
