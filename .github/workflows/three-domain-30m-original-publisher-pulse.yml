@@ -16,6 +16,7 @@ on:
       - "src/__tests__/three-domain-30m-source-pulse.test.ts"
       - "scripts/lib/private-original-publisher-candidates.mjs"
       - "src/__tests__/private-original-publisher-candidates.test.ts"
+      - "src/__tests__/open-original-observation-without-topic-gate.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
       - "scripts/lib/auto-private-scoring-trigger.mjs"
       - "scripts/tests/auto-private-scoring-trigger.test.mjs"
@@ -34,6 +35,7 @@ on:
       - "src/__tests__/three-domain-30m-source-pulse.test.ts"
       - "scripts/lib/private-original-publisher-candidates.mjs"
       - "src/__tests__/private-original-publisher-candidates.test.ts"
+      - "src/__tests__/open-original-observation-without-topic-gate.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
       - "scripts/lib/auto-private-scoring-trigger.mjs"
       - "scripts/tests/auto-private-scoring-trigger.test.mjs"
@@ -115,6 +117,17 @@ jobs:
               (.original_publishers_successful<=2) and
               .event_same_subject_independent_corroboration_verified==false] | all) and
             .source_catalog_entries_are_not_events==true and
+            .open_original_discovery_enabled==true and
+            .original_article_keyword_admission_required==false and
+            .original_article_source_native_clock_required==true and
+            ([.actual_original_publisher_rows[] |
+              .open_discovery_keyword_gate_enabled==false and
+              .articles_captured_before_relevance_classification==true and
+              .unclassified_original_articles_are_verified_events==false and
+              ((.original_publisher_all_topics_24h_count==null) or
+                (.original_publisher_all_topics_24h_count>=0)) and
+              ((.original_publisher_all_topics_7d_count==null) or
+                (.original_publisher_all_topics_7d_count>=0))] | all) and
             .independently_verified_current_intelligence_count==0 and
             .user_api_delivery_verified==false and
             .publisher_rights_verified==false and
