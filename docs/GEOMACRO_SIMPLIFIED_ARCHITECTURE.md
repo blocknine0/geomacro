@@ -21,6 +21,7 @@
 - **Outputs:** No raw provider payloads, source articles, publisher URLs, upstream source identities, private evidence blobs or personal data.
 - **Infrastructure:** First reuse the present code, Cloudflare Worker/DO/D1 and private B2 **only when required for correctness, cache, durable payment claims or necessary audit**. New frozen-Supabase bulk writes are not permitted. Avoid new compulsory data stores, hosted models, paid connectors or pre-ingestion systems.
 - **Quota discipline:** Bounded provider fanout, timeouts, request coalescing, retry budgets and a small derived-only cache. Free-tier ceilings are real; a service cannot promise unlimited no-cost calls.
+- **No-charge discovery must survive payment configuration outages:** the `live_on_demand` query branch runs its bounded read-only source discovery without requiring Coinbase CDP/wallet configuration; it always returns no-charge/verification-pending until a verified, signed, commercial-rights-qualified deliverable exists. The existing `published_only` x402 configuration, authorization, settlement and replay gates remain mandatory. Never accept a payment-signature header as evidence that raw discovery is chargeable.
 - **Not launch preconditions:** 195 countries must each publish new events daily; three fully replicated data warehouses; a new scored story every 30 minutes; monthly subscriptions; speculative product surfaces. These are **not** requirements for charging for an individually verified eligible question.
 
 ## Minimal implementation milestones
