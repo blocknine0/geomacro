@@ -51,7 +51,7 @@ describe("#1827 collect all sources BEFORE qualification, privately and honestly
     expect(result.schema).toBe("geomacro.private-all-source-intake-inventory.v1");
     expect(result.sources_catalogued).toBe(11);
     expect(result.lane_counts).toEqual({
-      core: 3, free: 4, roots: 1, telegram: 2, historical: 1,
+      core: 3, free: 4, roots: 1, telegram: 2, telegram_research: 0, historical: 1,
     });
     expect(result.domain_lane_counts.CRITICAL_MINERALS.telegram).toBe(1);
     expect(result.domain_lane_counts.GEOPOLITICS.historical).toBe(1);
@@ -161,5 +161,91 @@ describe("#1827 collect all sources BEFORE qualification, privately and honestly
     expect(flow).not.toContain("wrangler d1 execute");
     expect(flow).not.toContain("write_secret");
     expect(flow).toContain("retention-days: 2");
+  });
+});
+
+
+function humanPointer(category="GEOPOLITICS", id="a".repeat(32)) {
+  const topic = category==="GEOPOLITICS"?"SANCTIONS":
+    category==="MACRO"?"CENTRAL_BANK":"MINING_POLICY";
+  return {
+    schema:"geomacro.telegram-human-research-lead.v1",
+    reference_id:"tgresearch_"+id,reference_sha256:"b".repeat(64),
+    category,topic_code:topic,country_iso3:"IND",
+    source_native_published_at_claimed:"2026-10-10T13:45:00Z",
+    observed_at:"2026-10-10T14:00:00Z",
+    historical_reference:false,
+    source_kind:"PUBLIC_TELEGRAM_MANUALLY_VIEWED",
+    reference_registered:true,human_reference_attested:true,
+    source_native_time_independently_verified:false,
+    automated_collection_authorized:false,
+    has_source_message_payload:false,
+    verification_status:"UNVERIFIED",
+    editorial_status:"PENDING_INDEPENDENT_RESEARCH",
+    scoring_eligible:false,commercial_eligible:false,public_published:false,
+  };
+}
+
+describe("#1827 zero-scrape Telegram human research pointer -> 3 category PRIVATE lead feed",()=>{
+  it("adds manual pointers across three domains as unverified research leads, no scored or paid rows",()=>{
+    const f:any=fixture();
+    const all=["GEOPOLITICS","MACRO","CRITICAL_MINERALS"];
+    f.manualTelegram={schema:"geomacro.private-human-telegram-research-batch.v1",
+      pointers:all.map((c,i)=>humanPointer(c,String(i+1).repeat(32)))};
+    const r=assemblePrivateIntakeSnapshot(f,now);
+    expect(r.human_telegram_pointer_only_count).toBe(3);
+    expect(r.sources_catalogued).toBe(14);
+    expect(r.lane_counts.telegram_research).toBe(3);
+    for(const domain of all) {
+      expect(r.domain_lane_counts[domain].telegram_research).toBe(1);
+    }
+    expect(r.status_counts.TELEGRAM_HUMAN_REFERENCE_PENDING_OFFICIAL_ORIGINAL_REVIEW).toBe(3);
+    const text=JSON.stringify(r);
+    expect(text).not.toContain("tgresearch_");
+    expect(text).not.toContain("source_native_published_at_claimed");
+    expect(text).not.toContain("raw_message");
+    expect(r.boundaries).toMatchObject({
+      telegram_messages_ingested:false,
+      human_research_references_are_not_verified_events:true,
+      independent_original_publisher_review_not_bypassed:true,
+      source_ownership_or_permissions_granted:false,
+      scored_current_195x3_verified:false,public_published:false,chargeable:false,
+      direct_b2_requests:0,
+    });
+  });
+
+  it("expired claimed article becomes history and never a current signed event",()=>{
+    const f:any=fixture();
+    const p=humanPointer();p.source_native_published_at_claimed="2026-10-09T03:45:00Z";
+    p.historical_reference=true;
+    f.manualTelegram={schema:"geomacro.private-human-telegram-research-batch.v1",pointers:[p]};
+    const r=assemblePrivateIntakeSnapshot(f,now);
+    expect(r.status_counts.TELEGRAM_HUMAN_REFERENCE_HISTORICAL_NOT_CURRENT).toBe(1);
+    expect(r.boundaries.public_published).toBe(false);
+  });
+
+  it("refuses forged automated collection, fake verification, raw text and duplicate references",()=>{
+    const cases=[
+      {automated_collection_authorized:true},
+      {source_native_time_independently_verified:true},
+      {scoring_eligible:true},
+      {commercial_eligible:true},
+      {public_published:true},
+      {raw_message:"PRIVATE TELEGRAM TEXT"},
+    ];
+    for(const patch of cases) {
+      const f:any=fixture();
+      f.manualTelegram={schema:"geomacro.private-human-telegram-research-batch.v1",
+        pointers:[{...humanPointer(),...patch}]};
+      expect(()=>assemblePrivateIntakeSnapshot(f,now)).toThrow();
+    }
+    const d:any=fixture();
+    d.manualTelegram={schema:"geomacro.private-human-telegram-research-batch.v1",
+      pointers:[humanPointer(),humanPointer()]};
+    expect(()=>assemblePrivateIntakeSnapshot(d,now))
+      .toThrow("PRIVATE_INTAKE_DUPLICATE_TELEGRAM_RESEARCH_REFERENCE");
+    const wrong:any=fixture();
+    wrong.manualTelegram={schema:"bad",pointers:[humanPointer()]};
+    expect(()=>assemblePrivateIntakeSnapshot(wrong,now)).toThrow();
   });
 });
