@@ -1,4 +1,5 @@
 import { createHash, generateKeyPairSync } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { GeomacroRiskObject } from "./risk-object-contract";
 import { canonicalRiskObjectJson, signRiskObject, verifyRiskObjectSignature } from "./risk-object-signing.server";
@@ -173,5 +174,5 @@ describe("Supabase-free on-demand partner signed GRO handoff",()=>{
   });
 });
 function requireSource():string {
-  return require("node:fs").readFileSync("src/lib/on-demand-partner-artifact.server.ts","utf8");
+  return readFileSync("src/lib/on-demand-partner-artifact.server.ts","utf8");
 }
