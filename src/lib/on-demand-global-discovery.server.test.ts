@@ -200,6 +200,83 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
     expect(serialized).not.toContain("India lithium");
     expect(serialized).not.toContain("https://www.gov.uk/government/news");
   });
+
+  it("recovers legitimate UN permalink GUID and Federal Reserve CDATA for private query evidence",async()=>{
+    const recovered=vi.fn(async (request:RequestInfo|URL)=>{
+      const url=String(request);
+      if(url.startsWith("https://news.un.org/"))return new Response(
+        '<rss><channel><item><title><![CDATA[India conflict security council review]]></title>'+
+        '<pubDate>Sun, 11 Oct 2026 07:00:00 GMT</pubDate>'+
+        '<link>https://news.un.org/feed/view/en/story/2026/10/1150000</link>'+
+        '<guid isPermaLink="true">https://news.un.org/en/story/2026/10/1150000</guid>'+
+        '</item></channel></rss>');
+      if(url.startsWith("https://www.federalreserve.gov/"))return new Response(
+        '<rss><channel><item><title><![CDATA[India inflation monetary policy review]]></title>'+
+        '<pubDate><![CDATA[Sun, 11 Oct 2026 07:00:00 GMT]]></pubDate>'+
+        '<link><![CDATA[https://www.federalreserve.gov/newsevents/pressreleases/monetary20261011a.htm]]></link>'+
+        '</item></channel></rss>');
+      return upstream(url);
+    }) as unknown as typeof fetch;
+    const result=await discoverOnDemandForPrivateQualification({
+      country_iso3:"IND",categories:["geopolitics","macro"],
+    },{fetchImpl:recovered,now});
+    expect(result.private_candidates.map(x=>x.article_url)).toContain(
+      "https://news.un.org/en/story/2026/10/1150000");
+    expect(result.private_candidates.map(x=>x.article_url)).toContain(
+      "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261011a.htm");
+    expect(result.private_candidates.filter(x=>
+      ["un_news_original_publisher","us_federal_reserve_original_publisher"].includes(x.publisher_family)))
+      .toHaveLength(2);
+    expect(result.discovery.payable).toBe(false);
+    expect(result.discovery.signed_derived_intelligence_created).toBe(false);
+    expect(JSON.stringify(result.discovery)).not.toContain("1150000");
+  });
+
+  it("never promotes wrong-ID, off-host, unsigned or query-bearing UN GUIDs",async()=>{
+    const badGuids=[
+      '<guid isPermaLink="true">https://news.un.org/en/story/2026/10/1159999</guid>',
+      '<guid isPermaLink="true">https://evil.example/en/story/2026/10/1150000</guid>',
+      '<guid>https://news.un.org/en/story/2026/10/1150000</guid>',
+      '<guid isPermaLink="true">https://news.un.org/en/story/2026/10/1150000?tracking=1</guid>',
+      '<guid isPermaLink="true"><![CDATA[https://news.un.org/en/story/2026/09/1150000]]></guid>',
+    ];
+    for(const guid of badGuids) {
+      const denied=vi.fn(async (request:RequestInfo|URL)=>{
+        const url=String(request);
+        if(url.startsWith("https://news.un.org/"))return new Response(
+          '<rss><channel><item><title>India conflict security council review</title>'+
+          '<pubDate>Sun, 11 Oct 2026 07:00:00 GMT</pubDate>'+
+          '<link>https://news.un.org/feed/view/en/story/2026/10/1150000</link>'+
+          guid+'</item></channel></rss>');
+        return upstream(url);
+      }) as unknown as typeof fetch;
+      const result=await discoverOnDemandForPrivateQualification({
+        country_iso3:"IND",categories:["geopolitics"],
+      },{fetchImpl:denied,now});
+      expect(result.private_candidates.some(x=>x.publisher_family==="un_news_original_publisher")).toBe(false);
+      expect(result.discovery.payable).toBe(false);
+    }
+  });
+
+  it("rejects malformed CDATA and never borrows RSS lastBuildDate as publication",async()=>{
+    const corrupted=vi.fn(async (request:RequestInfo|URL)=>{
+      const url=String(request);
+      if(url.startsWith("https://www.federalreserve.gov/"))return new Response(
+        '<rss><channel><lastBuildDate>Sun, 11 Oct 2026 07:00:00 GMT</lastBuildDate>'+
+        '<item><title>India inflation monetary policy review</title>'+
+        '<pubDate><![CDATA[Sun, 11 Oct 2026 07:00:00 GMT]]>broken</pubDate>'+
+        '<link>https://www.federalreserve.gov/newsevents/pressreleases/monetary20261011a.htm</link>'+
+        '</item></channel></rss>');
+      return upstream(url);
+    }) as unknown as typeof fetch;
+    const result=await discoverOnDemandForPrivateQualification({
+      country_iso3:"IND",categories:["macro"],
+    },{fetchImpl:corrupted,now});
+    expect(result.private_candidates.some(x=>x.publisher_family==="us_federal_reserve_original_publisher")).toBe(false);
+    expect(result.discovery.payable).toBe(false);
+    expect(result.discovery.settlement_attempted).toBe(false);
+  });
+
   it("rejects future original feed dates rather than treating retrieval as native publication",async()=>{
     const proof=await discoverOnDemandForPrivateQualification({
       country_iso3:"IND",categories:["rare_earth","geopolitics"],
