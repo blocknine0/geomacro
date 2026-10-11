@@ -123,6 +123,64 @@ export function originalPublisherPrivateCandidates(xml,source,now=new Date()) {
   }
   return result;
 }
+/**
+ * Only after the trusted, category-bound first-party article page verifier
+ * returned an original publication time may an undated RSS/Atom item enter
+ * the PRIVATE SHA-only observation queue. Neither feed <updated> nor article
+ * modified-time is sufficient. Source content and rights remain unverified.
+ */
+export function originalPublisherPrivatePageDateCandidate(xml,source,{
+  articleUrl,publishedAt,now=new Date(),
+}={}) {
+  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
+     !Object.hasOwn(APPROVED_SOURCE_ORGS,source?.id)||
+     !["rss","atom"].includes(source?.media)||
+     !Array.isArray(source.original_hosts)||source.original_hosts.length===0||
+     typeof xml!=="string"||Buffer.byteLength(xml,"utf8")>192*1024||
+     /<!DOCTYPE|<!ENTITY/iu.test(xml))
+    throw Error("PRIVATE_ORIGINAL_PAGE_DATE_SOURCE_INVALID");
+  if(source.media==="rss"&&!/<rss(?:\s|>)/iu.test(xml))return null;
+  if(source.media==="atom"&&!/<(?:atom:)?feed(?:\s|>)/iu.test(xml))return null;
+  const published=typeof publishedAt==="string"?Date.parse(publishedAt):NaN;
+  const ms=now.getTime();
+  if(!Number.isFinite(published)||published>ms||ms-published>MAX_AGE_MS)
+    return null;
+  const original=canonicalOriginalUrl(articleUrl,source);
+  if(!original)return null;
+  const rss=source.media==="rss";
+  const entries=rss
+    ?[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)]
+    :[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)];
+  for(const [,item] of entries.slice(0,MAX_ITEMS)){
+    // A supplied feed item pubDate/published (including FUTURE and invalid
+    // values) must never be silently overwritten with another timestamp.
+    if(xmlTag(item,rss?"pubDate":"published")!==null)continue;
+    const title=textValue(xmlTag(item,"title"));
+    if(!title||!(source.topic instanceof RegExp)||!source.topic.test(title))
+      continue;
+    const link=canonicalOriginalUrl(rss?xmlTag(item,"link"):atomArticleLink(item),source);
+    if(link!==original)continue;
+    return {
+      schema:"geomacro.private-original-article-candidate.v1",
+      domain:source.domain,
+      original_publisher_organization_id:APPROVED_SOURCE_ORGS[source.id],
+      source_id:source.id,
+      original_article_sha256:digest(original),
+      headline_fingerprint_sha256:digest(title.toLowerCase()
+        .normalize("NFKC").replace(/[^\p{L}\p{N}\s]/gu," ")
+        .replace(/\s+/gu," ").trim()),
+      native_published_at:new Date(published).toISOString(),
+      publication_clock_evidence:"verified_first_party_original_article_published",
+      read_transport_verified:true,
+      original_article_content_verified:false,
+      same_event_claim_identity_verified:false,
+      independently_authored_reporting_verified:false,
+      commercial_derived_use_rights_verified:false,
+      eligible_for_scoring:false,eligible_for_publication:false,
+    };
+  }
+  return null;
+}
 export function classifyPrivateOriginalCandidateDuplicates(candidates) {
   if(!Array.isArray(candidates)||candidates.length>240)
     throw Error("PRIVATE_ORIGINAL_CANDIDATE_ARRAY_INVALID");

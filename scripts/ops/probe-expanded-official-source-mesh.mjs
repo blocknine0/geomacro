@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "../lib/official-original-article-date.mjs";
-import { originalPublisherPrivateCandidates } from "../lib/private-original-publisher-candidates.mjs";
+import { originalPublisherPrivateCandidates, originalPublisherPrivatePageDateCandidate } from "../lib/private-original-publisher-candidates.mjs";
 
 const MAX_BODY_BYTES=192*1024;
 // Eurostat twice-daily official catalogue feed can exceed the small news-RSS
@@ -443,6 +443,18 @@ export async function probeExpandedSource(source,{
       });
       row.original_page_precise_date_checks++;
       if(published){
+        // The real article's independently verified original publication
+        // clock can supply a PRIVATE fingerprint candidate even if its RSS
+        // item lacks <published>. Never infer the date from feed <updated>.
+        if(collectPrivateCandidates){
+          const candidate=originalPublisherPrivatePageDateCandidate(
+            body,source,{articleUrl:article,publishedAt:published,now});
+          if(candidate && !row.private_original_article_candidates?.some(
+            c=>c.original_article_sha256===candidate.original_article_sha256)){
+            row.private_original_article_candidates ??= [];
+            row.private_original_article_candidates.push(candidate);
+          }
+        }
         row.original_page_precise_date_24h++;
         const ageMs=now.getTime()-Date.parse(published);
         if(ageMs>=0&&ageMs<=SIX_HOURS_MS)
