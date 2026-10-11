@@ -17,6 +17,8 @@ on:
       - "scripts/lib/private-original-publisher-candidates.mjs"
       - "src/__tests__/private-original-publisher-candidates.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
+      - "scripts/lib/auto-private-scoring-trigger.mjs"
+      - "scripts/tests/auto-private-scoring-trigger.test.mjs"
       - "scripts/lib/private-original-cross-poll-dedupe.mjs"
       - "src/__tests__/private-original-cross-poll-dedupe.test.ts"
       - "workers/control-plane/src/index.mjs"
@@ -33,6 +35,8 @@ on:
       - "scripts/lib/private-original-publisher-candidates.mjs"
       - "src/__tests__/private-original-publisher-candidates.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
+      - "scripts/lib/auto-private-scoring-trigger.mjs"
+      - "scripts/tests/auto-private-scoring-trigger.test.mjs"
       - "scripts/lib/private-original-cross-poll-dedupe.mjs"
       - "src/__tests__/private-original-cross-poll-dedupe.test.ts"
       - "workers/control-plane/src/index.mjs"
@@ -67,12 +71,15 @@ jobs:
           node --check scripts/ops/probe-30min-three-domain-pulse.mjs
           node --check scripts/lib/private-original-cross-poll-dedupe.mjs
           node --check scripts/ops/write-30min-source-pulse-d1.mjs
+          node --test scripts/tests/auto-private-scoring-trigger.test.mjs
           node --check workers/control-plane/src/source-pulse-public.mjs
           node --check scripts/ops/probe-expanded-official-source-mesh.mjs
           test -f src/__tests__/three-domain-30m-source-pulse.test.ts
 
   original-publisher-pulse:
     needs: source-contract
+    outputs:
+      private_scoring_needed: ${{ steps.d1.outputs.private_scoring_needed }}
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 6
@@ -120,6 +127,7 @@ jobs:
             exit "$rc"
           fi
       - name: Publish compact observation-only D1 checkpoints and read them back
+        id: d1
         if: always()
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -128,6 +136,8 @@ jobs:
           set -euo pipefail
           test -s artifacts/private-intake/three-domain-30m-source-pulse.json
           node scripts/ops/write-30min-source-pulse-d1.mjs
+          # New source-native fingerprints justify PRIVATE scoring only.
+          node scripts/lib/auto-private-scoring-trigger.mjs
       - name: Preserve two-day source-native counts, never raw news or session tokens
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
@@ -138,3 +148,18 @@ jobs:
             artifacts/private-intake/three-domain-30m-d1-readback.json
           if-no-files-found: warn
           retention-days: 2
+
+  # Canonical private classifier recovery runs ONLY when a novel, dated,
+  # original article fingerprint is independently persisted and read from D1.
+  # There is no Supabase write, public publish, settlement or paid unlock.
+  private-scoring-from-new-originals:
+    needs: original-publisher-pulse
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      needs.original-publisher-pulse.outputs.private_scoring_needed == 'true'
+    uses: ./.github/workflows/restricted-private-current-scoring.yml
+    with:
+      bounded_automatic_private_stage: true
+    secrets: inherit
