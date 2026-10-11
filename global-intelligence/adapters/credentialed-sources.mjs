@@ -15,7 +15,7 @@ export async function probeCredentialedSource(sourceId) {
     },
     bea: {
       category: "MACRO", countryIso3: "USA", env: "BEA_API_KEY",
-      build: key => `https://apps.bea.gov/api/data?UserID=${encodeURIComponent(key)}&method=GETDATASETLIST`,
+      build: key => `https://apps.bea.gov/api/data?UserID=${encodeURIComponent(key)}&method=GetDataSetList&ResultFormat=JSON`,
       validate: x => Array.isArray(x?.BEAAPI?.Results?.Dataset)
     },
     alpha_vantage: {
