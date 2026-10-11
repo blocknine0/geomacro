@@ -4,6 +4,7 @@ on:
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "scripts/ops/audit-official-step1-feed-redundancy.mjs"
+      - "scripts/lib/official-source-quarantine.mjs"
       - "src/__tests__/official-step1-feed-redundancy.test.ts"
       - "src/__tests__/expanded-official-source-observation.test.ts"
       - ".github/workflows/expanded-official-source-observation.yml"
@@ -14,6 +15,7 @@ on:
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "scripts/ops/audit-official-step1-feed-redundancy.mjs"
+      - "scripts/lib/official-source-quarantine.mjs"
       - ".github/workflows/expanded-official-source-observation.yml"
       - "scripts/ops/audit-90min-three-domain-coverage.mjs"
   schedule:
@@ -41,7 +43,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "22"
-      - name: Probe fourteen fixed official transports without secrets
+      - name: Probe eleven active official transports and retain three quarantined routes
         shell: bash
         run: |
           set -uo pipefail
@@ -51,6 +53,14 @@ jobs:
           jq -e '
             .schema == "geomacro.expanded-official-source-observation.v1" and
             (.sources|length)==14 and
+            .active_source_count==11 and
+            .quarantined_source_count==3 and
+            .all_registered_sources_transport_healthy==false and
+            ([.sources[] | select(.quarantined==true)]|length)==3 and
+            ([.sources[] | select(.quarantined==true)]|
+              all(.format_valid==false and .publisher_reachable==false and
+                .primary_http_status==null and .reason=="QUARANTINED_NOT_POLLED"
+                and .commercial_eligible==false)) and
             .domains_observed==["geopolitics","macro","rare_earth"] and
             .globally_current_scored_coverage_verified == false and
             .verified_country_count==0 and
@@ -99,12 +109,15 @@ jobs:
             ([.sources[] | .current_scored_intelligence_verified]|all(.==false))
           ' "$proof" >/dev/null || exit 1
           if [[ "$rc" == "0" ]]; then
-            jq -e '.status=="SOURCE_TRANSPORT_OBSERVED" and
-              ([.sources[] | .format_valid]|all(.==true))' "$proof" >/dev/null
+            jq -e '.status=="ACTIVE_SOURCE_TRANSPORT_OBSERVED_WITH_QUARANTINE" and
+              .active_source_transport_healthy==true and
+              ([.sources[] | select(.quarantined!=true) | .format_valid]|all(.==true))' "$proof" >/dev/null
+            echo "::notice title=Active official issuer mesh::11 independent/issuer source endpoints polled; 3 known blocked routes remain QUARANTINED, not healthy. Source rights and event publication remain unverified."
           elif [[ "$rc" == "3" ]]; then
-            jq -e '.status=="SOURCE_TRANSPORT_DEGRADED" and
-              ([.sources[] | .format_valid]|any(.==false))' "$proof" >/dev/null
-            echo "::warning title=Additional official publisher unavailable::SOURCE_TRANSPORT_DEGRADED; no current event or paid intelligence claimed."
+            jq -e '.status=="ACTIVE_SOURCE_TRANSPORT_DEGRADED" and
+              .active_source_transport_healthy==false and
+              ([.sources[] | select(.quarantined!=true) | .format_valid]|any(.==false))' "$proof" >/dev/null
+            echo "::warning title=Active official source unavailable::ACTIVE_SOURCE_TRANSPORT_DEGRADED; no current event or paid intelligence claimed."
           else
             exit 1
           fi
