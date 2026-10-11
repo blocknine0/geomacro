@@ -63,6 +63,8 @@ export const agentAdaptiveQuerySchema = z.object({
   max_age_seconds: z.number().int().positive().max(94_608_000).optional(),
   evidence: z.enum(["required", "summary"]).default("required"),
   detail: z.enum(["compact", "standard", "full"]).default("standard"),
+  // Explicit opt-in; legacy signed-GRO queries retain original delivery contract.
+  fulfillment_mode: z.enum(["published_only", "live_on_demand"]).default("published_only"),
   risk_gate_context: riskGateContext.optional(),
   client_request_id: z.string().trim().min(4).max(128).optional(),
 }).strict().superRefine((value, ctx) => {
@@ -278,6 +280,7 @@ export type AgentQueryPlan = {
   module_max_age_seconds: Record<string, number>;
   evidence: AgentAdaptiveQuery["evidence"];
   detail: AgentAdaptiveQuery["detail"];
+  fulfillment_mode: AgentAdaptiveQuery["fulfillment_mode"];
   risk_gate_context: AgentAdaptiveQuery["risk_gate_context"] | null;
   as_of: string | null;
   query_plan_hash: string;
@@ -310,7 +313,9 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
     topics.length > 0 &&
     ["single_subject", "comparison", "corridor"].includes(intent)
   ) {
-    topics = [...new Set([...topics, "risk_object", "hot_topics"])].sort() as AgentQueryTopic[];
+    if (parsed.fulfillment_mode === "published_only") {
+      topics = [...new Set([...topics, "risk_object", "hot_topics"])].sort() as AgentQueryTopic[];
+    }
   }
 
   if (topics.length === 0) throw new Error("UNSUPPORTED_OR_AMBIGUOUS_AGENT_QUESTION");
@@ -341,10 +346,16 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
     module_max_age_seconds: moduleMaxAge,
     evidence: parsed.evidence,
     detail: parsed.detail,
+    // Legacy x402 plan hashes are already payment-bound. Only newly opted-in
+    // requests add this field to the hash input; published_only hashes remain
+    // byte-for-byte identical to pre-migration production.
+    ...(parsed.fulfillment_mode === "live_on_demand" ? {
+      fulfillment_mode: parsed.fulfillment_mode,
+    } : {}),
     risk_gate_context: parsed.risk_gate_context ?? null,
     as_of: parsed.as_of ?? null,
   };
-  return { ...normalized, query_plan_hash: stableHash(normalized) };
+  return { ...normalized, fulfillment_mode: parsed.fulfillment_mode, query_plan_hash: stableHash(normalized) };
 }
 
 export function paymentBindingForAgentQuery(input: {

@@ -37,6 +37,7 @@ import {
 } from "./coinbase-x402-usage-guard.server";
 import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.server";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
+import { discoverOnDemandGlobal, type OnDemandCategory } from "./on-demand-global-discovery.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const PRODUCT_ID = "geomacro_adaptive_risk_intelligence_v1";
@@ -254,6 +255,8 @@ export const mainnetIntelligenceHandlers = {
           exact_price_usdc: config.priceUsdc,
           topics: AGENT_QUERY_TOPICS,
           coverage: "data-driven; only currently deliverable subjects are payable",
+          live_on_demand_discovery_supported: true,
+          live_on_demand_payment_authorized: false,
           delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY",
           raw_data_delivered: false,
           source_identity_delivered: false,
@@ -287,6 +290,79 @@ export const mainnetIntelligenceHandlers = {
             return json({ ok: false, chargeable: false, error: { code: "INVALID_ADAPTIVE_QUERY", issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })) }, execution_authorized: false }, 400);
           }
           return json({ ok: false, chargeable: false, error: { code: "UNSUPPORTED_ADAPTIVE_QUERY", message: error instanceof Error ? error.message : "Query cannot be safely planned." }, execution_authorized: false }, 400);
+        }
+
+        // Request-time global retrieval is separate from GRO publication and
+        // cannot claim commercial-ready status from a search-index hit.
+        // No funds, raw data, Supabase or B2 are involved in this lane.
+        if (plan.fulfillment_mode === "live_on_demand") {
+          const subject = plan.subjects[0];
+          if (plan.subjects.length !== 1 || subject.type !== "country" ||
+              plan.as_of !== null ||
+              plan.topics.some(t => ["risk_object","risk_gate","gri_context"].includes(t))) {
+            return json({
+              ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"ON_DEMAND_QUERY_SCOPE_UNSUPPORTED"},
+              execution_authorized:false,
+            },422);
+          }
+          const categories: OnDemandCategory[]=[];
+          if (plan.topics.some(t => ["sanctions_restrictions","conflict_geopolitics","political_governance"].includes(t)))
+            categories.push("geopolitics");
+          if (plan.topics.some(t => ["sovereign_risk","macro_risk","fx_external_risk"].includes(t)))
+            categories.push("macro");
+          if (plan.topics.includes("critical_minerals"))
+            categories.push("rare_earth");
+          // An unscoped "latest news" request searches all three Geomacro
+          // categories, bounded to one country and the fixed provider mesh.
+          if (categories.length === 0 && plan.topics.includes("hot_topics")) {
+            categories.push("geopolitics","macro","rare_earth");
+          }
+          if (categories.length === 0) {
+            return json({
+              ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"ON_DEMAND_CATEGORY_NOT_SUPPORTED"},
+              execution_authorized:false,
+            },422);
+          }
+          let discovery;
+          try {
+            discovery=await discoverOnDemandGlobal({
+              country_iso3:subject.country_iso3,categories,
+            });
+          } catch(error) {
+            console.error("[x402-live] bounded discovery failed",error);
+            return json({
+              ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"ON_DEMAND_SEARCH_UNAVAILABLE"},
+              execution_authorized:false,
+            },503);
+          }
+          // No raw upstream records, publisher IDs or original links cross
+          // this boundary. No x402 payment quote is issued for discoveries.
+          return json({
+            ok:false,chargeable:false,payment_required_now:false,
+            product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,
+            on_demand:{
+              status:discovery.status,
+              searched_in_parallel:discovery.searched_in_parallel,
+              categories:discovery.categories,
+              country_iso3:discovery.country_iso3,
+              checked_at:discovery.checked_at,
+              network_attempts:discovery.network_attempts,
+              reached_source_families:discovery.reached_source_families,
+              discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
+              independent_same_event_corroboration_verified:false,
+              source_derived_commercial_rights_verified:false,
+              signed_derived_intelligence_created:false,
+              raw_upstream_delivered:false,
+            },
+            error:{
+              code:"ON_DEMAND_VERIFICATION_PENDING",
+              message:"Live search ran, but independent corroboration, commercial rights and signed derived intelligence are not yet proven. No payment is offered.",
+            },
+            execution_authorized:false,
+          },422);
         }
 
         let availability;
