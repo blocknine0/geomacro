@@ -236,7 +236,11 @@ export async function discoverOnDemandGlobal(
   const settled=await Promise.allSettled(tasks.map(t=>t.run()));
   const source_probes=settled.map((result,i)=>result.status==="fulfilled"
     ? result.value : failed(tasks[i].name));
-  const reached=source_probes.filter(p=>p.reachable).length;
+  // The same GDELT producer searched for 3 different topics is ONE family,
+  // and two World Bank indicator requests are ONE official institution.
+  const reached=new Set(source_probes.filter(p=>p.reachable).map(p=>
+    p.family.startsWith("world_bank_official_")
+      ? "world_bank_official" : p.family)).size;
   return {
     schema:"geomacro.on-demand-global-private-discovery.v1",
     country_iso3:country,categories,checked_at:now.toISOString(),
