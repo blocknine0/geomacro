@@ -12,6 +12,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { EXPANDED_OFFICIAL_SOURCES } from "./probe-expanded-official-source-mesh.mjs";
+import { isQuarantinedOfficialRoute } from "../lib/official-source-quarantine.mjs";
 
 const ORIGINAL_ISSUERS = Object.freeze({
   geopolitics: Object.freeze({
@@ -54,6 +55,12 @@ export function auditOfficialStep1Feeds(receipt) {
         row.country_coverage_verified !== false ||
         typeof row.format_valid !== "boolean" ||
         typeof row.publisher_reachable !== "boolean" ||
+        (row.quarantined===true && (
+          !isQuarantinedOfficialRoute(row.source_id) ||
+          row.reason!=="QUARANTINED_NOT_POLLED" ||
+          row.primary_http_status!==null ||
+          row.publisher_reachable!==false ||
+          row.format_valid!==false)) ||
         (row.format_valid && (row.publisher_reachable !== true ||
           row.primary_http_status !== 200)) ||
         (!row.format_valid && row.publisher_reachable) ||
@@ -118,21 +125,27 @@ export function auditOfficialStep1Feeds(receipt) {
         "TRANSPORT_UNAVAILABLE", "PUBLISHER_HTTP_NOT_OK",
         "SOURCE_CONTENT_TYPE_INVALID", "SOURCE_SHAPE_UNVERIFIED",
         "SOURCE_BODY_UNAVAILABLE_OR_OVERSIZE", "SOURCE_BODY_READ_FAILURE",
-        "SOURCE_ENCODING_INVALID"].includes(row.reason)
+        "SOURCE_ENCODING_INVALID", "QUARANTINED_NOT_POLLED"].includes(row.reason)
         ? row.reason : "UNCLASSIFIED_SOURCE_FAILURE",
       no_access_control_bypass: true,
+      quarantined: row.quarantined===true,
     }));
   const categoryFloor = categories.every(x => x.two_independent_original_transport_floor_met);
+  const quarantine=failed.filter(x=>x.quarantined===true).length;
+  const activeFailures=failed.length-quarantine;
   return {
     schema: "geomacro.official-step1-source-readiness.v1",
     upstream_observed_at: receipt.observed_at,
     source_inventory_count: rows.size,
     source_transport_healthy_count: rows.size - failed.length,
     source_transport_failed_count: failed.length,
+    source_transport_live_failure_count: activeFailures,
+    source_transport_quarantined_not_polled_count: quarantine,
     all_sources_working: failed.length === 0,
     per_category_two_independent_issuers_transport_healthy: categoryFloor,
     status: !categoryFloor ? "ORIGINAL_ISSUER_REDUNDANCY_INSUFFICIENT" :
-      failed.length ? "ORIGINAL_ISSUER_REDUNDANCY_OBSERVED_WITH_SOURCE_FAILURES" :
+      activeFailures ? "ORIGINAL_ISSUER_REDUNDANCY_OBSERVED_WITH_SOURCE_FAILURES" :
+      quarantine ? "ORIGINAL_ISSUER_REDUNDANCY_OBSERVED_WITH_QUARANTINE" :
       "ORIGINAL_ISSUER_REDUNDANCY_OBSERVED",
     country_article_relevance_and_rights_approved: false,
     fresh_same_event_corroboration_approved: false,
@@ -154,6 +167,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     console.log(JSON.stringify({
       status: result.status,
       source_transport_failed_count: result.source_transport_failed_count,
+      source_transport_live_failure_count: result.source_transport_live_failure_count,
+      source_transport_quarantined_not_polled_count:
+        result.source_transport_quarantined_not_polled_count,
       per_category_two_independent_issuers_transport_healthy:
         result.per_category_two_independent_issuers_transport_healthy,
       step1_end_to_end_accepted: false,
