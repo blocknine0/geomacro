@@ -93,9 +93,9 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
       // URL. Hash a bounded normalized entry with changing <updated> removed;
       // this value is NEVER an article URL, claim or native publication time.
       const hasPublisherLink=[...item.matchAll(
-        /<(?:atom:)?link\\b([^>]*?)\\/?\\s*>/giu,
+        /<(?:atom:)?link\b([^>]*?)\/?\s*>/giu,
       )].some(([,attrs])=>{
-        const href=attrs.match(/\\bhref\\s*=\\s*["']([^"']+)["']/iu)?.[1];
+        const href=attrs.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1];
         try{
           const u=new URL(href);
           return u.protocol==="https:"&&!u.username&&!u.password&&!u.port&&
@@ -104,8 +104,8 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
       });
       if(hasPublisherLink && Buffer.byteLength(item,"utf8")<=8192){
         const normalized=item.replace(
-          /<(?:atom:)?updated(?:\\s[^>]*)?>[\\s\\S]*?<\\/(?:atom:)?updated>/giu,"",
-        ).replace(/\\s+/gu," ").trim();
+          /<(?:atom:)?updated(?:\s[^>]*)?>[\s\S]*?<\/(?:atom:)?updated>/giu,"",
+        ).replace(/\s+/gu," ").trim();
         if(normalized.length>=20){
           identity=source.id+"|opaque-atom-entry|"+normalized;
           identityKind="OPAQUE_FIRST_PARTY_FEED_ENTRY";
