@@ -42,6 +42,19 @@ describe("agentic economy workflow governance", () => {
           .replace(/^\s*uses:\s+/, "")
           .split(/\s+#/, 1)[0]
           .trim();
+        // Local reusable workflows execute repository code at the SAME SHA,
+        // not an external unpinned action. Permit only an existing exact
+        // .github/workflows YAML file; reject traversal or dynamic refs.
+        if (actionRef.startsWith("./")) {
+          expect(actionRef, path + ": " + line).toMatch(
+            /^\.\/\.github\/workflows\/[a-z0-9][a-z0-9-]*\.ya?ml$/,
+          );
+          expect(
+            statSync(join(ROOT, actionRef)).isFile(),
+            path + ": " + line,
+          ).toBe(true);
+          continue;
+        }
         const at = actionRef.lastIndexOf("@");
         expect(at, path + ": " + line).toBeGreaterThan(0);
         const commitRef = actionRef.slice(at + 1);
