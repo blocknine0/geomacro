@@ -35,12 +35,24 @@ export async function probePublicSourcesIndependently({
       results.push({source_id:id,category:PUBLIC_ADAPTER_DOMAINS[id],
         status:x.observations>0?"WORKING_DATA_RESPONSE":"WORKING_EMPTY_DATA_RESPONSE",
         observation_rows:x.observations});
-    }catch{
-      // Never publish upstream error texts or URLs. Some free provider errors
-      // echo queries, IPs, dynamic request headers, and body fragments.
+    }catch(error){
+      // Provider errors can include source URLs or request parameters. Only
+      // preapproved fixed cause categories can cross the GitHub artifact/log
+      // boundary. In particular OECD may fail on HTTPS/timeout/SDMX shape.
+      const message=String(error?.message??"");
+      const status=(message.match(/^HTTP ([1-5][0-9]{2}) for /u)||
+        message.match(/^PUBLIC_SOURCE_HTTP_([1-5][0-9]{2})$/u))?.[1];
+      const reason=status?"HTTP_"+status:
+        message==="PUBLIC_SOURCE_OVERSIZE"?"RESPONSE_OVERSIZE":
+        message==="PUBLIC_SOURCE_REDIRECT_UNVERIFIED"?"REDIRECT_UNVERIFIED":
+        message==="OECD_SDMX_DATAFLOW_UNVERIFIED"?"SDMX_DATAFLOW_SHAPE_INVALID":
+        message==="PUBLIC_SOURCE_EMPTY_BODY"?"EMPTY_RESPONSE":
+        message==="PUBLIC_SOURCE_NO_BODY"?"BODY_UNAVAILABLE":
+        error?.name==="AbortError"||error?.name==="TimeoutError"?"UPSTREAM_TIMEOUT":
+        "UPSTREAM_OR_VALIDATION_FAILURE";
       results.push({source_id:id,category:PUBLIC_ADAPTER_DOMAINS[id],
         status:"PROVIDER_UNAVAILABLE_OR_SHAPE_CHANGED",
-        observation_rows:null});
+        reason,observation_rows:null});
     }
   }
   const failures=results.filter(r=>r.status==="PROVIDER_UNAVAILABLE_OR_SHAPE_CHANGED").length;
