@@ -204,6 +204,19 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   uk_dbt_critical_minerals_atom_pending_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
 });
 
+// The original publisher documents www.statcan.gc.ca/daily-quotidien/
+// YYMMDD/dqYYMMDD[a-z]-eng.htm as its first-party Daily article family.
+// The real 2026-10-11 private production feed had 59 such *path-prefix*
+// candidates on www.statcan.gc.ca, not www150 /n1/. We require the
+// filename's date to match its exact 6-digit directory, no queries/redirects,
+// and an article-specific dq basename. A catalogue/portal stays rejected.
+function statcanOfficialRootDailyArticle(source,link) {
+  if(source?.id!=="statcan_prices_original_atom_review" ||
+      link.hostname!=="www.statcan.gc.ca")return false;
+  const m=/^\/daily-quotidien\/([0-9]{6})\/dq([0-9]{6})([a-z][a-z0-9-]{0,35})-eng\.(htm|html)$/u.exec(link.pathname);
+  return Boolean(m && m[1]===m[2]);
+}
+
 // Coarse lexical buckets ONLY: never log invalid date text, time values,
 // article identifiers or a customer event. Strict Date.parse gate unchanged.
 function nativeRssDateShape(raw) {
@@ -314,7 +327,8 @@ function originalHref(href, hosts, source=null) {
       hosts.includes(link.hostname.toLowerCase()) &&
       (!source || (
         Object.hasOwn(ORIGINAL_ARTICLE_PATHS,source.id) &&
-        ORIGINAL_ARTICLE_PATHS[source.id].test(link.pathname) &&
+        (ORIGINAL_ARTICLE_PATHS[source.id].test(link.pathname) ||
+         statcanOfficialRootDailyArticle(source,link)) &&
         // A feed cannot attest to itself as a separately dated article.
         link.pathname!==new URL(source.url).pathname &&
         !/(?:^|\/)(?:feed|rss|atom)(?:\/|$)/iu.test(link.pathname)
@@ -332,7 +346,8 @@ function originalLinkRejectionKind(href,hosts,source=null) {
       return "unsafe_or_malformed";
     if(Array.isArray(hosts) && hosts.length && !hosts.includes(link.hostname.toLowerCase()))
       return "publisher_host_mismatch";
-    if(source && (!ORIGINAL_ARTICLE_PATHS[source.id]?.test(link.pathname) ||
+    if(source && (!(ORIGINAL_ARTICLE_PATHS[source.id]?.test(link.pathname) ||
+                     statcanOfficialRootDailyArticle(source,link)) ||
        link.pathname===new URL(source.url).pathname ||
        /(?:^|\/)(?:feed|rss|atom)(?:\/|$)/iu.test(link.pathname)))
       return "original_article_path_mismatch";
