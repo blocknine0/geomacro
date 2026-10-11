@@ -8,6 +8,7 @@
  * Neither forms independent corroboration or commercial rights evidence.
  */
 import {createHash} from "node:crypto";
+import {officialOriginalRssArticleUrl} from "./official-rss-original-link.mjs";
 
 const MAX_ITEMS=40;
 // The free homepage's 24h recent-news window: never derive from feed updated.
@@ -102,7 +103,7 @@ export function originalPublisherPrivateCandidates(xml,source,now=new Date(),{ca
     // Topic match remains only a downstream relevance hint, NOT acceptance.
     if(!title || (!captureAllTopics &&
        (!(source.topic instanceof RegExp)||!source.topic.test(title))))continue;
-    const original=canonicalOriginalUrl(rss?xmlTag(item,"link"):atomArticleLink(item),source);
+    const original=canonicalOriginalUrl(rss?officialOriginalRssArticleUrl(item,source):atomArticleLink(item),source);
     if(!original)continue;
     const articleFingerprint=digest(original);
     if(seen.has(articleFingerprint))continue;
@@ -167,7 +168,7 @@ export function originalPublisherPrivatePageDateCandidate(xml,source,{
     if(!title || (!captureAllTopics &&
        (!(source.topic instanceof RegExp)||!source.topic.test(title))))
       continue;
-    const link=canonicalOriginalUrl(rss?xmlTag(item,"link"):atomArticleLink(item),source);
+    const link=canonicalOriginalUrl(rss?officialOriginalRssArticleUrl(item,source):atomArticleLink(item),source);
     if(link!==original)continue;
     return {
       schema:"geomacro.private-original-article-candidate.v1",
