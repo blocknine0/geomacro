@@ -212,7 +212,9 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
 // and an article-specific dq basename. A catalogue/portal stays rejected.
 function statcanOfficialRootDailyArticle(source,link) {
   if(source?.id!=="statcan_prices_original_atom_review" ||
-      link.hostname!=="www.statcan.gc.ca")return false;
+      link.hostname!=="www.statcan.gc.ca" ||
+      link.search || link.hash || link.port || link.username || link.password)
+    return false;
   const m=/^\/daily-quotidien\/([0-9]{6})\/dq([0-9]{6})([a-z][a-z0-9-]{0,35})-eng\.(htm|html)$/u.exec(link.pathname);
   return Boolean(m && m[1]===m[2]);
 }
