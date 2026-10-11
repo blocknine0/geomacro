@@ -3,8 +3,9 @@
  * Real (not mocked) read-only global API evidence acceptance.
  * Does not create a source right, signed GRO, a public intelligence object,
  * a B2 archive, D1 checkpoint, a USDC payment or an x402 settlement.
- * One ISO3 country x three Geomacro categories: at most 12 discovery plus
- * 4 original article-page requests. No unbounded search or extra workflow.
+ * Exact customer example: CHN lithium supply risk x the same three
+ * Geomacro categories. Maximum 12 discovery plus 4 original page GETs.
+ * No unbounded search, source-identity leak, funds or extra workflow.
  */
 import { writeFileSync, mkdirSync } from "node:fs";
 import { buildPrivateOnDemandMacroDrivers } from "../../src/lib/on-demand-private-macro-drivers.server";
@@ -14,8 +15,9 @@ import {
 } from "../../src/lib/on-demand-global-discovery.server";
 
 const privateEvidence=await discoverOnDemandForPrivateQualification({
-  country_iso3:"IND",
+  country_iso3:"CHN",
   categories:["geopolitics","macro","rare_earth"],
+  mineral:"lithium",
 });
 const receipt=privateEvidence.discovery;
 const privateMacroDrivers=buildPrivateOnDemandMacroDrivers(privateEvidence.private_macro_changes);
@@ -27,6 +29,8 @@ const proof={
   schema:"geomacro.live-on-demand-real-api-safety.v1",
   checked_at:receipt.checked_at,
   sample_country_iso3:receipt.country_iso3,
+  sample_topic_mineral:"lithium",
+  sample_case:"CHN_LITHIUM_CURRENT_SUPPLY_RISK",
   category_count:receipt.categories.length,
   categories:receipt.categories,
   network_attempts:receipt.network_attempts,
@@ -45,6 +49,11 @@ const proof={
   })),
   private_original_candidate_count:privateEvidence.private_candidates.length,
   duplicate_original_headlines_suppressed:privateEvidence.duplicate_original_headline_count,
+  // Connectivity != qualifying fresh original, reviewed same-event evidence,
+  // commercially licensed supply-risk scoring or signed paid delivery.
+  qualifying_fresh_original_found:privateEvidence.private_original_review_candidates.length>0,
+  current_lithium_risk_answer_verified:false,
+  x402_commercial_release_authorized:false,
   private_official_annual_change_count:privateEvidence.private_macro_changes.length,
   private_annual_directional_macro_driver_count:privateMacroDrivers.length,
   private_original_candidate_page_dates_verified:
@@ -65,7 +74,12 @@ mkdirSync("artifacts/on-demand-live",{recursive:true});
 writeFileSync("artifacts/on-demand-live/real-api-proof.json",
   JSON.stringify(proof,null,2)+"\n",{mode:0o600});
 console.log(JSON.stringify(proof));
-if(proof.category_count!==3||proof.network_attempts>12 ||
+if(proof.current_lithium_risk_answer_verified!==false ||
+   proof.x402_commercial_release_authorized!==false ||
+   proof.sample_country_iso3!=="CHN" ||
+   proof.sample_topic_mineral!=="lithium" ||
+   proof.sample_case!=="CHN_LITHIUM_CURRENT_SUPPLY_RISK" ||
+   proof.category_count!==3||proof.network_attempts>12 ||
    proof.original_article_page_attempts>4 ||
    proof.total_bounded_network_attempts>16 ||
    proof.original_article_page_publication_date_verified_count>
