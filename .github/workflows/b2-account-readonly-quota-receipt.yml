@@ -40,7 +40,9 @@ jobs:
         with:
           node-version: '22'
       - name: Validate zero-write D1 ledger report syntax
-        run: node --check scripts/ops/report-b2-account-ledger-readonly.mjs
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/report-b2-account-ledger-readonly.mjs
           node --check scripts/ops/audit-d1-account-daily-quota-readonly.mjs
 
   production-readonly:
