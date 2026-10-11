@@ -22,7 +22,7 @@ const privateMacroDrivers=buildPrivateOnDemandMacroDrivers(privateEvidence.priva
 // PRIVATE evidence continuation: only the aggregate count may enter logs or
 // artifacts. Original publisher URLs, page HTML and articles remain private.
 const pageProof=await verifyOnDemandOriginalArticlePages(
-  privateEvidence.private_candidates);
+  privateEvidence.private_original_review_candidates);
 const proof={
   schema:"geomacro.live-on-demand-real-api-safety.v1",
   checked_at:receipt.checked_at,
