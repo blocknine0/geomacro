@@ -13,6 +13,8 @@ on:
     paths:
       - ".github/workflows/intelligence-orchestrator.yml"
       - "scripts/intelligence-orchestrator.mjs"
+      - "scripts/ops/probe-scheduled-official-active-mesh.mjs"
+      - "src/__tests__/scheduled-official-active-mesh.test.ts"
       - "scripts/run-rss-live-cycle.mjs"
       - "scripts/run-live-flash-ingest-local.ts"
       - "scripts/run-live-flash-corroborate-local.ts"
@@ -176,6 +178,7 @@ jobs:
           ! grep -q '@supabase/supabase-js' scripts/intelligence-orchestrator.mjs
           ! grep -q 'APP_SUPABASE_SERVICE_ROLE_KEY' scripts/intelligence-orchestrator.mjs
           node --check scripts/intelligence-orchestrator.mjs
+          node --check scripts/ops/probe-scheduled-official-active-mesh.mjs
           echo "PASS: D1/B2 scheduler runtime validated without requiring Supabase availability."
 
       - name: Enforce permanent frozen Supabase zero-probe source heartbeat
