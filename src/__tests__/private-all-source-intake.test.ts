@@ -188,7 +188,7 @@ function humanPointer(category="GEOPOLITICS", id="a".repeat(32)) {
 
 describe("#1827 zero-scrape Telegram human research pointer -> 3 category PRIVATE lead feed",()=>{
   it("adds manual pointers across three domains as unverified research leads, no scored or paid rows",()=>{
-    const f=fixture();
+    const f:any=fixture();
     const all=["GEOPOLITICS","MACRO","CRITICAL_MINERALS"];
     f.manualTelegram={schema:"geomacro.private-human-telegram-research-batch.v1",
       pointers:all.map((c,i)=>humanPointer(c,String(i+1).repeat(32)))};
@@ -215,7 +215,7 @@ describe("#1827 zero-scrape Telegram human research pointer -> 3 category PRIVAT
   });
 
   it("expired claimed article becomes history and never a current signed event",()=>{
-    const f=fixture();
+    const f:any=fixture();
     const p=humanPointer();p.source_native_published_at_claimed="2026-10-09T03:45:00Z";
     p.historical_reference=true;
     f.manualTelegram={schema:"geomacro.private-human-telegram-research-batch.v1",pointers:[p]};
@@ -234,17 +234,17 @@ describe("#1827 zero-scrape Telegram human research pointer -> 3 category PRIVAT
       {raw_message:"PRIVATE TELEGRAM TEXT"},
     ];
     for(const patch of cases) {
-      const f=fixture();
+      const f:any=fixture();
       f.manualTelegram={schema:"geomacro.private-human-telegram-research-batch.v1",
         pointers:[{...humanPointer(),...patch}]};
       expect(()=>assemblePrivateIntakeSnapshot(f,now)).toThrow();
     }
-    const d=fixture();
+    const d:any=fixture();
     d.manualTelegram={schema:"geomacro.private-human-telegram-research-batch.v1",
       pointers:[humanPointer(),humanPointer()]};
     expect(()=>assemblePrivateIntakeSnapshot(d,now))
       .toThrow("PRIVATE_INTAKE_DUPLICATE_TELEGRAM_RESEARCH_REFERENCE");
-    const wrong=fixture();
+    const wrong:any=fixture();
     wrong.manualTelegram={schema:"bad",pointers:[humanPointer()]};
     expect(()=>assemblePrivateIntakeSnapshot(wrong,now)).toThrow();
   });
