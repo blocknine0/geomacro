@@ -69,6 +69,17 @@ export function select30MinPublishers(now=new Date()) {
   }));
 }
 function safeInt(x) {return Number.isSafeInteger(x)&&x>=0?x:null}
+// Fixed, source-free reason codes for failed first-party probes. Never forward
+// arbitrary upstream errors, URLs, response headers or article content to D1.
+const SAFE_SOURCE_FAILURE_CODES=new Set([
+  "TRANSPORT_UNAVAILABLE","PUBLISHER_RATE_LIMITED","PUBLISHER_DENIED",
+  "PUBLISHER_HTTP_NOT_OK","SOURCE_CONTENT_TYPE_INVALID",
+  "SOURCE_BODY_UNAVAILABLE_OR_OVERSIZE","SOURCE_BODY_READ_FAILURE",
+  "SOURCE_ENCODING_INVALID","SOURCE_SHAPE_UNVERIFIED",
+]);
+function safeFailureStatus(value) {
+  return Number.isInteger(value)&&value>=100&&value<=599?value:null;
+}
 export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpandedSource}={}) {
   const pairs=select30MinPublishers(now);
   const slot=Math.floor(now.getTime()/INTERVAL_MS);
@@ -109,6 +120,20 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
     const ninety=healthy?observed.reduce((n,x)=>n+x.original_publisher_topical_90m,0):null;
     const sixh=healthy?observed.reduce((n,x)=>n+x.original_publisher_topical_6h,0):null;
     const complete=firstValid&&secondValid;
+    // Previously, a partial (1/2) success silently dropped the other
+    // publisher's failure cause. Preserve only pinned IDs + bounded enums.
+    const sourceTransportFailures=[
+      {source:primary,result:first,valid:firstValid},
+      ...(second?[{source:standby,result:second,valid:secondValid}]:[]),
+    ].filter(item=>!item.valid).map(({source,result})=>({
+      source_id:source.id,
+      reason:result?.publisher_reachable===true&&result?.format_valid===true
+        ?"SOURCE_CONTRACT_INVALID"
+        :SAFE_SOURCE_FAILURE_CODES.has(result?.reason)
+          ?result.reason:"SOURCE_PROBE_FAILED",
+      http_status:safeFailureStatus(result?.primary_http_status),
+      fallback_http_status:safeFailureStatus(result?.fallback_http_status),
+    }));
     // Numeric-only original feed diagnosis: every source ID is a pinned,
     // first-party original issuer, never a title, article URL or raw text.
     const issueFields=[
@@ -191,6 +216,7 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       independent_origin_pair_transport_healthy:complete,
       original_publishers_attempted:attempted.length,
       original_publishers_successful:observed.length,
+      source_transport_failures:sourceTransportFailures,
       publisher_pair_sample_complete:complete,
       // Counts refer to originating publisher ITEMS, never de-duplicated
       // same-event intelligence. Do not promote counts to news or GRO.
