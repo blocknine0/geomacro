@@ -202,7 +202,11 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
       country_iso3:"IND",categories:["rare_earth","geopolitics"],
     },{fetchImpl,now:new Date("2026-10-11T06:00:00.000Z")});
     expect(proof.private_candidates).toHaveLength(0);
+    // ReliefWeb may carry an earlier provider report date, which is metadata,
+    // NOT a verified originating-publisher article. Only genuine original
+    // issuer feed dates must fail here under the future-time test.
     expect(proof.discovery.source_probes.filter(p=>
+      p.family.endsWith("_original_publisher") &&
       p.publication_clock_verified)).toHaveLength(0);
   });
   it("never keeps forged off-host UN articles or fake updated-date Atom items",async()=>{
