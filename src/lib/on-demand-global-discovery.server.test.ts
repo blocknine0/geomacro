@@ -309,6 +309,32 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
     }
   });
 
+
+  it("enforces twelve real discovery requests even with optional approved ReliefWeb and UN failure",async()=>{
+    const original=process.env.RELIEFWEB_APPROVED_APPNAME;
+    process.env.RELIEFWEB_APPROVED_APPNAME="GeomacroApprovedTestOnly";
+    try {
+      const seen:string[]=[];
+      const guarded=vi.fn(async (request:RequestInfo|URL)=>{
+        const url=String(request);seen.push(url);
+        if(url==="https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml")
+          throw Error("primary transport unavailable");
+        return upstream(url);
+      }) as unknown as typeof fetch;
+      const result=await discoverOnDemandForPrivateQualification({
+        country_iso3:"IND",categories:["geopolitics","macro","rare_earth"],
+      },{fetchImpl:guarded,now});
+      expect(result.discovery.network_attempts).toBe(12);
+      expect(seen).toHaveLength(12);
+      expect(seen).not.toContain("https://news.un.org/feed/subscribe/en/news/all/rss.xml");
+      expect(result.discovery.payable).toBe(false);
+      expect(result.discovery.settlement_attempted).toBe(false);
+    } finally {
+      if(original===undefined)delete process.env.RELIEFWEB_APPROVED_APPNAME;
+      else process.env.RELIEFWEB_APPROVED_APPNAME=original;
+    }
+  });
+
   it("does not bypass UN auth/rate denials, or retry malformed 200 XML and stale articles",async()=>{
     const primary="https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml";
     const alternate="https://news.un.org/feed/subscribe/en/news/all/rss.xml";
