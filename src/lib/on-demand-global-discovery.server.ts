@@ -424,6 +424,39 @@ async function originalOfficialFeed(
     private_candidates:candidates};
 }
 
+/**
+ * Private narrow duplicate guard: different publisher feeds may carry the
+ * exact same headline about the same domain at nearly the same original time.
+ * Such syndication is one prospective story, not independent corroboration.
+ * Never fuzzy-merge generic related articles, or dedup across risk domains.
+ * The original source input retains its original item-native timestamp.
+ */
+export function deduplicateOnDemandOriginalHeadlines(
+  candidates:readonly PrivateOriginalCandidate[],
+):{unique_candidates:PrivateOriginalCandidate[];duplicate_headlines_removed:number}{
+  if(candidates.length>16)throw Error("ON_DEMAND_PRIVATE_CANDIDATE_BUDGET_INVALID");
+  const unique_candidates:PrivateOriginalCandidate[]=[];
+  let duplicate_headlines_removed=0;
+  const headline=(title:string)=>
+    title.normalize("NFKC").toLocaleLowerCase("en-US")
+      .replace(/\\s+/gu," ").trim();
+  for(const item of candidates){
+    const time=Date.parse(item.feed_item_published_at);
+    if(!Number.isFinite(time)||!item.first_party_article_url_verified||
+       !item.source_native_feed_publication_date_verified ||
+       !/^[a-f0-9]{64}$/.test(item.article_identity_sha256) ||
+       item.paid_delivery_allowed!==false || item.signed_gro_verified!==false)
+      continue;
+    const duplicate=unique_candidates.some(previous=>
+      previous.domain===item.domain &&
+      headline(previous.article_title)===headline(item.article_title) &&
+      Math.abs(Date.parse(previous.feed_item_published_at)-time)<=30*60*1000);
+    if(duplicate)duplicate_headlines_removed++;
+    else unique_candidates.push(item);
+  }
+  return {unique_candidates,duplicate_headlines_removed};
+}
+
 /** Never returns upstream text, URLs or source identities for paid output. */
 async function discoverOnDemandImpl(
   input: OnDemandSearchInput,
@@ -497,6 +530,7 @@ async function discoverOnDemandImpl(
   const reached=new Set(source_probes.filter(p=>p.reachable).map(p=>
     p.family.startsWith("world_bank_official_")
       ? "world_bank_official" : p.family)).size;
+  const grouped=deduplicateOnDemandOriginalHeadlines(private_candidates);
   const discovery:OnDemandDiscovery={
     schema:"geomacro.on-demand-global-private-discovery.v1",
     country_iso3:country,categories,checked_at:now.toISOString(),
@@ -512,7 +546,11 @@ async function discoverOnDemandImpl(
     raw_upstream_delivered:false,supabase_requests:0,b2_requests:0,
     settlement_attempted:false,
   };
-  return {discovery,private_candidates,private_macro_changes};
+  return {
+    discovery,private_candidates:grouped.unique_candidates,
+    duplicate_original_headline_count:grouped.duplicate_headlines_removed,
+    private_macro_changes,
+  };
 }
 
 
@@ -624,6 +662,7 @@ export async function discoverOnDemandForPrivateQualification(
 ):Promise<{
   discovery:OnDemandDiscovery;
   private_candidates:PrivateOriginalCandidate[];
+  duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
 }>{
   return discoverOnDemandImpl(input,options);
