@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { buildMacroNormalizationSnapshot } from "./country-risk-v02-normalization";
 import { buildCountryMacroRiskComponent } from "./country-risk-v02-macro";
 import { getFeatureMethodologyRule } from "./country-risk-v02-feature-methodology";
@@ -145,12 +146,17 @@ export async function scorePrivateOnDemandMacroPeers(
        !Object.prototype.hasOwnProperty.call(INDICATOR_METRICS,ch.indicator)||
        seen.has(ch.indicator)||ch.latest_observation_year>now.getUTCFullYear()||
        ch.latest_observation_year<1961 ||
+       ch.latest_observation_year>=now.getUTCFullYear() ||
        ch.previous_observation_year!==ch.latest_observation_year-1 ||
        !Number.isFinite(ch.latest_annual_pct) || !Number.isFinite(ch.previous_annual_pct) ||
        Math.abs(ch.latest_annual_pct)>10000 ||
        ch.annual_rate_change_percentage_points!==
          Math.round((ch.latest_annual_pct-ch.previous_annual_pct)*1e5)/1e5 ||
        !/^[a-f0-9]{64}$/.test(ch.source_observation_sha256) ||
+       ch.source_observation_sha256!==createHash("sha256").update(JSON.stringify([
+         ch.country_iso3,ch.indicator,ch.latest_observation_year,
+         ch.latest_annual_pct,ch.previous_observation_year,ch.previous_annual_pct,
+       ])).digest("hex") ||
        ch.derived_commercial_rights_verified!==false||
        ch.risk_score_verified!==false||ch.paid_delivery_allowed!==false||
        ch.observation_type!=="ANNUAL_STRUCTURAL_NOT_CURRENT_NEWS")
