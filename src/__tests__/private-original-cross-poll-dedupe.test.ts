@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { reconcile30mPrivateArticleFingerprints } from "../../scripts/lib/private-original-cross-poll-dedupe.mjs";
+import { reconcilePrivateOriginalReviewQueue } from "../../scripts/lib/private-original-review-queue.mjs";
 import { write30MinSourcePulseToD1 } from "../../scripts/ops/write-30min-source-pulse-d1.mjs";
 
 const at = "2026-10-10T18:45:00.000Z";
@@ -154,6 +155,89 @@ describe("#1827 continuous 30m original article identity, private D1 only",()=>{
     })).toThrow();
   });
 
+
+  it("routes only new original SHA hashes into non-commercial unverified review, no title or article body",()=>{
+    const a={...make("geopolitics","a".repeat(64)),discovery_topic_matched:true};
+    const b={...make("geopolitics","b".repeat(64)),discovery_topic_matched:false};
+    const q=reconcilePrivateOriginalReviewQueue({
+      domain:"geopolitics",checkedAt:at,candidates:[a,b],
+      newArticleRefs:[a.original_article_sha256,b.original_article_sha256],
+    });
+    expect(q.newly_queued).toBe(2);
+    expect(q.new_topic_hints_unverified).toBe(1);
+    expect(q.awaiting_source_content_and_claim_review).toBe(2);
+    expect(q.private_review_refs.map(x=>x.review_status)).toEqual(["UNVERIFIED","UNVERIFIED"]);
+    expect(q.private_review_refs.map(x=>x.topic_hint).sort()).toEqual(
+      ["NO_TOPIC_HINT","TOPIC_HINT_UNVERIFIED"]);
+    expect(q.private_review_refs.every(x=>!x.payment_eligible&&!x.same_event_reviewed&&
+      !x.country_verified&&!x.commodity_verified&&!x.commercial_rights_verified)).toBe(true);
+    const serialized=JSON.stringify(q);
+    for(const secret of ["article_url","article_title","raw_body","customer_query","source_id"])
+      expect(serialized).not.toContain(secret);
+    expect(q.signed_gro_created).toBe(false);
+  });
+
+  it("keeps pending source-native queue through repeated polling without retrying old articles",()=>{
+    const a=make("macro","c".repeat(64));
+    const first=reconcilePrivateOriginalReviewQueue({
+      domain:"macro",checkedAt:at,candidates:[a],
+      newArticleRefs:[a.original_article_sha256],
+    });
+    const again=reconcilePrivateOriginalReviewQueue({
+      domain:"macro",checkedAt:"2026-10-10T19:15:00.000Z",
+      candidates:[a],newArticleRefs:[],previousQueue:first.private_review_refs,
+    });
+    expect(again.newly_queued).toBe(0);
+    expect(again.private_review_refs).toEqual(first.private_review_refs);
+    const expired=reconcilePrivateOriginalReviewQueue({
+      domain:"macro",checkedAt:"2026-10-11T19:00:00.000Z",
+      candidates:[],newArticleRefs:[],previousQueue:again.private_review_refs,
+    });
+    expect(expired.awaiting_source_content_and_claim_review).toBe(0);
+    expect(expired.private_review_refs).toEqual([]);
+  });
+
+  it("fails closed on unsafe source claims and tampered D1 review queue",()=>{
+    const a=make("rare_earth","d".repeat(64));
+    const init=reconcilePrivateOriginalReviewQueue({
+      domain:"rare_earth",checkedAt:at,candidates:[a],
+      newArticleRefs:[a.original_article_sha256],
+    });
+    const original=init.private_review_refs[0];
+    for(const mutation of [
+      {...original,review_status:"VERIFIED"},
+      {...original,payment_eligible:true},
+      {...original,commercial_rights_verified:true},
+      {...original,raw_article_url:"https://untrusted.example/news"},
+      {...original,source_as_of:"2026-10-10T18:50:00.000Z"},
+      {...original,domain:"macro"},
+      {...original,article_sha256:"BAD"},
+    ]) {
+      expect(()=>reconcilePrivateOriginalReviewQueue({
+        domain:"rare_earth",checkedAt:"2026-10-10T19:15:00.000Z",
+        previousQueue:[mutation],
+      })).toThrow("PRIVATE_ORIGINAL_REVIEW_QUEUE_INVALID");
+    }
+    for(const modified of [
+      {...a,eligible_for_scoring:true},
+      {...a,article_category_relevance_verified:true},
+      {...a,commercial_derived_use_rights_verified:true},
+      {...a,native_published_at:"2026-10-11T18:31:00.000Z"},
+    ]) {
+      expect(()=>reconcilePrivateOriginalReviewQueue({
+        domain:"rare_earth",checkedAt:at,
+        candidates:[modified],newArticleRefs:[a.original_article_sha256],
+      })).toThrow("PRIVATE_ORIGINAL_REVIEW_QUEUE_INVALID");
+    }
+    expect(()=>reconcilePrivateOriginalReviewQueue({
+      domain:"rare_earth",checkedAt:at,candidates:[],newArticleRefs:["0".repeat(64)],
+    })).toThrow("PRIVATE_ORIGINAL_REVIEW_QUEUE_INVALID");
+    expect(()=>reconcilePrivateOriginalReviewQueue({
+      domain:"rare_earth",checkedAt:at,candidates:[a],
+      newArticleRefs:[a.original_article_sha256,a.original_article_sha256],
+    })).toThrow("PRIVATE_ORIGINAL_REVIEW_QUEUE_INVALID");
+  });
+
   it("stores/reads back private SHA-only dedup across two real 3-domain D1 write cycles",async()=>{
     const rows=new Map<string,any>();
     const persist=vi.fn(async (domain:string,state:any,update:any)=>{
@@ -177,6 +261,15 @@ describe("#1827 continuous 30m original article identity, private D1 only",()=>{
     expect(receipt2.repeated_private_original_article_fingerprints).toBe(1);
     expect(rows.get("geopolitics").payload.recent_private_article_fingerprints).toHaveLength(2);
     expect(rows.get("geopolitics").payload.newly_seen_private_article_refs).toEqual(["b".repeat(64)]);
+    const liveQueue=rows.get("geopolitics").payload.private_original_review_refs;
+    expect(liveQueue).toHaveLength(2);
+    expect(liveQueue.every((x:any)=>x.review_status==="UNVERIFIED" &&
+      x.intake_status==="OBSERVED" && x.payment_eligible===false)).toBe(true);
+    expect(rows.get("geopolitics").payload.private_original_review_new_count).toBe(1);
+    expect(rows.get("geopolitics").payload.private_original_review_pending_count).toBe(2);
+    expect(receipt2.private_original_review_new_count).toBe(1);
+    expect(receipt2.private_original_review_pending_count).toBe(2);
+    expect(receipt2.private_original_claims_verified).toBe(false);
     expect(persist).toHaveBeenCalledTimes(6);
     expect(receipt2.original_article_identity_is_risk_event).toBe(false);
     expect(receipt2.source_current_scored_intelligence_verified).toBe(false);
@@ -191,6 +284,8 @@ describe("#1827 continuous 30m original article identity, private D1 only",()=>{
     expect(source).toContain("recent_private_article_fingerprints");
     expect(publicWorker).not.toContain("recent_private_article_fingerprints");
     expect(publicWorker).not.toContain("newly_seen_private_article_refs");
+    expect(publicWorker).not.toContain("private_original_review_refs");
+    expect(publicWorker).not.toContain("private_original_review_new_count");
     expect(flow).not.toContain("SUPABASE_DB_URL");
     expect(flow).not.toContain("B2_KEY_ID");
     expect(flow).not.toContain("GEOMACRO_COMMERCE_LEDGER_TOKEN");
