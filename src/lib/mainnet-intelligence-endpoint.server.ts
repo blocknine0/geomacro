@@ -3,6 +3,10 @@ import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "./agent-query-plan";
 import { assertGeomacroIntelligenceResponseContract } from "./geomacro-intelligence-contract";
 import { buildPrivateOnDemandMacroDrivers } from "./on-demand-private-macro-drivers.server";
+import {
+  checkPrivateOnDemandMacroRights,
+  type PrivateOnDemandMacroRightsStatus,
+} from "./on-demand-private-macro-rights.server";
 import { checkAgentQueryDeliverability, publicAgentQueryAvailability } from "./agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "./agent-query-external-modules.server";
 import { assembleAgentQueryResponse } from "./agent-query-response.server";
@@ -298,7 +302,9 @@ export const mainnetIntelligenceHandlers = {
 
         // Request-time global retrieval is separate from GRO publication and
         // cannot claim commercial-ready status from a search-index hit.
-        // No funds, raw data, Supabase or B2 are involved in this lane.
+        // Discovery itself is B2/Supabase-free; a rights-bearing macro result
+        // may perform one cached, fail-closed read of the governed B2 rights
+        // snapshot. No writes or funds are involved.
         if (plan.fulfillment_mode === "live_on_demand") {
           // This discovery product has provider fanout and therefore a far
           // smaller free-tier budget than ordinary stored-state API reads.
@@ -361,6 +367,8 @@ export const mainnetIntelligenceHandlers = {
           let articleDatesVerified=0;
           let privateOfficialAnnualChanges=0;
           let privateAnnualDirectionalDrivers=0;
+          let privateAnnualRightsVerifiedDrivers=0;
+          let privateAnnualMacroRightsStatus:PrivateOnDemandMacroRightsStatus="NO_ANNUAL_EVIDENCE";
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
@@ -373,8 +381,15 @@ export const mainnetIntelligenceHandlers = {
             // Annual official change is useful structural evidence, NOT current
             // news, source rights, an issued risk score, or paid intelligence.
             privateOfficialAnnualChanges=privateResult.private_macro_changes.length;
-            privateAnnualDirectionalDrivers=buildPrivateOnDemandMacroDrivers(
-              privateResult.private_macro_changes).length;
+            const privateDrivers=buildPrivateOnDemandMacroDrivers(
+              privateResult.private_macro_changes);
+            privateAnnualDirectionalDrivers=privateDrivers.length;
+            // The shared certified-source policy is consulted only for
+            // actual validated annual evidence, using the existing private
+            // B2 rights snapshot. Unavailable/expired rights fail closed.
+            const rightsProof=await checkPrivateOnDemandMacroRights(privateDrivers);
+            privateAnnualRightsVerifiedDrivers=rightsProof.rights_verified_driver_count;
+            privateAnnualMacroRightsStatus=rightsProof.status;
             const pageProof=await verifyOnDemandOriginalArticlePages(
               privateResult.private_candidates);
             // No page HTML, original URL, title or publisher identity is
@@ -407,6 +422,8 @@ export const mainnetIntelligenceHandlers = {
               private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
               private_official_annual_change_count:privateOfficialAnnualChanges,
               private_annual_directional_macro_driver_count:privateAnnualDirectionalDrivers,
+              private_annual_macro_rights_status:privateAnnualMacroRightsStatus,
+              private_annual_macro_rights_verified_driver_count:privateAnnualRightsVerifiedDrivers,
               original_article_page_checks:articlePageChecks,
               article_page_publication_dates_verified:articleDatesVerified,
               private_originals_article_page_verified:
