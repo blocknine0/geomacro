@@ -39,7 +39,9 @@ export function reconcileUndatedPrivateFeedObservations({
       throw Error("UNDATED_PULSE_PREVIOUS_HISTORY_UNTRUSTED");
     if(ms-parsed(prev.last_seen_at)<=TTL)history.set(prev.sha256,{...prev});
   }
-  const baseline=previousHistory===undefined;
+  // When a new identifier strategy starts with a previously empty history,
+  // do not call its pre-existing publisher backlog newly published news.
+  const baseline=previousHistory===undefined || previousHistory.length===0;
   let newSinceLastPoll=0,baselineCount=0,repeated=0;
   const seenNow=new Set();
   for(const row of observations) {
@@ -48,6 +50,7 @@ export function reconcileUndatedPrivateFeedObservations({
        !SHA.test(row.original_link_sha256??"")||
        !SHA.test(row.headline_sha256??"")||
        row.publication_clock_status!=="UNKNOWN"||
+       !["FIRST_PARTY_LINK","OFFICIAL_ATOM_ENTRY_ID"].includes(row.feed_entry_identity_kind)||
        row.original_article_path_verified!==false||
        row.original_article_content_verified!==false||
        row.article_category_relevance_verified!==false||
