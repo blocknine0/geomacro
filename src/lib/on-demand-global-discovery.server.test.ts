@@ -277,6 +277,86 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
     expect(result.discovery.settlement_attempted).toBe(false);
   });
 
+
+  it("retries UN on network/404/5xx only via fixed same-publisher RSS, as ONE source family",async()=>{
+    const primary="https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml";
+    const alternate="https://news.un.org/feed/subscribe/en/news/all/rss.xml";
+    for(const failure of ["network", "404", "503"]) {
+      const seen:string[]=[];
+      const recovering=vi.fn(async(request:RequestInfo|URL)=>{
+        const url=String(request);seen.push(url);
+        if(url===primary){
+          if(failure==="network")throw Error("primary network failed");
+          return new Response("publisher unavailable",{status:Number(failure)});
+        }
+        if(url===alternate)return new Response(
+          '<rss><channel><item><title>India security council ceasefire review</title>'+
+          '<pubDate>Sun, 11 Oct 2026 07:00:00 GMT</pubDate>'+
+          '<link>https://news.un.org/en/story/2026/10/1150000</link>'+
+          '</item></channel></rss>');
+        return upstream(url);
+      }) as unknown as typeof fetch;
+      const result=await discoverOnDemandForPrivateQualification({
+        country_iso3:"IND",categories:["geopolitics"],
+      },{fetchImpl:recovering,now});
+      expect(seen.filter(x=>x===primary)).toHaveLength(1);
+      expect(seen.filter(x=>x===alternate)).toHaveLength(1);
+      expect(result.discovery.network_attempts).toBe(5);
+      expect(result.discovery.source_probes.filter(x=>x.family==="un_news_original_publisher")).toHaveLength(1);
+      expect(result.private_candidates.some(x=>x.publisher_family==="un_news_original_publisher")).toBe(true);
+      expect(result.discovery.payable).toBe(false);
+      expect(result.discovery.settlement_attempted).toBe(false);
+    }
+  });
+
+
+  it("enforces twelve real discovery requests even with optional approved ReliefWeb and UN failure",async()=>{
+    const original=process.env.RELIEFWEB_APPROVED_APPNAME;
+    process.env.RELIEFWEB_APPROVED_APPNAME="GeomacroApprovedTestOnly";
+    try {
+      const seen:string[]=[];
+      const guarded=vi.fn(async (request:RequestInfo|URL)=>{
+        const url=String(request);seen.push(url);
+        if(url==="https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml")
+          throw Error("primary transport unavailable");
+        return upstream(url);
+      }) as unknown as typeof fetch;
+      const result=await discoverOnDemandForPrivateQualification({
+        country_iso3:"IND",categories:["geopolitics","macro","rare_earth"],
+      },{fetchImpl:guarded,now});
+      expect(result.discovery.network_attempts).toBe(12);
+      expect(seen).toHaveLength(12);
+      expect(seen).not.toContain("https://news.un.org/feed/subscribe/en/news/all/rss.xml");
+      expect(result.discovery.payable).toBe(false);
+      expect(result.discovery.settlement_attempted).toBe(false);
+    } finally {
+      if(original===undefined)delete process.env.RELIEFWEB_APPROVED_APPNAME;
+      else process.env.RELIEFWEB_APPROVED_APPNAME=original;
+    }
+  });
+
+  it("does not bypass UN auth/rate denials, or retry malformed 200 XML and stale articles",async()=>{
+    const primary="https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml";
+    const alternate="https://news.un.org/feed/subscribe/en/news/all/rss.xml";
+    for(const failure of ["401","403","429","bad-xml"]) {
+      const seen:string[]=[];
+      const blocked=vi.fn(async(request:RequestInfo|URL)=>{
+        const url=String(request);seen.push(url);
+        if(url===primary) return failure==="bad-xml"
+          ? new Response("<html>not an RSS feed</html>")
+          : new Response("upstream denied",{status:Number(failure)});
+        return upstream(url);
+      }) as unknown as typeof fetch;
+      const result=await discoverOnDemandForPrivateQualification({
+        country_iso3:"IND",categories:["geopolitics"],
+      },{fetchImpl:blocked,now});
+      expect(seen.filter(x=>x===alternate)).toHaveLength(0);
+      expect(result.discovery.network_attempts).toBe(4);
+      expect(result.private_candidates.some(x=>x.publisher_family==="un_news_original_publisher")).toBe(false);
+      expect(result.discovery.payable).toBe(false);
+    }
+  });
+
   it("rejects future original feed dates rather than treating retrieval as native publication",async()=>{
     const proof=await discoverOnDemandForPrivateQualification({
       country_iso3:"IND",categories:["rare_earth","geopolitics"],
