@@ -155,6 +155,19 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
     topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|neodymium|dysprosium|terbium|mineral (?:supply|production|processing|trade)|mining|strategic minerals?)\b/iu,
   }),
+  // Official ECB RSS press-releases feed, documented at
+  // https://www.ecb.europa.eu/home/html/rss.en.html
+  // ECB is independently authored vs US Fed and Statistics Canada. This is
+  // only free first-party discovery, NOT a license or same-event proof.
+  Object.freeze({
+    id:"ecb_press_original_rss_review",
+    domain:"macro",kind:"original_publisher_central_bank_press_release",
+    url:"https://www.ecb.europa.eu/rss/press.html",
+    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.ecb.europa.eu"]),
+    topic:/\b(?:monetary policy|interest rates?|inflation|economic growth|financial stability|exchange rates?|liquidity|euro area|central bank|bank supervision|balance of payments|market operations)\b/iu,
+  }),
 ]);
 
 const XML_MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
@@ -169,6 +182,7 @@ const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
   nrcan_government_news_original_atom_review:"natural_resources_canada",
   uk_fcdo_original_foreign_policy_atom_review:"uk_fcdo",
   fed_monetary_original_press_rss_review:"federal_reserve",
+  ecb_press_original_rss_review:"ecb",
   usgs_minerals_original_news_rss_review:"usgs",
   australia_industry_minister_original_rss_review:"australian_industry_minister",
   uk_dbt_critical_minerals_atom_pending_review:"uk_dbt",
@@ -183,6 +197,8 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
   uk_fcdo_original_foreign_policy_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
   fed_monetary_original_press_rss_review:/^\/newsevents\/pressreleases\/[A-Za-z0-9][^/?#]*/u,
+  // Only actual ECB first-party original release pages, never RSS indexes.
+  ecb_press_original_rss_review:/^\/press\/(?:pr|key)\/date\/20[0-9]{2}\/html\/[a-zA-Z0-9.~_-]{6,190}\.html$/u,
   usgs_minerals_original_news_rss_review:/^\/(?:news|programs\/mineral-resources-program\/news)(?:\/|$)/u,
   australia_industry_minister_original_rss_review:/^\/(?:t-ayres|king)\/media\//u,
   uk_dbt_critical_minerals_atom_pending_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
