@@ -18,7 +18,6 @@ const ALLOWED=new Set([
   "uk_dbt_critical_minerals_atom_pending_review",
 ]);
 const DOMAINS=new Set(["geopolitics","macro","rare_earth"]);
-const HOSTS=new Map();
 function firstPartySource(source) {
   return source && ALLOWED.has(source.id) &&
     DOMAINS.has(source.domain) && source.media==="atom" &&
