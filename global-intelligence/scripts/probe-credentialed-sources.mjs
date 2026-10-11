@@ -1,28 +1,89 @@
-import {probeCredentialedSource} from "../adapters/credentialed-sources.mjs";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { probeCredentialedSource } from "../adapters/credentialed-sources.mjs";
 
-const sources = ["bls","bea","alpha_vantage","eia_api_v2","noaa_ncei","wto_timeseries","opensanctions"];
-const results = [];
+// The public/source-catalog entry is not proof of a configured account or a
+// successful response. Probe each configured account INDEPENDENTLY so that
+// one absent API key cannot suppress valid feeds in the other two domains.
+export const CREDENTIALED_SOURCE_ACCOUNTS = Object.freeze([
+  Object.freeze({id:"bls",category:"MACRO",env:"BLS_API_KEY"}),
+  Object.freeze({id:"bea",category:"MACRO",env:"BEA_API_KEY"}),
+  Object.freeze({id:"alpha_vantage",category:"MACRO",env:"ALPHA_VANTAGE_API_KEY"}),
+  Object.freeze({id:"eia_api_v2",category:"CRITICAL_MINERALS",env:"EIA_API_KEY"}),
+  Object.freeze({id:"noaa_ncei",category:"GEOPOLITICS",env:"NOAA_NCEI_TOKEN"}),
+  Object.freeze({id:"wto_timeseries",category:"MACRO",env:"WTO_API_KEY"}),
+  Object.freeze({id:"opensanctions",category:"GEOPOLITICS",env:"OPENSANCTIONS_API_KEY"}),
+]);
 
-for (const source of sources) {
-  const started = Date.now();
+export async function probeConfiguredCredentialedSources({
+  env=process.env, probe=probeCredentialedSource, now=()=>new Date(),
+}={}) {
+  const started=now();
+  if (!(started instanceof Date) || !Number.isFinite(started.getTime()))
+    throw Error("CREDENTIALED_PROBE_CLOCK_INVALID");
+  const results=[];
+  for (const source of CREDENTIALED_SOURCE_ACCOUNTS) {
+    // Never log, return, store or include the secret value in errors.
+    if (typeof env[source.env]!=="string" || !env[source.env].trim()) {
+      results.push({source_id:source.id,category:source.category,
+        status:"CREDENTIAL_NOT_CONFIGURED",requires_secret:source.env,
+        http_probed:false});
+      continue;
+    }
+    try {
+      const observation=await probe(source.id);
+      if (observation?.category!==source.category ||
+          observation?.source_id!==source.id) throw Error("BAD_OBSERVATION");
+      results.push({source_id:source.id,category:source.category,
+        status:"WORKING_RESPONSE_VALIDATED",http_probed:true});
+    } catch {
+      // The upstream adapter error could include a token in query params:
+      // NEVER forward error.message, raw URL/body, stack or credentials.
+      results.push({source_id:source.id,category:source.category,
+        status:"CONFIGURED_BUT_PROBE_FAILED",http_probed:true,
+        reason:"UPSTREAM_UNAVAILABLE_OR_RESPONSE_INVALID"});
+    }
+  }
+  const counts={
+    configured:results.filter(x=>x.http_probed).length,
+    working:results.filter(x=>x.status==="WORKING_RESPONSE_VALIDATED").length,
+    missing_credentials:results.filter(x=>x.status==="CREDENTIAL_NOT_CONFIGURED").length,
+    configured_failed:results.filter(x=>x.status==="CONFIGURED_BUT_PROBE_FAILED").length,
+  };
+  return {
+    schema:"geomacro.credentialed-source-isolated-readiness.v1",
+    observed_at:started.toISOString(),
+    mode:"READ_ONLY_BOUNDED_ACTUAL_ACCOUNT_PROBES",
+    status:counts.configured===0?"NO_CREDENTIALS_CONFIGURED":
+      counts.configured_failed>0?"CONFIGURED_SOURCES_DEGRADED":
+      counts.missing_credentials>0?"CONFIGURED_SOURCES_WORKING_PARTIAL":
+      "ALL_SEVEN_CONFIGURED_SOURCES_WORKING",
+    source_count:CREDENTIALED_SOURCE_ACCOUNTS.length,
+    ...counts,
+    per_domain:Object.fromEntries(["GEOPOLITICS","MACRO","CRITICAL_MINERALS"].map(domain=>{
+      const rows=results.filter(x=>x.category===domain);
+      return [domain,{catalogued:rows.length,
+        configured:rows.filter(x=>x.http_probed).length,
+        working:rows.filter(x=>x.status==="WORKING_RESPONSE_VALIDATED").length}];
+    })),
+    // Probe success is NOT current news, consumer permission or paid rights.
+    private_observations_published:false,source_rights_approved:false,
+    current_scored_stories_proven:false,commercial_eligible:false,
+    supabase_writes:0,b2_requests:0,d1_writes:0,funds_touched:false,
+    results,
+  };
+}
+if(process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).href) {
   try {
-    const result = await probeCredentialedSource(source);
-    results.push({source_id:source,status:"PASS",latency_ms:Date.now()-started,category:result.category});
-  } catch (error) {
-    const message = String(error?.message || error).replace(/https?:\/\/\S+/g, "[redacted-url]");
-    results.push({source_id:source,status:"FAIL",latency_ms:Date.now()-started,error:message});
+    const receipt=await probeConfiguredCredentialedSources();
+    console.log(JSON.stringify(receipt,null,2));
+    // A missing unrelated key is an honest per-source BLOCKED row, not an
+    // excuse to abandon the other configured sources. A configured failed
+    // source (or no configured sources at all) remains an alert.
+    if(receipt.configured===0 || receipt.configured_failed>0)
+      process.exitCode=3;
+  } catch {
+    console.error("CREDENTIALED_SOURCE_RECEIPT_INVALID");
+    process.exitCode=2;
   }
 }
-
-const failed = results.filter(x=>x.status!=="PASS");
-console.log(JSON.stringify({
-  version:"1.0",
-  mode:"credentialed_source_runtime_probe",
-  generated_at:new Date().toISOString(),
-  source_count:sources.length,
-  passed:sources.length-failed.length,
-  failed:failed.length,
-  results
-},null,2));
-
-if (failed.length) process.exit(1);
