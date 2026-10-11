@@ -1,10 +1,36 @@
 import { getJson } from "./http.mjs";
 
 async function fetchText(url, headers={}) {
-  const res=await fetch(url,{headers:{accept:"*/*",...headers}});
-  const body=await res.text();
-  if(!res.ok) throw new Error(`HTTP ${res.status}: ${body.slice(0,300)}`);
-  if(!body.trim()) throw new Error("Empty response");
+  // Daily free-source monitoring must never download unlimited csv/xml pages
+  // or remain suspended indefinitely if a third-party provider hangs.
+  const res=await fetch(url,{
+    headers:{accept:"*/*",...headers},
+    signal:AbortSignal.timeout(15000),
+  });
+  if(!res.ok) throw new Error("PUBLIC_SOURCE_HTTP_"+res.status);
+  if(new URL(res.url).protocol!=="https:" ||
+     new URL(res.url).hostname!==new URL(url).hostname)
+    throw Error("PUBLIC_SOURCE_REDIRECT_UNVERIFIED");
+  const maxBytes=2*1024*1024;
+  if(Number(res.headers.get("content-length")||0)>maxBytes)
+    throw Error("PUBLIC_SOURCE_OVERSIZE");
+  if(!res.body)throw Error("PUBLIC_SOURCE_NO_BODY");
+  const reader=res.body.getReader(),chunks=[];
+  let size=0;
+  try {
+    for(;;){
+      const {done,value}=await reader.read();
+      if(done)break;
+      size+=value.byteLength;
+      if(size>maxBytes)throw Error("PUBLIC_SOURCE_OVERSIZE");
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    try{await reader.cancel();}catch{}
+    reader.releaseLock();
+  }
+  const body=new TextDecoder("utf-8",{fatal:true}).decode(Buffer.concat(chunks));
+  if(!body.trim())throw Error("PUBLIC_SOURCE_EMPTY_BODY");
   return body;
 }
 async function fetchJson(url, headers={}) { return getJson(url,{headers}); }

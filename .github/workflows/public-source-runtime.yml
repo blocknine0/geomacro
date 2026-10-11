@@ -1,15 +1,52 @@
 name: Public source runtime certification
-
 on:
   workflow_dispatch:
+  schedule:
+    # Low-volume public macro/geo/mineral baseline validation, once daily.
+    - cron: "13 5 * * *"
+  pull_request:
+    paths:
+      - ".github/workflows/public-source-runtime.yml"
+      - "global-intelligence/scripts/probe-public-sources.mjs"
+      - "global-intelligence/adapters/public-sources.mjs"
+      - "src/__tests__/public-source-scheduled-isolation.test.ts"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/public-source-runtime.yml"
+      - "global-intelligence/scripts/probe-public-sources.mjs"
+      - "global-intelligence/adapters/public-sources.mjs"
 
 permissions:
   contents: read
+concurrency:
+  group: public-source-runtime-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  static:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - name: Verify bounded public-source code and no storage writers
+        run: |
+          set -euo pipefail
+          node --check global-intelligence/scripts/probe-public-sources.mjs
+          node --check global-intelligence/adapters/public-sources.mjs
+          grep -q 'PUBLIC_SOURCE_OVERSIZE' global-intelligence/adapters/public-sources.mjs
+          grep -q 'SOME_PUBLIC_ADAPTERS_DEGRADED' global-intelligence/scripts/probe-public-sources.mjs
+
   public-source-runtime:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
     defaults:
       run:
         working-directory: global-intelligence
@@ -20,5 +57,31 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 22
-      - name: Probe public sources
-        run: npm run probe:public
+      - name: Independently check each actual public source adapter
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p ../artifacts/public-source-health
+          rc=0
+          node scripts/probe-public-sources.mjs > ../artifacts/public-source-health/receipt.json || rc=$?
+          node --input-type=module -e '
+            import {readFileSync} from "node:fs";
+            const r=JSON.parse(readFileSync("../artifacts/public-source-health/receipt.json","utf8"));
+            if(r.schema!=="geomacro.public-free-source-actual-health.v1" ||
+               r.adapter_count!==13 ||
+               r.results.length!==13 ||
+               r.commercial_eligible!==false ||
+               r.b2_requests!==0 || r.supabase_writes!==0)
+              process.exit(2);
+            console.log(JSON.stringify({status:r.status,working:r.working,
+              failed:r.failed,per_domain:r.per_domain}));
+          ' || exit 2
+          exit "$rc"
+      - name: Upload sanitized public-adapter health evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: public-source-health-${{ github.run_id }}
+          path: artifacts/public-source-health/receipt.json
+          if-no-files-found: warn
+          retention-days: 7
