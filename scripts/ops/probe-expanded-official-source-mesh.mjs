@@ -7,6 +7,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "../lib/official-original-article-date.mjs";
 import { originalPublisherPrivateCandidates, originalPublisherPrivatePageDateCandidate } from "../lib/private-original-publisher-candidates.mjs";
+import { officialOriginalRssArticleUrl } from "../lib/official-rss-original-link.mjs";
 import { isQuarantinedOfficialRoute, quarantinedOfficialSourceReceipt } from "../lib/official-source-quarantine.mjs";
 
 const MAX_BODY_BYTES=192*1024;
@@ -206,7 +207,7 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
     if(ms>now.getTime()){
       invalidOrFutureDate++;futureNativeDate++;continue;
     }
-    const originalLink=item.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/iu)?.[1]?.trim()??"";
+    const originalLink=officialOriginalRssArticleUrl(item,source)??"";
     if(!originalHref(originalLink,hosts,source)){
       rejectedOriginalLink++;
       const why=originalLinkRejectionKind(originalLink,hosts,source);
@@ -401,7 +402,7 @@ function undatedRssArticleCandidates(xml,source,{openDiscovery=false}={}) {
     if(/<pubDate(?:\s[^>]*)?>/iu.test(item))continue;
     const title=item.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/iu)?.[1]??"";
     if(!openDiscovery && !source.topic?.test(title))continue;
-    const href=item.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/iu)?.[1]?.trim()??"";
+    const href=officialOriginalRssArticleUrl(item,source)??"";
     if(originalHref(href,source.original_hosts,source))list.push(href);
     if(list.length>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
   }
