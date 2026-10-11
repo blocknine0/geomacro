@@ -63,20 +63,40 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
     if(/<(?:atom:)?published(?:\s[^>]*)?>/iu.test(item))continue;
     const title=titleHash(item);
     if(!title)continue;
+    let identity=null,identityKind=null;
     for(const link of item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)) {
       const attrs=link[1];
       const rel=attrs.match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
       if(!["alternate","canonical"].includes(rel))continue;
       const href=attrs.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1];
-      const identity=candidateUrl(href,source);
+      identity=candidateUrl(href,source);
       if(!identity)continue;
+      identityKind="FIRST_PARTY_LINK";
+      break;
+    }
+    if(!identity){
+      // Atom requires a stable entry <id>. It is an opaque identifier from
+      // a transport-validated FIRST-PARTY feed, NOT a fetchable article URL.
+      // E.g. StatCan feed links may be non-article publication/catalogue paths.
+      // This fallback is never allowed into verified current GRO delivery.
+      const raw=item.match(/<(?:atom:)?id(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?id>/iu)?.[1]?.trim();
+      if(typeof raw==="string"&&raw.length>=8&&raw.length<=768&&
+         !/<[^>]*>|\p{Cc}/u.test(raw)){
+        identity=source.id+"|atom-id|"+raw;
+        identityKind="OFFICIAL_ATOM_ENTRY_ID";
+      }
+    }
+    if(identity){
       const sha=digest(identity);
       if(!seen.has(sha)){
         seen.add(sha);
         records.push({
           schema:"geomacro.private-undated-first-party-observation.v1",
           domain:source.domain,source_id:source.id,
+          // Legacy SHA field is a PRIVATE feed identity; if ID-backed it is
+          // NOT an approved original URL or evidence that an article exists.
           original_link_sha256:sha,headline_sha256:title,
+          feed_entry_identity_kind:identityKind,
           first_seen_at:now.toISOString(),
           publication_clock_status:"UNKNOWN",
           original_article_path_verified:false,
@@ -86,7 +106,6 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
           eligible_for_scoring:false,eligible_for_publication:false,
         });
       }
-      break;
     }
   }
   return records;
