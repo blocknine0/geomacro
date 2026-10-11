@@ -54,7 +54,7 @@ function trustedReaderConfig(): { url: string; token: string } | null {
     const url = new URL(endpoint);
     if (url.protocol !== "https:" || url.username || url.password ||
         url.search || url.hash || !url.hostname.includes(".") ||
-        url.hostname === "localhost" || /^(?:127\\.|10\\.|192\\.168\\.|169\\.254\\.|172\\.(?:1[6-9]|2[0-9]|3[01])\\.)/.test(url.hostname) ||
+        url.hostname === "localhost" || /^(?:127\.|10\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)/.test(url.hostname) ||
         url.pathname !== "/v1/private/telegram/lookup") return null;
     return { url: url.toString(), token };
   } catch {
