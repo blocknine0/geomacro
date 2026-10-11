@@ -9,7 +9,7 @@ on:
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
   schedule:
-    # Once per day: max 12 bounded read-only upstream calls; no B2/D1/funding.
+    # Once per day: max 12 discovery + 4 original-page read-only calls; no B2/D1/funding.
     - cron: "23 8 * * *"
 
 permissions:
