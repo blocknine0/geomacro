@@ -52,7 +52,17 @@ export function bindCategoryAliasPayload(
     }
   }
 
-  const payload = { ...body, topics: [...config.topics] };
+  // Category-specific question APIs are the canonical *on-demand* product.
+  // The legacy canonical query endpoint still defaults to published_only;
+  // an explicitly selected published_only request remains byte-for-byte
+  // compatible with its existing payment-bound query plan. Incomplete live
+  // discovery stays no-charge and cannot become a paid signed result.
+  const payload = {
+    ...body,
+    topics: [...config.topics],
+    fulfillment_mode: body.fulfillment_mode === undefined
+      ? "live_on_demand" : body.fulfillment_mode,
+  };
   try {
     const plan = buildAgentQueryPlan(payload);
     const modules = [...plan.required_modules].sort();
