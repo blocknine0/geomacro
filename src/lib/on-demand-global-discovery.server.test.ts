@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { discoverOnDemandGlobal, discoverOnDemandForPrivateQualification } from "./on-demand-global-discovery.server";
+import {
+  discoverOnDemandGlobal, discoverOnDemandForPrivateQualification,
+  inferOnDemandMineral,
+} from "./on-demand-global-discovery.server";
 import { buildAgentQueryPlan } from "./agent-query-plan";
 
 const now = new Date("2026-10-11T12:00:00.000Z");
@@ -273,5 +276,63 @@ describe("fair private source evidence under publisher flood",()=>{
     expect(new Set(result.private_candidates.map(x=>x.domain)))
       .toEqual(new Set(["geopolitics","macro","rare_earth"]));
     expect(result.private_candidates.every(x=>!x.paid_delivery_allowed)).toBe(true);
+  });
+});
+
+describe("simplified commodity-aware on-demand routing", () => {
+  it("extracts only fixed mineral vocabulary without forwarding a freeform question", () => {
+    expect(inferOnDemandMineral("What is the current lithium supply risk in China?")).toBe("lithium");
+    expect(inferOnDemandMineral("Rare-earth export restrictions")).toBe("rare earth");
+    expect(inferOnDemandMineral("What is the macro risk?")).toBeNull();
+    expect(() => inferOnDemandMineral("Compare lithium and cobalt supply"))
+      .toThrow("ON_DEMAND_MULTIPLE_MINERALS_UNSUPPORTED");
+  });
+
+  it("reuses the same global providers but narrows mineral news and first-party evidence", async () => {
+    const urls: string[] = [];
+    const captured = vi.fn(async (url: RequestInfo | URL) => {
+      urls.push(String(url));
+      return upstream(String(url));
+    }) as unknown as typeof fetch;
+    const lithium = await discoverOnDemandForPrivateQualification({
+      country_iso3: "IND", categories: ["rare_earth"], mineral: "lithium",
+    }, {fetchImpl: captured, now});
+    const broad = await discoverOnDemandForPrivateQualification({
+      country_iso3: "IND", categories: ["rare_earth"],
+    }, {fetchImpl: captured, now});
+    const cobalt = await discoverOnDemandForPrivateQualification({
+      country_iso3: "IND", categories: ["rare_earth"], mineral: "cobalt",
+    }, {fetchImpl: captured, now});
+
+    expect(lithium.discovery.network_attempts).toBe(4);
+    expect(lithium.private_candidates).toHaveLength(2);
+    expect(lithium.private_candidates.every((c) => c.article_title.toLowerCase().includes("lithium")))
+      .toBe(true);
+    expect(cobalt.private_candidates).toHaveLength(0);
+    expect(lithium.discovery.query_fingerprint_sha256).not.toBe(broad.discovery.query_fingerprint_sha256);
+    expect(lithium.discovery.query_fingerprint_sha256).not.toBe(cobalt.discovery.query_fingerprint_sha256);
+    const queries = urls.filter((url) => url.includes("api.gdeltproject.org")).map((url) =>
+      new URL(url).searchParams.get("query"));
+    expect(queries).toContain('"India" AND "lithium"');
+    expect(queries).toContain('"India" AND "cobalt"');
+    expect(urls.every((url) => !url.includes("current%20lithium%20supply"))).toBe(true);
+    for (const proof of [lithium, broad, cobalt]) {
+      expect(proof.discovery.payable).toBe(false);
+      expect(proof.discovery.signed_derived_intelligence_created).toBe(false);
+      expect(proof.discovery.supabase_requests).toBe(0);
+      expect(proof.discovery.b2_requests).toBe(0);
+      expect(proof.private_candidates.every((candidate) => !candidate.paid_delivery_allowed)).toBe(true);
+    }
+  });
+
+  it("rejects unsupported commodity scopes before performing any network call", async () => {
+    const upstreamSpy = vi.fn(async () => { throw Error("should not fetch"); }) as unknown as typeof fetch;
+    await expect(discoverOnDemandGlobal({
+      country_iso3: "IND", categories: ["macro"], mineral: "lithium",
+    }, {fetchImpl: upstreamSpy, now})).rejects.toThrow("ON_DEMAND_MINERAL_SCOPE_INVALID");
+    await expect(discoverOnDemandGlobal({
+      country_iso3: "IND", categories: ["rare_earth"], mineral: "unknown" as never,
+    }, {fetchImpl: upstreamSpy, now})).rejects.toThrow("ON_DEMAND_MINERAL_SCOPE_INVALID");
+    expect(upstreamSpy).not.toHaveBeenCalled();
   });
 });
