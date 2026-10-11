@@ -4,6 +4,17 @@
 export const B2_DAILY_LIMITS = Object.freeze({
   total: 80, GET: 25, PUT: 55, HEAD: 10, NATIVE_AUTH: 10,
 });
+// Production receipt 2026-10-11: all 25 shared GET reservations came from
+// intelligence_public_edge, leaving zero tickets for B2 full readback of
+// new private scored evidence. Bound ALL public read edges together by the
+// same account-wide counter, preserving 13 GET attempts for signed producers.
+// This is an allocation cap, not a claim that Backblaze provider quota exists.
+export const B2_PUBLIC_EDGE_GET_CEILING = 12;
+const PUBLIC_READ_EDGES = new Set([
+  "intelligence_public_edge",
+  "global_risk_public_edge",
+  "risk_indices_public_edge",
+]);
 const KINDS = Object.freeze(["GET", "PUT", "HEAD", "NATIVE_AUTH"]);
 const WORKFLOW = /^[a-z][a-z0-9_-]{1,47}$/u;
 const COL = Object.freeze({
@@ -29,6 +40,9 @@ WHERE b2_account_daily_request_quota.total_requests < ?
   AND b2_account_daily_request_quota.put_requests + excluded.put_requests <= ?
   AND b2_account_daily_request_quota.head_requests + excluded.head_requests <= ?
   AND b2_account_daily_request_quota.native_auth_requests + excluded.native_auth_requests <= ?
+  -- A single atomic account-wide public-edge ceiling prevents cold-cache
+  -- public reads from consuming tickets needed to read back new signed data.
+  AND (? = 0 OR b2_account_daily_request_quota.get_requests + excluded.get_requests <= ?)
 RETURNING total_requests,get_requests,put_requests,head_requests,native_auth_requests
 `;
 
@@ -66,6 +80,8 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
     day, ...increments, iso,
     B2_DAILY_LIMITS.total,B2_DAILY_LIMITS.GET,B2_DAILY_LIMITS.PUT,
     B2_DAILY_LIMITS.HEAD,B2_DAILY_LIMITS.NATIVE_AUTH,
+    Number(kind === "GET" && PUBLIC_READ_EDGES.has(workflowId)),
+    B2_PUBLIC_EDGE_GET_CEILING,
   ).first();
   // If the UPSERT's WHERE failed, *no B2 operation* is authorized.
   if (!row) return {
