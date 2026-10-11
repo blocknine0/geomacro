@@ -433,10 +433,18 @@ async function originalOfficialFeed(
  */
 export function deduplicateOnDemandOriginalHeadlines(
   candidates:readonly PrivateOriginalCandidate[],
-):{unique_candidates:PrivateOriginalCandidate[];duplicate_headlines_removed:number}{
+):{
+  unique_candidates:PrivateOriginalCandidate[];
+  // Different original articles remain eligible for independent PRIVATE
+  // page-date/claim review, even when the public story is deduplicated.
+  // Same-title syndication NEVER counts as independent confirmation.
+  original_review_candidates:PrivateOriginalCandidate[];
+  duplicate_headlines_removed:number;
+}{
   if(candidates.length>16)throw Error("ON_DEMAND_PRIVATE_CANDIDATE_BUDGET_INVALID");
   const unique_candidates:PrivateOriginalCandidate[]=[];
   let duplicate_headlines_removed=0;
+  const original_review_candidates:PrivateOriginalCandidate[]=[];
   const headline=(title:string)=>
     title.normalize("NFKC").toLocaleLowerCase("en-US")
       .replace(/\s+/gu," ").trim();
@@ -447,6 +455,7 @@ export function deduplicateOnDemandOriginalHeadlines(
        !/^[a-f0-9]{64}$/.test(item.article_identity_sha256) ||
        item.paid_delivery_allowed!==false || item.signed_gro_verified!==false)
       continue;
+    original_review_candidates.push(item);
     const duplicate=unique_candidates.some(previous=>
       previous.domain===item.domain &&
       headline(previous.article_title)===headline(item.article_title) &&
@@ -454,7 +463,7 @@ export function deduplicateOnDemandOriginalHeadlines(
     if(duplicate)duplicate_headlines_removed++;
     else unique_candidates.push(item);
   }
-  return {unique_candidates,duplicate_headlines_removed};
+  return {unique_candidates,original_review_candidates,duplicate_headlines_removed};
 }
 
 /** Never returns upstream text, URLs or source identities for paid output. */
@@ -464,6 +473,8 @@ async function discoverOnDemandImpl(
 ): Promise<{
   discovery:OnDemandDiscovery;
   private_candidates:PrivateOriginalCandidate[];
+  // Strictly private independent original pages; never return in discovery.
+  private_original_review_candidates:PrivateOriginalCandidate[];
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
 }> {
@@ -553,6 +564,7 @@ async function discoverOnDemandImpl(
   };
   return {
     discovery,private_candidates:grouped.unique_candidates,
+    private_original_review_candidates:grouped.original_review_candidates,
     duplicate_original_headline_count:grouped.duplicate_headlines_removed,
     private_macro_changes,
   };
@@ -667,6 +679,7 @@ export async function discoverOnDemandForPrivateQualification(
 ):Promise<{
   discovery:OnDemandDiscovery;
   private_candidates:PrivateOriginalCandidate[];
+  private_original_review_candidates:PrivateOriginalCandidate[];
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
 }>{
