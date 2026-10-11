@@ -37,7 +37,10 @@ import {
 } from "./coinbase-x402-usage-guard.server";
 import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.server";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
-import { discoverOnDemandForPrivateQualification, type OnDemandCategory } from "./on-demand-global-discovery.server";
+import {
+  discoverOnDemandForPrivateQualification, inferOnDemandMineral,
+  type OnDemandCategory,
+} from "./on-demand-global-discovery.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const PRODUCT_ID = "geomacro_adaptive_risk_intelligence_v1";
@@ -337,11 +340,25 @@ export const mainnetIntelligenceHandlers = {
               execution_authorized:false,
             },422);
           }
+          // Query-specific commodity routing uses only fixed identifiers.
+          // Ambiguous multi-mineral requests require a scoped query instead of
+          // returning unrelated articles as intelligence for one commodity.
+          let mineral;
+          try {
+            mineral=categories.includes("rare_earth")
+              ? inferOnDemandMineral(plan.question_key) : null;
+          } catch {
+            return json({
+              ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"ON_DEMAND_MULTIPLE_MINERALS_UNSUPPORTED"},
+              execution_authorized:false,
+            },422);
+          }
           let discovery;
           let privatelyQualifiedOriginalCandidateCount=0;
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
-              country_iso3:subject.country_iso3,categories,
+              country_iso3:subject.country_iso3,categories,mineral,
             });
             discovery=privateResult.discovery;
             // NEVER copy privateResult.private_candidates into the public

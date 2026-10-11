@@ -11,6 +11,8 @@ export type OnDemandCategory = "geopolitics" | "macro" | "rare_earth";
 export type OnDemandSearchInput = {
   country_iso3: string;
   categories: OnDemandCategory[];
+  // Optional fixed vocabulary, never the raw customer question.
+  mineral?: OnDemandMineral | null;
 };
 /**
  * PRIVATE EPHEMERAL EVIDENCE ONLY: never put this in response JSON or
@@ -70,6 +72,26 @@ const SEARCH_TERMS: Record<OnDemandCategory, string> = {
   macro: "(inflation OR central bank OR exchange rate OR monetary policy)",
   rare_earth: "(critical minerals OR rare earth OR lithium OR cobalt)",
 };
+// Only these fixed identifiers may affect upstream search terms. The customer's
+// freeform question is never forwarded to a publisher or search provider.
+const MINERAL_TERMS = [
+  { value: "lithium", pattern: /\blithium\b/iu },
+  { value: "cobalt", pattern: /\bcobalt\b/iu },
+  { value: "nickel", pattern: /\bnickel\b/iu },
+  { value: "graphite", pattern: /\bgraphite\b/iu },
+  { value: "copper", pattern: /\bcopper\b/iu },
+  { value: "rare earth", pattern: /\brare[- ]earths?\b/iu },
+] as const;
+export type OnDemandMineral = (typeof MINERAL_TERMS)[number]["value"];
+
+/** Lightweight deterministic query routing; never claim this is AI analysis. */
+export function inferOnDemandMineral(question: string | null | undefined): OnDemandMineral | null {
+  if (!question) return null;
+  const matches = MINERAL_TERMS.filter((term) => term.pattern.test(question));
+  if (matches.length > 1) throw Error("ON_DEMAND_MULTIPLE_MINERALS_UNSUPPORTED");
+  return matches[0]?.value ?? null;
+}
+
 const MAX_BODY_BYTES = 192 * 1024;
 const TIMEOUT_MS = 5_000;
 
@@ -154,11 +176,12 @@ async function countryName(country: string, fetchImpl: typeof fetch) {
 }
 async function gdelt(
   category: OnDemandCategory, countryNameValue: string, fetchImpl: typeof fetch,
+  mineral: OnDemandMineral | null,
 ): Promise<SourceProbe> {
   // GDELT is a discovery INDEX. Its "seendate" is NEVER original publication
   // and third-party discovery NEVER proves independent event corroboration.
   const q = '"' + countryNameValue.replace(/"/g,"") + '" AND ' +
-    SEARCH_TERMS[category];
+    (category === "rare_earth" && mineral ? '"' + mineral + '"' : SEARCH_TERMS[category]);
   const params = new URLSearchParams({
     query:q,mode:"ArtList",format:"json",maxrecords:"10",
     sort:"DateDesc",timespan:"24h",
@@ -280,7 +303,7 @@ function originalArticleUrl(value:string, def:OriginalFeed):string|null {
 type OriginalFeedResult={probe:SourceProbe;private_candidates:PrivateOriginalCandidate[]};
 async function originalOfficialFeed(
   def:OriginalFeed,countryNameValue:string,
-  fetchImpl:typeof fetch,now:Date,
+  fetchImpl:typeof fetch,now:Date,mineral:OnDemandMineral|null,
 ):Promise<OriginalFeedResult>{
   const xml=await boundedFetch(fetchImpl,def.url,
     "application/rss+xml,application/atom+xml,application/xml");
@@ -299,8 +322,12 @@ async function originalOfficialFeed(
     const date=atom
       ? /<(?:atom:)?published(?:\s[^>]*)?>([^<]+)<\/(?:atom:)?published>/iu.exec(entry)?.[1] ?? ""
       : /<pubDate(?:\s[^>]*)?>([^<]+)<\/pubDate>/iu.exec(entry)?.[1] ?? "";
+    // A different mineral's article must not qualify as evidence for this
+    // query just because both are under the broad Critical Minerals topic.
+    const mineralMatches = !mineral || def.domain !== "rare_earth" ||
+      MINERAL_TERMS.some((term) => term.value === mineral && term.pattern.test(title));
     if (!title.toLowerCase().includes(countryNameValue.toLowerCase()) ||
-        !def.topic.test(title) || !freshPublished(date,now)) continue;
+        !def.topic.test(title) || !mineralMatches || !freshPublished(date,now)) continue;
     let href="";
     if(atom){
       const links=[...entry.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)];
@@ -352,6 +379,11 @@ async function discoverOnDemandImpl(
       new Set(input.categories).size !== input.categories.length)
     throw Error("ON_DEMAND_CATEGORIES_INVALID");
   const categories = [...input.categories].sort();
+  const mineral = input.mineral ?? null;
+  if (mineral !== null &&
+      (!categories.includes("rare_earth") ||
+       !MINERAL_TERMS.some((term) => term.value === mineral)))
+    throw Error("ON_DEMAND_MINERAL_SCOPE_INVALID");
   // Always bound fan-out; missing country metadata is not substituted by an
   // ungrounded guessed country name.
   let name: string;
@@ -359,14 +391,14 @@ async function discoverOnDemandImpl(
   catch { name = ""; }
   const tasks: Array<{name:string;run:()=>Promise<SourceProbe|OriginalFeedResult>}> = [];
   if (name) for (const category of categories) {
-    tasks.push({name:"gdelt_doc_discovery",run:()=>gdelt(category,name,fetchImpl)});
+    tasks.push({name:"gdelt_doc_discovery",run:()=>gdelt(category,name,fetchImpl,mineral)});
     if (category==="geopolitics")
       tasks.push({name:"reliefweb_discovery",run:()=>reliefWeb(name,fetchImpl,now)});
   }
   if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
     if (categories.includes(source.domain)) tasks.push({
       name:source.family,
-      run:()=>originalOfficialFeed(source,name,fetchImpl,now),
+      run:()=>originalOfficialFeed(source,name,fetchImpl,now,mineral),
     });
   }
   if (categories.includes("macro")) for (const indicator of [
@@ -407,7 +439,9 @@ async function discoverOnDemandImpl(
     country_iso3:country,categories,checked_at:now.toISOString(),
     searched_in_parallel:true,network_attempts:tasks.length+1,
     reached_source_families:reached,source_probes,
-    query_fingerprint_sha256:digest(JSON.stringify([country,categories])),
+    // Preserve existing fingerprints for country/category-only requests.
+    query_fingerprint_sha256:digest(JSON.stringify(mineral
+      ? [country,categories,mineral] : [country,categories])),
     status:reached>0?"DISCOVERY_OBSERVED_NOT_YET_VERIFIED":"DISCOVERY_DEGRADED",
     independent_same_event_corroboration_verified:false,
     source_derived_commercial_rights_verified:false,
