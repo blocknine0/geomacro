@@ -296,6 +296,18 @@ export const mainnetIntelligenceHandlers = {
         // cannot claim commercial-ready status from a search-index hit.
         // No funds, raw data, Supabase or B2 are involved in this lane.
         if (plan.fulfillment_mode === "live_on_demand") {
+          // This discovery product has provider fanout and therefore a far
+          // smaller free-tier budget than ordinary stored-state API reads.
+          if (!allowPublicDemoRequest(request,{
+            namespace:"geomacro-live-on-demand-discovery",
+            windowMs:60_000,maxPerClient:2,maxGlobal:12,
+          })) {
+            return json({
+              ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"ON_DEMAND_PROVIDER_BUDGET_RATE_LIMITED"},
+              execution_authorized:false,
+            },429);
+          }
           const subject = plan.subjects[0];
           if (plan.subjects.length !== 1 || subject.type !== "country" ||
               plan.as_of !== null ||
