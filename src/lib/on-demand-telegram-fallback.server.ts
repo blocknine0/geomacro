@@ -40,9 +40,9 @@ function isReaderReply(value: unknown): value is ReaderReply {
     row.schema === "geomacro.private-telegram-query-receipt.v1" &&
     row.authorization_checked === true && row.source_text_retained === false &&
     row.commercial_eligible === false &&
-    Number.isSafeInteger(row.searched_channel_count) &&
+    typeof row.searched_channel_count === "number" && Number.isSafeInteger(row.searched_channel_count) &&
     Number(row.searched_channel_count) >= 0 && Number(row.searched_channel_count) <= 3 &&
-    Number.isSafeInteger(row.unverified_lead_count) &&
+    typeof row.unverified_lead_count === "number" && Number.isSafeInteger(row.unverified_lead_count) &&
     Number(row.unverified_lead_count) >= 0 && Number(row.unverified_lead_count) <= 60;
 }
 
@@ -84,7 +84,7 @@ export async function lookupTelegramFallback(input: {
       body: JSON.stringify({ schema: "geomacro.private-telegram-query.v1",
         country_iso3: input.country_iso3, categories: input.categories,
         max_channels: 3, max_messages_per_channel: 20, max_hours: 6 }),
-      signal: AbortSignal.timeout(2500),
+      signal: AbortSignal.timeout(9000),
     });
     if (!response.ok || response.headers.get("content-type")?.split(";")[0]?.trim() !== "application/json" ||
         Number(response.headers.get("content-length") ?? "0") > 2048)
