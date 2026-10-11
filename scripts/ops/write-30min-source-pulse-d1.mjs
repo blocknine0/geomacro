@@ -69,6 +69,9 @@ export function projectSourcePulseForD1(report) {
           ?row.source_item_provenance_diagnostics:[],
         source_feed_recovery_diagnostics:Array.isArray(row.source_feed_recovery_diagnostics)
           ?row.source_feed_recovery_diagnostics:[],
+        // Include failed publisher probes, never unsanitized network errors.
+        source_transport_failures:Array.isArray(row.source_transport_failures)
+          ?row.source_transport_failures:[],
         publisher_pair_sample_complete:row.publisher_pair_sample_complete===true,
         original_publishers_attempted:Number.isInteger(row.original_publishers_attempted)
           ?row.original_publishers_attempted:null,
@@ -164,6 +167,8 @@ export async function write30MinSourcePulseToD1({
          JSON.stringify(row.metadata.source_item_provenance_diagnostics) ||
        JSON.stringify(stored?.payload?.source_feed_recovery_diagnostics)!==
          JSON.stringify(row.metadata.source_feed_recovery_diagnostics) ||
+       JSON.stringify(stored?.payload?.source_transport_failures)!==
+         JSON.stringify(row.metadata.source_transport_failures) ||
        stored?.payload?.undated_first_party_feed_observed_count!==
          row.metadata.undated_first_party_feed_observed_count ||
        stored?.payload?.undated_feed_publication_verified!==false ||
