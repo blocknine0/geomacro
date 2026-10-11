@@ -364,6 +364,7 @@ export const mainnetIntelligenceHandlers = {
           }
           let discovery;
           let privatelyQualifiedOriginalCandidateCount=0;
+          let duplicatePrivateOriginalHeadlines=0;
           let articlePageChecks=0;
           let articleDatesVerified=0;
           let privateOfficialAnnualChanges=0;
@@ -381,6 +382,7 @@ export const mainnetIntelligenceHandlers = {
             // response/ledger/x402 quote; article-page publication, rights
             // and independent same-event verification are not yet complete.
             privatelyQualifiedOriginalCandidateCount=privateResult.private_candidates.length;
+            duplicatePrivateOriginalHeadlines=privateResult.duplicate_original_headline_count;
             // Annual official change is useful structural evidence, NOT current
             // news, source rights, an issued risk score, or paid intelligence.
             privateOfficialAnnualChanges=privateResult.private_macro_changes.length;
@@ -432,6 +434,7 @@ export const mainnetIntelligenceHandlers = {
               reached_source_families:discovery.reached_source_families,
               discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
               private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
+              duplicate_original_headlines_suppressed:duplicatePrivateOriginalHeadlines,
               private_official_annual_change_count:privateOfficialAnnualChanges,
               private_annual_directional_macro_driver_count:privateAnnualDirectionalDrivers,
               private_annual_macro_rights_status:privateAnnualMacroRightsStatus,
