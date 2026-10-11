@@ -9,6 +9,7 @@ import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {createD1ControlPlaneStateClient} from "../lib/d1-control-plane-state.mjs";
 import {reconcile30mPrivateArticleFingerprints} from "../lib/private-original-cross-poll-dedupe.mjs";
+import {reconcileUndatedPrivateFeedObservations} from "../lib/private-undated-feed-dedup.mjs";
 
 const DOMAINS=["geopolitics","macro","rare_earth"];
 function validCount(value) {return Number.isSafeInteger(value)&&value>=0&&value<=1000;}
@@ -58,6 +59,10 @@ export function projectSourcePulseForD1(report) {
           validCount(row.original_publisher_all_topics_7d_count)
             ?row.original_publisher_all_topics_7d_count:null,
         open_observation_is_commercial_intelligence:false,
+        undated_first_party_feed_observed_count:
+          validCount(row.undated_first_party_feed_observed_count)
+            ?row.undated_first_party_feed_observed_count:0,
+        undated_feed_publication_verified:false,
         // Per-issuer sanitized numeric parsing counters. A null means not
         // sampled/proven, NEVER "there are zero events worldwide".
         source_item_provenance_diagnostics:Array.isArray(row.source_item_provenance_diagnostics)
@@ -105,6 +110,7 @@ export async function write30MinSourcePulseToD1({
   // no raw article bodies/URLs/titles or signed paid data enter this ledger.
   const previousRows=await client.loadRows();
   const privateDedup=new Map();
+  const undatedDedup=new Map();
   for(const row of rows){
     const original=report.actual_original_publisher_rows.find(x=>x.domain===row.domain);
     const prior=previousRows.get(row.domain)?.payload?.recent_private_article_fingerprints;
@@ -114,6 +120,12 @@ export async function write30MinSourcePulseToD1({
       previousHistory:prior,
     });
     privateDedup.set(row.domain,result);
+    const feedResult=reconcileUndatedPrivateFeedObservations({
+      domain:row.domain,checkedAt:row.checked_at,
+      observations:original?.private_undated_feed_observations??[],
+      previousHistory:previousRows.get(row.domain)?.payload?.recent_private_undated_feed_fingerprints,
+    });
+    undatedDedup.set(row.domain,feedResult);
     const state={
       cursor:{status:row.status},
       ...row.metadata,
@@ -122,6 +134,11 @@ export async function write30MinSourcePulseToD1({
       new_private_article_fingerprint_count:result.new_article_fingerprint_count,
       repeated_private_article_fingerprint_count:result.repeated_article_fingerprint_count,
       newly_seen_private_article_refs:result.newly_seen_private_article_refs,
+      recent_private_undated_feed_fingerprints:feedResult.recent_private_undated_feed_fingerprints,
+      private_undated_feed_initial_baseline:feedResult.initial_baseline_run,
+      private_undated_feed_baseline_count:feedResult.initial_backlog_entries_baselined,
+      private_undated_feed_new_since_last_poll:feedResult.new_feed_entries_since_previous_observation,
+      private_undated_feed_repeated_count:feedResult.existing_feed_entries_repeated,
     };
     await client.persist(row.domain,state,{
       last_attempt_at:row.checked_at,
@@ -146,6 +163,15 @@ export async function write30MinSourcePulseToD1({
          JSON.stringify(row.metadata.source_item_provenance_diagnostics) ||
        JSON.stringify(stored?.payload?.source_feed_recovery_diagnostics)!==
          JSON.stringify(row.metadata.source_feed_recovery_diagnostics) ||
+       stored?.payload?.undated_first_party_feed_observed_count!==
+         row.metadata.undated_first_party_feed_observed_count ||
+       stored?.payload?.undated_feed_publication_verified!==false ||
+       stored?.payload?.private_undated_feed_baseline_count!==
+         undatedDedup.get(row.domain).initial_backlog_entries_baselined ||
+       stored?.payload?.private_undated_feed_new_since_last_poll!==
+         undatedDedup.get(row.domain).new_feed_entries_since_previous_observation ||
+       JSON.stringify(stored?.payload?.recent_private_undated_feed_fingerprints)!==
+         JSON.stringify(undatedDedup.get(row.domain).recent_private_undated_feed_fingerprints) ||
        stored?.payload?.new_private_article_fingerprint_count!==
          privateDedup.get(row.domain).new_article_fingerprint_count ||
        stored?.payload?.repeated_private_article_fingerprint_count!==
@@ -163,6 +189,11 @@ export async function write30MinSourcePulseToD1({
       [...privateDedup.values()].reduce((n,r)=>n+r.new_article_fingerprint_count,0),
     repeated_private_original_article_fingerprints:
       [...privateDedup.values()].reduce((n,r)=>n+r.repeated_article_fingerprint_count,0),
+    undated_feed_first_observation_baseline_count:
+      [...undatedDedup.values()].reduce((n,r)=>n+r.initial_backlog_entries_baselined,0),
+    undated_feed_new_since_previous_poll_count:
+      [...undatedDedup.values()].reduce((n,r)=>n+r.new_feed_entries_since_previous_observation,0),
+    undated_feed_original_publication_verified:false,
     // Only hashed, non-reversible, PRIVATE D1 refs are held, never published.
     original_article_identity_is_risk_event:false,
     source_current_scored_intelligence_verified:false,
@@ -197,6 +228,9 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       "SOURCE_PULSE_PREVIOUS_HISTORY_INVALID",
       "SOURCE_PULSE_UNSAFE_OR_UNDATED_CANDIDATE",
       "SOURCE_PULSE_HISTORY_CAPACITY_EXCEEDED",
+      "UNDATED_PULSE_HISTORY_INVALID",
+      "UNDATED_PULSE_PREVIOUS_HISTORY_UNTRUSTED",
+      "UNDATED_PULSE_UNSAFE_OBSERVATION",
     ];
     const query=msg.match(/^D1_CONTROL_STATE_QUERY_FAILED:([0-9]{1,5})$/u);
     const code=known.includes(msg)?msg:
