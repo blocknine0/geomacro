@@ -8,6 +8,7 @@ const mocks=vi.hoisted(()=>({
   rights:vi.fn(),
   peerScore:vi.fn(),
   settle:vi.fn(),
+  telegram:vi.fn(),
 }));
 vi.mock("../lib/coinbase-x402.server",async(importOriginal)=>{
   const original=await importOriginal<typeof import("../lib/coinbase-x402.server")>();
@@ -32,6 +33,10 @@ vi.mock("../lib/on-demand-private-macro-peer-score.server",async(importOriginal)
   const original=await importOriginal<typeof import("../lib/on-demand-private-macro-peer-score.server")>();
   return {...original,scorePrivateOnDemandMacroPeers:mocks.peerScore};
 });
+
+vi.mock("../lib/on-demand-telegram-fallback.server",()=>({
+  lookupTelegramFallback:mocks.telegram,
+}));
 
 import { mainnetIntelligenceHandlers } from "../lib/mainnet-intelligence-endpoint.server";
 
@@ -81,6 +86,7 @@ beforeEach(()=>{
     peer_normalized_dimension_count:0,
   });
   mocks.articlePages.mockResolvedValue({attempted:0,verified:0,verified_candidates:[]});
+  mocks.telegram.mockResolvedValue({attempted:true,status:"UNVERIFIED_LEADS",searched_channel_count:1,unverified_lead_count:2,verified_intelligence_created:false,chargeable:false});
 });
 
 describe("production no-charge on-demand search without Coinbase configuration",()=>{
@@ -95,6 +101,8 @@ describe("production no-charge on-demand search without Coinbase configuration",
     expect(body.payment_required_now).toBe(false);
     expect(body.on_demand.signed_derived_intelligence_created).toBe(false);
     expect(body.on_demand.raw_upstream_delivered).toBe(false);
+    expect(body.on_demand.telegram_fallback).toMatchObject({status:"UNVERIFIED_LEADS",chargeable:false,unverified_lead_count:2});
+    expect(mocks.telegram).toHaveBeenCalledWith({country_iso3:"CHN",categories:["geopolitics","macro","rare_earth"],originalArticleEvidenceSufficient:false});
     expect(mocks.discover).toHaveBeenCalledOnce();
     expect(mocks.coinbaseConfig).not.toHaveBeenCalled();
     expect(mocks.settle).not.toHaveBeenCalled();
@@ -122,6 +130,7 @@ describe("production no-charge on-demand search without Coinbase configuration",
     const response=await post("live_on_demand");
     expect(response.status).toBe(429);
     expect(mocks.discover).not.toHaveBeenCalled();
+    expect(mocks.telegram).not.toHaveBeenCalled();
     expect(mocks.coinbaseConfig).not.toHaveBeenCalled();
     expect(mocks.settle).not.toHaveBeenCalled();
   });
