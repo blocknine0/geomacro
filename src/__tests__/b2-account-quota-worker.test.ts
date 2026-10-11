@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import worker from "../../workers/control-plane/src/index.mjs";
 import {
   reserveB2AccountQuota, readB2AccountQuota, B2_DAILY_LIMITS,
-  ATOMIC_B2_QUOTA_SQL,
+  ATOMIC_B2_QUOTA_SQL, B2_PUBLIC_EDGE_GET_CEILING,
 } from "../../workers/control-plane/src/b2-account-quota.mjs";
 
 const TOKEN = "t".repeat(64);
@@ -29,7 +29,10 @@ function fakeD1() {
                   head_requests:0, native_auth_requests:0,
                 };
                 if (current.total_requests >= Number(max[0]) ||
-                    kind.some((k,i)=>current[k as keyof Count]+increments[i] > Number(max[i+1]))) return null;
+                    kind.some((k,i)=>current[k as keyof Count]+increments[i] > Number(max[i+1])) ||
+                    (Number(params[11])===1 &&
+                      current.get_requests+increments[0]>Number(params[12])))
+                  return null;
                 const next = { ...current, total_requests: current.total_requests + 1 };
                 kind.forEach((k,i)=> { next[k as keyof Count] += increments[i]; });
                 counters.set(day,next);
@@ -80,6 +83,42 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     expect(counters.get("2026-10-09")?.put_requests).toBe(55);
     expect(byWorkflow.size).toBe(6);
     expect(Array.from(byWorkflow.values()).reduce((a,b)=>a+b,0)).toBe(55);
+  });
+
+  it("prevents the three public edges exhausting all GET tickets needed for private signed B2 readback",async()=>{
+    const {db,counters,byWorkflow}=fakeD1();
+    expect(B2_PUBLIC_EDGE_GET_CEILING).toBe(12);
+    const publicOrigins=[
+      "intelligence_public_edge",
+      "global_risk_public_edge",
+      "risk_indices_public_edge",
+    ];
+    for(let i=0;i<12;i++){
+      const res=await reserveB2AccountQuota(db,{kind:"GET",
+        workflow_id:publicOrigins[i%3]},{now:date});
+      expect(res.ok).toBe(true);
+    }
+    for(const id of publicOrigins) {
+      const denied=await reserveB2AccountQuota(db,{kind:"GET",workflow_id:id},{now:date});
+      expect(denied.ok).toBe(false);
+      expect(denied.reserved).toBe(false);
+    }
+    // Public edge requests cannot spend the remaining 13 reservations.
+    expect(counters.get("2026-10-09")?.get_requests).toBe(12);
+    for(let i=0;i<13;i++){
+      const producer=await reserveB2AccountQuota(db,{
+        kind:"GET",workflow_id:"restricted_private_scoring",
+      },{now:date});
+      expect(producer.ok).toBe(true);
+    }
+    expect((await reserveB2AccountQuota(db,{
+      kind:"GET",workflow_id:"restricted_private_scoring",
+    },{now:date})).ok).toBe(false);
+    expect(counters.get("2026-10-09")?.get_requests).toBe(25);
+    expect((await readB2AccountQuota(db,{now:date})).used.GET).toBe(25);
+    // Diagnostic D1 receipts exist only for actually reserved attempts.
+    expect(byWorkflow.get("2026-10-09|intelligence_public_edge|GET")).toBe(4);
+    expect(byWorkflow.get("2026-10-09|restricted_private_scoring|GET")).toBe(13);
   });
 
   it("separately enforces GET and total hard caps, and starts a new day with fresh tickets", async () => {
