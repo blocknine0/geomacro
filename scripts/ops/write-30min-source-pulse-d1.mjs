@@ -10,6 +10,7 @@ import {pathToFileURL} from "node:url";
 import {createD1ControlPlaneStateClient} from "../lib/d1-control-plane-state.mjs";
 import {reconcile30mPrivateArticleFingerprints} from "../lib/private-original-cross-poll-dedupe.mjs";
 import {reconcileUndatedPrivateFeedObservations} from "../lib/private-undated-feed-dedup.mjs";
+import {reconcilePrivateOriginalReviewQueue} from "../lib/private-original-review-queue.mjs";
 
 const DOMAINS=["geopolitics","macro","rare_earth"];
 function validCount(value) {return Number.isSafeInteger(value)&&value>=0&&value<=1000;}
@@ -114,6 +115,7 @@ export async function write30MinSourcePulseToD1({
   const previousRows=await client.loadRows();
   const privateDedup=new Map();
   const undatedDedup=new Map();
+  const privateReviewQueue=new Map();
   for(const row of rows){
     const original=report.actual_original_publisher_rows.find(x=>x.domain===row.domain);
     const prior=previousRows.get(row.domain)?.payload?.recent_private_article_fingerprints;
@@ -123,6 +125,13 @@ export async function write30MinSourcePulseToD1({
       previousHistory:prior,
     });
     privateDedup.set(row.domain,result);
+    const review=reconcilePrivateOriginalReviewQueue({
+      domain:row.domain,checkedAt:row.checked_at,
+      candidates:original?.private_original_article_candidates??[],
+      newArticleRefs:result.newly_seen_private_article_refs,
+      previousQueue:previousRows.get(row.domain)?.payload?.private_original_review_refs,
+    });
+    privateReviewQueue.set(row.domain,review);
     const feedResult=reconcileUndatedPrivateFeedObservations({
       domain:row.domain,checkedAt:row.checked_at,
       observations:original?.private_undated_feed_observations??[],
@@ -137,6 +146,12 @@ export async function write30MinSourcePulseToD1({
       new_private_article_fingerprint_count:result.new_article_fingerprint_count,
       repeated_private_article_fingerprint_count:result.repeated_article_fingerprint_count,
       newly_seen_private_article_refs:result.newly_seen_private_article_refs,
+      // SHA-only unverified original-review handoff, NEVER a GRO or paid result.
+      private_original_review_refs:review.private_review_refs,
+      private_original_review_pending_count:review.awaiting_source_content_and_claim_review,
+      private_original_review_new_count:review.newly_queued,
+      private_original_review_new_topic_hint_count:review.new_topic_hints_unverified,
+      original_review_claims_verified:false,
       recent_private_undated_feed_fingerprints:feedResult.recent_private_undated_feed_fingerprints,
       private_undated_feed_initial_baseline:feedResult.initial_baseline_run,
       private_undated_feed_baseline_count:feedResult.initial_backlog_entries_baselined,
@@ -187,7 +202,16 @@ export async function write30MinSourcePulseToD1({
        JSON.stringify(stored?.payload?.recent_private_article_fingerprints)!==
          JSON.stringify(privateDedup.get(row.domain).recent_private_article_fingerprints) ||
        JSON.stringify(stored?.payload?.newly_seen_private_article_refs)!==
-         JSON.stringify(privateDedup.get(row.domain).newly_seen_private_article_refs))
+         JSON.stringify(privateDedup.get(row.domain).newly_seen_private_article_refs) ||
+       JSON.stringify(stored?.payload?.private_original_review_refs)!==
+         JSON.stringify(privateReviewQueue.get(row.domain).private_review_refs) ||
+       stored?.payload?.private_original_review_pending_count!==
+         privateReviewQueue.get(row.domain).awaiting_source_content_and_claim_review ||
+       stored?.payload?.private_original_review_new_count!==
+         privateReviewQueue.get(row.domain).newly_queued ||
+       stored?.payload?.private_original_review_new_topic_hint_count!==
+         privateReviewQueue.get(row.domain).new_topic_hints_unverified ||
+       stored?.payload?.original_review_claims_verified!==false)
       throw Error("SOURCE_PULSE_D1_READBACK_MISMATCH");
   }
   return {
@@ -204,6 +228,13 @@ export async function write30MinSourcePulseToD1({
     undated_feed_new_unverified_topic_hints:
       [...undatedDedup.values()].reduce((n,r)=>n+r.new_feed_entries_with_unverified_topic_hint,0),
     undated_feed_original_publication_verified:false,
+    private_original_review_new_count:
+      [...privateReviewQueue.values()].reduce((n,r)=>n+r.newly_queued,0),
+    private_original_review_unverified_topic_hints:
+      [...privateReviewQueue.values()].reduce((n,r)=>n+r.new_topic_hints_unverified,0),
+    private_original_review_pending_count:
+      [...privateReviewQueue.values()].reduce((n,r)=>n+r.awaiting_source_content_and_claim_review,0),
+    private_original_claims_verified:false,
     // Only hashed, non-reversible, PRIVATE D1 refs are held, never published.
     original_article_identity_is_risk_event:false,
     source_current_scored_intelligence_verified:false,
@@ -238,6 +269,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       "SOURCE_PULSE_PREVIOUS_HISTORY_INVALID",
       "SOURCE_PULSE_UNSAFE_OR_UNDATED_CANDIDATE",
       "SOURCE_PULSE_HISTORY_CAPACITY_EXCEEDED",
+      "PRIVATE_ORIGINAL_REVIEW_QUEUE_INVALID",
+      "PRIVATE_ORIGINAL_REVIEW_QUEUE_CAPACITY_EXCEEDED",
       "UNDATED_PULSE_HISTORY_INVALID",
       "UNDATED_PULSE_PREVIOUS_HISTORY_UNTRUSTED",
       "UNDATED_PULSE_UNSAFE_OBSERVATION",
