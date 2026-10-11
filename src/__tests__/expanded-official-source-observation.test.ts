@@ -369,7 +369,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     const source=EXPANDED_OFFICIAL_SOURCES[6];
     const nativeRss='<rss><channel><item><title>Security Council ceasefire and conflict update</title>'+
       '<link>https://news.un.org/en/story/2026/10/security-council-ceasefire</link>'+
-      '<pubDate>Sat, 10 Oct 2026 06:30:00 GMT</pubDate></item></channel></rss>';
+      '<pubDate>Sat, 10 Oct 2026 06:25:00 GMT</pubDate></item></channel></rss>';
     const requested:string[]=[];
     const fetchImpl=vi.fn(async(url:string,opts:RequestInit)=>{
       requested.push(url);
