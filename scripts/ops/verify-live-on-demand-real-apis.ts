@@ -110,6 +110,9 @@ const proof={
   x402_commercial_release_authorized:false,
   private_official_annual_change_count:privateEvidence.private_macro_changes.length,
   private_annual_directional_macro_driver_count:privateMacroDrivers.length,
+  // Read-only: fixed WDI indicator names + bounded annual period/status only.
+  // Never publish official numeric values, country-peer observations or hashes.
+  private_world_bank_annual_qualification:privateEvidence.private_macro_qualifications,
   private_original_candidate_page_dates_verified:
     privateEvidence.private_original_review_candidates.length>0 &&
     pageProof.verified===privateEvidence.private_original_review_candidates.length,
@@ -145,6 +148,17 @@ if(observedRequests!==proof.total_bounded_network_attempts ||
      proof.original_article_page_attempts ||
    proof.private_original_candidate_count>16 ||
    proof.duplicate_original_headlines_suppressed>16 ||
+   proof.private_world_bank_annual_qualification.length>2 ||
+   proof.private_world_bank_annual_qualification.some(p=>
+     !["FP.CPI.TOTL.ZG","NY.GDP.MKTP.KD.ZG"].includes(p.indicator) ||
+     !Number.isInteger(p.accepted_annual_values) ||
+     p.accepted_annual_values<0 || p.accepted_annual_values>6 ||
+     (p.latest_observation_year!==null &&
+       (!Number.isInteger(p.latest_observation_year) ||
+        p.latest_observation_year>new Date().getUTCFullYear())) ||
+     (p.previous_observation_year!==null &&
+       (!Number.isInteger(p.previous_observation_year) ||
+        p.previous_observation_year>new Date().getUTCFullYear()))) ||
    proof.private_official_annual_change_count>2 ||
    proof.private_annual_directional_macro_driver_count>
      proof.private_official_annual_change_count ||
