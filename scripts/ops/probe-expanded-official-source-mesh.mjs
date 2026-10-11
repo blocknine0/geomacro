@@ -480,36 +480,41 @@ export async function probeExpandedSource(source,{
     const articles=source.media==="atom"
       ? undatedAtomArticleCandidates(body,source,{openDiscovery})
       : undatedRssArticleCandidates(body,source,{openDiscovery});
+    let topicalOriginalPages=0;
     for(const article of articles){
       const published=await fetchVerifiedPublisherPageDate(article,source.domain,{
         now,fetchImpl,
       });
       row.original_page_precise_date_checks++;
-      if(published){
-        // The real article's independently verified original publication
-        // clock can supply a PRIVATE fingerprint candidate even if its RSS
-        // item lacks <published>. Never infer the date from feed <updated>.
-        if(collectPrivateCandidates){
-          const candidate=originalPublisherPrivatePageDateCandidate(
-            body,source,{articleUrl:article,publishedAt:published,now,
-              captureAllTopics:openDiscovery});
-          if(candidate && !row.private_original_article_candidates?.some(
+      if(!published)continue;
+      // An independently checked publisher article page date can rescue an
+      // undated feed entry. Retrieval and feed-update clocks never substitute.
+      const candidate=originalPublisherPrivatePageDateCandidate(
+        body,source,{articleUrl:article,publishedAt:published,now,
+          captureAllTopics:openDiscovery});
+      if(!candidate)continue;
+      if(collectPrivateCandidates &&
+          !row.private_original_article_candidates?.some(
             c=>c.original_article_sha256===candidate.original_article_sha256)){
-            row.private_original_article_candidates ??= [];
-            row.private_original_article_candidates.push(candidate);
-          }
-        }
-        row.original_page_precise_date_24h++;
-        const ageMs=now.getTime()-Date.parse(published);
-        if(ageMs>=0&&ageMs<=SIX_HOURS_MS)
-          row.original_publisher_topical_6h++;
-        if(ageMs>=0&&ageMs<=NINETY_MINUTES_MS)
-          row.original_publisher_topical_90m++;
-        if(ageMs>=0&&ageMs<=THIRTY_MINUTES_MS)
-          row.original_publisher_topical_30m++;
+        row.private_original_article_candidates ??= [];
+        row.private_original_article_candidates.push(candidate);
       }
+      row.original_page_precise_date_24h++;
+      if(openDiscovery)row.original_publisher_open_24h_count++;
+      // Broad original discovery is not a topical current event. Keep the
+      // previous topical metric exact; otherwise open capture would launder
+      // unrelated articles into "fresh geopolitical/mineral stories".
+      if(!candidate.discovery_topic_matched)continue;
+      topicalOriginalPages++;
+      const ageMs=now.getTime()-Date.parse(published);
+      if(ageMs>=0&&ageMs<=SIX_HOURS_MS)
+        row.original_publisher_topical_6h++;
+      if(ageMs>=0&&ageMs<=NINETY_MINUTES_MS)
+        row.original_publisher_topical_90m++;
+      if(ageMs>=0&&ageMs<=THIRTY_MINUTES_MS)
+        row.original_publisher_topical_30m++;
     }
-    row.topical_private_release_links_24h+=row.original_page_precise_date_24h;
+    row.topical_private_release_links_24h+=topicalOriginalPages;
   }
   return row;
 }
