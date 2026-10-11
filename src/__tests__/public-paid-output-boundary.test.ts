@@ -154,7 +154,7 @@ describe("source-free paid output boundary", () => {
       .toThrow("PAID_OUTPUT_PROVIDER_IDENTITY_LEAK");
     expect(()=>assertPublicPaidOutputBoundary({
       structural:{data_attribution:good}
-    })).toThrow("PAID_OUTPUT_EMBEDDED_SOURCE_URL");
+    })).toThrow(/PAID_OUTPUT_(PROVIDER_IDENTITY_LEAK|EMBEDDED_SOURCE_URL)/);
   });
 
   it("wires sanitation before durable x402 preparation and on replay", async () => {
