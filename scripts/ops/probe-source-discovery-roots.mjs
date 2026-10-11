@@ -7,7 +7,6 @@
  * enters raw content in GitHub artifacts or starts commercial ingestion.
  */
 import {createHash} from "node:crypto";
-import {isIP} from "node:net";
 import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {URL,pathToFileURL} from "node:url";
@@ -23,8 +22,9 @@ export function approvedRoot(value) {
     const reservedHost=host==="localhost" ||
       host.endsWith(".localhost") || host.endsWith(".local") ||
       host.endsWith(".internal") || host.endsWith(".test");
-    const ipHost=isIP(host)===4 || isIP(host)===6 ||
-      /^[0-9.]+$/u.test(host) || host.includes(":");
+    // WHATWG URL canonicalizes numeric IPv4 and bracketed IPv6 literal hosts.
+    // This stays robust even in isolated test runtimes that shim node:net.
+    const ipHost=/^[0-9.]+$/u.test(host) || host.includes(":");
     if(u.protocol!=="https:" || u.port!=="" || u.username!=="" ||
        u.password!=="" || u.hash!=="" || !host.includes(".") ||
        reservedHost || ipHost || u.href.length>2048)return null;
