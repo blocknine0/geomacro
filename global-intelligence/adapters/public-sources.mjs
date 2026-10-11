@@ -50,7 +50,19 @@ export const publicSources={
     if(fallback.length>100&&fallback.includes("NGDP")) return{source_id:"imf_sdmx",observations:1};
     throw new Error("IMF public data endpoints unavailable");
   },
-  oecd:async()=>{const body=await fetchText("https://sdmx.oecd.org/public/rest/dataflow/all/all/latest");if(body.trim().split("\n").length<2)throw new Error("OECD dataflow response empty");return{source_id:"oecd_sdmx",observations:body.trim().split("\n").length-1};},
+  oecd:async()=>{
+    // Do NOT download the entire current OECD dataflow registry: its giant
+    // XML payload can exceed a free-tier 2 MiB bounded private health check.
+    // Query one documented OECD Economic Accounts flow by exact first-party
+    // SDMX structure identity; validate real SDMX dataflow, not line count.
+    const body=await fetchText(
+      "https://sdmx.oecd.org/public/rest/dataflow/OECD.SDD.NAD/DSD_NAAG@DF_NAAG_I/latest?references=none",
+      {accept:"application/vnd.sdmx.structure+xml;version=2.1, application/xml;q=0.8"}
+    );
+    if(!/<(?:[a-z][a-z0-9._-]*:)?Dataflow\\b/iu.test(body))
+      throw Error("OECD_SDMX_DATAFLOW_UNVERIFIED");
+    return{source_id:"oecd_sdmx",observations:1};
+  },
   bis:async()=>{const body=await fetchText("https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/M.US?format=csvfile");if(!body.includes("TIME_PERIOD")||!body.includes("OBS_VALUE"))throw new Error("BIS policy-rate CSV missing observations");return{source_id:"bis_statistics",observations:Math.max(0,body.trim().split("\n").length-1)};},
   eurostat:async()=>{const data=await fetchJson("https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/namq_10_gdp?geo=DE&na_item=B1GQ&unit=CP_MEUR&sinceTimePeriod=2020");if(!data?.id?.length||data.value==null)throw new Error("Eurostat response missing observations");return{source_id:"eurostat",observations:Array.isArray(data.value)?data.value.length:Object.keys(data.value).length};},
   gdacs:async()=>{const data=await fetchJson("https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?eventlist=EQ&fromdate=2026-01-01&todate=2026-12-31");const collection=data?.features??data?.events??data;if(!collection||(Array.isArray(collection)&&!collection.length))throw new Error("GDACS returned no event collection");return{source_id:"gdacs_global_disasters",observations:Array.isArray(collection)?collection.length:1};},
