@@ -135,6 +135,14 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       original_page_verified:safeInt(item.original_page_precise_date_24h),
       atom_undated_valid_article_link_candidates:
         safeInt(item.undated_atom_article_link_candidates),
+      atom_original_link_diagnostics:item.undated_atom_link_diagnostic
+        ?Object.fromEntries([
+          "undated_entries","rel_missing_alternate_or_canonical",
+          "alternate_missing_href","valid_first_party_article_links",
+          "rejected_publisher_host","rejected_original_path",
+          "rejected_unsafe_or_malformed",
+        ].map(code=>[code,safeInt(item.undated_atom_link_diagnostic[code])]))
+        :null,
       original_page_result_codes:Object.fromEntries(
         SAFE_PUBLISHER_PAGE_PROBE_CODES.map(code=>[code,
           safeInt(item.first_party_original_page_probe_codes?.[code])??0])),

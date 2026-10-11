@@ -417,6 +417,44 @@ function undatedAtomArticleCandidates(xml,source,{openDiscovery=false}={}) {
   return [...new Set(list)].slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
 }
 
+// Diagnose Atom first-party link *selection* independently of dates.
+// Entirely numeric output; never copy any upstream URL, article, hostname,
+// title, or date into a public receipt. We never fetch diagnostic links.
+function undatedAtomOriginalLinkDiagnostic(xml,source) {
+  if(source?.media!=="atom"||!Array.isArray(source.original_hosts))return null;
+  const codes={
+    undated_entries:0,rel_missing_alternate_or_canonical:0,
+    alternate_missing_href:0,valid_first_party_article_links:0,
+    rejected_publisher_host:0,rejected_original_path:0,
+    rejected_unsafe_or_malformed:0,
+  };
+  const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,80);
+  for(const [,item] of entries){
+    if(/<(?:atom:)?published(?:\s[^>]*)?>/iu.test(item))continue;
+    codes.undated_entries++;
+    const tags=[...item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)]
+      .map(m=>m[1]).filter(attr=>{
+        const rel=attr.match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
+        return rel==="alternate"||rel==="canonical";
+      });
+    if(!tags.length){codes.rel_missing_alternate_or_canonical++;continue;}
+    let valid=false,reason=null,hasHref=false;
+    for(const attrs of tags) {
+      const href=attrs.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??"";
+      if(!href)continue;
+      hasHref=true;
+      if(originalHref(href,source.original_hosts,source)){valid=true;break;}
+      reason??=originalLinkRejectionKind(href,source.original_hosts,source);
+    }
+    if(valid){codes.valid_first_party_article_links++;continue;}
+    if(!hasHref){codes.alternate_missing_href++;continue;}
+    if(reason==="publisher_host_mismatch")codes.rejected_publisher_host++;
+    else if(reason==="original_article_path_mismatch")codes.rejected_original_path++;
+    else codes.rejected_unsafe_or_malformed++;
+  }
+  return codes;
+}
+
 function undatedRssArticleCandidates(xml,source,{openDiscovery=false}={}) {
   // Recover only missing original item pubDate via exact first-party
   // article datePublished; never rescue a future/malformed source pubDate.
@@ -455,6 +493,7 @@ export async function probeExpandedSource(source,{
     unparseable_native_rss_date_shapes:null,
     first_party_original_page_probe_codes:null,
     undated_atom_article_link_candidates:null,
+    undated_atom_link_diagnostic:null,
     // Populated only for the Eurostat dataset catalogue, not RSS headlines.
     eurostat_native_dataset_data_updates_24h:null,
     eurostat_other_catalogue_changes_24h:null,
@@ -564,6 +603,8 @@ export async function probeExpandedSource(source,{
     row.source_native_24h_release_items=counts.within_24h;
     row.source_native_7d_release_items=counts.open_original_or_release_within_7d;
     row.source_item_provenance_diagnostics=counts.item_provenance_diagnostics??null;
+    if(source.media==="atom"&&source.original_hosts)
+      row.undated_atom_link_diagnostic=undatedAtomOriginalLinkDiagnostic(body,source);
     row.unparseable_native_rss_date_shapes=counts.unparseable_native_rss_date_shapes??null;
     if(source.original_hosts)row.original_publisher_open_24h_count=counts.within_24h;
     if(source.topic)row.topical_private_release_links_24h=counts.topical_within_24h;
