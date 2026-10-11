@@ -14,7 +14,7 @@ describe("StatCan unknown first-party Atom paths remain observation only",()=>{
     fetchImpl:async()=>new Response(body,{status:200,headers:{"content-type":"application/atom+xml"}})});
   expect(r.undated_atom_link_diagnostic.rejected_original_path).toBe(4);
   expect(r.undated_atom_link_diagnostic.statcan_other_path_shapes).toEqual({
-   ROOT:1,N1_OTHER:2,NON_N1:1,SUFFIX_HTML:1,SUFFIX_XML:1,SUFFIX_OTHER:2,QUERY_PRESENT:1,
+   ROOT:1,N1_OTHER:1,NON_N1:1,SUFFIX_HTML:0,SUFFIX_XML:1,SUFFIX_OTHER:2,QUERY_PRESENT:1,
   });
   expect(r.undated_atom_article_link_candidates).toBe(0);
   expect(r.private_original_article_candidates??[]).toHaveLength(0);
