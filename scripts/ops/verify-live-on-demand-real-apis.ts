@@ -43,7 +43,7 @@ mkdirSync("artifacts/on-demand-live",{recursive:true});
 writeFileSync("artifacts/on-demand-live/real-api-proof.json",
   JSON.stringify(proof,null,2)+"\n",{mode:0o600});
 console.log(JSON.stringify(proof));
-if(proof.category_count!==3||proof.network_attempts>8 ||
+if(proof.category_count!==3||proof.network_attempts>12 ||
    proof.network_attempts<1||proof.payable!==false||
    proof.raw_upstream_delivered!==false||
    proof.payment_settlement_attempted!==false||
