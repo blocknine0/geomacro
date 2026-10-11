@@ -12,6 +12,28 @@ export type OnDemandSearchInput = {
   country_iso3: string;
   categories: OnDemandCategory[];
 };
+/**
+ * PRIVATE EPHEMERAL EVIDENCE ONLY: never put this in response JSON or
+ * durable public D1/B2. Each record is merely an original publisher's
+ * item-native date; article-page verification, claim corroboration, risk
+ * qualification and derived rights must happen separately before payment.
+ */
+export type PrivateOriginalCandidate = {
+  domain: OnDemandCategory;
+  publisher_family: string;
+  article_url: string;
+  article_title: string;
+  feed_item_published_at: string;
+  article_identity_sha256: string;
+  first_party_article_url_verified: true;
+  source_native_feed_publication_date_verified: true;
+  publisher_article_page_date_verified: false;
+  independent_same_event_verified: false;
+  derived_commercial_rights_verified: false;
+  score_verified: false;
+  signed_gro_verified: false;
+  paid_delivery_allowed: false;
+};
 export type SourceProbe = {
   family: string;
   attempted: boolean;
@@ -195,26 +217,6 @@ async function worldBank(
   // An annual statistical observation is NOT a real-time new event.
   return probe("world_bank_official_" + indicator,valid.length,false);
 }
-async function govUkMinerals(
-  countryNameValue: string, fetchImpl: typeof fetch, now: Date,
-): Promise<SourceProbe> {
-  const body = await boundedFetch(fetchImpl,
-    "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
-    "application/atom+xml,application/xml");
-  if (/<!(?:DOCTYPE|ENTITY)/i.test(body)) throw Error("ON_DEMAND_XML_UNSAFE");
-  const entries = [...body.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/giu)].slice(0,10);
-  let accepted = 0;
-  for(const [,entry] of entries) {
-    const title = /<title(?:\s[^>]*)?>([^<]{1,300})<\/title>/iu.exec(entry)?.[1] ?? "";
-    const published = /<published>([^<]+)<\/published>/iu.exec(entry)?.[1] ?? "";
-    if (!freshPublished(published,now) ||
-        !/critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite/i.test(title) ||
-        !title.toLowerCase().includes(countryNameValue.toLowerCase())) continue;
-    accepted++;
-  }
-  return probe("uk_dbt_original_publisher",accepted,accepted>0);
-}
-
 // Independent first-party fallback feeds: never bypass blocked upstream
 // APIs with mirrored copies from the SAME publisher. This broadens publisher
 // TRANSPORT only, not legal rights, event corroboration or risk eligibility.
@@ -228,6 +230,13 @@ type OriginalFeed = {
   topic:RegExp;
 };
 const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
+  {
+    domain:"rare_earth",family:"uk_dbt_original_publisher",
+    url:"https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+    media:"atom",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
+  },
   {
     domain:"geopolitics",family:"un_news_original_publisher",
     url:"https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml",
@@ -257,18 +266,22 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
     topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
   },
 ];
-function originalArticleHref(value:string, def:OriginalFeed) {
+function originalArticleUrl(value:string, def:OriginalFeed):string|null {
   try {
     const u=new URL(value.replace(/&amp;/giu,"&"));
-    return u.protocol==="https:" && u.hostname===def.originalHost &&
-      !u.username && !u.password && !u.port && !u.hash &&
-      u.href.length<2048 && def.originalPath.test(u.pathname);
-  }catch {return false;}
+    if(u.protocol!=="https:" || u.hostname!==def.originalHost ||
+      u.username || u.password || u.port || u.hash ||
+      u.href.length>=2048 || !def.originalPath.test(u.pathname) ||
+      /(?:^|\/)(?:feed|rss|atom)(?:\/|$)/iu.test(u.pathname))return null;
+    // Remove publisher tracking/query params from the event fingerprint.
+    return u.origin+u.pathname;
+  }catch {return null;}
 }
+type OriginalFeedResult={probe:SourceProbe;private_candidates:PrivateOriginalCandidate[]};
 async function originalOfficialFeed(
   def:OriginalFeed,countryNameValue:string,
   fetchImpl:typeof fetch,now:Date,
-):Promise<SourceProbe>{
+):Promise<OriginalFeedResult>{
   const xml=await boundedFetch(fetchImpl,def.url,
     "application/rss+xml,application/atom+xml,application/xml");
   if (/<!DOCTYPE|<!ENTITY/iu.test(xml))
@@ -280,7 +293,7 @@ async function originalOfficialFeed(
   const entries=atom
     ? [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)]
     : [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)];
-  let accepted=0;
+  const candidates:PrivateOriginalCandidate[]=[];
   for(const [,entry] of entries.slice(0,40)){
     const title=/<(?:atom:)?title(?:\s[^>]*)?>([^<]{1,300})<\/(?:atom:)?title>/iu.exec(entry)?.[1] ?? "";
     const date=atom
@@ -299,17 +312,36 @@ async function originalOfficialFeed(
     }else {
       href=/<link(?:\s[^>]*)?>([^<]+)<\/link>/iu.exec(entry)?.[1] ?? "";
     }
-    if(!originalArticleHref(href,def))continue;
-    accepted++;
+    const article_url=originalArticleUrl(href,def);
+    if(!article_url)continue;
+    if(candidates.length>=4)continue; // fixed private evidence budget/issuer
+    const article_title=title.replace(/\s+/gu," ").trim();
+    const article_identity_sha256=digest(def.family+"|"+article_url);
+    if(candidates.some(x=>x.article_identity_sha256===article_identity_sha256))
+      continue; // Same publisher URL in a second feed entry is one article.
+    candidates.push({
+      domain:def.domain,publisher_family:def.family,article_url,article_title,
+      feed_item_published_at:new Date(Date.parse(date)).toISOString(),
+      article_identity_sha256,
+      first_party_article_url_verified:true,
+      source_native_feed_publication_date_verified:true,
+      publisher_article_page_date_verified:false,
+      independent_same_event_verified:false,
+      derived_commercial_rights_verified:false,
+      score_verified:false,
+      signed_gro_verified:false,
+      paid_delivery_allowed:false,
+    });
   }
-  return probe(def.family,accepted,accepted>0);
+  return {probe:probe(def.family,candidates.length,candidates.length>0),
+    private_candidates:candidates};
 }
 
 /** Never returns upstream text, URLs or source identities for paid output. */
-export async function discoverOnDemandGlobal(
+async function discoverOnDemandImpl(
   input: OnDemandSearchInput,
   options: {fetchImpl?:typeof fetch; now?:Date}={},
-): Promise<OnDemandDiscovery> {
+): Promise<{discovery:OnDemandDiscovery;private_candidates:PrivateOriginalCandidate[]}> {
   const now=options.now ?? new Date(), fetchImpl=options.fetchImpl ?? fetch;
   if(!(now instanceof Date) || !Number.isFinite(now.getTime()))
     throw Error("ON_DEMAND_CLOCK_INVALID");
@@ -325,13 +357,11 @@ export async function discoverOnDemandGlobal(
   let name: string;
   try { name = await countryName(country,fetchImpl); }
   catch { name = ""; }
-  const tasks: Array<{name:string;run:()=>Promise<SourceProbe>}> = [];
+  const tasks: Array<{name:string;run:()=>Promise<SourceProbe|OriginalFeedResult>}> = [];
   if (name) for (const category of categories) {
     tasks.push({name:"gdelt_doc_discovery",run:()=>gdelt(category,name,fetchImpl)});
     if (category==="geopolitics")
       tasks.push({name:"reliefweb_discovery",run:()=>reliefWeb(name,fetchImpl,now)});
-    if (category==="rare_earth")
-      tasks.push({name:"uk_dbt_original_publisher",run:()=>govUkMinerals(name,fetchImpl,now)});
   }
   if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
     if (categories.includes(source.domain)) tasks.push({
@@ -346,14 +376,33 @@ export async function discoverOnDemandGlobal(
   // Exactly one fixed metadata lookup + at most eleven provider requests,
   // no 195-country fanout and no user question passed upstream.
   const settled=await Promise.allSettled(tasks.map(t=>t.run()));
-  const source_probes=settled.map((result,i)=>result.status==="fulfilled"
-    ? result.value : failed(tasks[i].name));
+  const source_probes=settled.map((result,i)=>{
+    if(result.status==="rejected")return failed(tasks[i].name);
+    const value=result.value;
+    return "probe" in value ? value.probe : value;
+  });
+  // Never persist, log, or expose raw first-party titles/articles here.
+  // Every candidate requires the later governed article-page/rights/signing
+  // stages; each source institution stays independently identified.
+  const issuerCandidateGroups=settled.flatMap(result=>
+    result.status==="fulfilled" && "private_candidates" in result.value
+      ? [result.value.private_candidates] : []);
+  const private_candidates:PrivateOriginalCandidate[]=[];
+  // Round-robin preserves distinct publisher families and all 3 categories
+  // under heavy news flow; a dominant feed cannot starve a later independent
+  // original source of the 16-entry bounded producer budget.
+  for(let i=0;i<4 && private_candidates.length<16;i++) {
+    for(const issuer of issuerCandidateGroups) {
+      if(private_candidates.length>=16)break;
+      if(issuer[i])private_candidates.push(issuer[i]);
+    }
+  }
   // The same GDELT producer searched for 3 different topics is ONE family,
   // and two World Bank indicator requests are ONE official institution.
   const reached=new Set(source_probes.filter(p=>p.reachable).map(p=>
     p.family.startsWith("world_bank_official_")
       ? "world_bank_official" : p.family)).size;
-  return {
+  const discovery:OnDemandDiscovery={
     schema:"geomacro.on-demand-global-private-discovery.v1",
     country_iso3:country,categories,checked_at:now.toISOString(),
     searched_in_parallel:true,network_attempts:tasks.length+1,
@@ -366,4 +415,24 @@ export async function discoverOnDemandGlobal(
     raw_upstream_delivered:false,supabase_requests:0,b2_requests:0,
     settlement_attempted:false,
   };
+  return {discovery,private_candidates};
+}
+
+/** Client-safe shape: no upstream article, URLs, text, or private evidence. */
+export async function discoverOnDemandGlobal(
+  input:OnDemandSearchInput,
+  options:{fetchImpl?:typeof fetch;now?:Date}={},
+):Promise<OnDemandDiscovery>{
+  return (await discoverOnDemandImpl(input,options)).discovery;
+}
+
+/**
+ * PRIVATE INTERNAL producer interface for the same bounded one-shot fetch.
+ * Never serialize this tuple to a customer, audit log or x402 quote.
+ */
+export async function discoverOnDemandForPrivateQualification(
+  input:OnDemandSearchInput,
+  options:{fetchImpl?:typeof fetch;now?:Date}={},
+):Promise<{discovery:OnDemandDiscovery;private_candidates:PrivateOriginalCandidate[]}>{
+  return discoverOnDemandImpl(input,options);
 }
