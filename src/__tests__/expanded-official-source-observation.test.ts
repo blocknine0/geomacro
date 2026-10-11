@@ -69,12 +69,15 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       return response(xml,"application/rss+xml");
     });
     const res=await probeExpandedOfficialMesh({fetchImpl,now});
-    expect(fetchImpl).toHaveBeenCalledTimes(14);
-    expect(seen).toEqual(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.url));
-    expect(res.status).toBe("SOURCE_TRANSPORT_OBSERVED");
+    expect(fetchImpl).toHaveBeenCalledTimes(11);
+    expect(seen).toEqual(EXPANDED_OFFICIAL_SOURCES.filter((s:any)=>!["eiti_implementing_country_official_api_review","nrcan_simply_science_official_rss_review","usgs_minerals_original_news_rss_review"].includes(s.id)).map((s:any)=>s.url));
+    expect(res.status).toBe("ACTIVE_SOURCE_TRANSPORT_OBSERVED_WITH_QUARANTINE");
+    expect(res.active_source_count).toBe(11);
+    expect(res.quarantined_source_count).toBe(3);
+    expect(res.all_registered_sources_transport_healthy).toBe(false);
     for(const x of res.sources){
-      expect(x.publisher_reachable).toBe(true);
-      expect(x.format_valid).toBe(true);
+      expect(x.publisher_reachable).toBe(!x.quarantined);
+      expect(x.format_valid).toBe(!x.quarantined);
       expect(x.commercial_eligible).toBe(false);
       expect(x.current_scored_intelligence_verified).toBe(false);
       expect(x.country_coverage_verified).toBe(false);
@@ -82,7 +85,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(res.sources[0].source_native_release_items).toBe(2);
     expect(res.sources[0].source_native_24h_release_items).toBe(1);
     expect(res.sources[3].source_native_24h_release_items).toBeNull();
-    expect(res.sources[5].source_native_24h_release_items).toBe(1);
+    expect(res.sources[5].source_native_24h_release_items).toBeNull();
     expect(res.sources[4].topical_private_release_links_24h).toBe(1);
     expect(res.sources[4].same_event_independent_corroboration_verified).toBe(false);
     expect(res.sources[7].topical_private_release_links_24h).toBe(1);
@@ -93,7 +96,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(res.original_publisher_freshness_windows).toEqual({
       geopolitics:{within_90m:0,within_6h:0,within_24h:0,original_publisher_transport_healthy:true},
       macro:{within_90m:1,within_6h:1,within_24h:1,original_publisher_transport_healthy:true},
-      rare_earth:{within_90m:1,within_6h:1,within_24h:1,original_publisher_transport_healthy:true},
+      rare_earth:{within_90m:1,within_6h:1,within_24h:1,original_publisher_transport_healthy:false},
     });
     expect(res.independent_original_origin_lanes).toEqual({
       geopolitics:{
@@ -291,8 +294,8 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       if(new URL(url).hostname === "www.gov.uk")return response(atomUk,"application/atom+xml");
       return response(xml,"application/rss+xml");
     }});
-    expect(res.status).toBe("SOURCE_TRANSPORT_DEGRADED");
-    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true,true,true,true,true,true,true,true,true,true,true,true]);
+    expect(res.status).toBe("ACTIVE_SOURCE_TRANSPORT_DEGRADED");
+    expect(res.sources.map((x:any)=>x.publisher_reachable)).toEqual([true,false,true,false,true,false,true,true,true,true,true,false,true,true]);
     expect(res.globally_current_scored_coverage_verified).toBe(false);
     expect(res.commercial_eligible).toBe(false);
   });
@@ -499,9 +502,9 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
         title:"Canadian critical minerals lithium mining supply",
         link:"https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals.html",
       }],
-      ["usgs_minerals_original_news_rss_review",{
-        title:"USGS critical mineral lithium supply",
-        link:"https://www.usgs.gov/news/national-news-release/critical-mineral-lithium",
+      ["uk_dbt_critical_minerals_atom_pending_review",{
+        title:"UK government critical minerals supply",
+        link:"https://www.gov.uk/government/news/uk-critical-minerals-supply",
       }],
     ]);
     const feed=(src:any,title:string,link:string)=>{
@@ -522,7 +525,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       return response(value,source.media==="atom"?"application/atom+xml":"application/rss+xml");
     };
     const grouped=await probeExpandedOfficialMesh({now,fetchImpl:privateFetch});
-    expect(grouped.status).toBe("SOURCE_TRANSPORT_OBSERVED");
+    expect(grouped.status).toBe("ACTIVE_SOURCE_TRANSPORT_OBSERVED_WITH_QUARANTINE");
     for(const domain of ["geopolitics","macro","rare_earth"]){
       const proof=grouped.independent_original_origin_lanes[domain];
       expect(proof.organizations_with_6h_originals).toBe(2);
