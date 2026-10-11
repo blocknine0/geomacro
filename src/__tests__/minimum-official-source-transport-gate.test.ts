@@ -22,6 +22,6 @@ describe("#1827 minimum live source transport gate for 3-domain PRIVATE discover
     expect(flow).not.toContain('SOURCE_POLL_DEGRADED" and .all_three_feeds_reached == true');
     expect(source).toContain("proves_public_scored_intelligence: false");
     expect(source).toContain("funds_touched: false");
-    expect(source).toContain("commercial_eligible: false");
+    expect(source).toContain("commerce_eligible: false");
   });
 });
