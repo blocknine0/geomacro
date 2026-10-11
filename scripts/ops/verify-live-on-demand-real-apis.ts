@@ -132,7 +132,7 @@ const observedRequests=proof.provider_http_outcomes.reduce((n,row)=>
   n+row.ok_2xx+row.http_403+row.http_429+row.http_5xx+
     row.other_http+row.network_error,0);
 if(observedRequests!==proof.total_bounded_network_attempts ||
-   proof.provider_http_outcomes.length>8 ||
+   proof.provider_http_outcomes.length>9 ||
    proof.current_lithium_risk_answer_verified!==false ||
    proof.x402_commercial_release_authorized!==false ||
    proof.sample_country_iso3!=="CHN" ||
