@@ -54,7 +54,7 @@ describe("StatCan unknown first-party Atom paths remain observation only",()=>{
   });
   expect(diag.valid_first_party_article_links).toBe(0);
   expect(result.undated_atom_article_link_candidates).toBe(0);
-  expect(result.original_page_checked).toBe(0);
+  expect(result.original_page_precise_date_checks).toBe(0);
   expect(JSON.stringify(diag)).not.toContain("statcan.gc.ca");
   expect(JSON.stringify(diag)).not.toContain("evil.example");
   expect(result.commercial_eligible).toBe(false);
