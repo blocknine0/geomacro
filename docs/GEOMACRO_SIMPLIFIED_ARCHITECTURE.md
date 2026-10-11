@@ -56,6 +56,14 @@
 - Durable retention is *selective*, not zero: minimal exact signed GRO and relevant proof when partner replay/audit requires it, plus D1 payment idempotency and reconciliation records. Do not archive bulk raw provider feeds merely to make the canonical engine work.
 - The current query-time discovery path is **not yet a signed payable result**. Implement evidence-to-score-to-signer integration and prove three category requests, trust and replay before an authorized real-money launch. This decision introduces no additional launch gate beyond the existing safety/rights/signing/payment acceptance.
 
+## Reusing the scorer for qualifying query-time events (2026-10-11)
+
+The next private stage is `src/lib/on-demand-qualified-country-risk.server.ts`. It composes the existing **pure** `buildCountryRiskObject` scorer, commercial eligibility, observed-at binding, active-key Ed25519 signer, and exact canonical partner handoff. It neither copies the legacy Supabase event loader nor introduces a category-specific engine.
+
+**Critical trust boundary:** `discoverOnDemandForPrivateQualification` and article page-date checks still return unverified discoveries, not scoring inputs. The new scorer explicitly requires a trusted backend `qualifyEvidence` implementation (no default), which must check independent same-event factual corroboration, actual commercial derived-use rights and exact evidence fingerprint. Until the real governed verifier produces that receipt, **do not call this scorer from the public API** and **do not quote x402**. Tests only inject synthetic qualification; these are code-contract tests, not evidence that live rights or 195-country coverage have been achieved.
+
+The current vertical slice handles only recent (maximum six-hour original evidence clocks) country-scoped material events of the three Geomacro categories. Bounded annual official macro snapshots are **not** misdated as fresh news, and no fake severity is inferred from a headline. For an eligible future use, exact input events must have scored severity/relevance from an independently reviewed, governed methodology, two independent corroborating source families, positive evidence, per-event source rights, source-native original time and matching country/category. The existing scorer calculates risk, signs the exact GRO, and keeps commercial/partner verification fail-closed. Periodic global website publication and full live x402 delivery remain separate acceptance tasks.
+
 ## Simplification rule for new engineering
 
 Before proposing a new database, workflow, model, risk engine or launch gate, document (a) which verified customer-facing outcome the existing single engine cannot supply, (b) the smallest reuse-first implementation, (c) measured impact on free-tier costs, and (d) an acceptance test. Reject purely architectural complexity without measurable commercial benefit.
