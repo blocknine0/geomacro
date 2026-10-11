@@ -36,12 +36,19 @@ export async function probeConfiguredCredentialedSources({
           observation?.source_id!==source.id) throw Error("BAD_OBSERVATION");
       results.push({source_id:source.id,category:source.category,
         status:"WORKING_RESPONSE_VALIDATED",http_probed:true});
-    } catch {
-      // The upstream adapter error could include a token in query params:
-      // NEVER forward error.message, raw URL/body, stack or credentials.
+    } catch (error) {
+      // The upstream adapter error can include a secret-bearing URL. Only
+      // known, exact error CLASS tokens are allowed into monitoring output.
+      const message=String(error?.message??"");
+      const http=message.match(/^HTTP ([1-5][0-9]{2}) for /u)?.[1];
+      const cause=http?("HTTP_"+http):
+        message.startsWith("Non-JSON response from ")?"RESPONSE_NOT_JSON":
+        message==="Unexpected response shape for "+source.id?"RESPONSE_SHAPE_INVALID":
+        error?.name==="AbortError"||error?.name==="TimeoutError"?"UPSTREAM_TIMEOUT":
+        "UPSTREAM_UNKNOWN_FAILURE";
       results.push({source_id:source.id,category:source.category,
         status:"CONFIGURED_BUT_PROBE_FAILED",http_probed:true,
-        reason:"UPSTREAM_UNAVAILABLE_OR_RESPONSE_INVALID"});
+        reason:cause});
     }
   }
   const counts={
