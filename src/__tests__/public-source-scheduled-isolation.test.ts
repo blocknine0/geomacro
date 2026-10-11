@@ -1,4 +1,5 @@
 import {describe,it,expect,vi} from "vitest";
+import {readFileSync} from "node:fs";
 import {
   PUBLIC_ADAPTER_DOMAINS,probePublicSourcesIndependently,
 } from "../../global-intelligence/scripts/probe-public-sources.mjs";
@@ -9,6 +10,13 @@ const valid=(id:string)=>({
 });
 
 describe("#1827 real public-adapter three-domain source health",()=>{
+  it("checks a bounded OECD SDMX original dataset identity, not whole registry",()=>{
+    const code=readFileSync("global-intelligence/adapters/public-sources.mjs","utf8");
+    expect(code).toContain("/dataflow/OECD.SDD.NAD/DSD_NAAG@DF_NAAG_I/latest?references=none");
+    expect(code).not.toContain("/dataflow/all/all/latest");
+    expect(code).toContain("OECD_SDMX_DATAFLOW_UNVERIFIED");
+    expect(code).toContain("PUBLIC_SOURCE_OVERSIZE");
+  });
   it("probes all 13 independently even if one provider is unavailable",async()=>{
     const probe=vi.fn(async(id:string)=>{
       if(id==="bgs")throw Error("provider read timed out");
