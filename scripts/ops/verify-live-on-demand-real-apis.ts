@@ -6,12 +6,13 @@
  * One ISO3 country x three Geomacro categories, 8 fixed upstream requests.
  */
 import { writeFileSync, mkdirSync } from "node:fs";
-import { discoverOnDemandGlobal } from "../../src/lib/on-demand-global-discovery.server";
+import { discoverOnDemandForPrivateQualification } from "../../src/lib/on-demand-global-discovery.server";
 
-const receipt=await discoverOnDemandGlobal({
+const privateEvidence=await discoverOnDemandForPrivateQualification({
   country_iso3:"IND",
   categories:["geopolitics","macro","rare_earth"],
 });
+const receipt=privateEvidence.discovery;
 const proof={
   schema:"geomacro.live-on-demand-real-api-safety.v1",
   checked_at:receipt.checked_at,
@@ -30,6 +31,9 @@ const proof={
     independent_claim_verified:row.independent_claim_verified,
     commercial_rights_verified:row.derived_commercial_rights_verified,
   })),
+  private_original_candidate_count:privateEvidence.private_candidates.length,
+  private_original_candidate_page_dates_verified:false,
+  private_original_candidate_derived_rights_verified:false,
   published_signed_intelligence:receipt.signed_derived_intelligence_created,
   independently_corrobated_same_event:receipt.independent_same_event_corroboration_verified,
   commercially_licensed:receipt.source_derived_commercial_rights_verified,
@@ -44,6 +48,7 @@ writeFileSync("artifacts/on-demand-live/real-api-proof.json",
   JSON.stringify(proof,null,2)+"\n",{mode:0o600});
 console.log(JSON.stringify(proof));
 if(proof.category_count!==3||proof.network_attempts>12 ||
+   proof.private_original_candidate_count>16 ||
    proof.network_attempts<1||proof.payable!==false||
    proof.raw_upstream_delivered!==false||
    proof.payment_settlement_attempted!==false||
