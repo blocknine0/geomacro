@@ -4,7 +4,9 @@
 const PAGE_BYTES_MAX = 128 * 1024;
 const PAGE_TIMEOUT_MS = 4_000;
 const ONE_DAY_MS = 86_400_000;
-const PRECISE_DATE = /^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d{1,3})?)?(?:Z|[+-]\d\d:\d\d)$/iu;
+// Explicit timezone mandatory. ISO 8601 permits >millisecond source precision
+// and ±HHMM offsets; normalize only those pinned shapes. No local timezone.
+const PRECISE_DATE = /^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d{1,9})?)?(?:Z|[+-]\d\d:?\d\d)$/iu;
 const HTML_TYPE = /^text\/html(?:;|$)/iu;
 
 export const ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN = 2;
@@ -27,9 +29,27 @@ function attr(tag, name) {
   return tag.match(pattern)?.[2] ?? "";
 }
 
+function parsePublisherOriginalClock(value) {
+  if (typeof value !== "string" || !PRECISE_DATE.test(value)) return NaN;
+  // JS Date.parse normalizes impossible dates on some runtimes. Validate
+  // the author's original YYYY-MM-DD before any timezone arithmetic.
+  const parts=/^(\d{4})-(\d\d)-(\d\d)T/u.exec(value);
+  if(!parts)return NaN;
+  const year=Number(parts[1]),month=Number(parts[2]),day=Number(parts[3]);
+  const calendar=new Date(Date.UTC(year,month-1,day));
+  if(calendar.getUTCFullYear()!==year||calendar.getUTCMonth()+1!==month||
+     calendar.getUTCDate()!==day)return NaN;
+  const offset=/([+-])(\d\d):?(\d\d)$/u.exec(value);
+  if(offset && (Number(offset[2])>14 || Number(offset[3])>59 ||
+     (Number(offset[2])===14 && Number(offset[3])!==0)))return NaN;
+  // Truncate (never round) sub-millisecond digits, preserving the original
+  // explicitly declared instant within <1ms. Never synthesize a missing zone.
+  const canonical=value.replace(/([+-]\d\d)(\d\d)$/u,"$1:$2")
+    .replace(/(\.\d{3})\d{1,6}(?=Z|[+-]\d\d:\d\d$)/iu,"$1");
+  return Date.parse(canonical);
+}
 function precise(value, nowMs) {
-  if (typeof value !== "string" || !PRECISE_DATE.test(value)) return null;
-  const ms = Date.parse(value);
+  const ms = parsePublisherOriginalClock(value);
   if (!Number.isFinite(ms) || ms > nowMs || nowMs - ms > ONE_DAY_MS) return null;
   return ms;
 }
@@ -137,7 +157,7 @@ export function verifiedPublisherPageDate(html, now = new Date(), diagnostics = 
   if (candidates.some(value=>typeof value!=="string" || !PRECISE_DATE.test(value))) {
     reason("INVALID_PUBLICATION_DATE_SHAPE");return null;
   }
-  const times = candidates.map(value=>Date.parse(value));
+  const times = candidates.map(value=>parsePublisherOriginalClock(value));
   if (times.some(time=>!Number.isFinite(time))) {
     reason("INVALID_PUBLICATION_DATE_SHAPE");return null;
   }
