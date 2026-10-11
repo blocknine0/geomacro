@@ -4,7 +4,7 @@ import {reconcileUndatedPrivateFeedObservations} from "../../scripts/lib/private
 import {EXPANDED_OFFICIAL_SOURCES} from "../../scripts/ops/probe-expanded-official-source-mesh.mjs";
 const src=EXPANDED_OFFICIAL_SOURCES.find((s:{id:string})=>s.id==="statcan_prices_original_atom_review")!;
 const now=new Date("2026-10-11T19:15:00.000Z");
-const feedPath="https://www150.statcan.gc.ca/n1/rss/dai-quo/18-eng.atom";
+const feedPath="https://www150.statcan.gc.ca/n1/other-statcan-releases/entry.atom";
 const xml=(size:number,updated="2026-10-11T19:14:00Z")=>"<feed>"+
  Array.from({length:size},(_,i)=>'<entry>'+
   '<title type="html"><strong>Statistics Canada Daily news</strong></title>'+
