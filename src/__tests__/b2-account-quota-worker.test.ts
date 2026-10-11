@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import worker from "../../workers/control-plane/src/index.mjs";
 import {
   reserveB2AccountQuota, readB2AccountQuota, B2_DAILY_LIMITS,
-  ATOMIC_B2_QUOTA_SQL,
+  ATOMIC_B2_QUOTA_SQL,B2_PUBLIC_EDGE_GLOBAL_GET_CEILING,
 } from "../../workers/control-plane/src/b2-account-quota.mjs";
 
 const TOKEN = "t".repeat(64);
@@ -29,7 +29,9 @@ function fakeD1() {
                   head_requests:0, native_auth_requests:0,
                 };
                 if (current.total_requests >= Number(max[0]) ||
-                    kind.some((k,i)=>current[k as keyof Count]+increments[i] > Number(max[i+1]))) return null;
+                    kind.some((k,i)=>current[k as keyof Count]+increments[i] > Number(max[i+1])) ||
+                    (Number(params[11])===1 &&
+                     current.get_requests >= Number(params[12]))) return null;
                 const next = { ...current, total_requests: current.total_requests + 1 };
                 kind.forEach((k,i)=> { next[k as keyof Count] += increments[i]; });
                 counters.set(day,next);
@@ -67,6 +69,8 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     expect(ATOMIC_B2_QUOTA_SQL).toContain("WHERE b2_account_daily_request_quota.total_requests < ?");
     expect(ATOMIC_B2_QUOTA_SQL).toContain("RETURNING total_requests");
     expect(ATOMIC_B2_QUOTA_SQL).not.toContain("DELETE");
+    expect(ATOMIC_B2_QUOTA_SQL).toContain("b2_account_daily_request_quota.get_requests < ?");
+    expect(B2_PUBLIC_EDGE_GLOBAL_GET_CEILING).toBe(10);
     expect(B2_DAILY_LIMITS).toEqual({total:80,GET:25,PUT:55,HEAD:10,NATIVE_AUTH:10});
   });
 
@@ -102,6 +106,23 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
       {now:new Date("2026-10-10T00:00:01Z")});
     expect(next.ok).toBe(true);
     expect(next.day_utc).toBe("2026-10-10");
+  });
+
+  it("reserves at least 15 GET quota tickets for core producer/restore paths, not the public edge",async()=>{
+    const {db,counters,byWorkflow}=fakeD1();
+    const edge=await Promise.all(Array.from({length:25},()=>reserveB2AccountQuota(db,{
+      kind:"GET",workflow_id:"intelligence_public_edge"},{now:date})));
+    expect(edge.filter(x=>x.ok)).toHaveLength(10);
+    expect(edge.filter(x=>!x.ok)).toHaveLength(15);
+    expect(counters.get("2026-10-09")?.get_requests).toBe(10);
+    const important=await Promise.all(Array.from({length:15},(_,i)=>reserveB2AccountQuota(db,{
+      kind:"GET",workflow_id:"restricted_private_scoring"},{now:date})));
+    expect(important.every(x=>x.ok)).toBe(true);
+    expect(counters.get("2026-10-09")?.get_requests).toBe(25);
+    expect(byWorkflow.get("2026-10-09|intelligence_public_edge|GET")).toBe(10);
+    expect(byWorkflow.get("2026-10-09|restricted_private_scoring|GET")).toBe(15);
+    expect((await reserveB2AccountQuota(db,{
+      kind:"GET",workflow_id:"intelligence_public_edge"},{now:new Date("2026-10-10T00:00:02Z")})).ok).toBe(true);
   });
 
   it("rejects untrusted identifiers, bogus counts, malformed clock and missing D1", async () => {
