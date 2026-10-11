@@ -55,6 +55,16 @@ export function auditOfficialStep1Feeds(receipt) {
         typeof row.publisher_reachable !== "boolean" ||
         (row.format_valid && (row.publisher_reachable !== true ||
           row.primary_http_status !== 200)) ||
+        (!row.format_valid && row.publisher_reachable) ||
+        (source.original_hosts && row.format_valid && (
+          !integer(row.source_native_release_items) ||
+          !integer(row.source_native_24h_release_items) ||
+          row.source_native_24h_release_items > row.source_native_release_items ||
+          !integer(row.original_publisher_topical_6h) ||
+          !integer(row.original_publisher_topical_90m) ||
+          !integer(row.original_publisher_topical_30m) ||
+          row.original_publisher_topical_30m > row.original_publisher_topical_90m ||
+          row.original_publisher_topical_90m > row.original_publisher_topical_6h)) ||
         (row.primary_http_status !== null &&
           (!integer(row.primary_http_status) || row.primary_http_status > 599))) {
       throw new Error("STEP1_SOURCE_RECEIPT_NOT_TRUSTED");
