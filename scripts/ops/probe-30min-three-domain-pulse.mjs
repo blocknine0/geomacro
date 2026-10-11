@@ -12,7 +12,7 @@ import {
   EXPANDED_OFFICIAL_SOURCES, probeExpandedSource,
 } from "./probe-expanded-official-source-mesh.mjs";
 import {classifyPrivateOriginalCandidateDuplicates} from "../lib/private-original-publisher-candidates.mjs";
-import {SAFE_PUBLISHER_PAGE_PROBE_CODES} from "../lib/official-original-article-date.mjs";
+import {SAFE_PUBLISHER_PAGE_PROBE_CODES, SAFE_ORIGINAL_PAGE_DATE_REASONS} from "../lib/official-original-article-date.mjs";
 
 const INTERVAL_MS=30*60*1000;
 export const THIRTY_MIN_PUBLISHER_PAIRS=Object.freeze({
@@ -188,6 +188,11 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       original_page_result_codes:Object.fromEntries(
         SAFE_PUBLISHER_PAGE_PROBE_CODES.map(code=>[code,
           safeInt(item.first_party_original_page_probe_codes?.[code])??0])),
+      // One bounded numeric outcome per actually parsed publisher article page.
+      // Date-only, stale, absent and contradictory clocks are not fresh news.
+      original_page_date_reason_codes:Object.fromEntries(
+        SAFE_ORIGINAL_PAGE_DATE_REASONS.map(code=>[code,
+          safeInt(item.first_party_original_page_date_reason_codes?.[code])??0])),
     }));
     const sourceItemDiagnostics=observed.map(item=>({
       source_id:item.source_id,

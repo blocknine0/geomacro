@@ -86,6 +86,38 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     expect(x.actual_original_publisher_rows.every(row=>row.chargeable_intelligence_ready===false)).toBe(true);
   });
 
+
+  it("preserves only numeric publisher page-date reasons for all three private D1 domains",async()=>{
+    const probe=vi.fn(async(source:{id:string,domain:string})=>({
+      ...verifiedDateResponse(source,0),
+      original_page_precise_date_checks:2,
+      original_page_precise_date_24h:0,
+      first_party_original_page_date_reason_codes:{
+        IMPRECISE_DATE_ONLY:1,STALE_PUBLISHER_PUBLICATION:1,
+      },
+      first_party_original_page_probe_codes:{PRECISE_PUBLICATION_UNVERIFIED:2},
+    }));
+    const result=await probe30MinThreeDomainPulse({now:NOW,probe});
+    expect(probe).toHaveBeenCalledTimes(6);
+    for(const row of result.actual_original_publisher_rows){
+      const entries=row.source_feed_recovery_diagnostics;
+      expect(entries).toHaveLength(2);
+      for(const entry of entries){
+        expect(entry.original_page_date_reason_codes).toMatchObject({
+          IMPRECISE_DATE_ONLY:1,STALE_PUBLISHER_PUBLICATION:1,
+          PRECISE_PUBLICATION_ACCEPTED:0,
+        });
+        expect(entry.original_page_result_codes.PRECISE_PUBLICATION_UNVERIFIED).toBe(2);
+        const serialized=JSON.stringify(entry);
+        for(const privateField of ["article_url","article_title","source_body","customer_query","http_header"])
+          expect(serialized).not.toContain(privateField);
+      }
+      expect(row.chargeable_intelligence_ready).toBe(false);
+    }
+    expect(result.independently_verified_current_intelligence_count).toBe(0);
+    expect(result.payments_performed).toBe(0);
+  });
+
   it("distinguishes no-new original-publisher item from missing transport",async()=>{
     const probe=vi.fn(async(source:{id:string,domain:string})=>verifiedDateResponse(source,0));
     const r=await probe30MinThreeDomainPulse({now:NOW,probe});

@@ -5,7 +5,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN, SAFE_PUBLISHER_PAGE_PROBE_CODES } from "../lib/official-original-article-date.mjs";
+import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN, SAFE_PUBLISHER_PAGE_PROBE_CODES, SAFE_ORIGINAL_PAGE_DATE_REASONS } from "../lib/official-original-article-date.mjs";
 import { originalPublisherPrivateCandidates, originalPublisherPrivatePageDateCandidate } from "../lib/private-original-publisher-candidates.mjs";
 import { officialOriginalRssArticleUrl } from "../lib/official-rss-original-link.mjs";
 import { officialItemNativePublicationMs } from "../lib/official-native-item-publication-date.mjs";
@@ -614,6 +614,7 @@ export async function probeExpandedSource(source,{
     undated_observed_entry_count:0,
     unparseable_native_rss_date_shapes:null,
     first_party_original_page_probe_codes:null,
+    first_party_original_page_date_reason_codes:null,
     undated_atom_article_link_candidates:null,
     undated_atom_link_diagnostic:null,
     // Populated only for the Eurostat dataset catalogue, not RSS headlines.
@@ -771,6 +772,7 @@ export async function probeExpandedSource(source,{
     // Aggregate only the existing, fixed-enum publisher page verifier codes.
     // No article URLs, response bodies or original date text appear in logs.
     const pageCodes=Object.create(null);
+    const dateReasons=Object.create(null);
     let topicalOriginalPages=0;
     for(const article of articles){
       const pageDiagnostics={};
@@ -780,6 +782,9 @@ export async function probeExpandedSource(source,{
       const safeCode=pageDiagnostics.code;
       if(SAFE_PUBLISHER_PAGE_PROBE_CODES.includes(safeCode))
         pageCodes[safeCode]=(pageCodes[safeCode]??0)+1;
+      const safeReason=pageDiagnostics.date_reason;
+      if(SAFE_ORIGINAL_PAGE_DATE_REASONS.includes(safeReason))
+        dateReasons[safeReason]=(dateReasons[safeReason]??0)+1;
       row.original_page_precise_date_checks++;
       if(!published)continue;
       // An independently checked publisher article page date can rescue an
@@ -811,6 +816,7 @@ export async function probeExpandedSource(source,{
     }
     row.topical_private_release_links_24h+=topicalOriginalPages;
     row.first_party_original_page_probe_codes=pageCodes;
+    row.first_party_original_page_date_reason_codes=dateReasons;
   }
   return row;
 }

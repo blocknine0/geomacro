@@ -3,6 +3,7 @@ import {
   verifiedPublisherPageDate,
   fetchVerifiedPublisherPageDate,
   ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN,
+  SAFE_ORIGINAL_PAGE_DATE_REASONS,
 } from "../../scripts/lib/official-original-article-date.mjs";
 import { fetchOriginalAlternate } from "../../scripts/lib/official-native-alternates.mjs";
 
@@ -57,6 +58,44 @@ describe("bounded original-publisher article precise-date fallback", () => {
       .toBeNull();
   });
 
+
+  it("diagnoses missing, day-only, stale, future and conflicting ORIGINAL publisher clocks privately",async()=>{
+    const scenarios=[
+      {html:'<html><meta name="govuk:updated-at" content="2026-10-09T13:00:00Z"></html>',
+       reason:"MISSING_PUBLISHER_PUBLICATION_METADATA",accepted:false},
+      {html:page("2026-10-09"),reason:"IMPRECISE_DATE_ONLY",accepted:false},
+      {html:page("not-an-original-clock"),reason:"INVALID_PUBLICATION_DATE_SHAPE",accepted:false},
+      {html:page("2026-10-09T13:32:00Z"),reason:"FUTURE_PUBLISHER_PUBLICATION",accepted:false},
+      {html:page("2026-10-07T12:45:00Z"),reason:"STALE_PUBLISHER_PUBLICATION",accepted:false},
+      {html:'<meta property="article:published_time" content="2026-10-09T12:45:00Z">'+
+         '<script type="application/ld+json">{"@type":"NewsArticle","datePublished":"2026-10-09T13:00:00Z"}</script>',
+       reason:"CONFLICTING_PUBLISHER_PUBLICATION",accepted:false},
+      {html:page("2026-10-09T12:45:00Z"),
+       reason:"PRECISE_PUBLICATION_ACCEPTED",accepted:true},
+    ] as const;
+    expect(SAFE_ORIGINAL_PAGE_DATE_REASONS).toHaveLength(7);
+    for(const row of scenarios){
+      const diagnostics:{code?:string;date_reason?:string}={};
+      const nowResult=verifiedPublisherPageDate(row.html,now,diagnostics);
+      expect(nowResult!==null).toBe(row.accepted);
+      expect(diagnostics.date_reason).toBe(row.reason);
+      const fetchImpl=vi.fn(async()=>new Response(row.html,{
+        headers:{"content-type":"text/html"},
+      }));
+      const networkResult=await fetchVerifiedPublisherPageDate(official,"rare_earth",{
+        now,fetchImpl,diagnostics,
+      });
+      expect(networkResult).toBe(nowResult);
+      expect(diagnostics.date_reason).toBe(row.reason);
+      expect(diagnostics.code).toBe(row.accepted
+        ?"PRECISE_PUBLICATION_VERIFIED":"PRECISE_PUBLICATION_UNVERIFIED");
+      // Never send the opaque original URL, body or actual timestamp into codes.
+      expect(JSON.stringify(diagnostics)).not.toContain("www.canada.ca");
+      expect(JSON.stringify(diagnostics)).not.toContain("private original");
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    }
+  });
+
   it("rejects unrelated URLs and never follows cross-origin redirects", async () => {
     const fetchImpl = vi.fn(async () => new Response(page("2026-10-09T12:45:00Z"), {
       headers: { "content-type": "text/html" },
@@ -103,7 +142,8 @@ describe("bounded original-publisher article precise-date fallback", () => {
         now,fetchImpl,diagnostics,
       });
       expect(result).toBeNull();
-      expect(diagnostics).toEqual({code});
+      expect(diagnostics).toEqual(code==="PRECISE_PUBLICATION_UNVERIFIED"
+        ?{code,date_reason:"MISSING_PUBLISHER_PUBLICATION_METADATA"}:{code});
       expect(JSON.stringify(diagnostics)).not.toContain("sensitive");
       expect(JSON.stringify(diagnostics)).not.toContain("statcan");
     }
@@ -113,7 +153,8 @@ describe("bounded original-publisher article precise-date fallback", () => {
         headers:{"content-type":"text/html"},
       }),diagnostics:verified,
     })).toBe("2026-10-09T12:45:00.000Z");
-    expect(verified).toEqual({code:"PRECISE_PUBLICATION_VERIFIED"});
+    expect(verified).toEqual({code:"PRECISE_PUBLICATION_VERIFIED",
+      date_reason:"PRECISE_PUBLICATION_ACCEPTED"});
     const denied:Record<string,unknown>={};
     expect(await fetchVerifiedPublisherPageDate(
       "https://evil.example/n1/daily-quotidien/261009/abc.htm",
