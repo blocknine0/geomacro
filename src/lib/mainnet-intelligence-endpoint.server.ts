@@ -37,7 +37,7 @@ import {
 } from "./coinbase-x402-usage-guard.server";
 import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.server";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
-import { discoverOnDemandGlobal, type OnDemandCategory } from "./on-demand-global-discovery.server";
+import { discoverOnDemandForPrivateQualification, type OnDemandCategory } from "./on-demand-global-discovery.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const PRODUCT_ID = "geomacro_adaptive_risk_intelligence_v1";
@@ -338,10 +338,16 @@ export const mainnetIntelligenceHandlers = {
             },422);
           }
           let discovery;
+          let privatelyQualifiedOriginalCandidateCount=0;
           try {
-            discovery=await discoverOnDemandGlobal({
+            const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,
             });
+            discovery=privateResult.discovery;
+            // NEVER copy privateResult.private_candidates into the public
+            // response/ledger/x402 quote; article-page publication, rights
+            // and independent same-event verification are not yet complete.
+            privatelyQualifiedOriginalCandidateCount=privateResult.private_candidates.length;
           } catch(error) {
             console.error("[x402-live] bounded discovery failed",error);
             return json({
@@ -364,6 +370,8 @@ export const mainnetIntelligenceHandlers = {
               network_attempts:discovery.network_attempts,
               reached_source_families:discovery.reached_source_families,
               discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
+              private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
+              private_originals_article_page_verified:false,
               independent_same_event_corroboration_verified:false,
               source_derived_commercial_rights_verified:false,
               signed_derived_intelligence_created:false,
