@@ -1006,7 +1006,13 @@ function passesGates(article, assessment, fallbackCategory) {
 
   // Every GRI domain requires its own deterministic semantic anchor.
   // Generic regulator/market/supply-chain words cannot qualify by themselves.
-  if (!ALLOW[category]?.test(blob)) {
+  // #1827 minimum source gate: in PRIVATE staging the canonical classifier
+  // has already selected this domain with explicit relevance/confidence.
+  // Do not veto a real original solely because the hard-coded English
+  // keyword list missed a synonym. Public/legacy scoring keeps its anchor.
+  // This does NOT waive rights, corroboration, dated source provenance,
+  // severity/confidence checks or paid/signed output verification.
+  if (!PRIVATE_B2_STAGE && !ALLOW[category]?.test(blob)) {
     return {
       ok: false,
       reason: `${category} anchor miss`,
