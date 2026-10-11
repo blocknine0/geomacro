@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "scripts/ops/audit-official-step1-feed-redundancy.mjs"
+      - "src/__tests__/official-step1-feed-redundancy.test.ts"
       - "src/__tests__/expanded-official-source-observation.test.ts"
       - ".github/workflows/expanded-official-source-observation.yml"
       - "scripts/ops/audit-90min-three-domain-coverage.mjs"
@@ -11,6 +13,7 @@ on:
     branches: [main]
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "scripts/ops/audit-official-step1-feed-redundancy.mjs"
       - ".github/workflows/expanded-official-source-observation.yml"
       - "scripts/ops/audit-90min-three-domain-coverage.mjs"
   schedule:
@@ -110,12 +113,20 @@ jobs:
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
             exit "$rc"
           fi
+      - name: Independently audit two working first-party issuers per category
+        if: always()
+        run: |
+          node scripts/ops/audit-official-step1-feed-redundancy.mjs
+          # Transport redundancy is NOT country relevance, article reuse
+          # permission, multi-source same-event review or paid publication.
       - name: Retain sanitized private transport receipt for 3 days
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: expanded-official-source-transport-${{ github.run_id }}
-          path: artifacts/expanded-official-source/transport.json
+          path: |
+            artifacts/expanded-official-source/transport.json
+            artifacts/expanded-official-source/step1-issuer-readiness.json
           if-no-files-found: warn
           retention-days: 3
 
