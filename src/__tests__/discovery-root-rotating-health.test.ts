@@ -67,6 +67,28 @@ describe("#1827 bounded governed source root health",()=>{
     expect(fetchImpl).toHaveBeenCalledTimes(4);
     expect(fetchImpl.mock.calls.every(([,o]:any)=>o.redirect==="manual")).toBe(true);
   });
+  it("resolves one same-origin HTTPS redirect, never an external/HTTP redirect",async()=>{
+    const catalog={roots:[
+      row(0,"https://example.org/start"),
+      row(1,"https://example.net/external"),
+      row(2,"https://example.com/insecure"),
+    ]};
+    const fetchImpl=vi.fn(async(url:string)=>{
+      if(url.endsWith("/start"))return {
+        status:301,headers:{get:()=>"/canonical"},body:null};
+      if(url.endsWith("/canonical"))return{status:200,headers:{get:()=>null},body:null};
+      if(url.endsWith("/external"))return{
+        status:302,headers:{get:()=>"https://evil.test/attack"},body:null};
+      return {status:302,headers:{get:()=>"http://example.com/not-https"},body:null};
+    });
+    const x=await probeGovernedRoots({catalog,now:t,fetchImpl});
+    expect(x.rows.map((r:any)=>r.status)).toEqual([
+      "ROOT_HTTP_REACHABLE","ROOT_REDIRECT_UNVERIFIED","ROOT_REDIRECT_UNVERIFIED"]);
+    expect(x.rows[0].same_origin_redirect_resolved).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(fetchImpl.mock.calls.every(([,opts]:any)=>opts.redirect==="manual")).toBe(true);
+    expect(JSON.stringify(x)).not.toContain("evil.test");
+  });
   it("fails on invalid duplicate source IDs rather than hiding skipped rows",()=>{
     const bad={roots:[row(0),row(0)]};
     expect(()=>selectGovernedRootWindow(bad,t)).toThrow("ROOT_HEALTH_SOURCE_ID_OR_CATEGORY_INVALID");
