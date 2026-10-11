@@ -316,10 +316,13 @@ async function originalOfficialFeed(
     if(!article_url)continue;
     if(candidates.length>=4)continue; // fixed private evidence budget/issuer
     const article_title=title.replace(/\s+/gu," ").trim();
+    const article_identity_sha256=digest(def.family+"|"+article_url);
+    if(candidates.some(x=>x.article_identity_sha256===article_identity_sha256))
+      continue; // Same publisher URL in a second feed entry is one article.
     candidates.push({
       domain:def.domain,publisher_family:def.family,article_url,article_title,
       feed_item_published_at:new Date(Date.parse(date)).toISOString(),
-      article_identity_sha256:digest(def.family+"|"+article_url),
+      article_identity_sha256,
       first_party_article_url_verified:true,
       source_native_feed_publication_date_verified:true,
       publisher_article_page_date_verified:false,
@@ -381,9 +384,19 @@ async function discoverOnDemandImpl(
   // Never persist, log, or expose raw first-party titles/articles here.
   // Every candidate requires the later governed article-page/rights/signing
   // stages; each source institution stays independently identified.
-  const private_candidates=settled.flatMap(result=>
+  const issuerCandidateGroups=settled.flatMap(result=>
     result.status==="fulfilled" && "private_candidates" in result.value
-      ? result.value.private_candidates : []).slice(0,16);
+      ? [result.value.private_candidates] : []);
+  const private_candidates:PrivateOriginalCandidate[]=[];
+  // Round-robin preserves distinct publisher families and all 3 categories
+  // under heavy news flow; a dominant feed cannot starve a later independent
+  // original source of the 16-entry bounded producer budget.
+  for(let i=0;i<4 && private_candidates.length<16;i++) {
+    for(const issuer of issuerCandidateGroups) {
+      if(private_candidates.length>=16)break;
+      if(issuer[i])private_candidates.push(issuer[i]);
+    }
+  }
   // The same GDELT producer searched for 3 different topics is ONE family,
   // and two World Bank indicator requests are ONE official institution.
   const reached=new Set(source_probes.filter(p=>p.reachable).map(p=>
