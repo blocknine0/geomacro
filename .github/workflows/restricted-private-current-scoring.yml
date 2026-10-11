@@ -2,9 +2,17 @@ name: Restricted Private Current Scoring Staging
 
 # A single additional current-head private 3-domain canary on protected
 # PR #1934 merge after FCDO geopolitical third-family source correction.
-# Prior #1933/#1929/#1924 runs are historical. No cron, public projection,
-# Supabase, money; unverified originals fail BEFORE any B2 PUT.
+# Prior #1933/#1929/#1924 runs are historical. D1-gated reusable calls can
+# stage canonical scoring automatically only after genuinely new original
+# article fingerprints. No public projection, Supabase, money or GRO promotion;
+# unverified originals fail BEFORE any B2 PUT.
 on:
+  workflow_call:
+    inputs:
+      bounded_automatic_private_stage:
+        description: "Private scorer after novel D1 source fingerprints (never publication)"
+        required: true
+        type: boolean
   workflow_dispatch:
     inputs:
       private_gri_singleton:
@@ -29,6 +37,7 @@ jobs:
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       (
+        inputs.bounded_automatic_private_stage == true ||
         github.event_name == 'workflow_dispatch' ||
         (github.event_name == 'push' && (
           contains(github.event.head_commit.message, 'Merge pull request #1891') ||
