@@ -9,6 +9,7 @@
  */
 import {createHash} from "node:crypto";
 import {officialOriginalRssArticleUrl} from "./official-rss-original-link.mjs";
+import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
 
 const MAX_ITEMS=40;
 // The free homepage's 24h recent-news window: never derive from feed updated.
@@ -94,7 +95,7 @@ export function originalPublisherPrivateCandidates(xml,source,now=new Date(),{ca
   for(const [,item] of entries.slice(0,MAX_ITEMS)){
     const native=xmlTag(item,rss?"pubDate":"published");
     if(!native)continue;
-    const timestamp=Date.parse(native);
+    const timestamp=officialItemNativePublicationMs(native);
     if(!Number.isFinite(timestamp)||timestamp>now.getTime()||
       now.getTime()-timestamp>MAX_AGE_MS)continue;
     const title=textValue(xmlTag(item,"title"));
