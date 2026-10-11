@@ -6,7 +6,6 @@ import { createReviewedRightsOnDemandQualifier } from "./on-demand-reviewed-righ
 import type { CountryRiskEventInput } from "./country-risk-engine";
 import type { B2CommercialSourceRight } from "./b2-live.server";
 // The existing canonical same-event reviewer is intentionally reused here.
-// @ts-expect-error Legacy source is MJS, not a new local competing validator.
 import { sameEventClaimHash,derivedCustomerRowSha256,
   qualificationReviewSigningBytes,SAME_EVENT_QUALIFICATION_SCHEMA,
 } from "../../scripts/lib/independent-same-event-qualification.mjs";
