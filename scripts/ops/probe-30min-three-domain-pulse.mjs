@@ -136,13 +136,21 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       atom_undated_valid_article_link_candidates:
         safeInt(item.undated_atom_article_link_candidates),
       atom_original_link_diagnostics:item.undated_atom_link_diagnostic
-        ?Object.fromEntries([
-          "undated_entries","rel_missing_alternate_or_canonical",
-          "alternate_missing_href","valid_first_party_article_links",
-          "rejected_publisher_host","rejected_original_path",
-          "rejected_unsafe_or_malformed",
-        ].map(code=>[code,safeInt(item.undated_atom_link_diagnostic[code])]))
-        :null,
+        ?{
+          ...Object.fromEntries([
+            "undated_entries","rel_missing_alternate_or_canonical",
+            "alternate_missing_href","valid_first_party_article_links",
+            "rejected_publisher_host","rejected_original_path",
+            "rejected_unsafe_or_malformed",
+          ].map(code=>[code,safeInt(item.undated_atom_link_diagnostic[code])])),
+          statcan_unapproved_path_families:
+            item.source_id==="statcan_prices_original_atom_review"
+            ?Object.fromEntries([
+              "N1_EN_DAILY","N1_DAILY","N1_PUB","N1_RSS","N1_EN_OTHER","OTHER",
+            ].map(code=>[code,safeInt(
+              item.undated_atom_link_diagnostic.statcan_unapproved_path_families?.[code])]))
+            :null,
+        }:null,
       original_page_result_codes:Object.fromEntries(
         SAFE_PUBLISHER_PAGE_PROBE_CODES.map(code=>[code,
           safeInt(item.first_party_original_page_probe_codes?.[code])??0])),

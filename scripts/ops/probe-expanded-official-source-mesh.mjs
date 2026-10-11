@@ -178,7 +178,7 @@ const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
 // conservative: an unknown news URL requires a separately reviewed adapter.
 const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   un_news_security_original_rss_review:/^\/en\/story\/\d{4}\/\d{1,2}\//u,
-  statcan_prices_original_atom_review:/^\/n1\/daily-quotidien\/\d{6}\//u,
+  statcan_prices_original_atom_review:/^\/n1\/(?:en\/)?daily-quotidien\/\d{6}\//u,
   nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
   uk_fcdo_original_foreign_policy_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
   fed_monetary_original_press_rss_review:/^\/newsevents\/pressreleases\/[A-Za-z0-9][^/?#]*/u,
@@ -427,6 +427,20 @@ function undatedAtomOriginalLinkDiagnostic(xml,source) {
     alternate_missing_href:0,valid_first_party_article_links:0,
     rejected_publisher_host:0,rejected_original_path:0,
     rejected_unsafe_or_malformed:0,
+    statcan_unapproved_path_families:source.id==="statcan_prices_original_atom_review"
+      ?{N1_EN_DAILY:0,N1_DAILY:0,N1_PUB:0,N1_RSS:0,N1_EN_OTHER:0,OTHER:0}
+      :null,
+  };
+  const classifyStatcanPath=raw=>{
+    try{
+      const p=new URL(raw).pathname;
+      if(/^\/n1\/en\/daily-quotidien\//u.test(p))return "N1_EN_DAILY";
+      if(/^\/n1\/daily-quotidien\//u.test(p))return "N1_DAILY";
+      if(/^\/n1\/pub\//u.test(p))return "N1_PUB";
+      if(/^\/n1\/rss\//u.test(p))return "N1_RSS";
+      if(/^\/n1\/en\//u.test(p))return "N1_EN_OTHER";
+    }catch{ /* no URLs or exceptions leave this diagnostic */ }
+    return "OTHER";
   };
   const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,80);
   for(const [,item] of entries){
@@ -438,18 +452,25 @@ function undatedAtomOriginalLinkDiagnostic(xml,source) {
         return rel==="alternate"||rel==="canonical";
       });
     if(!tags.length){codes.rel_missing_alternate_or_canonical++;continue;}
-    let valid=false,reason=null,hasHref=false;
+    let valid=false,reason=null,hasHref=false,rejectedPath=null;
     for(const attrs of tags) {
       const href=attrs.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??"";
       if(!href)continue;
       hasHref=true;
       if(originalHref(href,source.original_hosts,source)){valid=true;break;}
       reason??=originalLinkRejectionKind(href,source.original_hosts,source);
+      if(reason==="original_article_path_mismatch"&&rejectedPath===null)
+        rejectedPath=href;
     }
     if(valid){codes.valid_first_party_article_links++;continue;}
     if(!hasHref){codes.alternate_missing_href++;continue;}
     if(reason==="publisher_host_mismatch")codes.rejected_publisher_host++;
-    else if(reason==="original_article_path_mismatch")codes.rejected_original_path++;
+    else if(reason==="original_article_path_mismatch"){
+      codes.rejected_original_path++;
+      if(codes.statcan_unapproved_path_families){
+        codes.statcan_unapproved_path_families[classifyStatcanPath(rejectedPath)]++;
+      }
+    }
     else codes.rejected_unsafe_or_malformed++;
   }
   return codes;

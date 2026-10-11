@@ -36,6 +36,10 @@ describe("#2041 Atom missing-date original-link safe rejection categorization",(
       rejected_publisher_host:1,
       rejected_original_path:1,
       rejected_unsafe_or_malformed:0,
+      statcan_unapproved_path_families:{
+        N1_EN_DAILY:0,N1_DAILY:0,N1_PUB:0,
+        N1_RSS:1,N1_EN_OTHER:0,OTHER:0,
+      },
     });
     expect(result.undated_atom_article_link_candidates).toBe(1);
     expect(result.original_page_precise_date_checks).toBe(1);
