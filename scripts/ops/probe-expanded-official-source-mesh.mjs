@@ -292,7 +292,7 @@ function originalLinkRejectionKind(href,hosts,source=null) {
       return "publisher_host_mismatch";
     if(source && (!ORIGINAL_ARTICLE_PATHS[source.id]?.test(link.pathname) ||
        link.pathname===new URL(source.url).pathname ||
-       /(?:^|\\/)(?:feed|rss|atom)(?:\\/|$)/iu.test(link.pathname)))
+       /(?:^|\/)(?:feed|rss|atom)(?:\/|$)/iu.test(link.pathname)))
       return "original_article_path_mismatch";
     return "other_rejected";
   } catch {return "unsafe_or_malformed";}
