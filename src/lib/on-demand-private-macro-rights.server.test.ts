@@ -37,7 +37,7 @@ describe("private B2-only macro derived-use rights gate",()=>{
     expect(await checkPrivateOnDemandMacroRights([],{readRights}))
       .toEqual({status:"NO_ANNUAL_EVIDENCE",checked_driver_count:0,
         rights_verified_driver_count:0,signed_intelligence_verified:false,
-        payment_eligible:false});
+        payment_eligible:false,required_data_attribution:null});
     for (const forged of [
       driver({signed:true as false}),
       driver({payment_eligible:true as false}),
@@ -63,6 +63,7 @@ describe("private B2-only macro derived-use rights gate",()=>{
       status:"DERIVED_SOURCE_RIGHTS_VERIFIED_NOT_A_PAID_PRODUCT",
       checked_driver_count:2,rights_verified_driver_count:2,
       signed_intelligence_verified:false,payment_eligible:false,
+      required_data_attribution:null,
     });
     const serialized=JSON.stringify(out);
     expect(serialized).not.toContain("world_bank_indicators");
@@ -78,7 +79,7 @@ describe("private B2-only macro derived-use rights gate",()=>{
     ["ingestion disabled",[right({enabled_for_ingestion:false})],"SOURCE_NOT_CERTIFIED_FOR_DERIVED_USE"],
     ["commercial signals disabled",[right({enabled_for_commercial_signals:false})],"SOURCE_NOT_CERTIFIED_FOR_DERIVED_USE"],
     ["licence missing",[right({licence_name:null})],"SOURCE_NOT_CERTIFIED_FOR_DERIVED_USE"],
-    ["licence needs attribution",[right({attribution_required:true})],"ATTRIBUTION_NOT_SUPPORTED_BY_PRIVATE_OUTPUT"],
+    ["unknown licence needs attribution",[right({attribution_required:true,licence_name:"Unreviewed proprietary"})],"ATTRIBUTION_NOT_SUPPORTED_BY_PRIVATE_OUTPUT"],
     ["duplicate issuer records",[right(),right()],"SOURCE_NOT_CERTIFIED_FOR_DERIVED_USE"],
   ] as const)("fails closed when %s",async(_name,rows,status)=>{
     const out=await checkPrivateOnDemandMacroRights([driver()],{readRights:reader(rows as B2CommercialSourceRight[]|null)});
@@ -86,6 +87,28 @@ describe("private B2-only macro derived-use rights gate",()=>{
     expect(out.rights_verified_driver_count).toBe(0);
     expect(out.payment_eligible).toBe(false);
     expect(out.signed_intelligence_verified).toBe(false);
+  });
+
+  it("prepares exact legally-required WDI CC BY 4.0 credit with both material links, but never marks signed or payable",async()=>{
+    const rights=await checkPrivateOnDemandMacroRights(
+      [driver(),driver({driver:"real_gdp_growth"})],
+      {readRights:reader([right({attribution_required:true,licence_name:"CC BY 4.0",
+        commercial_usage_status:"COMMERCIAL_OK",raw_redistribution_allowed:true})])});
+    expect(rights.status).toBe("DERIVED_SOURCE_RIGHTS_VERIFIED_NOT_A_PAID_PRODUCT");
+    expect(rights.rights_verified_driver_count).toBe(2);
+    expect(rights.required_data_attribution).toEqual({
+      schema:"geomacro.approved-derived-data-attribution.v1",
+      credit:"World Bank, World Development Indicators",
+      terms:"CC BY 4.0",
+      terms_uri:"https://creativecommons.org/licenses/by/4.0/",
+      material_uris:[
+        "https://data.worldbank.org/indicator/FP.CPI.TOTL.ZG",
+        "https://data.worldbank.org/indicator/NY.GDP.MKTP.KD.ZG",
+      ],
+      modifications:"Geomacro adapted annual indicator observations into derived analysis; World Bank does not endorse the analysis.",
+    });
+    expect(rights.signed_intelligence_verified).toBe(false);
+    expect(rights.payment_eligible).toBe(false);
   });
 
   it("fails closed without a Supabase fallback if B2 lookup fails",async()=>{
