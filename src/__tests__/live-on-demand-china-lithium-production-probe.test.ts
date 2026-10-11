@@ -23,6 +23,19 @@ describe("production customer-query acceptance without B2, new services or money
     expect(script).toContain("payable:receipt.payable");
     expect(script).not.toContain("console.log(privateEvidence)");
   });
+  it("records status-class-only provider results without additional GETs or private URLs",()=>{
+    expect(script).toContain("const statusOnlyFetch:typeof fetch=");
+    expect(script).toContain("const response=await fetch(input,init)");
+    expect(script).toContain("provider_http_outcomes:");
+    expect(script).toContain('"ok_2xx"|"http_403"|"http_429"|"http_5xx"|"other_http"|"network_error"');
+    expect(script).toContain("observedRequests!==proof.total_bounded_network_attempts");
+    expect(script).toContain("proof.provider_http_outcomes.length>9");
+    expect(script).toContain("{fetchImpl:statusOnlyFetch}");
+    expect(script).not.toContain("provider_http_outcomes:outcomeCounts");
+    expect(script).not.toContain("console.log(response)");
+    expect(script).not.toContain("console.log(uri)");
+    expect(script).not.toContain("fetch(uri");
+  });
   it("keeps quota-constrained daily workflow with limited original-page reads",()=>{
     expect(workflow).toContain("bun scripts/ops/verify-live-on-demand-real-apis.ts");
     expect(workflow).toContain('paths:');
