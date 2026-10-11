@@ -102,8 +102,13 @@ describe("#2041 publication-unknown data no longer vanishes before discovery",()
       loadRows:async()=>db,
     });
     const inputs=[valid,feed(entry(url(60))+entry(url(1)))];
+    // Macro now has 3 issuing institutions, of which two are sampled each
+    // slot. Pick adjacent slots sharing StatCan so the same D1 history is
+    // reconciled, rather than silently testing an unpolled issuer.
+    const baseSlot=Math.floor(now.getTime()/(30*60000));
+    const firstAt=new Date(now.getTime()+((3-baseSlot%3)%3)*30*60000);
     for(let idx=0;idx<2;idx++){
-      const at=new Date(now.getTime()+idx*30*60000);
+      const at=new Date(firstAt.getTime()+idx*30*60000);
       const xs=getObs(inputs[idx],at);
       const probe=vi.fn(async (s:{id:string;domain:string})=>({
         source_id:s.id,domain:s.domain,publisher_reachable:true,format_valid:true,
