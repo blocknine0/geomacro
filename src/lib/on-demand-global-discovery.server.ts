@@ -461,7 +461,12 @@ export function deduplicateOnDemandOriginalHeadlines(
 async function discoverOnDemandImpl(
   input: OnDemandSearchInput,
   options: {fetchImpl?:typeof fetch; now?:Date}={},
-): Promise<{discovery:OnDemandDiscovery;private_candidates:PrivateOriginalCandidate[]}> {
+): Promise<{
+  discovery:OnDemandDiscovery;
+  private_candidates:PrivateOriginalCandidate[];
+  duplicate_original_headline_count:number;
+  private_macro_changes:PrivateOfficialMacroChange[];
+}> {
   const now=options.now ?? new Date(), fetchImpl=options.fetchImpl ?? fetch;
   if(!(now instanceof Date) || !Number.isFinite(now.getTime()))
     throw Error("ON_DEMAND_CLOCK_INVALID");
