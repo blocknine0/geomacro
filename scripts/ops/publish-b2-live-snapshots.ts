@@ -60,34 +60,14 @@ const b2 = createB2Client({
 });
 
 const generatedAt = new Date().toISOString();
-const intelligenceRows = await readPublicIntelligenceRowsFromSupabase();
-const categories = new Set(intelligenceRows.map((row) => String(row.category ?? "").toLowerCase()));
-for (const category of ["geopolitics", "macro", "rare_earth"]) {
-  if (!categories.has(category)) throw new Error(`B2_LIVE_INTELLIGENCE_CATEGORY_MISSING_${category}`);
-}
-if (intelligenceRows.length < 3 || intelligenceRows.length > 300) {
-  throw new Error("B2_LIVE_INTELLIGENCE_ROWS_INVALID");
-}
+const mode = process.argv[2] ?? "live-public";
+if (!["live-public","rights-only"].includes(mode))
+  throw Error("B2_LIVE_MAINTENANCE_MODE_INVALID");
 
-const risk = await readPublicGlobalRisk();
-if (
-  risk.verificationStatus !== "verified" ||
-  !/^[a-f0-9]{64}$/.test(String(risk.proofHash ?? "")) ||
-  !/^[a-f0-9]{64}$/.test(String(risk.calculationHash ?? ""))
-) throw new Error("B2_LIVE_RISK_PROOF_INVALID");
-
-const { data: sourceNetworkStatus, error: sourceNetworkError } = await supabase
-  .from("live_source_network_launch_status")
-  .select("source_network_100_complete,gdelt_gal_freshness_complete,source_network_launch_complete")
-  .maybeSingle();
-if (
-  sourceNetworkError ||
-  !sourceNetworkStatus ||
-  typeof sourceNetworkStatus.source_network_100_complete !== "boolean" ||
-  typeof sourceNetworkStatus.gdelt_gal_freshness_complete !== "boolean" ||
-  typeof sourceNetworkStatus.source_network_launch_complete !== "boolean"
-) throw new Error("B2_LIVE_SOURCE_NETWORK_STATUS_INVALID");
-
+// Read-only current source rights + certificates are independent of the
+// commercial hot intelligence / Global Risk snapshot publisher. One certified
+// source must not be blocked by unrelated unavailable category snapshots.
+async function collectCommercialSourceRights() {
 const sourceRights: SourceRightsRow[] = [];
 for (let offset = 0; offset < SOURCE_RIGHTS_MAX_ROWS; offset += SOURCE_RIGHTS_PAGE_SIZE) {
   const { data, error } = await supabase
@@ -161,6 +141,77 @@ const paidOutputReadiness = evaluatePaidOutputSourceReadiness(
     enabled_for_commercial_signals: row.enabled_for_commercial_signals === true,
   })),
 );
+
+  return { sourceRightsSnapshot, paidOutputReadiness };
+}
+
+
+if (mode === "rights-only") {
+  const { sourceRightsSnapshot, paidOutputReadiness } = await collectCommercialSourceRights();
+  const payload = {
+    schema: "geomacro.commercial-source-rights-live.v2",
+    generated_at: generatedAt,
+    source_project: "ldpwajisioljyjtojvfx",
+    paid_output_readiness: paidOutputReadiness,
+    rows: sourceRightsSnapshot,
+  };
+  const packed = gzipSync(Buffer.from(JSON.stringify(payload)), {level:9});
+  const acceptance = await b2.putWithMetadataVerification(SOURCE_RIGHTS_KEY,packed,{
+    verifyRestored: async (bytes: Buffer) => {
+      const restored = JSON.parse(gunzipSync(bytes).toString("utf8"));
+      if (restored?.schema !== payload.schema ||
+          restored?.generated_at !== generatedAt ||
+          restored?.source_project !== payload.source_project ||
+          !Array.isArray(restored?.rows) ||
+          restored.rows.length !== sourceRightsSnapshot.length ||
+          restored?.paid_output_readiness?.ready !== paidOutputReadiness.ready)
+        throw Error("B2_COMMERCIAL_RIGHTS_READBACK_RESTORE_INVALID");
+    },
+  });
+  console.log(JSON.stringify({
+    schema: "geomacro.b2-rights-refresh-acceptance.v1",
+    ok: true,
+    mode: "rights-only",
+    source_rights_rows: sourceRightsSnapshot.length,
+    paid_output_readiness: paidOutputReadiness.ready,
+    compressed_sha256: acceptance.sha256,
+    full_body_readback_verified: acceptance.full_body_readback_verified,
+    generated_at: generatedAt,
+    supabase_writes: 0,
+    x402_settlements: 0,
+  }));
+  process.exit(0);
+}
+
+const intelligenceRows = await readPublicIntelligenceRowsFromSupabase();
+const categories = new Set(intelligenceRows.map((row) => String(row.category ?? "").toLowerCase()));
+for (const category of ["geopolitics", "macro", "rare_earth"]) {
+  if (!categories.has(category)) throw new Error(`B2_LIVE_INTELLIGENCE_CATEGORY_MISSING_${category}`);
+}
+if (intelligenceRows.length < 3 || intelligenceRows.length > 300) {
+  throw new Error("B2_LIVE_INTELLIGENCE_ROWS_INVALID");
+}
+
+const risk = await readPublicGlobalRisk();
+if (
+  risk.verificationStatus !== "verified" ||
+  !/^[a-f0-9]{64}$/.test(String(risk.proofHash ?? "")) ||
+  !/^[a-f0-9]{64}$/.test(String(risk.calculationHash ?? ""))
+) throw new Error("B2_LIVE_RISK_PROOF_INVALID");
+
+const { data: sourceNetworkStatus, error: sourceNetworkError } = await supabase
+  .from("live_source_network_launch_status")
+  .select("source_network_100_complete,gdelt_gal_freshness_complete,source_network_launch_complete")
+  .maybeSingle();
+if (
+  sourceNetworkError ||
+  !sourceNetworkStatus ||
+  typeof sourceNetworkStatus.source_network_100_complete !== "boolean" ||
+  typeof sourceNetworkStatus.gdelt_gal_freshness_complete !== "boolean" ||
+  typeof sourceNetworkStatus.source_network_launch_complete !== "boolean"
+) throw new Error("B2_LIVE_SOURCE_NETWORK_STATUS_INVALID");
+
+const { sourceRightsSnapshot, paidOutputReadiness } = await collectCommercialSourceRights();
 if (!paidOutputReadiness.ready) {
   throw new Error(`B2_LIVE_PAID_OUTPUT_SOURCE_SET_NOT_READY:${JSON.stringify(paidOutputReadiness)}`);
 }
