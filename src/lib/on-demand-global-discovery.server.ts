@@ -36,6 +36,25 @@ export type PrivateOriginalCandidate = {
   signed_gro_verified: false;
   paid_delivery_allowed: false;
 };
+/** Private annual change evidence only; NOT a risk score or fresh event.
+ * Original World Bank numerical observations are used ephemerally and are
+ * never serialized from the public discovery method.
+ */
+export type PrivateOfficialMacroChange = {
+  country_iso3: string;
+  indicator: "FP.CPI.TOTL.ZG" | "NY.GDP.MKTP.KD.ZG";
+  latest_observation_year: number;
+  previous_observation_year: number;
+  latest_annual_pct: number;
+  previous_annual_pct: number;
+  annual_rate_change_percentage_points: number;
+  source_observation_sha256: string;
+  observation_type: "ANNUAL_STRUCTURAL_NOT_CURRENT_NEWS";
+  publisher_original_release_date_verified: false;
+  derived_commercial_rights_verified: false;
+  risk_score_verified: false;
+  paid_delivery_allowed: false;
+};
 export type SourceProbe = {
   family: string;
   attempted: boolean;
@@ -225,20 +244,60 @@ async function reliefWeb(countryNameValue: string, fetchImpl: typeof fetch, now:
   // Provider release date is evidence metadata, not signed same-event proof.
   return probe("reliefweb_discovery",published.length,published.length > 0);
 }
+type PrivateMacroResult = {
+  probe: SourceProbe;
+  private_macro_changes: PrivateOfficialMacroChange[];
+};
 async function worldBank(
-  country: string, indicator: string, fetchImpl: typeof fetch,
-): Promise<SourceProbe> {
+  country: string, indicator: PrivateOfficialMacroChange["indicator"],
+  fetchImpl: typeof fetch, now: Date,
+): Promise<PrivateMacroResult> {
   const body = await boundedFetch(fetchImpl,
     "https://api.worldbank.org/v2/country/" + country +
       "/indicator/" + indicator + "?format=json&per_page=6",
     "application/json");
   const json: unknown = JSON.parse(body);
-  const rows = Array.isArray(json) && Array.isArray(json[1]) ? json[1] : [];
-  const valid = rows.filter((x: Record<string,unknown>) =>
-    x && typeof x.value === "number" && Number.isFinite(x.value) &&
-    typeof x.date === "string" && /^\d{4}$/.test(x.date));
-  // An annual statistical observation is NOT a real-time new event.
-  return probe("world_bank_official_" + indicator,valid.length,false);
+  const rows: unknown[] = Array.isArray(json) && Array.isArray(json[1]) ? json[1] : [];
+  const currentYear=now.getUTCFullYear();
+  const valid=rows.filter((x): x is {date:string;value:number;countryiso3code:string} => {
+    if(!x || typeof x!=="object")return false;
+    const row=x as {date?:unknown;value?:unknown;countryiso3code?:unknown;indicator?:{id?:unknown}};
+    const year=Number(row.date);
+    return typeof row.date==="string" && /^\d{4}$/.test(row.date) &&
+      year>=1960 && year<=currentYear &&
+      typeof row.value==="number" && Number.isFinite(row.value) &&
+      row.countryiso3code===country &&
+      (row.indicator?.id===undefined || row.indicator.id===indicator);
+  });
+  const years=new Map<number,number>();
+  let duplicateConflict=false;
+  for(const row of valid){
+    const year=Number(row.date);
+    if(years.has(year) && years.get(year)!==row.value)duplicateConflict=true;
+    years.set(year,row.value);
+  }
+  const periodYears=[...years.keys()].sort((a,b)=>b-a);
+  const latest=periodYears[0], previous=periodYears[1];
+  const private_macro_changes:PrivateOfficialMacroChange[]=[];
+  // Do not invent a change across missing years or conflicting observations.
+  if(!duplicateConflict && latest!==undefined && previous===latest-1){
+    const latestValue=years.get(latest)!,prevValue=years.get(previous)!;
+    private_macro_changes.push({
+      country_iso3:country,indicator,latest_observation_year:latest,
+      previous_observation_year:previous,
+      latest_annual_pct:latestValue,previous_annual_pct:prevValue,
+      annual_rate_change_percentage_points:Math.round((latestValue-prevValue)*1e5)/1e5,
+      source_observation_sha256:digest(JSON.stringify(
+        [country,indicator,latest,latestValue,previous,prevValue])),
+      observation_type:"ANNUAL_STRUCTURAL_NOT_CURRENT_NEWS",
+      publisher_original_release_date_verified:false,
+      derived_commercial_rights_verified:false,
+      risk_score_verified:false,paid_delivery_allowed:false,
+    });
+  }
+  // Source period is annual, not an article publication/freshness clock.
+  return {probe:probe("world_bank_official_"+indicator,valid.length,false),
+    private_macro_changes};
 }
 // Independent first-party fallback feeds: never bypass blocked upstream
 // APIs with mirrored copies from the SAME publisher. This broadens publisher
@@ -389,7 +448,7 @@ async function discoverOnDemandImpl(
   let name: string;
   try { name = await countryName(country,fetchImpl); }
   catch { name = ""; }
-  const tasks: Array<{name:string;run:()=>Promise<SourceProbe|OriginalFeedResult>}> = [];
+  const tasks: Array<{name:string;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   if (name) for (const category of categories) {
     tasks.push({name:"gdelt_doc_discovery",run:()=>gdelt(category,name,fetchImpl,mineral)});
     if (category==="geopolitics")
@@ -403,8 +462,8 @@ async function discoverOnDemandImpl(
   }
   if (categories.includes("macro")) for (const indicator of [
     "FP.CPI.TOTL.ZG","NY.GDP.MKTP.KD.ZG",
-  ]) tasks.push({name:"world_bank_official_" + indicator,
-    run:()=>worldBank(country,indicator,fetchImpl)});
+  ] as const) tasks.push({name:"world_bank_official_" + indicator,
+    run:()=>worldBank(country,indicator,fetchImpl,now)});
   // Exactly one fixed metadata lookup + at most eleven provider requests,
   // no 195-country fanout and no user question passed upstream.
   const settled=await Promise.allSettled(tasks.map(t=>t.run()));
@@ -419,6 +478,9 @@ async function discoverOnDemandImpl(
   const issuerCandidateGroups=settled.flatMap(result=>
     result.status==="fulfilled" && "private_candidates" in result.value
       ? [result.value.private_candidates] : []);
+  const private_macro_changes=settled.flatMap(result=>
+    result.status==="fulfilled" && "private_macro_changes" in result.value
+      ? result.value.private_macro_changes : []);
   const private_candidates:PrivateOriginalCandidate[]=[];
   // Round-robin preserves distinct publisher families and all 3 categories
   // under heavy news flow; a dominant feed cannot starve a later independent
@@ -449,7 +511,7 @@ async function discoverOnDemandImpl(
     raw_upstream_delivered:false,supabase_requests:0,b2_requests:0,
     settlement_attempted:false,
   };
-  return {discovery,private_candidates};
+  return {discovery,private_candidates,private_macro_changes};
 }
 
 
@@ -558,6 +620,10 @@ export async function discoverOnDemandGlobal(
 export async function discoverOnDemandForPrivateQualification(
   input:OnDemandSearchInput,
   options:{fetchImpl?:typeof fetch;now?:Date}={},
-):Promise<{discovery:OnDemandDiscovery;private_candidates:PrivateOriginalCandidate[]}>{
+):Promise<{
+  discovery:OnDemandDiscovery;
+  private_candidates:PrivateOriginalCandidate[];
+  private_macro_changes:PrivateOfficialMacroChange[];
+}>{
   return discoverOnDemandImpl(input,options);
 }
