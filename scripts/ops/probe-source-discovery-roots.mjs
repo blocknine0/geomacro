@@ -16,16 +16,18 @@ export const MAX_ROOTS_PER_WINDOW=40;
 const SLOT_MS=90*60*1000;
 const VALID=new Set(["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]);
 
-function approvedRoot(value) {
+export function approvedRoot(value) {
   try {
-    const u=new URL(value);
+    const u=new URL(String(value));
     const host=u.hostname.toLowerCase();
-    if(u.protocol!=="https:" || u.port || u.username || u.password ||
-       u.hash || !host.includes(".") || host==="localhost" ||
-       host.endsWith(".localhost") || host.endsWith(".local") ||
-       host.endsWith(".internal") || host.endsWith(".test") ||
-       isIP(host)>0 || /^[0-9.]+$/u.test(host) || host.includes(":") ||
-       u.href.length>2048)return null;
+    const reservedHost=host==="localhost" ||
+      host.endsWith(".localhost") || host.endsWith(".local") ||
+      host.endsWith(".internal") || host.endsWith(".test");
+    const ipHost=isIP(host)===4 || isIP(host)===6 ||
+      /^[0-9.]+$/u.test(host) || host.includes(":");
+    if(u.protocol!=="https:" || u.port!=="" || u.username!=="" ||
+       u.password!=="" || u.hash!=="" || !host.includes(".") ||
+       reservedHost || ipHost || u.href.length>2048)return null;
     return u;
   }catch{return null;}
 }
