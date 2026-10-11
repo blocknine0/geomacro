@@ -364,6 +364,7 @@ export const mainnetIntelligenceHandlers = {
           }
           let discovery;
           let privatelyQualifiedOriginalCandidateCount=0;
+          let privateOriginalReviewCandidateCount=0;
           let duplicatePrivateOriginalHeadlines=0;
           let articlePageChecks=0;
           let articleDatesVerified=0;
@@ -382,6 +383,7 @@ export const mainnetIntelligenceHandlers = {
             // response/ledger/x402 quote; article-page publication, rights
             // and independent same-event verification are not yet complete.
             privatelyQualifiedOriginalCandidateCount=privateResult.private_candidates.length;
+            privateOriginalReviewCandidateCount=privateResult.private_original_review_candidates.length;
             duplicatePrivateOriginalHeadlines=privateResult.duplicate_original_headline_count;
             // Annual official change is useful structural evidence, NOT current
             // news, source rights, an issued risk score, or paid intelligence.
@@ -405,7 +407,7 @@ export const mainnetIntelligenceHandlers = {
             privatePeerMacroStatus=privatePeerProof.status;
             privatePeerScoredDimensions=privatePeerProof.peer_normalized_dimension_count;
             const pageProof=await verifyOnDemandOriginalArticlePages(
-              privateResult.private_candidates);
+              privateResult.private_original_review_candidates);
             // No page HTML, original URL, title or publisher identity is
             // serialized. This is only publication-clock consistency, NOT
             // independent facts, commercial source rights or signed risk.
@@ -444,8 +446,8 @@ export const mainnetIntelligenceHandlers = {
               original_article_page_checks:articlePageChecks,
               article_page_publication_dates_verified:articleDatesVerified,
               private_originals_article_page_verified:
-                privatelyQualifiedOriginalCandidateCount>0 &&
-                articleDatesVerified===privatelyQualifiedOriginalCandidateCount,
+                privateOriginalReviewCandidateCount>0 &&
+                articleDatesVerified===privateOriginalReviewCandidateCount,
               independent_same_event_corroboration_verified:false,
               source_derived_commercial_rights_verified:false,
               signed_derived_intelligence_created:false,
