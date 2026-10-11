@@ -10,7 +10,8 @@
 import {createHash} from "node:crypto";
 
 const MAX_ITEMS=40;
-const MAX_AGE_MS=6*60*60*1000;
+// The free homepage's 24h recent-news window: never derive from feed updated.
+const MAX_AGE_MS=24*60*60*1000;
 const MAX_TITLE=300;
 const MAX_URL=1600;
 const ORIGINAL_ARTICLE_PATHS=Object.freeze({
