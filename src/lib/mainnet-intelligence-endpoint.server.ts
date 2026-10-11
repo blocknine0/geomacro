@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "./agent-query-plan";
 import { assertGeomacroIntelligenceResponseContract } from "./geomacro-intelligence-contract";
+import { buildPrivateOnDemandMacroDrivers } from "./on-demand-private-macro-drivers.server";
 import { checkAgentQueryDeliverability, publicAgentQueryAvailability } from "./agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "./agent-query-external-modules.server";
 import { assembleAgentQueryResponse } from "./agent-query-response.server";
@@ -359,6 +360,7 @@ export const mainnetIntelligenceHandlers = {
           let articlePageChecks=0;
           let articleDatesVerified=0;
           let privateOfficialAnnualChanges=0;
+          let privateAnnualDirectionalDrivers=0;
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
@@ -371,6 +373,8 @@ export const mainnetIntelligenceHandlers = {
             // Annual official change is useful structural evidence, NOT current
             // news, source rights, an issued risk score, or paid intelligence.
             privateOfficialAnnualChanges=privateResult.private_macro_changes.length;
+            privateAnnualDirectionalDrivers=buildPrivateOnDemandMacroDrivers(
+              privateResult.private_macro_changes).length;
             const pageProof=await verifyOnDemandOriginalArticlePages(
               privateResult.private_candidates);
             // No page HTML, original URL, title or publisher identity is
@@ -402,6 +406,7 @@ export const mainnetIntelligenceHandlers = {
               discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
               private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
               private_official_annual_change_count:privateOfficialAnnualChanges,
+              private_annual_directional_macro_driver_count:privateAnnualDirectionalDrivers,
               original_article_page_checks:articlePageChecks,
               article_page_publication_dates_verified:articleDatesVerified,
               private_originals_article_page_verified:
