@@ -56,6 +56,28 @@
 - Durable retention is *selective*, not zero: minimal exact signed GRO and relevant proof when partner replay/audit requires it, plus D1 payment idempotency and reconciliation records. Do not archive bulk raw provider feeds merely to make the canonical engine work.
 - The current query-time discovery path is **not yet a signed payable result**. Implement evidence-to-score-to-signer integration and prove three category requests, trust and replay before an authorized real-money launch. This decision introduces no additional launch gate beyond the existing safety/rights/signing/payment acceptance.
 
+## First genuinely signed private GRO acceptance — manual operational lane (2026-10-11)
+
+`scripts/ops/accept-private-live-on-demand-gro.ts` connects previously merged #2037/#2038 **without inventing an active publisher, reviewer signature or customer payment**. This is a one-shot **Bun/Node filesystem** operator lane, not a Cloudflare Worker endpoint or automatic scheduled feed. It never loads frozen Supabase, writes B2/D1, logs raw reviewed originals or settles x402. It either produces a private exact canonical Ed25519 signed GRO with `record_sha256`, or fails closed.
+
+The operator supplies an **actual** reviewer-signed private `geomacro.private-on-demand-gro-review-bundle.v1` package containing one country, one category, 1–12 reviewed genuine structured events and matching `{rows,eventPackages}`, where each event is bound into the independent reviewer's signature by `reviewed_scoring_event_sha256` and each original source is pinned to `source_registry_id`. Those records must be recent on the **actual original article publication clock** and independently corroborate the same event. The trusted reviewer public key, current GRO signing key and matching verification public key are supplied through secure server-side environment variables, **never** through ChatGPT, GitHub commits, CI logs, public payloads or ordinary chat. The existing B2 source-rights reader must independently confirm unexpired certified publisher-specific derived commercial rights.
+
+Manual invocation, only on an owned server with Bun and private credentials securely configured:
+
+```sh
+# Make a PRIVATE directory outside this repository (owner-only 0700).
+# Never put real reviewed original URLs, article hashes or secret keys in a PR.
+mkdir -p /secure/geomacro-review
+chmod 700 /secure/geomacro-review
+# Separately provision reviewed.json there with file mode 0600.
+export GEOMACRO_PRIVATE_REVIEW_DIR=/secure/geomacro-review
+bun scripts/ops/accept-private-live-on-demand-gro.ts \\
+  --input=/secure/geomacro-review/reviewed.json \\
+  --out=/secure/geomacro-review/signed-gro.json
+```
+
+The exact file is created using exclusive/no-follow permissions (0600), never overwritten and never emitted in stdout. The console prints only category, ISO3 and record hash. An offline signed object is **not** automatically a Federico `approve`, PREDGE authorization, current D1 hot checkpoint, public API paid deliverable or user-authorized 0.05 USDC payment. The legal attribution-required source blocker remains open until fixed signed derived-product credit exists. A missing actual signed review bundle, trusted independent reviewer key, healthy B2 licence receipt or active GRO key is a failed acceptance—not a candidate to spoof with fixture data.
+
 ## Private signed-review + live B2 commercial-rights adapter (2026-10-11)
 
 The new optional `src/lib/on-demand-reviewed-rights-qualifier.server.ts` reuses the **existing** independent same-event qualification module (`scripts/lib/independent-same-event-qualification.mjs`) and the **existing** fresh, max-24h B2 rights registry. Only private reviewer-signed packages can satisfy `scoreAndSignQualifiedOnDemandCountry`'s proof callback. The adapter is intentionally **not** called by public `live_on_demand` discovery and does not deploy a new source, database, queue, service or x402 processor.
