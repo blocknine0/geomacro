@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { discoverOnDemandGlobal } from "./on-demand-global-discovery.server";
+import { discoverOnDemandGlobal, discoverOnDemandForPrivateQualification } from "./on-demand-global-discovery.server";
 import { buildAgentQueryPlan } from "./agent-query-plan";
 
 const now = new Date("2026-10-11T12:00:00.000Z");
@@ -155,5 +155,75 @@ describe("Live source free-tier quota and memory safety",()=>{
       opts?.redirect==="error" && opts?.method==="GET")).toBe(true);
     expect(requests.every(({url})=>!url.includes("password") &&
       !url.includes("What%20are"))).toBe(true);
+  });
+});
+
+
+describe("PRIVATE original-article evidence for on-demand owned intelligence",()=>{
+  it("retains bounded first-party item metadata transiently but never returns it from the public-safe discovery method",async()=>{
+    const internal=await discoverOnDemandForPrivateQualification({
+      country_iso3:"IND",categories:["geopolitics","macro","rare_earth"],
+    },{fetchImpl,now});
+    expect(internal.discovery.network_attempts).toBe(12);
+    const articles=internal.private_candidates;
+    expect(articles.length).toBe(5);
+    expect(articles.map(x=>x.publisher_family).sort()).toEqual([
+      "australian_industry_original_publisher",
+      "uk_dbt_original_publisher",
+      "uk_fcdo_original_publisher",
+      "un_news_original_publisher",
+      "us_federal_reserve_original_publisher",
+    ]);
+    for(const article of articles) {
+      expect(article.article_url).toMatch(/^https:\/\//);
+      expect(article.article_title).toContain("India");
+      expect(article.feed_item_published_at).toBe("2026-10-11T07:00:00.000Z");
+      expect(article.article_identity_sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(article.first_party_article_url_verified).toBe(true);
+      expect(article.source_native_feed_publication_date_verified).toBe(true);
+      expect(article.publisher_article_page_date_verified).toBe(false);
+      expect(article.independent_same_event_verified).toBe(false);
+      expect(article.derived_commercial_rights_verified).toBe(false);
+      expect(article.score_verified).toBe(false);
+      expect(article.signed_gro_verified).toBe(false);
+      expect(article.paid_delivery_allowed).toBe(false);
+    }
+    const safe=await discoverOnDemandGlobal({
+      country_iso3:"IND",categories:["geopolitics","macro","rare_earth"],
+    },{fetchImpl,now});
+    const serialized=JSON.stringify(safe);
+    expect(serialized).not.toContain("article_url");
+    expect(serialized).not.toContain("article_title");
+    expect(serialized).not.toContain("India lithium");
+    expect(serialized).not.toContain("https://www.gov.uk/government/news");
+  });
+  it("rejects future original feed dates rather than treating retrieval as native publication",async()=>{
+    const proof=await discoverOnDemandForPrivateQualification({
+      country_iso3:"IND",categories:["rare_earth","geopolitics"],
+    },{fetchImpl,now:new Date("2026-10-11T06:00:00.000Z")});
+    expect(proof.private_candidates).toHaveLength(0);
+    expect(proof.discovery.source_probes.filter(p=>
+      p.publication_clock_verified)).toHaveLength(0);
+  });
+  it("never keeps forged off-host UN articles or fake updated-date Atom items",async()=>{
+    const fake=vi.fn(async (input:RequestInfo|URL)=>{
+      const url=String(input);
+      if (url.startsWith("https://news.un.org/")) return new Response(
+        '<rss><channel><item><title>India conflict security council review</title>'+
+        '<pubDate>Sun, 11 Oct 2026 07:00:00 GMT</pubDate>'+
+        '<link>https://evil.example/syndicated/2026/10/1150000</link></item></channel></rss>',
+      );
+      if (url.includes("foreign-commonwealth-development-office.atom")) return new Response(
+        '<feed><entry><title>India diplomatic security talks</title>'+
+        '<updated>2026-10-11T07:00:00Z</updated>'+
+        '<link rel="alternate" href="https://www.gov.uk/government/news/india-talks"/></entry></feed>',
+      );
+      return upstream(url);
+    }) as unknown as typeof fetch;
+    const proof=await discoverOnDemandForPrivateQualification({
+      country_iso3:"IND",categories:["geopolitics"],
+    },{fetchImpl:fake,now});
+    expect(proof.private_candidates).toHaveLength(0);
+    expect(proof.discovery.payable).toBe(false);
   });
 });
