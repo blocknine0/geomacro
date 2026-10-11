@@ -22,9 +22,9 @@ const atomCanada="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-1
 const atomUk=`<feed><entry><title>Routine government notice</title><published>2026-10-10T06:25:00Z</published><link rel="alternate" href="https://www.gov.uk/government/news/routine-notice"/></entry></feed>`;
 const atomStatcan="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-10T06:59:00Z</updated>\n  <entry><title>Consumer price index inflation and industrial product price update</title>\n  <published>2026-10-10T06:05:00Z</published>\n  <link rel=\"alternate\" href=\"https://www150.statcan.gc.ca/n1/daily-quotidien/261010/dq261010a-eng.htm\" />\n  </entry></feed>";
 describe("#1827 expanded official three-domain private observation lane",()=>{
-  it("has thirteen fixed publisher observations and exactly three domains",()=>{
+  it("has fourteen fixed publisher observations and exactly three domains",()=>{
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.domain))
-      .toEqual(["geopolitics","macro","macro","rare_earth","rare_earth","rare_earth","geopolitics","macro","rare_earth","geopolitics","macro","rare_earth","rare_earth"]);
+      .toEqual(["geopolitics","macro","macro","rare_earth","rare_earth","rare_earth","geopolitics","macro","rare_earth","geopolitics","macro","rare_earth","rare_earth","rare_earth"]);
     for(const s of EXPANDED_OFFICIAL_SOURCES){
       expect(new URL(s.url).protocol).toBe("https:");
       expect(s.rights).toBe("UNVERIFIED");
@@ -36,7 +36,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       .toBe("https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/de/statistics-update.rss");
     expect(EXPANDED_OFFICIAL_SOURCES.filter((s:any)=>s.alternate_url)).toHaveLength(1);
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
-      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca","www.gov.uk","www.federalreserve.gov","www.usgs.gov","www.minister.industry.gov.au"]);
+      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca","www.gov.uk","www.federalreserve.gov","www.usgs.gov","www.minister.industry.gov.au","www.gov.uk"]);
   });
   it("accepts Australian government minerals RSS native date and actual first-party article path",async()=>{
     const source=EXPANDED_OFFICIAL_SOURCES.find((s:any)=>s.id==="australia_industry_minister_original_rss_review");
@@ -69,7 +69,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       return response(xml,"application/rss+xml");
     });
     const res=await probeExpandedOfficialMesh({fetchImpl,now});
-    expect(fetchImpl).toHaveBeenCalledTimes(13);
+    expect(fetchImpl).toHaveBeenCalledTimes(14);
     expect(seen).toEqual(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.url));
     expect(res.status).toBe("SOURCE_TRANSPORT_OBSERVED");
     for(const x of res.sources){
