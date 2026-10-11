@@ -21,6 +21,7 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
   usgs_minerals_original_news_rss_review:/^\/(?:news|programs\/mineral-resources-program\/news)(?:\/|$)/u,
   australia_industry_minister_original_rss_review:/^\/(?:t-ayres|king)\/media\//u,
+  uk_dbt_critical_minerals_atom_pending_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
 });
 const APPROVED_SOURCE_ORGS=Object.freeze({
   un_news_security_original_rss_review:"un_news",
@@ -30,6 +31,7 @@ const APPROVED_SOURCE_ORGS=Object.freeze({
   nrcan_government_news_original_atom_review:"natural_resources_canada",
   usgs_minerals_original_news_rss_review:"usgs",
   australia_industry_minister_original_rss_review:"australian_industry_minister",
+  uk_dbt_critical_minerals_atom_pending_review:"uk_dbt",
 });
 const digest=s=>createHash("sha256").update(s,"utf8").digest("hex");
 function textValue(s) {
