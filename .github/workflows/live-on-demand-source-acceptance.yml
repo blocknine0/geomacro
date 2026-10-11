@@ -1,0 +1,50 @@
+name: Live On-Demand Original API Read-only Acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/live-on-demand-source-acceptance.yml"
+      - "scripts/ops/verify-live-on-demand-real-apis.ts"
+      - "src/lib/on-demand-global-discovery.server.ts"
+  schedule:
+    # Once per day: 8 free read-only upstream calls, no B2/D1 or funding.
+    - cron: "23 8 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-live-on-demand-global-discovery-acceptance
+  cancel-in-progress: true
+
+jobs:
+  real-api-proof:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install exact locked modules
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Search live global APIs for each category without money
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/verify-live-on-demand-real-apis.ts
+      - name: Keep redacted no-funds publisher acceptance
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: live-on-demand-global-api-proof-${{ github.run_id }}
+          path: artifacts/on-demand-live/real-api-proof.json
+          if-no-files-found: warn
+          retention-days: 3
