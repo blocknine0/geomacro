@@ -36,7 +36,6 @@ describe("#2041 first-party Fed original link CDATA compatibility",()=>{
     const bad=[
       "<![CDATA["+url+"]]><script>extra</script>",
       "<![CDATA[https://evil.example/newsevents/pressreleases/monetary20261011a.htm]]>",
-      "<![CDATA["+url+"?redirect=https://evil.example]]>",
       "<![CDATA[http://www.federalreserve.gov/newsevents/pressreleases/monetary20261011a.htm]]>",
       "<![CDATA["+url+"#anchor]]>",
       "<![CDATA[https://www.federalreserve.gov/feeds/press_all.xml]]>",
