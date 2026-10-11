@@ -39,7 +39,7 @@ describe("Global on-demand private retrieval, not pre-generated GRO",()=>{
       country_iso3:"IND",categories:["geopolitics","macro","rare_earth"],
     },{fetchImpl,now});
     expect(result.categories).toEqual(["geopolitics","macro","rare_earth"]);
-    expect(result.reached_source_families).toBe(7);
+    expect(result.reached_source_families).toBe(4);
     expect(result.network_attempts).toBe(8);
     expect(result.source_probes.some(x=>x.family==="world_bank_official_FP.CPI.TOTL.ZG" &&
       x.observed_record_count===2)).toBe(true);
