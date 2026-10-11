@@ -7,6 +7,7 @@
  * 4 original article-page requests. No unbounded search or extra workflow.
  */
 import { writeFileSync, mkdirSync } from "node:fs";
+import { buildPrivateOnDemandMacroDrivers } from "../../src/lib/on-demand-private-macro-drivers.server";
 import {
   discoverOnDemandForPrivateQualification,
   verifyOnDemandOriginalArticlePages,
@@ -17,6 +18,7 @@ const privateEvidence=await discoverOnDemandForPrivateQualification({
   categories:["geopolitics","macro","rare_earth"],
 });
 const receipt=privateEvidence.discovery;
+const privateMacroDrivers=buildPrivateOnDemandMacroDrivers(privateEvidence.private_macro_changes);
 // PRIVATE evidence continuation: only the aggregate count may enter logs or
 // artifacts. Original publisher URLs, page HTML and articles remain private.
 const pageProof=await verifyOnDemandOriginalArticlePages(
@@ -43,6 +45,7 @@ const proof={
   })),
   private_original_candidate_count:privateEvidence.private_candidates.length,
   private_official_annual_change_count:privateEvidence.private_macro_changes.length,
+  private_annual_directional_macro_driver_count:privateMacroDrivers.length,
   private_original_candidate_page_dates_verified:
     privateEvidence.private_candidates.length>0 &&
     pageProof.verified===privateEvidence.private_candidates.length,
@@ -68,6 +71,8 @@ if(proof.category_count!==3||proof.network_attempts>12 ||
      proof.original_article_page_attempts ||
    proof.private_original_candidate_count>16 ||
    proof.private_official_annual_change_count>2 ||
+   proof.private_annual_directional_macro_driver_count>
+     proof.private_official_annual_change_count ||
    proof.network_attempts<1||proof.payable!==false||
    proof.raw_upstream_delivered!==false||
    proof.payment_settlement_attempted!==false||
