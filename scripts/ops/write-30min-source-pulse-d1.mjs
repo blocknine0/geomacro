@@ -138,6 +138,7 @@ export async function write30MinSourcePulseToD1({
       private_undated_feed_initial_baseline:feedResult.initial_baseline_run,
       private_undated_feed_baseline_count:feedResult.initial_backlog_entries_baselined,
       private_undated_feed_new_since_last_poll:feedResult.new_feed_entries_since_previous_observation,
+      private_undated_feed_new_unverified_topic_hints:feedResult.new_feed_entries_with_unverified_topic_hint,
       private_undated_feed_repeated_count:feedResult.existing_feed_entries_repeated,
     };
     await client.persist(row.domain,state,{
@@ -168,6 +169,8 @@ export async function write30MinSourcePulseToD1({
        stored?.payload?.undated_feed_publication_verified!==false ||
        stored?.payload?.private_undated_feed_baseline_count!==
          undatedDedup.get(row.domain).initial_backlog_entries_baselined ||
+       stored?.payload?.private_undated_feed_new_unverified_topic_hints!==
+         undatedDedup.get(row.domain).new_feed_entries_with_unverified_topic_hint ||
        stored?.payload?.private_undated_feed_new_since_last_poll!==
          undatedDedup.get(row.domain).new_feed_entries_since_previous_observation ||
        JSON.stringify(stored?.payload?.recent_private_undated_feed_fingerprints)!==
