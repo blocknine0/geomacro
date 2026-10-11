@@ -89,9 +89,11 @@ describe("#2043 open intake → private topical hint without commercial gate",()
     const initial=now;
     // Align a 30m slot so selected official macro issuer includes StatCan.
     let at=initial;
-    for(let i=0;i<3;i++){
-      if(select30MinPublishers(at).macro.some(x=>x.id===SOURCES[1].id))break;
-      at=new Date(at.getTime()+30*60000);
+    for(let i=0;i<6;i++){
+      const nextAt=new Date(at.getTime()+30*60000);
+      if(select30MinPublishers(at).macro.some(x=>x.id===SOURCES[1].id) &&
+         select30MinPublishers(nextAt).macro.some(x=>x.id===SOURCES[1].id))break;
+      at=nextAt;
     }
     const db=new Map<string,any>();
     const client=()=>({
