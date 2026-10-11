@@ -7,11 +7,15 @@ on:
     paths:
       - ".github/workflows/b2-account-readonly-quota-receipt.yml"
       - "scripts/ops/report-b2-account-ledger-readonly.mjs"
+      - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
+      - "src/__tests__/d1-account-daily-quota-readonly.test.ts"
       - "src/__tests__/b2-account-readonly-quota-receipt.test.ts"
   pull_request:
     paths:
       - ".github/workflows/b2-account-readonly-quota-receipt.yml"
       - "scripts/ops/report-b2-account-ledger-readonly.mjs"
+      - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
+      - "src/__tests__/d1-account-daily-quota-readonly.test.ts"
       - "src/__tests__/b2-account-readonly-quota-receipt.test.ts"
 
 permissions:
@@ -35,6 +39,7 @@ jobs:
           node-version: '22'
       - name: Validate zero-write D1 ledger report syntax
         run: node --check scripts/ops/report-b2-account-ledger-readonly.mjs
+          node --check scripts/ops/audit-d1-account-daily-quota-readonly.mjs
 
   production-readonly:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -51,6 +56,14 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
         with:
           node-version: '22'
+      - name: Inspect actual Cloudflare account-wide D1 billing rows via GraphQL read only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          node scripts/ops/audit-d1-account-daily-quota-readonly.mjs
       - name: Read ONLY today's D1 account and per-workflow B2 request reservations
         shell: bash
         env:
@@ -77,6 +90,8 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
         with:
           name: b2-account-readonly-quota-${{ github.run_id }}
-          path: artifacts/b2-quota-readonly/account-ledger.json
+          path: |
+            artifacts/b2-quota-readonly/account-ledger.json
+            artifacts/d1-account-quota/readonly.json
           if-no-files-found: warn
           retention-days: 3
