@@ -9,6 +9,7 @@
  * immutable SHA identities so 30-minute changes are no longer invisible.
  */
 import {createHash} from "node:crypto";
+import {classifyPrivateFirstPartyTitle} from "./private-first-party-title-triage.mjs";
 const digest=(s)=>createHash("sha256").update(s,"utf8").digest("hex");
 const MAX_ITEMS=64,MAX_BYTES=192*1024,MAX_URL=1800;
 const ALLOWED=new Set([
@@ -40,13 +41,13 @@ function candidateUrl(value,source) {
   u.searchParams.sort();
   return u.href;
 }
-function titleHash(item) {
+function privateParsedTitle(item) {
   const raw=item.match(/<(?:atom:)?title(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?title>/iu)?.[1];
   if(!raw||raw.length>900)return null;
   const value=raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/giu,"$1")
     .replace(/\s+/gu," ").trim();
   if(value.length<8||value.length>300||/<[^>]*>|\p{Cc}/u.test(value))return null;
-  return digest(value.toLowerCase().normalize("NFKC"));
+  return {hash:digest(value.toLowerCase().normalize("NFKC")),ephemeral:value};
 }
 export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={}) {
   if(!firstPartySource(source)||!(now instanceof Date)||
@@ -63,7 +64,8 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
     if(/<(?:atom:)?published(?:\s[^>]*)?>/iu.test(item))continue;
     // A source can encode a title as HTML or use an unfamiliar Atom title
     // type. Title readability is NOT a discovery admission requirement.
-    const title=titleHash(item);
+    const title=privateParsedTitle(item);
+    const triage=classifyPrivateFirstPartyTitle(title?.ephemeral??null,source.domain);
     let identity=null,identityKind=null;
     for(const link of item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)) {
       const attrs=link[1];
@@ -125,7 +127,8 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
           // Legacy SHA field is a PRIVATE feed identity; if ID-backed it is
           // NOT an approved original URL or evidence that an article exists.
           original_link_sha256:sha,
-          headline_sha256:title??digest(source.id+"|unreadable-title|"+sha),
+          headline_sha256:title?.hash??digest(source.id+"|unreadable-title|"+sha),
+          private_relevance_triage:triage,
           headline_fingerprint_verified:title!==null,
           feed_entry_identity_kind:identityKind,
           first_seen_at:now.toISOString(),

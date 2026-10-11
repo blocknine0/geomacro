@@ -3,6 +3,7 @@
  * original publication is UNKNOWN. No "fresh articles" counter, no signing.
  * New since prior POLL means changed feed membership, not original publication.
  */
+import {PRIVATE_FEED_TRIAGE_STATUSES} from "./private-first-party-title-triage.mjs";
 const MAX_HISTORY=240,MAX_CURRENT=128,TTL=7*86400000;
 const SHA=/^[a-f0-9]{64}$/u;
 const SOURCES={
@@ -42,7 +43,7 @@ export function reconcileUndatedPrivateFeedObservations({
   // When a new identifier strategy starts with a previously empty history,
   // do not call its pre-existing publisher backlog newly published news.
   const baseline=previousHistory===undefined || previousHistory.length===0;
-  let newSinceLastPoll=0,baselineCount=0,repeated=0;
+  let newSinceLastPoll=0,baselineCount=0,repeated=0,newTopicHints=0;
   const seenNow=new Set();
   for(const row of observations) {
     if(!row||row.schema!=="geomacro.private-undated-first-party-observation.v1"||
@@ -59,6 +60,18 @@ export function reconcileUndatedPrivateFeedObservations({
        row.eligible_for_publication!==false||
        parsed(row.first_seen_at)!==ms)
       throw Error("UNDATED_PULSE_UNSAFE_OBSERVATION");
+    const triage=row.private_relevance_triage;
+    if(triage && (!PRIVATE_FEED_TRIAGE_STATUSES.includes(triage.status)||
+      !["TOPIC_HINT_ONLY","NO_FIXED_TOPIC_HINT","UNREADABLE_SOURCE_TITLE"].includes(triage.reason_code)||
+      !Array.isArray(triage.topic_codes)||triage.topic_codes.length>3||
+      triage.topic_codes.some(x=>typeof x!=="string"||!/^[A-Z_]{2,35}$/u.test(x))||
+      triage.publication_clock_verified!==false||
+      triage.article_country_verified!==false||
+      triage.independent_event_verified!==false||
+      triage.commercial_rights_verified!==false||
+      triage.score_verified!==false||
+      triage.customer_delivery_eligible!==false))
+      throw Error("UNDATED_PULSE_TRIAGE_UNTRUSTED");
     const hash=row.original_link_sha256;
     if(seenNow.has(hash))continue;
     seenNow.add(hash);
@@ -68,6 +81,7 @@ export function reconcileUndatedPrivateFeedObservations({
       stored.last_seen_at=checkedAt;
     } else {
       baseline?baselineCount++:newSinceLastPoll++;
+      if(!baseline&&triage?.status==="RELATED_UNVERIFIED")newTopicHints++;
       history.set(hash,{
         domain,source_id:row.source_id,sha256:hash,
         first_seen_at:checkedAt,last_seen_at:checkedAt,
@@ -83,6 +97,7 @@ export function reconcileUndatedPrivateFeedObservations({
     initial_baseline_run:baseline,
     initial_backlog_entries_baselined:baselineCount,
     new_feed_entries_since_previous_observation:newSinceLastPoll,
+    new_feed_entries_with_unverified_topic_hint:newTopicHints,
     existing_feed_entries_repeated:repeated,
     tracked_first_party_feed_entries:retained.length,
     recent_private_undated_feed_fingerprints:retained,
