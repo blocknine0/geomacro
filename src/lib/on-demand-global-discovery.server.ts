@@ -72,10 +72,25 @@ async function boundedFetch(
   if (!response.ok ||
       Number(response.headers.get("content-length") || 0) > MAX_BODY_BYTES)
     throw Error("ON_DEMAND_SOURCE_UNAVAILABLE");
-  const body = await response.text();
-  if (Buffer.byteLength(body,"utf8") > MAX_BODY_BYTES)
-    throw Error("ON_DEMAND_SOURCE_RESPONSE_OVERSIZED");
-  return body;
+  if (!response.body) throw Error("ON_DEMAND_SOURCE_RESPONSE_EMPTY");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const part = await reader.read();
+      if (part.done) break;
+      total += part.value.byteLength;
+      if (total > MAX_BODY_BYTES) {
+        await reader.cancel();
+        throw Error("ON_DEMAND_SOURCE_RESPONSE_OVERSIZED");
+      }
+      chunks.push(part.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 function digest(s: string) {
   return createHash("sha256").update(s,"utf8").digest("hex");
