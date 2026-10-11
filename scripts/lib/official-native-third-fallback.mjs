@@ -71,7 +71,7 @@ function field(block,name) {
 }
 
 export function parseOfficialThirdRss(xml,category,{
-  now=new Date(),maxAgeMs=DAY_MS,diagnostics=null,
+  now=new Date(),maxAgeMs=DAY_MS,diagnostics=null,broadPrivateIntake=false,
 }={}) {
   const config=OFFICIAL_NATIVE_THIRD_FEEDS[category];
   if(!config || typeof xml!=="string" ||
@@ -111,7 +111,7 @@ export function parseOfficialThirdRss(xml,category,{
     if(hostUrl)counts.third_exact_host_count++;
     if(config.topics.test(title))counts.third_topic_match_count++;
     if(!hostUrl||!current||title.length<16||title.length>500||
-       !config.topics.test(title)||seen.has(hostUrl))continue;
+       (!broadPrivateIntake && !config.topics.test(title))||seen.has(hostUrl))continue;
     seen.add(hostUrl);
     counts.third_private_eligible_count++;
     accepted.push({
@@ -133,7 +133,7 @@ export function parseOfficialThirdRss(xml,category,{
 }
 
 export async function fetchOfficialThirdPublisherArticles(category,{
-  now=new Date(),fetchImpl=fetch,maxAgeMs=DAY_MS,diagnostics=null,
+  now=new Date(),fetchImpl=fetch,maxAgeMs=DAY_MS,diagnostics=null,broadPrivateIntake=false,
 }={}) {
   const cfg=OFFICIAL_NATIVE_THIRD_FEEDS[category];
   if(!cfg)throw new Error("OFFICIAL_THIRD_CATEGORY_INVALID");
@@ -171,7 +171,7 @@ export async function fetchOfficialThirdPublisherArticles(category,{
     }
   } finally {reader.releaseLock();}
   const xml=new TextDecoder("utf-8",{fatal:true}).decode(Buffer.concat(chunks));
-  const accepted=parseOfficialThirdRss(xml,category,{now,maxAgeMs,diagnostics});
+  const accepted=parseOfficialThirdRss(xml,category,{now,maxAgeMs,diagnostics,broadPrivateIntake});
   if(cfg.format!=="atom"||accepted.length)return accepted;
   // GOV.UK department Atom sometimes has entry <updated> without original <published>.
   // Up to TWO exactly validated GOV.UK article URLs may be inspected for
@@ -182,7 +182,7 @@ export async function fetchOfficialThirdPublisherArticles(category,{
     if(/<(?:atom:)?published(?:\s[^>]*)?>/iu.test(block))continue;
     const title=field(block,"title");
     const url=originalAtomHref(block,cfg.host);
-    if(!url||title.length<16||title.length>500||!cfg.topics.test(title)||seen.has(url))continue;
+    if(!url||title.length<16||title.length>500||(!broadPrivateIntake && !cfg.topics.test(title))||seen.has(url))continue;
     seen.add(url);probes++;
     let published=null;
     try{

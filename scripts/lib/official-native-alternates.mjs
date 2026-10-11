@@ -98,7 +98,7 @@ function atomOriginalLink(xmlEntry) {
   return "";
 }
 
-export function parseOfficialAlternate(xml, category, now = new Date(), diagnostics = null, maxAgeMs = DAY_MS) {
+export function parseOfficialAlternate(xml, category, now = new Date(), diagnostics = null, maxAgeMs = DAY_MS, broadPrivateIntake = false) {
   const config = ORIGINAL_PUBLISHER_ALTERNATES[category];
   if (!config || typeof xml !== "string" || xml.length > MAX_FEED_BYTES ||
       /<!DOCTYPE|<!ENTITY/iu.test(xml) ||
@@ -196,7 +196,7 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
     if (dated) stats.alternate_native_current_items++;
     if (uri) stats.alternate_host_match_items++;
     if (config.topics.test(title)) stats.alternate_topic_match_items++;
-    if (!dated || !uri || !config.topics.test(title) ||
+    if (!dated || !uri || (!broadPrivateIntake && !config.topics.test(title)) ||
         title.length < 16 || title.length > 500 || seen.has(uri.href)) continue;
     seen.add(uri.href);
     stats.alternate_admitted_private_count++;
@@ -212,7 +212,7 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
   return out.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
 }
 
-function undatedOriginalArticleCandidates(xml, category) {
+function undatedOriginalArticleCandidates(xml, category, broadPrivateIntake = false) {
   const config = ORIGINAL_PUBLISHER_ALTERNATES[category];
   if (!config || config.format !== "atom") return [];
   const seen = new Set(), out = [];
@@ -221,7 +221,7 @@ function undatedOriginalArticleCandidates(xml, category) {
   for (const [, block] of items) {
     if (tag(block, "published")) continue;
     const title = tag(block, "title");
-    if (title.length < 16 || title.length > 500 || !config.topics.test(title)) continue;
+    if (title.length < 16 || title.length > 500 || (!broadPrivateIntake && !config.topics.test(title))) continue;
     const uri = officialUrl(atomOriginalLink(block), config.articleHosts, category);
     if (!uri || seen.has(uri.href)) continue;
     seen.add(uri.href);
@@ -232,7 +232,7 @@ function undatedOriginalArticleCandidates(xml, category) {
 }
 
 export async function fetchOriginalAlternate(category, { now=new Date(), fetchImpl=fetch,
-  diagnostics=null, maxAgeMs=DAY_MS }={}) {
+  diagnostics=null, maxAgeMs=DAY_MS, broadPrivateIntake=false }={}) {
   const cfg=ORIGINAL_PUBLISHER_ALTERNATES[category];
   if (!cfg) throw new Error("OFFICIAL_ALTERNATE_CATEGORY_INVALID");
   if(!Number.isFinite(maxAgeMs)||maxAgeMs<60_000||maxAgeMs>DAY_MS)
@@ -259,12 +259,12 @@ export async function fetchOriginalAlternate(category, { now=new Date(), fetchIm
   } finally {reader.releaseLock()}
   const xml = new TextDecoder("utf-8",{fatal:true}).decode(
     Buffer.concat(chunks.map(x=>Buffer.from(x))));
-  const parsed = parseOfficialAlternate(xml, category, now, diagnostics, maxAgeMs);
+  const parsed = parseOfficialAlternate(xml, category, now, diagnostics, maxAgeMs, broadPrivateIntake);
   if (parsed.length || cfg.format !== "atom") return parsed;
   // Only two SAME-PUBLISHER article pages maximum per category (<=4s each).
   // Article-level precise datePublished, never Atom updated, can admit PRIVATE
   // evidence; zero source rights or paid/scoring approval is inferred.
-  const candidates = undatedOriginalArticleCandidates(xml, category);
+  const candidates = undatedOriginalArticleCandidates(xml, category, broadPrivateIntake);
   for (const { title, uri } of candidates) {
     if (diagnostics) diagnostics.alternate_article_page_probes++;
     const pageDiagnostic = {};
