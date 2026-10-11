@@ -45,18 +45,19 @@ describe("#2041 exact StatCan original /n1/en/daily-quotidien article alias",()=
     // www.statcan.gc.ca/daily-quotidien/YYMMDD/dqYYMMDDa-eng.htm family.
     const daily="https://www.statcan.gc.ca/daily-quotidien/261011/dq261011a-eng.htm";
     const catalogue="https://www.statcan.gc.ca/en/subjects-start/prices_and_price_indexes";
+    const canonical="https://www150.statcan.gc.ca/n1/daily-quotidien/261011/dq261011a-eng.htm";
     const actual=feed(entry(daily)+entry(catalogue));
     const called:string[]=[];
     const fetchImpl=vi.fn(async(url:string)=>{
       called.push(url);
       if(url===statcan.url)return ok(actual,"application/atom+xml");
-      if(url===daily)return ok(sourcePage,"text/html");
+      if(url===canonical)return ok(sourcePage,"text/html");
       throw Error("UNAPPROVED_PUBLISHER_URL");
     });
     const observed=await probeExpandedSource(statcan,{
       now:NOW,fetchImpl,openDiscovery:true,collectPrivateCandidates:true,
     });
-    expect(called).toEqual([statcan.url,daily]);
+    expect(called).toEqual([statcan.url,canonical]);
     expect(observed.undated_atom_article_link_candidates).toBe(1);
     expect(observed.undated_atom_link_diagnostic.valid_first_party_article_links).toBe(1);
     expect(observed.undated_atom_link_diagnostic.rejected_original_path).toBe(1);
