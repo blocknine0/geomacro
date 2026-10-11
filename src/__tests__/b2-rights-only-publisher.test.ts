@@ -51,6 +51,29 @@ describe("isolated commercial source-rights snapshot recovery",()=>{
     expect(workflow).not.toContain("schedule:");
   });
 
+  it("routes rights-only inventory reads through existing project-locked SELECT-only Postgres client",()=>{
+    expect(publisher).toContain('import { createDirectPostgresClient } from "./direct-postgres-supabase-lite"');
+    expect(publisher).toContain('mode === "rights-only"');
+    expect(publisher).toContain('createDirectPostgresClient(String(process.env.SUPABASE_DB_URL ?? ""))');
+    expect(publisher).toContain('directRightsDb.from("live_external_sources")');
+    expect(publisher).toContain('directRightsDb.from("live_source_certification_records")');
+    expect(publisher).toContain('mode === "live-public"');
+    expect(publisher).toContain('supabase!.from("live_external_sources")');
+    expect(publisher).toContain('supabase!.from("live_source_certification_records")');
+    expect(workflow).toContain('SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}');
+    const rightsJob=workflow.slice(workflow.indexOf("  rights-only:\n"));
+    expect(rightsJob).toContain('command -v psql');
+    expect(rightsJob).not.toContain('APP_SUPABASE_SERVICE_ROLE_KEY');
+    expect(rightsJob).not.toContain('APP_SUPABASE_URL');
+    expect(rightsJob).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(rightsJob).toContain('B2_ACCOUNT_QUOTA_WORKFLOW_ID: rights_only_refresh');
+    expect(rightsJob).toContain('B2_REQUEST_BUDGET: "6"');
+    // The already guarded full public publisher deliberately retains
+    // its own REST/source-network path and does not silently change.
+    expect(workflow.slice(0,workflow.indexOf("  rights-only:\n")))
+      .toContain('APP_SUPABASE_SERVICE_ROLE_KEY');
+  });
+
   it("preserved B2 snapshot readback checks current v2 rights schema, not abandoned v1",()=>{
     expect(wrapper).toContain('"geomacro.commercial-source-rights-live.v2"');
     expect(wrapper).not.toContain('"geomacro.commercial-source-rights-live.v1"');

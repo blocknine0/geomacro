@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 import { createB2Client } from "./b2-s3-client.mjs";
+import { createDirectPostgresClient } from "./direct-postgres-supabase-lite";
 import { readPublicIntelligenceRowsFromSupabase } from "../../src/lib/public-intelligence.functions";
 import { readPublicGlobalRisk } from "../../src/lib/global-risk-read.server";
 import { evaluatePaidOutputSourceReadiness } from "../../src/lib/paid-output-source-readiness";
@@ -17,6 +18,9 @@ const PROOF_KEY = "geomacro-evidence/v1/live/live-snapshot-proof.json";
 const SOURCE_RIGHTS_PAGE_SIZE = 1000;
 const SOURCE_RIGHTS_MAX_ROWS = 2000;
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+const mode = process.argv[2] ?? "live-public";
+if (!["live-public","rights-only"].includes(mode))
+  throw Error("B2_LIVE_MAINTENANCE_MODE_INVALID");
 
 type SourceRightsRow = {
   source_id: string | null;
@@ -39,18 +43,28 @@ type SourceRightsSnapshotRow = SourceRightsRow & {
 };
 
 if (
-  process.env.APP_SUPABASE_URL !== "https://ldpwajisioljyjtojvfx.supabase.co" ||
-  !process.env.APP_SUPABASE_SERVICE_ROLE_KEY ||
+  (mode === "live-public" && (
+    process.env.APP_SUPABASE_URL !== "https://ldpwajisioljyjtojvfx.supabase.co" ||
+    !process.env.APP_SUPABASE_SERVICE_ROLE_KEY
+  )) ||
   String(process.env.B2_S3_ENDPOINT ?? ENDPOINT).trim() !== ENDPOINT ||
   !process.env.B2_KEY_ID ||
   !process.env.B2_APPLICATION_KEY
 ) throw new Error("B2_LIVE_PUBLISH_CONFIG_REQUIRED");
 
-const supabase = createClient(
-  process.env.APP_SUPABASE_URL,
-  process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { persistSession: false, autoRefreshToken: false }, db: { retry: false } },
-);
+// Recover frozen-source inventory without Supabase REST/egress. Reuse the
+// repository's strict table-allowlisted, SELECT-only direct-Postgres adapter.
+// A missing/misconfigured pooler credential fails *before* B2 activity.
+const directRightsDb = mode === "rights-only"
+  ? createDirectPostgresClient(String(process.env.SUPABASE_DB_URL ?? ""))
+  : null;
+const supabase = mode === "live-public"
+  ? createClient(
+      String(process.env.APP_SUPABASE_URL),
+      String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY),
+      { auth: { persistSession: false, autoRefreshToken: false }, db: { retry: false } },
+    )
+  : null;
 
 const b2 = createB2Client({
   endpointUrl: ENDPOINT,
@@ -60,9 +74,6 @@ const b2 = createB2Client({
 });
 
 const generatedAt = new Date().toISOString();
-const mode = process.argv[2] ?? "live-public";
-if (!["live-public","rights-only"].includes(mode))
-  throw Error("B2_LIVE_MAINTENANCE_MODE_INVALID");
 
 // Read-only current source rights + certificates are independent of the
 // commercial hot intelligence / Global Risk snapshot publisher. One certified
@@ -70,11 +81,14 @@ if (!["live-public","rights-only"].includes(mode))
 async function collectCommercialSourceRights() {
 const sourceRights: SourceRightsRow[] = [];
 for (let offset = 0; offset < SOURCE_RIGHTS_MAX_ROWS; offset += SOURCE_RIGHTS_PAGE_SIZE) {
-  const { data, error } = await supabase
-    .from("live_external_sources")
-    .select("source_id,category,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required,licence_name")
-    .order("source_id", { ascending: true })
-    .range(offset, offset + SOURCE_RIGHTS_PAGE_SIZE - 1);
+  const columns = "source_id,category,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required,licence_name";
+  const { data, error } = directRightsDb
+    ? await directRightsDb.from("live_external_sources")
+        .select(columns).order("source_id", { ascending: true })
+        .range(offset, offset + SOURCE_RIGHTS_PAGE_SIZE - 1)
+    : await supabase!.from("live_external_sources")
+        .select(columns).order("source_id", { ascending: true })
+        .range(offset, offset + SOURCE_RIGHTS_PAGE_SIZE - 1);
   if (error || !Array.isArray(data)) throw new Error("B2_LIVE_SOURCE_RIGHTS_INVALID");
   const page = data as unknown as SourceRightsRow[];
   sourceRights.push(...page);
@@ -89,11 +103,15 @@ if (sourceRights.length === 0 || sourceRights.length >= SOURCE_RIGHTS_MAX_ROWS) 
 
 const sourceCertifications: SourceCertificationRow[] = [];
 for (let offset = 0; offset < SOURCE_RIGHTS_MAX_ROWS; offset += SOURCE_RIGHTS_PAGE_SIZE) {
-  const { data, error } = await supabase
-    .from("live_source_certification_records")
-    .select("source_id,certification_state")
-    .order("source_id", { ascending: true })
-    .range(offset, offset + SOURCE_RIGHTS_PAGE_SIZE - 1);
+  const { data, error } = directRightsDb
+    ? await directRightsDb.from("live_source_certification_records")
+        .select("source_id,certification_state")
+        .order("source_id", { ascending: true })
+        .range(offset, offset + SOURCE_RIGHTS_PAGE_SIZE - 1)
+    : await supabase!.from("live_source_certification_records")
+        .select("source_id,certification_state")
+        .order("source_id", { ascending: true })
+        .range(offset, offset + SOURCE_RIGHTS_PAGE_SIZE - 1);
   if (error || !Array.isArray(data)) throw new Error("B2_LIVE_SOURCE_CERTIFICATION_INVALID");
   const page = data as unknown as SourceCertificationRow[];
   sourceCertifications.push(...page);
@@ -199,7 +217,7 @@ if (
   !/^[a-f0-9]{64}$/.test(String(risk.calculationHash ?? ""))
 ) throw new Error("B2_LIVE_RISK_PROOF_INVALID");
 
-const { data: sourceNetworkStatus, error: sourceNetworkError } = await supabase
+const { data: sourceNetworkStatus, error: sourceNetworkError } = await supabase!
   .from("live_source_network_launch_status")
   .select("source_network_100_complete,gdelt_gal_freshness_complete,source_network_launch_complete")
   .maybeSingle();

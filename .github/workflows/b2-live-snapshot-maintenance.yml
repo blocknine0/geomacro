@@ -60,8 +60,8 @@ jobs:
     timeout-minutes: 10
     environment: production
     env:
-      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Read-only trusted project pooler / direct-Postgres path, never REST.
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
@@ -104,13 +104,16 @@ jobs:
           ')"
           test -n "$id" || { echo "Shared D1 quota database missing"; exit 2; }
           echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
-      - name: Verify existing source DB and B2 credentials are present
+      - name: Verify read-only project Postgres transport and existing B2 credentials
         shell: bash
         run: |
           set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY B2_KEY_ID B2_APPLICATION_KEY; do
+          for name in SUPABASE_DB_URL B2_KEY_ID B2_APPLICATION_KEY; do
             test -n "${!name:-}" || { echo "$name absent: fail closed"; exit 2; }
           done
+          command -v psql >/dev/null || { echo "psql unavailable: fail closed"; exit 2; }
+          # Direct Postgres adapter validates project target and only allows
+          # SELECT queries against enumerated source/certification relations.
       - name: Refresh full certified rights inventory independently of public hot snapshots
         run: bun scripts/ops/publish-b2-live-snapshots.ts rights-only
 
