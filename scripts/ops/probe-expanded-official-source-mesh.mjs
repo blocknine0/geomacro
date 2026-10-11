@@ -70,6 +70,10 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     id:"un_news_security_original_rss_review",
     domain:"geopolitics",kind:"original_publisher_peace_security_release",
     url:"https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml",
+    // Same UN News publisher, not an independent corroborator. One bounded
+    // fallback for a transport error/404/5xx; never on 401/403/429.
+    alternate_url:"https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+    network_fallback_same_publisher:true,
     media:"rss",rights:"UNVERIFIED",poll:"six_hourly",
     event_intelligence:false,country_coverage_verified:false,
     original_hosts:Object.freeze(["news.un.org"]),
@@ -350,6 +354,8 @@ export async function probeExpandedSource(source,{
     original_page_precise_date_checks:0,original_page_precise_date_24h:0,
     official_locale_fallback_attempted:false,
     official_locale_fallback_used:false,
+    official_same_publisher_fallback_attempted:false,
+    official_same_publisher_fallback_used:false,
     // Sanitized numeric transport status only; never forward upstream bodies.
     primary_http_status:null,fallback_http_status:null,
     same_event_independent_corroboration_verified:false,
@@ -364,21 +370,32 @@ export async function probeExpandedSource(source,{
     // Eurostat returns HTTP 406 to GitHub's explicit RSS negotiation.
     // Accept any response *format* for this one official endpoint; strict
     // XML MIME + RSS shape checks below still deny HTML/untrusted content.
-    headers:{accept:source.alternate_url?"*/*":source.media==="rss"
+    headers:{accept:source.id==="eurostat_stats_update_official_rss_review"?"*/*":source.media==="rss"
       ?"application/rss+xml, application/xml;q=0.9, text/xml;q=0.8"
       :source.media==="atom"
       ?"application/atom+xml, application/xml;q=0.9, text/xml;q=0.8"
       :"application/json","user-agent":"Geomacro-Official-Expanded-Source-Private-Monitor/1.0"},
   });
   let response;
-  try{response=await fetchOfficial(source.url);}catch{return row;}
-  row.primary_http_status=response.status;
+  let retriedAfterTransportError=false;
+  try{response=await fetchOfficial(source.url);}catch{
+    // Only a fixed, same-organization official feed can recover a network
+    // outage. A redirect or failed alternate still remains unverified.
+    if(!source.network_fallback_same_publisher||!source.alternate_url)return row;
+    retriedAfterTransportError=true;
+    row.official_same_publisher_fallback_attempted=true;
+    try{response=await fetchOfficial(source.alternate_url);}catch{return row;}
+    row.fallback_http_status=response.status;
+  }
+  if(!retriedAfterTransportError)row.primary_http_status=response.status;
   // Documented language variant at the SAME official publisher. Do not
   // retry on 401/403/429, network/redirect error or MIME/body/shape rejection.
   // Strictly one extra request; primary or alternate stays fail-closed.
-  if(source.alternate_url && (response.status===404 ||
+  if(source.alternate_url && !retriedAfterTransportError && (response.status===404 ||
     (response.status>=500 && response.status<=599))){
-    row.official_locale_fallback_attempted=true;
+    if(source.network_fallback_same_publisher)
+      row.official_same_publisher_fallback_attempted=true;
+    else row.official_locale_fallback_attempted=true;
     try{response=await fetchOfficial(source.alternate_url);}catch{return row;}
     row.fallback_http_status=response.status;
   }
@@ -388,7 +405,8 @@ export async function probeExpandedSource(source,{
     return row;
   }
   const mime=response.headers.get("content-type")??"";
-  const maxBodyBytes=source.alternate_url?EUROSTAT_MAX_BODY_BYTES:MAX_BODY_BYTES;
+  const maxBodyBytes=source.id==="eurostat_stats_update_official_rss_review"
+    ? EUROSTAT_MAX_BODY_BYTES:MAX_BODY_BYTES;
   if(!(source.media==="rss"||source.media==="atom"?XML_MIME:JSON_MIME).test(mime)) {
     row.reason="SOURCE_CONTENT_TYPE_INVALID";return row;
   }
@@ -427,6 +445,7 @@ export async function probeExpandedSource(source,{
     catch { row.private_original_article_candidates=[]; row.private_original_candidate_parse_failed=true; }
   }
   row.official_locale_fallback_used=row.official_locale_fallback_attempted;
+  row.official_same_publisher_fallback_used=row.official_same_publisher_fallback_attempted;
   row.reason="PRIVATE_SOURCE_TRANSPORT_ONLY";
   if(counts){
     row.source_native_release_items=counts.native_dated;

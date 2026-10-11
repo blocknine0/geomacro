@@ -34,7 +34,12 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     }
     expect(EXPANDED_OFFICIAL_SOURCES[2].alternate_url)
       .toBe("https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/de/statistics-update.rss");
-    expect(EXPANDED_OFFICIAL_SOURCES.filter((s:any)=>s.alternate_url)).toHaveLength(1);
+    expect(EXPANDED_OFFICIAL_SOURCES.filter((s:any)=>s.alternate_url)).toHaveLength(2);
+    expect(EXPANDED_OFFICIAL_SOURCES[6].alternate_url)
+      .toBe("https://news.un.org/feed/subscribe/en/news/all/rss.xml");
+    expect(EXPANDED_OFFICIAL_SOURCES[6].network_fallback_same_publisher).toBe(true);
+    expect(new URL(EXPANDED_OFFICIAL_SOURCES[6].alternate_url!).hostname)
+      .toBe(new URL(EXPANDED_OFFICIAL_SOURCES[6].url).hostname);
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
       .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca","www.gov.uk","www.federalreserve.gov","www.usgs.gov","www.minister.industry.gov.au","www.gov.uk"]);
   });
@@ -360,6 +365,53 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(rejected.original_page_precise_date_checks).toBe(1);
     expect(rejected.topical_private_release_links_24h).toBe(0);
   });
+  it("recovers a failed UN topical RSS through exactly one same-publisher official feed",async()=>{
+    const source=EXPANDED_OFFICIAL_SOURCES[6];
+    const nativeRss='<rss><channel><item><title>Security Council ceasefire and conflict update</title>'+
+      '<link>https://news.un.org/en/story/2026/10/security-council-ceasefire</link>'+
+      '<pubDate>Sat, 10 Oct 2026 06:25:00 GMT</pubDate></item></channel></rss>';
+    const requested:string[]=[];
+    const fetchImpl=vi.fn(async(url:string,opts:RequestInit)=>{
+      requested.push(url);
+      expect(opts.redirect).toBe("error");
+      expect((opts.headers as Record<string,string>).accept).not.toBe("*/*");
+      if(url===source.url)throw Error("publisher transport unavailable");
+      return response(nativeRss,"application/rss+xml");
+    });
+    const repaired=await probeExpandedSource(source,{now,fetchImpl,collectPrivateCandidates:true});
+    expect(requested).toEqual([source.url,source.alternate_url]);
+    expect(repaired.primary_http_status).toBeNull();
+    expect(repaired.fallback_http_status).toBe(200);
+    expect(repaired.official_same_publisher_fallback_attempted).toBe(true);
+    expect(repaired.official_same_publisher_fallback_used).toBe(true);
+    expect(repaired.official_locale_fallback_attempted).toBe(false);
+    expect(repaired.original_publisher_topical_30m).toBe(0);
+    expect(repaired.original_publisher_topical_90m).toBe(1);
+    expect(repaired.private_original_article_candidates).toHaveLength(1);
+    expect(repaired.commercial_rights_verified).toBe(false);
+    expect(repaired.current_scored_intelligence_verified).toBe(false);
+    expect(repaired.commercial_eligible).toBe(false);
+    for(const status of [401,403,429]){
+      const blocked=vi.fn(async()=>new Response("denied",{status}));
+      const result=await probeExpandedSource(source,{now,fetchImpl:blocked});
+      expect(blocked).toHaveBeenCalledTimes(1);
+      expect(result.official_same_publisher_fallback_attempted).toBe(false);
+      expect(result.format_valid).toBe(false);
+      expect(result.commercial_eligible).toBe(false);
+    }
+    const invalidMime=await probeExpandedSource(source,{now,fetchImpl:async(url:string)=>
+      url===source.url?new Response("down",{status:503}):response("<html>bad</html>","text/html")});
+    expect(invalidMime.official_same_publisher_fallback_attempted).toBe(true);
+    expect(invalidMime.official_same_publisher_fallback_used).toBe(false);
+    expect(invalidMime.format_valid).toBe(false);
+    expect(invalidMime.reason).toBe("SOURCE_CONTENT_TYPE_INVALID");
+    const oversized=await probeExpandedSource(source,{now,fetchImpl:async(url:string)=>
+      url===source.url?new Response("down",{status:503}):
+      response(nativeRss+"x".repeat(200*1024),"application/rss+xml")});
+    expect(oversized.reason).toBe("SOURCE_BODY_UNAVAILABLE_OR_OVERSIZE");
+    expect(oversized.format_valid).toBe(false);
+  });
+
   it("independently proves UN news native clocks without automatic risk promotion",async()=>{
     const un=EXPANDED_OFFICIAL_SOURCES[6];
     const nativeRss='<rss><channel><item><title>Security Council discusses ceasefire and armed conflict</title>'+
