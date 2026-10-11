@@ -3,7 +3,7 @@
  * Real (not mocked) read-only global API evidence acceptance.
  * Does not create a source right, signed GRO, a public intelligence object,
  * a B2 archive, D1 checkpoint, a USDC payment or an x402 settlement.
- * One ISO3 country x three Geomacro categories, 8 fixed upstream requests.
+ * One ISO3 country x three Geomacro categories, at most 12 fixed upstream requests.
  */
 import { writeFileSync, mkdirSync } from "node:fs";
 import { discoverOnDemandForPrivateQualification } from "../../src/lib/on-demand-global-discovery.server";
