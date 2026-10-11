@@ -142,7 +142,8 @@ describe("bounded original-publisher article precise-date fallback", () => {
         now,fetchImpl,diagnostics,
       });
       expect(result).toBeNull();
-      expect(diagnostics).toEqual({code});
+      expect(diagnostics).toEqual(code==="PRECISE_PUBLICATION_UNVERIFIED"
+        ?{code,date_reason:"MISSING_PUBLISHER_PUBLICATION_METADATA"}:{code});
       expect(JSON.stringify(diagnostics)).not.toContain("sensitive");
       expect(JSON.stringify(diagnostics)).not.toContain("statcan");
     }
@@ -152,7 +153,8 @@ describe("bounded original-publisher article precise-date fallback", () => {
         headers:{"content-type":"text/html"},
       }),diagnostics:verified,
     })).toBe("2026-10-09T12:45:00.000Z");
-    expect(verified).toEqual({code:"PRECISE_PUBLICATION_VERIFIED"});
+    expect(verified).toEqual({code:"PRECISE_PUBLICATION_VERIFIED",
+      date_reason:"PRECISE_PUBLICATION_ACCEPTED"});
     const denied:Record<string,unknown>={};
     expect(await fetchVerifiedPublisherPageDate(
       "https://evil.example/n1/daily-quotidien/261009/abc.htm",
