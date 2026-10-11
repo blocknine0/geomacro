@@ -313,6 +313,11 @@ export const mainnetIntelligenceHandlers = {
             categories.push("macro");
           if (plan.topics.includes("critical_minerals"))
             categories.push("rare_earth");
+          // An unscoped "latest news" request searches all three Geomacro
+          // categories, bounded to one country and the fixed provider mesh.
+          if (categories.length === 0 && plan.topics.includes("hot_topics")) {
+            categories.push("geopolitics","macro","rare_earth");
+          }
           if (categories.length === 0) {
             return json({
               ok:false,chargeable:false,payment_required_now:false,
