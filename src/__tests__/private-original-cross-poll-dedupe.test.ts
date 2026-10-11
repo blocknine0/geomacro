@@ -58,6 +58,37 @@ describe("#1827 continuous 30m original article identity, private D1 only",()=>{
     expect(second.scored_intelligence_published).toBe(false);
   });
 
+  it("retains 18h genuine original hashes across repeated polls: no recurring model/B2 costs",()=>{
+    const nativeAt="2026-10-10T00:40:00.000Z";
+    const candidate=make("macro","e".repeat(64),nativeAt);
+    const first=reconcile30mPrivateArticleFingerprints({
+      domain:"macro",checkedAt:at,candidates:[candidate],
+    });
+    expect(first.new_article_fingerprint_count).toBe(1);
+    // A second poll must NOT score the 18h old item again.
+    const second=reconcile30mPrivateArticleFingerprints({
+      domain:"macro",checkedAt:"2026-10-10T19:15:00.000Z",
+      candidates:[candidate],previousHistory:first.recent_private_article_fingerprints,
+    });
+    expect(second.repeated_article_fingerprint_count).toBe(1);
+    expect(second.new_article_fingerprint_count).toBe(0);
+    // History is kept past 24h to guard against later duplicate re-entry.
+    const third=reconcile30mPrivateArticleFingerprints({
+      domain:"macro",checkedAt:"2026-10-11T02:00:00.000Z",
+      candidates:[],previousHistory:second.recent_private_article_fingerprints,
+    });
+    expect(third.tracked_article_fingerprint_count).toBe(1);
+    const expired=reconcile30mPrivateArticleFingerprints({
+      domain:"macro",checkedAt:"2026-10-11T07:00:00.000Z",
+      candidates:[],previousHistory:third.recent_private_article_fingerprints,
+    });
+    expect(expired.tracked_article_fingerprint_count).toBe(0);
+    expect(()=>reconcile30mPrivateArticleFingerprints({
+      domain:"macro",checkedAt:"2026-10-11T02:00:00.000Z",
+      candidates:[candidate],previousHistory:second.recent_private_article_fingerprints,
+    })).toThrow("SOURCE_PULSE_UNSAFE_OR_UNDATED_CANDIDATE");
+  });
+
   it("keeps domain histories separate, does not dedup distinct URLs with identical headline hashes",()=>{
     const before=reconcile30mPrivateArticleFingerprints({
       domain:"macro",checkedAt:at,candidates:[make("macro","a".repeat(64))],
