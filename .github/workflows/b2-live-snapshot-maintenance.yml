@@ -104,6 +104,11 @@ jobs:
           ')"
           test -n "$id" || { echo "Shared D1 quota database missing"; exit 2; }
           echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+      - name: Read-only D1 B2 rights PUT/GET headroom before frozen DB or B2 traffic
+        # Stop here when the account-wide daily D1 ticket ledger is held.
+        # This preflight itself performs no B2 or Supabase query; each actual
+        # subsequent B2 operation retains its atomic account-wide ticket.
+        run: node scripts/ops/check-b2-rights-only-headroom.mjs
       - name: Verify read-only project Postgres transport and existing B2 credentials
         shell: bash
         run: |
