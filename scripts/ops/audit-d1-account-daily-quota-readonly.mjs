@@ -26,6 +26,7 @@ export function assessD1AccountFreeQuota(payload,{day=new Date().toISOString().s
     !Array.isArray(payload.data.viewer.accounts[0]?.d1AnalyticsAdaptiveGroups))
     throw Error("D1_ACCOUNT_QUOTA_GRAPHQL_UNVERIFIED");
   const groups=payload.data.viewer.accounts[0].d1AnalyticsAdaptiveGroups;
+  if(groups.length===0)throw Error("D1_ACCOUNT_QUOTA_NO_PROVIDER_METRICS");
   if(groups.length>=1000)throw Error("D1_ACCOUNT_QUOTA_AGGREGATE_TRUNCATED");
   const seen=new Set();let read=0,written=0;
   for(const g of groups){
