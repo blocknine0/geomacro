@@ -96,6 +96,47 @@ describe("bounded original-publisher article precise-date fallback", () => {
     }
   });
 
+
+  it("accepts explicitly zoned ISO author-time microseconds and compact offsets without inventing time",async()=>{
+    const approved=[
+      ["2026-10-09T12:45:00.123456Z","2026-10-09T12:45:00.123Z"],
+      ["2026-10-09T12:45:00.123456789+0000","2026-10-09T12:45:00.123Z"],
+      ["2026-10-09T18:15:00.123456+0530","2026-10-09T12:45:00.123Z"],
+      ["2026-10-09T12:45:00+0000","2026-10-09T12:45:00.000Z"],
+      ["2026-10-09T12:45:00+00:00","2026-10-09T12:45:00.000Z"],
+    ] as const;
+    for(const [raw,expected] of approved){
+      const diagnostic:Record<string,unknown>={};
+      expect(verifiedPublisherPageDate(page(raw),now,diagnostic)).toBe(expected);
+      expect(diagnostic.date_reason).toBe("PRECISE_PUBLICATION_ACCEPTED");
+      const fetchImpl=vi.fn(async()=>new Response(page(raw),{
+        headers:{"content-type":"text/html"},
+      }));
+      expect(await fetchVerifiedPublisherPageDate(official,"rare_earth",{
+        now,fetchImpl,diagnostics:diagnostic,
+      })).toBe(expected);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(diagnostic.code).toBe("PRECISE_PUBLICATION_VERIFIED");
+    }
+    // These require impossible/guessed clocks or are past the 24h window.
+    for(const bad of [
+      "2026-10-09","2026-10-09T12:45:00",
+      "2026-10-09T12:45:00.1234567890Z",
+      "2026-10-09T12:45:00+1401",
+      "2026-10-09T12:45:00-2515",
+      "2026-02-30T12:45:00Z",
+      "2026-10-09T13:32:00Z",
+      "2026-10-07T12:45:00Z",
+    ])expect(verifiedPublisherPageDate(page(bad),now)).toBeNull();
+    const contradictions=
+      '<meta property="article:published_time" content="2026-10-09T12:45:00.123456Z">'+
+      '<script type="application/ld+json">{"@type":"NewsArticle","datePublished":"2026-10-09T12:55:00+0000"}</script>';
+    expect(verifiedPublisherPageDate(contradictions,now)).toBeNull();
+    expect(verifiedPublisherPageDate(
+      '<meta property="article:modified_time" content="2026-10-09T12:45:00.123456Z">',
+      now)).toBeNull();
+  });
+
   it("rejects unrelated URLs and never follows cross-origin redirects", async () => {
     const fetchImpl = vi.fn(async () => new Response(page("2026-10-09T12:45:00Z"), {
       headers: { "content-type": "text/html" },
