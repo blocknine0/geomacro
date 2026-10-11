@@ -85,7 +85,7 @@ jobs:
           set -euo pipefail
           bash scripts/ops/prepare-edge-continuity.sh \
             "$EDGE_PRODUCT" "$SOURCE_WORKFLOW" "$PROOF_SCHEMA" \
-            "workers/$EDGE_PRODUCT/src/continuity.mjs"
+            "workers/$EDGE_PRODUCT-edge/src/continuity.mjs"
       - name: Bind pre-existing shared D1 database without creating or writing
         shell: bash
         run: |
@@ -104,7 +104,7 @@ jobs:
           export D1_DATABASE_ID
           node "scripts/ops/$CONFIGURE_SCRIPT"
           RESULT="$(npx -y "wrangler@$WRANGLER_VERSION" d1 execute B2_QUOTA_DB \
-            --remote --json --config "workers/$EDGE_PRODUCT/wrangler.runtime.jsonc" \
+            --remote --json --config "workers/$EDGE_PRODUCT-edge/wrangler.runtime.jsonc" \
             --command "SELECT (SELECT version FROM schema_meta WHERE name='control-plane') AS version,(SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='b2_account_daily_request_quota') AS quota_table;")"
           printf '%s' "$RESULT" | node -e '
             let raw="";
@@ -121,7 +121,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cd "workers/$EDGE_PRODUCT"
+          cd "workers/$EDGE_PRODUCT-edge"
           LOG="$(mktemp)"
           trap 'rm -f "$LOG"' EXIT
           npx -y "wrangler@$WRANGLER_VERSION" deploy --config wrangler.runtime.jsonc 2>&1 | tee "$LOG"
