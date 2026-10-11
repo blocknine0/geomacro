@@ -1,6 +1,7 @@
 import { readB2CommercialSourceRights, type B2CommercialSourceRight } from "./b2-live.server";
 import { commercialSourceEligibilityFromRow } from "./commercial-source-eligibility.server";
 import type { PrivateOnDemandMacroDriver } from "./on-demand-private-macro-drivers.server";
+import { approvedWdiAttribution, type WorldBankWdiAttribution } from "./world-bank-derived-attribution";
 
 export type PrivateOnDemandMacroRightsStatus =
   | "NO_ANNUAL_EVIDENCE"
@@ -17,6 +18,10 @@ export type PrivateOnDemandMacroRightsProof = {
   // Source rights alone never validate a calibrated score, signed object or payment.
   signed_intelligence_verified: false;
   payment_eligible: false;
+  /** Fixed licence-credit metadata required in the final, signed product.
+   *  No customer-facing result is deliverable until that happens.
+   */
+  required_data_attribution: WorldBankWdiAttribution | null;
 };
 
 const SOURCE_ID = "world_bank_indicators";
@@ -26,10 +31,12 @@ function result(
   status: PrivateOnDemandMacroRightsStatus,
   checked_driver_count: number,
   rights_verified_driver_count = 0,
+  required_data_attribution: WorldBankWdiAttribution | null = null,
 ): PrivateOnDemandMacroRightsProof {
   return {
     status, checked_driver_count, rights_verified_driver_count,
     signed_intelligence_verified: false, payment_eligible: false,
+    required_data_attribution,
   };
 }
 
@@ -90,7 +97,18 @@ export async function checkPrivateOnDemandMacroRights(
     return result("SOURCE_NOT_CERTIFIED_FOR_DERIVED_USE", drivers.length);
   }
   if (policy.attribution_required) {
-    return result("ATTRIBUTION_NOT_SUPPORTED_BY_PRIVATE_OUTPUT", drivers.length);
+    // The live registry explicitly requires World Bank CC BY 4.0 credit.
+    // Prepare an *exact* licence/material/changes disclosure: neither raw
+    // data nor a provider feed, but mandatory rights metadata. A future
+    // signed product must include this manifest verbatim in its hash.
+    if (policy.licence_name !== "CC BY 4.0")
+      return result("ATTRIBUTION_NOT_SUPPORTED_BY_PRIVATE_OUTPUT", drivers.length);
+    const indicators = drivers.map(driver=>
+      driver.driver==="inflation" ? "FP.CPI.TOTL.ZG" as const :
+      "NY.GDP.MKTP.KD.ZG" as const);
+    const manifest = approvedWdiAttribution(indicators);
+    return result("DERIVED_SOURCE_RIGHTS_VERIFIED_NOT_A_PAID_PRODUCT",
+      drivers.length,drivers.length,manifest);
   }
   return result(
     "DERIVED_SOURCE_RIGHTS_VERIFIED_NOT_A_PAID_PRODUCT",
