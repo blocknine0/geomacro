@@ -1,0 +1,142 @@
+name: Deploy B2 Shared Quota Safety
+
+# Code-only emergency quota fairness roll-out for all three public Workers.
+# No upstream publication trigger, B2 GET, D1 mutation or fresh score claim.
+# Sources are independently B2-readback-verified GitHub continuity artifacts.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "workers/control-plane/src/b2-account-quota.mjs"
+      - ".github/workflows/deploy-b2-shared-quota-safety.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  quota-only-worker:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - product: intelligence
+            source_workflow: intelligence-scored-refresh.yml
+            proof_schema: geomacro.public-intelligence-direct-postgres-publish.v2
+            configure_script: configure-intelligence-edge-d1-quota.mjs
+            url: https://geomacro-intelligence.daspallab202391.workers.dev
+            route: /intelligence
+          - product: global-risk
+            source_workflow: gri-realtime-direct-postgres.yml
+            proof_schema: geomacro.public-global-risk-direct-postgres-publish.v1
+            configure_script: configure-global-risk-edge-d1-quota.mjs
+            url: https://geomacro-global-risk.daspallab202391.workers.dev
+            route: /global-risk
+          - product: risk-indices
+            source_workflow: risk-indices-realtime-direct-postgres.yml
+            proof_schema: geomacro.public-risk-indices-direct-postgres-publish.v1
+            configure_script: configure-risk-indices-edge-d1-quota.mjs
+            url: https://geomacro-risk-indices.daspallab202391.workers.dev
+            route: /risk-indices
+    concurrency:
+      group: geomacro-${{ matrix.product }}-edge-production
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      WRANGLER_VERSION: "4.136.3"
+      EDGE_PRODUCT: ${{ matrix.product }}
+      SOURCE_WORKFLOW: ${{ matrix.source_workflow }}
+      PROOF_SCHEMA: ${{ matrix.proof_schema }}
+      CONFIGURE_SCRIPT: ${{ matrix.configure_script }}
+      EDGE_URL: ${{ matrix.url }}
+      EDGE_ROUTE: ${{ matrix.route }}
+    steps:
+      - name: Checkout exact production commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Require authorization and static safety contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$B2_ARCHIVE_READ_KEY_ID"
+          test -n "$B2_ARCHIVE_READ_APPLICATION_KEY"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node --check workers/control-plane/src/b2-account-quota.mjs
+          grep -Fq 'B2_PUBLIC_EDGE_GLOBAL_GET_CEILING = 10' workers/control-plane/src/b2-account-quota.mjs
+          grep -Fq '"global_risk_public_edge"' workers/control-plane/src/b2-account-quota.mjs
+          grep -Fq '"risk_indices_public_edge"' workers/control-plane/src/b2-account-quota.mjs
+          grep -Fq '"intelligence_public_edge"' workers/control-plane/src/b2-account-quota.mjs
+      - name: Materialize prior verified immutable B2 continuity, never publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/ops/prepare-edge-continuity.sh \
+            "$EDGE_PRODUCT" "$SOURCE_WORKFLOW" "$PROOF_SCHEMA" \
+            "workers/$EDGE_PRODUCT/src/continuity.mjs"
+      - name: Bind pre-existing shared D1 database without creating or writing
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIST_JSON="$(npx -y "wrangler@$WRANGLER_VERSION" d1 list --json)"
+          D1_DATABASE_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let raw="";
+            process.stdin.on("data",v=>raw+=v);
+            process.stdin.on("end",()=>{
+              const matches=JSON.parse(raw).filter(x=>x.name==="geomacro-control-plane");
+              if(matches.length!==1)process.exit(2);
+              process.stdout.write(String(matches[0].uuid??matches[0].id??""));
+            });
+          ')"
+          test -n "$D1_DATABASE_ID"
+          export D1_DATABASE_ID
+          node "scripts/ops/$CONFIGURE_SCRIPT"
+          RESULT="$(npx -y "wrangler@$WRANGLER_VERSION" d1 execute B2_QUOTA_DB \
+            --remote --json --config "workers/$EDGE_PRODUCT/wrangler.runtime.jsonc" \
+            --command "SELECT (SELECT version FROM schema_meta WHERE name='control-plane') AS version,(SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='b2_account_daily_request_quota') AS quota_table;")"
+          printf '%s' "$RESULT" | node -e '
+            let raw="";
+            process.stdin.on("data",v=>raw+=v);
+            process.stdin.on("end",()=>{
+              const x=JSON.parse(raw);
+              const rows=(Array.isArray(x)?x:x.result).flatMap(y=>y.results??[]);
+              if(rows.length!==1||Number(rows[0].version)<5||Number(rows[0].quota_table)!==1)
+                throw Error("B2_QUOTA_HOTFIX_SHARED_D1_UNVERIFIED");
+              console.log("PASS: existing D1 shared B2 quota schema v5 verified");
+            });
+          '
+      - name: Deploy quota-only Worker code on exact SHA, restore existing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "workers/$EDGE_PRODUCT"
+          LOG="$(mktemp)"
+          trap 'rm -f "$LOG"' EXIT
+          npx -y "wrangler@$WRANGLER_VERSION" deploy --config wrangler.runtime.jsonc 2>&1 | tee "$LOG"
+          grep -Fq 'Current Version ID:' "$LOG" || { echo "::error::WORKER_VERSION_UNVERIFIED"; exit 3; }
+          DEPLOY_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$LOG" | tail -n 1 || true)"
+          test "$DEPLOY_URL" = "$EDGE_URL" || { echo "::error::WORKER_URL_MISMATCH"; exit 3; }
+          printf '%s' "$B2_ARCHIVE_READ_KEY_ID" | npx -y "wrangler@$WRANGLER_VERSION" secret put B2_KEY_ID --config wrangler.runtime.jsonc >/dev/null
+          printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y "wrangler@$WRANGLER_VERSION" secret put B2_APPLICATION_KEY --config wrangler.runtime.jsonc >/dev/null
+          echo "PASS: deployed exact main shared B2 quota code for $EDGE_PRODUCT"
+      - name: Probe non-data boundary without spending a single B2 GET
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 12 "$EDGE_URL/not-allowed")"
+          test "$CODE" = "404" || { echo "::error::PUBLIC_WORKER_UNEXPECTED_READ_SURFACE"; exit 4; }
+          CODE="$(curl -sS -X POST -o /dev/null -w '%{http_code}' --max-time 12 "$EDGE_URL$EDGE_ROUTE")"
+          test "$CODE" = "405" || { echo "::error::PUBLIC_WORKER_UNEXPECTED_WRITE_SURFACE"; exit 4; }
+          echo "QUOTA_CODE_DEPLOY_ACCEPTED: $EDGE_PRODUCT; no B2 request, Supabase, D1 write, publication, payment or source freshness assertion"
