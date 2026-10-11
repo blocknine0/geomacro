@@ -3430,6 +3430,10 @@ async function ingestNews() {
           // has news. Preserve the existing classifier request/candidate caps.
           sampleAllPublishers: true,
           includeThirdPublisher: true,
+          // Relax ONLY the premature headline-keyword source filter. Any
+          // native dated, exact-host original can reach private classification.
+          // No publication, source-rights, corroboration or scoring override.
+          broadPrivateIntake: true,
           // Strictly private original article page datePublished rescue for
           // missing Fed/USGS RSS pubDate. Never published from retrieval time.
           includeOriginalPageDateFallback: true,
@@ -3451,7 +3455,7 @@ async function ingestNews() {
             continue;
           }
           const normTitle = normalizeTitle(article.title);
-          if (DENY.test(article.title) || !ALLOW[category.name]?.test(article.title) ||
+          if (DENY.test(article.title) ||
               existingUrls.has(article.url) || existingTitles.has(normTitle) ||
               seenInCurrentRun.has(normTitle) || seenCandidatesThisCategory.has(normTitle)) {
             continue;
