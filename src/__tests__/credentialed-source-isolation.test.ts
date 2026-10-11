@@ -48,6 +48,21 @@ describe("#1827 independently activate configured credentialed sources",()=>{
     expect(JSON.stringify(receipt)).not.toContain("api.example");
     expect(receipt.results.find((r:any)=>r.source_id==="opensanctions").status)
       .toBe("CONFIGURED_BUT_PROBE_FAILED");
+    expect(receipt.results.find((r:any)=>r.source_id==="opensanctions").reason)
+      .toBe("UPSTREAM_UNKNOWN_FAILURE");
+  });
+  it("classifies BEA upstream HTTP errors without copying token-bearing URL or body",async()=>{
+    const report=await probeConfiguredCredentialedSources({
+      env:allCredentials,now:when,
+      probe:async id=>{
+        if(id==="bea")throw Error("HTTP 403 for https://apps.bea.gov/api/data?UserID=private-token-do-not-emit: credentials rejected");
+        return validProbe(id);
+      },
+    });
+    const failure=report.results.find((r:any)=>r.source_id==="bea");
+    expect(failure.status).toBe("CONFIGURED_BUT_PROBE_FAILED");
+    expect(failure.reason).toBe("HTTP_403");
+    expect(JSON.stringify(report)).not.toContain("private-token-do-not-emit");
   });
   it("does not attempt network when no credentials exist or a result has wrong domain",async()=>{
     const probe=vi.fn();
