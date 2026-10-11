@@ -25,7 +25,7 @@ export const THIRTY_MIN_PUBLISHER_PAIRS=Object.freeze({
   ]),
   rare_earth:Object.freeze([
     "nrcan_government_news_original_atom_review",
-    "usgs_minerals_original_news_rss_review",
+    "uk_dbt_critical_minerals_atom_pending_review",
     "australia_industry_minister_original_rss_review",
   ]),
 });
@@ -39,6 +39,7 @@ const ORIGINAL_PUBLISHER_ORG=Object.freeze({
   statcan_prices_original_atom_review:"statistics_canada",
   nrcan_government_news_original_atom_review:"natural_resources_canada",
   usgs_minerals_original_news_rss_review:"us_geological_survey",
+  uk_dbt_critical_minerals_atom_pending_review:"uk_department_business_trade",
   australia_industry_minister_original_rss_review:"australian_industry_department",
 });
 const DOMAINS=Object.keys(THIRTY_MIN_PUBLISHER_PAIRS);
