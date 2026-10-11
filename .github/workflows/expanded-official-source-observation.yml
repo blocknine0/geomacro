@@ -43,7 +43,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "22"
-      - name: Probe eleven active official transports and retain three quarantined routes
+      - name: Probe twelve active official transports and retain three quarantined routes
         shell: bash
         run: |
           set -uo pipefail
@@ -52,8 +52,8 @@ jobs:
           proof=artifacts/expanded-official-source/transport.json
           jq -e '
             .schema == "geomacro.expanded-official-source-observation.v1" and
-            (.sources|length)==14 and
-            .active_source_count==11 and
+            (.sources|length)==15 and
+            .active_source_count==12 and
             .quarantined_source_count==3 and
             .all_registered_sources_transport_healthy==false and
             ([.sources[] | select(.quarantined==true)]|length)==3 and
@@ -112,7 +112,7 @@ jobs:
             jq -e '.status=="ACTIVE_SOURCE_TRANSPORT_OBSERVED_WITH_QUARANTINE" and
               .active_source_transport_healthy==true and
               ([.sources[] | select(.quarantined!=true) | .format_valid]|all(.==true))' "$proof" >/dev/null
-            echo "::notice title=Active official issuer mesh::11 independent/issuer source endpoints polled; 3 known blocked routes remain QUARANTINED, not healthy. Source rights and event publication remain unverified."
+            echo "::notice title=Active official issuer mesh::12 independent/issuer source endpoints polled; 3 known blocked routes remain QUARANTINED, not healthy. Source rights and event publication remain unverified."
           elif [[ "$rc" == "3" ]]; then
             jq -e '.status=="ACTIVE_SOURCE_TRANSPORT_DEGRADED" and
               .active_source_transport_healthy==false and

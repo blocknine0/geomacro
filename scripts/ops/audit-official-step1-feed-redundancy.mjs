@@ -22,6 +22,7 @@ const ORIGINAL_ISSUERS = Object.freeze({
   macro: Object.freeze({
     statcan_prices_original_atom_review: "statistics_canada",
     fed_monetary_original_press_rss_review: "federal_reserve",
+    ecb_press_original_rss_review: "ecb",
   }),
   rare_earth: Object.freeze({
     nrcan_government_news_original_atom_review: "natural_resources_canada",

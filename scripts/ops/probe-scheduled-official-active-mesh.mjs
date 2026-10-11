@@ -8,8 +8,9 @@
 import {mkdirSync,writeFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
-import {probeExpandedOfficialMesh} from "./probe-expanded-official-source-mesh.mjs";
+import {probeExpandedOfficialMesh,EXPANDED_OFFICIAL_SOURCES} from "./probe-expanded-official-source-mesh.mjs";
 import {auditOfficialStep1Feeds} from "./audit-official-step1-feed-redundancy.mjs";
+import {isQuarantinedOfficialRoute} from "../lib/official-source-quarantine.mjs";
 
 const CATEGORIES=Object.freeze(["geopolitics","macro","rare_earth"]);
 export function classifyScheduledOriginalMesh(transport){
@@ -29,7 +30,9 @@ export function classifyScheduledOriginalMesh(transport){
     };
   });
   const activeOk=transport.active_source_transport_healthy===true &&
-    transport.active_source_count===11 &&
+    transport.active_source_count===EXPANDED_OFFICIAL_SOURCES.filter(
+      s=>!isQuarantinedOfficialRoute(s.id)).length &&
+    transport.active_source_count===audit.source_transport_healthy_count &&
     transport.quarantined_source_count===3 &&
     audit.source_transport_live_failure_count===0 &&
     audit.per_category_two_independent_issuers_transport_healthy===true;

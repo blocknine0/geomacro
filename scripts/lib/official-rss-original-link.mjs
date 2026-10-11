@@ -8,6 +8,10 @@
  */
 const UN_CANONICAL=/^\/en\/story\/([0-9]{4})\/(0?[1-9]|1[0-2])\/([a-z0-9][a-z0-9-]{2,160})\/?$/u;
 const UN_FEED_VIEW=/^\/feed\/view\/en\/story\/([0-9]{4})\/(0?[1-9]|1[0-2])\/([0-9]{5,12})\/?$/u;
+// ECB press RSS has historically published first-party hrefs with an
+// accidental double slash immediately after the host. Normalize ONLY this
+// exact ECB original press/key URL shape; never generic // or other paths.
+const ECB_ORIGINAL=/^\/press\/(?:pr|key)\/date\/20[0-9]{2}\/html\/[a-zA-Z0-9.~_-]{6,190}\.html$/u;
 function oneNativeXmlText(raw) {
   if(typeof raw!=="string"||raw.length>1900)return null;
   const value=raw.trim();
@@ -35,6 +39,14 @@ function strictUrl(raw, host, allowQuery=false) {
 }
 export function officialOriginalRssArticleUrl(item,source) {
   const link=firstTagValue(item,"link");
+  if(source?.id==="ecb_press_original_rss_review") {
+    const original=strictUrl(link,"www.ecb.europa.eu");
+    if(!original)return null;
+    const path=original.pathname.startsWith("//press/")
+      ?original.pathname.slice(1):original.pathname;
+    if(!ECB_ORIGINAL.test(path))return null;
+    return "https://www.ecb.europa.eu"+path;
+  }
   if(source?.id!=="un_news_security_original_rss_review")return link;
   const raw=strictUrl(link,"news.un.org",true);
   if(!raw)return null;
