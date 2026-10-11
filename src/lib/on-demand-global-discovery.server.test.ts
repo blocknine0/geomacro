@@ -65,8 +65,8 @@ describe("Global on-demand private retrieval, not pre-generated GRO",()=>{
       country_iso3:"IND",categories:["geopolitics","macro","rare_earth"],
     },{fetchImpl,now});
     expect(result.categories).toEqual(["geopolitics","macro","rare_earth"]);
-    expect(result.reached_source_families).toBe(8);
-    expect(result.network_attempts).toBe(12);
+    expect(result.reached_source_families).toBe(7);
+    expect(result.network_attempts).toBe(11);
     expect(result.source_probes.some(x=>x.family==="world_bank_official_FP.CPI.TOTL.ZG" &&
       x.observed_record_count===2)).toBe(true);
     expect(result.source_probes.find(x=>x.family==="gdelt_doc_discovery")?.publication_clock_verified)
@@ -152,8 +152,8 @@ describe("Live source free-tier quota and memory safety",()=>{
     const proof=await discoverOnDemandGlobal({
       country_iso3:"IND",categories:["macro","geopolitics"],
     },{fetchImpl:caller,now});
-    expect(proof.network_attempts).toBe(9);
-    expect(requests).toHaveLength(9);
+    expect(proof.network_attempts).toBe(8);
+    expect(requests).toHaveLength(8);
     expect(requests.every(({url,opts})=>url.startsWith("https://") &&
       opts?.redirect==="error" && opts?.method==="GET")).toBe(true);
     expect(requests.every(({url})=>!url.includes("password") &&
@@ -167,7 +167,7 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
     const internal=await discoverOnDemandForPrivateQualification({
       country_iso3:"IND",categories:["geopolitics","macro","rare_earth"],
     },{fetchImpl,now});
-    expect(internal.discovery.network_attempts).toBe(12);
+    expect(internal.discovery.network_attempts).toBe(11);
     const articles=internal.private_candidates;
     expect(articles.length).toBe(5);
     expect(articles.map(x=>x.publisher_family).sort()).toEqual([
