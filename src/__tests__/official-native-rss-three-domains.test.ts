@@ -362,7 +362,7 @@ describe("three official publishers' original-event RSS discovery", () => {
     expect(orchestration).toContain('key: "official_native_rss"');
     expect(orchestration).toContain('cadenceSeconds: 3600');
     expect(orchestration).toContain('restrictedDirectPostgresSafe: true');
-    expect(orchestration).toContain("scripts/ops/probe-official-native-rss-three-domains.mjs");
+    expect(orchestration).toContain("scripts/ops/probe-scheduled-official-active-mesh.mjs");
     expect(workflow).toContain("artifacts/official-native-rss/**");
     // A PR verifies source-audit contract even when an external publisher
     // is unavailable; manually dispatched production source proof remains RED.

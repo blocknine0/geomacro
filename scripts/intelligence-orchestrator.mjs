@@ -66,7 +66,7 @@ const TASKS = [
   },
   {
     // Original publisher pubDate, no processing-time laundering. Safe lane:
-    // read-only fixed HTTPS feeds, no Supabase/B2/paid API/public scoring.
+    // all eleven active official HTTPS transports; three blocked routes\n    // quarantined. No Supabase/B2/paid API/public scoring.
     key: "official_native_rss",
     restrictedDirectPostgresSafe: true,
     cadenceSeconds: 3600,
@@ -75,7 +75,7 @@ const TASKS = [
     timeoutMs: 75_000,
     requiredEnv: [],
     steps: [
-      ["node", ["scripts/ops/probe-official-native-rss-three-domains.mjs"], "."],
+      ["node", ["scripts/ops/probe-scheduled-official-active-mesh.mjs"], "."],
     ],
   },
   {
