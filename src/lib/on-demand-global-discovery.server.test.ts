@@ -311,7 +311,7 @@ describe("simplified commodity-aware on-demand routing", () => {
     expect(cobalt.private_candidates).toHaveLength(0);
     expect(lithium.discovery.query_fingerprint_sha256).not.toBe(broad.discovery.query_fingerprint_sha256);
     expect(lithium.discovery.query_fingerprint_sha256).not.toBe(cobalt.discovery.query_fingerprint_sha256);
-    const queries = urls.filter((url) => url.includes("api.gdeltproject.org")).map((url) =>
+    const queries = urls.filter((url) => new URL(url).hostname === "api.gdeltproject.org").map((url) =>
       new URL(url).searchParams.get("query"));
     expect(queries).toContain('"India" AND "lithium"');
     expect(queries).toContain('"India" AND "cobalt"');
