@@ -17,7 +17,7 @@ describe("#1827 shared public B2 GET quota-only production deployment",()=>{
   it("distributes same global atomic ceiling to all three bundled Workers",()=>{
     for(const product of ["intelligence","global-risk","risk-indices"]){
       expect(workflow).toContain("product: "+product);
-      expect(workflow).toContain("workers/$EDGE_PRODUCT/src/continuity.mjs");
+      expect(workflow).toContain("workers/$EDGE_PRODUCT-edge/src/continuity.mjs");
     }
     for(const id of ["intelligence_public_edge","global_risk_public_edge","risk_indices_public_edge"])
       expect(governor).toContain('"'+id+'"');
@@ -25,6 +25,8 @@ describe("#1827 shared public B2 GET quota-only production deployment",()=>{
     expect(governor).toContain("get_requests + excluded.get_requests <= ?");
     expect(workflow).toContain("geomacro-${{ matrix.product }}-edge-production");
     expect(workflow).toContain('node "scripts/ops/$CONFIGURE_SCRIPT"');
+    expect(workflow).toContain('workers/$EDGE_PRODUCT-edge/wrangler.runtime.jsonc');
+    expect(workflow).toContain('cd "workers/$EDGE_PRODUCT-edge"');
   });
 
   it("requires prior B2-readback-verified continuity, schema and receipt but no B2 network or public live data to certify quota code",()=>{
