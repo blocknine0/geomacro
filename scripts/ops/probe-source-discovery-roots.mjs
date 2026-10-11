@@ -80,6 +80,25 @@ export async function probeGovernedRoots({
               "user-agent":"Geomacro-Private-Discovery-Root-Health/1.0"},
           });
         }
+        // Official root sites frequently canonicalize their own path with
+        // 301/302. Permit exactly ONE additional HEAD if and only if Location
+        // stays on the same HTTPS origin; never follow third-party redirects,
+        // login forms, or 403/429 retries.
+        if([301,302,307,308].includes(response.status)){
+          const location=response.headers?.get?.("location");
+          let redirect=null;
+          try{redirect=location?approvedRoot(new URL(location,url.href).href):null;}
+          catch{}
+          if(redirect && redirect.origin===url.origin &&
+            redirect.href!==url.href){
+            try{await response.body?.cancel();}catch{}
+            response=await fetchImpl(redirect.href,{
+              method:"HEAD",redirect:"manual",signal:AbortSignal.timeout(4000),
+              headers:{"user-agent":"Geomacro-Private-Discovery-Root-Health/1.0"},
+            });
+            row.same_origin_redirect_resolved=true;
+          }
+        }
         row.http_status=response.status;
         if(response.status>=200&&response.status<300)
           row.status="ROOT_HTTP_REACHABLE";
