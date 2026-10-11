@@ -3,16 +3,24 @@
  * Real (not mocked) read-only global API evidence acceptance.
  * Does not create a source right, signed GRO, a public intelligence object,
  * a B2 archive, D1 checkpoint, a USDC payment or an x402 settlement.
- * One ISO3 country x three Geomacro categories, at most 12 fixed upstream requests.
+ * One ISO3 country x three Geomacro categories: at most 12 discovery plus
+ * 4 original article-page requests. No unbounded search or extra workflow.
  */
 import { writeFileSync, mkdirSync } from "node:fs";
-import { discoverOnDemandForPrivateQualification } from "../../src/lib/on-demand-global-discovery.server";
+import {
+  discoverOnDemandForPrivateQualification,
+  verifyOnDemandOriginalArticlePages,
+} from "../../src/lib/on-demand-global-discovery.server";
 
 const privateEvidence=await discoverOnDemandForPrivateQualification({
   country_iso3:"IND",
   categories:["geopolitics","macro","rare_earth"],
 });
 const receipt=privateEvidence.discovery;
+// PRIVATE evidence continuation: only the aggregate count may enter logs or
+// artifacts. Original publisher URLs, page HTML and articles remain private.
+const pageProof=await verifyOnDemandOriginalArticlePages(
+  privateEvidence.private_candidates);
 const proof={
   schema:"geomacro.live-on-demand-real-api-safety.v1",
   checked_at:receipt.checked_at,
@@ -20,6 +28,8 @@ const proof={
   category_count:receipt.categories.length,
   categories:receipt.categories,
   network_attempts:receipt.network_attempts,
+  original_article_page_attempts:pageProof.attempted,
+  total_bounded_network_attempts:receipt.network_attempts+pageProof.attempted,
   parallel:receipt.searched_in_parallel,
   status:receipt.status,
   distinct_provider_families_reached:receipt.reached_source_families,
@@ -32,7 +42,10 @@ const proof={
     commercial_rights_verified:row.derived_commercial_rights_verified,
   })),
   private_original_candidate_count:privateEvidence.private_candidates.length,
-  private_original_candidate_page_dates_verified:false,
+  private_original_candidate_page_dates_verified:
+    privateEvidence.private_candidates.length>0 &&
+    pageProof.verified===privateEvidence.private_candidates.length,
+  original_article_page_publication_date_verified_count:pageProof.verified,
   private_original_candidate_derived_rights_verified:false,
   published_signed_intelligence:receipt.signed_derived_intelligence_created,
   independently_corrobated_same_event:receipt.independent_same_event_corroboration_verified,
@@ -48,6 +61,10 @@ writeFileSync("artifacts/on-demand-live/real-api-proof.json",
   JSON.stringify(proof,null,2)+"\n",{mode:0o600});
 console.log(JSON.stringify(proof));
 if(proof.category_count!==3||proof.network_attempts>12 ||
+   proof.original_article_page_attempts>4 ||
+   proof.total_bounded_network_attempts>16 ||
+   proof.original_article_page_publication_date_verified_count>
+     proof.original_article_page_attempts ||
    proof.private_original_candidate_count>16 ||
    proof.network_attempts<1||proof.payable!==false||
    proof.raw_upstream_delivered!==false||
