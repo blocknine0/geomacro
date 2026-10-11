@@ -26,6 +26,7 @@ const ORIGINAL_ISSUERS = Object.freeze({
     nrcan_government_news_original_atom_review: "natural_resources_canada",
     usgs_minerals_original_news_rss_review: "us_geological_survey",
     australia_industry_minister_original_rss_review: "australian_industry_department",
+    uk_dbt_critical_minerals_atom_pending_review: "uk_department_business_trade",
   }),
 });
 const DOMAINS = Object.freeze(["geopolitics", "macro", "rare_earth"]);

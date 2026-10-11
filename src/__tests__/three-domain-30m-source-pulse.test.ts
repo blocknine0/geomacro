@@ -48,6 +48,23 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     }
   });
 
+  it("rotates UK DBT in the minerals 30-minute pair instead of the inaccessible USGS feed",()=>{
+    expect(THIRTY_MIN_PUBLISHER_PAIRS.rare_earth).toEqual([
+      "nrcan_government_news_original_atom_review",
+      "uk_dbt_critical_minerals_atom_pending_review",
+      "australia_industry_minister_original_rss_review",
+    ]);
+    // USGS is retained independently for other reviewed source lanes.
+    expect(EXPANDED_OFFICIAL_SOURCES.map(s=>s.id)).toContain(
+      "usgs_minerals_original_news_rss_review");
+    const source=EXPANDED_OFFICIAL_SOURCES.find(
+      s=>s.id==="uk_dbt_critical_minerals_atom_pending_review");
+    expect(source?.url).toBe(
+      "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom");
+    expect(source?.rights).toBe("UNVERIFIED");
+    expect(source?.country_coverage_verified).toBe(false);
+  });
+
   it("reports real source-date topic counts without falsely claiming verified intelligence",async()=>{
     const probe=vi.fn(async (source:{id:string,domain:string})=>verifiedDateResponse(source,1));
     const x=await probe30MinThreeDomainPulse({now:NOW,probe});

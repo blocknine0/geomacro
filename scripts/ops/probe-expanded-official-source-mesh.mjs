@@ -136,6 +136,17 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     original_hosts:Object.freeze(["www.minister.industry.gov.au"]),
     topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|copper|strategic minerals?|mineral supply|mineral processing|mineral project|mining projects?|Arafura)\b/iu,
   }),
+  // Independent UK Department for Business and Trade official publisher.
+  // Private discovery only; free RSS does NOT imply commercial rights.
+  Object.freeze({
+    id:"uk_dbt_critical_minerals_atom_pending_review",
+    domain:"rare_earth",kind:"original_publisher_uk_critical_minerals",
+    url:"https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|neodymium|dysprosium|terbium|mineral (?:supply|production|processing|trade)|mining|strategic minerals?)\b/iu,
+  }),
 ]);
 
 const XML_MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
@@ -152,6 +163,7 @@ const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
   fed_monetary_original_press_rss_review:"federal_reserve",
   usgs_minerals_original_news_rss_review:"usgs",
   australia_industry_minister_original_rss_review:"australian_industry_minister",
+  uk_dbt_critical_minerals_atom_pending_review:"uk_dbt",
 });
 // Source-native event articles require the actual first-party article path;
 // a link to the publisher homepage, Atom/RSS endpoint or other press index
@@ -165,6 +177,7 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   fed_monetary_original_press_rss_review:/^\/newsevents\/pressreleases\/[A-Za-z0-9][^/?#]*/u,
   usgs_minerals_original_news_rss_review:/^\/(?:news|programs\/mineral-resources-program\/news)(?:\/|$)/u,
   australia_industry_minister_original_rss_review:/^\/(?:t-ayres|king)\/media\//u,
+  uk_dbt_critical_minerals_atom_pending_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
 });
 
 function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
