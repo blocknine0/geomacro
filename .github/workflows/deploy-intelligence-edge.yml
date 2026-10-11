@@ -10,6 +10,7 @@ on:
       - main
     paths:
       - "workers/intelligence-edge/**"
+      - "workers/control-plane/src/b2-account-quota.mjs"
       - ".github/workflows/deploy-intelligence-edge.yml"
       - "scripts/ops/materialize-edge-continuity.mjs"
       - "scripts/ops/prepare-edge-continuity.sh"
