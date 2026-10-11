@@ -4,8 +4,8 @@ import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN 
 // Fixed, independently public-publisher-addressed discovery ONLY.
 // These are original publishers' own official RSS URLs; neither publication
 // time alone nor host admission grants source rights or story corroboration.
-// The fallback is attempted ONLY if both existing publishers yield no
-// timestamp+topic+host-qualified current item. No per-country fanout.
+// Default fallback is conditional; complete private sampling also visits this
+// fixed publisher when earlier feeds have news. No per-country fanout.
 export const OFFICIAL_NATIVE_THIRD_FEEDS=Object.freeze({
   geopolitics:Object.freeze({
     url:"https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
@@ -20,9 +20,11 @@ export const OFFICIAL_NATIVE_THIRD_FEEDS=Object.freeze({
     topics:/\b(?:inflation|interest rates?|monetary|euro area|central bank|economic growth|recession|sovereign|currency|foreign exchange|consumer prices?|price stability|euro|bond yields?|financial stability|rate cuts?|rate hikes?)\b/iu,
   }),
   rare_earth:Object.freeze({
-    url:"https://www.usgs.gov/news/national-news-release/feed",
-    host:"www.usgs.gov",
-    source_id:"usgs_national_news_rss_pending_review",
+    // Distinct UK publisher, not a retry/proxy for the USGS national feed.
+    // The USGS minerals primary remains independently observed.
+    url:"https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+    host:"www.gov.uk",format:"atom",
+    source_id:"uk_dbt_critical_minerals_atom_pending_review",
     topics:/\b(?:critical minerals?|rare earths?|gallium|germanium|lithium|cobalt|nickel|graphite|neodymium|dysprosium|terbium|mineral (?:deposits?|reserve|production|trade|supply|resource)|mining|strategic minerals?|mineral commodities)\b/iu,
   }),
 });
@@ -171,7 +173,7 @@ export async function fetchOfficialThirdPublisherArticles(category,{
   const xml=new TextDecoder("utf-8",{fatal:true}).decode(Buffer.concat(chunks));
   const accepted=parseOfficialThirdRss(xml,category,{now,maxAgeMs,diagnostics});
   if(cfg.format!=="atom"||accepted.length)return accepted;
-  // FCDO Atom sometimes has entry <updated> without original <published>.
+  // GOV.UK department Atom sometimes has entry <updated> without original <published>.
   // Up to TWO exactly validated GOV.UK article URLs may be inspected for
   // authoritative datePublished. Never substitute feed updated or crawl time.
   let probes=0,admitted=0;
@@ -184,7 +186,7 @@ export async function fetchOfficialThirdPublisherArticles(category,{
     seen.add(url);probes++;
     let published=null;
     try{
-      published=await fetchVerifiedPublisherPageDate(url,"geopolitics",{now,fetchImpl});
+      published=await fetchVerifiedPublisherPageDate(url,category,{now,fetchImpl});
     }catch{/* bounded verifier failure is not event evidence */}
     const at=Date.parse(published??"");
     if(Number.isFinite(at)&&at<=now.getTime()&&now.getTime()-at<=maxAgeMs){

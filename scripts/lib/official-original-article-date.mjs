@@ -134,8 +134,8 @@ function fixedPublisherArticle(rawUrl, category) {
       return origin + "/en/natural-resources-canada/news/" +
         match[1] + "/" + match[2] + "/" + match[3] + ".html";
     }
-    if (category === "geopolitics" && candidate.hostname === "www.gov.uk") {
-      // A precise original GOV.UK FCDO article path only, never arbitrary
+    if (["geopolitics", "rare_earth"].includes(category) && candidate.hostname === "www.gov.uk") {
+      // A precise original GOV.UK FCDO/DBT article path only, never arbitrary
       // redirect/asset/API URLs or a caller-supplied domain.
       const match = /^\/government\/(news|speeches|world-location-news|statements)\/([a-z0-9][a-z0-9-]{4,190})$/u.exec(path);
       if (!match) return null;

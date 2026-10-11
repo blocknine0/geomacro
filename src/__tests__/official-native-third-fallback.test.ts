@@ -14,16 +14,16 @@ const now = new Date("2026-10-09T18:10:00.000Z");
 const title: Record<string,string> = {
   geopolitics:"United Kingdom Foreign Secretary statement on ceasefire after border conflict",
   macro:"European Central Bank discusses inflation and interest rates in the euro area",
-  rare_earth:"USGS releases assessment of critical minerals deposits and lithium reserves",
+  rare_earth:"UK announces critical minerals supply and lithium processing partnership",
 };
 const url: Record<string,string> = {
   geopolitics:"https://www.gov.uk/government/news/uk-foreign-policy-security-statement",
   macro:"https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp261009.en.html",
-  rare_earth:"https://www.usgs.gov/news/national-news-release/minerals-lithium",
+  rare_earth:"https://www.gov.uk/government/news/critical-minerals-lithium-partnership",
 };
 const rss=(category:string,link=url[category],pubdate="Fri, 09 Oct 2026 17:55:00 GMT",
   headline=title[category])=>
-  category==="geopolitics"
+  category!=="macro"
     ? '<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>'+headline+
       '</title><link rel="alternate" href="'+link+'"/>'+
       '<published>'+(Number.isFinite(Date.parse(pubdate))?
@@ -47,7 +47,7 @@ describe("#1827 three-domain third publisher RSS/Atom strict private originals",
       expect(rows[0]).toMatchObject({
         sourceDomain:OFFICIAL_NATIVE_THIRD_FEEDS[domain].host,
         publishedAt:"2026-10-09T17:55:00.000Z",
-        nativeTimeEvidence:domain==="geopolitics"?"publisher_atom_entry_published":"publisher_rss_item_pubDate",
+        nativeTimeEvidence:domain!=="macro"?"publisher_atom_entry_published":"publisher_rss_item_pubDate",
         discoveryProvider:"official_native_rss",
         nativePublishedAtVerified:true,privateOnly:true,
         rightsVerified:false,commercialEligible:false,
@@ -229,12 +229,35 @@ describe("#1827 three-domain third publisher RSS/Atom strict private originals",
     expect(diagnostics.third_feed_failure_code).toBe("OFFICIAL_THIRD_HTTP_FORBIDDEN");
   });
 
-  it("complete sampling deduplicates the same USGS original across two feeds",async()=>{
-    const rows=await fetchOfficialNativeArticles("rare_earth",{now,sampleAllPublishers:true,
-      fetchImpl:async(u:string)=>u===ORIGINAL_PUBLISHER_ALTERNATES.rare_earth.url
-        ?res(emptyAtom,"application/atom+xml"):res(rss("rare_earth"))});
+  it("complete sampling deduplicates identical UN originals across the two primary feeds",async()=>{
+    const original="https://news.un.org/en/story/2026/10/1234567";
+    const feed='<rss><channel><item><title>Security Council calls for ceasefire in armed conflict</title>'+
+      '<link>'+original+'</link><pubDate>Fri, 09 Oct 2026 17:50:00 GMT</pubDate></item></channel></rss>';
+    const rows=await fetchOfficialNativeArticles("geopolitics",{now,sampleAllPublishers:true,
+      fetchImpl:async(u:string)=>u===OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url
+        ?res(emptyAtom,"application/atom+xml"):res(feed)});
     expect(rows).toHaveLength(1);
-    expect(rows[0].url).toBe(url.rare_earth);
+    expect(rows[0].url).toBe(original);
+  });
+
+  it("minerals uses distinct UK DBT and recovers only original precise page dates",async()=>{
+    const cfg=OFFICIAL_NATIVE_THIRD_FEEDS.rare_earth;
+    expect(cfg.host).toBe("www.gov.uk");
+    expect(cfg.url).toContain("department-for-business-and-trade.atom");
+    const atom=rss("rare_earth").replace(/<published>.*?<\/published>/u,
+      '<updated>2026-10-09T18:09:00Z</updated>');
+    const urls:string[]=[];
+    const rows=await fetchOfficialThirdPublisherArticles("rare_earth",{now,maxAgeMs:6*3600000,
+      fetchImpl:async(u:string)=>{
+        urls.push(u);
+        if(u===cfg.url)return res(atom,"application/atom+xml");
+        if(u===url.rare_earth)return res('<meta property="article:published_time" content="2026-10-09T17:55:00Z">',"text/html");
+        throw Error("UNEXPECTED_DESTINATION");
+      }});
+    expect(urls).toEqual([cfg.url,url.rare_earth]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({sourceDomain:"www.gov.uk",privateOnly:true,
+      rightsVerified:false,commercialEligible:false,publishedAt:"2026-10-09T17:55:00.000Z"});
   });
 
   it("never treats third transport errors as real news or overrides rights gate",async()=>{
