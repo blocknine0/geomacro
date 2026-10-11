@@ -147,6 +147,14 @@ function fixedPublisherArticle(rawUrl, category) {
       if (!match) return null;
       return "https://www.gov.uk/government/" + match[1] + "/" + match[2];
     }
+    if (category === "macro" && candidate.hostname === "www.ecb.europa.eu") {
+      // Only precise ECB original press/key release pages; no RSS index,
+      // data API, external redirect or origin supplied by the feed.
+      const match = /^\/press\/(pr|key)\/date\/(20[0-9]{2})\/html\/([a-zA-Z0-9.~_-]{6,190})\.html$/u.exec(path);
+      if (!match) return null;
+      return "https://www.ecb.europa.eu/press/" + match[1] + "/date/" +
+        match[2] + "/html/" + match[3] + ".html";
+    }
     if (category === "macro" && candidate.hostname === "www.federalreserve.gov") {
       const match = /^\/newsevents\/pressreleases\/([a-z]{3,36}[0-9]{8}[a-z]?)\.htm$/u.exec(path);
       if (!match) return null;
