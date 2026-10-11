@@ -8,6 +8,17 @@ const PRECISE_DATE = /^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d{1,3})?)?(?:Z|[+-
 const HTML_TYPE = /^text\/html(?:;|$)/iu;
 
 export const ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN = 2;
+// Only these coarse outcome enums may leave the in-memory first-party HTML
+// verifier. Never expose publication text, article URL or original content.
+export const SAFE_ORIGINAL_PAGE_DATE_REASONS = Object.freeze([
+  "MISSING_PUBLISHER_PUBLICATION_METADATA",
+  "IMPRECISE_DATE_ONLY",
+  "INVALID_PUBLICATION_DATE_SHAPE",
+  "FUTURE_PUBLISHER_PUBLICATION",
+  "STALE_PUBLISHER_PUBLICATION",
+  "CONFLICTING_PUBLISHER_PUBLICATION",
+  "PRECISE_PUBLICATION_ACCEPTED",
+]);
 
 function attr(tag, name) {
   const allowed = ["name", "property", "content", "type"];
@@ -56,7 +67,13 @@ function closingScriptTag(source, from) {
   return null;
 }
 
-export function verifiedPublisherPageDate(html, now = new Date()) {
+export function verifiedPublisherPageDate(html, now = new Date(), diagnostics = null) {
+  const reason = (code) => {
+    if (diagnostics && typeof diagnostics === "object" &&
+        !Array.isArray(diagnostics) &&
+        SAFE_ORIGINAL_PAGE_DATE_REASONS.includes(code))
+      diagnostics.date_reason = code;
+  };
   if (typeof html !== "string" || html.length > PAGE_BYTES_MAX ||
       /<!DOCTYPE\s+[^>]*\[/iu.test(html)) return null;
   const ms = now.getTime();
@@ -105,10 +122,40 @@ export function verifiedPublisherPageDate(html, now = new Date()) {
   }
   // No original precise timestamp, invalid timestamp, or conflicting publisher
   // timestamps means no admission. Never substitute updated/dateModified.
-  if (!candidates.length || candidates.length > 20) return null;
-  const times = candidates.map((value) => precise(value, ms));
-  if (times.some((time) => time === null)) return null;
-  if (Math.max(...times) - Math.min(...times) > 60_000) return null;
+  if (!candidates.length) {
+    reason("MISSING_PUBLISHER_PUBLICATION_METADATA");
+    return null;
+  }
+  if (candidates.length > 20) {
+    reason("CONFLICTING_PUBLISHER_PUBLICATION");
+    return null;
+  }
+  if (candidates.some(value=>typeof value==="string" && /^\d{4}-\d{2}-\d{2}$/u.test(value))) {
+    // A calendar day cannot prove a precise fresh 24h publication clock.
+    reason("IMPRECISE_DATE_ONLY");return null;
+  }
+  if (candidates.some(value=>typeof value!=="string" || !PRECISE_DATE.test(value))) {
+    reason("INVALID_PUBLICATION_DATE_SHAPE");return null;
+  }
+  const times = candidates.map(value=>Date.parse(value));
+  if (times.some(time=>!Number.isFinite(time))) {
+    reason("INVALID_PUBLICATION_DATE_SHAPE");return null;
+  }
+  if (times.some(time=>time>ms)) {
+    reason("FUTURE_PUBLISHER_PUBLICATION");return null;
+  }
+  if (times.some(time=>ms-time>ONE_DAY_MS)) {
+    reason("STALE_PUBLISHER_PUBLICATION");return null;
+  }
+  if (Math.max(...times) - Math.min(...times) > 60_000) {
+    reason("CONFLICTING_PUBLISHER_PUBLICATION");return null;
+  }
+  // Keep the original strict same-day precise verifier authoritative.
+  if (times.some(time=>time===null) ||
+      candidates.some(value=>precise(value,ms)===null)) {
+    reason("INVALID_PUBLICATION_DATE_SHAPE");return null;
+  }
+  reason("PRECISE_PUBLICATION_ACCEPTED");
   return new Date(Math.min(...times)).toISOString();
 }
 
@@ -261,7 +308,7 @@ export async function fetchVerifiedPublisherPageDate(url, category, {
     pageStatus(diagnostics,"UTF8_INVALID");
     return null;
   }
-  const publishedAt=verifiedPublisherPageDate(html,now);
+  const publishedAt=verifiedPublisherPageDate(html,now,diagnostics);
   pageStatus(diagnostics,publishedAt
     ? "PRECISE_PUBLICATION_VERIFIED" : "PRECISE_PUBLICATION_UNVERIFIED");
   return publishedAt;
