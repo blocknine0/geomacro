@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/b2-account-readonly-quota-receipt.yml"
       - "scripts/ops/report-b2-account-ledger-readonly.mjs"
+      - "workers/control-plane/src/b2-account-quota.mjs"
       - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
       - "src/__tests__/d1-account-daily-quota-readonly.test.ts"
       - "src/__tests__/b2-account-readonly-quota-receipt.test.ts"
@@ -14,6 +15,7 @@ on:
     paths:
       - ".github/workflows/b2-account-readonly-quota-receipt.yml"
       - "scripts/ops/report-b2-account-ledger-readonly.mjs"
+      - "workers/control-plane/src/b2-account-quota.mjs"
       - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
       - "src/__tests__/d1-account-daily-quota-readonly.test.ts"
       - "src/__tests__/b2-account-readonly-quota-receipt.test.ts"
