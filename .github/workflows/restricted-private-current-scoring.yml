@@ -45,7 +45,6 @@ jobs:
             contains(github.event.head_commit.message, '(#1929)') ||
             contains(github.event.head_commit.message, '(#1933)') ||
             contains(github.event.head_commit.message, '(#1934)') ||
-            # Bounded one-time production private scorer canary on merge.
             contains(github.event.head_commit.message, '(#1985)')
         ))
       )
