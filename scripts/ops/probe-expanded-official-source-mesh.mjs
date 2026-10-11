@@ -392,6 +392,26 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
   };
 }
 
+/**
+ * Scan all already-valid original article links, but fetch at most two pages.
+ * On open discovery keep the first (often newest) publisher item and rotate
+ * the second across the remaining accepted links on successive 30m slots.
+ * A permanently old first item must not prevent checking other feed entries.
+ * Never substitute Atom <updated> as publication or fetch a rejected URL.
+ */
+export function selectRotatingFirstPartyPages(eligible,now,{rotate=false}={}) {
+  if(!Array.isArray(eligible)||eligible.length>80||
+     !(now instanceof Date)||!Number.isFinite(now.getTime())||
+     eligible.some(x=>typeof x!=="string"||x.length<12||x.length>2048))
+    throw Error("ORIGINAL_PUBLISHER_ROTATION_INPUT_INVALID");
+  const unique=[...new Set(eligible)];
+  if(!rotate||unique.length<=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)
+    return unique.slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
+  const slot=Math.floor(now.getTime()/(30*60*1000));
+  const tail=unique.slice(1);
+  return [unique[0],tail[slot%tail.length]];
+}
+
 // Only Atom entries with NO per-entry publication date may receive bounded
 // original-article same-host date verification. Do not use feed <updated>.
 function undatedAtomArticleCandidates(xml,source,{openDiscovery=false}={}) {
@@ -413,9 +433,9 @@ function undatedAtomArticleCandidates(xml,source,{openDiscovery=false}={}) {
         break;
       }
     }
-    if(list.length>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
+    if(list.length>=80)break;
   }
-  return [...new Set(list)].slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
+  return [...new Set(list)].slice(0,80);
 }
 
 // Diagnose Atom first-party link *selection* independently of dates.
@@ -488,9 +508,9 @@ function undatedRssArticleCandidates(xml,source,{openDiscovery=false}={}) {
     if(!openDiscovery && !source.topic?.test(title))continue;
     const href=officialOriginalRssArticleUrl(item,source)??"";
     if(originalHref(href,source.original_hosts,source))list.push(href);
-    if(list.length>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
+    if(list.length>=80)break;
   }
-  return [...new Set(list)].slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
+  return [...new Set(list)].slice(0,80);
 }
 
 function jsonShape(value) {
@@ -661,11 +681,15 @@ export async function probeExpandedSource(source,{
   // follow redirects, trust feed updated clocks or leak publisher HTML.
   if((source.media==="atom"||source.media==="rss") &&
       source.original_hosts && (openDiscovery || counts?.topical_within_24h===0)){
-    const articles=source.media==="atom"
+    const eligible=source.media==="atom"
       ? undatedAtomArticleCandidates(body,source,{openDiscovery})
       : undatedRssArticleCandidates(body,source,{openDiscovery});
+    const articles=selectRotatingFirstPartyPages(eligible,now,{rotate:openDiscovery});
+    // This is a count of fixed-allowlist links, NOT verified fresh articles.
+    row.original_page_eligible_link_pool_count=eligible.length;
+    row.original_page_rotation_applied=openDiscovery && eligible.length>2;
     row.undated_atom_article_link_candidates=
-      source.media==="atom"?articles.length:null;
+      source.media==="atom"?eligible.length:null;
     // Aggregate only the existing, fixed-enum publisher page verifier codes.
     // No article URLs, response bodies or original date text appear in logs.
     const pageCodes=Object.create(null);
