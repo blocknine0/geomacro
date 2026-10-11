@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "./agent-query-plan";
 import { assertGeomacroIntelligenceResponseContract } from "./geomacro-intelligence-contract";
 import { buildPrivateOnDemandMacroDrivers } from "./on-demand-private-macro-drivers.server";
+import { scorePrivateOnDemandMacroPeers, type PrivatePeerMacroResult } from "./on-demand-private-macro-peer-score.server";
 import {
   checkPrivateOnDemandMacroRights,
   type PrivateOnDemandMacroRightsStatus,
@@ -369,6 +370,8 @@ export const mainnetIntelligenceHandlers = {
           let privateAnnualDirectionalDrivers=0;
           let privateAnnualRightsVerifiedDrivers=0;
           let privateAnnualMacroRightsStatus:PrivateOnDemandMacroRightsStatus="NO_ANNUAL_EVIDENCE";
+          let privatePeerMacroStatus:PrivatePeerMacroResult["status"]="NO_CERTIFIED_MACRO_RIGHTS";
+          let privatePeerScoredDimensions=0;
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
@@ -390,6 +393,15 @@ export const mainnetIntelligenceHandlers = {
             const rightsProof=await checkPrivateOnDemandMacroRights(privateDrivers);
             privateAnnualRightsVerifiedDrivers=rightsProof.rights_verified_driver_count;
             privateAnnualMacroRightsStatus=rightsProof.status;
+            // Reuse existing versioned pilot normalization only if derived
+            // rights are certified. Official peer registry + at most two
+            // same-year indicators: three extra bounded read-only calls.
+            // The partial component stays private; never quote x402 or
+            // present an unsigned score as a customer product.
+            const privatePeerProof=await scorePrivateOnDemandMacroPeers(
+              privateResult.private_macro_changes, rightsProof);
+            privatePeerMacroStatus=privatePeerProof.status;
+            privatePeerScoredDimensions=privatePeerProof.peer_normalized_dimension_count;
             const pageProof=await verifyOnDemandOriginalArticlePages(
               privateResult.private_candidates);
             // No page HTML, original URL, title or publisher identity is
@@ -424,6 +436,8 @@ export const mainnetIntelligenceHandlers = {
               private_annual_directional_macro_driver_count:privateAnnualDirectionalDrivers,
               private_annual_macro_rights_status:privateAnnualMacroRightsStatus,
               private_annual_macro_rights_verified_driver_count:privateAnnualRightsVerifiedDrivers,
+              private_macro_peer_score_status:privatePeerMacroStatus,
+              private_macro_peer_scored_dimension_count:privatePeerScoredDimensions,
               original_article_page_checks:articlePageChecks,
               article_page_publication_dates_verified:articleDatesVerified,
               private_originals_article_page_verified:
