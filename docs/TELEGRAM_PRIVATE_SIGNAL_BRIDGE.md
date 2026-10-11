@@ -22,3 +22,12 @@ Acceptance is fail-closed on:
 - UNVERIFIED / non-scoring / non-commercial invariants
 
 The recorded producer commit remains audit metadata only. Any schema or protocol-hash change requires an explicit main-repository review and migration.
+
+
+## Optional request-time Telegram research fallback (2026-10-12)
+
+On the `live_on_demand` x402 discovery branch, the canonical request first searches the existing official source mesh. If it finds no private first-party original article candidate for the requested country and mapped Geopolitics/Macro/Critical Minerals categories, `lookupTelegramFallback` may query a private operator-managed HTTPS reader. The main service supplies only ISO3/category/bounded limits, never the customer's question, source body, identity, payment header or wallet. The separate producer implementation is `blocknine0/geomacro-telegram-signals/scripts/serve_authorized_on_demand_research.py`.
+
+The private reader requires active source-specific publisher/Telegram permissions, runtime API session and token. It returns only the strict `geomacro.private-telegram-query-receipt.v1` counts-only contract; no raw content, links, source identity or verified event enters the paid response. When no secret/reader exists, the status is `NOT_CONFIGURED` and nothing is fetched. Missing/failed/invalid reader replies remain `UNAVAILABLE` without changing `payment_required_now:false`, signing, scoring or x402 settlement.
+
+This is a genuine optional **research lead lookup**, not automatically qualified fresh intelligence. Full live acceptance additionally requires operator-provided private HTTPS ingress, independently verified platform/publisher rights for selected ACTIVE sources, then a real live reader trace and separate official corroboration/signature acceptance. No 152-channel unrestricted activation, fresh GRO or payment is implied by a merged PR.
