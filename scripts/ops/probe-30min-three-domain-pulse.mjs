@@ -152,6 +152,13 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
             ].map(code=>[code,safeInt(
               item.undated_atom_link_diagnostic.statcan_unapproved_path_families?.[code])]))
             :null,
+          statcan_other_path_shapes:item.source_id==="statcan_prices_original_atom_review"
+            ?Object.fromEntries([
+              "ROOT","N1_OTHER","NON_N1",
+              "SUFFIX_HTML","SUFFIX_XML","SUFFIX_OTHER","QUERY_PRESENT",
+            ].map(code=>[code,safeInt(
+              item.undated_atom_link_diagnostic.statcan_other_path_shapes?.[code])]))
+            :null,
         }:null,
       original_page_result_codes:Object.fromEntries(
         SAFE_PUBLISHER_PAGE_PROBE_CODES.map(code=>[code,

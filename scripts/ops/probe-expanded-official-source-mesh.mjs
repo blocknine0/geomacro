@@ -467,6 +467,9 @@ function undatedAtomOriginalLinkDiagnostic(xml,source) {
     statcan_unapproved_path_families:source.id==="statcan_prices_original_atom_review"
       ?{N1_EN_DAILY:0,N1_DAILY:0,N1_PUB:0,N1_RSS:0,N1_EN_OTHER:0,OTHER:0}
       :null,
+    statcan_other_path_shapes:source.id==="statcan_prices_original_atom_review"
+      ?{ROOT:0,N1_OTHER:0,NON_N1:0,SUFFIX_HTML:0,SUFFIX_XML:0,SUFFIX_OTHER:0,QUERY_PRESENT:0}
+      :null,
   };
   const classifyStatcanPath=raw=>{
     try{
@@ -506,6 +509,21 @@ function undatedAtomOriginalLinkDiagnostic(xml,source) {
       codes.rejected_original_path++;
       if(codes.statcan_unapproved_path_families){
         codes.statcan_unapproved_path_families[classifyStatcanPath(rejectedPath)]++;
+        if(codes.statcan_other_path_shapes &&
+            classifyStatcanPath(rejectedPath)==="OTHER"){
+          try{
+            const url=new URL(rejectedPath);
+            const p=url.pathname;
+            const shape=codes.statcan_other_path_shapes;
+            if(p==="/")shape.ROOT++;
+            else if(p.startsWith("/n1/"))shape.N1_OTHER++;
+            else shape.NON_N1++;
+            if(/\.html?$/iu.test(p))shape.SUFFIX_HTML++;
+            else if(/\.xml$/iu.test(p))shape.SUFFIX_XML++;
+            else shape.SUFFIX_OTHER++;
+            if(url.search)shape.QUERY_PRESENT++;
+          }catch{/* strictly aggregated rejection remains OTHER */}
+        }
       }
     }
     else codes.rejected_unsafe_or_malformed++;
