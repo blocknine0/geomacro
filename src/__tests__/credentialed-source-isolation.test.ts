@@ -1,4 +1,5 @@
 import {describe,it,expect,vi} from "vitest";
+import {readFileSync} from "node:fs";
 import {
   CREDENTIALED_SOURCE_ACCOUNTS,
   probeConfiguredCredentialedSources,
@@ -14,6 +15,12 @@ const validProbe=vi.fn(async id=>{
 });
 
 describe("#1827 independently activate configured credentialed sources",()=>{
+  it("uses only one bounded 30s BEA official metadata check, other providers keep 15s",()=>{
+    const adapter=readFileSync("global-intelligence/adapters/credentialed-sources.mjs","utf8");
+    expect(adapter).toContain('sourceId==="bea"?30000:15000');
+    expect(adapter).toContain("method=GetDataSetList&ResultFormat=JSON");
+    expect(adapter).toContain("const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs})");
+  });
   it("does not block healthy sources when a different provider key is missing",async()=>{
     const env={...allCredentials};
     delete env.BEA_API_KEY;
