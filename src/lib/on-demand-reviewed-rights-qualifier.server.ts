@@ -10,7 +10,6 @@ import type {
 // This is the EXISTING authority for independently reviewed same-event claims,
 // originating-organization registration, private reviewer signatures and clocks.
 // A duplicate permissive same-event heuristic would weaken its trust boundary.
-// @ts-expect-error Repository's canonical independent reviewer is an MJS module.
 import { qualifyIndependentSameEvent } from "../../scripts/lib/independent-same-event-qualification.mjs";
 
 type ReviewedCustomerRow = {
