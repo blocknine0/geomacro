@@ -276,7 +276,7 @@ async function worldBank(
   let json: unknown;
   try {json=JSON.parse(body);} catch {
     return {
-      probe:probe("world_bank_official_"+indicator,0,false),
+      probe:failed("world_bank_official_"+indicator),
       private_macro_changes:[],
       private_macro_qualification:{
         indicator,status:"INVALID_JSON_BODY",
@@ -332,7 +332,8 @@ async function worldBank(
     ?"DUPLICATE_YEAR_CONFLICT":private_macro_changes.length===0
     ?"NON_CONSECUTIVE_ANNUAL_YEARS":"VALID_ANNUAL_CHANGE";
   return {
-    probe:probe("world_bank_official_"+indicator,valid.length,false),
+    probe:!isData?failed("world_bank_official_"+indicator):
+      probe("world_bank_official_"+indicator,valid.length,false),
     private_macro_changes,
     private_macro_qualification:{
       indicator,status,accepted_annual_values:valid.length,
