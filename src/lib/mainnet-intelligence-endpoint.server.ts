@@ -422,7 +422,11 @@ export const mainnetIntelligenceHandlers = {
           const telegramFallback = await lookupTelegramFallback({
             country_iso3: subject.country_iso3,
             categories,
-            originalArticleEvidenceSufficient: privateOriginalReviewCandidateCount > 0,
+            // A feed candidate, article-page timestamp or annual data is NOT
+            // qualified same-event corroboration, rights or signed intelligence.
+            // Until the independent qualified product is actually available,
+            // this request has a genuine intelligence evidence gap.
+            originalArticleEvidenceSufficient: false,
           });
           // No raw upstream records, publisher IDs or original links cross
           // this boundary. No x402 payment quote is issued for discoveries.
