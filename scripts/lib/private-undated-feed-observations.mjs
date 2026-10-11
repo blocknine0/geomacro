@@ -95,11 +95,15 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
       const hasPublisherLink=[...item.matchAll(
         /<(?:atom:)?link\b([^>]*?)\/?\s*>/giu,
       )].some(([,attrs])=>{
+        const rel=attrs.match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
+        if(!["alternate","canonical"].includes(rel))return false;
         const href=attrs.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1];
         try{
           const u=new URL(href);
           return u.protocol==="https:"&&!u.username&&!u.password&&!u.port&&
-            source.original_hosts.includes(u.hostname);
+            !u.hash&&source.original_hosts.includes(u.hostname)&&
+            !/\.(?:rss|atom|xml)$/iu.test(u.pathname)&&
+            u.pathname!==new URL(source.url).pathname;
         }catch{return false;}
       });
       if(hasPublisherLink && Buffer.byteLength(item,"utf8")<=8192){
