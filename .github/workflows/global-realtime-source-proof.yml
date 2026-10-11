@@ -94,9 +94,25 @@ jobs:
             echo "::error title=Unexpected official-source probe failure::Unexpected exit from source audit."
             exit 1
           fi
-          # Only PRs can treat expected transport degradation as a
-          # contract-success result; manual/production dispatch remains RED.
+          # Minimum SOURCE DISCOVERY transport gate: if every category had
+          # an actually reachable publisher lane, a separate publisher 403
+          # must not halt ongoing private discovery. Keep the receipt RED /
+          # DEGRADED and warn. This NEVER certifies a current original event,
+          # rights, score, signed GRO or paid delivery.
+          # If any whole category is unavailable, or receipt is not private,
+          # retain the previous non-zero fail-closed exit.
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            if [[ "$rc" == "3" ]] && jq -e '
+              .status == "SOURCE_POLL_DEGRADED" and
+              .all_three_categories_checked == true and
+              .proves_public_scored_intelligence == false and
+              .public_published == false and
+              (.categories | length) == 3 and
+              (.categories | all(.fetch_ok == true and .commerce_eligible == false))
+            ' "$proof" >/dev/null; then
+              echo "::warning title=Minimum source discovery running::Partial original publisher outage recorded as DEGRADED; healthy category lanes remain eligible for PRIVATE discovery only."
+              exit 0
+            fi
             exit "$rc"
           fi
       - name: Keep sanitized evidence even if upstream blocks a feed
