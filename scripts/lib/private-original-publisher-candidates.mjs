@@ -54,10 +54,20 @@ function canonicalOriginalUrl(raw,source) {
      !Array.isArray(source?.original_hosts))return null;
   let url;
   try {url=new URL(raw)}catch{return null}
+  // Keep this existing fingerprint/claim-binding guard aligned with the
+  // authoritative original publisher resolver. Admission of an official
+  // redirected Daily alias must not get lost *after* page-date verification.
+  const rootStatcanMatch=source.id==="statcan_prices_original_atom_review" &&
+    url.hostname==="www.statcan.gc.ca" && !url.search
+      ? /^\/daily-quotidien\/([0-9]{6})\/dq([0-9]{6})([a-z][a-z0-9-]{0,35})-eng\.(htm|html)$/u.exec(url.pathname)
+      :null;
+  const documentedStatcanRootDaily=Boolean(rootStatcanMatch &&
+    rootStatcanMatch[1]===rootStatcanMatch[2]);
   if(url.protocol!=="https:"||url.username||url.password||url.port||url.hash||
      !source.original_hosts.includes(url.hostname) ||
      (!/^\/(?!\/)/u.test(url.pathname) ||
-     !ORIGINAL_ARTICLE_PATHS[source.id]?.test(url.pathname))) return null;
+     !(ORIGINAL_ARTICLE_PATHS[source.id]?.test(url.pathname) ||
+       documentedStatcanRootDaily))) return null;
   // Tracking parameters are not article identity. Preserve nontracking query.
   for(const key of [...url.searchParams.keys()]) {
     if(/^utm_|^(?:fbclid|gclid|mc_cid|mc_eid)$/iu.test(key))

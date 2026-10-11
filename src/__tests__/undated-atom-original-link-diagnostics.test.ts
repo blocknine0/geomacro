@@ -43,6 +43,11 @@ describe("#2041 Atom missing-date original-link safe rejection categorization",(
       statcan_other_path_shapes:{
         ROOT:0,N1_OTHER:0,NON_N1:0,SUFFIX_HTML:0,SUFFIX_XML:0,SUFFIX_OTHER:0,QUERY_PRESENT:0,
       },
+      statcan_non_n1_publisher_hosts:{WWW150:0,WWW:0},
+      statcan_non_n1_prefix_families:{
+        EN_DAILY:0,EN_SUBJECTS_OR_CATALOGUE:0,EN_OTHER:0,
+        ROOT_DAILY:0,ROOT_CATALOGUE:0,OTHER:0,
+      },
     });
     expect(result.undated_atom_article_link_candidates).toBe(1);
     expect(result.original_page_precise_date_checks).toBe(1);

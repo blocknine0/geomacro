@@ -204,6 +204,21 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   uk_dbt_critical_minerals_atom_pending_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
 });
 
+// The original publisher documents www.statcan.gc.ca/daily-quotidien/
+// YYMMDD/dqYYMMDD[a-z]-eng.htm as its first-party Daily article family.
+// The real 2026-10-11 private production feed had 59 such *path-prefix*
+// candidates on www.statcan.gc.ca, not www150 /n1/. We require the
+// filename's date to match its exact 6-digit directory, no queries/redirects,
+// and an article-specific dq basename. A catalogue/portal stays rejected.
+function statcanOfficialRootDailyArticle(source,link) {
+  if(source?.id!=="statcan_prices_original_atom_review" ||
+      link.hostname!=="www.statcan.gc.ca" ||
+      link.search || link.hash || link.port || link.username || link.password)
+    return false;
+  const m=/^\/daily-quotidien\/([0-9]{6})\/dq([0-9]{6})([a-z][a-z0-9-]{0,35})-eng\.(htm|html)$/u.exec(link.pathname);
+  return Boolean(m && m[1]===m[2]);
+}
+
 // Coarse lexical buckets ONLY: never log invalid date text, time values,
 // article identifiers or a customer event. Strict Date.parse gate unchanged.
 function nativeRssDateShape(raw) {
@@ -314,7 +329,8 @@ function originalHref(href, hosts, source=null) {
       hosts.includes(link.hostname.toLowerCase()) &&
       (!source || (
         Object.hasOwn(ORIGINAL_ARTICLE_PATHS,source.id) &&
-        ORIGINAL_ARTICLE_PATHS[source.id].test(link.pathname) &&
+        (ORIGINAL_ARTICLE_PATHS[source.id].test(link.pathname) ||
+         statcanOfficialRootDailyArticle(source,link)) &&
         // A feed cannot attest to itself as a separately dated article.
         link.pathname!==new URL(source.url).pathname &&
         !/(?:^|\/)(?:feed|rss|atom)(?:\/|$)/iu.test(link.pathname)
@@ -332,7 +348,8 @@ function originalLinkRejectionKind(href,hosts,source=null) {
       return "unsafe_or_malformed";
     if(Array.isArray(hosts) && hosts.length && !hosts.includes(link.hostname.toLowerCase()))
       return "publisher_host_mismatch";
-    if(source && (!ORIGINAL_ARTICLE_PATHS[source.id]?.test(link.pathname) ||
+    if(source && (!(ORIGINAL_ARTICLE_PATHS[source.id]?.test(link.pathname) ||
+                     statcanOfficialRootDailyArticle(source,link)) ||
        link.pathname===new URL(source.url).pathname ||
        /(?:^|\/)(?:feed|rss|atom)(?:\/|$)/iu.test(link.pathname)))
       return "original_article_path_mismatch";
@@ -470,6 +487,13 @@ function undatedAtomOriginalLinkDiagnostic(xml,source) {
     statcan_other_path_shapes:source.id==="statcan_prices_original_atom_review"
       ?{ROOT:0,N1_OTHER:0,NON_N1:0,SUFFIX_HTML:0,SUFFIX_XML:0,SUFFIX_OTHER:0,QUERY_PRESENT:0}
       :null,
+    // Only fixed bucket counts for already rejected same-publisher paths.
+    // This cannot identify a single article or admit a URL for a GET.
+    statcan_non_n1_publisher_hosts:source.id==="statcan_prices_original_atom_review"
+      ?{WWW150:0,WWW:0}:null,
+    statcan_non_n1_prefix_families:source.id==="statcan_prices_original_atom_review"
+      ?{EN_DAILY:0,EN_SUBJECTS_OR_CATALOGUE:0,EN_OTHER:0,
+        ROOT_DAILY:0,ROOT_CATALOGUE:0,OTHER:0}:null,
   };
   const classifyStatcanPath=raw=>{
     try{
@@ -522,6 +546,26 @@ function undatedAtomOriginalLinkDiagnostic(xml,source) {
             else if(/\.xml$/iu.test(p))shape.SUFFIX_XML++;
             else shape.SUFFIX_OTHER++;
             if(url.search)shape.QUERY_PRESENT++;
+            // The published Atom feed has 60 real first-party link-path
+            // mismatches, mostly .html and outside /n1/. Distinguish actual
+            // immutable prefix family and allowed publisher alias before
+            // reviewing any narrow future adapter. Still NO url fetch.
+            if(!p.startsWith("/n1/")){
+              const host=codes.statcan_non_n1_publisher_hosts;
+              const family=codes.statcan_non_n1_prefix_families;
+              if(url.hostname==="www150.statcan.gc.ca")host.WWW150++;
+              else if(url.hostname==="www.statcan.gc.ca")host.WWW++;
+              if(/^\/en\/(?:dai-quo|daily-quotidien)(?:\/|$)/u.test(p))
+                family.EN_DAILY++;
+              else if(/^\/en\/(?:subjects?|catalogue)(?:\/|$)/u.test(p))
+                family.EN_SUBJECTS_OR_CATALOGUE++;
+              else if(/^\/en\//u.test(p))family.EN_OTHER++;
+              else if(/^\/(?:dai-quo|daily-quotidien)(?:\/|$)/u.test(p))
+                family.ROOT_DAILY++;
+              else if(/^\/catalogue(?:\/|$)/u.test(p))
+                family.ROOT_CATALOGUE++;
+              else family.OTHER++;
+            }
           }catch{/* strictly aggregated rejection remains OTHER */}
         }
       }

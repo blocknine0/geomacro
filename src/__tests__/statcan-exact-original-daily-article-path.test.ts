@@ -40,6 +40,60 @@ describe("#2041 exact StatCan original /n1/en/daily-quotidien article alias",()=
     expect(observed.private_original_article_candidates[0].eligible_for_publication).toBe(false);
     expect(observed.commercial_eligible).toBe(false);
   });
+  it("recovers a first-party original Daily article from official www root route without accepting any catalogue",async()=>{
+    // Statistics Canada's own developer documentation lists the original
+    // www.statcan.gc.ca/daily-quotidien/YYMMDD/dqYYMMDDa-eng.htm family.
+    const daily="https://www.statcan.gc.ca/daily-quotidien/261011/dq261011a-eng.htm";
+    const catalogue="https://www.statcan.gc.ca/en/subjects-start/prices_and_price_indexes";
+    const canonical="https://www150.statcan.gc.ca/n1/daily-quotidien/261011/dq261011a-eng.htm";
+    const actual=feed(entry(daily)+entry(catalogue)+entry(daily+"?download=1"));
+    const called:string[]=[];
+    const fetchImpl=vi.fn(async(url:string)=>{
+      called.push(url);
+      if(url===statcan.url)return ok(actual,"application/atom+xml");
+      if(url===canonical)return ok(sourcePage,"text/html");
+      throw Error("UNAPPROVED_PUBLISHER_URL");
+    });
+    const observed=await probeExpandedSource(statcan,{
+      now:NOW,fetchImpl,openDiscovery:true,collectPrivateCandidates:true,
+    });
+    expect(called).toEqual([statcan.url,canonical]);
+    expect(observed.undated_atom_article_link_candidates).toBe(1);
+    expect(observed.undated_atom_link_diagnostic.valid_first_party_article_links).toBe(1);
+    expect(observed.undated_atom_link_diagnostic.rejected_original_path).toBe(2);
+    expect(observed.original_page_precise_date_24h).toBe(1);
+    expect(observed.private_original_article_candidates).toHaveLength(1);
+    expect(observed.private_original_article_candidates[0].native_published_at)
+      .toBe("2026-10-11T17:15:00.000Z");
+    expect(observed.private_original_article_candidates[0].eligible_for_publication).toBe(false);
+    expect(observed.commercial_eligible).toBe(false);
+  });
+  it("rejects deceptive root Daily date mismatches, arbitrary names, query strings, off-hosts and update-only clocks",async()=>{
+    const blocked=[
+      "https://www.statcan.gc.ca/daily-quotidien/261011/dq261010a-eng.htm",
+      "https://www.statcan.gc.ca/daily-quotidien/261011/index.html",
+      "https://www.statcan.gc.ca/daily-quotidien/261011/dq261011a-eng.htm?download=1",
+      "https://evil.example/daily-quotidien/261011/dq261011a-eng.htm",
+      "https://www150.statcan.gc.ca/daily-quotidien/261011/dq261011a-eng.htm",
+      "https://www.statcan.gc.ca/daily-quotidien/261011/dq261011a-eng.htm#summary",
+    ];
+    for(const url of blocked) {
+      const diagnostics={};
+      const fetchImpl=vi.fn(async()=>{throw Error("MUST_NOT_FETCH")});
+      expect(await fetchVerifiedPublisherPageDate(url,"macro",{
+        now:NOW,fetchImpl,diagnostics,
+      })).toBeNull();
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(diagnostics).toMatchObject({code:"URL_UNAPPROVED"});
+    }
+    const daily="https://www.statcan.gc.ca/daily-quotidien/261011/dq261011a-eng.htm";
+    const diagnostics={};
+    expect(await fetchVerifiedPublisherPageDate(daily,"macro",{
+      now:NOW,diagnostics,
+      fetchImpl:async()=>ok('<html><meta name="dateModified" content="2026-10-11T17:15:00Z"></html>',"text/html"),
+    })).toBeNull();
+    expect(diagnostics).toMatchObject({code:"PRECISE_PUBLICATION_UNVERIFIED"});
+  });
   it("never promotes Atom updated, forbidden StatCan product path or arbitrary article URL",async()=>{
     const bad=feed(entry(forbidden)+entry("https://evil.example/n1/en/daily-quotidien/261011/dq261011a-eng.htm"));
     const res=await probeExpandedSource(statcan,{now:NOW,
