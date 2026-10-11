@@ -24,7 +24,8 @@ function approvedRoot(value) {
        u.hash || !host.includes(".") || host==="localhost" ||
        host.endsWith(".localhost") || host.endsWith(".local") ||
        host.endsWith(".internal") || host.endsWith(".test") ||
-       isIP(host)!==0 || u.href.length>2048)return null;
+       isIP(host)>0 || /^[0-9.]+$/u.test(host) || host.includes(":") ||
+       u.href.length>2048)return null;
     return u;
   }catch{return null;}
 }
