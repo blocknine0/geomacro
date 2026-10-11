@@ -79,7 +79,7 @@ describe("#1827 Step-1 official first-party publisher source readiness", () => {
       (x: any) => { x.sources[0].source_id = x.sources[1].source_id; },
       (x: any) => { x.sources[1].domain = "rare_earth"; },
       (x: any) => { x.sources[3].commercial_rights_verified = true; },
-      (x: any) => { x.sources[0].format_valid = false; },
+      (x: any) => { x.sources[0].format_valid = false; x.sources[0].publisher_reachable = false; },
       (x: any) => { x.sources[7].source_native_24h_release_items = 4; },
       (x: any) => { x.sources[7].original_publisher_topical_90m = 2; },
       (x: any) => { x.sources[7].primary_http_status = 403; },
