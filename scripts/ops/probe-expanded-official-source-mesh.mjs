@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN, SAFE_PUBLISHER_PAGE_PROBE_CODES } from "../lib/official-original-article-date.mjs";
 import { originalPublisherPrivateCandidates, originalPublisherPrivatePageDateCandidate } from "../lib/private-original-publisher-candidates.mjs";
 import { officialOriginalRssArticleUrl } from "../lib/official-rss-original-link.mjs";
+import { officialItemNativePublicationMs } from "../lib/official-native-item-publication-date.mjs";
 import { isQuarantinedOfficialRoute, quarantinedOfficialSourceReceipt } from "../lib/official-source-quarantine.mjs";
 
 const MAX_BODY_BYTES=192*1024;
@@ -220,7 +221,7 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
     // Only a source-native per-item date. Never the channel clock, retrieval,
     // processing time, or feed update time; and never an event risk claim.
     if (!date){missingNativeDate++;continue;}
-    const ms=Date.parse(date.trim());
+    const ms=officialItemNativePublicationMs(date);
     if(!Number.isFinite(ms)){
       invalidOrFutureDate++;invalidNativeDate++;
       unparseableNativeDateShapes[nativeRssDateShape(date)]++;
@@ -334,7 +335,7 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
   for(const [,item] of entries){
     const publication=item.match(/<(?:atom:)?published(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?published>/iu)?.[1];
     if(!publication){missingNativeDate++;continue;}
-    const at=Date.parse(publication.trim());
+    const at=officialItemNativePublicationMs(publication);
     if(!Number.isFinite(at)){
       invalidOrFutureDate++;invalidNativeDate++;continue;
     }
