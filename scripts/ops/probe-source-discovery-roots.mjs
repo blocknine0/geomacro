@@ -10,7 +10,7 @@ import {createHash} from "node:crypto";
 import {isIP} from "node:net";
 import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
 import {resolve} from "node:path";
-import {pathToFileURL} from "node:url";
+import {URL,pathToFileURL} from "node:url";
 
 export const MAX_ROOTS_PER_WINDOW=40;
 const SLOT_MS=90*60*1000;
