@@ -48,6 +48,16 @@ export function projectSourcePulseForD1(report) {
         domain,checked_at:report.observed_at,
         original_publisher_date_observed:healthy,
         original_publisher_30m_topic_count:healthy?row.original_publisher_30m_topic_count:null,
+        // Explicit separate *uncategorized discovery* numerators, never
+        // "qualified current risk stories" or an entitlement to charge.
+        open_original_discovery_enabled:report.open_original_discovery_enabled===true,
+        original_publisher_all_topics_24h_count:
+          validCount(row.original_publisher_all_topics_24h_count)
+            ?row.original_publisher_all_topics_24h_count:null,
+        original_publisher_all_topics_7d_count:
+          validCount(row.original_publisher_all_topics_7d_count)
+            ?row.original_publisher_all_topics_7d_count:null,
+        open_observation_is_commercial_intelligence:false,
         publisher_pair_sample_complete:row.publisher_pair_sample_complete===true,
         original_publishers_attempted:Number.isInteger(row.original_publishers_attempted)
           ?row.original_publishers_attempted:null,
@@ -120,6 +130,12 @@ export async function write30MinSourcePulseToD1({
        stored?.payload?.checked_at!==row.checked_at||
        stored?.payload?.original_publisher_30m_topic_count!==
          row.metadata.original_publisher_30m_topic_count ||
+       stored?.payload?.open_original_discovery_enabled!==
+         row.metadata.open_original_discovery_enabled ||
+       stored?.payload?.original_publisher_all_topics_24h_count!==
+         row.metadata.original_publisher_all_topics_24h_count ||
+       stored?.payload?.original_publisher_all_topics_7d_count!==
+         row.metadata.original_publisher_all_topics_7d_count ||
        stored?.payload?.new_private_article_fingerprint_count!==
          privateDedup.get(row.domain).new_article_fingerprint_count ||
        stored?.payload?.repeated_private_article_fingerprint_count!==

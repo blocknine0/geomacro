@@ -75,7 +75,9 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
     async function observe(source){
       attempted.push(source.id);
       // Source-specific transport failure is an unknown, not zero news.
-      try { return await probe(source,{now,collectPrivateCandidates:true}); }
+      // Open discovery: no topical/keyword gate before capturing a dated,
+      // fixed-host first-party article. Semantic relevance is assessed later.
+      try { return await probe(source,{now,collectPrivateCandidates:true,openDiscovery:true}); }
       catch { return {source_id:source.id,domain,format_valid:false,primary_http_status:null}; }
     }
     const valid=(result,source)=>result?.format_valid===true &&
@@ -104,6 +106,12 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
     const ninety=healthy?observed.reduce((n,x)=>n+x.original_publisher_topical_90m,0):null;
     const sixh=healthy?observed.reduce((n,x)=>n+x.original_publisher_topical_6h,0):null;
     const complete=firstValid&&secondValid;
+    // These counts are *source-native publisher articles*, including
+    // non-topic titles; 7d observations are NOT current 24h developments.
+    const open24=healthy && observed.every(x=>safeInt(x.original_publisher_open_24h_count)!==null)
+      ?observed.reduce((n,x)=>n+x.original_publisher_open_24h_count,0):null;
+    const open7d=healthy && observed.every(x=>safeInt(x.source_native_7d_release_items)!==null)
+      ?observed.reduce((n,x)=>n+x.source_native_7d_release_items,0):null;
     if(healthy && (!Number.isSafeInteger(count) || !Number.isSafeInteger(ninety) ||
        !Number.isSafeInteger(sixh) || count>1000 || ninety>1000 || sixh>1000))
       throw Error("30M_MONITOR_AGGREGATE_INVALID");
@@ -124,6 +132,11 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       original_publisher_30m_topic_count:count,
       original_publisher_90m_topic_count:ninety,
       original_publisher_6h_topic_count:sixh,
+      original_publisher_all_topics_24h_count:open24,
+      original_publisher_all_topics_7d_count:open7d,
+      open_discovery_keyword_gate_enabled:false,
+      articles_captured_before_relevance_classification:true,
+      unclassified_original_articles_are_verified_events:false,
       no_new_30m_original_topic_item_observed:healthy&&complete&&count===0,
       checked_at:now.toISOString(),
       // Private hashed article identities; never the raw news or a GRO.
@@ -153,6 +166,9 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
     source_domains_observed:DOMAINS,
     actual_original_publisher_rows:rows,
     private_original_candidate_dedup:privateCandidateDedup,
+    open_original_discovery_enabled:true,
+    original_article_keyword_admission_required:false,
+    original_article_source_native_clock_required:true,
     source_catalog_entries_are_not_events:true,
     independently_verified_current_intelligence_count:0,
     user_api_delivery_verified:false,

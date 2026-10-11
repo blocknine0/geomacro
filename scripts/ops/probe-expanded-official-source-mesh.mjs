@@ -188,7 +188,7 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
 function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
   if (!/<rss(?:\s|>)/iu.test(xml) || /<!DOCTYPE|<!ENTITY/iu.test(xml)) return null;
   const entries=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80);
-  let dated=0,recent=0,topicalRecent=0;
+  let dated=0,recent=0,openSevenDay=0,topicalRecent=0;
   let nativeDataUpdates=0,otherCatalogueChanges=0;
   let topicalSixHours=0,topicalNinetyMinutes=0,topicalThirtyMinutes=0;
   for(const [,item] of entries) {
@@ -201,6 +201,7 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
     const ms=Date.parse(date.trim());
     if (!Number.isFinite(ms) || ms>now.getTime()) continue;
     dated++;
+    if(now.getTime()-ms<=7*DAY_MS)openSevenDay++;
     if(now.getTime()-ms<=DAY_MS){
       recent++;
       const headline=item.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/iu)?.[1]??"";
@@ -222,6 +223,7 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
     }
   }
   return {seen:entries.length,native_dated:dated,within_24h:recent,
+    open_original_or_release_within_7d:openSevenDay,
     topical_within_24h:topicalRecent,
     topical_within_6h:topicalSixHours,
     topical_within_90m:topicalNinetyMinutes,
@@ -254,7 +256,7 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
   if(!/<(?:atom:)?feed(?:\s|>)/iu.test(xml) ||
       /<!DOCTYPE|<!ENTITY/iu.test(xml))return null;
   const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,80);
-  let dated=0,recent=0,topicalRecent=0;
+  let dated=0,recent=0,openSevenDay=0,topicalRecent=0;
   let topicalSixHours=0,topicalNinetyMinutes=0,topicalThirtyMinutes=0;
   for(const [,item] of entries){
     const publication=item.match(/<(?:atom:)?published(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?published>/iu)?.[1];
@@ -269,6 +271,7 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
     const href=tag.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??"";
     if(!originalHref(href,hosts,source))continue;
     dated++;
+    if(now.getTime()-at<=7*DAY_MS)openSevenDay++;
     if(now.getTime()-at<=DAY_MS){
       recent++;
       const title=item.match(/<(?:atom:)?title(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?title>/iu)?.[1]??"";
@@ -281,7 +284,8 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
     }
   }
   return {seen:entries.length,native_dated:dated,
-    within_24h:recent,topical_within_24h:topicalRecent,
+    within_24h:recent,open_original_or_release_within_7d:openSevenDay,
+    topical_within_24h:topicalRecent,
     topical_within_6h:topicalSixHours,
     topical_within_90m:topicalNinetyMinutes,
     topical_within_30m:topicalThirtyMinutes};
@@ -289,13 +293,13 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
 
 // Only Atom entries with NO per-entry publication date may receive bounded
 // original-article same-host date verification. Do not use feed <updated>.
-function undatedAtomArticleCandidates(xml,source) {
+function undatedAtomArticleCandidates(xml,source,{openDiscovery=false}={}) {
   if(source.media!=="atom"||!source.original_hosts)return [];
   const list=[];
   for(const [,item] of [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,80)){
     if(/<(?:atom:)?published(?:\s[^>]*)?>/iu.test(item))continue;
     const title=item.match(/<(?:atom:)?title(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?title>/iu)?.[1]??"";
-    if(!source.topic?.test(title))continue;
+    if(!openDiscovery && !source.topic?.test(title))continue;
     const hrefs=[...item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)]
       .map(x=>x[1]).filter(tag=>{
         const rel=tag.match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
@@ -313,7 +317,7 @@ function undatedAtomArticleCandidates(xml,source) {
   return [...new Set(list)].slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
 }
 
-function undatedRssArticleCandidates(xml,source) {
+function undatedRssArticleCandidates(xml,source,{openDiscovery=false}={}) {
   // Recover only missing original item pubDate via exact first-party
   // article datePublished; never rescue a future/malformed source pubDate.
   if(source.media!=="rss"||!source.original_hosts)return [];
@@ -321,7 +325,7 @@ function undatedRssArticleCandidates(xml,source) {
   for(const [,item] of [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80)){
     if(/<pubDate(?:\s[^>]*)?>/iu.test(item))continue;
     const title=item.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/iu)?.[1]??"";
-    if(!source.topic?.test(title))continue;
+    if(!openDiscovery && !source.topic?.test(title))continue;
     const href=item.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/iu)?.[1]?.trim()??"";
     if(originalHref(href,source.original_hosts,source))list.push(href);
     if(list.length>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
@@ -338,12 +342,15 @@ function jsonShape(value) {
 
 export async function probeExpandedSource(source,{
   fetchImpl=fetch,now=new Date(), timeoutMs=5000,collectPrivateCandidates=false,
+  openDiscovery=false,
 }={}) {
   if(!EXPANDED_OFFICIAL_SOURCES.includes(source))throw Error("SOURCE_NOT_FIXED");
   const row={
     source_id:source.id,domain:source.domain,kind:source.kind,
     publisher_reachable:false,format_valid:false,
     source_native_release_items:null,source_native_24h_release_items:null,
+    source_native_7d_release_items:null,
+    original_publisher_open_24h_count:null,
     // Populated only for the Eurostat dataset catalogue, not RSS headlines.
     eurostat_native_dataset_data_updates_24h:null,
     eurostat_other_catalogue_changes_24h:null,
@@ -441,7 +448,8 @@ export async function probeExpandedSource(source,{
   row.publisher_reachable=true;
   row.format_valid=true;
   if(collectPrivateCandidates && source.original_hosts && ["rss","atom"].includes(source.media)){
-    try { row.private_original_article_candidates=originalPublisherPrivateCandidates(body,source,now); }
+    try { row.private_original_article_candidates=originalPublisherPrivateCandidates(
+      body,source,now,{captureAllTopics:openDiscovery}); }
     catch { row.private_original_article_candidates=[]; row.private_original_candidate_parse_failed=true; }
   }
   row.official_locale_fallback_used=row.official_locale_fallback_attempted;
@@ -450,6 +458,8 @@ export async function probeExpandedSource(source,{
   if(counts){
     row.source_native_release_items=counts.native_dated;
     row.source_native_24h_release_items=counts.within_24h;
+    row.source_native_7d_release_items=counts.open_original_or_release_within_7d;
+    if(source.original_hosts)row.original_publisher_open_24h_count=counts.within_24h;
     if(source.topic)row.topical_private_release_links_24h=counts.topical_within_24h;
     if(source.original_hosts){
       row.original_publisher_topical_6h=counts.topical_within_6h;
@@ -466,39 +476,45 @@ export async function probeExpandedSource(source,{
   // The helper reconstructs fixed official article URL paths and does not
   // follow redirects, trust feed updated clocks or leak publisher HTML.
   if((source.media==="atom"||source.media==="rss") &&
-      source.original_hosts && counts?.topical_within_24h===0){
+      source.original_hosts && (openDiscovery || counts?.topical_within_24h===0)){
     const articles=source.media==="atom"
-      ? undatedAtomArticleCandidates(body,source)
-      : undatedRssArticleCandidates(body,source);
+      ? undatedAtomArticleCandidates(body,source,{openDiscovery})
+      : undatedRssArticleCandidates(body,source,{openDiscovery});
+    let topicalOriginalPages=0;
     for(const article of articles){
       const published=await fetchVerifiedPublisherPageDate(article,source.domain,{
         now,fetchImpl,
       });
       row.original_page_precise_date_checks++;
-      if(published){
-        // The real article's independently verified original publication
-        // clock can supply a PRIVATE fingerprint candidate even if its RSS
-        // item lacks <published>. Never infer the date from feed <updated>.
-        if(collectPrivateCandidates){
-          const candidate=originalPublisherPrivatePageDateCandidate(
-            body,source,{articleUrl:article,publishedAt:published,now});
-          if(candidate && !row.private_original_article_candidates?.some(
+      if(!published)continue;
+      // An independently checked publisher article page date can rescue an
+      // undated feed entry. Retrieval and feed-update clocks never substitute.
+      const candidate=originalPublisherPrivatePageDateCandidate(
+        body,source,{articleUrl:article,publishedAt:published,now,
+          captureAllTopics:openDiscovery});
+      if(!candidate)continue;
+      if(collectPrivateCandidates &&
+          !row.private_original_article_candidates?.some(
             c=>c.original_article_sha256===candidate.original_article_sha256)){
-            row.private_original_article_candidates ??= [];
-            row.private_original_article_candidates.push(candidate);
-          }
-        }
-        row.original_page_precise_date_24h++;
-        const ageMs=now.getTime()-Date.parse(published);
-        if(ageMs>=0&&ageMs<=SIX_HOURS_MS)
-          row.original_publisher_topical_6h++;
-        if(ageMs>=0&&ageMs<=NINETY_MINUTES_MS)
-          row.original_publisher_topical_90m++;
-        if(ageMs>=0&&ageMs<=THIRTY_MINUTES_MS)
-          row.original_publisher_topical_30m++;
+        row.private_original_article_candidates ??= [];
+        row.private_original_article_candidates.push(candidate);
       }
+      row.original_page_precise_date_24h++;
+      if(openDiscovery)row.original_publisher_open_24h_count++;
+      // Broad original discovery is not a topical current event. Keep the
+      // previous topical metric exact; otherwise open capture would launder
+      // unrelated articles into "fresh geopolitical/mineral stories".
+      if(!candidate.discovery_topic_matched)continue;
+      topicalOriginalPages++;
+      const ageMs=now.getTime()-Date.parse(published);
+      if(ageMs>=0&&ageMs<=SIX_HOURS_MS)
+        row.original_publisher_topical_6h++;
+      if(ageMs>=0&&ageMs<=NINETY_MINUTES_MS)
+        row.original_publisher_topical_90m++;
+      if(ageMs>=0&&ageMs<=THIRTY_MINUTES_MS)
+        row.original_publisher_topical_30m++;
     }
-    row.topical_private_release_links_24h+=row.original_page_precise_date_24h;
+    row.topical_private_release_links_24h+=topicalOriginalPages;
   }
   return row;
 }
