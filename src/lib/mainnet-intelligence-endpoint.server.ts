@@ -279,12 +279,6 @@ export const mainnetIntelligenceHandlers = {
           throw error;
         }
 
-        let config: CoinbaseX402Config | null;
-        try { config = getCoinbaseX402Config(); } catch (error) {
-          return json({ ok: false, error: { code: "COINBASE_X402_CONFIGURATION_INVALID", message: error instanceof Error ? error.message : "Invalid x402 configuration" }, execution_authorized: false }, 503);
-        }
-        if (!config) return json({ ok: false, error: { code: "COINBASE_X402_NOT_CONFIGURED", message: "Coinbase x402 is not enabled." }, execution_authorized: false }, 503);
-
         if (!allowPublicDemoRequest(request, { namespace: "coinbase-x402-adaptive", windowMs: 60_000, maxPerClient: 20, maxGlobal: 200 })) {
           return json({ ok: false, error: { code: "X402_RATE_LIMITED", message: "Adaptive intelligence request limit exceeded." }, execution_authorized: false }, 429);
         }
@@ -471,6 +465,18 @@ export const mainnetIntelligenceHandlers = {
         if (!availability.deliverable) {
           return json({ ok: false, chargeable: false, payment_required_now: false, availability: publicAgentQueryAvailability(availability), error: { code: availability.code, message: "Requested intelligence is not currently fully deliverable; no payment is accepted." }, execution_authorized: false }, 422);
         }
+
+        // The canonical query is always verified BEFORE any payment
+        // configuration/quote is consulted. Unsupported live discoveries
+        // and insufficient signed data must remain truthful no-charge 422s
+        // even while mainnet credentials are absent during prelaunch.
+        // This does NOT enable payments: deliverable paid requests retain
+        // the unchanged Coinbase configuration, owner ACK and ledger gates.
+        let config: CoinbaseX402Config | null;
+        try { config = getCoinbaseX402Config(); } catch (error) {
+          return json({ ok: false, error: { code: "COINBASE_X402_CONFIGURATION_INVALID", message: error instanceof Error ? error.message : "Invalid x402 configuration" }, execution_authorized: false }, 503);
+        }
+        if (!config) return json({ ok: false, error: { code: "COINBASE_X402_NOT_CONFIGURED", message: "Coinbase x402 is not enabled." }, execution_authorized: false }, 503);
 
         const paymentHeader = request.headers.get("payment-signature");
         if (!paymentHeader) return paymentRequiredResponse(request, config, plan.query_plan_hash);
