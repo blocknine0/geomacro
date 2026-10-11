@@ -48,8 +48,8 @@ const proof={
   private_official_annual_change_count:privateEvidence.private_macro_changes.length,
   private_annual_directional_macro_driver_count:privateMacroDrivers.length,
   private_original_candidate_page_dates_verified:
-    privateEvidence.private_candidates.length>0 &&
-    pageProof.verified===privateEvidence.private_candidates.length,
+    privateEvidence.private_original_review_candidates.length>0 &&
+    pageProof.verified===privateEvidence.private_original_review_candidates.length,
   original_article_page_publication_date_verified_count:pageProof.verified,
   private_original_candidate_derived_rights_verified:false,
   published_signed_intelligence:receipt.signed_derived_intelligence_created,
