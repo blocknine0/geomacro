@@ -470,6 +470,13 @@ function undatedAtomOriginalLinkDiagnostic(xml,source) {
     statcan_other_path_shapes:source.id==="statcan_prices_original_atom_review"
       ?{ROOT:0,N1_OTHER:0,NON_N1:0,SUFFIX_HTML:0,SUFFIX_XML:0,SUFFIX_OTHER:0,QUERY_PRESENT:0}
       :null,
+    // Only fixed bucket counts for already rejected same-publisher paths.
+    // This cannot identify a single article or admit a URL for a GET.
+    statcan_non_n1_publisher_hosts:source.id==="statcan_prices_original_atom_review"
+      ?{WWW150:0,WWW:0}:null,
+    statcan_non_n1_prefix_families:source.id==="statcan_prices_original_atom_review"
+      ?{EN_DAILY:0,EN_SUBJECTS_OR_CATALOGUE:0,EN_OTHER:0,
+        ROOT_DAILY:0,ROOT_CATALOGUE:0,OTHER:0}:null,
   };
   const classifyStatcanPath=raw=>{
     try{
@@ -522,6 +529,26 @@ function undatedAtomOriginalLinkDiagnostic(xml,source) {
             else if(/\.xml$/iu.test(p))shape.SUFFIX_XML++;
             else shape.SUFFIX_OTHER++;
             if(url.search)shape.QUERY_PRESENT++;
+            // The published Atom feed has 60 real first-party link-path
+            // mismatches, mostly .html and outside /n1/. Distinguish actual
+            // immutable prefix family and allowed publisher alias before
+            // reviewing any narrow future adapter. Still NO url fetch.
+            if(!p.startsWith("/n1/")){
+              const host=codes.statcan_non_n1_publisher_hosts;
+              const family=codes.statcan_non_n1_prefix_families;
+              if(url.hostname==="www150.statcan.gc.ca")host.WWW150++;
+              else if(url.hostname==="www.statcan.gc.ca")host.WWW++;
+              if(/^\/en\/(?:dai-quo|daily-quotidien)(?:\/|$)/u.test(p))
+                family.EN_DAILY++;
+              else if(/^\/en\/(?:subjects?|catalogue)(?:\/|$)/u.test(p))
+                family.EN_SUBJECTS_OR_CATALOGUE++;
+              else if(/^\/en\//u.test(p))family.EN_OTHER++;
+              else if(/^\/(?:dai-quo|daily-quotidien)(?:\/|$)/u.test(p))
+                family.ROOT_DAILY++;
+              else if(/^\/catalogue(?:\/|$)/u.test(p))
+                family.ROOT_CATALOGUE++;
+              else family.OTHER++;
+            }
           }catch{/* strictly aggregated rejection remains OTHER */}
         }
       }
