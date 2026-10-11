@@ -97,6 +97,16 @@ jobs:
             .target_poll_minutes==30 and .schedule_guaranteed==false and
             (.actual_original_publisher_rows|length)==3 and
             ([.actual_original_publisher_rows[].domain]|sort)==["geopolitics","macro","rare_earth"] and
+            (.independent_origin_pairs_healthy | type)=="boolean" and
+            .independent_origin_pairs_healthy ==
+              ([.actual_original_publisher_rows[].independent_origin_pair_transport_healthy] | all) and
+            ([.actual_original_publisher_rows[] |
+              (.independent_origin_crosscheck_attempted | type)=="boolean" and
+              (.independent_origin_pair_transport_healthy | type)=="boolean" and
+              .independent_origin_pair_transport_healthy == (.publisher_pair_sample_complete==true) and
+              (.original_publishers_attempted<=2) and
+              (.original_publishers_successful<=2) and
+              .event_same_subject_independent_corroboration_verified==false] | all) and
             .source_catalog_entries_are_not_events==true and
             .independently_verified_current_intelligence_count==0 and
             .user_api_delivery_verified==false and
