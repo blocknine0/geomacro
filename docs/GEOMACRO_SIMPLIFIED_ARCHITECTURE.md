@@ -45,6 +45,16 @@
 - Real-money activation requires separate explicit owner approval and an accepted first 0.05 USDC live purchase. This document **does not grant authorization**.
 - The existing #1827 tracker continues to hold independent factual/security/partner obligations. It must not inflate the minimal **first eligible paid answer** into a requirement that every historical feature is complete.
 
+## Permanent Supabase-free partner interoperability decision (2026-10-11)
+
+- **No per-category Supabase account/database is necessary** to respond to a customer question. One canonical on-demand intelligence engine searches, verifies, scores and signs using bounded ephemeral processing. Existing D1/Durable Objects retain only necessary payment, deduplication and audit metadata; B2 may hold the minimum immutable signed artifact/proof needed for reproducible authorized partner review. Do not restart frozen Supabase bulk writers to provide live coverage.
+- **Never discard the exact signed Risk Object required by a receiver.** `gro-1.1`, `geomacro-canonical-json-v1`, active-key Ed25519 signing, hash reproducibility, source-native freshness, evidence independence, commercial-use rights and tamper rejection remain invariant regardless of source storage.
+- A private query-time helper, `src/lib/on-demand-partner-artifact.server.ts`, validates an already prepared signed GRO against an explicitly trusted key set and the existing commercial policy, emits its exact canonical record bytes plus SHA-256, and can construct Federico's established `{ risk_object, as_of }` envelope. No network call, database mutation, B2 write, external review, payment or partner allowance is performed by this helper.
+- **Federico:** preserve `FEDERICO_STRICT` source/semantic admission and existing exact-record external `/review` verifier; a locally signed object or synthetic positive-control vector **is not** a signed Federico approval. An actual signed `approve` plus independent proof verification is still required for external admission.
+- **PREDGE:** do not assume an undocumented local adapter or a live partner authorization. Preserve signed-object interoperability and pinned-key verification in any separately governed PREDGE pilot; validate its actual receiver contract before activating testing or making compatibility claims.
+- Durable retention is *selective*, not zero: minimal exact signed GRO and relevant proof when partner replay/audit requires it, plus D1 payment idempotency and reconciliation records. Do not archive bulk raw provider feeds merely to make the canonical engine work.
+- The current query-time discovery path is **not yet a signed payable result**. Implement evidence-to-score-to-signer integration and prove three category requests, trust and replay before an authorized real-money launch. This decision introduces no additional launch gate beyond the existing safety/rights/signing/payment acceptance.
+
 ## Simplification rule for new engineering
 
 Before proposing a new database, workflow, model, risk engine or launch gate, document (a) which verified customer-facing outcome the existing single engine cannot supply, (b) the smallest reuse-first implementation, (c) measured impact on free-tier costs, and (d) an acceptance test. Reject purely architectural complexity without measurable commercial benefit.
