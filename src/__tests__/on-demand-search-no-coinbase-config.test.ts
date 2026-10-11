@@ -108,6 +108,33 @@ describe("production no-charge on-demand search without Coinbase configuration",
     expect(mocks.settle).not.toHaveBeenCalled();
     expect(response.headers.has("payment-required")).toBe(false);
   });
+  it("does not treat unverified original article candidates as sufficient evidence",async()=>{
+    mocks.discover.mockResolvedValueOnce({
+      discovery:{
+        status:"DISCOVERY_OBSERVED_NOT_YET_VERIFIED",searched_in_parallel:true,
+        categories:["geopolitics","macro","rare_earth"],country_iso3:"CHN",
+        checked_at:"2026-10-12T02:00:00Z",network_attempts:3,
+        reached_source_families:2,source_probes:[],
+      },
+      private_candidates:[],
+      // Finding a dated original article is not independent qualification.
+      private_original_review_candidates:[{article_identity_sha256:"a".repeat(64)}],
+      duplicate_original_headline_count:0,
+      private_macro_changes:[],
+    });
+    mocks.articlePages.mockResolvedValueOnce({attempted:1,verified:1,verified_candidates:[]});
+    const response=await post("live_on_demand");
+    const body=await response.json();
+    expect(response.status).toBe(422);
+    expect(body.chargeable).toBe(false);
+    expect(body.payment_required_now).toBe(false);
+    expect(mocks.telegram).toHaveBeenCalledWith({
+      country_iso3:"CHN",
+      categories:["geopolitics","macro","rare_earth"],
+      originalArticleEvidenceSufficient:false,
+    });
+    expect(mocks.settle).not.toHaveBeenCalled();
+  });
   it("ignores a forged payment header on search-only requests",async()=>{
     const response=await post("live_on_demand",true);
     expect(response.status).toBe(422);
