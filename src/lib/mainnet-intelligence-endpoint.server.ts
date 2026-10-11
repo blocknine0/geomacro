@@ -405,7 +405,7 @@ export const mainnetIntelligenceHandlers = {
             privatePeerMacroStatus=privatePeerProof.status;
             privatePeerScoredDimensions=privatePeerProof.peer_normalized_dimension_count;
             const pageProof=await verifyOnDemandOriginalArticlePages(
-              privateResult.private_candidates);
+              privateResult.private_original_review_candidates);
             // No page HTML, original URL, title or publisher identity is
             // serialized. This is only publication-clock consistency, NOT
             // independent facts, commercial source rights or signed risk.
