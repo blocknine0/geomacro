@@ -78,7 +78,10 @@ export function verifiedPublisherPageDate(html, now = new Date()) {
     offset = end + 1;
     const name = attr(tag, "name").toLowerCase();
     const property = attr(tag, "property").toLowerCase();
-    if (property === "article:published_time" || name === "datepublished") {
+    // GOV.UK official metadata calls this the original *first* publication
+    // clock. Never use govuk:updated-at or public-updated-at as an event time.
+    if (property === "article:published_time" || name === "datepublished" ||
+        name === "govuk:first-published-at") {
       candidates.push(attr(tag, "content"));
     }
   }
@@ -137,7 +140,7 @@ function fixedPublisherArticle(rawUrl, category) {
     if (["geopolitics", "rare_earth"].includes(category) && candidate.hostname === "www.gov.uk") {
       // A precise original GOV.UK FCDO/DBT article path only, never arbitrary
       // redirect/asset/API URLs or a caller-supplied domain.
-      const match = /^\/government\/(news|speeches|world-location-news|statements)\/([a-z0-9][a-z0-9-]{4,190})$/u.exec(path);
+      const match = /^\/government\/(news|speeches|world-location-news|statements|publications)\/([a-z0-9][a-z0-9-]{4,190})$/u.exec(path);
       if (!match) return null;
       return "https://www.gov.uk/government/" + match[1] + "/" + match[2];
     }
