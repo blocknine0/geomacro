@@ -39,7 +39,7 @@ describe("#1827 Step-1 official first-party publisher source readiness", () => {
   it("counts only the audited same-UN-publisher HTTP 200 fallback, never a second issuer", () => {
     const good=fixture();
     const un=good.sources.find((x:any)=>x.source_id==="un_news_security_original_rss_review")!;
-    un.primary_http_status=null;
+    (un as any).primary_http_status=null;
     (un as any).fallback_http_status=200;
     (un as any).official_same_publisher_fallback_attempted=true;
     (un as any).official_same_publisher_fallback_used=true;
@@ -62,7 +62,7 @@ describe("#1827 Step-1 official first-party publisher source readiness", () => {
     // An arbitrary publisher cannot forge a trusted alternate.
     const other=fixture();
     const fcdo=other.sources.find((x:any)=>x.source_id==="uk_fcdo_original_foreign_policy_atom_review")!;
-    fcdo.primary_http_status=null;
+    (fcdo as any).primary_http_status=null;
     (fcdo as any).fallback_http_status=200;
     (fcdo as any).official_same_publisher_fallback_attempted=true;
     (fcdo as any).official_same_publisher_fallback_used=true;
