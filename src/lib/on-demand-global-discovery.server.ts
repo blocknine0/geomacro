@@ -224,9 +224,23 @@ async function gdelt(
   return probe("gdelt_doc_discovery",valid.length,false);
 }
 
-async function reliefWeb(countryNameValue: string, fetchImpl: typeof fetch, now: Date) {
+/** ReliefWeb demands an operator-requested, provider-approved appname.
+ * Missing/malformed approval skips traffic entirely, not a fake 403 success.
+ * This server env value must be set only after ReliefWeb emails approval.
+ */
+function approvedReliefWebAppname():string|null {
+  const value=typeof process==="undefined"?"":String(
+    process.env.RELIEFWEB_APPROVED_APPNAME??"").trim();
+  // Never accidentally re-enable the old arbitrary, unapproved domain token.
+  if(value==="geomacro.live" ||
+     !/^[A-Za-z][A-Za-z0-9_.-]{7,100}$/u.test(value))return null;
+  return value;
+}
+async function reliefWeb(
+  countryNameValue:string,fetchImpl:typeof fetch,now:Date,appname:string,
+) {
   const params = new URLSearchParams({
-    appname:"geomacro.live",limit:"10",
+    appname,limit:"10",
     "query[value]":countryNameValue + " humanitarian security",
     "query[operator]":"AND",
   });
@@ -542,10 +556,14 @@ async function discoverOnDemandImpl(
   try { name = await countryName(country,fetchImpl); }
   catch { name = ""; }
   const tasks: Array<{name:string;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
+  const approvedReliefAppname=approvedReliefWebAppname();
   if (name) for (const category of categories) {
     tasks.push({name:"gdelt_doc_discovery",run:()=>gdelt(category,name,fetchImpl,mineral)});
-    if (category==="geopolitics")
-      tasks.push({name:"reliefweb_discovery",run:()=>reliefWeb(name,fetchImpl,now)});
+    // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
+    // account approval must not generate repeat 403s on every user query.
+    if (category==="geopolitics" && approvedReliefAppname)
+      tasks.push({name:"reliefweb_discovery",run:()=>
+        reliefWeb(name,fetchImpl,now,approvedReliefAppname)});
   }
   if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
     if (categories.includes(source.domain)) tasks.push({
