@@ -127,14 +127,26 @@ async function boundedFetch(
         "www.minister.industry.gov.au"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
-  const response = await fetchImpl(url, {
-    method: "GET",
-    redirect: "error",
-    headers: { Accept: accept },
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!response.ok ||
-      Number(response.headers.get("content-length") || 0) > MAX_BODY_BYTES)
+  let response: Response;
+  try {
+    response = await fetchImpl(url, {
+      method: "GET",
+      redirect: "error",
+      headers: { Accept: accept },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch {
+    // A network failure may use a specifically approved alternate; an
+    // explicit 401/403/429 denial must never be worked around.
+    throw Error("ON_DEMAND_SOURCE_TRANSPORT_FAILURE");
+  }
+  if (!response.ok) {
+    const transient = response.status === 404 ||
+      (response.status >= 500 && response.status <= 599);
+    throw Error(transient ? "ON_DEMAND_SOURCE_TRANSIENT_HTTP" :
+      "ON_DEMAND_SOURCE_UNAVAILABLE");
+  }
+  if (Number(response.headers.get("content-length") || 0) > MAX_BODY_BYTES)
     throw Error("ON_DEMAND_SOURCE_UNAVAILABLE");
   if (!response.body) throw Error("ON_DEMAND_SOURCE_RESPONSE_EMPTY");
   const reader = response.body.getReader();
@@ -365,6 +377,7 @@ type OriginalFeed = {
   url:string;
   media:"rss"|"atom";
   originalHost:string;
+  alternateUrl?:string;
   originalPath:RegExp;
   topic:RegExp;
 };
@@ -379,6 +392,8 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   {
     domain:"geopolitics",family:"un_news_original_publisher",
     url:"https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml",
+    // Fixed same-publisher backup only on transport errors/404/5xx.
+    alternateUrl:"https://news.un.org/feed/subscribe/en/news/all/rss.xml",
     media:"rss",originalHost:"news.un.org",
     originalPath:/^\/en\/story\/\d{4}\/\d{1,2}\//u,
     topic:/\b(?:security council|ceasefire|conflict|sanctions?|war|airstrike|peace|military)\b/iu,
@@ -470,8 +485,21 @@ async function originalOfficialFeed(
   def:OriginalFeed,countryIso3:string,countryNameValue:string,
   fetchImpl:typeof fetch,now:Date,mineral:OnDemandMineral|null,
 ):Promise<OriginalFeedResult>{
-  const xml=await boundedFetch(fetchImpl,def.url,
-    "application/rss+xml,application/atom+xml,application/xml");
+  let xml: string;
+  try {
+    xml = await boundedFetch(fetchImpl,def.url,
+      "application/rss+xml,application/atom+xml,application/xml");
+  } catch (error) {
+    const retryable = error instanceof Error &&
+      ["ON_DEMAND_SOURCE_TRANSPORT_FAILURE","ON_DEMAND_SOURCE_TRANSIENT_HTTP"]
+        .includes(error.message);
+    if (!retryable || def.family !== "un_news_original_publisher" ||
+        !def.alternateUrl) throw error;
+    // One same-UN-News issuer alternate: not a second independent source.
+    // No retry for malformed XML, oversized body, 401/403 or 429.
+    xml = await boundedFetch(fetchImpl,def.alternateUrl,
+      "application/rss+xml,application/atom+xml,application/xml");
+  }
   if (/<!DOCTYPE|<!ENTITY/iu.test(xml))
     throw Error("ON_DEMAND_ORIGINAL_FEED_XML_UNSAFE");
   const atom=def.media==="atom";
@@ -587,6 +615,11 @@ async function discoverOnDemandImpl(
   private_macro_qualifications:PrivateMacroQualification[];
 }> {
   const now=options.now ?? new Date(), fetchImpl=options.fetchImpl ?? fetch;
+  let networkAttempts=0;
+  const trackedFetch:typeof fetch=((input,init)=>{
+    networkAttempts++;
+    return fetchImpl(input,init);
+  }) as typeof fetch;
   if(!(now instanceof Date) || !Number.isFinite(now.getTime()))
     throw Error("ON_DEMAND_CLOCK_INVALID");
   const country = iso3(input.country_iso3);
@@ -604,28 +637,28 @@ async function discoverOnDemandImpl(
   // Always bound fan-out; missing country metadata is not substituted by an
   // ungrounded guessed country name.
   let name: string;
-  try { name = await countryName(country,fetchImpl); }
+  try { name = await countryName(country,trackedFetch); }
   catch { name = ""; }
   const tasks: Array<{name:string;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   const approvedReliefAppname=approvedReliefWebAppname();
   if (name) for (const category of categories) {
-    tasks.push({name:"gdelt_doc_discovery",run:()=>gdelt(category,name,fetchImpl,mineral)});
+    tasks.push({name:"gdelt_doc_discovery",run:()=>gdelt(category,name,trackedFetch,mineral)});
     // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
     // account approval must not generate repeat 403s on every user query.
     if (category==="geopolitics" && approvedReliefAppname)
       tasks.push({name:"reliefweb_discovery",run:()=>
-        reliefWeb(name,fetchImpl,now,approvedReliefAppname)});
+        reliefWeb(name,trackedFetch,now,approvedReliefAppname)});
   }
   if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
     if (categories.includes(source.domain)) tasks.push({
       name:source.family,
-      run:()=>originalOfficialFeed(source,country,name,fetchImpl,now,mineral),
+      run:()=>originalOfficialFeed(source,country,name,trackedFetch,now,mineral),
     });
   }
   if (categories.includes("macro")) for (const indicator of [
     "FP.CPI.TOTL.ZG","NY.GDP.MKTP.KD.ZG",
   ] as const) tasks.push({name:"world_bank_official_" + indicator,
-    run:()=>worldBank(country,indicator,fetchImpl,now)});
+    run:()=>worldBank(country,indicator,trackedFetch,now)});
   // Exactly one fixed metadata lookup + at most eleven provider requests,
   // no 195-country fanout and no user question passed upstream.
   const settled=await Promise.allSettled(tasks.map(t=>t.run()));
@@ -665,7 +698,7 @@ async function discoverOnDemandImpl(
   const discovery:OnDemandDiscovery={
     schema:"geomacro.on-demand-global-private-discovery.v1",
     country_iso3:country,categories,checked_at:now.toISOString(),
-    searched_in_parallel:true,network_attempts:tasks.length+1,
+    searched_in_parallel:true,network_attempts:networkAttempts,
     reached_source_families:reached,source_probes,
     // Preserve existing fingerprints for country/category-only requests.
     query_fingerprint_sha256:digest(JSON.stringify(mineral
