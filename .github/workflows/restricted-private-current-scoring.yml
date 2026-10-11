@@ -23,6 +23,10 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/restricted-private-current-scoring.yml"
+      - "scripts/ingest-news.js"
+      - "scripts/lib/official-native-rss.mjs"
+      - "scripts/lib/official-native-alternates.mjs"
+      - "scripts/lib/official-native-third-fallback.mjs"
 
 permissions:
   contents: read
@@ -45,7 +49,8 @@ jobs:
             contains(github.event.head_commit.message, '(#1929)') ||
             contains(github.event.head_commit.message, '(#1933)') ||
             contains(github.event.head_commit.message, '(#1934)') ||
-            contains(github.event.head_commit.message, '(#1985)')
+            contains(github.event.head_commit.message, '(#1985)') ||
+            contains(github.event.head_commit.message, '(#1999)')
         ))
       )
     runs-on: ubuntu-24.04
