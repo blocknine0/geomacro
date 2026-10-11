@@ -61,8 +61,9 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
     // Native published values (even invalid/future) belong only to the
     // existing strict original-publication pipeline, not this lane.
     if(/<(?:atom:)?published(?:\s[^>]*)?>/iu.test(item))continue;
+    // A source can encode a title as HTML or use an unfamiliar Atom title
+    // type. Title readability is NOT a discovery admission requirement.
     const title=titleHash(item);
-    if(!title)continue;
     let identity=null,identityKind=null;
     for(const link of item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)) {
       const attrs=link[1];
@@ -86,6 +87,34 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
         identityKind="OFFICIAL_ATOM_ENTRY_ID";
       }
     }
+    if(!identity){
+      // Final *observation-only* fallback for a fully validated fixed first-
+      // party feed with a non-standard Atom title or no permitted article
+      // URL. Hash a bounded normalized entry with changing <updated> removed;
+      // this value is NEVER an article URL, claim or native publication time.
+      const hasPublisherLink=[...item.matchAll(
+        /<(?:atom:)?link\b([^>]*?)\/?\s*>/giu,
+      )].some(([,attrs])=>{
+        const rel=attrs.match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
+        if(!["alternate","canonical"].includes(rel))return false;
+        const href=attrs.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1];
+        try{
+          const u=new URL(href);
+          return u.protocol==="https:"&&!u.username&&!u.password&&!u.port&&
+            !u.hash&&source.original_hosts.includes(u.hostname)&&
+            u.pathname!==new URL(source.url).pathname;
+        }catch{return false;}
+      });
+      if(hasPublisherLink && Buffer.byteLength(item,"utf8")<=8192){
+        const normalized=item.replace(
+          /<(?:atom:)?updated(?:\s[^>]*)?>[\s\S]*?<\/(?:atom:)?updated>/giu,"",
+        ).replace(/\s+/gu," ").trim();
+        if(normalized.length>=20){
+          identity=source.id+"|opaque-atom-entry|"+normalized;
+          identityKind="OPAQUE_FIRST_PARTY_FEED_ENTRY";
+        }
+      }
+    }
     if(identity){
       const sha=digest(identity);
       if(!seen.has(sha)){
@@ -95,7 +124,9 @@ export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={})
           domain:source.domain,source_id:source.id,
           // Legacy SHA field is a PRIVATE feed identity; if ID-backed it is
           // NOT an approved original URL or evidence that an article exists.
-          original_link_sha256:sha,headline_sha256:title,
+          original_link_sha256:sha,
+          headline_sha256:title??digest(source.id+"|unreadable-title|"+sha),
+          headline_fingerprint_verified:title!==null,
           feed_entry_identity_kind:identityKind,
           first_seen_at:now.toISOString(),
           publication_clock_status:"UNKNOWN",

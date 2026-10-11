@@ -50,7 +50,7 @@ export function reconcileUndatedPrivateFeedObservations({
        !SHA.test(row.original_link_sha256??"")||
        !SHA.test(row.headline_sha256??"")||
        row.publication_clock_status!=="UNKNOWN"||
-       !["FIRST_PARTY_LINK","OFFICIAL_ATOM_ENTRY_ID"].includes(row.feed_entry_identity_kind)||
+       !["FIRST_PARTY_LINK","OFFICIAL_ATOM_ENTRY_ID","OPAQUE_FIRST_PARTY_FEED_ENTRY"].includes(row.feed_entry_identity_kind)||
        row.original_article_path_verified!==false||
        row.original_article_content_verified!==false||
        row.article_category_relevance_verified!==false||
