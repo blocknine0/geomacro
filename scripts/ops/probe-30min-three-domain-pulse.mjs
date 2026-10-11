@@ -12,6 +12,7 @@ import {
   EXPANDED_OFFICIAL_SOURCES, probeExpandedSource,
 } from "./probe-expanded-official-source-mesh.mjs";
 import {classifyPrivateOriginalCandidateDuplicates} from "../lib/private-original-publisher-candidates.mjs";
+import {SAFE_PUBLISHER_PAGE_PROBE_CODES} from "../lib/official-original-article-date.mjs";
 
 const INTERVAL_MS=30*60*1000;
 export const THIRTY_MIN_PUBLISHER_PAIRS=Object.freeze({
@@ -118,6 +119,26 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       "accepted_first_party_older_than_7d",
       "accepted_first_party_native_dated",
     ];
+    // Stable coarse shape and permitted verifier enums only; no timestamp
+    // string, headline, URL, HTML, HTTP body or upstream diagnostic text.
+    const dateShapes=[
+      "CDATA_WRAPPER","RFC_ALPHA_ZONE","RFC_OTHER_ZONE",
+      "ISO_LIKE","SLASH_DATE_LIKE","OTHER",
+    ];
+    const sourceRecoveryDiagnostics=observed.map(item=>({
+      source_id:item.source_id,
+      rss_invalid_date_shapes:item.unparseable_native_rss_date_shapes
+        ?Object.fromEntries(dateShapes.map(k=>[k,
+          safeInt(item.unparseable_native_rss_date_shapes[k])]))
+        :null,
+      original_page_checked:safeInt(item.original_page_precise_date_checks),
+      original_page_verified:safeInt(item.original_page_precise_date_24h),
+      atom_undated_valid_article_link_candidates:
+        safeInt(item.undated_atom_article_link_candidates),
+      original_page_result_codes:Object.fromEntries(
+        SAFE_PUBLISHER_PAGE_PROBE_CODES.map(code=>[code,
+          safeInt(item.first_party_original_page_probe_codes?.[code])??0])),
+    }));
     const sourceItemDiagnostics=observed.map(item=>({
       source_id:item.source_id,
       ...Object.fromEntries(issueFields.map(key=>[
@@ -154,6 +175,7 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       original_publisher_all_topics_24h_count:open24,
       original_publisher_all_topics_7d_count:open7d,
       source_item_provenance_diagnostics:sourceItemDiagnostics,
+      source_feed_recovery_diagnostics:sourceRecoveryDiagnostics,
       open_discovery_keyword_gate_enabled:false,
       articles_captured_before_relevance_classification:true,
       unclassified_original_articles_are_verified_events:false,
