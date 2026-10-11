@@ -62,6 +62,8 @@ export function projectSourcePulseForD1(report) {
         // sampled/proven, NEVER "there are zero events worldwide".
         source_item_provenance_diagnostics:Array.isArray(row.source_item_provenance_diagnostics)
           ?row.source_item_provenance_diagnostics:[],
+        source_feed_recovery_diagnostics:Array.isArray(row.source_feed_recovery_diagnostics)
+          ?row.source_feed_recovery_diagnostics:[],
         publisher_pair_sample_complete:row.publisher_pair_sample_complete===true,
         original_publishers_attempted:Number.isInteger(row.original_publishers_attempted)
           ?row.original_publishers_attempted:null,
@@ -142,6 +144,8 @@ export async function write30MinSourcePulseToD1({
          row.metadata.original_publisher_all_topics_7d_count ||
        JSON.stringify(stored?.payload?.source_item_provenance_diagnostics)!==
          JSON.stringify(row.metadata.source_item_provenance_diagnostics) ||
+       JSON.stringify(stored?.payload?.source_feed_recovery_diagnostics)!==
+         JSON.stringify(row.metadata.source_feed_recovery_diagnostics) ||
        stored?.payload?.new_private_article_fingerprint_count!==
          privateDedup.get(row.domain).new_article_fingerprint_count ||
        stored?.payload?.repeated_private_article_fingerprint_count!==
