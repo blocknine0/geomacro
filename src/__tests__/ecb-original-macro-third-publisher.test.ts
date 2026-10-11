@@ -82,6 +82,28 @@ describe("#2042 free third independent original-publisher Macro/FX route",()=>{
     expect(observed.current_scored_intelligence_verified).toBe(false);
     expect(observed.commercial_eligible).toBe(false);
   });
+  it("recovers only a verified ECB first-party RSS double-slash press URL and never arbitrary double-slash paths",()=>{
+    const doubled=ORIG.replace("www.ecb.europa.eu/press/","www.ecb.europa.eu//press/");
+    const candidate=originalPublisherPrivateCandidates(rss(doubled),ECB,NOW,{
+      captureAllTopics:true,
+    });
+    expect(candidate).toHaveLength(1);
+    const single=originalPublisherPrivateCandidates(rss(ORIG),ECB,NOW,{
+      captureAllTopics:true,
+    });
+    expect(candidate[0].original_article_sha256)
+      .toBe(single[0].original_article_sha256);
+    for(const bad of [
+      doubled.replace("/press/pr/date/","/press/accounts/date/"),
+      "https://www.ecb.europa.eu//evil.test/press/pr/date/2026/html/test1234.html",
+      doubled+"?redirect=evil",
+      doubled.replace("www.ecb.europa.eu","www.ecb.europa.eu.evil.example"),
+    ]){
+      expect(originalPublisherPrivateCandidates(rss(bad),ECB,NOW,{
+        captureAllTopics:true,
+      })).toHaveLength(0);
+    }
+  });
   it("rejects publisher impersonation, ECB RSS index and future original publication",async()=>{
     const bad=[
       rss(ORIG.replace("www.ecb.europa.eu","www.ecb.europa.eu.evil.example")),
