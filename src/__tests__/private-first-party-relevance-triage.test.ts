@@ -121,6 +121,7 @@ describe("#2043 open intake → private topical hint without commercial gate",()
         report:pulse,createClient:client,
       });
       expect(readback.d1_readback_verified).toBe(true);
+      expect(readback.undated_feed_new_unverified_topic_hints).toBe(i===0?0:1);
       expect(readback.payment_performed).toBe(false);
     }
     const state=db.get("macro").payload;
