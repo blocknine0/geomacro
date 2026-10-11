@@ -439,7 +439,7 @@ export function deduplicateOnDemandOriginalHeadlines(
   let duplicate_headlines_removed=0;
   const headline=(title:string)=>
     title.normalize("NFKC").toLocaleLowerCase("en-US")
-      .replace(/\\s+/gu," ").trim();
+      .replace(/\s+/gu," ").trim();
   for(const item of candidates){
     const time=Date.parse(item.feed_item_published_at);
     if(!Number.isFinite(time)||!item.first_party_article_url_verified||
