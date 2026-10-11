@@ -27,6 +27,7 @@ export async function probePublicSourcesIndependently({
       if(x?.source_id && ![id,{
         ecb:"ecb",imf:"imf_sdmx",oecd:"oecd_sdmx",bis:"bis_statistics",
         gdacs:"gdacs_global_disasters",comtrade:"un_comtrade",
+        faostat:"faostat_global",ilostat:"ilostat_global",
         swpc:"noaa_swpc",bgs:"bgs_world_minerals_statistics",
       }[id]].includes(x.source_id)) throw Error("PUBLIC_SOURCE_ID_MISMATCH");
       if(!Number.isSafeInteger(x?.observations)||x.observations<0)
