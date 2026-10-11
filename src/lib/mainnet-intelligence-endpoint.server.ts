@@ -279,12 +279,6 @@ export const mainnetIntelligenceHandlers = {
           throw error;
         }
 
-        let config: CoinbaseX402Config | null;
-        try { config = getCoinbaseX402Config(); } catch (error) {
-          return json({ ok: false, error: { code: "COINBASE_X402_CONFIGURATION_INVALID", message: error instanceof Error ? error.message : "Invalid x402 configuration" }, execution_authorized: false }, 503);
-        }
-        if (!config) return json({ ok: false, error: { code: "COINBASE_X402_NOT_CONFIGURED", message: "Coinbase x402 is not enabled." }, execution_authorized: false }, 503);
-
         if (!allowPublicDemoRequest(request, { namespace: "coinbase-x402-adaptive", windowMs: 60_000, maxPerClient: 20, maxGlobal: 200 })) {
           return json({ ok: false, error: { code: "X402_RATE_LIMITED", message: "Adaptive intelligence request limit exceeded." }, execution_authorized: false }, 429);
         }
@@ -460,6 +454,17 @@ export const mainnetIntelligenceHandlers = {
             execution_authorized:false,
           },422);
         }
+
+        // Paid published-only requests continue using the identical Coinbase
+        // configuration gate. The live_on_demand branch above is a strictly
+        // no-charge, fail-closed search probe and MUST work even before any
+        // wallet, CDP API key or Coinbase environment is provisioned.
+        // Never let a payment-signature header promote discovery to delivery.
+        let config: CoinbaseX402Config | null;
+        try { config = getCoinbaseX402Config(); } catch (error) {
+          return json({ ok: false, error: { code: "COINBASE_X402_CONFIGURATION_INVALID", message: error instanceof Error ? error.message : "Invalid x402 configuration" }, execution_authorized: false }, 503);
+        }
+        if (!config) return json({ ok: false, error: { code: "COINBASE_X402_NOT_CONFIGURED", message: "Coinbase x402 is not enabled." }, execution_authorized: false }, 503);
 
         let availability;
         try {
