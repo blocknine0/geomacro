@@ -245,9 +245,25 @@ async function reliefWeb(countryNameValue: string, fetchImpl: typeof fetch, now:
   // Provider release date is evidence metadata, not signed same-event proof.
   return probe("reliefweb_discovery",published.length,published.length > 0);
 }
+export type PrivateMacroQualification = {
+  indicator: PrivateOfficialMacroChange["indicator"];
+  status:
+    | "VALID_ANNUAL_CHANGE"
+    | "INVALID_JSON_BODY"
+    | "UNEXPECTED_JSON_SHAPE"
+    | "NO_NON_NULL_COUNTRY_VALUES"
+    | "DUPLICATE_YEAR_CONFLICT"
+    | "NON_CONSECUTIVE_ANNUAL_YEARS";
+  accepted_annual_values: number;
+  latest_observation_year: number | null;
+  previous_observation_year: number | null;
+};
 type PrivateMacroResult = {
   probe: SourceProbe;
   private_macro_changes: PrivateOfficialMacroChange[];
+  // Internal, redacted period/validation status. Never leak raw WB values
+  // and never mistake a 2xx endpoint for verified annual intelligence.
+  private_macro_qualification: PrivateMacroQualification;
 };
 async function worldBank(
   country: string, indicator: PrivateOfficialMacroChange["indicator"],
@@ -257,8 +273,20 @@ async function worldBank(
     "https://api.worldbank.org/v2/country/" + country +
       "/indicator/" + indicator + "?format=json&per_page=6",
     "application/json");
-  const json: unknown = JSON.parse(body);
-  const rows: unknown[] = Array.isArray(json) && Array.isArray(json[1]) ? json[1] : [];
+  let json: unknown;
+  try {json=JSON.parse(body);} catch {
+    return {
+      probe:failed("world_bank_official_"+indicator),
+      private_macro_changes:[],
+      private_macro_qualification:{
+        indicator,status:"INVALID_JSON_BODY",
+        accepted_annual_values:0,latest_observation_year:null,
+        previous_observation_year:null,
+      },
+    };
+  }
+  const isData=Array.isArray(json) && Array.isArray(json[1]);
+  const rows: unknown[] = isData ? json[1] : [];
   const currentYear=now.getUTCFullYear();
   const valid=rows.filter((x): x is {date:string;value:number;countryiso3code:string} => {
     if(!x || typeof x!=="object")return false;
@@ -296,9 +324,23 @@ async function worldBank(
       risk_score_verified:false,paid_delivery_allowed:false,
     });
   }
-  // Source period is annual, not an article publication/freshness clock.
-  return {probe:probe("world_bank_official_"+indicator,valid.length,false),
-    private_macro_changes};
+  // 2xx is transport success, not usable WDI observations. Never synthesize
+  // a missing year or expose upstream numerical values as customer output.
+  const status:PrivateMacroQualification["status"]= !isData
+    ?"UNEXPECTED_JSON_SHAPE":valid.length===0
+    ?"NO_NON_NULL_COUNTRY_VALUES":duplicateConflict
+    ?"DUPLICATE_YEAR_CONFLICT":private_macro_changes.length===0
+    ?"NON_CONSECUTIVE_ANNUAL_YEARS":"VALID_ANNUAL_CHANGE";
+  return {
+    probe:!isData?failed("world_bank_official_"+indicator):
+      probe("world_bank_official_"+indicator,valid.length,false),
+    private_macro_changes,
+    private_macro_qualification:{
+      indicator,status,accepted_annual_values:valid.length,
+      latest_observation_year:latest??null,
+      previous_observation_year:previous??null,
+    },
+  };
 }
 // Independent first-party fallback feeds: never bypass blocked upstream
 // APIs with mirrored copies from the SAME publisher. This broadens publisher
@@ -477,6 +519,7 @@ async function discoverOnDemandImpl(
   private_original_review_candidates:PrivateOriginalCandidate[];
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
+  private_macro_qualifications:PrivateMacroQualification[];
 }> {
   const now=options.now ?? new Date(), fetchImpl=options.fetchImpl ?? fetch;
   if(!(now instanceof Date) || !Number.isFinite(now.getTime()))
@@ -531,6 +574,9 @@ async function discoverOnDemandImpl(
   const private_macro_changes=settled.flatMap(result=>
     result.status==="fulfilled" && "private_macro_changes" in result.value
       ? result.value.private_macro_changes : []);
+  const private_macro_qualifications=settled.flatMap(result=>
+    result.status==="fulfilled" && "private_macro_qualification" in result.value
+      ? [result.value.private_macro_qualification] : []);
   const private_candidates:PrivateOriginalCandidate[]=[];
   // Round-robin preserves distinct publisher families and all 3 categories
   // under heavy news flow; a dominant feed cannot starve a later independent
@@ -567,6 +613,7 @@ async function discoverOnDemandImpl(
     private_original_review_candidates:grouped.original_review_candidates,
     duplicate_original_headline_count:grouped.duplicate_headlines_removed,
     private_macro_changes,
+    private_macro_qualifications,
   };
 }
 
@@ -682,6 +729,7 @@ export async function discoverOnDemandForPrivateQualification(
   private_original_review_candidates:PrivateOriginalCandidate[];
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
+  private_macro_qualifications:PrivateMacroQualification[];
 }>{
   return discoverOnDemandImpl(input,options);
 }
