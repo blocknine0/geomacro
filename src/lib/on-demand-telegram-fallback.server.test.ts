@@ -51,7 +51,7 @@ describe("on-demand Telegram research fallback", () => {
       searched_channel_count: 2, unverified_lead_count: 4,
       verified_intelligence_created: false, chargeable: false,
     });
-    const [, options] = fetcher.mock.calls[0];
+    const [, options] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
     expect(JSON.parse(String(options.body))).toEqual({
       schema: "geomacro.private-telegram-query.v1",
       country_iso3: "IND", categories: ["macro"],
