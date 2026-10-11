@@ -43,6 +43,7 @@ import {
 } from "./coinbase-x402-usage-guard.server";
 import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.server";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
+import { lookupTelegramFallback } from "./on-demand-telegram-fallback.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
   verifyOnDemandOriginalArticlePages, type OnDemandCategory,
@@ -415,6 +416,14 @@ export const mainnetIntelligenceHandlers = {
               execution_authorized:false,
             },503);
           }
+          // A missing first-party original triggers at most one governed,
+          // per-request read-only research lookup. Telegram returns UNVERIFIED
+          // counts only; no reader status makes an x402 product chargeable.
+          const telegramFallback = await lookupTelegramFallback({
+            country_iso3: subject.country_iso3,
+            categories,
+            originalArticleEvidenceSufficient: privateOriginalReviewCandidateCount > 0,
+          });
           // No raw upstream records, publisher IDs or original links cross
           // this boundary. No x402 payment quote is issued for discoveries.
           return json({
@@ -445,6 +454,7 @@ export const mainnetIntelligenceHandlers = {
               independent_same_event_corroboration_verified:false,
               source_derived_commercial_rights_verified:false,
               signed_derived_intelligence_created:false,
+              telegram_fallback:telegramFallback,
               raw_upstream_delivered:false,
             },
             error:{
