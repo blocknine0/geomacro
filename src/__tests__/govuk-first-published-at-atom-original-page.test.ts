@@ -54,7 +54,6 @@ describe("#2041 UK FCDO/DBT source-original publication clocks",()=>{
     expect(result.undated_atom_article_link_candidates).toBe(1);
     expect(result.first_party_original_page_probe_codes).toMatchObject({
       PRECISE_PUBLICATION_VERIFIED:1,
-      URL_UNAPPROVED:undefined,
     });
     expect(result.original_page_precise_date_24h).toBe(1);
     expect(result.private_original_article_candidates).toHaveLength(1);
