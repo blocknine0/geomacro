@@ -1,6 +1,5 @@
 import {describe,it,expect,vi} from "vitest";
 import {URL as NodeURL} from "node:url";
-import {isIP} from "node:net";
 import {
   MAX_ROOTS_PER_WINDOW,selectGovernedRootWindow,probeGovernedRoots,approvedRoot,
 } from "../../scripts/ops/probe-source-discovery-roots.mjs";
@@ -16,9 +15,9 @@ describe("#1827 bounded governed source root health",()=>{
   it("adopts native valid HTTPS URL and rejects private network URLs",()=>{
     const u=new NodeURL("https://example.org/official");
     expect({protocol:u.protocol,port:u.port,username:u.username,password:u.password,
-      hash:u.hash,hostname:u.hostname,isIp:isIP(u.hostname)}).toEqual({
+      hash:u.hash,hostname:u.hostname}).toEqual({
       protocol:"https:",port:"",username:"",password:"",hash:"",
-      hostname:"example.org",isIp:0,
+      hostname:"example.org",
     });
     expect(approvedRoot("https://example.org/official")?.hostname).toBe("example.org");
     expect(approvedRoot("https://192.168.1.1/admin")).toBeNull();
