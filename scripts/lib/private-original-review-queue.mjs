@@ -13,6 +13,12 @@ const CLOCK=/^20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/u;
 const MAX_PER_DOMAIN=240;
 const MAX_AGE_MS=24*60*60*1000;
 const STATES=new Set(["TOPIC_HINT_UNVERIFIED","NO_TOPIC_HINT"]);
+const QUEUE_FIELDS=new Set([
+  "schema","domain","article_sha256","native_published_at","first_queued_at",
+  "intake_status","review_status","topic_hint","country_verified",
+  "commodity_verified","same_event_reviewed","commercial_rights_verified",
+  "signed_gro_verified","payment_eligible",
+]);
 const invalid=()=>new Error("PRIVATE_ORIGINAL_REVIEW_QUEUE_INVALID");
 function ms(s) {
   if(typeof s!=="string"||!CLOCK.test(s))return NaN;
@@ -20,6 +26,7 @@ function ms(s) {
 }
 function safeEntry(e,domain,now) {
   if(!e||typeof e!=="object"||Array.isArray(e)||
+     Object.keys(e).some(key=>!QUEUE_FIELDS.has(key))||
      e.schema!=="geomacro.private-original-review-ref.v1"||
      e.domain!==domain||!SHA.test(e.article_sha256)||
      !Number.isFinite(ms(e.native_published_at))||
@@ -56,7 +63,8 @@ export function reconcilePrivateOriginalReviewQueue({
     safeEntry(e,domain,now);
     if(queue.has(e.article_sha256))throw invalid();
     if(now-ms(e.native_published_at)<=MAX_AGE_MS)
-      queue.set(e.article_sha256,{...e});
+      queue.set(e.article_sha256,Object.fromEntries(
+        [...QUEUE_FIELDS].map(k=>[k,e[k]])));
   }
   const byArticle=new Map();
   for(const c of candidates) {
@@ -70,7 +78,7 @@ export function reconcilePrivateOriginalReviewQueue({
        c.same_event_claim_identity_verified!==false||
        c.independently_authored_reporting_verified!==false||
        c.commercial_derived_use_rights_verified!==false||
-       c.article_category_relevance_verified===true||
+       ![false,undefined].includes(c.article_category_relevance_verified)||
        c.eligible_for_scoring!==false||c.eligible_for_publication!==false||
        ![true,false,undefined].includes(c.discovery_topic_matched))
       throw invalid();
