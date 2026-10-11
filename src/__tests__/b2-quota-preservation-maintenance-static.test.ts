@@ -48,7 +48,7 @@ describe("B2 snapshot maintenance quota preservation", () => {
     expect(wrapper).toContain('"geomacro.public-intelligence-live.v1"');
     expect(wrapper).toContain('"geomacro.public-risk-live.v1"');
     expect(wrapper).toContain('"geomacro.source-network-live.v1"');
-    expect(wrapper).toContain('"geomacro.commercial-source-rights-live.v1"');
+    expect(wrapper).toContain('"geomacro.commercial-source-rights-live.v2"');
     expect(wrapper).toContain("sha256(packed)");
     expect(wrapper).toContain("gunzipSync(packed)");
     expect(wrapper).toContain('restored?.data?.verificationStatus !== "verified"');

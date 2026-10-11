@@ -1,0 +1,58 @@
+import {readFileSync} from "node:fs";
+import {describe,expect,it} from "vitest";
+
+const publisher=readFileSync("scripts/ops/publish-b2-live-snapshots.ts","utf8");
+const workflow=readFileSync(".github/workflows/b2-live-snapshot-maintenance.yml","utf8");
+const wrapper=readFileSync("scripts/ops/run-b2-snapshot-maintenance-with-preservation.mjs","utf8");
+
+describe("isolated commercial source-rights snapshot recovery",()=>{
+  it("reads and validates ALL source rights and certifications before any rights-only upload",()=>{
+    const block=publisher.slice(publisher.indexOf("async function collectCommercialSourceRights()"),
+      publisher.indexOf('if (mode === "rights-only")'));
+    expect(block).toContain('.from("live_external_sources")');
+    expect(block).toContain('.from("live_source_certification_records")');
+    expect(block).toContain("SOURCE_RIGHTS_MAX_ROWS");
+    expect(block).toContain("sourceIds.has(sourceId)");
+    expect(block).toContain("evaluatePaidOutputSourceReadiness");
+    const rights=publisher.slice(publisher.indexOf('if (mode === "rights-only")'),
+      publisher.indexOf("const intelligenceRows = await readPublicIntelligenceRowsFromSupabase();"));
+    expect(rights).toContain("await collectCommercialSourceRights()");
+    expect(rights).toContain('"geomacro.commercial-source-rights-live.v2"');
+    expect(rights).toContain("sourceRightsSnapshot.length");
+    expect(rights).toContain("b2.putWithMetadataVerification");
+    expect(rights).toContain("verifyRestored:");
+    expect(rights).toContain("gunzipSync(bytes)");
+    expect(rights).toContain("full_body_readback_verified");
+    expect(rights).not.toContain("readPublicIntelligenceRowsFromSupabase");
+    expect(rights).not.toContain("readPublicGlobalRisk");
+    expect(rights).not.toContain("b2.put(SOURCE_RIGHTS_KEY");
+  });
+
+  it("keeps full legacy publisher gated while manual rights-only does not fake full category readiness",()=>{
+    expect(publisher).toContain('const mode = process.argv[2] ?? "live-public"');
+    expect(publisher).toContain('if (!paidOutputReadiness.ready)');
+    expect(publisher).toContain("B2_LIVE_PAID_OUTPUT_SOURCE_SET_NOT_READY");
+    expect(publisher).toContain('mode: "rights-only"');
+    expect(publisher).toContain('supabase_writes: 0');
+    expect(publisher).toContain('x402_settlements: 0');
+  });
+
+  it("uses a production-only main dispatch with B2 shared D1 quota reservation (not automatic publisher spend)",()=>{
+    expect(workflow).toContain("type: choice");
+    expect(workflow).toContain("options: [rights-only, live-public]");
+    expect(workflow).toContain('inputs.mode == \'rights-only\'');
+    expect(workflow).toContain('inputs.mode == \'live-public\'');
+    expect(workflow).toContain('github.ref == \'refs/heads/main\'');
+    expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(workflow).toContain('B2_ACCOUNT_QUOTA_WORKFLOW_ID: rights_only_refresh');
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "6"');
+    expect(workflow).toContain("D1_DATABASE_ID=$id");
+    expect(workflow).toContain("run: bun scripts/ops/publish-b2-live-snapshots.ts rights-only");
+    expect(workflow).not.toContain("schedule:");
+  });
+
+  it("preserved B2 snapshot readback checks current v2 rights schema, not abandoned v1",()=>{
+    expect(wrapper).toContain('"geomacro.commercial-source-rights-live.v2"');
+    expect(wrapper).not.toContain('"geomacro.commercial-source-rights-live.v1"');
+  });
+});
