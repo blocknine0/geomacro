@@ -1,6 +1,8 @@
 import {describe,it,expect,vi} from "vitest";
+import {URL as NodeURL} from "node:url";
+import {isIP} from "node:net";
 import {
-  MAX_ROOTS_PER_WINDOW,selectGovernedRootWindow,probeGovernedRoots,
+  MAX_ROOTS_PER_WINDOW,selectGovernedRootWindow,probeGovernedRoots,approvedRoot,
 } from "../../scripts/ops/probe-source-discovery-roots.mjs";
 
 const row=(i:number,url="https://example.org/official")=>({
@@ -11,6 +13,16 @@ const catalog={roots:Array.from({length:535},(_,i)=>row(i))};
 const t=new Date(90*60*1000*14*200);
 
 describe("#1827 bounded governed source root health",()=>{
+  it("adopts native valid HTTPS URL and rejects private network URLs",()=>{
+    const u=new NodeURL("https://example.org/official");
+    expect({protocol:u.protocol,port:u.port,username:u.username,password:u.password,
+      hash:u.hash,hostname:u.hostname,isIp:isIP(u.hostname)}).toEqual({
+      protocol:"https:",port:"",username:"",password:"",hash:"",
+      hostname:"example.org",isIp:0,
+    });
+    expect(approvedRoot("https://example.org/official")?.hostname).toBe("example.org");
+    expect(approvedRoot("https://192.168.1.1/admin")).toBeNull();
+  });
   it("deterministically covers 535 roots in 14 distinct 90-minute slots",()=>{
     const n=Math.ceil(535/MAX_ROOTS_PER_WINDOW);
     expect(n).toBe(14);
