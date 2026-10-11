@@ -196,6 +196,8 @@ export async function write30MinSourcePulseToD1({
       [...undatedDedup.values()].reduce((n,r)=>n+r.initial_backlog_entries_baselined,0),
     undated_feed_new_since_previous_poll_count:
       [...undatedDedup.values()].reduce((n,r)=>n+r.new_feed_entries_since_previous_observation,0),
+    undated_feed_new_unverified_topic_hints:
+      [...undatedDedup.values()].reduce((n,r)=>n+r.new_feed_entries_with_unverified_topic_hint,0),
     undated_feed_original_publication_verified:false,
     // Only hashed, non-reversible, PRIVATE D1 refs are held, never published.
     original_article_identity_is_risk_event:false,
