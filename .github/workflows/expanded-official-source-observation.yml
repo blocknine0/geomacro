@@ -52,7 +52,7 @@ jobs:
           proof=artifacts/expanded-official-source/transport.json
           jq -e '
             .schema == "geomacro.expanded-official-source-observation.v1" and
-            (.sources|length)==14 and
+            (.sources|length)==15 and
             .active_source_count==12 and
             .quarantined_source_count==3 and
             .all_registered_sources_transport_healthy==false and
