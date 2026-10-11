@@ -8,8 +8,9 @@
  * remain their own bounded producers; this is their source-control fan-in.
  */
 import { createHash } from "node:crypto";
-import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, mkdirSync, writeFileSync, lstatSync, realpathSync } from "node:fs";
+import { verifyInternalResearchPointer } from "../verify-telegram-manual-research-review.mjs";
+import { resolve, dirname, sep, isAbsolute } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const VALID_DOMAINS = new Set(["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"]);
@@ -40,17 +41,21 @@ function stringId(value) {
 }
 export function assemblePrivateIntakeSnapshot(input, now = new Date()) {
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw Error("PRIVATE_INTAKE_CLOCK_INVALID");
-  const { core, free, roots, telegram, historical } = input ?? {};
+  const { core, free, roots, telegram, historical, manualTelegram } = input ?? {};
   if (!core || !core.categories || typeof core.categories !== "object") throw Error("PRIVATE_INTAKE_CORE_SCHEMA_INVALID");
   const freeRows = ensureRows(free, "sources", 1000);
   const rootRows = ensureRows(roots, "roots", 1500);
   const telegramRows = ensureRows(telegram, "sources", 2000, "geomacro.telegram-source-registry.v1");
   const historicalRows = ensureRows(historical, "sources", 1000);
+  // Human-attested pointer-only handoff. Does not authorize MTProto or Bot API.
+  const manualRows = ensureRows(manualTelegram ?? {
+    schema: "geomacro.private-human-telegram-research-batch.v1", pointers: [],
+  }, "pointers", 48, "geomacro.private-human-telegram-research-batch.v1");
   const queue = [];
   const perDomain = Object.fromEntries([...VALID_DOMAINS].map(d => [d, {
-    core: 0, free: 0, roots: 0, telegram: 0, historical: 0,
+    core: 0, free: 0, roots: 0, telegram: 0, telegram_research: 0, historical: 0,
   }]));
-  const laneCounts = { core: 0, free: 0, roots: 0, telegram: 0, historical: 0 };
+  const laneCounts = { core: 0, free: 0, roots: 0, telegram: 0, telegram_research: 0, historical: 0 };
   const statuses = Object.create(null);
   const identities = new Set();
 
@@ -89,6 +94,20 @@ export function assemblePrivateIntakeSnapshot(input, now = new Date()) {
       : "TELEGRAM_CANDIDATE_NOT_AUTHORIZED";
     add("telegram", c, row?.candidate_key, status);
   }
+  // Human-referenced Telegram leads are NOT collected channel messages.
+  // Their country/category/topic/time are merely UNVERIFIED claims until
+  // two separate official original publishers pass trusted review/signing.
+  const manualIds = new Set();
+  for (const pointer of manualRows) {
+    const review = verifyInternalResearchPointer(pointer, now);
+    if (manualIds.has(review.reference_id)) throw Error("PRIVATE_INTAKE_DUPLICATE_TELEGRAM_RESEARCH_REFERENCE");
+    manualIds.add(review.reference_id);
+    const recent = now.getTime() - Date.parse(review.research_observed_at) <= 6 * 3600000;
+    add("telegram_research", domain(review.category), review.reference_id,
+      review.historical_reference || !recent
+        ? "TELEGRAM_HUMAN_REFERENCE_HISTORICAL_NOT_CURRENT"
+        : "TELEGRAM_HUMAN_REFERENCE_PENDING_OFFICIAL_ORIGINAL_REVIEW");
+  }
   let historicalLegacyExcluded = 0;
   for (const row of historicalRows) {
     const c = domain(row?.category);
@@ -109,9 +128,12 @@ export function assemblePrivateIntakeSnapshot(input, now = new Date()) {
     lane_counts: laneCounts,
     status_counts: statuses,
     historical_crypto_legacy_excluded: historicalLegacyExcluded,
+    human_telegram_pointer_only_count: manualIds.size,
     source_refs: queue,
     boundaries: {
       telegram_messages_ingested: false,
+      human_research_references_are_not_verified_events: true,
+      independent_original_publisher_review_not_bypassed: true,
       original_articles_downloaded: false,
       historical_rows_downloaded: false,
       source_ownership_or_permissions_granted: false,
@@ -165,6 +187,25 @@ async function fetchPrivateManifest(url) {
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
+// Optional trusted-operator WSL/local input. It is never configured in the
+// scheduled GitHub workflow; no Telegram credentials or raw channel content.
+function readLocalPrivateResearchBatch() {
+  const configured = process.env.TELEGRAM_PRIVATE_RESEARCH_POINTERS_FILE;
+  if (!configured) return {schema: "geomacro.private-human-telegram-research-batch.v1", pointers: []};
+  if (!isAbsolute(configured)) throw Error("PRIVATE_INTAKE_MANUAL_POINTER_FILE_MUST_BE_ABSOLUTE");
+  const root=resolve(".");
+  const file=resolve(configured), real=realpathSync(file);
+  const parent=realpathSync(dirname(file));
+  if (real!==file || (real===root || real.startsWith(root+sep)) ||
+      parent===root || parent.startsWith(root+sep) ||
+      !lstatSync(file).isFile() || lstatSync(file).isSymbolicLink() ||
+      lstatSync(file).size>128*1024 || (lstatSync(file).mode & 0o077)!==0)
+    throw Error("PRIVATE_INTAKE_MANUAL_POINTER_FILE_UNSAFE");
+  const input=readJson(file);
+  if(!input || Object.keys(input).sort().join(",")!=="pointers,schema")
+    throw Error("PRIVATE_INTAKE_MANUAL_POINTER_FIELDS_INVALID");
+  return input;
+}
 export async function gatherPrivateIntakeSnapshot(now = new Date(), fetcher = null) {
   // During PR tests a mock fetcher tests live manifest shape without access.
   // In production a usable fine-grained PAT enables CURRENT private registry
@@ -200,7 +241,7 @@ export async function gatherPrivateIntakeSnapshot(now = new Date(), fetcher = nu
     core: readJson("global-intelligence/sources/source-registry.v1.json"),
     free: readJson("global-intelligence/sources/free-source-catalog.v1.json"),
     roots: readJson("config/telegram-discovery-roots.json"),
-    telegram, historical,
+    telegram, historical, manualTelegram: readLocalPrivateResearchBatch(),
   }, now);
   return { ...snapshot, source_catalog_provenance: provenance };
 }
