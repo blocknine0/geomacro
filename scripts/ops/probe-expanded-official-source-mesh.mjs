@@ -190,6 +190,8 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
   const entries=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80);
   let dated=0,recent=0,openSevenDay=0,topicalRecent=0;
   let missingNativeDate=0,invalidOrFutureDate=0,rejectedOriginalLink=0;
+  let invalidNativeDate=0,futureNativeDate=0;
+  let unsafeOrMalformedLink=0,wrongPublisherHost=0,wrongOriginalPath=0;
   let nativeDataUpdates=0,otherCatalogueChanges=0;
   let topicalSixHours=0,topicalNinetyMinutes=0,topicalThirtyMinutes=0;
   for(const [,item] of entries) {
@@ -198,12 +200,20 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
     // processing time, or feed update time; and never an event risk claim.
     if (!date){missingNativeDate++;continue;}
     const ms=Date.parse(date.trim());
-    if (!Number.isFinite(ms) || ms>now.getTime()){
-      invalidOrFutureDate++;continue;
+    if(!Number.isFinite(ms)){
+      invalidOrFutureDate++;invalidNativeDate++;continue;
+    }
+    if(ms>now.getTime()){
+      invalidOrFutureDate++;futureNativeDate++;continue;
     }
     const originalLink=item.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/iu)?.[1]?.trim()??"";
     if(!originalHref(originalLink,hosts,source)){
-      rejectedOriginalLink++;continue;
+      rejectedOriginalLink++;
+      const why=originalLinkRejectionKind(originalLink,hosts,source);
+      if(why==="publisher_host_mismatch")wrongPublisherHost++;
+      else if(why==="original_article_path_mismatch")wrongOriginalPath++;
+      else unsafeOrMalformedLink++;
+      continue;
     }
     dated++;
     if(now.getTime()-ms<=7*DAY_MS)openSevenDay++;
@@ -238,6 +248,11 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
       item_native_published_missing:missingNativeDate,
       item_native_published_invalid_or_future:invalidOrFutureDate,
       original_article_link_rejected:rejectedOriginalLink,
+      item_native_published_invalid_date:invalidNativeDate,
+      item_native_published_future_date:futureNativeDate,
+      original_article_link_wrong_host:wrongPublisherHost,
+      original_article_link_wrong_path:wrongOriginalPath,
+      original_article_link_other_invalid:unsafeOrMalformedLink,
       accepted_first_party_older_than_7d:dated-openSevenDay,
       accepted_first_party_native_dated:dated,
     },
@@ -265,19 +280,42 @@ function originalHref(href, hosts, source=null) {
   } catch {return false;}
 }
 
+function originalLinkRejectionKind(href,hosts,source=null) {
+  // Diagnostics ONLY. Authoritative originalHref() validity remains unchanged.
+  // Never log or return the actual publisher URL, host, title or article bytes.
+  try {
+    const link=new URL(String(href??"").replace(/&amp;/giu,"&"));
+    if(link.protocol!=="https:" || link.username || link.password ||
+       link.port || link.hash || link.href.length>2048)
+      return "unsafe_or_malformed";
+    if(Array.isArray(hosts) && hosts.length && !hosts.includes(link.hostname.toLowerCase()))
+      return "publisher_host_mismatch";
+    if(source && (!ORIGINAL_ARTICLE_PATHS[source.id]?.test(link.pathname) ||
+       link.pathname===new URL(source.url).pathname ||
+       /(?:^|\/)(?:feed|rss|atom)(?:\/|$)/iu.test(link.pathname)))
+      return "original_article_path_mismatch";
+    return "other_rejected";
+  } catch {return "unsafe_or_malformed";}
+}
+
 function atomDateCounts(xml,now,topic,hosts,source=null) {
   if(!/<(?:atom:)?feed(?:\s|>)/iu.test(xml) ||
       /<!DOCTYPE|<!ENTITY/iu.test(xml))return null;
   const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,80);
   let dated=0,recent=0,openSevenDay=0,topicalRecent=0;
   let missingNativeDate=0,invalidOrFutureDate=0,rejectedOriginalLink=0;
+  let invalidNativeDate=0,futureNativeDate=0;
+  let unsafeOrMalformedLink=0,wrongPublisherHost=0,wrongOriginalPath=0;
   let topicalSixHours=0,topicalNinetyMinutes=0,topicalThirtyMinutes=0;
   for(const [,item] of entries){
     const publication=item.match(/<(?:atom:)?published(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?published>/iu)?.[1];
     if(!publication){missingNativeDate++;continue;}
     const at=Date.parse(publication.trim());
-    if(!Number.isFinite(at)||at>now.getTime()){
-      invalidOrFutureDate++;continue;
+    if(!Number.isFinite(at)){
+      invalidOrFutureDate++;invalidNativeDate++;continue;
+    }
+    if(at>now.getTime()){
+      invalidOrFutureDate++;futureNativeDate++;continue;
     }
     const tag=[...item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)]
       .map(x=>x[1]).find(attr=>{
@@ -286,7 +324,12 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
       })??"";
     const href=tag.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??"";
     if(!originalHref(href,hosts,source)){
-      rejectedOriginalLink++;continue;
+      rejectedOriginalLink++;
+      const why=originalLinkRejectionKind(href,hosts,source);
+      if(why==="publisher_host_mismatch")wrongPublisherHost++;
+      else if(why==="original_article_path_mismatch")wrongOriginalPath++;
+      else unsafeOrMalformedLink++;
+      continue;
     }
     dated++;
     if(now.getTime()-at<=7*DAY_MS)openSevenDay++;
@@ -312,6 +355,11 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
       item_native_published_missing:missingNativeDate,
       item_native_published_invalid_or_future:invalidOrFutureDate,
       original_article_link_rejected:rejectedOriginalLink,
+      item_native_published_invalid_date:invalidNativeDate,
+      item_native_published_future_date:futureNativeDate,
+      original_article_link_wrong_host:wrongPublisherHost,
+      original_article_link_wrong_path:wrongOriginalPath,
+      original_article_link_other_invalid:unsafeOrMalformedLink,
       accepted_first_party_older_than_7d:dated-openSevenDay,
       accepted_first_party_native_dated:dated,
     },

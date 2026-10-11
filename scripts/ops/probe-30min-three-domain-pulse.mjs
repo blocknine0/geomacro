@@ -112,6 +112,9 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       "entries_parsed","item_native_published_missing",
       "item_native_published_invalid_or_future",
       "original_article_link_rejected",
+      "item_native_published_invalid_date","item_native_published_future_date",
+      "original_article_link_wrong_host","original_article_link_wrong_path",
+      "original_article_link_other_invalid",
       "accepted_first_party_older_than_7d",
       "accepted_first_party_native_dated",
     ];
