@@ -231,7 +231,7 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
 
 describe("fair private source evidence under publisher flood",()=>{
   it("keeps every independent original institution represented in a 16-entry budget",async()=>{
-    const mkItems=(prefix:string,title:string,link:(i:number)=>string,atom:boolean)=>
+    const mkItems=(title:string,link:(i:number)=>string,atom:boolean)=>
       Array.from({length:5},(_,i)=> atom
         ? '<entry><title>'+title+' '+i+'</title><published>2026-10-11T07:00:00Z</published>'+
           '<link rel="alternate" href="'+link(i)+'"/></entry>'
@@ -243,18 +243,18 @@ describe("fair private source evidence under publisher flood",()=>{
       let body:string|null=null;
       let atom=false;
       if(uri.hostname==="news.un.org")
-        body=mkItems("un","India conflict security council update",i=>
+        body=mkItems("India conflict security council update",i=>
           "https://news.un.org/en/story/2026/10/115000"+i,false);
       if(uri.hostname==="www.federalreserve.gov")
-        body=mkItems("fed","India inflation monetary policy update",i=>
+        body=mkItems("India inflation monetary policy update",i=>
           "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261011"+i+".htm",false);
       if(uri.hostname==="www.minister.industry.gov.au")
-        body=mkItems("aus","India lithium critical minerals update",i=>
+        body=mkItems("India lithium critical minerals update",i=>
           "https://www.minister.industry.gov.au/t-ayres/media/releases/india-"+i,false);
       if(uri.hostname==="www.gov.uk"){
         atom=true;
         const fcdo=uri.pathname.includes("foreign-commonwealth");
-        body=mkItems("uk",fcdo?"India diplomatic security update":"India lithium minerals update",i=>
+        body=mkItems(fcdo?"India diplomatic security update":"India lithium minerals update",i=>
           "https://www.gov.uk/government/news/india-"+(fcdo?"diplomatic-":"minerals-")+i,true);
       }
       if(body!==null) return new Response(atom?"<feed>"+body+"</feed>":"<rss><channel>"+body+"</channel></rss>");
