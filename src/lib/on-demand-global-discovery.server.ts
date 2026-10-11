@@ -617,6 +617,11 @@ async function discoverOnDemandImpl(
   const now=options.now ?? new Date(), fetchImpl=options.fetchImpl ?? fetch;
   let networkAttempts=0;
   const trackedFetch:typeof fetch=((input,init)=>{
+    // Counting real fetch calls is essential when an optional approved API
+    // and one same-publisher transport retry would otherwise exceed quota.
+    // At most 12 query-discovery GETs; blocked attempts are not counted.
+    if(networkAttempts>=12)
+      return Promise.reject(Error("ON_DEMAND_NETWORK_BUDGET_EXHAUSTED"));
     networkAttempts++;
     return fetchImpl(input,init);
   }) as typeof fetch;
