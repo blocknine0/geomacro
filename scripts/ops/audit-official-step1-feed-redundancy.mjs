@@ -32,6 +32,25 @@ const ORIGINAL_ISSUERS = Object.freeze({
 });
 const DOMAINS = Object.freeze(["geopolitics", "macro", "rare_earth"]);
 const integer = n => Number.isSafeInteger(n) && n >= 0;
+/** Strict same-publisher recovery only. Never accept an alternate from a
+ * different organization, a 401/403/429 response, or a fabricated HTTP 200.
+ * Recovery proves transport, not independent corroboration or usage rights. */
+function verifiedPublisherTransport(row, source) {
+  if (row?.primary_http_status === 200 &&
+      row.official_same_publisher_fallback_attempted !== true &&
+      row.official_same_publisher_fallback_used !== true)
+    return true;
+  if (source?.network_fallback_same_publisher !== true ||
+      typeof source.alternate_url !== "string" ||
+      new URL(source.url).hostname !== new URL(source.alternate_url).hostname)
+    return false;
+  const code=row?.primary_http_status;
+  return row?.official_same_publisher_fallback_attempted===true &&
+    row?.official_same_publisher_fallback_used===true &&
+    row?.fallback_http_status===200 &&
+    (code===null || code===404 || (integer(code) && code>=500 && code<=599)) &&
+    row?.official_locale_fallback_attempted!==true;
+}
 
 /** Pure validation/aggregation function: safe for unit tests and runbooks. */
 export function auditOfficialStep1Feeds(receipt) {
@@ -62,7 +81,7 @@ export function auditOfficialStep1Feeds(receipt) {
           row.publisher_reachable!==false ||
           row.format_valid!==false)) ||
         (row.format_valid && (row.publisher_reachable !== true ||
-          row.primary_http_status !== 200)) ||
+          !verifiedPublisherTransport(row,source))) ||
         (!row.format_valid && row.publisher_reachable) ||
         (source.original_hosts && row.format_valid && (
           !integer(row.source_native_release_items) ||
@@ -89,7 +108,7 @@ export function auditOfficialStep1Feeds(receipt) {
       const row = rows.get(id);
       const good = row?.format_valid === true &&
         row.publisher_reachable === true &&
-        row.primary_http_status === 200 &&
+        verifiedPublisherTransport(row,expected.get(id)) &&
         integer(row.source_native_release_items) &&
         integer(row.source_native_24h_release_items) &&
         row.source_native_24h_release_items <= row.source_native_release_items &&
