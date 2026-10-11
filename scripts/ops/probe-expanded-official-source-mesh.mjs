@@ -5,7 +5,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "../lib/official-original-article-date.mjs";
+import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN, SAFE_PUBLISHER_PAGE_PROBE_CODES } from "../lib/official-original-article-date.mjs";
 import { originalPublisherPrivateCandidates, originalPublisherPrivatePageDateCandidate } from "../lib/private-original-publisher-candidates.mjs";
 import { officialOriginalRssArticleUrl } from "../lib/official-rss-original-link.mjs";
 import { isQuarantinedOfficialRoute, quarantinedOfficialSourceReceipt } from "../lib/official-source-quarantine.mjs";
@@ -186,12 +186,32 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   uk_dbt_critical_minerals_atom_pending_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
 });
 
+// Coarse lexical buckets ONLY: never log invalid date text, time values,
+// article identifiers or a customer event. Strict Date.parse gate unchanged.
+function nativeRssDateShape(raw) {
+  const value=String(raw??"").trim();
+  if(/^<!\[CDATA\[/iu.test(value))return "CDATA_WRAPPER";
+  if(/^([A-Za-z]{3,9}),?\s+\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}\s+\d{1,2}:\d{2}/u.test(value))
+    return /[A-Z]{2,5}\s*$/u.test(value)?"RFC_ALPHA_ZONE":"RFC_OTHER_ZONE";
+  if(/^\d{4}-\d{2}-\d{2}[T ]/u.test(value))return "ISO_LIKE";
+  if(/^\d{1,2}\/\d{1,2}\/\d{4}/u.test(value))return "SLASH_DATE_LIKE";
+  return "OTHER";
+}
+const NATIVE_SHAPES=Object.freeze([
+  "CDATA_WRAPPER","RFC_ALPHA_ZONE","RFC_OTHER_ZONE",
+  "ISO_LIKE","SLASH_DATE_LIKE","OTHER",
+]);
+function numericRssDateShapeCounters() {
+  return Object.fromEntries(NATIVE_SHAPES.map(s=>[s,0]));
+}
+
 function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
   if (!/<rss(?:\s|>)/iu.test(xml) || /<!DOCTYPE|<!ENTITY/iu.test(xml)) return null;
   const entries=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,80);
   let dated=0,recent=0,openSevenDay=0,topicalRecent=0;
   let missingNativeDate=0,invalidOrFutureDate=0,rejectedOriginalLink=0;
   let invalidNativeDate=0,futureNativeDate=0;
+  const unparseableNativeDateShapes=numericRssDateShapeCounters();
   let unsafeOrMalformedLink=0,wrongPublisherHost=0,wrongOriginalPath=0;
   let nativeDataUpdates=0,otherCatalogueChanges=0;
   let topicalSixHours=0,topicalNinetyMinutes=0,topicalThirtyMinutes=0;
@@ -202,7 +222,9 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
     if (!date){missingNativeDate++;continue;}
     const ms=Date.parse(date.trim());
     if(!Number.isFinite(ms)){
-      invalidOrFutureDate++;invalidNativeDate++;continue;
+      invalidOrFutureDate++;invalidNativeDate++;
+      unparseableNativeDateShapes[nativeRssDateShape(date)]++;
+      continue;
     }
     if(ms>now.getTime()){
       invalidOrFutureDate++;futureNativeDate++;continue;
@@ -257,6 +279,7 @@ function rssDateCounts(xml,now,topic=null,hosts=null,source=null) {
       accepted_first_party_older_than_7d:dated-openSevenDay,
       accepted_first_party_native_dated:dated,
     },
+    unparseable_native_rss_date_shapes:unparseableNativeDateShapes,
     native_dataset_data_updates_24h:nativeDataUpdates,
     other_catalogue_changes_24h:otherCatalogueChanges};
 }
@@ -428,6 +451,9 @@ export async function probeExpandedSource(source,{
     source_native_7d_release_items:null,
     original_publisher_open_24h_count:null,
     source_item_provenance_diagnostics:null,
+    unparseable_native_rss_date_shapes:null,
+    first_party_original_page_probe_codes:null,
+    undated_atom_article_link_candidates:null,
     // Populated only for the Eurostat dataset catalogue, not RSS headlines.
     eurostat_native_dataset_data_updates_24h:null,
     eurostat_other_catalogue_changes_24h:null,
@@ -537,6 +563,7 @@ export async function probeExpandedSource(source,{
     row.source_native_24h_release_items=counts.within_24h;
     row.source_native_7d_release_items=counts.open_original_or_release_within_7d;
     row.source_item_provenance_diagnostics=counts.item_provenance_diagnostics??null;
+    row.unparseable_native_rss_date_shapes=counts.unparseable_native_rss_date_shapes??null;
     if(source.original_hosts)row.original_publisher_open_24h_count=counts.within_24h;
     if(source.topic)row.topical_private_release_links_24h=counts.topical_within_24h;
     if(source.original_hosts){
@@ -558,11 +585,20 @@ export async function probeExpandedSource(source,{
     const articles=source.media==="atom"
       ? undatedAtomArticleCandidates(body,source,{openDiscovery})
       : undatedRssArticleCandidates(body,source,{openDiscovery});
+    row.undated_atom_article_link_candidates=
+      source.media==="atom"?articles.length:null;
+    // Aggregate only the existing, fixed-enum publisher page verifier codes.
+    // No article URLs, response bodies or original date text appear in logs.
+    const pageCodes=Object.create(null);
     let topicalOriginalPages=0;
     for(const article of articles){
+      const pageDiagnostics={};
       const published=await fetchVerifiedPublisherPageDate(article,source.domain,{
-        now,fetchImpl,
+        now,fetchImpl,diagnostics:pageDiagnostics,
       });
+      const safeCode=pageDiagnostics.code;
+      if(SAFE_PUBLISHER_PAGE_PROBE_CODES.includes(safeCode))
+        pageCodes[safeCode]=(pageCodes[safeCode]??0)+1;
       row.original_page_precise_date_checks++;
       if(!published)continue;
       // An independently checked publisher article page date can rescue an
@@ -593,6 +629,7 @@ export async function probeExpandedSource(source,{
         row.original_publisher_topical_30m++;
     }
     row.topical_private_release_links_24h+=topicalOriginalPages;
+    row.first_party_original_page_probe_codes=pageCodes;
   }
   return row;
 }
