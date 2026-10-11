@@ -7,6 +7,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "../lib/official-original-article-date.mjs";
 import { originalPublisherPrivateCandidates, originalPublisherPrivatePageDateCandidate } from "../lib/private-original-publisher-candidates.mjs";
+import { isQuarantinedOfficialRoute, quarantinedOfficialSourceReceipt } from "../lib/official-source-quarantine.mjs";
 
 const MAX_BODY_BYTES=192*1024;
 // Eurostat twice-daily official catalogue feed can exceed the small news-RSS
@@ -486,12 +487,27 @@ export async function probeExpandedSource(source,{
 export async function probeExpandedOfficialMesh({fetchImpl=fetch,now=new Date()}={}){
   const entries=[];
   for(const source of EXPANDED_OFFICIAL_SOURCES){
-    entries.push(await probeExpandedSource(source,{fetchImpl,now}));
+    // Historical denied/robot-blocked URLs are never re-requested.
+    // Active original issuers remain independently sampled at normal cadence.
+    if(isQuarantinedOfficialRoute(source.id))
+      entries.push(quarantinedOfficialSourceReceipt(source));
+    else entries.push(await probeExpandedSource(source,{fetchImpl,now}));
   }
+  const active=entries.filter(x=>x.quarantined!==true);
+  const quarantined=entries.filter(x=>x.quarantined===true);
+  const activeOk=active.every(x=>x.format_valid===true);
   return {
     schema:"geomacro.expanded-official-source-observation.v1",
     observed_at:now.toISOString(),
-    status:entries.every(x=>x.format_valid)?"SOURCE_TRANSPORT_OBSERVED":"SOURCE_TRANSPORT_DEGRADED",
+    status:activeOk
+      ? "ACTIVE_SOURCE_TRANSPORT_OBSERVED_WITH_QUARANTINE"
+      : "ACTIVE_SOURCE_TRANSPORT_DEGRADED",
+    // Active transport success != old blocked sources magically working.
+    active_source_transport_healthy:activeOk,
+    active_source_count:active.length,
+    quarantined_source_count:quarantined.length,
+    historical_quarantined_source_ids:quarantined.map(x=>x.source_id),
+    all_registered_sources_transport_healthy:quarantined.length===0&&activeOk,
     // All three domains included is NOT global geographical or event coverage.
     domains_observed:SOURCE_DOMAINS,
     globally_current_scored_coverage_verified:false,
@@ -551,5 +567,5 @@ if(process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).
   writeFileSync("artifacts/expanded-official-source/transport.json",
     JSON.stringify(result,null,2)+"\n",{mode:0o600});
   console.log(JSON.stringify(result));
-  if(result.status==="SOURCE_TRANSPORT_DEGRADED")process.exitCode=3;
+  if(result.status==="ACTIVE_SOURCE_TRANSPORT_DEGRADED")process.exitCode=3;
 }
