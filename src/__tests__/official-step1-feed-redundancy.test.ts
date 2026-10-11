@@ -26,10 +26,10 @@ function fixture() {
 describe("#1827 Step-1 official first-party publisher source readiness", () => {
   it("requires two different issuing organizations per category; does not claim global freshness", () => {
     const out = auditOfficialStep1Feeds(fixture());
-    expect(out.source_inventory_count).toBe(14);
-    expect(out.source_transport_healthy_count).toBe(14);
+    expect(out.source_inventory_count).toBe(15);
+    expect(out.source_transport_healthy_count).toBe(15);
     expect(out.per_category_two_independent_issuers_transport_healthy).toBe(true);
-    expect(out.categories.map((r: any) => r.transport_healthy_independent_issuers)).toEqual([2, 2, 4]);
+    expect(out.categories.map((r: any) => r.transport_healthy_independent_issuers)).toEqual([2, 3, 4]);
     expect(out.step1_end_to_end_accepted).toBe(false);
     expect(out.commercial_eligible).toBe(false);
     expect(out.country_article_relevance_and_rights_approved).toBe(false);
@@ -144,7 +144,7 @@ describe("#1827 Step-1 official first-party publisher source readiness", () => {
     const out=auditOfficialStep1Feeds(input);
     expect(out.source_transport_live_failure_count).toBe(0);
     expect(out.source_transport_quarantined_not_polled_count).toBe(3);
-    expect(out.source_transport_healthy_count).toBe(11);
+    expect(out.source_transport_healthy_count).toBe(12);
     expect(out.status).toBe("ORIGINAL_ISSUER_REDUNDANCY_OBSERVED_WITH_QUARANTINE");
     expect(out.per_category_two_independent_issuers_transport_healthy).toBe(true);
     expect(out.all_sources_working).toBe(false);
