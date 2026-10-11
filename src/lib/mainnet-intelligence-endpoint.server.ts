@@ -39,7 +39,7 @@ import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.se
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
-  type OnDemandCategory,
+  verifyOnDemandOriginalArticlePages, type OnDemandCategory,
 } from "./on-demand-global-discovery.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
@@ -356,6 +356,8 @@ export const mainnetIntelligenceHandlers = {
           }
           let discovery;
           let privatelyQualifiedOriginalCandidateCount=0;
+          let articlePageChecks=0;
+          let articleDatesVerified=0;
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
@@ -365,6 +367,13 @@ export const mainnetIntelligenceHandlers = {
             // response/ledger/x402 quote; article-page publication, rights
             // and independent same-event verification are not yet complete.
             privatelyQualifiedOriginalCandidateCount=privateResult.private_candidates.length;
+            const pageProof=await verifyOnDemandOriginalArticlePages(
+              privateResult.private_candidates);
+            // No page HTML, original URL, title or publisher identity is
+            // serialized. This is only publication-clock consistency, NOT
+            // independent facts, commercial source rights or signed risk.
+            articlePageChecks=pageProof.attempted;
+            articleDatesVerified=pageProof.verified;
           } catch(error) {
             console.error("[x402-live] bounded discovery failed",error);
             return json({
@@ -388,7 +397,11 @@ export const mainnetIntelligenceHandlers = {
               reached_source_families:discovery.reached_source_families,
               discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
               private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
-              private_originals_article_page_verified:false,
+              original_article_page_checks:articlePageChecks,
+              article_page_publication_dates_verified:articleDatesVerified,
+              private_originals_article_page_verified:
+                privatelyQualifiedOriginalCandidateCount>0 &&
+                articleDatesVerified===privatelyQualifiedOriginalCandidateCount,
               independent_same_event_corroboration_verified:false,
               source_derived_commercial_rights_verified:false,
               signed_derived_intelligence_created:false,

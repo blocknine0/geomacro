@@ -452,6 +452,97 @@ async function discoverOnDemandImpl(
   return {discovery,private_candidates};
 }
 
+
+/**
+ * PRIVATE next step: match first-party article-page publication metadata
+ * against its own feed date, without creating a paid or signed intelligence
+ * product. Bound to four HTTPS reads; raw HTML never leaves request memory.
+ */
+export type PrivatePageDatedOriginal = Omit<
+  PrivateOriginalCandidate, "publisher_article_page_date_verified"
+> & { publisher_article_page_date_verified: true; page_original_published_at: string };
+
+export type PrivatePageDateResult = {
+  attempted: number;
+  verified: number;
+  verified_candidates: PrivatePageDatedOriginal[];
+};
+
+const MAX_ARTICLE_PAGE_PROBES = 4;
+const ARTICLE_META_KEYS = new Set([
+  "article:published_time", "datepublished", "date_published",
+  "pubdate", "publication_date",
+]);
+
+function publisherPageDate(html: string): string | null {
+  // Explicit original publication clocks only; never an "updated" timestamp.
+  for (const tag of html.match(/<meta\b[^>]{0,900}>/giu) ?? []) {
+    const attrs = new Map<string, string>();
+    for (const m of tag.matchAll(/\b([a-z][a-z0-9:._-]*)\s*=\s*(["'])([^"']*)\2/giu)) {
+      attrs.set(m[1].toLowerCase(),m[3].trim());
+    }
+    const key = (attrs.get("property") ?? attrs.get("name") ??
+      attrs.get("itemprop") ?? "").toLowerCase();
+    if (!ARTICLE_META_KEYS.has(key)) continue;
+    const date = attrs.get("content") ?? "";
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/iu.test(date)) continue;
+    const parsed = Date.parse(date);
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
+  }
+  return null;
+}
+
+/** Internal-only evidence continuation; never serialize verified_candidates. */
+export async function verifyOnDemandOriginalArticlePages(
+  candidates: readonly PrivateOriginalCandidate[],
+  options: {fetchImpl?:typeof fetch; now?:Date}={},
+): Promise<PrivatePageDateResult> {
+  const now=options.now ?? new Date();
+  if(!Number.isFinite(now.getTime()))throw Error("ON_DEMAND_CLOCK_INVALID");
+  const eligible=candidates.slice(0,16).filter((candidate)=>{
+    const def=ORIGINAL_FALLBACK_FEEDS.find((feed)=>
+      feed.family===candidate.publisher_family && feed.domain===candidate.domain);
+    return !!def &&
+      originalArticleUrl(candidate.article_url,def)===candidate.article_url &&
+      candidate.article_identity_sha256===digest(def.family+"|"+candidate.article_url) &&
+      candidate.first_party_article_url_verified===true &&
+      candidate.source_native_feed_publication_date_verified===true &&
+      freshPublished(candidate.feed_item_published_at,now);
+  });
+  const chosen:PrivateOriginalCandidate[]=[];
+  const used=new Set<string>();
+  const add=(candidate:PrivateOriginalCandidate)=>{
+    if(chosen.length>=MAX_ARTICLE_PAGE_PROBES ||
+       used.has(candidate.publisher_family))return;
+    chosen.push(candidate);
+    used.add(candidate.publisher_family);
+  };
+  // One issuer per category first, then remaining distinct publishers.
+  for(const domain of ["geopolitics","macro","rare_earth"] as const){
+    const next=eligible.find(x=>x.domain===domain && !used.has(x.publisher_family));
+    if(next)add(next);
+  }
+  for(const candidate of eligible)add(candidate);
+
+  const dates=await Promise.all(chosen.map(async(candidate)=>{
+    try{
+      const html=await boundedFetch(options.fetchImpl??fetch,candidate.article_url,"text/html");
+      const originalDate=publisherPageDate(html);
+      if(!originalDate || !freshPublished(originalDate,now) ||
+        Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000)
+        return null;
+      return {...candidate,publisher_article_page_date_verified:true as const,
+        page_original_published_at:originalDate};
+    }catch{
+      // Redirect, source outage, oversized page or invalid clock => no proof.
+      // Never log private originals, URLs or source payloads.
+      return null;
+    }
+  }));
+  const verified_candidates=dates.filter((c):c is PrivatePageDatedOriginal=>c!==null);
+  return {attempted:chosen.length,verified:verified_candidates.length,verified_candidates};
+}
+
 /** Client-safe shape: no upstream article, URLs, text, or private evidence. */
 export async function discoverOnDemandGlobal(
   input:OnDemandSearchInput,
