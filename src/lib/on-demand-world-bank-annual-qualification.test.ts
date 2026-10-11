@@ -30,8 +30,10 @@ const caseFetch=(inflation:unknown,asText=false)=>{
 async function proof(inflation:unknown,asText=false) {
   const transport=caseFetch(inflation,asText);
   const v=await discoverOnDemandForPrivateQualification(chn,{now,fetchImpl:transport.fn});
-  expect(v.discovery.network_attempts).toBe(3);
-  expect(transport.seen).toHaveLength(3);
+// Macro also includes one GDELT discovery and one Federal Reserve publisher
+  // probe; do not silently undercount requests just because WDI is the focus.
+  expect(v.discovery.network_attempts).toBe(5);
+  expect(transport.seen).toHaveLength(5);
   expect(v.private_macro_qualifications).toHaveLength(2);
   return v;
 }
