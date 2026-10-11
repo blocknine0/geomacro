@@ -59,7 +59,7 @@ function safeOriginalUrl(raw, host) {
 
 // Does not infer a timestamp from feed updated, retrieval or GDELT discovery.
 // A SOURCE-NATIVE per-item <pubDate> is essential.
-export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs = MAX_AGE_MS, diagnostics = null) {
+export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs = MAX_AGE_MS, diagnostics = null, broadPrivateIntake = false) {
   const config = OFFICIAL_NATIVE_FEEDS[category];
   if (!config || typeof xml !== "string" || xml.length > MAX_RESPONSE_BYTES ||
       !xml.includes("<rss") || /<!DOCTYPE|<!ENTITY/iu.test(xml)) {
@@ -96,7 +96,7 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
     if (url) stats.exact_publisher_host_count += 1;
     if (config.topics.test(title)) stats.domain_topic_title_count += 1;
     if (!url || title.length < 16 || title.length > 500 ||
-        !config.topics.test(title) || !current ||
+        (!broadPrivateIntake && !config.topics.test(title)) || !current ||
         dedupe.has(url)) continue;
     dedupe.add(url);
     stats.admitted_private_count += 1;
@@ -126,6 +126,7 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
 // URL cannot add a new destination, even with a first-party hostname.
 export async function recoverPrivateOfficialRssMissingDates(xml, category,{
   now=new Date(),maxAgeMs=MAX_AGE_MS,fetchImpl=fetch,diagnostics=null,
+  broadPrivateIntake=false,
 }={}) {
   const config=OFFICIAL_NATIVE_FEEDS[category];
   const nowMs=now.getTime();
@@ -138,7 +139,7 @@ export async function recoverPrivateOfficialRssMissingDates(xml, category,{
   for(const [,block] of [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,MAX_ITEM_COUNT)){
     if(/<pubDate(?:\s[^>]*)?>/iu.test(block))continue;
     const title=field(block,"title"),url=safeOriginalUrl(field(block,"link"),config.host);
-    if(!url || !config.topics.test(title) || title.length<16 ||
+    if(!url || (!broadPrivateIntake && !config.topics.test(title)) || title.length<16 ||
        title.length>500 || seen.has(url))continue;
     seen.add(url);
     candidates.push({title,url});
@@ -206,6 +207,7 @@ export async function fetchOfficialNativeArticles(category, {
   includeThirdPublisher = false,
   includeOriginalPageDateFallback = false,
   sampleAllPublishers = false,
+  broadPrivateIntake = false,
 } = {}) {
   const config = OFFICIAL_NATIVE_FEEDS[category];
   if (!config) throw new Error("OFFICIAL_NATIVE_RSS_CATEGORY_INVALID");
@@ -213,11 +215,11 @@ export async function fetchOfficialNativeArticles(category, {
   let primaryUnavailable = false;
   try {
     const rss=await boundedRssFetch(config.url,fetchImpl);
-    primary=parseOfficialNativeRss(rss,category,now,maxAgeMs,diagnostics);
+    primary=parseOfficialNativeRss(rss,category,now,maxAgeMs,diagnostics,broadPrivateIntake);
     if(primary.length===0 && includeOriginalPageDateFallback &&
         (category==="macro" || category==="rare_earth")){
       primary=await recoverPrivateOfficialRssMissingDates(rss,category,{
-        now,maxAgeMs,fetchImpl,diagnostics,
+        now,maxAgeMs,fetchImpl,diagnostics,broadPrivateIntake,
       });
     }
   } catch {
@@ -242,7 +244,7 @@ export async function fetchOfficialNativeArticles(category, {
   let alternateUnavailable = false;
   try {
     alternate = await fetchOriginalAlternate(category,{
-      now,fetchImpl,diagnostics,maxAgeMs,
+      now,fetchImpl,diagnostics,maxAgeMs,broadPrivateIntake,
     });
     if (diagnostics && typeof diagnostics === "object")
       diagnostics.alternate_feed_ok = true;
@@ -273,7 +275,7 @@ export async function fetchOfficialNativeArticles(category, {
     diagnostics.third_feed_attempted = true;
   try {
     const third=await fetchOfficialThirdPublisherArticles(category,{
-      now,fetchImpl,maxAgeMs,diagnostics,
+      now,fetchImpl,maxAgeMs,diagnostics,broadPrivateIntake,
     });
     if (diagnostics && typeof diagnostics === "object")
       diagnostics.third_feed_ok = true;
