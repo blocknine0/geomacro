@@ -358,6 +358,7 @@ export const mainnetIntelligenceHandlers = {
           let privatelyQualifiedOriginalCandidateCount=0;
           let articlePageChecks=0;
           let articleDatesVerified=0;
+          let privateOfficialAnnualChanges=0;
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
@@ -367,6 +368,9 @@ export const mainnetIntelligenceHandlers = {
             // response/ledger/x402 quote; article-page publication, rights
             // and independent same-event verification are not yet complete.
             privatelyQualifiedOriginalCandidateCount=privateResult.private_candidates.length;
+            // Annual official change is useful structural evidence, NOT current
+            // news, source rights, an issued risk score, or paid intelligence.
+            privateOfficialAnnualChanges=privateResult.private_macro_changes.length;
             const pageProof=await verifyOnDemandOriginalArticlePages(
               privateResult.private_candidates);
             // No page HTML, original URL, title or publisher identity is
@@ -397,6 +401,7 @@ export const mainnetIntelligenceHandlers = {
               reached_source_families:discovery.reached_source_families,
               discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
               private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
+              private_official_annual_change_count:privateOfficialAnnualChanges,
               original_article_page_checks:articlePageChecks,
               article_page_publication_dates_verified:articleDatesVerified,
               private_originals_article_page_verified:

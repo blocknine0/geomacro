@@ -42,6 +42,7 @@ const proof={
     commercial_rights_verified:row.derived_commercial_rights_verified,
   })),
   private_original_candidate_count:privateEvidence.private_candidates.length,
+  private_official_annual_change_count:privateEvidence.private_macro_changes.length,
   private_original_candidate_page_dates_verified:
     privateEvidence.private_candidates.length>0 &&
     pageProof.verified===privateEvidence.private_candidates.length,
@@ -66,6 +67,7 @@ if(proof.category_count!==3||proof.network_attempts>12 ||
    proof.original_article_page_publication_date_verified_count>
      proof.original_article_page_attempts ||
    proof.private_original_candidate_count>16 ||
+   proof.private_official_annual_change_count>2 ||
    proof.network_attempts<1||proof.payable!==false||
    proof.raw_upstream_delivered!==false||
    proof.payment_settlement_attempted!==false||
