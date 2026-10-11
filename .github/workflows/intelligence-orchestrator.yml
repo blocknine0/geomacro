@@ -13,6 +13,10 @@ on:
     paths:
       - ".github/workflows/intelligence-orchestrator.yml"
       - "scripts/intelligence-orchestrator.mjs"
+      - "scripts/ops/run-active-official-source-heartbeat.mjs"
+      - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "scripts/ops/audit-official-step1-feed-redundancy.mjs"
+      - "src/__tests__/active-orchestrator-official-source-heartbeat.test.ts"
       - "scripts/run-rss-live-cycle.mjs"
       - "scripts/run-live-flash-ingest-local.ts"
       - "scripts/run-live-flash-corroborate-local.ts"
@@ -176,6 +180,8 @@ jobs:
           ! grep -q '@supabase/supabase-js' scripts/intelligence-orchestrator.mjs
           ! grep -q 'APP_SUPABASE_SERVICE_ROLE_KEY' scripts/intelligence-orchestrator.mjs
           node --check scripts/intelligence-orchestrator.mjs
+          node --check scripts/ops/run-active-official-source-heartbeat.mjs
+          grep -q 'run-active-official-source-heartbeat.mjs' scripts/intelligence-orchestrator.mjs
           echo "PASS: D1/B2 scheduler runtime validated without requiring Supabase availability."
 
       - name: Enforce permanent frozen Supabase zero-probe source heartbeat
