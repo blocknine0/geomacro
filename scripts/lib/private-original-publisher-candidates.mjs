@@ -139,8 +139,8 @@ export function originalPublisherPrivatePageDateCandidate(xml,source,{
      typeof xml!=="string"||Buffer.byteLength(xml,"utf8")>192*1024||
      /<!DOCTYPE|<!ENTITY/iu.test(xml))
     throw Error("PRIVATE_ORIGINAL_PAGE_DATE_SOURCE_INVALID");
-  if(source.media==="rss"&&!/<rss(?:\\s|>)/iu.test(xml))return null;
-  if(source.media==="atom"&&!/<(?:atom:)?feed(?:\\s|>)/iu.test(xml))return null;
+  if(source.media==="rss"&&!/<rss(?:\s|>)/iu.test(xml))return null;
+  if(source.media==="atom"&&!/<(?:atom:)?feed(?:\s|>)/iu.test(xml))return null;
   const published=typeof publishedAt==="string"?Date.parse(publishedAt):NaN;
   const ms=now.getTime();
   if(!Number.isFinite(published)||published>ms||ms-published>MAX_AGE_MS)
@@ -149,8 +149,8 @@ export function originalPublisherPrivatePageDateCandidate(xml,source,{
   if(!original)return null;
   const rss=source.media==="rss";
   const entries=rss
-    ?[...xml.matchAll(/<item(?:\\s[^>]*)?>([\\s\\S]*?)<\\/item>/giu)]
-    :[...xml.matchAll(/<(?:atom:)?entry(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:atom:)?entry>/giu)];
+    ?[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)]
+    :[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)];
   for(const [,item] of entries.slice(0,MAX_ITEMS)){
     // A supplied feed item pubDate/published (including FUTURE and invalid
     // values) must never be silently overwritten with another timestamp.
@@ -167,8 +167,8 @@ export function originalPublisherPrivatePageDateCandidate(xml,source,{
       source_id:source.id,
       original_article_sha256:digest(original),
       headline_fingerprint_sha256:digest(title.toLowerCase()
-        .normalize("NFKC").replace(/[^\\p{L}\\p{N}\\s]/gu," ")
-        .replace(/\\s+/gu," ").trim()),
+        .normalize("NFKC").replace(/[^\p{L}\p{N}\s]/gu," ")
+        .replace(/\s+/gu," ").trim()),
       native_published_at:new Date(published).toISOString(),
       publication_clock_evidence:"verified_first_party_original_article_published",
       read_transport_verified:true,
