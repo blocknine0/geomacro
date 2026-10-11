@@ -124,3 +124,36 @@ describe("Global on-demand private retrieval, not pre-generated GRO",()=>{
     expect(explicit.required_modules).toContain("signed_risk_object");
   });
 });
+
+describe("Live source free-tier quota and memory safety",()=>{
+  it("never buffers an oversized upstream body without Content-Length",async()=>{
+    const responses=vi.fn(async () => new Response("x".repeat(192*1024+1),{
+      status:200,
+      headers:{"content-type":"application/json"},
+    })) as unknown as typeof fetch;
+    const proof=await discoverOnDemandGlobal({
+      country_iso3:"IND",categories:["macro"],
+    },{fetchImpl:responses,now});
+    expect(proof.reached_source_families).toBe(0);
+    expect(proof.status).toBe("DISCOVERY_DEGRADED");
+    expect(proof.payable).toBe(false);
+    expect(proof.settlement_attempted).toBe(false);
+    expect(proof.network_attempts).toBe(3);
+  });
+  it("requests fixed HTTPS source URLs without redirects or customer freeform strings",async()=>{
+    const requests: Array<{url:string;opts:RequestInit|undefined}>=[];
+    const caller=vi.fn(async (request: RequestInfo|URL,opts?:RequestInit)=>{
+      requests.push({url:String(request),opts});
+      return upstream(String(request));
+    }) as unknown as typeof fetch;
+    const proof=await discoverOnDemandGlobal({
+      country_iso3:"IND",categories:["macro","geopolitics"],
+    },{fetchImpl:caller,now});
+    expect(proof.network_attempts).toBe(9);
+    expect(requests).toHaveLength(9);
+    expect(requests.every(({url,opts})=>url.startsWith("https://") &&
+      opts?.redirect==="error" && opts?.method==="GET")).toBe(true);
+    expect(requests.every(({url})=>!url.includes("password") &&
+      !url.includes("What%20are"))).toBe(true);
+  });
+});
