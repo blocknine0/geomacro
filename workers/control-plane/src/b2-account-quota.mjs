@@ -4,12 +4,17 @@
 export const B2_DAILY_LIMITS = Object.freeze({
   total: 80, GET: 25, PUT: 55, HEAD: 10, NATIVE_AUTH: 10,
 });
-// Protect 15 shared GET tickets/day for original sources, private scoring and
-// B2 restore checks instead of allowing public cold-cache misses to consume
-// all 25. D1/cache hot serving is unaffected. A single atomic UPSERT checks
-// the CURRENT account counter, so concurrent edge workers cannot race a
-// standalone SELECT and steal the reservation.
+// Reserve at least 15/25 shared GET tickets for trusted producers and
+// verified recovery. All THREE currently deployed public B2 cold-read Workers
+// must count against the SAME 10-ticket ceiling. This is based on total GET
+// reservations, so producer use can only make the public allocation smaller;
+// it can never let a public Worker exhaust producer headroom.
 export const B2_PUBLIC_EDGE_GLOBAL_GET_CEILING = 10;
+const PUBLIC_B2_READ_WORKFLOWS = new Set([
+  "intelligence_public_edge",
+  "global_risk_public_edge",
+  "risk_indices_public_edge",
+]);
 const KINDS = Object.freeze(["GET", "PUT", "HEAD", "NATIVE_AUTH"]);
 const WORKFLOW = /^[a-z][a-z0-9_-]{1,47}$/u;
 const COL = Object.freeze({
@@ -35,7 +40,7 @@ WHERE b2_account_daily_request_quota.total_requests < ?
   AND b2_account_daily_request_quota.put_requests + excluded.put_requests <= ?
   AND b2_account_daily_request_quota.head_requests + excluded.head_requests <= ?
   AND b2_account_daily_request_quota.native_auth_requests + excluded.native_auth_requests <= ?
-  AND (? = 0 OR b2_account_daily_request_quota.get_requests < ?)
+  AND (? = 0 OR b2_account_daily_request_quota.get_requests + excluded.get_requests <= ?)
 RETURNING total_requests,get_requests,put_requests,head_requests,native_auth_requests
 `;
 
@@ -73,7 +78,7 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
     day, ...increments, iso,
     B2_DAILY_LIMITS.total,B2_DAILY_LIMITS.GET,B2_DAILY_LIMITS.PUT,
     B2_DAILY_LIMITS.HEAD,B2_DAILY_LIMITS.NATIVE_AUTH,
-    kind === "GET" && workflowId === "intelligence_public_edge" ? 1 : 0,
+    kind === "GET" && PUBLIC_B2_READ_WORKFLOWS.has(workflowId) ? 1 : 0,
     B2_PUBLIC_EDGE_GLOBAL_GET_CEILING,
   ).first();
   // If the UPSERT's WHERE failed, *no B2 operation* is authorized.
