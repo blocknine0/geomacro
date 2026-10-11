@@ -74,7 +74,7 @@ function atomArticleLink(chunk) {
   }
   return null;
 }
-export function originalPublisherPrivateCandidates(xml,source,now=new Date()) {
+export function originalPublisherPrivateCandidates(xml,source,now=new Date(),{captureAllTopics=false}={}) {
   if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
      !Object.hasOwn(APPROVED_SOURCE_ORGS,source?.id)||
      !["rss","atom"].includes(source?.media)||
@@ -97,8 +97,11 @@ export function originalPublisherPrivateCandidates(xml,source,now=new Date()) {
     if(!Number.isFinite(timestamp)||timestamp>now.getTime()||
       now.getTime()-timestamp>MAX_AGE_MS)continue;
     const title=textValue(xmlTag(item,"title"));
-    if(!title||!(source.topic instanceof RegExp)||
-       !source.topic.test(title))continue;
+    // Discovery is never conditional on a curated keyword list. An official
+    // publisher may report a material event using unexpected terminology.
+    // Topic match remains only a downstream relevance hint, NOT acceptance.
+    if(!title || (!captureAllTopics &&
+       (!(source.topic instanceof RegExp)||!source.topic.test(title))))continue;
     const original=canonicalOriginalUrl(rss?xmlTag(item,"link"):atomArticleLink(item),source);
     if(!original)continue;
     const articleFingerprint=digest(original);
@@ -112,6 +115,8 @@ export function originalPublisherPrivateCandidates(xml,source,now=new Date()) {
       domain:source.domain,
       original_publisher_organization_id:APPROVED_SOURCE_ORGS[source.id],
       source_id:source.id,
+      discovery_topic_matched:source.topic instanceof RegExp && source.topic.test(title),
+      article_category_relevance_verified:false,
       original_article_sha256:articleFingerprint,
       headline_fingerprint_sha256:headlineFingerprint,
       native_published_at:new Date(timestamp).toISOString(),
@@ -133,7 +138,7 @@ export function originalPublisherPrivateCandidates(xml,source,now=new Date()) {
  * modified-time is sufficient. Source content and rights remain unverified.
  */
 export function originalPublisherPrivatePageDateCandidate(xml,source,{
-  articleUrl,publishedAt,now=new Date(),
+  articleUrl,publishedAt,now=new Date(),captureAllTopics=false,
 }={}) {
   if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
      !Object.hasOwn(APPROVED_SOURCE_ORGS,source?.id)||
@@ -159,7 +164,8 @@ export function originalPublisherPrivatePageDateCandidate(xml,source,{
     // values) must never be silently overwritten with another timestamp.
     if(xmlTag(item,rss?"pubDate":"published")!==null)continue;
     const title=textValue(xmlTag(item,"title"));
-    if(!title||!(source.topic instanceof RegExp)||!source.topic.test(title))
+    if(!title || (!captureAllTopics &&
+       (!(source.topic instanceof RegExp)||!source.topic.test(title))))
       continue;
     const link=canonicalOriginalUrl(rss?xmlTag(item,"link"):atomArticleLink(item),source);
     if(link!==original)continue;
@@ -168,6 +174,8 @@ export function originalPublisherPrivatePageDateCandidate(xml,source,{
       domain:source.domain,
       original_publisher_organization_id:APPROVED_SOURCE_ORGS[source.id],
       source_id:source.id,
+      discovery_topic_matched:source.topic instanceof RegExp && source.topic.test(title),
+      article_category_relevance_verified:false,
       original_article_sha256:digest(original),
       headline_fingerprint_sha256:digest(title.toLowerCase()
         .normalize("NFKC").replace(/[^\p{L}\p{N}\s]/gu," ")
