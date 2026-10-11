@@ -36,6 +36,39 @@ describe("#1827 Step-1 official first-party publisher source readiness", () => {
     expect(out.fresh_same_event_corroboration_approved).toBe(false);
   });
 
+  it("counts only the audited same-UN-publisher HTTP 200 fallback, never a second issuer", () => {
+    const good=fixture();
+    const un=good.sources.find((x:any)=>x.source_id==="un_news_security_original_rss_review")!;
+    (un as any).primary_http_status=null;
+    (un as any).fallback_http_status=200;
+    (un as any).official_same_publisher_fallback_attempted=true;
+    (un as any).official_same_publisher_fallback_used=true;
+    const accepted=auditOfficialStep1Feeds(good);
+    expect(accepted.categories[0].transport_healthy_independent_issuers).toBe(2);
+    expect(accepted.per_category_two_independent_issuers_transport_healthy).toBe(true);
+    expect(accepted.current_signed_commercial_intelligence_verified).toBeUndefined();
+    expect(accepted.commercial_eligible).toBe(false);
+    for (const initialStatus of [401,403,429,200]) {
+      un.primary_http_status=initialStatus;
+      expect(()=>auditOfficialStep1Feeds(good)).toThrow("STEP1_SOURCE_RECEIPT_NOT_TRUSTED");
+    }
+    un.primary_http_status=503;
+    expect(auditOfficialStep1Feeds(good).categories[0].transport_healthy_independent_issuers).toBe(2);
+    (un as any).fallback_http_status=403;
+    expect(()=>auditOfficialStep1Feeds(good)).toThrow("STEP1_SOURCE_RECEIPT_NOT_TRUSTED");
+    (un as any).fallback_http_status=200;
+    (un as any).official_same_publisher_fallback_attempted=false;
+    expect(()=>auditOfficialStep1Feeds(good)).toThrow("STEP1_SOURCE_RECEIPT_NOT_TRUSTED");
+    // An arbitrary publisher cannot forge a trusted alternate.
+    const other=fixture();
+    const fcdo=other.sources.find((x:any)=>x.source_id==="uk_fcdo_original_foreign_policy_atom_review")!;
+    (fcdo as any).primary_http_status=null;
+    (fcdo as any).fallback_http_status=200;
+    (fcdo as any).official_same_publisher_fallback_attempted=true;
+    (fcdo as any).official_same_publisher_fallback_used=true;
+    expect(()=>auditOfficialStep1Feeds(other)).toThrow("STEP1_SOURCE_RECEIPT_NOT_TRUSTED");
+  });
+
   it("preserves EITI 403 and unavailable USGS but counts independent NRCan, Australia and UK issuers", () => {
     const input = fixture();
     for (const [id, reason, status] of [
