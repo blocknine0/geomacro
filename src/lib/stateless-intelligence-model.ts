@@ -97,16 +97,26 @@ function unescapeXml(raw: string): string {
 }
 
 export function originalPublicationMs(value: string | null, now = Date.now()): number | null {
-  if (!value || value.length > 100 ||
-      !/(?:Z|[+-]\d\d:?\d\d|GMT|UTC)$/i.test(value.trim())) return null;
-  const ts = Date.parse(value);
+  if (!value || value.length > 256) return null;
+  // Federal Reserve RSS and other fixed originals wrap native pubDate in
+  // precisely one CDATA section. Never use channel updated/build timestamps.
+  const m = /^<!\[CDATA\[([\s\S]{1,180})\]\]>$/u.exec(value.trim());
+  const native = (m ? m[1] : value).trim();
+  if (!native || !/(?:Z|[+-]\d\d:?\d\d|GMT|UTC)$/i.test(native)) return null;
+  const ts = Date.parse(native);
   return Number.isFinite(ts) && ts <= now && ts >= now - STATELESS_LOOKBACK_MS ? ts : null;
 }
 
 export function acceptedOriginalArticleLink(raw: string | null, source: StatelessSourceSpec): string | null {
   if (!raw || raw.length > 1600) return null;
   try {
-    const link = new URL(unescapeXml(raw));
+    let normalized = unescapeXml(raw);
+    // Official ECB first-party feeds are known to emit a second slash
+    // immediately after their fixed origin before /press/{pr,key,stats}.
+    if ((source.id === "ecb_press" || source.id === "ecb_stats") &&
+        /^https:\/\/www\.ecb\.europa\.eu\/\/press\/(?:pr|key|stats)\//iu.test(normalized))
+      normalized = normalized.replace("eu//press/", "eu/press/");
+    const link = new URL(normalized);
     if (link.protocol !== "https:" || link.username || link.password || link.port ||
         link.hash || !source.allowedHosts.includes(link.hostname.toLowerCase()) ||
         link.pathname.length < 12 || link.pathname.startsWith("//")) return null;
@@ -114,7 +124,8 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
     if (source.id === "usgs_minerals" && !/^\/news\//u.test(link.pathname)) return null;
-    if (source.id === "ecb_press" && !/^\/press\/(?:pr|key)\/date\/20\d{2}\/html\/[A-Za-z0-9.~_-]{6,190}\.html$/u.test(link.pathname)) return null;
+    if ((source.id === "ecb_press" || source.id === "ecb_stats") &&
+        !/^\/press\/(?:pr|key|stats)\/(?:date\/20\d{2}\/html\/|html\/)[A-Za-z0-9.~_-]{6,190}\.html$/u.test(link.pathname)) return null;
     if (source.id === "un_news" && !/^\/en\/story\/\d{4}\/\d{1,2}\//u.test(link.pathname)) return null;
     link.search = "";
     return link.href;
@@ -122,7 +133,25 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
 }
 
 function entryLink(chunk: string, source: StatelessSourceSpec): string | null {
-  if (source.media === "rss") return unescapeXml(tagValue(chunk, "link") ?? "");
+  if (source.media === "rss") {
+    const primary = unescapeXml(tagValue(chunk, "link") ?? "");
+    if (source.id !== "un_news") return primary;
+    // UN News has /feed/view/ routing links. A genuine same-article
+    // original permalink GUID, not an inferred redirect, is required.
+    try {
+      const route = new URL(primary);
+      const feed = /^\/feed\/view\/en\/story\/(\d{4})\/(\d{1,2})\/(\d{5,12})\/?$/u.exec(route.pathname);
+      if (!feed || route.hostname !== "news.un.org" || route.search || route.hash) return primary;
+      const guid = /<guid\b([^>]*)>([\s\S]*?)<\/guid>/iu.exec(chunk);
+      if (!guid || !/\bisPermaLink\s*=\s*["']true["']/iu.test(guid[1])) return null;
+      const original = new URL(unescapeXml(guid[2]));
+      const path = /^\/en\/story\/(\d{4})\/(\d{1,2})\/(\d{5,12})\/?$/u.exec(original.pathname);
+      if (!path || original.hostname !== "news.un.org" || original.search || original.hash ||
+          feed[1] !== path[1] || Number(feed[2]) !== Number(path[2]) || feed[3] !== path[3])
+        return null;
+      return original.href;
+    } catch { return null; }
+  }
   for (const match of chunk.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)) {
     const attrs = match[1];
     const rel = /\brel\s*=\s*["']([^"']+)["']/iu.exec(attrs)?.[1] ?? "alternate";
