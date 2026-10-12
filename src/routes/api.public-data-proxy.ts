@@ -11,7 +11,6 @@ const ALLOWED_TABLES = new Set([
 ]);
 
 const SAFE_REQUEST_HEADERS = [
-  "accept",
   "accept-profile",
   "range",
   "range-unit",
@@ -26,6 +25,7 @@ const SAFE_RESPONSE_HEADERS = [
 ] as const;
 
 const PRIVATE_SOURCE_KEYS = new Set([
+  "source_key",
   "source_id",
   "source_ids",
   "source_record_id",
@@ -101,6 +101,19 @@ async function handle(request: Request) {
 
   const table = parsed.pathname.slice("/rest/v1/".length).split("/")[0];
   if (!ALLOWED_TABLES.has(table)) return bad(403, "Table not public through this endpoint");
+  if (parsed.pathname !== `/rest/v1/${table}`) return bad(400,"Invalid table path");
+  // PostgREST aliasing can turn "source_name" into "friendly_label" and
+  // bypass a response-only key redactor. Limit the public projection to
+  // explicit simple column names; no *, aliases, joins, JSON selectors,
+  // embedded relations, or server-side query expressions.
+  const select=parsed.searchParams.get("select");
+  if (select!==null && !/^[a-z_][a-z0-9_]*(,[a-z_][a-z0-9_]*)*$/u.test(select))
+    return bad(400,"Public projection requires explicit safe fields");
+  if ([...parsed.searchParams.keys()].some(key=>
+      /(?:^|[._])(?:source|publisher|provider|licen[cs]e|provenance|raw)(?:_|$)/iu.test(key) ||
+      ["or","and"].includes(key)))
+    return bad(400,"Private source filtering is not public");
+
 
   const base = process.env.APP_SUPABASE_URL;
   const anon = process.env.APP_SUPABASE_ANON_KEY;
@@ -110,6 +123,9 @@ async function handle(request: Request) {
   const headers = new Headers({
     apikey: anon,
     authorization: `Bearer ${anon}`,
+    // JSON-only is mandatory: CSV/TSV/XML raw body would bypass the
+    // recursively source-redacting parser below.
+    accept: "application/json",
   });
   for (const name of SAFE_REQUEST_HEADERS) {
     const value = request.headers.get(name);
@@ -146,7 +162,7 @@ async function handle(request: Request) {
   }
 
   const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
+  if (/^application\/(?:json|[a-z0-9.+-]+\+json)(?:;|$)/iu.test(contentType)) {
     const text = await response.text();
     try {
       const parsedBody = JSON.parse(text) as unknown;
@@ -162,11 +178,9 @@ async function handle(request: Request) {
     }
   }
 
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: outHeaders,
-  });
+  // Never stream arbitrary upstream CSV, TXT, XML or octet-stream content
+  // through the public proxy: they have not been redacted.
+  return bad(502,"Public data backend did not return safe JSON");
 }
 
 export const Route = createFileRoute("/api/public-data-proxy")({
