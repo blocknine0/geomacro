@@ -2,9 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   parseFirstPartyFeed, deriveStatelessSignals, originalPublicationMs,
-  STATELESS_WEBSITE_DELAY_MS, type StatelessSourceSpec,
+  STATELESS_WEBSITE_DELAY_MS, conservativeDayReleaseMs, type StatelessSourceSpec,
 } from "@/lib/stateless-intelligence-model";
 import { WEBSITE_RELEASE_DELAY_MS } from "@/lib/website-publication-delay";
+import { euCommissionTopOriginalCandidates } from "@/lib/stateless-eu-original-index.server";
 
 const NOW = Date.parse("2026-10-12T16:00:00.000Z");
 const fed: StatelessSourceSpec = {
@@ -87,6 +88,34 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(new Set(separate.map(row => row.id)).size).toBe(2);
     expect(separate.every(row => row.title.startsWith("Geomacro finds "))).toBe(true);
     expect(deriveStatelessSignals([], NOW)).toEqual([]);
+  });
+
+  it("safely promotes an original EU publication day without inventing source hour", () => {
+    const html = '<div>Press release 9 October 2026 ' +
+      '<a href="https://ec.europa.eu/commission/presscorner/detail/en/ip_26_2113">' +
+      'Commission selects new projects to bolster critical raw materials supply</a></div>';
+    const now = Date.parse("2026-10-12T16:00:00Z");
+    const verified = euCommissionTopOriginalCandidates(html, now);
+    expect(verified.candidates).toHaveLength(1);
+    expect(verified.candidates[0].publishedAt).toBe("2026-10-09");
+    expect(verified.candidates[0].datePrecision).toBe("day");
+    expect(conservativeDayReleaseMs("2026-10-09")).toBe(Date.parse("2026-10-10T12:15:00Z"));
+    expect(conservativeDayReleaseMs("2026-02-30")).toBeNull();
+    expect(deriveStatelessSignals(verified.candidates, Date.parse("2026-10-10T12:14:59Z"))).toEqual([]);
+    const finds = deriveStatelessSignals(verified.candidates, now);
+    expect(finds).toHaveLength(1);
+    expect(finds[0].date_precision).toBe("day");
+    expect(finds[0].published_at).toBe("2026-10-09");
+    expect(finds[0].severity).toBeNull();
+    expect(finds[0].title).toMatch(/^Geomacro finds /);
+    expect(JSON.stringify(finds)).not.toContain("Commission selects new projects");
+    // One decoding pass only: a double-encoded "&amp;quot;" must stay
+    // inert, not become a quote through successive replacement rounds.
+    const encoded = html.replace("Commission selects new projects", "Commission &amp;quot;selects new projects");
+    const decodedOnce = euCommissionTopOriginalCandidates(encoded, now);
+    expect(decodedOnce.candidates).toHaveLength(1);
+    expect(decodedOnce.candidates[0].title).toContain("&quot;");
+    expect(decodedOnce.candidates[0].title).not.toContain('"selects');
   });
 
   it("makes the website active route stateless, while leaving paid endpoints independent", () => {
