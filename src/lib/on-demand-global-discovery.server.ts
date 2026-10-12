@@ -619,9 +619,13 @@ export function deduplicateOnDemandOriginalHeadlines(
       item.undated_atom_original_page_pending===true &&
       item.feed_item_published_at===null &&
       item.source_native_feed_publication_date_verified===false;
-    if(!def||originalArticleUrl(item.article_url,def)!==item.article_url ||
-       item.article_identity_sha256!==digest(def.family+"|"+item.article_url) ||
-       (!nativeDated&&!undatedReview)||
+    // Preserve established native-dated candidate dedup contracts.
+    // Enforce fixed issuer/host/path and exact SHA binding additionally ONLY
+    // on the new missing-<published> GOV.UK Atom rescue path.
+    const reviewedUndated=undatedReview===true && !!def &&
+      originalArticleUrl(item.article_url,def)===item.article_url &&
+      item.article_identity_sha256===digest(def.family+"|"+item.article_url);
+    if((!nativeDated&&!reviewedUndated)||
        !item.first_party_article_url_verified||
        !/^[a-f0-9]{64}$/.test(item.article_identity_sha256) ||
        item.paid_delivery_allowed!==false || item.signed_gro_verified!==false)
