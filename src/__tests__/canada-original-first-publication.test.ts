@@ -28,6 +28,24 @@ describe("Canada official original publication day; never updated/crawl timestam
       '</head><body><h1>Canada critical minerals funding announcement</h1></body></html>';
     expect(canadaOriginalPublicationDay(published,news,"Canada critical minerals funding announcement",NOW)).toBe("2026-10-12");
   });
+  it("accepts headline-confirmed first-party NewsArticle JSON-LD original date, never modified time",()=>{
+    const doc=(dateField:string,kind="NewsArticle",headline="Canada critical minerals funding announcement")=>
+      '<html><head><script type="application/ld+json">'+
+      JSON.stringify({"@type":kind,"headline":headline,[dateField]:"2026-10-12"})+
+      '</script></head><body><h1>Canada critical minerals funding announcement</h1></body></html>';
+    expect(canadaOriginalPublicationDay(doc("datePublished"),news,
+      "Canada critical minerals funding announcement",NOW)).toBe("2026-10-12");
+    expect(canadaOriginalPublicationDay(doc("dateModified"),news,
+      "Canada critical minerals funding announcement",NOW)).toBeNull();
+    expect(canadaOriginalPublicationDay(doc("datePublished","WebSite"),news,
+      "Canada critical minerals funding announcement",NOW)).toBeNull();
+    expect(canadaOriginalPublicationDay(doc("datePublished","NewsArticle","Unrelated forecast"),news,
+      "Canada critical minerals funding announcement",NOW)).toBeNull();
+    const conflicting=doc("datePublished")
+      .replace("</head>",'<meta name="dcterms.issued" content="2026-10-11"/></head>');
+    expect(canadaOriginalPublicationDay(conflicting,news,
+      "Canada critical minerals funding announcement",NOW)).toBeNull();
+  });
   it("fails closed on dcterms.modified only, path mismatch, unrelated page heading or contradictory original dates",()=>{
     const onlyModified='<html><head><meta name="dcterms.modified" content="2026-10-12"/></head>'+
       '<body><h1>Canada critical minerals funding announcement</h1></body></html>';
