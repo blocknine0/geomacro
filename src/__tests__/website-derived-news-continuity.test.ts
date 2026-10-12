@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { deriveStatelessSignals } from "@/lib/stateless-intelligence-model";
 import { describe, expect, it } from "vitest";
 import {
-  verifyDerivedStory, publishDerivedStories, readDerivedStories,
+  verifyDerivedStory, publishDerivedStories, readDerivedStories, renderDerivedStoriesHtml,
 } from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 
 const NOW=Date.parse("2026-10-12T20:00:00.000Z");
@@ -103,6 +103,39 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(result.signals).toHaveLength(2);
     expect(result.signals[0].published_at).toBe("2026-10-12T19:00:00.000Z");
     expect(JSON.stringify(result)).not.toContain("source_url");
+  });
+  it("renders authentic D1-derived cards without React SSR and without upstream secrets", async()=>{
+    const {env}=db();
+    const b={schema:"geomacro.website-derived-news-batch.v1",
+      signals:[sample("geopolitics","2026-10-12T18:40:00.000Z"),sample()]};
+    expect((await publishDerivedStories(env,b,NOW)).status).toBe(200);
+    const html=await renderDerivedStoriesHtml(env,NOW);
+    const text=await html.text();
+    expect(html.status).toBe(200);
+    expect(html.headers.get("content-security-policy")).toContain("frame-ancestors https://geomacro.live");
+    expect(text).toContain("Geomacro finds monetary policy on interest-rate policy");
+    expect(text).toContain("What changed");
+    expect(text).toContain("Why it matters");
+    expect(text).not.toContain("source_url");
+    expect(text).not.toContain("<script");
+    expect(text).not.toContain("risk score");
+    const locked=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
+    expect(locked).toContain("website-derived-news-html");
+    expect(locked).toContain("signals.length === 0");
+  });
+  it("backfills from Oct 1 with original Content API first_published_at, never search update clock",()=>{
+    const source=readFileSync("scripts/ops/backfill-website-derived-news.ts","utf8");
+    const workflow=readFileSync(".github/workflows/website-news-gap-backfill.yml","utf8");
+    expect(source).toContain('const START="2026-10-01"');
+    expect(source).toContain('page.first_published_at');
+    expect(source).toContain('originalPublicationMs(');
+    expect(source).toContain('filter_public_timestamp');
+    expect(source).toContain('first_published_at');
+    expect(source).toContain('missing_originals_not_fabricated:true');
+    expect(source).toContain('geomacro.backfill-independent-d1-readback.v1');
+    expect(workflow).toContain('bun scripts/ops/backfill-website-derived-news.ts');
+    expect(workflow).toContain('workflow_dispatch');
+    expect(source).not.toContain('supabase.co');
   });
   it("allows conservative day-only release only after its complete embargo",()=>{
     const day={...sample("rare_earth","2026-10-09"),date_precision:"day",
