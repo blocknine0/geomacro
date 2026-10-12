@@ -16,8 +16,12 @@ const CATEGORY_PATHS = Object.freeze({
 });
 
 export function publicIntelligenceSourceCoverage(category: CommercialIntelligenceCategory) {
+  // Reject inherited JS property names at runtime; only these exact three
+  // commercial categories may be surfaced through the public capability.
+  if (!Object.prototype.hasOwnProperty.call(CATEGORY_PATHS,category)) {
+    throw new Error("INTELLIGENCE_CATEGORY_INVALID");
+  }
   const path = CATEGORY_PATHS[category];
-  if (!path) throw new Error("INTELLIGENCE_CATEGORY_INVALID");
   return {
     schema: "geomacro.public-intelligence-monitoring-capability.v1",
     category,
