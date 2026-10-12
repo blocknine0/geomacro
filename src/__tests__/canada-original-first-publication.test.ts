@@ -21,7 +21,7 @@ const entry='<feed><entry><title>Canada critical minerals funding announcement</
 describe("Canada official original publication day; never updated/crawl timestamp",()=>{
   it("accepts ONLY first-party original issued or datePublished with matching article path and title",()=>{
     expect(canadaOriginalPublicationDay(html("2026-10-09","Canada critical minerals funding announcement"),news,
-      "Canada critical minerals funding announcement",NOW)).toBe("2026-10-09"===news.includes("/2026/10/")?"2026-10-09":null);
+      "Canada critical minerals funding announcement",NOW)).toBe("2026-10-09");
     expect(canadaOriginalPublicationDay(html("2026-10-12","Canada critical minerals funding announcement"),news,
       "Canada critical minerals funding announcement",NOW)).toBe("2026-10-12");
     const published='<html><head><meta property="article:published_time" content="2026-10-12T12:00:00Z"/>'+
