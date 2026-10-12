@@ -608,7 +608,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "runtime_state": "HOLD_BUSINESS_RSS_LICENSE_REQUIRED",
       "attribution": {
         "source_name": "BBC World",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -623,7 +623,8 @@
       "warning_insecure_candidate_transport": true,
       "probe_url": "https://feeds.bbci.co.uk/news/world/rss.xml",
       "original_candidate_endpoint": "http://feeds.bbci.co.uk/news/world/rss.xml",
-      "pending_live_provider_acceptance": true
+      "pending_live_provider_acceptance": false,
+      "activation_hold_reason": "BBC terms section 15 requires BBC permission/licence for business usage of RSS and metadata; none is verified"
     },
     {
       "id": "news_aljazeera",
