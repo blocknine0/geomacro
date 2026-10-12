@@ -11,6 +11,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { validateGlobalRiskContinuity } from "@/lib/global-risk-continuity";
+import {getWebsiteLaggedGlobalRisk} from "@/lib/website-lagged-global-risk.functions";
+import {websiteVerifiedSnapshotPastEmbargo} from "@/lib/website-publication-delay";
 import { reportError, toUserError, type UserError } from "@/lib/user-errors";
 import {
   GRI_METHODOLOGY,
@@ -128,6 +130,31 @@ async function readWithFailover(): Promise<GlobalRisk> {
   throw lastError;
 }
 
+/** Used by public website only; not the paid/API GRI read path.
+ * A full previously published verified snapshot is preferred. A verified
+ * B2 edge fallback is allowed only if its actual score timestamp is at
+ * least 60 minutes old. No fabricated lagged scores/proof fields.
+ */
+async function readWebsiteLaggedRisk():Promise<GlobalRisk>{
+  let previous:GlobalRisk|undefined;
+  try{
+    const response=await getWebsiteLaggedGlobalRisk({data:{}});
+    previous=response.data;
+  }catch{
+    // The private historical snapshot store can be temporarily unavailable.
+    // The edge fallback is never allowed to leak its newest score.
+    previous=await readWithFailover();
+  }
+  if(!websiteVerifiedSnapshotPastEmbargo(previous))
+    throw new Error("WEBSITE_GRI_60MIN_PROOF_HOLD");
+  const checked=validateGlobalRiskContinuity(previous);
+  if(!checked.ok)throw new Error("WEBSITE_GRI_PROOF_INVALID");
+  return {...previous,recentEvents:[],
+    drivers:previous.drivers.map(driver=>({...driver,topEvent:null})),
+    topDriver:previous.topDriver?{...previous.topDriver,topEvent:null}:null,
+  };
+}
+
 export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
   const [data, setData] = useState<GlobalRisk | null>(null);
   const [status, setStatus] = useState<RiskStatus>("loading");
@@ -144,7 +171,7 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
     async function load() {
       setStatus(hasData.current ? "updating" : "loading");
       try {
-        const next = await readWithFailover();
+        const next = await readWebsiteLaggedRisk();
         if (cancelled) return;
 
         hasData.current = true;
