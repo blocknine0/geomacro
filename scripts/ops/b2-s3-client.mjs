@@ -268,7 +268,13 @@ export function createB2Client({
     } = {},
   ) {
     const normalizedKey = String(key ?? "");
-    if (method === "GET" && nativeReadFatalError) throw new Error(nativeReadFatalError);
+    // Provider hard caps apply across credentials and keys. Repeating a
+    // forbidden request wastes scarce account-wide tickets and cannot restore
+    // access. Native and S3 hard-cap evidence share the same process latch.
+    if (nativeReadFatalError === "B2_TRANSACTION_CAP_EXCEEDED" ||
+        ((method === "GET" || method === "HEAD") && nativeReadFatalError)) {
+      throw new Error(nativeReadFatalError);
+    }
     const matchesAllowedPrefix = allowedPrefixes.some((prefix) => normalizedKey.startsWith(prefix));
     if (
       !matchesAllowedPrefix ||
@@ -321,7 +327,10 @@ export function createB2Client({
         }
       }
 
-      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      // Governed workflows use at most one retry for intermittent 5xx errors;
+      // ungoverned legacy scripts retain the existing bounded behavior.
+      const maxAttempts = globalAccountGovernor ? 2 : MAX_ATTEMPTS;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       consumeRequestBudget("s3");
       if (globalAccountGovernor) await globalAccountGovernor.reserve(method);
 
@@ -374,6 +383,17 @@ export function createB2Client({
         }
         const responseText = await result.text().catch(() => "");
         const errorCode = safeB2ErrorCode(responseText);
+        if (result.status === 403 && errorCode === "transaction_cap_exceeded") {
+          nativeReadFatalError = "B2_TRANSACTION_CAP_EXCEEDED";
+          throw new Error(nativeReadFatalError);
+        }
+        if (result.status === 403 && errorCode === "download_cap_exceeded") {
+          nativeReadFatalError = "B2_DOWNLOAD_CAP_EXCEEDED";
+          throw new Error(nativeReadFatalError);
+        }
+        // A provider 429 is not evidence that a fast retry is useful.
+        // Let the next governed cycle decide after fresh D1 headroom.
+        if (result.status === 429) throw new Error("B2_PROVIDER_THROTTLED");
         if (allowNotFound && method === "GET" && result.status === 404 && errorCode === "NoSuchKey") {
           return null;
         }
@@ -423,7 +443,7 @@ export function createB2Client({
             throw lastDedicatedNativeError ?? nativeCause;
           }
         }
-        if (!TRANSIENT_STATUSES.has(result.status) || attempt === MAX_ATTEMPTS) {
+        if (!TRANSIENT_STATUSES.has(result.status) || attempt === maxAttempts) {
           throw new Error(`B2_${method}_FAILED_${result.status}_${errorCode}`);
         }
       } catch (cause) {
@@ -431,8 +451,9 @@ export function createB2Client({
         const explicitHttpFailure = /^B2_(PUT|GET|HEAD)_FAILED_\d+_[A-Za-z0-9_.:-]+$/.test(message);
         const hardCapFailure =
           message === "B2_DOWNLOAD_CAP_EXCEEDED" ||
-          message === "B2_TRANSACTION_CAP_EXCEEDED";
-        if (explicitHttpFailure || hardCapFailure || message === "B2_REQUEST_BUDGET_EXHAUSTED" || attempt === MAX_ATTEMPTS) throw cause;
+          message === "B2_TRANSACTION_CAP_EXCEEDED" ||
+          message === "B2_PROVIDER_THROTTLED";
+        if (explicitHttpFailure || hardCapFailure || message === "B2_REQUEST_BUDGET_EXHAUSTED" || attempt === maxAttempts) throw cause;
       }
 
       await sleep(500 * 2 ** (attempt - 1));
@@ -454,6 +475,9 @@ export function createB2Client({
   }
 
   async function putWithMetadataVerification(key, bytes, { verifyRestored } = {}) {
+    // A previously proven B2 download cap means a new verified archive write
+    // cannot be completed. Never PUT and strand a knowingly unverified object.
+    if (nativeReadFatalError) throw new Error(nativeReadFatalError);
     const body = Buffer.from(bytes);
     const digest = sha(body);
 
