@@ -4,6 +4,9 @@ import {
   type PublicRiskIndices,
 } from "./risk-indices.types";
 import { reportError, type UserError } from "./user-errors";
+import {getWebsiteLaggedGlobalRisk} from "./website-lagged-global-risk.functions";
+import {riskIndicesFromGlobalRisk} from "./risk-indices-from-global-risk";
+import {websitePublicCutoff} from "./website-publication-delay";
 
 export type RiskIndicesStatus = "loading" | "ready" | "updating" | "error";
 
@@ -127,7 +130,22 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
     async function load() {
       setStatus(hasData.current ? "updating" : "loading");
       try {
-        const response = await readWithFailover();
+        let response:PublicRiskIndices;
+        try{
+          const lagged=await getWebsiteLaggedGlobalRisk({data:{}});
+          response=riskIndicesFromGlobalRisk(lagged.data);
+          if(!validIndices(response))throw new Error("WEBSITE_LAGGED_RISK_INDICES_INVALID");
+        }catch{
+          // Distinct read-only edge fallback may serve only an already
+          // one-hour-old independently verified index snapshot. Never
+          // replace a true archived snapshot with a fresh live index score.
+          const edge=await readWithFailover();
+          const snapshotAt=Date.parse(edge.snapshotAsOf);
+          if(!Number.isFinite(snapshotAt)||snapshotAt>websitePublicCutoff()||
+            edge.indices.some(x=>x.readingAsOf&&Date.parse(x.readingAsOf)>websitePublicCutoff()))
+            throw new Error("WEBSITE_RISK_INDICES_60MIN_PROOF_HOLD");
+          response={...edge,indices:edge.indices.map(x=>({...x,topEvent:null}))};
+        }
         if (cancelled) return;
 
         hasData.current = true;
