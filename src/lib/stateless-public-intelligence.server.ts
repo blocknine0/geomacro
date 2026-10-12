@@ -197,6 +197,7 @@ type LaneMetrics = {
   seen: number; relevant: number; original_link_valid: number;
   native_clock_valid: number; undated_original: number;
   recovered_original_page: number; transport_ok: boolean;
+  transport_failure_class?: "http_4xx" | "http_5xx" | "mime" | "body" | "timeout" | "redirect" | "network";
   // Optional anonymous first-party stage counters for read-only CI
   // diagnostics. Never log provider URLs, article IDs or raw content.
   canada_original_path_ok?: number;
@@ -245,6 +246,12 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       };
     } catch { return { candidates: [], healthy: false }; }
   }
+  const failed = (kind: NonNullable<LaneMetrics["transport_failure_class"]>) => ({
+    candidates: [] as StatelessSourceCandidate[], healthy: false,
+    metrics: { seen: 0, relevant: 0, original_link_valid: 0,
+      native_clock_valid: 0, undated_original: 0, recovered_original_page: 0,
+      transport_ok: false, transport_failure_class: kind } satisfies LaneMetrics,
+  });
   try {
     const response = await fetch(source.url, {
       method: "GET", redirect: "error", cache: "no-store",
@@ -252,11 +259,12 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
         "application/atom+xml, application/xml, text/xml" },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
+    if (!response.ok) return failed(response.status >= 500 ? "http_5xx" : "http_4xx");
     const mime = response.headers.get("content-type") ?? "";
     if (!/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu.test(mime))
-      return { candidates: [], healthy: false };
+      return failed("mime");
     const xml = await boundedText(response, MAX_FEED_BYTES);
-    if (!xml) return { candidates: [], healthy: false };
+    if (!xml) return failed("body");
     const parsed = parseFirstPartyFeed(xml, source, now);
     const canadaStage = {path_ok:0,http_ok:0,html_ok:0,original_ok:0,
       title_ok:0,clock_found:0,clock_consistent:0,date_path_ok:0,
@@ -283,7 +291,12 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
         } : {}),
       },
     };
-  } catch { return { candidates: [], healthy: false }; }
+  } catch (error) {
+    const e = error instanceof Error ? error : null;
+    const reason = e?.name === "TimeoutError" || e?.name === "AbortError"
+      ? "timeout" : /redirect/i.test(e?.message ?? "") ? "redirect" : "network";
+    return failed(reason);
+  }
 }
 
 export type StatelessIntelligenceResult = {
