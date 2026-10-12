@@ -1,11 +1,20 @@
 name: Deploy Risk Indices Edge
 
-# Derived Risk Indices can only be redeployed after a successfully verified
-# upstream Risk Indices B2 readback artifact exists. Do not waste GitHub/B2
-# quota by trying six-hour or source-push deploys against stale/unavailable GRI.
-# Manual recovery remains available; the same artifact-proof check still applies.
+# Redeploy Risk Indices only with an existing successful full B2 readback
+# artifact. A narrowly scoped Worker-code push may trigger that recovery;
+# no recurring polling, arbitrary source deploy or synthetic GRI proof.
+# Manual and successful upstream publisher triggers retain strict proof checks.
 on:
   workflow_dispatch: {}
+  # A worker-code-only redeploy is independent of a NEW publisher snapshot.
+  # It must still materialize an already full-B2-readback-verified main-run
+  # artifact before secrets are used or Cloudflare deployment is attempted.
+  # Never deploy for ordinary source/workflow commits or on a schedule.
+  push:
+    branches: [main]
+    paths:
+      - "workers/risk-indices-edge/src/index.mjs"
+      - ".github/workflows/deploy-risk-indices-edge.yml"
   workflow_run:
     workflows: ["Risk Indices Realtime Direct Postgres"]
     types: [completed]
@@ -25,6 +34,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (
         github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'push' ||
         (
           github.event_name == 'workflow_run' &&
           github.event.workflow_run.conclusion == 'success' &&

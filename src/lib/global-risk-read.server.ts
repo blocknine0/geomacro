@@ -153,44 +153,17 @@ export async function readWebsiteLaggedGlobalRisk(
     // D1 may be quota-held or the new migration not yet deployed; continue
     // to the existing strictly verified read-only historical fallback.
   }
-  const app=risk?null:getAppSupabase();
-  if(app){
-    try{
-      const result=await app.from("gri_snapshots").select(
-        "id,as_of,methodology_version,methodology_hash,input_hash,evidence_hash,calculation_hash,disposition_hash,candidate_event_count,proof_version,proof_hash,verification_status,reconciliation_residual,change_residual,raw_score,display_score,coverage,weighted_confidence,active_categories,event_count,source_count,independent_story_count,story_correlation_version,story_correlation_prompt_version,category_breakdown,previous_as_of,previous_raw_score,previous_display_score,change_points,change_hash,change_attribution,explanation,status",
-      ).eq("status","published")
-       .eq("verification_status","verified")
-       .eq("methodology_version",GRI_METHOD_VERSION)
-       .lte("as_of",new Date(cutoff).toISOString())
-       .order("as_of",{ascending:false}).limit(1000);
-      if(!result.error&&result.data?.length){
-        const snapshots=result.data as SnapshotRow[];
-        const latestAt=Date.parse(snapshots[0].as_of);
-        if(Number.isFinite(latestAt)&&latestAt<=cutoff){
-          const events=await loadRecentEvents(
-            app,new Date(latestAt-LOOKBACK).toISOString(),
-            new Date(latestAt).toISOString(),
-          );
-          const safeEvents=events.filter(event=>{
-            const created=Date.parse(event.created_at);
-            const original=Date.parse(String(event.published_at??""));
-            return Number.isFinite(created)&&created<=cutoff&&
-              Number.isFinite(original)&&original<=cutoff;
-          });
-          risk=assemblePublicGlobalRisk(snapshots,safeEvents,cutoff);
-        }
-      }
-    }catch{
-      // Frozen/over-quota Supabase is not reliable serving infrastructure.
-      // The already verified D1 prior history is preferred; a genuinely
-      // old full B2 projection below remains the final strict fallback.
-    }
-  }
+  // The production website treats Supabase as permanently unavailable.
+  // Never attempt a frozen database read, even after D1 quota exhaustion.
+  // A previously verified B2/edge snapshot is the independent fallback;
+  // if absent or younger than the 60-minute cutoff, fail closed below.
   if(!risk){
     const b2=await readB2PublicRisk();
     if(b2)risk=b2;
   }
   if(!risk||
+     !Number.isFinite(Date.parse(risk.snapshotAsOf))||
+     Date.parse(risk.snapshotAsOf)>cutoff||
      !websiteVerifiedSnapshotPastEmbargo(risk,now)||
      !validateGlobalRiskContinuity(risk,now).ok){
     throw new Error("WEBSITE_GRI_ONE_HOUR_VERIFIED_SNAPSHOT_UNAVAILABLE");

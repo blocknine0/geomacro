@@ -134,7 +134,9 @@ describe("#1827 account-wide public Global Risk B2 quota guard",()=>{
     const flow=readFileSync(".github/workflows/deploy-global-risk-edge.yml","utf8");
     expect(flow).not.toContain('cron: "13 */6 * * *"');
     expect(flow).not.toContain("\n  schedule:");
-    expect(flow).not.toContain("\n  push:");
+    expect(flow).toContain("\n  push:");
+    expect(flow).toContain('"workers/global-risk-edge/src/index.mjs"');
+    expect(flow).toContain("github.event_name == 'push'");
     expect(flow).toContain('workflows: ["GRI Realtime Direct Postgres"]');
     expect(flow).toContain("github.event.workflow_run.conclusion == 'success'");
     expect(flow).toContain("github.event.workflow_run.head_branch == 'main'");

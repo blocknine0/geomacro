@@ -71,7 +71,10 @@ describe("independent verified Risk Indices edge", () => {
   it("deploys only after materializing a successful B2-readback-verified continuity artifact", () => {
     expect(deploy).not.toContain('cron: "28 */6 * * *"');
     expect(deploy).not.toContain("  schedule:");
-    expect(deploy).not.toContain("  push:");
+    expect(deploy).toContain("  push:");
+    expect(deploy).toContain('"workers/risk-indices-edge/src/index.mjs"');
+    expect(deploy).toContain("github.event_name == 'push'");
+    expect(deploy).not.toContain("  schedule:");
     expect(deploy).toContain('workflows: ["Risk Indices Realtime Direct Postgres"]');
     expect(deploy).toContain("github.event.workflow_run.conclusion == 'success'");
     expect(deploy).toContain("github.event.workflow_run.head_branch == 'main'");
