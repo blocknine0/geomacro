@@ -271,7 +271,11 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       method: "GET", redirect: "error", cache: "no-store",
       headers: { Accept: source.media === "rss" ? "application/rss+xml, application/xml, text/xml" :
         "application/atom+xml, application/xml, text/xml" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      // Some first-party Australian minister RSS responses take longer than
+      // the generic 5s original-feed budget from the GitHub runner. Only the
+      // exact configured Australian RSS lanes receive a bounded 12s budget;
+      // no retry or bypass of 4xx, authentication or redirects.
+      signal: AbortSignal.timeout(source.id.startsWith("au_") ? 12_000 : TIMEOUT_MS),
     });
     if (!response.ok) return failed(response.status >= 500 ? "http_5xx" : "http_4xx");
     const mime = response.headers.get("content-type") ?? "";
