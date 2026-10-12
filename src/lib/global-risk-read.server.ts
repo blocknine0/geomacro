@@ -162,6 +162,8 @@ export async function readWebsiteLaggedGlobalRisk(
     if(b2)risk=b2;
   }
   if(!risk||
+     !Number.isFinite(Date.parse(risk.snapshotAsOf))||
+     Date.parse(risk.snapshotAsOf)>cutoff||
      !websiteVerifiedSnapshotPastEmbargo(risk,now)||
      !validateGlobalRiskContinuity(risk,now).ok){
     throw new Error("WEBSITE_GRI_ONE_HOUR_VERIFIED_SNAPSHOT_UNAVAILABLE");
