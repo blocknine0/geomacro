@@ -109,12 +109,23 @@ export async function observeApprovedReliefWeb({
       }),
       signal: AbortSignal.timeout(10_000),
     });
-  } catch { throw Error("RELIEFWEB_APPROVED_TRANSPORT_FAILED"); }
+  } catch {
+    // A scheduled transport failure must produce a machine-checkable PRIVATE
+    // failure receipt. Do not retry a potentially rate-limited provider.
+    return {...empty("TRANSPORT_DEGRADED",checkedAt,"RELIEFWEB_APPROVED_TRANSPORT_FAILED"),
+      api_request_attempted:true,api_requests:1};
+  }
   if (response.status === 401 || response.status === 403 || response.status === 429) {
     return {...empty("ACCESS_DENIED_OR_QUOTA",checkedAt,"RELIEFWEB_HTTP_"+response.status),
       api_request_attempted:true,api_requests:1};
   }
-  if (!response.ok) throw Error("RELIEFWEB_APPROVED_HTTP_"+response.status);
+  if (!response.ok) {
+    // Do not retry 5xx within this cadence; distinguish a temporary outage
+    // from a configured-access denial for the operator.
+    return {...empty("UPSTREAM_HTTP_DEGRADED",checkedAt,
+      response.status >= 500 ? "RELIEFWEB_HTTP_5XX" : "RELIEFWEB_HTTP_OTHER"),
+      api_request_attempted:true,api_requests:1};
+  }
   const parsed = await boundedJson(response);
   if (!Array.isArray(parsed?.data) || parsed.data.length > MAX_RESULTS) {
     throw Error("RELIEFWEB_APPROVED_RESPONSE_SHAPE_INVALID");
@@ -157,13 +168,23 @@ function run() {
     mkdirSync(dirname(OUTPUT),{recursive:true});
     writeFileSync(OUTPUT,JSON.stringify(proof,null,2)+"\n",{mode:0o600});
     console.log(JSON.stringify(proof));
-    if (proof.status === "CONFIG_REQUIRED")
-      console.error("::warning title=ReliefWeb approval config required::Set the exact email-approved identifier as RELIEFWEB_APPROVED_APPNAME in the production environment; no ReliefWeb request was made.");
-    if (proof.status === "ACCESS_DENIED_OR_QUOTA")
-      console.error("::warning title=ReliefWeb access denied::Provider approval/quota has not been independently accepted; no retry or auth workaround.");
+    if (proof.status !== "LIVE_METADATA_TRANSPORT") {
+      // A successfully executed Actions job is NOT proof that ReliefWeb is
+      // working. GitHub monitors must stay red until provider acceptance.
+      console.error("::error title=ReliefWeb live-source not accepted::"+
+        proof.status+"; inspect sanitized receipt, verify production appname and provider allowance.");
+      process.exitCode=3;
+    }
   }).catch(error=>{
     const code = error instanceof Error ? error.message : "RELIEFWEB_APPROVED_FAILED";
-    console.error(JSON.stringify({ok:false,error:/^RELIEFWEB_APPROVED_[A-Z0-9_]+$/u.test(code)?code:"RELIEFWEB_APPROVED_FAILED",raw_data_written:false}));
+    const safe = /^RELIEFWEB_APPROVED_[A-Z0-9_]+$/u.test(code)?code:"RELIEFWEB_APPROVED_FAILED";
+    // Sanitized fail receipt even for malformed upstream JSON. No partner
+    // report text, appname, original URL, session or API token.
+    const receipt = {...empty("INVALID_PROVIDER_RESPONSE",new Date().toISOString(),safe),
+      api_request_attempted:true,api_requests:1};
+    mkdirSync(dirname(OUTPUT),{recursive:true});
+    writeFileSync(OUTPUT,JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
+    console.error(JSON.stringify({ok:false,error:safe,raw_data_written:false}));
     process.exitCode=1;
   });
 }
