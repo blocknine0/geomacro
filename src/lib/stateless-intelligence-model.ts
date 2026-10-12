@@ -140,11 +140,13 @@ export function selectOfficialTopic(title: string, category: StatelessCategory) 
 export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, now = Date.now()): {
   dated: StatelessSourceCandidate[];
   undatedGov: { title: string; articleUrl: string }[];
+  metrics: { seen: number; relevant: number; original_link_valid: number; native_clock_valid: number; undated_original: number };
 } {
+  const metrics = { seen: 0, relevant: 0, original_link_valid: 0, native_clock_valid: 0, undated_original: 0 };
   if (typeof xml !== "string" || xml.length > 384 * 1024 ||
-      /<!DOCTYPE|<!ENTITY/iu.test(xml)) return { dated: [], undatedGov: [] };
-  if (source.media === "rss" && !/<rss(?:\s|>)/iu.test(xml)) return { dated: [], undatedGov: [] };
-  if (source.media === "atom" && !/<(?:atom:)?feed(?:\s|>)/iu.test(xml)) return { dated: [], undatedGov: [] };
+      /<!DOCTYPE|<!ENTITY/iu.test(xml)) return { dated: [], undatedGov: [], metrics };
+  if (source.media === "rss" && !/<rss(?:\s|>)/iu.test(xml)) return { dated: [], undatedGov: [], metrics };
+  if (source.media === "atom" && !/<(?:atom:)?feed(?:\s|>)/iu.test(xml)) return { dated: [], undatedGov: [], metrics };
   const entryPattern = source.media === "rss"
     ? /<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu
     : /<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu;
@@ -152,26 +154,31 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
   const undatedGov: { title: string; articleUrl: string }[] = [];
   const seen = new Set<string>();
   for (const match of [...xml.matchAll(entryPattern)].slice(0, 75)) {
+    metrics.seen++;
     const item = match[1];
     const title = unescapeXml(tagValue(item, "title") ?? "");
     if (title.length < 12 || title.length > 300 || /[<>]/u.test(title) ||
         !selectOfficialTopic(title, source.category)) continue;
+    metrics.relevant++;
     const articleUrl = acceptedOriginalArticleLink(entryLink(item, source), source);
     if (!articleUrl || seen.has(articleUrl)) continue;
     seen.add(articleUrl);
+    metrics.original_link_valid++;
     const rawClock = tagValue(item, source.media === "rss" ? "pubDate" : "published");
     const ms = originalPublicationMs(rawClock, now);
     if (ms !== null) {
+      metrics.native_clock_valid++;
       dated.push({
         sourceId: source.id, category: source.category, title,
         articleUrl, publishedAt: new Date(ms).toISOString(), credit: source.credit,
       });
-    } else if (!rawClock && source.govContentApi && undatedGov.length < 2) {
+    } else if (!rawClock && source.govContentApi && undatedGov.length < 4) {
+      metrics.undated_original++;
       // Atom "updated" is never substituted for the original publication.
       undatedGov.push({ title, articleUrl });
     }
   }
-  return { dated, undatedGov };
+  return { dated, undatedGov, metrics };
 }
 
 /**
