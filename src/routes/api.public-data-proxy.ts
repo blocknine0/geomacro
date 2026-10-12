@@ -1,3 +1,4 @@
+import {plainPublicProjection,hasPrivateSourceQueryFilter,safePostgrestAccept} from "@/lib/public-postgrest-proxy-privacy";
 import process from "node:process";
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -106,11 +107,9 @@ async function handle(request: Request) {
   // explicit simple column names; no *, aliases, joins, JSON selectors,
   // embedded relations, or server-side query expressions.
   const select=parsed.searchParams.get("select");
-  if (select!==null && !/^[a-z_][a-z0-9_]*(,[a-z_][a-z0-9_]*)*$/u.test(select))
+  if(!plainPublicProjection(select))
     return bad(400,"Public projection requires explicit safe fields");
-  if ([...parsed.searchParams.keys()].some(key=>
-      /(?:^|[._])(?:source|publisher|provider|licen[cs]e|provenance|raw)(?:_|$)/iu.test(key) ||
-      ["or","and"].includes(key)))
+  if(hasPrivateSourceQueryFilter(parsed.searchParams))
     return bad(400,"Private source filtering is not public");
 
 
@@ -126,8 +125,7 @@ async function handle(request: Request) {
     // recursively source-redacting parser below.
     // PostgREST maybeSingle() requires its exact vendor JSON media type.
     // Only these two redacted JSON representations are ever permitted.
-    accept: request.headers.get("accept") === "application/vnd.pgrst.object+json"
-      ? "application/vnd.pgrst.object+json" : "application/json",
+    accept: safePostgrestAccept(request.headers.get("accept")),
   });
   for (const name of SAFE_REQUEST_HEADERS) {
     const value = request.headers.get(name);
