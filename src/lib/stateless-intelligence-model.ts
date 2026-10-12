@@ -195,7 +195,8 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
   // original first-party media feed format was verified on a live runner.
   // Never grant RDF parsing to a synthetic/unknown source.
   const verifiedRdfPress = source.id === "bis_press" &&
-    source.allowedHosts.includes("www.bis.org") &&
+    source.media === "rss" &&
+    source.url === "https://www.bis.org/doclist/all_pressrels.rss" &&
     /<rdf:RDF(?:\s|>)/iu.test(xml) &&
     /xmlns:dc\s*=\s*["']http:\/\/purl\.org\/dc\/elements\/1\.1\/["']/iu.test(xml);
   if (source.media === "rss" && !/<rss(?:\s|>)/iu.test(xml) && !verifiedRdfPress)
