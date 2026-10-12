@@ -24,7 +24,7 @@ describe("website GRI Supabase-outage bounded verified preexisting D1 backfill",
  });
  it("retains <=12 ring entries/30d while historic originals keep real timestamps and checksum",()=>{
   expect(sql).toContain("DELETE FROM website_verified_gri_snapshot_history");
-  expect(sql).toContain("'-72 hours'");
+  expect(sql).toContain("'-30 days'");
   expect(sql).toContain("ORDER BY source_as_of DESC LIMIT 12");
   expect(sql).toContain("payload_sha256,b2_sha256");
   expect(sql).toContain("original_generated_at");
