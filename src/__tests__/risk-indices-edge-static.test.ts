@@ -87,6 +87,9 @@ describe("independent verified Risk Indices edge", () => {
     expect(deploy).toContain('TRIGGER_EVENT: ${{ github.event_name }}');
     expect(deploy).toContain('elif [ "$TRIGGER_EVENT" = "push" ]; then');
     expect(deploy).toContain("SAFE_CODE_ONLY_DEPLOY_WITH_NO_STATIC_CONTINUITY");
+    expect(deploy).toContain("EXISTING_VERIFIED_EDGE_SERVING; refuse replacing prior static continuity with null");
+    expect(deploy).toContain('if [ "$EXISTING_CODE" = "200" ]; then');
+    expect(deploy).toContain('exit 13');
     expect(deploy).toContain("FULL_B2_READBACK_PROOF_REQUIRED_FOR_SOURCE_RUN_OR_MANUAL_DEPLOY");
     expect(deploy).toContain('test "$CODE" = "200" ||');
     expect(deploy).toContain("Risk Indices edge acceptance failed: HTTP $CODE");
