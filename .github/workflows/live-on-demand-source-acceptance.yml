@@ -9,6 +9,7 @@ on:
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
       - "src/lib/on-demand-private-original-review.server.test.ts"
+      - "src/__tests__/on-demand-undated-atom-original-date-rescue.test.ts"
       - "scripts/lib/official-original-article-date.mjs"
   schedule:
     # Once per day: max 12 discovery + 4 original-page read-only calls; no B2/D1/funding.
