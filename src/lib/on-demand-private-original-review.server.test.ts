@@ -104,4 +104,56 @@ describe("private originals survive presentation headline dedup",()=>{
     expect(endpoint).not.toContain("private_candidates:privateResult");
     expect(ops).not.toContain("private_original_review_candidates:privateEvidence");
   });
+
+  it("uses GOV.UK first-published-at on 128–384KiB query-time articles just like the 30m pulse",async()=>{
+    const large='<html><head><meta name="govuk:first-published-at" '+
+      'content="2026-10-11T07:00:00Z"></head><body>'+
+      "Private first-party long article. ".repeat(6500)+"</body></html>";
+    expect(Buffer.byteLength(large)).toBeGreaterThan(128*1024);
+    expect(Buffer.byteLength(large)).toBeLessThan(384*1024);
+    const fetchImpl=vi.fn(async(url:RequestInfo|URL)=>{
+      expect(String(url)).toBe(u.article_url);
+      return new Response(large,{
+        headers:{"content-type":"text/html",
+          "content-length":String(Buffer.byteLength(large))}
+      });
+    }) as unknown as typeof fetch;
+    const verified=await verifyOnDemandOriginalArticlePages([u],{fetchImpl,now});
+    expect(verified.verified).toBe(1);
+    expect(verified.verified_candidates[0].page_original_published_at)
+      .toBe("2026-10-11T07:00:00.000Z");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects conflicting publisher first-publication clocks, modified-only dates and day-only metadata",async()=>{
+    for(const html of [
+      '<html><meta name="govuk:first-published-at" content="2026-10-11T07:00:00Z">'+
+        '<meta property="article:published_time" content="2026-10-11T08:30:00Z"></html>',
+      '<html><meta name="govuk:public-updated-at" content="2026-10-11T07:00:00Z"></html>',
+      '<html><meta property="article:published_time" content="2026-10-11"></html>',
+      '<html><meta name="govuk:first-published-at" content="2026-10-11T07:00:00"></html>',
+    ]){
+      const fetchImpl=vi.fn(async()=>new Response(html,{
+        headers:{"content-type":"text/html"}
+      })) as unknown as typeof fetch;
+      const proof=await verifyOnDemandOriginalArticlePages([u],{fetchImpl,now});
+      expect(proof.attempted).toBe(1);
+      expect(proof.verified).toBe(0);
+      expect(proof.verified_candidates).toHaveLength(0);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("refuses first-party article bodies above 384KiB without signing/rights/payment",async()=>{
+    const oversized= '<html><meta name="govuk:first-published-at" '+
+      'content="2026-10-11T07:00:00Z"></html>'+'X'.repeat(385*1024);
+    const fetchImpl=vi.fn(async()=>new Response(oversized,{
+      headers:{"content-type":"text/html"}
+    })) as unknown as typeof fetch;
+    const proof=await verifyOnDemandOriginalArticlePages([u],{fetchImpl,now});
+    expect(proof.attempted).toBe(1);
+    expect(proof.verified).toBe(0);
+    expect(proof.verified_candidates).toEqual([]);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
 });
