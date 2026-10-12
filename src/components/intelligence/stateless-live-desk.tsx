@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Clock3, RefreshCw, AlertCircle } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
 import type { StatelessCategory } from "@/lib/stateless-intelligence-model";
@@ -50,16 +50,15 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
         <div className="inline-flex rounded-full border border-primary/30 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-primary">
           Geomacro finds · 15-minute delayed
         </div>
-        <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
+        <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">What changed in the world</h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
-          Geomacro finds relevant geopolitical, Macro/FX and critical-minerals developments
-          from original official releases. Each distinct release appears as its own finding
-          once 15 minutes have elapsed since publication. No source feed or intelligence is stored.
-          The open page checks for updates every two minutes.
+          Geomacro finds geopolitical, Macro/FX and critical-minerals developments from original
+          official releases. Read what changed and why it may matter in two short sections.
+          Each distinct release appears after 15 minutes. No score, repeated article or stored feed.
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
-          Findings are derived summaries of official releases, not verified statements of market impact.
-          Structured, signed risk analysis is a separate API product.
+          <Clock3 className="mr-1 inline-block h-4 w-4" aria-hidden /> 15-minute delayed · Refreshed every 2 minutes while open.
+          Original source dates are preserved. Findings are independent derived summaries, not confirmed market effects.
         </p>
       </header>
 
@@ -98,11 +97,17 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
           </button>
         </div>
         {current ? (
-          <p className="mt-3 text-xs text-muted-foreground" role="status">
-            {current.healthy_feed_count}/{current.feed_count} official feeds responded ·
-            Original publication must predate {formatInstant(current.website_release_cutoff)} ·
-            Latest checked {formatInstant(current.checked_at)}
-          </p>
+          <div className="mt-3 space-y-1 text-xs text-muted-foreground" role="status">
+            <p>{current.signals.length} distinct findings · {current.current_24h_count} in the last 24 hours ·
+              Checked {formatInstant(current.checked_at)}</p>
+            <p>{current.healthy_feed_count}/{current.feed_count} official feeds responded ·
+              Original publication must predate {formatInstant(current.website_release_cutoff)}</p>
+            {current.healthy_feed_count < current.feed_count ? (
+              <p className="flex items-center gap-1.5">
+                <AlertCircle className="h-3 w-3" aria-hidden /> Some sources are temporarily unavailable; coverage may be incomplete.
+              </p>
+            ) : null}
+          </div>
         ) : null}
         {error ? <p role="alert" className="mt-3 rounded-lg border border-border p-3 text-sm text-muted-foreground">
           Current on-demand checks could not complete. No substitute or synthetic developments are displayed.
@@ -122,30 +127,47 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
             </p>
           </div>
         ) : (
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="mt-5 space-y-3" aria-live="polite" aria-atomic="false">
+            {current.current_24h_count === 0 ? (
+              <p className="rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+                No new qualifying releases in the last 24 hours. Earlier original releases appear below.
+              </p>
+            ) : null}
             {current.signals.map(signal => (
-              <article key={signal.id} className="rounded-2xl border border-border/70 bg-card/40 p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-primary">
-                    Geomacro finds · Official release
+              <article key={signal.id} className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">
+                    GEOMACRO FINDS
                   </span>
                   <time dateTime={signal.published_at} className="text-xs text-muted-foreground">
                     {formatInstant(signal.published_at)}
                   </time>
+                  {Date.parse(signal.published_at) >= Date.parse(current.checked_at) - 86_400_000
+                    ? <span className="text-xs text-muted-foreground">Last 24h</span>
+                    : <span className="text-xs text-muted-foreground">Earlier this week</span>}
                 </div>
-                <h3 className="mt-3 text-lg font-semibold leading-snug">{signal.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">{signal.why_it_matters}</p>
+                <h3 className="mt-3 text-xl font-semibold leading-snug tracking-tight">{signal.title}</h3>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">What changed</h4>
+                    <p className="mt-1 text-sm leading-6">{signal.what_changed}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">Why it matters</h4>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{signal.why_it_matters}</p>
+                  </div>
+                </div>
                 {signal.sources_credited.length > 0 ? (
-                  <div className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
-                    {signal.sources_credited.map(credit =>
+                  <div className="mt-4 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                    {signal.sources_credited.map(credit => (
                       <p key={credit}>
-                        Required source credit: {credit}
+                        Required credit: {credit}
                         {credit.includes("Open Government Licence") ? (
-                          <> <a className="underline underline-offset-2" href={OGL_URL} target="_blank"
+                          <> · <a className="underline underline-offset-2" href={OGL_URL} target="_blank"
                             rel="noopener noreferrer">Licence</a></>
                         ) : null}
-                      </p>,
-                    )}
+                      </p>
+                    ))}
                   </div>
                 ) : null}
               </article>
