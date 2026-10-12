@@ -7,9 +7,9 @@ import {
 
 const now = Date.parse("2026-10-13T00:00:00.000Z");
 const bank: StatelessSourceSpec = {
-  id:"rba_media",category:"macro",media:"rss",
-  url:"https://www.rba.gov.au/rss/rss-cb-media-releases.xml",
-  allowedHosts:["www.rba.gov.au"],credit:"Reserve Bank of Australia",
+  id:"bis_press",category:"macro",media:"rss",
+  url:"https://www.bis.org/doclist/all_pressrels.rss",
+  allowedHosts:["www.bis.org"],credit:"Bank for International Settlements",
 };
 const minerals: StatelessSourceSpec = {
   id:"nrcan_science",category:"rare_earth",media:"rss",
@@ -26,15 +26,15 @@ const move = (location:string)=>new Response(null,{
 describe("first-party bank Macro release and bounded mineral redirect",()=>{
   it("uses the actual central-bank-published feed and its original native publication clock",()=>{
     const source=readFileSync("src/lib/stateless-public-intelligence.server.ts","utf8");
-    expect(source).toContain('url: "https://www.rba.gov.au/rss/rss-cb-media-releases.xml"');
+    expect(source).toContain('url: "https://www.bis.org/doclist/all_pressrels.rss"');
     const xml="<rss><channel><item>"+
-      "<title>Release of Financial Stability Review – October 2026</title>"+
-      "<link>https://www.rba.gov.au/media-releases/2026/mr-26-28.html</link>"+
-      "<pubDate>Thu, 01 Oct 2026 02:00:00 GMT</pubDate>"+
+      "<title>Basel III applicable in almost all member jurisdictions by 2027</title>"+
+      "<link>https://www.bis.org/press/p261005.htm</link>"+
+      "<pubDate>Mon, 05 Oct 2026 02:00:00 GMT</pubDate>"+
       "</item><item>"+
-      "<title>Statement by the Monetary Policy Board: Monetary Policy Decision</title>"+
-      "<link>https://www.rba.gov.au/media-releases/2026/mr-26-27.html</link>"+
-      "<pubDate>Tue, 29 Sep 2026 02:00:00 GMT</pubDate>"+
+      "<title>Basel Committee discusses banking supervision and regulation</title>"+
+      "<link>https://www.bis.org/press/p261001.htm</link>"+
+      "<pubDate>Thu, 01 Oct 2026 02:00:00 GMT</pubDate>"+
       "</item></channel></rss>";
     const parsed=parseFirstPartyFeed(xml,bank,now);
     expect(parsed.metrics.native_clock_valid).toBe(2);
@@ -42,10 +42,10 @@ describe("first-party bank Macro release and bounded mineral redirect",()=>{
     expect(out).toHaveLength(2);
     expect(out.every(x=>x.category==="macro" && x.severity===null &&
       x.same_event_corrob_verified===false)).toBe(true);
-    expect(out[0].published_at).toBe("2026-10-01T02:00:00.000Z");
+    expect(out[0].published_at).toBe("2026-10-05T02:00:00.000Z");
     expect(JSON.stringify(out)).not.toContain("https://");
-    expect(JSON.stringify(out)).not.toContain("Release of Financial Stability Review");
-    expect(deriveStatelessSignals(parsed.dated.filter(x=>x.publishedAt.startsWith("2026-10-01")),Date.parse("2026-10-01T02:14:59.000Z")))
+    expect(JSON.stringify(out)).not.toContain("Basel III applicable in almost all member");
+    expect(deriveStatelessSignals(parsed.dated.filter(x=>x.publishedAt.startsWith("2026-10-05")),Date.parse("2026-10-05T02:14:59.000Z")))
       .toHaveLength(0);
   });
 
@@ -72,7 +72,7 @@ describe("first-party bank Macro release and bounded mineral redirect",()=>{
       expect(response.status).toBe(301);
       expect(mock).toHaveBeenCalledTimes(1);
     }
-    const bankMock=vi.fn(async()=>move("https://www.rba.gov.au/other/rss.xml"));
+    const bankMock=vi.fn(async()=>move("https://www.bis.org/other/rss.xml"));
     const bankResult=await fetchFirstPartyOriginalFeed(bank,bankMock as unknown as typeof fetch);
     expect(bankResult.status).toBe(301);
     expect(bankMock).toHaveBeenCalledTimes(1);
