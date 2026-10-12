@@ -836,6 +836,41 @@ async function getWebsiteLaggedGriHistory(env,now=Date.now()){
     const view=privateVerifiedGriHistoryProjection(row,{now});
     if(view)return json(view);
   }
+  // READ-ONLY aging fallback. The original direct-B2 hot row may have been
+  // too young at the one-time SQL migration but become release-eligible later,
+  // especially when B2 Class B and producer quotas are frozen. Avoid a new
+  // B2 GET, a write-on-GET, Supabase or false data-clock backdating. This
+  // performs exactly ONE additional bounded D1 SELECT only on ring miss.
+  try{
+    const previous=await env.DB.prepare(`
+      SELECT source_as_of,payload_sha256,b2_sha256,
+        generated_at AS original_generated_at,
+        verified_at AS original_verified_at,
+        proof_schema,payload_json
+      FROM public_b2_hot_snapshot
+      WHERE product='global-risk'
+        AND schema_name='geomacro.public-global-risk-live.v1'
+        AND proof_schema='geomacro.public-global-risk-live-proof.v1'
+        AND b2_object_key=?
+        AND source_as_of<=?
+      LIMIT 1
+    `).bind(HOT_SNAPSHOT_PRODUCTS["global-risk"].b2Key,cutoff).first();
+    if(previous){
+      const bytes=new TextEncoder().encode(String(previous.payload_json??""));
+      if(bytes.byteLength>=2&&bytes.byteLength<=MAX_HOT_SNAPSHOT_BYTES){
+        const hash=await crypto.subtle.digest("SHA-256",bytes);
+        const actual=Array.from(new Uint8Array(hash),
+          b=>b.toString(16).padStart(2,"0")).join("");
+        if(actual===previous.payload_sha256){
+          const lagged=privateVerifiedGriHistoryProjection(previous,{now});
+          if(lagged)return json(lagged);
+        }
+      }
+    }
+  }catch{
+    return json({ok:false,error:"WEBSITE_GRI_HISTORY_UNAVAILABLE",
+      chargeable:false,source_identity_disclosed:false},503);
+  }
   return json({ok:false,error:"WEBSITE_GRI_60MIN_VERIFIED_HISTORY_NOT_FOUND",
     chargeable:false,source_identity_disclosed:false},503);
 }
