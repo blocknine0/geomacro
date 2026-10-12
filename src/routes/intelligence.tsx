@@ -21,8 +21,8 @@ import { intelligenceDomainPulse } from "@/lib/intelligence-domain-pulse";
 import { currentVerifiedDeskEvents } from "@/lib/intelligence-current-desk";
 import { SourceNetworkMonitor } from "@/components/intelligence/source-network-monitor";
 
-const TITLE = "Live Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
-const DESCRIPTION = "Source-governed geopolitical, macro/FX and critical minerals intelligence: specific scored events, decision context and verified severity from 0 to 100.";
+const TITLE = "Verified Risk Intelligence (60-Minute Delayed Website) | Geomacro";
+const DESCRIPTION = "Browse derived, verified Geomacro intelligence across geopolitical, macro/FX and critical-minerals risk. Public website data is delayed by at least one hour.";
 const URL = "https://geomacro.live/intelligence";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
@@ -142,6 +142,9 @@ function IntelligencePage() {
                allDomainsCurrent ? "THREE-DOMAIN CURRENT SCORED" :
                currentScored ? "PARTIAL CURRENT SCORED" : "AWAITING VERIFIED STORIES"}
           </span>
+          <span className="rounded-full border border-border/70 px-2.5 py-1 text-muted-foreground">
+            Website view · delayed ≥60 minutes
+          </span>
           <span className="text-muted-foreground">
             {intel.status === "updating" ? "Updating" : latestVerifiedFallback
               ? "No current scored intelligence · historical archive available"
@@ -152,7 +155,7 @@ function IntelligencePage() {
         </div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-          What changed, why it matters, and how significant is the risk? Explore verified, scored news across geopolitics, Macro/FX and critical minerals. Every assessment retains its original date.
+          What changed, why it matters, and how significant is the risk? Explore verified Geomacro assessments across geopolitics, Macro/FX and critical minerals. Website publication is delayed by at least 60 minutes; each assessment retains its original evidence date.
         </p>
         <p className="mt-3 text-sm text-muted-foreground">Free to browse. For structured API delivery or monthly intelligence access, <Link to="/pricing" className="font-medium text-primary hover:underline">compare access options</Link>.</p>
       </header>
@@ -271,7 +274,7 @@ function IntelligencePage() {
         <section className="mt-8" aria-labelledby="domain-leads-heading">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Global intelligence desk</p>
           <h2 id="domain-leads-heading" className="mt-1 text-2xl font-semibold">Verified news developments</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Only scored developments with a genuine original publication date within 24 hours are eligible here. Older intelligence stays in the dated archive.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Only scored developments with genuine original evidence dated within 24 hours and past the website 60-minute release cutoff are eligible here. Older intelligence stays in the dated archive.</p>
           {!currentScored ? (
             <p className="mt-4 rounded-xl border border-border/70 px-4 py-3 text-sm text-muted-foreground" role="status">
               No current verified risk assessment is available across the three domains. Monitoring continues, but an unconfirmed source update is not scored intelligence. This does not mean global risk is unchanged.
