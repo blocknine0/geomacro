@@ -15,6 +15,8 @@ import {
   type IntelSort,
 } from "@/lib/use-intelligence";
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
+import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
+import { StatelessLiveDesk } from "@/components/intelligence/stateless-live-desk";
 import { useRiskIndices } from "@/lib/use-risk-indices";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import { categoryLeads, publicHeadline, scoredNews, COMMERCIAL_DOMAINS } from "@/lib/intelligence-editorial";
@@ -22,8 +24,8 @@ import { intelligenceDomainPulse } from "@/lib/intelligence-domain-pulse";
 import { currentVerifiedDeskEvents } from "@/lib/intelligence-current-desk";
 import { SourceNetworkMonitor } from "@/components/intelligence/source-network-monitor";
 
-const TITLE = "Verified Risk Intelligence (60-Minute Delayed Website) | Geomacro";
-const DESCRIPTION = "Browse derived, verified Geomacro intelligence across geopolitical, macro/FX and critical-minerals risk. Public website data is delayed by at least one hour.";
+const TITLE = "Stateless Geopolitical, Macro & Minerals Intelligence | Geomacro";
+const DESCRIPTION = "Browse on-demand Geomacro official-source risk signals across geopolitics, Macro/FX and critical minerals with no permanent storage and at least 60 minutes public release delay.";
 const URL = "https://geomacro.live/intelligence";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
@@ -31,18 +33,16 @@ export const Route = createFileRoute("/intelligence")({
   loader: async () => {
     const now = Date.now();
     try {
-      const rows = await withPublicRuntimeTimeout(
-        getPublicIntelligenceSeo({ data: {} }),
-        6_000,
-        "Intelligence route preload timed out.",
+      // No historical B2/D1/Supabase reads or writes on the active
+      // website route. Only bounded official source requests in memory.
+      const stateless = await withPublicRuntimeTimeout(
+        getStatelessIntelligence({ data: { category: "geopolitics" } }),
+        8_000,
+        "On-demand Intelligence source check timed out.",
       );
-      return { rows, now };
-    } catch (error) {
-      console.error(
-        "[intelligence-route] preload failed; rendering fail-closed workspace",
-        error instanceof Error ? error.message : String(error),
-      );
-      return { rows: [], now };
+      return { rows: [], now, stateless };
+    } catch {
+      return { rows: [], now, stateless: null };
     }
   },
   head: () => ({
@@ -82,8 +82,13 @@ export const Route = createFileRoute("/intelligence")({
       },
     ],
   }),
-  component: IntelligencePage,
+  component: StatelessWebsiteIntelligencePage,
 });
+
+function StatelessWebsiteIntelligencePage() {
+  const loader = Route.useLoaderData();
+  return <StatelessLiveDesk initial={loader.stateless} />;
+}
 
 function IntelligencePage() {
   const loaderData = Route.useLoaderData();
