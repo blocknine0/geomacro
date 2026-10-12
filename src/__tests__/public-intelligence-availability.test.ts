@@ -22,7 +22,9 @@ describe("public intelligence availability contract", () => {
 
   it("fails soft to verified B2 data without converting live observations into scores", () => {
     expect(source).toContain("readB2PublicIntelligence");
-    expect(source).toContain("return edgeRows?.length ? sortAndDedupe(edgeRows) : []");\n    const serving=source.slice(source.indexOf("export async function readPublicIntelligenceRows()"));\n    expect(serving).not.toContain("readPublicIntelligenceRowsFromSupabase()");
+    expect(source).toContain("return edgeRows?.length ? sortAndDedupe(edgeRows) : []");
+    const serving=source.slice(source.indexOf("export async function readPublicIntelligenceRows()"));
+    expect(serving).not.toContain("readPublicIntelligenceRowsFromSupabase()");
     expect(source).toContain("normalizeLiveObservedRow");
     expect(source).toContain('row.public_status !== "live_observed"');
     expect(source).toContain("row.severity !== null");
