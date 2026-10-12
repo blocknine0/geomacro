@@ -3,6 +3,7 @@ import { z } from "zod";
 import { readB2PublicIntelligence } from "./b2-live.server";
 import { assertPublicReadOrigin } from "./origin-guard";
 import { sanitizePublicIntelligenceRow } from "./public-intelligence-gist";
+import { websiteEvidencePastEmbargo } from "./website-publication-delay";
 
 const EventInput = z.object({
   eventId: z.string().trim().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
@@ -45,5 +46,7 @@ export const getPublicEventDetail = createServerFn({ method: "POST" })
     const b2Rows = await readB2PublicIntelligence();
     const b2Row = b2Rows?.find((row) => row.id === data.eventId);
     const safe = b2Row ? sanitizePublicIntelligenceRow(b2Row) : null;
-    return safe ? fromB2Row(safe) : null;
+    // Website-only detail and SEO routes follow the same 60-minute embargo
+    // as /intelligence; the canonical paid x402 path remains unlagged.
+    return safe && websiteEvidencePastEmbargo(safe) ? fromB2Row(safe) : null;
   });
