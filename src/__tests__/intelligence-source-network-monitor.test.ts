@@ -100,8 +100,8 @@ describe("#1827 private source-monitoring on Intelligence versus actual verified
     const route = readFileSync("src/routes/intelligence.tsx", "utf8");
     const editorial = readFileSync("src/lib/intelligence-editorial.ts", "utf8");
     const alias = readFileSync("src/lib/category-intelligence-alias.server.ts", "utf8");
-    expect(route).toContain("<SourceNetworkMonitor />");
-    expect(route).toContain("currentVerifiedDeskEvents(pool)");
+    expect(route).toContain("<SourceNetworkMonitor category={category} />");
+    expect(route).toContain("currentVerifiedDeskEvents(selectedPool)");
     expect(route).toContain("scoredNews(intel.data?.all ?? [])");
     expect(editorial).toContain("dedupePublicIntelligenceRows(eligible.map");
     expect(alias).toContain("return mainnetIntelligenceHandlers.POST({ request: canonicalRequest })");
