@@ -3,6 +3,11 @@ on:
   pull_request:
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "scripts/ops/observe-country-corridor-official-sources.mjs"
+      - "scripts/lib/operator-country-corridor-reference.mjs"
+      - "config/operator-country-source-crosswalk.v1.json"
+      - "config/operator-corridor-source-crosswalk.v1.json"
+      - "src/__tests__/operator-country-corridor-crosswalk.test.ts"
       - "scripts/ops/observe-operator-free-feed-rotation.mjs"
       - "src/__tests__/operator-free-feed-rotation.test.ts"
       - "config/operator-76-source-attribution-intake.v1.json"
@@ -23,6 +28,11 @@ on:
     branches: [main]
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "scripts/ops/observe-country-corridor-official-sources.mjs"
+      - "scripts/lib/operator-country-corridor-reference.mjs"
+      - "config/operator-country-source-crosswalk.v1.json"
+      - "config/operator-corridor-source-crosswalk.v1.json"
+      - "src/__tests__/operator-country-corridor-crosswalk.test.ts"
       - "config/operator-76-source-attribution-intake.v1.json"
       - "scripts/ops/probe-operator-official-intake.mjs"
       - "scripts/lib/operator-source-attribution.mjs"
@@ -316,6 +326,50 @@ jobs:
         with:
           name: operator-public-feed-rotation-${{ github.run_id }}
           path: artifacts/expanded-official-source/operator-free-feed-rotation.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  operator-country-corridor-official-context:
+    # 3 additional read-only no-key PUBLIC first-party sources for the
+    # attached country/corridor companion lists. Existing 90-minute cron;
+    # no raw event body, score, D1/B2/Supabase or payment transactions.
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout source crosswalk and read-only official observer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Check MARAD NBU and JOGMEC first-party public context endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/observe-country-corridor-official-sources.mjs
+          jq -e '
+            .schema=="geomacro.country-corridor-3domain-private-observation.v1" and
+            .status=="ALL_THREE_OFFICIAL_CONTEXT_SOURCES_REACHABLE" and
+            .api_requests==3 and
+            .supabase_requests==0 and .d1_requests==0 and
+            .b2_requests==0 and .x402_payment_attempts==0 and
+            .original_report_content_stored==false and
+            .signed_intelligence_generated==false and
+            .country_and_corridor_scores_certified==false and
+            ([.sources[]|.transport_state=="PRIVATE_OFFICIAL_METADATA_OBSERVED" and
+              .http_requests==1 and .source_rights_for_paid_use_verified==false and
+              .raw_data_stored==false and .commercial_eligible==false] | all) and
+            ([.sources[].domain]|sort==["critical_minerals","geopolitics","macro_fx"])
+          ' artifacts/expanded-official-source/country-corridor-official-context.json >/dev/null
+      - name: Retain sanitized aggregate context proof for 3 days
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: operator-country-corridor-context-${{ github.run_id }}
+          path: artifacts/expanded-official-source/country-corridor-official-context.json
           if-no-files-found: warn
           retention-days: 3
 

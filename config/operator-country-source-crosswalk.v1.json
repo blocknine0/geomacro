@@ -1,0 +1,2480 @@
+{
+  "schema": "geomacro.operator-country-source-crosswalk.v1",
+  "as_of": "2026-10-12",
+  "input_records": {
+    "global_country_dim": 37,
+    "national_primary": 71,
+    "national_groups": 23
+  },
+  "normalization": "ISO_3166_1_ALPHA3_FOR_COUNTRY_CONTEXT; FIPS/other mappings require exact table before event location claims",
+  "meaning": "Reference registry only. Existing canonical family reused without starting duplicate feeds; independent original publisher, license, date, freshness and coverage must pass before paid signed intelligence.",
+  "domains": [
+    "geopolitics",
+    "macro_fx",
+    "critical_minerals"
+  ],
+  "global_country_dim": [
+    {
+      "id": "gdelt_events_country",
+      "category": "geopolitics",
+      "tier": 2,
+      "access": "bulk",
+      "endpoint": "http://data.gdeltproject.org/gdeltv2/lastupdate.txt",
+      "poll_interval": "15m",
+      "freshness": "near_realtime",
+      "license_flag": "free",
+      "notes": "ActionGeo_CountryCode / Actor1CountryCode (FIPS). Dedup + whitelist + Goldstein/tone threshold before GRI.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": "gdelt_v2",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "gdelt_geo_api",
+      "category": "geopolitics",
+      "tier": 2,
+      "access": "api",
+      "endpoint": "https://api.gdeltproject.org/api/v2/geo/geo",
+      "poll_interval": "15m",
+      "freshness": "near_realtime",
+      "license_flag": "free",
+      "notes": "Country/location heat for news volume.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "acled_country",
+      "category": "geopolitics",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://acleddata.com/api/acled/read",
+      "poll_interval": "1d",
+      "freshness": "weekly",
+      "license_flag": "check",
+      "notes": "Event-level, geocoded. Commercial license required.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TERMS_OR_PAYMENT_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "ucdp_country",
+      "category": "geopolitics",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://ucdpapi.pcr.uu.se/api/",
+      "poll_interval": "1d",
+      "freshness": "monthly",
+      "license_flag": "free",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": "ucdp_ged",
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "reliefweb_country",
+      "category": "geopolitics",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://api.reliefweb.int/v1/reports",
+      "poll_interval": "1h",
+      "freshness": "near_realtime",
+      "license_flag": "free",
+      "notes": "Filter by country ISO3. Needs appname.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": "reliefweb",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false,
+      "provider_endpoint_version_deprecated": "v1 must not be polled",
+      "effective_existing_reader_id": "reliefweb",
+      "existing_reader_requires_secret": "RELIEFWEB_APPROVED_APPNAME"
+    },
+    {
+      "id": "cloudflare_radar",
+      "category": "geopolitics",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://api.cloudflare.com/client/v4/radar/",
+      "poll_interval": "5m",
+      "freshness": "realtime",
+      "license_flag": "free",
+      "notes": "Country-level internet outages/traffic anomalies. Strong unrest/shutdown/cable-cut signal. Needs API token.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CREDENTIALS_OR_RIGHTS_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "ioda_outages",
+      "category": "geopolitics",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
+      "poll_interval": "5m",
+      "freshness": "realtime",
+      "license_flag": "free",
+      "notes": "Georgia Tech IODA - cross-check for Cloudflare Radar.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "netblocks",
+      "category": "geopolitics",
+      "tier": 2,
+      "access": "scrape",
+      "endpoint": "https://netblocks.org/",
+      "poll_interval": "15m",
+      "freshness": "near_realtime",
+      "license_flag": "check",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TERMS_OR_PAYMENT_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "imf_portwatch",
+      "category": "geopolitics",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://portwatch.imf.org/",
+      "poll_interval": "6h",
+      "freshness": "daily",
+      "license_flag": "free",
+      "notes": "Daily port + chokepoint transit counts (Hormuz, Suez, Malacca, Panama, Bab el-Mandeb). Country port disruptions.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "aisstream_country",
+      "category": "geopolitics",
+      "tier": 2,
+      "access": "websocket",
+      "endpoint": "wss://stream.aisstream.io/v0/stream",
+      "poll_interval": "stream",
+      "freshness": "realtime",
+      "license_flag": "partial",
+      "notes": "Bounding boxes per EEZ/chokepoint.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TERMS_OR_PAYMENT_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "ofac_by_program",
+      "category": "geopolitics",
+      "tier": 1,
+      "access": "bulk",
+      "endpoint": "https://www.treasury.gov/ofac/downloads/sdn.xml",
+      "poll_interval": "1h",
+      "freshness": "near_realtime",
+      "license_flag": "free",
+      "notes": "Map sanctions programs and SDN country field to ISO3.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": "ofac_recent_actions",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "eu_uk_un_sanctions",
+      "category": "geopolitics",
+      "tier": 1,
+      "access": "bulk",
+      "endpoint": "multiple",
+      "poll_interval": "6h",
+      "freshness": "daily",
+      "license_flag": "free",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "usgs_gdacs_country",
+      "category": "geopolitics",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://www.gdacs.org/xml/rss.xml",
+      "poll_interval": "10m",
+      "freshness": "near_realtime",
+      "license_flag": "free",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": "gdacs_global_disasters",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "prediction_markets_country",
+      "category": "geopolitics",
+      "tier": 2,
+      "access": "api",
+      "endpoint": "https://gamma-api.polymarket.com",
+      "poll_interval": "1m",
+      "freshness": "realtime",
+      "license_flag": "free",
+      "notes": "Tag markets to country (Polymarket, Kalshi, Metaculus). Sentiment layer, low gri_weight alone.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "inform_risk",
+      "category": "geopolitics",
+      "tier": 1,
+      "access": "bulk",
+      "endpoint": "https://drmkc.jrc.ec.europa.eu/inform-index",
+      "poll_interval": "7d",
+      "freshness": "annual",
+      "license_flag": "free",
+      "notes": "Baseline country risk. Use as prior, not realtime.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "structural_indices",
+      "category": "geopolitics",
+      "tier": 2,
+      "access": "bulk",
+      "endpoint": "multiple",
+      "poll_interval": "30d",
+      "freshness": "annual",
+      "license_flag": "check",
+      "notes": "Baseline priors only.",
+      "domains": [
+        "geopolitics"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TERMS_OR_PAYMENT_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "worldbank_wdi",
+      "category": "macro",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://api.worldbank.org/v2/",
+      "poll_interval": "1d",
+      "freshness": "annual",
+      "license_flag": "free",
+      "notes": "Structural. 200+ countries.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": "world_bank_indicators",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "imf_country",
+      "category": "macro",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://www.imf.org/external/datamapper/api/v1/",
+      "poll_interval": "1d",
+      "freshness": "quarterly",
+      "license_flag": "free",
+      "notes": "WEO, IFS, BOP, DOT (direction of trade). IMF SDMX endpoints are migrating - verify.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": "imf_sdmx",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "oecd_country",
+      "category": "macro",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://sdmx.oecd.org/public/rest/",
+      "poll_interval": "1d",
+      "freshness": "monthly",
+      "license_flag": "free",
+      "notes": "OECD members + key partners. CLI leading indicators.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": "oecd_sdmx",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "bis_country",
+      "category": "macro",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://data.bis.org/",
+      "poll_interval": "1d",
+      "freshness": "quarterly",
+      "license_flag": "free",
+      "notes": "Policy rates (all central banks), credit, REER/NEER, cross-border banking.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": "bis_statistics",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "ecb_fx_reference",
+      "category": "macro",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://data-api.ecb.europa.eu/service/data/EXR",
+      "poll_interval": "1h",
+      "freshness": "daily",
+      "license_flag": "free",
+      "notes": "Daily reference FX for ~30 currencies.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": "ecb_sdmx",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "fred_international",
+      "category": "macro",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://api.stlouisfed.org/fred/",
+      "poll_interval": "1h",
+      "freshness": "daily",
+      "license_flag": "free",
+      "notes": "Many countries' CPI, rates, FX, yields mirrored from OECD/IMF/BIS.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CREDENTIALS_OR_RIGHTS_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "market_prices_country",
+      "category": "macro",
+      "tier": 2,
+      "access": "api",
+      "endpoint": "multiple",
+      "poll_interval": "1m",
+      "freshness": "near_realtime",
+      "license_flag": "partial",
+      "notes": "Country equity index ETFs, FX pairs, sovereign yields, USD index. Proxy for realtime stress per country.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TERMS_OR_PAYMENT_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "sovereign_cds",
+      "category": "macro",
+      "tier": 2,
+      "access": "api",
+      "endpoint": "tbd",
+      "poll_interval": "1h",
+      "freshness": "daily",
+      "license_flag": "paid",
+      "notes": "Best realtime country-risk market signal, but paid (Bloomberg/Refinitiv/CMA). Free proxy - country ETFs + FX volatility.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TERMS_OR_PAYMENT_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "comtrade_country",
+      "category": "macro",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://comtradeapi.un.org/",
+      "poll_interval": "1d",
+      "freshness": "monthly",
+      "license_flag": "free",
+      "notes": "Reporter x partner x HS. 1-2 month lag.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": "un_comtrade",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "wits_tariffs",
+      "category": "macro",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://wits.worldbank.org/",
+      "poll_interval": "7d",
+      "freshness": "annual",
+      "license_flag": "free",
+      "notes": "Tariffs by country pair.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "jodi_oil_gas",
+      "category": "macro",
+      "tier": 1,
+      "access": "bulk",
+      "endpoint": "https://www.jodidata.org/",
+      "poll_interval": "1d",
+      "freshness": "monthly",
+      "license_flag": "free",
+      "notes": "Country oil/gas production, stocks, demand.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "entsoe_power",
+      "category": "macro",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://transparency.entsoe.eu/api",
+      "poll_interval": "15m",
+      "freshness": "realtime",
+      "license_flag": "free",
+      "notes": "European power grid (generation, load, cross-border flows). Needs token.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CREDENTIALS_OR_RIGHTS_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "ember_power",
+      "category": "macro",
+      "tier": 2,
+      "access": "api",
+      "endpoint": "https://ember-energy.org/data/",
+      "poll_interval": "1d",
+      "freshness": "monthly",
+      "license_flag": "free",
+      "notes": "Global country electricity data.",
+      "domains": [
+        "macro_fx"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "re_comtrade_country",
+      "category": "rare_earth",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "https://comtradeapi.un.org/",
+      "poll_interval": "1d",
+      "freshness": "monthly",
+      "license_flag": "free",
+      "notes": "HS 2805, 2846, 850511, 8112 by reporter/partner. Core flow dataset for all countries.",
+      "domains": [
+        "critical_minerals"
+      ],
+      "canonical_family_id": "un_comtrade_minerals",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "re_usgs_country",
+      "category": "rare_earth",
+      "tier": 1,
+      "access": "bulk",
+      "endpoint": "https://www.usgs.gov/centers/national-minerals-information-center",
+      "poll_interval": "7d",
+      "freshness": "annual",
+      "license_flag": "free",
+      "notes": "Mine production + reserves by country (CHN, USA, AUS, MMR, VNM, BRA, IND, RUS, MYS, GRL...).",
+      "domains": [
+        "critical_minerals"
+      ],
+      "canonical_family_id": "usgs_mcs",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "re_bgs_world_minerals",
+      "category": "rare_earth",
+      "tier": 1,
+      "access": "bulk",
+      "endpoint": "https://www.bgs.ac.uk/mineralsuk/statistics/world-mineral-statistics/",
+      "poll_interval": "30d",
+      "freshness": "annual",
+      "license_flag": "free",
+      "domains": [
+        "critical_minerals"
+      ],
+      "canonical_family_id": "bgs_world_minerals_statistics",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "re_gacc_country_partner",
+      "category": "rare_earth",
+      "tier": 1,
+      "access": "scrape",
+      "endpoint": "http://www.customs.gov.cn/",
+      "poll_interval": "1d",
+      "freshness": "monthly",
+      "license_flag": "free",
+      "notes": "China exports by destination country (~18th-20th of month). Most important single dataset.",
+      "domains": [
+        "critical_minerals"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TRANSPORT_OR_SECURITY_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "re_japan_korea_customs",
+      "category": "rare_earth",
+      "tier": 1,
+      "access": "api",
+      "endpoint": "multiple",
+      "poll_interval": "1d",
+      "freshness": "monthly",
+      "license_flag": "free",
+      "domains": [
+        "critical_minerals"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "re_equity_proxies_country",
+      "category": "rare_earth",
+      "tier": 2,
+      "access": "api",
+      "endpoint": "via market_prices_country",
+      "poll_interval": "5m",
+      "freshness": "near_realtime",
+      "license_flag": "partial",
+      "notes": "USA MP/Energy Fuels/USAR; AUS Lynas/Iluka/Arafura; CHN China Northern RE/JL Mag; global REMX. Only near-realtime RE signal.",
+      "domains": [
+        "critical_minerals"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TERMS_OR_PAYMENT_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "re_gov_policy_feeds",
+      "category": "rare_earth",
+      "tier": 1,
+      "access": "rss",
+      "endpoint": "multiple",
+      "poll_interval": "1h",
+      "freshness": "near_realtime",
+      "license_flag": "free",
+      "notes": "MOFCOM, MIIT, US Federal Register/DoD/DOE, EU CRMA, JOGMEC, Australia CMO, G7.",
+      "domains": [
+        "critical_minerals"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_PROVIDER_SPECIFIC_OFFICIAL_ENDPOINT_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    },
+    {
+      "id": "re_price_china_spot",
+      "category": "rare_earth",
+      "tier": 2,
+      "access": "scrape",
+      "endpoint": "https://www.metal.com/",
+      "poll_interval": "6h",
+      "freshness": "daily",
+      "license_flag": "check",
+      "notes": "Chinese domestic oxide spot. Redistribution needs agreement. Paid alt - Fastmarkets/Argus/Benchmark.",
+      "domains": [
+        "critical_minerals"
+      ],
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TERMS_OR_PAYMENT_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
+      "freshness_claim_verified": false
+    }
+  ],
+  "national_primary": [
+    {
+      "country_group": "USA",
+      "category": "geopolitics",
+      "id": "usa_ofac",
+      "endpoint": "https://ofac.treasury.gov/recent-actions",
+      "freshness": "near_realtime",
+      "access": "rss",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "USA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "ofac_recent_actions",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "usa_ofac"
+    },
+    {
+      "country_group": "USA",
+      "category": "geopolitics",
+      "id": "usa_state_dept",
+      "endpoint": "https://www.state.gov/rss-feeds/",
+      "freshness": "daily",
+      "access": "rss",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "USA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "usa_state_dept"
+    },
+    {
+      "country_group": "USA",
+      "category": "geopolitics",
+      "id": "usa_federal_register",
+      "endpoint": "https://www.federalregister.gov/api/v1/documents.json",
+      "freshness": "daily",
+      "access": "api",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "USA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "federal_register",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "usa_federal_register"
+    },
+    {
+      "country_group": "USA",
+      "category": "macro",
+      "id": "usa_fred",
+      "endpoint": "https://api.stlouisfed.org/fred/",
+      "freshness": "daily",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "USA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "fred",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "usa_fred"
+    },
+    {
+      "country_group": "USA",
+      "category": "macro",
+      "id": "usa_census_trade",
+      "endpoint": "https://api.census.gov/data/timeseries/intltrade/",
+      "freshness": "monthly",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "USA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "usa_census_trade"
+    },
+    {
+      "country_group": "USA",
+      "category": "macro",
+      "id": "usa_eia",
+      "endpoint": "https://api.eia.gov/v2/",
+      "freshness": "daily",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "USA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "eia_api_v2",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "usa_eia"
+    },
+    {
+      "country_group": "USA",
+      "category": "macro",
+      "id": "usa_treasury_fiscaldata",
+      "endpoint": "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/",
+      "freshness": "daily",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "USA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "treasury_fiscaldata",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "usa_treasury_fiscaldata"
+    },
+    {
+      "country_group": "USA",
+      "category": "rare_earth",
+      "id": "usa_usgs_nmic",
+      "endpoint": "https://www.usgs.gov/centers/national-minerals-information-center",
+      "freshness": "annual",
+      "access": "bulk",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "USA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "usgs_mcs",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "usa_usgs_nmic"
+    },
+    {
+      "country_group": "USA",
+      "category": "rare_earth",
+      "id": "usa_sec_edgar",
+      "endpoint": "https://data.sec.gov/submissions/",
+      "freshness": "near_realtime",
+      "access": "api",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "USA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "sec_edgar",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "usa_sec_edgar"
+    },
+    {
+      "country_group": "USA",
+      "category": "rare_earth",
+      "id": "usa_dod_dpa_doe",
+      "endpoint": "multiple",
+      "freshness": "daily",
+      "access": "rss",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "USA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "usa_dod_dpa_doe"
+    },
+    {
+      "country_group": "CHN",
+      "category": "geopolitics",
+      "id": "chn_mofcom",
+      "endpoint": "http://english.mofcom.gov.cn/",
+      "freshness": "near_realtime",
+      "access": "scrape",
+      "bias_tag": "state",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "CHN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TRANSPORT_OR_SECURITY_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "chn_mofcom"
+    },
+    {
+      "country_group": "CHN",
+      "category": "geopolitics",
+      "id": "chn_mfa",
+      "endpoint": "https://www.fmprc.gov.cn/eng/",
+      "freshness": "daily",
+      "access": "scrape",
+      "bias_tag": "state",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "CHN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "chn_mfa"
+    },
+    {
+      "country_group": "CHN",
+      "category": "geopolitics",
+      "id": "chn_state_media",
+      "endpoint": "Xinhua / Global Times / CGTN",
+      "freshness": "near_realtime",
+      "access": "rss",
+      "bias_tag": "state",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "CHN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "chn_state_media"
+    },
+    {
+      "country_group": "CHN",
+      "category": "macro",
+      "id": "chn_nbs",
+      "endpoint": "https://data.stats.gov.cn/",
+      "freshness": "monthly",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "CHN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "chn_nbs"
+    },
+    {
+      "country_group": "CHN",
+      "category": "macro",
+      "id": "chn_pboc",
+      "endpoint": "http://www.pbc.gov.cn/en/",
+      "freshness": "daily",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "CHN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TRANSPORT_OR_SECURITY_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "chn_pboc"
+    },
+    {
+      "country_group": "CHN",
+      "category": "macro",
+      "id": "chn_safe_fx",
+      "endpoint": "https://www.safe.gov.cn/en/",
+      "freshness": "monthly",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "CHN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "chn_safe_fx"
+    },
+    {
+      "country_group": "CHN",
+      "category": "macro",
+      "id": "chn_gacc",
+      "endpoint": "http://www.customs.gov.cn/",
+      "freshness": "monthly",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "CHN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_TRANSPORT_OR_SECURITY_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "chn_gacc"
+    },
+    {
+      "country_group": "CHN",
+      "category": "rare_earth",
+      "id": "chn_miit_quota",
+      "endpoint": "https://www.miit.gov.cn/",
+      "freshness": "daily",
+      "access": "scrape",
+      "bias_tag": "state",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "CHN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "chn_miit_quota"
+    },
+    {
+      "country_group": "CHN",
+      "category": "rare_earth",
+      "id": "chn_northern_re",
+      "endpoint": "equity feed (600111.SS)",
+      "freshness": "near_realtime",
+      "access": "api",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "CHN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "chn_northern_re"
+    },
+    {
+      "country_group": "CHN",
+      "category": "rare_earth",
+      "id": "chn_chinatungsten_smm",
+      "endpoint": "https://www.metal.com/",
+      "freshness": "daily",
+      "access": "scrape",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "CHN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "chn_chinatungsten_smm"
+    },
+    {
+      "country_group": "IND",
+      "category": "geopolitics",
+      "id": "ind_mea",
+      "endpoint": "https://www.mea.gov.in/",
+      "freshness": "daily",
+      "access": "scrape",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "IND"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "ind_mea"
+    },
+    {
+      "country_group": "IND",
+      "category": "geopolitics",
+      "id": "ind_pib",
+      "endpoint": "https://pib.gov.in/",
+      "freshness": "near_realtime",
+      "access": "rss",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "IND"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "ind_pib"
+    },
+    {
+      "country_group": "IND",
+      "category": "macro",
+      "id": "ind_rbi_dbie",
+      "endpoint": "https://data.rbi.org.in/",
+      "freshness": "daily",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "IND"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "india_rbi_public",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "ind_rbi_dbie"
+    },
+    {
+      "country_group": "IND",
+      "category": "macro",
+      "id": "ind_mospi",
+      "endpoint": "https://mospi.gov.in/",
+      "freshness": "monthly",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "IND"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "ind_mospi"
+    },
+    {
+      "country_group": "IND",
+      "category": "macro",
+      "id": "ind_dgcis_trade",
+      "endpoint": "https://tradestat.commerce.gov.in/",
+      "freshness": "monthly",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "IND"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "ind_dgcis_trade"
+    },
+    {
+      "country_group": "IND",
+      "category": "rare_earth",
+      "id": "ind_irel_ibm",
+      "endpoint": "https://ibm.gov.in/ (Indian Bureau of Mines), IREL",
+      "freshness": "annual",
+      "access": "scrape",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "IND"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "ind_irel_ibm"
+    },
+    {
+      "country_group": "RUS",
+      "category": "geopolitics",
+      "id": "rus_mid_kremlin",
+      "endpoint": "\"https://eng.mid.ru/",
+      "http": "//en.kremlin.ru/\"",
+      "freshness": "daily",
+      "access": "rss",
+      "bias_tag": "state",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "RUS"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "rus_mid_kremlin"
+    },
+    {
+      "country_group": "RUS",
+      "category": "geopolitics",
+      "id": "rus_tass",
+      "endpoint": "https://tass.com/rss/v2.xml",
+      "freshness": "near_realtime",
+      "access": "rss",
+      "bias_tag": "state",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "RUS"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "state_tass",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "rus_tass"
+    },
+    {
+      "country_group": "RUS",
+      "category": "macro",
+      "id": "rus_cbr",
+      "endpoint": "https://www.cbr.ru/eng/",
+      "freshness": "daily",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "RUS"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "rus_cbr"
+    },
+    {
+      "country_group": "RUS",
+      "category": "macro",
+      "id": "rus_rosstat",
+      "endpoint": "https://rosstat.gov.ru/",
+      "freshness": "monthly",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "RUS"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "rus_rosstat"
+    },
+    {
+      "country_group": "RUS",
+      "category": "rare_earth",
+      "id": "rus_nornickel_rosatom",
+      "endpoint": "company releases",
+      "freshness": "daily",
+      "access": "rss",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "RUS"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "rus_nornickel_rosatom"
+    },
+    {
+      "country_group": "JPN",
+      "category": "macro",
+      "id": "jpn_boj",
+      "endpoint": "https://www.boj.or.jp/en/",
+      "freshness": "daily",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "JPN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "jpn_boj"
+    },
+    {
+      "country_group": "JPN",
+      "category": "macro",
+      "id": "jpn_estat",
+      "endpoint": "https://www.e-stat.go.jp/en",
+      "freshness": "monthly",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "JPN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "jpn_estat"
+    },
+    {
+      "country_group": "JPN",
+      "category": "macro",
+      "id": "jpn_mof_trade",
+      "endpoint": "https://www.customs.go.jp/toukei/",
+      "freshness": "monthly",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "JPN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "jpn_mof_trade"
+    },
+    {
+      "country_group": "JPN",
+      "category": "rare_earth",
+      "id": "jpn_jogmec",
+      "endpoint": "https://www.jogmec.go.jp/english/",
+      "freshness": "daily",
+      "access": "rss",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "JPN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "jpn_jogmec"
+    },
+    {
+      "country_group": "JPN",
+      "category": "rare_earth",
+      "id": "jpn_meti",
+      "endpoint": "https://www.meti.go.jp/english/",
+      "freshness": "daily",
+      "access": "rss",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "JPN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "jpn_meti"
+    },
+    {
+      "country_group": "KOR",
+      "category": "macro",
+      "id": "kor_bok_ecos",
+      "endpoint": "https://ecos.bok.or.kr/api/",
+      "freshness": "daily",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "KOR"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CREDENTIALS_OR_RIGHTS_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "kor_bok_ecos"
+    },
+    {
+      "country_group": "KOR",
+      "category": "rare_earth",
+      "id": "kor_komir_motie",
+      "endpoint": "KOMIR / MOTIE",
+      "freshness": "daily",
+      "access": "scrape",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "KOR"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "kor_komir_motie"
+    },
+    {
+      "country_group": "TWN",
+      "category": "macro",
+      "id": "twn_cbc_dgbas",
+      "endpoint": "\"https://www.cbc.gov.tw/en/",
+      "https": "//eng.stat.gov.tw/\"",
+      "freshness": "monthly",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "TWN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "twn_cbc_dgbas"
+    },
+    {
+      "country_group": "AUS",
+      "category": "macro",
+      "id": "aus_abs",
+      "endpoint": "https://api.data.abs.gov.au",
+      "freshness": "monthly",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "AUS"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "aus_abs"
+    },
+    {
+      "country_group": "AUS",
+      "category": "macro",
+      "id": "aus_rba",
+      "endpoint": "https://www.rba.gov.au/statistics/",
+      "freshness": "daily",
+      "access": "bulk",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "AUS"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "aus_rba"
+    },
+    {
+      "country_group": "AUS",
+      "category": "rare_earth",
+      "id": "aus_asx_announcements",
+      "endpoint": "https://www.asx.com.au/",
+      "freshness": "near_realtime",
+      "access": "scrape",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "AUS"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "aus_asx_announcements"
+    },
+    {
+      "country_group": "AUS",
+      "category": "rare_earth",
+      "id": "aus_geoscience_cma",
+      "endpoint": "Geoscience Australia / Critical Minerals Office",
+      "freshness": "annual",
+      "access": "scrape",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "AUS"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_PROVIDER_SPECIFIC_OFFICIAL_ENDPOINT_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "aus_geoscience_cma"
+    },
+    {
+      "country_group": "GBR",
+      "category": "macro",
+      "id": "gbr_ons",
+      "endpoint": "https://api.beta.ons.gov.uk/v1",
+      "freshness": "monthly",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "GBR"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "uk_ons_public",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "gbr_ons"
+    },
+    {
+      "country_group": "GBR",
+      "category": "macro",
+      "id": "gbr_boe",
+      "endpoint": "https://www.bankofengland.co.uk/boeapps/database/",
+      "freshness": "daily",
+      "access": "bulk",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "GBR"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "gbr_boe"
+    },
+    {
+      "country_group": "GBR",
+      "category": "geopolitics",
+      "id": "gbr_ofsi",
+      "endpoint": "https://www.gov.uk/government/publications/financial-sanctions-consolidated-list-of-targets",
+      "freshness": "daily",
+      "access": "bulk",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "GBR"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "uk_sanctions_list",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "gbr_ofsi"
+    },
+    {
+      "country_group": "EU",
+      "category": "macro",
+      "id": "eu_ecb_data",
+      "endpoint": "https://data-api.ecb.europa.eu/service/data/",
+      "freshness": "daily",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [],
+      "scope": "MULTI_COUNTRY_EU_INSTITUTION",
+      "canonical_family_id": "ecb_sdmx",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "eu_ecb_data"
+    },
+    {
+      "country_group": "EU",
+      "category": "macro",
+      "id": "eu_eurostat",
+      "endpoint": "https://ec.europa.eu/eurostat/api/",
+      "freshness": "monthly",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [],
+      "scope": "MULTI_COUNTRY_EU_INSTITUTION",
+      "canonical_family_id": "eurostat",
+      "source_activation_state": "EXISTING_PROVIDER_REUSE_NO_DUPLICATE_POLL",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "eu_eurostat"
+    },
+    {
+      "country_group": "EU",
+      "category": "macro",
+      "id": "deu_destatis",
+      "endpoint": "https://www-genesis.destatis.de/",
+      "freshness": "monthly",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [],
+      "scope": "MULTI_COUNTRY_EU_INSTITUTION",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "deu_destatis"
+    },
+    {
+      "country_group": "EU",
+      "category": "geopolitics",
+      "id": "eu_sanctions_map",
+      "endpoint": "https://webgate.ec.europa.eu/fsd/fsf",
+      "freshness": "daily",
+      "access": "bulk",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [],
+      "scope": "MULTI_COUNTRY_EU_INSTITUTION",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "eu_sanctions_map"
+    },
+    {
+      "country_group": "EU",
+      "category": "rare_earth",
+      "id": "eu_crma_commission",
+      "endpoint": "https://single-market-economy.ec.europa.eu/",
+      "freshness": "daily",
+      "access": "rss",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [],
+      "scope": "MULTI_COUNTRY_EU_INSTITUTION",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "eu_crma_commission"
+    },
+    {
+      "country_group": "BRA",
+      "category": "macro",
+      "id": "bra_bcb_sgs",
+      "endpoint": "https://api.bcb.gov.br/dados/serie/",
+      "freshness": "daily",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "BRA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "bra_bcb_sgs"
+    },
+    {
+      "country_group": "BRA",
+      "category": "rare_earth",
+      "id": "bra_anm",
+      "endpoint": "https://www.gov.br/anm/",
+      "freshness": "annual",
+      "access": "scrape",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "BRA"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "bra_anm"
+    },
+    {
+      "country_group": "CAN",
+      "category": "macro",
+      "id": "can_statcan",
+      "endpoint": "https://www150.statcan.gc.ca/t1/wds/rest/",
+      "freshness": "monthly",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "CAN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "can_statcan"
+    },
+    {
+      "country_group": "CAN",
+      "category": "rare_earth",
+      "id": "can_nrcan",
+      "endpoint": "https://natural-resources.canada.ca/",
+      "freshness": "annual",
+      "access": "scrape",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "CAN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "can_nrcan"
+    },
+    {
+      "country_group": "MEX",
+      "category": "macro",
+      "id": "mex_banxico_sie",
+      "endpoint": "https://www.banxico.org.mx/SieAPIRest/",
+      "freshness": "daily",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "MEX"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CREDENTIALS_OR_RIGHTS_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "mex_banxico_sie"
+    },
+    {
+      "country_group": "TUR",
+      "category": "macro",
+      "id": "tur_tcmb_evds",
+      "endpoint": "https://evds2.tcmb.gov.tr/",
+      "freshness": "daily",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "TUR"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CREDENTIALS_OR_RIGHTS_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "tur_tcmb_evds"
+    },
+    {
+      "country_group": "IDN",
+      "category": "macro",
+      "id": "idn_bps_bi",
+      "endpoint": "\"https://www.bps.go.id/",
+      "https": "//www.bi.go.id/\"",
+      "freshness": "monthly",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "IDN"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "idn_bps_bi"
+    },
+    {
+      "country_group": "MYS",
+      "category": "macro",
+      "id": "mys_opendosm",
+      "endpoint": "https://api.data.gov.my/",
+      "freshness": "monthly",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "MYS"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "mys_opendosm"
+    },
+    {
+      "country_group": "MYS",
+      "category": "rare_earth",
+      "id": "mys_re_policy",
+      "endpoint": "Malaysia Ministry of Natural Resources / Lynas Malaysia",
+      "freshness": "daily",
+      "access": "scrape",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "MYS"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "mys_re_policy"
+    },
+    {
+      "country_group": "VNM",
+      "category": "rare_earth",
+      "id": "vnm_gso_mining",
+      "endpoint": "https://www.gso.gov.vn/",
+      "freshness": "annual",
+      "access": "scrape",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "VNM"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "vnm_gso_mining"
+    },
+    {
+      "country_group": "MMR",
+      "category": "rare_earth",
+      "id": "mmr_re_monitor",
+      "endpoint": "no official feed - use China customs imports from MMR + satellite/NGO reports",
+      "freshness": "monthly",
+      "access": "scrape",
+      "tier": 2,
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "MMR"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "mmr_re_monitor"
+    },
+    {
+      "country_group": "GRL",
+      "category": "rare_earth",
+      "id": "grl_geus",
+      "endpoint": "https://eng.geus.dk/",
+      "freshness": "annual",
+      "access": "scrape",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "GRL"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "grl_geus"
+    },
+    {
+      "country_group": "KAZ",
+      "category": "rare_earth",
+      "id": "kaz_ministry",
+      "endpoint": "Kazakhstan Ministry of Industry",
+      "freshness": "annual",
+      "access": "scrape",
+      "domains": [
+        "critical_minerals"
+      ],
+      "country_iso3": [
+        "KAZ"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "kaz_ministry"
+    },
+    {
+      "country_group": "ISR_IRN_SAU_ARE",
+      "category": "geopolitics",
+      "id": "me_ukmto_imb",
+      "endpoint": "https://www.ukmto.org/",
+      "freshness": "near_realtime",
+      "access": "scrape",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "ISR",
+        "IRN",
+        "SAU",
+        "ARE"
+      ],
+      "scope": "REGIONAL_COUNTRY_GROUP",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_SCRAPE_RIGHTS_AND_METHOD_REVIEW",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "me_ukmto_imb"
+    },
+    {
+      "country_group": "ISR_IRN_SAU_ARE",
+      "category": "geopolitics",
+      "id": "me_news_cluster",
+      "endpoint": "Al Jazeera, Times of Israel, Tehran Times (state), Al Arabiya",
+      "freshness": "near_realtime",
+      "access": "rss",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "ISR",
+        "IRN",
+        "SAU",
+        "ARE"
+      ],
+      "scope": "REGIONAL_COUNTRY_GROUP",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "me_news_cluster"
+    },
+    {
+      "country_group": "ISR_IRN_SAU_ARE",
+      "category": "macro",
+      "id": "me_opec_jodi",
+      "endpoint": "OPEC MOMR, JODI",
+      "freshness": "monthly",
+      "access": "bulk",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "ISR",
+        "IRN",
+        "SAU",
+        "ARE"
+      ],
+      "scope": "REGIONAL_COUNTRY_GROUP",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "me_opec_jodi"
+    },
+    {
+      "country_group": "UKR",
+      "category": "geopolitics",
+      "id": "ukr_isw_kyivind",
+      "endpoint": "ISW, Kyiv Independent, Ukrainian General Staff updates",
+      "freshness": "daily",
+      "access": "rss",
+      "domains": [
+        "geopolitics"
+      ],
+      "country_iso3": [
+        "UKR"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": "news_kyivindependent",
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "ukr_isw_kyivind"
+    },
+    {
+      "country_group": "UKR",
+      "category": "macro",
+      "id": "ukr_nbu",
+      "endpoint": "https://bank.gov.ua/en/open-data/api-dev",
+      "freshness": "daily",
+      "access": "api",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "UKR"
+      ],
+      "scope": "COUNTRY_SPECIFIC",
+      "canonical_family_id": null,
+      "source_activation_state": "UNVERIFIED_NEW_PUBLIC_ENDPOINT",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "ukr_nbu"
+    },
+    {
+      "country_group": "PAK_BGD_LKA",
+      "category": "macro",
+      "id": "sa_central_banks",
+      "endpoint": "SBP, Bangladesh Bank, CBSL",
+      "freshness": "daily",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "PAK",
+        "BGD",
+        "LKA"
+      ],
+      "scope": "REGIONAL_COUNTRY_GROUP",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "sa_central_banks"
+    },
+    {
+      "country_group": "PAK_BGD_LKA",
+      "category": "macro",
+      "id": "sa_imf_programs",
+      "endpoint": "IMF country pages",
+      "freshness": "monthly",
+      "access": "scrape",
+      "domains": [
+        "macro_fx"
+      ],
+      "country_iso3": [
+        "PAK",
+        "BGD",
+        "LKA"
+      ],
+      "scope": "REGIONAL_COUNTRY_GROUP",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "provider_rights_verified": false,
+      "original_payload_redistribution_allowed": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publication_date_verified": false,
+      "provenance_source_id": "sa_imf_programs"
+    }
+  ],
+  "full_country_coverage_verified": false,
+  "signed_country_risk_generated": false,
+  "source_runtime_activation_implied": false
+}

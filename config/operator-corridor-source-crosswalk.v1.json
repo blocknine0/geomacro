@@ -1,0 +1,3428 @@
+{
+  "schema": "geomacro.operator-corridor-source-crosswalk.v1",
+  "as_of": "2026-10-12",
+  "source_file_description": "Claude-provided source/corridor candidates, operator-provided and not independently measured flow intelligence",
+  "input_record_counts": {
+    "corridor_sources": 20,
+    "named_corridors": 58
+  },
+  "reference_model": "NAMED_ROUTE_DISCOVERY_ONLY_NOT_COMMERCIAL_STRUCTURAL_PAIR_ENGINE",
+  "source_registry": [
+    {
+      "source_id": "imf_portwatch",
+      "publisher_endpoint_declared": "https://portwatch.imf.org/",
+      "access": "api",
+      "claimed_freshness": "daily",
+      "claimed_license_unverified": "free",
+      "provider_note": "Daily transit counts for ~28 chokepoints + port calls. Best free chokepoint dataset.",
+      "canonical_reuse_source_id": "imf_portwatch",
+      "activation_status": "EXISTING_FAMILY_REUSE_NO_NEW_POLLER",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "aisstream_corridor",
+      "publisher_endpoint_declared": "wss://stream.aisstream.io/v0/stream",
+      "access": "websocket",
+      "claimed_freshness": "realtime",
+      "claimed_license_unverified": "partial",
+      "provider_note": "Bounding-box subscriptions per corridor. Terrestrial AIS, patchy offshore coverage.",
+      "canonical_reuse_source_id": "aisstream_corridor",
+      "activation_status": "HOLD_PAYMENT_LICENSE_OR_TOS_REVIEW",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "ukmto_jmic",
+      "publisher_endpoint_declared": "https://www.ukmto.org/",
+      "access": "scrape",
+      "claimed_freshness": "near_realtime",
+      "claimed_license_unverified": "check",
+      "provider_note": "Incident advisories Red Sea / Gulf / Indian Ocean. JMIC products too.",
+      "canonical_reuse_source_id": "ukmto",
+      "activation_status": "HOLD_PAYMENT_LICENSE_OR_TOS_REVIEW",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "marad_advisories",
+      "publisher_endpoint_declared": "https://www.maritime.dot.gov/msci",
+      "access": "rss",
+      "claimed_freshness": "near_realtime",
+      "claimed_license_unverified": "free",
+      "provider_note": "US MARAD maritime security advisories by region.",
+      "canonical_reuse_source_id": "marad_advisories",
+      "activation_status": "EXISTING_FAMILY_REUSE_NO_NEW_POLLER",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "gie_agsi_alsi",
+      "publisher_endpoint_declared": "https://agsi.gie.eu/",
+      "access": "api",
+      "claimed_freshness": "daily",
+      "claimed_license_unverified": "free",
+      "provider_note": "EU gas storage (AGSI+) + LNG terminals (ALSI). API key needed.",
+      "canonical_reuse_source_id": "gie_agsi_alsi",
+      "activation_status": "HOLD_PROVIDER_TOKEN_OR_ACCESS_CHECK",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "entsog",
+      "publisher_endpoint_declared": "https://transparency.entsog.eu/api/v1/",
+      "access": "api",
+      "claimed_freshness": "near_realtime",
+      "claimed_license_unverified": "free",
+      "provider_note": "Gas physical flows at EU interconnection points (hourly). Best gas corridor signal.",
+      "canonical_reuse_source_id": "entsog",
+      "activation_status": "EXISTING_FAMILY_REUSE_NO_NEW_POLLER",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "entsoe_flows",
+      "publisher_endpoint_declared": "https://transparency.entsoe.eu/api",
+      "access": "api",
+      "claimed_freshness": "near_realtime",
+      "claimed_license_unverified": "free",
+      "provider_note": "Cross-border power flows.",
+      "canonical_reuse_source_id": "entsoe_power",
+      "activation_status": "NEW_CANDIDATE_PRIVATE_RIGHTS_AND_TRANSPORT_CHECK",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "panama_canal_authority",
+      "publisher_endpoint_declared": "https://pancanal.com/en/",
+      "access": "scrape",
+      "claimed_freshness": "daily",
+      "claimed_license_unverified": "free",
+      "provider_note": "Draft limits, Gatun Lake level, daily transits, booking slots.",
+      "canonical_reuse_source_id": "panama_canal_authority",
+      "activation_status": "HOLD_WEBSITE_SCRAPING_RIGHTS",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "suez_canal_authority",
+      "publisher_endpoint_declared": "https://www.suezcanal.gov.eg/",
+      "access": "scrape",
+      "claimed_freshness": "daily",
+      "claimed_license_unverified": "free",
+      "provider_note": "Transits + revenue statements. Official numbers can lag/skew.",
+      "canonical_reuse_source_id": "suez_canal_authority",
+      "activation_status": "HOLD_WEBSITE_SCRAPING_RIGHTS",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "freight_rates",
+      "publisher_endpoint_declared": "Freightos FBX, Drewry WCI, Baltic Exchange",
+      "access": "scrape",
+      "claimed_freshness": "daily",
+      "claimed_license_unverified": "check",
+      "provider_note": "Rate spikes confirm corridor stress by route.",
+      "canonical_reuse_source_id": "freight_rates",
+      "activation_status": "HOLD_PAYMENT_LICENSE_OR_TOS_REVIEW",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "sentinel_satellite",
+      "publisher_endpoint_declared": "https://dataspace.copernicus.eu/",
+      "access": "api",
+      "claimed_freshness": "daily",
+      "claimed_license_unverified": "free",
+      "provider_note": "Sentinel-1/2 for port/queue/fire verification. Heavy processing.",
+      "canonical_reuse_source_id": "sentinel_satellite",
+      "activation_status": "EXISTING_FAMILY_REUSE_NO_NEW_POLLER",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "nasa_firms_corridor",
+      "publisher_endpoint_declared": "https://firms.modaps.eosdis.nasa.gov/api/",
+      "access": "api",
+      "claimed_freshness": "near_realtime",
+      "claimed_license_unverified": "free",
+      "provider_note": "Fires at pipelines/refineries/ports.",
+      "canonical_reuse_source_id": "nasa_firms",
+      "activation_status": "EXISTING_FAMILY_REUSE_NO_NEW_POLLER",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "submarine_cable_map",
+      "publisher_endpoint_declared": "https://www.submarinecablemap.com/",
+      "access": "bulk",
+      "claimed_freshness": "annual",
+      "claimed_license_unverified": "check",
+      "provider_note": "Cable routes (TeleGeography). Static map layer.",
+      "canonical_reuse_source_id": "submarine_cable_map",
+      "activation_status": "HOLD_PAYMENT_LICENSE_OR_TOS_REVIEW",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "cloudflare_radar_cables",
+      "publisher_endpoint_declared": "https://api.cloudflare.com/client/v4/radar/",
+      "access": "api",
+      "claimed_freshness": "realtime",
+      "claimed_license_unverified": "free",
+      "provider_note": "Country internet outages catch cable cuts.",
+      "canonical_reuse_source_id": "cloudflare_radar",
+      "activation_status": "NEW_CANDIDATE_PRIVATE_RIGHTS_AND_TRANSPORT_CHECK",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "adsb_airspace",
+      "publisher_endpoint_declared": "https://www.adsbexchange.com/data/",
+      "access": "api",
+      "claimed_freshness": "realtime",
+      "claimed_license_unverified": "paid",
+      "provider_note": "Flight density for airspace closures. Also EASA conflict zone bulletins + NOTAMs.",
+      "canonical_reuse_source_id": "adsb_airspace",
+      "activation_status": "HOLD_PAYMENT_LICENSE_OR_TOS_REVIEW",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "easa_czib_notam",
+      "publisher_endpoint_declared": "https://www.easa.europa.eu/en/domains/air-operations/czibs",
+      "access": "scrape",
+      "claimed_freshness": "near_realtime",
+      "claimed_license_unverified": "free",
+      "provider_note": null,
+      "canonical_reuse_source_id": "easa_czib_notam",
+      "activation_status": "HOLD_WEBSITE_SCRAPING_RIGHTS",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "commodity_tanker_trackers",
+      "publisher_endpoint_declared": "Kpler / Vortexa / Windward / Lloyd's List Intelligence",
+      "access": "api",
+      "claimed_freshness": "realtime",
+      "claimed_license_unverified": "paid",
+      "provider_note": "Real cargo-level flows + dark fleet detection. Paid, add post-revenue.",
+      "canonical_reuse_source_id": "commodity_tanker_trackers",
+      "activation_status": "HOLD_PAYMENT_LICENSE_OR_TOS_REVIEW",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "eia_oil_flows",
+      "publisher_endpoint_declared": "https://api.eia.gov/v2/",
+      "access": "api",
+      "claimed_freshness": "weekly",
+      "claimed_license_unverified": "free",
+      "provider_note": "EIA World Oil Transit Chokepoints analysis + weekly US flows.",
+      "canonical_reuse_source_id": "eia_api_v2",
+      "activation_status": "EXISTING_FAMILY_REUSE_NO_NEW_POLLER",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "gdelt_corridor",
+      "publisher_endpoint_declared": "http://data.gdeltproject.org/gdeltv2/lastupdate.txt",
+      "access": "bulk",
+      "claimed_freshness": "near_realtime",
+      "claimed_license_unverified": "free",
+      "provider_note": "Keyword + geo filter per corridor. Dedup + whitelist.",
+      "canonical_reuse_source_id": "gdelt_v2",
+      "activation_status": "HOLD_CONCRETE_HTTPS_ENDPOINT_REQUIRED",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    },
+    {
+      "source_id": "acled_corridor",
+      "publisher_endpoint_declared": "https://acleddata.com/api/acled/read",
+      "access": "api",
+      "claimed_freshness": "weekly",
+      "claimed_license_unverified": "check",
+      "provider_note": "Geocoded events within X km of corridor line. Commercial licence.",
+      "canonical_reuse_source_id": "acled_country",
+      "activation_status": "HOLD_PAYMENT_LICENSE_OR_TOS_REVIEW",
+      "transport_tested": false,
+      "commercial_licence_verified": false,
+      "raw_source_redistribution_allowed": false
+    }
+  ],
+  "corridors": [
+    {
+      "id": "strait_of_hormuz",
+      "name": "Strait of Hormuz",
+      "type": "chokepoint",
+      "country_iso3": [
+        "IRN",
+        "OMN",
+        "ARE"
+      ],
+      "commodities": [
+        "crude_oil",
+        "lng",
+        "products"
+      ],
+      "criticality_analyst_unverified": 5,
+      "centroid_seed_not_route_geometry": {
+        "lat": 26.5,
+        "lon": 56.3
+      },
+      "signal_hypotheses": [
+        "tanker_transits",
+        "gps_jamming",
+        "seizures",
+        "military_activity",
+        "war_risk_premium",
+        "brent_spread"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "ukmto_jmic",
+          "alias": "ukmto",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "marad_advisories",
+          "alias": "marad_advisories",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "commodity_tanker_trackers",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "eia_oil_flows",
+          "alias": "eia_api_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": "Largest oil chokepoint. Watch GPS spoofing + tanker seizures.",
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "bab_el_mandeb",
+      "name": "Bab el-Mandeb / Red Sea (southern)",
+      "type": "chokepoint",
+      "country_iso3": [
+        "YEM",
+        "DJI",
+        "ERI",
+        "SAU"
+      ],
+      "commodities": [
+        "containers",
+        "crude_oil",
+        "lng",
+        "products"
+      ],
+      "criticality_analyst_unverified": 5,
+      "centroid_seed_not_route_geometry": {
+        "lat": 12.6,
+        "lon": 43.3
+      },
+      "signal_hypotheses": [
+        "transits",
+        "rerouting_via_cape",
+        "houthi_incidents",
+        "container_rate_spikes",
+        "war_risk_premium"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "ukmto_jmic",
+          "alias": "ukmto",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "freight_rates",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": "verify - live conflict-driven rerouting since late 2023",
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "suez_canal",
+      "name": "Suez Canal + SUMED pipeline",
+      "type": "canal",
+      "country_iso3": [
+        "EGY"
+      ],
+      "commodities": [
+        "containers",
+        "crude_oil",
+        "lng"
+      ],
+      "criticality_analyst_unverified": 5,
+      "centroid_seed_not_route_geometry": {
+        "lat": 30.5,
+        "lon": 32.3
+      },
+      "signal_hypotheses": [
+        "transits",
+        "revenue",
+        "groundings",
+        "rerouting"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "suez_canal_authority",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "freight_rates",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "strait_of_malacca",
+      "name": "Strait of Malacca",
+      "type": "chokepoint",
+      "country_iso3": [
+        "MYS",
+        "IDN",
+        "SGP",
+        "THA"
+      ],
+      "commodities": [
+        "crude_oil",
+        "containers",
+        "lng",
+        "coal"
+      ],
+      "criticality_analyst_unverified": 5,
+      "centroid_seed_not_route_geometry": {
+        "lat": 2.5,
+        "lon": 101.2
+      },
+      "signal_hypotheses": [
+        "transits",
+        "piracy",
+        "congestion",
+        "china_energy_import_dependence"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "marad_advisories",
+          "alias": "marad_advisories",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "freight_rates",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "singapore_strait",
+      "name": "Singapore Strait",
+      "type": "chokepoint",
+      "country_iso3": [
+        "SGP",
+        "IDN",
+        "MYS"
+      ],
+      "commodities": [
+        "containers",
+        "bunker_fuel",
+        "crude_oil"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": {
+        "lat": 1.2,
+        "lon": 103.8
+      },
+      "signal_hypotheses": [
+        "port_congestion",
+        "transits",
+        "anchorage_queue"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "freight_rates",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "sunda_lombok_straits",
+      "name": "Sunda + Lombok Straits (Malacca bypass)",
+      "type": "chokepoint",
+      "country_iso3": [
+        "IDN"
+      ],
+      "commodities": [
+        "coal",
+        "containers",
+        "crude_oil"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": {
+        "lat": -8,
+        "lon": 110
+      },
+      "signal_hypotheses": [
+        "diversion_from_malacca",
+        "transits"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "taiwan_strait",
+      "name": "Taiwan Strait",
+      "type": "sea_lane",
+      "country_iso3": [
+        "TWN",
+        "CHN"
+      ],
+      "commodities": [
+        "semiconductors",
+        "containers",
+        "electronics"
+      ],
+      "criticality_analyst_unverified": 5,
+      "centroid_seed_not_route_geometry": {
+        "lat": 24.5,
+        "lon": 119.5
+      },
+      "signal_hypotheses": [
+        "pla_exercises",
+        "adiz_incursions",
+        "cable_cuts",
+        "transits",
+        "blockade_drills"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "cloudflare_radar_cables",
+          "alias": "cloudflare_radar",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "prediction_markets_country",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": "Taiwan MND daily ADIZ reports are the key source - verify feed/scrape.",
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "luzon_strait_bashi",
+      "name": "Luzon Strait / Bashi Channel",
+      "type": "sea_lane",
+      "country_iso3": [
+        "PHL",
+        "TWN"
+      ],
+      "commodities": [
+        "containers",
+        "naval_transit"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": {
+        "lat": 20.5,
+        "lon": 121
+      },
+      "signal_hypotheses": [
+        "naval_transits",
+        "cable_cuts",
+        "exercises"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "cloudflare_radar_cables",
+          "alias": "cloudflare_radar",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "south_china_sea",
+      "name": "South China Sea lanes",
+      "type": "sea_lane",
+      "country_iso3": [
+        "CHN",
+        "VNM",
+        "PHL",
+        "MYS",
+        "BRN",
+        "IDN",
+        "TWN"
+      ],
+      "commodities": [
+        "containers",
+        "crude_oil",
+        "lng",
+        "fish"
+      ],
+      "criticality_analyst_unverified": 5,
+      "centroid_seed_not_route_geometry": {
+        "lat": 12,
+        "lon": 114
+      },
+      "signal_hypotheses": [
+        "coast_guard_incidents",
+        "water_cannon",
+        "spratly_standoffs",
+        "ais_gaps"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "tsushima_korea_strait",
+      "name": "Korea / Tsushima Strait",
+      "type": "chokepoint",
+      "country_iso3": [
+        "KOR",
+        "JPN"
+      ],
+      "commodities": [
+        "containers",
+        "naval_transit"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": {
+        "lat": 34.3,
+        "lon": 129
+      },
+      "signal_hypotheses": [
+        "naval_activity",
+        "transits"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "la_perouse_tsugaru",
+      "name": "La Perouse + Tsugaru Straits",
+      "type": "chokepoint",
+      "country_iso3": [
+        "JPN",
+        "RUS"
+      ],
+      "commodities": [
+        "naval_transit",
+        "containers"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": {
+        "lat": 45.7,
+        "lon": 142
+      },
+      "signal_hypotheses": [
+        "russian_pacific_fleet_moves"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "bosphorus_dardanelles",
+      "name": "Turkish Straits (Bosphorus + Dardanelles)",
+      "type": "chokepoint",
+      "country_iso3": [
+        "TUR"
+      ],
+      "commodities": [
+        "crude_oil",
+        "grain",
+        "products"
+      ],
+      "criticality_analyst_unverified": 5,
+      "centroid_seed_not_route_geometry": {
+        "lat": 41.1,
+        "lon": 29.05
+      },
+      "signal_hypotheses": [
+        "tanker_queues",
+        "montreux_convention_actions",
+        "insurance_delays",
+        "grain_flows"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "black_sea_grain_kerch",
+      "name": "Black Sea shipping lanes + Kerch Strait",
+      "type": "sea_lane",
+      "country_iso3": [
+        "UKR",
+        "RUS",
+        "TUR",
+        "ROU",
+        "BGR",
+        "GEO"
+      ],
+      "commodities": [
+        "grain",
+        "sunflower_oil",
+        "crude_oil",
+        "fertilizer"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": {
+        "lat": 44,
+        "lon": 33
+      },
+      "signal_hypotheses": [
+        "port_strikes",
+        "mines",
+        "ship_attacks",
+        "grain_corridor_status"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "ukmto_jmic",
+          "alias": "ukmto",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "nasa_firms_corridor",
+          "alias": "nasa_firms",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": "verify - conflict-driven",
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "danish_straits_baltic",
+      "name": "Danish Straits + Baltic Sea",
+      "type": "chokepoint",
+      "country_iso3": [
+        "DNK",
+        "SWE",
+        "DEU",
+        "POL",
+        "EST",
+        "LVA",
+        "LTU",
+        "FIN",
+        "RUS"
+      ],
+      "commodities": [
+        "crude_oil",
+        "products",
+        "containers",
+        "shadow_fleet"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": {
+        "lat": 55.7,
+        "lon": 12.7
+      },
+      "signal_hypotheses": [
+        "shadow_fleet_transits",
+        "cable_sabotage",
+        "anchor_dragging",
+        "nato_inspections"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "cloudflare_radar_cables",
+          "alias": "cloudflare_radar",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "submarine_cable_map",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "commodity_tanker_trackers",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "english_channel",
+      "name": "English Channel / Dover Strait",
+      "type": "chokepoint",
+      "country_iso3": [
+        "GBR",
+        "FRA"
+      ],
+      "commodities": [
+        "containers",
+        "ro_ro",
+        "migration"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": {
+        "lat": 50.5,
+        "lon": 0.9
+      },
+      "signal_hypotheses": [
+        "congestion",
+        "strike_action",
+        "border_delays"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "strait_of_gibraltar",
+      "name": "Strait of Gibraltar",
+      "type": "chokepoint",
+      "country_iso3": [
+        "ESP",
+        "MAR",
+        "GBR"
+      ],
+      "commodities": [
+        "containers",
+        "crude_oil",
+        "lng"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": {
+        "lat": 35.96,
+        "lon": -5.6
+      },
+      "signal_hypotheses": [
+        "transits",
+        "naval_activity"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "panama_canal",
+      "name": "Panama Canal",
+      "type": "canal",
+      "country_iso3": [
+        "PAN"
+      ],
+      "commodities": [
+        "containers",
+        "lng",
+        "lpg",
+        "grain",
+        "vehicles"
+      ],
+      "criticality_analyst_unverified": 5,
+      "centroid_seed_not_route_geometry": {
+        "lat": 9.1,
+        "lon": -79.7
+      },
+      "signal_hypotheses": [
+        "draft_restrictions",
+        "gatun_lake_level",
+        "transit_slots",
+        "drought",
+        "tolls",
+        "us_china_port_politics"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "panama_canal_authority",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "freight_rates",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "cape_of_good_hope",
+      "name": "Cape of Good Hope route",
+      "type": "sea_lane",
+      "country_iso3": [
+        "ZAF"
+      ],
+      "commodities": [
+        "containers",
+        "crude_oil",
+        "lng"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": {
+        "lat": -34.4,
+        "lon": 18.5
+      },
+      "signal_hypotheses": [
+        "reroute_volume_from_suez",
+        "port_delays_durban_capetown",
+        "fuel_bunkering"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "freight_rates",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": "Its traffic is the inverse indicator of Suez/Red Sea stress.",
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "mozambique_channel",
+      "name": "Mozambique Channel",
+      "type": "sea_lane",
+      "country_iso3": [
+        "MOZ",
+        "MDG",
+        "ZAF"
+      ],
+      "commodities": [
+        "lng",
+        "crude_oil",
+        "containers"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": {
+        "lat": -18,
+        "lon": 41
+      },
+      "signal_hypotheses": [
+        "piracy",
+        "insurgency_cabo_delgado",
+        "lng_project_status"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "marad_advisories",
+          "alias": "marad_advisories",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "gulf_of_aden_somali_basin",
+      "name": "Gulf of Aden / Somali Basin",
+      "type": "sea_lane",
+      "country_iso3": [
+        "SOM",
+        "YEM",
+        "DJI"
+      ],
+      "commodities": [
+        "containers",
+        "crude_oil"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": {
+        "lat": 12,
+        "lon": 48
+      },
+      "signal_hypotheses": [
+        "piracy",
+        "hijack_attempts",
+        "naval_escorts"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "ukmto_jmic",
+          "alias": "ukmto",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "marad_advisories",
+          "alias": "marad_advisories",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "magellan_cape_horn_drake",
+      "name": "Magellan / Drake Passage / Cape Horn",
+      "type": "chokepoint",
+      "country_iso3": [
+        "CHL",
+        "ARG"
+      ],
+      "commodities": [
+        "bulk",
+        "containers",
+        "panama_bypass"
+      ],
+      "criticality_analyst_unverified": 2,
+      "centroid_seed_not_route_geometry": {
+        "lat": -56,
+        "lon": -67
+      },
+      "signal_hypotheses": [
+        "panama_diversion_volume"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "imf_portwatch",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "northern_sea_route",
+      "name": "Northern Sea Route (Arctic, Russia)",
+      "type": "sea_lane",
+      "country_iso3": [
+        "RUS",
+        "CHN"
+      ],
+      "commodities": [
+        "lng",
+        "crude_oil",
+        "containers",
+        "minerals"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": {
+        "lat": 76,
+        "lon": 100
+      },
+      "signal_hypotheses": [
+        "transits",
+        "ice_extent",
+        "arctic_lng_cargoes",
+        "sanctions_exposure"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "sentinel_satellite",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": "Seasonal. Needs sea-ice data (NSIDC).",
+      "category_tags": [
+        "geopolitics",
+        "macro_fx",
+        "critical_minerals"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "northwest_passage",
+      "name": "Northwest Passage (Arctic, Canada)",
+      "type": "sea_lane",
+      "country_iso3": [
+        "CAN",
+        "USA",
+        "GRL"
+      ],
+      "commodities": [
+        "research",
+        "tourism",
+        "future_shipping"
+      ],
+      "criticality_analyst_unverified": 1,
+      "centroid_seed_not_route_geometry": {
+        "lat": 74,
+        "lon": -95
+      },
+      "signal_hypotheses": [
+        "ice_extent",
+        "sovereignty_disputes"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "sentinel_satellite",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "druzhba_pipeline",
+      "name": "Druzhba oil pipeline",
+      "type": "pipeline_oil",
+      "country_iso3": [
+        "RUS",
+        "BLR",
+        "UKR",
+        "POL",
+        "DEU",
+        "SVK",
+        "HUN",
+        "CZE"
+      ],
+      "commodities": [
+        "crude_oil"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "flow_to_hungary_slovakia",
+        "strikes",
+        "sanctions_exemptions",
+        "transit_fees"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "nasa_firms_corridor",
+          "alias": "nasa_firms",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "eia_oil_flows",
+          "alias": "eia_api_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": "verify - conflict + sanctions exposure",
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "ukraine_gas_transit_yamal_europe_turkstream",
+      "name": "Russia-to-Europe gas routes (Ukraine transit, Yamal-Europe, TurkStream, Nord Stream)",
+      "type": "pipeline_gas",
+      "country_iso3": [
+        "RUS",
+        "UKR",
+        "BLR",
+        "POL",
+        "DEU",
+        "TUR",
+        "BGR",
+        "SRB",
+        "HUN",
+        "SVK"
+      ],
+      "commodities": [
+        "natural_gas"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "physical_flows",
+        "storage_levels",
+        "ttf_price",
+        "sabotage"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "entsog",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gie_agsi_alsi",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": "verify - Nord Stream damaged since 2022; Ukraine transit status changed, check live ENTSOG data",
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "power_of_siberia",
+      "name": "Power of Siberia 1 and 2",
+      "type": "pipeline_gas",
+      "country_iso3": [
+        "RUS",
+        "CHN",
+        "MNG"
+      ],
+      "commodities": [
+        "natural_gas"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "contract_announcements",
+        "flow_volumes",
+        "price_terms"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "chn_state_media",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": "verify - PoS-2 deal status unclear; flows data mostly company-reported",
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "tap_trans_adriatic_southern_gas_corridor",
+      "name": "Southern Gas Corridor (TANAP + TAP)",
+      "type": "pipeline_gas",
+      "country_iso3": [
+        "AZE",
+        "GEO",
+        "TUR",
+        "GRC",
+        "ALB",
+        "ITA"
+      ],
+      "commodities": [
+        "natural_gas"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "flows",
+        "azerbaijan_supply",
+        "geopolitics_armenia_azerbaijan"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "entsog",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "btc_pipeline",
+      "name": "Baku-Tbilisi-Ceyhan (BTC)",
+      "type": "pipeline_oil",
+      "country_iso3": [
+        "AZE",
+        "GEO",
+        "TUR"
+      ],
+      "commodities": [
+        "crude_oil"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "flows",
+        "security_incidents"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "cpc_pipeline",
+      "name": "CPC (Caspian Pipeline Consortium)",
+      "type": "pipeline_oil",
+      "country_iso3": [
+        "KAZ",
+        "RUS"
+      ],
+      "commodities": [
+        "crude_oil"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "novorossiysk_terminal_attacks",
+        "loading_disruptions"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "nasa_firms_corridor",
+          "alias": "nasa_firms",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "east_west_saudi_pipeline",
+      "name": "Saudi East-West (Petroline) + Habshan-Fujairah (UAE)",
+      "type": "pipeline_oil",
+      "country_iso3": [
+        "SAU",
+        "ARE"
+      ],
+      "commodities": [
+        "crude_oil"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "bypass_utilization_of_hormuz",
+        "drone_attacks",
+        "yanbu_fujairah_loadings"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "nasa_firms_corridor",
+          "alias": "nasa_firms",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": "Hormuz bypass capacity. Stress here = Hormuz risk priced in.",
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "kirkuk_ceyhan",
+      "name": "Iraq-Turkey pipeline (Kirkuk-Ceyhan)",
+      "type": "pipeline_oil",
+      "country_iso3": [
+        "IRQ",
+        "TUR"
+      ],
+      "commodities": [
+        "crude_oil"
+      ],
+      "criticality_analyst_unverified": 2,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "export_resumption",
+        "kurdistan_disputes",
+        "arbitration"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": "verify",
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "china_myanmar_pipelines",
+      "name": "China-Myanmar oil + gas pipelines (Kyaukphyu-Kunming)",
+      "type": "pipeline_oil",
+      "country_iso3": [
+        "MMR",
+        "CHN"
+      ],
+      "commodities": [
+        "crude_oil",
+        "natural_gas"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "rakhine_conflict",
+        "malacca_bypass_use",
+        "attacks"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "nasa_firms_corridor",
+          "alias": "nasa_firms",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "central_asia_china_gas",
+      "name": "Central Asia-China gas pipeline",
+      "type": "pipeline_gas",
+      "country_iso3": [
+        "TKM",
+        "UZB",
+        "KAZ",
+        "CHN"
+      ],
+      "commodities": [
+        "natural_gas"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "flow_volumes",
+        "line_d_status"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "chn_state_media",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "trans_med_medgaz_greenstream",
+      "name": "North Africa-Europe gas (Transmed, Medgaz, Greenstream)",
+      "type": "pipeline_gas",
+      "country_iso3": [
+        "DZA",
+        "TUN",
+        "ITA",
+        "ESP",
+        "LBY",
+        "MAR"
+      ],
+      "commodities": [
+        "natural_gas"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "flows",
+        "algeria_spain_politics",
+        "libya_outages"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "entsog",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gie_agsi_alsi",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "us_canada_pipelines",
+      "name": "Keystone / Trans Mountain / Enbridge Mainline",
+      "type": "pipeline_oil",
+      "country_iso3": [
+        "CAN",
+        "USA"
+      ],
+      "commodities": [
+        "crude_oil"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "spills",
+        "throughput",
+        "tariffs",
+        "permits"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "eia_oil_flows",
+          "alias": "eia_api_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "tapi_pipeline",
+      "name": "TAPI gas pipeline (Turkmenistan-Afghanistan-Pakistan-India)",
+      "type": "pipeline_gas",
+      "country_iso3": [
+        "TKM",
+        "AFG",
+        "PAK",
+        "IND"
+      ],
+      "commodities": [
+        "natural_gas"
+      ],
+      "criticality_analyst_unverified": 1,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "construction_progress",
+        "taliban_security"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": "planned/partial - verify",
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "china_europe_railway",
+      "name": "China-Europe Railway Express (Northern / Central / Southern routes)",
+      "type": "rail",
+      "country_iso3": [
+        "CHN",
+        "KAZ",
+        "RUS",
+        "BLR",
+        "POL",
+        "DEU",
+        "TUR",
+        "GEO"
+      ],
+      "commodities": [
+        "electronics",
+        "machinery",
+        "autos"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "train_counts",
+        "border_dwell",
+        "sanctions_rerouting",
+        "kazakhstan_poland_border"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "freight_rates",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": "No clean free API. Poland/Kazakh/Chinese customs + operator statements.",
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "middle_corridor_titr",
+      "name": "Middle Corridor (TITR, Trans-Caspian)",
+      "type": "rail",
+      "country_iso3": [
+        "CHN",
+        "KAZ",
+        "AZE",
+        "GEO",
+        "TUR"
+      ],
+      "commodities": [
+        "containers",
+        "grain",
+        "minerals"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "volume_growth",
+        "caspian_port_capacity",
+        "russia_bypass_use"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "freight_rates",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx",
+        "critical_minerals"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "instc",
+      "name": "International North-South Transport Corridor (INSTC)",
+      "type": "economic_corridor",
+      "country_iso3": [
+        "IND",
+        "IRN",
+        "AZE",
+        "RUS",
+        "KAZ"
+      ],
+      "commodities": [
+        "containers",
+        "petroleum",
+        "grain"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "rasht_astara_rail_progress",
+        "sanctions_on_iran",
+        "chabahar_port_status"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "ofac_by_program",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "cpec",
+      "name": "China-Pakistan Economic Corridor (CPEC) + Gwadar",
+      "type": "economic_corridor",
+      "country_iso3": [
+        "CHN",
+        "PAK"
+      ],
+      "commodities": [
+        "infrastructure",
+        "energy",
+        "minerals"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "attacks_on_chinese_nationals",
+        "balochistan_insurgency",
+        "debt_stress"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "sa_central_banks",
+          "alias": "sa_central_banks",
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx",
+        "critical_minerals"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "bcim_kyaukphyu_yunnan",
+      "name": "BRI Indochina + BCIM corridors (China-Laos rail, China-Myanmar economic corridor)",
+      "type": "economic_corridor",
+      "country_iso3": [
+        "CHN",
+        "LAO",
+        "MMR",
+        "THA",
+        "VNM",
+        "BGD",
+        "IND"
+      ],
+      "commodities": [
+        "rare_earth_ore",
+        "timber",
+        "minerals",
+        "goods"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "border_crossing_closures",
+        "kachin_conflict",
+        "rail_volumes"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "re_gacc_country_partner",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx",
+        "critical_minerals"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "imec",
+      "name": "India-Middle East-Europe Corridor (IMEC)",
+      "type": "economic_corridor",
+      "country_iso3": [
+        "IND",
+        "ARE",
+        "SAU",
+        "JOR",
+        "ISR",
+        "GRC",
+        "ITA",
+        "FRA"
+      ],
+      "commodities": [
+        "containers",
+        "energy",
+        "data"
+      ],
+      "criticality_analyst_unverified": 2,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "project_announcements",
+        "gaza_conflict_effect",
+        "port_deals"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": "announced 2023, largely planned - verify progress",
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "lobito_corridor",
+      "name": "Lobito Corridor (Angola-DRC-Zambia)",
+      "type": "critical_minerals",
+      "country_iso3": [
+        "AGO",
+        "COD",
+        "ZMB",
+        "USA"
+      ],
+      "commodities": [
+        "copper",
+        "cobalt",
+        "manganese"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "rail_throughput",
+        "drc_security",
+        "us_dfc_financing",
+        "chinese_competing_routes"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "comtrade_country",
+          "alias": "un_comtrade",
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "critical_minerals",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "trans_siberian_btm",
+      "name": "Trans-Siberian + BAM",
+      "type": "rail",
+      "country_iso3": [
+        "RUS",
+        "CHN",
+        "MNG",
+        "KAZ"
+      ],
+      "commodities": [
+        "coal",
+        "oil_products",
+        "containers"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "russia_asia_pivot_volumes",
+        "sanctions",
+        "capacity_bottlenecks_east"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "ofac_by_program",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "us_mexico_border_trade",
+      "name": "US-Mexico trade corridor (USMCA)",
+      "type": "economic_corridor",
+      "country_iso3": [
+        "USA",
+        "MEX"
+      ],
+      "commodities": [
+        "autos",
+        "manufactured_goods",
+        "produce"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "border_wait_times",
+        "tariffs",
+        "port_of_entry_closures"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "usa_census_trade",
+          "alias": "usa_census_trade",
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "mex_banxico_sie",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "us_canada_trade",
+      "name": "US-Canada trade corridor",
+      "type": "economic_corridor",
+      "country_iso3": [
+        "USA",
+        "CAN"
+      ],
+      "commodities": [
+        "energy",
+        "autos",
+        "minerals"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "tariffs",
+        "bridge_blockades",
+        "hydro_exports"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "usa_census_trade",
+          "alias": "usa_census_trade",
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "can_statcan",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx",
+        "critical_minerals"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "kra_land_bridge",
+      "name": "Thailand Land Bridge / Kra Canal (proposed)",
+      "type": "economic_corridor",
+      "country_iso3": [
+        "THA"
+      ],
+      "commodities": [
+        "future_malacca_bypass"
+      ],
+      "criticality_analyst_unverified": 1,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "government_announcements"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": "proposal stage - verify",
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "re_myanmar_to_china",
+      "name": "Myanmar (Kachin/Shan) -> Yunnan heavy rare earth ore flow",
+      "type": "critical_minerals",
+      "country_iso3": [
+        "MMR",
+        "CHN"
+      ],
+      "commodities": [
+        "dy",
+        "tb",
+        "heavy_rare_earth_ore"
+      ],
+      "criticality_analyst_unverified": 5,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "kachin_conflict",
+        "border_gate_status",
+        "chinese_customs_imports_from_mmr",
+        "kia_control_changes"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "re_gacc_country_partner",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "re_comtrade_country",
+          "alias": "un_comtrade_minerals",
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "sentinel_satellite",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": "Key heavy RE feedstock for China separation. No official Myanmar feed - triangulate via China import data + conflict + satellite.",
+      "category_tags": [
+        "geopolitics",
+        "critical_minerals",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "re_china_export_channel",
+      "name": "China processed rare earth + magnet exports (to US/EU/JPN/KOR/IND)",
+      "type": "critical_minerals",
+      "country_iso3": [
+        "CHN",
+        "USA",
+        "DEU",
+        "JPN",
+        "KOR",
+        "IND"
+      ],
+      "commodities": [
+        "nd_pr_oxide",
+        "ndfeb_magnets",
+        "dy_tb",
+        "gallium_germanium_antimony_graphite"
+      ],
+      "criticality_analyst_unverified": 5,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "mofcom_export_licence_changes",
+        "monthly_gacc_export_volumes",
+        "destination_shift",
+        "price_spread_domestic_vs_export",
+        "equity_moves"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "mofcom",
+          "alias": null,
+          "link_state": "EXISTING_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "re_gacc_country_partner",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "re_comtrade_country",
+          "alias": "un_comtrade_minerals",
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "re_equity_proxies_country",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "re_price_china_spot",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "critical_minerals",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "re_australia_malaysia_lynas",
+      "name": "Lynas Australia -> Malaysia -> Japan/US chain",
+      "type": "critical_minerals",
+      "country_iso3": [
+        "AUS",
+        "MYS",
+        "JPN",
+        "USA"
+      ],
+      "commodities": [
+        "ndpr_oxide",
+        "dy_tb_oxide"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "asx_announcements",
+        "malaysia_licence_status",
+        "us_dod_offtake"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "aus_asx_announcements",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "re_equity_proxies_country",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "re_gov_policy_feeds",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "critical_minerals",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "re_us_mountain_pass_chain",
+      "name": "US supply chain (MP Materials Mountain Pass + DoD offtake + magnet plants)",
+      "type": "critical_minerals",
+      "country_iso3": [
+        "USA",
+        "CHN"
+      ],
+      "commodities": [
+        "ndpr_oxide",
+        "magnets"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "sec_filings",
+        "dod_price_floor_news",
+        "export_to_china_status",
+        "new_magnet_capacity"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "usa_sec_edgar",
+          "alias": "sec_edgar",
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "usa_dod_dpa_doe",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "re_equity_proxies_country",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "critical_minerals",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "re_vietnam_brazil_india_greenland_emerging",
+      "name": "Emerging non-China RE sources (VNM, BRA, IND, GRL, KAZ, SWE, CAN, NAM, MWI, TZA)",
+      "type": "critical_minerals",
+      "country_iso3": [
+        "VNM",
+        "BRA",
+        "IND",
+        "GRL",
+        "KAZ",
+        "SWE",
+        "CAN",
+        "NAM",
+        "MWI",
+        "TZA"
+      ],
+      "commodities": [
+        "rare_earth_concentrate"
+      ],
+      "criticality_analyst_unverified": 2,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "project_announcements",
+        "permits",
+        "offtake_deals"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "re_usgs_country",
+          "alias": "usgs_mcs",
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "re_bgs_world_minerals",
+          "alias": "bgs_world_minerals_statistics",
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "re_gov_policy_feeds",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "critical_minerals",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "critical_minerals_drc_indonesia",
+      "name": "Cobalt (DRC) + Nickel (Indonesia) export corridors",
+      "type": "critical_minerals",
+      "country_iso3": [
+        "COD",
+        "IDN",
+        "CHN",
+        "ZMB",
+        "TZA"
+      ],
+      "commodities": [
+        "cobalt",
+        "nickel"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "drc_export_quotas",
+        "indonesia_export_bans",
+        "dar_es_salaam_durban_routes",
+        "price_moves"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "re_comtrade_country",
+          "alias": "un_comtrade_minerals",
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "acled_corridor",
+          "alias": "acled_country",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "market_prices_country",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "critical_minerals",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "cables_red_sea_egypt",
+      "name": "Red Sea / Egypt subsea cable hub",
+      "type": "subsea_cable",
+      "country_iso3": [
+        "EGY",
+        "SAU",
+        "YEM",
+        "DJI",
+        "IND"
+      ],
+      "commodities": [
+        "internet_traffic"
+      ],
+      "criticality_analyst_unverified": 5,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "cable_cuts",
+        "latency_spikes",
+        "country_outages"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "cloudflare_radar_cables",
+          "alias": "cloudflare_radar",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "ioda_outages",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "submarine_cable_map",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "cables_baltic",
+      "name": "Baltic Sea cables (power + data)",
+      "type": "subsea_cable",
+      "country_iso3": [
+        "FIN",
+        "EST",
+        "SWE",
+        "DEU",
+        "POL",
+        "LTU",
+        "DNK"
+      ],
+      "commodities": [
+        "data",
+        "electricity"
+      ],
+      "criticality_analyst_unverified": 3,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "damage_incidents",
+        "vessel_loitering",
+        "anchor_drag"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "cloudflare_radar_cables",
+          "alias": "cloudflare_radar",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "entsoe_flows",
+          "alias": "entsoe_power",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "submarine_cable_map",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "cables_taiwan_pacific",
+      "name": "Taiwan + Western Pacific cables",
+      "type": "subsea_cable",
+      "country_iso3": [
+        "TWN",
+        "JPN",
+        "PHL",
+        "USA",
+        "CHN"
+      ],
+      "commodities": [
+        "data"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "cable_cuts",
+        "cable_ship_activity",
+        "matsu_outages"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "cloudflare_radar_cables",
+          "alias": "cloudflare_radar",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "ioda_outages",
+          "alias": null,
+          "link_state": "COUNTRY_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "aisstream_corridor",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "airspace_russia_ukraine",
+      "name": "Russian + Ukrainian airspace closures",
+      "type": "airspace",
+      "country_iso3": [
+        "RUS",
+        "UKR",
+        "BLR"
+      ],
+      "commodities": [
+        "air_cargo",
+        "passenger_routes"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "closures",
+        "rerouting_via_kazakhstan_caucasus",
+        "longer_flight_times"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "easa_czib_notam",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "adsb_airspace",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": null,
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    },
+    {
+      "id": "airspace_middle_east",
+      "name": "Middle East airspace (Iran, Iraq, Syria, Israel, Gulf)",
+      "type": "airspace",
+      "country_iso3": [
+        "IRN",
+        "IRQ",
+        "SYR",
+        "ISR",
+        "SAU",
+        "ARE",
+        "QAT"
+      ],
+      "commodities": [
+        "air_cargo",
+        "passenger_routes"
+      ],
+      "criticality_analyst_unverified": 4,
+      "centroid_seed_not_route_geometry": null,
+      "signal_hypotheses": [
+        "closures",
+        "gps_jamming",
+        "missile_events",
+        "airline_suspensions"
+      ],
+      "monitor_refs": [
+        {
+          "source_id": "easa_czib_notam",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "adsb_airspace",
+          "alias": null,
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        },
+        {
+          "source_id": "gdelt_corridor",
+          "alias": "gdelt_v2",
+          "link_state": "CORRIDOR_SOURCE_REGISTRY"
+        }
+      ],
+      "candidate_status_note": "verify - frequently changing",
+      "notes": null,
+      "category_tags": [
+        "geopolitics",
+        "macro_fx"
+      ],
+      "exposure_scope": "NAMED_GEOGRAPHY_UNVERIFIED",
+      "route_polygon_certified": false,
+      "physical_flow_data_verified": false,
+      "current_disruption_verified": false,
+      "current_risk_score": null,
+      "route_model_status": "NOT_MODELED",
+      "commercial_signed_delivery_allowed": false
+    }
+  ],
+  "unresolved_monitor_source_ids": [],
+  "capability_disclaimer": "Neither approximate centroid nor analyst 1-5 criticality establishes physical route geometry, flow telemetry, current disruption, risk score, licensable data or signed GRO.",
+  "commercial_route_score_available": false,
+  "corridor_scoring_deployed": false,
+  "paid_risk_delivery_enabled": false
+}
