@@ -22,9 +22,12 @@ import {
 } from "../../src/lib/stateless-intelligence-model";
 import { readStatelessWebsiteIntelligence } from "../../src/lib/stateless-public-intelligence.server";
 
+const DRY_RUN=process.env.BACKFILL_DRY_RUN==="1";
 const ROOT=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
-if(ROOT.length<32) throw Error("RECOVERY_CONTROL_PLANE_TOKEN_NOT_CONFIGURED");
-const TOKEN=createHmac("sha256",ROOT).update("geomacro-control-plane-v1").digest("hex");
+if(!DRY_RUN && ROOT.length<32) throw Error("RECOVERY_CONTROL_PLANE_TOKEN_NOT_CONFIGURED");
+const TOKEN=ROOT.length>=32
+  ?createHmac("sha256",ROOT).update("geomacro-control-plane-v1").digest("hex")
+  :"dry-run-only-no-write";
 const D1="https://geomacro-control-plane.daspallab202391.workers.dev";
 const OGL="Contains public sector information licensed under the Open Government Licence v3.0.";
 const TODAY=Date.now();
@@ -144,6 +147,7 @@ async function archivedCandidates(org:string,category:StatelessCategory,id:strin
   return {eligible,searchOk,inspected:foundValues.length};
 }
 async function publish(signals:ReturnType<typeof deriveStatelessSignals>){
+  if(DRY_RUN)return;
   for(let i=0;i<signals.length;i+=35){
     const batch=signals.slice(i,i+35);
     const response=await fetch(D1+"/v1/website-derived-news",{
@@ -188,6 +192,13 @@ for(const category of ["geopolitics","macro","rare_earth"] as const){
     original_start_date:START,original_end_date:END,
     missing_originals_not_fabricated:true,supabase_writes:0}));
 }
+if(DRY_RUN){
+  console.log(JSON.stringify({schema:"geomacro.news-gap-first-party-dry-run.v1",
+    searched_since:START,through:END,official_search_lanes_available:sourceOk,
+    historically_admitted_derived_candidates:backfillTotal,raw_stored:false,
+    payment_performed:false,website_delayed_minutes:15}));
+  if(sourceOk===0||backfillTotal===0)process.exitCode=2;
+} else {
 const read=await fetch(D1+"/v1/public/website-derived-news",{
   method:"GET",redirect:"error",cache:"no-store",
   signal:AbortSignal.timeout(15_000),
@@ -209,3 +220,4 @@ console.log(JSON.stringify({schema:"geomacro.backfill-independent-d1-readback.v1
   source_raw_stored:false,backdated_stories:false,
   website_release_delay_minutes:15,supabase_dependency:false}));
 if(sourceOk===0||body.signals.length===0)process.exitCode=2;
+}
