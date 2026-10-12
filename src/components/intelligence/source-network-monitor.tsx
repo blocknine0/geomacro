@@ -83,7 +83,7 @@ const initialStatus = Object.fromEntries(
   PUBLIC_SOURCE_COVERAGE_DOMAINS.map(row => [row.category, EMPTY]),
 ) as Record<CommercialIntelligenceCategory, SourcePulseState>;
 
-export function SourceNetworkMonitor() {
+export function SourceNetworkMonitor({ category }: { category?: CommercialIntelligenceCategory }) {
   const [statuses, setStatuses] = useState(initialStatus);
   useEffect(() => {
     let active = true;
@@ -125,8 +125,8 @@ export function SourceNetworkMonitor() {
         derived assessments appear in the intelligence desk. This public view
         does not disclose the underlying data-provider inventory or raw materials.
       </p>
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
-        {PUBLIC_SOURCE_COVERAGE_DOMAINS.map(row => {
+      <div className="mt-4 grid gap-3">
+        {PUBLIC_SOURCE_COVERAGE_DOMAINS.filter(row => !category || row.category === category).map(row => {
           const live = statuses[row.category];
           return (
             <article key={row.category} className="rounded-xl border border-border/70 bg-background/30 p-4">
