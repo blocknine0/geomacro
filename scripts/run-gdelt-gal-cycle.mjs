@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { requireGdeltB2RecoveryHeadroom } from "./lib/gdelt-b2-shared-quota-guard.mjs";
 
 const OUTPUT_DIR = String(process.env.GDELT_GAL_CYCLE_OUTPUT_DIR ?? "gdelt-gal-cycle").trim();
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
@@ -99,6 +100,12 @@ async function main() {
   if (String(process.env.GEOMACRO_SUPABASE_RESTRICTED_MODE ?? "")
       .trim().toLowerCase() === "true")
     throw Error("GDELT_GAL_SUPABASE_FREE_TIER_RESTRICTED_NO_WRITES");
+  // Legacy manual recovery cannot run a B2 writer without proving headroom
+  // in the SAME D1 ledger as all other Geomacro producers/readers.
+  // Check before the first GDELT source GET or expensive source processing.
+  if (process.env.B2_GDELT_PRIMARY === "1") {
+    await requireGdeltB2RecoveryHeadroom();
+  }
   await mkdir(OUTPUT_DIR, { recursive: true });
   const attempts = [];
   let sync = null;
