@@ -11,7 +11,6 @@ const ALLOWED_TABLES = new Set([
 ]);
 
 const SAFE_REQUEST_HEADERS = [
-  "accept-profile",
   "range",
   "range-unit",
   "prefer",
@@ -125,7 +124,10 @@ async function handle(request: Request) {
     authorization: `Bearer ${anon}`,
     // JSON-only is mandatory: CSV/TSV/XML raw body would bypass the
     // recursively source-redacting parser below.
-    accept: "application/json",
+    // PostgREST maybeSingle() requires its exact vendor JSON media type.
+    // Only these two redacted JSON representations are ever permitted.
+    accept: request.headers.get("accept") === "application/vnd.pgrst.object+json"
+      ? "application/vnd.pgrst.object+json" : "application/json",
   });
   for (const name of SAFE_REQUEST_HEADERS) {
     const value = request.headers.get(name);
