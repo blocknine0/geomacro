@@ -25,7 +25,7 @@ jobs:
           for path in king/rss.xml media-releases/rss.xml; do
             address="https://www.minister.industry.gov.au/feed/$path"
             error=0
-            out="$(curl -L --max-time 16 --connect-timeout 6 \
+            out="$(curl --http1.1 -L --max-time 16 --connect-timeout 6 \
               --proto '=https' --proto-redir '=https' --max-redirs 2 \
               --silent --output /dev/null \
               --write-out '%{http_code}|%{content_type}|%{time_total}|%{num_redirects}' \
