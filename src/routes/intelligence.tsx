@@ -92,29 +92,33 @@ function IntelligencePage() {
   );
   const intel = useIntelligence(initialData);
   const riskIndices = useRiskIndices();
-  const [category, setCategory] = useState("all");
+  const [category, setCategory] = useState<(typeof COMMERCIAL_DOMAINS)[number]["key"]>("geopolitics");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<IntelSort>("newest");
   const [showHistoricalArchive, setShowHistoricalArchive] = useState(false);
 
   const pool = useMemo(() => scoredNews(intel.data?.all ?? []), [intel.data]);
-  const currentDesk = currentVerifiedDeskEvents(pool);
-  const leads = categoryLeads(currentDesk);
+  // The category choice scopes every news surface, not just the final cards.
+  const selectedDomain = COMMERCIAL_DOMAINS.find((domain) => domain.key === category)!;
+  const selectedPool = useMemo(() => pool.filter((event) => event.category === category), [pool, category]);
+  const currentDesk = currentVerifiedDeskEvents(selectedPool);
+  const leads = categoryLeads(currentDesk).filter((lead) => lead.key === category);
   const currentScored = currentDesk.length > 0;
-  const domainPulse = useMemo(() => intelligenceDomainPulse(intel.data?.all ?? []), [intel.data]);
-  const currentDomainCount = domainPulse.filter((pulse) => pulse.currentScoredCount > 0).length;
-  const allDomainsCurrent = currentDomainCount === COMMERCIAL_DOMAINS.length;
+  const domainPulse = useMemo(
+    () => intelligenceDomainPulse(intel.data?.all ?? []).filter((pulse) => pulse.key === category),
+    [intel.data, category],
+  );
   const currentObserved = useMemo(() => (intel.data?.all ?? []).filter((event) =>
     event.publicStatus === "live_observed" && event.isCurrent && event.severity === null && event.delta === null,
-  ).slice(0, 6), [intel.data]);
-  const available = useMemo(() => availableSorts(pool), [pool]);
+  ).filter((event) => event.category === category).slice(0, 6), [intel.data, category]);
+  const available = useMemo(() => availableSorts(selectedPool), [selectedPool]);
   const activeSort = available.includes(sort) ? sort : "newest";
   const filtered = useMemo(
-    () => applyIntelFilters(pool, { category, query, sort: activeSort }),
-    [pool, category, query, activeSort],
+    () => applyIntelFilters(selectedPool, { category, query, sort: activeSort }),
+    [selectedPool, category, query, activeSort],
   );
-  const latestVerifiedFallback = pool.length > 0 && !currentScored;
-  const historicalCount = pool.length - currentDesk.length;
+  const latestVerifiedFallback = selectedPool.length > 0 && !currentScored;
+  const historicalCount = selectedPool.length - currentDesk.length;
   const visibleFiltered = showHistoricalArchive ? filtered : currentVerifiedDeskEvents(filtered);
   const latestScoredByCategory = useMemo(() => {
     const latest = new Map<string, IntelEvent>();
@@ -139,8 +143,7 @@ function IntelligencePage() {
         <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em]">
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-primary">
             <Radio className="h-3 w-3" aria-hidden /> {latestVerifiedFallback ? "PREVIOUSLY VERIFIED" :
-               allDomainsCurrent ? "THREE-DOMAIN CURRENT SCORED" :
-               currentScored ? "PARTIAL CURRENT SCORED" : "AWAITING VERIFIED STORIES"}
+               currentScored ? "CURRENT VERIFIED INTELLIGENCE" : "AWAITING VERIFIED STORIES"}
           </span>
           <span className="rounded-full border border-border/70 px-2.5 py-1 text-muted-foreground">
             Website view · delayed ≥60 minutes
@@ -148,9 +151,8 @@ function IntelligencePage() {
           <span className="text-muted-foreground">
             {intel.status === "updating" ? "Updating" : latestVerifiedFallback
               ? "No current scored intelligence · historical archive available"
-              : allDomainsCurrent ? "All three domains have current original-dated scored evidence" :
-                currentScored ? `Current scored evidence in only ${currentDomainCount}/3 domains` :
-                "No eligible scored headlines yet"}
+              : currentScored ? `${selectedDomain.label} · current original-dated evidence` :
+                `No eligible scored headlines for ${selectedDomain.label}`}
           </span>
         </div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
@@ -173,13 +175,32 @@ function IntelligencePage() {
         </section>
       ) : null}
 
+      <section className="mt-8" aria-label="Intelligence category">
+        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Choose an intelligence domain</p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label="Intelligence category">
+          {COMMERCIAL_DOMAINS.map((domain) => (
+            <button key={domain.key} type="button"
+              aria-pressed={category === domain.key}
+              onClick={() => { setCategory(domain.key); setShowHistoricalArchive(false); }}
+              className={`min-h-11 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${category === domain.key
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-foreground hover:border-primary/60 hover:bg-muted"}`}>
+              {domain.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground" role="status">
+          Showing {selectedDomain.label} only · Verified intelligence released on this website at least 60 minutes after publication.
+        </p>
+      </section>
+
       <section className="mt-8" aria-labelledby="intelligence-freshness-heading">
         <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Three-domain monitoring</p>
         <h2 id="intelligence-freshness-heading" className="mt-1 text-xl font-semibold">Evidence freshness by risk domain</h2>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           Updated monitoring is not the same as a new risk assessment. Every domain keeps its last verified severity and original evidence date; newly observed but unscored signals are shown separately.
         </p>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="mt-4 grid gap-3">
           {domainPulse.map((pulse) => (
             <article key={pulse.key} className="rounded-xl border border-border/70 bg-card/40 p-4">
               <p className="font-mono text-[10px] uppercase tracking-wider text-primary">{pulse.label}</p>
@@ -216,9 +237,9 @@ function IntelligencePage() {
         </div>
       </section>
 
-      <SourceNetworkMonitor />
+      <SourceNetworkMonitor category={category} />
 
-      <section className="mt-8 grid gap-3 rounded-2xl border border-border/70 bg-card/40 p-4 sm:grid-cols-[minmax(0,1fr)_180px_170px_auto]">
+      <section className="mt-8 grid gap-3 rounded-2xl border border-border/70 bg-card/40 p-4 sm:grid-cols-[minmax(0,1fr)_170px_auto]">
         <label className="relative min-w-0">
           <span className="sr-only">Search intelligence</span>
           <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden />
@@ -228,19 +249,6 @@ function IntelligencePage() {
             placeholder="Search countries, events or policy changes"
             className="pl-9"
           />
-        </label>
-        <label>
-          <span className="sr-only">Category</span>
-          <select
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
-          >
-            <option value="all">All categories</option>
-            {(intel.data?.categories ?? []).map((item) => (
-              <option key={item} value={item}>{prettyCategory(item)}</option>
-            ))}
-          </select>
         </label>
         <label>
           <span className="sr-only">Sort</span>
@@ -277,10 +285,10 @@ function IntelligencePage() {
           <p className="mt-1 text-sm text-muted-foreground">Only scored developments with genuine original evidence dated within 24 hours and past the website 60-minute release cutoff are eligible here. Older intelligence stays in the dated archive.</p>
           {!currentScored ? (
             <p className="mt-4 rounded-xl border border-border/70 px-4 py-3 text-sm text-muted-foreground" role="status">
-              No current verified risk assessment is available across the three domains. Monitoring continues, but an unconfirmed source update is not scored intelligence. This does not mean global risk is unchanged.
+              No current verified risk assessment is available for {selectedDomain.label}. Monitoring continues, but an unconfirmed source update is not scored intelligence. This does not mean global risk is unchanged.
             </p>
           ) : null}
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="mt-4 grid gap-3">
             {leads.map(({ key, label, event, isCurrent }) => (
               <article key={key} className="flex flex-col rounded-xl border border-border/70 bg-card/50 p-4">
                 <p className="font-mono text-[10px] uppercase tracking-widest text-primary">{label}</p>
@@ -410,7 +418,7 @@ function IntelligencePage() {
               <div className="mt-4 space-y-3">
                 {COMMERCIAL_DOMAINS.map(({ key: domain }) => {
                   const latest = latestScoredByCategory.get(domain) ?? null;
-                  const visibleCount = pool.filter((event) => event.category === domain).length;
+                  const visibleCount = selectedPool.filter((event) => event.category === domain).length;
                   return (
                     <div key={domain} className="flex items-start justify-between gap-3 border-b border-border/50 pb-3 last:border-0 last:pb-0">
                       <div className="min-w-0">
