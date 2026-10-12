@@ -137,7 +137,7 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
       // The prior generic /stats/html/ rule silently rejected all seven
       // qualifying monetary/statistical feed links despite valid native dates.
       const legacyOriginal = /^\/press\/(?:pr|key|stats)\/(?:date\/20\d{2}\/html\/|html\/)[A-Za-z0-9.~_-]{6,190}\.html$/u;
-      const statisticalOriginal = /^\/press\/stats\/[a-z]{2,16}\/20\d{2}\/html\/ecb\.[A-Za-z0-9._~-]{7,190}\.[a-z]{2}\.html$/u;
+      const statisticalOriginal = /^\/press\/stats\/[a-z]{2,16}\/20\d{2}\/html\/ecb\.[A-Za-z0-9._-]{3,110}~[a-f0-9]{8,16}\.[a-z]{2}\.html$/u;
       if (!legacyOriginal.test(link.pathname) && !statisticalOriginal.test(link.pathname)) return null;
     }
     if (source.id === "un_news" && !/^\/en\/story\/\d{4}\/\d{1,2}\//u.test(link.pathname)) return null;
