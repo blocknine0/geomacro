@@ -9,7 +9,7 @@ export type StatelessCategory = "geopolitics" | "macro" | "rare_earth";
 export type StatelessSourceSpec = {
   id: string;
   category: StatelessCategory;
-  media: "rss" | "atom";
+  media: "rss" | "atom" | "html_index";
   url: string;
   allowedHosts: readonly string[];
   credit: string | null;
