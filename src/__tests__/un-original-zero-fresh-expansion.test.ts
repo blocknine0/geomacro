@@ -2,6 +2,7 @@ import {describe,expect,it,vi} from "vitest";
 import {
   EXPANDED_OFFICIAL_SOURCES,probeExpandedSource,
 } from "../../scripts/ops/probe-expanded-official-source-mesh.mjs";
+import {probe30MinThreeDomainPulse} from "../../scripts/ops/probe-30min-three-domain-pulse.mjs";
 
 const now=new Date("2026-10-12T02:00:00.000Z");
 const un=EXPANDED_OFFICIAL_SOURCES.find(
@@ -95,4 +96,32 @@ describe("#2041 UN same-publisher zero-current private original discovery",()=>{
       expect(JSON.stringify(x)).not.toContain("secret upstream text");
     }
   });
+  it("carries safe UN expansion booleans through the three-domain private pulse",async()=>{
+    const now=new Date("2026-10-12T02:00:00.000Z");
+    const monitor=await probe30MinThreeDomainPulse({now,probe:async(source:{id:string,domain:string})=>({
+      source_id:source.id,domain:source.domain,
+      publisher_reachable:true,format_valid:true,
+      original_publisher_topical_30m:0,
+      original_publisher_topical_90m:0,
+      original_publisher_topical_6h:0,
+      official_same_publisher_zero_fresh_expansion_attempted:
+        source.id==="un_news_security_original_rss_review",
+      official_same_publisher_zero_fresh_expansion_used:
+        source.id==="un_news_security_original_rss_review",
+    })});
+    const proof=monitor.actual_original_publisher_rows.flatMap(x=>
+      x.source_feed_recovery_diagnostics);
+    const unProof=proof.find(x=>x.source_id==="un_news_security_original_rss_review");
+    expect(unProof).toMatchObject({
+      same_issuer_zero_fresh_expansion_attempted:true,
+      same_issuer_zero_fresh_expansion_used:true,
+    });
+    expect(proof.filter(x=>x.same_issuer_zero_fresh_expansion_attempted)).toHaveLength(1);
+    expect(monitor.independently_verified_current_intelligence_count).toBe(0);
+    expect(monitor.publisher_rights_verified).toBe(false);
+    expect(monitor.user_api_delivery_verified).toBe(false);
+    expect(JSON.stringify(proof)).not.toContain("Security Council agrees");
+    expect(JSON.stringify(proof)).not.toContain("https://news.un.org/en/story");
+  });
+
 });
