@@ -111,8 +111,9 @@ describe("production website runtime contract", () => {
   it("keeps route loaders fail-closed without collapsing the whole page", () => {
     const intelligence = read("src/routes/intelligence.tsx");
     const event = read("src/routes/event.$eventId.tsx");
-    expect(intelligence).toContain("[intelligence-route] preload failed; rendering fail-closed workspace");
-    expect(intelligence).toContain("return { rows: [], now }");
+    expect(intelligence).toContain("On-demand Intelligence source check timed out.");
+    expect(intelligence).toContain("return { rows: [], now, stateless: null }");
+    expect(intelligence).toContain("component: StatelessWebsiteIntelligencePage");
     expect(event).toContain("[event-route] preload failed; rendering unavailable state");
     expect(event).toContain("return null");
     expect(intelligence).toContain("Risk Indices temporarily unavailable");
