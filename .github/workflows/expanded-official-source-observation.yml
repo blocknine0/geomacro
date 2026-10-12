@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "config/operator-76-source-attribution-intake.v1.json"
+      - "scripts/ops/probe-operator-official-intake.mjs"
+      - "scripts/lib/operator-source-attribution.mjs"
+      - "src/__tests__/operator-76-source-attribution-intake.test.ts"
       - "scripts/ops/observe-approved-reliefweb-live.mjs"
       - "src/__tests__/approved-reliefweb-live-observer.test.ts"
       - "src/__tests__/reliefweb-scheduled-failclosed.test.ts"
@@ -17,6 +21,10 @@ on:
     branches: [main]
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "config/operator-76-source-attribution-intake.v1.json"
+      - "scripts/ops/probe-operator-official-intake.mjs"
+      - "scripts/lib/operator-source-attribution.mjs"
+      - "src/__tests__/operator-76-source-attribution-intake.test.ts"
       - "scripts/ops/audit-official-step1-feed-redundancy.mjs"
       - "scripts/lib/official-source-quarantine.mjs"
       - ".github/workflows/expanded-official-source-observation.yml"
@@ -191,6 +199,48 @@ jobs:
         with:
           name: reliefweb-approved-source-transport-${{ github.run_id }}
           path: artifacts/expanded-official-source/reliefweb-approved.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  operator-official-context:
+    # Three additional distinct read-only source families, NOT a new schedule.
+    # One bounded request/provider/cycle; NEVER writes to B2/D1/Supabase.
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout verified operator context probe
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Probe USGS, Treasury, Federal Register (context only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/probe-operator-official-intake.mjs
+          jq -e '
+            .schema=="geomacro.operator-three-domain-official-context.v1" and
+            .state=="ALL_THREE_CONTEXT_TRANSPORTS_LIVE" and
+            .total_http_requests==3 and
+            .raw_data_stored==false and
+            .supabase_requests==0 and .d1_requests==0 and
+            .b2_requests==0 and .paid_calls==0 and
+            .three_domain_scored_intelligence_verified==false and
+            ([.sources[] | .state=="LIVE_PRIVATE_METADATA" and
+              .api_requests==1 and .commercial_eligible==false and
+              .signed_gro==false] | all) and
+            ([.sources[].domain] | sort == ["geopolitics","macro","rare_earth"])
+          ' artifacts/expanded-official-source/operator-official-intake.json >/dev/null
+      - name: Retain aggregate-only official context receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: operator-three-domain-context-${{ github.run_id }}
+          path: artifacts/expanded-official-source/operator-official-intake.json
           if-no-files-found: warn
           retention-days: 3
 
