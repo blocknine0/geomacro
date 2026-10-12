@@ -274,7 +274,10 @@ function build(rows: IntelEvent[], now: number): Intelligence {
 }
 
 export function buildPublicIntelligence(rows: PublicIntelligenceRow[], now: number): Intelligence {
-  return build(mapPublicRows(websiteLaggedEvidenceRows(rows, now)), now);
+  // Pure model contract remains usable by machine-independent unit tests;
+  // WEBSITE SSR and browser loaders each enforce the 60-minute embargo
+  // before passing their rows to this classifier/deduplication model.
+  return build(mapPublicRows(rows), now);
 }
 
 async function fetchSameOriginPublicIntelligence(): Promise<PublicIntelligenceApiRow[]> {
