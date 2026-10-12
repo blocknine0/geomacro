@@ -133,7 +133,7 @@ function entryLink(chunk: string, source: StatelessSourceSpec): string | null {
 }
 
 export function selectOfficialTopic(title: string, category: StatelessCategory) {
-  return TOPICS[category].find(rule => rule.test(title)) ?? null;
+  return TOPICS[category].find(rule => rule.test.test(title)) ?? null;
 }
 
 export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, now = Date.now()): {
