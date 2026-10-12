@@ -181,6 +181,7 @@ async function handle(request: Request) {
          body[0]?.id!==id||
          body[0]?.status!=="published"||
          body[0]?.verification_status!=="verified"||
+         !Number.isFinite(Date.parse(String(body[0]?.as_of??"")))||
          Date.parse(String(body[0]?.as_of??""))>Date.parse(cutoff))
         return bad(403,"GRI snapshot is not yet website-public");
     }catch{
