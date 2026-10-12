@@ -60,7 +60,6 @@ export async function categoryOriginalSourcePulse(
   return {
     schema:"geomacro.category-original-source-pulse-30m.v1",
     target_poll_minutes:30,
-    source_status_endpoint:PULSE_URL,
     observation:{
       ...unknown,
       status,
