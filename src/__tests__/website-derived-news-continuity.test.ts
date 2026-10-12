@@ -121,7 +121,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(text).not.toContain("risk score");
     const locked=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
     expect(locked).toContain("website-derived-news-html");
-    expect(locked).toContain("signals.length === 0");
+    expect(locked).toContain("allSignals.length === 0");
   });
   it("backfills from Oct 1 with original Content API first_published_at, never search update clock",()=>{
     const source=readFileSync("scripts/ops/backfill-website-derived-news.ts","utf8");
@@ -136,6 +136,20 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(workflow).toContain('bun scripts/ops/backfill-website-derived-news.ts');
     expect(workflow).toContain('workflow_dispatch');
     expect(source).not.toContain('supabase.co');
+  });
+  it("passes the actual Signal[] from direct D1 read into server-rendered cards",()=>{
+    const route=readFileSync("src/routes/intelligence.tsx","utf8");
+    const desk=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
+    const fetcher=readFileSync("src/lib/public-derived-news-client.ts","utf8");
+    expect(fetcher).toContain("Promise<StatelessIntelligenceSignal[]>");
+    expect(route).toContain('fetchDirectDerivedNews()');
+    expect(route).toContain('journal: history.status === "fulfilled" && Array.isArray(history.value)');
+    expect(route).toContain('? history.value : []');
+    expect(route).not.toContain("history.value.signals");
+    expect(route).toContain('initialJournal={loader.journal}');
+    expect(desk).toContain("useState<StatelessIntelligenceSignal[]>(() => initialJournal)");
+    expect(desk).toContain("allSignals.length === 0");
+    expect(desk).toContain("Reading the verified 30-day Intelligence journal below");
   });
   it("allows conservative day-only release only after its complete embargo",()=>{
     const day={...sample("rare_earth","2026-10-09"),date_precision:"day",
