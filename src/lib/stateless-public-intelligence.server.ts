@@ -14,6 +14,12 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_fcdo", category: "geopolitics", media: "atom",
     url: "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  { id: "un_news", category: "geopolitics", media: "rss",
+    url: "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+    allowedHosts: ["news.un.org"], credit: null },
+  { id: "uk_cabinet", category: "geopolitics", media: "atom",
+    url: "https://www.gov.uk/government/organisations/cabinet-office.atom",
+    allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
   { id: "uk_mod", category: "geopolitics", media: "atom",
     url: "https://www.gov.uk/government/organisations/ministry-of-defence.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
@@ -23,8 +29,17 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "ecb_press", category: "macro", media: "rss",
     url: "https://www.ecb.europa.eu/rss/press.html",
     allowedHosts: ["www.ecb.europa.eu"], credit: "European Central Bank" },
+  { id: "ecb_stats", category: "macro", media: "rss",
+    url: "https://www.ecb.europa.eu/rss/statpress.html",
+    allowedHosts: ["www.ecb.europa.eu"], credit: "European Central Bank" },
   { id: "uk_treasury", category: "macro", media: "atom",
     url: "https://www.gov.uk/government/organisations/hm-treasury.atom",
+    allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  { id: "au_industry", category: "rare_earth", media: "rss",
+    url: "https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
+  { id: "uk_energy", category: "rare_earth", media: "atom",
+    url: "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
   { id: "usgs_minerals", category: "rare_earth", media: "rss",
     url: "https://www.usgs.gov/news/minerals/feed",
@@ -34,9 +49,9 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
 ]);
 
-const MAX_FEED_BYTES = 192 * 1024;
+const MAX_FEED_BYTES = 384 * 1024;
 const MAX_PAGE_BYTES = 128 * 1024;
-const TIMEOUT_MS = 3_500;
+const TIMEOUT_MS = 5_000;
 
 async function boundedText(response: Response, maxBytes: number): Promise<string | null> {
   if (!response.ok || !response.body) return null;
@@ -114,7 +129,7 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
     const xml = await boundedText(response, MAX_FEED_BYTES);
     if (!xml) return { candidates: [], healthy: false };
     const parsed = parseFirstPartyFeed(xml, source, now);
-    const recovered = await Promise.all(parsed.undatedGov.slice(0, 3)
+    const recovered = await Promise.all(parsed.undatedGov.slice(0, 4)
       .map(candidate => readGovContentOriginalDate(candidate, source, now)));
     return { healthy: true, candidates: [...parsed.dated, ...recovered.filter((x): x is StatelessSourceCandidate => x !== null)] };
   } catch { return { candidates: [], healthy: false }; }
@@ -129,6 +144,8 @@ export type StatelessIntelligenceResult = {
   releases_examined: number;
   feed_count: number;
   healthy_feed_count: number;
+  current_24h_count: number;
+  last_7d_count: number;
   status: "official_observations_available" | "no_eligible_original_releases" | "sources_unavailable";
   signals: StatelessIntelligenceSignal[];
   persistent_storage: false;
@@ -155,6 +172,8 @@ export async function readStatelessWebsiteIntelligence(
     releases_examined: batch.reduce((n, x) => n + x.candidates.length, 0),
     feed_count: sourceGroup.length,
     healthy_feed_count: healthy,
+    current_24h_count: signals.filter(x => Date.parse(x.published_at) >= now - 86_400_000).length,
+    last_7d_count: signals.length,
     status: signals.length > 0 ? "official_observations_available"
       : healthy > 0 ? "no_eligible_original_releases" : "sources_unavailable",
     signals,
