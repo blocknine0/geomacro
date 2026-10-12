@@ -69,6 +69,11 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_dbt_macro", category: "macro", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  // Official Australian resources trade/export statements can qualify as
+  // Macro/FX context when their ORIGINAL publisher title is relevant.
+  { id: "au_resource_exports", category: "macro", media: "rss",
+    url: "https://www.minister.industry.gov.au/feed/king/rss.xml",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   // Natural Resources Canada's official news-release Atom feed (not a
   // search-engine snippet and not a dataset modification timestamp).
   { id: "nrcan_releases", category: "rare_earth", media: "atom",
@@ -79,8 +84,17 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
     url: "https://natural-resources.canada.ca/simply-science/rss.xml",
     allowedHosts: ["natural-resources.canada.ca", "www.natural-resources.canada.ca"],
     credit: null },
+  // Australian Resources Minister's own official published feed URL from
+  // the ministers' /subscribe page. Previous "t-ayres" feed follows the
+  // Industry Minister, not the Resources Minister: it missed genuine
+  // Arafura rare-earth original releases on 8–9 Oct 2026.
   { id: "au_industry", category: "rare_earth", media: "rss",
-    url: "https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
+    url: "https://www.minister.industry.gov.au/feed/king/rss.xml",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
+  // Independent category selection over the same Australian first-party
+  // newsroom: captures other Resources and Industry minister news releases.
+  { id: "au_resource_releases", category: "rare_earth", media: "rss",
+    url: "https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
     allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   { id: "uk_energy", category: "rare_earth", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
