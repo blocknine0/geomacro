@@ -8,7 +8,7 @@ const Input = z.object({
 /**
  * A read-only, request-scoped Geomacro website source signal snapshot.
  * No material is persisted to a DB, B2, cache, filesystem or log.
- * The 60-minute cutoff is enforced BEFORE any signal leaves this server function.
+ * The 15-minute cutoff is enforced BEFORE any signal leaves this server function.
  */
 export const getStatelessIntelligence = createServerFn({ method: "GET" })
   .validator((input: unknown) => Input.parse(input))
