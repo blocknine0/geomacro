@@ -1,7 +1,7 @@
 // One immutable multi-source archive object instead of two independent PUT+GET
 // pairs when both governed providers fit the existing fragment bounds.
 // No Supabase write, raw public exposure, checkpoint promotion or deletion.
-import { gunzipSync } from "node:zlib";
+import { gunzipSync, gzipSync } from "node:zlib";
 
 export function planSharedGovernedBundle(batches, buildFragment, {
   maxMembers, maxUncompressedBytes, maxCompressedBytes,
@@ -40,6 +40,14 @@ export function planSharedGovernedBundle(batches, buildFragment, {
       fragment.entries?.length !== rows.length) {
     throw new Error("GOVERNED_SHARED_BUNDLE_SHAPE_INVALID");
   }
+  // Same member fingerprint must always denote the same B2 bytes, including
+  // on a repeat daily run. Do not write a different wall-clock created_at under
+  // the same otherwise content-addressed immutable archive key.
+  const latestNativeObservedAt = new Date(Math.max(...rows.map(row =>
+    Date.parse(row.observed_at)))).toISOString();
+  fragment.bundle.created_at = latestNativeObservedAt;
+  fragment.bundleBytes = Buffer.from(JSON.stringify(fragment.bundle));
+  fragment.compressed = gzipSync(fragment.bundleBytes, { level: 9 });
   if (fragment.bundleBytes.length > maxUncompressedBytes ||
       fragment.compressed.length > maxCompressedBytes) return null;
   return { ...fragment, sourceIds, totalMembers: rows.length };
