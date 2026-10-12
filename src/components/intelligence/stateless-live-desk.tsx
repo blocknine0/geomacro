@@ -11,7 +11,7 @@ const DOMAINS = [
 ] as const;
 
 const OGL_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
-const REFRESH_MS = 5 * 60_000;
+const REFRESH_MS = 2 * 60_000;
 
 export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceResult | null }) {
   const [category, setCategory] = useState<StatelessCategory>("geopolitics");
@@ -31,7 +31,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
         const result = await getStatelessIntelligence({ data: { category } });
         if (active) { setData(result); setError(false); }
       } catch {
-        if (active) setError(true);
+        if (active) { setData(null); setError(true); }
       } finally {
         if (active) setBusy(false);
       }
@@ -48,17 +48,18 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
       <header className="max-w-4xl">
         <div className="inline-flex rounded-full border border-primary/30 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-primary">
-          Website view · delayed ≥60 minutes
+          Geomacro finds · 15-minute delayed
         </div>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
-          Geomacro reads official publisher updates on demand, classifies their potential risk relevance
-          and displays source-governed observations. The website never saves raw feeds or generated
-          intelligence; it automatically checks again every five minutes while this page is open.
+          Geomacro finds relevant geopolitical, Macro/FX and critical-minerals developments
+          from original official releases. Each distinct release appears as its own finding
+          once 15 minutes have elapsed since publication. No source feed or intelligence is stored.
+          The open page checks for updates every two minutes.
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
-          Source monitoring is not independent same-event corroboration, a signed GRO, or a 0–100 risk score.
-          Higher-assurance structured intelligence belongs to the separate API product.
+          Findings are derived summaries of official releases, not verified statements of market impact.
+          Structured, signed risk analysis is a separate API product.
         </p>
       </header>
 
@@ -83,7 +84,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-              Stateless official-source monitoring
+              Latest Geomacro finds
             </p>
             <h2 id="stateless-updates-heading" className="mt-1 text-2xl font-semibold">
               {domain.label} developments
@@ -113,11 +114,11 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
           </div>
         ) : current.signals.length === 0 ? (
           <div role="status" className="mt-5 rounded-2xl border border-dashed border-border p-6">
-            <p className="font-medium">No eligible {domain.label} source observation in this bounded check</p>
+            <p className="font-medium">No qualifying {domain.label} findings in this source check</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               {current.status === "sources_unavailable"
                 ? "The selected official feeds are unavailable. This is not evidence that no world events occurred."
-                : "None of the sampled original-dated relevant releases passed the 60-minute cutoff in the last seven days. Other sources may report additional developments."}
+                : "None of the sampled original-dated relevant releases passed the 15-minute cutoff in the last seven days. Other sources may report additional developments."}
             </p>
           </div>
         ) : (
@@ -126,7 +127,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
               <article key={signal.id} className="rounded-2xl border border-border/70 bg-card/40 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-mono text-[10px] uppercase tracking-wider text-primary">
-                    Original publisher observation · Unscored
+                    Geomacro finds · Official release
                   </span>
                   <time dateTime={signal.published_at} className="text-xs text-muted-foreground">
                     {formatInstant(signal.published_at)}
@@ -134,10 +135,6 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
                 </div>
                 <h3 className="mt-3 text-lg font-semibold leading-snug">{signal.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{signal.why_it_matters}</p>
-                <p className="mt-4 text-xs text-muted-foreground">
-                  {signal.observed_release_count} eligible original release{signal.observed_release_count === 1 ? "" : "s"} in this topic/day.
-                  No same-event corroboration or severity inferred.
-                </p>
                 {signal.sources_credited.length > 0 ? (
                   <div className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
                     {signal.sources_credited.map(credit =>
@@ -158,7 +155,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
         <p className="mt-6 text-xs leading-6 text-muted-foreground">
           No database, B2, D1, browser local storage, archive, or permanent publication.
           Current readings are derived in request memory and discarded.
-          Original first-publication timestamps—not fetch times, website deploy times, or modified times—control the ≥60-minute release delay.
+          Original first-publication timestamps—not fetch times, website deploy times, or modified times—control the 15-minute release delay.
           This bounded free feed does not claim complete global coverage.
         </p>
       </section>
