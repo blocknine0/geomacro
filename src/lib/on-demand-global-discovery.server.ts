@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
+// One strict original-publication verifier for BOTH 30m and customer on-demand paths.
+import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
 
 /**
  * Query-time, bounded, Supabase/B2-free GLOBAL DISCOVERY for a future paid
@@ -113,6 +115,10 @@ export function inferOnDemandMineral(question: string | null | undefined): OnDem
 }
 
 const MAX_BODY_BYTES = 192 * 1024;
+// Original first-party government pages regularly exceed ordinary small-feed
+// limits; the shared 30m verifier uses exactly 384KiB. This never applies to
+// GDELT/WorldBank/ReliefWeb/RSS discovery responses.
+const MAX_FIRST_PARTY_HTML_BYTES = 384 * 1024;
 const TIMEOUT_MS = 5_000;
 
 async function boundedFetch(
@@ -127,6 +133,7 @@ async function boundedFetch(
         "www.minister.industry.gov.au"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
+  const maxBytes = accept === "text/html" ? MAX_FIRST_PARTY_HTML_BYTES : MAX_BODY_BYTES;
   let response: Response;
   try {
     response = await fetchImpl(url, {
@@ -146,7 +153,7 @@ async function boundedFetch(
     throw Error(transient ? "ON_DEMAND_SOURCE_TRANSIENT_HTTP" :
       "ON_DEMAND_SOURCE_UNAVAILABLE");
   }
-  if (Number(response.headers.get("content-length") || 0) > MAX_BODY_BYTES)
+  if (Number(response.headers.get("content-length") || 0) > maxBytes)
     throw Error("ON_DEMAND_SOURCE_UNAVAILABLE");
   if (!response.body) throw Error("ON_DEMAND_SOURCE_RESPONSE_EMPTY");
   const reader = response.body.getReader();
@@ -157,7 +164,7 @@ async function boundedFetch(
       const part = await reader.read();
       if (part.done) break;
       total += part.value.byteLength;
-      if (total > MAX_BODY_BYTES) {
+      if (total > maxBytes) {
         await reader.cancel();
         throw Error("ON_DEMAND_SOURCE_RESPONSE_OVERSIZED");
       }
@@ -741,28 +748,10 @@ export type PrivatePageDateResult = {
 };
 
 const MAX_ARTICLE_PAGE_PROBES = 4;
-const ARTICLE_META_KEYS = new Set([
-  "article:published_time", "datepublished", "date_published",
-  "pubdate", "publication_date",
-]);
-
-function publisherPageDate(html: string): string | null {
-  // Explicit original publication clocks only; never an "updated" timestamp.
-  for (const tag of html.match(/<meta\b[^>]{0,900}>/giu) ?? []) {
-    const attrs = new Map<string, string>();
-    for (const m of tag.matchAll(/\b([a-z][a-z0-9:._-]*)\s*=\s*(["'])([^"']*)\2/giu)) {
-      attrs.set(m[1].toLowerCase(),m[3].trim());
-    }
-    const key = (attrs.get("property") ?? attrs.get("name") ??
-      attrs.get("itemprop") ?? "").toLowerCase();
-    if (!ARTICLE_META_KEYS.has(key)) continue;
-    const date = attrs.get("content") ?? "";
-    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/iu.test(date)) continue;
-    const parsed = Date.parse(date);
-    if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
-  }
-  return null;
-}
+// Do not maintain a second, permissive on-demand <meta> scraper. The shared
+// first-party verifier rejects conflicting originals, date-only, missing
+// timezone, future/stale release clocks and updated/modified dates. Article
+// feed timestamps are cross-checked separately below.
 
 /** Internal-only evidence continuation; never serialize verified_candidates. */
 export async function verifyOnDemandOriginalArticlePages(
@@ -799,7 +788,7 @@ export async function verifyOnDemandOriginalArticlePages(
   const dates=await Promise.all(chosen.map(async(candidate)=>{
     try{
       const html=await boundedFetch(options.fetchImpl??fetch,candidate.article_url,"text/html");
-      const originalDate=publisherPageDate(html);
+      const originalDate=verifiedPublisherPageDate(html,now);
       if(!originalDate || !freshPublished(originalDate,now) ||
         Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000)
         return null;
