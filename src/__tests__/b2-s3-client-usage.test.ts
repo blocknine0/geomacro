@@ -607,3 +607,66 @@ describe("B2 signed PUT plus full readback verification", () => {
     ).rejects.toThrow("B2_READBACK_SHA256_MISMATCH");
   });
 });
+
+
+describe("B2 quota exhaustion traffic suppression", () => {
+  it("latches an S3 transaction cap and performs no other B2 requests", async () => {
+    clearOptionalReadCredentials();
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      calls.push(String(url));
+      return new Response("<Error><Code>transaction_cap_exceeded</Code></Error>", {status:403});
+    }));
+    const client=createB2Client({
+      endpointUrl:"https://s3.us-east-005.backblazeb2.com",
+      accessKey:"primary-key",secretKey:"primary-secret",
+      bucket:"geomacro-private-archive",
+    });
+    await expect(client.get("geomacro-evidence/v1/a.json"))
+      .rejects.toThrow("B2_TRANSACTION_CAP_EXCEEDED");
+    await expect(client.get("geomacro-evidence/v1/b.json"))
+      .rejects.toThrow("B2_TRANSACTION_CAP_EXCEEDED");
+    await expect(client.put("geomacro-evidence/v1/c.json",Buffer.from("unsafe")))
+      .rejects.toThrow("B2_TRANSACTION_CAP_EXCEEDED");
+    expect(calls).toHaveLength(1);
+    expect(client.usage().native_read_fatal_error).toBe("B2_TRANSACTION_CAP_EXCEEDED");
+  });
+
+  it("does not strand a verified archive write when a download cap was already proven", async () => {
+    clearOptionalReadCredentials();
+    const calls: string[]=[];
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      calls.push(String(url));
+      return new Response("<Error><Code>download_cap_exceeded</Code></Error>",{status:403});
+    }));
+    const client=createB2Client({
+      endpointUrl:"https://s3.us-east-005.backblazeb2.com",
+      accessKey:"primary-key",secretKey:"primary-secret",
+      bucket:"geomacro-private-archive",
+    });
+    await expect(client.get("geomacro-evidence/v1/a.json"))
+      .rejects.toThrow("B2_DOWNLOAD_CAP_EXCEEDED");
+    await expect(client.putWithMetadataVerification(
+      "geomacro-evidence/v1/new.json",Buffer.from("new")))
+      .rejects.toThrow("B2_DOWNLOAD_CAP_EXCEEDED");
+    expect(calls).toHaveLength(1);
+  });
+
+  it("never fast-retries HTTP 429 and spends only one B2 transaction", async () => {
+    clearOptionalReadCredentials();
+    const calls: string[]=[];
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      calls.push(String(url));
+      return new Response("<Error><Code>TooManyRequests</Code></Error>",{status:429});
+    }));
+    const client=createB2Client({
+      endpointUrl:"https://s3.us-east-005.backblazeb2.com",
+      accessKey:"primary-key",secretKey:"primary-secret",
+      bucket:"geomacro-private-archive",
+    });
+    await expect(client.get("geomacro-evidence/v1/throttled.json"))
+      .rejects.toThrow("B2_PROVIDER_THROTTLED");
+    expect(calls).toHaveLength(1);
+    expect(client.usage().requests_started).toBe(1);
+  });
+});
