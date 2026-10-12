@@ -61,6 +61,9 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration." },
   ],
   macro: [
+    { test: /\b(Basel III|Basel Committee|banking supervisors?|capital adequacy|bank capital requirements?|banking supervision)\b/i,
+      name: "banking and capital regulation",
+      implication: "Official prudential rulemaking can affect bank funding and cross-border credit conditions; any implemented capital requirements or market effects must be verified separately." },
     { test: /\b(gross domestic product|economic accounts|national accounts|retail trade|retail sales|employment|labour force survey|labor force survey|wages?|average weekly earnings|business conditions)\b/i, name: "official economic statistics",
       implication: "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table." },
     { test: /\b(interest rates?|federal funds|discount rate|monetary policy|FOMC)\b/i, name: "monetary policy",
@@ -245,6 +248,8 @@ const SAFE_FOCUS: Record<StatelessCategory, readonly { test: RegExp; label: stri
     { test: /\bmilitary\b/i, label: "military policy" },
   ],
   macro: [
+    { test: /\b(Basel III|Basel Committee|banking supervisors?|capital adequacy|bank capital requirements?)\b/i,
+      label: "prudential banking regulation" },
     { test: /\b(?:trade mission|free trade|trade deal|trade agreement|JETCO)\b/i, label: "international trade" },
     { test: /\binterest rates?\b/i, label: "interest-rate policy" },
     { test: /\bmonetary policy\b/i, label: "monetary policy" },
