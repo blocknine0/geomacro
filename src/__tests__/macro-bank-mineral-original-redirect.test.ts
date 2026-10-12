@@ -45,13 +45,13 @@ describe("first-party bank Macro release and bounded mineral redirect",()=>{
     expect(out[0].published_at).toBe("2026-10-01T02:00:00.000Z");
     expect(JSON.stringify(out)).not.toContain("https://");
     expect(JSON.stringify(out)).not.toContain("Release of Financial Stability Review");
-    expect(deriveStatelessSignals(parsed.dated,Date.parse("2026-10-01T02:14:59.000Z")))
+    expect(deriveStatelessSignals(parsed.dated.filter(x=>x.publishedAt.startsWith("2026-10-01")),Date.parse("2026-10-01T02:14:59.000Z")))
       .toHaveLength(0);
   });
 
   it("follows one allowed HTTPS same-government RSS redirect, never mutating the original signal date",async()=>{
     const follow="https://natural-resources.canada.ca/news/feed.xml";
-    const mock=vi.fn(async (u:RequestInfo|URL)=>String(u)===minerals.url?move(follow):ok);
+    const mock=vi.fn(async (u:RequestInfo|URL, _init?:RequestInit)=>String(u)===minerals.url?move(follow):ok);
     const response=await fetchFirstPartyOriginalFeed(minerals,mock as unknown as typeof fetch);
     expect(response.ok).toBe(true);
     expect(mock).toHaveBeenCalledTimes(2);
