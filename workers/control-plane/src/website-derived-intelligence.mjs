@@ -8,7 +8,8 @@ const LOOKBACK_MS = 30 * 86400_000;
 const DELAY_MS = 15 * 60_000;
 const CATEGORIES = new Set(["geopolitics", "macro", "rare_earth"]);
 const TOPICS = new Set(["sanctions and trade restrictions","security and diplomacy",
-  "geopolitical security","foreign policy","monetary policy","inflation and prices",
+  "geopolitical security","foreign policy","banking and capital regulation",
+  "monetary policy","inflation and prices",
   "FX and external balances","financial conditions","trade and economic relations",
   "official economic statistics","rare-earth supply",
   "critical-mineral inputs","critical-minerals policy",
