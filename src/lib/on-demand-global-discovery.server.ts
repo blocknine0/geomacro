@@ -154,7 +154,7 @@ async function boundedFetch(
       "ON_DEMAND_SOURCE_UNAVAILABLE");
   }
   if (accept === "text/html" &&
-      !/^text\\/html(?:;|$)/iu.test(response.headers.get("content-type") ?? "")) {
+      !/^text\/html(?:;|$)/iu.test(response.headers.get("content-type") ?? "")) {
     throw Error("ON_DEMAND_ORIGINAL_PAGE_MIME_INVALID");
   }
   if (Number(response.headers.get("content-length") || 0) > maxBytes)
