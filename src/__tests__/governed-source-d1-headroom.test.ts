@@ -42,6 +42,18 @@ describe("#1827 read-only B2 daily account quota gate for governed EIA/NOAA",()=
     expect(evaluateGovernedB2Headroom(empty(),{now:clock}).admitted).toBe(true);
   });
 
+  it("admits exactly one shared PUT+GET pair without weakening account limits",()=>{
+    const decision = evaluateGovernedB2Headroom(from({GET:24,PUT:54}),{
+      getRequests:1,putRequests:1,now:clock,
+    });
+    expect(decision.admitted).toBe(true);
+    expect(decision.b2_requests_by_this_check).toBe(0);
+    const denied = evaluateGovernedB2Headroom(from({GET:25,PUT:54}),{
+      getRequests:1,putRequests:1,now:clock,
+    });
+    expect(denied.admitted).toBe(false);
+  });
+
   it("holds exactly at shared GET/PUT/total limits without spending a B2 ticket",()=>{
     for(const [status,request] of [
       [from({GET:24,PUT:5}),{getRequests:2,putRequests:2}],
@@ -132,7 +144,7 @@ describe("#1827 read-only B2 daily account quota gate for governed EIA/NOAA",()=
         `- name: ${name}\n        if: steps.headroom.outputs.admitted == 'true'`);
     }
     expect(ingester.indexOf("const quotaSnapshot=await createB2D1AccountGovernor().status();"))
-      .toBeLessThan(ingester.indexOf("const summaries = [];"));
+      .toBeLessThan(ingester.indexOf("const summaries = sharedPlan"));
     expect(ingester).toContain("plannedSourceFragmentCount");
     expect(ingester).toContain("GOVERNED_SOURCE_SHARED_B2_PLAN_QUOTA_HELD");
     expect(ingester).toContain("b2.putWithMetadataVerification");
