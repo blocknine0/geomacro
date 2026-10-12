@@ -7,6 +7,24 @@
 import { readStatelessWebsiteIntelligence } from "../../src/lib/stateless-public-intelligence.server";
 import { STATELESS_LOOKBACK_MS, conservativeDayReleaseMs } from "../../src/lib/stateless-intelligence-model";
 
+// Acceptance is deliberately run with Supabase unreachable, even when
+// GitHub project secrets or the runner would otherwise permit it. Do not
+// attempt a retry against that origin. Prove the public source reader is
+// independently usable and never consults Supabase for website findings.
+const networkFetch = globalThis.fetch.bind(globalThis);
+let forbiddenSupabaseAttempts = 0;
+globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  const target = input instanceof Request ? input.url : String(input);
+  let host = "";
+  try { host = new URL(target).hostname.toLowerCase(); }
+  catch { throw Error("INTELLIGENCE_EXTERNAL_URL_INVALID"); }
+  if (host === "supabase.co" || host.endsWith(".supabase.co") ||
+      host === "supabase.com" || host.endsWith(".supabase.com")) {
+    forbiddenSupabaseAttempts++;
+    throw Error("STATELESS_INTELLIGENCE_REJECTED_SUPABASE_EGRESS");
+  }
+  return networkFetch(input, init);
+}) as typeof fetch;
 const domains = ["geopolitics", "macro", "rare_earth"] as const;
 const results = await Promise.all(domains.map(category =>
   readStatelessWebsiteIntelligence(category, Date.now(), (lane_index, diagnostics) => {
@@ -73,6 +91,13 @@ for (const { category, result, error } of results) {
     has_genuine_recent_findings: hasRecent,
   }));
 }
+console.log(JSON.stringify({ schema: "geomacro.stateless-supabase-blackout.v1",
+  supabase_requests: forbiddenSupabaseAttempts,
+  supabase_read_dependency: false,
+  categories_with_genuine_releases: results.filter(x => (x.result?.signals.length ?? 0) > 0).length,
+  website_release_delay_minutes: 15,
+}));
+if (forbiddenSupabaseAttempts > 0) healthy = false;
 if (!healthy) {
   console.error("::error::PREPUBLISH_INTELLIGENCE_LIVE_SOURCE_ACCEPTANCE_INCOMPLETE; exact category proof above. Do not claim zero-news as success.");
   process.exitCode = 2;
