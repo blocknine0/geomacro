@@ -15,6 +15,7 @@ const EMPTY: SourcePulseState = {
   topicCount: null,
 };
 const MAX_AGE_MS = 90 * 60_000;
+const PUBLIC_MONITORING_DELAY_MS = 60 * 60_000;
 const MAX_SKEW_MS = 5 * 60_000;
 const POLL_MS = 5 * 60_000;
 
@@ -47,6 +48,18 @@ export function classifySourcePulse(
   if (!Number.isFinite(now) || !Number.isFinite(timestamp) ||
       timestamp > now + MAX_SKEW_MS || timestamp < now - MAX_AGE_MS) {
     return { label: "Publisher monitoring delayed or stale", lastChecked: checkedAt, topicCount: null };
+  }
+  // The public Intelligence page has a strict >=60-minute release delay.
+  // Query-time source telemetry is NOT a customer risk event, but disclosing
+  // a new check timestamp or current-topic finding here would still leak
+  // unembargoed intelligence on the website. No original 30m receipt history
+  // exists at this endpoint, so do not fabricate an older observation.
+  if (timestamp > now - PUBLIC_MONITORING_DELAY_MS) {
+    return {
+      label: "Monitoring results are released on the website after 60 minutes",
+      lastChecked: null,
+      topicCount: null,
+    };
   }
   if (obs.status === "SOURCE_TRANSPORT_DEGRADED") {
     return { label: "Publisher check degraded", lastChecked: checkedAt, topicCount: null };
@@ -137,7 +150,7 @@ export function SourceNetworkMonitor() {
       <p className="mt-3 text-xs leading-5 text-muted-foreground">
         Monitoring checks are best-effort and may be delayed. A monitoring
         update is not a scored event, independent evidence review or proof
-        of x402 availability. Source identities and internal receipts remain private.
+        of x402 availability. The website release delay is at least 60 minutes. Source identities and internal receipts remain private.
       </p>
     </section>
   );
