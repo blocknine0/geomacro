@@ -41,7 +41,7 @@ export const getWebsiteDerivedNews = createServerFn({ method: "GET" })
     data.signals = data.signals.filter(s => {
       const date = Date.parse(s.published_at);
       const eligible = s.date_precision === "day"
-        ? /^\d{4}-\d{2}-\d{2}$/u.test(s.published_at) && s.category === "rare_earth" &&
+        ? /^\d{4}-\d{2}-\d{2}$/u.test(s.published_at) && ["rare_earth","geopolitics"].includes(s.category) &&
           date + 36 * 60 * 60_000 + 15 * 60_000 <= now
         : date + 15 * 60_000 <= now;
       return Number.isFinite(date) && date >= now - 30 * 86_400_000 &&
