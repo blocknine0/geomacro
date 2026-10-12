@@ -186,6 +186,12 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
 }
 
 function formatInstant(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/u.test(value)) {
+    const day = Date.parse(value + "T00:00:00.000Z");
+    if (Number.isFinite(day)) return new Intl.DateTimeFormat("en-GB", {
+      day:"numeric",month:"short",year:"numeric",timeZone:"UTC",
+    }).format(day) + " · publisher provides date only";
+  }
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp)
     ? new Intl.DateTimeFormat("en-GB", {
