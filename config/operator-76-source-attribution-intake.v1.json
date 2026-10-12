@@ -742,7 +742,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "runtime_state": "HOLD_COMMERCIAL_AUTOMATED_ACCESS_PROHIBITED",
       "attribution": {
         "source_name": "South China Morning Post",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -756,8 +756,9 @@
       "provider_access_recheck_required": true,
       "probe_url": "https://www.scmp.com/rss/5/feed",
       "original_candidate_endpoint": "https://www.scmp.com/rss",
-      "pending_live_provider_acceptance": true,
-      "previous_probe_url": "https://www.scmp.com/rss"
+      "pending_live_provider_acceptance": false,
+      "previous_probe_url": "https://www.scmp.com/rss",
+      "activation_hold_reason": "SCMP terms revised 2026-09-15 expressly prohibit automated extraction / indexing, TDM and commercial service usage without prior express written consent."
     },
     {
       "id": "news_france24",
