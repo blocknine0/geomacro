@@ -11,7 +11,7 @@ const sha = (bytes: Buffer | string) =>
   createHash("sha256").update(bytes).digest("hex");
 const hash = (value: unknown) => sha(Buffer.from(JSON.stringify(value)));
 const options = {
-  maxMembers: 25,
+  maxMembers: 50,
   maxUncompressedBytes: 8_000_000,
   maxCompressedBytes: 1_500_000,
 };
@@ -86,7 +86,7 @@ describe("shared governed B2 transaction bundle",()=>{
 
   it("falls back to existing per-source fragments when combined record bounds are exceeded",()=>{
     const oversized=rows();
-    oversized[1].rows=Array.from({length:25},(_,i)=>({
+    oversized[1].rows=Array.from({length:50},(_,i)=>({
       ...oversized[1].rows[0],observation_id:"noaa-"+i,
     }));
     expect(planSharedGovernedBundle(oversized,builder,options)).toBeNull();
