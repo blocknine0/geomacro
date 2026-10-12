@@ -3,7 +3,7 @@ import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-pol
 import { resolveCountryGroAtOrBefore } from "./country-gro-resolver.server";
 import { corridorSubjectId } from "./corridor-risk-engine";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
-import { readPublicGlobalRisk } from "./global-risk-read.server";
+import { readProductionGlobalRisk } from "./production-global-risk.server";
 import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
@@ -87,13 +87,13 @@ export async function checkAgentQueryExternalModule(input: {
 
   if (input.module === "gri_context") {
     try {
-      const gri = await readPublicGlobalRisk();
+      const gri = await readProductionGlobalRisk();
       return Boolean(
         gri.snapshotId &&
         gri.snapshotAsOf &&
         gri.calculationHash &&
         gri.evidenceHash &&
-        gri.verificationStatus === "VERIFIED",
+        gri.verificationStatus === "verified",
       );
     } catch {
       return false;
