@@ -34,7 +34,7 @@ LIMIT 1;
 
 -- Retention is always bounded, even if the seeded row is already superseded.
 DELETE FROM website_verified_gri_snapshot_history
-WHERE source_as_of < strftime('%Y-%m-%dT%H:%M:%fZ','now','-72 hours')
+WHERE source_as_of < strftime('%Y-%m-%dT%H:%M:%fZ','now','-30 days')
  OR rowid NOT IN (
   SELECT rowid FROM website_verified_gri_snapshot_history
   ORDER BY source_as_of DESC LIMIT 12
