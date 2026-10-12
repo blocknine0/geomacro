@@ -6,13 +6,18 @@ const ROOT = process.cwd();
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 describe("Intelligence verified fallback contract", () => {
-  it("keeps bounded verified B2 public snapshots readable during upstream outages", () => {
+  it("retains verified 30-day edge continuity but blocks ungoverned S3 cold reads", () => {
     const source = read("src/lib/b2-live.server.ts");
-    expect(source).toContain("PUBLIC_INTELLIGENCE_FALLBACK_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000");
-    expect(source).toContain("PUBLIC_RISK_FALLBACK_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000");
-    expect(source).toContain("recentEnough(payload.generated_at, PUBLIC_INTELLIGENCE_FALLBACK_MAX_AGE_MS)");
-    expect(source).toContain("recentEnough(payload.generated_at, PUBLIC_RISK_FALLBACK_MAX_AGE_MS)");
-    expect(source).toContain('["geopolitics", "macro", "rare_earth"]');
+    const edge = read("src/lib/public-intelligence-edge.ts");
+    const riskEdge = read("src/lib/global-risk-edge.server.ts");
+    expect(edge).toContain("MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000");
+    expect(riskEdge).toContain("MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000");
+    expect(edge).toContain('["geopolitics", "macro", "rare_earth"]');
+    expect(source).toContain("return readPublicIntelligenceEdge();");
+    expect(source).toContain("return readGlobalRiskEdge();");
+    const intelRead=source.slice(source.indexOf("export async function readB2PublicIntelligence()"),
+      source.indexOf("export async function readB2PublicRisk()"));
+    expect(intelRead).not.toContain("readJsonGzip");
   });
 
   it("keeps scored context separate from certified current unscored evidence", () => {

@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  b2PublicRuntimeConfigured,
   readB2PublicIntelligence,
   readB2PublicRisk,
 } from "../lib/b2-live.server";
@@ -315,7 +314,6 @@ function getX402RuntimeStatus(): X402RuntimeStatus {
 }
 
 async function getPublicProductionReadiness(deep: boolean) {
-  const configured = b2PublicRuntimeConfigured();
   if (!deep) {
     return {
       deep_checked: false,
@@ -324,7 +322,9 @@ async function getPublicProductionReadiness(deep: boolean) {
       current_hot_product_ready: null,
       last_verified_baseline_readable: null,
       supabase_required_for_serving: false,
-      b2_runtime_configured: configured,
+      // Shallow health cannot attest to deployed edge configuration without
+      // executing the bounded independent origin probes.
+      b2_runtime_configured: null,
       intelligence_ready: null,
       global_risk_ready: null,
       risk_indices_ready: null,
@@ -336,8 +336,11 @@ async function getPublicProductionReadiness(deep: boolean) {
   }
 
   const [intelligence, globalRisk, riskIndices, ...hotSnapshots] = await Promise.all([
-    configured ? readB2PublicIntelligence() : Promise.resolve(null),
-    configured ? readB2PublicRisk() : Promise.resolve(null),
+    // Website/Lovable needs no private S3 keys. Prove reachability via
+    // the independently verified edge authority; a private local B2
+    // secret is not a public runtime readiness prerequisite.
+    readB2PublicIntelligence(),
+    readB2PublicRisk(),
     readRiskIndicesEdge(),
     ...HOT_SNAPSHOT_PROBES.map(verifyHotSnapshot),
   ]);
@@ -383,7 +386,10 @@ async function getPublicProductionReadiness(deep: boolean) {
     current_hot_product_ready: readiness.current_hot_product_ready,
     last_verified_baseline_readable: readiness.last_verified_baseline_readable,
     supabase_required_for_serving: false,
-    b2_runtime_configured: configured,
+    // Authority is proven by real validated edge responses, not presence
+    // of private B2 credentials in this public app process.
+    b2_runtime_configured:
+      baselineIntelligenceReady && baselineGlobalRiskReady && baselineRiskIndicesReady,
     intelligence_ready: intelligenceReady,
     global_risk_ready: globalRiskReady,
     risk_indices_ready: riskIndicesReady,

@@ -20,13 +20,17 @@ describe("permanent runtime health acceptance", () => {
     expect(workflow).toContain('supabase_runtime_mode!=="standby"');
   });
 
-  it("requires D1, direct B2 and Durable Object runtime authorities", () => {
+  it("requires D1, quota-governed B2 edge and Durable Object runtime authorities", () => {
     expect(workflow).toContain("Verify live D1 control plane");
     expect(workflow).toContain('b?.store==="d1"');
     expect(workflow).toContain('b?.durable_payload_store==="b2"');
     expect(workflow).toContain('b?.commerce_ledger==="durable_object"');
     expect(workflow).toContain("Number(b?.schema_version)>=3");
-    expect(workflow).toContain("Verify B2 directly with Supabase network blocked");
+    expect(workflow).toContain("Verify public B2 proof through quota-governed edges with Supabase blocked");
+    expect(workflow).not.toContain("secrets.B2_KEY_ID");
+    expect(workflow).not.toContain("secrets.B2_APPLICATION_KEY");
+    expect(workflow).toContain('b?.direct_b2_network_attempts!==0');
+    expect(workflow).toContain('b?.b2_origin_quota_governed_at_worker!==true');
     expect(workflow).toContain("verify-b2-public-no-supabase.ts");
     expect(workflow).toContain('b?.production_data_authority!=="backblaze-b2"');
     expect(workflow).toContain('p?.serving_authority!=="backblaze-b2-durable-truth-cloudflare-d1-verified-hot"');
@@ -35,7 +39,7 @@ describe("permanent runtime health acceptance", () => {
     expect(workflow).toContain('b?.storage!=="durable_objects_sqlite"');
   });
 
-  it("blocks Supabase network access during direct B2 serving verification", () => {
+  it("blocks both Supabase and direct S3 access during governed public B2 serving verification", () => {
     expect(b2Canary).toContain('"SUPABASE_DB_URL"');
     expect(b2Canary).toContain("delete process.env[key]");
     expect(b2Canary).toContain('host.endsWith(".supabase.co")');
@@ -43,6 +47,9 @@ describe("permanent runtime health acceptance", () => {
     expect(b2Canary).toContain("readB2PublicIntelligence()");
     expect(b2Canary).toContain("readB2PublicRisk()");
     expect(b2Canary).toContain("supabase_network_attempts: supabaseNetworkAttempts");
+    expect(b2Canary).toContain("direct_b2_network_attempts: directB2NetworkAttempts");
+    expect(b2Canary).toContain("NO_SUPABASE_B2_ACCEPTANCE_BLOCKED_UNMETERED_ORIGIN");
+    expect(b2Canary).toContain("cloudflare-quota-governed-verified-edge");
     expect(b2Canary).toContain("supabase_credentials_present: false");
   });
 

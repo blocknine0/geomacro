@@ -9,7 +9,12 @@ describe("production website runtime contract", () => {
     expect(health).toContain('searchParams.get("deep") === "1"');
     expect(health).toContain('serving_authority: "backblaze-b2"');
     expect(health).toContain("supabase_required_for_serving: false");
-    expect(health).toContain("b2PublicRuntimeConfigured");
+    // Lovable may have zero private B2 secrets: live edge proof, not
+    // server env configuration, establishes production readiness.
+    expect(health).not.toContain("b2PublicRuntimeConfigured");
+    expect(health).toContain("baselineIntelligenceReady && baselineGlobalRiskReady && baselineRiskIndicesReady");
+    expect(health).toContain("readB2PublicIntelligence()");
+    expect(health).toContain("readB2PublicRisk()");
     expect(health).toContain("readB2PublicIntelligence");
     expect(health).toContain("readB2PublicRisk");
     expect(health).toContain("status: deepReady ? 200 : 503");

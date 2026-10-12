@@ -1,7 +1,6 @@
 import { createPerKeySingleFlight } from "./b2-single-flight";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 import type { GlobalRisk } from "./global-risk.types";
-import { validateGlobalRiskContinuity } from "./global-risk-continuity";
 import { readGlobalRiskEdge } from "./global-risk-edge.server";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
@@ -271,72 +270,24 @@ async function readPublicIntelligenceEdge(): Promise<PublicIntelligenceRow[] | n
   }
 }
 
+/** Public read must never bypass the shared-account B2 D1 reservation.
+ * The verified edge itself follows: D1 hot snapshot -> verified Cloudflare
+ * POP cache -> B2 GET only after atomic account-wide D1 quota admission.
+ * When both public caches and account quota are unavailable, fail closed:
+ * never perform an independent unmetered signed S3 GET here.
+ */
 export async function readB2PublicIntelligence(): Promise<PublicIntelligenceRow[] | null> {
-  // Customer/server reads prefer the verified Cloudflare hot edge. B2 remains
-  // the durable source of truth, but repeated public traffic must not spend a
-  // private B2 download on every process/cache miss.
-  const edge = await readPublicIntelligenceEdge();
-  if (edge) return edge;
-
-  const payload = await readJsonGzip<{
-    schema?: string;
-    generated_at?: string;
-    rows?: PublicIntelligenceRow[];
-  }>(B2_PUBLIC_INTELLIGENCE_KEY);
-  if (
-    payload?.schema !== "geomacro.public-intelligence-live.v1" ||
-    !recentEnough(payload.generated_at, PUBLIC_INTELLIGENCE_FALLBACK_MAX_AGE_MS) ||
-    !Array.isArray(payload.rows) ||
-    payload.rows.length === 0 ||
-    payload.rows.length > 300
-  ) return null;
-  const categories = new Set(payload.rows.map((row) => String(row.category ?? "").toLowerCase()));
-  if (!["geopolitics", "macro", "rare_earth"].every((category) => categories.has(category))) return null;
-  return payload.rows;
+  return readPublicIntelligenceEdge();
 }
 
-function validatedGlobalRiskPayload(
-  payload: { schema?: string; generated_at?: string; data?: GlobalRisk } | null,
-  expectedSchema: string,
-): GlobalRisk | null {
-  if (
-    payload?.schema !== expectedSchema ||
-    !recentEnough(payload.generated_at, PUBLIC_RISK_FALLBACK_MAX_AGE_MS) ||
-    !payload.data ||
-    !validateGlobalRiskContinuity(payload.data).ok
-  ) return null;
-  return payload.data;
-}
-
+/** Public risk read has the same shared-account quota boundary as
+ * the intelligence reader. The verified edge, not this app runtime, owns
+ * D1 hot / POP cache / quota-governed B2 cold recovery. This removes
+ * a second unmetered B2 origin path when the public cold-cache quota
+ * or the account-wide D1 quota database has already been exhausted.
+ */
 export async function readB2PublicRisk(): Promise<GlobalRisk | null> {
-  // The public Cloudflare edge serves only a proof-verified B2 continuity
-  // package and is independent of the private-account download cap seen by
-  // server-side S3 reads. Prefer that already-verified package before touching
-  // private B2 directly. Direct B2 remains a bounded recovery path.
-  const edge = await readGlobalRiskEdge();
-  if (edge) return edge;
-
-  const dedicated = validatedGlobalRiskPayload(
-    await readJsonGzip<{
-      schema?: string;
-      generated_at?: string;
-      data?: GlobalRisk;
-    }>(B2_PUBLIC_GLOBAL_RISK_KEY),
-    "geomacro.public-global-risk-live.v1",
-  );
-  if (dedicated) return dedicated;
-
-  // Backward-compatible fail-closed fallback while the dedicated object is
-  // being rolled out. This legacy object is accepted only if its historical
-  // continuity still passes the same validator.
-  return validatedGlobalRiskPayload(
-    await readJsonGzip<{
-      schema?: string;
-      generated_at?: string;
-      data?: GlobalRisk;
-    }>(B2_PUBLIC_RISK_KEY),
-    "geomacro.public-risk-live.v1",
-  );
+  return readGlobalRiskEdge();
 }
 
 export async function readB2SourceNetworkStatus(): Promise<B2SourceNetworkStatus | null> {

@@ -13,6 +13,8 @@ on:
       - "workers/commerce-ledger/**"
       - "src/routes/api.health.ts"
       - "src/lib/b2-live.server.ts"
+      - "src/lib/public-intelligence.functions.ts"
+      - "src/__tests__/public-runtime-shared-b2-quota-failover.test.ts"
       - "src/lib/supabase-runtime-mode.server.ts"
       - "src/__tests__/permanent-runtime-health-static.test.ts"
 
@@ -32,9 +34,6 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
-      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
-      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
     steps:
       - name: Checkout exact candidate
@@ -60,8 +59,6 @@ jobs:
           fi
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
-          test -n "$B2_KEY_ID" || { echo "B2_KEY_ID is required"; exit 2; }
-          test -n "$B2_APPLICATION_KEY" || { echo "B2_APPLICATION_KEY is required"; exit 2; }
           test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || { echo "GEOMACRO_COMMERCE_LEDGER_TOKEN must be at least 32 characters"; exit 2; }
 
       - name: Resolve deployed Cloudflare origins
@@ -111,15 +108,20 @@ jobs:
           '
           printf '%s' "$BODY" > /tmp/d1-health.json
 
-      - name: Verify B2 directly with Supabase network blocked
+      - name: Verify public B2 proof through quota-governed edges with Supabase blocked
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/ops/verify-b2-public-no-supabase.ts | tee /tmp/b2-direct.json
+          bun scripts/ops/verify-b2-public-no-supabase.ts | tee /tmp/b2-governed.json
           node -e '
             const fs=require("fs");
-            const b=JSON.parse(fs.readFileSync("/tmp/b2-direct.json","utf8"));
-            if (b?.ok!==true || b?.authority!=="backblaze-b2" || b?.supabase_credentials_present!==false || b?.supabase_network_attempts!==0) process.exit(5);
+            const b=JSON.parse(fs.readFileSync("/tmp/b2-governed.json","utf8"));
+            if (b?.ok!==true || b?.authority!=="backblaze-b2" ||
+                b?.serving_authority!=="cloudflare-quota-governed-verified-edge" ||
+                b?.b2_origin_quota_governed_at_worker!==true ||
+                b?.direct_b2_network_attempts!==0 ||
+                b?.supabase_credentials_present!==false ||
+                b?.supabase_network_attempts!==0) process.exit(5);
             if (b?.risk_verification_status!=="verified" || b?.proof_hash_present!==true || b?.calculation_hash_present!==true) process.exit(5);
           '
 
@@ -186,7 +188,7 @@ jobs:
           const fs=require('fs');
           const crypto=require('crypto');
           const d1=JSON.parse(fs.readFileSync('/tmp/d1-health.json','utf8'));
-          const b2=JSON.parse(fs.readFileSync('/tmp/b2-direct.json','utf8'));
+          const b2=JSON.parse(fs.readFileSync('/tmp/b2-governed.json','utf8'));
           const publicHealth=JSON.parse(fs.readFileSync('/tmp/public-health.json','utf8'));
           const commerce=JSON.parse(fs.readFileSync('/tmp/commerce-health.json','utf8'));
           const acceptance=JSON.parse(fs.readFileSync('/tmp/commerce-acceptance.json','utf8'));
@@ -199,6 +201,9 @@ jobs:
             b2:{
               ok:b2.ok===true,
               authority:b2.authority,
+              serving_authority:b2.serving_authority,
+              direct_b2_network_attempts:b2.direct_b2_network_attempts,
+              b2_origin_quota_governed_at_worker:b2.b2_origin_quota_governed_at_worker,
               intelligence_rows:b2.intelligence_rows,
               categories:b2.categories,
               risk_verification_status:b2.risk_verification_status,
@@ -240,4 +245,4 @@ jobs:
           retention-days: 7
 
       - name: Confirm bounded acceptance only
-        run: echo "D1 + B2 + Durable Objects verified with Supabase blocked, no external payment, no execution authorization, and no destructive action."
+        run: echo "D1 + governed Cloudflare/B2 + Durable Objects verified with Supabase blocked, zero public direct S3 GET, no payment, and no destructive action."

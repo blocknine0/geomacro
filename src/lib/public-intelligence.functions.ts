@@ -178,11 +178,13 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
   return sortAndDedupe(rows);
 }
 
-/** Public serving is B2-first; bounded Supabase recovery remains scored/derived only. */
+/** All customer-facing reads are Supabase-independent and quota-governed.
+ * Explicit archival/recovery tools may still use the separately named
+ * Supabase query, but it is NEVER an automatic public fallback.
+ */
 export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRow[]> {
-  const b2Rows = await readB2PublicIntelligence();
-  if (b2Rows?.length) return sortAndDedupe(b2Rows);
-  return readPublicIntelligenceRowsFromSupabase();
+  const edgeRows = await readB2PublicIntelligence();
+  return edgeRows?.length ? sortAndDedupe(edgeRows) : [];
 }
 
 export const getPublicIntelligence = createServerFn({ method: "POST" })
