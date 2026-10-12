@@ -9,7 +9,12 @@ import { STATELESS_LOOKBACK_MS } from "../../src/lib/stateless-intelligence-mode
 
 const domains = ["geopolitics", "macro", "rare_earth"] as const;
 const results = await Promise.all(domains.map(category =>
-  readStatelessWebsiteIntelligence(category)
+  readStatelessWebsiteIntelligence(category, Date.now(), (lane_index, diagnostics) => {
+    // Per-lane stage COUNTS only, with anonymous numeric indices.
+    // No source identity, article fingerprint, URL/title/body or source host.
+    console.log(JSON.stringify({ schema: "geomacro.stateless-original-stage-metrics.v1",
+      category, lane_index, ...diagnostics }));
+  })
     .then(result => ({ category, result, error: false }))
     .catch(() => ({ category, result: null, error: true }))
 ));
