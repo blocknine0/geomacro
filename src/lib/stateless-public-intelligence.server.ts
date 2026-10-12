@@ -165,20 +165,28 @@ async function readGovContentOriginalDate(candidate: {
 
 async function readCanadaNewsOriginalDay(candidate: {
   title: string; articleUrl: string;
-}, source: StatelessSourceSpec, now: number): Promise<StatelessSourceCandidate | null> {
+}, source: StatelessSourceSpec, now: number,
+  note?: (stage: "path_ok" | "http_ok" | "html_ok" | "title_ok" |
+    "clock_found" | "clock_consistent" | "date_path_ok" |
+    "calendar_ok" | "not_future" | "within_30d" | "original_ok") => void,
+): Promise<StatelessSourceCandidate | null> {
   if (!source.canadaOriginalPage ||
       !/^https:\/\/www\.canada\.ca\/en\/(?:natural-resources-canada|global-affairs)\/news\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\.html$/u.test(candidate.articleUrl))
     return null;
+  note?.("path_ok");
   try {
     const response=await fetch(candidate.articleUrl,{
       method:"GET",redirect:"error",cache:"no-store",
       headers:{Accept:"text/html"},signal:AbortSignal.timeout(TIMEOUT_MS),
     });
-    if(!/^text\/html(?:;|$)/iu.test(response.headers.get("content-type")??""))return null;
+    if(!response.ok || !/^text\/html(?:;|$)/iu.test(response.headers.get("content-type")??""))return null;
+    note?.("http_ok");
     const html=await boundedText(response,384*1024);
     if(!html)return null;
-    const day=canadaOriginalPublicationDay(html,candidate.articleUrl,candidate.title,now);
+    note?.("html_ok");
+    const day=canadaOriginalPublicationDay(html,candidate.articleUrl,candidate.title,now, note);
     if(!day)return null;
+    note?.("original_ok");
     return {sourceId:source.id,category:source.category,title:candidate.title,
       articleUrl:candidate.articleUrl,publishedAt:day,datePrecision:"day",
       credit:source.credit};
@@ -189,6 +197,19 @@ type LaneMetrics = {
   seen: number; relevant: number; original_link_valid: number;
   native_clock_valid: number; undated_original: number;
   recovered_original_page: number; transport_ok: boolean;
+  // Optional anonymous first-party stage counters for read-only CI
+  // diagnostics. Never log provider URLs, article IDs or raw content.
+  canada_original_path_ok?: number;
+  canada_original_http_ok?: number;
+  canada_original_html_ok?: number;
+  canada_original_date_ok?: number;
+  canada_title_ok?: number;
+  canada_original_clock_found?: number;
+  canada_original_clock_consistent?: number;
+  canada_original_date_path_ok?: number;
+  canada_original_calendar_ok?: number;
+  canada_original_not_future?: number;
+  canada_original_within_30d?: number;
 };
 async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   candidates: StatelessSourceCandidate[]; healthy: boolean;
@@ -237,13 +258,30 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
     const xml = await boundedText(response, MAX_FEED_BYTES);
     if (!xml) return { candidates: [], healthy: false };
     const parsed = parseFirstPartyFeed(xml, source, now);
+    const canadaStage = {path_ok:0,http_ok:0,html_ok:0,original_ok:0,
+      title_ok:0,clock_found:0,clock_consistent:0,date_path_ok:0,
+      calendar_ok:0,not_future:0,within_30d:0};
     const recovered = await Promise.all(parsed.undatedGov.slice(0, source.canadaOriginalPage ? 8 : 4)
       .map(candidate => source.canadaOriginalPage
-        ? readCanadaNewsOriginalDay(candidate, source, now)
+        ? readCanadaNewsOriginalDay(candidate, source, now, stage => {canadaStage[stage]++;})
         : readGovContentOriginalDate(candidate, source, now)));
     return { healthy: true,
       candidates: [...parsed.dated, ...recovered.filter((x): x is StatelessSourceCandidate => x !== null)],
-      metrics: { ...parsed.metrics, recovered_original_page: recovered.filter(Boolean).length, transport_ok: true },
+      metrics: { ...parsed.metrics, recovered_original_page: recovered.filter(Boolean).length, transport_ok: true,
+        ...(source.canadaOriginalPage ? {
+          canada_original_path_ok:canadaStage.path_ok,
+          canada_original_http_ok:canadaStage.http_ok,
+          canada_original_html_ok:canadaStage.html_ok,
+          canada_original_date_ok:canadaStage.original_ok,
+          canada_title_ok:canadaStage.title_ok,
+          canada_original_clock_found:canadaStage.clock_found,
+          canada_original_clock_consistent:canadaStage.clock_consistent,
+          canada_original_date_path_ok:canadaStage.date_path_ok,
+          canada_original_calendar_ok:canadaStage.calendar_ok,
+          canada_original_not_future:canadaStage.not_future,
+          canada_original_within_30d:canadaStage.within_30d,
+        } : {}),
+      },
     };
   } catch { return { candidates: [], healthy: false }; }
 }

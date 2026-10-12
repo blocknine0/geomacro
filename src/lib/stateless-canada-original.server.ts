@@ -15,6 +15,8 @@ function words(value: string): Set<string> {
 }
 export function canadaOriginalPublicationDay(
   html: string, articleUrl: string, originalTitle: string, now=Date.now(),
+  note?: (stage: "title_ok" | "clock_found" | "clock_consistent" | "date_path_ok" |
+    "calendar_ok" | "not_future" | "within_30d") => void,
 ): string | null {
   if(typeof html!=="string"||html.length>384*1024||
      typeof originalTitle!=="string"||originalTitle.length>300||
@@ -27,6 +29,7 @@ export function canadaOriginalPublicationDay(
   const h1=/<h1\b[^>]*>([\s\S]{1,1200}?)<\/h1>/iu.exec(html)?.[1]??"";
   const pageWords=words(h1),titleWords=words(originalTitle);
   if([...titleWords].filter(w=>pageWords.has(w)).length<2)return null;
+  note?.("title_ok");
 
   const originalDates:string[]=[];
   for(const tag of html.match(/<meta\b[^>]*>/giu)??[]){
@@ -62,12 +65,20 @@ export function canadaOriginalPublicationDay(
     const value=attr(match[1],"datetime")??match[2].trim();
     if(/^\d{4}-\d{2}-\d{2}/u.test(value))originalDates.push(value.slice(0,10));
   }
-  if(!originalDates.length||new Set(originalDates).size!==1)return null;
+  if(!originalDates.length)return null;
+  note?.("clock_found");
+  if(new Set(originalDates).size!==1)return null;
+  note?.("clock_consistent");
   const day=originalDates[0];
   if(!/^\d{4}-\d{2}-\d{2}$/u.test(day)||day.slice(0,4)!==path[2]||
      day.slice(5,7)!==path[3])return null;
+  note?.("date_path_ok");
   const ms=Date.parse(day+"T00:00:00.000Z");
-  if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,10)!==day||
-     ms>now||ms<now-30*86_400_000)return null;
+  if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,10)!==day)return null;
+  note?.("calendar_ok");
+  if(ms>now)return null;
+  note?.("not_future");
+  if(ms<now-30*86_400_000)return null;
+  note?.("within_30d");
   return day;
 }
