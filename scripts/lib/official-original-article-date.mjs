@@ -1,7 +1,11 @@
 // Private, bounded, same-original-publisher verification for Atom feeds that
 // omit per-entry <published>. An Atom <updated> is NEVER publication proof.
 // No raw HTML/title/URL is persisted to a public proof, log or paid response.
-const PAGE_BYTES_MAX = 128 * 1024;
+// Real GOV.UK original pages can exceed 128 KiB; the live 30-minute pulse
+// reported BODY_TOO_LARGE despite a valid first-party article link. Allow a
+// strictly bounded 384 KiB original HTML response, with the SAME two-page
+// GET budget/source, no redirects and no persistent article/body storage.
+const PAGE_BYTES_MAX = 384 * 1024;
 const PAGE_TIMEOUT_MS = 4_000;
 const ONE_DAY_MS = 86_400_000;
 // Explicit timezone mandatory. ISO 8601 permits >millisecond source precision

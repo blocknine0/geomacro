@@ -170,7 +170,7 @@ describe("bounded original-publisher article precise-date fallback", () => {
       ["HTTP_NOT_OK",async()=>new Response("not found",{status:404})],
       ["MIME_NOT_HTML",async()=>new Response("sensitive",{headers:{"content-type":"application/json"}})],
       ["BODY_TOO_LARGE",async()=>new Response("private html",{headers:{
-        "content-type":"text/html","content-length":"200000",
+        "content-type":"text/html","content-length":"400000",
       }})],
       ["PRECISE_PUBLICATION_UNVERIFIED",async()=>new Response(
         '<html><meta property="article:modified_time" content="2026-10-09T13:00:00Z"></html>',{
