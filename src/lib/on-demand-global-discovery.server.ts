@@ -28,10 +28,13 @@ export type PrivateOriginalCandidate = {
   publisher_family: string;
   article_url: string;
   article_title: string;
-  feed_item_published_at: string;
+  feed_item_published_at: string | null;
+  // Never promote a feed <updated> as original publication. Only an
+  // allowlisted GOV.UK Atom first-party page may rescue this private lead.
+  undated_atom_original_page_pending?: true;
   article_identity_sha256: string;
   first_party_article_url_verified: true;
-  source_native_feed_publication_date_verified: true;
+  source_native_feed_publication_date_verified: boolean;
   publisher_article_page_date_verified: false;
   independent_same_event_verified: false;
   derived_commercial_rights_verified: false;
@@ -532,8 +535,15 @@ async function originalOfficialFeed(
     // query just because both are under the broad Critical Minerals topic.
     const mineralMatches = !mineral || def.domain !== "rare_earth" ||
       MINERAL_TERMS.some((term) => term.value === mineral && term.pattern.test(title));
+    const hasNativeDate=freshPublished(date,now);
+    const undatedGovukAtom=atom && !date.trim() &&
+      ["uk_fcdo_original_publisher","uk_dbt_original_publisher"].includes(def.family);
+    // Missing Atom <published> may enter PRIVATE article-page verification,
+    // not score/payment. Never accept <updated>, bad/missing RSS clocks, or
+    // a stale/future <published> as original source time.
     if (!originalHeadlineMentionsCountry(title,countryIso3,countryNameValue) ||
-        !def.topic.test(title) || !mineralMatches || !freshPublished(date,now)) continue;
+        !def.topic.test(title) || !mineralMatches ||
+        (!hasNativeDate && !undatedGovukAtom)) continue;
     let href="";
     if(atom){
       const links=[...entry.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)];
@@ -554,10 +564,11 @@ async function originalOfficialFeed(
       continue; // Same publisher URL in a second feed entry is one article.
     candidates.push({
       domain:def.domain,publisher_family:def.family,article_url,article_title,
-      feed_item_published_at:new Date(Date.parse(date)).toISOString(),
+      feed_item_published_at:hasNativeDate?new Date(Date.parse(date)).toISOString():null,
+      ...(undatedGovukAtom?{undated_atom_original_page_pending:true as const}:{}),
       article_identity_sha256,
       first_party_article_url_verified:true,
-      source_native_feed_publication_date_verified:true,
+      source_native_feed_publication_date_verified:hasNativeDate,
       publisher_article_page_date_verified:false,
       independent_same_event_verified:false,
       derived_commercial_rights_verified:false,
@@ -566,7 +577,8 @@ async function originalOfficialFeed(
       paid_delivery_allowed:false,
     });
   }
-  return {probe:probe(def.family,candidates.length,candidates.length>0),
+  return {probe:probe(def.family,candidates.length,
+    candidates.some(x=>x.source_native_feed_publication_date_verified)),
     private_candidates:candidates};
 }
 
@@ -595,9 +607,26 @@ export function deduplicateOnDemandOriginalHeadlines(
     title.normalize("NFKC").toLocaleLowerCase("en-US")
       .replace(/\s+/gu," ").trim();
   for(const item of candidates){
-    const time=Date.parse(item.feed_item_published_at);
-    if(!Number.isFinite(time)||!item.first_party_article_url_verified||
-       !item.source_native_feed_publication_date_verified ||
+    const time=item.feed_item_published_at===null?NaN:
+      Date.parse(item.feed_item_published_at);
+    const def=ORIGINAL_FALLBACK_FEEDS.find(x=>x.domain===item.domain &&
+      x.family===item.publisher_family);
+    const nativeDated=item.source_native_feed_publication_date_verified===true &&
+      Number.isFinite(time) && item.undated_atom_original_page_pending!==true;
+    const undatedReview=def?.media==="atom" &&
+      ["uk_fcdo_original_publisher","uk_dbt_original_publisher"]
+        .includes(item.publisher_family) &&
+      item.undated_atom_original_page_pending===true &&
+      item.feed_item_published_at===null &&
+      item.source_native_feed_publication_date_verified===false;
+    // Preserve established native-dated candidate dedup contracts.
+    // Enforce fixed issuer/host/path and exact SHA binding additionally ONLY
+    // on the new missing-<published> GOV.UK Atom rescue path.
+    const reviewedUndated=undatedReview===true && !!def &&
+      originalArticleUrl(item.article_url,def)===item.article_url &&
+      item.article_identity_sha256===digest(def.family+"|"+item.article_url);
+    if((!nativeDated&&!reviewedUndated)||
+       !item.first_party_article_url_verified||
        !/^[a-f0-9]{64}$/.test(item.article_identity_sha256) ||
        item.paid_delivery_allowed!==false || item.signed_gro_verified!==false)
       continue;
@@ -605,6 +634,9 @@ export function deduplicateOnDemandOriginalHeadlines(
     const duplicate=unique_candidates.some(previous=>
       previous.domain===item.domain &&
       headline(previous.article_title)===headline(item.article_title) &&
+      nativeDated &&
+      previous.source_native_feed_publication_date_verified===true &&
+      previous.feed_item_published_at!==null &&
       Math.abs(Date.parse(previous.feed_item_published_at)-time)<=30*60*1000);
     if(duplicate)duplicate_headlines_removed++;
     else unique_candidates.push(item);
@@ -771,8 +803,18 @@ export async function verifyOnDemandOriginalArticlePages(
       originalArticleUrl(candidate.article_url,def)===candidate.article_url &&
       candidate.article_identity_sha256===digest(def.family+"|"+candidate.article_url) &&
       candidate.first_party_article_url_verified===true &&
-      candidate.source_native_feed_publication_date_verified===true &&
-      freshPublished(candidate.feed_item_published_at,now);
+      (
+        (candidate.source_native_feed_publication_date_verified===true &&
+         candidate.feed_item_published_at!==null &&
+         freshPublished(candidate.feed_item_published_at,now) &&
+         candidate.undated_atom_original_page_pending!==true) ||
+        (def.media==="atom" &&
+         ["uk_fcdo_original_publisher","uk_dbt_original_publisher"]
+           .includes(def.family) &&
+         candidate.source_native_feed_publication_date_verified===false &&
+         candidate.feed_item_published_at===null &&
+         candidate.undated_atom_original_page_pending===true)
+      );
   });
   const chosen:PrivateOriginalCandidate[]=[];
   const used=new Set<string>();
@@ -794,7 +836,8 @@ export async function verifyOnDemandOriginalArticlePages(
       const html=await boundedFetch(options.fetchImpl??fetch,candidate.article_url,"text/html");
       const originalDate=verifiedPublisherPageDate(html,now);
       if(!originalDate || !freshPublished(originalDate,now) ||
-        Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000)
+        (candidate.feed_item_published_at!==null &&
+         Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000))
         return null;
       return {...candidate,publisher_article_page_date_verified:true as const,
         page_original_published_at:originalDate};
