@@ -24,7 +24,7 @@ const json = (data, status=200) => Response.json(data, {status, headers:{
 function originalTime(s, now) {
   if (s.date_precision === "day") {
     if (!/^\d{4}-\d{2}-\d{2}$/u.test(s.published_at) ||
-        s.category!=="rare_earth") return null;
+        !["rare_earth","geopolitics"].includes(s.category)) return null;
     const date = Date.parse(s.published_at+"T00:00:00.000Z");
     if (!Number.isFinite(date) || new Date(date).toISOString().slice(0,10)!==s.published_at)
       return null;
