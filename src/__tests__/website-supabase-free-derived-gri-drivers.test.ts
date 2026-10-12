@@ -18,7 +18,16 @@ describe("Supabase-frozen, strictly lagged source-private public GRI",()=>{
   expect(lag).not.toContain('.from("gri_snapshots")');
   expect(lag).not.toContain('SUPABASE_DB_URL');
   expect(lag).toContain("/v1/public/website-lagged-global-risk");
-  expect(lag).toContain("readB2PublicRisk()");
+  // Under quota exhaustion website never falls through to unmetered direct
+  // S3. Cloudflare risk edge owns account-wide D1 B2 reservation/caching.
+  expect(lag).toContain('await import("./global-risk-edge.server")');
+  expect(lag).toContain("readGlobalRiskEdge()");
+  expect(lag).not.toContain("const b2=await readB2PublicRisk();");
+  const helper=read("src/lib/b2-live.server.ts");
+  expect(helper).toContain("async function signedGetOnce(");
+  // This generic helper may still have direct S3 reads for non-website
+  // recovery; keeping it out of the public website path is deliberate.
+  expect(helper).toContain("await readJsonGzip<");
   expect(lag).toContain("websiteVerifiedSnapshotPastEmbargo");
   expect(lag).toContain("validateGlobalRiskContinuity");
   expect(lag).toContain("WEBSITE_GRI_ONE_HOUR_VERIFIED_SNAPSHOT_UNAVAILABLE");
