@@ -4,7 +4,7 @@
  * Uses a bounded first-party release metadata read, not a paid x402 scorer.
  */
 import {
-  deriveStatelessSignals, originalPublicationMs, parseFirstPartyFeed,
+  deriveStatelessSignals, originalPublicationMs, parseFirstPartyFeed, STATELESS_WEBSITE_DELAY_MS,
   type StatelessCategory, type StatelessSourceCandidate,
   type StatelessSourceSpec, type StatelessIntelligenceSignal,
 } from "./stateless-intelligence-model";
@@ -111,7 +111,7 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
     const xml = await boundedText(response, MAX_FEED_BYTES);
     if (!xml) return { candidates: [], healthy: false };
     const parsed = parseFirstPartyFeed(xml, source, now);
-    const recovered = await Promise.all(parsed.undatedGov.slice(0, 2)
+    const recovered = await Promise.all(parsed.undatedGov.slice(0, 3)
       .map(candidate => readGovContentOriginalDate(candidate, source, now)));
     return { healthy: true, candidates: [...parsed.dated, ...recovered.filter((x): x is StatelessSourceCandidate => x !== null)] };
   } catch { return { candidates: [], healthy: false }; }
@@ -147,7 +147,7 @@ export async function readStatelessWebsiteIntelligence(
     schema: "geomacro.website-stateless-intelligence.v1",
     category,
     checked_at: new Date(now).toISOString(),
-    website_release_cutoff: new Date(now - 60 * 60_000).toISOString(),
+    website_release_cutoff: new Date(now - STATELESS_WEBSITE_DELAY_MS).toISOString(),
     earliest_original: new Date(now - 7 * 86_400_000).toISOString(),
     releases_examined: batch.reduce((n, x) => n + x.candidates.length, 0),
     feed_count: sourceGroup.length,
