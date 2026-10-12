@@ -369,7 +369,7 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
       p.family.endsWith("_original_publisher") &&
       p.publication_clock_verified)).toHaveLength(0);
   });
-  it("never keeps forged off-host UN articles or fake updated-date Atom items",async()=>{
+  it("rejects forged off-host UN links; only keeps unverified GOV.UK Atom link for independent page-date review",async()=>{
     const fake=vi.fn(async (input:RequestInfo|URL)=>{
       const url=String(input);
       if (url.startsWith("https://news.un.org/")) return new Response(
@@ -387,7 +387,22 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
     const proof=await discoverOnDemandForPrivateQualification({
       country_iso3:"IND",categories:["geopolitics"],
     },{fetchImpl:fake,now});
-    expect(proof.private_candidates).toHaveLength(0);
+    expect(proof.private_candidates).toHaveLength(1);
+    expect(proof.private_original_review_candidates).toHaveLength(1);
+    const lead=proof.private_original_review_candidates[0];
+    expect(lead.publisher_family).toBe("uk_fcdo_original_publisher");
+    expect(lead.article_url).toBe("https://www.gov.uk/government/news/india-talks");
+    expect(lead.feed_item_published_at).toBeNull();
+    expect(lead.undated_atom_original_page_pending).toBe(true);
+    expect(lead.source_native_feed_publication_date_verified).toBe(false);
+    expect(lead.publisher_article_page_date_verified).toBe(false);
+    expect(lead.independent_same_event_verified).toBe(false);
+    expect(lead.derived_commercial_rights_verified).toBe(false);
+    expect(lead.signed_gro_verified).toBe(false);
+    expect(lead.paid_delivery_allowed).toBe(false);
+    expect(proof.discovery.source_probes.find(x=>
+      x.family==="uk_fcdo_original_publisher")?.publication_clock_verified).toBe(false);
+    expect(proof.private_candidates.some(x=>x.publisher_family==="un_news_original_publisher")).toBe(false);
     expect(proof.discovery.payable).toBe(false);
   });
 });
