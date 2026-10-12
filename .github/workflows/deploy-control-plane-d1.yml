@@ -296,6 +296,59 @@ jobs:
             echo "Unexpected risk indices historical HTTP $code"; exit 12
           fi
 
+      - name: Verify 60-minute-delayed website GRI endpoint without Supabase or B2
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$CONTROL_PLANE_URL/v1/public/website-lagged-global-risk"
+          code=""
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            code="$(curl -sS -o /tmp/website-gri-delayed.json -w '%{http_code}' --max-time 15 "$URL" || true)"
+            if [ "$code" = "200" ] || [ "$code" = "503" ]; then break; fi
+            if [ "$code" != "401" ] && [ "$code" != "404" ]; then
+              echo "Unexpected website GRI delayed endpoint status HTTP $code"; exit 12
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "Delayed GRI website endpoint not deployed (HTTP $code)"; exit 12
+            fi
+            sleep 4
+          done
+          if [ "$code" = "200" ]; then
+            jq -e '
+              .ok == true and
+              .schema == "geomacro.website-lagged-global-risk.v1" and
+              .website_only == true and
+              .minimum_delay_minutes == 60 and
+              .verification_status == "verified" and
+              .prior_b2_readback_verified_at_write == true and
+              .independently_rechecked_b2_now == false and
+              .source_identity_disclosed == false and
+              .raw_upstream_disclosed == false and
+              .chargeable == false and
+              .paid_delivery_authorized == false and
+              .data.auditPersisted == true and
+              .data.verificationStatus == "verified" and
+              (.data.recentEvents | length == 0) and
+              (all(.data.drivers[]; .topEvent == null)) and
+              (has("payload_json") | not) and
+              (has("source_url") | not) and
+              (has("provider_name") | not)
+            ' /tmp/website-gri-delayed.json >/dev/null
+            echo "PASS: true previously verified delayed GRI; no sources, payments or B2 calls."
+          elif [ "$code" = "503" ]; then
+            jq -e '
+              .ok == false and
+              (.error == "WEBSITE_GRI_HISTORY_UNAVAILABLE" or
+               .error == "WEBSITE_GRI_60MIN_VERIFIED_HISTORY_NOT_FOUND") and
+              .chargeable == false and .source_identity_disclosed == false
+            ' /tmp/website-gri-delayed.json >/dev/null
+            echo "HOLD: no eligible verified 60min-old direct B2 snapshot; website fails closed."
+          else
+            echo "Delayed GRI endpoint failed: HTTP $code"; exit 12
+          fi
+
       - name: Verify authenticated account-wide B2 budget reservation without contacting B2
         env:
           CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}

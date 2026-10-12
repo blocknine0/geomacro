@@ -8,7 +8,7 @@
  */
 export const WEBSITE_GRI_HISTORY_SCHEMA="geomacro.website-lagged-global-risk.v1";
 export const WEBSITE_GRI_DELAY_MS=60*60*1000;
-export const WEBSITE_GRI_HISTORY_RETENTION_MS=72*60*60*1000;
+export const WEBSITE_GRI_HISTORY_RETENTION_MS=30*24*60*60*1000;
 export const WEBSITE_GRI_HISTORY_LIMIT=12;
 export const VERIFIED_GRI_B2_PROOF_SCHEMA="geomacro.public-global-risk-live-proof.v1";
 const HASH=/^[a-f0-9]{64}$/u;

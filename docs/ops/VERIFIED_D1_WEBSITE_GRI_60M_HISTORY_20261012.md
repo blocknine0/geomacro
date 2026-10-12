@@ -13,7 +13,7 @@ B2 production hot snapshot admission—no new host, account or schedule:
 1. Commit migration 0015. Private table
    `website_verified_gri_snapshot_history` retains exact original public
    verified GRI payload JSON + SHA-256 / B2 digest and original snapshot
-   timestamps, at most 12 original entries over 72 hours (D1 enforced).
+   timestamps, at most 12 original entries over 30 days (D1 enforced).
 2. Only `direct-b2-readback` ORIGINAL verified GRI snapshot PUTs (already
    validated for exact live key, digest, full B2 readback/gzip restore and
    existing D1 payload SHA-256) enter history. Independent current risk
@@ -40,7 +40,7 @@ B2 production hot snapshot admission—no new host, account or schedule:
 
 - D1 historical ring adds at most one history insert + one bounded pruning
   operation per already verified GRI hot PUT. No new recurring poll
-  or uncontrolled B2 requests. Keep 12 entries max and 72h.
+  or uncontrolled B2 requests. Keep 12 entries max and 30d.
 - An empty history stays 503 until a **new genuine direct B2 verified
   GRI artifact** passes existing producer admission and the production
   Cloudflare D1 migration/deploy completes. This cannot resurrect records
