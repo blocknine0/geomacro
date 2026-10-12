@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
@@ -19,6 +19,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  const hydrationConsumed = useRef(false);
   const current = data?.category === category ? data : null;
   const domain = DOMAINS.find(item => item.key === category)!;
 
@@ -36,7 +37,9 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
       }
     };
     // SSR already fetched the same category; hydrate without the duplicate read.
-    if (!initial || category !== "geopolitics" || retryKey !== 0) void refresh();
+    if (!hydrationConsumed.current && initial && category === "geopolitics" && retryKey === 0) {
+      hydrationConsumed.current = true;
+    } else { void refresh(); }
     const timer = window.setInterval(() => { void refresh(); }, REFRESH_MS);
     return () => { active = false; window.clearInterval(timer); };
   }, [category, retryKey, initial]);
