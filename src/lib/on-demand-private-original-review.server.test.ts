@@ -144,6 +144,17 @@ describe("private originals survive presentation headline dedup",()=>{
     }
   });
 
+  it("rejects an HTTP 200 pretending to be HTML when original page MIME is not HTML",async()=>{
+    const fetchImpl=vi.fn(async()=>new Response(
+      '<meta name="govuk:first-published-at" content="2026-10-11T07:00:00Z">',
+      {headers:{"content-type":"application/json"}}
+    )) as unknown as typeof fetch;
+    const proof=await verifyOnDemandOriginalArticlePages([u],{fetchImpl,now});
+    expect(proof.attempted).toBe(1);
+    expect(proof.verified).toBe(0);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses first-party article bodies above 384KiB without signing/rights/payment",async()=>{
     const oversized= '<html><meta name="govuk:first-published-at" '+
       'content="2026-10-11T07:00:00Z"></html>'+'X'.repeat(385*1024);
