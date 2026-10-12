@@ -83,7 +83,7 @@ const initialStatus = Object.fromEntries(
   PUBLIC_SOURCE_COVERAGE_DOMAINS.map(row => [row.category, EMPTY]),
 ) as Record<CommercialIntelligenceCategory, SourcePulseState>;
 
-export function SourceNetworkMonitor() {
+export function SourceNetworkMonitor({ category }: { category?: CommercialIntelligenceCategory }) {
   const [statuses, setStatuses] = useState(initialStatus);
   useEffect(() => {
     let active = true;
@@ -125,8 +125,8 @@ export function SourceNetworkMonitor() {
         derived assessments appear in the intelligence desk. This public view
         does not disclose the underlying data-provider inventory or raw materials.
       </p>
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
-        {PUBLIC_SOURCE_COVERAGE_DOMAINS.map(row => {
+      <div className="mt-4 grid gap-3">
+        {PUBLIC_SOURCE_COVERAGE_DOMAINS.filter(row => !category || row.category === category).map(row => {
           const live = statuses[row.category];
           return (
             <article key={row.category} className="rounded-xl border border-border/70 bg-background/30 p-4">
@@ -150,7 +150,7 @@ export function SourceNetworkMonitor() {
       <p className="mt-3 text-xs leading-5 text-muted-foreground">
         Monitoring checks are best-effort and may be delayed. A monitoring
         update is not a scored event, independent evidence review or proof
-        of x402 availability. The website release delay is at least 60 minutes. Source identities and internal receipts remain private.
+        of x402 availability. The website release delay is at least 60 minutes. Source identities and internal receipts remain private. Mandatory dataset credits require verified, per-assessment contributing-source proof; no blanket provider list is published.
       </p>
     </section>
   );
