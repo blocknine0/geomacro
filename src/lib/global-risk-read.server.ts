@@ -155,11 +155,17 @@ export async function readWebsiteLaggedGlobalRisk(
   }
   // The production website treats Supabase as permanently unavailable.
   // Never attempt a frozen database read, even after D1 quota exhaustion.
-  // A previously verified B2/edge snapshot is the independent fallback;
-  // if absent or younger than the 60-minute cutoff, fail closed below.
+  // Only the independent, already proof-verified Cloudflare GRI EDGE is
+  // eligible as website backup. Its own serving order is D1 hot -> POP
+  // positive cache -> D1-quota-governed B2 reads (or safe 503).
+  //
+  // Do NOT call readB2PublicRisk() here: that generic server helper can
+  // issue its own direct signed S3 GET on edge failure, bypassing the
+  // account-wide B2 Class B governor when quotas are already exhausted.
   if(!risk){
-    const b2=await readB2PublicRisk();
-    if(b2)risk=b2;
+    const {readGlobalRiskEdge}=await import("./global-risk-edge.server");
+    const verifiedEdge=await readGlobalRiskEdge();
+    if(verifiedEdge)risk=verifiedEdge;
   }
   if(!risk||
      !Number.isFinite(Date.parse(risk.snapshotAsOf))||
