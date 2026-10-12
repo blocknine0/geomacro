@@ -24,6 +24,9 @@ jobs:
     if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 7
+    # Approved ReliefWeb identity stays in production environment secrets;
+    # the same existing three-category no-funds probe can now include it.
+    environment: production
     steps:
       - name: Checkout canonical source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -36,6 +39,8 @@ jobs:
       - name: Install exact locked modules
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Search live global APIs for each category without money
+        env:
+          RELIEFWEB_APPROVED_APPNAME: ${{ secrets.RELIEFWEB_APPROVED_APPNAME }}
         shell: bash
         run: |
           set -euo pipefail
