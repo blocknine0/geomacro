@@ -12,6 +12,8 @@ const privateGkg=()=>({
   schema:"geomacro.private-gdelt-gkg-bulk-discovery.v1",
   state:"CURRENT_GKG_BATCH_SCANNED_PRIVATE_DISCOVERY_ONLY",
   archive_integrity_verified:true,
+  archive_sha256:"a".repeat(64),batch_age_minutes:15,
+  original_pubdate_verified:false,independent_event_verified:false,
   domains:["geopolitics","macro","rare_earth"].map(category=>({
     category,theme_matched_article_count:3,observed_outlet_host_count:2,
     article_origin_publication_verified:false,
@@ -23,7 +25,9 @@ const privateGkg=()=>({
   b2_requests:0,d1_writes:0,payments_performed:0,
 });
 const probeQuotaSafeDiscovery=(options:any)=>
-  actualProbeQuotaSafeDiscovery({gkgProbe:async()=>privateGkg(),...options});
+  actualProbeQuotaSafeDiscovery({gkgProbe:async()=>({
+    ...privateGkg(),state:"GKG_BULK_DEGRADED",archive_integrity_verified:false,
+  }),...options});
 
 const primary = (healthy: boolean) => ({
   schema: "geomacro.global-open-signal-discovery.v1",
@@ -51,6 +55,38 @@ const official = () => ({
 });
 
 describe("#1827 low-quota GDELT original publisher backup", () => {
+  it("prefers actual GKG three-domain bulk before the DOC API or official fallback",async()=>{
+    const doc=vi.fn(async()=>primary(true));
+    const originalSpy=vi.fn(async()=>official());
+    const bulk=vi.fn(async()=>privateGkg());
+    const receipt=await probeQuotaSafeDiscovery({now,primaryProbe:doc,
+      officialProbe:originalSpy,gkgProbe:bulk});
+    expect(bulk).toHaveBeenCalledTimes(1);
+    expect(doc).not.toHaveBeenCalled();
+    expect(originalSpy).not.toHaveBeenCalled();
+    expect(receipt.source_reachability).toBe("GKG_BULK_ACTIVE_DOC_NOT_POLLED");
+    expect(receipt.gdelt_static_bulk_discovery.archive_integrity_verified).toBe(true);
+    expect(receipt.categories).toHaveLength(3);
+    expect(receipt.categories.every((x:any)=>x.state==="DOC_NOT_POLLED_GKG_PRIMARY" &&
+      x.source_transport_ok===false && !x.chargeable)).toBe(true);
+    expect(receipt.three_category_current_scored_ready).toBe(false);
+    expect(discoveryMonitorExitCode(receipt)).toBe(0);
+    expect(receipt.independent_original_publisher_fallback.state).toBe("NOT_NEEDED");
+    expect(receipt.chargeable).toBe(false);
+  });
+  it("rejects forged GKG green receipts and falls back to DOC + official",async()=>{
+    const doc=vi.fn(async()=>primary(false));
+    const receipt=await probeQuotaSafeDiscovery({now,primaryProbe:doc,
+      officialProbe:async()=>official(),
+      gkgProbe:async()=>({...privateGkg(),domains:privateGkg().domains.map((x:any)=>
+        ({...x,article_origin_publication_verified:true}))})});
+    expect(doc).toHaveBeenCalledTimes(1);
+    expect(receipt.source_reachability).toBe("DEGRADED");
+    expect(receipt.gdelt_static_bulk_discovery.state).toBe("GKG_BULK_AUDIT_INVALID");
+    expect(discoveryMonitorExitCode(receipt)).toBe(1);
+  });
+
+
   it("makes no official fallback requests while GDELT is healthy", async () => {
     const backup = vi.fn(official);
     const receipt = await probeQuotaSafeDiscovery({
@@ -71,10 +107,8 @@ describe("#1827 low-quota GDELT original publisher backup", () => {
     });
     expect(backup).toHaveBeenCalledTimes(1);
     expect(receipt.gdelt_static_bulk_discovery).toMatchObject({
-      state:"CURRENT_GKG_BATCH_SCANNED_PRIVATE_DISCOVERY_ONLY",
-      archive_integrity_verified:true,chargeable:false,
+      state:"GKG_BULK_DEGRADED",archive_integrity_verified:false,chargeable:false,
     });
-    expect(receipt.gdelt_static_bulk_discovery.domains).toHaveLength(3);
     expect(receipt.source_reachability).toBe("DEGRADED");
     expect(discoveryMonitorExitCode(receipt)).toBe(1);
     expect(receipt.independent_original_publisher_fallback).toMatchObject({
