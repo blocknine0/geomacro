@@ -14,9 +14,15 @@ const MONTHS: Readonly<Record<string,number>> = {
 const ENGLISH_DATE = /\b([1-9]|[12]\d|3[01])\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20[0-9]{2})\b/giu;
 
 function textOnly(value: string): string {
-  return value.replace(/<[^>]*>/gu," ")
-    .replace(/&amp;/giu,"&").replace(/&#0?39;|&apos;/giu,"'")
-    .replace(/&quot;/giu,'"').replace(/\s+/gu," ").trim();
+  // Decode only once. Replacing &amp; before another entity decode can
+  // turn encoded HTML into executable-looking or misleading publisher text.
+  const entities: Record<string, string> = {
+    "&amp;": "&", "&apos;": "'", "&quot;": '"', "&#39;": "'", "&#039;": "'",
+  };
+  return value.replace(/<[^>]*>/gu, " ")
+    .replace(/&(?:amp|apos|quot|#0?39);/giu,
+      raw => entities[raw.toLowerCase()] ?? raw)
+    .replace(/\s+/gu, " ").trim();
 }
 export function euCommissionTopOriginalCandidates(html: string, now=Date.now()): {
   candidates: StatelessSourceCandidate[];
