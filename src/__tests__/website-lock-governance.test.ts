@@ -42,9 +42,12 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("owner-authorized-website-supabase-free-derived-gri-20261012");
+    expect(config.lock_revision).toBe("founder-final-website-60min-private-sources-20261012");
     expect(config.pending_publish_acceptance).toBe(true);
     expect(config.website_privacy_baseline_status)
-      .toBe("OWNER_AUTHORIZED_PR_PENDING_LIVE_DEPLOYMENT");
+      .toBe("FOUNDER_APPROVED_LOCKED_AWAITING_EXACT_SHA_LIVE_DEPLOYMENT");
+    expect(config.published_source_sha).toBe("7215b0d05b05ccc4de1e5f69a333ae615abc38e3");
+    expect(config.published_baseline).toContain("Exact live SHA acceptance PENDING");
+    expect(config.published_baseline).toContain("machine/x402 uses independent unlagged qualified evidence");
   });
 });
