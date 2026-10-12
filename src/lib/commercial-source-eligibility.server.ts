@@ -58,7 +58,13 @@ export function commercialSourceEligibilityFromRow(
   const rawRedistribution = row.raw_redistribution_allowed === true;
   const derivedUseAllowed = status === "COMMERCIAL_OK" || status === "DERIVED_ONLY";
   const certified = certificationState === "CERTIFIED";
-  const eligible = derivedUseAllowed && ingestion && commercialSignals && certified;
+  // Geomacro discloses no upstream publisher identities to customers.
+  // An obligation to name the upstream provider is therefore incompatible
+  // with the current paid, derived-only, source-private delivery contract.
+  // Never remove the required credit and quietly deliver the result.
+  const requiresPublicCredit = row.attribution_required === true;
+  const eligible = derivedUseAllowed && ingestion && commercialSignals &&
+    certified && !requiresPublicCredit;
 
   return {
     eligible,
@@ -74,7 +80,9 @@ export function commercialSourceEligibilityFromRow(
     raw_payload_allowed: false,
     reason: eligible
       ? null
-      : !derivedUseAllowed
+      : requiresPublicCredit
+        ? "SOURCE_ATTRIBUTION_INCOMPATIBLE_WITH_PRIVATE_DELIVERY"
+        : !derivedUseAllowed
         ? `SOURCE_COMMERCIAL_STATUS_${status ?? "MISSING"}`
         : !ingestion
           ? "SOURCE_INGESTION_DISABLED"

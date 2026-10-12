@@ -147,12 +147,70 @@ async function signedGet(key: string): Promise<Uint8Array | null> {
   return shareSignedB2Read(key, () => signedGetOnce(key));
 }
 
+/**
+ * Private rights/status reads share the SAME atomic D1 quota ledger as the
+ * three public Cloudflare Workers and GitHub producers. Previously these two
+ * app-serving fallbacks could perform signed S3 GET without a reservation.
+ *
+ * A missing token, exhausted D1 quota, rejected reservation, or upstream
+ * outage NEVER authorizes a B2 request. Cached previously accepted metadata
+ * may still be reused within its existing two-minute in-memory TTL.
+ */
+const B2_QUOTA_WORKER =
+  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/b2-quota/reserve";
+
+async function reservePrivateB2Read(key: string): Promise<boolean> {
+  if (typeof window !== "undefined" || typeof process === "undefined") return false;
+  const token = String(
+    process.env.GEOMACRO_CONTROL_PLANE_TOKEN ??
+    process.env.CONTROL_PLANE_TOKEN ??
+    "",
+  ).trim();
+  if (token.length < 32) return false;
+  const workflowId = key === B2_COMMERCIAL_SOURCE_RIGHTS_KEY
+    ? "app_private_source_rights"
+    : key === B2_SOURCE_NETWORK_STATUS_KEY
+      ? "app_private_source_status"
+      : null;
+  if (!workflowId) return false;
+  try {
+    const res = await fetch(B2_QUOTA_WORKER, {
+      method: "POST",
+      redirect: "error",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({kind:"GET",workflow_id:workflowId}),
+      signal: AbortSignal.timeout(2_500),
+      cache: "no-store",
+    });
+    if (!res.ok) return false;
+    const proof = await res.json() as {
+      ok?:boolean;schema?:string;reserved?:boolean;kind?:string;
+      b2_operation_performed?:boolean;chargeable?:boolean;
+    };
+    return proof?.ok === true &&
+      proof.schema === "geomacro.b2-account-request-reservation.v1" &&
+      proof.reserved === true && proof.kind === "GET" &&
+      proof.b2_operation_performed === false &&
+      proof.chargeable === false;
+  } catch {
+    return false;
+  }
+}
+
 async function signedGetOnce(key: string): Promise<Uint8Array | null> {
   const cfg = config();
   if (!cfg || !allowedKey(key) || circuitOpen()) return null;
 
   const cached = cache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.bytes;
+
+  // Must reserve an account-wide Class B GET ticket before any AWS-signed
+  // request. If D1's atomic receipt is unavailable, fail closed (no B2).
+  if (!(await reservePrivateB2Read(key))) return null;
 
   const path = `/${[B2_BUCKET, ...key.split("/")].map(encodeURIComponent).join("/")}`;
   const host = new URL(B2_ENDPOINT).host;
