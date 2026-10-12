@@ -54,6 +54,9 @@ describe("founder-final website release and privacy lock — GRI + Intelligence 
    const hook=readFileSync("src/lib/use-global-risk.ts","utf8");
    expect(hook).toContain("getWebsiteLaggedGlobalRisk");
    expect(hook).toContain("websiteVerifiedSnapshotPastEmbargo(previous)");
+   expect(hook).toContain('throw new Error("WEBSITE_GRI_LAGGED_SERVER_UNAVAILABLE")');
+   expect(hook).not.toContain("previous=await readWithFailover()");
+   expect(hook).toContain("getWebsiteLaggedGlobalRisk({data:{}})");
    // A website-only lag does not throttle the paid/API product path.
    const paid=readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts","utf8");
    expect(paid).not.toContain("websitePublicCutoff");
