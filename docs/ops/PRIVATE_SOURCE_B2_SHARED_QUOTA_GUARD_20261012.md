@@ -50,3 +50,15 @@ For owner-only setup: map the existing 32+ character Cloudflare
 `CONTROL_PLANE_TOKEN` to private server-side
 `GEOMACRO_CONTROL_PLANE_TOKEN` if the app runtime needs legacy
 commercial metadata fallback. Never use a public/VITE_ variable.
+
+## Source confidentiality and mandatory credit
+
+The user has locked all customer delivery to Geomacro-derived, source-private
+structured data. Therefore `commercialSourceEligibilityFromRow()` also
+fails closed when `attribution_required === true`, with explicit
+`SOURCE_ATTRIBUTION_INCOMPATIBLE_WITH_PRIVATE_DELIVERY`. Do not suppress a
+supplier's legally mandated public credit while claiming that supplier is
+eligible. Approved providers with a separately negotiated **documented**
+no-public-credit commercial licence must update the rights register as an
+accurate new contract before this status can change; generic `free`,
+`DERIVED_ONLY` or reading public RSS does not waive an obligation.
