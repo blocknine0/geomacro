@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { deriveStatelessSignals } from "@/lib/stateless-intelligence-model";
 import { describe, expect, it } from "vitest";
 import {
   verifyDerivedStory, publishDerivedStories, readDerivedStories,
@@ -51,6 +52,19 @@ function db() {
   return {data,env:{DB:{prepare:statement,async batch(items){for(const item of items)await item.run()}}}};
 }
 describe("website-only Supabase-free derived news continuity",()=>{
+  it("keeps real first-party UK trade source classification in sync with D1 publication allowlist",()=>{
+    const candidates=[{
+      sourceId:"uk_dbt_macro",category:"macro" as const,
+      title:"India trade mission unlocks hundreds of UK jobs and new deals",
+      articleUrl:"https://www.gov.uk/government/news/india-trade-mission-unlocks-hundreds-of-uk-jobs-and-new-deals",
+      publishedAt:"2026-10-12T18:00:00.000Z",credit:null,
+    }];
+    const findings=deriveStatelessSignals(candidates,NOW);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].topic).toBe("trade and economic relations");
+    expect(verifyDerivedStory(findings[0],NOW)).toBe(true);
+    expect(JSON.stringify(findings)).not.toContain("www.gov.uk");
+  });
   it("admits the newly reviewed Macro/FX trade and economic relations derived topic",()=>{
     const story={...sample("macro"),
       topic:"trade and economic relations",
