@@ -12,6 +12,24 @@ export const WEBSITE_GRI_HISTORY_RETENTION_MS=72*60*60*1000;
 export const WEBSITE_GRI_HISTORY_LIMIT=12;
 export const VERIFIED_GRI_B2_PROOF_SCHEMA="geomacro.public-global-risk-live-proof.v1";
 const HASH=/^[a-f0-9]{64}$/u;
+const PRIVATE_FIELDS=new Set([
+ "source_name","source_domain","source_url","source_urls","source_id",
+ "source_key","sourceName","sourceDomain","sourceUrl","sourceId",
+ "publisher","publisher_name","provider","provider_name",
+ "raw_content","raw_payload","raw_article","raw_source","provenance",
+ "original_source","retrieval_metadata",
+]);
+function redactPrivateFields(value){
+ if(Array.isArray(value))return value.map(redactPrivateFields);
+ if(!value||typeof value!=="object")return value;
+ const safe={};
+ for(const [key,nested] of Object.entries(value)){
+  if(PRIVATE_FIELDS.has(key))continue;
+  safe[key]=redactPrivateFields(nested);
+ }
+ return safe;
+}
+
 function time(value) {
   const n=Date.parse(String(value??""));
   return Number.isFinite(n)?n:NaN;
@@ -51,13 +69,13 @@ export function privateVerifiedGriHistoryProjection(row,{now=Date.now()}={}){
     Number.isFinite(rec)&&rec>cutoff;
  }))return null;
  if(!Array.isArray(data.drivers))return null;
- const scrubbed={
+ const scrubbed=redactPrivateFields({
   ...data,
   // Never forward a publisher event row or title/summary/URL to the site.
   recentEvents:[],
   drivers:data.drivers.map(d=>({...d,topEvent:null})),
   topDriver:data.topDriver?{...data.topDriver,topEvent:null}:null,
- };
+ });
  return {
   ok:true,schema:WEBSITE_GRI_HISTORY_SCHEMA,
   website_only:true,minimum_delay_minutes:60,
