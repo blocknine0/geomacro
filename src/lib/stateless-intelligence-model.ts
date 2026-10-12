@@ -361,7 +361,10 @@ export function deriveStatelessSignals(
     // The same official article can occur in several publisher subject feeds.
     // Deduplicate by the exact admitted article URL within its category,
     // not the feed lane ID; never collapse different source articles by topic.
-    const fingerprint = item.category + "|" + url.href;
+    // Preserve pre-existing stable D1 IDs for previously ingested lanes.
+    // Only new Statistics Canada subject feeds share a canonical family ID;
+    // an identical original item across two subject feeds is one story.
+    const fingerprint = (item.sourceId.startsWith("statcan_") ? "statcan_daily" : item.sourceId) + "|" + url.href;
     if (unique.has(fingerprint)) continue;
     unique.add(fingerprint);
     const focus = SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? topic.name;
