@@ -42,14 +42,14 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-live-readability-3domain-prepublish-acceptance-20261012");
+    expect(config.lock_revision).toBe("founder-continuous-three-domain-intelligence-nostore-20261012");
     expect(config.pending_publish_acceptance).toBe(true);
     expect(config.website_privacy_baseline_status)
       .toBe("FOUNDER_APPROVED_LOCKED_AWAITING_EXACT_SHA_LIVE_DEPLOYMENT");
     expect(config.published_source_sha).toBe("7215b0d05b05ccc4de1e5f69a333ae615abc38e3");
-    expect(config.published_baseline).toContain("PENDING founder Lovable Publish AFTER pre-publish live network acceptance");
-    expect(config.published_baseline).toContain("machine x402 unaffected");
-    expect(config.published_baseline).toContain("15-minute publication delay");
-    expect(config.published_baseline).toContain("Global Risk and Risk Indices 60-minute source presentation remains frozen");
+    expect(config.published_baseline).toContain("User will manually publish only after exact-head source/test/security verification and Lovable sync");
+    expect(config.published_baseline).toContain("no x402 or GRI changes");
+    expect(config.published_baseline).toContain("15-minute original-source delay");
+    expect(config.published_baseline).toContain("independent 60m Global Risk remains");
   });
 });
