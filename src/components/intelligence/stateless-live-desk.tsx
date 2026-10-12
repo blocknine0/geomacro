@@ -92,12 +92,16 @@ function Story({ signal, checkedAt }: {
  * is explicitly marked temporarily unverified and its check time remains
  * unchanged until a new real publisher check completes successfully.
  */
-export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceResult | null }) {
+export function StatelessLiveDesk({ initial, initialJournal = [] }: {
+  initial: StatelessIntelligenceResult | null;
+  initialJournal?: StatelessIntelligenceSignal[];
+}) {
   const [view, setView] = useState<View>("all");
   const [feeds, setFeeds] = useState<FeedState>(() =>
     initial?.category === "geopolitics" ? { geopolitics: initial } : {});
   const [errors, setErrors] = useState<Partial<Record<StatelessCategory, boolean>>>({});
-  const [journal, setJournal] = useState<StatelessIntelligenceSignal[]>([]);
+  // Server loader supplies already verified derived cards for the first HTML paint.
+  const [journal, setJournal] = useState<StatelessIntelligenceSignal[]>(() => initialJournal);
   const [journalUnavailable, setJournalUnavailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
@@ -196,9 +200,9 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
   for (const domain of known) {
     for (const signal of feeds[domain.key]?.signals ?? []) merged.set(signal.id, signal);
   }
-  const signals = [...merged.values()]
-    .sort((a, b) => b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id))
-    .filter(signal => view === "all" || signal.category === view);
+  const allSignals = [...merged.values()]
+    .sort((a, b) => b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id));
+  const signals = allSignals.filter(signal => view === "all" || signal.category === view);
   const checkedAt = Date.now();
   const recent = signals.filter(signal => Date.parse(signal.published_at) >= checkedAt - 86_400_000);
   const earlier = signals.filter(signal => Date.parse(signal.published_at) < checkedAt - 86_400_000);
@@ -210,7 +214,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
   const refreshOnClick = () => manualRefresh.current();
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
+    <main data-testid="geomacro-derived-news-desk" className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
       <header className="max-w-3xl">
         <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
           GEOMACRO FINDS · LIVE INTELLIGENCE DESK
@@ -245,7 +249,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
                 (view === domain.key ? "border-primary bg-primary text-primary-foreground" :
                   "border-border bg-card hover:border-primary/60")}>
               {domain.label}
-              <span className="ml-2 text-xs opacity-80">{feeds[domain.key]?.signals.length ?? "…"}</span>
+              <span className="ml-2 text-xs opacity-80">{allSignals.filter(signal => signal.category === domain.key).length}</span>
             </button>
           ))}
         </div>
