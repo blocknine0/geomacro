@@ -109,6 +109,13 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(finds[0].severity).toBeNull();
     expect(finds[0].title).toMatch(/^Geomacro finds /);
     expect(JSON.stringify(finds)).not.toContain("Commission selects new projects");
+    // One decoding pass only: a double-encoded "&amp;quot;" must stay
+    // inert, not become a quote through successive replacement rounds.
+    const encoded = html.replace("Commission selects new projects", "Commission &amp;quot;selects new projects");
+    const decodedOnce = euCommissionTopOriginalCandidates(encoded, now);
+    expect(decodedOnce.candidates).toHaveLength(1);
+    expect(decodedOnce.candidates[0].title).toContain("&quot;");
+    expect(decodedOnce.candidates[0].title).not.toContain('"selects');
   });
 
   it("makes the website active route stateless, while leaving paid endpoints independent", () => {
