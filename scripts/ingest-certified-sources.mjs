@@ -15,6 +15,7 @@ import {
 
 const MAX_SOURCE_ROWS = 250;
 const MAX_FRAGMENT_MEMBERS = 25;
+const MAX_SHARED_FRAGMENT_MEMBERS = 50;
 const MAX_FRAGMENT_UNCOMPRESSED_BYTES = 8_000_000;
 const MAX_FRAGMENT_COMPRESSED_BYTES = 1_500_000;
 const MAX_FRAGMENTS_PER_SOURCE = 12;
@@ -478,7 +479,7 @@ for (const sourceId of sourceIds) {
 // independent local+shared quota guard before any additional network call.
 const sharedPlan = sourceBatches.length === 2
   ? planSharedGovernedBundle(sourceBatches, buildFragment, {
-      maxMembers: MAX_FRAGMENT_MEMBERS,
+      maxMembers: MAX_SHARED_FRAGMENT_MEMBERS,
       maxUncompressedBytes: MAX_FRAGMENT_UNCOMPRESSED_BYTES,
       maxCompressedBytes: MAX_FRAGMENT_COMPRESSED_BYTES,
     }) : null;
