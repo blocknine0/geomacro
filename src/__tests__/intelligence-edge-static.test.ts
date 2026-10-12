@@ -56,10 +56,14 @@ describe("verified public edge hot-cache contract", () => {
     expect(deploy).toContain("B2_ARCHIVE_READ_KEY_ID");
     expect(deploy).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(deploy).toContain("geomacro-intelligence.daspallab202391.workers.dev");
-    expect(b2).toContain("await readPublicIntelligenceEdge()");
-    expect(b2.indexOf("await readPublicIntelligenceEdge()")).toBeLessThan(
-      b2.indexOf("const payload = await readJsonGzip<{"),
+    expect(b2).toContain("return readPublicIntelligenceEdge();");
+    const publicRead=b2.slice(
+      b2.indexOf("export async function readB2PublicIntelligence()"),
+      b2.indexOf("export async function readB2PublicRisk()"),
     );
+    expect(publicRead).not.toContain("readJsonGzip");
+    expect(publicRead).not.toContain("signedGet");
+    expect(worker).toContain("reserveB2AccountQuota");
   });
 
   it("uses Workers Cache for all public verified B2 edges without s-maxage disabling stale continuity", () => {
