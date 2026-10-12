@@ -491,7 +491,19 @@ export default {
     // failure marker prevents repeated B2 GETs for the same unavailable state.
     // Public users ALWAYS receive 503; no negative cache value is served.
     const negativeKey = b2OriginFailureCacheKey(url.origin, "/intelligence");
-    if (await failedB2OriginRecently(cache, negativeKey)) return unavailable(503);
+    if (await failedB2OriginRecently(cache, negativeKey)) {
+      // The negative POP marker suppresses ONLY additional quota-metered B2
+      // GETs, never the independent B2-readback-verified static continuity
+      // artifact bundled at deployment. This fallback does not use D1/B2,
+      // spend credits or promote an old archived snapshot to fresh risk.
+      try {
+        const recovered = await buildContinuityResponse(env);
+        ctx.waitUntil(cache.put(cacheKey, recovered.clone()));
+        return recovered;
+      } catch {
+        return unavailable(503);
+      }
+    }
 
     try {
       const response = await buildResponse(env);
