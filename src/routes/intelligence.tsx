@@ -244,7 +244,7 @@ function IntelligencePage() {
         </div>
       </section>
 
-      <SourceNetworkMonitor category={category} />
+      <SourceNetworkMonitor category={category === "macro" ? "macro-fx" : category === "rare_earth" ? "critical-minerals" : "geopolitics"} />
 
       <section className="mt-8 grid gap-3 rounded-2xl border border-border/70 bg-card/40 p-4 sm:grid-cols-[minmax(0,1fr)_170px_auto]">
         <label className="relative min-w-0">
