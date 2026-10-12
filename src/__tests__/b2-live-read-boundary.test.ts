@@ -28,14 +28,17 @@ describe("non-destructive B2 live read boundary", () => {
     const directB2Read = b2.indexOf("B2_PUBLIC_GLOBAL_RISK_KEY");
     expect(edgeRead).toBeGreaterThan(-1);
     expect(directB2Read).toBeGreaterThan(-1);
-    // Public risk must never fall through to signed S3 after edge denial.\n    expect(edgeRead).toBeGreaterThan(-1);
+    // Public risk must never fall through to signed S3 after edge denial.
+    expect(edgeRead).toBeGreaterThan(-1);
   });
 
   it("uses only proof-verified edge and never unmetered runtime B2 recovery", () => {
     const b2 = read("src/lib/b2-live.server.ts");
-    const fn = b2.slice(b2.indexOf("export async function readB2PublicRisk"));
-    expect(fn.indexOf("await readGlobalRiskEdge()")).toBeGreaterThan(-1);
-    expect(fn.indexOf("await readJsonGzip")).toBeGreaterThan(fn.indexOf("await readGlobalRiskEdge()"));
+    const fn = b2.slice(b2.indexOf("export async function readB2PublicRisk()"),
+      b2.indexOf("export async function readB2SourceNetworkStatus()"));
+    expect(fn).toContain("return readGlobalRiskEdge();");
+    expect(fn).not.toContain("readJsonGzip");
+    expect(fn).not.toContain("signedGet");
     expect(read("src/lib/global-risk-edge.server.ts")).toContain('x-geomacro-authority") !== "backblaze-b2-verified-edge"');
     expect(read("src/lib/global-risk-edge.server.ts")).toContain('payload.source_project !== "ldpwajisioljyjtojvfx"');
     expect(read("src/lib/global-risk-edge.server.ts")).toContain("validateGlobalRiskContinuity(payload.data).ok");
