@@ -13,6 +13,13 @@ const Input = z.object({
 export const getStatelessIntelligence = createServerFn({ method: "GET" })
   .validator((input: unknown) => Input.parse(input))
   .handler(async ({ data }) => {
+    const { setResponseHeaders } = await import("@tanstack/react-start/server");
+    setResponseHeaders(new Headers({
+      "Cache-Control": "no-store, max-age=0",
+      "CDN-Cache-Control": "no-store",
+      Pragma: "no-cache",
+      "X-Robots-Tag": "noarchive",
+    }));
     const { readStatelessWebsiteIntelligence } =
       await import("./stateless-public-intelligence.server");
     return readStatelessWebsiteIntelligence(data.category);
