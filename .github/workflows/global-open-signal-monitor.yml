@@ -57,7 +57,7 @@ jobs:
           node --check scripts/lib/quota-safe-original-discovery-fallback.mjs
           node --check scripts/lib/gdelt-gkg-bulk-discovery.mjs
           node --check scripts/ops/probe-market-signal-discovery.mjs
-      - name: Poll GDELT DOC; on 429 try static GKG 15m bulk plus original publishers
+      - name: Poll GKG static 15m first; DOC and official fallback only on bulk degradation
         if: github.event_name != 'pull_request'
         shell: bash
         run: |
