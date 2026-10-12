@@ -85,6 +85,16 @@ jobs:
             workers/risk-indices-edge/src/continuity.mjs; then
             echo "VERIFIED_RISK_INDICES_CONTINUITY_MATERIALIZED"
           elif [ "$TRIGGER_EVENT" = "push" ]; then
+            # Do not accidentally overwrite a still healthy previously
+            # materialized static continuity package with null when the
+            # original artifact has merely aged out of GitHub retention.
+            # A verified currently serving 200 requires preservation
+            # through a separately reviewed/manual recovery path.
+            EXISTING_CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$EXPECTED_URL/risk-indices" || true)"
+            if [ "$EXISTING_CODE" = "200" ]; then
+              echo "EXISTING_VERIFIED_EDGE_SERVING; refuse replacing prior static continuity with null"
+              exit 13
+            fi
             # A code-only deployment must not depend on a new/frozen
             # Supabase publisher. Deploy code with an explicitly EMPTY
             # backup; the Worker can still serve any independently
