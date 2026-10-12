@@ -8,6 +8,11 @@ const intake = JSON.parse(readFileSync(
   "utf8"
 ));
 const byId = new Map(intake.entries.map(entry => [entry.id, entry]));
+// Exact-dataset aliases, never generic source-family licensing inheritance.
+const exactReviewedAliases = new Map([
+  ["gdelt_events", "gdelt_v2_events"],
+  ["usgs_quakes", "usgs_earthquake_hazards"],
+]);
 
 /**
  * Render the exact required provider credit *only* for evidence actually used
@@ -25,7 +30,7 @@ export function mandatoryDerivedSourceCredits(usedSourceIds) {
   for (const raw of usedSourceIds) {
     const id = String(raw ?? "").trim();
     const operator = byId.get(id);
-    const evidenceId = operator?.canonical_existing_id ?? id;
+    const evidenceId = exactReviewedAliases.get(id) ?? operator?.canonical_existing_id ?? id;
     const evidence = COMMERCIAL_SOURCE_RIGHTS_EVIDENCE[evidenceId];
     if (!evidence || evidence.approved_status !== "VERIFIED") {
       throw Error("SOURCE_CREDIT_RIGHTS_NOT_VERIFIED");
