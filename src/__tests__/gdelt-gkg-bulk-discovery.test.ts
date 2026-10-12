@@ -107,6 +107,55 @@ describe("#2042 static GDELT 15-minute global discovery independent of DOC 429",
     expect(bad).toMatchObject({state:"GKG_BULK_DEGRADED",
       reason:"GKG_ARCHIVE_MD5_OR_SIZE_MISMATCH",chargeable:false});
   });
+
+  it("recovers a truly past current GKG batch from one bounded Range GET if lastupdate points to the future",async()=>{
+    const futureStamp="20261012121500";
+    const futureManifest="100 "+"f".repeat(32)+
+      " http://data.gdeltproject.org/gdeltv2/"+futureStamp+".gkg.csv.zip\n";
+    const start=1000,tailText="partial-do-not-trust\n"+manifest();
+    const end=start+Buffer.byteLength(tailText)-1;
+    const fetchImpl=vi.fn(async(url:string,request:RequestInit)=>{
+      if(url===GDELT_GKG_LATEST_URL)return new Response(futureManifest);
+      if(url==="https://data.gdeltproject.org/gdeltv2/masterfilelist.txt"){
+        expect(request.headers).toMatchObject({range:"bytes=-262144"});
+        return new Response(tailText,{status:206,headers:{
+          "content-range":"bytes "+start+"-"+end+"/"+(end+1),
+          "content-type":"text/plain",
+        }});
+      }
+      return new Response(archive);
+    });
+    const x=await probeGdeltGkgBulk({now,fetchImpl});
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(x).toMatchObject({
+      state:"CURRENT_GKG_BATCH_SCANNED_PRIVATE_DISCOVERY_ONLY",
+      manifest_route:"MASTERFILE_TAIL",upstream_batch_at:date,
+      archive_integrity_verified:true,chargeable:false,
+      original_pubdate_verified:false,
+    });
+    expect(x.domains.map((z:any)=>z.theme_matched_article_count)).toEqual([1,1,1]);
+  });
+
+  it("fails closed if the past index fallback ignores Range, without inventing a fresh batch",async()=>{
+    const futureStamp="20261012121500";
+    const futureManifest="100 "+"f".repeat(32)+
+      " http://data.gdeltproject.org/gdeltv2/"+futureStamp+".gkg.csv.zip\n";
+    const x=await probeGdeltGkgBulk({now,fetchImpl:async(url:string)=>
+      url===GDELT_GKG_LATEST_URL
+      ?new Response(futureManifest)
+      :new Response("unbounded masterfile content",{status:200})});
+    expect(x).toMatchObject({state:"GKG_BULK_DEGRADED",
+      reason:"GKG_MASTERFILE_RANGE_UNAVAILABLE",
+      archive_integrity_verified:false,public_published:false,chargeable:false});
+  });
+  it("ignores future row clocks even when an older GKG archive is valid",()=>{
+    const content=raw+"\n"+row("future","CRITICAL_MINERALS",
+      "https://minerals2.example.com/alert").replace(stamp,"20261012121500");
+    const result=summarizeGdeltGkgBulk(content,{now,batch_at:date});
+    expect(result.domains[2].theme_matched_article_count).toBe(1);
+    expect(result.malformed_rows).toBe(1);
+  });
+
   it("reports HTTP 429 as degraded without request storms or secrets",async()=>{
     let calls=0;
     const denied=await probeGdeltGkgBulk({now,fetchImpl:async()=>{

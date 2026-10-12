@@ -5,6 +5,8 @@ import {createHash} from "node:crypto";
 import {inflateRawSync} from "node:zlib";
 
 export const GDELT_GKG_LATEST_URL="https://data.gdeltproject.org/gdeltv2/lastupdate.txt";
+export const GDELT_GKG_MASTERFILE_URL="https://data.gdeltproject.org/gdeltv2/masterfilelist.txt";
+const MAX_MASTERFILE_TAIL_BYTES=256*1024;
 export const GDELT_GKG_BULK_SCHEMA="geomacro.private-gdelt-gkg-bulk-discovery.v1";
 const MAX_INDEX_BYTES=8192;
 const MAX_PACKED_BYTES=18*1024*1024;
@@ -27,8 +29,9 @@ function utcFromStamp(value){
   const ms=Date.parse(iso);
   return Number.isFinite(ms)&&new Date(ms).toISOString()===iso?iso:null;
 }
-export function parseGdeltGkgLastupdate(raw,{now=new Date()}={}){
-  if(typeof raw!=="string"||Buffer.byteLength(raw)>MAX_INDEX_BYTES||
+export function parseGdeltGkgLastupdate(raw,{now=new Date(),maxBytes=MAX_INDEX_BYTES}={}){
+  if(!Number.isSafeInteger(maxBytes)||maxBytes<1||maxBytes>MAX_MASTERFILE_TAIL_BYTES||
+     typeof raw!=="string"||Buffer.byteLength(raw)>maxBytes||
      !Number.isFinite(now.getTime()))throw Error("GKG_MANIFEST_INVALID");
   const matches=[];
   for(const line of raw.split(/\r?\n/u)){
@@ -130,7 +133,8 @@ export function summarizeGdeltGkgBulk(content,{batch_at,now=new Date()}){
     const cols=line.replace(/\r$/u,"").split("\t");
     if(cols.length!==27){invalid++;continue}
     const date=utcFromStamp(cols[1]);
-    if(!date||Math.abs(Date.parse(date)-batch)>60*60*1000){invalid++;continue}
+    if(!date||Date.parse(date)>now.getTime()||
+       Math.abs(Date.parse(date)-batch)>60*60*1000){invalid++;continue}
     const url=cols[4];
     let host;
     try{
@@ -179,7 +183,36 @@ export async function probeGdeltGkgBulk({fetchImpl=fetch,now=new Date()}={}){
     const index=await request(GDELT_GKG_LATEST_URL,12000);
     if(!index?.ok)throw Error("GKG_MANIFEST_HTTP_"+(index?.status??"UNKNOWN"));
     const text=(await limitedBody(index,MAX_INDEX_BYTES)).toString("utf8");
-    const manifest=parseGdeltGkgLastupdate(text,{now});
+    let manifest;
+    let manifest_route="LASTUPDATE";
+    try{manifest=parseGdeltGkgLastupdate(text,{now});}
+    catch(error){
+      if(!(error instanceof Error)||error.message!=="GKG_NO_CURRENT_PINNED_BATCH")throw error;
+      // During boundary rollover the official lastupdate pointer can
+      // advertise a not-yet-current/future batch. Never mint its timestamp.
+      // Read bounded earlier GKG manifest entries, max ONE Range GET.
+      const tail=await fetchImpl(GDELT_GKG_MASTERFILE_URL,{
+        redirect:"error",
+        headers:{accept:"text/plain","range":"bytes=-"+MAX_MASTERFILE_TAIL_BYTES,
+          "user-agent":"Geomacro-Private-GDELT-Static-GKG/1.0"},
+        signal:AbortSignal.timeout(12000),
+      });
+      if(tail?.status!==206)throw Error("GKG_MASTERFILE_RANGE_UNAVAILABLE");
+      const range=String(tail.headers?.get?.("content-range")??"");
+      const parts=/^bytes (\d+)-(\d+)\/(\d+)$/u.exec(range);
+      if(!parts||Number(parts[2])<Number(parts[1])||
+         Number(parts[3])<=Number(parts[2])||
+         Number(parts[2])-Number(parts[1])+1>MAX_MASTERFILE_TAIL_BYTES)
+        throw Error("GKG_MASTERFILE_RANGE_INVALID");
+      const recovered=await limitedBody(tail,MAX_MASTERFILE_TAIL_BYTES);
+      const batchText=recovered.toString("utf8");
+      // Truncated first line cannot become a candidate.
+      const trimmed=Number(parts[1])>0?
+        batchText.slice(batchText.indexOf("\n")+1):batchText;
+      manifest=parseGdeltGkgLastupdate(trimmed,{now,
+        maxBytes:MAX_MASTERFILE_TAIL_BYTES});
+      manifest_route="MASTERFILE_TAIL";
+    }
     const archive=await request(manifest.fetch_url,25000);
     if(!archive?.ok)throw Error("GKG_ARCHIVE_HTTP_"+(archive?.status??"UNKNOWN"));
     const zipped=await limitedBody(archive,MAX_PACKED_BYTES);
@@ -188,7 +221,7 @@ export async function probeGdeltGkgBulk({fetchImpl=fetch,now=new Date()}={}){
     const stamp=manifest.batch_at.replace(/\D/gu,"").slice(0,14);
     const decoded=unpackSingleGkgZip(zipped,stamp);
     return {...summarizeGdeltGkgBulk(decoded,{now,batch_at:manifest.batch_at}),
-      archive_integrity_verified:true,
+      manifest_route,archive_integrity_verified:true,
       archive_sha256:sha256(zipped)};
   }catch(error){
     // No error string or upstream URL, only safe fixed-shape reason enum.
@@ -197,7 +230,8 @@ export async function probeGdeltGkgBulk({fetchImpl=fetch,now=new Date()}={}){
       "GKG_BODY_MISSING","GKG_BODY_OVERSIZE","GKG_ZIP_INVALID",
       "GKG_ZIP_CENTRAL_INVALID","GKG_ZIP_ENTRY_INVALID",
       "GKG_ZIP_DECOMPRESSION_FAILED","GKG_ZIP_SIZE_MISMATCH",
-      "GKG_ARCHIVE_MD5_OR_SIZE_MISMATCH","GKG_ROWS_EXCEEDED","GKG_SUMMARY_INVALID"];
+      "GKG_ARCHIVE_MD5_OR_SIZE_MISMATCH","GKG_ROWS_EXCEEDED","GKG_SUMMARY_INVALID",
+      "GKG_MASTERFILE_RANGE_UNAVAILABLE","GKG_MASTERFILE_RANGE_INVALID"];
     const safe=allow.includes(reason)?reason:
       /^GKG_(?:MANIFEST|ARCHIVE)_HTTP_(?:4\d\d|5\d\d)$/u.test(reason)
       ?reason:"GKG_NETWORK_OR_FORMAT_UNAVAILABLE";
