@@ -69,6 +69,11 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_dbt_macro", category: "macro", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  // Official Australian resources trade/export statements can qualify as
+  // Macro/FX context when their ORIGINAL publisher title is relevant.
+  { id: "au_resource_exports", category: "macro", media: "rss",
+    url: "https://www.minister.industry.gov.au/feed/king/rss.xml",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   // Natural Resources Canada's official news-release Atom feed (not a
   // search-engine snippet and not a dataset modification timestamp).
   { id: "nrcan_releases", category: "rare_earth", media: "atom",
@@ -79,8 +84,17 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
     url: "https://natural-resources.canada.ca/simply-science/rss.xml",
     allowedHosts: ["natural-resources.canada.ca", "www.natural-resources.canada.ca"],
     credit: null },
+  // Australian Resources Minister's own official published feed URL from
+  // the ministers' /subscribe page. Previous "t-ayres" feed follows the
+  // Industry Minister, not the Resources Minister: it missed genuine
+  // Arafura rare-earth original releases on 8–9 Oct 2026.
   { id: "au_industry", category: "rare_earth", media: "rss",
-    url: "https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
+    url: "https://www.minister.industry.gov.au/feed/king/rss.xml",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
+  // Independent category selection over the same Australian first-party
+  // newsroom: captures other Resources and Industry minister news releases.
+  { id: "au_resource_releases", category: "rare_earth", media: "rss",
+    url: "https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
     allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   { id: "uk_energy", category: "rare_earth", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
@@ -197,6 +211,7 @@ type LaneMetrics = {
   seen: number; relevant: number; original_link_valid: number;
   native_clock_valid: number; undated_original: number;
   recovered_original_page: number; transport_ok: boolean;
+  transport_failure_class?: "http_4xx" | "http_5xx" | "mime" | "body" | "timeout" | "redirect" | "network";
   // Optional anonymous first-party stage counters for read-only CI
   // diagnostics. Never log provider URLs, article IDs or raw content.
   canada_original_path_ok?: number;
@@ -245,18 +260,29 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       };
     } catch { return { candidates: [], healthy: false }; }
   }
+  const failed = (kind: NonNullable<LaneMetrics["transport_failure_class"]>) => ({
+    candidates: [] as StatelessSourceCandidate[], healthy: false,
+    metrics: { seen: 0, relevant: 0, original_link_valid: 0,
+      native_clock_valid: 0, undated_original: 0, recovered_original_page: 0,
+      transport_ok: false, transport_failure_class: kind } satisfies LaneMetrics,
+  });
   try {
     const response = await fetch(source.url, {
       method: "GET", redirect: "error", cache: "no-store",
       headers: { Accept: source.media === "rss" ? "application/rss+xml, application/xml, text/xml" :
         "application/atom+xml, application/xml, text/xml" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      // Some first-party Australian minister RSS responses take longer than
+      // the generic 5s original-feed budget from the GitHub runner. Only the
+      // exact configured Australian RSS lanes receive a bounded 12s budget;
+      // no retry or bypass of 4xx, authentication or redirects.
+      signal: AbortSignal.timeout(source.id.startsWith("au_") ? 12_000 : TIMEOUT_MS),
     });
+    if (!response.ok) return failed(response.status >= 500 ? "http_5xx" : "http_4xx");
     const mime = response.headers.get("content-type") ?? "";
     if (!/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu.test(mime))
-      return { candidates: [], healthy: false };
+      return failed("mime");
     const xml = await boundedText(response, MAX_FEED_BYTES);
-    if (!xml) return { candidates: [], healthy: false };
+    if (!xml) return failed("body");
     const parsed = parseFirstPartyFeed(xml, source, now);
     const canadaStage = {path_ok:0,http_ok:0,html_ok:0,original_ok:0,
       title_ok:0,clock_found:0,clock_consistent:0,date_path_ok:0,
@@ -283,7 +309,12 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
         } : {}),
       },
     };
-  } catch { return { candidates: [], healthy: false }; }
+  } catch (error) {
+    const e = error instanceof Error ? error : null;
+    const reason = e?.name === "TimeoutError" || e?.name === "AbortError"
+      ? "timeout" : /redirect/i.test(e?.message ?? "") ? "redirect" : "network";
+    return failed(reason);
+  }
 }
 
 export type StatelessIntelligenceResult = {

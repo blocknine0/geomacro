@@ -1,0 +1,44 @@
+name: Diagnose Australian Official RSS Transport
+
+# Read-only bounded first-party transport probe, no raw article content.
+on:
+  pull_request:
+    paths:
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - ".github/workflows/diagnose-australian-official-original-rss.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Diagnose bounded official RSS GET over HTTPS
+        shell: bash
+        run: |
+          set -euo pipefail
+          i=0
+          successes=0
+          for path in king/rss.xml media-releases/rss.xml; do
+            address="https://www.minister.industry.gov.au/feed/$path"
+            error=0
+            out="$(curl --http1.1 -L --max-time 16 --connect-timeout 6 \
+              --proto '=https' --proto-redir '=https' --max-redirs 2 \
+              --silent --output /dev/null \
+              --write-out '%{http_code}|%{content_type}|%{time_total}|%{num_redirects}' \
+              "$address" 2>/dev/null)" || error=$?
+            if [[ -z "$out" ]]; then out="000|transport|0|0"; fi
+            IFS='|' read -r code mime elapsed redirects <<< "$out"
+            kind="other"
+            case "$mime" in
+              application/rss+xml*|application/xml*|text/xml*) kind=xml;;
+              text/html*) kind=html;;
+            esac
+            echo "AU_FIRST_PARTY_TRANSPORT lane=$i http=$code exit_class=$error mime_kind=$kind seconds=$elapsed redirect_count=$redirects"
+            if [[ "$code" == 200 && "$kind" == xml ]]; then successes=$((successes + 1)); fi
+            i=$((i + 1))
+          done
+          echo "AU_ORIGINAL_TRANSPORT: $successes/2 official XML endpoints curl-reachable"

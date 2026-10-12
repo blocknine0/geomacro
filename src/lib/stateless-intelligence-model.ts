@@ -71,7 +71,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "External-balance releases can affect currency-liquidity and cross-border settlement considerations; this does not indicate a directional FX prediction." },
     { test: /\b(liquidity|financial stability|bank supervision|banking regulation|economic growth|GDP|economic bulletin|bank lending|banking statistics|financial accounts|financial markets|unemployment|labour market|credit conditions|household debt|economic outlook)\b/i, name: "financial conditions",
       implication: "Financial-system developments may matter for credit access and counterparty exposure; a score requires separately verified measurements." },
-    { test: /\b(trade mission|free trade|trade deal|trade agreement|trade negotiations|bilateral trade|international (?:merchandise )?trade|imports? and exports?|export growth|commercial deals|economic partnership|JETCO|tariffs|foreign investment)\b/i, name: "trade and economic relations",
+    { test: /\b(trade mission|free trade|trade deal|trade agreement|trade negotiations|bilateral trade|international (?:merchandise )?trade|imports? and exports?|resources and energy exports?|mineral exports?|resources exports?|export growth|commercial deals|economic partnership|JETCO|tariffs|foreign investment)\b/i, name: "trade and economic relations",
       implication: "Trade and investment agreements can affect market access, cross-border commercial flows and currency exposure; their actual economic impact requires follow-up evidence." },
   ],
   rare_earth: [
@@ -245,6 +245,7 @@ const SAFE_FOCUS: Record<StatelessCategory, readonly { test: RegExp; label: stri
     { test: /\bmilitary\b/i, label: "military policy" },
   ],
   macro: [
+    { test: /\b(?:resources and energy exports?|mineral exports?|resources exports?)\b/i, label: "resources and energy exports" },
     { test: /\b(?:trade mission|free trade|trade deal|trade agreement|JETCO)\b/i, label: "international trade" },
     { test: /\binterest rates?\b/i, label: "interest-rate policy" },
     { test: /\bmonetary policy\b/i, label: "monetary policy" },
@@ -372,9 +373,12 @@ export function deriveStatelessSignals(
     // Deduplicate by the exact admitted article URL within its category,
     // not the feed lane ID; never collapse different source articles by topic.
     // Preserve pre-existing stable D1 IDs for previously ingested lanes.
-    // Only new Statistics Canada subject feeds share a canonical family ID;
-    // an identical original item across two subject feeds is one story.
-    const fingerprint = (item.sourceId.startsWith("statcan_") ? "statcan_daily" : item.sourceId) + "|" + url.href;
+    // Statistics Canada subject feeds and Australian Resources Minister / news
+    // release feeds share canonical family IDs. A single actual publisher
+    // article is still only one finding; distinct article URLs stay distinct.
+    const family = item.sourceId.startsWith("statcan_") ? "statcan_daily"
+      : item.sourceId.startsWith("au_") ? "au_industry" : item.sourceId;
+    const fingerprint = family + "|" + url.href;
     if (unique.has(fingerprint)) continue;
     unique.add(fingerprint);
     const focus = SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? topic.name;
