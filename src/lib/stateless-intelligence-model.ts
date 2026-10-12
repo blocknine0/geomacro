@@ -14,6 +14,7 @@ export type StatelessSourceSpec = {
   allowedHosts: readonly string[];
   credit: string | null;
   govContentApi?: boolean;
+  canadaOriginalPage?: boolean;
 };
 
 export type StatelessSourceCandidate = {
@@ -207,7 +208,8 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
         sourceId: source.id, category: source.category, title,
         articleUrl, publishedAt: new Date(ms).toISOString(), credit: source.credit,
       });
-    } else if (!rawClock && source.govContentApi && undatedGov.length < 4) {
+    } else if (((!rawClock && source.govContentApi) || source.canadaOriginalPage) &&
+               undatedGov.length < (source.canadaOriginalPage ? 8 : 4)) {
       metrics.undated_original++;
       // Atom "updated" is never substituted for the original publication.
       undatedGov.push({ title, articleUrl });
@@ -344,7 +346,8 @@ export function deriveStatelessSignals(
   const result: StatelessIntelligenceSignal[] = [];
   for (const item of candidates) {
     if (!item || !["geopolitics", "macro", "rare_earth"].includes(item.category)) continue;
-    const dayOnly = item.sourceId === "eu_top_news" && item.datePrecision === "day";
+    const dayOnly = item.datePrecision === "day" &&
+      ["eu_top_news","nrcan_releases","canada_foreign_statements"].includes(item.sourceId);
     const conservativeRelease = dayOnly ? conservativeDayReleaseMs(item.publishedAt) : null;
     const native = dayOnly ? Date.parse(item.publishedAt + "T00:00:00.000Z")
       : originalPublicationMs(item.publishedAt, now);
