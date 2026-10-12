@@ -25,9 +25,9 @@ const mineral: StatelessSourceSpec = {
 };
 
 describe("no-storage public Intelligence original-release reader", () => {
-  it("uses precisely the canonical >=60-minute website publication embargo", () => {
-    expect(STATELESS_WEBSITE_DELAY_MS).toBe(WEBSITE_RELEASE_DELAY_MS);
-    expect(STATELESS_WEBSITE_DELAY_MS).toBe(3_600_000);
+  it("enforces 15m public Intelligence delay independently of the frozen 60m Global Risk embargo", () => {
+    expect(STATELESS_WEBSITE_DELAY_MS).toBe(900_000);
+    expect(WEBSITE_RELEASE_DELAY_MS).toBe(3_600_000);
     expect(originalPublicationMs("2026-10-12T14:00:00.000Z", NOW))
       .toBe(Date.parse("2026-10-12T14:00:00Z"));
     expect(originalPublicationMs("2026-10-13T14:00:00Z", NOW)).toBeNull();
@@ -58,6 +58,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(parsed.dated).toHaveLength(1);
     const signals = deriveStatelessSignals(parsed.dated, NOW);
     expect(signals).toHaveLength(1);
+    expect(signals[0].title).toMatch(/^Geomacro finds /);
     expect(signals[0]).toMatchObject({
       category: "macro", topic: "monetary policy", severity: null,
       same_event_corrob_verified: false, status: "official_release_observed_unscored",
@@ -65,11 +66,11 @@ describe("no-storage public Intelligence original-release reader", () => {
     });
     expect(JSON.stringify(signals)).not.toContain("Federal Reserve releases");
     expect(JSON.stringify(signals)).not.toContain("federalreserve.gov/");
-    const early = parseFirstPartyFeed(xml.replace("14:00:00", "15:00:01"), fed, NOW);
+    const early = parseFirstPartyFeed(xml.replace("14:00:00", "15:45:01"), fed, NOW);
     expect(deriveStatelessSignals(early.dated, NOW)).toHaveLength(0);
   });
 
-  it("separates all three domains, groups only topic/day activity, and refuses fabricated evidence", () => {
+  it("separates domains and deduplicates only exact original URLs, not distinct same-topic releases", () => {
     const xml = '<rss><channel><item>' +
       '<title>USGS analysis of lithium and critical mineral supply</title>' +
       '<link>https://www.usgs.gov/news/minerals/lithium-supply</link>' +
@@ -80,6 +81,11 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(result[0].observed_release_count).toBe(1);
     expect(result[0].category).toBe("rare_earth");
     expect(result[0].sources_credited).toEqual(["U.S. Geological Survey"]);
+    const second = { ...parsed.dated[0], articleUrl: "https://www.usgs.gov/news/minerals/lithium-supply-update" };
+    const separate = deriveStatelessSignals([...parsed.dated, second], NOW);
+    expect(separate).toHaveLength(2);
+    expect(new Set(separate.map(row => row.id)).size).toBe(2);
+    expect(separate.every(row => row.title.startsWith("Geomacro finds "))).toBe(true);
     expect(deriveStatelessSignals([], NOW)).toEqual([]);
   });
 
@@ -94,7 +100,12 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(page).toContain("component: StatelessWebsiteIntelligencePage");
     expect(desk).toContain("getStatelessIntelligence({ data: { category } })");
     expect(desk).toContain("setInterval(");
-    expect(desk).toContain("Stateless official-source monitoring");
+    expect(desk).toContain("Latest Geomacro finds");
+    expect(desk).toContain("15-minute delayed");
+    expect(desk).not.toContain("RiskBadge");
+    expect(desk).not.toContain("RiskTrend");
+    expect(desk).not.toContain("Score evidence");
+    expect(desk).not.toContain("observed_release_count");
     expect(endpoint).toContain('createServerFn({ method: "GET" })');
     expect(source).toContain('cache: "no-store"');
     expect(source).toContain('redirect: "error"');
@@ -105,6 +116,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(source).toContain("first_published_at");
     expect(source).not.toContain("public_updated_at");
     expect(source).toContain("persistent_storage: false");
+    expect(source).toContain("now - STATELESS_WEBSITE_DELAY_MS");
     expect(desk).toContain("No database, B2, D1");
   });
 });
