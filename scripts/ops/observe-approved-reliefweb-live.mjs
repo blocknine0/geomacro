@@ -26,7 +26,7 @@ function validOriginalDate(value, now) {
   if (typeof value !== "string") return false;
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) && timestamp > 0 &&
-    timestamp <= now.getTime() + 5 * 60_000;
+    timestamp <= now.getTime();
 }
 function empty(status, checkedAt, code) {
   return {
