@@ -8,6 +8,7 @@ import {
   type StatelessCategory, type StatelessSourceCandidate,
   type StatelessSourceSpec, type StatelessIntelligenceSignal,
 } from "./stateless-intelligence-model";
+import { euCommissionTopOriginalCandidates } from "./stateless-eu-original-index.server";
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
 const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
@@ -48,6 +49,9 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "usgs_minerals", category: "rare_earth", media: "rss",
     url: "https://www.usgs.gov/news/minerals/feed",
     allowedHosts: ["www.usgs.gov"], credit: "U.S. Geological Survey" },
+  { id: "eu_top_news", category: "rare_earth", media: "html_index",
+    url: "https://single-market-economy.ec.europa.eu/index_en",
+    allowedHosts: ["single-market-economy.ec.europa.eu"], credit: "European Commission" },
   { id: "uk_dbt", category: "rare_earth", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
@@ -126,6 +130,28 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   candidates: StatelessSourceCandidate[]; healthy: boolean;
   metrics?: LaneMetrics;
 }> {
+  if (source.id === "eu_top_news" && source.media === "html_index") {
+    try {
+      const response = await fetch(source.url, {
+        method: "GET", redirect: "error", cache: "no-store",
+        headers: { Accept: "text/html" },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!/^text\/html(?:;|$)/iu.test(response.headers.get("content-type") ?? ""))
+        return { candidates: [], healthy: false };
+      const html = await boundedText(response, 512 * 1024);
+      if (!html) return { candidates: [], healthy: false };
+      const release = euCommissionTopOriginalCandidates(html, now);
+      return { healthy: true, candidates: release.candidates,
+        metrics: { seen: release.inspected_links,
+          relevant: release.candidates.length,
+          original_link_valid: release.candidates.length,
+          native_clock_valid: release.candidates.length,
+          undated_original: 0, recovered_original_page: 0,
+          transport_ok: true },
+      };
+    } catch { return { candidates: [], healthy: false }; }
+  }
   try {
     const response = await fetch(source.url, {
       method: "GET", redirect: "error", cache: "no-store",
