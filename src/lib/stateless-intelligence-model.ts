@@ -131,8 +131,15 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
     if (source.id === "usgs_minerals" && !/^\/news\//u.test(link.pathname)) return null;
-    if ((source.id === "ecb_press" || source.id === "ecb_stats") &&
-        !/^\/press\/(?:pr|key|stats)\/(?:date\/20\d{2}\/html\/|html\/)[A-Za-z0-9.~_-]{6,190}\.html$/u.test(link.pathname)) return null;
+    if (source.id === "ecb_press" || source.id === "ecb_stats") {
+      // ECB statistical releases use dedicated /press/stats/{bop,md,...}/
+      // YYYY/html/ecb.NAME~HASH.en.html first-party original-article paths.
+      // The prior generic /stats/html/ rule silently rejected all seven
+      // qualifying monetary/statistical feed links despite valid native dates.
+      const legacyOriginal = /^\/press\/(?:pr|key|stats)\/(?:date\/20\d{2}\/html\/|html\/)[A-Za-z0-9.~_-]{6,190}\.html$/u;
+      const statisticalOriginal = /^\/press\/stats\/[a-z]{2,16}\/20\d{2}\/html\/ecb\.[A-Za-z0-9._-]{3,110}~[a-f0-9]{8,16}\.[a-z]{2}\.html$/u;
+      if (!legacyOriginal.test(link.pathname) && !statisticalOriginal.test(link.pathname)) return null;
+    }
     if (source.id === "un_news" && !/^\/en\/story\/\d{4}\/\d{1,2}\//u.test(link.pathname)) return null;
     link.search = "";
     return link.href;
