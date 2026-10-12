@@ -501,6 +501,61 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Verify D1-derived Intelligence really renders on first HTML response
+        # Independent of legacy B2 scoring and x402 readiness. Build SHA alone
+        # is insufficient: an old page can retain a correct marker while the
+        # user sees no current derived news. This check emits only booleans.
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          journal="$(mktemp)"
+          page="$(mktemp)"
+          trap 'rm -f "$journal" "$page"' EXIT
+          d1_code="$(curl --fail-with-body --silent --show-error --max-time 14 \
+            -H 'Cache-Control: no-cache' \
+            -o "$journal" -w '%{http_code}' \
+            'https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news' || true)"
+          page_code="$(curl --fail-with-body --silent --show-error --max-time 20 \
+            -H 'Cache-Control: no-cache' -o "$page" -w '%{http_code}' \
+            "$BASE_URL/intelligence" || true)"
+          if [[ "$d1_code" != "200" || "$page_code" != "200" ]]; then
+            echo "::error::LIVE_DERIVED_NEWS_SSR_DEPENDENCY_UNAVAILABLE"
+            exit 1
+          fi
+          python - "$journal" "$page" <<'PY'
+          import html
+          import json
+          import pathlib
+          import sys
+          journal=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+          rendered=html.unescape(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8"))
+          stories=journal.get("signals")
+          if (journal.get("ok") is not True or
+              journal.get("schema")!="geomacro.website-derived-news-feed.v1" or
+              journal.get("original_release_delay_minutes")!=15 or
+              not isinstance(stories,list) or not stories):
+              raise SystemExit("LIVE_DERIVED_NEWS_D1_READBACK_MISSING")
+          if ("What changed in the world" not in rendered or
+              "GEOMACRO FINDS" not in rendered or
+              "Risk Intelligence" in rendered and
+              "No current verified scored development" in rendered):
+              raise SystemExit("LIVE_DERIVED_NEWS_OLD_SCORED_PAGE_STILL_PUBLISHED")
+          titles=[x.get("title") for x in stories if
+                  isinstance(x,dict) and isinstance(x.get("title"),str) and
+                  x["title"].startswith("Geomacro finds ")]
+          if not titles or not any(title in rendered for title in titles):
+              raise SystemExit("LIVE_DERIVED_NEWS_MISSING_FROM_FIRST_HTML_PAINT")
+          print(json.dumps({
+              "schema":"geomacro.website-derived-news-ssr-live-acceptance.v1",
+              "live_website_page":True,
+              "first_html_contains_derived_story":True,
+              "d1_derived_story_count":len(titles),
+              "original_delay_minutes":15,
+              "source_urls_or_raw_feed_logged":False
+          }))
+          PY
+
       - name: Verify rendered production page markers
         # Keep route/UI evidence observable even when an upstream data-plane
         # gate fails. The overall workflow still fails closed on that gate.
@@ -510,7 +565,7 @@ jobs:
           set -euo pipefail
           routes="$(cat <<'EOF'
           /|Global risk intelligence
-          /intelligence|Risk Intelligence
+          /intelligence|What changed in the world
           /global-risk|Geomacro Global Risk
           /risk-indices|Geomacro Risk Indices
           /ask-geomacro|Ask Geomacro

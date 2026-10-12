@@ -111,8 +111,11 @@ describe("production website runtime contract", () => {
   it("keeps route loaders fail-closed without collapsing the whole page", () => {
     const intelligence = read("src/routes/intelligence.tsx");
     const event = read("src/routes/event.$eventId.tsx");
-    expect(intelligence).toContain("On-demand Intelligence source check timed out.");
-    expect(intelligence).toContain("return { rows: [], now, stateless: null }");
+    expect(intelligence).toContain("Original publisher Intelligence source check timed out.");
+    expect(intelligence).toContain('stateless: source.status === "fulfilled" ? source.value : null');
+    expect(intelligence).toContain('journal: history.status === "fulfilled" ? history.value.signals : []');
+    expect(intelligence).toContain("Promise.allSettled");
+    expect(intelligence).toContain("initialJournal={loader.journal}");
     expect(intelligence).toContain("component: StatelessWebsiteIntelligencePage");
     expect(event).toContain("[event-route] preload failed; rendering unavailable state");
     expect(event).toContain("return null");
@@ -166,7 +169,7 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain('/api/public/risk-indices');
     expect(workflow).toContain('/api/public-ask');
     expect(workflow).toContain("This page didn't load");
-    expect(workflow).toContain("/intelligence|Risk Intelligence");
+    expect(workflow).toContain("/intelligence|What changed in the world");
     expect(workflow).toContain("/global-risk|");
     expect(workflow).toContain("/ask-geomacro|Ask Geomacro");
     expect(workflow).toContain("/pricing|Access & pricing");

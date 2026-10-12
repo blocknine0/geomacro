@@ -16,6 +16,7 @@ import {
 } from "@/lib/use-intelligence";
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
+import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { StatelessLiveDesk } from "@/components/intelligence/stateless-live-desk";
 import { useRiskIndices } from "@/lib/use-risk-indices";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
@@ -32,18 +33,27 @@ const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 export const Route = createFileRoute("/intelligence")({
   loader: async () => {
     const now = Date.now();
-    try {
-      // No historical B2/D1/Supabase reads or writes on the active
-      // website route. Only bounded official source requests in memory.
-      const stateless = await withPublicRuntimeTimeout(
+    // Website initial HTML must contain the independently published D1-derived
+    // NEWS journal (30 days) even if browser JS hydration or feeds fail.
+    // Direct original-publisher reads run in parallel, not ahead of history.
+    const [source, history] = await Promise.allSettled([
+      withPublicRuntimeTimeout(
         getStatelessIntelligence({ data: { category: "geopolitics" } }),
         8_000,
-        "On-demand Intelligence source check timed out.",
-      );
-      return { rows: [], now, stateless };
-    } catch {
-      return { rows: [], now, stateless: null };
-    }
+        "Original publisher Intelligence source check timed out.",
+      ),
+      withPublicRuntimeTimeout(
+        getWebsiteDerivedNews(),
+        6_000,
+        "Derived Intelligence journal read timed out.",
+      ),
+    ]);
+    return {
+      rows: [],
+      now,
+      stateless: source.status === "fulfilled" ? source.value : null,
+      journal: history.status === "fulfilled" ? history.value.signals : [],
+    };
   },
   head: () => ({
     meta: [
@@ -87,7 +97,7 @@ export const Route = createFileRoute("/intelligence")({
 
 function StatelessWebsiteIntelligencePage() {
   const loader = Route.useLoaderData();
-  return <StatelessLiveDesk initial={loader.stateless} />;
+  return <StatelessLiveDesk initial={loader.stateless} initialJournal={loader.journal} />;
 }
 
 function IntelligencePage() {
