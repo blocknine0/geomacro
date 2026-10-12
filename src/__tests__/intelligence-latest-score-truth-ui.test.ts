@@ -67,7 +67,7 @@ describe("#1414 Intelligence latest-score display truth", () => {
     expect(route).toContain("CURRENT VERIFIED INTELLIGENCE");
     expect(route).toContain("AWAITING VERIFIED STORIES");
     expect(route).toContain("Original publication time unavailable");
-    expect(route).toContain("selectedPool.filter((event) => event.category === category)");
+    expect(route).toContain("pool.filter((event) => event.category === category)");
     expect(route).not.toContain("Monitoring updated");
     expect(route).toContain("Earlier scores remain historical.");
   });
