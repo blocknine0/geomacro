@@ -2,6 +2,7 @@
 // Does NOT certify rights, correlate same events, score, publish or accept payment.
 // A GDELT failure remains visible even if alternate publisher transport works.
 import { probeOpenDiscoveryMesh } from "./market-signal-discovery.mjs";
+import {probeGdeltGkgBulk, GDELT_GKG_BULK_SCHEMA} from "./gdelt-gkg-bulk-discovery.mjs";
 import { probeOfficialThreeDomains } from "../ops/probe-official-native-rss-three-domains.mjs";
 
 const DOMAINS = Object.freeze(["geopolitics", "macro", "rare_earth"]);
@@ -58,6 +59,7 @@ export async function probeQuotaSafeDiscovery({
   now = new Date(),
   primaryProbe = probeOpenDiscoveryMesh,
   officialProbe = probeOfficialThreeDomains,
+  gkgProbe = probeGdeltGkgBulk,
 } = {}) {
   let primary;
   try {
@@ -72,6 +74,31 @@ export async function probeQuotaSafeDiscovery({
   if (primary?.source_reachability === "ALL_POLL_OK") {
     return { ...primary, independent_original_publisher_fallback: NOT_NEEDED };
   }
+  // Independent GDELT STATIC bulk update is NOT the rate-limited GDELT DOC
+  // search service. Even success certifies only recently indexed GKG themes,
+  // not original publisher publication time, event identity or source rights.
+  // The DOC 429 stays degraded; no status laundering.
+  let gkg;
+  try{
+    gkg=await gkgProbe({now});
+    if(gkg?.schema!==GDELT_GKG_BULK_SCHEMA ||
+       !["CURRENT_GKG_BATCH_SCANNED_PRIVATE_DISCOVERY_ONLY","GKG_BULK_DEGRADED"].includes(gkg.state) ||
+       gkg.chargeable!==false || gkg.public_published!==false ||
+       gkg.supabase_requests!==0 || gkg.b2_requests!==0 || gkg.d1_writes!==0 ||
+       gkg.payments_performed!==0 ||
+       (gkg.state==="CURRENT_GKG_BATCH_SCANNED_PRIVATE_DISCOVERY_ONLY" &&
+         (gkg.archive_integrity_verified!==true ||
+          !Array.isArray(gkg.domains)||gkg.domains.length!==3 ||
+          gkg.domains.some(x=>!DOMAINS.includes(x.category) ||
+            x.article_origin_publication_verified!==false ||
+            x.commercial_rights_verified!==false ||
+            x.current_scored_event_verified!==false))))
+       gkg={schema:GDELT_GKG_BULK_SCHEMA,state:"GKG_BULK_AUDIT_INVALID",
+         original_pubdate_verified:false,public_published:false,chargeable:false};
+  }catch{
+    gkg={schema:GDELT_GKG_BULK_SCHEMA,state:"GKG_BULK_UNAVAILABLE",
+      original_pubdate_verified:false,public_published:false,chargeable:false};
+  }
   let backup;
   try {
     // Three fixed categories, first-party URLs, bounded transport, zero model,
@@ -81,5 +108,6 @@ export async function probeQuotaSafeDiscovery({
     backup = { ...NOT_NEEDED, state: "ORIGINAL_SOURCE_UNAVAILABLE" };
   }
   return { ...primary, source_reachability: "DEGRADED",
+    gdelt_static_bulk_discovery:gkg,
     independent_original_publisher_fallback: backup };
 }
