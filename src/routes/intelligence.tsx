@@ -8,6 +8,7 @@ import {
   applyIntelFilters,
   availableSorts,
   buildPublicIntelligence,
+  latestOriginalEvidenceAt,
   prettyCategory,
   useIntelligence,
   type IntelEvent,
@@ -101,6 +102,7 @@ function IntelligencePage() {
   // The category choice scopes every news surface, not just the final cards.
   const selectedDomain = COMMERCIAL_DOMAINS.find((domain) => domain.key === category)!;
   const selectedPool = useMemo(() => pool.filter((event) => event.category === category), [pool, category]);
+  const selectedLatestEvidenceAt = latestOriginalEvidenceAt(selectedPool);
   const currentDesk = currentVerifiedDeskEvents(selectedPool);
   const leads = categoryLeads(currentDesk).filter((lead) => lead.key === category);
   const currentScored = currentDesk.length > 0;
@@ -122,7 +124,7 @@ function IntelligencePage() {
   const visibleFiltered = showHistoricalArchive ? filtered : currentVerifiedDeskEvents(filtered);
   const latestScoredByCategory = useMemo(() => {
     const latest = new Map<string, IntelEvent>();
-    for (const event of pool) {
+    for (const event of selectedPool) {
       if (event.publicStatus !== "verified_b2" || event.severity === null || !event.category) continue;
       // A B2 restore/new database createdAt is not original risk evidence.
       if (!event.publishedAt) continue;
@@ -135,7 +137,7 @@ function IntelligencePage() {
       }
     }
     return latest;
-  }, [pool]);
+  }, [selectedPool]);
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 md:py-12">
@@ -421,7 +423,7 @@ function IntelligencePage() {
             <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Risk domains</p>
               <div className="mt-4 space-y-3">
-                {COMMERCIAL_DOMAINS.map(({ key: domain }) => {
+                {COMMERCIAL_DOMAINS.filter(({ key }) => key === category).map(({ key: domain }) => {
                   const latest = latestScoredByCategory.get(domain) ?? null;
                   const visibleCount = selectedPool.filter((event) => event.category === domain).length;
                   return (
@@ -446,9 +448,9 @@ function IntelligencePage() {
                   );
                 })}
               </div>
-              {intel.updatedAt ? (
+              {selectedLatestEvidenceAt ? (
                 <p className="mt-4 border-t border-border/50 pt-3 text-xs leading-5 text-muted-foreground">
-                  Latest original evidence {formatTime(intel.updatedAt)}; monitoring or B2 restore time is not a new assessment. Earlier scores remain historical. Earlier assessments retain their original dates.
+                  Latest original evidence {formatTime(selectedLatestEvidenceAt)}; monitoring or B2 restore time is not a new assessment. Earlier scores remain historical. Earlier assessments retain their original dates.
                 </p>
               ) : null}
             </div>
