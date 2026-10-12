@@ -14,7 +14,7 @@ describe("operator public RSS candidate rotating bounded discovery",()=>{
   it("reuses exactly 10 permitted-to-probe user-submitted IDs, no original source duplicates or paid products",()=>{
     const ids=PUBLIC_FEED_ROTATION.map(x=>x.id);
     expect(ids).toHaveLength(10);
-    expect(new Set(ids).size).toBe(14);
+    expect(new Set(ids).size).toBe(10);
     const registry=JSON.parse(readFileSync("config/operator-76-source-attribution-intake.v1.json","utf8"));
     for(const f of PUBLIC_FEED_ROTATION){
       const entry=registry.entries.find((x:{id:string})=>x.id===f.id);
