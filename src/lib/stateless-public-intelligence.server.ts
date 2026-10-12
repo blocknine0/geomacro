@@ -242,6 +242,11 @@ type LaneMetrics = {
   native_clock_valid: number; undated_original: number;
   recovered_original_page: number; transport_ok: boolean;
   transport_failure_class?: "http_4xx" | "http_5xx" | "mime" | "body" | "timeout" | "redirect" | "network";
+  // Fixed XML envelope counts only, no payload/title/URL leak in CI.
+  feed_envelope?: "rss" | "atom" | "rdf" | "other";
+  feed_item_count?: number;
+  feed_entry_count?: number;
+  feed_doctype_seen?: boolean;
   // Optional anonymous first-party stage counters for read-only CI
   // diagnostics. Never log provider URLs, article IDs or raw content.
   canada_original_path_ok?: number;
@@ -316,6 +321,12 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
     return { healthy: true,
       candidates: [...parsed.dated, ...recovered.filter((x): x is StatelessSourceCandidate => x !== null)],
       metrics: { ...parsed.metrics, recovered_original_page: recovered.filter(Boolean).length, transport_ok: true,
+        feed_envelope: /<rss(?:\s|>)/iu.test(xml) ? "rss" :
+          /<(?:atom:)?feed(?:\s|>)/iu.test(xml) ? "atom" :
+          /<rdf:RDF(?:\s|>)/iu.test(xml) ? "rdf" : "other",
+        feed_item_count: [...xml.matchAll(/<item(?:\s[^>]*)?>/giu)].length,
+        feed_entry_count: [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>/giu)].length,
+        feed_doctype_seen: /<!DOCTYPE|<!ENTITY/iu.test(xml),
         ...(source.canadaOriginalPage ? {
           canada_original_path_ok:canadaStage.path_ok,
           canada_original_http_ok:canadaStage.http_ok,
