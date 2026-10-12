@@ -38,7 +38,10 @@ describe("#1827 B2 class-B concurrent read coalescing", () => {
   it("continues to require existing signed B2 checks, bounded positive cache and fail-closed circuit", () => {
     const source = readFileSync("src/lib/b2-live.server.ts", "utf8");
     expect(source).toContain("shareSignedB2Read(key, () => signedGetOnce(key))");
-    expect(source).toContain("if (!cfg || !allowedKey(key) || circuitOpen()) return null");
+    expect(source).toContain("if (!cfg || !allowedKey(key)) return null");
+    expect(source).toContain("if (providerQuotaCooldownUntil > Date.now() || circuitOpen()) return null;");
+    expect(source.indexOf("const cached = cache.get(key);"))
+      .toBeLessThan(source.indexOf("providerQuotaCooldownUntil > Date.now() || circuitOpen()"));
     expect(source).toContain("cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, bytes })");
     expect(source).toContain('Authorization: `AWS4-HMAC-SHA256');
     expect(source).toContain("if (!bytes.length || bytes.length > MAX_COMPRESSED_BYTES)");
