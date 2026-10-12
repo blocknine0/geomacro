@@ -78,6 +78,13 @@ describe("#1827 private source inventory versus customer-only derived structured
     }
   });
 
+  it("rejects inherited-property and unexpected product names without leaking source details",()=>{
+    for(const key of ["__proto__","constructor","source_map",""]){
+      expect(()=>publicIntelligenceSourceCoverage(key as any))
+        .toThrow("INTELLIGENCE_CATEGORY_INVALID");
+    }
+  });
+
   it.each(domains)("binds %s customer API to its fixed product scope without source credits",domain=>{
     const coverage=publicIntelligenceSourceCoverage(domain);
     const api=readFileSync(`src/routes/api.v1.intelligence.${domain}.ts`,"utf8");
