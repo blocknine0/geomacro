@@ -103,14 +103,14 @@ export function SourceNetworkMonitor() {
   return (
     <section className="mt-8 rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5"
       aria-labelledby="source-intake-coverage-heading">
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Source network · discovery only</p>
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Private monitoring · verification only</p>
       <h2 id="source-intake-coverage-heading" className="mt-1 text-xl font-semibold">
-        Three-domain monitoring coverage
+        Intelligence verification status
       </h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        Catalogued monitoring entries, not unique news stories or approved publishers.
-        Actual intelligence appears in the verified news desk only after its separate
-        evidence, publication-time and scoring checks succeed.
+        Geomacro monitors developments privately. Only independently verified,
+        derived assessments appear in the intelligence desk. This public view
+        does not disclose the underlying data-provider inventory or raw materials.
       </p>
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         {PUBLIC_SOURCE_COVERAGE_DOMAINS.map(row => {
@@ -118,15 +118,14 @@ export function SourceNetworkMonitor() {
           return (
             <article key={row.category} className="rounded-xl border border-border/70 bg-background/30 p-4">
               <p className="text-sm font-semibold">{row.label}</p>
-              <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">{row.catalogued_entries}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Registered source-lane entries · historical snapshot</p>
+              <p className="mt-1 text-xs text-muted-foreground">Monitoring is observational, not a verified risk score.</p>
               <p className="mt-3 text-xs leading-5 text-muted-foreground" role="status">
                 {live.label}
-                {live.topicCount !== null && live.topicCount > 0 ? ` · ${live.topicCount} item(s)` : ""}
+
               </p>
               {live.lastChecked ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Last publisher check: <time dateTime={live.lastChecked}>
+                  Last monitoring check: <time dateTime={live.lastChecked}>
                     {new Date(live.lastChecked).toLocaleString("en-GB", {timeZone:"UTC"})} UTC
                   </time>
                 </p>
@@ -136,17 +135,9 @@ export function SourceNetworkMonitor() {
         })}
       </div>
       <p className="mt-3 text-xs leading-5 text-muted-foreground">
-        Source inventory last verified{" "}
-        <time dateTime={PUBLIC_SOURCE_COVERAGE_DOMAINS[0].catalogued_as_of}>
-          {new Date(PUBLIC_SOURCE_COVERAGE_DOMAINS[0].catalogued_as_of).toLocaleString("en-GB", {timeZone:"UTC"})} UTC
-        </time>
-        . Private Telegram/historical registry refresh is not verified; some entries
-        overlap across catalogs. Best-effort original-publisher checks target every
-        30 minutes, but source transport or GitHub scheduling may be delayed.
-        <a href={PUBLIC_SOURCE_COVERAGE_DOMAINS[0].evidence_receipt_url}
-          target="_blank" rel="noreferrer" className="ml-1 text-primary underline underline-offset-2">
-          Inspect intake evidence
-        </a>
+        Monitoring checks are best-effort and may be delayed. A monitoring
+        update is not a scored event, independent evidence review or proof
+        of x402 availability. Source identities and internal receipts remain private.
       </p>
     </section>
   );

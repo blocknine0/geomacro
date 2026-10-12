@@ -5,73 +5,104 @@ import {
   publicIntelligenceSourceCoverage,
 } from "../lib/public-intelligence-source-coverage";
 
-describe("#1827 public source discovery vs real paid intelligence boundary", () => {
-  it("publishes exact independently checked 778 catalog entries by 3 domains", () => {
-    const counts = PUBLIC_SOURCE_COVERAGE_DOMAINS.map(row => row.catalogued_entries);
-    expect(counts).toEqual([376, 355, 47]);
-    expect(counts.reduce((a, b) => a + b, 0)).toBe(778);
-    expect(PUBLIC_SOURCE_COVERAGE_DOMAINS.map(x => x.category)).toEqual([
-      "geopolitics", "macro-fx", "critical-minerals",
-    ]);
-    for (const row of PUBLIC_SOURCE_COVERAGE_DOMAINS) {
-      const lanes = Object.values(row.catalogued_by_lane);
-      expect(lanes.reduce((a,b) => a + b, 0)).toBe(row.catalogued_entries);
-      expect(row.catalogued_as_of).toBe("2026-10-10T16:21:28.311Z");
-      expect(row.evidence_receipt_url).toBe("https://github.com/blocknine0/geomacro/actions/runs/38067310841");
-      expect(row.catalog_mode).toBe("PINNED_SANITIZED_REPOSITORY_SNAPSHOT");
+const privateReceipt=JSON.parse(readFileSync(
+  "config/public-intelligence-source-intake-coverage.v1.json","utf8",
+)) as any;
+const domains=["geopolitics","macro-fx","critical-minerals"] as const;
+
+describe("#1827 private source inventory versus customer-only derived structured output",()=>{
+  it("retains the real 1059-reference independent production intake receipt privately",()=>{
+    expect(privateReceipt.schema).toBe("geomacro.public-source-intake-coverage.v1");
+    expect(privateReceipt.totals.catalog_entries).toBe(1059);
+    expect(domains.map(x=>privateReceipt.domains[x].total))
+      .toEqual([467,459,133]);
+    expect(privateReceipt.source_receipt.observed_at)
+      .toBe("2026-10-12T08:23:20.646Z");
+    expect(privateReceipt.source_receipt.workflow_run_url)
+      .toBe("https://github.com/blocknine0/geomacro/actions/runs/38223231621");
+    expect(privateReceipt.source_receipt.latest_private_repo_sync_verified).toBe(true);
+    expect(privateReceipt.source_receipt.realtime_event_publication_verified).toBe(false);
+    expect(privateReceipt.totals.operator_named_corridors_catalogued_not_publishers).toBe(58);
+    for(const domain of domains){
+      const x=privateReceipt.domains[domain];
+      const {total,label,...lanes}=x;
+      expect(Object.values(lanes).reduce((n:number,v:any)=>n+Number(v),0)).toBe(total);
     }
   });
 
-  it("never converts a source registration into fresh news, a signed GRO, or paid availability", () => {
-    for (const entry of PUBLIC_SOURCE_COVERAGE_DOMAINS) {
-      expect(entry.current_private_repository_sync_verified).toBe(false);
+  it("never packages private registry/source inventory or receipt URLs into customer GET or browser bundle",()=>{
+    const publicCode=readFileSync("src/lib/public-intelligence-source-coverage.ts","utf8");
+    const monitor=readFileSync("src/components/intelligence/source-network-monitor.tsx","utf8");
+    expect(publicCode).not.toContain('import intakeReceipt from');
+    expect(publicCode).not.toContain("config/public-intelligence-source-intake-coverage");
+    for(const prohibited of [
+      "catalogued_entries","catalogued_by_lane","evidence_receipt_url",
+      "catalogued_as_of","latest_private_repo_sync_verified",
+      "telegram_candidates_unapproved","operator_corridor","operator_country",
+    ]){
+      expect(publicCode).not.toContain(prohibited);
+      expect(monitor).not.toContain(prohibited);
+    }
+    expect(monitor).toContain("Intelligence verification status");
+    expect(monitor).toContain("Source identities and internal receipts remain private.");
+    expect(monitor).not.toContain("Inspect intake evidence");
+    expect(monitor).not.toContain("Registered source-lane entries");
+    expect(monitor).not.toContain("catalogued_entries");
+    expect(monitor).toContain("classifySourcePulse(data, row.category)");
+    expect(monitor).toContain('method: "GET"');
+    expect(monitor).not.toContain('method: "POST"');
+  });
+
+  it("returns three category-scoped discovery abilities with no source identity, URL, count or raw content",()=>{
+    expect(PUBLIC_SOURCE_COVERAGE_DOMAINS.map(x=>x.category)).toEqual([...domains]);
+    for(const entry of PUBLIC_SOURCE_COVERAGE_DOMAINS){
+      expect(entry.schema).toBe("geomacro.public-intelligence-monitoring-capability.v1");
+      expect(entry.source_identity_disclosed).toBe(false);
+      expect(entry.raw_third_party_content_delivered).toBe(false);
+      expect(entry.monitoring_is_not_scored_intelligence).toBe(true);
       expect(entry.current_event_observed_by_this_catalog).toBe(false);
       expect(entry.current_scored_intelligence_from_this_catalog).toBe(false);
-      expect(entry.catalog_entry_is_distinct_publisher).toBe(false);
       expect(entry.paid_intelligence_authorized_by_catalog).toBe(false);
       expect(entry.requires_independent_paid_availability).toBe(true);
-      expect(entry.intelligence_delivery_mode).toBe("EXISTING_VERIFIED_RISK_OBJECT_GATE_ONLY");
       expect(entry.intelligence_query_method).toBe("POST");
-      expect(entry.source_catalog_snapshot_automatically_updates_this_api).toBe(false);
+      expect(entry.intelligence_delivery_mode).toBe("EXISTING_VERIFIED_RISK_OBJECT_GATE_ONLY");
+      const json=JSON.stringify(entry);
+      expect(json).not.toMatch(/https?:\/\//i);
+      expect(json).not.toContain("1827");
+      expect(json).not.toContain("source_name");
+      expect(json).not.toContain("publisher_name");
+      expect(json).not.toContain("source_ref");
+      expect(json).not.toContain("github.com");
+      expect(json).not.toContain("telegram");
+      expect(json).not.toContain("1059");
     }
   });
 
-  it.each([
-    ["geopolitics", "/api/v1/intelligence/geopolitics", 376],
-    ["macro-fx", "/api/v1/intelligence/macro-fx", 355],
-    ["critical-minerals", "/api/v1/intelligence/critical-minerals", 47],
-  ] as const)("aligns %s with its single canonical-scoped public endpoint", (category, path, total) => {
-    const coverage = publicIntelligenceSourceCoverage(category);
-    const api = readFileSync(`src/routes/api.v1.intelligence.${category}.ts`, "utf8");
-    expect(api).toContain(`path: "${path}"`);
-    expect(api).toContain(`category: "${category}"`);
-    expect(coverage.catalogued_entries).toBe(total);
-    expect(coverage.intelligence_query_path).toBe(path);
+  it("rejects inherited-property and unexpected product names without leaking source details",()=>{
+    for(const key of ["__proto__","constructor","source_map",""]){
+      expect(()=>publicIntelligenceSourceCoverage(key as any))
+        .toThrow("INTELLIGENCE_CATEGORY_INVALID");
+    }
   });
 
-  it("keeps the GET discovery as an annotated sideband; POST still delegates to canonical x402", () => {
-    const handlers = readFileSync("src/lib/category-intelligence-alias.server.ts", "utf8");
-    expect(handlers).toContain("source_intake: publicIntelligenceSourceCoverage(");
-    expect(handlers).toContain("return mainnetIntelligenceHandlers.POST({ request: canonicalRequest })");
-    expect(handlers).toContain("if (!response.ok) return response");
-    expect(handlers).toContain("availability_check: \"POST_WITHOUT_PAYMENT_SIGNATURE\"");
+  it.each(domains)("binds %s customer API to its fixed product scope without source credits",domain=>{
+    const coverage=publicIntelligenceSourceCoverage(domain);
+    const api=readFileSync(`src/routes/api.v1.intelligence.${domain}.ts`,"utf8");
+    expect(api).toContain(`path: "${coverage.intelligence_query_path}"`);
+    expect(api).toContain(`category: "${domain}"`);
+    expect(coverage.intelligence_query_path).toBe(`/api/v1/intelligence/${domain}`);
   });
 
-  it("shows source counts separately on the website while keeping only independently verified stories in the news desk", () => {
-    const page = readFileSync("src/routes/intelligence.tsx", "utf8");
+  it("retains canonical POST paid/no-charge verification while public GET is source-private",()=>{
+    const handler=readFileSync("src/lib/category-intelligence-alias.server.ts","utf8");
+    expect(handler).toContain("source_intake: publicIntelligenceSourceCoverage(");
+    expect(handler).toContain("return mainnetIntelligenceHandlers.POST({ request: canonicalRequest })");
+    expect(handler).toContain("if (!response.ok) return response");
+    expect(handler).toContain('availability_check: "POST_WITHOUT_PAYMENT_SIGNATURE"');
+    const pulse=readFileSync("src/lib/current-30min-original-source-pulse.server.ts","utf8");
+    expect(pulse).not.toContain("source_status_endpoint:PULSE_URL");
+    const page=readFileSync("src/routes/intelligence.tsx","utf8");
     expect(page).toContain("<SourceNetworkMonitor />");
-    const monitor = readFileSync("src/components/intelligence/source-network-monitor.tsx", "utf8");
-    expect(monitor).toContain("source-intake-coverage-heading");
-    expect(monitor).toContain("PUBLIC_SOURCE_COVERAGE_DOMAINS.map");
-    expect(monitor).toContain("Registered source-lane entries · historical snapshot");
-    expect(monitor).toContain("not unique news stories or approved publishers");
-    expect(monitor).toContain("classifySourcePulse(data, row.category)");
-    expect(monitor).toContain("method: \"GET\"");
-    expect(monitor).not.toContain("method: \"POST\"");
-    expect(page).toContain("Verified news developments");
-    expect(page).toContain("publicHeadline(event.title)");
     expect(page).toContain("currentVerifiedDeskEvents(pool)");
-    const handlers = readFileSync("src/lib/category-intelligence-alias.server.ts", "utf8");
-    expect(handlers).toContain("source_intake: publicIntelligenceSourceCoverage(");
   });
 });
