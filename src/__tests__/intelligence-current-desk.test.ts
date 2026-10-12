@@ -35,7 +35,7 @@ describe("#1827 public Intelligence current desk never replays archive data", ()
   });
   it("renders current-first landing, hidden dated archive and explicit no-current state",()=>{
     const route=readFileSync("src/routes/intelligence.tsx","utf8");
-    expect(route).toContain("currentVerifiedDeskEvents(pool)");
+    expect(route).toContain("currentVerifiedDeskEvents(selectedPool)");
     expect(route).toContain("categoryLeads(currentDesk)");
     expect(route).toContain("visibleFiltered = showHistoricalArchive ? filtered : currentVerifiedDeskEvents(filtered)");
     expect(route).toContain("Verified news developments");
