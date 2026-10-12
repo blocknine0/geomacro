@@ -15,7 +15,7 @@ export function evaluateGovernedB2Headroom(status, {
 } = {}) {
   if (!(now instanceof Date) || !Number.isFinite(now.getTime()) ||
       !positiveInteger(getRequests) || !positiveInteger(putRequests) ||
-      getRequests < 2 || putRequests < 2 ||
+      getRequests < 1 || putRequests < 1 ||
       getRequests !== putRequests || getRequests + putRequests > 20) {
     throw new Error("GOVERNED_B2_HEADROOM_REQUEST_PLAN_INVALID");
   }
