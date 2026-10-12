@@ -25,9 +25,9 @@ export const getWebsiteDerivedNews = createServerFn({ method: "GET" })
     });
     if (!response.ok) throw Error("DERIVED_NEWS_FEED_UNAVAILABLE");
     const length = Number(response.headers.get("content-length") ?? "0");
-    if (length > 150_000) throw Error("DERIVED_NEWS_FEED_TOO_LARGE");
+    if (length > 512_000) throw Error("DERIVED_NEWS_FEED_TOO_LARGE");
     const raw = await response.text();
-    if (raw.length > 150_000) throw Error("DERIVED_NEWS_FEED_TOO_LARGE");
+    if (raw.length > 512_000) throw Error("DERIVED_NEWS_FEED_TOO_LARGE");
     const data = JSON.parse(raw) as WebsiteDerivedNewsResult;
     if (data.ok !== true ||
         data.schema !== "geomacro.website-derived-news-feed.v1" ||
