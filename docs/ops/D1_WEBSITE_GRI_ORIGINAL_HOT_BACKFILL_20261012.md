@@ -30,3 +30,22 @@ provider data cannot pass the acceptance.
 
 Neither signed GRO machine reads nor x402 prices, live payment acceptance,
 Supabase SQL/database, B2 archives and public pricing are touched.
+
+## When the old hot row ages past 60 minutes *after* migration
+
+A one-time SQL backfill cannot copy a hot row which was still under the
+60-minute embargo during the migration. That copy would remain absent
+forever if B2 quota prevented subsequent verified publishes. The public
+website-only GRI GET now performs **at most one additional read-only D1
+SELECT** against the pre-existing `public_b2_hot_snapshot` after a ring
+miss. The row must still be an ORIGINAL `direct-b2-readback` GRI
+(`proof_schema` and exact original GRI S3 object key both match), and
+its immutable `source_as_of` must now be at least one hour old.
+
+The GET rechecks the exact stored SHA-256 bytes, applies the same
+`privateVerifiedGriHistoryProjection` evidence clock and source-redaction
+validator and returns a derived score only if all guards pass. No background
+timer, extra hot-row write, B2 Class B request, new D1 table, synthetic
+historical clock, Supabase query or paid side effect is introduced.
+A genuine D1 quota outage still returns HTTP 503; an invalid/unqualified
+row must also fail closed.
