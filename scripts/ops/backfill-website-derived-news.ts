@@ -31,9 +31,12 @@ const TOKEN=ROOT.length>=32
 const D1="https://geomacro-control-plane.daspallab202391.workers.dev";
 const OGL="Contains public sector information licensed under the Open Government Licence v3.0.";
 const TODAY=Date.now();
-// Last independent scored releases were Oct 5; start four days earlier to
-// avoid omitting releases around the uncertain outage boundary.
-const START="2026-10-01";
+// Supabase stopped providing a reliable news continuum before this reader
+// launched. Scan the COMPLETE bounded 30-day website retention window so
+// any gap in the shutdown-to-present period can be reconstructed from
+// independently verified original publication dates, not archive updated_at.
+const DAY_MS=86_400_000;
+const START=new Date(TODAY-29*DAY_MS).toISOString().slice(0,10);
 const START_MS=Date.parse(START+"T00:00:00.000Z");
 const END=new Date(TODAY).toISOString().slice(0,10);
 const ORGS=Object.freeze([
@@ -112,39 +115,58 @@ async function originalCandidate(candidate:SafeCandidate, spec:StatelessSourceSp
 async function archivedCandidates(org:string,category:StatelessCategory,id:string){
   const spec=source(id,category);
   const found=new Map<string,SafeCandidate>();
-  let searchOk=false;
-  for(const start of [0,80]){
-    const url=new URL("https://www.gov.uk/api/search.json");
-    url.searchParams.set("filter_organisations",org);
-    url.searchParams.set("filter_public_timestamp","from:"+START+",to:"+END);
-    url.searchParams.set("order","-public_timestamp");
-    url.searchParams.set("count","80");
-    url.searchParams.set("start",String(start));
-    url.searchParams.append("fields","title");
-    url.searchParams.append("fields","link");
-    try{
-      const doc=await safeJson(url,360_000);
-      if(!doc||!Array.isArray(doc.results))break;
-      searchOk=true;
-      for(const row of doc.results){
-        if(!row||typeof row.title!=="string"||typeof row.link!=="string")continue;
-        if(!selectOfficialTopic(row.title,category))continue;
-        if(!govPath(row.link))continue;
-        found.set(row.link,{title:row.title,link:row.link});
-      }
-      if(doc.results.length<80)break;
-    }catch{break;}
+  let searchOk=false, pagesRead=0, searchedWindows=0;
+  // A single newest-160 search truncates busy news sources and leaves false
+  // dates with no coverage. Split the verified 30d window into seven-day
+  // publication-update windows. Search timestamps DISCOVER candidates only:
+  // Content API first_published_at always controls news release date.
+  // Fifteen matching articles per window keeps reads bounded for free tiers.
+  const sourceWindows:{from:string;to:string}[]=[];
+  for(let ms=START_MS;ms<=TODAY;ms+=7*DAY_MS){
+    sourceWindows.push({
+      from:new Date(ms).toISOString().slice(0,10),
+      to:new Date(Math.min(ms+7*DAY_MS-1,TODAY)).toISOString().slice(0,10),
+    });
   }
-  // Bounded, gentle first-party Content API corroboration; source-specific
-  // search candidates never reach persistent storage or Actions output.
-  const foundValues=[...found.values()].slice(0,45);
+  for(const window of sourceWindows){
+    searchedWindows++;
+    const matches=new Map<string,SafeCandidate>();
+    for(const start of [0,80]){
+      const url=new URL("https://www.gov.uk/api/search.json");
+      url.searchParams.set("filter_organisations",org);
+      url.searchParams.set("filter_public_timestamp","from:"+window.from+",to:"+window.to);
+      url.searchParams.set("order","-public_timestamp");
+      url.searchParams.set("count","80");
+      url.searchParams.set("start",String(start));
+      url.searchParams.append("fields","title");
+      url.searchParams.append("fields","link");
+      try{
+        const doc=await safeJson(url,360_000);
+        if(!doc||!Array.isArray(doc.results))break;
+        searchOk=true;
+        pagesRead++;
+        for(const row of doc.results){
+          if(!row||typeof row.title!=="string"||typeof row.link!=="string")continue;
+          if(!selectOfficialTopic(row.title,category)||!govPath(row.link))continue;
+          matches.set(row.link,{title:row.title,link:row.link});
+        }
+        if(doc.results.length<80)break;
+      }catch{break;}
+    }
+    // Preserve candidates across early and late outage periods, instead of
+    // accidentally filling the journal exclusively with the newest week.
+    for(const [key,value] of [...matches].slice(0,15))found.set(key,value);
+  }
+  const foundValues=[...found.values()];
   const eligible:StatelessSourceCandidate[]=[];
+  // Five concurrent original-article checks maximum, with bounded 7s fetches.
   for(let i=0;i<foundValues.length;i+=5){
     const batch=await Promise.all(foundValues.slice(i,i+5)
       .map(x=>originalCandidate(x,spec)));
     eligible.push(...batch.filter((x):x is StatelessSourceCandidate=>x!==null));
   }
-  return {eligible,searchOk,inspected:foundValues.length};
+  return {eligible,searchOk,inspected:foundValues.length,
+    pagesRead,searchedWindows};
 }
 async function publish(signals:ReturnType<typeof deriveStatelessSignals>){
   if(DRY_RUN)return;
@@ -171,7 +193,8 @@ for(const [org,category,id] of ORGS){
   // Logs contain NO provider ID, article titles/URLs, source hosts or raw JSON.
   console.log(JSON.stringify({schema:"geomacro.news-backfill-lane.v1",
     category,search_available:result.searchOk,
-    inspected_candidates:result.inspected,original_date_verified:result.eligible.length}));
+    inspected_candidates:result.inspected,original_date_verified:result.eligible.length,
+    search_pages_checked:result.pagesRead,date_windows_checked:result.searchedWindows}));
 }
 for(const category of ["geopolitics","macro","rare_earth"] as const){
   // Direct current publisher reader ensures same event stable IDs with
