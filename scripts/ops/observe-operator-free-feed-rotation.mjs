@@ -10,7 +10,6 @@ const MAX_BYTES=768*1024;
 const MAX_ITEMS=40;
 const OUTPUT="artifacts/expanded-official-source/operator-free-feed-rotation.json";
 const FEEDS=Object.freeze([
-  {id:"news_bbc",url:"https://feeds.bbci.co.uk/news/world/rss.xml",format:"xml",group:0},
   {id:"fed_press",url:"https://www.federalreserve.gov/feeds/press_all.xml",format:"xml",group:0},
   {id:"ofac_recent_actions",url:"https://ofac.treasury.gov/recent-actions",format:"html",group:0},
   {id:"bls",url:"https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",format:"json",group:0},
