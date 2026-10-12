@@ -11,9 +11,9 @@ const rss=`<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title>
 </channel></rss>`;
 
 describe("operator public RSS candidate rotating bounded discovery",()=>{
-  it("reuses exactly 11 permitted-to-probe user-submitted IDs, no original source duplicates or paid products",()=>{
+  it("reuses exactly 10 permitted-to-probe user-submitted IDs, no original source duplicates or paid products",()=>{
     const ids=PUBLIC_FEED_ROTATION.map(x=>x.id);
-    expect(ids).toHaveLength(11);
+    expect(ids).toHaveLength(10);
     expect(new Set(ids).size).toBe(14);
     const registry=JSON.parse(readFileSync("config/operator-76-source-attribution-intake.v1.json","utf8"));
     for(const f of PUBLIC_FEED_ROTATION){
@@ -23,9 +23,12 @@ describe("operator public RSS candidate rotating bounded discovery",()=>{
       expect(entry.candidate_endpoint).toBe(f.url);
       expect(f.url.startsWith("https://")).toBe(true);
     }
+    expect(ids).not.toContain("news_bbc");
     expect(ids).not.toContain("news_scmp");
     expect(ids).not.toContain("re_news_mining");
     expect(ids).not.toContain("news_nikkei");
+    expect(registry.entries.find((x:{id:string})=>x.id==="news_bbc").runtime_state)
+      .toBe("HOLD_BUSINESS_RSS_LICENSE_REQUIRED");
     expect(registry.entries.find((x:{id:string})=>x.id==="news_scmp").runtime_state)
       .toBe("HOLD_COMMERCIAL_AUTOMATED_ACCESS_PROHIBITED");
     expect(registry.entries.find((x:{id:string})=>x.id==="news_nikkei").runtime_state)
@@ -48,12 +51,10 @@ describe("operator public RSS candidate rotating bounded discovery",()=>{
       return new Response(rss);
     });
     const r=await observeOperatorFreeFeedRotation({group:0,now,fetchImpl:mock as typeof fetch});
-    expect(r.source_count).toBe(4);
-    expect(r.http_requests).toBe(4);
-    expect(mock).toHaveBeenCalledTimes(4);
+    expect(r.source_count).toBe(3);
+    expect(r.http_requests).toBe(3);
+    expect(mock).toHaveBeenCalledTimes(3);
     expect(r.status).toBe("GROUP_TRANSPORT_OK");
-    expect(r.sources.find(s=>s.id==="news_bbc")?.native_dated_24h_items).toBe(1);
-    expect(r.sources.find(s=>s.id==="news_bbc")?.provisional_topic_matches).toMatchObject({macro:1,rare_earth:1});
     expect(r.sources.find(s=>s.id==="bls")?.native_dated_24h_items).toBeNull();
     expect(r.sources.find(s=>s.id==="ofac_recent_actions")?.transport_state).toBe("HTML_HEALTH_ONLY");
     expect(r.raw_publisher_payload_persisted).toBe(false);
