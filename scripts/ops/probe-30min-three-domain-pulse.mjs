@@ -160,6 +160,14 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
         :null,
       original_page_checked:safeInt(item.original_page_precise_date_checks),
       original_page_verified:safeInt(item.original_page_precise_date_24h),
+      // Pinned UN News *same-issuer* broader discovery. These are not
+      // independent source/reviewer/evidence or paid-eligibility claims.
+      same_issuer_zero_fresh_expansion_attempted:
+        item.source_id==="un_news_security_original_rss_review" &&
+        item.official_same_publisher_zero_fresh_expansion_attempted===true,
+      same_issuer_zero_fresh_expansion_used:
+        item.source_id==="un_news_security_original_rss_review" &&
+        item.official_same_publisher_zero_fresh_expansion_used===true,
       atom_undated_valid_article_link_candidates:
         safeInt(item.undated_atom_article_link_candidates),
       atom_original_link_diagnostics:item.undated_atom_link_diagnostic
