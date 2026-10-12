@@ -281,19 +281,6 @@ export async function readB2PublicIntelligence(): Promise<PublicIntelligenceRow[
   return readPublicIntelligenceEdge();
 }
 
-function validatedGlobalRiskPayload(
-  payload: { schema?: string; generated_at?: string; data?: GlobalRisk } | null,
-  expectedSchema: string,
-): GlobalRisk | null {
-  if (
-    payload?.schema !== expectedSchema ||
-    !recentEnough(payload.generated_at, PUBLIC_RISK_FALLBACK_MAX_AGE_MS) ||
-    !payload.data ||
-    !validateGlobalRiskContinuity(payload.data).ok
-  ) return null;
-  return payload.data;
-}
-
 /** Public risk read has the same shared-account quota boundary as
  * the intelligence reader. The verified edge, not this app runtime, owns
  * D1 hot / POP cache / quota-governed B2 cold recovery. This removes
