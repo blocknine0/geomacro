@@ -262,8 +262,9 @@ function developmentKind(title: string): string {
   return DEVELOPMENTS.find(([pattern]) => pattern.test(title))?.[1] ?? "official update";
 }
 function developmentSummary(focus: string, kind: string, geography: string | null): string {
-  const context = geography ? \` mentioning \${geography}\` : "";
-  return \`An official publisher issued a \${kind} concerning \${focus}\${context}. This is a release-based finding; its real-world effect is not yet independently confirmed.\`;
+  const context = geography ? " mentioning " + geography : "";
+  return "An official publisher issued a " + kind + " concerning " + focus +
+    context + ". This is a release-based finding; its real-world effect is not yet independently confirmed.";
 }
 function viewIdentifier(input: string): string {
   // FNV-1a is used solely to avoid exposing raw article URLs in the public
