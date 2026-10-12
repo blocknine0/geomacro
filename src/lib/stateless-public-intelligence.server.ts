@@ -13,6 +13,12 @@ import { readPibMinesOriginalCandidates } from "./stateless-pib-mines-original.s
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
 const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
+  // Additional independent foreign-affairs jurisdiction, source URL from
+  // the Government of Canada's published Global Affairs RSS/Atom directory.
+  { id: "canada_foreign_statements", category: "geopolitics", media: "atom",
+    url: "https://api.io.canada.ca/io-server/gc/news/en/v2?atomtitle=Global+Affairs+Canada+statements&dept=departmentofforeignaffairstradeanddevelopment&format=atom&orderBy=desc&pick=50&publishedDate%3E=2015-01-01&sort=publishedDate&type=statements",
+    allowedHosts: ["www.canada.ca", "www.international.gc.ca", "international.canada.ca",
+      "api.io.canada.ca"], credit: "Global Affairs Canada" },
   { id: "uk_fcdo", category: "geopolitics", media: "atom",
     url: "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
@@ -28,6 +34,20 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_home", category: "geopolitics", media: "atom",
     url: "https://www.gov.uk/government/organisations/home-office.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  // Statistics Canada's documented subject-specific first-party Daily Atom feeds.
+  // Only article <published> (never <updated>) controls release age.
+  { id: "statcan_prices", category: "macro", media: "atom",
+    url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/18-eng.atom",
+    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
+  { id: "statcan_accounts", category: "macro", media: "atom",
+    url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/36-eng.atom",
+    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
+  { id: "statcan_trade", category: "macro", media: "atom",
+    url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/12-eng.atom",
+    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
+  { id: "statcan_labour", category: "macro", media: "atom",
+    url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/14-eng.atom",
+    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
   { id: "fed_press", category: "macro", media: "rss",
     url: "https://www.federalreserve.gov/feeds/press_all.xml",
     allowedHosts: ["www.federalreserve.gov"], credit: "Federal Reserve Board" },
@@ -43,6 +63,12 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_dbt_macro", category: "macro", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  // Natural Resources Canada's official news-release Atom feed (not a
+  // search-engine snippet and not a dataset modification timestamp).
+  { id: "nrcan_releases", category: "rare_earth", media: "atom",
+    url: "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+    allowedHosts: ["www.canada.ca", "natural-resources.canada.ca", "www.nrcan.gc.ca",
+      "api.io.canada.ca"], credit: "Natural Resources Canada" },
   { id: "nrcan_science", category: "rare_earth", media: "rss",
     url: "https://natural-resources.canada.ca/simply-science/rss.xml",
     allowedHosts: ["natural-resources.canada.ca", "www.natural-resources.canada.ca"],
