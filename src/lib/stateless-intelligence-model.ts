@@ -31,6 +31,9 @@ export type StatelessIntelligenceSignal = {
   title: string;
   why_it_matters: string;
   topic: string;
+  what_changed: string;
+  geography: string | null;
+  development_type: string;
   published_at: string;
   observed_release_count: 1;
   sources_credited: string[];
@@ -39,7 +42,6 @@ export type StatelessIntelligenceSignal = {
   severity: null;
 };
 
-const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
 export const STATELESS_WEBSITE_DELAY_MS = 15 * 60_000;
 export const STATELESS_LOOKBACK_MS = 7 * DAY;
@@ -139,7 +141,7 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
   dated: StatelessSourceCandidate[];
   undatedGov: { title: string; articleUrl: string }[];
 } {
-  if (typeof xml !== "string" || xml.length > 192 * 1024 ||
+  if (typeof xml !== "string" || xml.length > 384 * 1024 ||
       /<!DOCTYPE|<!ENTITY/iu.test(xml)) return { dated: [], undatedGov: [] };
   if (source.media === "rss" && !/<rss(?:\s|>)/iu.test(xml)) return { dated: [], undatedGov: [] };
   if (source.media === "atom" && !/<(?:atom:)?feed(?:\s|>)/iu.test(xml)) return { dated: [], undatedGov: [] };
@@ -149,7 +151,7 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
   const dated: StatelessSourceCandidate[] = [];
   const undatedGov: { title: string; articleUrl: string }[] = [];
   const seen = new Set<string>();
-  for (const match of [...xml.matchAll(entryPattern)].slice(0, 30)) {
+  for (const match of [...xml.matchAll(entryPattern)].slice(0, 75)) {
     const item = match[1];
     const title = unescapeXml(tagValue(item, "title") ?? "");
     if (title.length < 12 || title.length > 300 || /[<>]/u.test(title) ||
@@ -212,6 +214,57 @@ const SAFE_FOCUS: Record<StatelessCategory, readonly { test: RegExp; label: stri
   ],
 };
 
+
+/**
+ * A reviewed finite vocabulary gives people a readable, factual "what"
+ * without copying an upstream title or guessing the event outcome.
+ * Geography is only a literal country/region mention in the publisher's
+ * original title. No geopolitics inference from a publication hostname.
+ */
+const GEOGRAPHIES: readonly [RegExp, string][] = [
+  [/\b(?:United Kingdom|UK|Britain|British)\b/i, "United Kingdom"],
+  [/\b(?:United States|US|U\.S\.|American)\b/i, "United States"],
+  [/\b(?:European Union|EU)\b/i, "European Union"],
+  [/\b(?:China|Chinese)\b/i, "China"],
+  [/\b(?:India|Indian)\b/i, "India"],
+  [/\b(?:Canada|Canadian)\b/i, "Canada"],
+  [/\b(?:Australia|Australian)\b/i, "Australia"],
+  [/\b(?:Japan|Japanese)\b/i, "Japan"],
+  [/\b(?:South Africa|South African)\b/i, "South Africa"],
+  [/\b(?:Russia|Russian)\b/i, "Russia"],
+  [/\b(?:Ukraine|Ukrainian)\b/i, "Ukraine"],
+  [/\b(?:Iran|Iranian)\b/i, "Iran"],
+  [/\b(?:Taiwan|Taiwanese)\b/i, "Taiwan"],
+  [/\b(?:Indonesia|Indonesian)\b/i, "Indonesia"],
+  [/\b(?:Brazil|Brazilian)\b/i, "Brazil"],
+  [/\b(?:Africa|African)\b/i, "Africa"],
+  [/\b(?:Middle East)\b/i, "Middle East"],
+];
+const DEVELOPMENTS: readonly [RegExp, string][] = [
+  [/\b(?:export (?:ban|control|restriction)|trade restrictions?|sanctions?|embargo)\b/i, "trade restriction"],
+  [/\b(?:agree(?:ment|d)?|deal|treaty|partnership)\b/i, "agreement"],
+  [/\b(?:funding|invest(?:ment|s|ed)?|grant|financing|finance)\b/i, "funding"],
+  [/\b(?:approval|approves?|authori[sz]es?|permit|licen[sc]e)\b/i, "approval"],
+  [/\b(?:producing|production|mine|mining|processing|refin(?:ery|ing))\b/i, "production"],
+  [/\b(?:tariff|tax|duties|customs)\b/i, "trade policy"],
+  [/\b(?:rate (?:cut|rise|hike)|interest rate|bank rate|monetary policy)\b/i, "monetary policy"],
+  [/\b(?:inflation|consumer pric(?:e|es)|price index)\b/i, "price data"],
+  [/\b(?:conflict|ceasefire|war|peace talks?|military|security)\b/i, "security"],
+  [/\b(?:research|study|report|findings|survey|statistics|statistical)\b/i, "research"],
+  [/\b(?:announc(?:e|es|ement)|statement|press release)\b/i, "announcement"],
+  [/\b(?:warns?|risk|concern|alert)\b/i, "risk update"],
+  [/\b(?:strategy|plan|proposal|policy|framework|regulation)\b/i, "policy update"],
+];
+function geographyMention(title: string): string | null {
+  return GEOGRAPHIES.find(([pattern]) => pattern.test(title))?.[1] ?? null;
+}
+function developmentKind(title: string): string {
+  return DEVELOPMENTS.find(([pattern]) => pattern.test(title))?.[1] ?? "official update";
+}
+function developmentSummary(focus: string, kind: string, geography: string | null): string {
+  const context = geography ? \` mentioning \${geography}\` : "";
+  return \`An official publisher issued a \${kind} concerning \${focus}\${context}. This is a release-based finding; its real-world effect is not yet independently confirmed.\`;
+}
 function viewIdentifier(input: string): string {
   // FNV-1a is used solely to avoid exposing raw article URLs in the public
   // UI key; it is NOT proof, an identity attestation or an audit digest.
@@ -245,11 +298,16 @@ export function deriveStatelessSignals(
     if (unique.has(fingerprint)) continue;
     unique.add(fingerprint);
     const focus = SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? topic.name;
+    const geography = geographyMention(item.title);
+    const kind = developmentKind(item.title);
     result.push({
       id: item.category + "-" + viewIdentifier(fingerprint),
       category: item.category,
-      title: "Geomacro finds an official development concerning " + focus,
+      title: "Geomacro finds " + kind + " on " + focus + (geography ? " — " + geography : ""),
       why_it_matters: topic.implication,
+      what_changed: developmentSummary(focus, kind, geography),
+      geography,
+      development_type: kind,
       topic: topic.name,
       published_at: new Date(native).toISOString(),
       observed_release_count: 1,
