@@ -70,9 +70,11 @@ describe("#2041 bounded rotating original-publisher page verification",()=>{
       expect(observed.original_page_rotation_applied).toBe(true);
       expect(observed.undated_atom_article_link_candidates).toBe(4);
       expect(observed.original_page_precise_date_24h).toBe(fresh);
-      expect(observed.first_party_original_page_date_reason_codes).toMatchObject({
-        STALE_PUBLISHER_PUBLICATION:stale,PRECISE_PUBLICATION_ACCEPTED:fresh,
-      });
+      // Zero-count enum keys are intentionally absent from sanitized receipts.
+      expect(observed.first_party_original_page_date_reason_codes
+        .STALE_PUBLISHER_PUBLICATION??0).toBe(stale);
+      expect(observed.first_party_original_page_date_reason_codes
+        .PRECISE_PUBLICATION_ACCEPTED??0).toBe(fresh);
       expect(Object.values(observed.first_party_original_page_date_reason_codes)
         .reduce((n:number,x:any)=>n+x,0)).toBe(2);
       expect(observed.current_scored_intelligence_verified).toBe(false);
