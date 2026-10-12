@@ -3,6 +3,7 @@
 // The batch clock is GDELT observation time, NEVER publisher publication time.
 import {createHash} from "node:crypto";
 import {inflateRawSync} from "node:zlib";
+import {approvedFirstPartyOriginalArticleUrl,fetchVerifiedPublisherPageDate} from "./official-original-article-date.mjs";
 
 export const GDELT_GKG_LATEST_URL="https://data.gdeltproject.org/gdeltv2/lastupdate.txt";
 export const GDELT_GKG_MASTERFILE_URL="https://data.gdeltproject.org/gdeltv2/masterfilelist.txt";
@@ -173,7 +174,99 @@ export function summarizeGdeltGkgBulk(content,{batch_at,now=new Date()}){
     supabase_requests:0,b2_requests:0,d1_writes:0,payments_performed:0,
   };
 }
-export async function probeGdeltGkgBulk({fetchImpl=fetch,now=new Date()}={}){
+// Optional bounded handoff of GKG *topic suggestions* to original first-party
+// page-date review. The GKG batch clock is never used as publisher release
+// time. No article URL/title, host, HTML, private key or source identity is
+// serialized; these temporary URLs never leave this process.
+const GKG_FIRST_PARTY_MAX_PER_CATEGORY=2;
+export function selectGkgFirstPartyReviewLeads(content,{
+  batch_at,now=new Date(),
+}={}){
+  const batch=Date.parse(String(batch_at??""));
+  if(typeof content!=="string"||Buffer.byteLength(content)>MAX_UNPACKED_BYTES||
+     !Number.isFinite(batch)||!Number.isFinite(now.getTime())||
+     batch>now.getTime()||now.getTime()-batch>MAX_AGE_MS)
+    throw Error("GKG_PRIVATE_REVIEW_INPUT_INVALID");
+  const seen=new Set(),counts=Object.fromEntries(CATEGORIES.map(x=>[x,0]));
+  const leads=[];let scanned=0;
+  for(const line of content.split("\n")){
+    if(!line.trim())continue;
+    if(++scanned>MAX_ROWS)throw Error("GKG_ROWS_EXCEEDED");
+    if(leads.length===CATEGORIES.length*GKG_FIRST_PARTY_MAX_PER_CATEGORY)break;
+    const cols=line.replace(/\r$/u,"").split("\t");
+    if(cols.length!==27)continue;
+    const observed=utcFromStamp(cols[1]);
+    if(!observed || Date.parse(observed)>now.getTime() ||
+       Math.abs(Date.parse(observed)-batch)>60*60*1000)continue;
+    const raw=cols[4];
+    // Only internally recognized official article paths, never an arbitrary
+    // third-party or URL from a GKG theme/record, pass to the fetcher.
+    const themes=(cols[7]+";"+cols[8]).split(";")
+      .map(s=>s.split(",")[0]).slice(0,2000);
+    for(const category of CATEGORIES){
+      if(counts[category]>=GKG_FIRST_PARTY_MAX_PER_CATEGORY||
+         !themes.some(x=>TOPIC[category].test(x)))continue;
+      const url=approvedFirstPartyOriginalArticleUrl(raw,category);
+      const key=category+"|"+url;
+      if(!url||seen.has(key))continue;
+      seen.add(key);
+      leads.push({category,url});
+      counts[category]++;
+    }
+  }
+  return leads;
+}
+
+export async function reviewGkgFirstPartyPublicationDates(content,{
+  batch_at,now=new Date(),fetchImpl=fetch,
+}={}){
+  const leads=selectGkgFirstPartyReviewLeads(content,{batch_at,now});
+  const domains=CATEGORIES.map(category=>({
+    category,allowlisted_page_candidates:leads.filter(x=>x.category===category).length,
+    date_check_attempts:0,publisher_original_24h_dates_verified:0,
+    rejected_or_unverified_original_dates:0,
+    independent_same_event_verified:false,claim_and_country_verified:false,
+    commercial_rights_verified:false,signed_gro_generated:false,chargeable:false,
+  }));
+  const byDomain=new Map(domains.map(x=>[x.category,x]));
+  let requests=0;
+  // A single first-party page observed in multiple categories is one HTTP
+  // author/original. Reuse the result: multi-label != independent evidence.
+  const cache=new Map();
+  for(const lead of leads){
+    let proved=cache.get(lead.url);
+    if(!proved){
+      const diagnostics={};
+      const date=await fetchVerifiedPublisherPageDate(lead.url,lead.category,{
+        fetchImpl,now,diagnostics,
+      });
+      proved={date,attempted:diagnostics.code!=="URL_UNAPPROVED"};
+      cache.set(lead.url,proved);
+      if(proved.attempted)requests++;
+    }
+    const row=byDomain.get(lead.category);
+    row.date_check_attempts++;
+    if(proved.date)row.publisher_original_24h_dates_verified++;
+    else row.rejected_or_unverified_original_dates++;
+  }
+  return {
+    schema:"geomacro.private-gkg-firstparty-original-review.v1",
+    state:leads.length?"FIRST_PARTY_PAGE_DATES_CHECKED_NOT_EVENT_VERIFIED":
+      "NO_ALLOWLISTED_FIRST_PARTY_LEADS",
+    bounded_page_request_count:requests,
+    maximum_page_request_budget:6,
+    domains,
+    original_article_content_persisted:false,
+    original_urls_in_receipt:false,
+    source_identity_disclosed:false,
+    gkg_observation_time_used_as_publisher_time:false,
+    independent_event_qualified:false,commercial_rights_verified:false,
+    signed_gro_generated:false,public_published:false,chargeable:false,
+    supabase_requests:0,d1_writes:0,b2_requests:0,payments_performed:0,
+  };
+}
+
+export async function probeGdeltGkgBulk({fetchImpl=fetch,now=new Date(),reviewFirstParty=false}={}){
   try{
     const request=async(url,timeout)=>fetchImpl(url,{
       redirect:"error",headers:{accept:"*/*",
@@ -220,9 +313,30 @@ export async function probeGdeltGkgBulk({fetchImpl=fetch,now=new Date()}={}){
       throw Error("GKG_ARCHIVE_MD5_OR_SIZE_MISMATCH");
     const stamp=manifest.batch_at.replace(/\D/gu,"").slice(0,14);
     const decoded=unpackSingleGkgZip(zipped,stamp);
-    return {...summarizeGdeltGkgBulk(decoded,{now,batch_at:manifest.batch_at}),
-      manifest_route,archive_integrity_verified:true,
-      archive_sha256:sha256(zipped)};
+    const publicSafe=summarizeGdeltGkgBulk(decoded,{now,batch_at:manifest.batch_at});
+    // Production can request only a bounded PRIVATE official-page date probe.
+    // Even a valid first-party timestamp cannot certify event relevance,
+    // independent same-event corroboration, rights, GRO or x402 readiness.
+    let firstPartyReview;
+    if(reviewFirstParty){
+      try{
+        firstPartyReview=await reviewGkgFirstPartyPublicationDates(decoded,{
+          batch_at:manifest.batch_at,now,fetchImpl,
+        });
+      }catch{
+        firstPartyReview={schema:"geomacro.private-gkg-firstparty-original-review.v1",
+          state:"PRIVATE_FIRST_PARTY_REVIEW_DEGRADED",bounded_page_request_count:null,
+          maximum_page_request_budget:6,domains:[],
+          original_article_content_persisted:false,original_urls_in_receipt:false,
+          source_identity_disclosed:false,independent_event_qualified:false,
+          commercial_rights_verified:false,signed_gro_generated:false,
+          public_published:false,chargeable:false,
+          supabase_requests:0,d1_writes:0,b2_requests:0,payments_performed:0};
+      }
+    }
+    return {...publicSafe,manifest_route,archive_integrity_verified:true,
+      archive_sha256:sha256(zipped),
+      ...(firstPartyReview?{first_party_original_review:firstPartyReview}:{})};
   }catch(error){
     // No error string or upstream URL, only safe fixed-shape reason enum.
     const reason=String(error instanceof Error?error.message:"");
