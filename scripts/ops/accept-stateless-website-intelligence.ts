@@ -5,7 +5,7 @@
  * only category-wide counts and strict public-contract booleans.
  */
 import { readStatelessWebsiteIntelligence } from "../../src/lib/stateless-public-intelligence.server";
-import { STATELESS_LOOKBACK_MS } from "../../src/lib/stateless-intelligence-model";
+import { STATELESS_LOOKBACK_MS, conservativeDayReleaseMs } from "../../src/lib/stateless-intelligence-model";
 
 const domains = ["geopolitics", "macro", "rare_earth"] as const;
 const results = await Promise.all(domains.map(category =>
@@ -27,7 +27,12 @@ for (const { category, result, error } of results) {
     Math.abs((checked - cutoff) - 900_000) <= 2_000;
   const strictlyOriginalDates = signals.every(s => {
     const date = Date.parse(s.published_at);
-    return Number.isFinite(date) && date <= cutoff &&
+    const originalTrusted = s.date_precision === "day"
+      ? /^\d{4}-\d{2}-\d{2}$/u.test(s.published_at) &&
+        s.category === "rare_earth" &&
+        (conservativeDayReleaseMs(s.published_at) ?? Infinity) <= checked
+      : s.date_precision === "exact" && date <= cutoff;
+    return Number.isFinite(date) && originalTrusted &&
       date >= checked - STATELESS_LOOKBACK_MS;
   });
   const storiesSafe = signals.every(s =>
