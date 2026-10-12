@@ -129,7 +129,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(page).toContain("component: StatelessWebsiteIntelligencePage");
     expect(active).toContain("fetchDirectDerivedNews()");
     expect(active).toContain("Promise.allSettled");
-    expect(active).toContain('journal: history.status === "fulfilled" ? history.value.signals : []');
+    expect(active).toContain('journal: history.status === "fulfilled" && Array.isArray(history.value)');
     expect(page).toContain("initialJournal={loader.journal}");
     expect(desk).toContain("initialJournal = []");
     expect(desk).toContain("useState<StatelessIntelligenceSignal[]>(() => initialJournal)");
