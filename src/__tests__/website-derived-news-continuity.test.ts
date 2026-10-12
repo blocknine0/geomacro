@@ -26,6 +26,7 @@ const sample=(category="macro",published="2026-10-12T19:00:00.000Z")=>({
 function db() {
   const data=new Map();
   const statement=sql=>({
+    async run(){ /* Direct zero-bind retention query; no rows past cap in fixture. */ },
     bind(...args) {
       return {
         async run() {
