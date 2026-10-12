@@ -18,6 +18,7 @@ const DOMAIN_ALIAS = Object.freeze({
   GEOPOLITICS: "GEOPOLITICS", MACRO: "MACRO",
   RARE_EARTH: "CRITICAL_MINERALS", RARE_EARTHS: "CRITICAL_MINERALS",
   CRITICAL_MINERALS: "CRITICAL_MINERALS", CRITICAL_MINERAL: "CRITICAL_MINERALS",
+  MACRO_FX: "MACRO",
 });
 const REMOTE_MAX = 512 * 1024;
 const URLS = Object.freeze({
@@ -41,7 +42,8 @@ function stringId(value) {
 }
 export function assemblePrivateIntakeSnapshot(input, now = new Date()) {
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw Error("PRIVATE_INTAKE_CLOCK_INVALID");
-  const { core, free, roots, telegram, historical, manualTelegram } = input ?? {};
+  const { core, free, roots, telegram, historical, manualTelegram,
+    operator76, countrySources, corridorSources } = input ?? {};
   if (!core || !core.categories || typeof core.categories !== "object") throw Error("PRIVATE_INTAKE_CORE_SCHEMA_INVALID");
   const freeRows = ensureRows(free, "sources", 1000);
   const rootRows = ensureRows(roots, "roots", 1500);
@@ -54,8 +56,10 @@ export function assemblePrivateIntakeSnapshot(input, now = new Date()) {
   const queue = [];
   const perDomain = Object.fromEntries([...VALID_DOMAINS].map(d => [d, {
     core: 0, free: 0, roots: 0, telegram: 0, telegram_research: 0, historical: 0,
+    operator76: 0, operator_country: 0, operator_corridor: 0,
   }]));
-  const laneCounts = { core: 0, free: 0, roots: 0, telegram: 0, telegram_research: 0, historical: 0 };
+  const laneCounts = { core: 0, free: 0, roots: 0, telegram: 0, telegram_research: 0, historical: 0,
+    operator76: 0, operator_country: 0, operator_corridor: 0 };
   const statuses = Object.create(null);
   const identities = new Set();
 
@@ -118,6 +122,84 @@ export function assemblePrivateIntakeSnapshot(input, now = new Date()) {
     }
     add("historical", c, row?.source_id, "HISTORICAL_EVIDENCE_NOT_CURRENT_EVENT");
   }
+  // Operator-provided catalogues are source CONTROL-PLANE overlays, not
+  // publisher evidence or new collection authorizations. Prior source fan-in
+  // omitted them completely, so downstream source inventory never saw the
+  // already-registered 76/108/20 entries. Hash source IDs; never store URL,
+  // publisher prose, country/corridor description or candidate article here.
+  const expectOverlay=(value,expected,count,key)=>{
+    if(!value || value.schema!==expected || !Array.isArray(value[key]) ||
+       value[key].length!==count)throw Error("PRIVATE_INTAKE_OPERATOR_SCHEMA_INVALID");
+    return value[key];
+  };
+  function guardedOverlayEntry(lane,id,domains,status,canonicalFamily){
+    if(!Array.isArray(domains)||domains.length<1||domains.length>3 ||
+       new Set(domains).size!==domains.length ||
+       typeof status!=="string"||status.length<3||status.length>100)
+      throw Error("PRIVATE_INTAKE_OPERATOR_SOURCE_INVALID");
+    // Registered family reuse is NOT a new transport, and a candidate with
+    // denied/commercial-restricted terms is NEVER an authorized poller.
+    const normalizedStatus=(
+      status.startsWith("EXISTING_") && typeof canonicalFamily==="string"
+        ? "EXISTING_FAMILY_REUSE_NO_NEW_POLLER"
+        : status==="SCHEDULED_BOUNDED_PRIVATE_REVIEW"
+          ? "READ_ONLY_CANDIDATE_TRANSPORT_NOT_COMMERCIAL"
+          : status==="NEW_BOUNDED_PRIVATE_PROBE"
+            ? "OFFICIAL_CONTEXT_PROBE_NOT_VERIFIED_EVENT"
+            : "OPERATOR_CANDIDATE_UNVERIFIED_OR_HELD"
+    );
+    for(const tag of domains){
+      const cat=domain(tag);
+      add(lane,cat,id,normalizedStatus);
+    }
+  }
+  let operatorNamedCorridorCandidates=0;
+  if(operator76!==undefined){
+    const rows=expectOverlay(operator76,
+      "geomacro.operator-source-attribution-intake.v1",76,"entries");
+    for(const row of rows){
+      guardedOverlayEntry("operator76",row?.id,row?.domains,
+        row?.runtime_state,row?.canonical_existing_id);
+    }
+  }
+  if(countrySources!==undefined){
+    const global=expectOverlay(countrySources,
+      "geomacro.operator-country-source-crosswalk.v1",37,"global_country_dim");
+    const national=expectOverlay(countrySources,
+      "geomacro.operator-country-source-crosswalk.v1",71,"national_primary");
+    for(const row of [...global,...national]){
+      // Overlay claims (FIPS, scraped URLs and cross-country groups) are
+      // not proof of current country-verified event coverage.
+      if(row?.commercial_eligible!==false ||
+         row?.provider_rights_verified!==false ||
+         row?.freshness_claim_verified===true ||
+         row?.publication_date_verified===true)
+        throw Error("PRIVATE_INTAKE_OPERATOR_RIGHTS_INVALID");
+      guardedOverlayEntry("operator_country",row?.id,row?.domains,
+        row?.source_activation_state,row?.canonical_family_id);
+    }
+  }
+  if(corridorSources!==undefined){
+    const rows=expectOverlay(corridorSources,
+      "geomacro.operator-corridor-source-crosswalk.v1",20,"source_registry");
+    const named=expectOverlay(corridorSources,
+      "geomacro.operator-corridor-source-crosswalk.v1",58,"corridors");
+    operatorNamedCorridorCandidates=named.length;
+    for(const row of rows){
+      if(row?.commercial_licence_verified!==false ||
+         row?.raw_source_redistribution_allowed!==false)
+        throw Error("PRIVATE_INTAKE_OPERATOR_RIGHTS_INVALID");
+      // Corridor sources are discoverable in three commercial categories.
+      // A route/reference is not a second independent publisher.
+      guardedOverlayEntry("operator_corridor",row?.source_id,
+        ["geopolitics","macro_fx","critical_minerals"],
+        row?.activation_status,row?.canonical_reuse_source_id);
+    }
+    if(named.some(row=>row?.route_model_status!=="NOT_MODELED" ||
+       row?.current_risk_score!==null ||
+       row?.commercial_signed_delivery_allowed!==false))
+      throw Error("PRIVATE_INTAKE_OPERATOR_CORRIDOR_SCORE_INVALID");
+  }
   queue.sort((a,b) => (a.lane+a.domain+a.source_ref).localeCompare(b.lane+b.domain+b.source_ref));
   return {
     schema: "geomacro.private-all-source-intake-inventory.v1",
@@ -129,6 +211,7 @@ export function assemblePrivateIntakeSnapshot(input, now = new Date()) {
     status_counts: statuses,
     historical_crypto_legacy_excluded: historicalLegacyExcluded,
     human_telegram_pointer_only_count: manualIds.size,
+    operator_named_corridors_catalogued_not_sources: operatorNamedCorridorCandidates,
     source_refs: queue,
     boundaries: {
       telegram_messages_ingested: false,
@@ -136,6 +219,8 @@ export function assemblePrivateIntakeSnapshot(input, now = new Date()) {
       independent_original_publisher_review_not_bypassed: true,
       original_articles_downloaded: false,
       historical_rows_downloaded: false,
+      operator_overlays_are_not_feed_authorizations: true,
+      operator_geo_candidates_are_not_scored_corridors: true,
       source_ownership_or_permissions_granted: false,
       rights_approval_bypassed: false,
       source_qualification_required_before_publication: true,
@@ -242,6 +327,9 @@ export async function gatherPrivateIntakeSnapshot(now = new Date(), fetcher = nu
     free: readJson("global-intelligence/sources/free-source-catalog.v1.json"),
     roots: readJson("config/telegram-discovery-roots.json"),
     telegram, historical, manualTelegram: readLocalPrivateResearchBatch(),
+    operator76: readJson("config/operator-76-source-attribution-intake.v1.json"),
+    countrySources: readJson("config/operator-country-source-crosswalk.v1.json"),
+    corridorSources: readJson("config/operator-corridor-source-crosswalk.v1.json"),
   }, now);
   return { ...snapshot, source_catalog_provenance: provenance };
 }
