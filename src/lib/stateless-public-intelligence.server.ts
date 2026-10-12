@@ -54,6 +54,12 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "eurostat_economy_release", category: "macro", media: "atom",
     url: "https://ec.europa.eu/eurostat/en/search?_estatsearchportlet_WAR_estatsearchportlet_collection=CAT_PREREL&_estatsearchportlet_WAR_estatsearchportlet_theme=PER_ECOFIN&p_p_id=estatsearchportlet_WAR_estatsearchportlet&p_p_lifecycle=2&p_p_mode=view&p_p_resource_id=atom&p_p_state=maximized",
     allowedHosts: ["ec.europa.eu"], credit: "Eurostat" },
+  // An additional independent central-bank cooperation and regulatory publisher,
+  // using its officially documented first-party RSS native publication clock.
+  // Do not use the provider's fetch time or its landing-page modification time.
+  { id: "bis_press", category: "macro", media: "rss",
+    url: "https://www.bis.org/doclist/all_pressrels.rss",
+    allowedHosts: ["www.bis.org"], credit: "Bank for International Settlements" },
   { id: "fed_press", category: "macro", media: "rss",
     url: "https://www.federalreserve.gov/feeds/press_all.xml",
     allowedHosts: ["www.federalreserve.gov"], credit: "Federal Reserve Board" },
@@ -193,11 +199,58 @@ async function readCanadaNewsOriginalDay(candidate: {
   }catch{return null}
 }
 
+
+/**
+ * A bounded, same-publisher, opt-in HTTP feed redirect for the one fixed
+ * Canadian government science RSS lane observed redirecting in production.
+ * Never follow off-host/unknown-host or user-supplied URLs, never retry 403,
+ * and never confuse a redirect or fetch clock with a publisher release time.
+ */
+export async function fetchFirstPartyOriginalFeed(
+  source: StatelessSourceSpec,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Response> {
+  const accepted = source.media === "rss"
+    ? "application/rss+xml, application/xml, text/xml"
+    : "application/atom+xml, application/xml, text/xml";
+  let target = source.url;
+  for (let hop = 0; hop <= 2; hop++) {
+    const response = await fetchImpl(target, {
+      method: "GET", redirect: "manual", cache: "no-store",
+      headers: { Accept: accepted },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (![301, 302, 307, 308].includes(response.status)) return response;
+    // Unrelated providers are never granted a new redirect privilege.
+    if (source.id !== "nrcan_science" || hop === 2) return response;
+    const location = response.headers.get("location");
+    if (!location || location.length > 1600) return response;
+    let next: URL;
+    try { next = new URL(location, target); } catch { return response; }
+    if (next.protocol !== "https:" || next.username || next.password ||
+        next.port || next.hash || next.pathname.startsWith("//") ||
+        !source.allowedHosts.includes(next.hostname.toLowerCase()) ||
+        !/\/(?:[^?#]{0,250}\/)?(?:rss(?:\.xml)?|feed(?:\.xml)?|atom(?:\.xml)?)$/iu.test(next.pathname))
+      return response;
+    if (next.href === target) return response;
+    target = next.href;
+  }
+  throw Error("SOURCE_REDIRECT_BOUND_EXCEEDED");
+}
 type LaneMetrics = {
   seen: number; relevant: number; original_link_valid: number;
   native_clock_valid: number; undated_original: number;
   recovered_original_page: number; transport_ok: boolean;
   transport_failure_class?: "http_4xx" | "http_5xx" | "mime" | "body" | "timeout" | "redirect" | "network";
+  // Fixed XML envelope counts only, no payload/title/URL leak in CI.
+  feed_envelope?: "rss" | "atom" | "rdf" | "other";
+  feed_item_count?: number;
+  feed_entry_count?: number;
+  feed_doctype_seen?: boolean;
+  feed_native_pubdate_count?: number;
+  feed_dc_date_count?: number;
+  feed_dc_issued_count?: number;
+  feed_native_published_count?: number;
   // Optional anonymous first-party stage counters for read-only CI
   // diagnostics. Never log provider URLs, article IDs or raw content.
   canada_original_path_ok?: number;
@@ -253,12 +306,8 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       transport_ok: false, transport_failure_class: kind } satisfies LaneMetrics,
   });
   try {
-    const response = await fetch(source.url, {
-      method: "GET", redirect: "error", cache: "no-store",
-      headers: { Accept: source.media === "rss" ? "application/rss+xml, application/xml, text/xml" :
-        "application/atom+xml, application/xml, text/xml" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    const response = await fetchFirstPartyOriginalFeed(source);
+    if (response.status >= 300 && response.status < 400) return failed("redirect");
     if (!response.ok) return failed(response.status >= 500 ? "http_5xx" : "http_4xx");
     const mime = response.headers.get("content-type") ?? "";
     if (!/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu.test(mime))
@@ -276,6 +325,16 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
     return { healthy: true,
       candidates: [...parsed.dated, ...recovered.filter((x): x is StatelessSourceCandidate => x !== null)],
       metrics: { ...parsed.metrics, recovered_original_page: recovered.filter(Boolean).length, transport_ok: true,
+        feed_envelope: /<rss(?:\s|>)/iu.test(xml) ? "rss" :
+          /<(?:atom:)?feed(?:\s|>)/iu.test(xml) ? "atom" :
+          /<rdf:RDF(?:\s|>)/iu.test(xml) ? "rdf" : "other",
+        feed_item_count: [...xml.matchAll(/<item(?:\s[^>]*)?>/giu)].length,
+        feed_entry_count: [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>/giu)].length,
+        feed_doctype_seen: /<!DOCTYPE|<!ENTITY/iu.test(xml),
+        feed_native_pubdate_count: [...xml.matchAll(/<pubDate(?:\s[^>]*)?>/giu)].length,
+        feed_dc_date_count: [...xml.matchAll(/<dc:date(?:\s[^>]*)?>/giu)].length,
+        feed_dc_issued_count: [...xml.matchAll(/<(?:dc:issued|dcterms:issued)(?:\s[^>]*)?>/giu)].length,
+        feed_native_published_count: [...xml.matchAll(/<published(?:\s[^>]*)?>/giu)].length,
         ...(source.canadaOriginalPage ? {
           canada_original_path_ok:canadaStage.path_ok,
           canada_original_http_ok:canadaStage.http_ok,

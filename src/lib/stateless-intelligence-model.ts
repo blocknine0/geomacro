@@ -61,6 +61,9 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration." },
   ],
   macro: [
+    { test: /\b(Basel III|Basel Committee|banking supervisors?|capital adequacy|bank capital requirements?|banking supervision)\b/i,
+      name: "banking and capital regulation",
+      implication: "Official prudential rulemaking can affect bank funding and cross-border credit conditions; any implemented capital requirements or market effects must be verified separately." },
     { test: /\b(gross domestic product|economic accounts|national accounts|retail trade|retail sales|employment|labour force survey|labor force survey|wages?|average weekly earnings|business conditions)\b/i, name: "official economic statistics",
       implication: "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table." },
     { test: /\b(interest rates?|federal funds|discount rate|monetary policy|FOMC)\b/i, name: "monetary policy",
@@ -188,7 +191,16 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
   const metrics = { seen: 0, relevant: 0, original_link_valid: 0, native_clock_valid: 0, undated_original: 0 };
   if (typeof xml !== "string" || xml.length > 384 * 1024 ||
       /<!DOCTYPE|<!ENTITY/iu.test(xml)) return { dated: [], undatedGov: [], metrics };
-  if (source.media === "rss" && !/<rss(?:\s|>)/iu.test(xml)) return { dated: [], undatedGov: [], metrics };
+  // RSS 1.0 uses an RDF envelope, but ONLY the exact publisher whose
+  // original first-party media feed format was verified on a live runner.
+  // Never grant RDF parsing to a synthetic/unknown source.
+  const verifiedRdfPress = source.id === "bis_press" &&
+    source.media === "rss" &&
+    source.url === "https://www.bis.org/doclist/all_pressrels.rss" &&
+    /<rdf:RDF(?:\s|>)/iu.test(xml) &&
+    /xmlns:dc\s*=\s*["']http:\/\/purl\.org\/dc\/elements\/1\.1\/["']/iu.test(xml);
+  if (source.media === "rss" && !/<rss(?:\s|>)/iu.test(xml) && !verifiedRdfPress)
+    return { dated: [], undatedGov: [], metrics };
   if (source.media === "atom" && !/<(?:atom:)?feed(?:\s|>)/iu.test(xml)) return { dated: [], undatedGov: [], metrics };
   const entryPattern = source.media === "rss"
     ? /<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu
@@ -207,7 +219,15 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
     if (!articleUrl || seen.has(articleUrl)) continue;
     seen.add(articleUrl);
     metrics.original_link_valid++;
-    const rawClock = tagValue(item, source.media === "rss" ? "pubDate" : "published");
+    // For a verified RSS1.0/RDF original press feed, dc:date is its
+    // publisher-issued native date. A timestamp must include an explicit
+    // timezone (otherwise no timed release is admitted). Refuse updated,
+    // modified, HTTP or URL clocks as substitutes.
+    const rdfClock = verifiedRdfPress
+      ? /<dc:date(?:\s[^>]*)?>([^<>]{4,80})<\/dc:date>/iu.exec(item)?.[1] ?? null
+      : null;
+    const rawClock = verifiedRdfPress
+      ? rdfClock : tagValue(item, source.media === "rss" ? "pubDate" : "published");
     const ms = originalPublicationMs(rawClock, now);
     if (ms !== null) {
       metrics.native_clock_valid++;
@@ -245,6 +265,8 @@ const SAFE_FOCUS: Record<StatelessCategory, readonly { test: RegExp; label: stri
     { test: /\bmilitary\b/i, label: "military policy" },
   ],
   macro: [
+    { test: /\b(Basel III|Basel Committee|banking supervisors?|capital adequacy|bank capital requirements?)\b/i,
+      label: "prudential banking regulation" },
     { test: /\b(?:trade mission|free trade|trade deal|trade agreement|JETCO)\b/i, label: "international trade" },
     { test: /\binterest rates?\b/i, label: "interest-rate policy" },
     { test: /\bmonetary policy\b/i, label: "monetary policy" },
