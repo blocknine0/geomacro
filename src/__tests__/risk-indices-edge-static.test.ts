@@ -81,7 +81,19 @@ describe("independent verified Risk Indices edge", () => {
     expect(deploy).toContain("github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'");
     expect(deploy).toContain("SOURCE_RUN_ID: ${{ github.event.workflow_run.id || '' }}");
     expect(deploy).toContain("github.event_name == 'workflow_dispatch'");
-        expect(deploy).toContain("prepare-edge-continuity.sh");
+    // Supabase/B2 quota exhaustion may remove historical run artifacts,
+    // but must not block code-only quota-resilience deployments or
+    // silently replace a still-healthy verified Risk Indices snapshot.
+    expect(deploy).toContain('TRIGGER_EVENT: ${{ github.event_name }}');
+    expect(deploy).toContain('elif [ "$TRIGGER_EVENT" = "push" ]; then');
+    expect(deploy).toContain("SAFE_CODE_ONLY_DEPLOY_WITH_NO_STATIC_CONTINUITY");
+    expect(deploy).toContain("EXISTING_VERIFIED_EDGE_SERVING; refuse replacing prior static continuity with null");
+    expect(deploy).toContain('if [ "$EXISTING_CODE" = "200" ]; then');
+    expect(deploy).toContain("exit 13");
+    expect(deploy).toContain("FULL_B2_READBACK_PROOF_REQUIRED_FOR_SOURCE_RUN_OR_MANUAL_DEPLOY");
+    expect(deploy).toContain('test "$CODE" = "200" ||');
+    expect(deploy).toContain("Risk Indices edge acceptance failed: HTTP $CODE");
+    expect(deploy).toContain("prepare-edge-continuity.sh");
     expect(deploy).toContain("risk-indices-realtime-direct-postgres.yml");
     expect(deploy).toContain("geomacro.public-risk-indices-direct-postgres-publish.v1");
     expect(deploy).not.toContain("Bootstrap isolated verified Risk Indices package");
