@@ -113,7 +113,7 @@ describe("production website runtime contract", () => {
     const event = read("src/routes/event.$eventId.tsx");
     expect(intelligence).toContain("Original publisher Intelligence source check timed out.");
     expect(intelligence).toContain('stateless: source.status === "fulfilled" ? source.value : null');
-    expect(intelligence).toContain('journal: history.status === "fulfilled" ? history.value.signals : []');
+    expect(intelligence).toContain('journal: history.status === "fulfilled" && Array.isArray(history.value)');
     expect(intelligence).toContain("Promise.allSettled");
     expect(intelligence).toContain("initialJournal={loader.journal}");
     expect(intelligence).toContain("component: StatelessWebsiteIntelligencePage");

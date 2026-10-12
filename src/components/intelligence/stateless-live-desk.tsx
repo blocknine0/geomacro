@@ -259,7 +259,8 @@ export function StatelessLiveDesk({ initial, initialJournal = [] }: {
                 (view === domain.key ? "border-primary bg-primary text-primary-foreground" :
                   "border-border bg-card hover:border-primary/60")}>
               {domain.label}
-              <span className="ml-2 text-xs opacity-80">{allSignals.filter(signal => signal.category === domain.key).length}</span>
+              <span className="ml-2 text-xs opacity-80">{allSignals.length === 0 ? "…" :
+                allSignals.filter(signal => signal.category === domain.key).length}</span>
             </button>
           ))}
         </div>
@@ -275,7 +276,10 @@ export function StatelessLiveDesk({ initial, initialJournal = [] }: {
               {view === "all" ? "Across all three domains" : labelFor(view) + " developments"}
             </h2>
             <p role="status" className="mt-2 text-xs text-muted-foreground">
-              {recent.length} in the last 24 hours · {earlier.length} earlier (last 30 days)
+              {allSignals.length === 0
+                ? "Reading the verified 30-day Intelligence journal below"
+                : recent.length + " in the last 24 hours · " +
+                  earlier.length + " earlier (last 30 days)"}
               {latestCheck ? " · Latest source check " + formatInstant(new Date(latestCheck).toISOString()) : ""}
             </p>
           </div>
@@ -299,7 +303,7 @@ export function StatelessLiveDesk({ initial, initialJournal = [] }: {
           </p>
         ) : null}
 
-        {signals.length === 0 ? (
+        {allSignals.length === 0 ? (
           <section aria-label="Direct verified Intelligence archive" className="mt-6">
             <p className="mb-3 text-xs text-muted-foreground">
               Reading the verified rolling Intelligence history directly from our Cloudflare feed
