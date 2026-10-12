@@ -16,7 +16,7 @@ import {
 } from "@/lib/use-intelligence";
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
-import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
+import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
 import { StatelessLiveDesk } from "@/components/intelligence/stateless-live-desk";
 import { useRiskIndices } from "@/lib/use-risk-indices";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
@@ -43,8 +43,8 @@ export const Route = createFileRoute("/intelligence")({
         "Original publisher Intelligence source check timed out.",
       ),
       withPublicRuntimeTimeout(
-        getWebsiteDerivedNews(),
-        6_000,
+        fetchDirectDerivedNews(),
+        9_000,
         "Derived Intelligence journal read timed out.",
       ),
     ]);

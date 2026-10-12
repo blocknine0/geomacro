@@ -9,6 +9,7 @@ import {
   type StatelessSourceSpec, type StatelessIntelligenceSignal,
 } from "./stateless-intelligence-model";
 import { euCommissionTopOriginalCandidates } from "./stateless-eu-original-index.server";
+import { readPibMinesOriginalCandidates } from "./stateless-pib-mines-original.server";
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
 const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
@@ -24,6 +25,9 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_mod", category: "geopolitics", media: "atom",
     url: "https://www.gov.uk/government/organisations/ministry-of-defence.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  { id: "uk_home", category: "geopolitics", media: "atom",
+    url: "https://www.gov.uk/government/organisations/home-office.atom",
+    allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
   { id: "fed_press", category: "macro", media: "rss",
     url: "https://www.federalreserve.gov/feeds/press_all.xml",
     allowedHosts: ["www.federalreserve.gov"], credit: "Federal Reserve Board" },
@@ -35,6 +39,9 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
     allowedHosts: ["www.ecb.europa.eu"], credit: "European Central Bank" },
   { id: "uk_treasury", category: "macro", media: "atom",
     url: "https://www.gov.uk/government/organisations/hm-treasury.atom",
+    allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  { id: "uk_dbt_macro", category: "macro", media: "atom",
+    url: "https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
   { id: "nrcan_science", category: "rare_earth", media: "rss",
     url: "https://natural-resources.canada.ca/simply-science/rss.xml",
@@ -53,8 +60,11 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
     url: "https://single-market-economy.ec.europa.eu/index_en",
     allowedHosts: ["single-market-economy.ec.europa.eu"], credit: "European Commission" },
   { id: "uk_dbt", category: "rare_earth", media: "atom",
-    url: "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+    url: "https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  { id: "in_pib_mines", category: "rare_earth", media: "html_index",
+    url: "https://www.pib.gov.in/AllRelease.aspx?lang=1&reg=6",
+    allowedHosts: ["www.pib.gov.in"], credit: null },
 ]);
 
 const MAX_FEED_BYTES = 384 * 1024;
@@ -130,6 +140,14 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   candidates: StatelessSourceCandidate[]; healthy: boolean;
   metrics?: LaneMetrics;
 }> {
+  if(source.id === "in_pib_mines" && source.media === "html_index"){
+    const release=await readPibMinesOriginalCandidates(now);
+    return {healthy:release.healthy,candidates:release.candidates,
+      metrics:{seen:release.inspected,relevant:release.inspected,
+        original_link_valid:release.inspected,native_clock_valid:release.original_verified,
+        undated_original:0,recovered_original_page:release.original_verified,
+        transport_ok:release.healthy}};
+  }
   if (source.id === "eu_top_news" && source.media === "html_index") {
     try {
       const response = await fetch(source.url, {

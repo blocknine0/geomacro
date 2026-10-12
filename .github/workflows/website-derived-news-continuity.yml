@@ -9,6 +9,9 @@ on:
     paths:
       - ".github/workflows/website-derived-news-continuity.yml"
       - "scripts/ops/publish-website-derived-news.ts"
+      - "src/lib/stateless-intelligence-model.ts"
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - "src/lib/stateless-pib-mines-original.server.ts"
       - "workers/control-plane/src/website-derived-intelligence.mjs"
   schedule:
     - cron: "7,37 * * * *"

@@ -127,7 +127,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(active).toContain('getStatelessIntelligence({ data: { category: "geopolitics" } })');
     expect(active).not.toContain("getPublicIntelligenceSeo(");
     expect(page).toContain("component: StatelessWebsiteIntelligencePage");
-    expect(active).toContain("getWebsiteDerivedNews()");
+    expect(active).toContain("fetchDirectDerivedNews()");
     expect(active).toContain("Promise.allSettled");
     expect(active).toContain('journal: history.status === "fulfilled" ? history.value.signals : []');
     expect(page).toContain("initialJournal={loader.journal}");

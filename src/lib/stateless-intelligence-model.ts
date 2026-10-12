@@ -56,7 +56,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk." },
     { test: /\b(border|conflict|attack|war|military|disarmament|humanitarian)\b/i, name: "geopolitical security",
       implication: "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary." },
-    { test: /\b(visa|foreign secretary|foreign policy|diplomacy|treaty)\b/i, name: "foreign policy",
+    { test: /\b(visa|foreign secretary|foreign policy|diplomacy|treaty|foreign minister|iran|ukraine|international sanctions|state threats|national security|cyber-attack|hybrid attacks)\b/i, name: "foreign policy",
       implication: "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration." },
   ],
   macro: [
@@ -68,6 +68,8 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "External-balance releases can affect currency-liquidity and cross-border settlement considerations; this does not indicate a directional FX prediction." },
     { test: /\b(liquidity|financial stability|bank supervision|banking regulation|economic growth|GDP|economic bulletin|bank lending|banking statistics|financial accounts|financial markets|unemployment|labour market|credit conditions|household debt|economic outlook)\b/i, name: "financial conditions",
       implication: "Financial-system developments may matter for credit access and counterparty exposure; a score requires separately verified measurements." },
+    { test: /\b(trade mission|free trade|trade deal|trade agreement|trade negotiations|bilateral trade|export growth|commercial deals|economic partnership|JETCO|tariffs|foreign investment)\b/i, name: "trade and economic relations",
+      implication: "Trade and investment agreements can affect market access, cross-border commercial flows and currency exposure; their actual economic impact requires follow-up evidence." },
   ],
   rare_earth: [
     { test: /\b(rare[- ]earths?|neodymium|dysprosium|terbium)\b/i, name: "rare-earth supply",
@@ -220,6 +222,8 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
  */
 const SAFE_FOCUS: Record<StatelessCategory, readonly { test: RegExp; label: string }[]> = {
   geopolitics: [
+    { test: /\b(?:iran|ukraine)\b/i, label: "regional foreign policy" },
+    { test: /\b(?:national security|state threats|hybrid attacks)\b/i, label: "national security" },
     { test: /\bsanctions?\b/i, label: "sanctions" },
     { test: /\bceasefire\b/i, label: "ceasefire negotiations" },
     { test: /\bsecurity council\b/i, label: "UN Security Council activity" },
@@ -230,6 +234,7 @@ const SAFE_FOCUS: Record<StatelessCategory, readonly { test: RegExp; label: stri
     { test: /\bmilitary\b/i, label: "military policy" },
   ],
   macro: [
+    { test: /\b(?:trade mission|free trade|trade deal|trade agreement|JETCO)\b/i, label: "international trade" },
     { test: /\binterest rates?\b/i, label: "interest-rate policy" },
     { test: /\bmonetary policy\b/i, label: "monetary policy" },
     { test: /\bconsumer prices?\b/i, label: "consumer prices" },
