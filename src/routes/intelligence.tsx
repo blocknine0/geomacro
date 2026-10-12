@@ -24,8 +24,8 @@ import { intelligenceDomainPulse } from "@/lib/intelligence-domain-pulse";
 import { currentVerifiedDeskEvents } from "@/lib/intelligence-current-desk";
 import { SourceNetworkMonitor } from "@/components/intelligence/source-network-monitor";
 
-const TITLE = "Stateless Geopolitical, Macro & Minerals Intelligence | Geomacro";
-const DESCRIPTION = "Browse on-demand Geomacro official-source risk signals across geopolitics, Macro/FX and critical minerals with no permanent storage and at least 60 minutes public release delay.";
+const TITLE = "Geomacro Finds | Live 15-Minute Delayed Intelligence";
+const DESCRIPTION = "Geomacro Finds: on-demand geopolitical, Macro/FX and critical-minerals developments, updated as eligible official releases arrive with a 15-minute public delay. No scores or persistent source storage.";
 const URL = "https://geomacro.live/intelligence";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
