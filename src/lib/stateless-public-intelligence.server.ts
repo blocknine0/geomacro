@@ -117,8 +117,14 @@ async function readGovContentOriginalDate(candidate: {
   } catch { return null; }
 }
 
+type LaneMetrics = {
+  seen: number; relevant: number; original_link_valid: number;
+  native_clock_valid: number; undated_original: number;
+  recovered_original_page: number; transport_ok: boolean;
+};
 async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   candidates: StatelessSourceCandidate[]; healthy: boolean;
+  metrics?: LaneMetrics;
 }> {
   try {
     const response = await fetch(source.url, {
@@ -135,7 +141,10 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
     const parsed = parseFirstPartyFeed(xml, source, now);
     const recovered = await Promise.all(parsed.undatedGov.slice(0, 4)
       .map(candidate => readGovContentOriginalDate(candidate, source, now)));
-    return { healthy: true, candidates: [...parsed.dated, ...recovered.filter((x): x is StatelessSourceCandidate => x !== null)] };
+    return { healthy: true,
+      candidates: [...parsed.dated, ...recovered.filter((x): x is StatelessSourceCandidate => x !== null)],
+      metrics: { ...parsed.metrics, recovered_original_page: recovered.filter(Boolean).length, transport_ok: true },
+    };
   } catch { return { candidates: [], healthy: false }; }
 }
 
@@ -161,11 +170,18 @@ export type StatelessIntelligenceResult = {
 
 export async function readStatelessWebsiteIntelligence(
   category: StatelessCategory, now = Date.now(),
+  onLaneDiagnostic?: (index: number, diagnostics: LaneMetrics) => void,
 ): Promise<StatelessIntelligenceResult> {
   if (!["geopolitics", "macro", "rare_earth"].includes(category) ||
       !Number.isFinite(now)) throw Error("STATELESS_INTELLIGENCE_CATEGORY_OR_CLOCK_INVALID");
   const sourceGroup = SOURCES.filter(source => source.category === category);
   const batch = await Promise.all(sourceGroup.map(source => readSource(source, now)));
+  // The optional callback is used only by the private acceptance runner;
+  // no publisher identity, URL or diagnostic lane details reach the browser.
+  if (onLaneDiagnostic) batch.forEach((lane, index) => onLaneDiagnostic(index,
+    lane.metrics ?? { seen: 0, relevant: 0, original_link_valid: 0,
+      native_clock_valid: 0, undated_original: 0,
+      recovered_original_page: 0, transport_ok: false }));
   const signals = deriveStatelessSignals(batch.flatMap(x => x.candidates), now);
   const healthy = batch.filter(x => x.healthy).length;
   return {
