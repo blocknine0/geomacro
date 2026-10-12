@@ -11,6 +11,8 @@ const now=Date.parse("2026-10-12T12:00:00.000Z");
 const time=(minutes:number)=>new Date(now+minutes*60_000).toISOString();
 function stored(asOf=time(-61)){
  const data={
+  source_url:"https://leak-source.example/private",
+  publisher_name:"Top Secret Agency",
   snapshotId:"gri-verified-123",
   snapshotAsOf:asOf,
   methodologyVersion:"gri-v1.2.0",
@@ -76,6 +78,8 @@ describe("bounded privacy-safe genuine prior verified website GRI history",()=>{
   expect(JSON.stringify(r)).not.toContain("PRIVATE_PUBLISHER");
   expect(JSON.stringify(r)).not.toContain("Private original headline");
   expect(JSON.stringify(r)).not.toContain("source_url");
+  expect(JSON.stringify(r)).not.toContain("leak-source.example");
+  expect(JSON.stringify(r)).not.toContain("Top Secret Agency");
  });
  it("refuses malformed, unverified, future-domain and post-cutoff private publisher event claims",()=>{
   const o=stored();
