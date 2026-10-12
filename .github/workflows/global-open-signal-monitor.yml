@@ -5,11 +5,22 @@ on:
   schedule:
     - cron: "17,47 * * * *"
   workflow_dispatch: {}
+  # Test the GKG recovery against actual upstream as soon as a new main
+  # version deploys. Scheduled half-hour monitoring remains best effort.
+  push:
+    branches: [main]
+    paths:
+      - "scripts/lib/gdelt-gkg-bulk-discovery.mjs"
+      - "scripts/lib/quota-safe-original-discovery-fallback.mjs"
+      - "src/__tests__/gdelt-gkg-bulk-discovery.test.ts"
+      - ".github/workflows/global-open-signal-monitor.yml"
   pull_request:
     paths:
       - "scripts/lib/market-signal-discovery.mjs"
       - "scripts/ops/probe-market-signal-discovery.mjs"
       - "scripts/lib/quota-safe-original-discovery-fallback.mjs"
+      - "scripts/lib/gdelt-gkg-bulk-discovery.mjs"
+      - "src/__tests__/gdelt-gkg-bulk-discovery.test.ts"
       - "scripts/ops/probe-official-native-rss-three-domains.mjs"
       - "src/__tests__/quota-safe-original-discovery-fallback.test.ts"
       - "src/__tests__/market-open-global-signal-discovery.test.ts"
@@ -44,8 +55,9 @@ jobs:
           set -euo pipefail
           node --check scripts/lib/market-signal-discovery.mjs
           node --check scripts/lib/quota-safe-original-discovery-fallback.mjs
+          node --check scripts/lib/gdelt-gkg-bulk-discovery.mjs
           node --check scripts/ops/probe-market-signal-discovery.mjs
-      - name: Poll GDELT and on degradation use bounded original-publisher discovery
+      - name: Poll GDELT DOC; on 429 try static GKG 15m bulk plus original publishers
         if: github.event_name != 'pull_request'
         shell: bash
         run: |
