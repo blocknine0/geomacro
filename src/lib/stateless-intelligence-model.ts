@@ -4,8 +4,6 @@
  * Nothing in this module verifies same-event corroboration or assigns scores.
  * Raw titles, URLs and provider IDs never appear in the return schema.
  */
-import { WEBSITE_RELEASE_DELAY_MS } from "./website-publication-delay";
-
 export type StatelessCategory = "geopolitics" | "macro" | "rare_earth";
 
 export type StatelessSourceSpec = {
@@ -34,7 +32,7 @@ export type StatelessIntelligenceSignal = {
   why_it_matters: string;
   topic: string;
   published_at: string;
-  observed_release_count: number;
+  observed_release_count: 1;
   sources_credited: string[];
   status: "official_release_observed_unscored";
   same_event_corrob_verified: false;
@@ -43,7 +41,7 @@ export type StatelessIntelligenceSignal = {
 
 const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
-export const STATELESS_WEBSITE_DELAY_MS = WEBSITE_RELEASE_DELAY_MS;
+export const STATELESS_WEBSITE_DELAY_MS = 15 * 60_000;
 export const STATELESS_LOOKBACK_MS = 7 * DAY;
 
 const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; implication: string }[]> = {
@@ -173,54 +171,97 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
   return { dated, undatedGov };
 }
 
+/**
+ * In-memory event feed: one entry per unique first-party release, NOT a topic
+ * aggregate or 0-100 risk score. Titles are newly composed from a controlled
+ * domain lexicon, never copied from publisher headlines. Stable IDs are only
+ * non-reversible-looking view identifiers, not persistent storage keys.
+ */
+const SAFE_FOCUS: Record<StatelessCategory, readonly { test: RegExp; label: string }[]> = {
+  geopolitics: [
+    { test: /\bsanctions?\b/i, label: "sanctions" },
+    { test: /\bceasefire\b/i, label: "ceasefire negotiations" },
+    { test: /\bsecurity council\b/i, label: "UN Security Council activity" },
+    { test: /\bborder\b/i, label: "border policy" },
+    { test: /\bdisarmament\b/i, label: "disarmament" },
+    { test: /\bhumanitarian\b/i, label: "humanitarian policy" },
+    { test: /\bforeign policy\b/i, label: "foreign policy" },
+    { test: /\bmilitary\b/i, label: "military policy" },
+  ],
+  macro: [
+    { test: /\binterest rates?\b/i, label: "interest-rate policy" },
+    { test: /\bmonetary policy\b/i, label: "monetary policy" },
+    { test: /\bconsumer prices?\b/i, label: "consumer prices" },
+    { test: /\binflation\b/i, label: "inflation" },
+    { test: /\bforeign exchange\b/i, label: "foreign exchange" },
+    { test: /\bbalance of payments\b/i, label: "external balances" },
+    { test: /\bfinancial stability\b/i, label: "financial stability" },
+    { test: /\bGDP\b/i, label: "economic output" },
+  ],
+  rare_earth: [
+    { test: /\brare[- ]earths?\b/i, label: "rare-earth materials" },
+    { test: /\blithium\b/i, label: "lithium" },
+    { test: /\bcobalt\b/i, label: "cobalt" },
+    { test: /\bnickel\b/i, label: "nickel" },
+    { test: /\bgraphite\b/i, label: "graphite" },
+    { test: /\bgallium\b/i, label: "gallium" },
+    { test: /\bgermanium\b/i, label: "germanium" },
+    { test: /\bcritical minerals?\b/i, label: "critical-minerals supply" },
+    { test: /\bmineral processing\b/i, label: "mineral processing" },
+  ],
+};
+
+function viewIdentifier(input: string): string {
+  // FNV-1a is used solely to avoid exposing raw article URLs in the public
+  // UI key; it is NOT proof, an identity attestation or an audit digest.
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
 export function deriveStatelessSignals(
   candidates: readonly StatelessSourceCandidate[],
   now = Date.now(),
 ): StatelessIntelligenceSignal[] {
+  if (!Number.isFinite(now)) return [];
   const cutoff = now - STATELESS_WEBSITE_DELAY_MS;
-  const grouped = new Map<string, {
-    topic: NonNullable<ReturnType<typeof selectOfficialTopic>>;
-    newest: number; count: number; category: StatelessCategory;
-    credits: Set<string>;
-  }>();
   const unique = new Set<string>();
+  const result: StatelessIntelligenceSignal[] = [];
   for (const item of candidates) {
+    if (!item || !["geopolitics", "macro", "rare_earth"].includes(item.category)) continue;
     const native = originalPublicationMs(item.publishedAt, now);
     if (native === null || native > cutoff) continue;
-    let validated: URL;
-    try { validated = new URL(item.articleUrl); } catch { continue; }
-    if (validated.protocol !== "https:" || validated.username || validated.password ||
-        validated.port || validated.hash || !validated.hostname) continue;
+    let url: URL;
+    try { url = new URL(item.articleUrl); } catch { continue; }
+    if (url.protocol !== "https:" || url.username || url.password || url.port ||
+        url.hash || !url.hostname) continue;
     const topic = selectOfficialTopic(item.title, item.category);
     if (!topic) continue;
-    const fingerprint = item.sourceId + "|" + item.articleUrl;
+    const fingerprint = item.sourceId + "|" + url.href;
     if (unique.has(fingerprint)) continue;
     unique.add(fingerprint);
-    // Same topic/day is an activity aggregate, NOT a corroborated same event.
-    const day = new Date(native).toISOString().slice(0, 10);
-    const key = item.category + "|" + topic.name + "|" + day;
-    const group = grouped.get(key) ?? {
-      topic, newest: native, count: 0, category: item.category, credits: new Set<string>(),
-    };
-    group.count++;
-    group.newest = Math.max(group.newest, native);
-    if (item.credit) group.credits.add(item.credit);
-    grouped.set(key, group);
-  }
-  return [...grouped.entries()]
-    .map(([key, group]) => ({
-      id: key.replace(/[^a-z0-9]+/gi, "-").slice(0, 100).toLowerCase(),
-      category: group.category,
-      title: "Geomacro observes official activity involving " + group.topic.name,
-      why_it_matters: group.topic.implication,
-      topic: group.topic.name,
-      published_at: new Date(group.newest).toISOString(),
-      observed_release_count: group.count,
-      sources_credited: [...group.credits].sort(),
-      status: "official_release_observed_unscored" as const,
-      same_event_corrob_verified: false as const,
+    const focus = SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? topic.name;
+    result.push({
+      id: item.category + "-" + viewIdentifier(fingerprint),
+      category: item.category,
+      title: "Geomacro finds an official development concerning " + focus,
+      why_it_matters: topic.implication,
+      topic: topic.name,
+      published_at: new Date(native).toISOString(),
+      observed_release_count: 1,
+      sources_credited: item.credit ? [item.credit] : [],
+      status: "official_release_observed_unscored",
+      same_event_corrob_verified: false,
       severity: null,
-    }))
-    .sort((a, b) => b.published_at.localeCompare(a.published_at))
-    .slice(0, 12);
+    });
+  }
+  // Preserve every distinct release, even when several target the same topic
+  // and date. Exact URL repeats are suppressed; similar titles never become
+  // unearned independent same-event corroboration.
+  return result.sort((a, b) =>
+    b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id)
+  ).slice(0, 50);
 }
