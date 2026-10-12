@@ -133,7 +133,8 @@ export function summarizeGdeltGkgBulk(content,{batch_at,now=new Date()}){
     const cols=line.replace(/\r$/u,"").split("\t");
     if(cols.length!==27){invalid++;continue}
     const date=utcFromStamp(cols[1]);
-    if(!date||Math.abs(Date.parse(date)-batch)>60*60*1000){invalid++;continue}
+    if(!date||Date.parse(date)>now.getTime()||
+       Math.abs(Date.parse(date)-batch)>60*60*1000){invalid++;continue}
     const url=cols[4];
     let host;
     try{
