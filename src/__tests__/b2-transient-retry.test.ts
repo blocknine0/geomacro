@@ -11,12 +11,12 @@ describe("B2 S3 transient retry contract", () => {
   });
 
   it("keeps signing inside each attempt so retry timestamps are fresh", () => {
-    expect(source.indexOf("for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)"))
+    expect(source.indexOf("for (let attempt = 1; attempt <= maxAttempts; attempt++)"))
       .toBeLessThan(source.indexOf("const timestamp = new Date()"));
   });
 
   it("still fails closed after retry exhaustion", () => {
-    expect(source).toContain("attempt === MAX_ATTEMPTS");
+    expect(source).toContain("attempt === maxAttempts");
     expect(source).toContain("B2_${method}_RETRY_EXHAUSTED");
   });
 });
