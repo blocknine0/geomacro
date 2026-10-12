@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "scripts/ops/observe-approved-reliefweb-live.mjs"
+      - "src/__tests__/approved-reliefweb-live-observer.test.ts"
       - "scripts/ops/audit-official-step1-feed-redundancy.mjs"
       - "scripts/lib/official-source-quarantine.mjs"
       - "src/__tests__/official-step1-feed-redundancy.test.ts"
@@ -140,6 +142,53 @@ jobs:
           path: |
             artifacts/expanded-official-source/transport.json
             artifacts/expanded-official-source/step1-issuer-readiness.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  approved-reliefweb-live:
+    # One provider API request per existing 90-minute official poll (16/day).
+    # No extra schedule, no DB. Humanitarian aggregator CONTEXT only.
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: production
+    env:
+      RELIEFWEB_APPROVED_APPNAME: ${{ secrets.RELIEFWEB_APPROVED_APPNAME }}
+    steps:
+      - name: Checkout current approved source monitor
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Node 22 for approved ReliefWeb private metadata discovery
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Probe approved ReliefWeb once with no Supabase B2 D1 or x402 traffic
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/observe-approved-reliefweb-live.mjs
+          jq -e '
+            .schema == "geomacro.reliefweb-approved-private-observation.v1" and
+            (.status == "CONFIG_REQUIRED" or .status == "ACCESS_DENIED_OR_QUOTA" or .status == "LIVE_METADATA_TRANSPORT") and
+            .supabase_requests==0 and .d1_requests==0 and
+            .b2_requests==0 and .usdc_spent==0 and
+            .commercial_eligible==false and
+            .independent_original_publisher_verified==false and
+            .raw_report_bodies_stored==false and
+            (.api_requests==0 or .api_requests==1)
+          ' artifacts/expanded-official-source/reliefweb-approved.json >/dev/null
+          if jq -e '.status == "LIVE_METADATA_TRANSPORT"' artifacts/expanded-official-source/reliefweb-approved.json >/dev/null; then
+            echo "::notice title=ReliefWeb accepted::Approved appname reader reached ReliefWeb; original publisher rights, signed intelligence and 195 countries are not proven."
+          else
+            echo "::warning title=ReliefWeb not activated::Approved appname secret missing, denied or quota exhausted; official source polling continues."
+          fi
+      - name: Keep private ReliefWeb aggregate receipt for three days
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: reliefweb-approved-source-transport-${{ github.run_id }}
+          path: artifacts/expanded-official-source/reliefweb-approved.json
           if-no-files-found: warn
           retention-days: 3
 
