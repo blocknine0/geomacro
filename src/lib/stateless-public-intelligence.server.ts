@@ -167,7 +167,8 @@ async function readCanadaNewsOriginalDay(candidate: {
   title: string; articleUrl: string;
 }, source: StatelessSourceSpec, now: number,
   note?: (stage: "path_ok" | "http_ok" | "html_ok" | "title_ok" |
-    "clock_found" | "clock_consistent" | "date_path_ok" | "original_ok") => void,
+    "clock_found" | "clock_consistent" | "date_path_ok" |
+    "calendar_ok" | "not_future" | "within_30d" | "original_ok") => void,
 ): Promise<StatelessSourceCandidate | null> {
   if (!source.canadaOriginalPage ||
       !/^https:\/\/www\.canada\.ca\/en\/(?:natural-resources-canada|global-affairs)\/news\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\.html$/u.test(candidate.articleUrl))
@@ -206,6 +207,9 @@ type LaneMetrics = {
   canada_original_clock_found?: number;
   canada_original_clock_consistent?: number;
   canada_original_date_path_ok?: number;
+  canada_original_calendar_ok?: number;
+  canada_original_not_future?: number;
+  canada_original_within_30d?: number;
 };
 async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   candidates: StatelessSourceCandidate[]; healthy: boolean;
@@ -255,7 +259,8 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
     if (!xml) return { candidates: [], healthy: false };
     const parsed = parseFirstPartyFeed(xml, source, now);
     const canadaStage = {path_ok:0,http_ok:0,html_ok:0,original_ok:0,
-      title_ok:0,clock_found:0,clock_consistent:0,date_path_ok:0};
+      title_ok:0,clock_found:0,clock_consistent:0,date_path_ok:0,
+      calendar_ok:0,not_future:0,within_30d:0};
     const recovered = await Promise.all(parsed.undatedGov.slice(0, source.canadaOriginalPage ? 8 : 4)
       .map(candidate => source.canadaOriginalPage
         ? readCanadaNewsOriginalDay(candidate, source, now, stage => {canadaStage[stage]++;})
@@ -272,6 +277,9 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
           canada_original_clock_found:canadaStage.clock_found,
           canada_original_clock_consistent:canadaStage.clock_consistent,
           canada_original_date_path_ok:canadaStage.date_path_ok,
+          canada_original_calendar_ok:canadaStage.calendar_ok,
+          canada_original_not_future:canadaStage.not_future,
+          canada_original_within_30d:canadaStage.within_30d,
         } : {}),
       },
     };
