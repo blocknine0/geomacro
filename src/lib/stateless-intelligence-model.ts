@@ -69,7 +69,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
     { test: /\b(liquidity|financial stability|bank supervision|banking regulation|economic growth|GDP|economic bulletin|bank lending|banking statistics|financial accounts|financial markets|unemployment|labour market|credit conditions|household debt|economic outlook)\b/i, name: "financial conditions",
       implication: "Financial-system developments may matter for credit access and counterparty exposure; a score requires separately verified measurements." },
     { test: /\b(trade mission|free trade|trade deal|trade agreement|trade negotiations|bilateral trade|export growth|commercial deals|economic partnership|JETCO|tariffs|foreign investment)\b/i, name: "trade and economic relations",
-      implication: "Financial-system developments may matter for credit access and counterparty exposure; a score requires separately verified measurements." },
+      implication: "Trade and investment agreements can affect market access, cross-border commercial flows and currency exposure; their actual economic impact requires follow-up evidence." },
   ],
   rare_earth: [
     { test: /\b(rare[- ]earths?|neodymium|dysprosium|terbium)\b/i, name: "rare-earth supply",
