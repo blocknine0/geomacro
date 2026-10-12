@@ -10,7 +10,7 @@ import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 import { loadStructuralContext } from "./structural-context.server";
-import { readPublicGlobalRisk } from "./global-risk-read.server";
+import { readProductionGlobalRisk } from "./production-global-risk.server";
 import { publicRiskObjectTrustDiscovery } from "./risk-object-trust-discovery.server";
 import type { GeomacroRiskObject } from "./risk-object-contract";
 import { PUBLIC_DEMO_RISK_PROFILE_REASON } from "./public-demo-risk-profile";
@@ -141,7 +141,7 @@ async function loadRiskObject(
 
 async function loadGriContext() {
   try {
-    const risk = await readPublicGlobalRisk();
+    const risk = await readProductionGlobalRisk();
     return {
       id: risk.snapshotId,
       as_of: risk.snapshotAsOf,
