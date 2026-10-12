@@ -1,7 +1,6 @@
 import { createPerKeySingleFlight } from "./b2-single-flight";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 import type { GlobalRisk } from "./global-risk.types";
-import { validateGlobalRiskContinuity } from "./global-risk-continuity";
 import { readGlobalRiskEdge } from "./global-risk-edge.server";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
