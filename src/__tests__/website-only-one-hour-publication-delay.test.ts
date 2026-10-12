@@ -60,7 +60,13 @@ describe("website-only 60min publication embargo (machine / x402 unaffected)",()
   expect(oldGri).toContain("const risk = useGlobalRisk()");
   expect(hook).toContain("getWebsiteLaggedGlobalRisk");
   expect(hook).toContain("websiteVerifiedSnapshotPastEmbargo");
-  expect(historical).toContain('.lte("as_of",new Date(cutoff).toISOString())');
+  // Website-only serving is D1 verified historical ring -> verified B2
+  // rather than a frozen Supabase query that can hang or burn quota.
+  const webMethod=historical.slice(historical.indexOf("export async function readWebsiteLaggedGlobalRisk"));
+  expect(webMethod).toContain("/v1/public/website-lagged-global-risk");
+  expect(webMethod).toContain("readB2PublicRisk()");
+  expect(webMethod).not.toContain("getAppSupabase()");
+  expect(webMethod).not.toContain('.from("gri_snapshots")');
   expect(historical).toContain("WEBSITE_GRI_ONE_HOUR_VERIFIED_SNAPSHOT_UNAVAILABLE");
   expect(websiteFn).toContain('createServerFn({method:"GET"})');
   expect(websiteFn).toContain("readWebsiteLaggedGlobalRisk");
