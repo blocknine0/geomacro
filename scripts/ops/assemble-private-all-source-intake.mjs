@@ -156,7 +156,7 @@ export function assemblePrivateIntakeSnapshot(input, now = new Date()) {
   let operatorNamedCorridorCandidates=0;
   if(operator76!==undefined){
     const rows=expectOverlay(operator76,
-      "geomacro.operator-76-source-attribution-intake.v1",76,"entries");
+      "geomacro.operator-source-attribution-intake.v1",76,"entries");
     for(const row of rows){
       guardedOverlayEntry("operator76",row?.id,row?.domains,
         row?.runtime_state,row?.canonical_existing_id);
