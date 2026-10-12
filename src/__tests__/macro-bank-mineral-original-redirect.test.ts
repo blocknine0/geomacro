@@ -49,6 +49,27 @@ describe("first-party bank Macro release and bounded mineral redirect",()=>{
       .toHaveLength(0);
   });
 
+  it("accepts only the independently observed first-party RSS1/RDF media envelope and native dc:date",()=>{
+    const rdf = '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" ' +
+      'xmlns:dc="http://purl.org/dc/elements/1.1/">' +
+      '<item rdf:about="https://www.bis.org/press/p261005.htm">' +
+      '<title>Basel III applicable in almost all member jurisdictions by 2027</title>' +
+      '<link>https://www.bis.org/press/p261005.htm</link>' +
+      '<dc:date>2026-10-05T02:00:00Z</dc:date>' +
+      '<dc:modified>2026-10-12T23:00:00Z</dc:modified>' +
+      '</item></rdf:RDF>';
+    const p=parseFirstPartyFeed(rdf,bank,now);
+    expect(p.metrics.seen).toBe(1);
+    expect(p.metrics.native_clock_valid).toBe(1);
+    expect(deriveStatelessSignals(p.dated,now)).toHaveLength(1);
+    expect(p.dated[0].publishedAt).toBe("2026-10-05T02:00:00.000Z");
+    const unknown={...bank,id:"unverified_rdf"};
+    expect(parseFirstPartyFeed(rdf,unknown,now).dated).toHaveLength(0);
+    // Never accept an untimed calendar day or a modification-only date.
+    expect(parseFirstPartyFeed(rdf.replace("2026-10-05T02:00:00Z","2026-10-05"),bank,now).dated).toHaveLength(0);
+    expect(parseFirstPartyFeed(rdf.replace(/<dc:date>[\s\S]*?<\/dc:date>/u,""),bank,now).dated).toHaveLength(0);
+  });
+
   it("follows one allowed HTTPS same-government RSS redirect, never mutating the original signal date",async()=>{
     const follow="https://natural-resources.canada.ca/news/feed.xml";
     const mock=vi.fn(async (u:RequestInfo|URL, _init?:RequestInit)=>String(u)===minerals.url?move(follow):ok);
