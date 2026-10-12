@@ -601,14 +601,14 @@
       ],
       "provider_category": "news",
       "access": "rss",
-      "candidate_endpoint": "http://feeds.bbci.co.uk/news/world/rss.xml",
+      "candidate_endpoint": "https://feeds.bbci.co.uk/news/world/rss.xml",
       "original_declared_freshness": "near_realtime",
       "requested_poll_interval": "5m",
       "source_tier": 2,
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "BBC World",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -620,7 +620,10 @@
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
       "provider_access_recheck_required": true,
-      "warning_insecure_candidate_transport": true
+      "warning_insecure_candidate_transport": true,
+      "probe_url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "original_candidate_endpoint": "http://feeds.bbci.co.uk/news/world/rss.xml",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "news_aljazeera",
@@ -639,7 +642,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "Al Jazeera",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -650,7 +653,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "original_candidate_endpoint": "https://www.aljazeera.com/xml/rss/all.xml",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "news_dw",
@@ -669,7 +675,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "Deutsche Welle",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -680,7 +686,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://rss.dw.com/rdf/rss-en-all",
+      "original_candidate_endpoint": "https://rss.dw.com/rdf/rss-en-all",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "news_nikkei",
@@ -699,7 +708,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "Nikkei Asia",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -710,7 +719,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://asia.nikkei.com/rss",
+      "original_candidate_endpoint": "https://asia.nikkei.com/rss",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "news_scmp",
@@ -729,7 +741,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "South China Morning Post",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -740,7 +752,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.scmp.com/rss",
+      "original_candidate_endpoint": "https://www.scmp.com/rss",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "news_france24",
@@ -759,7 +774,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "France24",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -770,7 +785,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.france24.com/en/rss",
+      "original_candidate_endpoint": "https://www.france24.com/en/rss",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "news_kyivindependent",
@@ -789,7 +807,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "Kyiv Independent",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -800,7 +818,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://kyivindependent.com/feed/",
+      "original_candidate_endpoint": "https://kyivindependent.com/feed/",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "news_toi",
@@ -819,7 +840,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "Times of India",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -830,7 +851,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",
+      "original_candidate_endpoint": "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "news_reuters_ap",
@@ -910,7 +934,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "TASS",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -921,7 +945,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://tass.com/rss/v2.xml",
+      "original_candidate_endpoint": "https://tass.com/rss/v2.xml",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "state_globaltimes",
@@ -940,7 +967,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "Global Times",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -951,7 +978,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.globaltimes.cn/rss/outbrain.xml",
+      "original_candidate_endpoint": "https://www.globaltimes.cn/rss/outbrain.xml",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "osint_x_telegram",
@@ -999,7 +1029,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "OFAC Recent Actions",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -1010,7 +1040,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://ofac.treasury.gov/recent-actions",
+      "original_candidate_endpoint": "https://ofac.treasury.gov/recent-actions",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "ofac_sdn",
@@ -1310,14 +1343,14 @@
       ],
       "provider_category": "macro",
       "access": "api",
-      "candidate_endpoint": "https://api.bls.gov/publicAPI/v2/",
+      "candidate_endpoint": "https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",
       "original_declared_freshness": "monthly",
       "requested_poll_interval": "1h",
       "source_tier": 1,
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "BLS API",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -1328,7 +1361,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",
+      "original_candidate_endpoint": "https://api.bls.gov/publicAPI/v2/",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "bea",
@@ -1401,7 +1437,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "Federal Reserve press / FOMC / Beige Book",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -1412,7 +1448,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.federalreserve.gov/feeds/press_all.xml",
+      "original_candidate_endpoint": "https://www.federalreserve.gov/feeds/press_all.xml",
+      "pending_live_provider_acceptance": true
     },
     {
       "id": "ecb_data",
@@ -2187,7 +2226,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
       "attribution": {
         "source_name": "Mining.com / Mining Weekly / Rare Earth Exchanges",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -2198,7 +2237,10 @@
       "derived_only": true,
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
-      "provider_access_recheck_required": true
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.mining.com/feed/",
+      "original_candidate_endpoint": "https://www.mining.com/feed/",
+      "pending_live_provider_acceptance": true
     }
   ]
 }

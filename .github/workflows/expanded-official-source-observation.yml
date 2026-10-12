@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
+      - "scripts/ops/observe-operator-free-feed-rotation.mjs"
+      - "src/__tests__/operator-free-feed-rotation.test.ts"
       - "config/operator-76-source-attribution-intake.v1.json"
       - "scripts/ops/probe-operator-official-intake.mjs"
       - "scripts/lib/operator-source-attribution.mjs"
@@ -241,6 +243,79 @@ jobs:
         with:
           name: operator-three-domain-context-${{ github.run_id }}
           path: artifacts/expanded-official-source/operator-official-intake.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  operator-free-feed-initial-acceptance:
+    # Only main push/explicit manual action checks all candidate groups.
+    # PR must remain offline; scheduled checks use exactly one group below.
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        source_group: [0, 1, 2]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      OPERATOR_FREE_FEED_GROUP: ${{ matrix.source_group }}
+    steps:
+      - name: Checkout candidate source observer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Audit actual public HTTP and no-key RSS sources; remain red on unavailable candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/observe-operator-free-feed-rotation.mjs
+          jq -e '
+            .schema=="geomacro.operator-free-rotating-private-feed-metadata.v1" and
+            .supabase_requests==0 and .b2_requests==0 and .d1_requests==0 and
+            .payments==0 and .raw_publisher_payload_persisted==false and
+            .signed_gro_generated==false and
+            .http_requests==.source_count and
+            ([.sources[]|.commercial_eligible==false and .signed_gro==false]|all)
+          ' artifacts/expanded-official-source/operator-free-feed-rotation.json >/dev/null
+      - name: Preserve sanitized actual public-source findings
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: operator-public-feed-initial-group-${{ matrix.source_group }}-${{ github.run_id }}
+          path: artifacts/expanded-official-source/operator-free-feed-rotation.json
+          retention-days: 3
+          if-no-files-found: warn
+
+  operator-free-feed-rotation-scheduled:
+    # Existing 90-minute workflow slot, only 1 of 3 groups each time.
+    # Every listed candidate is attempted approximately each 4.5h if
+    # GitHub's best-effort scheduler dispatches all intended runs.
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'schedule' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout candidate source observer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Probe one rotating bounded public source group
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/observe-operator-free-feed-rotation.mjs
+      - name: Retain private sanitized receipt for 3 days
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: operator-public-feed-rotation-${{ github.run_id }}
+          path: artifacts/expanded-official-source/operator-free-feed-rotation.json
           if-no-files-found: warn
           retention-days: 3
 
