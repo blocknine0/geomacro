@@ -30,10 +30,32 @@ export function canadaOriginalPublicationDay(
 
   const originalDates:string[]=[];
   for(const tag of html.match(/<meta\b[^>]*>/giu)??[]){
-    const name=(attr(tag,"name")??attr(tag,"property")??"").toLowerCase();
+    const name=(attr(tag,"name")??attr(tag,"property")??attr(tag,"itemprop")??"").toLowerCase();
     if(!["dcterms.issued","article:published_time","datepublished"].includes(name))continue;
     const value=attr(tag,"content");
     if(value)originalDates.push(value.slice(0,10));
+  }
+  // Some official pages publish a schema.org NewsArticle original issuance
+  // clock instead of dcterms.issued. Use only the explicit datePublished,
+  // *never* dateModified, after verifying the same original headline.
+  for(const chunk of html.matchAll(/<script\b([^>]{0,450})>([\s\S]{1,12000}?)<\/script>/giu)){
+    if(!/\btype\s*=\s*["']application\/ld\+json["']/iu.test(chunk[1]))continue;
+    try{
+      const root=JSON.parse(chunk[2]);
+      const nodes=[root,...(Array.isArray(root)?root:[]),
+        ...(root && typeof root==="object" && Array.isArray(root["@graph"])?root["@graph"]:[])];
+      for(const item of nodes){
+        if(!item || typeof item!=="object" || Array.isArray(item))continue;
+        const kind=item["@type"];
+        const types=Array.isArray(kind)?kind:[kind];
+        if(!types.includes("NewsArticle")&&!types.includes("Article"))continue;
+        if(typeof item.headline!=="string" ||
+           [...titleWords].filter(w=>words(item.headline).has(w)).length<2)continue;
+        if(typeof item.datePublished==="string" &&
+           /^20\d{2}-\d{2}-\d{2}(?:T|$)/u.test(item.datePublished))
+          originalDates.push(item.datePublished.slice(0,10));
+      }
+    }catch{ /* Unparsable first-party metadata does not substitute fetch time. */ }
   }
   for(const match of html.matchAll(/<time\b([^>]*)>([^<]{1,130})<\/time>/giu)){
     if((attr(match[1],"property")??"").toLowerCase()!=="datepublished")continue;
