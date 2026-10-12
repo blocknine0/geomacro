@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { readPublicIntelligenceRowsFromB2 } from "./public-intelligence-b2.functions";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
+import { websiteLaggedEvidenceRows } from "./website-publication-delay";
 
 const EmptyInput = z.object({}).strict();
 
@@ -13,7 +14,7 @@ export const getPublicIntelligenceSeo = createServerFn({ method: "GET" })
   .validator((input: unknown) => EmptyInput.parse(input))
   .handler(async (): Promise<PublicIntelligenceRow[]> => {
     try {
-      return await readPublicIntelligenceRowsFromB2();
+      return websiteLaggedEvidenceRows(await readPublicIntelligenceRowsFromB2());
     } catch (error) {
       console.error(
         "[public-intelligence-seo] verified B2 read failed",

@@ -95,3 +95,72 @@ export async function readPublicGlobalRisk(): Promise<GlobalRisk> {
 
   return assemblePublicGlobalRisk(snapshots, recentEvents, now);
 }
+
+/**
+ * Website-only one-hour delayed genuine VERIFIED GRI read.
+ *
+ * Unlike the live machine/API reader, this selects the *previous genuine
+ * published verified snapshot* at or before the public release cutoff.
+ * Signed methodology hashes, original snapshot clock and category-history
+ * proofs are never backdated or synthesized.
+ * If frozen Supabase is inaccessible, accept only a full independently
+ * verified B2 package whose original snapshot is already past the cutoff.
+ * No Supabase writes, B2 writes or x402 calls.
+ */
+export async function readWebsiteLaggedGlobalRisk(
+  now=Date.now(),
+):Promise<GlobalRisk>{
+  const {websitePublicCutoff,websiteVerifiedSnapshotPastEmbargo}=
+    await import("./website-publication-delay");
+  const {validateGlobalRiskContinuity}=
+    await import("./global-risk-continuity");
+  const cutoff=websitePublicCutoff(now);
+  const app=getAppSupabase();
+  let risk:GlobalRisk|null=null;
+  if(app){
+    try{
+      const result=await app.from("gri_snapshots").select(
+        "id,as_of,methodology_version,methodology_hash,input_hash,evidence_hash,calculation_hash,disposition_hash,candidate_event_count,proof_version,proof_hash,verification_status,reconciliation_residual,change_residual,raw_score,display_score,coverage,weighted_confidence,active_categories,event_count,source_count,independent_story_count,story_correlation_version,story_correlation_prompt_version,category_breakdown,previous_as_of,previous_raw_score,previous_display_score,change_points,change_hash,change_attribution,explanation,status",
+      ).eq("status","published")
+       .eq("verification_status","verified")
+       .eq("methodology_version",GRI_METHOD_VERSION)
+       .lte("as_of",new Date(cutoff).toISOString())
+       .order("as_of",{ascending:false}).limit(1000);
+      if(!result.error&&result.data?.length){
+        const snapshots=result.data as SnapshotRow[];
+        const latestAt=Date.parse(snapshots[0].as_of);
+        if(Number.isFinite(latestAt)&&latestAt<=cutoff){
+          const events=await loadRecentEvents(
+            app,new Date(latestAt-LOOKBACK).toISOString(),
+            new Date(latestAt).toISOString(),
+          );
+          const safeEvents=events.filter(event=>{
+            const created=Date.parse(event.created_at);
+            const original=Date.parse(String(event.published_at??""));
+            return Number.isFinite(created)&&created<=cutoff&&
+              Number.isFinite(original)&&original<=cutoff;
+          });
+          risk=assemblePublicGlobalRisk(snapshots,safeEvents,cutoff);
+        }
+      }
+    }catch{
+      // Frozen/over-quota Supabase is not reliable serving infrastructure.
+      // The verified B2 projection below is the only fallback.
+    }
+  }
+  if(!risk){
+    const b2=await readB2PublicRisk();
+    if(b2)risk=b2;
+  }
+  if(!risk||
+     !websiteVerifiedSnapshotPastEmbargo(risk,now)||
+     !validateGlobalRiskContinuity(risk,now).ok){
+    throw new Error("WEBSITE_GRI_ONE_HOUR_VERIFIED_SNAPSHOT_UNAVAILABLE");
+  }
+  // Website-only derived projection. Original article titles, source URLs,
+  // publisher IDs and per-source headlines never reach the browser.
+  return {...risk,recentEvents:[],
+    drivers:risk.drivers.map(driver=>({...driver,topEvent:null})),
+    topDriver:risk.topDriver?{...risk.topDriver,topEvent:null}:null,
+  };
+}
