@@ -3,6 +3,10 @@ name: Website Intelligence Historical Gap Backfill
 # First-party publication ORIGINAL dates, never search/update/fetch time.
 # D1 stores only derived-only news cards; no raw feeds, Supabase, GRO or B2.
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/website-news-gap-backfill.yml"
+      - "scripts/ops/backfill-website-derived-news.ts"
   workflow_dispatch: {}
   push:
     branches: [main]
@@ -21,7 +25,7 @@ concurrency:
 
 jobs:
   official-original-backfill:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: github.repository == 'blocknine0/geomacro' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     environment: production
@@ -38,9 +42,16 @@ jobs:
           bun-version: "1.4.2"
       - name: Validate existing private D1 publisher token
         run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then exit 0; fi
           test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || {
             echo "::error::DERIVED_HISTORY_CONTROL_PLANE_AUTH_MISSING"
             exit 2
           }
-      - name: Reconstruct only original-date-backed derived news from Oct 1 onwards
+      - name: Independently probe archived original publishers without secrets or writes (PR)
+        if: github.event_name == 'pull_request'
+        env:
+          BACKFILL_DRY_RUN: "1"
+        run: bun scripts/ops/backfill-website-derived-news.ts
+      - name: Reconstruct original-date-backed derived news from Oct 1 onwards (main)
+        if: github.event_name != 'pull_request'
         run: bun scripts/ops/backfill-website-derived-news.ts
