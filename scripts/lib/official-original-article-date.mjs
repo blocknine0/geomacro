@@ -252,6 +252,14 @@ function fixedPublisherArticle(rawUrl, category) {
   } catch { return null; }
 }
 
+/** Strict private GKG prefilter: no arbitrary GDELT-observed website can be
+ * treated as an official original publisher merely because GDELT indexed it.
+ * This reuses exactly the verifier's existing pinned HTTPS host/path policy.
+ */
+export function approvedFirstPartyOriginalArticleUrl(url, category) {
+  return fixedPublisherArticle(url, category);
+}
+
 // Aggregate-only closed diagnostic. Never copy HTTP headers, URLs, response
 // bodies, private article text or exception messages into Actions artifacts.
 export const SAFE_PUBLISHER_PAGE_PROBE_CODES = Object.freeze([

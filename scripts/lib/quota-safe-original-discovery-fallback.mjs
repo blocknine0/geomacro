@@ -67,7 +67,11 @@ export async function probeQuotaSafeDiscovery({
   // search. The GKG clock is *index batch*, not original publication.
   let gkg;
   try {
-    gkg=await gkgProbe({now});
+    // Always reuse the SINGLE integrity-verified GKG archive already in
+    // memory; never download a second zip or poll DOC for this review.
+    // Adds <=2 first-party article checks per category (<=6 in total)
+    // solely for private precise publisher-date verification.
+    gkg=await gkgProbe({now,reviewFirstParty:true});
     const hasThree=Array.isArray(gkg?.domains)&&gkg.domains.length===3 &&
       new Set(gkg.domains.map(x=>x.category)).size===3 &&
       DOMAINS.every(domain=>gkg.domains.some(x=>
