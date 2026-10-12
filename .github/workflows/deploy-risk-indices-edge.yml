@@ -90,7 +90,7 @@ jobs:
             # backup; the Worker can still serve any independently
             # verified D1 hot/POP/B2 proof. If all are unavailable it
             # returns 503, never manufactured risk nor payable data.
-            printf 'export default null;\\n' > workers/risk-indices-edge/src/continuity.mjs
+            printf 'export default null;\n' > workers/risk-indices-edge/src/continuity.mjs
             test "$(cat workers/risk-indices-edge/src/continuity.mjs)" = 'export default null;'
             echo "SAFE_CODE_ONLY_DEPLOY_WITH_NO_STATIC_CONTINUITY; live proof acceptance stays mandatory"
           else
