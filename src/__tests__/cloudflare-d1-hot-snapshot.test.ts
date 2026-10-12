@@ -9,6 +9,14 @@ function fakeDb() {
   const rows = new Map<string, Record<string, unknown>>();
   return {
     rows,
+    // Cloudflare D1 batch is atomic in production. The unit fake mirrors the
+    // prepare.bind.run interface to ensure direct-B2 GRI history does not
+    // silently disable the existing verified current hot snapshot.
+    async batch(statements: Array<{run:()=>Promise<unknown>}>) {
+      const results=[];
+      for(const statement of statements)results.push(await statement.run());
+      return results;
+    },
     prepare(sql: string) {
       let bound: unknown[] = [];
       return {

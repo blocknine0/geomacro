@@ -115,8 +115,45 @@ export async function readWebsiteLaggedGlobalRisk(
   const {validateGlobalRiskContinuity}=
     await import("./global-risk-continuity");
   const cutoff=websitePublicCutoff(now);
-  const app=getAppSupabase();
   let risk:GlobalRisk|null=null;
+  // Prefer one bounded existing control-plane D1 read. This is historical
+  // website-only; the control plane itself enforces the full 60-minute cutoff
+  // and verifies the immutable original public B2-readback SHA-256 before
+  // returning a privacy-redacted (not raw-source) GRI projection.
+  try{
+    const response=await fetch(
+      "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-lagged-global-risk",
+      {method:"GET",redirect:"error",headers:{Accept:"application/json"},
+       cache:"no-store",signal:AbortSignal.timeout(3500)},
+    );
+    if(response.ok){
+      const receipt=await response.json() as {
+        ok?:boolean;schema?:string;website_only?:boolean;
+        minimum_delay_minutes?:number;verification_status?:string;
+        prior_b2_readback_verified_at_write?:boolean;
+        source_identity_disclosed?:boolean;raw_upstream_disclosed?:boolean;
+        chargeable?:boolean;paid_delivery_authorized?:boolean;
+        data?:GlobalRisk;
+      };
+      if(receipt.ok===true&&
+         receipt.schema==="geomacro.website-lagged-global-risk.v1"&&
+         receipt.website_only===true&&receipt.minimum_delay_minutes===60&&
+         receipt.verification_status==="verified"&&
+         receipt.prior_b2_readback_verified_at_write===true&&
+         receipt.source_identity_disclosed===false&&
+         receipt.raw_upstream_disclosed===false&&
+         receipt.chargeable===false&&
+         receipt.paid_delivery_authorized===false&&receipt.data&&
+         websiteVerifiedSnapshotPastEmbargo(receipt.data,now)&&
+         validateGlobalRiskContinuity(receipt.data,now).ok){
+        risk=receipt.data;
+      }
+    }
+  }catch{
+    // D1 may be quota-held or the new migration not yet deployed; continue
+    // to the existing strictly verified read-only historical fallback.
+  }
+  const app=risk?null:getAppSupabase();
   if(app){
     try{
       const result=await app.from("gri_snapshots").select(
@@ -145,7 +182,8 @@ export async function readWebsiteLaggedGlobalRisk(
       }
     }catch{
       // Frozen/over-quota Supabase is not reliable serving infrastructure.
-      // The verified B2 projection below is the only fallback.
+      // The already verified D1 prior history is preferred; a genuinely
+      // old full B2 projection below remains the final strict fallback.
     }
   }
   if(!risk){
