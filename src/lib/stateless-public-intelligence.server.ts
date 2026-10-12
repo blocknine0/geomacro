@@ -54,6 +54,11 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "eurostat_economy_release", category: "macro", media: "atom",
     url: "https://ec.europa.eu/eurostat/en/search?_estatsearchportlet_WAR_estatsearchportlet_collection=CAT_PREREL&_estatsearchportlet_WAR_estatsearchportlet_theme=PER_ECOFIN&p_p_id=estatsearchportlet_WAR_estatsearchportlet&p_p_lifecycle=2&p_p_mode=view&p_p_resource_id=atom&p_p_state=maximized",
     allowedHosts: ["ec.europa.eu"], credit: "Eurostat" },
+  // An additional independent central bank, with an official first-party
+  // native RSS publication clock. No website fetch/update clock fallback.
+  { id: "rba_media", category: "macro", media: "rss",
+    url: "https://www.rba.gov.au/rss/rss-cb-media-releases.xml",
+    allowedHosts: ["www.rba.gov.au"], credit: "Reserve Bank of Australia" },
   { id: "fed_press", category: "macro", media: "rss",
     url: "https://www.federalreserve.gov/feeds/press_all.xml",
     allowedHosts: ["www.federalreserve.gov"], credit: "Federal Reserve Board" },
@@ -193,6 +198,44 @@ async function readCanadaNewsOriginalDay(candidate: {
   }catch{return null}
 }
 
+
+/**
+ * A bounded, same-publisher, opt-in HTTP feed redirect for the one fixed
+ * Canadian government science RSS lane observed redirecting in production.
+ * Never follow off-host/unknown-host or user-supplied URLs, never retry 403,
+ * and never confuse a redirect or fetch clock with a publisher release time.
+ */
+export async function fetchFirstPartyOriginalFeed(
+  source: StatelessSourceSpec,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Response> {
+  const accepted = source.media === "rss"
+    ? "application/rss+xml, application/xml, text/xml"
+    : "application/atom+xml, application/xml, text/xml";
+  let target = source.url;
+  for (let hop = 0; hop <= 2; hop++) {
+    const response = await fetchImpl(target, {
+      method: "GET", redirect: "manual", cache: "no-store",
+      headers: { Accept: accepted },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (![301, 302, 307, 308].includes(response.status)) return response;
+    // Unrelated providers are never granted a new redirect privilege.
+    if (source.id !== "nrcan_science" || hop === 2) return response;
+    const location = response.headers.get("location");
+    if (!location || location.length > 1600) return response;
+    let next: URL;
+    try { next = new URL(location, target); } catch { return response; }
+    if (next.protocol !== "https:" || next.username || next.password ||
+        next.port || next.hash || next.pathname.startsWith("//") ||
+        !source.allowedHosts.includes(next.hostname.toLowerCase()) ||
+        !/\/(?:[^?#]{0,250}\/)?(?:rss(?:\.xml)?|feed(?:\.xml)?|atom(?:\.xml)?)$/iu.test(next.pathname))
+      return response;
+    if (next.href === target) return response;
+    target = next.href;
+  }
+  throw Error("SOURCE_REDIRECT_BOUND_EXCEEDED");
+}
 type LaneMetrics = {
   seen: number; relevant: number; original_link_valid: number;
   native_clock_valid: number; undated_original: number;
@@ -253,12 +296,8 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       transport_ok: false, transport_failure_class: kind } satisfies LaneMetrics,
   });
   try {
-    const response = await fetch(source.url, {
-      method: "GET", redirect: "error", cache: "no-store",
-      headers: { Accept: source.media === "rss" ? "application/rss+xml, application/xml, text/xml" :
-        "application/atom+xml, application/xml, text/xml" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    const response = await fetchFirstPartyOriginalFeed(source);
+    if (response.status >= 300 && response.status < 400) return failed("redirect");
     if (!response.ok) return failed(response.status >= 500 ? "http_5xx" : "http_4xx");
     const mime = response.headers.get("content-type") ?? "";
     if (!/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu.test(mime))
