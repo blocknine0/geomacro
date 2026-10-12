@@ -5,6 +5,7 @@ on:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "scripts/ops/observe-approved-reliefweb-live.mjs"
       - "src/__tests__/approved-reliefweb-live-observer.test.ts"
+      - "src/__tests__/reliefweb-scheduled-failclosed.test.ts"
       - "scripts/ops/audit-official-step1-feed-redundancy.mjs"
       - "scripts/lib/official-source-quarantine.mjs"
       - "src/__tests__/official-step1-feed-redundancy.test.ts"
@@ -29,7 +30,8 @@ on:
   workflow_dispatch:
 concurrency:
   group: geomacro-expanded-official-source-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a scheduled 90-minute probe because a push landed mid-poll.
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
