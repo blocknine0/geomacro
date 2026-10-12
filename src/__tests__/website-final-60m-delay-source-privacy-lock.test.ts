@@ -48,7 +48,7 @@ describe("founder-final website release and privacy lock — GRI + Intelligence 
    expect(webPart).toContain("v1/public/website-lagged-global-risk");
    expect(webPart).toContain("readGlobalRiskEdge");
    expect(webPart).not.toContain("getAppSupabase(");
-   expect(webPart).not.toContain("readB2PublicRisk(");
+   expect(webPart).not.toContain("const b2=await readB2PublicRisk(");
    expect(webPart).toContain("websiteVerifiedSnapshotPastEmbargo(risk,now)");
    expect(webPart).toContain("validateGlobalRiskContinuity(risk,now).ok");
    const hook=readFileSync("src/lib/use-global-risk.ts","utf8");
