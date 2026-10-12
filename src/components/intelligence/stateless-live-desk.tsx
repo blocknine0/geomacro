@@ -127,7 +127,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
             nextErrors[category] = true;
           }
         });
-        // In-memory tab continuity only, never B2/Supabase/D1/localStorage.
+        // In-memory tab continuity only, never B2/Supabase/D1/browser-durable storage.
         setFeeds(previous => ({ ...previous, ...nextFeeds }));
         setErrors(previous => ({ ...previous, ...nextErrors }));
       } finally {
