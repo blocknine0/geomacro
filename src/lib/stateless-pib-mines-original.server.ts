@@ -10,7 +10,7 @@ import { STATELESS_LOOKBACK_MS } from "./stateless-intelligence-model";
 const INDEX = "https://www.pib.gov.in/AllRelease.aspx?lang=1&reg=6";
 const PAGE_BASE = "https://www.pib.gov.in/PressReleasePage.aspx?PRID=";
 const MAX_INDEX = 1_800_000;
-const MAX_PAGE = 180_000;
+const MAX_PAGE = 750_000;
 const MAX_PAGES = 6;
 const MONTHS: Record<string, number> = {
   JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11,
@@ -101,7 +101,7 @@ export async function readPibMinesOriginalCandidates(now=Date.now()):Promise<{
   const candidates=(await Promise.all(found.map(async item=>{
     const articleUrl=PAGE_BASE+item.id;
     const page=await readText(articleUrl,MAX_PAGE);
-    if(!page || !/\bMinistry\s+of\s+Mines\b/iu.test(decodeEntities(page).slice(0,4500)))return null;
+    if(!page || !/\bMinistry\s+of\s+Mines\b/iu.test(decodeEntities(page).slice(0,20_000)))return null;
     const original=pibOriginalIstMs(decodeEntities(page));
     if(original===null||original>now||now-original>STATELESS_LOOKBACK_MS)return null;
     return {
