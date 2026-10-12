@@ -1,196 +1,30 @@
 import { useEffect, useRef, useState } from "react";
-import { Clock3, RefreshCw, AlertCircle } from "lucide-react";
+import { AlertCircle, Clock3, RefreshCw } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
-import type { StatelessCategory } from "@/lib/stateless-intelligence-model";
+import type { StatelessCategory, StatelessIntelligenceSignal } from "@/lib/stateless-intelligence-model";
 
-const DOMAINS = [
+const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
   { key: "geopolitics", label: "Geopolitics" },
-  { key: "macro", label: "Macro/FX" },
+  { key: "macro", label: "Macro / FX" },
   { key: "rare_earth", label: "Critical Minerals" },
-] as const;
-
-const OGL_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
+];
 const REFRESH_MS = 2 * 60_000;
+const OGL_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
+type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
+type View = StatelessCategory | "all";
 
-export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceResult | null }) {
-  const [category, setCategory] = useState<StatelessCategory>("geopolitics");
-  const [data, setData] = useState<StatelessIntelligenceResult | null>(initial);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
-  const [retryKey, setRetryKey] = useState(0);
-  const hydrationConsumed = useRef(false);
-  const current = data?.category === category ? data : null;
-  const domain = DOMAINS.find(item => item.key === category)!;
-
-  useEffect(() => {
-    let active = true;
-    const refresh = async () => {
-      setBusy(true);
-      try {
-        const result = await getStatelessIntelligence({ data: { category } });
-        if (active) { setData(result); setError(false); }
-      } catch {
-        if (active) { setData(null); setError(true); }
-      } finally {
-        if (active) setBusy(false);
-      }
-    };
-    // SSR already fetched the same category; hydrate without the duplicate read.
-    if (!hydrationConsumed.current && initial && category === "geopolitics" && retryKey === 0) {
-      hydrationConsumed.current = true;
-    } else { void refresh(); }
-    const timer = window.setInterval(() => { void refresh(); }, REFRESH_MS);
-    return () => { active = false; window.clearInterval(timer); };
-  }, [category, retryKey, initial]);
-
-  return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
-      <header className="max-w-4xl">
-        <div className="inline-flex rounded-full border border-primary/30 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-primary">
-          Geomacro finds · 15-minute delayed
-        </div>
-        <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">What changed in the world</h1>
-        <p className="mt-4 text-base leading-7 text-muted-foreground">
-          Geomacro finds geopolitical, Macro/FX and critical-minerals developments from original
-          official releases. Read what changed and why it may matter in two short sections.
-          Each distinct release appears after 15 minutes. No score, repeated article or stored feed.
-        </p>
-        <p className="mt-3 text-sm text-muted-foreground">
-          <Clock3 className="mr-1 inline-block h-4 w-4" aria-hidden /> 15-minute delayed · Refreshed every 2 minutes while open.
-          Original source dates are preserved. Findings are independent derived summaries, not confirmed market effects.
-        </p>
-      </header>
-
-      <section className="mt-8" aria-label="Intelligence category">
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-          Choose an intelligence category
-        </p>
-        <div role="group" aria-label="Intelligence category" className="grid gap-2 sm:grid-cols-3">
-          {DOMAINS.map(item => (
-            <button key={item.key} type="button" aria-pressed={category === item.key}
-              onClick={() => setCategory(item.key)}
-              className={"min-h-11 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-                (category === item.key ? "border-primary bg-primary text-primary-foreground" :
-                  "border-border bg-card hover:border-primary/60 hover:bg-muted")}>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-8" aria-labelledby="stateless-updates-heading">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-              Latest Geomacro finds
-            </p>
-            <h2 id="stateless-updates-heading" className="mt-1 text-2xl font-semibold">
-              {domain.label} developments
-            </h2>
-          </div>
-          <button type="button" onClick={() => setRetryKey(v => v + 1)}
-            disabled={busy}
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-50">
-            <RefreshCw className={"h-4 w-4 " + (busy ? "animate-spin" : "")} aria-hidden />
-            Refresh
-          </button>
-        </div>
-        {current ? (
-          <div className="mt-3 space-y-1 text-xs text-muted-foreground" role="status">
-            <p>{current.signals.length} distinct findings · {current.current_24h_count} in the last 24 hours ·
-              Checked {formatInstant(current.checked_at)}</p>
-            <p>{current.healthy_feed_count}/{current.feed_count} official feeds responded ·
-              Original publication must predate {formatInstant(current.website_release_cutoff)}</p>
-            {current.healthy_feed_count < current.feed_count ? (
-              <p className="flex items-center gap-1.5">
-                <AlertCircle className="h-3 w-3" aria-hidden /> Some sources are temporarily unavailable; coverage may be incomplete.
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-        {error ? <p role="alert" className="mt-3 rounded-lg border border-border p-3 text-sm text-muted-foreground">
-          Current on-demand checks could not complete. No substitute or synthetic developments are displayed.
-        </p> : null}
-
-        {!current ? (
-          <div role="status" className="mt-5 rounded-2xl border border-border p-6 text-sm text-muted-foreground">
-            Checking permitted original publisher releases without storing source material…
-          </div>
-        ) : current.signals.length === 0 ? (
-          <div role="status" className="mt-5 rounded-2xl border border-dashed border-border p-6">
-            <p className="font-medium">No qualifying {domain.label} findings in this source check</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {current.status === "sources_unavailable"
-                ? "The selected official feeds are unavailable. This is not evidence that no world events occurred."
-                : "None of the sampled original-dated relevant releases passed the 15-minute cutoff in the past 30 days. Other sources may report additional developments."}
-            </p>
-          </div>
-        ) : (
-          <div className="mt-5 space-y-3" aria-live="polite" aria-atomic="false">
-            {current.current_24h_count === 0 ? (
-              <p className="rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-                No new qualifying releases in the last 24 hours. Earlier original releases appear below.
-              </p>
-            ) : null}
-            {current.signals.map(signal => (
-              <article key={signal.id} className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">
-                    GEOMACRO FINDS
-                  </span>
-                  <time dateTime={signal.published_at} className="text-xs text-muted-foreground">
-                    {formatInstant(signal.published_at)}
-                  </time>
-                  {Date.parse(signal.published_at) >= Date.parse(current.checked_at) - 86_400_000
-                    ? <span className="text-xs text-muted-foreground">Last 24h</span>
-                    : <span className="text-xs text-muted-foreground">Earlier (past 30 days)</span>}
-                </div>
-                <h3 className="mt-3 text-xl font-semibold leading-snug tracking-tight">{signal.title}</h3>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">What changed</h4>
-                    <p className="mt-1 text-sm leading-6">{signal.what_changed}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">Why it matters</h4>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{signal.why_it_matters}</p>
-                  </div>
-                </div>
-                {signal.sources_credited.length > 0 ? (
-                  <div className="mt-4 border-t border-border/60 pt-3 text-xs text-muted-foreground">
-                    {signal.sources_credited.map(credit => (
-                      <p key={credit}>
-                        Required credit: {credit}
-                        {credit.includes("Open Government Licence") ? (
-                          <> · <a className="underline underline-offset-2" href={OGL_URL} target="_blank"
-                            rel="noopener noreferrer">Licence</a></>
-                        ) : null}
-                      </p>
-                    ))}
-                  </div>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        )}
-        <p className="mt-6 text-xs leading-6 text-muted-foreground">
-          No database, B2, D1, browser local storage, archive, or permanent publication.
-          Current readings are derived in request memory and discarded.
-          Original first-publication timestamps—not fetch times, website deploy times, or modified times—control the 15-minute release delay.
-          This bounded free feed does not claim complete global coverage.
-        </p>
-      </section>
-    </main>
-  );
+function labelFor(category: StatelessCategory): string {
+  return DOMAINS.find(domain => domain.key === category)?.label ?? category;
 }
 
 function formatInstant(value: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/u.test(value)) {
-    const day = Date.parse(value + "T00:00:00.000Z");
-    if (Number.isFinite(day)) return new Intl.DateTimeFormat("en-GB", {
-      day:"numeric",month:"short",year:"numeric",timeZone:"UTC",
-    }).format(day) + " · publisher provides date only";
+    const date = Date.parse(value + "T00:00:00.000Z");
+    return Number.isFinite(date)
+      ? new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }).format(date) +
+        " · original publisher date only"
+      : "Original publication date unavailable";
   }
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp)
@@ -199,4 +33,261 @@ function formatInstant(value: string): string {
       hour: "2-digit", minute: "2-digit", timeZone: "UTC",
     }).format(timestamp) + " UTC"
     : "Original publication time unavailable";
+}
+
+function Story({ signal, checkedAt }: {
+  signal: StatelessIntelligenceSignal;
+  checkedAt: number;
+}) {
+  const isCurrent = Date.parse(signal.published_at) >= checkedAt - 86_400_000;
+  return (
+    <article className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">
+          GEOMACRO FINDS
+        </span>
+        <span aria-hidden>·</span>
+        <span>{labelFor(signal.category)}</span>
+        <span aria-hidden>·</span>
+        <time dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
+        {!isCurrent ? <span>· Earlier original release</span> : null}
+      </div>
+      <h3 className="mt-3 text-lg font-semibold leading-snug sm:text-xl">{signal.title}</h3>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">What changed</h4>
+          <p className="mt-1 text-sm leading-6">{signal.what_changed}</p>
+        </div>
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">Why it matters</h4>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{signal.why_it_matters}</p>
+        </div>
+      </div>
+      {signal.sources_credited.length > 0 ? (
+        <div className="mt-4 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+          {signal.sources_credited.map(credit => (
+            <p key={credit}>Required credit: {credit}
+              {credit.includes("Open Government Licence") ? (
+                <> · <a href={OGL_URL} target="_blank" rel="noopener noreferrer"
+                  className="underline underline-offset-2">Licence</a></>
+              ) : null}
+            </p>
+          ))}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+/**
+ * A continuously refreshing, genuinely three-domain browser desk.
+ *
+ * The first visit immediately starts requesting the other two categories
+ * in parallel with the SSR-provided Geopolitics result. Every visible tab
+ * refreshes ALL three sources at 2-minute intervals. There is no cron,
+ * database, queue, browser storage, service worker or durable history.
+ *
+ * Upstream failures never become fake "no news" claims: last in-tab data
+ * is explicitly marked temporarily unverified and its check time remains
+ * unchanged until a new real publisher check completes successfully.
+ */
+export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceResult | null }) {
+  const [view, setView] = useState<View>("all");
+  const [feeds, setFeeds] = useState<FeedState>(() =>
+    initial?.category === "geopolitics" ? { geopolitics: initial } : {});
+  const [errors, setErrors] = useState<Partial<Record<StatelessCategory, boolean>>>({});
+  const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
+  const lastRequestAt = useRef(0);
+  const manualRefresh = useRef<() => void>(() => undefined);
+
+  useEffect(() => {
+    let alive = true;
+    const refresh = async (categories: readonly StatelessCategory[]) => {
+      if (inFlight.current) return;
+      inFlight.current = true;
+      lastRequestAt.current = Date.now();
+      if (alive) setBusy(true);
+      try {
+        const results = await Promise.allSettled(categories.map(async category => ({
+          category,
+          value: await getStatelessIntelligence({ data: { category } }),
+        })));
+        if (!alive) return;
+        const nextFeeds: FeedState = {};
+        const nextErrors: Partial<Record<StatelessCategory, boolean>> = {};
+        results.forEach((result, index) => {
+          const category = categories[index];
+          if (result.status === "fulfilled" &&
+              result.value.value.category === category &&
+              result.value.value.healthy_feed_count > 0) {
+            nextFeeds[category] = result.value.value;
+            nextErrors[category] = false;
+          } else {
+            nextErrors[category] = true;
+          }
+        });
+        // In-memory tab continuity only, never B2/Supabase/D1/browser-durable storage.
+        setFeeds(previous => ({ ...previous, ...nextFeeds }));
+        setErrors(previous => ({ ...previous, ...nextErrors }));
+      } finally {
+        inFlight.current = false;
+        if (alive) setBusy(false);
+      }
+    };
+
+    // SSR loaded geopolitics only. Load both other domains without waiting
+    // for the visitor to click, so the default all-domain feed is populated.
+    void refresh(initial?.category === "geopolitics"
+      ? ["macro", "rare_earth"]
+      : ["geopolitics", "macro", "rare_earth"]);
+    manualRefresh.current = () => { void refresh(["geopolitics", "macro", "rare_earth"]); };
+    const refreshAll = () => {
+      if (document.visibilityState === "visible") {
+        void refresh(["geopolitics", "macro", "rare_earth"]);
+      }
+    };
+    const onReturn = () => {
+      if (document.visibilityState === "visible" &&
+          Date.now() - lastRequestAt.current > REFRESH_MS / 2) refreshAll();
+    };
+    const interval = window.setInterval(refreshAll, REFRESH_MS);
+    document.addEventListener("visibilitychange", onReturn);
+    window.addEventListener("focus", onReturn);
+    return () => {
+      alive = false;
+      manualRefresh.current = () => undefined;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onReturn);
+      window.removeEventListener("focus", onReturn);
+    };
+  }, [initial]);
+
+  // Human-readable timeline across all three categories, newest first.
+  // Day-only originals sort by their actual date, never an invented hour.
+  const known = DOMAINS.filter(domain => feeds[domain.key]);
+  const signals = known.flatMap(domain => feeds[domain.key]?.signals ?? [])
+    .sort((a, b) => b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id))
+    .filter(signal => view === "all" || signal.category === view);
+  const checkedAt = Date.now();
+  const recent = signals.filter(signal => Date.parse(signal.published_at) >= checkedAt - 86_400_000);
+  const earlier = signals.filter(signal => Date.parse(signal.published_at) < checkedAt - 86_400_000);
+  const active = view === "all" ? DOMAINS : DOMAINS.filter(domain => domain.key === view);
+  const incomplete = active.filter(domain => errors[domain.key] || feeds[domain.key]?.healthy_feed_count === 0);
+  const latestCheck = Math.max(0, ...active.map(domain =>
+    Date.parse(feeds[domain.key]?.checked_at ?? "") || 0));
+  const missing = active.filter(domain => !feeds[domain.key]);
+  const refreshOnClick = () => manualRefresh.current();
+
+  return (
+    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
+      <header className="max-w-3xl">
+        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+          GEOMACRO FINDS · LIVE INTELLIGENCE DESK
+        </p>
+        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+          What changed in the world
+        </h1>
+        <p className="mt-4 text-base leading-7 text-muted-foreground">
+          A continuously updating feed of official geopolitical, Macro/FX and critical-minerals
+          releases, each written in plain language. New qualifying developments appear only
+          after the original publisher's 15-minute website delay. No risk scores.
+        </p>
+        <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Clock3 className="h-4 w-4" aria-hidden />
+          <span>15-minute delayed · All three categories refresh every 2 minutes while this tab is visible</span>
+        </p>
+      </header>
+
+      <section className="mt-8" aria-label="Intelligence category">
+        <h2 className="text-sm font-semibold">Browse current developments</h2>
+        <div role="group" aria-label="Intelligence category"
+          className="mt-3 flex flex-wrap gap-2">
+          <button type="button" aria-pressed={view === "all"} onClick={() => setView("all")}
+            className={"min-h-11 rounded-xl border px-4 py-2 text-sm font-semibold " +
+              (view === "all" ? "border-primary bg-primary text-primary-foreground" :
+                "border-border bg-card hover:border-primary/60")}>All latest</button>
+          {DOMAINS.map(domain => (
+            <button key={domain.key} type="button" aria-pressed={view === domain.key}
+              onClick={() => setView(domain.key)}
+              className={"min-h-11 rounded-xl border px-4 py-2 text-sm font-semibold " +
+                (view === domain.key ? "border-primary bg-primary text-primary-foreground" :
+                  "border-border bg-card hover:border-primary/60")}>
+              {domain.label}
+              <span className="ml-2 text-xs opacity-80">{feeds[domain.key]?.signals.length ?? "…"}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-8" aria-labelledby="stateless-updates-heading">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
+              Latest Geomacro finds
+            </p>
+            <h2 id="stateless-updates-heading" className="mt-1 text-2xl font-semibold">
+              {view === "all" ? "Across all three domains" : labelFor(view) + " developments"}
+            </h2>
+            <p role="status" className="mt-2 text-xs text-muted-foreground">
+              {recent.length} in the last 24 hours · {earlier.length} earlier (last 30 days)
+              {latestCheck ? " · Latest source check " + formatInstant(new Date(latestCheck).toISOString()) : ""}
+            </p>
+          </div>
+          <button type="button" onClick={refreshOnClick} disabled={busy}
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-50">
+            <RefreshCw className={"h-4 w-4 " + (busy ? "animate-spin" : "")} aria-hidden />
+            {busy ? "Checking" : "Refresh"}
+          </button>
+        </div>
+
+        {missing.length > 0 ? (
+          <p role="status" className="mt-4 text-sm text-muted-foreground">
+            Loading {missing.map(x => x.label).join(", ")} from live official publishers…
+          </p>
+        ) : null}
+        {incomplete.length > 0 ? (
+          <p role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-border px-4 py-3 text-sm text-muted-foreground">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            Latest recheck failed for {incomplete.map(x => x.label).join(", ")}.
+            Previously received in-tab findings may be out of date; no synthetic stories are shown.
+          </p>
+        ) : null}
+
+        {signals.length > 0 ? (
+          <div className="mt-6 space-y-8" aria-live="polite" aria-atomic="false">
+            {recent.length > 0 ? (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">New in the last 24 hours</h3>
+                {recent.map(signal => <Story key={signal.id} signal={signal} checkedAt={checkedAt} />)}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No verified original release from this view in the last 24 hours.
+              </p>
+            )}
+            {earlier.length > 0 ? (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">Earlier original releases · Last 30 days</h3>
+                {earlier.map(signal => <Story key={signal.id} signal={signal} checkedAt={checkedAt} />)}
+              </div>
+            ) : null}
+          </div>
+        ) : missing.length === 0 ? (
+          <p role="status" className="mt-6 rounded-xl border border-dashed border-border px-5 py-6 text-sm text-muted-foreground">
+            No eligible original-dated findings in this source window.
+            Source availability does not prove the absence of real-world events.
+          </p>
+        ) : null}
+
+        <p className="mt-8 text-xs leading-6 text-muted-foreground">
+          No database, B2, D1, browser local storage, or permanent intelligence archive.
+          Findings exist in request memory and the open tab only. Closing the tab discards them.
+          Publisher original timestamps (not fetch, update or deploy times) control the 15-minute delay;
+          date-only originals are shown without an invented hour.
+          A publisher release is not an independently verified market outcome.
+        </p>
+      </section>
+    </main>
+  );
 }

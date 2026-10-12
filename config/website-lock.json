@@ -1,13 +1,13 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "d21eb5e3806de49a91d61f22355e4e8ef6d1d276",
-  "published_baseline": "Founder-approved Geomacro Finds Intelligence desk v2: no score or raw content, three domain toggles, independently readable what-changed and why-it-matters per unique original article, truthful within-24h versus original-dated prior-30d labels including conservatively qualified day-only original dates (never fabricated exact hours), 15-minute publication delay and two-minute active-page polling. Expanded official multiple-source failover and source health visibility; no writes to D1/B2/Supabase/browser storage, no false global coverage or fake current event claim. Only source-specific mandatory credits. The finalized Global Risk and Risk Indices 60-minute source presentation remains frozen, machine x402 unaffected. Exact live production deployment PENDING founder Lovable Publish AFTER pre-publish live network acceptance.",
+  "baseline_sha": "1c387c7ffbd56a24f4164dcce4211f368cd585c6",
+  "published_baseline": "Founder-approved permanent 2026-10-12 website Intelligence three-domain continuous-feed correction. Default All latest displays Geopolitics, Macro/FX, and Critical Minerals together, original publications retain truthful dates and category attribution; each original-derived event is presented as Geomacro finds, What changed, Why it matters, without scores. On initial SSR: geopolitics, plus immediate concurrent in-browser Macro/FX and Critical Minerals reads; while browser tab visible automatically refresh all three every two minutes and on return/focus, with force-refresh button, in-tab transient recovery and explicit stale/unavailable warning. No database, B2, D1, disk, browser persistent intelligence state, no raw publisher titles/links. Strict server-enforced 15-minute original-source delay, no x402 or GRI changes; independent 60m Global Risk remains. User will manually publish only after exact-head source/test/security verification and Lovable sync; live acceptance separate.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-10T17:25:00Z",
   "published_source_sha": "7215b0d05b05ccc4de1e5f69a333ae615abc38e3",
-  "lock_revision": "founder-live-readability-3domain-prepublish-acceptance-20261012",
+  "lock_revision": "founder-continuous-three-domain-intelligence-nostore-20261012",
   "pending_publish_acceptance": true,
   "website_privacy_baseline_status": "FOUNDER_APPROVED_LOCKED_AWAITING_EXACT_SHA_LIVE_DEPLOYMENT"
 }

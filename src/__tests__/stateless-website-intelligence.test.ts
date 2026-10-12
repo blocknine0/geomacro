@@ -130,6 +130,20 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(desk).toContain("getStatelessIntelligence({ data: { category } })");
     expect(desk).toContain("setInterval(");
     expect(desk).toContain("Latest Geomacro finds");
+    // The main desk must show all three categories automatically, not
+    // require the visitor to click each category before a source check.
+    expect(desk).toContain('useState<View>("all")');
+    expect(desk).toContain("All latest</button>");
+    expect(desk).toContain('["macro", "rare_earth"]');
+    expect(desk).toContain('["geopolitics", "macro", "rare_earth"]');
+    expect(desk).toContain('document.visibilityState === "visible"');
+    expect(desk).toContain('window.addEventListener("focus", onReturn)');
+    expect(desk).toContain('manualRefresh.current()');
+    expect(desk).toContain('setFeeds(previous => ({ ...previous, ...nextFeeds }))');
+    expect(desk).toContain('Previously received in-tab findings may be out of date');
+    expect(desk).toContain('New in the last 24 hours');
+    expect(desk).toContain('Earlier original releases · Last 30 days');
+
     expect(desk).toContain("15-minute delayed");
     expect(desk).not.toContain("RiskBadge");
     expect(desk).not.toContain("RiskTrend");
