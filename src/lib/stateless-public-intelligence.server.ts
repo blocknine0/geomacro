@@ -247,6 +247,10 @@ type LaneMetrics = {
   feed_item_count?: number;
   feed_entry_count?: number;
   feed_doctype_seen?: boolean;
+  feed_native_pubdate_count?: number;
+  feed_dc_date_count?: number;
+  feed_dc_issued_count?: number;
+  feed_native_published_count?: number;
   // Optional anonymous first-party stage counters for read-only CI
   // diagnostics. Never log provider URLs, article IDs or raw content.
   canada_original_path_ok?: number;
@@ -327,6 +331,10 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
         feed_item_count: [...xml.matchAll(/<item(?:\s[^>]*)?>/giu)].length,
         feed_entry_count: [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>/giu)].length,
         feed_doctype_seen: /<!DOCTYPE|<!ENTITY/iu.test(xml),
+        feed_native_pubdate_count: [...xml.matchAll(/<pubDate(?:\s[^>]*)?>/giu)].length,
+        feed_dc_date_count: [...xml.matchAll(/<dc:date(?:\s[^>]*)?>/giu)].length,
+        feed_dc_issued_count: [...xml.matchAll(/<(?:dc:issued|dcterms:issued)(?:\s[^>]*)?>/giu)].length,
+        feed_native_published_count: [...xml.matchAll(/<published(?:\s[^>]*)?>/giu)].length,
         ...(source.canadaOriginalPage ? {
           canada_original_path_ok:canadaStage.path_ok,
           canada_original_http_ok:canadaStage.http_ok,
