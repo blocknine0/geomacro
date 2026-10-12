@@ -42,7 +42,7 @@ export type StatelessIntelligenceSignal = {
   severity: null;
 };
 
-const DAY = 24 * HOUR;
+const DAY = 24 * 60 * 60_000;
 export const STATELESS_WEBSITE_DELAY_MS = 15 * 60_000;
 export const STATELESS_LOOKBACK_MS = 7 * DAY;
 
