@@ -6,7 +6,7 @@ import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-pol
 import { createPublicSignedRiskObjectProjection } from "./risk-object-public-projection.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { corridorSubjectId } from "./corridor-risk-engine";
-import { readPublicGlobalRisk } from "./global-risk-read.server";
+import { readProductionGlobalRisk } from "./production-global-risk.server";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import type { GeomacroRiskObject } from "./risk-object-contract";
 import {
@@ -139,7 +139,7 @@ async function loadVerifiedRiskObject(
   };
 }
 
-function publicGri(risk: Awaited<ReturnType<typeof readPublicGlobalRisk>>) {
+function publicGri(risk: Awaited<ReturnType<typeof readProductionGlobalRisk>>) {
   const changePoints = risk.previous === null ? null : risk.score - risk.previous;
   const generatedAtMs = Date.parse(risk.snapshotAsOf);
   const ageSeconds = Number.isFinite(generatedAtMs)
@@ -281,7 +281,7 @@ async function riskGateBundle(
       observationLimit,
       evidenceLimit,
     ),
-    readPublicGlobalRisk(),
+    readProductionGlobalRisk(),
   ]);
 
   return {
@@ -347,7 +347,7 @@ export async function runCanonicalTestnetIntelligence(input: {
   }
 
   if (request.capability === "gri_read") {
-    const risk = await readPublicGlobalRisk();
+    const risk = await readProductionGlobalRisk();
     return {
       data: publicGri(risk),
       subject_type: "global",
