@@ -1,13 +1,13 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "2ac94fd7291565f3ed0ba29aee575465b263c81c",
-  "published_baseline": "Founder explicitly requested 2026-10-12: no third-party source identity, provider name, original URL, source registry details, or upstream source evidence links in public website/API. Source inventory is PRIVATE and no longer displayed to users. Intelligence monitoring remains category-status only; signed derived results still require independently verified evidence and applicable commercial source rights. Global Risk finalized UI remains permanently locked. Exact Lovable publish and visual acceptance PENDING.",
+  "baseline_sha": "f4e98870a0c9dbb6ca0b88ea42a3f339fb4dab08",
+  "published_baseline": "Founder directed Supabase completely unavailable, public GRI/Intelligence strictly 60-minute-delayed, sources never disclosed to website/API customers. The homepage WHY detail is now limited to delayed verified GRI category risk drivers; frozen Supabase reads, raw source event titles and provider details are prohibited. Exact Lovable publish acceptance remains pending; the permanent /global-risk UI freeze is unchanged.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-10T17:25:00Z",
   "published_source_sha": "22a6def63e8edd0298d5205183740eff23d03a5a",
-  "lock_revision": "owner-authorized-source-confidentiality-20261012",
+  "lock_revision": "owner-authorized-website-supabase-free-derived-gri-20261012",
   "pending_publish_acceptance": true,
   "website_privacy_baseline_status": "OWNER_AUTHORIZED_PR_PENDING_LIVE_DEPLOYMENT"
 }

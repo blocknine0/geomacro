@@ -8,36 +8,25 @@ import {
   CheckCircle2,
   ChevronDown,
   Link2,
-  Loader2,
   Minus,
   Radio,
   Search,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabaseFeed } from "@/lib/supabase-feed";
 import { EmptyValue } from "@/components/foundation/data";
 import { RiskBadge, riskLevel } from "@/components/foundation/risk";
 import { LastUpdated } from "@/components/foundation/live";
 import { InlineError, UpdatingIndicator } from "@/components/foundation/async-states";
-import { reportError } from "@/lib/user-errors";
 import { useGlobalRisk } from "@/lib/use-global-risk";
 import { GRI_METHOD_VERSION } from "@/lib/gri-current-contract";
 
 type Bucket = { t: number; avg: number; count: number };
 
-type Contributor = {
-  source_title: string | null;
-  category: string | null;
-  severity: number | null;
-  deltaPoints: number;
-  kind: string;
-};
-
 type HeroStats = {
   count24h: number;
   countPrev24h: number | null;
-  sources: number;
+  independentStories: number;
   risk: number;
   riskPrev: number;
   riskMin: number;
@@ -234,62 +223,17 @@ function StepGuide() {
 export function HeroSection() {
   const riskFeed = useGlobalRisk();
   const [whyOpen, setWhyOpen] = useState(false);
-  const [whyLoading, setWhyLoading] = useState(false);
-  const [contributors, setContributors] = useState<Contributor[] | null>(null);
-
-  async function toggleWhy() {
-    const next = !whyOpen;
-    setWhyOpen(next);
-    if (!next || contributors !== null || whyLoading) return;
-    setWhyLoading(true);
-    // Prefer the stored attribution for the exact snapshot currently displayed.
-    // This makes "Why N?" reconcile to the published score/hash rather than a
-    // fresh client-side re-evaluation a few seconds later.
-    if (riskFeed.data?.auditPersisted && riskFeed.data.snapshotAsOf) {
-      try {
-        const { data: snapshot, error: snapshotError } = await supabaseFeed
-          .from("gri_snapshots")
-          .select("change_attribution")
-          .eq("id", riskFeed.data.snapshotId)
-          .maybeSingle();
-        if (
-          !snapshotError &&
-          snapshot?.change_attribution &&
-          typeof snapshot.change_attribution === "object"
-        ) {
-          const attr = snapshot.change_attribution as {
-            eventChanges?: Array<Record<string, unknown>>;
-          };
-          const top = (attr.eventChanges ?? [])
-            .filter((e) => Math.abs(Number(e.deltaPoints ?? 0)) > 0.000001)
-            .slice(0, 10)
-            .map((e) => ({
-              source_title: (e.sourceTitle as string | null) ?? null,
-              category: (e.category as string | null) ?? null,
-              severity:
-                typeof e.currentSeverity === "number"
-                  ? e.currentSeverity
-                  : typeof e.previousSeverity === "number"
-                    ? e.previousSeverity
-                    : null,
-              deltaPoints: Number(e.deltaPoints ?? 0),
-              kind: String(e.kind ?? "reweighted"),
-            }));
-          setContributors(top);
-          setWhyLoading(false);
-          return;
-        }
-      } catch (e) {
-        reportError("HeroSection.snapshotAttribution", e, "loading persisted GRI attribution");
-      }
-    }
-
-    // Current public GRI surfaces never run a historical client-side
-    // calculator. If persisted attribution is unavailable, for example on
-    // the first snapshot of a methodology series, expose that honestly.
-    setContributors([]);
-    setWhyLoading(false);
-  }
+  // Use the already verified, 60-minute-delayed derived GRI projection
+  // for WHY. Do not read frozen Supabase or expose raw publisher headlines.
+  const contributors=(riskFeed.data?.drivers??[])
+    .filter(d=>typeof d.score==="number" && Number.isFinite(d.score))
+    .slice(0,3)
+    .map(d=>({
+      category:d.category,
+      severity:d.score,
+      deltaPoints:typeof d.change==="number" && Number.isFinite(d.change)?d.change:null,
+    }));
+  function toggleWhy(){setWhyOpen(open=>!open);}
 
   const stats = useMemo<HeroStats | null>(() => {
     const risk = riskFeed.data;
@@ -298,7 +242,7 @@ export function HeroSection() {
     return {
       count24h: risk.eventCount,
       countPrev24h: risk.eventCountPrevious,
-      sources: risk.sourceCount ?? 0,
+      independentStories: risk.independentStoryCount,
       risk: risk.score,
       riskPrev: risk.previous ?? risk.score,
       riskMin: s24.low ?? risk.score,
@@ -494,10 +438,10 @@ export function HeroSection() {
                       </div>
                       <div className="flex flex-col gap-1 bg-card/60 px-5 py-4 sm:px-6 lg:px-4 lg:border-l lg:border-border/60 lg:first:border-l-0">
                         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                          Data Sources
+                          Independent stories
                         </span>
                         <span className="font-mono text-2xl tabular-nums text-foreground">
-                          {stats.sources > 0 ? stats.sources : <EmptyValue />}
+                          {stats.independentStories > 0 ? stats.independentStories : <EmptyValue />}
                         </span>
                       </div>
                       <div className="flex flex-col gap-1 bg-card/60 px-5 py-4 sm:px-6 lg:px-4 lg:border-l lg:border-border/60 lg:first:border-l-0">
@@ -526,55 +470,37 @@ export function HeroSection() {
                 {whyOpen && (
                   <div className="border-t border-border/60 bg-background/40 px-5 py-4 sm:px-6 lg:px-8">
                     <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                      24h GRI change attribution · top 10 exact event effects
+                      Verified category-level GRI drivers · at least 1 hour delayed
                     </div>
-                    {whyLoading ? (
-                      <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Loading contributors…
-                      </div>
-                    ) : !contributors || contributors.length === 0 ? (
+                    {!contributors.length ? (
                       <div className="font-mono text-[11px] text-muted-foreground">
-                        No event-level GRI change is available for this comparison
+                        No verified category-level GRI attribution is available for this snapshot.
                       </div>
                     ) : (
                       <ul className="divide-y divide-border/50">
-                        {contributors.map((c, i) => {
-                          const d = c.deltaPoints;
-                          return (
-                            <li key={i} className="flex items-center gap-3 py-2">
-                              <span className="min-w-0 flex-1 truncate text-xs text-foreground">
-                                {c.source_title ?? "Untitled event"}
-                              </span>
-                              {c.category && (
-                                <span className="shrink-0 rounded border border-border/70 bg-card/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
-                                  {c.category}
-                                </span>
-                              )}
-                              <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
-                                {c.severity ?? "N/A"}
-                                <span className="sr-only">
-                                  {c.severity === null || c.severity === undefined
-                                    ? " severity unavailable"
-                                    : " severity"}
-                                </span>
-                              </span>
-                              <span
-                                className={`w-10 shrink-0 text-right font-mono text-[11px] tabular-nums ${
-                                  d !== null && d > 0
-                                    ? "text-rose-400"
-                                    : d !== null && d < 0
-                                      ? "text-emerald-400"
-                                      : "text-muted-foreground"
-                                }`}
-                              >
-                                {`${d > 0 ? "+" : ""}${d.toFixed(2)}`}
-                                <span className="sr-only"> GRI points, {c.kind}</span>
-                              </span>
-                            </li>
-                          );
-                        })}
+                        {contributors.map((d) => (
+                          <li key={d.category} className="flex items-center gap-3 py-2">
+                            <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                              {d.category === "geopolitics" ? "Geopolitics" :
+                               d.category === "macro" ? "Macro / FX" :
+                               d.category === "rare_earth" ? "Critical minerals" :
+                               "Risk category"}
+                            </span>
+                            <span className="w-20 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
+                              {d.severity.toFixed(1)} / 100
+                            </span>
+                            <span className="w-14 shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
+                              {d.deltaPoints === null ? "N/A" :
+                               `${d.deltaPoints>0?"+":""}${d.deltaPoints.toFixed(2)}`}
+                            </span>
+                          </li>
+                        ))}
                       </ul>
                     )}
+                    <p className="mt-3 text-[11px] text-muted-foreground">
+                      Derived risk movements only. Source identities,
+                      raw evidence and original articles remain private.
+                    </p>
                   </div>
                 )}
               </div>

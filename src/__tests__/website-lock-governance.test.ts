@@ -42,7 +42,7 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("owner-authorized-source-confidentiality-20261012");
+    expect(config.lock_revision).toBe("owner-authorized-website-supabase-free-derived-gri-20261012");
     expect(config.pending_publish_acceptance).toBe(true);
     expect(config.website_privacy_baseline_status)
       .toBe("OWNER_AUTHORIZED_PR_PENDING_LIVE_DEPLOYMENT");
