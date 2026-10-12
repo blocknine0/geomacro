@@ -11,7 +11,7 @@ import {
 } from "./agent-query-world-bank-modules.server";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
-import { readPublicGlobalRisk } from "./global-risk-read.server";
+import { readProductionGlobalRisk } from "./production-global-risk.server";
 import { loadStructuralContext } from "./structural-context.server";
 import { buildDecisionIntelligence } from "./decision-intelligence-output";
 import {
@@ -301,7 +301,7 @@ async function riskGateForSubject(plan: AgentQueryPlan, subject: AgentQueryPlan[
   return result;
 }
 
-function publicGri(risk: Awaited<ReturnType<typeof readPublicGlobalRisk>>) {
+function publicGri(risk: Awaited<ReturnType<typeof readProductionGlobalRisk>>) {
   return {
     scope: "global",
     snapshot_id: risk.snapshotId,
@@ -827,7 +827,7 @@ export async function assembleAgentQueryResponse(input: {
       }))
     : [];
 
-  const gri = plan.required_modules.includes("gri_context") ? publicGri(await readPublicGlobalRisk()) : null;
+  const gri = plan.required_modules.includes("gri_context") ? publicGri(await readProductionGlobalRisk()) : null;
   const publicHotTopics = hotTopics.map((result) => ({
     deliverable: result.deliverable,
     code: result.code,
