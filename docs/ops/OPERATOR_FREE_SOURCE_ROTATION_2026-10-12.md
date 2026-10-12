@@ -91,9 +91,9 @@ healthy; do not count those as newly activated.
 - Nikkei Asia: official RSS terms explicitly restrict feeds to individual
   personal **noncommercial** reading. **Remove from company operation** even
   if the endpoint might return HTTP 200.
-- SCMP entry URL returned HTML rather than RSS. Update to official World
-  category endpoint `https://www.scmp.com/rss/5/feed` for one follow-up
-  acceptance, not a guarantee of access; no commercial article republication.
+- SCMP original `/rss` entry was only a feed directory. Regardless of
+  any available direct feed, the 15 September 2026 SCMP terms prohibit
+  this company's automated extraction/analytics: **do not poll**.
 - Kyiv Independent `/feed/` returned HTTP failure. Update to a reported
   official-source path `/news-archive/rss/` for one follow-up acceptance;
   if unavailable leave it degraded.
