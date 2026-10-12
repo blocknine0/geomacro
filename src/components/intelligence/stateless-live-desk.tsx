@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Clock3, RefreshCw } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
+import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
 import type { StatelessCategory, StatelessIntelligenceSignal } from "@/lib/stateless-intelligence-model";
 
@@ -96,6 +97,8 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
   const [feeds, setFeeds] = useState<FeedState>(() =>
     initial?.category === "geopolitics" ? { geopolitics: initial } : {});
   const [errors, setErrors] = useState<Partial<Record<StatelessCategory, boolean>>>({});
+  const [journal, setJournal] = useState<StatelessIntelligenceSignal[]>([]);
+  const [journalUnavailable, setJournalUnavailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const lastRequestAt = useRef(0);
@@ -163,10 +166,37 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
     };
   }, [initial]);
 
+  // Durable derived-only 30-day D1 journal independent of visitor activity.
+  useEffect(() => {
+    let alive = true;
+    const sync = async () => {
+      try {
+        const result = await getWebsiteDerivedNews();
+        if (alive) { setJournal(result.signals); setJournalUnavailable(false); }
+      } catch { if (alive) setJournalUnavailable(true); }
+    };
+    void sync();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void sync();
+    }, REFRESH_MS);
+    const onReturn = () => { if (document.visibilityState === "visible") void sync(); };
+    document.addEventListener("visibilitychange", onReturn);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onReturn);
+    };
+  }, []);
+
   // Human-readable timeline across all three categories, newest first.
   // Day-only originals sort by their actual date, never an invented hour.
   const known = DOMAINS.filter(domain => feeds[domain.key]);
-  const signals = known.flatMap(domain => feeds[domain.key]?.signals ?? [])
+  const merged = new Map<string, StatelessIntelligenceSignal>();
+  for (const signal of journal) merged.set(signal.id, signal);
+  for (const domain of known) {
+    for (const signal of feeds[domain.key]?.signals ?? []) merged.set(signal.id, signal);
+  }
+  const signals = [...merged.values()]
     .sort((a, b) => b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id))
     .filter(signal => view === "all" || signal.category === view);
   const checkedAt = Date.now();
@@ -189,13 +219,14 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
           What changed in the world
         </h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
-          A continuously updating feed of official geopolitical, Macro/FX and critical-minerals
-          releases, each written in plain language. New qualifying developments appear only
-          after the original publisher's 15-minute website delay. No risk scores.
+          A continuously updating feed of Geomacro-derived news across Geopolitics, Macro/FX and
+          Critical Minerals. An original-publisher release appears only after the 15-minute
+          website delay. The rolling 30-day derived-only timeline keeps prior findings visible
+          even when a publisher's feed rotates or every visitor closes the website. No risk scores.
         </p>
         <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Clock3 className="h-4 w-4" aria-hidden />
-          <span>15-minute delayed · All three categories refresh every 2 minutes while this tab is visible</span>
+          <span>15-minute delayed · Background collection every 30 minutes · Live refresh every 2 minutes while open</span>
         </p>
       </header>
 
@@ -254,6 +285,12 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
           </p>
         ) : null}
 
+        {journalUnavailable ? (
+          <p role="status" className="mt-4 text-xs text-muted-foreground">
+            Rolling history temporarily unavailable. Direct official source checks remain active;
+            no old finding is relabeled as newly published.
+          </p>
+        ) : null}
         {signals.length > 0 ? (
           <div className="mt-6 space-y-8" aria-live="polite" aria-atomic="false">
             {recent.length > 0 ? (
@@ -281,10 +318,10 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
         ) : null}
 
         <p className="mt-8 text-xs leading-6 text-muted-foreground">
-          No database, B2, D1, browser local storage, or permanent intelligence archive.
-          Findings exist in request memory and the open tab only. Closing the tab discards them.
-          Publisher original timestamps (not fetch, update or deploy times) control the 15-minute delay;
-          date-only originals are shown without an invented hour.
+          Only Geomacro-derived findings are kept in a bounded Cloudflare D1 30-day timeline.
+          Raw upstream feeds, publisher article text, original headlines and source URLs are not stored.
+          Live original-source reads remain independent of Supabase and historical risk score archives.
+          Original publication timestamps, not fetch or restore times, control the 15-minute delay.
           A publisher release is not an independently verified market outcome.
         </p>
       </section>
