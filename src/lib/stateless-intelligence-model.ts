@@ -20,6 +20,7 @@ export type StatelessSourceCandidate = {
   title: string;
   articleUrl: string;
   publishedAt: string;
+  datePrecision?: "day";
   sourceId: string;
   category: StatelessCategory;
   credit: string | null;
@@ -35,6 +36,7 @@ export type StatelessIntelligenceSignal = {
   geography: string | null;
   development_type: string;
   published_at: string;
+  date_precision: "exact" | "day";
   observed_release_count: 1;
   sources_credited: string[];
   status: "official_release_observed_unscored";
@@ -302,6 +304,18 @@ function developmentSummary(focus: string, kind: string, geography: string | nul
   return "An official publisher issued a " + kind + " concerning " + focus +
     context + ". This is a release-based finding; its real-world effect is not yet independently confirmed.";
 }
+/**
+ * Conservative release eligibility for a first-party calendar DAY when a
+ * publisher does not give an original hour. The last possible timezone day
+ * ends by 12:00 UTC of the next day; add the full website 15m delay.
+ * We publish the exact original date label, never an invented clock.
+ */
+export function conservativeDayReleaseMs(day: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(day)) return null;
+  const start = Date.parse(day + "T00:00:00.000Z");
+  if (!Number.isFinite(start) || new Date(start).toISOString().slice(0,10) !== day) return null;
+  return start + 36 * 60 * 60_000 + STATELESS_WEBSITE_DELAY_MS;
+}
 function viewIdentifier(input: string): string {
   // FNV-1a is used solely to avoid exposing raw article URLs in the public
   // UI key; it is NOT proof, an identity attestation or an audit digest.
@@ -323,8 +337,14 @@ export function deriveStatelessSignals(
   const result: StatelessIntelligenceSignal[] = [];
   for (const item of candidates) {
     if (!item || !["geopolitics", "macro", "rare_earth"].includes(item.category)) continue;
-    const native = originalPublicationMs(item.publishedAt, now);
-    if (native === null || native > cutoff) continue;
+    const dayOnly = item.sourceId === "eu_top_news" && item.datePrecision === "day";
+    const conservativeRelease = dayOnly ? conservativeDayReleaseMs(item.publishedAt) : null;
+    const native = dayOnly ? Date.parse(item.publishedAt + "T00:00:00.000Z")
+      : originalPublicationMs(item.publishedAt, now);
+    if (native === null || !Number.isFinite(native) ||
+        now - native > STATELESS_LOOKBACK_MS ||
+        (dayOnly ? conservativeRelease === null || now < conservativeRelease : native > cutoff))
+      continue;
     let url: URL;
     try { url = new URL(item.articleUrl); } catch { continue; }
     if (url.protocol !== "https:" || url.username || url.password || url.port ||
@@ -346,7 +366,8 @@ export function deriveStatelessSignals(
       geography,
       development_type: kind,
       topic: topic.name,
-      published_at: new Date(native).toISOString(),
+      published_at: dayOnly ? item.publishedAt : new Date(native).toISOString(),
+      date_precision: dayOnly ? "day" : "exact",
       observed_release_count: 1,
       sources_credited: item.credit ? [item.credit] : [],
       status: "official_release_observed_unscored",
