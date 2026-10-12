@@ -81,6 +81,15 @@ describe("independent verified Risk Indices edge", () => {
     expect(deploy).toContain("github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'");
     expect(deploy).toContain("SOURCE_RUN_ID: ${{ github.event.workflow_run.id || '' }}");
     expect(deploy).toContain("github.event_name == 'workflow_dispatch'");
+    // A missing historical B2 artifact must not prevent applying code-only
+    // quota-resilience fixes. This fallback has NO verified static data and
+    // cannot relax the live HTTP200 source/signature acceptance gate.
+    expect(deploy).toContain('TRIGGER_EVENT: ${{ github.event_name }}');
+    expect(deploy).toContain('elif [ "$TRIGGER_EVENT" = "push" ]; then');
+    expect(deploy).toContain("SAFE_CODE_ONLY_DEPLOY_WITH_NO_STATIC_CONTINUITY");
+    expect(deploy).toContain("FULL_B2_READBACK_PROOF_REQUIRED_FOR_SOURCE_RUN_OR_MANUAL_DEPLOY");
+    expect(deploy).toContain('test "$CODE" = "200" ||');
+    expect(deploy).toContain("Risk Indices edge acceptance failed: HTTP $CODE");
         expect(deploy).toContain("prepare-edge-continuity.sh");
     expect(deploy).toContain("risk-indices-realtime-direct-postgres.yml");
     expect(deploy).toContain("geomacro.public-risk-indices-direct-postgres-publish.v1");
