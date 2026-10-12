@@ -16,6 +16,7 @@ import {
   canUseProductionIntelligenceBackup,
 } from "@/lib/public-intelligence-edge";
 import { sanitizePublicIntelligenceRow } from "@/lib/public-intelligence-gist";
+import { websiteLaggedEvidenceRows } from "@/lib/website-publication-delay";
 import {
   PUBLIC_DATA_REQUEST_TIMEOUT_MS,
   withPublicRuntimeTimeout,
@@ -273,7 +274,7 @@ function build(rows: IntelEvent[], now: number): Intelligence {
 }
 
 export function buildPublicIntelligence(rows: PublicIntelligenceRow[], now: number): Intelligence {
-  return build(mapPublicRows(rows), now);
+  return build(mapPublicRows(websiteLaggedEvidenceRows(rows, now)), now);
 }
 
 async function fetchSameOriginPublicIntelligence(): Promise<PublicIntelligenceApiRow[]> {
@@ -348,7 +349,7 @@ export function useIntelligence(
         );
         if (cancelled) return;
 
-        const mapped = mapPublicRows(rows);
+        const mapped = mapPublicRows(websiteLaggedEvidenceRows(rows, now));
         if (mapped.length === 0) {
           if (hasData.current) {
             setStatus("ready");
