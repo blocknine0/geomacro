@@ -80,7 +80,7 @@ describe("founder-final website release and privacy lock — GRI + Intelligence 
    expect(shell).not.toContain("GITHUB_URL");
    expect(shell).not.toContain("github.com/blocknine0/geomacro");
    expect(shell).not.toContain("<Github ");
-   expect(shell).toContain("Website Intelligence & Risk Indices use verified data delayed by at least 60 minutes");
+   expect(shell).toContain("Intelligence findings delayed at least 15 minutes · Risk Indices retain their 60-minute delay");
    const frozen=JSON.parse(readFileSync("config/global-risk-final-lock.json","utf8"));
    expect(frozen.locked).toBe(true);
    expect(frozen.frozen_paths).toEqual([
