@@ -3,7 +3,7 @@
 ## What is actually turned on
 
 This is an **additional, bounded, read-only GitHub Actions private
-discovery/availability check** for 12 currently eligible-for-probing IDs (from 14 originally tested) in the
+discovery/availability check** for 11 currently eligible-for-probing IDs (from 14 originally tested) in the
 operator's attached 76-source inventory. It does not replace, duplicate, or
 turn off the existing canonical source readers:
 
@@ -16,14 +16,14 @@ turn off the existing canonical source readers:
 
 Read-only candidates added here, with exact supplier name in operator
 registry: `news_bbc`, `news_aljazeera`, `news_dw`,
-`news_scmp`, `news_france24`,
+ `news_france24`,
 `news_kyivindependent`, `news_toi`,
 `state_tass`, `state_globaltimes`,
 `fed_press`, `bls`,
 `ofac_recent_actions`.
 
 **The same already-existing 90-minute workflow** now runs a single group
-(0/1/2), 4 sources per slot, 12 sources in ~4.5 hours if no scheduled
+(0/1/2), up to 4 sources per slot, 11 sources in ~4.5 hours if no scheduled
 slot is skipped. GitHub scheduling has no uninterrupted real-time SLA.
 On a merge to main the three groups are each tested once in separate
 jobs to obtain full initial acceptance, without polluting a normal
@@ -101,3 +101,11 @@ healthy; do not count those as newly activated.
 Never use a media feed's licensed or copyrighted original article as a raw
 commercial answer. The paid intelligence path still requires first-party
 cross-evidence, dataset-specific rights, signing and explicit credit.
+
+### SCMP automation policy hard stop
+
+September 15, 2026 SCMP terms expressly disallow automated extraction,
+indexing, analytics/TDM and commercial use without advance written consent.
+Do not poll its RSS, including the proposed `/rss/5/feed` URL, from
+Geomacro's commercial automation. Registry status is
+`HOLD_COMMERCIAL_AUTOMATED_ACCESS_PROHIBITED`, not `free`.
