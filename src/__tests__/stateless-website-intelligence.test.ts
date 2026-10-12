@@ -71,6 +71,39 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(deriveStatelessSignals(early.dated, NOW)).toHaveLength(0);
   });
 
+  it("recognizes canonical ECB statistical originals and rejects altered or off-host paths", () => {
+    const ecb: StatelessSourceSpec = {
+      id: "ecb_stats", category: "macro", media: "rss",
+      url: "https://www.ecb.europa.eu/rss/statpress.html",
+      allowedHosts: ["www.ecb.europa.eu"], credit: "European Central Bank",
+    };
+    // This is the documented first-party /stats/bop/YYYY/html release path,
+    // not a legacy /press/stats/html alias nor an RSS updated timestamp.
+    const original = "https://www.ecb.europa.eu/press/stats/bop/2026/html/ecb.bq261002~5e0dd6a1f4.lv.html";
+    const xml = '<rss><channel><item>' +
+      '<title>Euro area quarterly balance of payments and international investment position</title>' +
+      '<link>' + original + '</link>' +
+      '<pubDate>Fri, 02 Oct 2026 11:00:00 GMT</pubDate></item></channel></rss>';
+    const parsed = parseFirstPartyFeed(xml, ecb, NOW);
+    expect(parsed.metrics.original_link_valid).toBe(1);
+    expect(parsed.dated).toHaveLength(1);
+    expect(deriveStatelessSignals(parsed.dated, NOW)).toHaveLength(1);
+    for(const malformed of [
+      original.replace("www.ecb.europa.eu", "other.example"),
+      original.replace("/2026/html/", "/download/2026/html/"),
+      original.replace(".lv.html", ".pdf"),
+      original.replace("~5e0dd6a1f4", ""),
+      original + "#archive",
+    ]) {
+      expect(parseFirstPartyFeed(xml.replace(original, malformed), ecb, NOW).dated).toEqual([]);
+    }
+    // No fetch/run/build clock is ever accepted as the original date.
+    expect(parseFirstPartyFeed(
+      xml.replace(/<pubDate>[^<]*<\/pubDate>/u, "<lastBuildDate>Tue, 13 Oct 2026 00:00:00 GMT</lastBuildDate>"),
+      ecb, NOW,
+    ).dated).toEqual([]);
+  });
+
   it("accepts original-dated Statistics Canada Daily Macro Atom with only first-party article links", () => {
     const statcan: StatelessSourceSpec = {
       id: "statcan_accounts", category: "macro", media: "atom",
