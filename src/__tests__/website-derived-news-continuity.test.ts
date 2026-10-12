@@ -123,10 +123,13 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(locked).toContain("website-derived-news-html");
     expect(locked).toContain("allSignals.length === 0");
   });
-  it("backfills from Oct 1 with original Content API first_published_at, never search update clock",()=>{
+  it("backfills across rolling 30 days by verified original Content API first_published_at, never search update clock",()=>{
     const source=readFileSync("scripts/ops/backfill-website-derived-news.ts","utf8");
     const workflow=readFileSync(".github/workflows/website-news-gap-backfill.yml","utf8");
-    expect(source).toContain('const START="2026-10-01"');
+    expect(source).toContain("const START=new Date(TODAY-29*DAY_MS)");
+    expect(source).toContain("ms+=7*DAY_MS");
+    expect(source).toContain("sourceWindows.push");
+    expect(source).toContain("search_pages_checked");
     expect(source).toContain('page.first_published_at');
     expect(source).toContain('originalPublicationMs(');
     expect(source).toContain('filter_public_timestamp');
