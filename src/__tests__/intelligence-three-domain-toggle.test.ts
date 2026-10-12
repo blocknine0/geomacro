@@ -31,6 +31,8 @@ describe("Intelligence public desk: 3 category toggles + >=60min delay", () => {
     expect(page).toContain("intelligenceDomainPulse(intel.data?.all ?? []).filter((pulse) => pulse.key === category)");
     expect(page).toContain("applyIntelFilters(selectedPool, { category, query, sort: activeSort })");
     expect(page).toContain("historicalCount = selectedPool.length - currentDesk.length");
+    expect(page).toContain("selectedLatestEvidenceAt = latestOriginalEvidenceAt(selectedPool)");
+    expect(page).toContain("COMMERCIAL_DOMAINS.filter(({ key }) => key === category)");
     expect(page).toContain("<SourceNetworkMonitor category={category} />");
     expect(monitor).toContain("PUBLIC_SOURCE_COVERAGE_DOMAINS.filter(row => !category || row.category === category)");
     expect(page).not.toContain('<option value="all">All categories</option>');
