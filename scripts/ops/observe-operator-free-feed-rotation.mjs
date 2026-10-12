@@ -101,9 +101,9 @@ function parse(feed,body,now){
   // A feed root must be the *actual* XML document root. Merely finding an
   // RSS-looking tag embedded in an HTML error or blog page is NOT a feed.
   const root=body.trimStart()
-    .replace(/^<\\?xml[^>]*\\?>\\s*/iu,"")
-    .replace(/^(?:<!--[\\s\\S]*?-->\\s*)*/u,"");
-  if(!/^<(?:rss|feed|rdf:RDF)\\b/iu.test(root))return null;
+    .replace(/^<\?xml[^>]*\?>\s*/iu,"")
+    .replace(/^(?:<!--[\s\S]*?-->\s*)*/u,"");
+  if(!/^<(?:rss|feed|rdf:RDF)\b/iu.test(root))return null;
   const blocks=[...body.matchAll(/<(?:item|entry)(?:\s[^>]*)?>([\s\S]*?)<\/(?:item|entry)>/giu)]
     .slice(0,MAX_ITEMS).map(m=>m[1]);
   const hits={geopolitics:0,macro:0,rare_earth:0};
