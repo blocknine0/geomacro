@@ -190,7 +190,7 @@ function IntelligencePage() {
               className={`min-h-11 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${category === domain.key
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card text-foreground hover:border-primary/60 hover:bg-muted"}`}>
-              {domain.label}
+              {domain.key === "geopolitics" ? "Geopolitics" : domain.key === "macro" ? "Macro/FX" : "Critical Minerals"}
             </button>
           ))}
         </div>
