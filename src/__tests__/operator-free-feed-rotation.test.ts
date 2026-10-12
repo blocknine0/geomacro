@@ -11,9 +11,9 @@ const rss=`<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title>
 </channel></rss>`;
 
 describe("operator public RSS candidate rotating bounded discovery",()=>{
-  it("reuses exactly 12 permitted-to-probe user-submitted IDs, no original source duplicates or paid products",()=>{
+  it("reuses exactly 11 permitted-to-probe user-submitted IDs, no original source duplicates or paid products",()=>{
     const ids=PUBLIC_FEED_ROTATION.map(x=>x.id);
-    expect(ids).toHaveLength(12);
+    expect(ids).toHaveLength(11);
     expect(new Set(ids).size).toBe(14);
     const registry=JSON.parse(readFileSync("config/operator-76-source-attribution-intake.v1.json","utf8"));
     for(const f of PUBLIC_FEED_ROTATION){
@@ -23,8 +23,11 @@ describe("operator public RSS candidate rotating bounded discovery",()=>{
       expect(entry.candidate_endpoint).toBe(f.url);
       expect(f.url.startsWith("https://")).toBe(true);
     }
+    expect(ids).not.toContain("news_scmp");
     expect(ids).not.toContain("re_news_mining");
     expect(ids).not.toContain("news_nikkei");
+    expect(registry.entries.find((x:{id:string})=>x.id==="news_scmp").runtime_state)
+      .toBe("HOLD_COMMERCIAL_AUTOMATED_ACCESS_PROHIBITED");
     expect(registry.entries.find((x:{id:string})=>x.id==="news_nikkei").runtime_state)
       .toBe("HOLD_NONCOMMERCIAL_PROVIDER_TERMS");
     expect(registry.entries.find((x:{id:string})=>x.id==="re_news_mining").runtime_state)
