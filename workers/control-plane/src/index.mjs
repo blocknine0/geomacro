@@ -1,4 +1,5 @@
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
+import { readDerivedStories, publishDerivedStories } from "./website-derived-intelligence.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
 import { makeRiskIndicesHistoricalMetadata } from "./risk-indices-historical-status.mjs";
 import { projectPublic30mPulse } from "./source-pulse-public.mjs";
@@ -1242,6 +1243,9 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
+    if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news" && !url.search) {
+      return readDerivedStories(env);
+    }
     if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
       return getPublicThreeDomain30MinSourcePulse(env);
     }
@@ -1286,6 +1290,10 @@ export default {
         const body = await readJson(request, 1024);
         const receipt = await reserveB2AccountQuota(env.DB, body);
         return json(receipt, receipt.ok ? 200 : 429);
+      }
+      if (request.method === "PUT" && url.pathname === "/v1/website-derived-news" && !url.search) {
+        const batch = await readJson(request, 64 * 1024);
+        return publishDerivedStories(env, batch);
       }
       if (request.method !== "PUT") return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
       if (parts[0] === "v1" && parts[1] === "hot-snapshot" && parts.length === 3) {

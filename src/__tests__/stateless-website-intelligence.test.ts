@@ -160,6 +160,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(source).not.toContain("public_updated_at");
     expect(source).toContain("persistent_storage: false");
     expect(source).toContain("now - STATELESS_WEBSITE_DELAY_MS");
-    expect(desk).toContain("No database, B2, D1");
+    expect(desk).toContain("Only Geomacro-derived findings are kept in a bounded Cloudflare D1");
+    expect(desk).toContain("Raw upstream feeds, publisher article text, original headlines and source URLs are not stored");
   });
 });
