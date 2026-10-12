@@ -1,6 +1,7 @@
 import {plainPublicProjection,hasPrivateSourceQueryFilter,safePostgrestAccept} from "@/lib/public-postgrest-proxy-privacy";
 import process from "node:process";
 import { createFileRoute } from "@tanstack/react-router";
+import {websitePublicCutoff} from "@/lib/website-publication-delay";
 
 const ALLOWED_TABLES = new Set([
   "events",
@@ -118,6 +119,25 @@ async function handle(request: Request) {
   if (!base || !anon) return bad(503, "Public data backend unavailable");
 
   const upstream = new URL(parsed.pathname + parsed.search, base);
+  const cutoff=new Date(websitePublicCutoff()).toISOString();
+  // This is a WEBSITE compatibility proxy, not a machine/x402 endpoint.
+  // Never allow under-one-hour original events or current GRI scores to
+  // bypass the delayed website by reading direct PostgREST rows.
+  if(table==="events"){
+    // Prevent duplicate user-provided PostgREST predicates from weakening the
+    // authoritative minimum 60-minute hold.
+    if(upstream.searchParams.has("published_at")||upstream.searchParams.has("created_at"))
+      return bad(400,"Website event date filters are server-controlled");
+    upstream.searchParams.set("published_at","lte."+cutoff);
+    upstream.searchParams.set("created_at","lte."+cutoff);
+  }
+  if(table==="gri_snapshots"){
+    if(upstream.searchParams.has("as_of"))
+      return bad(400,"Website GRI snapshot date is server-controlled");
+    upstream.searchParams.set("as_of","lte."+cutoff);
+    upstream.searchParams.set("verification_status","eq.verified");
+    upstream.searchParams.set("status","eq.published");
+  }
   const headers = new Headers({
     apikey: anon,
     authorization: `Bearer ${anon}`,
@@ -130,6 +150,43 @@ async function handle(request: Request) {
   for (const name of SAFE_REQUEST_HEADERS) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
+  }
+
+  // Legacy GRI proof subrecords are individually queryable. They cannot
+  // bypass the snapshot embargo using a known snapshot_id: a bounded
+  // read-only parent verification proves the original GRI snapshot was
+  // published/verified at least 60 minutes ago.
+  if(table==="gri_contributions"||table==="gri_source_dispositions"){
+    const refs=upstream.searchParams.getAll("snapshot_id");
+    if(refs.length!==1||!/^eq\.[A-Za-z0-9_-]{1,128}$/u.test(refs[0]))
+      return bad(403,"Published historical snapshot ID required");
+    const id=refs[0].slice(3);
+    const parent=new URL("/rest/v1/gri_snapshots",base);
+    parent.searchParams.set("select","id,as_of,status,verification_status");
+    parent.searchParams.set("id","eq."+id);
+    parent.searchParams.set("as_of","lte."+cutoff);
+    parent.searchParams.set("status","eq.published");
+    parent.searchParams.set("verification_status","eq.verified");
+    parent.searchParams.set("limit","1");
+    try{
+      const check=await fetch(parent,{
+        method:"GET",
+        headers:{apikey:anon,authorization:`Bearer ${anon}`,accept:"application/json"},
+        redirect:"error",signal:AbortSignal.timeout(4000),
+      });
+      if(!check.ok||Number(check.headers.get("content-length")||0)>8192)
+        return bad(503,"Historical GRI parent proof unavailable");
+      const body:unknown=await check.json();
+      if(!Array.isArray(body)||body.length!==1||
+         body[0]?.id!==id||
+         body[0]?.status!=="published"||
+         body[0]?.verification_status!=="verified"||
+         !Number.isFinite(Date.parse(String(body[0]?.as_of??"")))||
+         Date.parse(String(body[0]?.as_of??""))>Date.parse(cutoff))
+        return bad(403,"GRI snapshot is not yet website-public");
+    }catch{
+      return bad(503,"Historical GRI parent proof unavailable");
+    }
   }
 
   let response: Response;
