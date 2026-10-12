@@ -269,7 +269,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-              <span>Website Intelligence & Risk Indices use verified data delayed by at least 60 minutes · x402/API is separately gated · No raw sources</span>
+              <span>Intelligence findings delayed at least 15 minutes · Risk Indices retain their 60-minute delay · x402/API is separately gated · No raw sources</span>
               <Link to="/about" className="hover:text-foreground">Privacy · Product use · Trust</Link>
             </div>
           </div>
