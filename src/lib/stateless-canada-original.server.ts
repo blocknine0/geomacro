@@ -15,7 +15,8 @@ function words(value: string): Set<string> {
 }
 export function canadaOriginalPublicationDay(
   html: string, articleUrl: string, originalTitle: string, now=Date.now(),
-  note?: (stage: "title_ok" | "clock_found" | "clock_consistent" | "date_path_ok") => void,
+  note?: (stage: "title_ok" | "clock_found" | "clock_consistent" | "date_path_ok" |
+    "calendar_ok" | "not_future" | "within_30d") => void,
 ): string | null {
   if(typeof html!=="string"||html.length>384*1024||
      typeof originalTitle!=="string"||originalTitle.length>300||
@@ -73,7 +74,11 @@ export function canadaOriginalPublicationDay(
      day.slice(5,7)!==path[3])return null;
   note?.("date_path_ok");
   const ms=Date.parse(day+"T00:00:00.000Z");
-  if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,10)!==day||
-     ms>now||ms<now-30*86_400_000)return null;
+  if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,10)!==day)return null;
+  note?.("calendar_ok");
+  if(ms>now)return null;
+  note?.("not_future");
+  if(ms<now-30*86_400_000)return null;
+  note?.("within_30d");
   return day;
 }
