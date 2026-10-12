@@ -18,7 +18,6 @@ const FEEDS=Object.freeze([
   {id:"news_dw",url:"https://rss.dw.com/rdf/rss-en-all",format:"xml",group:1},
   {id:"state_tass",url:"https://tass.com/rss/v2.xml",format:"xml",group:1},
   {id:"news_toi",url:"https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",format:"xml",group:1},
-  {id:"news_scmp",url:"https://www.scmp.com/rss/5/feed",format:"xml",group:2},
   {id:"news_france24",url:"https://www.france24.com/en/rss",format:"xml",group:2},
   {id:"news_kyivindependent",url:"https://kyivindependent.com/news-archive/rss/",format:"xml",group:2},
   {id:"state_globaltimes",url:"https://www.globaltimes.cn/rss/outbrain.xml",format:"xml",group:2},
