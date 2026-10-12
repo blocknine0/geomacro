@@ -52,7 +52,10 @@ export const Route = createFileRoute("/intelligence")({
       rows: [],
       now,
       stateless: source.status === "fulfilled" ? source.value : null,
-      journal: history.status === "fulfilled" ? history.value.signals : [],
+      // fetchDirectDerivedNews() already returns the checked Signal[] directly,
+      // NOT {signals}. Passing .signals silently emptied the first HTML paint.
+      journal: history.status === "fulfilled" && Array.isArray(history.value)
+        ? history.value : [],
     };
   },
   head: () => ({
