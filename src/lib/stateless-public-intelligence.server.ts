@@ -4,7 +4,7 @@
  * Uses a bounded first-party release metadata read, not a paid x402 scorer.
  */
 import {
-  deriveStatelessSignals, originalPublicationMs, parseFirstPartyFeed, STATELESS_WEBSITE_DELAY_MS,
+  deriveStatelessSignals, originalPublicationMs, parseFirstPartyFeed, STATELESS_WEBSITE_DELAY_MS, STATELESS_LOOKBACK_MS,
   type StatelessCategory, type StatelessSourceCandidate,
   type StatelessSourceSpec, type StatelessIntelligenceSignal,
 } from "./stateless-intelligence-model";
@@ -35,6 +35,10 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_treasury", category: "macro", media: "atom",
     url: "https://www.gov.uk/government/organisations/hm-treasury.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  { id: "nrcan_science", category: "rare_earth", media: "rss",
+    url: "https://natural-resources.canada.ca/simply-science/rss.xml",
+    allowedHosts: ["natural-resources.canada.ca", "www.natural-resources.canada.ca"],
+    credit: null },
   { id: "au_industry", category: "rare_earth", media: "rss",
     url: "https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
     allowedHosts: ["www.minister.industry.gov.au"], credit: null },
@@ -146,6 +150,7 @@ export type StatelessIntelligenceResult = {
   healthy_feed_count: number;
   current_24h_count: number;
   last_7d_count: number;
+  last_30d_count: number;
   status: "official_observations_available" | "no_eligible_original_releases" | "sources_unavailable";
   signals: StatelessIntelligenceSignal[];
   persistent_storage: false;
@@ -168,12 +173,13 @@ export async function readStatelessWebsiteIntelligence(
     category,
     checked_at: new Date(now).toISOString(),
     website_release_cutoff: new Date(now - STATELESS_WEBSITE_DELAY_MS).toISOString(),
-    earliest_original: new Date(now - 7 * 86_400_000).toISOString(),
+    earliest_original: new Date(now - STATELESS_LOOKBACK_MS).toISOString(),
     releases_examined: batch.reduce((n, x) => n + x.candidates.length, 0),
     feed_count: sourceGroup.length,
     healthy_feed_count: healthy,
     current_24h_count: signals.filter(x => Date.parse(x.published_at) >= now - 86_400_000).length,
-    last_7d_count: signals.length,
+    last_7d_count: signals.filter(x => Date.parse(x.published_at) >= now - 7 * 86_400_000).length,
+    last_30d_count: signals.length,
     status: signals.length > 0 ? "official_observations_available"
       : healthy > 0 ? "no_eligible_original_releases" : "sources_unavailable",
     signals,
