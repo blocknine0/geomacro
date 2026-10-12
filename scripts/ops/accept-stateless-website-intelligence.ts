@@ -47,7 +47,7 @@ for (const { category, result, error } of results) {
     const date = Date.parse(s.published_at);
     const originalTrusted = s.date_precision === "day"
       ? /^\d{4}-\d{2}-\d{2}$/u.test(s.published_at) &&
-        s.category === "rare_earth" &&
+        ["rare_earth","geopolitics"].includes(s.category) &&
         (conservativeDayReleaseMs(s.published_at) ?? Infinity) <= checked
       : s.date_precision === "exact" && date <= cutoff;
     return Number.isFinite(date) && originalTrusted &&

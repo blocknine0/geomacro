@@ -14,6 +14,7 @@ export type StatelessSourceSpec = {
   allowedHosts: readonly string[];
   credit: string | null;
   govContentApi?: boolean;
+  canadaOriginalPage?: boolean;
 };
 
 export type StatelessSourceCandidate = {
@@ -60,6 +61,8 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration." },
   ],
   macro: [
+    { test: /\b(gross domestic product|economic accounts|national accounts|retail trade|retail sales|employment|labour force survey|labor force survey|wages?|average weekly earnings|business conditions)\b/i, name: "official economic statistics",
+      implication: "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table." },
     { test: /\b(interest rates?|federal funds|discount rate|monetary policy|FOMC)\b/i, name: "monetary policy",
       implication: "A monetary-policy release can influence financing conditions and FX expectations; no specific rate direction or market outcome is inferred from this signal." },
     { test: /\b(inflation|consumer prices?|producer prices?|price index|cost of living)\b/i, name: "inflation and prices",
@@ -68,15 +71,15 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "External-balance releases can affect currency-liquidity and cross-border settlement considerations; this does not indicate a directional FX prediction." },
     { test: /\b(liquidity|financial stability|bank supervision|banking regulation|economic growth|GDP|economic bulletin|bank lending|banking statistics|financial accounts|financial markets|unemployment|labour market|credit conditions|household debt|economic outlook)\b/i, name: "financial conditions",
       implication: "Financial-system developments may matter for credit access and counterparty exposure; a score requires separately verified measurements." },
-    { test: /\b(trade mission|free trade|trade deal|trade agreement|trade negotiations|bilateral trade|export growth|commercial deals|economic partnership|JETCO|tariffs|foreign investment)\b/i, name: "trade and economic relations",
+    { test: /\b(trade mission|free trade|trade deal|trade agreement|trade negotiations|bilateral trade|international (?:merchandise )?trade|imports? and exports?|export growth|commercial deals|economic partnership|JETCO|tariffs|foreign investment)\b/i, name: "trade and economic relations",
       implication: "Trade and investment agreements can affect market access, cross-border commercial flows and currency exposure; their actual economic impact requires follow-up evidence." },
   ],
   rare_earth: [
     { test: /\b(rare[- ]earths?|neodymium|dysprosium|terbium)\b/i, name: "rare-earth supply",
       implication: "Rare-earth project and policy releases may affect processing concentration and strategic industrial supply dependencies; actual capacity changes are not assumed." },
-    { test: /\b(lithium|cobalt|nickel|graphite|gallium|germanium|copper|tungsten)\b/i, name: "critical-mineral inputs",
+    { test: /\b(lithium|cobalt|nickel|graphite|gallium|germanium|copper|tungsten|antimony|scandium|cesium|caesium|chromite|fluorspar)\b/i, name: "critical-mineral inputs",
       implication: "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence." },
-    { test: /\b(critical minerals?|critical raw materials?|strategic minerals?|mineral processing|mineral supply)\b/i, name: "critical-minerals policy",
+    { test: /\b(critical minerals?|critical raw materials?|strategic minerals?|mineral processing|mineral supply|strategic raw materials?|mineral supply chain)\b/i, name: "critical-minerals policy",
       implication: "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast." },
     { test: /\b(mineral deposits?|mining projects?|mineral production|rare earth elements?|mineral resources?|mining|mineral research|mineral exploration|geology of|mineral mapping|raw material supply)\b/i, name: "mineral exploration and production",
       implication: "Extractive-sector updates can affect long-run supply expectations, but an announcement is not proof of operating capacity or delivered output." },
@@ -205,7 +208,8 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
         sourceId: source.id, category: source.category, title,
         articleUrl, publishedAt: new Date(ms).toISOString(), credit: source.credit,
       });
-    } else if (!rawClock && source.govContentApi && undatedGov.length < 4) {
+    } else if (((!rawClock && source.govContentApi) || source.canadaOriginalPage) &&
+               undatedGov.length < (source.canadaOriginalPage ? 8 : 4)) {
       metrics.undated_original++;
       // Atom "updated" is never substituted for the original publication.
       undatedGov.push({ title, articleUrl });
@@ -342,7 +346,8 @@ export function deriveStatelessSignals(
   const result: StatelessIntelligenceSignal[] = [];
   for (const item of candidates) {
     if (!item || !["geopolitics", "macro", "rare_earth"].includes(item.category)) continue;
-    const dayOnly = item.sourceId === "eu_top_news" && item.datePrecision === "day";
+    const dayOnly = item.datePrecision === "day" &&
+      ["eu_top_news","nrcan_releases","canada_foreign_statements"].includes(item.sourceId);
     const conservativeRelease = dayOnly ? conservativeDayReleaseMs(item.publishedAt) : null;
     const native = dayOnly ? Date.parse(item.publishedAt + "T00:00:00.000Z")
       : originalPublicationMs(item.publishedAt, now);
@@ -356,7 +361,13 @@ export function deriveStatelessSignals(
         url.hash || !url.hostname) continue;
     const topic = selectOfficialTopic(item.title, item.category);
     if (!topic) continue;
-    const fingerprint = item.sourceId + "|" + url.href;
+    // The same official article can occur in several publisher subject feeds.
+    // Deduplicate by the exact admitted article URL within its category,
+    // not the feed lane ID; never collapse different source articles by topic.
+    // Preserve pre-existing stable D1 IDs for previously ingested lanes.
+    // Only new Statistics Canada subject feeds share a canonical family ID;
+    // an identical original item across two subject feeds is one story.
+    const fingerprint = (item.sourceId.startsWith("statcan_") ? "statcan_daily" : item.sourceId) + "|" + url.href;
     if (unique.has(fingerprint)) continue;
     unique.add(fingerprint);
     const focus = SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? topic.name;

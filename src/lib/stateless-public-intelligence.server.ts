@@ -10,9 +10,16 @@ import {
 } from "./stateless-intelligence-model";
 import { euCommissionTopOriginalCandidates } from "./stateless-eu-original-index.server";
 import { readPibMinesOriginalCandidates } from "./stateless-pib-mines-original.server";
+import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
 const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
+  // Additional independent foreign-affairs jurisdiction, source URL from
+  // the Government of Canada's published Global Affairs RSS/Atom directory.
+  { id: "canada_foreign_statements", category: "geopolitics", media: "atom",
+    url: "https://api.io.canada.ca/io-server/gc/news/en/v2?atomtitle=Global+Affairs+Canada+statements&dept=departmentofforeignaffairstradeanddevelopment&format=atom&orderBy=desc&pick=50&publishedDate%3E=2015-01-01&sort=publishedDate&type=statements",
+    allowedHosts: ["www.canada.ca", "www.international.gc.ca", "international.canada.ca",
+      "api.io.canada.ca"], credit: "Global Affairs Canada", canadaOriginalPage: true },
   { id: "uk_fcdo", category: "geopolitics", media: "atom",
     url: "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
@@ -28,6 +35,25 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_home", category: "geopolitics", media: "atom",
     url: "https://www.gov.uk/government/organisations/home-office.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  // Statistics Canada's documented subject-specific first-party Daily Atom feeds.
+  // Only article <published> (never <updated>) controls release age.
+  { id: "statcan_prices", category: "macro", media: "atom",
+    url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/18-eng.atom",
+    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
+  { id: "statcan_accounts", category: "macro", media: "atom",
+    url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/36-eng.atom",
+    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
+  { id: "statcan_trade", category: "macro", media: "atom",
+    url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/12-eng.atom",
+    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
+  { id: "statcan_labour", category: "macro", media: "atom",
+    url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/14-eng.atom",
+    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
+  // Eurostat's official Atom feed of economy-and-finance NEWS RELEASES,
+  // not the dataset-update RSS whose timestamps reflect data operations.
+  { id: "eurostat_economy_release", category: "macro", media: "atom",
+    url: "https://ec.europa.eu/eurostat/en/search?_estatsearchportlet_WAR_estatsearchportlet_collection=CAT_PREREL&_estatsearchportlet_WAR_estatsearchportlet_theme=PER_ECOFIN&p_p_id=estatsearchportlet_WAR_estatsearchportlet&p_p_lifecycle=2&p_p_mode=view&p_p_resource_id=atom&p_p_state=maximized",
+    allowedHosts: ["ec.europa.eu"], credit: "Eurostat" },
   { id: "fed_press", category: "macro", media: "rss",
     url: "https://www.federalreserve.gov/feeds/press_all.xml",
     allowedHosts: ["www.federalreserve.gov"], credit: "Federal Reserve Board" },
@@ -43,6 +69,12 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_dbt_macro", category: "macro", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  // Natural Resources Canada's official news-release Atom feed (not a
+  // search-engine snippet and not a dataset modification timestamp).
+  { id: "nrcan_releases", category: "rare_earth", media: "atom",
+    url: "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+    allowedHosts: ["www.canada.ca", "natural-resources.canada.ca", "www.nrcan.gc.ca",
+      "api.io.canada.ca"], credit: "Natural Resources Canada", canadaOriginalPage: true },
   { id: "nrcan_science", category: "rare_earth", media: "rss",
     url: "https://natural-resources.canada.ca/simply-science/rss.xml",
     allowedHosts: ["natural-resources.canada.ca", "www.natural-resources.canada.ca"],
@@ -131,6 +163,28 @@ async function readGovContentOriginalDate(candidate: {
   } catch { return null; }
 }
 
+async function readCanadaNewsOriginalDay(candidate: {
+  title: string; articleUrl: string;
+}, source: StatelessSourceSpec, now: number): Promise<StatelessSourceCandidate | null> {
+  if (!source.canadaOriginalPage ||
+      !/^https:\/\/www\.canada\.ca\/en\/(?:natural-resources-canada|global-affairs)\/news\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\.html$/u.test(candidate.articleUrl))
+    return null;
+  try {
+    const response=await fetch(candidate.articleUrl,{
+      method:"GET",redirect:"error",cache:"no-store",
+      headers:{Accept:"text/html"},signal:AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if(!/^text\/html(?:;|$)/iu.test(response.headers.get("content-type")??""))return null;
+    const html=await boundedText(response,384*1024);
+    if(!html)return null;
+    const day=canadaOriginalPublicationDay(html,candidate.articleUrl,candidate.title,now);
+    if(!day)return null;
+    return {sourceId:source.id,category:source.category,title:candidate.title,
+      articleUrl:candidate.articleUrl,publishedAt:day,datePrecision:"day",
+      credit:source.credit};
+  }catch{return null}
+}
+
 type LaneMetrics = {
   seen: number; relevant: number; original_link_valid: number;
   native_clock_valid: number; undated_original: number;
@@ -183,8 +237,10 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
     const xml = await boundedText(response, MAX_FEED_BYTES);
     if (!xml) return { candidates: [], healthy: false };
     const parsed = parseFirstPartyFeed(xml, source, now);
-    const recovered = await Promise.all(parsed.undatedGov.slice(0, 4)
-      .map(candidate => readGovContentOriginalDate(candidate, source, now)));
+    const recovered = await Promise.all(parsed.undatedGov.slice(0, source.canadaOriginalPage ? 8 : 4)
+      .map(candidate => source.canadaOriginalPage
+        ? readCanadaNewsOriginalDay(candidate, source, now)
+        : readGovContentOriginalDate(candidate, source, now)));
     return { healthy: true,
       candidates: [...parsed.dated, ...recovered.filter((x): x is StatelessSourceCandidate => x !== null)],
       metrics: { ...parsed.metrics, recovered_original_page: recovered.filter(Boolean).length, transport_ok: true },

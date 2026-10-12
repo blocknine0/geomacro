@@ -71,6 +71,78 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(deriveStatelessSignals(early.dated, NOW)).toHaveLength(0);
   });
 
+  it("accepts original-dated Statistics Canada Daily Macro Atom with only first-party article links", () => {
+    const statcan: StatelessSourceSpec = {
+      id: "statcan_accounts", category: "macro", media: "atom",
+      url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/36-eng.atom",
+      allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada",
+    };
+    const xml = '<feed><entry><title>Gross domestic product by industry, August 2026</title>' +
+      '<updated>2026-10-12T15:58:00Z</updated>' +
+      '<published>2026-10-12T13:30:00Z</published>' +
+      '<link rel="alternate" href="https://www150.statcan.gc.ca/n1/daily-quotidien/261012/dq261012a-eng.htm"/></entry>' +
+      '<entry><title>Employment report for September 2026</title>' +
+      '<published>2026-10-12T13:30:00Z</published>' +
+      '<link href="https://thirdparty.invalid/daily/other"/></entry></feed>';
+    const parsed = parseFirstPartyFeed(xml, statcan, NOW);
+    expect(parsed.dated).toHaveLength(1);
+    const story = deriveStatelessSignals(parsed.dated, NOW);
+    expect(story).toHaveLength(1);
+    expect(story[0].topic).toBe("official economic statistics");
+    expect(story[0].published_at).toBe("2026-10-12T13:30:00.000Z");
+    expect(story[0].sources_credited).toEqual(["Statistics Canada"]);
+    expect(JSON.stringify(story)).not.toContain("www150.statcan");
+    expect(JSON.stringify(story)).not.toContain("Gross domestic product by industry");
+  });
+
+  it("merges exact same StatCan original from several topic feeds without merging different stories", () => {
+    const row = {
+      title: "Canada labour force survey and employment, September 2026",
+      articleUrl: "https://www150.statcan.gc.ca/n1/daily-quotidien/261012/dq261012b-eng.htm",
+      publishedAt: "2026-10-12T14:00:00.000Z",
+      sourceId: "statcan_labour", category: "macro" as const, credit: "Statistics Canada",
+    };
+    const clone = {...row, sourceId: "statcan_accounts"};
+    expect(deriveStatelessSignals([row,clone],NOW)).toHaveLength(1);
+    const another = {...row, articleUrl: "https://www150.statcan.gc.ca/n1/daily-quotidien/261012/dq261012c-eng.htm"};
+    expect(deriveStatelessSignals([row,clone,another],NOW)).toHaveLength(2);
+  });
+
+  it("accepts first-party NRCan mineral news and rejects updates lacking original publication", () => {
+    const mineralCanada: StatelessSourceSpec = {
+      id: "nrcan_releases", category: "rare_earth", media: "atom",
+      url: "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&format=atom",
+      allowedHosts: ["www.canada.ca", "natural-resources.canada.ca", "api.io.canada.ca"],
+      credit: "Natural Resources Canada",
+    };
+    const release = '<feed><entry><title>Canada announces critical minerals supply chain partnership</title>' +
+      '<published>2026-10-12T14:00:00Z</published>' +
+      '<link rel="alternate" href="https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals-supply-chain.html"/></entry></feed>';
+    const valid = deriveStatelessSignals(parseFirstPartyFeed(release,mineralCanada,NOW).dated,NOW);
+    expect(valid).toHaveLength(1);
+    expect(valid[0].category).toBe("rare_earth");
+    expect(valid[0].topic).toBe("critical-minerals policy");
+    expect(JSON.stringify(valid)).not.toContain("Canada announces");
+    expect(parseFirstPartyFeed(release.replace(/<published>[^<]+<\/published>/u, '<updated>2026-10-12T14:00:00Z</updated>'),mineralCanada,NOW).dated)
+      .toHaveLength(0);
+  });
+
+  it("admits independently dated Canadian geopolitical statements without using feed update clocks", () => {
+    const foreign: StatelessSourceSpec = {
+      id: "canada_foreign_statements", category: "geopolitics", media: "atom",
+      url: "https://api.io.canada.ca/io-server/gc/news/en/v2?format=atom",
+      allowedHosts: ["www.canada.ca", "www.international.gc.ca"], credit: "Global Affairs Canada",
+    };
+    const xml='<feed><entry><title>Canada statement on sanctions concerning Ukraine</title>' +
+      '<published>2026-10-12T13:00:00Z</published>' +
+      '<link href="https://www.canada.ca/en/global-affairs/news/2026/10/statement-on-sanctions.html"/>' +
+      '</entry></feed>';
+    const found = deriveStatelessSignals(parseFirstPartyFeed(xml,foreign,NOW).dated,NOW);
+    expect(found).toHaveLength(1);
+    expect(found[0].category).toBe("geopolitics");
+    expect(found[0].severity).toBeNull();
+  });
+
   it("separates domains and deduplicates only exact original URLs, not distinct same-topic releases", () => {
     const xml = '<rss><channel><item>' +
       '<title>USGS analysis of lithium and critical mineral supply</title>' +
