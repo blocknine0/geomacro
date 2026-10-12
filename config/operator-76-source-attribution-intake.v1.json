@@ -708,7 +708,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "runtime_state": "HOLD_NONCOMMERCIAL_PROVIDER_TERMS",
       "attribution": {
         "source_name": "Nikkei Asia",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -722,7 +722,8 @@
       "provider_access_recheck_required": true,
       "probe_url": "https://asia.nikkei.com/rss",
       "original_candidate_endpoint": "https://asia.nikkei.com/rss",
-      "pending_live_provider_acceptance": true
+      "pending_live_provider_acceptance": false,
+      "activation_hold_reason": "Official Nikkei Asia RSS terms explicitly personal noncommercial use only"
     },
     {
       "id": "news_scmp",
@@ -734,7 +735,7 @@
       ],
       "provider_category": "news",
       "access": "rss",
-      "candidate_endpoint": "https://www.scmp.com/rss",
+      "candidate_endpoint": "https://www.scmp.com/rss/5/feed",
       "original_declared_freshness": "near_realtime",
       "requested_poll_interval": "10m",
       "source_tier": 2,
@@ -753,9 +754,10 @@
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
       "provider_access_recheck_required": true,
-      "probe_url": "https://www.scmp.com/rss",
+      "probe_url": "https://www.scmp.com/rss/5/feed",
       "original_candidate_endpoint": "https://www.scmp.com/rss",
-      "pending_live_provider_acceptance": true
+      "pending_live_provider_acceptance": true,
+      "previous_probe_url": "https://www.scmp.com/rss"
     },
     {
       "id": "news_france24",
@@ -800,7 +802,7 @@
       ],
       "provider_category": "news",
       "access": "rss",
-      "candidate_endpoint": "https://kyivindependent.com/feed/",
+      "candidate_endpoint": "https://kyivindependent.com/news-archive/rss/",
       "original_declared_freshness": "near_realtime",
       "requested_poll_interval": "15m",
       "source_tier": 2,
@@ -819,9 +821,10 @@
       "raw_data_distribution": false,
       "commercial_rights_rereview_required": true,
       "provider_access_recheck_required": true,
-      "probe_url": "https://kyivindependent.com/feed/",
+      "probe_url": "https://kyivindependent.com/news-archive/rss/",
       "original_candidate_endpoint": "https://kyivindependent.com/feed/",
-      "pending_live_provider_acceptance": true
+      "pending_live_provider_acceptance": true,
+      "previous_probe_url": "https://kyivindependent.com/feed/"
     },
     {
       "id": "news_toi",
@@ -2226,7 +2229,7 @@
       "operator_license_label_unverified": "free",
       "canonical_existing_id": null,
       "operator_v1_requested": false,
-      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "runtime_state": "QUARANTINED_PROVIDER_403",
       "attribution": {
         "source_name": "Mining.com / Mining Weekly / Rare Earth Exchanges",
         "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
@@ -2240,7 +2243,8 @@
       "provider_access_recheck_required": true,
       "probe_url": "https://www.mining.com/feed/",
       "original_candidate_endpoint": "https://www.mining.com/feed/",
-      "pending_live_provider_acceptance": true
+      "pending_live_provider_acceptance": false,
+      "activation_hold_reason": "Upstream returned HTTP 403 in production; do not bypass authorization"
     }
   ]
 }
