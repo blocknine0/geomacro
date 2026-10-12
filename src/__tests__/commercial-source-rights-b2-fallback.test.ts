@@ -16,7 +16,7 @@ function row(overrides: Partial<SourceRightsRow> = {}): SourceRightsRow {
     enabled_for_ingestion: true,
     enabled_for_commercial_signals: true,
     raw_redistribution_allowed: false,
-    attribution_required: true,
+    attribution_required: false,
     licence_name: "Example",
     ...overrides,
   };
@@ -58,6 +58,15 @@ describe("commercial source-rights B2 outage fallback", () => {
     );
     expect(uncertified.eligible).toBe(false);
     expect(uncertified.reason).toBe("SOURCE_CERTIFICATION_IN_REVIEW");
+
+    const mandatoryCredit = commercialSourceEligibilityFromRow(
+      "example",
+      row({ attribution_required: true }),
+    );
+    expect(mandatoryCredit.eligible).toBe(false);
+    expect(mandatoryCredit.reason)
+      .toBe("SOURCE_ATTRIBUTION_INCOMPATIBLE_WITH_PRIVATE_DELIVERY");
+    expect(mandatoryCredit.raw_payload_allowed).toBe(false);
   });
 
   it("uses B2 first and keeps Supabase as an explicitly allowed standby read", () => {
