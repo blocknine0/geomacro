@@ -32,6 +32,28 @@ describe("website GRI Supabase-outage bounded verified preexisting D1 backfill",
   expect(worker).toContain("hex!==row.payload_sha256");
   expect(worker).toContain("privateVerifiedGriHistoryProjection(row,{now})");
  });
+ it("recovers a previously verified hot original on read after it becomes 60m old, no new quotas",()=>{
+  const begin=worker.indexOf("async function getWebsiteLaggedGriHistory(");
+  const end=worker.indexOf("async function getPublicHotSnapshot(",begin);
+  expect(begin).toBeGreaterThan(0);
+  expect(end).toBeGreaterThan(begin);
+  const reader=worker.slice(begin,end);
+  expect(reader).toContain("FROM website_verified_gri_snapshot_history");
+  expect(reader).toContain("FROM public_b2_hot_snapshot");
+  expect(reader).toContain("source_as_of<=?");
+  expect(reader).toContain("proof_schema='geomacro.public-global-risk-live-proof.v1'");
+  expect(reader).toContain("schema_name='geomacro.public-global-risk-live.v1'");
+  expect(reader).toContain('HOT_SNAPSHOT_PRODUCTS["global-risk"].b2Key');
+  expect(reader).toContain("actual===previous.payload_sha256");
+  expect(reader).toContain("privateVerifiedGriHistoryProjection(previous,{now})");
+  expect(reader).not.toContain("INSERT");
+  expect(reader).not.toContain("UPDATE");
+  expect(reader).not.toContain("DELETE");
+  expect(reader).not.toContain("signedGet(");
+  expect(reader).not.toContain("fetch(");
+  expect(reader).not.toContain("getAppSupabase");
+  expect(reader).toContain("WEBSITE_GRI_60MIN_VERIFIED_HISTORY_NOT_FOUND");
+ });
  it("production deploy tests genuine redacted delayed GRI or explicit empty D1 without charging",()=>{
   expect(deploy).toContain("/v1/public/website-lagged-global-risk");
   expect(deploy).toContain('code="$(curl -sS -o /tmp/website-gri-delayed.json');
