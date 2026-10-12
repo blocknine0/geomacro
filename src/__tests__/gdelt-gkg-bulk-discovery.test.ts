@@ -156,6 +156,27 @@ describe("#2042 static GDELT 15-minute global discovery independent of DOC 429",
     expect(result.malformed_rows).toBe(1);
   });
 
+  it("reuses the verified GKG archive and adds no official GET if there are no approved first-party article paths",async()=>{
+    const fetchImpl=vi.fn(async(url:string)=>{
+      if(url===GDELT_GKG_LATEST_URL)return new Response(manifest());
+      return new Response(archive);
+    });
+    const result=await probeGdeltGkgBulk({now,fetchImpl,reviewFirstParty:true});
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(result.state).toBe("CURRENT_GKG_BATCH_SCANNED_PRIVATE_DISCOVERY_ONLY");
+    expect(result.first_party_original_review).toMatchObject({
+      schema:"geomacro.private-gkg-firstparty-original-review.v1",
+      state:"NO_ALLOWLISTED_FIRST_PARTY_LEADS",
+      bounded_page_request_count:0,maximum_page_request_budget:6,
+      commercial_rights_verified:false,independent_event_qualified:false,
+      signed_gro_generated:false,chargeable:false,public_published:false,
+      supabase_requests:0,d1_writes:0,b2_requests:0,payments_performed:0,
+    });
+    expect(result.first_party_original_review.domains.map((x:any)=>
+      x.publisher_original_24h_dates_verified)).toEqual([0,0,0]);
+    expect(JSON.stringify(result)).not.toContain("news.example.org");
+  });
+
   it("reports HTTP 429 as degraded without request storms or secrets",async()=>{
     let calls=0;
     const denied=await probeGdeltGkgBulk({now,fetchImpl:async()=>{
