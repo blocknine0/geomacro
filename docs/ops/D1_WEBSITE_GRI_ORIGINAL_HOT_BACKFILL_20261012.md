@@ -49,3 +49,25 @@ timer, extra hot-row write, B2 Class B request, new D1 table, synthetic
 historical clock, Supabase query or paid side effect is introduced.
 A genuine D1 quota outage still returns HTTP 503; an invalid/unqualified
 row must also fail closed.
+
+## Secondary quota-safe verified source for the website
+
+If D1 cannot return either its historic ring or original hot-row proof,
+the server-side website getter tries the existing **Cloudflare Global Risk
+Edge** only. That edge has a distinct, proof-checked failover order:
+verified D1 hot / existing positive edge cache / **D1-budget-reserved** B2
+recovery, and returns 503 when it cannot prove a valid score.
+
+Previously the website getter called the generic `readB2PublicRisk()`
+which, after an edge miss, could perform **direct unreserved S3 GET** on the
+private Backblaze bucket. This was not safe during B2 quota exhaustion.
+The website-only path no longer invokes that unmetered helper. It can use
+a previously verified edge snapshot only after the real 60-minute original
+snapshot embargo and exact GRI continuity validation, and emits no
+unverified or newer derived risk. This separation does not alter the
+independent, unlagged machine GRO/x402 path.
+
+This is finite-capacity redundancy, **not** a promise of unlimited free
+B2/D1 requests: when all verified copies are inaccessible, public GRI
+truthfully displays an unavailable/historical state and does not fabricate
+a score or spend USDC.
