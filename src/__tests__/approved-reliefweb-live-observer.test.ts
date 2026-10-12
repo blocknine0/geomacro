@@ -81,12 +81,17 @@ describe("approved ReliefWeb live private observer",()=>{
     const flow=readFileSync(".github/workflows/expanded-official-source-observation.yml","utf8");
     const onDemand=readFileSync("src/lib/on-demand-global-discovery.server.ts","utf8");
     const legacy=readFileSync(".github/workflows/ingest-reliefweb-live.yml","utf8");
+    const daily=readFileSync(".github/workflows/live-on-demand-source-acceptance.yml","utf8");
     expect(flow).toContain("approved-reliefweb-live:");
     expect(flow).toContain('RELIEFWEB_APPROVED_APPNAME: ${{ secrets.RELIEFWEB_APPROVED_APPNAME }}');
     expect(flow).toContain("observe-approved-reliefweb-live.mjs");
     expect(flow).toContain('cron: "17 0,3,6,9,12,15,18,21 * * *"');
     expect(flow).toContain('cron: "47 1,4,7,10,13,16,19,22 * * *"');
     expect(onDemand).toContain("process.env.RELIEFWEB_APPROVED_APPNAME");
+    expect(daily).toContain('RELIEFWEB_APPROVED_APPNAME: ${{ secrets.RELIEFWEB_APPROVED_APPNAME }}');
+    expect(daily).toContain("environment: production");
+    expect(daily).toContain('cron: "23 8 * * *"');
+    expect(daily).toContain("bun scripts/ops/verify-live-on-demand-real-apis.ts");
     expect(flow).not.toContain("scripts/ingest-reliefweb-live.mjs");
     expect(legacy).not.toContain("schedule:");
     expect(flow).toContain("read-only-country-matrix:");
