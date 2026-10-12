@@ -18,7 +18,7 @@ const doc=(signals:unknown[]=[])=>({ok:true,schema:"geomacro.website-derived-new
   original_release_delay_minutes:15,retention_days:30,delivery_scope:"free_website_only",signals});
 describe("browser public journal fallback",()=>{
   it("serves original-dated derived cards without browser server-RPC dependency",async()=>{
-    const f=vi.fn(async()=>new Response(JSON.stringify(doc([signal])),{
+    const f=vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(doc([signal])),{
       status:200,headers:{"content-type":"application/json"},
     }));
     const rows=await fetchDirectDerivedNews(f as typeof fetch,NOW);
