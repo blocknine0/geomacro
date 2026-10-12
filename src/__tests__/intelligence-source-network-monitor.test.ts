@@ -22,17 +22,41 @@ function payload(override: Record<string, unknown> = {}) {
   };
 }
 describe("#1827 private source-monitoring on Intelligence versus actual verified news", () => {
-  it("shows a recent original-publisher topic count without claiming accepted scored news", () => {
+  it("never discloses monitoring findings or publisher-check timestamps before the website 60m cutoff", () => {
     const x = classifySourcePulse(payload(), "critical-minerals", now);
+    expect(x.topicCount).toBeNull();
+    expect(x.lastChecked).toBeNull();
+    expect(x.label).toContain("after 60 minutes");
+  });
+  it("releases genuine source monitoring metadata only after its original checked clock reaches the 60m cutoff", () => {
+    const old={observation:{
+      status:"SOURCE_NATIVE_OBSERVED",
+      checked_at:"2026-10-10T15:45:00Z",
+      publisher_topic_items_in_last_30m:2,
+    }};
+    const x=classifySourcePulse(payload(old),"critical-minerals",now);
     expect(x.topicCount).toBe(2);
     expect(x.label).toContain("not scored");
-    expect(x.lastChecked).toBe("2026-10-10T16:45:00Z");
+    expect(x.lastChecked).toBe("2026-10-10T15:45:00Z");
+    const boundary=classifySourcePulse(payload({observation:{
+      status:"SOURCE_NATIVE_OBSERVED",
+      checked_at:"2026-10-10T16:00:00Z",
+      publisher_topic_items_in_last_30m:1,
+    }}),"critical-minerals",now);
+    expect(boundary.topicCount).toBe(1);
+    const premature=classifySourcePulse(payload({observation:{
+      status:"SOURCE_NATIVE_OBSERVED",
+      checked_at:"2026-10-10T16:00:01Z",
+      publisher_topic_items_in_last_30m:1,
+    }}),"critical-minerals",now);
+    expect(premature.topicCount).toBeNull();
+    expect(premature.lastChecked).toBeNull();
   });
   it("does not claim no worldwide events when one sampled original publisher has zero", () => {
     const x = classifySourcePulse(
       payload({ observation: {
         status: "SOURCE_NATIVE_OBSERVED",
-        checked_at: "2026-10-10T16:45:00Z",
+        checked_at: "2026-10-10T15:45:00Z",
         publisher_topic_items_in_last_30m: 0,
       }}),
       "critical-minerals", now,
@@ -56,7 +80,7 @@ describe("#1827 private source-monitoring on Intelligence versus actual verified
   it("never promotes degraded or malformed provider response to real current events", () => {
     const degraded = classifySourcePulse(payload({ observation: {
       status: "SOURCE_TRANSPORT_DEGRADED",
-      checked_at: "2026-10-10T16:45:00Z",
+      checked_at: "2026-10-10T15:45:00Z",
       publisher_topic_items_in_last_30m: null,
     }}), "critical-minerals", now);
     expect(degraded.topicCount).toBeNull();

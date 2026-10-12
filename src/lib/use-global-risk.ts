@@ -141,9 +141,11 @@ async function readWebsiteLaggedRisk():Promise<GlobalRisk>{
     const response=await getWebsiteLaggedGlobalRisk({data:{}});
     previous=response.data;
   }catch{
-    // The private historical snapshot store can be temporarily unavailable.
-    // The edge fallback is never allowed to leak its newest score.
-    previous=await readWithFailover();
+    // Server-side D1 history -> quota-governed verified edge fallback is the
+    // only website serving path. Never fetch the freshest edge package in the
+    // browser (even to reject it afterwards), or the network response leaks
+    // an under-60-minute GRI value on a publicly delayed website.
+    throw new Error("WEBSITE_GRI_LAGGED_SERVER_UNAVAILABLE");
   }
   if(!websiteVerifiedSnapshotPastEmbargo(previous))
     throw new Error("WEBSITE_GRI_60MIN_PROOF_HOLD");
