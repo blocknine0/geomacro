@@ -16,7 +16,7 @@ are preserved exactly, never synthesized. The website endpoint rehashes
 the original bytes with SHA-256, revalidates the GRI identity/clock, strips
 all source/event details and rejects invalid or too-new payloads.
 
-The 72-hour/12-entry D1 ring cap remains intact. If the already stored hot
+The 30-day/12-entry D1 ring cap remains intact. If the already stored hot
 row is not eligible, the migration copies **zero** rows and the website
 must continue to fail closed with HTTP 503. This cannot recreate data never
 independently read back from B2, nor raise B2/D1 quotas.
