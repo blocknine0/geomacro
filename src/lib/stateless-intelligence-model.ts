@@ -4,6 +4,8 @@
  * Nothing in this module verifies same-event corroboration or assigns scores.
  * Raw titles, URLs and provider IDs never appear in the return schema.
  */
+import { WEBSITE_RELEASE_DELAY_MS } from "./website-publication-delay";
+
 export type StatelessCategory = "geopolitics" | "macro" | "rare_earth";
 
 export type StatelessSourceSpec = {
@@ -41,7 +43,7 @@ export type StatelessIntelligenceSignal = {
 
 const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
-export const STATELESS_WEBSITE_DELAY_MS = HOUR;
+export const STATELESS_WEBSITE_DELAY_MS = WEBSITE_RELEASE_DELAY_MS;
 export const STATELESS_LOOKBACK_MS = 7 * DAY;
 
 const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; implication: string }[]> = {
@@ -184,12 +186,11 @@ export function deriveStatelessSignals(
   const unique = new Set<string>();
   for (const item of candidates) {
     const native = originalPublicationMs(item.publishedAt, now);
-    if (native === null || native > cutoff ||
-        !acceptedOriginalArticleLink(item.articleUrl, {
-          id: item.sourceId, category: item.category, media: "rss",
-          url: "", allowedHosts: [new URL(item.articleUrl).hostname],
-          credit: item.credit, govContentApi: item.sourceId.startsWith("uk_"),
-        })) continue;
+    if (native === null || native > cutoff) continue;
+    let validated: URL;
+    try { validated = new URL(item.articleUrl); } catch { continue; }
+    if (validated.protocol !== "https:" || validated.username || validated.password ||
+        validated.port || validated.hash || !validated.hostname) continue;
     const topic = selectOfficialTopic(item.title, item.category);
     if (!topic) continue;
     const fingerprint = item.sourceId + "|" + item.articleUrl;
