@@ -427,9 +427,10 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
 
 /**
  * Scan all already-valid original article links, but fetch at most two pages.
- * On open discovery keep the first (often newest) publisher item and rotate
- * the second across the remaining accepted links on successive 30m slots.
- * A permanently old first item must not prevent checking other feed entries.
+ * Rotate BOTH page slots across the bounded, original-publisher-validated
+ * candidate pool. Some feeds pin an old article first forever; re-fetching
+ * that same old page in every 30-minute pulse halves fresh coverage.
+ * This never increases HTTP request count (two page GETs maximum/source).
  * Never substitute Atom <updated> as publication or fetch a rejected URL.
  */
 export function selectRotatingFirstPartyPages(eligible,now,{rotate=false}={}) {
@@ -441,8 +442,11 @@ export function selectRotatingFirstPartyPages(eligible,now,{rotate=false}={}) {
   if(!rotate||unique.length<=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)
     return unique.slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
   const slot=Math.floor(now.getTime()/(30*60*1000));
-  const tail=unique.slice(1);
-  return [unique[0],tail[slot%tail.length]];
+  // Sequential disjoint pairs, including a wrap-around for odd list lengths.
+  // Every accepted link is eventually probed, and no single stale first item
+  // consumes a permanent 50% of the two-page budget.
+  const start=(slot*ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)%unique.length;
+  return [unique[start],unique[(start+1)%unique.length]];
 }
 
 // Only Atom entries with NO per-entry publication date may receive bounded
