@@ -11,10 +11,10 @@ const rss=`<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title>
 </channel></rss>`;
 
 describe("operator public RSS candidate rotating bounded discovery",()=>{
-  it("reuses exactly 14 user-submitted IDs, no original source duplicates or paid products",()=>{
+  it("reuses exactly 10 permitted-to-probe user-submitted IDs, no original source duplicates or paid products",()=>{
     const ids=PUBLIC_FEED_ROTATION.map(x=>x.id);
-    expect(ids).toHaveLength(14);
-    expect(new Set(ids).size).toBe(14);
+    expect(ids).toHaveLength(10);
+    expect(new Set(ids).size).toBe(10);
     const registry=JSON.parse(readFileSync("config/operator-76-source-attribution-intake.v1.json","utf8"));
     for(const f of PUBLIC_FEED_ROTATION){
       const entry=registry.entries.find((x:{id:string})=>x.id===f.id);
@@ -23,6 +23,18 @@ describe("operator public RSS candidate rotating bounded discovery",()=>{
       expect(entry.candidate_endpoint).toBe(f.url);
       expect(f.url.startsWith("https://")).toBe(true);
     }
+    expect(ids).not.toContain("news_bbc");
+    expect(ids).not.toContain("news_scmp");
+    expect(ids).not.toContain("re_news_mining");
+    expect(ids).not.toContain("news_nikkei");
+    expect(registry.entries.find((x:{id:string})=>x.id==="news_bbc").runtime_state)
+      .toBe("HOLD_BUSINESS_RSS_LICENSE_REQUIRED");
+    expect(registry.entries.find((x:{id:string})=>x.id==="news_scmp").runtime_state)
+      .toBe("HOLD_COMMERCIAL_AUTOMATED_ACCESS_PROHIBITED");
+    expect(registry.entries.find((x:{id:string})=>x.id==="news_nikkei").runtime_state)
+      .toBe("HOLD_NONCOMMERCIAL_PROVIDER_TERMS");
+    expect(registry.entries.find((x:{id:string})=>x.id==="re_news_mining").runtime_state)
+      .toBe("QUARANTINED_PROVIDER_403");
     expect(ids).not.toContain("news_reuters_ap");
     expect(ids).not.toContain("opensanctions");
     expect(ids).not.toContain("re_smm");
@@ -39,12 +51,10 @@ describe("operator public RSS candidate rotating bounded discovery",()=>{
       return new Response(rss);
     });
     const r=await observeOperatorFreeFeedRotation({group:0,now,fetchImpl:mock as typeof fetch});
-    expect(r.source_count).toBe(5);
-    expect(r.http_requests).toBe(5);
-    expect(mock).toHaveBeenCalledTimes(5);
+    expect(r.source_count).toBe(3);
+    expect(r.http_requests).toBe(3);
+    expect(mock).toHaveBeenCalledTimes(3);
     expect(r.status).toBe("GROUP_TRANSPORT_OK");
-    expect(r.sources.find(s=>s.id==="news_bbc")?.native_dated_24h_items).toBe(1);
-    expect(r.sources.find(s=>s.id==="news_bbc")?.provisional_topic_matches).toMatchObject({macro:1,rare_earth:1});
     expect(r.sources.find(s=>s.id==="bls")?.native_dated_24h_items).toBeNull();
     expect(r.sources.find(s=>s.id==="ofac_recent_actions")?.transport_state).toBe("HTML_HEALTH_ONLY");
     expect(r.raw_publisher_payload_persisted).toBe(false);
@@ -55,10 +65,10 @@ describe("operator public RSS candidate rotating bounded discovery",()=>{
   it("does not retry on upstream auth/rate denial, keeps group degraded",async()=>{
     const mock=vi.fn(async()=>new Response(null,{status:429}));
     const r=await observeOperatorFreeFeedRotation({group:1,now,fetchImpl:mock as typeof fetch});
-    expect(mock).toHaveBeenCalledTimes(5);
+    expect(mock).toHaveBeenCalledTimes(4);
     expect(r.status).toBe("GROUP_PARTIALLY_DEGRADED");
     expect(r.sources.every(s=>s.transport_state==="DENIED_OR_RATE_LIMIT")).toBe(true);
-    expect(r.http_requests).toBe(5);
+    expect(r.http_requests).toBe(4);
   });
   it("rejects placeholder markup and keeps dates as publisher feed (not original page) metadata",async()=>{
     const mock=vi.fn(async()=>new Response("<html><rss>not a feed</rss></html>"));

@@ -10,19 +10,15 @@ const MAX_BYTES=768*1024;
 const MAX_ITEMS=40;
 const OUTPUT="artifacts/expanded-official-source/operator-free-feed-rotation.json";
 const FEEDS=Object.freeze([
-  {id:"news_bbc",url:"https://feeds.bbci.co.uk/news/world/rss.xml",format:"xml",group:0},
   {id:"fed_press",url:"https://www.federalreserve.gov/feeds/press_all.xml",format:"xml",group:0},
-  {id:"re_news_mining",url:"https://www.mining.com/feed/",format:"xml",group:0},
   {id:"ofac_recent_actions",url:"https://ofac.treasury.gov/recent-actions",format:"html",group:0},
   {id:"bls",url:"https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",format:"json",group:0},
   {id:"news_aljazeera",url:"https://www.aljazeera.com/xml/rss/all.xml",format:"xml",group:1},
   {id:"news_dw",url:"https://rss.dw.com/rdf/rss-en-all",format:"xml",group:1},
   {id:"state_tass",url:"https://tass.com/rss/v2.xml",format:"xml",group:1},
   {id:"news_toi",url:"https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",format:"xml",group:1},
-  {id:"news_nikkei",url:"https://asia.nikkei.com/rss",format:"xml",group:1},
-  {id:"news_scmp",url:"https://www.scmp.com/rss",format:"xml",group:2},
   {id:"news_france24",url:"https://www.france24.com/en/rss",format:"xml",group:2},
-  {id:"news_kyivindependent",url:"https://kyivindependent.com/feed/",format:"xml",group:2},
+  {id:"news_kyivindependent",url:"https://kyivindependent.com/news-archive/rss/",format:"xml",group:2},
   {id:"state_globaltimes",url:"https://www.globaltimes.cn/rss/outbrain.xml",format:"xml",group:2},
 ]);
 export const PUBLIC_FEED_ROTATION=FEEDS;
