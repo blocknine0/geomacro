@@ -133,7 +133,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     // The main desk must show all three categories automatically, not
     // require the visitor to click each category before a source check.
     expect(desk).toContain('useState<View>("all")');
-    expect(desk).toContain('"All latest"');
+    expect(desk).toContain("All latest</button>");
     expect(desk).toContain('["macro", "rare_earth"]');
     expect(desk).toContain('["geopolitics", "macro", "rare_earth"]');
     expect(desk).toContain('document.visibilityState === "visible"');
