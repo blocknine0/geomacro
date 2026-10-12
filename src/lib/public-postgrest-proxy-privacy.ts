@@ -11,7 +11,8 @@ export function plainPublicProjection(select:string|null):boolean{
 }
 export function hasPrivateSourceQueryFilter(search:URLSearchParams):boolean{
   for(const key of search.keys()){
-    if(/(?:^|[._])(?:source|publisher|provider|licen[cs]e|provenance|raw)(?:_|$)/iu.test(key) ||
+    if(/(?:^|[._])(?:source|publisher|provider|licen[cs]e|provenance)(?:_|$)/iu.test(key) ||
+       /(?:^|[._])raw_(?:content|payload|text|html|article)(?:_|$)/iu.test(key) ||
        key==="or"||key==="and")return true;
   }
   return false;
