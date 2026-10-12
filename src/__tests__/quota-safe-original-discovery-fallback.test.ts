@@ -1,13 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import {
-  probeQuotaSafeDiscovery, summarizeOriginalFallback,
+  probeQuotaSafeDiscovery as actualProbeQuotaSafeDiscovery, summarizeOriginalFallback,
 } from "../../scripts/lib/quota-safe-original-discovery-fallback.mjs";
 import {
   discoveryMonitorExitCode,
 } from "../../scripts/ops/probe-market-signal-discovery.mjs";
 
 const now = new Date("2026-10-09T15:00:00.000Z");
+const privateGkg=()=>({
+  schema:"geomacro.private-gdelt-gkg-bulk-discovery.v1",
+  state:"CURRENT_GKG_BATCH_SCANNED_PRIVATE_DISCOVERY_ONLY",
+  archive_integrity_verified:true,
+  domains:["geopolitics","macro","rare_earth"].map(category=>({
+    category,theme_matched_article_count:3,observed_outlet_host_count:2,
+    article_origin_publication_verified:false,
+    same_event_independently_corroborated:false,
+    current_scored_event_verified:false,
+    commercial_rights_verified:false,chargeable:false,
+  })),
+  chargeable:false,public_published:false,supabase_requests:0,
+  b2_requests:0,d1_writes:0,payments_performed:0,
+});
+const probeQuotaSafeDiscovery=(options:any)=>
+  actualProbeQuotaSafeDiscovery({gkgProbe:async()=>privateGkg(),...options});
+
 const primary = (healthy: boolean) => ({
   schema: "geomacro.global-open-signal-discovery.v1",
   source_reachability: healthy ? "ALL_POLL_OK" : "DEGRADED",
@@ -53,6 +70,11 @@ describe("#1827 low-quota GDELT original publisher backup", () => {
       officialProbe: backup,
     });
     expect(backup).toHaveBeenCalledTimes(1);
+    expect(receipt.gdelt_static_bulk_discovery).toMatchObject({
+      state:"CURRENT_GKG_BATCH_SCANNED_PRIVATE_DISCOVERY_ONLY",
+      archive_integrity_verified:true,chargeable:false,
+    });
+    expect(receipt.gdelt_static_bulk_discovery.domains).toHaveLength(3);
     expect(receipt.source_reachability).toBe("DEGRADED");
     expect(discoveryMonitorExitCode(receipt)).toBe(1);
     expect(receipt.independent_original_publisher_fallback).toMatchObject({
