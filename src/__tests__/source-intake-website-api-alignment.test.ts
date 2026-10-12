@@ -102,7 +102,7 @@ describe("#1827 private source inventory versus customer-only derived structured
     const pulse=readFileSync("src/lib/current-30min-original-source-pulse.server.ts","utf8");
     expect(pulse).not.toContain("source_status_endpoint:PULSE_URL");
     const page=readFileSync("src/routes/intelligence.tsx","utf8");
-    expect(page).toContain("<SourceNetworkMonitor />");
-    expect(page).toContain("currentVerifiedDeskEvents(pool)");
+    expect(page).toContain('<SourceNetworkMonitor category={category === "macro" ? "macro-fx" : category === "rare_earth" ? "critical-minerals" : "geopolitics"} />');
+    expect(page).toContain("currentVerifiedDeskEvents(selectedPool)");
   });
 });

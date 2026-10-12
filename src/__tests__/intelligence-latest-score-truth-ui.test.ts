@@ -64,10 +64,10 @@ describe("#1414 Intelligence latest-score display truth", () => {
     expect(route).toContain('latest.isCurrent ? "Latest verified score" : "Last verified score"');
     expect(route).toContain('event.isCurrent ? "Current verified assessment" : "Historical verified assessment"');
     expect(route).toContain("Latest original evidence");
-    expect(route).toContain("PARTIAL CURRENT SCORED");
-    expect(route).toContain("THREE-DOMAIN CURRENT SCORED");
+    expect(route).toContain("CURRENT VERIFIED INTELLIGENCE");
+    expect(route).toContain("AWAITING VERIFIED STORIES");
     expect(route).toContain("Original publication time unavailable");
-    expect(route).toContain("currentDomainCount === COMMERCIAL_DOMAINS.length");
+    expect(route).toContain("pool.filter((event) => event.category === category)");
     expect(route).not.toContain("Monitoring updated");
     expect(route).toContain("Earlier scores remain historical.");
   });
