@@ -10,6 +10,7 @@ import {
 } from "./stateless-intelligence-model";
 import { euCommissionTopOriginalCandidates } from "./stateless-eu-original-index.server";
 import { readPibMinesOriginalCandidates } from "./stateless-pib-mines-original.server";
+import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
 const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
@@ -18,7 +19,7 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "canada_foreign_statements", category: "geopolitics", media: "atom",
     url: "https://api.io.canada.ca/io-server/gc/news/en/v2?atomtitle=Global+Affairs+Canada+statements&dept=departmentofforeignaffairstradeanddevelopment&format=atom&orderBy=desc&pick=50&publishedDate%3E=2015-01-01&sort=publishedDate&type=statements",
     allowedHosts: ["www.canada.ca", "www.international.gc.ca", "international.canada.ca",
-      "api.io.canada.ca"], credit: "Global Affairs Canada" },
+      "api.io.canada.ca"], credit: "Global Affairs Canada", canadaOriginalPage: true },
   { id: "uk_fcdo", category: "geopolitics", media: "atom",
     url: "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
@@ -68,7 +69,7 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "nrcan_releases", category: "rare_earth", media: "atom",
     url: "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
     allowedHosts: ["www.canada.ca", "natural-resources.canada.ca", "www.nrcan.gc.ca",
-      "api.io.canada.ca"], credit: "Natural Resources Canada" },
+      "api.io.canada.ca"], credit: "Natural Resources Canada", canadaOriginalPage: true },
   { id: "nrcan_science", category: "rare_earth", media: "rss",
     url: "https://natural-resources.canada.ca/simply-science/rss.xml",
     allowedHosts: ["natural-resources.canada.ca", "www.natural-resources.canada.ca"],
@@ -157,6 +158,28 @@ async function readGovContentOriginalDate(candidate: {
   } catch { return null; }
 }
 
+async function readCanadaNewsOriginalDay(candidate: {
+  title: string; articleUrl: string;
+}, source: StatelessSourceSpec, now: number): Promise<StatelessSourceCandidate | null> {
+  if (!source.canadaOriginalPage ||
+      !/^https:\/\/www\.canada\.ca\/en\/(?:natural-resources-canada|global-affairs)\/news\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\.html$/u.test(candidate.articleUrl))
+    return null;
+  try {
+    const response=await fetch(candidate.articleUrl,{
+      method:"GET",redirect:"error",cache:"no-store",
+      headers:{Accept:"text/html"},signal:AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if(!/^text\/html(?:;|$)/iu.test(response.headers.get("content-type")??""))return null;
+    const html=await boundedText(response,384*1024);
+    if(!html)return null;
+    const day=canadaOriginalPublicationDay(html,candidate.articleUrl,candidate.title,now);
+    if(!day)return null;
+    return {sourceId:source.id,category:source.category,title:candidate.title,
+      articleUrl:candidate.articleUrl,publishedAt:day,datePrecision:"day",
+      credit:source.credit};
+  }catch{return null}
+}
+
 type LaneMetrics = {
   seen: number; relevant: number; original_link_valid: number;
   native_clock_valid: number; undated_original: number;
@@ -209,8 +232,10 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
     const xml = await boundedText(response, MAX_FEED_BYTES);
     if (!xml) return { candidates: [], healthy: false };
     const parsed = parseFirstPartyFeed(xml, source, now);
-    const recovered = await Promise.all(parsed.undatedGov.slice(0, 4)
-      .map(candidate => readGovContentOriginalDate(candidate, source, now)));
+    const recovered = await Promise.all(parsed.undatedGov.slice(0, source.canadaOriginalPage ? 8 : 4)
+      .map(candidate => source.canadaOriginalPage
+        ? readCanadaNewsOriginalDay(candidate, source, now)
+        : readGovContentOriginalDate(candidate, source, now)));
     return { healthy: true,
       candidates: [...parsed.dated, ...recovered.filter((x): x is StatelessSourceCandidate => x !== null)],
       metrics: { ...parsed.metrics, recovered_original_page: recovered.filter(Boolean).length, transport_ok: true },
