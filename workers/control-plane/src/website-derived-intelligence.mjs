@@ -9,7 +9,7 @@ const DELAY_MS = 15 * 60_000;
 const CATEGORIES = new Set(["geopolitics", "macro", "rare_earth"]);
 const TOPICS = new Set(["sanctions and trade restrictions","security and diplomacy",
   "geopolitical security","foreign policy","monetary policy","inflation and prices",
-  "FX and external balances","financial conditions","rare-earth supply",
+  "FX and external balances","financial conditions","trade and economic relations","rare-earth supply",
   "critical-mineral inputs","critical-minerals policy",
   "mineral exploration and production"]);
 const SIGNAL_KEYS = new Set(["id","category","title","why_it_matters","topic",
