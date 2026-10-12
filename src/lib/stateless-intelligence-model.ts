@@ -112,6 +112,7 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
     if (source.id === "usgs_minerals" && !/^\/news\//u.test(link.pathname)) return null;
+    if (source.id === "ecb_press" && !/^\/press\/(?:pr|key)\/date\/20\d{2}\/html\/[A-Za-z0-9.~_-]{6,190}\.html$/u.test(link.pathname)) return null;
     if (source.id === "un_news" && !/^\/en\/story\/\d{4}\/\d{1,2}\//u.test(link.pathname)) return null;
     link.search = "";
     return link.href;
