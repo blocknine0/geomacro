@@ -99,6 +99,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const lastRequestAt = useRef(0);
+  const manualRefresh = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     let alive = true;
@@ -140,6 +141,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
     void refresh(initial?.category === "geopolitics"
       ? ["macro", "rare_earth"]
       : ["geopolitics", "macro", "rare_earth"]);
+    manualRefresh.current = () => { void refresh(["geopolitics", "macro", "rare_earth"]); };
     const refreshAll = () => {
       if (document.visibilityState === "visible") {
         void refresh(["geopolitics", "macro", "rare_earth"]);
@@ -154,6 +156,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
     window.addEventListener("focus", onReturn);
     return () => {
       alive = false;
+      manualRefresh.current = () => undefined;
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onReturn);
       window.removeEventListener("focus", onReturn);
@@ -174,12 +177,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
   const latestCheck = Math.max(0, ...active.map(domain =>
     Date.parse(feeds[domain.key]?.checked_at ?? "") || 0));
   const missing = active.filter(domain => !feeds[domain.key]);
-  const refreshOnClick = () => {
-    // Force a genuine full new source poll without persisting any data.
-    if (document.visibilityState === "visible") {
-      window.dispatchEvent(new Event("focus"));
-    }
-  };
+  const refreshOnClick = () => manualRefresh.current();
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
