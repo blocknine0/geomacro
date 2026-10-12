@@ -22,7 +22,7 @@ describe("website GRI Supabase-outage bounded verified preexisting D1 backfill",
   expect(sql).not.toContain("B2_KEY_ID");
   expect(sql).not.toContain("fake");
  });
- it("retains <=12 ring entries/72h while historic originals keep real timestamps and checksum",()=>{
+ it("retains <=12 ring entries/30d while historic originals keep real timestamps and checksum",()=>{
   expect(sql).toContain("DELETE FROM website_verified_gri_snapshot_history");
   expect(sql).toContain("'-72 hours'");
   expect(sql).toContain("ORDER BY source_as_of DESC LIMIT 12");
