@@ -46,11 +46,11 @@ describe("operator 76-source three-domain and attribution reconciliation",()=>{
   });
   it("probes three specific read-only official endpoints with one HTTP request each",async()=>{
     const mock=vi.fn(async(url:string)=>{
-      if(url.includes("earthquake.usgs.gov"))return json({
+      if(new URL(url).hostname==="earthquake.usgs.gov")return json({
         type:"FeatureCollection",
         features:[{properties:{time:Date.parse("2026-10-12T11:40:00Z")}}],
       });
-      if(url.includes("fiscaldata.treasury.gov"))return json({
+      if(new URL(url).hostname==="api.fiscaldata.treasury.gov")return json({
         data:[{record_date:"2026-09-30",avg_interest_rate_amt:"3.8"}],
       });
       return json({results:[{publication_date:"2026-10-12"}]});
