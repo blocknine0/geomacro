@@ -76,7 +76,8 @@ describe("website-only 60min publication embargo (machine / x402 unaffected)",()
   const machine=readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts","utf8");
   expect(seo).toContain("websiteLaggedEvidenceRows(await readPublicIntelligenceRowsFromB2())");
   expect(website).toContain("mapPublicRows(websiteLaggedEvidenceRows(rows, now))");
-  expect(website).toContain("build(mapPublicRows(websiteLaggedEvidenceRows(rows, now)), now)");
+  expect(website).toContain("build(mapPublicRows(rows), now)");
+  expect(website).toContain("mapPublicRows(websiteLaggedEvidenceRows(rows, now))");
   expect(machine).not.toContain("websiteLaggedEvidenceRows");
   expect(machine).not.toContain("WEBSITE_RELEASE_DELAY_MS");
   expect(machine).toContain("source_identity_delivered: false");
