@@ -112,7 +112,10 @@ describe("production website runtime contract", () => {
     const intelligence = read("src/routes/intelligence.tsx");
     const event = read("src/routes/event.$eventId.tsx");
     expect(intelligence).toContain("Original publisher Intelligence source check timed out.");
-    expect(intelligence).toContain("return { rows: [], now, stateless: null }");
+    expect(intelligence).toContain('stateless: source.status === "fulfilled" ? source.value : null');
+    expect(intelligence).toContain('journal: history.status === "fulfilled" ? history.value.signals : []');
+    expect(intelligence).toContain("Promise.allSettled");
+    expect(intelligence).toContain("initialJournal={loader.journal}");
     expect(intelligence).toContain("component: StatelessWebsiteIntelligencePage");
     expect(event).toContain("[event-route] preload failed; rendering unavailable state");
     expect(event).toContain("return null");
