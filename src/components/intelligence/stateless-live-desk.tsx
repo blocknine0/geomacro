@@ -299,6 +299,29 @@ export function StatelessLiveDesk({ initial, initialJournal = [] }: {
           </p>
         ) : null}
 
+        {signals.length === 0 ? (
+          <section aria-label="Direct verified Intelligence archive" className="mt-6">
+            <p className="mb-3 text-xs text-muted-foreground">
+              Reading the verified rolling Intelligence history directly from our Cloudflare feed
+              while the website service restores its connection.
+            </p>
+            <iframe
+              title="Geomacro Finds · latest original-dated Intelligence"
+              src="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-html"
+              loading="eager"
+              referrerPolicy="no-referrer"
+              className="w-full rounded-xl border border-border"
+              style={{ height: "850px" }}
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              <a className="underline underline-offset-2"
+                href="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-html"
+                rel="noopener noreferrer" target="_blank">
+                Open the directly verified news feed
+              </a>
+            </p>
+          </section>
+        ) : null}
         {journalUnavailable ? (
           <p role="status" className="mt-4 text-xs text-muted-foreground">
             Rolling history is temporarily unreachable from both D1 delivery paths. Direct official source checks remain active;

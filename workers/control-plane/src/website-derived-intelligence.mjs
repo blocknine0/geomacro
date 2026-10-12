@@ -113,3 +113,51 @@ export async function readDerivedStories(env,now=Date.now()) {
       chargeable:false,signals:[]},503);
   }
 }
+
+
+/**
+ * Fail-visible, self-contained newsroom HTML from the SAME D1 rows. Embedded
+ * on the website only while its Lovable SSR/server-function/client fetch
+ * path has not produced cards. Browser loads Worker HTML directly, so a
+ * broken TanStack RPC/SSR bridge cannot hide already verified historical news.
+ * No script, no external CSS, and no upstream identity leaks.
+ */
+const escapeHtml = text => String(text ?? "")
+  .replace(/&/gu,"&amp;").replace(/</gu,"&lt;").replace(/>/gu,"&gt;")
+  .replace(/"/gu,"&quot;").replace(/'/gu,"&#39;");
+export async function renderDerivedStoriesHtml(env,now=Date.now()){
+  const response=await readDerivedStories(env,now);
+  if(response.status!==200)return new Response(
+    "<!doctype html><html><meta charset=utf-8><body><p>Intelligence timeline temporarily unavailable.</p></body></html>",
+    {status:503,headers:{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store",
+      "Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors https://geomacro.live",
+      "Referrer-Policy":"no-referrer","X-Content-Type-Options":"nosniff"}});
+  const body=await response.json();
+  const labels={geopolitics:"Geopolitics",macro:"Macro / FX",rare_earth:"Critical Minerals"};
+  const records=body.signals.filter(s=>verifyDerivedStory(s,now)).slice(0,150);
+  const stories=records.map(s=>'<article><div class="label">GEOMACRO FINDS · '+
+    escapeHtml(labels[s.category])+' · <time>'+escapeHtml(s.published_at)+
+    '</time></div><h2>'+escapeHtml(s.title)+
+    '</h2><section><div><strong>What changed</strong><p>'+escapeHtml(s.what_changed)+
+    '</p></div><div><strong>Why it matters</strong><p>'+escapeHtml(s.why_it_matters)+
+    '</p></div></section></article>').join("");
+  const message=records.length===0?'<p>No eligible original-dated publisher releases in the current window.</p>':stories;
+  const markup='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+    '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<title>Geomacro Finds — rolling derived Intelligence</title>'+
+    '<style>body{margin:0;padding:4px;background:transparent;color:CanvasText;font:15px system-ui,sans-serif}'+
+    'article{border:1px solid #9996;border-radius:14px;padding:20px;margin:0 0 14px;background:Canvas}'+
+    '.label{font-size:11px;font-weight:700;letter-spacing:.06em;opacity:.85}'+
+    'h2{font-size:20px;line-height:1.35;margin:10px 0}'+
+    'section{display:grid;grid-template-columns:1fr 1fr;gap:16px}'+
+    'strong{font-size:12px;letter-spacing:.04em;text-transform:uppercase}'+
+    'p{line-height:1.6;margin:6px 0}'+
+    '@media(max-width:600px){section{grid-template-columns:1fr}article{padding:15px}}'+
+    '</style></head><body><main aria-label="Recent Geomacro-derived Intelligence">'+
+    message+'</main></body></html>';
+  return new Response(markup,{status:200,headers:{
+    "Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store",
+    "Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors https://geomacro.live",
+    "Referrer-Policy":"no-referrer","X-Content-Type-Options":"nosniff",
+  }});
+}

@@ -1,5 +1,5 @@
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
-import { readDerivedStories, publishDerivedStories } from "./website-derived-intelligence.mjs";
+import { readDerivedStories, publishDerivedStories, renderDerivedStoriesHtml } from "./website-derived-intelligence.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
 import { makeRiskIndicesHistoricalMetadata } from "./risk-indices-historical-status.mjs";
 import { projectPublic30mPulse } from "./source-pulse-public.mjs";
@@ -1243,6 +1243,9 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
+    if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
+      return renderDerivedStoriesHtml(env);
+    }
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news" && !url.search) {
       return readDerivedStories(env);
     }
