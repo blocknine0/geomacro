@@ -629,6 +629,10 @@ export async function probeExpandedSource(source,{
     official_locale_fallback_used:false,
     official_same_publisher_fallback_attempted:false,
     official_same_publisher_fallback_used:false,
+    // Zero-current original-publisher all-topic discovery is same issuer;
+    // never independent corroboration or even a qualified original article.
+    official_same_publisher_zero_fresh_expansion_attempted:false,
+    official_same_publisher_zero_fresh_expansion_used:false,
     // Sanitized numeric transport status only; never forward upstream bodies.
     primary_http_status:null,fallback_http_status:null,
     same_event_independent_corroboration_verified:false,
@@ -711,6 +715,51 @@ export async function probeExpandedSource(source,{
     try{valid=jsonShape(JSON.parse(body));}catch{valid=false;}
   }
   if(!valid){row.reason="SOURCE_SHAPE_UNVERIFIED";return row;}
+  // The security-topic UN News RSS sometimes has no new first-party item
+  // even when UN News all-topic (same official publisher) does. Under a
+  // PRIVATE open-discovery pulse, one extra pinned same-issuer RSS GET may
+  // recover original native-dated evidence. A second UN feed is NEVER a
+  // second independent issuer; no freshness from retrieval/channel clocks.
+  if(source.id==="un_news_security_original_rss_review" && openDiscovery &&
+      !retriedAfterTransportError && row.primary_http_status===200 &&
+      source.network_fallback_same_publisher===true &&
+      source.alternate_url &&
+      new URL(source.url).origin===new URL(source.alternate_url).origin &&
+      counts?.within_24h===0) {
+    row.official_same_publisher_zero_fresh_expansion_attempted=true;
+    try {
+      const second=await fetchOfficial(source.alternate_url);
+      // Explicit access denials and rate limits never cause another fallback.
+      // Retain the already valid primary feed on every alternate error.
+      if(second.ok && XML_MIME.test(second.headers.get("content-type")??"") &&
+          Number(second.headers.get("content-length")||0)<=MAX_BODY_BYTES &&
+          second.body) {
+        const nextChunks=[];let length=0;
+        const nextReader=second.body.getReader();
+        try {
+          for(;;){
+            const {done,value}=await nextReader.read();
+            if(done)break;
+            length+=value.byteLength;
+            if(length>MAX_BODY_BYTES)break;
+            nextChunks.push(Buffer.from(value));
+          }
+        }finally{nextReader.releaseLock();}
+        if(length<=MAX_BODY_BYTES) {
+          const alternateBody=new TextDecoder("utf-8",{fatal:true})
+            .decode(Buffer.concat(nextChunks));
+          const alternateCounts=rssDateCounts(alternateBody,now,
+            source.topic??null,source.original_hosts??null,source);
+          // Require actual <item> pubDate + pinned UN original story URL,
+          // NOT a merely updated channel or different third-party source.
+          if(alternateCounts && alternateCounts.within_24h>0) {
+            body=alternateBody;counts=alternateCounts;
+            row.official_same_publisher_zero_fresh_expansion_used=true;
+          }
+        }
+      }
+    }catch{/* Preserve valid primary; never log upstream URL/body/error. */}
+  }
   row.publisher_reachable=true;
   row.format_valid=true;
   // Original publication may be unknowable at discovery time (notably Atom).
