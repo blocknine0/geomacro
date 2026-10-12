@@ -51,6 +51,18 @@ function db() {
   return {data,env:{DB:{prepare:statement,async batch(items){for(const item of items)await item.run()}}}};
 }
 describe("website-only Supabase-free derived news continuity",()=>{
+  it("admits the newly reviewed Macro/FX trade and economic relations derived topic",()=>{
+    const story={...sample("macro"),
+      topic:"trade and economic relations",
+      title:"Geomacro finds agreement on international trade",
+      what_changed:"An official publisher issued an agreement concerning international trade.",
+      why_it_matters:"Trade policy and agreements may affect commercial flows, and exact impacts require separate evidence.",
+      development_type:"agreement",
+    };
+    expect(verifyDerivedStory(story,NOW)).toBe(true);
+    expect(verifyDerivedStory({...story,topic:"unreviewed fabricated claim"},NOW)).toBe(false);
+  });
+
   it("admits old-but-original 30d publications and rejects 15m unreleased/future/historical",()=>{
     expect(verifyDerivedStory(sample(),NOW)).toBe(true);
     expect(verifyDerivedStory(sample("macro","2026-10-12T19:45:01.000Z"),NOW)).toBe(false);
