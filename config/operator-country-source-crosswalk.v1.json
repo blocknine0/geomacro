@@ -121,7 +121,10 @@
       "commercial_eligible": false,
       "access_verified_in_production": false,
       "country_attribution_mode": "SOURCE_NATIVE_CODES_REQUIRE_FIPS_TO_ISO3_OR_PROVIDER_SPECIFIC_MAPPING",
-      "freshness_claim_verified": false
+      "freshness_claim_verified": false,
+      "provider_endpoint_version_deprecated": "v1 must not be polled",
+      "effective_existing_reader_id": "reliefweb",
+      "existing_reader_requires_secret": "RELIEFWEB_APPROVED_APPNAME"
     },
     {
       "id": "cloudflare_radar",
@@ -791,8 +794,8 @@
       "domains": [
         "critical_minerals"
       ],
-      "canonical_family_id": "australia_critical_minerals",
-      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_PROVIDER_SPECIFIC_OFFICIAL_ENDPOINT_REVIEW",
       "provider_rights_verified": false,
       "original_payload_redistribution_allowed": false,
       "commercial_eligible": false,
@@ -1812,8 +1815,8 @@
         "AUS"
       ],
       "scope": "COUNTRY_SPECIFIC",
-      "canonical_family_id": "australia_critical_minerals",
-      "source_activation_state": "HOLD_CONCRETE_ENDPOINT_REQUIRED",
+      "canonical_family_id": null,
+      "source_activation_state": "HOLD_PROVIDER_SPECIFIC_OFFICIAL_ENDPOINT_REVIEW",
       "provider_rights_verified": false,
       "original_payload_redistribution_allowed": false,
       "commercial_eligible": false,
