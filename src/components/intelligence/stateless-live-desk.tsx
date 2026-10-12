@@ -123,7 +123,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               {current.status === "sources_unavailable"
                 ? "The selected official feeds are unavailable. This is not evidence that no world events occurred."
-                : "None of the sampled original-dated relevant releases passed the 15-minute cutoff in the last seven days. Other sources may report additional developments."}
+                : "None of the sampled original-dated relevant releases passed the 15-minute cutoff in the past 30 days. Other sources may report additional developments."}
             </p>
           </div>
         ) : (
@@ -144,7 +144,7 @@ export function StatelessLiveDesk({ initial }: { initial: StatelessIntelligenceR
                   </time>
                   {Date.parse(signal.published_at) >= Date.parse(current.checked_at) - 86_400_000
                     ? <span className="text-xs text-muted-foreground">Last 24h</span>
-                    : <span className="text-xs text-muted-foreground">Earlier this week</span>}
+                    : <span className="text-xs text-muted-foreground">Earlier (past 30 days)</span>}
                 </div>
                 <h3 className="mt-3 text-xl font-semibold leading-snug tracking-tight">{signal.title}</h3>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
