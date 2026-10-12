@@ -1,13 +1,14 @@
 {
   "schema": "geomacro.public-source-intake-coverage.v1",
   "source_receipt": {
-    "observed_at": "2026-10-10T16:21:28.311Z",
-    "workflow_run_url": "https://github.com/blocknine0/geomacro/actions/runs/38067310841",
-    "producer_main_sha": "e0068e8a1d96bf7e5da839cf8ba2614f65905168",
+    "observed_at": "2026-10-12T08:23:20.646Z",
+    "workflow_run_url": "https://github.com/blocknine0/geomacro/actions/runs/38223231621",
+    "producer_main_sha": "bdf1630e76f96271fd31257881b94f9b8a6b6e4f",
     "catalog_mode": "PINNED_SANITIZED_REPOSITORY_SNAPSHOT",
-    "latest_private_repo_sync_verified": false,
+    "latest_private_repo_sync_verified": true,
     "realtime_event_publication_verified": false,
-    "catalog_entries_are_distinct_publishers": false
+    "catalog_entries_are_distinct_publishers": false,
+    "source_registry_readback_only_not_telegram_messages": true
   },
   "refresh_policy": {
     "source_catalog": "BEST_EFFORT_90_MINUTE_PRIVATE_WORKFLOW",
@@ -18,37 +19,51 @@
   "domains": {
     "geopolitics": {
       "label": "Geopolitics",
-      "total": 376,
+      "total": 467,
       "core": 17,
       "free": 12,
       "governed_roots": 209,
       "telegram_candidates": 131,
-      "historical_sources": 7
+      "historical_sources": 7,
+      "operator76": 40,
+      "operator_country": 31,
+      "operator_corridor": 20
     },
     "macro-fx": {
       "label": "Macro / FX",
-      "total": 355,
+      "total": 459,
       "core": 19,
       "free": 8,
       "governed_roots": 308,
       "telegram_candidates": 15,
-      "historical_sources": 5
+      "historical_sources": 5,
+      "operator76": 36,
+      "operator_country": 48,
+      "operator_corridor": 20
     },
     "critical-minerals": {
       "label": "Critical minerals",
-      "total": 47,
+      "total": 133,
       "core": 12,
       "free": 8,
       "governed_roots": 18,
       "telegram_candidates": 6,
-      "historical_sources": 3
+      "historical_sources": 3,
+      "operator76": 37,
+      "operator_country": 29,
+      "operator_corridor": 20
     }
   },
   "totals": {
-    "catalog_entries": 778,
+    "catalog_entries": 1059,
     "telegram_authorized_in_snapshot": 0,
     "metadata_only": true,
-    "historical_legacy_crypto_excluded": 1
+    "historical_legacy_crypto_excluded": 1,
+    "unique_operators_not_deduplicated_across_catalogs": true,
+    "operator_named_corridors_catalogued_not_publishers": 58,
+    "operator76_unique_named_candidates": 76,
+    "operator_country_source_entries": 108,
+    "operator_corridor_unique_source_entries": 20
   },
   "separation": {
     "intake_is_event_feed": false,
@@ -56,6 +71,8 @@
     "intake_is_signed_gro": false,
     "intake_is_paid_deliverability": false,
     "verified_current_intelligence_uses_existing_b2_d1_gro_gate": true,
-    "source_permissions_and_licensing_remain_required": true
+    "source_permissions_and_licensing_remain_required": true,
+    "operator_registered_sources_are_active_http_feeds": false,
+    "operator_source_candidate_rights_verified": false
   }
 }
