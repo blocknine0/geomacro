@@ -191,7 +191,15 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
   const metrics = { seen: 0, relevant: 0, original_link_valid: 0, native_clock_valid: 0, undated_original: 0 };
   if (typeof xml !== "string" || xml.length > 384 * 1024 ||
       /<!DOCTYPE|<!ENTITY/iu.test(xml)) return { dated: [], undatedGov: [], metrics };
-  if (source.media === "rss" && !/<rss(?:\s|>)/iu.test(xml)) return { dated: [], undatedGov: [], metrics };
+  // RSS 1.0 uses an RDF envelope, but ONLY the exact publisher whose
+  // original first-party media feed format was verified on a live runner.
+  // Never grant RDF parsing to a synthetic/unknown source.
+  const verifiedRdfPress = source.id === "bis_press" &&
+    source.allowedHosts.includes("www.bis.org") &&
+    /<rdf:RDF(?:\s|>)/iu.test(xml) &&
+    /xmlns:dc\s*=\s*["']http:\/\/purl\.org\/dc\/elements\/1\.1\/["']/iu.test(xml);
+  if (source.media === "rss" && !/<rss(?:\s|>)/iu.test(xml) && !verifiedRdfPress)
+    return { dated: [], undatedGov: [], metrics };
   if (source.media === "atom" && !/<(?:atom:)?feed(?:\s|>)/iu.test(xml)) return { dated: [], undatedGov: [], metrics };
   const entryPattern = source.media === "rss"
     ? /<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu
@@ -210,7 +218,15 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
     if (!articleUrl || seen.has(articleUrl)) continue;
     seen.add(articleUrl);
     metrics.original_link_valid++;
-    const rawClock = tagValue(item, source.media === "rss" ? "pubDate" : "published");
+    // For a verified RSS1.0/RDF original press feed, dc:date is its
+    // publisher-issued native date. A timestamp must include an explicit
+    // timezone (otherwise no timed release is admitted). Refuse updated,
+    // modified, HTTP or URL clocks as substitutes.
+    const rdfClock = verifiedRdfPress
+      ? /<dc:date(?:\s[^>]*)?>([^<>]{4,80})<\/dc:date>/iu.exec(item)?.[1] ?? null
+      : null;
+    const rawClock = verifiedRdfPress
+      ? rdfClock : tagValue(item, source.media === "rss" ? "pubDate" : "published");
     const ms = originalPublicationMs(rawClock, now);
     if (ms !== null) {
       metrics.native_clock_valid++;
