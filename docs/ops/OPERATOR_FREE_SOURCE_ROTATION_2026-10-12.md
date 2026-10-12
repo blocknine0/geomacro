@@ -3,7 +3,7 @@
 ## What is actually turned on
 
 This is an **additional, bounded, read-only GitHub Actions private
-discovery/availability check** for 14 previously unactivated IDs in the
+discovery/availability check** for 12 currently eligible-for-probing IDs (from 14 originally tested) in the
 operator's attached 76-source inventory. It does not replace, duplicate, or
 turn off the existing canonical source readers:
 
@@ -16,14 +16,14 @@ turn off the existing canonical source readers:
 
 Read-only candidates added here, with exact supplier name in operator
 registry: `news_bbc`, `news_aljazeera`, `news_dw`,
-`news_nikkei`, `news_scmp`, `news_france24`,
+`news_scmp`, `news_france24`,
 `news_kyivindependent`, `news_toi`,
 `state_tass`, `state_globaltimes`,
-`fed_press`, `bls`, `re_news_mining`,
+`fed_press`, `bls`,
 `ofac_recent_actions`.
 
 **The same already-existing 90-minute workflow** now runs a single group
-(0/1/2), 4–5 sources per slot, 14 sources in ~4.5 hours if no scheduled
+(0/1/2), 4 sources per slot, 12 sources in ~4.5 hours if no scheduled
 slot is skipped. GitHub scheduling has no uninterrupted real-time SLA.
 On a merge to main the three groups are each tested once in separate
 jobs to obtain full initial acceptance, without polluting a normal
@@ -61,7 +61,7 @@ country coverage, scored risk, signed GRO or product payment acceptance.
   redirects, times out after 8s, and has a 768 KiB absolute response cap.
 - Group status fails if any candidate cannot return valid metadata;
   never a silent green for 403/429/404/HTML-masquerading-as-feed.
-- At most 5 new GET requests each 90-minute slot, no B2/D1/Supabase,
+- At most 4 new GET requests each 90-minute slot, no B2/D1/Supabase,
   no external AI model, no purchases, no customer raw data.
 
 ## End-to-end acceptance still separate
@@ -75,3 +75,29 @@ helper has not been wired to a signed customer response schema.
 See operator mapping:
 [`config/operator-76-source-attribution-intake.v1.json`](../../config/operator-76-source-attribution-intake.v1.json)
 and provider rights register [`docs/COMMERCIAL_SOURCE_RIGHTS.md`](../COMMERCIAL_SOURCE_RIGHTS.md).
+
+## First real acceptance: 2026-10-12 (run #38218044683)
+
+The first main-push matrix proved **10 of 14 candidates had valid transport**.
+USGS/Treasury/Federal Register (separate earlier job) and ReliefWeb remained
+healthy; do not count those as newly activated.
+
+- LIVE: BBC RSS (18 feed-native 24h items), Fed press RSS (20 sampled),
+  OFAC (HTML health only), BLS no-key V1 (34 records), Al Jazeera (25 fresh
+  feed-native), DW (18 fresh), TASS (40 feed-native), TOI (20 fresh),
+  France24 (24 fresh), Global Times (40 sampled, **0 within 24h**).
+- Provider denied: Mining.com HTTP 403. **Quarantine; no authorization
+  workaround, no rapid retry.**
+- Nikkei Asia: official RSS terms explicitly restrict feeds to individual
+  personal **noncommercial** reading. **Remove from company operation** even
+  if the endpoint might return HTTP 200.
+- SCMP entry URL returned HTML rather than RSS. Update to official World
+  category endpoint `https://www.scmp.com/rss/5/feed` for one follow-up
+  acceptance, not a guarantee of access; no commercial article republication.
+- Kyiv Independent `/feed/` returned HTTP failure. Update to a reported
+  official-source path `/news-archive/rss/` for one follow-up acceptance;
+  if unavailable leave it degraded.
+
+Never use a media feed's licensed or copyrighted original article as a raw
+commercial answer. The paid intelligence path still requires first-party
+cross-evidence, dataset-specific rights, signing and explicit credit.
