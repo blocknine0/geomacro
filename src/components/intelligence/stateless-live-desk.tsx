@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Clock3, RefreshCw } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
+import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
 import type { StatelessCategory, StatelessIntelligenceSignal } from "@/lib/stateless-intelligence-model";
 
@@ -174,10 +175,19 @@ export function StatelessLiveDesk({ initial, initialJournal = [] }: {
   useEffect(() => {
     let alive = true;
     const sync = async () => {
+      // Browser-direct D1 is crucial when a Lovable server-function roundtrip
+      // fails despite the verified, public, source-private D1 journal.
       try {
-        const result = await getWebsiteDerivedNews();
-        if (alive) { setJournal(result.signals); setJournalUnavailable(false); }
-      } catch { if (alive) setJournalUnavailable(true); }
+        const signals = await fetchDirectDerivedNews();
+        if (alive) { setJournal(signals); setJournalUnavailable(false); }
+      } catch {
+        // The legacy server function is only a secondary fallback; preserve
+        // previously rendered SSR or in-tab cards if BOTH paths fail.
+        try {
+          const result = await getWebsiteDerivedNews();
+          if (alive) { setJournal(result.signals); setJournalUnavailable(false); }
+        } catch { if (alive) setJournalUnavailable(true); }
+      }
     };
     void sync();
     const timer = window.setInterval(() => {
@@ -291,7 +301,7 @@ export function StatelessLiveDesk({ initial, initialJournal = [] }: {
 
         {journalUnavailable ? (
           <p role="status" className="mt-4 text-xs text-muted-foreground">
-            Rolling history temporarily unavailable. Direct official source checks remain active;
+            Rolling history is temporarily unreachable from both D1 delivery paths. Direct official source checks remain active;
             no old finding is relabeled as newly published.
           </p>
         ) : null}
