@@ -44,7 +44,7 @@ export type StatelessIntelligenceSignal = {
 
 const DAY = 24 * 60 * 60_000;
 export const STATELESS_WEBSITE_DELAY_MS = 15 * 60_000;
-export const STATELESS_LOOKBACK_MS = 7 * DAY;
+export const STATELESS_LOOKBACK_MS = 30 * DAY;
 
 const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; implication: string }[]> = {
   geopolitics: [
@@ -64,7 +64,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Price developments can affect purchasing power, central-bank decisions and currency-risk context; verify the actual published figures before quantifying impact." },
     { test: /\b(foreign exchange|currency|exchange rate|balance of payments)\b/i, name: "FX and external balances",
       implication: "External-balance releases can affect currency-liquidity and cross-border settlement considerations; this does not indicate a directional FX prediction." },
-    { test: /\b(liquidity|financial stability|bank supervision|banking regulation|economic growth|GDP)\b/i, name: "financial conditions",
+    { test: /\b(liquidity|financial stability|bank supervision|banking regulation|economic growth|GDP|economic bulletin|bank lending|banking statistics|financial accounts|financial markets|unemployment|labour market|credit conditions|household debt|economic outlook)\b/i, name: "financial conditions",
       implication: "Financial-system developments may matter for credit access and counterparty exposure; a score requires separately verified measurements." },
   ],
   rare_earth: [
@@ -74,7 +74,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence." },
     { test: /\b(critical minerals?|critical raw materials?|strategic minerals?|mineral processing|mineral supply)\b/i, name: "critical-minerals policy",
       implication: "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast." },
-    { test: /\b(mineral deposits?|mining projects?|mineral production|rare earth elements?)\b/i, name: "mineral exploration and production",
+    { test: /\b(mineral deposits?|mining projects?|mineral production|rare earth elements?|mineral resources?|mining|mineral research|mineral exploration|geology of|mineral mapping|raw material supply)\b/i, name: "mineral exploration and production",
       implication: "Extractive-sector updates can affect long-run supply expectations, but an announcement is not proof of operating capacity or delivered output." },
   ],
 };
