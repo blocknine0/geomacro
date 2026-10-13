@@ -110,6 +110,9 @@ export async function acceptEarningPilotLive({
        /^[a-f0-9]{64}$/.test(String(data.query_plan_hash??""));
     if (res.status===200 && !available)
       throw Error("EARNING_PILOT_FALSE_POSITIVE_"+item.name.toUpperCase());
+    if(available && !["ELIGIBLE_FOR_X402_QUOTE",
+      "ELIGIBLE_BUT_PAYMENT_RAIL_LOCKED"].includes(data.status))
+      throw Error("EARNING_PILOT_UNKNOWN_RAIL_STATUS_"+item.name.toUpperCase());
     if(res.status===422 && data.ok===true)
       throw Error("EARNING_PILOT_FALSE_POSITIVE_"+item.name.toUpperCase());
     if(available)eligibleCount++;
