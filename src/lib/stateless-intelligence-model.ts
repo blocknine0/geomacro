@@ -216,7 +216,8 @@ function topicForOriginal(
 ) {
   const travelAdvisory = category === "geopolitics" &&
     sourceId === "us_state_advisories" &&
-    /^[A-Za-z][A-Za-z .'-]{2,100}\s+-\s+Level [1-4]:\s+.{8,160}$/u.test(title);
+    ( /^(?:[A-Za-z][A-Za-z .'-]{2,100})\s+-\s+Level [1-4]:\s+.{8,160}$/u.test(title) ||
+      /^[A-Za-z][A-Za-z .'-]{2,100}\s+Travel Advisory$/u.test(title) );
   return selectOfficialTopic(title, category) ??
     (travelAdvisory ? US_STATE_ADVISORY_TOPIC :
       category === "macro" && dayVerified && STATCAN_FEED_IDS.has(sourceId)
