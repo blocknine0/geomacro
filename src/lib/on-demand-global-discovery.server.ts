@@ -412,17 +412,20 @@ export type PrivateMacroQualification = {
 type PrivateMacroResult = {
   probe: SourceProbe;
   private_macro_changes: PrivateOfficialMacroChange[];
+  source_api_id?:"2"|null;
+  dataset_last_updated?:string|null;
   // Internal, redacted period/validation status. Never leak raw WB values
   // and never mistake a 2xx endpoint for verified annual intelligence.
   private_macro_qualification: PrivateMacroQualification;
 };
 async function worldBank(
   country: string, indicator: PrivateOfficialMacroChange["indicator"],
-  fetchImpl: typeof fetch, now: Date,
+  fetchImpl: typeof fetch, now: Date, pinnedWdiSource2=false,
 ): Promise<PrivateMacroResult> {
   const body = await boundedFetch(fetchImpl,
     "https://api.worldbank.org/v2/country/" + country +
-      "/indicator/" + indicator + "?format=json&per_page=6",
+      "/indicator/" + indicator + "?format=json&per_page=6" +
+      (pinnedWdiSource2?"&source=2":""),
     "application/json");
   let json: unknown;
   try {json=JSON.parse(body);} catch {
@@ -436,7 +439,18 @@ async function worldBank(
       },
     };
   }
-  const isData=Array.isArray(json) && Array.isArray(json[1]);
+  const meta=Array.isArray(json) && json[0] &&
+    typeof json[0]==="object" ? json[0] as Record<string,unknown> : null;
+  // The paid WDI pilot MUST pin API source=2, rather than inheriting other
+  // World Bank catalogues or claiming indicator-specific release dates.
+  const metadataMatches=!pinnedWdiSource2 ||
+    (meta?.sourceid==="2" &&
+     typeof meta.lastupdated==="string" &&
+     /^\d{4}-\d{2}-\d{2}$/u.test(meta.lastupdated) &&
+     Number.isFinite(Date.parse(meta.lastupdated+"T00:00:00Z")) &&
+     new Date(meta.lastupdated+"T00:00:00Z").toISOString().slice(0,10)===meta.lastupdated &&
+     Date.parse(meta.lastupdated+"T00:00:00Z")<=now.getTime());
+  const isData=metadataMatches && Array.isArray(json) && Array.isArray(json[1]);
   const rows: unknown[] = isData ? json[1] : [];
   const currentYear=now.getUTCFullYear();
   const valid=rows.filter((x): x is {date:string;value:number;countryiso3code:string} => {
@@ -486,12 +500,34 @@ async function worldBank(
     probe:!isData?failed("world_bank_official_"+indicator):
       probe("world_bank_official_"+indicator,valid.length,false),
     private_macro_changes,
+    source_api_id:pinnedWdiSource2 && isData?"2":null,
+    dataset_last_updated:pinnedWdiSource2 && isData && typeof meta?.lastupdated==="string"
+      ?meta.lastupdated:null,
     private_macro_qualification:{
       indicator,status,accepted_annual_values:valid.length,
       latest_observation_year:latest??null,
       previous_observation_year:previous??null,
     },
   };
+}
+/** The existing official WDI adapter, narrowly pinned to source=2 for
+ * derived annual structural research. No other API or engine is introduced.
+ * Returns PRIVATE numerical facts, not a customer offer or payment authority.
+ */
+export async function readPinnedWdiAnnualStructuralPair(
+  country:"CHN",indicator:"FP.CPI.TOTL.ZG"|"NY.GDP.MKTP.KD.ZG",
+  opts:{fetchImpl?:typeof fetch;now?:Date}={},
+):Promise<{status:PrivateMacroQualification["status"];
+  pair:PrivateOfficialMacroChange|null;
+  source_api_id:"2"|null;lastupdated:string|null}> {
+  const now=opts.now??new Date();
+  const result=await worldBank(country,indicator,opts.fetchImpl??fetch,now,true);
+  // The result's metadata must be re-checked from the pinned parser;
+  // never infer a WDI source ID from the caller-supplied indicator alone.
+  return {status:result.private_macro_qualification.status,
+    pair:result.private_macro_changes.length===1?result.private_macro_changes[0]:null,
+    source_api_id:result.source_api_id??null,
+    lastupdated:result.dataset_last_updated??null};
 }
 // Independent first-party fallback feeds: never bypass blocked upstream
 // APIs with mirrored copies from the SAME publisher. This broadens publisher
