@@ -67,11 +67,20 @@ test("a synthetic three-category probe proves transport only, not rights/events/
   assert.equal(r.dataset_license_newly_verified, false);
 });
 
-test("rate limit, HTTP block and a HEAD-only endpoint never imply production evidence", async () => {
+test("bounded CISA JSON is parseable, while HEAD-only, rate limits and blocks prove nothing", async () => {
   const spec = FREE_NO_KEY_TRANSPORT_SPECS.find(x => x.id === "cisa_kev");
-  const head = await probeNoKeySource(spec, async () => new Response(null, {status: 200}));
+  const cisa = await probeNoKeySource(spec, async () =>
+    new Response('{"catalogVersion":"2026.10","vulnerabilities":[]}', {status: 200}));
+  assert.equal(cisa.state, "TRANSPORT_READABLE");
+  assert.equal(cisa.content_format_proven, true);
+  assert.equal(cisa.original_publisher_release_proven, false);
+  const head = await probeNoKeySource({...spec, format: "head"}, async () =>
+    new Response(null, {status: 200}));
   assert.equal(head.state, "ENDPOINT_REACHABLE_FORMAT_UNVERIFIED");
   assert.equal(head.content_format_proven, false);
+  const malformed = await probeNoKeySource(spec, async () =>
+    new Response("<html>blocked</html>", { status: 200 }));
+  assert.equal(malformed.state, "FORMAT_OR_SIZE_UNVERIFIED");
   const blocked = await probeNoKeySource(spec, async () => new Response(null, {status: 429}));
   assert.equal(blocked.state, "DENIED_OR_RATE_LIMIT");
   assert.equal(blocked.commercial_paid_activation, false);
