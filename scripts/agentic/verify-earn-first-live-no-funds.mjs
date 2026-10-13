@@ -47,7 +47,7 @@ export async function acceptEarningPilotLive({
     throw Error("EARNING_PILOT_DISCOVERY_CONTRACT_INVALID");
   steps.push({check:"three_domain_offer_catalog",status:"PASS"});
 
-  let eligibleCount=0,lockedCount=0;
+  let eligibleCount=0,lockedCount=0,quoteReadyCount=0;
   for(const item of EARNING_PILOT_CASES){
     const body={
       schema_version:"geomacro.agent-query.v1",
@@ -82,6 +82,7 @@ export async function acceptEarningPilotLive({
     if (res.status===200 && !available)
       throw Error("EARNING_PILOT_FALSE_POSITIVE_"+item.name.toUpperCase());
     if(available)eligibleCount++;
+    if(available && data.status==="ELIGIBLE_FOR_X402_QUOTE")quoteReadyCount++;
     if(data.status==="ELIGIBLE_BUT_PAYMENT_RAIL_LOCKED")lockedCount++;
     steps.push({
       check:item.name,
@@ -106,7 +107,8 @@ export async function acceptEarningPilotLive({
     price_advertised_as_authoritative:false,
     eligible_category_count:eligibleCount,
     payment_locked_category_count:lockedCount,
-    first_earning_ready:eligibleCount>0&&lockedCount===0,
+    quote_ready_category_count:quoteReadyCount,
+    first_earning_ready:quoteReadyCount>0,
     no_funds_preflight_complete:true,
     checks:steps,
   };
