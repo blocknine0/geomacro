@@ -136,6 +136,17 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
     if (source.govContentApi &&
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
+    if (["bls_cpi","bls_employment","bls_external_prices"].includes(source.id)) {
+      // Only government original release paths; reject BLS newsletters,
+      // landing pages, feeds and arbitrary third-party links.
+      const family = source.id === "bls_cpi" ? "cpi"
+        : source.id === "bls_employment" ? "empsit" : "ximpim";
+      if (link.search || !(
+        new RegExp("^/news\\.release/" + family + "\\.nr[0-9]+\\.htm$", "u").test(link.pathname) ||
+        new RegExp("^/news\\.release/archives/" + family + "_[0-9]{8}\\.htm$", "u").test(link.pathname)
+      )) return null;
+    }
+
     if (source.statcanOriginalPage &&
         !/^\/(?:n1\/)?daily-quotidien\/\d{6}\/dq\d{6}[a-z]-eng\.htm$/iu.test(link.pathname))
       return null;
