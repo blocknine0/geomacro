@@ -1,5 +1,6 @@
 import { readB2CommercialSourceRights, type B2CommercialSourceRight } from "./b2-live.server";
 import { certifiedWdiAttributionRights } from "./wdi-attributed-structural-product.server";
+import { commercialSourceEligibilityFromRow } from "./commercial-source-eligibility.server";
 import { approvedWdiAttribution } from "./world-bank-derived-attribution";
 import type { PrivateOnDemandMacroDriver } from "./on-demand-private-macro-drivers.server";
 import type { WorldBankWdiAttribution } from "./world-bank-derived-attribution";
@@ -93,13 +94,22 @@ export async function checkPrivateOnDemandMacroRights(
   // Exception ONLY for the exact rights-certified WDI source=2 annual
   // indicators. They require fixed CC BY 4.0 credit in the final product.
   // This receipt is private and never upgrades a news search to a paid answer.
-  const rights=certifiedWdiAttributionRights(rows);
-  if(!rights.eligible)return result(
-    rights.reason==="WDI_RIGHTS_CONTRACT_MISMATCH"
-      ?"ATTRIBUTION_NOT_SUPPORTED_BY_PRIVATE_OUTPUT"
-      :"SOURCE_NOT_CERTIFIED_FOR_DERIVED_USE",drivers.length);
-  const indicators=drivers.map(x=>x.driver==="inflation"
-    ? "FP.CPI.TOTL.ZG" as const : "NY.GDP.MKTP.KD.ZG" as const);
+  const row=matching[0];
+  if(row.attribution_required===true){
+    const rights=certifiedWdiAttributionRights(rows);
+    if(!rights.eligible)return result(
+      "ATTRIBUTION_NOT_SUPPORTED_BY_PRIVATE_OUTPUT",drivers.length);
+    const indicators=drivers.map(x=>x.driver==="inflation"
+      ? "FP.CPI.TOTL.ZG" as const : "NY.GDP.MKTP.KD.ZG" as const);
+    return result("DERIVED_SOURCE_RIGHTS_VERIFIED_NOT_A_PAID_PRODUCT",
+      drivers.length,drivers.length,approvedWdiAttribution(indicators));
+  }
+  // Preserve previously certified non-attributed derived-use contracts.
+  // This is NOT a global relaxation of other commercial source gates.
+  const policy=commercialSourceEligibilityFromRow(SOURCE_ID,row);
+  if(!policy.eligible || policy.delivery_boundary!=="DERIVED_ONLY" ||
+     policy.raw_payload_allowed!==false || !policy.licence_name?.trim())
+    return result("SOURCE_NOT_CERTIFIED_FOR_DERIVED_USE",drivers.length);
   return result("DERIVED_SOURCE_RIGHTS_VERIFIED_NOT_A_PAID_PRODUCT",
-    drivers.length,drivers.length,approvedWdiAttribution(indicators));
+    drivers.length,drivers.length);
 }
