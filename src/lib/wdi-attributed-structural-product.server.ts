@@ -26,6 +26,7 @@ export function certifiedWdiAttributionRights(rows:readonly B2CommercialSourceRi
      !["COMMERCIAL_OK","DERIVED_ONLY"].includes(r.commercial_usage_status??"") ||
      r.enabled_for_ingestion!==true ||
      r.enabled_for_commercial_signals!==true ||
+     r.raw_redistribution_allowed!==false ||
      r.attribution_required!==true ||
      !/^CC[\s-]*BY[\s-]*4\.0(?:\b|$)/iu.test(r.licence_name??"") ||
      !["macro","macro_fx","macro-fx",null].includes(r.category))
