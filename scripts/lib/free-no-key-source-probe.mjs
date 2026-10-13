@@ -144,7 +144,8 @@ export async function probeNoKeySource(spec, fetchImpl = fetch) {
       const safe = spec.format === "head" ?
         validateFreeLineupProbePayload(spec, "") :
         validateFreeLineupProbePayload(spec, await boundedBody(response, spec.maxBytes));
-      state = safe.valid ? "TRANSPORT_READABLE" : "FORMAT_OR_SIZE_UNVERIFIED";
+      state = safe.valid && spec.format === "head" ? "ENDPOINT_REACHABLE_FORMAT_UNVERIFIED"
+        : safe.valid ? "TRANSPORT_READABLE" : "FORMAT_OR_SIZE_UNVERIFIED";
     }
   } catch {
     state = "NETWORK_UNAVAILABLE";
@@ -165,8 +166,11 @@ export async function probeNoKeySource(spec, fetchImpl = fetch) {
 export async function observeNoKeyLineup(group, fetchImpl = fetch) {
   if (!Number.isInteger(group) || group < 0 || group > 2)
     throw new Error("SOURCE_PROBE_GROUP_INVALID");
-  // Three fixed round-robin groups, each spanning all launch categories.
-  const chosen = FREE_NO_KEY_TRANSPORT_SPECS.filter((_, i) => i % 3 === group);
+  // Exactly one bounded provider attempt per category per run; the three
+  // distinct candidates in each category rotate without overlap.
+  const chosen = ["geopolitics", "macro", "rare_earth"].map(category =>
+    FREE_NO_KEY_TRANSPORT_SPECS.filter(spec => spec.category === category)[group]
+  ).filter(Boolean);
   const rows = await Promise.all(chosen.map(spec => probeNoKeySource(spec, fetchImpl)));
   return {
     schema: "geomacro.operator-commercial-no-key-source-probe.v1",
