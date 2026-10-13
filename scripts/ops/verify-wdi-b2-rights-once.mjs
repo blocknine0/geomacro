@@ -159,6 +159,12 @@ export async function verifyOneRightsReceipt({
       env.GEOMACRO_OPERATOR_SINGLE_B2_RIGHTS_READ !== "CONFIRMED_ONE")
     return fail("OWNER_MAIN_ONLY_DISPATCH_REQUIRED");
   if (!strictPresent(env)) return fail("PRODUCTION_READ_SECRETS_UNAVAILABLE");
+  // Before consuming D1 or B2 quota, refuse a known-expired pinned receipt.
+  // A true refresh is a separate authorized rights-only operation.
+  const pinnedAt = Date.parse(EXPECTED_AT);
+  if (!Number.isFinite(now) || !Number.isFinite(pinnedAt) ||
+      pinnedAt > now + 5 * 60_000 || now - pinnedAt > ONE_DAY)
+    return fail("B2_RECEIPT_STALE_NO_GET_ATTEMPT");
   const root = env.GEOMACRO_COMMERCE_LEDGER_TOKEN; // Match deployed Worker derivation byte-for-byte.
   const token = createHmac("sha256", root).update("geomacro-control-plane-v1").digest("hex");
   const bearer = { Authorization: "Bearer " + token, Accept: "application/json" };
