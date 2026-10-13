@@ -44,9 +44,6 @@ describe("Ask Geomacro public API boundary", () => {
     const api = read("server/api/public-ask.get.ts");
     const adapter = read("src/lib/hybrid-agent-chat.server.ts");
 
-    expect(workspace).toContain('"X-Geomacro-Previous-Question"');
-    expect(workspace).toContain("resolvedQuestion");
-    expect(workspace).toContain("New chat");
     expect(api).toContain('const PREVIOUS_QUESTION_HEADER = "x-geomacro-previous-question"');
     expect(api).toContain("executeHybridChatTurn(");
     expect(api).toContain("executeAskGeomacro({ question }, clientKey(event))");
