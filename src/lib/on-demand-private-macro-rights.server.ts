@@ -1,5 +1,6 @@
 import { readB2CommercialSourceRights, type B2CommercialSourceRight } from "./b2-live.server";
-import { commercialSourceEligibilityFromRow } from "./commercial-source-eligibility.server";
+import { certifiedWdiAttributionRights } from "./wdi-attributed-structural-product.server";
+import { approvedWdiAttribution } from "./world-bank-derived-attribution";
 import type { PrivateOnDemandMacroDriver } from "./on-demand-private-macro-drivers.server";
 import type { WorldBankWdiAttribution } from "./world-bank-derived-attribution";
 
@@ -89,20 +90,16 @@ export async function checkPrivateOnDemandMacroRights(
   if (matching.length !== 1) {
     return result("SOURCE_NOT_CERTIFIED_FOR_DERIVED_USE", drivers.length);
   }
-  const policy = commercialSourceEligibilityFromRow(SOURCE_ID, matching[0]);
-  // The current customer contract forbids upstream source identity.
-  // Never prepare required third-party public credit in a private receipt
-  // and then silently drop it from the signed customer object. Providers
-  // requiring public attribution remain excluded until a documented
-  // source-private commercial-use permission exists in the rights register.
-  if(policy.attribution_required)
-    return result("ATTRIBUTION_NOT_SUPPORTED_BY_PRIVATE_OUTPUT",drivers.length);
-  if (!policy.eligible || policy.delivery_boundary !== "DERIVED_ONLY" ||
-      policy.raw_payload_allowed !== false || !policy.licence_name?.trim()) {
-    return result("SOURCE_NOT_CERTIFIED_FOR_DERIVED_USE",drivers.length);
-  }
-  return result(
-    "DERIVED_SOURCE_RIGHTS_VERIFIED_NOT_A_PAID_PRODUCT",
-    drivers.length, drivers.length,
-  );
+  // Exception ONLY for the exact rights-certified WDI source=2 annual
+  // indicators. They require fixed CC BY 4.0 credit in the final product.
+  // This receipt is private and never upgrades a news search to a paid answer.
+  const rights=certifiedWdiAttributionRights(rows);
+  if(!rights.eligible)return result(
+    rights.reason==="WDI_RIGHTS_CONTRACT_MISMATCH"
+      ?"ATTRIBUTION_NOT_SUPPORTED_BY_PRIVATE_OUTPUT"
+      :"SOURCE_NOT_CERTIFIED_FOR_DERIVED_USE",drivers.length);
+  const indicators=drivers.map(x=>x.driver==="inflation"
+    ? "FP.CPI.TOTL.ZG" as const : "NY.GDP.MKTP.KD.ZG" as const);
+  return result("DERIVED_SOURCE_RIGHTS_VERIFIED_NOT_A_PAID_PRODUCT",
+    drivers.length,drivers.length,approvedWdiAttribution(indicators));
 }
