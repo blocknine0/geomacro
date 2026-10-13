@@ -1,0 +1,24 @@
+name: One-Time Three Category Actual Published-SHA Readback
+on:
+  push:
+    branches:
+      - diag/three-category-api-published-sha-20261013
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      EXPECTED_CANONICAL_SHA: bde3810601d604be7646a068c0ae34a41a150f7d
+      GEOMACRO_BASE_URL: https://geomacro.live
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Exact deployed version check and bounded GET-only category readback
+        run: node scripts/ops/verify-three-category-live-official-api.mjs
