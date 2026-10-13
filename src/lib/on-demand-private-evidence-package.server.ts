@@ -81,11 +81,15 @@ const SUPPORTED_TOPICS=new Set([
  "macro_risk","sovereign_risk","fx_external_risk","critical_minerals","hot_topics",
 ]);
 const FAMILY_TO_SOURCE:Readonly<Record<string,{organization:string;source_id:string}>>={
-  "un_news_original_publisher":{organization:"un_news",source_id:"un_news"},
-  "uk_fcdo_original_publisher":{organization:"uk_fcdo",source_id:"uk_fcdo"},
-  "uk_fcdo_search_original_page":{organization:"uk_fcdo",source_id:"uk_fcdo"},
-  "us_federal_reserve_original_publisher":{organization:"federal_reserve",source_id:"federal_reserve"},
+  "un_news_original_publisher":{
+    organization:"un_news",source_id:"un_news_security_original_rss_review"},
+  "uk_fcdo_original_publisher":{
+    organization:"uk_fcdo",source_id:"uk_fcdo_original_foreign_policy_atom_review"},
+  "us_federal_reserve_original_publisher":{
+    organization:"federal_reserve",source_id:"fed_monetary_original_press_rss_review"},
   "ecb_original_publisher":{organization:"ecb",source_id:"ecb"},
+  // Indexed search is a distinct acquisition route. Do not borrow the
+  // FCDO Atom review rights record for GOV.UK public Search JSON.
   // UK HMT / DBT / DESNZ have no independently pinned reviewed source-id
   // mapping in the existing strict reviewer: keep them for PRIVATE evidence
   // but do not invent a commercial licence or reviewer registration.
@@ -98,6 +102,7 @@ const MINERAL_PATTERN:Readonly<Record<OnDemandMineral,RegExp>>={
 const sha=(value:string)=>createHash("sha256").update(value,"utf8").digest("hex");
 const sorted=(a:readonly string[])=>[...new Set(a)].sort();
 const issuerFor=(family:string)=>{
+  if(family==="uk_fcdo_search_original_page")return "uk_fcdo";
   if(family.startsWith("uk_hmt_"))return "uk_hmt";
   if(family.startsWith("uk_dbt_"))return "uk_dbt";
   if(family.startsWith("uk_desnz_"))return "uk_desnz";
