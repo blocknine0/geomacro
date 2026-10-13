@@ -1,4 +1,8 @@
 import { randomUUID } from "node:crypto";
+import {
+  qualifyRetrievedOnDemandEvidence, publicOnDemandQualificationStatus,
+  type QualifiedPrivateEvidence,
+} from "./on-demand-evidence-qualification.server";
 import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "./agent-query-plan";
 import { assertGeomacroIntelligenceResponseContract } from "./geomacro-intelligence-contract";
@@ -390,6 +394,7 @@ export const mainnetIntelligenceHandlers = {
           let privateAnnualMacroRightsStatus:PrivateOnDemandMacroRightsStatus="NO_ANNUAL_EVIDENCE";
           let privatePeerMacroStatus:PrivatePeerMacroResult["status"]="NO_CERTIFIED_MACRO_RIGHTS";
           let privatePeerScoredDimensions=0;
+          let privateEvidenceQualification:ReturnType<typeof publicOnDemandQualificationStatus>|null=null;
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
@@ -432,6 +437,24 @@ export const mainnetIntelligenceHandlers = {
             // independent facts, commercial source rights or signed risk.
             articlePageChecks=pageProof.attempted;
             articleDatesVerified=pageProof.verified;
+            // Feed/page-backed original records and official annual structural
+            // observations now enter ONE deterministic private qualification
+            // contract, without signing, scoring or requesting x402 funds.
+            // This remains separate from reviewer-signed same-event admission.
+            const qualification:QualifiedPrivateEvidence=qualifyRetrievedOnDemandEvidence({
+              search:{
+                country_iso3:subject.country_iso3,categories,mineral,
+                topics:plan.topics,
+                max_age_seconds:requestedNewsAgeSeconds===undefined?undefined:
+                  Math.min(requestedNewsAgeSeconds,31*86_400),
+              },
+              discovery:privateResult.discovery,
+              originals:privateResult.private_candidates,
+              pageProof,macroChanges:privateResult.private_macro_changes,
+              macroRights:rightsProof,
+              now:new Date(privateResult.discovery.checked_at),
+            });
+            privateEvidenceQualification=publicOnDemandQualificationStatus(qualification);
           } catch(error) {
             console.error("[x402-live] bounded discovery failed",error);
             return json({
@@ -477,6 +500,7 @@ export const mainnetIntelligenceHandlers = {
               private_macro_peer_scored_dimension_count:privatePeerScoredDimensions,
               original_article_page_checks:articlePageChecks,
               article_page_publication_dates_verified:articleDatesVerified,
+              private_evidence_qualification:privateEvidenceQualification,
               private_originals_article_page_verified:
                 privateOriginalReviewCandidateCount>0 &&
                 articleDatesVerified===privateOriginalReviewCandidateCount,
