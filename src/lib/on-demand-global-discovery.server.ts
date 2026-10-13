@@ -71,6 +71,10 @@ export type SourceProbe = {
   reachable: boolean;
   observed_record_count: number;
   publication_clock_verified: boolean;
+  // Distinguish no relevant original from upstream errors or access controls.
+  retrieval_state?: "RECORDS_OBSERVED"|"NO_MATCHING_RECORDS"|
+    "RATE_LIMITED"|"ACCESS_RESTRICTED"|"TRANSPORT_UNAVAILABLE"|
+    "COOLDOWN_ACTIVE"|"PROVIDER_INVALID";
   independent_claim_verified: false;
   derived_commercial_rights_verified: false;
 };
@@ -169,6 +173,15 @@ const ONE_DAY_MS = 86_400_000;
 const MAX_NEWS_AGE_MS = 31 * ONE_DAY_MS;
 const RATE_LIMIT_COOLDOWNS_MS = {403: 60*60_000, 429: 15*60_000};
 const providerCooldownUntil = new Map<string,number>();
+function retryAfterCooldownMs(value:string|null, now=Date.now()):number {
+  if(!value)return RATE_LIMIT_COOLDOWNS_MS[429];
+  const seconds=/^\\d{1,8}$/.test(value.trim())?Number(value.trim()):NaN;
+  const deadline=Number.isFinite(seconds)?now+seconds*1_000:Date.parse(value);
+  if(!Number.isFinite(deadline) || deadline<=now)return RATE_LIMIT_COOLDOWNS_MS[429];
+  // Honor Retry-After up to one month, with a floor for invalid/short hints.
+  return Math.max(RATE_LIMIT_COOLDOWNS_MS[429],
+    Math.min(31*ONE_DAY_MS,deadline-now));
+}
 
 async function boundedFetch(
   fetchImpl: typeof fetch, url: string, accept: string,
@@ -198,6 +211,9 @@ async function boundedFetch(
     throw Error("ON_DEMAND_SOURCE_TRANSPORT_FAILURE");
   }
   if (!response.ok) {
+    if(response.status===429)throw Error("ON_DEMAND_SOURCE_RATE_LIMITED");
+    if(response.status===401 || response.status===403)
+      throw Error("ON_DEMAND_SOURCE_ACCESS_RESTRICTED");
     const transient = response.status === 404 ||
       (response.status >= 500 && response.status <= 599);
     throw Error(transient ? "ON_DEMAND_SOURCE_TRANSIENT_HTTP" :
@@ -246,13 +262,21 @@ function probe(family: string, count: number, clock: boolean): SourceProbe {
   return {
     family,attempted:true,reachable:true,
     observed_record_count:Math.min(Math.max(0,count),10),
+    retrieval_state:count>0?"RECORDS_OBSERVED":"NO_MATCHING_RECORDS",
     publication_clock_verified:clock,
     independent_claim_verified:false,
     derived_commercial_rights_verified:false,
   };
 }
-function failed(family: string): SourceProbe {
-  return {...probe(family,0,false),reachable:false};
+function failed(family:string,error?:unknown):SourceProbe {
+  const code=error instanceof Error?error.message:"";
+  const retrieval_state:NonNullable<SourceProbe["retrieval_state"]>=
+    code==="ON_DEMAND_SOURCE_RATE_LIMITED"?"RATE_LIMITED":
+    code==="ON_DEMAND_SOURCE_ACCESS_RESTRICTED"?"ACCESS_RESTRICTED":
+    code==="ON_DEMAND_PROVIDER_COOLDOWN"?"COOLDOWN_ACTIVE":
+    code==="ON_DEMAND_SOURCE_TRANSPORT_FAILURE" ||
+    code==="BOUNDED_EXTERNAL_TRANSPORT_FAILURE"?"TRANSPORT_UNAVAILABLE":"PROVIDER_INVALID";
+  return {...probe(family,0,false),reachable:false,retrieval_state};
 }
 
 async function countryName(country: string, fetchImpl: typeof fetch) {
@@ -816,7 +840,8 @@ async function discoverOnDemandImpl(
     networkAttempts++;
     const response=await fetchImpl(target,init);
     if(options.fetchImpl===undefined && response.status===429)
-      providerCooldownUntil.set(host,Date.now()+RATE_LIMIT_COOLDOWNS_MS[429]);
+      providerCooldownUntil.set(host,Date.now()+
+        retryAfterCooldownMs(response.headers.get("retry-after")));
     if(options.fetchImpl===undefined && response.status===403)
       providerCooldownUntil.set(host,Date.now()+RATE_LIMIT_COOLDOWNS_MS[403]);
     return response;
@@ -874,7 +899,7 @@ async function discoverOnDemandImpl(
     : tasks;
   const settled=await Promise.allSettled(selected.map(t=>t.run()));
   const source_probes=settled.map((result,i)=>{
-    const row = result.status==="rejected" ? failed(selected[i].name) :
+    const row = result.status==="rejected" ? failed(selected[i].name,result.reason) :
       "probe" in result.value ? result.value.probe : result.value;
     return {...row,category:selected[i].category};
   });
