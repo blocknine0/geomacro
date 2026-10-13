@@ -276,8 +276,15 @@ export async function fetchFirstPartyOriginalFeed(
   let target = source.url;
   for (let hop = 0; hop <= 2; hop++) {
     const response = await fetchImpl(target, {
-      method: "GET", redirect: "manual", cache: "no-store",
-      headers: { Accept: accepted },
+      method: "GET",
+      // Mirror the separately proven 30-minute publisher probe exactly for
+      // this ONE issuer. No following redirects, cross-host fallback, or
+      // 401/403/429 retry. Other sources retain their old redirect policy.
+      redirect: source.id === "au_industry_minister" ? "error" : "manual",
+      cache: "no-store",
+      headers: { Accept: source.id === "au_industry_minister"
+        ? "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8"
+        : accepted },
       signal: AbortSignal.timeout(sourceTimeout),
     });
     if (![301, 302, 307, 308].includes(response.status)) return response;
