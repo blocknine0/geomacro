@@ -43,7 +43,7 @@ const rights=(source_id:string):B2CommercialSourceRight=>({
   enabled_for_commercial_signals:true,raw_redistribution_allowed:false,
   attribution_required:false,licence_name:"Fixture authorisation, not a real licence",
 });
-const russ=evt("uk_fcdo_search_original_page","geopolitics",
+const russ=evt("uk_fcdo_original_publisher","geopolitics",
   "https://www.gov.uk/government/news/russia-uk-security-response",
   "UK announces Russia security response","2026-10-13T09:34:00Z");
 const china=evt("uk_hmt_original_publisher","macro",
@@ -56,8 +56,8 @@ const uk=evt("uk_dbt_search_original_page","rare_earth",
 describe("Phase 2 real-retrieval -> governed private evidence seam",()=>{
   it("binds authentic-shaped original date claims and dedups exact publisher URL",async()=>{
     const q=make("RUS",["geopolitics"],[russ,russ],[page(russ,"2026-10-13T09:34:00Z")]);
-    const first=await qualifyPrivateOnDemandEvidence(q,{readRights:async()=>[rights("uk_fcdo")]});
-    const second=await qualifyPrivateOnDemandEvidence(q,{readRights:async()=>[rights("uk_fcdo")]});
+    const first=await qualifyPrivateOnDemandEvidence(q,{readRights:async()=>[rights("uk_fcdo_original_foreign_policy_atom_review")]});
+    const second=await qualifyPrivateOnDemandEvidence(q,{readRights:async()=>[rights("uk_fcdo_original_foreign_policy_atom_review")]});
     expect(first.exact_evidence_sha256).toBe(second.exact_evidence_sha256);
     expect(first.distinct_original_articles).toBe(1);
     expect(first.duplicate_announcements_discarded).toBe(1);
@@ -72,6 +72,18 @@ describe("Phase 2 real-retrieval -> governed private evidence seam",()=>{
     expect(JSON.stringify(publiclySafe)).not.toContain("Russia");
     expect(JSON.stringify(publiclySafe)).not.toContain(first.exact_evidence_sha256);
     expect(publiclySafe.x402_payment_authorized).toBe(false);
+  });
+  it("does not borrow verified Atom rights for GOV.UK Search fallbacks",async()=>{
+    const search={...russ,publisher_family:"uk_fcdo_search_original_page",
+      article_identity_sha256:digest("uk_fcdo_search_original_page|"+russ.article_url)};
+    const pkg=await qualifyPrivateOnDemandEvidence(
+      make("RUS",["geopolitics"],[search],
+        [page(search,"2026-10-13T09:34:00Z")]),
+      {readRights:async()=>[rights("uk_fcdo_original_foreign_policy_atom_review")]});
+    expect(pkg.evidence).toHaveLength(1);
+    expect(pkg.evidence[0].source_registry_id).toBeNull();
+    expect(pkg.disposition).toBe("SOURCE_RIGHTS_NOT_CERTIFIED");
+    expect(pkg.x402_payment_authorized).toBe(false);
   });
   it("accepts a true China macro original only as an unreviewed announcement",async()=>{
     const pkg=await qualifyPrivateOnDemandEvidence(
@@ -113,7 +125,7 @@ describe("Phase 2 real-retrieval -> governed private evidence seam",()=>{
   it("refuses attribution-hiding even with an otherwise certified source",async()=>{
     const pkg=await qualifyPrivateOnDemandEvidence(
       make("RUS",["geopolitics"],[russ],[page(russ,"2026-10-13T09:34:00Z")]),
-      {readRights:async()=>[{...rights("uk_fcdo"),attribution_required:true}]});
+      {readRights:async()=>[{...rights("uk_fcdo_original_foreign_policy_atom_review"),attribution_required:true}]});
     expect(pkg.disposition).toBe("ATTRIBUTION_NOT_SUPPORTED");
     expect(pkg.attribution_obligations_unmet).toBe(1);
     expect(pkg.commercial_derived_rights_verified).toBe(false);
