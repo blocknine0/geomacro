@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/live-on-demand-source-acceptance.yml"
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
+      - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
       - "src/lib/on-demand-private-original-review.server.test.ts"
       - "src/__tests__/on-demand-undated-atom-original-date-rescue.test.ts"
@@ -15,6 +16,7 @@ on:
     paths:
       - ".github/workflows/live-on-demand-source-acceptance.yml"
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
+      - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
       - "src/lib/on-demand-provider-category-proof.test.ts"
   schedule:
@@ -53,13 +55,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          bun scripts/ops/verify-live-on-demand-capabilities.ts
           bun scripts/ops/verify-live-on-demand-real-apis.ts
       - name: Keep redacted no-funds publisher acceptance
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: live-on-demand-global-api-proof-${{ github.run_id }}
-          path: artifacts/on-demand-live/real-api-proof.json
+          path: |
+            artifacts/on-demand-live/real-api-proof.json
+            artifacts/on-demand-live/real-category-capability.json
           if-no-files-found: warn
           retention-days: 3
 
@@ -83,7 +88,9 @@ jobs:
       - name: Real no-charge per-category provider readback
         env:
           RELIEFWEB_APPROVED_APPNAME: ""
-        run: bun scripts/ops/verify-live-on-demand-real-apis.ts
+        run: |
+          bun scripts/ops/verify-live-on-demand-capabilities.ts
+          bun scripts/ops/verify-live-on-demand-real-apis.ts
       - name: Preserve redacted provider diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
