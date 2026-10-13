@@ -30,6 +30,11 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(orchestrator).not.toContain("signRiskObject");
     expect(orchestrator).not.toContain("settlePayment");
     expect(type).toContain('intelligence_tier?: "official_observation_unscored"');
+    expect(orchestrator).toContain("live:official:");
+    const workspace = read("src/components/ask/ask-workspace.tsx");
+    expect(workspace).toContain('answer.intelligence_tier === "official_observation_unscored"');
+    expect(workspace).toContain("Official release · unscored");
+    expect(workspace).not.toContain("Verified risk intelligence");
   });
 
   it("uses a bounded current-web path with broad three-domain coverage", () => {
