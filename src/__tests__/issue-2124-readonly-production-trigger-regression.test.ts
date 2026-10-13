@@ -41,7 +41,9 @@ describe("#2124 one-shot production audit cannot regress previously accepted ser
     expect(health).toContain("status: deepReady ? 200 : 503");
     expect(health).toContain("snapshot.full_b2_readback_verified === true");
     expect(health).toContain("supabase_required_for_serving: false");
-    const workflowSafety=read(".github/workflows/live-x402-prelaunch-availability.yml");
-    expect(workflowSafety).toContain("payment_required_now");
+    const noFunds=read("scripts/ops/verify-failed-health-x402-no-funds.mjs");
+    expect(noFunds).toContain("a?.payment_required_now===false");
+    expect(noFunds).toContain("a?.execution_authorized===false");
+    expect(noFunds).toContain("real_funds_touched:false");
   });
 });
