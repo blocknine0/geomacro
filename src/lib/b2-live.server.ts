@@ -370,6 +370,35 @@ export async function readB2SourceNetworkStatus(): Promise<B2SourceNetworkStatus
   };
 }
 
+
+/** Safe operator diagnostics: no network call, no new quota reservation, and
+ * never serialize credentials or the private rights object. This distinguishes
+ * the common missing-runtime prerequisite from downstream unknowns. Only an
+ * authorized, quota-reserved B2 read can distinguish transport/schema/expiry.
+ */
+export function diagnoseB2RightsReadPrerequisites(): Readonly<{
+  schema:"geomacro.b2-rights-runtime-preflight.v1";
+  status:"B2_READ_CREDENTIALS_MISSING"|"CONTROL_PLANE_TOKEN_MISSING"|
+    "PREREQUISITES_PRESENT_QUOTA_RESERVED_READ_REQUIRED";
+  credentials_configured:boolean;
+  control_plane_token_configured:boolean;
+  signed_b2_get_attempted:false;
+}> {
+  const credentials=b2PublicRuntimeConfigured();
+  const token=typeof process!=="undefined" && typeof window==="undefined"
+    ?String(process.env.GEOMACRO_CONTROL_PLANE_TOKEN??
+      process.env.CONTROL_PLANE_TOKEN??"").trim():"";
+  const control=token.length>=32;
+  return {
+    schema:"geomacro.b2-rights-runtime-preflight.v1",
+    status:!credentials?"B2_READ_CREDENTIALS_MISSING":
+      !control?"CONTROL_PLANE_TOKEN_MISSING":
+      "PREREQUISITES_PRESENT_QUOTA_RESERVED_READ_REQUIRED",
+    credentials_configured:credentials,control_plane_token_configured:control,
+    signed_b2_get_attempted:false,
+  };
+}
+
 export async function readB2CommercialSourceRights(): Promise<B2CommercialSourceRight[] | null> {
   const payload = await readJsonGzip<{
     schema?: string;
