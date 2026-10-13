@@ -22,6 +22,7 @@ function fakeFetch({
       ok:siteStatus===200,
       public_production:{
         deep_checked:true, b2_runtime_configured:true, intelligence_ready:true,
+        last_verified_baseline_readable:{intelligence:true,global_risk:true,risk_indices:true},
         global_risk_ready:true, risk_indices_ready:true,
         supabase_required_for_serving:false,
         serving_authority:siteStatus===200?"backblaze-b2-durable-truth-cloudflare-d1-verified-hot":
@@ -102,6 +103,26 @@ describe("#1827 public B2/D1 503 classification without rights bypass",()=>{
     });
     expect(summary).not.toHaveProperty("public_domain_ready");
     expect(summary.commercial_eligibility_verified).toBe(false);
+  });
+
+  it("does not hide a known unreadable B2 baseline behind otherwise healthy D1 snapshots",async()=>{
+    const {fetchImpl}=fakeFetch();
+    const altered=async(url:string,options:Record<string,any>)=>{
+      const result=await fetchImpl(url,options);
+      if(url.includes("/api/health?deep=1")){
+        const body=await result.json();
+        body.public_production.last_verified_baseline_readable.global_risk=false;
+        return Response.json(body,{status:200});
+      }
+      return result;
+    };
+    const receipt=await diagnosePublicHotServing({fetchImpl:altered,nowMs:NOW});
+    expect(receipt.ok).toBe(false);
+    expect(receipt.failure_codes).toContain("HISTORICAL_B2_BASELINE_PROOF_UNREADABLE");
+    expect(receipt.site.historical_b2_baseline_readable).toMatchObject({
+      intelligence:true,global_risk:false,risk_indices:true,
+    });
+    expect(receipt.commercial_eligibility_verified).toBe(false);
   });
 
   it("refuses stale/unknown D1 schema and transport failures, never green",async()=>{
