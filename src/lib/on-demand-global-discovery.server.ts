@@ -137,7 +137,7 @@ const TOPIC_TITLE_PATTERNS:Readonly<Record<string,RegExp>>={
   sanctions_restrictions:/\b(?:sanctions?|embargo|export controls?|restrictions?)\b/iu,
   conflict_geopolitics:/\b(?:conflict|ceasefire|war|military|airstrike|peace|security council)\b/iu,
   political_governance:/\b(?:government|governance|election|parliament|diplomatic)\b/iu,
-  macro_risk:/\b(?:inflation|gdp|monetary|central bank|growth|interest rate|economic)\b/iu,
+  macro_risk:/\b(?:inflation|gdp|monetary|central bank|growth|interest rate|economy|economic|financial|chancellor|treasury)\b/iu,
   sovereign_risk:/\b(?:fiscal|sovereign|budget|bond|debt)\b/iu,
   fx_external_risk:/\b(?:foreign exchange|exchange rate|currency|reserves|fx)\b/iu,
   critical_minerals:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mining)\b/iu,
