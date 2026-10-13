@@ -48,9 +48,9 @@ const SPECS = [
     format: "json", maxBytes: 120_000, nature: "regulatory-publication-not-independent-event",
   },
   {
-    id: "us_doe", category: "rare_earth",
-    url: "https://www.energy.gov/topics/critical-minerals-and-materials",
-    format: "html", maxBytes: 150_000, nature: "government-context-page-not-current-release",
+    id: "geoscience_australia", category: "rare_earth",
+    url: "https://www.ga.gov.au/news",
+    format: "html", maxBytes: 150_000, nature: "original-government-news-index-not-page-verified",
   },
 ];
 
