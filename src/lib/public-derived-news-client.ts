@@ -27,6 +27,10 @@ function safeSignal(value: unknown, now: number): value is StatelessIntelligence
   const original = typeof s.published_at === "string" ? s.published_at : "";
   const ms = Date.parse(original);
   if (!Number.isFinite(ms) || ms > now || ms < now - 30 * 86_400_000) return false;
+  // Date.parse can normalize impossible days (e.g. 2026-02-30); require the
+  // exact originating Gregorian date, never a JavaScript-normalized alias.
+  if (s.date_precision === "day" && new Date(ms).toISOString().slice(0, 10) !== original)
+    return false;
   // D1 accepts verified publisher-day (without inventing a publication hour)
   // from the three domains, including Statistics Canada original article day.
   // All day-only issues wait the complete next-day 12:15 UTC embargo.
