@@ -450,6 +450,7 @@ export const mainnetIntelligenceHandlers = {
               },
               discovery:privateResult.discovery,
               originals:privateResult.private_candidates,
+              verifiedCountryName:privateResult.private_verified_country_name,
               pageProof,macroChanges:privateResult.private_macro_changes,
               macroRights:rightsProof,
               now:new Date(privateResult.discovery.checked_at),
