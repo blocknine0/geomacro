@@ -112,7 +112,9 @@ describe("production website runtime contract", () => {
     const intelligence = read("src/routes/intelligence.tsx");
     const event = read("src/routes/event.$eventId.tsx");
     expect(intelligence).toContain("Original publisher Intelligence source check timed out.");
-    expect(intelligence).toContain('stateless: source.status === "fulfilled" ? source.value : null');
+    expect(intelligence).toContain("stateless: accepted[0]");
+    expect(intelligence).toContain("statelessFeeds:");
+    expect(intelligence).toContain('const domains = ["geopolitics", "macro", "rare_earth"] as const');
     expect(intelligence).toContain('journal: history.status === "fulfilled" && Array.isArray(history.value)');
     expect(intelligence).toContain("Promise.allSettled");
     expect(intelligence).toContain("initialJournal={loader.journal}");

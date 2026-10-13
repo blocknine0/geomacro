@@ -42,7 +42,12 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-oct-11-13-real-first-published-gap-restore-20261013");
+    expect(config.lock_revision).toBe("founder-intelligence-three-domain-ssr-visible-20261013");
+    expect(config.intelligence_ssr_change_approval?.approved_ui_commit)
+      .toBe(config.baseline_sha);
+    expect(config.intelligence_ssr_change_approval?.global_risk_final_lock_unmodified).toBe(true);
+    expect(config.intelligence_ssr_change_approval?.hybrid_ask_lock_unmodified).toBe(true);
+    expect(config.intelligence_ssr_change_approval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(config.pending_publish_acceptance).toBe(true);
     expect(config.website_privacy_baseline_status)
       .toBe("FOUNDER_APPROVED_LOCKED_AWAITING_EXACT_SHA_LIVE_DEPLOYMENT");

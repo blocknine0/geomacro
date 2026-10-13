@@ -229,7 +229,9 @@ describe("no-storage public Intelligence original-release reader", () => {
     const source = readFileSync("src/lib/stateless-public-intelligence.server.ts", "utf8");
     const endpoint = readFileSync("src/lib/stateless-intelligence.functions.ts", "utf8");
     const desk = readFileSync("src/components/intelligence/stateless-live-desk.tsx", "utf8");
-    expect(active).toContain('getStatelessIntelligence({ data: { category: "geopolitics" } })');
+    expect(active).toContain('getStatelessIntelligence({ data: { category } })');
+    expect(active).toContain('const domains = ["geopolitics", "macro", "rare_earth"] as const');
+    expect(page).toContain('initialFeeds={loader.statelessFeeds}');
     expect(active).not.toContain("getPublicIntelligenceSeo(");
     expect(page).toContain("component: StatelessWebsiteIntelligencePage");
     expect(active).toContain("fetchDirectDerivedNews()");
@@ -248,8 +250,10 @@ describe("no-storage public Intelligence original-release reader", () => {
     // require the visitor to click each category before a source check.
     expect(desk).toContain('useState<View>("all")');
     expect(desk).toContain("All latest</button>");
-    expect(desk).toContain('["macro", "rare_earth"]');
-    expect(desk).toContain('["geopolitics", "macro", "rare_earth"]');
+    expect(desk).toContain("const missingAtSsr = DOMAINS.map(domain => domain.key)");
+    expect(desk).toContain("if (missingAtSsr.length > 0) void refresh(missingAtSsr)");
+    expect(desk).toContain('DOMAINS.map(domain => domain.key)');
+    expect(page).toContain('const domains = ["geopolitics", "macro", "rare_earth"] as const');
     expect(desk).toContain('document.visibilityState === "visible"');
     expect(desk).toContain('window.addEventListener("focus", onReturn)');
     expect(desk).toContain('manualRefresh.current()');

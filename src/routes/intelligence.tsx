@@ -33,27 +33,41 @@ const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 export const Route = createFileRoute("/intelligence")({
   loader: async () => {
     const now = Date.now();
-    // Website initial HTML must contain the independently published D1-derived
-    // NEWS journal (30 days) even if browser JS hydration or feeds fail.
-    // Direct original-publisher reads run in parallel, not ahead of history.
-    const [source, history] = await Promise.allSettled([
-      withPublicRuntimeTimeout(
-        getStatelessIntelligence({ data: { category: "geopolitics" } }),
+    // All THREE actual publisher categories must be present in the first
+    // server-rendered HTML when their independent source readers succeed.
+    // Previously only geopolitics was SSR-loaded, so no-JS clients and search
+    // indexing always saw misleading "Macro 0 / Critical Minerals 0".
+    // Keep the bounded direct D1 30-day journal in parallel for continuity.
+    // The three category checks are independent: one timeout must never hide
+    // another category's valid original-dated releases.
+    const domains = ["geopolitics", "macro", "rare_earth"] as const;
+    const [geopolitics, macro, minerals, history] = await Promise.allSettled([
+      ...domains.map(category => withPublicRuntimeTimeout(
+        getStatelessIntelligence({ data: { category } }),
         8_000,
         "Original publisher Intelligence source check timed out.",
-      ),
+      )),
       withPublicRuntimeTimeout(
         fetchDirectDerivedNews(),
         9_000,
         "Derived Intelligence journal read timed out.",
       ),
     ]);
+    const accepted = [geopolitics, macro, minerals].map((entry, i) =>
+      entry.status === "fulfilled" && entry.value.category === domains[i] &&
+      entry.value.healthy_feed_count > 0 ? entry.value : null);
     return {
       rows: [],
       now,
-      stateless: source.status === "fulfilled" ? source.value : null,
-      // fetchDirectDerivedNews() already returns the checked Signal[] directly,
-      // NOT {signals}. Passing .signals silently emptied the first HTML paint.
+      stateless: accepted[0],
+      statelessFeeds: {
+        ...(accepted[0] ? { geopolitics: accepted[0] } : {}),
+        ...(accepted[1] ? { macro: accepted[1] } : {}),
+        ...(accepted[2] ? { rare_earth: accepted[2] } : {}),
+      },
+      // fetchDirectDerivedNews() already returns checked Signal[] directly,
+      // NOT {signals}. A successful journal is combined with actual live
+      // issuer answers; neither supplies a canonical signed risk score.
       journal: history.status === "fulfilled" && Array.isArray(history.value)
         ? history.value : [],
     };
@@ -100,7 +114,7 @@ export const Route = createFileRoute("/intelligence")({
 
 function StatelessWebsiteIntelligencePage() {
   const loader = Route.useLoaderData();
-  return <StatelessLiveDesk initial={loader.stateless} initialJournal={loader.journal} />;
+  return <StatelessLiveDesk initial={loader.stateless} initialFeeds={loader.statelessFeeds} initialJournal={loader.journal} />;
 }
 
 function IntelligencePage() {
