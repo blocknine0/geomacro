@@ -1,0 +1,23 @@
+name: Diagnose StatCan Original Atom Structure
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/diagnose-statcan-atom-structure.mjs"
+      - ".github/workflows/diagnose-statcan-original-atom.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-anonymous-atom-structure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout audited script only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Safely report structural counters without source data
+        run: node scripts/ops/diagnose-statcan-atom-structure.mjs
