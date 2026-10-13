@@ -34,7 +34,6 @@ async function probe(subject, index) {
       www12_statcan_ref_count:entries.filter(v=>v.includes('www12.statcan.gc.ca')).length,
       www23_statcan_ref_count:entries.filter(v=>v.includes('www23.statcan.gc.ca')).length,
       www150_statcan_ref_count:entries.filter(v=>v.includes('www150.statcan.gc.ca')).length,
-      unprefixed_statcan_ref_count:entries.filter(v=>v.includes('https://statcan.gc.ca')).length,
       n1_daily_ref_count:entries.filter(v=>v.includes('/n1/daily-quotidien/')).length,
       n1_en_daily_ref_count:entries.filter(v=>v.includes('/n1/en/daily-quotidien/')).length,
       en_daily_ref_count:entries.filter(v=>v.includes('/en/daily-quotidien/')).length,
