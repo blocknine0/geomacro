@@ -33,10 +33,10 @@ jobs:
             import {readFileSync} from "node:fs";
             const text=readFileSync("scripts/ops/verify-category-combined-production.mjs","utf8");
             if(!text.includes("exact_shas_match")||
-               !text.includes("method:"GET"")||
+               !!new RegExp("method:"+String.fromCharCode(34)+"GET").test(text)||
                !text.includes("paid_actions:0")||
                text.includes("PAYMENT-SIGNATURE")||
-               text.includes("method:"POST""))throw Error("NO_FUNDS_CHECKER_INCOMPLETE");
+               new RegExp("method:"+String.fromCharCode(34)+"POST").test(text))throw Error("NO_FUNDS_CHECKER_INCOMPLETE");
           '
   published-runtime:
     needs: static-no-funds
