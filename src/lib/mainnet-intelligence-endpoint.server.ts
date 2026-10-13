@@ -47,7 +47,7 @@ import { lookupTelegramFallback } from "./on-demand-telegram-fallback.server";
 import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
-  verifyOnDemandOriginalArticlePages, type OnDemandCategory,
+  inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages, type OnDemandCategory,
 } from "./on-demand-global-discovery.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
@@ -358,6 +358,17 @@ export const mainnetIntelligenceHandlers = {
               execution_authorized:false,
             },422);
           }
+          let requestedNewsAgeSeconds:number|undefined;
+          try {
+            requestedNewsAgeSeconds=plan.requested_max_age_seconds ??
+              inferOnDemandFreshnessSeconds(plan.question_key) ?? undefined;
+          } catch {
+            return json({
+              ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"ON_DEMAND_FRESHNESS_SCOPE_UNSUPPORTED"},
+              execution_authorized:false,
+            },422);
+          }
           // Read the existing independently signature-verified D1 country GRO
           // first; an outage/empty object is not a reason to contact Supabase.
           // Country GRO availability is only a hint, NOT proof that the exact
@@ -383,7 +394,7 @@ export const mainnetIntelligenceHandlers = {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
               topics:plan.topics,
-              max_age_seconds:plan.requested_max_age_seconds ?? undefined,
+              max_age_seconds:requestedNewsAgeSeconds,
             });
             discovery=privateResult.discovery;
             // NEVER copy privateResult.private_candidates into the public
@@ -415,7 +426,7 @@ export const mainnetIntelligenceHandlers = {
             privatePeerScoredDimensions=privatePeerProof.peer_normalized_dimension_count;
             const pageProof=await verifyOnDemandOriginalArticlePages(
               privateResult.private_original_review_candidates,
-              {maxAgeSeconds:plan.requested_max_age_seconds ?? undefined});
+              {maxAgeSeconds:requestedNewsAgeSeconds});
             // No page HTML, original URL, title or publisher identity is
             // serialized. This is only publication-clock consistency, NOT
             // independent facts, commercial source rights or signed risk.
