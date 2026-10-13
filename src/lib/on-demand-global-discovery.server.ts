@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
+import { indexedHeadlineMatchesOriginalPage, indexedPublisherHasOriginalMetaOutsideScripts } from "./on-demand-index-original-title.server";
+import { chooseJevSourceReviewPriority } from "./on-demand-jev-source-priority.server";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
 
@@ -32,6 +34,9 @@ export type PrivateOriginalCandidate = {
   // Never promote a feed <updated> as original publication. Only an
   // allowlisted GOV.UK Atom first-party page may rescue this private lead.
   undated_atom_original_page_pending?: true;
+  // Search-engine discovery INDEX, not a native publisher publication clock.
+  // It may progress only after exact first-party article-title/date readback.
+  index_original_page_pending?: true;
   article_identity_sha256: string;
   first_party_article_url_verified: true;
   source_native_feed_publication_date_verified: boolean;
@@ -221,9 +226,9 @@ async function countryName(country: string, fetchImpl: typeof fetch) {
   return row.name as string;
 }
 async function gdelt(
-  category: OnDemandCategory, countryNameValue: string, fetchImpl: typeof fetch,
-  mineral: OnDemandMineral | null,
-): Promise<SourceProbe> {
+  category: OnDemandCategory, countryIso3: string, countryNameValue: string,
+  fetchImpl: typeof fetch, mineral: OnDemandMineral | null,
+): Promise<OriginalFeedResult> {
   // GDELT is a discovery INDEX. Its "seendate" is NEVER original publication
   // and third-party discovery NEVER proves independent event corroboration.
   const q = '"' + countryNameValue.replace(/"/g,"") + '" AND ' +
@@ -247,7 +252,36 @@ async function gdelt(
     try { const url = new URL(row.url); return url.protocol === "https:"; }
     catch { return false; }
   });
-  return probe("gdelt_doc_discovery",valid.length,false);
+  // GDELT is a global INDEX only: accept as PRIVATE leads solely articles
+  // from already pinned original publishers/paths, never third-party reports,
+  // GDELT seendate, foreign host, or unverified quote/payment evidence.
+  const candidates:PrivateOriginalCandidate[]=[];
+  for (const value of valid.slice(0,10)) {
+    const row=value as {url:string;title:string};
+    const publisher=ORIGINAL_FALLBACK_FEEDS.find(def=>def.domain===category &&
+      originalArticleUrl(row.url,def)!==null && def.topic.test(row.title));
+    if (!publisher || candidates.length>=4 ||
+        !originalHeadlineMentionsCountry(row.title,countryIso3,countryNameValue) ||
+        (category==="rare_earth" && mineral!==null &&
+          !MINERAL_TERMS.some(t=>t.value===mineral&&t.pattern.test(row.title)))) continue;
+    const article_url=originalArticleUrl(row.url,publisher);
+    if (!article_url) continue;
+    const article_identity_sha256=digest(publisher.family+"|"+article_url);
+    if(candidates.some(c=>c.article_identity_sha256===article_identity_sha256)) continue;
+    candidates.push({
+      domain:category,publisher_family:publisher.family,article_url,
+      article_title:row.title.trim().slice(0,300),
+      feed_item_published_at:null,index_original_page_pending:true,
+      article_identity_sha256,first_party_article_url_verified:true,
+      source_native_feed_publication_date_verified:false,
+      publisher_article_page_date_verified:false,
+      independent_same_event_verified:false,
+      derived_commercial_rights_verified:false,score_verified:false,
+      signed_gro_verified:false,paid_delivery_allowed:false,
+    });
+  }
+  return {probe:probe("gdelt_doc_discovery",valid.length,false),
+    private_candidates:candidates};
 }
 
 /** ReliefWeb demands an operator-requested, provider-approved appname.
@@ -625,7 +659,15 @@ export function deduplicateOnDemandOriginalHeadlines(
     const reviewedUndated=undatedReview===true && !!def &&
       originalArticleUrl(item.article_url,def)===item.article_url &&
       item.article_identity_sha256===digest(def.family+"|"+item.article_url);
-    if((!nativeDated&&!reviewedUndated)||
+    // Indexed global search hits are private leads, never original source
+    // publications. Only pinned issuer URL+SHA can enter article-page review.
+    const reviewedIndex=item.index_original_page_pending===true && !!def &&
+      item.source_native_feed_publication_date_verified===false &&
+      item.feed_item_published_at===null &&
+      item.undated_atom_original_page_pending!==true &&
+      originalArticleUrl(item.article_url,def)===item.article_url &&
+      item.article_identity_sha256===digest(def.family+"|"+item.article_url);
+    if((!nativeDated&&!reviewedUndated&&!reviewedIndex)||
        !item.first_party_article_url_verified||
        !/^[a-f0-9]{64}$/.test(item.article_identity_sha256) ||
        item.paid_delivery_allowed!==false || item.signed_gro_verified!==false)
@@ -690,7 +732,7 @@ async function discoverOnDemandImpl(
   const tasks: Array<{name:string;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   const approvedReliefAppname=approvedReliefWebAppname();
   if (name) for (const category of categories) {
-    tasks.push({name:"gdelt_doc_discovery",run:()=>gdelt(category,name,trackedFetch,mineral)});
+    tasks.push({name:"gdelt_doc_discovery",run:()=>gdelt(category,country,name,trackedFetch,mineral)});
     // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
     // account approval must not generate repeat 403s on every user query.
     if (category==="geopolitics" && approvedReliefAppname)
@@ -792,10 +834,12 @@ const MAX_ARTICLE_PAGE_PROBES = 4;
 /** Internal-only evidence continuation; never serialize verified_candidates. */
 export async function verifyOnDemandOriginalArticlePages(
   candidates: readonly PrivateOriginalCandidate[],
-  options: {fetchImpl?:typeof fetch; now?:Date}={},
+  options: {fetchImpl?:typeof fetch; now?:Date; jevFetchImpl?:typeof fetch}={},
 ): Promise<PrivatePageDateResult> {
   const now=options.now ?? new Date();
   if(!Number.isFinite(now.getTime()))throw Error("ON_DEMAND_CLOCK_INVALID");
+  // Feed-native original dates take priority over global search INDEX leads.
+  // Jev may rank candidates but cannot override issuer path/clock proof.
   const eligible=candidates.slice(0,16).filter((candidate)=>{
     const def=ORIGINAL_FALLBACK_FEEDS.find((feed)=>
       feed.family===candidate.publisher_family && feed.domain===candidate.domain);
@@ -813,9 +857,18 @@ export async function verifyOnDemandOriginalArticlePages(
            .includes(def.family) &&
          candidate.source_native_feed_publication_date_verified===false &&
          candidate.feed_item_published_at===null &&
-         candidate.undated_atom_original_page_pending===true)
+         candidate.undated_atom_original_page_pending===true) ||
+        (candidate.index_original_page_pending===true &&
+         candidate.undated_atom_original_page_pending!==true &&
+         candidate.source_native_feed_publication_date_verified===false &&
+         candidate.feed_item_published_at===null)
       );
   });
+  // A native publisher event is stronger discovery evidence than any
+  // indexed global search hit. Reserve the four source page checks for
+  // native first; indexed leads fill gaps after native candidates.
+  eligible.sort((a,b)=>Number(a.index_original_page_pending===true)-
+    Number(b.index_original_page_pending===true));
   const chosen:PrivateOriginalCandidate[]=[];
   const used=new Set<string>();
   const add=(candidate:PrivateOriginalCandidate)=>{
@@ -824,8 +877,23 @@ export async function verifyOnDemandOriginalArticlePages(
     chosen.push(candidate);
     used.add(candidate.publisher_family);
   };
+  // The optional Jev decision only chooses the order of the limited
+  // publisher article readbacks, never the source's veracity or rights.
+  // If no paid key is configured, the same free deterministic order applies.
+  const categories=["geopolitics","macro","rare_earth"] as const;
+  const present=categories.filter(category=>eligible.some(x=>x.domain===category));
+  const preferred=await chooseJevSourceReviewPriority(present.map(category=>({
+    category,
+    first_party_native_dated_count:eligible.filter(x=>x.domain===category &&
+      x.index_original_page_pending!==true).length,
+    first_party_index_only_count:eligible.filter(x=>x.domain===category &&
+      x.index_original_page_pending===true).length,
+  })),{fetchImpl:options.jevFetchImpl});
+  const reviewOrder=preferred
+    ? [preferred,...categories.filter(x=>x!==preferred)] as OnDemandCategory[]
+    : [...categories];
   // One issuer per category first, then remaining distinct publishers.
-  for(const domain of ["geopolitics","macro","rare_earth"] as const){
+  for(const domain of reviewOrder){
     const next=eligible.find(x=>x.domain===domain && !used.has(x.publisher_family));
     if(next)add(next);
   }
@@ -836,6 +904,9 @@ export async function verifyOnDemandOriginalArticlePages(
       const html=await boundedFetch(options.fetchImpl??fetch,candidate.article_url,"text/html");
       const originalDate=verifiedPublisherPageDate(html,now);
       if(!originalDate || !freshPublished(originalDate,now) ||
+        (candidate.index_original_page_pending===true &&
+         (!indexedHeadlineMatchesOriginalPage(candidate.article_title,html) ||
+          !indexedPublisherHasOriginalMetaOutsideScripts(html))) ||
         (candidate.feed_item_published_at!==null &&
          Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000))
         return null;
