@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
+import { indexedHeadlineMatchesOriginalPage } from "./on-demand-index-original-title.server";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
 
@@ -836,6 +837,8 @@ export async function verifyOnDemandOriginalArticlePages(
 ): Promise<PrivatePageDateResult> {
   const now=options.now ?? new Date();
   if(!Number.isFinite(now.getTime()))throw Error("ON_DEMAND_CLOCK_INVALID");
+  // Feed-native original dates take priority over global search INDEX leads.
+  // Jev may rank candidates but cannot override issuer path/clock proof.
   const eligible=candidates.slice(0,16).filter((candidate)=>{
     const def=ORIGINAL_FALLBACK_FEEDS.find((feed)=>
       feed.family===candidate.publisher_family && feed.domain===candidate.domain);
@@ -860,6 +863,11 @@ export async function verifyOnDemandOriginalArticlePages(
          candidate.feed_item_published_at===null)
       );
   });
+  // A native publisher event is stronger discovery evidence than any
+  // indexed global search hit. Reserve the four source page checks for
+  // native first; indexed leads fill gaps after native candidates.
+  eligible.sort((a,b)=>Number(a.index_original_page_pending===true)-
+    Number(b.index_original_page_pending===true));
   const chosen:PrivateOriginalCandidate[]=[];
   const used=new Set<string>();
   const add=(candidate:PrivateOriginalCandidate)=>{
@@ -880,6 +888,8 @@ export async function verifyOnDemandOriginalArticlePages(
       const html=await boundedFetch(options.fetchImpl??fetch,candidate.article_url,"text/html");
       const originalDate=verifiedPublisherPageDate(html,now);
       if(!originalDate || !freshPublished(originalDate,now) ||
+        (candidate.index_original_page_pending===true &&
+         !indexedHeadlineMatchesOriginalPage(candidate.article_title,html)) ||
         (candidate.feed_item_published_at!==null &&
          Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000))
         return null;
