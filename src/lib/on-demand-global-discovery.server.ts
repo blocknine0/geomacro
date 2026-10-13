@@ -1023,7 +1023,7 @@ export async function verifyOnDemandOriginalArticlePages(
 /** Client-safe shape: no upstream article, URLs, text, or private evidence. */
 export async function discoverOnDemandGlobal(
   input:OnDemandSearchInput,
-  options:{fetchImpl?:typeof fetch;now?:Date}={},
+  options:{fetchImpl?:typeof fetch;now?:Date;disableDiscoveryIndex?:boolean}={},
 ):Promise<OnDemandDiscovery>{
   return (await discoverOnDemandImpl(input,options)).discovery;
 }
@@ -1034,7 +1034,7 @@ export async function discoverOnDemandGlobal(
  */
 export async function discoverOnDemandForPrivateQualification(
   input:OnDemandSearchInput,
-  options:{fetchImpl?:typeof fetch;now?:Date}={},
+  options:{fetchImpl?:typeof fetch;now?:Date;disableDiscoveryIndex?:boolean}={},
 ):Promise<{
   discovery:OnDemandDiscovery;
   private_candidates:PrivateOriginalCandidate[];
