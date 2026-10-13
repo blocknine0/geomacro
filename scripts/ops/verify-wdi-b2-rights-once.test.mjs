@@ -107,7 +107,8 @@ test("D1 non-admitted reservation never authorizes a B2 request", async () => {
   assert.equal(out.category,"D1_RESERVATION_RECEIPT_INVALID");
   assert.equal(out.s3_get_attempted,false);
   assert.equal(urls.length,2);
-  assert.ok(urls.every(url=>!url.includes("backblazeb2.com")));
+  assert.ok(urls.every(url => new URL(url).origin ===
+    "https://geomacro-control-plane.daspallab202391.workers.dev"));
 });
 
 test("successful quota reserve can issue only one B2 GET; receipts still pinned", async () => {
