@@ -67,6 +67,7 @@ test("third-party homepage, wrong registered organization, same issuer and stale
       original_article_url:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261010b.htm"}],
     [originals[0],{...originals[1],original_published_at:"2026-10-08T10:10:00Z"}],
     [originals[0],{...originals[1],same_event_claim_sha256:sha("other-event")}],
+    [{...originals[0],original_article_sha256:sha(fedUrl)},originals[1]],
     [originals[0],{...originals[1],original_article_url:ecbUrl+"?redirect=1"}],
   ];
   for(const bad of inputs){
