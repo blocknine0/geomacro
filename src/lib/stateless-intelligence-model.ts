@@ -84,7 +84,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence." },
     { test: /\b(critical minerals?|critical raw materials?|strategic minerals?|mineral processing|mineral supply|strategic raw materials?|mineral supply chain)\b/i, name: "critical-minerals policy",
       implication: "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast." },
-    { test: /\b(mineral deposits?|mining projects?|mineral production|rare earth elements?|mineral resources?|mining|mineral research|mineral exploration|geology of|mineral mapping|raw material supply)\b/i, name: "mineral exploration and production",
+    { test: /\b(mineral deposits?|mining projects?|mineral production|rare earth elements?|mineral resources?|mining|mineral research|mineral exploration|mineral and groundwater insights|geology of|mineral mapping|raw material supply)\b/i, name: "mineral exploration and production",
       implication: "Extractive-sector updates can affect long-run supply expectations, but an announcement is not proof of operating capacity or delivered output." },
   ],
 };
