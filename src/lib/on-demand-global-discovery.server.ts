@@ -30,6 +30,10 @@ export type PrivateOriginalCandidate = {
   publisher_family: string;
   article_url: string;
   article_title: string;
+  // Only exact same-item original first-party feed summary or GOV.UK
+  // first-party search description. Private, bounded and never returned
+  // in public discovery, user payloads or audit logs.
+  item_scoped_summary_private?: string;
   feed_item_published_at: string | null;
   // Never promote a feed <updated> as original publication. Only an
   // allowlisted GOV.UK Atom first-party page may rescue this private lead.
@@ -730,6 +734,7 @@ async function govukOriginalSearch(
     if(candidates.some(x=>x.article_identity_sha256===article_identity_sha256))continue;
     candidates.push({
       domain:def.domain,publisher_family:def.family,article_url,article_title:title,
+      item_scoped_summary_private:description,
       feed_item_published_at:null,search_index_original_page_pending:true,
       article_identity_sha256,first_party_article_url_verified:true,
       source_native_feed_publication_date_verified:false,
@@ -827,6 +832,7 @@ async function originalOfficialFeed(
       continue; // Same publisher URL in a second feed entry is one article.
     candidates.push({
       domain:def.domain,publisher_family:def.family,article_url,article_title,
+      item_scoped_summary_private:summary,
       feed_item_published_at:hasNativeDate?new Date(Date.parse(date)).toISOString():null,
       ...(undatedGovukAtom?{undated_atom_original_page_pending:true as const}:{}),
       article_identity_sha256,
