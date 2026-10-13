@@ -151,7 +151,7 @@ export function inferOnDemandFreshnessSeconds(question:string|null|undefined):nu
     const amount=Number(match[1]);
     const unit=match[2].toLowerCase();
     const seconds=amount*(unit.startsWith("hour")?3_600:unit.startsWith("day")?86_400:604_800);
-    if(!Number.isInteger(seconds) || seconds<1 || seconds>604_800)
+    if(!Number.isInteger(seconds) || seconds<1 || seconds>31*86_400)
       throw Error("ON_DEMAND_FRESHNESS_UNSUPPORTED");
     return seconds;
   });
@@ -475,7 +475,7 @@ type OriginalFeed = {
 const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   {
     domain:"rare_earth",family:"uk_dbt_original_publisher",
-    url:"https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+    url:"https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
     media:"atom",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
     topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
@@ -624,7 +624,7 @@ async function originalOfficialFeed(
     ? [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)]
     : [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)];
   const candidates:PrivateOriginalCandidate[]=[];
-  for(const [,entry] of entries.slice(0,40)){
+  for(const [,entry] of entries.slice(0,80)){
     const title=atom
       ? /<(?:atom:)?title(?:\s[^>]*)?>([^<]{1,300})<\/(?:atom:)?title>/iu.exec(entry)?.[1] ?? ""
       : rssItemText(entry,"title");
