@@ -10,6 +10,59 @@ export const EARNING_PILOT_CASES = [
   { name: "critical_minerals", topic: "critical_minerals", country: "USA" },
 ];
 const SCHEMA = "geomacro.earn-first-live-no-funds.v1";
+const PUBLIC_PREFLIGHT_DENIAL_CODES = new Set([
+  "CENTRAL_SECURITY_UNAVAILABLE",
+  "CENTRAL_SECURITY_KEY_UNAVAILABLE",
+  "REAL_FUNDS_SECURITY_GATE_LOCKED",
+  "PREFLIGHT_GOVERNED_DATA_UNAVAILABLE",
+  "PREFLIGHT_RATE_LIMITED",
+  "PREFLIGHT_INVALID_REQUEST",
+  "PREFLIGHT_SCOPE_VIOLATION",
+  "NOT_AVAILABLE",
+  "INSUFFICIENT_COVERAGE",
+  "STALE_REQUIRED_DATA",
+]);
+// Only allow-listed coarse gate names leave the private preflight. Never log
+// server error messages, original URL, publisher/source identities, response
+// bodies, wallet fields, or provider backend diagnostics.
+async function safePublicBlockerCode(response) {
+  try {
+    if (!response.headers.get("content-type")?.toLowerCase().includes("application/json") ||
+        Number(response.headers.get("content-length") || 0) > 4_096)
+      return "UNKNOWN_PREFLIGHT_BLOCKER";
+    const reader=response.body?.getReader();
+    if (!reader) return "UNKNOWN_PREFLIGHT_BLOCKER";
+    const chunks=[];let bytes=0;
+    try {
+      while (true) {
+        const {done,value}=await reader.read();
+        if (done) break;
+        bytes+=value.byteLength;
+        if (bytes>4_096) return "UNKNOWN_PREFLIGHT_BLOCKER";
+        chunks.push(value);
+      }
+    } finally {await reader.cancel().catch(()=>{});reader.releaseLock();}
+    const combined=new Uint8Array(bytes);let offset=0;
+    for (const part of chunks){combined.set(part,offset);offset+=part.length;}
+    const parsed=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(combined));
+    const code=parsed?.error?.code;
+    return typeof code==="string" && PUBLIC_PREFLIGHT_DENIAL_CODES.has(code)
+      ? code : "UNKNOWN_PREFLIGHT_BLOCKER";
+  } catch {return "UNKNOWN_PREFLIGHT_BLOCKER";}
+}
+function safeCount(value) {
+  return Number.isSafeInteger(value) && value>=0 && value<=1000 ? value : null;
+}
+function publicCoverageCounts(body) {
+  const availability=body?.availability;
+  return {
+    missing_module_count:Array.isArray(availability?.missing_modules)
+      ? Math.min(availability.missing_modules.length,1000) : null,
+    stale_module_count:Array.isArray(availability?.stale_modules)
+      ? Math.min(availability.stale_modules.length,1000) : null,
+    ineligible_source_count:safeCount(availability?.ineligible_source_count),
+  };
+}
 
 export async function acceptEarningPilotLive({
   origin = "https://geomacro.live",
@@ -95,8 +148,12 @@ export async function acceptEarningPilotLive({
         res.status>=500?"PREFLIGHT_SERVER_UNAVAILABLE":
         res.status===401||res.status===403?"PREFLIGHT_ACCESS_DENIED":
         "PREFLIGHT_UNEXPECTED_HTTP_STATUS";
+      // The original error body may contain private backend details. Read at
+      // most 4 KiB and emit one public allow-listed gate code; never copy
+      // arbitrary provider responses to the GitHub or user-facing logs.
+      const blocker=await safePublicBlockerCode(res);
       steps.push({check:item.name,status:code,http_status:res.status,
-        payment_rail_state:"NOT_APPLICABLE"});
+        blocker_code:blocker,payment_rail_state:"NOT_APPLICABLE"});
       continue;
     }
     let data;
@@ -130,6 +187,9 @@ export async function acceptEarningPilotLive({
     steps.push({
       check:item.name,
       status:available?"ELIGIBLE_GOVERNED_BASELINE":"NO_PAYABLE_EVIDENCE",
+      // Aggregate module + rights counts only. Source identities and
+      // raw upstream data are never part of this buyer preflight receipt.
+      ...(!available?publicCoverageCounts(data):{}),
       payment_rail_state:available
         ? data.status==="ELIGIBLE_FOR_X402_QUOTE"?"READY_FOR_QUOTE":"LOCKED"
         : "NOT_APPLICABLE",
