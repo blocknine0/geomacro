@@ -268,12 +268,6 @@ export async function realtimeSearchAnswer(
   }));
   if (!evidence.length) return null;
 
-  const independentDomains = new Set(
-    hits
-      .filter((_, index) => indexes.includes(index))
-      .map((hit) => hit.domain)
-      .filter((domain) => domain !== "unknown"),
-  ).size;
   // Independent domains do NOT prove independent same-event verification or
   // native publication clocks. An index lead is always unverified.
   const lowConfidence = true;
