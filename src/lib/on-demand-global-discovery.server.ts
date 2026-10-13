@@ -63,6 +63,8 @@ export type PrivateOfficialMacroChange = {
 };
 export type SourceProbe = {
   family: string;
+  // Category-specific acceptance must not count Macro as Geopolitics.
+  category?: OnDemandCategory;
   attempted: boolean;
   reachable: boolean;
   observed_record_count: number;
@@ -126,6 +128,7 @@ const TIMEOUT_MS = 5_000;
 
 async function boundedFetch(
   fetchImpl: typeof fetch, url: string, accept: string,
+  timeoutMs = TIMEOUT_MS,
 ): Promise<string> {
   const target = new URL(url);
   // This whitelist is not caller configurable. Do not follow redirects to
@@ -143,7 +146,7 @@ async function boundedFetch(
       method: "GET",
       redirect: "error",
       headers: { Accept: accept },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
     // A network failure may use a specifically approved alternate; an
@@ -234,20 +237,27 @@ async function gdelt(
   });
   const body = await boundedFetch(fetchImpl,
     "https://api.gdeltproject.org/api/v2/doc/doc?" + params,
-    "application/json");
+    "application/json", 12_000);
   const parsed: unknown = JSON.parse(body);
   const articles = typeof parsed === "object" && parsed !== null &&
     Array.isArray((parsed as {articles?:unknown}).articles)
     ? (parsed as {articles:unknown[]}).articles : [];
-  const valid = articles.filter(v => {
-    if (!v || typeof v !== "object") return false;
-    const row = v as {url?:unknown,title?:unknown};
+  // Repeated index entries for an identical publisher URL are one lead.
+  // Keep publisher path/query identity; never infer event corroboration.
+  const uniqueUrls = new Set<string>();
+  for (const value of articles) {
+    if (!value || typeof value !== "object") continue;
+    const row = value as {url?:unknown,title?:unknown};
     if (typeof row.title !== "string" || row.title.trim().length < 10 ||
-        typeof row.url !== "string") return false;
-    try { const url = new URL(row.url); return url.protocol === "https:"; }
-    catch { return false; }
-  });
-  return probe("gdelt_doc_discovery",valid.length,false);
+        typeof row.url !== "string") continue;
+    try {
+      const uri = new URL(row.url);
+      if (uri.protocol !== "https:" || uri.username || uri.password ||
+          uri.port || uri.hash || !uri.hostname) continue;
+      uniqueUrls.add(uri.href);
+    } catch { /* Reject an invalid upstream article URL. */ }
+  }
+  return probe("gdelt_doc_discovery",uniqueUrls.size,false);
 }
 
 /** ReliefWeb demands an operator-requested, provider-approved appname.
@@ -687,33 +697,33 @@ async function discoverOnDemandImpl(
   let name: string;
   try { name = await countryName(country,trackedFetch); }
   catch { name = ""; }
-  const tasks: Array<{name:string;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
+  const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   const approvedReliefAppname=approvedReliefWebAppname();
   if (name) for (const category of categories) {
-    tasks.push({name:"gdelt_doc_discovery",run:()=>gdelt(category,name,trackedFetch,mineral)});
+    tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral)});
     // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
     // account approval must not generate repeat 403s on every user query.
     if (category==="geopolitics" && approvedReliefAppname)
-      tasks.push({name:"reliefweb_discovery",run:()=>
+      tasks.push({name:"reliefweb_discovery",category,run:()=>
         reliefWeb(name,trackedFetch,now,approvedReliefAppname)});
   }
   if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
     if (categories.includes(source.domain)) tasks.push({
-      name:source.family,
+      name:source.family,category:source.domain,
       run:()=>originalOfficialFeed(source,country,name,trackedFetch,now,mineral),
     });
   }
   if (categories.includes("macro")) for (const indicator of [
     "FP.CPI.TOTL.ZG","NY.GDP.MKTP.KD.ZG",
-  ] as const) tasks.push({name:"world_bank_official_" + indicator,
+  ] as const) tasks.push({name:"world_bank_official_" + indicator,category:"macro",
     run:()=>worldBank(country,indicator,trackedFetch,now)});
   // Exactly one fixed metadata lookup + at most eleven provider requests,
   // no 195-country fanout and no user question passed upstream.
   const settled=await Promise.allSettled(tasks.map(t=>t.run()));
   const source_probes=settled.map((result,i)=>{
-    if(result.status==="rejected")return failed(tasks[i].name);
-    const value=result.value;
-    return "probe" in value ? value.probe : value;
+    const row = result.status==="rejected" ? failed(tasks[i].name) :
+      "probe" in result.value ? result.value.probe : result.value;
+    return {...row,category:tasks[i].category};
   });
   // Never persist, log, or expose raw first-party titles/articles here.
   // Every candidate requires the later governed article-page/rights/signing
