@@ -239,7 +239,7 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
     // Strip markup as text ONLY for these four trusted first-party lanes;
     // never accept an Atom "updated" clock as publication evidence.
     const title = source.statcanOriginalPage
-      ? rawTitle.replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)>/giu, " ")
+      ? rawTitle.replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)\s*>/giu, " ")
         .replace(/<\/?[a-z][^>]{0,180}>/giu, " ")
         .replace(/\s+/gu, " ").trim()
       : rawTitle;
