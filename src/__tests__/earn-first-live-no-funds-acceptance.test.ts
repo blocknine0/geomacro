@@ -110,6 +110,44 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
       .rejects.toThrow("EARNING_PILOT_NOT_EXACT_MAIN_PUBLISHED");
     expect(received).toHaveLength(1);
   });
+  it("PR diagnostic inspects all three offer scopes on older live SHA but never authorizes earnings",async()=>{
+    const older={...marker,canonical_main_sha:"c".repeat(40)};
+    const {fetchImpl,received}=calls([eligible,locked,unavailable],older);
+    const report=await acceptEarningPilotLive({
+      expectedSha:sha,diagnosticOnly:true,fetchImpl,
+    });
+    expect(received).toHaveLength(5);
+    expect(received.filter(x=>x.method==="POST")).toHaveLength(3);
+    expect(report.exact_main_published).toBe(false);
+    expect(report.diagnostic_only).toBe(true);
+    expect(report.quote_ready_category_count).toBe(1);
+    expect(report.payment_locked_category_count).toBe(1);
+    expect(report.first_earning_ready).toBe(false);
+    expect(report.checks[0]).toEqual({check:"published_build_sha",
+      status:"PUBLISHED_SHA_MISMATCH_DIAGNOSTIC_ONLY"});
+    expect(report.payment_header_submitted).toBe(false);
+    expect(report.checkout_or_settlement_attempted).toBe(false);
+    expect(report.real_funds_touched).toBe(false);
+    expect(JSON.stringify(report)).not.toContain(older.canonical_main_sha);
+  });
+  it("even an exact-live diagnostic remains no-funds and never says ready to earn",async()=>{
+    const {fetchImpl}=calls([eligible,eligible,unavailable]);
+    const report=await acceptEarningPilotLive({expectedSha:sha,
+      diagnosticOnly:true,fetchImpl});
+    expect(report.exact_main_published).toBe(true);
+    expect(report.quote_ready_category_count).toBe(2);
+    expect(report.first_earning_ready).toBe(false);
+    expect(report.real_funds_touched).toBe(false);
+  });
+  it("PR diagnostic refuses malformed deployment marker even without payment",async()=>{
+    const {fetchImpl,received}=calls([],{
+      ...marker,canonical_main_sha:"malformed",
+    });
+    await expect(acceptEarningPilotLive({
+      expectedSha:sha,diagnosticOnly:true,fetchImpl,
+    })).rejects.toThrow("EARNING_PILOT_BUILD_MARKER_INVALID");
+    expect(received).toHaveLength(1);
+  });
   it("does not promote missing evidence or leaky source response",async()=>{
     const {fetchImpl}=calls([unavailable,unavailable,unavailable]);
     const r=await acceptEarningPilotLive({expectedSha:sha,fetchImpl});
