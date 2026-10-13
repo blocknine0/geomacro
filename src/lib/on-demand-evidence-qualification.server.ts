@@ -161,7 +161,7 @@ export function qualifyRetrievedOnDemandEvidence(input: Readonly<{
   const pageByIdentity=new Map<string,typeof input.pageProof.verified_candidates[number]>();
   for(const page of input.pageProof.verified_candidates){
     const source=input.originals.find(o=>o.article_identity_sha256===page.article_identity_sha256);
-    if (!source || !safeOriginal(source,nowMs,maxAgeMs,search,input.verifiedCountryName) ||
+    if (!source ||
         source.article_url!==page.article_url ||
         source.article_title!==page.article_title ||
         source.publisher_family!==page.publisher_family ||
@@ -174,6 +174,13 @@ export function qualifyRetrievedOnDemandEvidence(input: Readonly<{
          Math.abs(Date.parse(source.feed_item_published_at) -
                   Date.parse(page.page_original_published_at))>600_000))
       throw Error("ON_DEMAND_PAGE_PROOF_NOT_BOUND_TO_SOURCE");
+    // The trusted original-page verifier may validate an article whose
+    // publisher feed summary supplied the query scope but whose title alone
+    // cannot establish country/topic/commodity. Keep the page private and
+    // reject admission without dropping the rest of the genuine records.
+    // In contrast, contradictory or forged page/source identity is fatal.
+    if (!safeOriginal(source,nowMs,maxAgeMs,search,input.verifiedCountryName))
+      continue;
     pageByIdentity.set(page.article_identity_sha256,page);
   }
   const dedup=new Map<string,QualifiedPrivateEvidence["originals"][number]>();
