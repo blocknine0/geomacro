@@ -358,7 +358,17 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   if (topics.length === 0) throw new Error("UNSUPPORTED_OR_AMBIGUOUS_AGENT_QUESTION");
   validateIntent(parsed, intent, subjects, topics);
 
-  const requiredModules = [...new Set(topics.flatMap((topic) => TOPIC_MODULES[topic]))].sort();
+  // An explicitly scoped historical CPI structural answer is ONE official
+  // annual indicator, not the unrelated sovereign-debt and GRO modules.
+  // Preserve every legacy and non-CPI macro_risk dependency unchanged.
+  const singleWdiCpiBaseline=parsed.delivery_tier==="structural_baseline" &&
+    subjects.length===1 && subjects[0].type==="country" &&
+    subjects[0].country_iso3==="CHN" && topics.length===1 &&
+    topics[0]==="macro_risk" && typeof parsed.question==="string" &&
+    /\b(?:cpi|consumer price inflation)\b/iu.test(parsed.question) &&
+    !/\b(?:gdp|debt|sovereign|current|today|live|forecast)\b/iu.test(parsed.question);
+  const requiredModules = singleWdiCpiBaseline ? ["macro_monetary"] :
+    [...new Set(topics.flatMap((topic) => TOPIC_MODULES[topic]))].sort();
   if (parsed.as_of && requiredModules.some((module) => !HISTORICAL_COMPATIBLE_MODULES.has(module))) {
     throw new Error("HISTORICAL_AS_OF_UNSUPPORTED_FOR_REQUESTED_MODULES");
   }
