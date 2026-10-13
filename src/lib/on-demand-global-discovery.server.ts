@@ -754,7 +754,17 @@ async function discoverOnDemandImpl(
   if(newsMaxAgeMs===0)throw Error("ON_DEMAND_FRESHNESS_INVALID");
   let networkAttempts=0;
   const trackedFetch:typeof fetch=(async (target,init)=>{
-    const host=new URL(String(target)).hostname;
+    const upstream=new URL(String(target));
+    // Defense in depth: this wrapper must never become a variable-origin
+    // proxy even if future callers bypass boundedFetch's own allowlist.
+    const permittedHosts=["api.worldbank.org","api.gdeltproject.org",
+      "api.reliefweb.int","www.gov.uk","news.un.org",
+      "www.federalreserve.gov","www.ecb.europa.eu",
+      "www.minister.industry.gov.au"];
+    if(upstream.protocol!=="https:" || !permittedHosts.includes(upstream.hostname) ||
+       upstream.username || upstream.password || upstream.port || upstream.hash)
+      throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
+    const host=upstream.hostname;
     // Per-worker provider cool-down limits calls after explicit denial.
     // A different publisher stays available; no mirrors for denied APIs.
     if(options.fetchImpl===undefined && (providerCooldownUntil.get(host)??0)>Date.now())
