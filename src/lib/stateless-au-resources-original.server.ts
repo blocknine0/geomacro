@@ -68,8 +68,16 @@ export function australianResourcesIndexCandidates(
       continue;
     // Index date is provisional. The same original calendar day MUST also
     // appear directly after the matching first-party article h1.
-    const before = html.slice(Math.max(0,(anchor.index ?? 0)-1100),anchor.index ?? 0);
-    const publishedAt = originalDay(visiblePublisherText(before),now);
+    // Bound date selection to the current publisher card whenever its
+    // structural wrapper is identifiable. Reject inheritance of the prior
+    // item's calendar date by selecting the last native date before this link.
+    const cursor = anchor.index ?? 0;
+    const start = html.lastIndexOf('<div class="views-row"',cursor);
+    const before = html.slice(start >= 0 && cursor - start <= 2200
+      ? start : Math.max(0,cursor-1100),cursor);
+    const text = visiblePublisherText(before);
+    const allDates = [...text.matchAll(/\\b([1-9]|[12]\\d|3[01])\\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\\s+20\\d{2}\\b/giu)];
+    const publishedAt = allDates.length ? originalDay(allDates[allDates.length-1][0],now) : null;
     if (!publishedAt) continue;
     seen.add(link);
     findings.push({ sourceId:category === "macro" ? "au_resources_macro_index"
