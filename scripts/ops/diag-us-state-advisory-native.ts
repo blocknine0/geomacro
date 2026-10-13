@@ -30,6 +30,7 @@ const routeStats={
   linkValidHost:0, expectedArticlePath:0, advisoryDirectory:0,
   last30Days:0, last7Days:0,
   pathClasses:{} as Record<string,number>,
+  queryUrls:0,fragmentUrls:0,longPaths:0,currentSubtree:0,
 };
 for(const [,fragment] of items){
   const title=/<title(?:\s[^>]*)?>([^<>]+)<\/title>/iu.exec(fragment)?.[1]??"";
@@ -42,6 +43,10 @@ for(const [,fragment] of items){
     const u=new URL(link);
     if(u.hostname==="travel.state.gov"){
       routeStats.linkValidHost++;
+      if(u.search)routeStats.queryUrls++;
+      if(u.hash)routeStats.fragmentUrls++;
+      if(u.pathname.length>320)routeStats.longPaths++;
+      if(u.pathname.startsWith("/content/tsgaem/us/en/home/international-travel/"))routeStats.currentSubtree++;
       const parts=u.pathname.split("/").filter(Boolean);
       const safePrefix=parts.slice(0,6).join("/").replace(/[^a-z0-9\/-]/giu,"");
       routeStats.pathClasses[safePrefix]=(routeStats.pathClasses[safePrefix]??0)+1;
