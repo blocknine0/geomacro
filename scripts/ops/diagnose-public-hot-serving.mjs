@@ -131,6 +131,10 @@ export async function diagnosePublicHotServing({
     site.b2_configured && site.intelligence_ready &&
     site.global_risk_ready && site.risk_indices_ready &&
     site.supabase_required_for_serving && site.public_serving_claim_verified &&
+    // The historical B2 baseline readback must be independently confirmed
+    // for every current public product; a green D1 pointer alone is not the
+    // archive-readback proof. Never infer true from absent properties.
+    Object.values(site.historical_b2_baseline_readable).every(v=>v===true) &&
     Object.values(site.hot_snapshot_proofs).every(Boolean);
   const rootCodes=[];
   if (!d1.ok) rootCodes.push("D1_CONTROL_PLANE_UNAVAILABLE");
