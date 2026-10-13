@@ -1,0 +1,54 @@
+name: Three-Domain All-Root Rotation Census
+
+# Reuse already-produced SHA-only observability artifacts.
+# No additional root checks or commercial/provider calls. No D1/B2/Supabase.
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Once/day after 16 best-effort 90-minute intake windows, no 24/7 SLA.
+    - cron: "48 23 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/source-root-full-rotation-census.yml"
+      - "scripts/lib/governed-root-rotation-census.mjs"
+      - "scripts/ops/collect-full-root-rotation-census.mjs"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: geomacro-governed-root-rotation-census-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout current main with no saved token
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        with:
+          node-version: "22"
+      - name: Inspect existing source observation receipts, no origin requests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/governed-root-rotation-census.mjs
+          node --check scripts/ops/collect-full-root-rotation-census.mjs
+          node scripts/ops/collect-full-root-rotation-census.mjs
+      - name: Store 2-day sanitized aggregate only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: governed-all-root-rotation-census-${{ github.run_id }}
+          path: artifacts/private-intake/source-root-full-rotation-census.json
+          if-no-files-found: warn
+          retention-days: 2
