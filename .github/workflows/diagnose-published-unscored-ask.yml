@@ -1,0 +1,29 @@
+name: One-Time Published Ask Read-Only Diagnostic
+
+# Deliberately branch-scoped, not a scheduled production workflow.
+# Checks an already-published build even if the canonical main SHA is newer.
+on:
+  push:
+    branches:
+      - diag/ask-published-build-real-source-readback-20261013
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      EXPECTED_MAIN_SHA: ba2c5caacfd3c4a9c08d11525f35e5ed0314149f
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - run: node --test scripts/tests/unscored-ask-production-proof.test.mjs
+      - name: Observe actual published Ask without payment or secrets
+        run: node scripts/ops/diagnose-published-unscored-ask.mjs
