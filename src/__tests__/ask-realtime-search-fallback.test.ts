@@ -27,6 +27,9 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(orchestrator).toContain("signal.status === \"official_release_observed_unscored\"");
     expect(orchestrator).toContain("signal.same_event_corrob_verified === false");
     expect(orchestrator).toContain("signal.severity === null");
+    expect(orchestrator).toContain("signals.map(signal => signal.category)");
+    expect(orchestrator).toContain("latest_original_published_at: latestOriginal");
+    expect(type).toContain("latest_original_published_at?: string");
     expect(orchestrator).toContain("rest.split(/\\s+/).some");
     expect(orchestrator).toContain("insufficient_evidence: false");
     expect(orchestrator).toContain("low_confidence: true");
