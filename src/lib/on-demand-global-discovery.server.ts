@@ -147,7 +147,7 @@ const CATEGORY_TOPICS:Readonly<Record<OnDemandCategory,readonly string[]>>={
   macro:["macro_risk","sovereign_risk","fx_external_risk"],
   rare_earth:["critical_minerals"],
 };
-function matchesRequestedTopic(title:string,category:OnDemandCategory,topics:readonly string[]):boolean {
+export function matchesRequestedTopic(title:string,category:OnDemandCategory,topics:readonly string[]):boolean {
   const scoped=topics.filter(topic=>CATEGORY_TOPICS[category].includes(topic));
   return scoped.length===0 || scoped.some(topic=>TOPIC_TITLE_PATTERNS[topic]?.test(title));
 }
