@@ -41,16 +41,16 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   // Only article <published> (never <updated>) controls release age.
   { id: "statcan_prices", category: "macro", media: "atom",
     url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/18-eng.atom",
-    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
+    allowedHosts: ["www150.statcan.gc.ca", "www.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
   { id: "statcan_accounts", category: "macro", media: "atom",
     url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/36-eng.atom",
-    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
+    allowedHosts: ["www150.statcan.gc.ca", "www.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
   { id: "statcan_trade", category: "macro", media: "atom",
     url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/12-eng.atom",
-    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
+    allowedHosts: ["www150.statcan.gc.ca", "www.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
   { id: "statcan_labour", category: "macro", media: "atom",
     url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/14-eng.atom",
-    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
+    allowedHosts: ["www150.statcan.gc.ca", "www.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
   // Eurostat's official Atom feed of economy-and-finance NEWS RELEASES,
   // not the dataset-update RSS whose timestamps reflect data operations.
   { id: "eurostat_economy_release", category: "macro", media: "atom",
@@ -210,11 +210,25 @@ async function readStatcanDailyOriginalDay(
   candidate: { title: string; articleUrl: string },
   source: StatelessSourceSpec, now: number,
 ): Promise<StatelessSourceCandidate | null> {
-  if (!source.statcanOriginalPage ||
-      !candidate.articleUrl.startsWith("https://www150.statcan.gc.ca/n1/daily-quotidien/"))
-    return null;
+  if (!source.statcanOriginalPage) return null;
+  let canonical: string;
   try {
-    const response = await fetch(candidate.articleUrl, {
+    const article = new URL(candidate.articleUrl);
+    if (article.username || article.password || article.port || article.hash ||
+        article.search || article.protocol !== "https:") return null;
+    const isAlias = article.hostname === "www.statcan.gc.ca" &&
+      /^\/daily-quotidien\/\d{6}\/dq\d{6}[a-z]-eng\.htm$/iu.test(article.pathname);
+    const isCanonical = article.hostname === "www150.statcan.gc.ca" &&
+      /^\/n1\/daily-quotidien\/\d{6}\/dq\d{6}[a-z]-eng\.htm$/iu.test(article.pathname);
+    if (!isAlias && !isCanonical) return null;
+    // Exact same official article path as the issuer's observed
+    // canonical redirect, without following arbitrary redirects.
+    canonical = isAlias
+      ? "https://www150.statcan.gc.ca/n1" + article.pathname
+      : article.href;
+  } catch { return null; }
+  try {
+    const response = await fetch(canonical, {
       method: "GET", redirect: "error", cache: "no-store",
       headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -223,7 +237,7 @@ async function readStatcanDailyOriginalDay(
       return null;
     const html = await boundedText(response, 256 * 1024);
     if (!html) return null;
-    const day = verifiedStatcanOriginalReleaseDay(html, candidate.articleUrl, candidate.title, now);
+    const day = verifiedStatcanOriginalReleaseDay(html, canonical, candidate.title, now);
     if (!day) return null;
     return {
       sourceId: source.id, category: source.category, title: candidate.title,
