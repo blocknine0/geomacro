@@ -80,6 +80,17 @@ function firstTag(block,tag){
   const match=block.match(new RegExp("<(?:[\\w.-]+:)?"+tag+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[\\w.-]+:)?"+tag+">","iu"));
   return match?.[1]?.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gu,"$1").replace(/<[^>]*>/gu," ").slice(0,1000)??"";
 }
+// Native publication date only. Atom <updated> and feed fetch time are NOT
+// first publication; never inflate 24h item counts from edited/reissued pages.
+function nativeFeedItemPublishedAt(item){
+  const timestamp=firstTag(item,"pubDate")||firstTag(item,"published");
+  if(!timestamp)return null;
+  const nativeIso=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?(?:Z|[+-]\d\d:\d\d)$/iu;
+  const nativeRfc=/^(?:[A-Za-z]{3},?\s+)?\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d\d:\d\d(?::\d\d)?\s+(?:GMT|UTC|UT|[+-]\d{4})$/iu;
+  if(!nativeIso.test(timestamp)&&!nativeRfc.test(timestamp))return null;
+  const value=Date.parse(timestamp);
+  return Number.isFinite(value)?value:null;
+}
 function parse(feed,body,now){
   if(feed.format==="html"){
     if(!/<(?:!doctype\s+html|html)\b/iu.test(body))return null;
@@ -103,16 +114,21 @@ function parse(feed,body,now){
   const blocks=[...body.matchAll(/<(?:item|entry)(?:\s[^>]*)?>([\s\S]*?)<\/(?:item|entry)>/giu)]
     .slice(0,MAX_ITEMS).map(m=>m[1]);
   const hits={geopolitics:0,macro:0,rare_earth:0};
-  let fresh=0;
+  let fresh=0,updatedOnly=0,nativeDated=0;
   for(const item of blocks){
     const title=firstTag(item,"title");
     for(const [domain,re] of Object.entries(PATTERNS))if(re.test(title))hits[domain]++;
-    const stamp=firstTag(item,"pubDate")||firstTag(item,"published")||
-      firstTag(item,"updated")||firstTag(item,"date");
-    const parsed=Date.parse(stamp);
-    if(Number.isFinite(parsed)&&parsed<=now.getTime()&&now.getTime()-parsed<=DAY)fresh++;
+    const at=nativeFeedItemPublishedAt(item);
+    if(at!==null){
+      nativeDated++;
+      if(at<=now.getTime()&&now.getTime()-at<=DAY)fresh++;
+    }else if(firstTag(item,"updated"))updatedOnly++;
   }
   return {count:blocks.length,fresh,provisional:hits,
+    native_dated_items:nativeDated,
+    updated_without_native_publication_count:updatedOnly,
+    // This is only a feed-item original-publication time, never proof of
+    // publisher article HTML content or per-source commercial rights.
     scope:"FEED_ITEM_DATE_NOT_ORIGINAL_PUBLISHER_PAGE_VALIDATION"};
 }
 export async function observeOperatorFreeFeedRotation({
@@ -133,6 +149,9 @@ export async function observeOperatorFreeFeedRotation({
         feed.format==="html"?"HTML_HEALTH_ONLY":"LIVE_PRIVATE_METADATA",
       sampled_metadata_items:parsed?.count??0,
       native_dated_24h_items:parsed?.fresh??null,
+      feed_items_with_explicit_publication_date:parsed?.native_dated_items??null,
+      feed_items_updated_without_publication_date:
+        parsed?.updated_without_native_publication_count??null,
       provisional_topic_matches:parsed?.provisional??base.provisional_topic_matches,
       timestamp_precision:parsed?.scope??null,
     });
