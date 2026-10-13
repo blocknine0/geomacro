@@ -13,6 +13,10 @@ on:
       - "scripts/ops/classify-d1-hot-metadata.mjs"
       - "src/__tests__/diagnose-public-hot-serving.test.ts"
       - "src/__tests__/classify-d1-hot-metadata.test.ts"
+      # Re-audit public B2/D1 metadata when no-charge diagnostics change;
+      # no direct B2 GET, no D1 write, no tokens or private source payload.
+      - "scripts/ops/verify-failed-health-x402-no-funds.mjs"
+      - "src/__tests__/failed-health-x402-no-funds.test.ts"
 
 permissions:
   contents: read
