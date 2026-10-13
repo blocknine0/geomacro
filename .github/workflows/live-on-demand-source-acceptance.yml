@@ -228,3 +228,26 @@ jobs:
           path: artifacts/on-demand-live/step4-production-no-funds.json
           if-no-files-found: warn
           retention-days: 3
+
+  # PR-contained outside-in check: three *individual* public D1 hot
+  # snapshot endpoints plus deep health. No Cloudflare/B2 credentials,
+  # private object reads, D1 writes, production deploy or x402.
+  step4-public-d1-hot-failure-isolation:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Checkout existing read-only public hot diagnostic
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Independently classify current public D1 hot snapshot failures
+        run: node scripts/ops/diagnose-public-hot-serving.mjs
+      - name: Preserve only redacted read-only status
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: step4-public-hot-isolation-${{ github.run_id }}
+          path: artifacts/public-serving/diagnostic.json
+          if-no-files-found: warn
+          retention-days: 3
