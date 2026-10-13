@@ -26,7 +26,8 @@ function calls(outcomes: unknown[]= [unavailable,eligible,unavailable],
     if(path==="/api/v1/intelligence/availability"){
       if(init?.method==="GET")return Response.json(catalog);
       const k=received.filter(x=>x.method==="POST").length-1;
-      return Response.json(outcomes[k],{status:(outcomes[k] as {ok:boolean}).ok?200:422});
+      const outcome=outcomes[k] as {ok?:boolean,__httpStatus?:number};
+      return Response.json(outcome,{status:outcome.__httpStatus??(outcome.ok?200:422)});
     }
     throw Error("Unexpected call");
   });
@@ -56,6 +57,44 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
       .toEqual(EARNING_PILOT_CASES.map(x=>x.topic));
     expect(JSON.stringify(report)).not.toContain("source_contract");
     expect(JSON.stringify(report)).not.toContain("source_url");
+  });
+  it("reports 503 on one category without hiding a separately eligible baseline",async()=>{
+    const {fetchImpl,received}=calls([
+      {__httpStatus:503},eligible,{__httpStatus:429},
+    ]);
+    const report=await acceptEarningPilotLive({expectedSha:sha,fetchImpl});
+    expect(report.no_funds_preflight_complete).toBe(true);
+    expect(report.preflight_transport_error_category_count).toBe(2);
+    expect(report.eligible_category_count).toBe(1);
+    expect(report.quote_ready_category_count).toBe(1);
+    expect(report.first_earning_ready).toBe(true);
+    expect(report.checks.map(x=>x.status)).toEqual([
+      "PASS","PASS","PREFLIGHT_SERVER_UNAVAILABLE",
+      "ELIGIBLE_GOVERNED_BASELINE","PREFLIGHT_RATE_LIMITED",
+    ]);
+    expect(received.filter(x=>x.method==="POST")).toHaveLength(3);
+    expect(JSON.stringify(report)).not.toContain("source_contract");
+    expect(JSON.stringify(report)).not.toContain("source_url");
+    expect(report.real_funds_touched).toBe(false);
+  });
+  it("keeps all 503/429 preflights NON-payable and reports each independently",async()=>{
+    const {fetchImpl}=calls([
+      {__httpStatus:503},{__httpStatus:429},unavailable,
+    ]);
+    const report=await acceptEarningPilotLive({expectedSha:sha,fetchImpl});
+    expect(report.quote_ready_category_count).toBe(0);
+    expect(report.governed_no_payable_category_count).toBe(1);
+    expect(report.preflight_transport_error_category_count).toBe(2);
+    expect(report.first_earning_ready).toBe(false);
+    expect(report.real_funds_touched).toBe(false);
+    expect(report.checks.map(x=>x.status).slice(2)).toEqual([
+      "PREFLIGHT_SERVER_UNAVAILABLE","PREFLIGHT_RATE_LIMITED","NO_PAYABLE_EVIDENCE",
+    ]);
+  });
+  it("does not promote unexpected 200 rail states as quote-ready",async()=>{
+    const {fetchImpl}=calls([{...eligible,status:"UNKNOWN_STATE"},unavailable,unavailable]);
+    await expect(acceptEarningPilotLive({expectedSha:sha,fetchImpl}))
+      .rejects.toThrow("EARNING_PILOT_UNKNOWN_RAIL_STATUS_GEOPOLITICS");
   });
   it("never turns 200 with a locked payment rail into revenue-ready",async()=>{
     const {fetchImpl}=calls([locked,locked,unavailable]);

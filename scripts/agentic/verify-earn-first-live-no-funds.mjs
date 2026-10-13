@@ -48,6 +48,10 @@ export async function acceptEarningPilotLive({
   steps.push({check:"three_domain_offer_catalog",status:"PASS"});
 
   let eligibleCount=0,lockedCount=0,quoteReadyCount=0;
+  let governedUnavailableCount=0,requestFailureCount=0;
+  // This is a diagnostic, not a purchase operation. Each country/domain is
+  // separately checked; a 503/429 for one must not hide another genuine
+  // eligible buyer offer. Do not read or log error response bodies.
   for(const item of EARNING_PILOT_CASES){
     const body={
       schema_version:"geomacro.agent-query.v1",
@@ -57,20 +61,45 @@ export async function acceptEarningPilotLive({
       topics:[item.topic],
       detail:"compact",
     };
-    const res=await fetchImpl(new URL("/api/v1/intelligence/availability",base),{
-      method:"POST",redirect:"error",cache:"no-store",
-      headers:{
-        "Content-Type":"application/json",
-        Accept:"application/json",
-        "User-Agent":"Geomacro-NoFunds-EarnFirst-Acceptance/1",
-      },
-      body:JSON.stringify(body),
-      signal:AbortSignal.timeout(25_000),
-    });
-    if (![200,422].includes(res.status))
-      throw Error("EARNING_PILOT_PREFLIGHT_UNAVAILABLE_"+item.name.toUpperCase());
-    const data=await res.json();
-    if(data.chargeable!==false || data.payment_required_now!==false ||
+    let res;
+    try{
+      res=await fetchImpl(new URL("/api/v1/intelligence/availability",base),{
+        method:"POST",redirect:"error",cache:"no-store",
+        headers:{
+          "Content-Type":"application/json",
+          Accept:"application/json",
+          "User-Agent":"Geomacro-NoFunds-EarnFirst-Acceptance/1",
+        },
+        body:JSON.stringify(body),
+        signal:AbortSignal.timeout(25_000),
+      });
+    }catch{
+      requestFailureCount++;
+      steps.push({check:item.name,status:"PREFLIGHT_TRANSPORT_UNAVAILABLE",
+        payment_rail_state:"NOT_APPLICABLE"});
+      continue;
+    }
+    if (![200,422].includes(res.status)){
+      requestFailureCount++;
+      // Only coarse HTTP classes; never print an upstream body, private
+      // provider name, endpoint path or untrusted error message.
+      const code=res.status===429?"PREFLIGHT_RATE_LIMITED":
+        res.status>=500?"PREFLIGHT_SERVER_UNAVAILABLE":
+        res.status===401||res.status===403?"PREFLIGHT_ACCESS_DENIED":
+        "PREFLIGHT_UNEXPECTED_HTTP_STATUS";
+      steps.push({check:item.name,status:code,http_status:res.status,
+        payment_rail_state:"NOT_APPLICABLE"});
+      continue;
+    }
+    let data;
+    try{data=await res.json();}catch{
+      requestFailureCount++;
+      steps.push({check:item.name,status:"PREFLIGHT_INVALID_RESPONSE",
+        payment_rail_state:"NOT_APPLICABLE"});
+      continue;
+    }
+    if(!data || typeof data!=="object" ||
+       data.chargeable!==false || data.payment_required_now!==false ||
        data.execution_authorized!==false ||
        JSON.stringify(data).includes("source_contracts") ||
        JSON.stringify(data).includes("required_source_ids") ||
@@ -81,19 +110,23 @@ export async function acceptEarningPilotLive({
        /^[a-f0-9]{64}$/.test(String(data.query_plan_hash??""));
     if (res.status===200 && !available)
       throw Error("EARNING_PILOT_FALSE_POSITIVE_"+item.name.toUpperCase());
+    if(available && !["ELIGIBLE_FOR_X402_QUOTE",
+      "ELIGIBLE_BUT_PAYMENT_RAIL_LOCKED"].includes(data.status))
+      throw Error("EARNING_PILOT_UNKNOWN_RAIL_STATUS_"+item.name.toUpperCase());
+    if(res.status===422 && data.ok===true)
+      throw Error("EARNING_PILOT_FALSE_POSITIVE_"+item.name.toUpperCase());
     if(available)eligibleCount++;
     if(available && data.status==="ELIGIBLE_FOR_X402_QUOTE")quoteReadyCount++;
-    if(data.status==="ELIGIBLE_BUT_PAYMENT_RAIL_LOCKED")lockedCount++;
+    if(available && data.status==="ELIGIBLE_BUT_PAYMENT_RAIL_LOCKED")lockedCount++;
+    if(!available)governedUnavailableCount++;
     steps.push({
       check:item.name,
       status:available?"ELIGIBLE_GOVERNED_BASELINE":"NO_PAYABLE_EVIDENCE",
-      // Never print source count, source identity, original URL or article title.
       payment_rail_state:available
         ? data.status==="ELIGIBLE_FOR_X402_QUOTE"?"READY_FOR_QUOTE":"LOCKED"
         : "NOT_APPLICABLE",
     });
-    // Do not call the pay rail in an unattended CI step, not even for 402:
-    // a final quote/settlement is a separate owner-ACKed controlled operation.
+    // Neither this preflight nor its error diagnostics call the paid route.
   }
   const result={
     schema_version:SCHEMA,
@@ -108,6 +141,8 @@ export async function acceptEarningPilotLive({
     eligible_category_count:eligibleCount,
     payment_locked_category_count:lockedCount,
     quote_ready_category_count:quoteReadyCount,
+    governed_no_payable_category_count:governedUnavailableCount,
+    preflight_transport_error_category_count:requestFailureCount,
     first_earning_ready:quoteReadyCount>0,
     no_funds_preflight_complete:true,
     checks:steps,
@@ -122,7 +157,11 @@ if(process.argv[1]?.endsWith("verify-earn-first-live-no-funds.mjs")){
       expectedSha:process.env.EXPECTED_CANONICAL_SHA,
     });
     console.log(JSON.stringify(result));
-    if(!result.first_earning_ready)process.exitCode=1;
+    // PR diagnostics are read-only observation, NOT earning acceptance.
+    // Only the canonical main push demands an actually eligible quote-ready
+    // module; diagnostic 503/429 stays prominently visible as a blocker.
+    if(!result.first_earning_ready && !process.argv.includes("--diagnostic-only"))
+      process.exitCode=1;
   }catch(error){
     console.log(JSON.stringify({
       schema_version:SCHEMA,ok:false,first_earning_ready:false,
