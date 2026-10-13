@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUp, Loader2, Plus, ShieldCheck } from "lucide-react";
+import { ArrowUp, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/foundation/async-states";
 import type { AskAnswer } from "@/lib/ask-geomacro.functions";
@@ -21,26 +21,21 @@ const MAX_LEN = 300;
 const MAX_VISIBLE_TURNS = 12;
 
 type PublicAskResponse =
-  | { ok: true; data: AskAnswer; context?: { mode?: string; resolved_question?: string } }
+  | { ok: true; data: AskAnswer }
   | { ok: false; error?: { code?: string; message?: string } };
 
 type ChatTurn = {
   id: number;
   question: string;
   answer: AskAnswer;
-  resolvedQuestion: string;
 };
 
-async function requestPublicAsk(
-  question: string,
-  previousQuestion?: string,
-): Promise<{ answer: AskAnswer; resolvedQuestion: string }> {
+async function requestPublicAsk(question: string): Promise<AskAnswer> {
   const response = await fetch("/api/public-ask", {
     method: "GET",
     headers: {
       Accept: "application/json",
       "X-Geomacro-Question": question.slice(0, MAX_LEN),
-      ...(previousQuestion ? { "X-Geomacro-Previous-Question": previousQuestion.slice(0, MAX_LEN) } : {}),
     },
     cache: "no-store",
     credentials: "same-origin",
@@ -55,13 +50,7 @@ async function requestPublicAsk(
     throw new Error(message);
   }
 
-  const resolved = payload.context?.resolved_question;
-  return {
-    answer: payload.data,
-    resolvedQuestion: typeof resolved === "string" && resolved.length > 0 && resolved.length <= MAX_LEN
-      ? resolved
-      : question,
-  };
+  return payload.data;
 }
 
 export function AskWorkspace() {
@@ -87,14 +76,14 @@ export function AskWorkspace() {
 
       try {
         const result = await withPublicRuntimeTimeout(
-          requestPublicAsk(question, turns.at(-1)?.resolvedQuestion),
+          requestPublicAsk(question),
           PUBLIC_ASK_REQUEST_TIMEOUT_MS,
           "Ask Geomacro request timed out.",
         );
         if (seq.current === id) {
           setTurns((current) => [
             ...current.slice(-(MAX_VISIBLE_TURNS - 1)),
-            { id, question, answer: result.answer, resolvedQuestion: result.resolvedQuestion },
+            { id, question, answer: result },
           ]);
         }
       } catch (err) {
@@ -108,7 +97,7 @@ export function AskWorkspace() {
         }
       }
     },
-    [loading, turns],
+    [loading],
   );
 
   const canSubmit = query.trim().length >= 4 && !loading;
@@ -125,23 +114,6 @@ export function AskWorkspace() {
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
           Ask a public risk question for free. Geomacro uses approved intelligence context to answer what is supported. For applications, recurring use or integrations, <Link to="/pricing" className="text-primary hover:underline">compare API and monthly access</Link>.
         </p>
-        {turns.length > 0 ? (
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => {
-              seq.current += 1;
-              setTurns([]);
-              setAsked(null);
-              setError(null);
-              setPendingQuestion(null);
-              setQuery("");
-            }}
-            className="mt-4 inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground disabled:opacity-50"
-          >
-            <Plus className="h-3.5 w-3.5" /> New chat
-          </button>
-        ) : null}
       </header>
 
       <section className="mx-auto mt-8 max-w-3xl">
@@ -233,7 +205,7 @@ export function AskWorkspace() {
         </form>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] leading-5 text-muted-foreground">
-          <span>Grounded conversation · Shift+Enter for a new line</span>
+          <span>Direct answers only · Shift+Enter for a new line</span>
           <span>
             <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
             {" · "}
@@ -241,7 +213,7 @@ export function AskWorkspace() {
           </span>
         </div>
         <p className="mt-2 px-1 text-[11px] leading-5 text-muted-foreground">
-          Follow-up context guides topic selection only; every answer is checked against current evidence. Missing evidence is never invented.
+          Answers focus on useful risk context and clearly distinguish what is known from what is uncertain.
         </p>
       </section>
     </main>
