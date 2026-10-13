@@ -8,12 +8,14 @@ import { mkdirSync,writeFileSync } from "node:fs";
 import { readPinnedWdiAnnualStructuralPair } from "../../src/lib/on-demand-global-discovery.server";
 import { preparePinnedChinaWdiStructuralNoFunds } from "../../src/lib/wdi-attributed-structural-product.server";
 import { buildAgentQueryPlan } from "../../src/lib/agent-query-plan";
+import { diagnoseB2RightsReadPrerequisites } from "../../src/lib/b2-live.server";
 const checked_at=new Date().toISOString();
 const report:Record<string,unknown>={
   schema:"geomacro.phase2-step4-real-wdi-no-funds.v1",
   checked_at, country_iso3:"CHN",indicator:"FP.CPI.TOTL.ZG",
   expected_api_source_id:"2",publisher_original_indicator_release_at:null,
   commercial_rights_receipt_verified:false,
+  rights_runtime_prerequisites:diagnoseB2RightsReadPrerequisites(),
   advertised_signature:false,actual_settlements:0,x402_requests:0,
 };
 try {
