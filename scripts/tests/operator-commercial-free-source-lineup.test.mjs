@@ -49,9 +49,11 @@ test("format validation is specific: no HTML/XML error as JSON and no annual sta
 
 test("a synthetic three-category probe proves transport only, not rights/events/signing", async () => {
   const network = async url => {
-    if (String(url).includes("earthquake.usgs.gov"))
+    // Exact URL-origin check: substring tests accept attacker-host suffixes.
+    const parsed = new URL(String(url));
+    if (parsed.protocol === "https:" && parsed.hostname === "earthquake.usgs.gov")
       return new Response('{"type":"FeatureCollection","features":[]}', { status: 200 });
-    if (String(url).includes("api.bls.gov"))
+    if (parsed.protocol === "https:" && parsed.hostname === "api.bls.gov")
       return new Response('{"status":"REQUEST_SUCCEEDED","Results":{"series":[]}}', { status: 200 });
     return new Response("<!doctype html><html></html>", { status: 200 });
   };
