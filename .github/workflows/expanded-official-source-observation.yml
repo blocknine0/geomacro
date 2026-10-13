@@ -47,7 +47,7 @@ on:
   schedule:
     # Sixteen intended slots/day: every 90 minutes in UTC. GitHub may
     # delay or skip runs; monitor reports observed lag, not guaranteed SLA.
-    # 14 source GETs + bounded first-party article-date checks + 1 Eurostat fallback; private only.
+    # 15 source GETs + bounded first-party article-date checks + 1 Eurostat fallback; private only.
     - cron: "17 0,3,6,9,12,15,18,21 * * *"
     - cron: "47 1,4,7,10,13,16,19,22 * * *"
   workflow_dispatch:
@@ -70,7 +70,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "22"
-      - name: Probe twelve active official transports and retain three quarantined routes
+      - name: Probe fifteen active official transports and retain three quarantined routes
         shell: bash
         run: |
           set -uo pipefail
@@ -79,8 +79,8 @@ jobs:
           proof=artifacts/expanded-official-source/transport.json
           jq -e '
             .schema == "geomacro.expanded-official-source-observation.v1" and
-            (.sources|length)==15 and
-            .active_source_count==12 and
+            (.sources|length)==18 and
+            .active_source_count==15 and
             .quarantined_source_count==3 and
             .all_registered_sources_transport_healthy==false and
             ([.sources[] | select(.quarantined==true)]|length)==3 and
@@ -139,7 +139,7 @@ jobs:
             jq -e '.status=="ACTIVE_SOURCE_TRANSPORT_OBSERVED_WITH_QUARANTINE" and
               .active_source_transport_healthy==true and
               ([.sources[] | select(.quarantined!=true) | .format_valid]|all(.==true))' "$proof" >/dev/null
-            echo "::notice title=Active official issuer mesh::12 independent/issuer source endpoints polled; 3 known blocked routes remain QUARANTINED, not healthy. Source rights and event publication remain unverified."
+            echo "::notice title=Active official issuer mesh::15 official source endpoints sampled; 3 known blocked routes remain QUARANTINED, not healthy. Source rights and event publication remain unverified."
           elif [[ "$rc" == "3" ]]; then
             jq -e '.status=="ACTIVE_SOURCE_TRANSPORT_DEGRADED" and
               .active_source_transport_healthy==false and
