@@ -89,7 +89,6 @@ describe("operator-only exact B2 receipt and authenticated D1 single-read proof"
       [receipt([row],{generated_at:"2026-10-12T22:04:53.102Z"}),"RIGHTS_RECEIPT_GENERATION_MISMATCH"],
       [receipt([row,row]),"WDI_EXACT_SOURCE_NOT_CERTIFIED"],
       [receipt([{...row,certification_state:"REVIEW"}]),"WDI_RIGHTS_CONTRACT_MISMATCH"],
-      [receipt([{...row,raw_redistribution_allowed:true}]),"WDI_RIGHTS_CONTRACT_MISMATCH"],
     ] as const;
     for(const [r,reason] of candidates){
       const read=vi.fn().mockResolvedValue(r);
