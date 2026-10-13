@@ -75,12 +75,19 @@ describe("earn-first original-dated structural baseline pilot", () => {
       { ...pilot, subjects: [...pilot.subjects, { type: "country", country_iso3: "CHN" }] },
       { ...pilot, question: "What is the current signed risk score in USA?" },
       { ...pilot, question: "What changed today in Macro/FX?" },
+      { ...pilot, question: "What do rare earth supply issues mean for country USA?" },
+      { ...pilot, question: "How does conflict affect regional security?" },
       { ...pilot, as_of: "2026-10-01T00:00:00Z" },
       { ...pilot, ranking: { metric: "risk_object_score" } },
       { ...pilot, intent: "comparison" },
     ];
     for (const value of cases)
       expect(() => buildAgentQueryPlan(value)).toThrow();
+    const validQuestion = buildAgentQueryPlan({
+      ...pilot, question: "What is the inflation baseline for this country?",
+    });
+    expect(validQuestion.delivery_tier).toBe("structural_baseline");
+    expect(validQuestion.required_modules).toEqual(["macro_monetary","sovereign_fiscal"]);
     // Legacy default remains compatible with valid historical signed queries.
     expect(buildAgentQueryPlan({
       subjects: [{ type: "country", country_iso3: "USA" }],
