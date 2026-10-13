@@ -269,8 +269,8 @@ export async function qualifyPrivateOnDemandEvidence(input:Readonly<{
     checked.every(x=>x.source_rights_eligible);
   const disposition:PrivateEvidenceDisposition=
     invalidOrConflicting>0 && checked.length===0?"INSUFFICIENT_EVIDENCE":
-    checked.length===0 && structural.length===0
-      ?(input.max_age_seconds<=86_400?"NO_CURRENT_EVIDENCE":"INSUFFICIENT_EVIDENCE")
+    checked.length===0 && input.max_age_seconds<=86_400
+      ?"NO_CURRENT_EVIDENCE"
       :checked.length===0?"INSUFFICIENT_EVIDENCE"
       :!rights?"SOURCE_RIGHTS_UNAVAILABLE"
       :hasAttr?"ATTRIBUTION_NOT_SUPPORTED"
@@ -279,11 +279,9 @@ export async function qualifyPrivateOnDemandEvidence(input:Readonly<{
   const exact_evidence_sha256=sha(canonicalRiskObjectJson({
     country_iso3:input.country_iso3,categories:scoped,topics,
     mineral:input.mineral,max_age_seconds:input.max_age_seconds,
-    factual_records:checked.map(x=>({
-      identity:x.source_document_fingerprint_sha256,
-      source_rights_eligible:x.source_rights_eligible,
-      required_public_attribution:x.required_public_attribution,
-    })),
+    // The exact evidence snapshot does NOT change when permission state
+    // changes. Rights eligibility is a separate governed decision.
+    factual_records:checked.map(x=>x.source_document_fingerprint_sha256),
     annual_structural_fingerprints:structural.map(x=>x.source_observation_sha256).sort(),
   }));
   return Object.freeze({
