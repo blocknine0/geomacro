@@ -6,9 +6,9 @@ import assert from "node:assert/strict";
 test("every operator-listed source is classified, deduped, and locked out of paid activation", () => {
   const ids = SOURCE_LINEUP.map(x => x.id);
   assert.equal(ids.length, new Set(ids).size);
-  assert.equal(ids.length, 66);
+  assert.equal(ids.length, 67);
   const s = sourceLineupSummary();
-  assert.deepEqual(s.by_category, { geopolitics: 22, macro: 34, rare_earth: 10 });
+  assert.deepEqual(s.by_category, { geopolitics: 22, macro: 34, rare_earth: 11 });
   assert.equal(s.new_paid_sources_activated, 0);
   assert.ok(SOURCE_LINEUP.every(x => x.production_paid_eligible === false &&
     x.customer_raw_distribution === false && x.requires_per_asset_license_check === true));
@@ -31,6 +31,12 @@ test("three no-key rotating probes per group cover all three categories without 
     counts.set(s.category, (counts.get(s.category) ?? 0) + 1);
   }
   assert.deepEqual(Object.fromEntries(counts), { geopolitics: 3, macro: 3, rare_earth: 3 });
+  // DOE's context-page probe was unparseable on the GitHub production runner.
+  // Retain DOE in review registry; rotate the official UK energy Atom feed instead.
+  assert.ok(FREE_NO_KEY_TRANSPORT_SPECS.some(x =>
+    x.id === "uk_desnz" && x.category === "rare_earth" &&
+    x.url === "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom" && x.format === "atom"));
+  assert.ok(!FREE_NO_KEY_TRANSPORT_SPECS.some(x => x.id === "us_doe"));
 });
 
 test("format validation is specific: no HTML/XML error as JSON and no annual stats as news", () => {

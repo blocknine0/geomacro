@@ -9,6 +9,11 @@ Sanctions and security-advisory sources belong to Geopolitics; where sanctions
 involve strategic minerals the same *event* may inform Critical Minerals, but
 must not be counted as an independent second publisher.
 
+The operator's 66 source families are unchanged; one additional existing
+UK government DESNZ Atom publisher is recorded as an independent mineral/energy
+transport fallback (67 catalog entries). It is **not** assumed to be a
+commercially certified derivative and is not an extra country-coverage claim.
+
 **Source inventory is not a live intake, intelligence verification, paid
 deliverability, provider redistribution licence or signed GRO.**
 
