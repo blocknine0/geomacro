@@ -159,7 +159,7 @@ export async function verifyOneRightsReceipt({
       env.GEOMACRO_OPERATOR_SINGLE_B2_RIGHTS_READ !== "CONFIRMED_ONE")
     return fail("OWNER_MAIN_ONLY_DISPATCH_REQUIRED");
   if (!strictPresent(env)) return fail("PRODUCTION_READ_SECRETS_UNAVAILABLE");
-  const root = env.GEOMACRO_COMMERCE_LEDGER_TOKEN.trim();
+  const root = env.GEOMACRO_COMMERCE_LEDGER_TOKEN; // Match deployed Worker derivation byte-for-byte.
   const token = createHmac("sha256", root).update("geomacro-control-plane-v1").digest("hex");
   const bearer = { Authorization: "Bearer " + token, Accept: "application/json" };
   let status;
