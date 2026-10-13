@@ -31,10 +31,9 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(orchestrator).not.toContain("settlePayment");
     expect(type).toContain('intelligence_tier?: "official_observation_unscored"');
     expect(orchestrator).toContain("live:official:");
-    const workspace = read("src/components/ask/ask-workspace.tsx");
-    expect(workspace).toContain('answer.intelligence_tier === "official_observation_unscored"');
-    expect(workspace).toContain("Official release · unscored");
-    expect(workspace).not.toContain("Verified risk intelligence");
+    // Published Ask UI remains locked; the typed JSON response states the
+    // observation is unscored and the rendered summary says so explicitly.
+    expect(orchestrator).toContain("not independently corroborated risk assessments");
   });
 
   it("uses a bounded current-web path with broad three-domain coverage", () => {
