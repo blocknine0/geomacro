@@ -74,6 +74,31 @@ const privateMacroDrivers=buildPrivateOnDemandMacroDrivers(privateEvidence.priva
 const pageProof=await verifyOnDemandOriginalArticlePages(
   privateEvidence.private_original_review_candidates,
   {fetchImpl:statusOnlyFetch});
+// A 2xx feed with zero matched records is NOT a usable China/query result.
+// Annual WDI observations are explicitly structural, not current news.
+const categoryRetrievalProof=receipt.categories.map(category=>{
+  const providers=receipt.source_probes.filter(p=>p.category===category);
+  const indexLeads=providers.filter(p=>
+    ["gdelt_doc_discovery","reliefweb_discovery"].includes(p.family))
+    .reduce((n,p)=>n+p.observed_record_count,0);
+  const nativeOriginals=privateEvidence.private_candidates.filter(p=>
+    p.domain===category && p.source_native_feed_publication_date_verified).length;
+  const verifiedPages=pageProof.verified_candidates.filter(p=>
+    p.domain===category).length;
+  const annualStructural=category==="macro"?privateEvidence.private_macro_changes.length:0;
+  return {
+    category,
+    provider_attempts:providers.length,
+    reachable_providers:providers.filter(p=>p.reachable).length,
+    index_only_discovery_leads:indexLeads,
+    native_dated_original_leads:nativeOriginals,
+    original_pages_date_verified:verifiedPages,
+    annual_structural_observations:annualStructural,
+    // Counts signal accessible query-relevant records, NOT rights/signing.
+    sample_records_observed:
+      indexLeads+nativeOriginals+verifiedPages+annualStructural>0,
+  };
+});
 const proof={
   schema:"geomacro.live-on-demand-real-api-safety.v1",
   checked_at:receipt.checked_at,
@@ -82,6 +107,7 @@ const proof={
   sample_case:"CHN_LITHIUM_CURRENT_SUPPLY_RISK",
   category_count:receipt.categories.length,
   categories:receipt.categories,
+  category_retrieval_proof:categoryRetrievalProof,
   network_attempts:receipt.network_attempts,
   original_article_page_attempts:pageProof.attempted,
   // Fixed-host, HTTP-status-class aggregate only. No original source URL,
@@ -169,3 +195,8 @@ if(observedRequests!==proof.total_bounded_network_attempts ||
   process.exitCode=2;
 else if(proof.distinct_provider_families_reached===0)
   process.exitCode=3; // zero genuine external sources; NOT false GREEN
+else if(proof.category_retrieval_proof.length!==3 ||
+    proof.category_retrieval_proof.some(p=>
+      p.provider_attempts===0 || !p.sample_records_observed))
+  process.exitCode=4; // one or more categories had zero query-relevant records
+
