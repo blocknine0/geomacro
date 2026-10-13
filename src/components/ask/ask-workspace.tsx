@@ -118,7 +118,7 @@ export function AskWorkspace() {
       <header className="mx-auto max-w-3xl text-center">
         <div className="flex justify-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-            <ShieldCheck className="h-3.5 w-3.5" /> Verified risk intelligence
+            <ShieldCheck className="h-3.5 w-3.5" /> Evidence-aware intelligence
           </span>
         </div>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">Ask Geomacro</h1>
@@ -260,7 +260,9 @@ function UserBubble({ children }: { children: string }) {
 
 function AssistantAnswer({ answer }: { answer: AskAnswer }) {
   const evidence = answer.evidence.slice(0, 5);
-  const evidenceLabel = answer.data_mode === "permanent" ? "Verified context" : "Live checked";
+  const evidenceLabel = answer.intelligence_tier === "official_observation_unscored"
+    ? "Official release · unscored"
+    : answer.data_mode === "permanent" ? "Verified context" : "Live checked";
 
   return (
     <div className="max-w-2xl min-w-0 px-1">
