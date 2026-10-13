@@ -5,7 +5,7 @@ A test receipt, one original issuer, or hash-only candidate remains unapproved.
 
 ## Separate reviewer from commercial signer
 
-The manual private first-live acceptance command requires the following environment
+Both the manual private first-live command **and the shared trusted on-demand\nqualifier** require the following environment
 variables, set by the authorized operator, never committed or sent in chat:
 
 - `GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM`
@@ -13,9 +13,9 @@ variables, set by the authorized operator, never committed or sent in chat:
   the reviewed canonical DER/SPKI public key; approve out of band
 - Existing GRO public/private key environment variables
 
-Before any source-rights read, GRO signing or output write, the command
-checks both parsed keys are Ed25519, checks the reviewer fingerprint with
-constant-time equality and rejects reviewer/GRO key reuse. Public-key
+Before any source-rights read, GRO signing or output write, both paths
+check both parsed keys are Ed25519, check the reviewer fingerprint with
+constant-time equality and reject reviewer/GRO key reuse. Public-key
 fingerprints alone never establish authorized human/trusted reviewer identity.
 Do not put reviewer private keys, source articles or source-specific rights
 receipts into the repository, GitHub Action logs, artifacts or public D1.
@@ -39,3 +39,18 @@ receipts into the repository, GitHub Action logs, artifacts or public D1.
 
 Existing code provides infrastructure only; no genuine authorized reviewer
 proof, independent corroboration or source rights are manufactured by this PR.
+
+## #2044 unified key-pinning regression
+
+The exact same independently approved public reviewer authority check is called
+from the protected manual runner and from the trusted server-side on-demand
+qualifier. An unpinned reviewer PEM cannot cause any B2 rights read. A reused
+GRO signing key cannot impersonate the reviewer even if a correctly signed
+synthetic test package is supplied. Public discovery/observations and the
+existing customer no-charge response continue independently.
+
+Existing deployments MUST have the real reviewed fingerprint and a distinct
+GRO signer public SPKI in secure production configuration to admit a signed
+private commercial event; absence is a truthful closed gate, not a change to
+free source discovery. This does not authorize real-world licensing or an
+independent reviewer appointment.
