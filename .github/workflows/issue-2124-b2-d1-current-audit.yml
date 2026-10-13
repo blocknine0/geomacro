@@ -1,5 +1,8 @@
 name: Issue 2124 B2 D1 current hot read-only audit
 
+# 2026-10-13 one-shot after public no-funds receipt fixes: diagnose real B2
+# archive GET/hash/original-clock and D1 current comparison for issue #2124.
+# This is not a publisher, signing repair, current-data mint, or payment ACK.
 # A one-shot push on this file's merge, plus explicit owner dispatch.
 # No schedule or recurring retry; shared B2 GET quota remains fail-closed.
 on:
