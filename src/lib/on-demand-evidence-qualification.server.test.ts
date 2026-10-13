@@ -155,6 +155,32 @@ describe("Phase 2 private qualification bridge - synthetic regression fixtures, 
     expect(aFirst.evidence_fingerprint_sha256).toBe(reversed.evidence_fingerprint_sha256);
   });
 
+  it("validates bounded original publisher item summary when original headline omits the country",()=>{
+    const search:OnDemandSearchInput={
+      country_iso3:"RUS",categories:["geopolitics"],
+      topics:["conflict_geopolitics"],max_age_seconds:31*86400,
+    };
+    const claim=original({
+      domain:"geopolitics",publisher_family:"un_news_original_publisher",
+      article_url:"https://news.un.org/en/story/2026/10/1234567",
+      article_title:"Security Council calls for an urgent ceasefire",
+      item_scoped_summary_private:"Russia conflict and ceasefire talks discussed by UN representatives",
+      feed_item_published_at:"2026-10-09T12:00:00.000Z",
+      source_native_feed_publication_date_verified:true,
+    });
+    claim.article_identity_sha256=sha(claim.publisher_family+"|"+claim.article_url);
+    const q=qualifyRetrievedOnDemandEvidence(fixture(search,[claim],"Russian Federation",null));
+    expect(q.originals).toHaveLength(1);
+    expect(q.originals[0].scoped_original_item_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(q.originals[0].independent_same_event_verified).toBe(false);
+    expect(q.rights.original_article_rights_verified).toBe(false);
+    expect(q.disposition).toBe("EVIDENCE_IDENTIFIED_REVIEW_PENDING");
+    // No matching same-item first-party description => no query assertion.
+    expect(qualifyRetrievedOnDemandEvidence(fixture(
+      search,[{...claim,item_scoped_summary_private:"Unrelated economy discussion"}],
+      "Russian Federation",null)).originals).toHaveLength(0);
+  });
+
   it("uses truthful no-current versus historical-insufficient outcomes",()=>{
     const latest:OnDemandSearchInput={country_iso3:"GBR",categories:["rare_earth"],
       topics:["critical_minerals"],max_age_seconds:86400};
