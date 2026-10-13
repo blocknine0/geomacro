@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { discoverOnDemandForPrivateQualification } from "./on-demand-global-discovery.server";
+import { discoverOnDemandForPrivateQualification, inferOnDemandFreshnessSeconds } from "./on-demand-global-discovery.server";
 
 // Regression: true upstream query hits must be counted once per original URL,
 // and a successful Macro result must not be attributed to another category.
@@ -97,5 +97,16 @@ describe("query-driven independent fallback without paid providers",()=>{
     expect(proof.private_candidates).toHaveLength(0);
     expect(proof.discovery.source_probes.find(p=>p.family==="gdelt_doc_discovery")?.observed_record_count).toBe(0);
     expect(proof.discovery.payable).toBe(false);
+  });
+});
+
+describe("natural-language freshness routing without payment/hash changes",()=>{
+  it("supports explicit bounded rolling lookbacks",()=>{
+    expect(inferOnDemandFreshnessSeconds("China sanctions in the last 48 hours")).toBe(172_800);
+    expect(inferOnDemandFreshnessSeconds("Lithium exports within 7 days")).toBe(604_800);
+    expect(inferOnDemandFreshnessSeconds("Inflation in the past 1 week")).toBe(604_800);
+    expect(inferOnDemandFreshnessSeconds("Current inflation")).toBeNull();
+    expect(()=>inferOnDemandFreshnessSeconds("Last 2 weeks")).toThrow("ON_DEMAND_FRESHNESS_UNSUPPORTED");
+    expect(()=>inferOnDemandFreshnessSeconds("Last 2 hours and past 3 days")).toThrow("ON_DEMAND_FRESHNESS_AMBIGUOUS");
   });
 });
