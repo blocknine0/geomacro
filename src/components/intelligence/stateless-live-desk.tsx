@@ -94,13 +94,20 @@ function Story({ signal, checkedAt }: {
  * is explicitly marked temporarily unverified and its check time remains
  * unchanged until a new real publisher check completes successfully.
  */
-export function StatelessLiveDesk({ initial, initialJournal = [] }: {
+export function StatelessLiveDesk({ initial, initialFeeds = {}, initialJournal = [] }: {
   initial: StatelessIntelligenceResult | null;
+  initialFeeds?: FeedState;
   initialJournal?: StatelessIntelligenceSignal[];
 }) {
   const [view, setView] = useState<View>("all");
-  const [feeds, setFeeds] = useState<FeedState>(() =>
-    initial?.category === "geopolitics" ? { geopolitics: initial } : {});
+  // SSR can now load all three issuer categories independently. Do not erase
+  // valid server-published Macro/Minerals on the first browser hydration or
+  // wait for a second network roundtrip to fill two empty category counters.
+  const [feeds, setFeeds] = useState<FeedState>(() => ({
+    ...(initial?.category === "geopolitics" && initial.healthy_feed_count > 0
+      ? { geopolitics: initial } : {}),
+    ...initialFeeds,
+  }));
   const [errors, setErrors] = useState<Partial<Record<StatelessCategory, boolean>>>({});
   // Server loader supplies already verified derived cards for the first HTML paint.
   const [journal, setJournal] = useState<StatelessIntelligenceSignal[]>(() => initialJournal);
@@ -149,11 +156,19 @@ export function StatelessLiveDesk({ initial, initialJournal = [] }: {
       }
     };
 
-    // SSR loaded geopolitics only. Load both other domains without waiting
-    // for the visitor to click, so the default all-domain feed is populated.
-    void refresh(initial?.category === "geopolitics"
-      ? ["macro", "rare_earth"]
-      : ["geopolitics", "macro", "rare_earth"]);
+    // Initial HTML now has all source categories that were healthy at
+    // render time. Only fetch failed/missing categories immediately. This
+    // prevents six redundant official-feed HTTP reads on first hydration.
+    const initiallyHealthy = new Set<StatelessCategory>(
+      Object.entries(initialFeeds)
+        .filter(([, value]) => value && value.healthy_feed_count > 0)
+        .map(([category]) => category as StatelessCategory)
+    );
+    if (initial?.category === "geopolitics" && initial.healthy_feed_count > 0)
+      initiallyHealthy.add("geopolitics");
+    const missingAtSsr = DOMAINS.map(domain => domain.key)
+      .filter(category => !initiallyHealthy.has(category));
+    if (missingAtSsr.length > 0) void refresh(missingAtSsr);
     manualRefresh.current = () => { void refresh(["geopolitics", "macro", "rare_earth"]); };
     const refreshAll = () => {
       if (document.visibilityState === "visible") {
@@ -174,7 +189,7 @@ export function StatelessLiveDesk({ initial, initialJournal = [] }: {
       document.removeEventListener("visibilitychange", onReturn);
       window.removeEventListener("focus", onReturn);
     };
-  }, [initial]);
+  }, [initial, initialFeeds]);
 
   // Durable derived-only 30-day D1 journal independent of visitor activity.
   useEffect(() => {
