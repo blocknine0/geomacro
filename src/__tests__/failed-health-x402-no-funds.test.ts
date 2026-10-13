@@ -57,6 +57,60 @@ describe("#1827 independent x402 negative production health proof",()=>{
   });
   expect(JSON.stringify(receipt)).not.toMatch(/NEVER_OUTPUT_RAW_NEWS|private.invalid/);
  });
+ it("proves strictly NO-CHARGE during legitimately unconfigured B2 current-hot outage",async()=>{
+  const unavailable={...health,production_data_runtime_configured:false};
+  const {fetchImpl}=fixture({h:unavailable});
+  const receipt=await diagnoseFailedX402MainHealth({fetchImpl,
+    nowMs:Date.parse("2026-10-13T10:49:00Z")});
+  expect(receipt).toMatchObject({
+    health_http_status:503,
+    data_runtime_configured:false,
+    data_runtime_config_field_verified:true,
+    all_current_hot_products_verified:false,
+    negative_safety_boundary_verified:true,
+    current_signed_data_ready:false,
+    availability_denial_code:"STALE_REQUIRED_DATA",
+    availability_safe_no_charge:true,
+    independent_commercial_acceptance:false,
+    live_x402_prod_earning_authorized:false,
+    external_payment_executed:false,
+    real_funds_touched:false,
+    raw_news_or_source_exposed:false,
+    b2_requests:0,supabase_reads:0,d1_writes:0,
+  });
+  expect(fetchImpl).toHaveBeenCalledTimes(3);
+ });
+ it("refuses missing/ambiguous B2 health field despite safe-looking x402 denial",async()=>{
+  for(const value of [undefined,null,0,"false"]){
+    const {fetchImpl}=fixture({h:{
+      ...health,production_data_runtime_configured:value,
+    }});
+    const report=await diagnoseFailedX402MainHealth({fetchImpl});
+    expect(report.data_runtime_config_field_verified).toBe(false);
+    expect(report.negative_safety_boundary_verified).toBe(false);
+    expect(report.live_x402_prod_earning_authorized).toBe(false);
+  }
+ });
+ it("never promotes unconfigured outage into a green health or commerce receipt",async()=>{
+  for(const x of [
+    {h:{...health,production_data_runtime_configured:false,ok:true}},
+    {h:{...health,production_data_runtime_configured:false,
+      x402:{state:"production"}}},
+    {h:{...health,production_data_runtime_configured:false,
+      public_production:{hot_snapshot_serving:{
+        intelligence:{ok:true},global_risk:{ok:true},risk_indices:{ok:true},
+      }}}},
+    {h:{...health,production_data_runtime_configured:false},
+      a:{...denied,payment_required_now:true}},
+    {h:{...health,production_data_runtime_configured:false},
+      d:{...discovery,productionFundsAuthorized:true}},
+  ]){
+    const {fetchImpl}=fixture(x);
+    const report=await diagnoseFailedX402MainHealth({fetchImpl});
+    expect(report.negative_safety_boundary_verified).toBe(false);
+    expect(report.live_x402_prod_earning_authorized).toBe(false);
+  }
+ });
  it("never treats mainnet, 402, execution or paid resources as proven safe",async()=>{
   for(const arg of [
    {a:{...denied,payment_required_now:true}},
