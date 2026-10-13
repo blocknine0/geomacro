@@ -88,6 +88,8 @@ for(const sample of cases) {
     page_attempts:verified.attempted,
     actual_http_calls:actualHttp,
     provider_responses:responses,
+    native_feed_rejection_audit:r.discovery.source_probes.filter(p=>p.feed_audit)
+      .map(p=>({family:p.family,...p.feed_audit})),
     supabase_requests:r.discovery.supabase_requests,
     b2_requests:r.discovery.b2_requests,
     signed:r.discovery.signed_derived_intelligence_created,
