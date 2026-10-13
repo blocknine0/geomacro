@@ -33,18 +33,16 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
     for(const domain of DOMAINS) {
       const registry=THIRTY_MIN_PUBLISHER_PAIRS[domain];
       expect(pairs[domain]).toHaveLength(2);
-      if(registry.length===2) {
-        expect(pairs[domain][0].id).toBe(next[domain][1].id);
-        expect(pairs[domain][1].id).toBe(next[domain][0].id);
-      } else {
-        expect(pairs[domain][1].id).toBe(next[domain][0].id);
-        expect(registry).toHaveLength(3);
-        expect(new Set(registry).size).toBe(3);
-        // Three independent minerals publishers rotate as bounded pairs:
-        // [0,1] then [1,2] then [2,0]; never three origin GETs at once.
-        const third=select30MinPublishers(new Date(NOW.getTime()+60*60_000))[domain];
-        expect(new Set([...pairs[domain],...next[domain],...third].map(x=>x.id)).size).toBe(3);
+      expect(pairs[domain][1].id).toBe(next[domain][0].id);
+      expect([2,3,4]).toContain(registry.length);
+      const covered=new Set<string>();
+      for(let slot=0;slot<registry.length;slot++){
+        const current=select30MinPublishers(
+          new Date(NOW.getTime()+slot*30*60_000))[domain];
+        expect(current).toHaveLength(2);
+        current.forEach(source=>covered.add(source.id));
       }
+      expect(covered).toEqual(new Set(registry));
     }
   });
 
@@ -53,6 +51,7 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
       "nrcan_government_news_original_atom_review",
       "uk_dbt_critical_minerals_atom_pending_review",
       "australia_industry_minister_original_rss_review",
+      "uk_desnz_original_energy_minerals_atom_review",
     ]);
     // USGS is retained independently for other reviewed source lanes.
     expect(EXPANDED_OFFICIAL_SOURCES.map(s=>s.id)).toContain(
