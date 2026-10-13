@@ -124,7 +124,7 @@ export function inferOnDemandMineral(question: string | null | undefined): OnDem
 // Fixed topic vocabulary. Never send a customer's freeform question upstream.
 // A generic official headline is not evidence for an exact sanctioned topic.
 const TOPIC_TITLE_PATTERNS:Readonly<Record<string,RegExp>>={
-  sanctions_restrictions:/\b(?:sanction|embargo|export control|restrictions?)\b/iu,
+  sanctions_restrictions:/\b(?:sanctions?|embargo|export controls?|restrictions?)\b/iu,
   conflict_geopolitics:/\b(?:conflict|ceasefire|war|military|airstrike|peace|security council)\b/iu,
   political_governance:/\b(?:government|governance|election|parliament|diplomatic)\b/iu,
   macro_risk:/\b(?:inflation|gdp|monetary|central bank|growth|interest rate|economic)\b/iu,
@@ -140,6 +140,23 @@ const CATEGORY_TOPICS:Readonly<Record<OnDemandCategory,readonly string[]>>={
 function matchesRequestedTopic(title:string,category:OnDemandCategory,topics:readonly string[]):boolean {
   const scoped=topics.filter(topic=>CATEGORY_TOPICS[category].includes(topic));
   return scoped.length===0 || scoped.some(topic=>TOPIC_TITLE_PATTERNS[topic]?.test(title));
+}
+
+/** Fixed, bounded rolling-window parser for free question-time discovery only. */
+export function inferOnDemandFreshnessSeconds(question:string|null|undefined):number|null {
+  if(!question)return null;
+  const matches=[...question.matchAll(/\b(?:last|past|within)\s+(\d{1,2})\s*(hours?|days?|weeks?)\b/giu)];
+  if(matches.length===0)return null;
+  const values=matches.map(match=>{
+    const amount=Number(match[1]);
+    const unit=match[2].toLowerCase();
+    const seconds=amount*(unit.startsWith("hour")?3_600:unit.startsWith("day")?86_400:604_800);
+    if(!Number.isInteger(seconds) || seconds<1 || seconds>604_800)
+      throw Error("ON_DEMAND_FRESHNESS_UNSUPPORTED");
+    return seconds;
+  });
+  if(new Set(values).size!==1)throw Error("ON_DEMAND_FRESHNESS_AMBIGUOUS");
+  return values[0];
 }
 
 const MAX_BODY_BYTES = 192 * 1024;
