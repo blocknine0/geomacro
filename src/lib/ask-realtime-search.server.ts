@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { groqClassifyJson } from "./groq.server";
+import { buildRealtimeSearchPlan } from "./ask-realtime-query-plan";
 import type { AskAnswer } from "./ask-intelligence.server";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 
@@ -9,9 +10,6 @@ const SEARCH_TIMEOUT_MS = 7_000;
 const GROQ_TIMEOUT_MS = 9_000;
 const MAX_RESULTS_PER_QUERY = 12;
 const MAX_PUBLIC_EVIDENCE = 5;
-
-const BROAD_CURRENT_RE =
-  /\b(what changed|what happened|today|latest|current developments?|recent developments?|what is happening|what's happening|right now)\b/i;
 
 const CATEGORY_QUERIES = [
   {
@@ -155,13 +153,17 @@ function dedupeAndRank(hits: SearchHit[], maxAgeHours: number): SearchHit[] {
 
 async function currentSearch(question: string): Promise<SearchHit[]> {
   const clean = normalizeQuestion(question);
-  const broad = BROAD_CURRENT_RE.test(question) || clean.split(" ").length <= 3;
-  const maxAgeHours = broad ? 48 : 7 * 24;
-  const timespan = broad ? "2d" : "7d";
+  const plan = buildRealtimeSearchPlan(question);
+  const { broad, maxAgeHours, timespan } = plan;
 
   if (broad) {
+    // Restrict category-scoped current questions to those sectors. Unknown
+    // categories retain the original broad three-sector fallback.
+    const selectedQueries = CATEGORY_QUERIES.filter(spec =>
+      plan.broadCategories.includes(spec.category)
+    );
     const batches = await Promise.allSettled(
-      CATEGORY_QUERIES.map((spec) => searchGdelt(spec.query, spec.category, timespan)),
+      selectedQueries.map(spec => searchGdelt(spec.query, spec.category, timespan)),
     );
     return dedupeAndRank(
       batches.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
