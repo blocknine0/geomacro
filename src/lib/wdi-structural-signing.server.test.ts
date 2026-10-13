@@ -2,6 +2,8 @@ import { createHash, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { buildAttributedWdiStructuralProduct } from "./wdi-attributed-structural-product.server";
 import { signWdiStructuralAnswer, verifyWdiStructuralAnswer } from "./wdi-structural-signing.server";
+import { prepareVerifiedChinaCpiStructuralAnswer } from "./wdi-attributed-structural-product.server";
+import { buildAgentQueryPlan } from "./agent-query-plan";
 import type { B2CommercialSourceRight } from "./b2-live.server";
 const {privateKey,publicKey}=generateKeyPairSync("ed25519");
 const material={
@@ -94,5 +96,66 @@ describe("standalone WDI answer Ed25519 (synthetic signing keys, never productio
       product:original(),certified_rights_receipt_sha256:receipt,
       query_plan_hash:plan,material:{...material,public_key_spki_b64:"AA=="},
     })).toThrow();
+  });
+});
+
+
+describe("existing exact China CPI query plan to no-funds signed preparation",()=>{
+  const plan=buildAgentQueryPlan({
+    question:"China CPI inflation annual structural baseline",
+    subjects:[{type:"country",country_iso3:"CHN"}],
+    topics:["macro_risk"],delivery_tier:"structural_baseline",
+    fulfillment_mode:"published_only",max_age_seconds:400*86400,detail:"compact",
+  });
+  const makePair=()=>{
+    const latest=0.0595646916565402,prev=0.218128938439177;
+    return {
+      country_iso3:"CHN",indicator:"FP.CPI.TOTL.ZG",
+      latest_observation_year:2025,previous_observation_year:2024,
+      latest_annual_pct:latest,previous_annual_pct:prev,
+      annual_rate_change_percentage_points:-0.15856,
+      source_observation_sha256:createHash("sha256")
+        .update(JSON.stringify(["CHN","FP.CPI.TOTL.ZG",2025,latest,2024,prev])).digest("hex"),
+      observation_type:"ANNUAL_STRUCTURAL_NOT_CURRENT_NEWS" as const,
+      publisher_original_release_date_verified:false as const,
+      derived_commercial_rights_verified:false as const,
+      risk_score_verified:false as const,
+      paid_delivery_allowed:false as const,
+    };
+  };
+  it("narrows only explicit China annual CPI macro_risk to one module",()=>{
+    expect(plan.required_modules).toEqual(["macro_monetary"]);
+    const legacy=buildAgentQueryPlan({
+      subjects:[{type:"country",country_iso3:"CHN"}],
+      topics:["macro_risk"],fulfillment_mode:"published_only",
+    });
+    expect(legacy.required_modules).toEqual(["macro_monetary","sovereign_fiscal"]);
+  });
+  it("rehearses exact source/receipt/signature/query verification without payments",async()=>{
+    const result=await prepareVerifiedChinaCpiStructuralAnswer(plan,{
+      now:new Date("2026-10-13T20:00:00Z"),
+      readPair:async()=>({status:"VALID_ANNUAL_CHANGE",pair:makePair(),
+        source_api_id:"2",lastupdated:"2026-10-08"}),
+      readRights:async()=>[row],signingMaterial:material,verifyKeys:keys(),
+    });
+    expect(result.status).toBe("PREPARED_NO_FUNDS_ONLY");
+    if(result.status!=="PREPARED_NO_FUNDS_ONLY")return;
+    expect(result.payment_authorized).toBe(false);
+    expect(result.signed_answer.query_plan_hash).toBe(plan.query_plan_hash);
+    expect(result.signed_answer.structural_product.data_attribution.credit)
+      .toBe("World Bank, World Development Indicators");
+    expect(verifyWdiStructuralAnswer(result.signed_answer,keys(),{
+      query_plan_hash:plan.query_plan_hash,
+      certified_rights_receipt_sha256:result.rights_receipt_sha256,
+    }).valid).toBe(true);
+  });
+  it("fails closed when source=2 is good but the real rights reader has no receipt",async()=>{
+    const result=await prepareVerifiedChinaCpiStructuralAnswer(plan,{
+      now:new Date("2026-10-13T20:00:00Z"),
+      readPair:async()=>({status:"VALID_ANNUAL_CHANGE",pair:makePair(),
+        source_api_id:"2",lastupdated:"2026-10-08"}),
+      readRights:async()=>null,signingMaterial:material,verifyKeys:keys(),
+    });
+    expect(result).toEqual({status:"BLOCKED",code:"WDI_RIGHTS_RECEIPT_UNAVAILABLE"});
   });
 });
