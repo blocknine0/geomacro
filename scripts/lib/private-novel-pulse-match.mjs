@@ -29,6 +29,11 @@ export function privateOriginalMatchesPulse(article, hashes, now = Date.now()) {
   const published = Date.parse(article.publishedAt);
   if (!Number.isFinite(published) || published > now ||
       now - published > 24 * 60 * 60 * 1000) return false;
+  for(const key of [...original.searchParams.keys()]) {
+    if(/^utm_|^(?:fbclid|gclid|mc_cid|mc_eid)$/iu.test(key))
+      original.searchParams.delete(key);
+  }
+  original.searchParams.sort();
   const identity = createHash("sha256").update(original.href).digest("hex");
   return hashes.has(identity);
 }
