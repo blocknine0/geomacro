@@ -136,6 +136,7 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
     if (source.govContentApi &&
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
+    // One fixed issuer RSS, with its verified original media article family.\n    // Never follow cross-minister, arbitrary page, query, or feed aliases.\n    if (source.id === "au_industry_minister" &&\n        (link.search || !/^\/t-ayres\/media\/[a-z0-9][a-z0-9-]{10,180}$/u.test(link.pathname)))\n      return null;
     if (source.statcanOriginalPage &&
         !/^\/(?:n1\/)?daily-quotidien\/\d{6}\/dq\d{6}[a-z]-eng\.htm$/iu.test(link.pathname))
       return null;
