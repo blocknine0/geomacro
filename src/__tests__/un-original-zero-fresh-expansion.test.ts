@@ -2,7 +2,7 @@ import {describe,expect,it,vi} from "vitest";
 import {
   EXPANDED_OFFICIAL_SOURCES,probeExpandedSource,
 } from "../../scripts/ops/probe-expanded-official-source-mesh.mjs";
-import {probe30MinThreeDomainPulse} from "../../scripts/ops/probe-30min-three-domain-pulse.mjs";
+import {probe30MinThreeDomainPulse,select30MinPublishers} from "../../scripts/ops/probe-30min-three-domain-pulse.mjs";
 
 const now=new Date("2026-10-12T02:00:00.000Z");
 const un=EXPANDED_OFFICIAL_SOURCES.find(
@@ -97,7 +97,11 @@ describe("#2041 UN same-publisher zero-current private original discovery",()=>{
     }
   });
   it("carries safe UN expansion booleans through the three-domain private pulse",async()=>{
-    const now=new Date("2026-10-12T02:00:00.000Z");
+    const base=new Date("2026-10-12T02:00:00.000Z");
+    const now=Array.from({length:3},(_,i)=>
+      new Date(base.getTime()+i*30*60000)).find(t=>
+      select30MinPublishers(t).geopolitics.some(x=>
+        x.id==="un_news_security_original_rss_review"))!;
     const monitor=await probe30MinThreeDomainPulse({now,probe:async(source:{id:string,domain:string})=>({
       source_id:source.id,domain:source.domain,
       publisher_reachable:true,format_valid:true,
