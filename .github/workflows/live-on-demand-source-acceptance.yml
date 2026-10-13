@@ -11,6 +11,7 @@ on:
       - "src/lib/on-demand-global-discovery.server.ts"
       - "src/lib/wdi-attributed-structural-product.server.ts"
       - "src/lib/wdi-attributed-structural-product.server.test.ts"
+      - "src/lib/on-demand-wdi-source2-acceptance.test.ts"
       - "src/lib/on-demand-private-macro-rights.server.ts"
       - "scripts/ops/verify-live-wdi-structural.ts"
       - "scripts/ops/phase2-step4-production-no-funds.mjs"
@@ -29,6 +30,7 @@ on:
       - "src/lib/on-demand-global-discovery.server.ts"
       - "src/lib/wdi-attributed-structural-product.server.ts"
       - "src/lib/wdi-attributed-structural-product.server.test.ts"
+      - "src/lib/on-demand-wdi-source2-acceptance.test.ts"
       - "src/lib/on-demand-private-macro-rights.server.ts"
       - "scripts/ops/verify-live-wdi-structural.ts"
       - "scripts/ops/phase2-step4-production-no-funds.mjs"
@@ -152,7 +154,7 @@ jobs:
           if high:sys.exit(4)
           PY
       - name: Private evidence bridge regression checks
-        run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts src/lib/wdi-attributed-structural-product.server.test.ts
+        run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts src/lib/wdi-attributed-structural-product.server.test.ts src/lib/on-demand-wdi-source2-acceptance.test.ts
       - name: Real no-charge per-category provider readback
         env:
           RELIEFWEB_APPROVED_APPNAME: ""
