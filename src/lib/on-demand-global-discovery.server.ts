@@ -665,6 +665,83 @@ function originalItemSummary(entry:string, atom:boolean):string {
     .replace(/&(?:amp|lt|gt|quot|apos|nbsp);/giu," ")
     .replace(/\s+/gu," ").trim().slice(0,600);
 }
+
+/**
+ * Narrow documented GOV.UK public Search API fallback when a first-party
+ * organisational Atom feed returns no query-relevant item. Search results
+ * NEVER prove original publication: only the GOV.UK original article page
+ * and its exact first-published metadata may advance a candidate privately.
+ */
+async function govukOriginalSearch(
+  def:OriginalFeed,countryIso3:string,countryNameValue:string,
+  fetchImpl:typeof fetch,topics:readonly string[],mineral:OnDemandMineral|null,
+):Promise<OriginalFeedResult> {
+  if(def.media!=="search")throw Error("ON_DEMAND_GOVUK_SEARCH_SCOPE_INVALID");
+  const org=def.domain==="geopolitics"?"foreign-commonwealth-development-office":
+    def.domain==="macro"?"hm-treasury":
+    "department-for-business-innovation-science-and-trade";
+  const subject=countryIso3==="RUS"?"Russia":
+    countryIso3==="IRN"?"Iran":countryIso3==="GBR"?"UK":countryNameValue;
+  // Fixed identifiers are derived from validated ISO3 and enumerated topics,
+  // not forwarded from the customer's freeform question.
+  const words=def.domain==="rare_earth" && mineral ? mineral:
+    def.domain==="geopolitics" && topics.includes("sanctions_restrictions")
+      ? "sanctions":def.domain==="macro" ? "economic":"critical minerals";
+  const query=def.domain==="rare_earth" && countryIso3==="GBR" && mineral
+    ? mineral:subject+" "+words;
+  const url=new URL(def.url);
+  url.searchParams.set("q",query);
+  url.searchParams.set("count","10");
+  url.searchParams.set("order","-public_timestamp");
+  url.searchParams.set("filter_organisations",org);
+  url.searchParams.set("fields","title,description,link");
+  const body=await boundedFetch(fetchImpl,url.toString(),"application/json");
+  const parsed:unknown=JSON.parse(body);
+  const results=parsed && typeof parsed==="object" &&
+    Array.isArray((parsed as {results?:unknown}).results)
+      ? (parsed as {results:unknown[]}).results.slice(0,10):[];
+  const audit={inspected:0,native_dated:0,country_mentioned:0,
+    scope_matched:0,eligible_pub_date:0,allowed_article_paths:0};
+  const candidates:PrivateOriginalCandidate[]=[];
+  for(const item of results){
+    audit.inspected++;
+    if(!item || typeof item!=="object")continue;
+    const row=item as {title?:unknown;description?:unknown;link?:unknown};
+    if(typeof row.title!=="string" || row.title.length<8 ||
+      row.title.length>300 || typeof row.link!=="string")continue;
+    const title=row.title.replace(/\s+/gu," ").trim();
+    const description=typeof row.description==="string"
+      ? row.description.replace(/\s+/gu," ").slice(0,500):"";
+    const countryMention=originalHeadlineMentionsCountry(title,countryIso3,countryNameValue) ||
+      originalHeadlineMentionsCountry(description.slice(0,300),countryIso3,countryNameValue);
+    if(countryMention)audit.country_mentioned++;
+    const subjectScope=title+" "+description;
+    const matches=def.topic.test(subjectScope) &&
+      matchesRequestedTopic(subjectScope,def.domain,topics) &&
+      (!mineral || def.domain!=="rare_earth" ||
+        MINERAL_TERMS.some(t=>t.value===mineral && t.pattern.test(subjectScope)));
+    if(countryMention && matches)audit.scope_matched++;
+    if(!countryMention || !matches || !row.link.startsWith("/government/"))continue;
+    const article_url=originalArticleUrl("https://www.gov.uk"+row.link,def);
+    if(!article_url)continue;
+    audit.allowed_article_paths++;
+    const article_identity_sha256=digest(def.family+"|"+article_url);
+    if(candidates.some(x=>x.article_identity_sha256===article_identity_sha256))continue;
+    candidates.push({
+      domain:def.domain,publisher_family:def.family,article_url,article_title:title,
+      feed_item_published_at:null,search_index_original_page_pending:true,
+      article_identity_sha256,first_party_article_url_verified:true,
+      source_native_feed_publication_date_verified:false,
+      publisher_article_page_date_verified:false,
+      independent_same_event_verified:false,derived_commercial_rights_verified:false,
+      score_verified:false,signed_gro_verified:false,paid_delivery_allowed:false,
+    });
+    if(candidates.length>=2)break;
+  }
+  return {probe:{...probe(def.family,candidates.length,false),feed_audit:audit},
+    private_candidates:candidates};
+}
+
 type OriginalFeedResult={probe:SourceProbe;private_candidates:PrivateOriginalCandidate[]};
 async function originalOfficialFeed(
   def:OriginalFeed,countryIso3:string,countryNameValue:string,
