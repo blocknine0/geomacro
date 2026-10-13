@@ -6,6 +6,7 @@ import {
   addDiagnosticCount,
   safeGateReasonCode,
   safePrivateStageErrorCode,
+  classifierExplicitlyRejectsDomain,
 } from "../../scripts/lib/restricted-private-scoring-diagnostics.mjs";
 
 const allDomains = () => ["geopolitics", "macro", "rare_earth"]
@@ -41,6 +42,35 @@ describe("#1827 private current-scoring no-candidate production diagnosis", () =
       .toEqual({ private_scoring_original_publisher_unverified: 1 });
     expect(sanitizedDiagnosticSummary(rows).status)
       .toBe("BLOCKED_NO_QUALIFIED_CANONICAL_SCORES");
+  });
+
+  it("reports explicit none+irrelevant classifier results as non-events, never broken mapping", () => {
+    for (const assessment of [
+      { category:"none", relevant:false },
+      { category:" None ", relevant:false },
+      { category:"NONE", relevant:false },
+    ]) expect(classifierExplicitlyRejectsDomain(assessment)).toBe(true);
+    for (const assessment of [
+      { category:"none", relevant:true },
+      { category:"none" },
+      { category:"geopolitics", relevant:false },
+      { category:"macro", relevant:false },
+      { category:"rare_earth", relevant:false },
+      { category:"not-registered", relevant:false },
+      { category:"none; injected", relevant:false },
+      { category:null, relevant:false },
+    ]) expect(classifierExplicitlyRejectsDomain(assessment)).toBe(false);
+    expect(safeGateReasonCode("llm relevant=false")).toBe("not_relevant");
+    expect(safeGateReasonCode('bad category "none"')).toBe("invalid_category");
+    const code=readFileSync("scripts/ingest-news.js","utf8");
+    expect(code).toContain("if (classifierExplicitlyRejectsDomain(assessment))");
+    expect(code).toContain("if (!ALLOWED_CATEGORIES.includes(assessedCategory))");
+    expect(code).toContain("if (assessedCategory !== fallbackCategory)");
+    expect(code.indexOf("if (classifierExplicitlyRejectsDomain(assessment))"))
+      .toBeLessThan(code.indexOf("if (!ALLOWED_CATEGORIES.includes(assessedCategory))"));
+    expect(code).toContain("if (!assessment.relevant)");
+    expect(code).toContain("if (Number(assessment.confidence) < MIN_CONFIDENCE)");
+    expect(code).toContain("if (Number(assessment.severity) < MIN_SEVERITY)");
   });
 
   it("never emits untrusted gate messages or article/source titles", () => {
