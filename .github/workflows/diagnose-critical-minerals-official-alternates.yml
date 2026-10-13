@@ -1,0 +1,65 @@
+name: Diagnose Independent Critical Minerals Official Originals
+
+# Evidence for #2136. Read-only, no HTML/URL/paragraph output or persistence.
+# Never infer issuer publication from fetch time, web search date, or dateModified.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/diagnose-critical-minerals-official-alternates.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  fixed-official-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate alternative original-publisher transport only
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Fixed government publisher-owned HTML pages. News articles may be
+          # stale and are NOT admitted as current by this network probe.
+          endpoints=(
+            "https://www.industry.gov.au/news"
+            "https://www.industry.gov.au/news/australias-resources-and-energy-export-earnings-set-remain-high"
+            "https://www.ga.gov.au/news"
+            "https://www.usgs.gov/programs/mineral-resources-program/news"
+            "https://www.usgs.gov/news/news-releases/national-news-releases"
+            "https://www.minister.industry.gov.au/t-ayres/media"
+          )
+          n=0
+          html_ok=0
+          for endpoint in "${endpoints[@]}"; do
+            n=$((n + 1))
+            # Query only a pinned HTTPS publisher, with bounded same-protocol
+            # redirects. Zero retries; never bypass 401/403/429.
+            code=000
+            mime=unknown
+            seconds=0
+            redirects=0
+            exitcode=0
+            out="$(curl --http1.1 --max-time 12 --connect-timeout 5 \
+              --proto '=https' --proto-redir '=https' --max-redirs 2 \
+              --silent --location --output /dev/null \
+              --write-out '%{http_code}|%{content_type}|%{time_total}|%{num_redirects}' \
+              "$endpoint" 2>/dev/null)" || exitcode=$?
+            if [[ -n "$out" ]]; then
+              IFS='|' read -r code mime seconds redirects <<< "$out"
+            fi
+            kind=other
+            case "$mime" in
+              text/html*) kind=html ;;
+              application/xml*|application/rss+xml*|text/xml*) kind=xml ;;
+            esac
+            if [[ "$code" == "200" && "$kind" == "html" ]]; then
+              html_ok=$((html_ok + 1))
+            fi
+            printf 'MINERAL_ALTERNATIVE lane=%s http=%s content_kind=%s curl_exit=%s redirects=%s seconds=%s\n' \
+              "$n" "$code" "$kind" "$exitcode" "$redirects" "$seconds"
+          done
+          echo "MINERAL_ALTERNATIVE_SUMMARY html_reachable=$html_ok tested=${#endpoints[@]}"
+          # Discovery only: HTTP 200 does not establish parsed first-original
+          # dates, 30-day recency, rights or derived D1 publication.
