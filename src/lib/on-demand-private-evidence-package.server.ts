@@ -59,6 +59,7 @@ export type PrivateOnDemandEvidencePackage = Readonly<{
   annual_structural_observations: number;
   original_publisher_dates_verified: number;
   attribution_obligations_unmet: number;
+  conflicting_duplicate_records_rejected: number;
   independent_same_event_verified: false;
   conflicting_claims_reviewed: false;
   risk_severity_score: null;
@@ -159,6 +160,7 @@ export async function qualifyPrivateOnDemandEvidence(input:Readonly<{
   const byIdentity=new Map<string,PrivatePublisherClaim>();
   let discarded=0;
   let invalidOrConflicting=0;
+  const rejectedIdentities=new Set<string>();
   const scoped=sorted(input.categories), topics=sorted(input.topics);
   const pages=new Map(input.page_verified_candidates.map(c=>[
     c.article_identity_sha256,c,
@@ -200,11 +202,12 @@ export async function qualifyPrivateOnDemandEvidence(input:Readonly<{
     // Same original issuer/path is ONE announcement even when fetched via
     // both Atom and government search. Time/title conflicts fail closed.
     const key=sha(organization+"|"+url.origin+url.pathname);
+    if(rejectedIdentities.has(key)){invalidOrConflicting++;continue;}
     const existing=byIdentity.get(key);
     if(existing){
       if(existing.source_native_published_at!==date ||
          titleText(existing.original_title??"").toLowerCase()!==title.toLowerCase()){
-        byIdentity.delete(key); invalidOrConflicting++;
+        byIdentity.delete(key);rejectedIdentities.add(key);invalidOrConflicting++;
       }else discarded++;
       continue;
     }
@@ -259,8 +262,8 @@ export async function qualifyPrivateOnDemandEvidence(input:Readonly<{
   const hasAttr=checked.some(x=>x.required_public_attribution);
   const allRights=checked.length>0 &&
     checked.every(x=>x.source_rights_eligible);
-  const fresh=checked.some(x=>input.now.getTime()-Date.parse(x.source_native_published_at!)<=86_400_000);
   const disposition:PrivateEvidenceDisposition=
+    invalidOrConflicting>0 && checked.length===0?"INSUFFICIENT_EVIDENCE":
     checked.length===0 && structural.length===0
       ?(input.max_age_seconds<=86_400?"NO_CURRENT_EVIDENCE":"INSUFFICIENT_EVIDENCE")
       :checked.length===0?"INSUFFICIENT_EVIDENCE"
@@ -288,6 +291,7 @@ export async function qualifyPrivateOnDemandEvidence(input:Readonly<{
     annual_structural_observations:structural.length,
     original_publisher_dates_verified:checked.length,
     attribution_obligations_unmet:checked.filter(x=>x.required_public_attribution).length,
+    conflicting_duplicate_records_rejected:invalidOrConflicting,
     independent_same_event_verified:false as const,
     conflicting_claims_reviewed:false as const,
     risk_severity_score:null,
