@@ -92,6 +92,14 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "au_geoscience", category: "rare_earth", media: "html_index",
     url: "https://www.ga.gov.au/news",
     allowedHosts: ["www.ga.gov.au"], credit: null },
+  // Reuse the *proven* first-party Australian ministerial RSS already
+  // read by the 30-minute original publisher mesh (10 native items,
+  // 9 accepted original dates at 2026-10-13 07:08 UTC).
+  // Other AU issuer RSS/HTML routes timed out from the GitHub runner;
+  // do not revive them or claim an unavailable origin as healthy.
+  { id: "au_industry_minister", category: "rare_earth", media: "rss",
+    url: "https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   { id: "uk_energy", category: "rare_earth", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
