@@ -1,3 +1,4 @@
+import { paymentBindingForAgentQuery, type AgentQueryPlan } from "./agent-query-plan";
 import { createHash, createPrivateKey, createPublicKey, sign, verify, type KeyObject } from "node:crypto";
 import { canonicalRiskObjectJson, assertRiskObjectJsonKeysSafe,
   normalizeRiskObjectVerificationKeys,
@@ -115,4 +116,72 @@ export function verifyWdiStructuralAnswer(
       throw Error("SIGNED_WDI_SIGNATURE_INVALID");
     return {valid:true,reason:"VERIFIED"};
   }catch(e){return {valid:false,reason:e instanceof Error?e.message:"INVALID_STRUCTURAL_SIGNATURE"};}
+}
+
+
+/**
+ * Strict pre-quote adapter around the EXISTING adaptive query/payment-binding
+ * contract. Verifies the exact signed, attributed buyer bytes BEFORE creating
+ * a binding. Never quotes, stores, settles, or self-certifies B2 source rights.
+ * Durable proof must later be confirmed by the existing x402 delivery ledger.
+ */
+export function prepareWdiStructuralNoFundsQuoteBinding(input:{
+  signed_answer:SignedWdiStructuralAnswer;
+  verification_keys:RiskObjectVerificationKeys;
+  query_plan:AgentQueryPlan;
+  certified_rights_receipt_sha256:string;
+  payment_terms:{amountAtomic:string;network:string;asset:string;payTo:string};
+}){
+  const plan=input.query_plan;
+  const result=verifyWdiStructuralAnswer(input.signed_answer,input.verification_keys,{
+    query_plan_hash:plan.query_plan_hash,
+    certified_rights_receipt_sha256:input.certified_rights_receipt_sha256,
+  });
+  if(!result.valid)throw Error("WDI_QUOTE_PREPARATION_SIGNATURE_UNVERIFIED");
+  if(plan.delivery_tier!=="structural_baseline" ||
+     plan.fulfillment_mode!=="published_only" ||
+     plan.subjects.length!==1 ||plan.subjects[0].type!=="country"||
+     plan.subjects[0].country_iso3!=="CHN" ||
+     plan.topics.length!==1||plan.topics[0]!=="macro_risk" ||
+     plan.required_modules.length!==1 ||
+     plan.required_modules[0]!=="macro_monetary"||
+     plan.as_of!==null||
+     !/\b(?:cpi|consumer price inflation)\b/iu.test(plan.question_key))
+    throw Error("WDI_QUOTE_PREPARATION_PLAN_OUT_OF_SCOPE");
+  const terms=input.payment_terms;
+  if(!/^[1-9][0-9]{0,17}$/u.test(terms.amountAtomic) ||
+     !/^[a-z][a-z0-9:-]{1,100}$/iu.test(terms.network) ||
+     !/^0x[0-9a-f]{40}$/iu.test(terms.asset) ||
+     !/^0x[0-9a-f]{40}$/iu.test(terms.payTo))
+    throw Error("WDI_QUOTE_PREPARATION_TERMS_INVALID");
+  const customer_bytes=canonicalRiskObjectJson(input.signed_answer);
+  const customer_sha256=shaBytes(Buffer.from(customer_bytes,"utf8"));
+  const payment_binding=paymentBindingForAgentQuery({
+    queryPlan:plan,amountAtomic:terms.amountAtomic,
+    network:terms.network,asset:terms.asset,payTo:terms.payTo,
+  });
+  // Existing x402 extensions presently bind only the query plan hash.
+  // Record BOTH hashes in the candidate contract, but never advertise this
+  // as a ready x402 quote until a durable pre-quote reader proves byte parity.
+  const prepared_binding_sha256=digest({
+    schema:"geomacro.wdi-prepared-answer-binding.v1",
+    query_plan_hash:plan.query_plan_hash,
+    customer_sha256, payment_binding,
+    certified_rights_receipt_sha256:input.certified_rights_receipt_sha256,
+  });
+  return {
+    schema:"geomacro.wdi-prepared-answer-binding.v1" as const,
+    query_plan_hash:plan.query_plan_hash,
+    source_rights_sha256:input.certified_rights_receipt_sha256,
+    signed_customer_answer_sha256:customer_sha256,
+    prepared_binding_sha256,
+    legacy_x402_payment_binding:payment_binding,
+    customer_bytes,
+    customer_visible_attribution_present:true as const,
+    independently_signature_verified:true as const,
+    durable_prequote_readback_verified:false as const,
+    quote_authorized:false as const,
+    payment_authorized:false as const,
+    settlement_attempted:false as const,
+  };
 }
