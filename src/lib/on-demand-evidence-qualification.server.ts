@@ -32,6 +32,7 @@ export type QualifiedPrivateEvidence = Readonly<{
     source_family: string;
     publisher_claim: string;
     article_identity_sha256: string;
+    scoped_original_item_sha256: string;
     fact_fingerprint_sha256: string;
     original_published_at: string;
     original_clock_basis: "VERIFIED_ORIGINAL_PAGE" | "VERIFIED_NATIVE_FEED";
@@ -105,16 +106,25 @@ function safeOriginal(candidate: PrivateOriginalCandidate, nowMs: number,
       uri.username || uri.password || uri.port || uri.hash || uri.search ||
       candidate.article_identity_sha256 !== sha(candidate.publisher_family+"|"+candidate.article_url))
     return false;
-  if (!verifiedName || !originalHeadlineMentionsCountry(
-    candidate.article_title,search.country_iso3,verifiedName)) return false;
+  const summary=candidate.item_scoped_summary_private??"";
+  if(typeof summary!=="string" || summary.length>600 ||
+     /[\u0000-\u001f\u007f]/u.test(summary)) return false;
+  // Exactly the same first-party item summary that the live discovery
+  // engine originally scoped. A search index or feed excerpt NEVER proves
+  // the described factual claim: it is only first-party query relevance.
+  if(!verifiedName || !(
+     originalHeadlineMentionsCountry(candidate.article_title,search.country_iso3,verifiedName) ||
+     originalHeadlineMentionsCountry(summary.slice(0,300),search.country_iso3,verifiedName)
+  ))return false;
+  const contextualText=(candidate.article_title+" "+summary).slice(0,850);
   const topics = search.topics ?? [];
-  if (!matchesRequestedTopic(candidate.article_title,candidate.domain,topics))
+  if (!matchesRequestedTopic(contextualText,candidate.domain,topics))
     return false;
   if (candidate.domain === "rare_earth" && search.mineral) {
     if (!MINERALS.test(search.mineral)) return false;
     const term = search.mineral === "rare earth" ? /\brare[- ]earths?\b/iu :
       new RegExp("\\b"+search.mineral+"\\b","iu");
-    if (!term.test(candidate.article_title)) return false;
+    if (!term.test(contextualText)) return false;
   }
   const native = candidate.feed_item_published_at;
   if (native !== null && (typeof native !== "string" ||
@@ -164,6 +174,7 @@ export function qualifyRetrievedOnDemandEvidence(input: Readonly<{
     if (!source ||
         source.article_url!==page.article_url ||
         source.article_title!==page.article_title ||
+        source.item_scoped_summary_private!==page.item_scoped_summary_private ||
         source.publisher_family!==page.publisher_family ||
         source.domain!==page.domain ||
         page.publisher_article_page_date_verified!==true ||
@@ -195,6 +206,7 @@ export function qualifyRetrievedOnDemandEvidence(input: Readonly<{
       continue;
     const fingerprint=sha(encode([
       source.publisher_family,source.article_identity_sha256,source.article_title,
+      sha(encode(source.item_scoped_summary_private??"")),
       originalAt,source.domain,search.country_iso3,search.mineral??null,
     ]));
     const rights=issuerRightsDisposition({sourceId:REVIEW_RIGHTS_ID[source.publisher_family]});
@@ -202,6 +214,9 @@ export function qualifyRetrievedOnDemandEvidence(input: Readonly<{
       category:source.domain,source_family:source.publisher_family,
       publisher_claim:source.article_title,
       article_identity_sha256:source.article_identity_sha256,
+      scoped_original_item_sha256:sha(encode([
+        source.article_title,source.item_scoped_summary_private??"",
+      ])),
       fact_fingerprint_sha256:fingerprint,
       original_published_at:originalAt,
       original_clock_basis:page?"VERIFIED_ORIGINAL_PAGE":"VERIFIED_NATIVE_FEED",
