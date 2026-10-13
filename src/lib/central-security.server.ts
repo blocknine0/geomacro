@@ -154,6 +154,16 @@ export function classifyCentralSecurityRoute(
   const pathname = normalizedPathname(pathnameInput);
   const method = String(methodInput || "GET").toUpperCase();
 
+  // The buyer availability/offer endpoint is explicitly NEVER a payment
+  // handler. Its POST only checks the canonical signed-source deliverability,
+  // rejects any payment/authorization header, and has its own low quota
+  // (3/client and 24 globally per minute, bounded 8 KiB JSON). When frozen
+  // Supabase distributed abuse control is unavailable, keep this no-charge
+  // preflight reachable under public_api's keyed in-process burst guard.
+  // Do NOT extend this exception to canonical x402 POST or paid aliases.
+  if (pathname === "/api/v1/intelligence/availability" &&
+      ["GET", "POST", "OPTIONS"].includes(method)) return "public_api";
+
   // These three category GETs are read-only discovery/official-observation
   // surfaces. Public abuse controls still apply, including an HMAC client
   // fingerprint and local burst guard. POST / payment-signature methods remain
