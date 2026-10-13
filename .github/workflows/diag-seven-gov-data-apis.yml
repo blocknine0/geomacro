@@ -1,0 +1,23 @@
+name: One-Time Seven Gov Open Data APIs Real Network Acceptance
+on:
+  push:
+    branches: [diag/open-data-7-real-source-20261013]
+permissions:
+  contents: read
+jobs:
+  no-funds-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.repository == 'blocknine0/geomacro'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - name: Run all three API modality and payment-boundary tests
+        run: bunx vitest run src/lib/category-open-data.server.test.ts src/lib/category-intelligence-alias.server.test.ts
+      - name: Real source transport 3 launch domains no funds/no logs
+        run: bun scripts/ops/probe-three-category-open-data.ts
