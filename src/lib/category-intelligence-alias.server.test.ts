@@ -227,7 +227,7 @@ describe("category intelligence HTTP handler boundary", () => {
     "reads official structured APIs in %s as unsigned non-payable data", async category => {
       openDataReader.mockResolvedValue({
         schema_version:"geomacro.category-open-data-observations.v1",
-        category,mode:"UNSCORED_OPEN_DATA_CONTEXT",findings:[],
+        category,mode:"UNSCORED_OPEN_DATA_CONTEXT",findings:[],source_families_readable:1,
         signed_gro_generated:false,x402_payment_required:false,
       });
       const handlers=createCategoryIntelligenceHandlers({
@@ -271,7 +271,7 @@ describe("category intelligence HTTP handler boundary", () => {
         signed_gro_generated:false,
       });
       openDataReader.mockResolvedValue({
-        category,mode:"UNSCORED_OPEN_DATA_CONTEXT",findings:[],
+        category,mode:"UNSCORED_OPEN_DATA_CONTEXT",findings:[],source_families_readable:1,
         signed_gro_generated:false,
       });
       const handlers=createCategoryIntelligenceHandlers({
@@ -297,7 +297,7 @@ describe("category intelligence HTTP handler boundary", () => {
     liveReader.mockRejectedValue(new Error("publisher not reachable"));
     openDataReader.mockResolvedValue({
       category:"geopolitics",mode:"UNSCORED_OPEN_DATA_CONTEXT",
-      findings:[],signed_gro_generated:false,
+      findings:[],source_families_readable:1,signed_gro_generated:false,
     });
     const handlers=createCategoryIntelligenceHandlers({
       category:"geopolitics",topics:["conflict_geopolitics"],
@@ -314,6 +314,22 @@ describe("category intelligence HTTP handler boundary", () => {
     });
     expect(mainnetHandlers.POST).not.toHaveBeenCalled();
   });
+  it("does not claim coverage from two fulfilled but empty/unavailable reader envelopes",async()=>{
+    liveReader.mockResolvedValue({status:"OFFICIAL_SOURCES_UNAVAILABLE",findings:[]});
+    openDataReader.mockResolvedValue({
+      source_families_readable:0,status:"ALL_SOURCES_UNAVAILABLE",findings:[],
+    });
+    const handlers=createCategoryIntelligenceHandlers({
+      category:"geopolitics",topics:["conflict_geopolitics"],
+      requiredModules:["geopolitical_security"],
+    });
+    const response=await handlers.GET({request:new Request(
+      "https://geomacro.live/api/v1/intelligence/geopolitics?view=combined"
+    )});
+    expect(response.status).toBe(503);
+    expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+  });
+
   it("combined view fails closed if both data classes reject",async()=>{
     liveReader.mockRejectedValue(new Error("publisher"));
     openDataReader.mockRejectedValue(new Error("data"));
