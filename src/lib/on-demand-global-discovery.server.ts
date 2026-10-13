@@ -1012,22 +1012,47 @@ async function discoverOnDemandImpl(
   // no 195-country fanout and no user question passed upstream.
   // One country GET + at most eleven provider GETs. Prioritize annual macro
   // observables when optional approvals increase the configured fanout.
-  const selected=tasks.length>11
+  const maxPrimary=topics.length?11-Math.min(categories.length,3):11;
+  const selected=tasks.length>maxPrimary
     ? [...tasks.filter(t=>t.name.startsWith("world_bank_official_")),
-       ...tasks.filter(t=>!t.name.startsWith("world_bank_official_"))].slice(0,11)
+       ...tasks.filter(t=>!t.name.startsWith("world_bank_official_"))].slice(0,maxPrimary)
     : tasks;
   const settled=await Promise.allSettled(selected.map(t=>t.run()));
-  const source_probes=settled.map((result,i)=>{
+  const source_probes:SourceProbe[]=settled.map((result,i)=>{
     const row = result.status==="rejected" ? failed(selected[i].name,result.reason) :
       "probe" in result.value ? result.value.probe : result.value;
     return {...row,category:selected[i].category};
   });
+  const fallbackIssuerGroups:PrivateOriginalCandidate[][]=[];
+  // A reachable 2xx feed with zero exact-topic records is a valid search
+  // miss, not proof the original publisher has no matching article.
+  // Reuse one bounded public issuer search only when the original feed mesh
+  // found nothing relevant to this country/commodity.
+  if(name && topics.length>0)for(const category of categories){
+    const originalPresent=settled.some(result=>
+      result.status==="fulfilled" &&
+      "private_candidates" in result.value &&
+      result.value.private_candidates.some(item=>item.domain===category));
+    if(originalPresent || networkAttempts>=12)continue;
+    const def=GOVUK_SEARCH_FALLBACKS.find(item=>item.domain===category)!;
+    try {
+      const found=await govukOriginalSearch(def,country,name,trackedFetch,topics,mineral);
+      source_probes.push({...found.probe,category});
+      if(found.private_candidates.length>0)
+        fallbackIssuerGroups.push(found.private_candidates);
+    }catch(error){
+      source_probes.push({...failed(def.family,error),category});
+    }
+  }
   // Never persist, log, or expose raw first-party titles/articles here.
   // Every candidate requires the later governed article-page/rights/signing
   // stages; each source institution stays independently identified.
-  const issuerCandidateGroups=settled.flatMap(result=>
-    result.status==="fulfilled" && "private_candidates" in result.value
-      ? [result.value.private_candidates] : []);
+  const issuerCandidateGroups=[
+    ...settled.flatMap(result=>
+      result.status==="fulfilled" && "private_candidates" in result.value
+        ? [result.value.private_candidates] : []),
+    ...fallbackIssuerGroups,
+  ];
   const private_macro_changes=settled.flatMap(result=>
     result.status==="fulfilled" && "private_macro_changes" in result.value
       ? result.value.private_macro_changes : []);
@@ -1047,8 +1072,11 @@ async function discoverOnDemandImpl(
   // The same GDELT producer searched for 3 different topics is ONE family,
   // and two World Bank indicator requests are ONE official institution.
   const reached=new Set(source_probes.filter(p=>p.reachable).map(p=>
-    p.family.startsWith("world_bank_official_")
-      ? "world_bank_official" : p.family)).size;
+    p.family.startsWith("world_bank_official_") ? "world_bank_official" :
+    p.family==="uk_fcdo_search_original_page" ? "uk_fcdo_original_publisher":
+    p.family==="uk_hmt_search_original_page" ? "uk_hmt_original_publisher":
+    p.family==="uk_dbt_search_original_page" ? "uk_dbt_original_publisher":
+    p.family)).size;
   const grouped=deduplicateOnDemandOriginalHeadlines(private_candidates);
   const discovery:OnDemandDiscovery={
     schema:"geomacro.on-demand-global-private-discovery.v1",
