@@ -19,16 +19,20 @@ const original={
   recent_private_article_fingerprints:[
     {domain:"geopolitics",article_sha256:sha,native_published_at:stamp}],
 };
-async function withScopedPulse(metadata,fn){
+async function withScopedPulse(metadata,fn,{
+  event="workflow_run",repository="blocknine0/geomacro",
+  ref="refs/heads/main",automatic="true",
+}={}){
   const oldFetch=globalThis.fetch;
   const saved=Object.fromEntries([
     "GITHUB_EVENT_NAME","GITHUB_REPOSITORY","GITHUB_REF",
-    "D1_DATABASE_ID","CLOUDFLARE_ACCOUNT_ID","CLOUDFLARE_API_TOKEN",
+    "GEOMACRO_AUTOMATIC_D1_PULSE_STAGE","D1_DATABASE_ID","CLOUDFLARE_ACCOUNT_ID","CLOUDFLARE_API_TOKEN",
   ].map(k=>[k,process.env[k]]));
   process.argv.push("--private-scored-stage");
-  process.env.GITHUB_EVENT_NAME="schedule";
-  process.env.GITHUB_REPOSITORY="blocknine0/geomacro";
-  process.env.GITHUB_REF="refs/heads/main";
+  process.env.GITHUB_EVENT_NAME=event;
+  process.env.GITHUB_REPOSITORY=repository;
+  process.env.GITHUB_REF=ref;
+  process.env.GEOMACRO_AUTOMATIC_D1_PULSE_STAGE=automatic;
   process.env.D1_DATABASE_ID="local";
   process.env.CLOUDFLARE_ACCOUNT_ID="local";
   process.env.CLOUDFLARE_API_TOKEN="local";
@@ -75,6 +79,30 @@ test("different legitimate publisher article cannot ride another D1 wakeup",asyn
     });
     assert.deepEqual(candidates,[]);
   });
+});
+test("scheduled, protected push and approved workflow-run stages all require identical D1 new-article SHA",async()=>{
+  for(const event of ["schedule","push","workflow_run"]){
+    await withScopedPulse({...original,new_private_article_fingerprint_count:0,
+      newly_seen_private_article_refs:[]},async reads=>{
+      const noCall=await fetchOfficialNativeArticles("geopolitics",{
+        now,fetchImpl:()=>{throw Error("UNVERIFIED_ORIGINAL_MUST_NOT_BE_FETCHED")},
+      });
+      assert.deepEqual(noCall,[]);
+      assert.equal(reads(),1);
+    },{event});
+  }
+});
+test("forged auto-stage repo or branch cannot bypass exact new D1 validation",async()=>{
+  for(const options of [
+    {repository:"attacker/geomacro"},{ref:"refs/heads/feature"},
+  ]){
+    await withScopedPulse(original,async reads=>{
+      await assert.rejects(()=>fetchOfficialNativeArticles("geopolitics",{
+        now,fetchImpl:()=>{throw Error("SHOULD_NOT_READ_SOURCE")},
+      }),/PRIVATE_PULSE_AUTO_CONTEXT_UNVERIFIED/u);
+      assert.equal(reads(),0);
+    },options);
+  }
 });
 test("no novel D1 SHA spends zero publisher or classifier calls",async()=>{
   await withScopedPulse({...original,

@@ -7,6 +7,13 @@ on:
   schedule:
     # Intended UTC 30-minute checks; GitHub Actions cron is best-effort.
     - cron: "12,42 * * * *"
+  # GitHub's best-effort cron has missed multiple intended 30-minute
+  # windows. Use an ALREADY scheduled free producer as an alternate wakeup.
+  # Do not download or trust its artifacts; recheck canonical source-native
+  # publishers and new D1 fingerprints in this workflow itself.
+  workflow_run:
+    workflows: ["Three-Domain Unified Private Source Intake"]
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -116,7 +123,19 @@ jobs:
     needs: source-contract
     outputs:
       private_scoring_needed: ${{ steps.d1.outputs.private_scoring_needed }}
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      (
+        github.event_name != 'workflow_run' ||
+        (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'schedule' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'
+        )
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 6
     environment: production

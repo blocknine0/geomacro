@@ -216,15 +216,19 @@ export async function fetchOfficialNativeArticles(category, {
   // whose URL SHA matches the independently persisted D1 refs may proceed
   // to the existing private classifier. Other modes are unchanged.
   let refs=null;
-  // A scheduled private scorer is invoked ONLY by the original-publisher
-  // 30m pulse reusable workflow. Its D1 checkpoint contains the SHA of
-  // the specific original article that caused the automatic wakeup.
-  // Manual / workflow_dispatch scorer keeps the prior source behavior.
-  const fromScheduledPulse=process.argv.includes("--private-scored-stage") &&
-    process.env.GITHUB_EVENT_NAME==="schedule" &&
+  // Only an authorized, typed reusable-workflow input may claim this is
+  // the D1-novel-original automatic stage. Event names alone were unsafe:
+  // GitHub may wake the same source pulse by schedule, push or workflow_run.
+  // Those must ALL consume exactly the new URL-SHA refs verified from D1.
+  // Manual dispatch/push scorer paths deliberately retain their prior mode.
+  const automaticRequested=process.env.GEOMACRO_AUTOMATIC_D1_PULSE_STAGE==="true";
+  const fromAutomaticPulse=automaticRequested &&
+    process.argv.includes("--private-scored-stage") &&
     process.env.GITHUB_REPOSITORY==="blocknine0/geomacro" &&
     process.env.GITHUB_REF==="refs/heads/main";
-  if(fromScheduledPulse){
+  if(automaticRequested&&!fromAutomaticPulse)
+    throw Error("PRIVATE_PULSE_AUTO_CONTEXT_UNVERIFIED");
+  if(fromAutomaticPulse){
     const read=await createD1ControlPlaneStateClient({
       pipeline:"official_source_pulse_30m",
     }).loadRows();
