@@ -77,7 +77,15 @@ export async function diagnoseFailedX402MainHealth({
   const live=health.payload?.public_production?.hot_snapshot_serving;
   const hotProofs=Object.fromEntries(FIELDS.map(n=>[n,live?.[n]?.ok===true]));
   const actualHot=FIELDS.every(n=>hotProofs[n]);
-  const configured=health.payload?.production_data_runtime_configured===true;
+  // The strict deep-health contract intentionally reports configured=false
+  // when any current signed B2→D1 hot-proof/baseline is unavailable.
+  // This is NOT proof that no-charge x402 becomes unsafe: the independent
+  // evidence here is the HTTP 503, 3 hot products not all verified, the
+  // prelaunch discovery with zero billable resources, and exact 422 denial.
+  // Still fail closed if the health field is missing or malformed.
+  const configuredValue=health.payload?.production_data_runtime_configured;
+  const configuredKnown=typeof configuredValue==="boolean";
+  const configured=configuredValue===true;
   const exactNoFundsDiscovery=discovery.http_status===200 &&
     discovery.payload?.status==="prelaunch" &&
     discovery.payload?.productionFundsAuthorized===false &&
@@ -94,7 +102,7 @@ export async function diagnoseFailedX402MainHealth({
   const gateSafe=exactNoFundsDiscovery && denied &&
     !actualHot && health.http_status===503 &&
     health.payload?.ok===false &&
-    configured && health.payload?.x402?.state==="controlled_prelaunch";
+    configuredKnown && health.payload?.x402?.state==="controlled_prelaunch";
   const receipt={
     schema:"geomacro.x402-failed-production-health-no-funds.v1",
     checked_at:new Date(nowMs).toISOString(),
@@ -103,6 +111,10 @@ export async function diagnoseFailedX402MainHealth({
     discovery_http_status:discovery.http_status,
     availability_http_status:availability.http_status,
     data_runtime_configured:configured,
+    data_runtime_config_field_verified:configuredKnown,
+    // The negative receipt verifies NO FUNDS, NOT current signed source data.
+    // Do not treat this flag as production or x402 earning acceptance.
+    current_signed_data_ready:health.http_status===200 && actualHot,
     hot_snapshot_verified:hotProofs,
     all_current_hot_products_verified:actualHot,
     discovery_prelaunch_no_resources:exactNoFundsDiscovery,
