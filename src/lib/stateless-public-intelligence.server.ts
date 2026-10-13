@@ -76,6 +76,12 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_dbt_macro", category: "macro", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  // Resources Minister's official first-party release feed. Genuine trade and
+  // resource-export publication dates qualify as contextual Macro evidence,
+  // never as independent verified price direction or signed risk.
+  { id: "au_resource_exports", category: "macro", media: "rss",
+    url: "https://www.minister.industry.gov.au/feed/king/rss.xml",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   // Natural Resources Canada's official news-release Atom feed (not a
   // search-engine snippet and not a dataset modification timestamp).
   { id: "nrcan_releases", category: "rare_earth", media: "atom",
@@ -91,6 +97,12 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "au_geoscience", category: "rare_earth", media: "html_index",
     url: "https://www.ga.gov.au/news",
     allowedHosts: ["www.ga.gov.au"], credit: null },
+  // Australia's officially documented all-ministers media-release RSS:
+  // captures original, source-dated critical mineral releases. Independent
+  // news qualification and risk scoring remain separate, never inferred here.
+  { id: "au_resource_releases", category: "rare_earth", media: "rss",
+    url: "https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   { id: "uk_energy", category: "rare_earth", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
