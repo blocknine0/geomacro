@@ -256,8 +256,15 @@ async function gdelt(
 ): Promise<SourceProbe> {
   // GDELT is a discovery INDEX. Its "seendate" is NEVER original publication
   // and third-party discovery NEVER proves independent event corroboration.
+  const scopedTerms=category==="geopolitics" && topics.includes("sanctions_restrictions")
+    ? "(sanctions OR embargo OR export controls)"
+    : category==="geopolitics" && topics.includes("conflict_geopolitics")
+      ? "(ceasefire OR conflict OR war)"
+      : category==="macro" && topics.includes("fx_external_risk")
+        ? "(foreign exchange OR exchange rate OR currency)"
+        : SEARCH_TERMS[category];
   const q = '"' + countryNameValue.replace(/"/g,"") + '" AND ' +
-    (category === "rare_earth" && mineral ? '"' + mineral + '"' : SEARCH_TERMS[category]);
+    (category === "rare_earth" && mineral ? '"' + mineral + '"' : scopedTerms);
   const params = new URLSearchParams({
     query:q,mode:"ArtList",format:"json",maxrecords:"10",
     sort:"DateDesc",timespan:"24h",
@@ -853,8 +860,10 @@ async function discoverOnDemandImpl(
     searched_in_parallel:true,network_attempts:networkAttempts,
     reached_source_families:reached,source_probes,
     // Preserve existing fingerprints for country/category-only requests.
-    query_fingerprint_sha256:digest(JSON.stringify(mineral
-      ? [country,categories,mineral] : [country,categories])),
+    query_fingerprint_sha256:digest(JSON.stringify(
+      topics.length>0 || input.max_age_seconds!==undefined
+        ? [country,categories,mineral,[...topics].sort(),newsMaxAgeMs]
+        : mineral ? [country,categories,mineral] : [country,categories])),
     status:reached>0?"DISCOVERY_OBSERVED_NOT_YET_VERIFIED":"DISCOVERY_DEGRADED",
     independent_same_event_corroboration_verified:false,
     source_derived_commercial_rights_verified:false,
