@@ -2,6 +2,7 @@ import { fetchOriginalAlternate } from "./official-native-alternates.mjs";
 import {validatePrivatePulseRefs,privateOriginalMatchesPulse} from "./private-novel-pulse-match.mjs";
 import {createD1ControlPlaneStateClient} from "./d1-control-plane-state.mjs";
 import {selectPrivateNovelPulseRefs} from "./private-novel-pulse-match.mjs";
+import {fetchPulseRotatedPrivateOriginals} from "./pulse-rotated-original-scorer.mjs";
 import { fetchOfficialThirdPublisherArticles } from "./official-native-third-fallback.mjs";
 import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "./official-original-article-date.mjs";
@@ -216,6 +217,8 @@ export async function fetchOfficialNativeArticles(category, {
   // whose URL SHA matches the independently persisted D1 refs may proceed
   // to the existing private classifier. Other modes are unchanged.
   let refs=null;
+  let expectedClocks=null;
+  let originalPulseAt=null;
   // Only an authorized, typed reusable-workflow input may claim this is
   // the D1-novel-original automatic stage. Event names alone were unsafe:
   // GitHub may wake the same source pulse by schedule, push or workflow_run.
@@ -232,9 +235,18 @@ export async function fetchOfficialNativeArticles(category, {
     const read=await createD1ControlPlaneStateClient({
       pipeline:"official_source_pulse_30m",
     }).loadRows();
-    refs=selectPrivateNovelPulseRefs(read.get(category),category,now.getTime());
+    const snapshot=read.get(category);
+    refs=selectPrivateNovelPulseRefs(snapshot,category,now.getTime());
     // No novel item in THIS category: no native network or model budget.
     if(refs.size===0)return [];
+    originalPulseAt=snapshot.payload.checked_at;
+    expectedClocks=new Map(
+      snapshot.payload.recent_private_article_fingerprints
+        .filter(x=>refs.has(x.article_sha256))
+        .map(x=>[x.article_sha256,x.native_published_at]),
+    );
+    if(expectedClocks.size!==refs.size)
+      throw Error("PRIVATE_PULSE_D1_NATIVE_CLOCKS_UNVERIFIED");
   } else if(process.env.GEOMACRO_PRIVATE_PULSE_SCOPED==="true"){
     let decoded;
     try{decoded=JSON.parse(process.env.GEOMACRO_PRIVATE_PULSE_REFS??"null")}
@@ -243,8 +255,25 @@ export async function fetchOfficialNativeArticles(category, {
     if(refs.size===0)throw Error("PRIVATE_PULSE_REFS_INVALID");
   }
   const selected=rows=>refs
-    ? rows.filter(row=>privateOriginalMatchesPulse(row,refs,now.getTime()))
+    ? rows.filter(row=>privateOriginalMatchesPulse(
+        row,refs,now.getTime(),expectedClocks))
     : rows;
+  const finish=async rows=>{
+    const current=selected(rows);
+    if(!fromAutomaticPulse||current.length>=refs.size)return current;
+    // The D1 pulse rotates more first-party issuers than the legacy three
+    // private RSS fallback lanes. Re-poll ONLY that pulse's exact fixed extra
+    // issuers and only for real novel SHA+native-date readback. This is never
+    // a scoring/signing/rights override, and costs zero GET on quiet polls.
+    const extra=await fetchPulseRotatedPrivateOriginals({
+      category,checkedAt:originalPulseAt,refs,expectedClocks,now,fetchImpl,
+    });
+    const seen=new Set(current.map(item=>item.url));
+    return [...current,...extra.filter(item=>{
+      if(seen.has(item.url))return false;
+      seen.add(item.url);return true;
+    })].sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
+  };
   const config = OFFICIAL_NATIVE_FEEDS[category];
   if (!config) throw new Error("OFFICIAL_NATIVE_RSS_CATEGORY_INVALID");
   let primary = [];
@@ -273,7 +302,7 @@ export async function fetchOfficialNativeArticles(category, {
   // probes the fixed alternate even with eligible primary items. This widens
   // discovery ONLY: shared articles or distinct hosts do not prove corroboration,
   // commercial rights, severity, or any public publication eligibility.
-  if (primary.length > 0 && !includeSecondPublisher && !sampleAllPublishers) return selected(primary);
+  if (primary.length > 0 && !includeSecondPublisher && !sampleAllPublishers) return finish(primary);
   if (diagnostics && typeof diagnostics === "object")
     diagnostics.alternate_feed_attempted = true;
   let alternate = [];
@@ -300,7 +329,7 @@ export async function fetchOfficialNativeArticles(category, {
   if (!sampleAllPublishers && (combined.length>0 || !includeThirdPublisher)) {
     if (!combined.length && primaryUnavailable && alternateUnavailable)
       throw new Error("OFFICIAL_ORIGINAL_FEEDS_UNAVAILABLE");
-    return selected(combined);
+    return finish(combined);
   }
   // Default: consult the third feed only when the earlier feeds are empty.
   // Complete sampling: always inspect the fixed third feed, even when an
@@ -320,7 +349,7 @@ export async function fetchOfficialNativeArticles(category, {
     for (const row of third) {
       if (!urls.has(row.url)) { urls.add(row.url); merged.push(row); }
     }
-    return selected(merged.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)));
+    return finish(merged.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)));
   } catch (error) {
     if (diagnostics && typeof diagnostics === "object") {
       diagnostics.third_feed_ok = false;
@@ -346,6 +375,6 @@ export async function fetchOfficialNativeArticles(category, {
     }
     if (primaryUnavailable && alternateUnavailable)
       throw new Error("OFFICIAL_ORIGINAL_FEEDS_UNAVAILABLE");
-    return selected(combined);
+    return finish(combined);
   }
 }
