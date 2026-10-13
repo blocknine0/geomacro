@@ -9,6 +9,15 @@ export const EARNING_PILOT_CASES = [
   { name: "macro_fx", topic: "macro_risk", country: "USA" },
   { name: "critical_minerals", topic: "critical_minerals", country: "USA" },
 ];
+// One bounded alternate-market diagnosis reuses the exact same governed
+// availability endpoint, with no additional source spider, B2 scan or wallet.
+// It can never confer production earning authorization (even if one offer
+// appears available); that requires exact-live canonical main buyer acceptance.
+export const EARNING_PILOT_ALTERNATE_CASES = Object.freeze([
+  Object.freeze({ name: "geopolitics", topic: "conflict_geopolitics", country: "UKR" }),
+  Object.freeze({ name: "macro_fx", topic: "macro_risk", country: "BRA" }),
+  Object.freeze({ name: "critical_minerals", topic: "critical_minerals", country: "AUS" }),
+]);
 const SCHEMA = "geomacro.earn-first-live-no-funds.v1";
 const PUBLIC_PREFLIGHT_DENIAL_CODES = new Set([
   "CENTRAL_SECURITY_UNAVAILABLE",
@@ -68,9 +77,15 @@ export async function acceptEarningPilotLive({
   origin = "https://geomacro.live",
   expectedSha,
   diagnosticOnly = false,
+  pilotCases = EARNING_PILOT_CASES,
   fetchImpl = fetch,
   now = new Date(),
 } = {}) {
+  const alternateProfile = pilotCases === EARNING_PILOT_ALTERNATE_CASES;
+  if (pilotCases !== EARNING_PILOT_CASES && !alternateProfile)
+    throw Error("EARNING_PILOT_COUNTRY_SET_UNAPPROVED");
+  if (alternateProfile && !diagnosticOnly)
+    throw Error("EARNING_PILOT_ALTERNATE_REQUIRES_DIAGNOSTIC_MODE");
   const base = new URL(origin);
   if (base.protocol !== "https:" || base.username || base.password ||
       base.search || base.hash || base.pathname !== "/" ||
@@ -113,7 +128,7 @@ export async function acceptEarningPilotLive({
   // This is a diagnostic, not a purchase operation. Each country/domain is
   // separately checked; a 503/429 for one must not hide another genuine
   // eligible buyer offer. Do not read or log error response bodies.
-  for(const item of EARNING_PILOT_CASES){
+  for(const item of pilotCases){
     const body={
       schema_version:"geomacro.agent-query.v1",
       delivery_tier:"structural_baseline",
@@ -199,6 +214,7 @@ export async function acceptEarningPilotLive({
   const result={
     schema_version:SCHEMA,
     checked_at:now.toISOString(),
+    country_profile:alternateProfile?"ALTERNATE_COUNTRIES_DIAGNOSTIC_ONLY":"DEFAULT_COUNTRIES",
     deployed_main_sha:expectedSha,
     exact_main_published:exactMainPublished,
     diagnostic_only:diagnosticOnly,
@@ -213,7 +229,8 @@ export async function acceptEarningPilotLive({
     quote_ready_category_count:quoteReadyCount,
     governed_no_payable_category_count:governedUnavailableCount,
     preflight_transport_error_category_count:requestFailureCount,
-    first_earning_ready:!diagnosticOnly && exactMainPublished && quoteReadyCount>0,
+    first_earning_ready:!diagnosticOnly && !alternateProfile &&
+      exactMainPublished && quoteReadyCount>0,
     no_funds_preflight_complete:true,
     checks:steps,
   };
@@ -226,6 +243,8 @@ if(process.argv[1]?.endsWith("verify-earn-first-live-no-funds.mjs")){
       origin:process.env.GEOMACRO_BASE_URL||"https://geomacro.live",
       expectedSha:process.env.EXPECTED_CANONICAL_SHA,
       diagnosticOnly:process.argv.includes("--diagnostic-only"),
+      pilotCases:process.argv.includes("--alternate-country-probe")
+        ? EARNING_PILOT_ALTERNATE_CASES : EARNING_PILOT_CASES,
     });
     console.log(JSON.stringify(result));
     // PR diagnostics are read-only observation, NOT earning acceptance.
