@@ -51,6 +51,8 @@ export type HybridAskAnswer = AskAnswer & {
   intelligence_tier?: "official_observation_unscored";
   signed_gro_generated?: false;
   independent_same_event_verification?: false;
+  /** Native timestamp of the newest publisher release, never the fetch clock. */
+  latest_original_published_at?: string;
 };
 
 type StoredEvent = {
