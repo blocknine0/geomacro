@@ -306,7 +306,7 @@ function approvedReliefWebAppname():string|null {
   return value;
 }
 async function reliefWeb(
-  countryNameValue:string,fetchImpl:typeof fetch,now:Date,appname:string,
+  countryNameValue:string,fetchImpl:typeof fetch,now:Date,appname:string,maxAgeMs=ONE_DAY_MS,
 ) {
   const params = new URLSearchParams({
     appname,limit:"10",
@@ -323,7 +323,7 @@ async function reliefWeb(
     if (!x || typeof x !== "object") return false;
     const fields = (x as {fields?:{date?:{original?:unknown}}}).fields;
     return typeof fields?.date?.original === "string" &&
-      freshPublished(fields.date.original,now);
+      freshPublished(fields.date.original,now,maxAgeMs);
   });
   // Provider release date is evidence metadata, not signed same-event proof.
   return probe("reliefweb_discovery",published.length,published.length > 0);
@@ -780,9 +780,11 @@ async function discoverOnDemandImpl(
     // account approval must not generate repeat 403s on every user query.
     if (category==="geopolitics" && approvedReliefAppname)
       tasks.push({name:"reliefweb_discovery",category,run:()=>
-        reliefWeb(name,trackedFetch,now,approvedReliefAppname)});
+        reliefWeb(name,trackedFetch,now,approvedReliefAppname,newsMaxAgeMs)});
   }
   if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
+    if(!topics.length && ["uk_ofsi_original_publisher","ecb_original_publisher",
+      "uk_desnz_original_publisher"].includes(source.family)) continue;
     if (categories.includes(source.domain) &&
         (!source.scopedTopics || !topics.length ||
          source.scopedTopics.some(t=>topics.includes(t)))) tasks.push({
@@ -885,10 +887,13 @@ const MAX_ARTICLE_PAGE_PROBES = 4;
 /** Internal-only evidence continuation; never serialize verified_candidates. */
 export async function verifyOnDemandOriginalArticlePages(
   candidates: readonly PrivateOriginalCandidate[],
-  options: {fetchImpl?:typeof fetch; now?:Date}={},
+  options: {fetchImpl?:typeof fetch; now?:Date; maxAgeSeconds?:number}={},
 ): Promise<PrivatePageDateResult> {
   const now=options.now ?? new Date();
-  if(!Number.isFinite(now.getTime()))throw Error("ON_DEMAND_CLOCK_INVALID");
+  const maxAgeMs=options.maxAgeSeconds===undefined?ONE_DAY_MS:
+    Math.min(MAX_NEWS_AGE_MS,options.maxAgeSeconds*1000);
+  if(!Number.isFinite(now.getTime()) || !Number.isFinite(maxAgeMs) || maxAgeMs<=0)
+    throw Error("ON_DEMAND_CLOCK_INVALID");
   const eligible=candidates.slice(0,16).filter((candidate)=>{
     const def=ORIGINAL_FALLBACK_FEEDS.find((feed)=>
       feed.family===candidate.publisher_family && feed.domain===candidate.domain);
@@ -899,7 +904,7 @@ export async function verifyOnDemandOriginalArticlePages(
       (
         (candidate.source_native_feed_publication_date_verified===true &&
          candidate.feed_item_published_at!==null &&
-         freshPublished(candidate.feed_item_published_at,now) &&
+         freshPublished(candidate.feed_item_published_at,now,maxAgeMs) &&
          candidate.undated_atom_original_page_pending!==true) ||
         (def.media==="atom" &&
          ["uk_fcdo_original_publisher","uk_dbt_original_publisher"]
@@ -928,7 +933,7 @@ export async function verifyOnDemandOriginalArticlePages(
     try{
       const html=await boundedFetch(options.fetchImpl??fetch,candidate.article_url,"text/html");
       const originalDate=verifiedPublisherPageDate(html,now);
-      if(!originalDate || !freshPublished(originalDate,now) ||
+      if(!originalDate || !freshPublished(originalDate,now,maxAgeMs) ||
         (candidate.feed_item_published_at!==null &&
          Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000))
         return null;
