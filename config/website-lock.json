@@ -1,7 +1,7 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "14ea879c5dfab49b751df74d08154b36b2d6cfcb",
+  "baseline_sha": "bcace9839871e38489f362df11737f7e9c7731c0",
   "published_baseline": "Founder directs Geomacro to restore actual intelligence news published after 10 October 2026, across Geopolitics, Macro/FX and Critical Minerals, not fabricated or backdated stories. Existing 30d rolling derived-only Cloudflare D1 website journal, direct browser D1 fallback, initial SSR and 30-minute background ingestion stay in place. Source expansion: first-party UK Home Office security, UK DBT Macro/FX economic trade policy, India Ministry of Mines PIB original page clock verified in IST; only admitted first-party and relevant original releases generate generic Geomacro-derived What changed / Why it matters, without copying headlines, original URLs, publisher raw text or secrets. The active /intelligence SSR loader reads independently verified derived news directly from the public D1 endpoint rather than nesting an unreliable server-function RPC, and the source reader preserves actual original time, strict 15-minute original-source delay, dedup, and source-health warnings; no synthetic news from empty publisher windows. no x402 or GRI changes; independent 60m Global Risk remains. User will manually publish only after exact-head source/test/security verification and Lovable sync; live acceptance separate. Founder directs gap recovery from prior Supabase freeze; verified first-party 2026-10-01 onward original-first-publication GOV UK archived Search + Content API, separate manual once/weekly backfill into derived-only D1. If Lovable SSR or browser transport returns no cards, free website shows source-private sandboxed/no-script Cloudflare D1 newsroom HTML fallback with original dates, Geomacro Finds, What changed and Why it matters, not fabricated latest news.  Original founder recovery live-D1 HTML cards pass through the corrected Signal[] array from fetchDirectDerivedNews() to initialJournal first HTML; the formerly erroneous history.value.signals silently discarded all records. Show unknown/loading rather than zero when network/SSR have not provided a verified count. Embedded direct D1 output remains source-private.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
@@ -9,5 +9,14 @@
   "published_source_sha": "7215b0d05b05ccc4de1e5f69a333ae615abc38e3",
   "lock_revision": "founder-oct-11-13-real-first-published-gap-restore-20261013",
   "pending_publish_acceptance": true,
-  "website_privacy_baseline_status": "FOUNDER_APPROVED_LOCKED_AWAITING_EXACT_SHA_LIVE_DEPLOYMENT"
+  "website_privacy_baseline_status": "FOUNDER_APPROVED_LOCKED_AWAITING_EXACT_SHA_LIVE_DEPLOYMENT",
+  "approved_presentation_change": {
+    "scope": "src/components/intelligence/stateless-live-desk.tsx",
+    "approval": "Founder explicitly approved the website-lock change in ChatGPT on 2026-10-13 (Asia/Kolkata).",
+    "purpose": "Prevent indefinite Intelligence tab loading when browser/server function source or journal RPC stalls. Keep original dates, verified derived-only Cloudflare fallback, 15-minute website release lag and no live payment.",
+    "approved_ui_commit": "bcace9839871e38489f362df11737f7e9c7731c0",
+    "previous_baseline_sha": "14ea879c5dfab49b751df74d08154b36b2d6cfcb",
+    "global_risk_final_lock_unmodified": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  }
 }
