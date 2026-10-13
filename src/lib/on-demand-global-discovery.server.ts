@@ -806,10 +806,14 @@ export function deduplicateOnDemandOriginalHeadlines(
       item.undated_atom_original_page_pending===true &&
       item.feed_item_published_at===null &&
       item.source_native_feed_publication_date_verified===false;
+    const searchReview=def?.media==="search" &&
+      item.search_index_original_page_pending===true &&
+      item.feed_item_published_at===null &&
+      item.source_native_feed_publication_date_verified===false;
     // Preserve established native-dated candidate dedup contracts.
     // Enforce fixed issuer/host/path and exact SHA binding additionally ONLY
     // on the new missing-<published> GOV.UK Atom rescue path.
-    const reviewedUndated=undatedReview===true && !!def &&
+    const reviewedUndated=(undatedReview===true || searchReview===true) && !!def &&
       originalArticleUrl(item.article_url,def)===item.article_url &&
       item.article_identity_sha256===digest(def.family+"|"+item.article_url);
     if((!nativeDated&&!reviewedUndated)||
@@ -1045,7 +1049,10 @@ export async function verifyOnDemandOriginalArticlePages(
            .includes(def.family) &&
          candidate.source_native_feed_publication_date_verified===false &&
          candidate.feed_item_published_at===null &&
-         candidate.undated_atom_original_page_pending===true)
+         candidate.undated_atom_original_page_pending===true) ||
+        (def.media==="search" && candidate.search_index_original_page_pending===true &&
+         candidate.feed_item_published_at===null &&
+         candidate.source_native_feed_publication_date_verified===false)
       );
   });
   const chosen:PrivateOriginalCandidate[]=[];
