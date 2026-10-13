@@ -19,16 +19,19 @@ export const THIRTY_MIN_PUBLISHER_PAIRS=Object.freeze({
   geopolitics:Object.freeze([
     "un_news_security_original_rss_review",
     "uk_fcdo_original_foreign_policy_atom_review",
+    "uk_mod_original_defence_atom_review",
   ]),
   macro:Object.freeze([
     "fed_monetary_original_press_rss_review",
     "statcan_prices_original_atom_review",
     "ecb_press_original_rss_review",
+    "uk_hmt_original_treasury_atom_review",
   ]),
   rare_earth:Object.freeze([
     "nrcan_government_news_original_atom_review",
     "uk_dbt_critical_minerals_atom_pending_review",
     "australia_industry_minister_original_rss_review",
+    "uk_desnz_original_energy_minerals_atom_review",
   ]),
 });
 // Reviewed issuing institutions (not hostnames); this proves distinct
@@ -44,6 +47,9 @@ const ORIGINAL_PUBLISHER_ORG=Object.freeze({
   usgs_minerals_original_news_rss_review:"us_geological_survey",
   uk_dbt_critical_minerals_atom_pending_review:"uk_department_business_trade",
   australia_industry_minister_original_rss_review:"australian_industry_department",
+  uk_mod_original_defence_atom_review:"uk_defence_ministry",
+  uk_hmt_original_treasury_atom_review:"uk_treasury",
+  uk_desnz_original_energy_minerals_atom_review:"uk_energy_ministry",
 });
 const DOMAINS=Object.keys(THIRTY_MIN_PUBLISHER_PAIRS);
 const lookup=Object.fromEntries(EXPANDED_OFFICIAL_SOURCES.map(s=>[s.id,s]));
@@ -53,15 +59,16 @@ export function select30MinPublishers(now=new Date()) {
   const slot=Math.floor(now.getTime()/INTERVAL_MS);
   return Object.fromEntries(DOMAINS.map(domain=>{
     const pair=THIRTY_MIN_PUBLISHER_PAIRS[domain];
-    if(![2,3].includes(pair.length)||
+    if(![2,3,4].includes(pair.length)||
        pair.some(id=>lookup[id]?.domain!==domain||!lookup[id]?.original_hosts?.length)||
        new Set(pair).size!==pair.length ||
        pair.some(id=>!ORIGINAL_PUBLISHER_ORG[id]) ||
        new Set(pair.map(id=>ORIGINAL_PUBLISHER_ORG[id])).size!==pair.length)
       throw Error("30M_MONITOR_PUBLISHER_PAIR_INVALID");
-    // Two independent official organizations per 30m window, including when
-    // primary already has new items. A third minerals organization rotates
-    // into the pair, rather than tripling per-run origin GET traffic.
+    // Exactly TWO distinct departmental/institutional origins per 30m window,
+    // including when the primary already has new items. 2-4 publishers
+    // rotate through two bounded GET slots; no increase in request budget.
+    // Distinct department does NOT alone imply independently confirmed claims.
     const idx=slot%pair.length;
     const current=lookup[pair[idx]];
     const next=lookup[pair[(idx+1)%pair.length]];
