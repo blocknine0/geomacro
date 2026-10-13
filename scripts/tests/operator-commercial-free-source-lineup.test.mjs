@@ -31,6 +31,12 @@ test("three no-key rotating probes per group cover all three categories without 
     counts.set(s.category, (counts.get(s.category) ?? 0) + 1);
   }
   assert.deepEqual(Object.fromEntries(counts), { geopolitics: 3, macro: 3, rare_earth: 3 });
+  // DOE's context-page probe was unparseable on the GitHub production runner.
+  // Retain DOE in review registry; rotate the official GA news index instead.
+  assert.ok(FREE_NO_KEY_TRANSPORT_SPECS.some(x =>
+    x.id === "geoscience_australia" && x.category === "rare_earth" &&
+    x.url === "https://www.ga.gov.au/news" && x.format === "html"));
+  assert.ok(!FREE_NO_KEY_TRANSPORT_SPECS.some(x => x.id === "us_doe"));
 });
 
 test("format validation is specific: no HTML/XML error as JSON and no annual stats as news", () => {
