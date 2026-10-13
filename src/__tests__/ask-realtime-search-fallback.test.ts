@@ -9,7 +9,27 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(orchestrator).toContain("answerHybridQuestion(question)");
     expect(orchestrator).toContain("if (!primary.insufficient_evidence) return primary");
     expect(orchestrator).toContain("realtimeSearchAnswer(question, primary)");
-    expect(orchestrator).toContain("return realtime ?? primary");
+    expect(orchestrator).toContain("if (realtime && !realtime.insufficient_evidence) return realtime");
+    expect(orchestrator).toContain("officialUnscoredReleaseAnswer(question, realtime ?? primary)");
+    expect(orchestrator).toContain("?? realtime ?? primary");
+  });
+
+  it("offers publisher-observation-only responses without inventing signed or scored risk", () => {
+    const orchestrator = read("src/lib/ask-answer.server.ts");
+    const type = read("src/lib/hybrid-ask-intelligence.server.ts");
+    expect(orchestrator).toContain("readStatelessWebsiteIntelligence");
+    expect(orchestrator).toContain("now - issued <= 24 * 3_600_000");
+    expect(orchestrator).toContain("insufficient_evidence: false");
+    expect(orchestrator).toContain("low_confidence: true");
+    expect(orchestrator).toContain("mean_relevance: null");
+    expect(orchestrator).toContain("gri: null");
+    expect(orchestrator).toContain('intelligence_tier: "official_observation_unscored"');
+    expect(orchestrator).toContain("signed_gro_generated: false");
+    expect(orchestrator).toContain("independent_same_event_verification: false");
+    expect(orchestrator).toContain("rest.split(/\\s+/).some");
+    expect(orchestrator).not.toContain("signRiskObject");
+    expect(orchestrator).not.toContain("settlePayment");
+    expect(type).toContain('intelligence_tier?: "official_observation_unscored"');
   });
 
   it("uses a bounded current-web path with broad three-domain coverage", () => {
