@@ -138,6 +138,19 @@ test("updated, publisher spoof, rewritten path, unrelated SHA and future dates f
      refs:f.refs,expectedClocks:f.clocks,now:f.now,
    }),[]);
 });
+test("upstream rate limit and forbidden do not cause retry, proxy or extra publisher GET",async()=>{
+ const f=fixture("macro","uk_hmt_original_treasury_atom_review");
+ for(const status of [403,429]){
+   let calls=0;
+   const r=await fetchPulseRotatedPrivateOriginals({
+     category:"macro",checkedAt:f.checkedAt,refs:f.refs,
+     expectedClocks:f.clocks,now:f.now,
+     fetchImpl:async()=>{calls++;return new Response("",{status});},
+   });
+   assert.deepEqual(r,[]);
+   assert.equal(calls,1);
+ }
+});
 test("oversized/XML DTD sources, denied publisher and no raw stdout cannot admit",async()=>{
  const f=fixture("macro","uk_hmt_original_treasury_atom_review");
  const original=feed(f.source,{clock:f.native});
