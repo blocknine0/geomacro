@@ -103,11 +103,11 @@ describe("#2044 no-external-reviewer original content + B2 rights readback",()=>
     }
   });
   it("never spends a B2 rights GET when original HTML hash mismatches or reviewer claims are disputed",async()=>{
-    for(const c of [
-      {...fed,original_article_sha256:sha("legacy URL hash")},
-      {...ecb,reporting_position:"disputes"},
+    for(const candidates of [
+      [{...fed,original_article_sha256:sha("legacy URL hash")},ecb],
+      [fed,{...ecb,reporting_position:"disputes"}],
     ]){
-      const t=setup([c===fed?fed:c,ecb]);
+      const t=setup(candidates);
       const verdict=await t.run();
       expect(verdict.registry_rights_compatible).toBe(false);
       expect(verdict.payment_authorized).toBe(false);
