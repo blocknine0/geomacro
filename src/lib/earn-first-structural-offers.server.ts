@@ -114,10 +114,24 @@ export async function preflightStructuralBaseline(
     return notChargeable("PREFLIGHT_GOVERNED_DATA_UNAVAILABLE", 503);
   }
   // Never report an accidental checker success without subject/module proof.
+  // Positive availability must include actual source-native observation time
+  // AND a rights-certified derived-commercial source contract. No flags from a
+  // mismatched or empty checker response can become a buyer purchase offer.
+  const observed = availability.subjects[0]?.latest_evidence_at;
+  const observedAt = typeof observed === "string" ? Date.parse(observed) : Number.NaN;
+  const rightsReady = availability.source_contracts.length > 0 &&
+    availability.source_contracts.every(contract =>
+      ["COMMERCIAL_OK", "DERIVED_ONLY"].includes(contract.commercial_usage_status ?? "") &&
+      contract.attribution_required === false);
   const eligible = availability.deliverable === true &&
     availability.code === "AVAILABLE" &&
     availability.query_plan_hash === plan.query_plan_hash &&
     availability.subjects.length === 1 &&
+    Number.isFinite(observedAt) && observedAt <= Date.now() &&
+    rightsReady &&
+    availability.ineligible_source_ids.length === 0 &&
+    availability.missing_modules.length === 0 &&
+    availability.stale_modules.length === 0 &&
     plan.required_modules.every(module =>
       availability.subjects[0].available_modules.includes(module));
   if (!eligible) return response({
