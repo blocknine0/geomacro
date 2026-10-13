@@ -17,6 +17,8 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
+      - name: Install pinned repository dependencies
+        run: bun install --frozen-lockfile
       - name: No-funds typed official-data unit contracts
         run: bunx vitest run src/lib/category-open-data.server.test.ts src/lib/category-intelligence-alias.server.test.ts
       - name: Real read-only source data per domain, aggregate-only metrics
