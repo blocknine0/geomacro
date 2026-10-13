@@ -593,6 +593,18 @@ function originalRssArticleLink(entry: string, def: OriginalFeed): string {
   }
 }
 
+// Trusted first-party RSS/Atom item summaries may carry exact subject/topic
+// omitted from the headline. Bound parsing to 600 characters of item metadata;
+// never use unrelated feed-level descriptions, updated clocks or linked pages.
+function originalItemSummary(entry:string, atom:boolean):string {
+  const tag=atom?"summary":"description";
+  const matched=new RegExp("<(?:atom:)?"+tag+"(?:\\s[^>]*)?>([\\s\\S]{0,3000}?)<\\/(?:atom:)?"+tag+">","iu").exec(entry);
+  if(!matched)return "";
+  const raw=matched[1].replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/u,"$1");
+  return raw.replace(/<[^>]*>/gu," ")
+    .replace(/&(?:amp|lt|gt|quot|apos|nbsp);/giu," ")
+    .replace(/\s+/gu," ").trim().slice(0,600);
+}
 type OriginalFeedResult={probe:SourceProbe;private_candidates:PrivateOriginalCandidate[]};
 async function originalOfficialFeed(
   def:OriginalFeed,countryIso3:string,countryNameValue:string,
@@ -633,8 +645,10 @@ async function originalOfficialFeed(
       : rssItemText(entry,"pubDate");
     // A different mineral's article must not qualify as evidence for this
     // query just because both are under the broad Critical Minerals topic.
+    const summary=originalItemSummary(entry,atom);
+    const contextualText=(title+" "+summary).slice(0,850);
     const mineralMatches = !mineral || def.domain !== "rare_earth" ||
-      MINERAL_TERMS.some((term) => term.value === mineral && term.pattern.test(title));
+      MINERAL_TERMS.some((term) => term.value === mineral && term.pattern.test(contextualText));
     const hasNativeDate=freshPublished(date,now,maxAgeMs);
     const undatedGovukAtom=atom && !date.trim() &&
       ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
@@ -642,8 +656,10 @@ async function originalOfficialFeed(
     // Missing Atom <published> may enter PRIVATE article-page verification,
     // not score/payment. Never accept <updated>, bad/missing RSS clocks, or
     // a stale/future <published> as original source time.
-    if (!originalHeadlineMentionsCountry(title,countryIso3,countryNameValue) ||
-        !def.topic.test(title) || !matchesRequestedTopic(title,def.domain,topics) || !mineralMatches ||
+    if (!(originalHeadlineMentionsCountry(title,countryIso3,countryNameValue) ||
+          originalHeadlineMentionsCountry(summary.slice(0,300),countryIso3,countryNameValue)) ||
+        !def.topic.test(contextualText) ||
+        !matchesRequestedTopic(contextualText,def.domain,topics) || !mineralMatches ||
         (!hasNativeDate && !undatedGovukAtom)) continue;
     let href="";
     if(atom){
