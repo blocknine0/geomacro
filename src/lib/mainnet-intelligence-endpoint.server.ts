@@ -45,6 +45,7 @@ import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.se
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import { lookupTelegramFallback } from "./on-demand-telegram-fallback.server";
 import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
+import { qualifyPrivateOnDemandEvidence, publicOnDemandEvidenceDisposition } from "./on-demand-private-evidence-package.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
   inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages, type OnDemandCategory,
@@ -390,6 +391,7 @@ export const mainnetIntelligenceHandlers = {
           let privateAnnualMacroRightsStatus:PrivateOnDemandMacroRightsStatus="NO_ANNUAL_EVIDENCE";
           let privatePeerMacroStatus:PrivatePeerMacroResult["status"]="NO_CERTIFIED_MACRO_RIGHTS";
           let privatePeerScoredDimensions=0;
+          let privateEvidenceDisposition:ReturnType<typeof publicOnDemandEvidenceDisposition>|null=null;
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
@@ -432,6 +434,21 @@ export const mainnetIntelligenceHandlers = {
             // independent facts, commercial source rights or signed risk.
             articlePageChecks=pageProof.attempted;
             articleDatesVerified=pageProof.verified;
+            // This is the real read-only continuation from discovery to
+            // PRIVATE evidence and the existing rights registry. An original
+            // title is only an announcement claim, not an inferred risk event.
+            // The public projection contains no source title, URL, ID, hash
+            // or privileged rights row; no paid branch can consume this receipt.
+            const privatePackage=await qualifyPrivateOnDemandEvidence({
+              country_iso3:subject.country_iso3,
+              categories,topics:plan.topics,mineral,
+              max_age_seconds:requestedNewsAgeSeconds??86_400,
+              now:new Date(),
+              feed_candidates:privateResult.private_original_review_candidates,
+              page_verified_candidates:pageProof.verified_candidates,
+              annual_macro_changes:privateResult.private_macro_changes,
+            });
+            privateEvidenceDisposition=publicOnDemandEvidenceDisposition(privatePackage);
           } catch(error) {
             console.error("[x402-live] bounded discovery failed",error);
             return json({
@@ -477,6 +494,7 @@ export const mainnetIntelligenceHandlers = {
               private_macro_peer_scored_dimension_count:privatePeerScoredDimensions,
               original_article_page_checks:articlePageChecks,
               article_page_publication_dates_verified:articleDatesVerified,
+              evidence_qualification:privateEvidenceDisposition,
               private_originals_article_page_verified:
                 privateOriginalReviewCandidateCount>0 &&
                 articleDatesVerified===privateOriginalReviewCandidateCount,
