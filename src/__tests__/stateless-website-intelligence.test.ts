@@ -229,7 +229,9 @@ describe("no-storage public Intelligence original-release reader", () => {
     const source = readFileSync("src/lib/stateless-public-intelligence.server.ts", "utf8");
     const endpoint = readFileSync("src/lib/stateless-intelligence.functions.ts", "utf8");
     const desk = readFileSync("src/components/intelligence/stateless-live-desk.tsx", "utf8");
-    expect(active).toContain('getStatelessIntelligence({ data: { category: "geopolitics" } })');
+    expect(active).toContain('getStatelessIntelligence({ data: { category } })');
+    expect(active).toContain('const domains = ["geopolitics", "macro", "rare_earth"] as const');
+    expect(page).toContain('initialFeeds={loader.statelessFeeds}');
     expect(active).not.toContain("getPublicIntelligenceSeo(");
     expect(page).toContain("component: StatelessWebsiteIntelligencePage");
     expect(active).toContain("fetchDirectDerivedNews()");
