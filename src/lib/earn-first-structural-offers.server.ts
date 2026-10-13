@@ -6,6 +6,9 @@ import {
 } from "./agent-query-deliverability.server";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import { getCoinbaseX402Config } from "./coinbase-x402.server";
+import {
+  isPinnedChinaCpiStructuralPlan,prepareVerifiedChinaCpiStructuralAnswer,
+} from "./wdi-attributed-structural-product.server";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const PURCHASE_PATH = "/api/v1/intelligence/query";
@@ -105,6 +108,28 @@ export async function preflightStructuralBaseline(
   } catch (error) {
     return notChargeable(error instanceof ZodError
       ? "PREFLIGHT_INVALID_REQUEST" : "PREFLIGHT_UNSUPPORTED_REQUEST", 400);
+  }
+
+  // Exactly one official structural indicator has a stronger independent
+  // entitlement: source=2, B2 certified rights, fixed CC BY credit and a
+  // separately signed/verified answer. This is NO FUNDS until the x402
+  // prepared-response freeze is implemented and verified. Never offer a 402.
+  if(isPinnedChinaCpiStructuralPlan(plan)){
+    const prepared=await prepareVerifiedChinaCpiStructuralAnswer(plan);
+    if(prepared.status!=="PREPARED_NO_FUNDS_ONLY")
+      return response({ok:false,chargeable:false,payment_required_now:false,
+        execution_authorized:false,query_plan_hash:plan.query_plan_hash,
+        status:"NOT_CURRENTLY_DELIVERABLE",
+        error:{code:prepared.code}},422);
+    return response({ok:true,chargeable:false,payment_required_now:false,
+      execution_authorized:false,signed_gro_delivered:false,
+      delivery_tier:"structural_baseline",
+      query_plan_hash:plan.query_plan_hash,
+      status:"SIGNED_STRUCTURAL_PRODUCT_VERIFIED_NO_FUNDS_ONLY",
+      signed_product_payload_sha256:prepared.prepared_payload_sha256,
+      quote_preparation_ready:false,
+      payment_rail_ready:false,
+      purchase_endpoint:PURCHASE_PATH},200);
   }
 
   let availability: AgentQueryDeliverability;
