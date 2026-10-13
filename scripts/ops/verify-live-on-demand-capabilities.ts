@@ -16,8 +16,8 @@ const cases:readonly {
   id:string; country_iso3:string; category:OnDemandCategory;
   topic:string; mineral?:"lithium"; max_age_seconds:number;
 }[]=[
-  {id:"RUS_OFFICIAL_SANCTIONS_HISTORY",country_iso3:"RUS",
-   category:"geopolitics",topic:"sanctions_restrictions",max_age_seconds:31*86_400},
+  {id:"RUS_OFFICIAL_CONFLICT_HISTORY",country_iso3:"RUS",
+   category:"geopolitics",topic:"conflict_geopolitics",max_age_seconds:31*86_400},
   {id:"CHN_OFFICIAL_MACRO_HISTORY",country_iso3:"CHN",
    category:"macro",topic:"macro_risk",max_age_seconds:7*86_400},
   {id:"GBR_OFFICIAL_LITHIUM_HISTORY",country_iso3:"GBR",
