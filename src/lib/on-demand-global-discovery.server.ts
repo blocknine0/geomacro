@@ -637,7 +637,8 @@ async function originalOfficialFeed(
       MINERAL_TERMS.some((term) => term.value === mineral && term.pattern.test(title));
     const hasNativeDate=freshPublished(date,now,maxAgeMs);
     const undatedGovukAtom=atom && !date.trim() &&
-      ["uk_fcdo_original_publisher","uk_dbt_original_publisher"].includes(def.family);
+      ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
+       "uk_ofsi_original_publisher","uk_desnz_original_publisher"].includes(def.family);
     // Missing Atom <published> may enter PRIVATE article-page verification,
     // not score/payment. Never accept <updated>, bad/missing RSS clocks, or
     // a stale/future <published> as original source time.
@@ -714,7 +715,8 @@ export function deduplicateOnDemandOriginalHeadlines(
     const nativeDated=item.source_native_feed_publication_date_verified===true &&
       Number.isFinite(time) && item.undated_atom_original_page_pending!==true;
     const undatedReview=def?.media==="atom" &&
-      ["uk_fcdo_original_publisher","uk_dbt_original_publisher"]
+      ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
+       "uk_ofsi_original_publisher","uk_desnz_original_publisher"]
         .includes(item.publisher_family) &&
       item.undated_atom_original_page_pending===true &&
       item.feed_item_published_at===null &&
@@ -952,7 +954,8 @@ export async function verifyOnDemandOriginalArticlePages(
          freshPublished(candidate.feed_item_published_at,now,maxAgeMs) &&
          candidate.undated_atom_original_page_pending!==true) ||
         (def.media==="atom" &&
-         ["uk_fcdo_original_publisher","uk_dbt_original_publisher"]
+         ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
+       "uk_ofsi_original_publisher","uk_desnz_original_publisher"]
            .includes(def.family) &&
          candidate.source_native_feed_publication_date_verified===false &&
          candidate.feed_item_published_at===null &&
