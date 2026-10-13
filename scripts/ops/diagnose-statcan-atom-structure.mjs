@@ -26,7 +26,7 @@ async function probe(subject, index) {
       entry_count:entries.length,
       title_tag_count:entries.filter(v=>title(v).length>0).length,
       title_length_at_least_12_count:entries.filter(v=>eligibleTitle(v).length>=12).length,
-      title_has_nested_markup_count:entries.filter(v=><|>/.test(title(v))).length,
+      title_has_nested_markup_count:entries.filter(v=>/[<>]/.test(title(v))).length,
       daily_article_ref_count:entries.filter(v=>atomDailyPattern.test(v)).length,
       any_first_party_ref_count:entries.filter(v=>/www150\.statcan\.gc\.ca/i.test(v)).length,
       atom_updated_count:entries.filter(v=>/<(?:atom:)?updated\b/i.test(v)).length,
