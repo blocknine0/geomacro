@@ -1,0 +1,48 @@
+name: First Earning Journey Separate Live Proof
+
+on:
+  pull_request:
+    paths:
+      - "scripts/agentic/verify-first-earning-separate-live.mjs"
+      - "scripts/agentic/verify-first-earning-separate-live.test.mjs"
+      - "src/__tests__/first-earning-separate-live-contract.test.ts"
+      - ".github/workflows/first-earning-separate-live-proof.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/agentic/verify-first-earning-separate-live.mjs"
+      - "scripts/agentic/verify-first-earning-separate-live.test.mjs"
+      - "src/__tests__/first-earning-separate-live-contract.test.ts"
+      - ".github/workflows/first-earning-separate-live-proof.yml"
+      - "src/lib/category-live-observation.server.ts"
+      - "src/lib/category-intelligence-alias.server.ts"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-first-earning-separate-live-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  separate-free-vs-paid-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Checkout audited source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prove no-funds, signed/uns cored separation offline
+        run: node --test scripts/agentic/verify-first-earning-separate-live.test.mjs
+      - name: Live exact-main GET readback from all three categories
+        if: github.event_name != 'pull_request'
+        env:
+          EXPECTED_CANONICAL_SHA: ${{ github.sha }}
+        run: node scripts/agentic/verify-first-earning-separate-live.mjs
+      - name: Publish not asserted for unmerged PR revisions
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Offline source/protocol tests passed; unmerged commit is not claimed published."
+          echo "Signed paid delivery and mainnet settlement remain independently gated."
