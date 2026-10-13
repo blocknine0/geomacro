@@ -5,10 +5,15 @@
  */
 const REVIEWED_DEMONYMS: Readonly<Record<string,readonly string[]>> = Object.freeze({
   CHN:["Chinese"], IND:["Indian"], USA:["American","U.S.","US"],
-  AUS:["Australian"], CAN:["Canadian"], GBR:["British","UK"],
+  AUS:["Australian"], CAN:["Canadian"],
   JPN:["Japanese"], BRA:["Brazilian"], ZAF:["South African"],
   CHL:["Chilean"], IDN:["Indonesian"], KOR:["South Korean"],
   DEU:["German"], FRA:["French"],
+  // The World Bank uses formal display names; first-party article headlines
+  // commonly use these reviewed short forms. Word boundaries still apply.
+  RUS:["Russia","Russian"], IRN:["Iran","Iranian"],
+  // Fixed UK geography, not a rule that every GOV.UK article is about Britain.
+  GBR:["British","UK","Cornwall","England","Scotland","Wales"],
 });
 function normalized(value:string):string {
   return value.normalize("NFKC").trim().replace(/\s+/gu," ");
