@@ -9,7 +9,7 @@
  * No public API, B2 PUT, Supabase read/write, D1 write, x402 or partner call.
  * Missing live evidence, trusted review key, rights or signer = NO ARTIFACT.
  */
-import { createHash,createPublicKey,timingSafeEqual } from "node:crypto";
+import { createHash } from "node:crypto";
 import {
   closeSync, constants, lstatSync, openSync, readFileSync,
   realpathSync, writeFileSync,
@@ -25,6 +25,8 @@ import {
   type TrustedReviewBundle,
 } from "../../src/lib/on-demand-reviewed-rights-qualifier.server";
 import { loadRiskObjectVerificationKeysFromEnv } from "../../src/lib/risk-object-signing.server";
+import {assertIndependentReviewerKeyAuthority} from "../../src/lib/independent-reviewer-authority.server";
+export {assertIndependentReviewerKeyAuthority} from "../../src/lib/independent-reviewer-authority.server";
 
 const MAX_REVIEW_INPUT_BYTES=1024*1024;
 const MAX_SIGNED_OUTPUT_BYTES=256*1024;
@@ -98,47 +100,6 @@ export function parsePrivateReviewedRequest(raw:string):{
     events:data.events as OnDemandCountryScoringInput["events"],
     review_bundle:data.review_bundle as TrustedReviewBundle,
   };
-}
-/**
- * #2044: two independent authorities for the first REAL production GRO.
- * The reviewed package's Ed25519 verifier is pinned to an out-of-band
- * fingerprint; the commercial GRO signing key cannot impersonate its reviewer.
- * A public PEM or matching algorithm alone never establishes reviewer role.
- *
- * Both inputs are public-key material. No private reviewer/signing key is read,
- * generated, logged or stored by this check. Any ambiguity fails closed.
- */
-export function assertIndependentReviewerKeyAuthority({
-  reviewer_public_key_pem,reviewer_public_key_sha256,
-  gro_signing_public_key_spki_b64,
-}:{
-  reviewer_public_key_pem:string;
-  reviewer_public_key_sha256:string;
-  gro_signing_public_key_spki_b64:string;
-}):void{
-  if(typeof reviewer_public_key_pem!=="string" ||
-     typeof reviewer_public_key_sha256!=="string" ||
-     !/^[a-f0-9]{64}$/.test(reviewer_public_key_sha256) ||
-     typeof gro_signing_public_key_spki_b64!=="string" ||
-     !/^[A-Za-z0-9+/]+={0,2}$/.test(gro_signing_public_key_spki_b64))
-    throw Error(FAIL);
-  try {
-    const review=createPublicKey(reviewer_public_key_pem);
-    const commercial=createPublicKey({
-      key:Buffer.from(gro_signing_public_key_spki_b64,"base64"),
-      format:"der",type:"spki",
-    });
-    if(review.asymmetricKeyType!=="ed25519" ||
-       commercial.asymmetricKeyType!=="ed25519")throw Error(FAIL);
-    const reviewDer=review.export({format:"der",type:"spki"}) as Buffer;
-    const commercialDer=commercial.export({format:"der",type:"spki"}) as Buffer;
-    const actualFingerprint=createHash("sha256").update(reviewDer).digest();
-    const approvedFingerprint=Buffer.from(reviewer_public_key_sha256,"hex");
-    if(!timingSafeEqual(actualFingerprint,approvedFingerprint) ||
-       (reviewDer.length===commercialDer.length &&
-        timingSafeEqual(reviewDer,commercialDer)))
-      throw Error(FAIL);
-  }catch{throw Error(FAIL);}
 }
 function trustedSigner() {
   const key_id=process.env.RISK_OBJECT_SIGNING_KEY_ID;
