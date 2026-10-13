@@ -1,5 +1,7 @@
 import { fetchOriginalAlternate } from "./official-native-alternates.mjs";
 import {validatePrivatePulseRefs,privateOriginalMatchesPulse} from "./private-novel-pulse-match.mjs";
+import {createD1ControlPlaneStateClient} from "./d1-control-plane-state.mjs";
+import {selectPrivateNovelPulseRefs} from "./private-novel-pulse-match.mjs";
 import { fetchOfficialThirdPublisherArticles } from "./official-native-third-fallback.mjs";
 import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "./official-original-article-date.mjs";
@@ -214,7 +216,22 @@ export async function fetchOfficialNativeArticles(category, {
   // whose URL SHA matches the independently persisted D1 refs may proceed
   // to the existing private classifier. Other modes are unchanged.
   let refs=null;
-  if(process.env.GEOMACRO_PRIVATE_PULSE_SCOPED==="true"){
+  // A scheduled private scorer is invoked ONLY by the original-publisher
+  // 30m pulse reusable workflow. Its D1 checkpoint contains the SHA of
+  // the specific original article that caused the automatic wakeup.
+  // Manual / workflow_dispatch scorer keeps the prior source behavior.
+  const fromScheduledPulse=process.argv.includes("--private-scored-stage") &&
+    process.env.GITHUB_EVENT_NAME==="schedule" &&
+    process.env.GITHUB_REPOSITORY==="blocknine0/geomacro" &&
+    process.env.GITHUB_REF==="refs/heads/main";
+  if(fromScheduledPulse){
+    const read=await createD1ControlPlaneStateClient({
+      pipeline:"official_source_pulse_30m",
+    }).loadRows();
+    refs=selectPrivateNovelPulseRefs(read.get(category),category,now.getTime());
+    // No novel item in THIS category: no native network or model budget.
+    if(refs.size===0)return [];
+  } else if(process.env.GEOMACRO_PRIVATE_PULSE_SCOPED==="true"){
     let decoded;
     try{decoded=JSON.parse(process.env.GEOMACRO_PRIVATE_PULSE_REFS??"null")}
     catch{throw Error("PRIVATE_PULSE_REFS_INVALID")}
