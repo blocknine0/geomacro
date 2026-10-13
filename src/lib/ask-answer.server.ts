@@ -35,10 +35,23 @@ async function officialUnscoredReleaseAnswer(
     { category: "rare_earth" as const, test: /\b(critical minerals?|rare earths?|rare-earths?)\b/i },
   ];
   const matches = categoryPatterns.filter(item => item.test.test(q));
-  // Restrict to a pure category-level release request, not a tailored
-  // country/corridor question for which these releases may be irrelevant.
+  // A small allowlist rather than a blacklist: only broad category/news
+  // requests qualify. Names of countries, corridors, assets, dates, numeric
+  // risk requests and directional questions leave unrecognised tokens and
+  // stay on the verified/signed (or fail-closed) canonical path.
+  const rest = q
+    .replace(/\b(?:geopolitics?|geopolitical|diplomacy|foreign policy|macro\/fx|macroeconomics?|macroeconomic|macro|fx|foreign exchange|critical minerals?|rare[- ]earths?)\b/gi, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const allowed = new Set([
+    "what", "whats", "s", "is", "are", "the", "latest", "recent", "current",
+    "new", "news", "update", "updates", "development", "developments",
+    "release", "releases", "show", "me", "give", "tell", "about", "in",
+    "on", "for", "any", "from", "today", "now", "please", "us", "there",
+    "have", "been", "globally", "global", "world",
+  ]);
   if (!broadReleaseQuestion || matches.length !== 1 ||
-      /\b(in|for|about|between|versus|vs|affect|impact|why|forecast|predict|price|rate|score|index|indices|signed|verify|verified|corroborat|risk in)\b/i.test(q)) {
+      rest.split(/\s+/).some(token => token && !allowed.has(token))) {
     return null;
   }
   const { readStatelessWebsiteIntelligence } = await import("./stateless-public-intelligence.server");
@@ -73,6 +86,9 @@ async function officialUnscoredReleaseAnswer(
     source_identity_exposed: false,
     durable_live_storage_write: false,
     real_time_message: "Unscored first-party release observations only.",
+    intelligence_tier: "official_observation_unscored",
+    signed_gro_generated: false,
+    independent_same_event_verification: false,
   };
 }
 
