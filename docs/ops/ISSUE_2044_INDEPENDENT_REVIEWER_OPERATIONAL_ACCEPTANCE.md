@@ -40,7 +40,7 @@ receipts into the repository, GitHub Action logs, artifacts or public D1.
 Existing code provides infrastructure only; no genuine authorized reviewer
 proof, independent corroboration or source rights are manufactured by this PR.
 
-## #2044 unified key-pinning regression (PR #2153)
+## #2044 unified key-pinning regression
 
 The exact same independently approved public reviewer authority check is called
 from the protected manual runner and from the trusted server-side on-demand
