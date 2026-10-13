@@ -43,11 +43,14 @@ for (const { category, result, error } of results) {
   const checked = Date.parse(result?.checked_at ?? "");
   const correctDelay = Number.isFinite(cutoff) && Number.isFinite(checked) &&
     Math.abs((checked - cutoff) - 900_000) <= 2_000;
+  // Day-only Macro observations are admitted exclusively by the pinned
+  // Statistics Canada first-party article/date verifier upstream. Enforce the
+  // same next-day 12:15 UTC conservative cutoff as existing day-only domains.
   const strictlyOriginalDates = signals.every(s => {
     const date = Date.parse(s.published_at);
     const originalTrusted = s.date_precision === "day"
       ? /^\d{4}-\d{2}-\d{2}$/u.test(s.published_at) &&
-        ["rare_earth","geopolitics"].includes(s.category) &&
+        ["rare_earth","geopolitics","macro"].includes(s.category) &&
         (conservativeDayReleaseMs(s.published_at) ?? Infinity) <= checked
       : s.date_precision === "exact" && date <= cutoff;
     return Number.isFinite(date) && originalTrusted &&

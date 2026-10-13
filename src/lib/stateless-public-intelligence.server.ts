@@ -12,6 +12,7 @@ import { euCommissionTopOriginalCandidates } from "./stateless-eu-original-index
 import { australianNewsIndexCandidates, australianArticleMatchesOriginal } from "./stateless-australian-geoscience-original.server";
 import { readPibMinesOriginalCandidates } from "./stateless-pib-mines-original.server";
 import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
+import { verifiedStatcanOriginalReleaseDay } from "./stateless-statcan-original.server";
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
 const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
@@ -40,16 +41,16 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   // Only article <published> (never <updated>) controls release age.
   { id: "statcan_prices", category: "macro", media: "atom",
     url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/18-eng.atom",
-    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
+    allowedHosts: ["www150.statcan.gc.ca", "www.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
   { id: "statcan_accounts", category: "macro", media: "atom",
     url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/36-eng.atom",
-    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
+    allowedHosts: ["www150.statcan.gc.ca", "www.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
   { id: "statcan_trade", category: "macro", media: "atom",
     url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/12-eng.atom",
-    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
+    allowedHosts: ["www150.statcan.gc.ca", "www.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
   { id: "statcan_labour", category: "macro", media: "atom",
     url: "https://www150.statcan.gc.ca/n1/rss/dai-quo/14-eng.atom",
-    allowedHosts: ["www150.statcan.gc.ca"], credit: "Statistics Canada" },
+    allowedHosts: ["www150.statcan.gc.ca", "www.statcan.gc.ca"], credit: "Statistics Canada", statcanOriginalPage: true },
   // Eurostat's official Atom feed of economy-and-finance NEWS RELEASES,
   // not the dataset-update RSS whose timestamps reflect data operations.
   { id: "eurostat_economy_release", category: "macro", media: "atom",
@@ -204,6 +205,47 @@ async function readCanadaNewsOriginalDay(candidate: {
   }catch{return null}
 }
 
+
+async function readStatcanDailyOriginalDay(
+  candidate: { title: string; articleUrl: string },
+  source: StatelessSourceSpec, now: number,
+): Promise<StatelessSourceCandidate | null> {
+  if (!source.statcanOriginalPage) return null;
+  let canonical: string;
+  try {
+    const article = new URL(candidate.articleUrl);
+    if (article.username || article.password || article.port || article.hash ||
+        article.search || article.protocol !== "https:") return null;
+    const isAlias = article.hostname === "www.statcan.gc.ca" &&
+      /^\/daily-quotidien\/\d{6}\/dq\d{6}[a-z]-eng\.htm$/iu.test(article.pathname);
+    const isCanonical = article.hostname === "www150.statcan.gc.ca" &&
+      /^\/n1\/daily-quotidien\/\d{6}\/dq\d{6}[a-z]-eng\.htm$/iu.test(article.pathname);
+    if (!isAlias && !isCanonical) return null;
+    // Exact same official article path as the issuer's observed
+    // canonical redirect, without following arbitrary redirects.
+    canonical = isAlias
+      ? "https://www150.statcan.gc.ca/n1" + article.pathname
+      : article.href;
+  } catch { return null; }
+  try {
+    const response = await fetch(canonical, {
+      method: "GET", redirect: "error", cache: "no-store",
+      headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!response.ok ||
+        !/^text\/html(?:;|$)/iu.test(response.headers.get("content-type") ?? ""))
+      return null;
+    const html = await boundedText(response, 256 * 1024);
+    if (!html) return null;
+    const day = verifiedStatcanOriginalReleaseDay(html, canonical, candidate.title, now);
+    if (!day) return null;
+    return {
+      sourceId: source.id, category: source.category, title: candidate.title,
+      articleUrl: candidate.articleUrl, publishedAt: day,
+      datePrecision: "day", credit: source.credit,
+    };
+  } catch { return null; }
+}
 
 /**
  * A bounded, same-publisher, opt-in HTTP feed redirect for the one fixed
@@ -360,10 +402,13 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
     const canadaStage = {path_ok:0,http_ok:0,html_ok:0,original_ok:0,
       title_ok:0,clock_found:0,clock_consistent:0,date_path_ok:0,
       calendar_ok:0,not_future:0,within_30d:0};
-    const recovered = await Promise.all(parsed.undatedGov.slice(0, source.canadaOriginalPage ? 8 : 4)
-      .map(candidate => source.canadaOriginalPage
-        ? readCanadaNewsOriginalDay(candidate, source, now, stage => {canadaStage[stage]++;})
-        : readGovContentOriginalDate(candidate, source, now)));
+    const recovered = await Promise.all(parsed.undatedGov.slice(0,
+      source.canadaOriginalPage ? 8 : source.statcanOriginalPage ? 2 : 4)
+      .map(candidate => source.statcanOriginalPage
+        ? readStatcanDailyOriginalDay(candidate, source, now)
+        : source.canadaOriginalPage
+          ? readCanadaNewsOriginalDay(candidate, source, now, stage => {canadaStage[stage]++;})
+          : readGovContentOriginalDate(candidate, source, now)));
     return { healthy: true,
       candidates: [...parsed.dated, ...recovered.filter((x): x is StatelessSourceCandidate => x !== null)],
       metrics: { ...parsed.metrics, recovered_original_page: recovered.filter(Boolean).length, transport_ok: true,
