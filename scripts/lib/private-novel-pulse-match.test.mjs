@@ -67,3 +67,5 @@ test("zero newly seen originals remains genuinely empty and unchargeable",()=>{
   assert.equal(selectPrivateNovelPulseRefs(empty,"macro",now).size,0);
   assert.equal(privateOriginalMatchesPulse(candidate,new Set(),now),false);
 });
+
+await import("./private-novel-pulse-live-boundary.test.mjs");
