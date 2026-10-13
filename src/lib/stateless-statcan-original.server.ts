@@ -38,13 +38,13 @@ export function verifiedStatcanOriginalReleaseDay(
   } catch { return null; }
   const match = ARTICLE_PATH.exec(path);
   if (!match) return null;
-  const day = `${match[1]}-${match[2]}-${match[3]}`;
+  const day = `20${match[1]}-${match[2]}-${match[3]}`;
   const dayStart = Date.parse(day+"T00:00:00Z");
   if (!Number.isFinite(dayStart) || new Date(dayStart).toISOString().slice(0,10)!==day ||
       dayStart>now || now-dayStart>MAX_AGE_MS) return null;
   // The filename must carry EXACTLY the same publisher-original calendar day.
   const segment = path.split("/").at(-1) ?? "";
-  if (!segment.startsWith("dq"+match[1].slice(-2)+match[2]+match[3])) return null;
+  if (!segment.startsWith("dq"+match[1]+match[2]+match[3])) return null;
   const text = visibleText(html);
   // Only original "Released:", never Date modified / atom updated / cache date.
   const released = /(?:^|\s)Released:\s*(20\d{2}-\d{2}-\d{2})(?!\d)/i.exec(text)?.[1];
