@@ -25,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  security-events: read
 
 concurrency:
   group: geomacro-live-on-demand-global-discovery-acceptance
@@ -85,6 +86,35 @@ jobs:
           bun-version: "1.4.2"
       - name: Install exact locked modules
         run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify actual open high-severity CodeQL alert disposition
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 15 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/code-scanning/alerts?state=open&per_page=100" \
+            > /tmp/geomacro-codeql-alerts.json
+          python3 - <<'PY'
+          import json,sys
+          rows=json.load(open("/tmp/geomacro-codeql-alerts.json",encoding="utf-8"))
+          if not isinstance(rows,list): sys.exit("CODEQL_ALERT_API_INVALID")
+          high=[]
+          for a in rows:
+            tool=str((a.get("tool") or {}).get("name") or "")
+            rule=a.get("rule") or {}
+            severity=str(rule.get("security_severity_level") or "").lower()
+            if "codeql" in tool.lower() and severity in ("high","critical"):
+              instance=a.get("most_recent_instance") or {}
+              location=instance.get("location") or {}
+              high.append({"number":a.get("number"),"rule":rule.get("id"),
+                "severity":severity,"path":location.get("path"),"state":a.get("state")})
+          print(json.dumps({"codeql_open_high_alert_count":len(high),
+            "codeql_open_high_alerts":high},separators=(",",":")))
+          if high: sys.exit(4)
+          PY
       - name: Real no-charge per-category provider readback
         env:
           RELIEFWEB_APPROVED_APPNAME: ""
