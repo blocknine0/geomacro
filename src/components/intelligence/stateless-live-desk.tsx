@@ -15,6 +15,8 @@ const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
 const REFRESH_MS = 2 * 60_000;
 const OGL_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
+// Stable default avoids restarting fetch effects when legacy callers omit this prop.
+const EMPTY_FEEDS: FeedState = Object.freeze({});
 type View = StatelessCategory | "all";
 
 function labelFor(category: StatelessCategory): string {
@@ -94,7 +96,7 @@ function Story({ signal, checkedAt }: {
  * is explicitly marked temporarily unverified and its check time remains
  * unchanged until a new real publisher check completes successfully.
  */
-export function StatelessLiveDesk({ initial, initialFeeds = {}, initialJournal = [] }: {
+export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initialJournal = [] }: {
   initial: StatelessIntelligenceResult | null;
   initialFeeds?: FeedState;
   initialJournal?: StatelessIntelligenceSignal[];
