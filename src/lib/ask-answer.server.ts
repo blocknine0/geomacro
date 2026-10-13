@@ -72,7 +72,7 @@ async function officialUnscoredReleaseAnswer(
     why_it_matters: recent.map(signal => signal.why_it_matters).join(" "),
     geomacro_view: "First-party publication dates were checked. No independent same-event corroboration, risk score or signed GRO is claimed.",
     evidence: recent.map(signal => ({
-      eventId: signal.id,
+      eventId: `live:official:${signal.id}`,
       title: signal.title,
       relevance: 100,
     })),
