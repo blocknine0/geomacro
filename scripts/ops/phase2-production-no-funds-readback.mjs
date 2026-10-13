@@ -101,18 +101,29 @@ try{
         !body?.payment && !body?.accepts;
       const contract=(r.http===422 && body?.error?.code==="ON_DEMAND_VERIFICATION_PENDING") ||
         (r.http===429 && body?.error?.code==="ON_DEMAND_PROVIDER_BUDGET_RATE_LIMITED");
+      const qualification=body?.on_demand?.private_evidence_qualification;
+      const safeQualification=qualification &&
+        ["EVIDENCE_IDENTIFIED_REVIEW_PENDING","STRUCTURAL_ONLY",
+          "NO_CURRENT_EVIDENCE","INSUFFICIENT_EVIDENCE"].includes(qualification.status) &&
+        qualification.independent_same_event_verified===false &&
+        qualification.commercial_rights_verified===false &&
+        qualification.signing_eligible===false &&
+        qualification.payment_eligible===false;
       const summarized={
         id:x.id,http:r.http,code:body?.error?.code??null,
         provider_attempts:typeof body?.on_demand?.network_attempts==="number"
           ?body.on_demand.network_attempts:null,
         original_page_checks:typeof body?.on_demand?.original_article_page_checks==="number"
           ?body.on_demand.original_article_page_checks:null,
-        qualification_status:body?.on_demand?.private_evidence_qualification?.status??null,
+        qualification_status:qualification?.status??null,
+        phase2_private_qualification_boundary_valid:contract&&r.http===422
+          ?Boolean(safeQualification):null,
         no_payment:noFunds,contract_valid:contract,
         is_history:x.age>86400,
       };
       report.cases.push(summarized);
-      if(!noFunds || !contract)failed=true;
+      if(!noFunds || !contract ||
+         (r.http===422 && !safeQualification))failed=true;
     }catch{
       report.cases.push({id:x.id,http:0,code:"TRANSPORT_UNAVAILABLE",
         provider_attempts:null,original_page_checks:null,
