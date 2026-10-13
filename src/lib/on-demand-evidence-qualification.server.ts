@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
 import { canonicalRiskObjectJson } from "./risk-object-signing.server";
 import {
   type OnDemandCategory, type OnDemandSearchInput,
@@ -87,7 +88,7 @@ const MINERALS = /^(lithium|cobalt|nickel|graphite|copper|rare earth)$/u;
 const encode = (value: unknown) => canonicalRiskObjectJson(value);
 const sha = (value: string) => createHash("sha256").update(value,"utf8").digest("hex");
 function safeOriginal(candidate: PrivateOriginalCandidate, nowMs: number,
-  maxAgeMs: number, search: OnDemandSearchInput): boolean {
+  maxAgeMs: number, search: OnDemandSearchInput, verifiedName:string|null): boolean {
   if (!candidate || !search.categories.includes(candidate.domain) ||
       candidate.first_party_article_url_verified !== true ||
       candidate.independent_same_event_verified !== false ||
@@ -104,6 +105,8 @@ function safeOriginal(candidate: PrivateOriginalCandidate, nowMs: number,
       uri.username || uri.password || uri.port || uri.hash || uri.search ||
       candidate.article_identity_sha256 !== sha(candidate.publisher_family+"|"+candidate.article_url))
     return false;
+  if (!verifiedName || !originalHeadlineMentionsCountry(
+    candidate.article_title,search.country_iso3,verifiedName)) return false;
   const topics = search.topics ?? [];
   if (!matchesRequestedTopic(candidate.article_title,candidate.domain,topics))
     return false;
@@ -135,6 +138,7 @@ export function qualifyRetrievedOnDemandEvidence(input: Readonly<{
   search: OnDemandSearchInput;
   discovery: OnDemandDiscovery;
   originals: readonly PrivateOriginalCandidate[];
+  verifiedCountryName: string | null;
   pageProof: PrivatePageDateResult;
   macroChanges: readonly PrivateOfficialMacroChange[];
   macroRights?: PrivateOnDemandMacroRightsProof;
@@ -157,7 +161,7 @@ export function qualifyRetrievedOnDemandEvidence(input: Readonly<{
   const pageByIdentity=new Map<string,typeof input.pageProof.verified_candidates[number]>();
   for(const page of input.pageProof.verified_candidates){
     const source=input.originals.find(o=>o.article_identity_sha256===page.article_identity_sha256);
-    if (!source || !safeOriginal(source,nowMs,maxAgeMs,search) ||
+    if (!source || !safeOriginal(source,nowMs,maxAgeMs,search,input.verifiedCountryName) ||
         source.article_url!==page.article_url ||
         source.article_title!==page.article_title ||
         source.publisher_family!==page.publisher_family ||
@@ -174,7 +178,7 @@ export function qualifyRetrievedOnDemandEvidence(input: Readonly<{
   }
   const dedup=new Map<string,QualifiedPrivateEvidence["originals"][number]>();
   for(const source of input.originals){
-    if (!safeOriginal(source,nowMs,maxAgeMs,search)) continue;
+    if (!safeOriginal(source,nowMs,maxAgeMs,search,input.verifiedCountryName)) continue;
     const page=pageByIdentity.get(source.article_identity_sha256);
     const originalAt=page?.page_original_published_at ??
       (source.source_native_feed_publication_date_verified===true
