@@ -117,18 +117,53 @@ async function officialUnscoredReleaseAnswer(question: string): Promise<HybridAs
   };
 }
 
+function noCurrentPublisherNewsAnswer(): HybridAskAnswer {
+  return {
+    summary: "Geomacro cannot confirm a new original-dated official release from the checked feeds in the past 24 hours.",
+    what_changed: "No qualifying fresh original release was verified from the bounded first-party sources checked for this request.",
+    why_it_matters: "This does not mean no developments occurred globally. Unavailable, delayed or out-of-scope publications may exist.",
+    geomacro_view: "Geomacro will not substitute stale historical scores or manufacture a fresh signed intelligence claim.",
+    evidence: [],
+    insufficient_evidence: true,
+    mean_relevance: null,
+    low_confidence: true,
+    gri: null,
+    generatedAt: new Date().toISOString(),
+    data_mode: "ephemeral_live",
+    cache_status: "bypassed",
+    source_identity_exposed: false,
+    durable_live_storage_write: false,
+    real_time_message: "First-party source freshness unconfirmed; no scored or signed result.",
+    signed_gro_generated: false,
+    independent_same_event_verification: false,
+  };
+}
+
 export async function answerAskQuestion(question: string): Promise<HybridAskAnswer> {
-  // Route release-only questions directly; unrelated questions keep their
-  // proven B2/live/scored path and existing fail-closed payment boundaries.
-  try {
-    const official = await officialUnscoredReleaseAnswer(question);
-    if (official) return official;
-  } catch (error) {
-    console.error(
-      "[ask-answer] official releases unavailable; preserving canonical Ask",
-      error instanceof Error ? error.message : "unknown error",
-    );
+  // Narrow, category-level current-news questions should never wait for a
+  // stale B2 score or optional hosted LLM before getting a bounded answer.
+  // Unknown, country-specific and risk-index questions retain their governed
+  // existing path below, preserving signing/payment integrity.
+  if (selectOfficialNewsCategories(question).length > 0) {
+    try {
+      const official = await officialUnscoredReleaseAnswer(question);
+      if (official) return official;
+    } catch (error) {
+      console.error("[ask-answer] official release lookup unavailable",
+        error instanceof Error ? error.message : "unknown error");
+    }
+    const unavailable = noCurrentPublisherNewsAnswer();
+    try {
+      // 7-second GDELT bound; deterministic formatting avoids a second
+      // optional 9-second hosted LLM call for the free broad-news tier.
+      // This is only an unverified index observation, never signed GRO.
+      return (await realtimeSearchAnswer(question, unavailable, { deterministicOnly: true }))
+        ?? unavailable;
+    } catch {
+      return unavailable;
+    }
   }
+
   const primary = await answerHybridQuestion(question);
   if (!primary.insufficient_evidence) return primary;
   try {
