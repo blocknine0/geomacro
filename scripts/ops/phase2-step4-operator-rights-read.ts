@@ -25,7 +25,7 @@ export function classifyQuotaStatus(http:number,payload:unknown):QuotaCategory{
   const v=p.used as Record<string,unknown>|null;
   const lim=p.limits as Record<string,unknown>|null;
   if(p.ok!==true||p.schema!=="geomacro.b2-account-quota-status.v1"||
-     !v||!lim||![v.GET,v.total,lim.GET,lim.total].every(n=>Number.isSafeInteger(n)&&Number(n)>=0))
+     !v||!lim||![v.GET,v.total,lim.GET,lim.total].every(n=>typeof n==="number"&&Number.isSafeInteger(n)&&n>=0))
     return "D1_RESPONSE_INVALID";
   return Number(v.GET)>=Number(lim.GET)||Number(v.total)>=Number(lim.total)
     ?"D1_QUOTA_EXHAUSTED":"AUTHENTICATED_HEADROOM";
