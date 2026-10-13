@@ -161,6 +161,38 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(verifyDerivedStory(day,Date.parse("2026-10-10T12:14:59.000Z"))).toBe(false);
     expect(verifyDerivedStory(day,Date.parse("2026-10-10T12:15:00.000Z"))).toBe(true);
   });
+  it.each(["geopolitics","macro","rare_earth"])("admits only genuinely original day-only %s after next-day 12:15 UTC",category=>{
+    const day={...sample(category,"2026-10-12"),date_precision:"day",
+      topic:category==="macro"?"official economic statistics":category==="rare_earth"?"rare-earth supply":"foreign policy"};
+    const early=Date.parse("2026-10-13T12:14:59Z");
+    const eligible=Date.parse("2026-10-13T12:15:00Z");
+    expect(verifyDerivedStory(day,early)).toBe(false);
+    expect(verifyDerivedStory(day,eligible)).toBe(true);
+    for (const invalid of ["2026-02-30","2026-10-12T12:00:00Z","2026-10-14"]) {
+      expect(verifyDerivedStory({...day,published_at:invalid},eligible)).toBe(false);
+    }
+    expect(verifyDerivedStory({...day,severity:52},eligible)).toBe(false);
+    expect(verifyDerivedStory({...day,same_event_corrob_verified:true},eligible)).toBe(false);
+  });
+  it("accepts originally day-dated Stats Canada Macro into private derived-only D1, never paid score",async()=>{
+    const now=Date.parse("2026-10-13T12:15:00Z");
+    const day={...sample("macro","2026-10-12"),date_precision:"day",
+      topic:"official economic statistics",title:"Geomacro finds official economic statistics on labour-market developments"};
+    const {data,env}=db();
+    const response=await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",
+      signals:[day]},now);
+    expect(response.status).toBe(200);
+    expect(data.size).toBe(1);
+    const read=await readDerivedStories(env,now);
+    const doc=await read.json();
+    expect(read.status).toBe(200);
+    expect(doc.signals).toHaveLength(1);
+    expect(doc.signals[0].published_at).toBe("2026-10-12");
+    expect(doc.scored).toBe(false);
+    expect(doc.chargeable).toBe(false);
+    expect(JSON.stringify(doc)).not.toContain("source_url");
+  });
+
   it("free website journal is not a payment or B2 hot-snapshot promotion",()=>{
     const worker=readFileSync("workers/control-plane/src/website-derived-intelligence.mjs","utf8");
     const route=readFileSync("workers/control-plane/src/index.mjs","utf8");
