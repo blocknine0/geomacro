@@ -376,7 +376,7 @@ export function deriveStatelessSignals(
   for (const item of candidates) {
     if (!item || !["geopolitics", "macro", "rare_earth"].includes(item.category)) continue;
     const dayOnly = item.datePrecision === "day" &&
-      ["eu_top_news","nrcan_releases","canada_foreign_statements"].includes(item.sourceId);
+      ["eu_top_news","nrcan_releases","canada_foreign_statements","au_geoscience"].includes(item.sourceId);
     const conservativeRelease = dayOnly ? conservativeDayReleaseMs(item.publishedAt) : null;
     const native = dayOnly ? Date.parse(item.publishedAt + "T00:00:00.000Z")
       : originalPublicationMs(item.publishedAt, now);
