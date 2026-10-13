@@ -127,6 +127,10 @@ const MAX_BODY_BYTES = 192 * 1024;
 // GDELT/WorldBank/ReliefWeb/RSS discovery responses.
 const MAX_FIRST_PARTY_HTML_BYTES = 384 * 1024;
 const TIMEOUT_MS = 5_000;
+const ONE_DAY_MS = 86_400_000;
+const MAX_NEWS_AGE_MS = 7 * ONE_DAY_MS;
+const RATE_LIMIT_COOLDOWNS_MS = {403: 60*60_000, 429: 15*60_000};
+const providerCooldownUntil = new Map<string,number>();
 
 async function boundedFetch(
   fetchImpl: typeof fetch, url: string, accept: string,
@@ -195,10 +199,10 @@ function iso3(value: string) {
   if (!/^[A-Z]{3}$/.test(country)) throw Error("ON_DEMAND_ISO3_INVALID");
   return country;
 }
-function freshPublished(value: string, now: Date) {
+function freshPublished(value: string, now: Date, maxAgeMs=ONE_DAY_MS) {
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) && parsed <= now.getTime() &&
-    now.getTime() - parsed <= 24*60*60*1_000;
+    now.getTime() - parsed <= maxAgeMs;
 }
 function probe(family: string, count: number, clock: boolean): SourceProbe {
   return {
@@ -670,6 +674,17 @@ async function discoverOnDemandImpl(
   private_macro_qualifications:PrivateMacroQualification[];
 }> {
   const now=options.now ?? new Date(), fetchImpl=options.fetchImpl ?? fetch;
+  const topics=input.topics??[];
+  const allowedTopics=["sanctions_restrictions","conflict_geopolitics",
+    "political_governance","macro_risk","sovereign_risk",
+    "fx_external_risk","critical_minerals","hot_topics"];
+  if(!Array.isArray(topics)||topics.length>8||
+    topics.some(topic=>!allowedTopics.includes(topic)))
+    throw Error("ON_DEMAND_TOPICS_INVALID");
+  const newsMaxAgeMs=input.max_age_seconds===undefined?ONE_DAY_MS:
+    Number.isInteger(input.max_age_seconds)&&input.max_age_seconds>0
+      ? Math.min(MAX_NEWS_AGE_MS,input.max_age_seconds*1000):0;
+  if(newsMaxAgeMs===0)throw Error("ON_DEMAND_FRESHNESS_INVALID");
   let networkAttempts=0;
   const trackedFetch:typeof fetch=((input,init)=>{
     // Counting real fetch calls is essential when an optional approved API
