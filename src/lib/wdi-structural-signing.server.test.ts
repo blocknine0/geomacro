@@ -1,7 +1,7 @@
 import { createHash, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { buildAttributedWdiStructuralProduct } from "./wdi-attributed-structural-product.server";
-import { signWdiStructuralAnswer, verifyWdiStructuralAnswer } from "./wdi-structural-signing.server";
+import { prepareWdiStructuralNoFundsQuoteBinding, signWdiStructuralAnswer, verifyWdiStructuralAnswer } from "./wdi-structural-signing.server";
 import { prepareVerifiedChinaCpiStructuralAnswer } from "./wdi-attributed-structural-product.server";
 import { buildAgentQueryPlan } from "./agent-query-plan";
 import type { B2CommercialSourceRight } from "./b2-live.server";
@@ -157,5 +157,81 @@ describe("existing exact China CPI query plan to no-funds signed preparation",()
       readRights:async()=>null,signingMaterial:material,verifyKeys:keys(),
     });
     expect(result).toEqual({status:"BLOCKED",code:"WDI_RIGHTS_RECEIPT_UNAVAILABLE"});
+  });
+});
+
+
+describe("no-funds structural answer and existing x402 payment-binding adapter",()=>{
+  const plan=buildAgentQueryPlan({
+    question:"China CPI inflation annual structural baseline",
+    subjects:[{type:"country",country_iso3:"CHN"}],
+    topics:["macro_risk"],delivery_tier:"structural_baseline",
+    fulfillment_mode:"published_only",max_age_seconds:400*86400,detail:"compact",
+  });
+  const terms={amountAtomic:"50000",network:"eip155:8453",
+    asset:"0x"+"1".repeat(40),payTo:"0x"+"2".repeat(40)};
+  const candidate=()=>signWdiStructuralAnswer({
+    product:buildAttributedWdiStructuralProduct({
+      country_iso3:"CHN",indicator:"FP.CPI.TOTL.ZG",source_api_id:"2",
+      lastupdated:"2026-10-08",checked_at:"2026-10-13T20:00:00Z",
+      query_plan_hash:plan.query_plan_hash,rights_rows:[row],
+      max_age_seconds:400*86400,
+      pair:(()=>{
+        const latest=0.0595646916565402,previous=0.218128938439177;
+        return {
+          country_iso3:"CHN",indicator:"FP.CPI.TOTL.ZG",
+          latest_observation_year:2025,previous_observation_year:2024,
+          latest_annual_pct:latest,previous_annual_pct:previous,
+          annual_rate_change_percentage_points:-0.15856,
+          source_observation_sha256:createHash("sha256")
+            .update(JSON.stringify(["CHN","FP.CPI.TOTL.ZG",2025,latest,2024,previous]))
+            .digest("hex"),
+          observation_type:"ANNUAL_STRUCTURAL_NOT_CURRENT_NEWS" as const,
+          publisher_original_release_date_verified:false as const,
+          derived_commercial_rights_verified:false as const,
+          risk_score_verified:false as const,paid_delivery_allowed:false as const,
+        };
+      })(),
+    }),
+    query_plan_hash:plan.query_plan_hash,
+    certified_rights_receipt_sha256:receipt,material,
+  });
+  const build=(signed_answer=candidate(),payment_terms=terms)=>
+    prepareWdiStructuralNoFundsQuoteBinding({
+      signed_answer,verification_keys:keys(),query_plan:plan,
+      certified_rights_receipt_sha256:receipt,payment_terms,
+    });
+  it("pins deterministic signed bytes and existing x402 binding, never authorizes quote",()=>{
+    const a=build(),b=build();
+    expect(a.prepared_binding_sha256).toBe(b.prepared_binding_sha256);
+    expect(a.signed_customer_answer_sha256).toBe(b.signed_customer_answer_sha256);
+    expect(a.customer_bytes).toContain("World Bank, World Development Indicators");
+    expect(a.query_plan_hash).toBe(plan.query_plan_hash);
+    expect(a.independently_signature_verified).toBe(true);
+    expect(a.durable_prequote_readback_verified).toBe(false);
+    expect(a.quote_authorized).toBe(false);
+    expect(a.payment_authorized).toBe(false);
+    expect(a.settlement_attempted).toBe(false);
+  });
+  it("changes the frozen binding on price/payee changes without changing signed bytes",()=>{
+    const a=build(),b=build(candidate(),{...terms,amountAtomic:"60000"});
+    expect(a.signed_customer_answer_sha256).toEqual(b.signed_customer_answer_sha256);
+    expect(a.legacy_x402_payment_binding).not.toEqual(b.legacy_x402_payment_binding);
+    expect(a.prepared_binding_sha256).not.toEqual(b.prepared_binding_sha256);
+  });
+  it("rejects unsigned/tampered source periods, wrong rights, and malformed terms",()=>{
+    const s=candidate();
+    expect(()=>prepareWdiStructuralNoFundsQuoteBinding({
+      signed_answer:{...s,structural_product:{...s.structural_product,
+        observations:[...s.structural_product.observations.slice(0,1),
+          {year:2025,annual_percent:10}] }},
+      verification_keys:keys(),query_plan:plan,
+      certified_rights_receipt_sha256:receipt,payment_terms:terms,
+    })).toThrow("WDI_QUOTE_PREPARATION_SIGNATURE_UNVERIFIED");
+    expect(()=>prepareWdiStructuralNoFundsQuoteBinding({
+      signed_answer:s,verification_keys:keys(),query_plan:plan,
+      certified_rights_receipt_sha256:"a".repeat(64),payment_terms:terms,
+    })).toThrow("WDI_QUOTE_PREPARATION_SIGNATURE_UNVERIFIED");
+    expect(()=>build(s,{...terms,amountAtomic:"0"})).toThrow("WDI_QUOTE_PREPARATION_TERMS_INVALID");
   });
 });
