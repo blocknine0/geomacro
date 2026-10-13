@@ -157,6 +157,8 @@ jobs:
         run: |
           bun scripts/ops/verify-live-on-demand-capabilities.ts
           bun scripts/ops/verify-live-on-demand-real-apis.ts
+      - name: Pinned World Bank source=2 real no-funds acceptance
+        run: bun scripts/ops/verify-live-wdi-structural.ts
       - name: Preserve redacted provider diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
