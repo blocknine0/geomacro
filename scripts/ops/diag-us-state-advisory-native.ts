@@ -25,10 +25,36 @@ const distinctDateSamples=parsedItems.slice(0,8).map(x=>{
   const t=Date.parse(m?.[1]??"");
   return Number.isFinite(t)?Math.floor((Date.now()-t)/86_400_000):null;
 });
+const routeStats={
+  withTitle:0, countryLevelTitle:0, countryAdvisoryTitle:0,
+  linkValidHost:0, expectedArticlePath:0, advisoryDirectory:0,
+  last30Days:0, last7Days:0,
+};
+for(const [,fragment] of items){
+  const title=/<title(?:\s[^>]*)?>([^<>]+)<\/title>/iu.exec(fragment)?.[1]??"";
+  const link=/<link(?:\s[^>]*)?>([^<>]+)<\/link>/iu.exec(fragment)?.[1]??"";
+  const pub=/<pubDate(?:\s[^>]*)?>([^<>]+)<\/pubDate>/iu.exec(fragment)?.[1]??"";
+  if(title)routeStats.withTitle++;
+  if(/^[A-Za-z][A-Za-z .'-]{2,100}\s+-\s+Level [1-4]:\s+.{8,160}$/u.test(title))routeStats.countryLevelTitle++;
+  if(/^[A-Za-z][A-Za-z .'-]{2,100}\s+Travel Advisory$/u.test(title))routeStats.countryAdvisoryTitle++;
+  try {
+    const u=new URL(link);
+    if(u.hostname==="travel.state.gov"){
+      routeStats.linkValidHost++;
+      if(u.pathname.includes("traveladvisories"))routeStats.advisoryDirectory++;
+      if(/^\/content\/travel\/en\/traveladvisories\/traveladvisories\/[a-z0-9-]+(?:\.html)?$/iu.test(u.pathname))
+        routeStats.expectedArticlePath++;
+    }
+  }catch{}
+  const t=Date.parse(pub);
+  if(Number.isFinite(t) && Date.now()-t<=30*86_400_000)routeStats.last30Days++;
+  if(Number.isFinite(t) && Date.now()-t<=7*86_400_000)routeStats.last7Days++;
+}
 const report={
   schema:"geomacro.state-original-advisory-once.v1",
   http:response.status,verified_transport:response.ok && /<rss\b/iu.test(body),
   examined:parsed.metrics.seen,
+  route_stats:routeStats,
   pubdate_tagged:datedItems.length,parseable_pubdate:parsedItems.length,
   sample_age_days:distinctDateSamples,
   qualified_source_native_clocks:parsed.metrics.native_clock_valid,
