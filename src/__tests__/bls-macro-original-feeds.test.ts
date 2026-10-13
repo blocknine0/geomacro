@@ -63,7 +63,7 @@ describe("BLS original-publisher macro RSS fail-closed ingestion",()=>{
     });
     it("never makes stale, undated, or last-updated headlines fresh "+family,()=>{
       const source=input(family),title=config[family].title;
-      for(const wrong of ["", "2026-10-08","Wed, 08 Oct 2026 12:30:00"]) {
+      for(const wrong of ["", "2026-10-08","2026-10-08T12:30:00"]) {
         const parsed=parseFirstPartyFeed(xml(title,URLS[family],wrong),source,now);
         expect(parsed.dated).toHaveLength(0);
       }
