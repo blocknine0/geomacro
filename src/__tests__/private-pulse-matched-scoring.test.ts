@@ -16,7 +16,10 @@ describe("automatic current-original private scorer handoff",()=>{
     expect(pulse).toContain("private-scoring-from-new-originals:");
     expect(pulse).toContain("bounded_automatic_private_stage: true");
     expect(job).toContain("scripts/ingest-news.js --private-scored-stage");
-    expect(scorer).toContain('process.env.GITHUB_EVENT_NAME==="schedule"');
+    expect(scorer).toContain('process.env.GEOMACRO_AUTOMATIC_D1_PULSE_STAGE==="true"');
+    expect(scorer).toContain("if(automaticRequested&&!fromAutomaticPulse)");
+    expect(scorer).toContain('throw Error("PRIVATE_PULSE_AUTO_CONTEXT_UNVERIFIED")');
+    expect(job).toContain('GEOMACRO_AUTOMATIC_D1_PULSE_STAGE: ${{ inputs.bounded_automatic_private_stage == true }}');
     expect(scorer).toContain('process.env.GITHUB_REF==="refs/heads/main"');
     expect(scorer).toContain('pipeline:"official_source_pulse_30m"');
     expect(scorer).toContain("selectPrivateNovelPulseRefs(read.get(category),category,now.getTime())");
