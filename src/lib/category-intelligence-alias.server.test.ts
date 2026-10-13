@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const openDataReader = vi.hoisted(() => vi.fn());
+vi.mock("./category-open-data.server", () => ({ readCategoryOpenData: openDataReader }));
 const liveReader = vi.hoisted(() => vi.fn());
 vi.mock("./category-live-observation.server", () => ({ readCategoryLiveObservation: liveReader }));
 
@@ -218,6 +220,47 @@ describe("category intelligence HTTP handler boundary", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(liveReader).toHaveBeenCalledWith(category);
     expect(mainnetHandlers.GET).not.toHaveBeenCalled();
+    expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+  });
+
+  it.each(["geopolitics","macro-fx","critical-minerals"])(
+    "reads official structured APIs in %s as unsigned non-payable data", async category => {
+      openDataReader.mockResolvedValue({
+        schema_version:"geomacro.category-open-data-observations.v1",
+        category,mode:"UNSCORED_OPEN_DATA_CONTEXT",findings:[],
+        signed_gro_generated:false,x402_payment_required:false,
+      });
+      const handlers=createCategoryIntelligenceHandlers({
+        category,path:`/api/v1/intelligence/${category}`,
+        topics:["critical_minerals"],requiredModules:["critical_minerals"],
+      });
+      const request=new Request(`https://geomacro.live/api/v1/intelligence/${category}?view=open-data`);
+      const response=await handlers.GET({request});
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        category,mode:"UNSCORED_OPEN_DATA_CONTEXT",
+        signed_gro_generated:false,x402_payment_required:false,
+      });
+      expect(openDataReader).toHaveBeenCalledWith(category);
+      expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+      expect(mainnetHandlers.GET).not.toHaveBeenCalled();
+      expect(liveReader).not.toHaveBeenCalled();
+    }
+  );
+  it("fails closed on unavailable upstream open data, never invoking payment",async()=>{
+    openDataReader.mockRejectedValue(new Error("private upstream error"));
+    const handlers=createCategoryIntelligenceHandlers({
+      category:"geopolitics",topics:["conflict_geopolitics"],
+      requiredModules:["geopolitical_security"],
+    });
+    const response=await handlers.GET({request:new Request(
+      "https://geomacro.live/api/v1/intelligence/geopolitics?view=open-data"
+    )});
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      ok:false,chargeable:false,signed_gro_generated:false,
+      error:{code:"CATEGORY_OPEN_DATA_RETRIEVAL_UNAVAILABLE"},
+    });
     expect(mainnetHandlers.POST).not.toHaveBeenCalled();
   });
 
