@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const openDataReader = vi.hoisted(() => vi.fn());
+vi.mock("./category-open-data.server", () => ({ readCategoryOpenData: openDataReader }));
 const liveReader = vi.hoisted(() => vi.fn());
 vi.mock("./category-live-observation.server", () => ({ readCategoryLiveObservation: liveReader }));
 
@@ -218,6 +220,131 @@ describe("category intelligence HTTP handler boundary", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(liveReader).toHaveBeenCalledWith(category);
     expect(mainnetHandlers.GET).not.toHaveBeenCalled();
+    expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+  });
+
+  it.each(["geopolitics","macro-fx","critical-minerals"])(
+    "reads official structured APIs in %s as unsigned non-payable data", async category => {
+      openDataReader.mockResolvedValue({
+        schema_version:"geomacro.category-open-data-observations.v1",
+        category,mode:"UNSCORED_OPEN_DATA_CONTEXT",findings:[],source_families_readable:1,
+        signed_gro_generated:false,x402_payment_required:false,
+      });
+      const handlers=createCategoryIntelligenceHandlers({
+        category,path:`/api/v1/intelligence/${category}`,
+        topics:["critical_minerals"],requiredModules:["critical_minerals"],
+      });
+      const request=new Request(`https://geomacro.live/api/v1/intelligence/${category}?view=open-data`);
+      const response=await handlers.GET({request});
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        category,mode:"UNSCORED_OPEN_DATA_CONTEXT",
+        signed_gro_generated:false,x402_payment_required:false,
+      });
+      expect(openDataReader).toHaveBeenCalledWith(category);
+      expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+      expect(mainnetHandlers.GET).not.toHaveBeenCalled();
+      expect(liveReader).not.toHaveBeenCalled();
+    }
+  );
+  it("fails closed on unavailable upstream open data, never invoking payment",async()=>{
+    openDataReader.mockRejectedValue(new Error("private upstream error"));
+    const handlers=createCategoryIntelligenceHandlers({
+      category:"geopolitics",topics:["conflict_geopolitics"],
+      requiredModules:["geopolitical_security"],
+    });
+    const response=await handlers.GET({request:new Request(
+      "https://geomacro.live/api/v1/intelligence/geopolitics?view=open-data"
+    )});
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      ok:false,chargeable:false,signed_gro_generated:false,
+      error:{code:"CATEGORY_OPEN_DATA_RETRIEVAL_UNAVAILABLE"},
+    });
+    expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+  });
+
+  it.each(["geopolitics","macro-fx","critical-minerals"])(
+    "combines two evidence classes for %s without scoring, signing or charging",async category=>{
+      liveReader.mockResolvedValue({
+        category,observation_mode:"UNSCORED_OFFICIAL_RELEASES",findings:[],
+        signed_gro_generated:false,
+      });
+      openDataReader.mockResolvedValue({
+        category,mode:"UNSCORED_OPEN_DATA_CONTEXT",findings:[],source_families_readable:1,
+        signed_gro_generated:false,
+      });
+      const handlers=createCategoryIntelligenceHandlers({
+        category,topics:["critical_minerals"],requiredModules:["critical_minerals"],
+      });
+      const response=await handlers.GET({request:new Request(
+        `https://geomacro.live/api/v1/intelligence/${category}?view=combined`
+      )});
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        schema_version:"geomacro.category-combined-coverage.v1",
+        category,coverage_status:"BOTH_SOURCE_CLASSES_READABLE",
+        source_class_count_readable:2,
+        original_release_observations:{observation_mode:"UNSCORED_OFFICIAL_RELEASES"},
+        structured_open_data:{mode:"UNSCORED_OPEN_DATA_CONTEXT"},
+        signed_gro_generated:false,x402_payment_required:false,chargeable:false,
+      });
+      expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+      expect(mainnetHandlers.GET).not.toHaveBeenCalled();
+    }
+  );
+  it("combined view retains the healthy data class when official release reader fails",async()=>{
+    liveReader.mockRejectedValue(new Error("publisher not reachable"));
+    openDataReader.mockResolvedValue({
+      category:"geopolitics",mode:"UNSCORED_OPEN_DATA_CONTEXT",
+      findings:[],source_families_readable:1,signed_gro_generated:false,
+    });
+    const handlers=createCategoryIntelligenceHandlers({
+      category:"geopolitics",topics:["conflict_geopolitics"],
+      requiredModules:["geopolitical_security"],
+    });
+    const response=await handlers.GET({request:new Request(
+      "https://geomacro.live/api/v1/intelligence/geopolitics?view=combined"
+    )});
+    expect(await response.json()).toMatchObject({
+      coverage_status:"PARTIAL_SOURCE_CLASS_AVAILABILITY",
+      source_class_count_readable:1,original_release_observations:null,
+      structured_open_data:{category:"geopolitics"},
+      signed_gro_generated:false,
+    });
+    expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+  });
+  it("does not claim coverage from two fulfilled but empty/unavailable reader envelopes",async()=>{
+    liveReader.mockResolvedValue({status:"OFFICIAL_SOURCES_UNAVAILABLE",findings:[]});
+    openDataReader.mockResolvedValue({
+      source_families_readable:0,status:"ALL_SOURCES_UNAVAILABLE",findings:[],
+    });
+    const handlers=createCategoryIntelligenceHandlers({
+      category:"geopolitics",topics:["conflict_geopolitics"],
+      requiredModules:["geopolitical_security"],
+    });
+    const response=await handlers.GET({request:new Request(
+      "https://geomacro.live/api/v1/intelligence/geopolitics?view=combined"
+    )});
+    expect(response.status).toBe(503);
+    expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+  });
+
+  it("combined view fails closed if both data classes reject",async()=>{
+    liveReader.mockRejectedValue(new Error("publisher"));
+    openDataReader.mockRejectedValue(new Error("data"));
+    const handlers=createCategoryIntelligenceHandlers({
+      category:"geopolitics",topics:["conflict_geopolitics"],
+      requiredModules:["geopolitical_security"],
+    });
+    const response=await handlers.GET({request:new Request(
+      "https://geomacro.live/api/v1/intelligence/geopolitics?view=combined"
+    )});
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      ok:false,chargeable:false,signed_gro_generated:false,
+      error:{code:"CATEGORY_SOURCE_READERS_UNAVAILABLE"},
+    });
     expect(mainnetHandlers.POST).not.toHaveBeenCalled();
   });
 

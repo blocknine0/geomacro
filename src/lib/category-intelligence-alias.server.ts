@@ -3,6 +3,7 @@ import { mainnetIntelligenceHandlers } from "./mainnet-intelligence-endpoint.ser
 import { publicIntelligenceSourceCoverage, type CommercialIntelligenceCategory } from "./public-intelligence-source-coverage";
 import { categoryOriginalSourcePulse } from "./current-30min-original-source-pulse.server";
 import { readCategoryLiveObservation } from "./category-live-observation.server";
+import { readCategoryOpenData } from "./category-open-data.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const CANONICAL_PATH = "/api/v1/intelligence/query";
@@ -115,6 +116,68 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
   return {
     OPTIONS: async () => mainnetIntelligenceHandlers.OPTIONS(),
     GET: async ({ request }: { request: Request }) => {
+      if (new URL(request.url).searchParams.get("view") === "combined") {
+        // One canonical category endpoint: original-date official releases
+        // and structured source data remain separated by type and clocks.
+        // No current-event claim may be inferred from reference periods.
+        if (!config.category || !["geopolitics","macro-fx","critical-minerals"].includes(config.category))
+          return errorResponse("CATEGORY_COMBINED_VIEW_NOT_AVAILABLE",404);
+        const category=config.category as CommercialIntelligenceCategory;
+        const [releases,data]=await Promise.allSettled([
+          readCategoryLiveObservation(category),
+          readCategoryOpenData(category),
+        ]);
+        const releasesRead = releases.status==="fulfilled" &&
+          releases.value.status!=="OFFICIAL_SOURCES_UNAVAILABLE";
+        const dataRead = data.status==="fulfilled" &&
+          data.value.source_families_readable>0;
+        if (!releasesRead && !dataRead) {
+          return Response.json({
+            ok:false,category,chargeable:false,signed_gro_generated:false,
+            error:{code:"CATEGORY_SOURCE_READERS_UNAVAILABLE"},
+          },{status:503,headers:{"Cache-Control":"no-store",
+            "X-Content-Type-Options":"nosniff","Access-Control-Allow-Origin":"*"}});
+        }
+        return Response.json({
+          schema_version:"geomacro.category-combined-coverage.v1",
+          ok:true,category,
+          coverage_status:releasesRead&&dataRead
+            ?"BOTH_SOURCE_CLASSES_READABLE":"PARTIAL_SOURCE_CLASS_AVAILABILITY",
+          original_release_observations: releases.status==="fulfilled"
+            ? releases.value : null,
+          structured_open_data: data.status==="fulfilled" ? data.value : null,
+          source_class_count_readable:Number(releasesRead)+Number(dataRead),
+          current_signed_risk_intelligence_verified:false,
+          signed_gro_generated:false,x402_payment_required:false,
+          chargeable:false,raw_publisher_content_delivered:false,
+          durable_storage_written:false,
+        },{status:200,headers:{"Cache-Control":"no-store",
+          "X-Content-Type-Options":"nosniff","Access-Control-Allow-Origin":"*"}});
+      }
+      // Distinct provider-native measurements and dataset reference periods.
+      // Never inflate the original-release news feed or change x402 POST.
+      if (new URL(request.url).searchParams.get("view") === "open-data") {
+        if (!config.category || !["geopolitics","macro-fx","critical-minerals"].includes(config.category))
+          return errorResponse("CATEGORY_OPEN_DATA_VIEW_NOT_AVAILABLE",404);
+        try {
+          const result = await readCategoryOpenData(config.category as CommercialIntelligenceCategory);
+          return Response.json(result,{status:200,headers:{
+            "Cache-Control":"no-store",
+            "X-Content-Type-Options":"nosniff",
+            "Access-Control-Allow-Origin":"*",
+          }});
+        }catch{
+          return Response.json({
+            ok:false,category:config.category,chargeable:false,
+            signed_gro_generated:false,
+            error:{code:"CATEGORY_OPEN_DATA_RETRIEVAL_UNAVAILABLE"},
+          },{status:503,headers:{
+            "Cache-Control":"no-store",
+            "X-Content-Type-Options":"nosniff",
+            "Access-Control-Allow-Origin":"*",
+          }});
+        }
+      }
       // Explicit no-charge original-release mode, independent from Coinbase
       // mainnet configuration. The default GET continues to describe x402
       // pricing/discovery, and all POST requests retain canonical binding.
