@@ -45,7 +45,18 @@ export function selectGovernedRootWindow(catalog,now=new Date()){
   }
   const windowCount=Math.ceil(roots.length/MAX_ROOTS_PER_WINDOW);
   const index=((Math.floor(now.getTime()/SLOT_MS)%windowCount)+windowCount)%windowCount;
-  return {index,windowCount,roots:roots.slice(index*MAX_ROOTS_PER_WINDOW,(index+1)*MAX_ROOTS_PER_WINDOW)};
+  // The source registry is grouped by category. Slicing it naively probed
+  // only geopolitics for whole 90m slots, silently starving Macro and
+  // Critical Minerals. Distribute each category across EVERY rotation while
+  // preserving an exact one-visit-per-source cycle and <= 40 reads per slot.
+  // Concatenated per-domain rows assigned by global modulo keep each slot
+  // within floor(N/K)..ceil(N/K), even for heavily skewed inventories.
+  const ordered=[...VALID].flatMap(category=>
+    roots.filter(row=>row.category===category));
+  const selected=ordered.filter((_,position)=>position%windowCount===index);
+  if(selected.length>MAX_ROOTS_PER_WINDOW ||
+     selected.length===0)throw Error("ROOT_HEALTH_ROTATION_CAPACITY_INVALID");
+  return {index,windowCount,roots:selected};
 }
 
 export async function probeGovernedRoots({
