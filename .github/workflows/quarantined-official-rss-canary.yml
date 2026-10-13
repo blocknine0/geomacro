@@ -1,0 +1,59 @@
+name: Bounded Quarantined Official RSS Recovery Canary
+
+# Two historically unreachable first-party RSS URLs, at most 2 GETs/week.
+# Original 403/authorization-required EITI remains quarantined and unpolled.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "31 7 * * 1"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/observe-quarantined-official-rss-canary.mjs"
+      - ".github/workflows/quarantined-official-rss-canary.yml"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-quarantined-rss-canary-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  observed-only:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout exact main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Two bounded first-party RSS GET canaries (not EITI)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/observe-quarantined-official-rss-canary.mjs
+          node scripts/ops/observe-quarantined-official-rss-canary.mjs
+          jq -e '
+            .schema == "geomacro.quarantined-first-party-rss-recovery-canary.v1" and
+            .publisher_probe_count == 2 and
+            .eiti_403_source_retried == false and
+            .all_quarantines_unblocked == false and
+            .commercial_eligible == false and
+            .payment_authorized == false and
+            .d1_writes == 0 and .b2_requests == 0 and
+            .supabase_requests == 0 and .payments == 0 and
+            ([.observations[] |
+              .automatic_unquarantine_performed == false and
+              .issuer_original_article_time_verified == false
+            ]|all)
+          ' artifacts/expanded-official-source/quarantined-rss-recovery-canary.json > /dev/null
+      - name: Retain private transport-only receipt 2 days
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quarantined-official-rss-canary-${{ github.run_id }}
+          path: artifacts/expanded-official-source/quarantined-rss-recovery-canary.json
+          if-no-files-found: warn
+          retention-days: 2
