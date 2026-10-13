@@ -79,9 +79,15 @@ async function officialUnscoredReleaseAnswer(question: string): Promise<HybridAs
     return recent.slice(0, categories.length === 1 ? 3 : 1);
   });
   if (!signals.length) return null;
-  const categoryLabel = categories.length === 3 ? "across Geopolitics, Macro/FX and Critical Minerals"
-    : categories[0] === "rare_earth" ? "in Critical Minerals"
-    : categories[0] === "macro" ? "in Macro/FX" : "in Geopolitics";
+  // Report only categories that ACTUALLY yielded native-dated releases.
+  // A healthy request for three categories is not evidence that all three
+  // produced eligible stories today.
+  const observed = Array.from(new Set(signals.map(signal => signal.category)));
+  const categoryLabel = "in " + observed.map(category =>
+    category === "rare_earth" ? "Critical Minerals"
+      : category === "macro" ? "Macro/FX" : "Geopolitics"
+  ).join(", ");
+  const latestOriginal = signals.map(signal => signal.published_at).sort().at(-1)!;
   return {
     summary: "Geomacro observed " + signals.length + " recent official release" +
       (signals.length === 1 ? "" : "s") + " " + categoryLabel +
@@ -99,6 +105,7 @@ async function officialUnscoredReleaseAnswer(question: string): Promise<HybridAs
     low_confidence: true,
     gri: null,
     generatedAt: new Date().toISOString(),
+    latest_original_published_at: latestOriginal,
     data_mode: "ephemeral_live",
     cache_status: "bypassed",
     source_identity_exposed: false,
