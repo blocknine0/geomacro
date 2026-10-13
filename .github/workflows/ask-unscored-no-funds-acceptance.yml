@@ -1,0 +1,58 @@
+name: Ask Unscored Three-Domain No-Funds Acceptance
+
+# CI code success does not imply that Lovable published the matching SHA.
+on:
+  pull_request:
+    paths:
+      - "scripts/lib/unscored-ask-production-proof.mjs"
+      - "scripts/tests/unscored-ask-production-proof.test.mjs"
+      - "scripts/ops/verify-unscored-ask-production.mjs"
+      - ".github/workflows/ask-unscored-no-funds-acceptance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/lib/unscored-ask-production-proof.mjs"
+      - "scripts/tests/unscored-ask-production-proof.test.mjs"
+      - "scripts/ops/verify-unscored-ask-production.mjs"
+      - "src/lib/ask-answer.server.ts"
+      - ".github/workflows/ask-unscored-no-funds-acceptance.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-ask-unscored-no-funds-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: No-funds acceptance contract tests
+        run: node --test scripts/tests/unscored-ask-production-proof.test.mjs
+
+  production-readback:
+    if: github.event_name != 'pull_request' && github.repository == 'blocknine0/geomacro'
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      EXPECTED_SHA: ${{ github.sha }}
+      GEOMACRO_BASE_URL: https://geomacro.live
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Exact-SHA three-domain public Ask readback (GET only; zero funds)
+        run: node scripts/ops/verify-unscored-ask-production.mjs
