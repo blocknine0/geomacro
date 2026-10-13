@@ -6,6 +6,7 @@
  * while its 429 is under investigation.
  */
 import { mkdirSync,writeFileSync } from "node:fs";
+import {qualifyPrivateOnDemandEvidence, publicOnDemandEvidenceDisposition} from "../../src/lib/on-demand-private-evidence-package.server";
 import {
   discoverOnDemandForPrivateQualification,
   verifyOnDemandOriginalArticlePages,
@@ -59,6 +60,19 @@ for(const sample of cases) {
     r.private_original_review_candidates,{
       fetchImpl,maxAgeSeconds:sample.max_age_seconds,
     });
+  // Real publisher originals enter the exact private qualification bridge.
+  // The PR runner has no approved rights secrets. Injecting a NULL rights
+  // registry is a NEGATIVE test; it MUST leave signing/payment disabled.
+  const qualified=await qualifyPrivateOnDemandEvidence({
+    country_iso3:sample.country_iso3,
+    categories:[sample.category],topics:[sample.topic],
+    mineral:sample.mineral??null,
+    max_age_seconds:sample.max_age_seconds,now:new Date(),
+    feed_candidates:r.private_original_review_candidates,
+    page_verified_candidates:verified.verified_candidates,
+    annual_macro_changes:r.private_macro_changes,
+  },{readRights:async()=>null});
+  const safeQualified=publicOnDemandEvidenceDisposition(qualified);
   const dated=r.private_candidates
     .filter(x=>x.source_native_feed_publication_date_verified &&
       x.feed_item_published_at!==null);
@@ -77,6 +91,7 @@ for(const sample of cases) {
     case_id:sample.id,country_iso3:sample.country_iso3,
     category:sample.category,max_age_seconds:sample.max_age_seconds,
     status,
+    private_qualification:safeQualified,
     native_feed_published_at:dated.map(x=>x.feed_item_published_at).slice(0,4),
     original_page_published_at:pageVerified.map(x=>x.page_original_published_at).slice(0,4),
     original_publisher_families:[...independentOriginals].sort(),
@@ -115,6 +130,8 @@ console.log(JSON.stringify(proof));
 if(results.some(x=>x.attempts>12 || x.page_attempts>4 ||
   x.actual_http_calls!==x.attempts+x.page_attempts ||
   x.supabase_requests!==0 || x.b2_requests!==0 ||
-  x.payable!==false || x.signed!==false))
+  x.payable!==false || x.signed!==false ||
+  x.private_qualification.x402_payment_authorized!==false ||
+  x.private_qualification.qualified_signed_intelligence!==false))
   process.exitCode=2;
 else if(!proof.all_three_positive) process.exitCode=4;
