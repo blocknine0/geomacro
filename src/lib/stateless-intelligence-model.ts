@@ -154,8 +154,9 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
       const classic = /^\/content\/travel\/en\/traveladvisories\/traveladvisories\/[a-z0-9-]+(?:\.html)?$/iu;
       // Current State Department RSS uses this separate first-party AEM
       // travel subtree. No third-party hosts, queries or unrelated services.
-      const current = /^\/content\/tsgaem\/us\/en\/home\/international-travel\/[a-z0-9_/-]{8,240}(?:\.html)?$/iu;
-      if (!classic.test(link.pathname) && !current.test(link.pathname))
+      const current = link.pathname.startsWith("/content/tsgaem/us/en/home/international-travel/") &&
+        link.pathname.length <= 320 && !link.pathname.includes("//");
+      if (!classic.test(link.pathname) && !current)
         return null;
     }
     link.search = "";
