@@ -97,23 +97,39 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/code-scanning/alerts?state=open&per_page=100" \
             > /tmp/geomacro-codeql-alerts.json
+          # Pull-request alerts need an exact head/merge ref; the default
+          # repository alert view alone can miss alerts introduced by a PR.
+          if [[ -n "${GITHUB_HEAD_REF:-}" ]]; then
+            for REF in "refs/heads/${GITHUB_HEAD_REF}" "${GITHUB_REF}"; do
+              ENCODED_REF="$(REF="${REF}" python3 -c 'import os,urllib.parse;print(urllib.parse.quote(os.environ["REF"],safe=""))')"
+              curl --fail --silent --show-error --max-time 15 \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/code-scanning/alerts?state=open&per_page=100&ref=${ENCODED_REF}" \
+                > "/tmp/geomacro-codeql-${ENCODED_REF}.json"
+            done
+          fi
           python3 - <<'PY'
-          import json,sys
-          rows=json.load(open("/tmp/geomacro-codeql-alerts.json",encoding="utf-8"))
-          if not isinstance(rows,list): sys.exit("CODEQL_ALERT_API_INVALID")
-          high=[]
-          for a in rows:
-            tool=str((a.get("tool") or {}).get("name") or "")
-            rule=a.get("rule") or {}
-            severity=str(rule.get("security_severity_level") or "").lower()
-            if "codeql" in tool.lower() and severity in ("high","critical"):
-              instance=a.get("most_recent_instance") or {}
-              location=instance.get("location") or {}
-              high.append({"number":a.get("number"),"rule":rule.get("id"),
-                "severity":severity,"path":location.get("path"),"state":a.get("state")})
+          import json,sys,glob
+          high={}
+          files=["/tmp/geomacro-codeql-alerts.json"]+glob.glob("/tmp/geomacro-codeql-*.json")
+          for file in files:
+            rows=json.load(open(file,encoding="utf-8"))
+            if not isinstance(rows,list): sys.exit("CODEQL_ALERT_API_INVALID")
+            for a in rows:
+              tool=str((a.get("tool") or {}).get("name") or "")
+              rule=a.get("rule") or {}
+              severity=str(rule.get("security_severity_level") or "").lower()
+              if "codeql" in tool.lower() and severity in ("high","critical"):
+                instance=a.get("most_recent_instance") or {}
+                loc=instance.get("location") or {}
+                high[str(a.get("number"))]={"number":a.get("number"),
+                  "rule":rule.get("id"),"description":str(rule.get("description") or "")[:180],
+                  "severity":severity,"path":loc.get("path"),
+                  "line":loc.get("start_line"),"state":a.get("state")}
           print(json.dumps({"codeql_open_high_alert_count":len(high),
-            "codeql_open_high_alerts":high},separators=(",",":")))
-          if high: sys.exit(4)
+            "codeql_open_high_alerts":list(high.values())},separators=(",",":")))
+          if high:sys.exit(4)
           PY
       - name: Real no-charge per-category provider readback
         env:
