@@ -11,7 +11,7 @@ import type { CommercialIntelligenceCategory } from "./public-intelligence-sourc
 
 type Domain = CommercialIntelligenceCategory;
 type Timing = "event_occurrence" | "catalog_added_day" | "reference_year" |
-  "reference_month" | "award_obligation_day";
+  "reference_month" | "reference_day" | "retrieval_snapshot" | "award_obligation_day";
 export type OpenDataSignal = {
   finding_key: string;
   evidence_class: "official_open_data_unscored";
@@ -30,6 +30,7 @@ type Provider = {
   maxBytes: number;
   timeoutMs: number;
   method: "GET" | "POST";
+  format?: "xml" | "json";
   body?: string;
 };
 type Extracted = { signals: OpenDataSignal[]; credits: string[] };
@@ -37,6 +38,9 @@ const UPSTREAMS: readonly Provider[] = Object.freeze([
   { id: "usgs_earthquakes", category: "geopolitics",
     url: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson",
     maxBytes: 600_000, timeoutMs: 5_000, method: "GET" },
+  { id: "noaa_nhc", category: "geopolitics",
+    url: "https://www.nhc.noaa.gov/CurrentStorms.json",
+    maxBytes: 75_000, timeoutMs: 5_000, method: "GET" },
   { id: "cisa_kev", category: "geopolitics",
     url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
     maxBytes: 3_000_000, timeoutMs: 6_000, method: "GET" },
@@ -46,6 +50,9 @@ const UPSTREAMS: readonly Provider[] = Object.freeze([
   { id: "treasury_fiscaldata", category: "macro-fx",
     url: "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/avg_interest_rates?page%5Bsize%5D=4&sort=-record_date",
     maxBytes: 100_000, timeoutMs: 5_000, method: "GET" },
+  { id: "ecb_fx", category: "macro-fx",
+    url: "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml",
+    maxBytes: 70_000, timeoutMs: 5_000, method: "GET", format: "xml" },
   { id: "bls_cpi", category: "macro-fx",
     url: "https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",
     maxBytes: 125_000, timeoutMs: 5_000, method: "GET" },
@@ -107,6 +114,42 @@ function fromUsgs(payload: unknown, now: number): Extracted | null {
     "Geomacro detects a recorded earthquake in the M4.5-or-higher seismic band within the past day.",
     "Seismic events may disrupt logistics or infrastructure locally; no geopolitical conflict, damage or supply disruption is inferred."
   )),credits:[] };
+}
+function fromNhc(payload:unknown,now:number):Extracted|null{
+  const data=payload as Record<string,unknown>;
+  if(!Array.isArray(data?.activeStorms) || data.activeStorms.length>60 ||
+     !data.activeStorms.every(x=>x && typeof x==="object" && !Array.isArray(x)))
+    return null;
+  // The file's current-status snapshot is not a certified original advisory
+  // or evidence of landfall, fatalities, damage, conflict or disruptions.
+  // An empty active-storms array is a valid source response with zero events.
+  const found=data.activeStorms.length>0;
+  return {signals:found?[signal(
+    "noaa_tropical_cyclone_listing","active:"+Math.floor(now/600_000),
+    new Date(now).toISOString(),"retrieval_snapshot",
+    "Geomacro observes one or more tropical cyclone records in an official current-storms status snapshot.",
+    "The listing indicates weather-hazard monitoring only; no original advisory date, landfall, damage or trade impact is confirmed."
+  )]:[],credits:[]};
+}
+function fromEcbXml(input:string,now:number):Extracted|null{
+  // Intentionally accept only a bounded XML envelope with dated cube.
+  // This is a provider reference date, not a market transaction or timestamp
+  // of user request. No exchange rate value is redistributed.
+  if(typeof input!=="string" || input.length>70_000 ||
+     !/<(?:[A-Za-z][\w.-]*:)?Envelope\b/iu.test(input) ||
+     !/<Cube\b/u.test(input) ||
+     /<!DOCTYPE|<!ENTITY/iu.test(input))return null;
+  const dates=[...input.matchAll(/<Cube\s+time=["'](\d{4}-\d{2}-\d{2})["']/gu)]
+    .map(x=>dateOnly(x[1])).filter((x):x is string=>x!==null);
+  if(!dates.length)return null;
+  const day=dates.sort().reverse()[0];
+  const ms=Date.parse(day+"T00:00:00Z");
+  if(ms>now || now-ms>14*86_400_000)return {signals:[],credits:["European Central Bank"]};
+  return {signals:[signal(
+    "ecb_daily_fx_reference","day:"+day,day,"reference_day",
+    "Geomacro detects an available ECB daily foreign-exchange reference-date observation.",
+    "ECB reference rates are for information, not executable FX quotes; currency direction or market movements are not inferred."
+  )],credits:["European Central Bank"]};
 }
 function fromCisa(payload: unknown, now: number): Extracted | null {
   const data=payload as Record<string,unknown>;
@@ -224,6 +267,7 @@ export function extractOpenData(specId: string, body:unknown, now=Date.now()): E
   switch(specId){
     case "usgs_earthquakes":return fromUsgs(body,now);
     case "cisa_kev":return fromCisa(body,now);
+    case "noaa_nhc":return fromNhc(body,now);
     case "federal_register":return fromFederalRegister(body,now);
     case "bls_cpi":return fromBls(body);
     case "treasury_fiscaldata":return fromTreasury(body);
@@ -232,7 +276,7 @@ export function extractOpenData(specId: string, body:unknown, now=Date.now()): E
     default:return null;
   }
 }
-async function boundedJson(r:Response,maxBytes:number):Promise<unknown|null>{
+async function boundedJson(r:Response,maxBytes:number,format:"json"|"xml"="json"):Promise<unknown|null>{
   if(!r.ok||!r.body)return null;
   const len=Number(r.headers.get("content-length")??"0");
   if(Number.isFinite(len)&&len>maxBytes)return null;
@@ -249,7 +293,8 @@ async function boundedJson(r:Response,maxBytes:number):Promise<unknown|null>{
     }
     const out=new Uint8Array(size);let i=0;
     for(const c of chunks){out.set(c,i);i+=c.byteLength;}
-    return JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(out));
+    const raw=new TextDecoder("utf-8",{fatal:true}).decode(out);
+    return format==="xml" ? raw : JSON.parse(raw);
   }catch{return null;}
   finally{await reader.cancel().catch(()=>undefined);}
 }
@@ -265,10 +310,14 @@ async function fetchOne(spec:Provider,now:number,fetcher:typeof fetch):
       ...(spec.body?{body:spec.body}:{}),
       signal:AbortSignal.timeout(spec.timeoutMs),
     });
-    if(!/^application\/(?:json|geo\+json)(?:;|$)/iu.test(response.headers.get("content-type")??""))
+    const contentType=response.headers.get("content-type")??"";
+    if(spec.format==="xml"
+      ? !/^(?:application|text)\/(?:xml|[a-z0-9.+-]+\+xml)(?:;|$)/iu.test(contentType)
+      : !/^application\/(?:json|geo\+json)(?:;|$)/iu.test(contentType))
       return {readable:false,data:null};
-    const body=await boundedJson(response,spec.maxBytes);
-    const parsed=body===null?null:extractOpenData(spec.id,body,now);
+    const body=await boundedJson(response,spec.maxBytes,spec.format==="xml"?"xml":"json");
+    const parsed=body===null?null:spec.id==="ecb_fx"
+      ? fromEcbXml(body as string,now) : extractOpenData(spec.id,body,now);
     return {readable:parsed!==null,data:parsed};
   }catch{return {readable:false,data:null};}
 }

@@ -5,7 +5,7 @@ const now=Date.parse("2026-10-13T18:00:00Z");
 describe("no-card original government structured data adapters",()=>{
   it("uses seven pinned no-card official sources across three launch endpoints",()=>{
     expect(OPEN_DATA_SOURCE_FAMILIES).toEqual({
-      geopolitics:3,"macro-fx":3,"critical-minerals":1,
+      geopolitics:4,"macro-fx":4,"critical-minerals":1,
     });
   });
   it("separates native seismic occurrence from political conflict and source URL",()=>{
@@ -95,6 +95,48 @@ describe("no-card original government structured data adapters",()=>{
     });
     expect(JSON.stringify(data)).not.toContain("324.390");
   });
+  it("NOAA current storm snapshot is not a publication or damage confirmation",()=>{
+    const empty=extractOpenData("noaa_nhc",{activeStorms:[]},now);
+    expect(empty?.signals).toHaveLength(0);
+    const active=extractOpenData("noaa_nhc",{
+      activeStorms:[{stormId:"TEST",stormName:"DO NOT DISCLOSE",privateUrl:"https://example.invalid"}],
+    },now);
+    expect(active?.signals).toHaveLength(1);
+    expect(active?.signals[0]).toMatchObject({
+      observation_type:"noaa_tropical_cyclone_listing",
+      clock_semantics:"retrieval_snapshot",score:null,
+      independent_same_event_verification:false,
+    });
+    expect(JSON.stringify(active)).not.toContain("DO NOT DISCLOSE");
+    expect(JSON.stringify(active)).not.toContain("example.invalid");
+    expect(extractOpenData("noaa_nhc",{activeStorms:"invalid"},now)).toBeNull();
+  });
+  it("ECB daily XML must have native date and does not leak FX raw rate",async()=>{
+    const urls:string[]=[];
+    const fixture=`<?xml version="1.0" encoding="UTF-8"?>
+      <gesmes:Envelope xmlns:gesmes="http://www.gesmes.org/xml/2002-08-01"
+        xmlns="http://www.ecb.int/vocabulary/2002-08-01/eurofxref">
+        <Cube><Cube time="2026-10-13"><Cube currency="USD" rate="1.11991"/></Cube></Cube>
+      </gesmes:Envelope>`;
+    const fake=vi.fn(async (input:RequestInfo|URL,init?:RequestInit)=>{
+      const u=new URL(String(input));
+      urls.push(u.hostname);
+      const isXml=u.hostname==="www.ecb.europa.eu";
+      return new Response(isXml?fixture:JSON.stringify({data:[]}),{
+        headers:{"content-type":isXml?"text/xml":"application/json"},status:200,
+      });
+    }) as typeof fetch;
+    const result=await readCategoryOpenData("macro-fx",{now,fetcher:fake});
+    expect(urls).toContain("www.ecb.europa.eu");
+    expect(result.source_families_attempted).toBe(4);
+    const ecb=result.findings.find(x=>x.observation_type==="ecb_daily_fx_reference");
+    expect(ecb).toMatchObject({
+      observation_period:"2026-10-13",
+      clock_semantics:"reference_day",score:null,
+    });
+    expect(JSON.stringify(result)).not.toContain("1.11991");
+    expect(result.licensed_source_credits).toContain("European Central Bank");
+  });
   it("refuses malformed provider JSON rather than fabricating healthy source rows",()=>{
     expect(extractOpenData("usgs_earthquakes",{type:"wrong"},now)).toBeNull();
     expect(extractOpenData("world_bank_wdi",{},now)).toBeNull();
@@ -112,15 +154,17 @@ describe("no-card original government structured data adapters",()=>{
       const host=new URL(url).hostname;
       const body=host==="earthquake.usgs.gov"
         ? {type:"FeatureCollection",features:[]}
+        : host==="www.nhc.noaa.gov"
+          ? {activeStorms:[]}
         : host==="www.federalregister.gov"
           ? {count:0,results:[]}
           : {catalogVersion:"2026.10",vulnerabilities:[]};
       return new Response(JSON.stringify(body),{status:200,headers:{"content-type":"application/json"}});
     }) as typeof fetch;
     const result=await readCategoryOpenData("geopolitics",{now,fetcher:fake});
-    expect(calls).toHaveLength(3);
-    expect(result.source_families_attempted).toBe(3);
-    expect(result.source_families_readable).toBe(3);
+    expect(calls).toHaveLength(4);
+    expect(result.source_families_attempted).toBe(4);
+    expect(result.source_families_readable).toBe(4);
     expect(result.signed_gro_generated).toBe(false);
     expect(result.x402_payment_required).toBe(false);
     expect(result.chargeable).toBe(false);
