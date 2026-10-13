@@ -62,6 +62,18 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "bis_press", category: "macro", media: "rss",
     url: "https://www.bis.org/doclist/all_pressrels.rss",
     allowedHosts: ["www.bis.org"], credit: "Bank for International Settlements" },
+  // Documented government News Release RSS subscriptions. Original
+  // publication pubDate is independently age-checked by existing reader.
+  // The BLS releases are periodic metrics, never a new risk severity score.
+  { id: "bls_cpi", category: "macro", media: "rss",
+    url: "https://www.bls.gov/feed/cpi.rss",
+    allowedHosts: ["www.bls.gov"], credit: null },
+  { id: "bls_employment", category: "macro", media: "rss",
+    url: "https://www.bls.gov/feed/empsit.rss",
+    allowedHosts: ["www.bls.gov"], credit: null },
+  { id: "bls_external_prices", category: "macro", media: "rss",
+    url: "https://www.bls.gov/feed/ximpim.rss",
+    allowedHosts: ["www.bls.gov"], credit: null },
   { id: "fed_press", category: "macro", media: "rss",
     url: "https://www.federalreserve.gov/feeds/press_all.xml",
     allowedHosts: ["www.federalreserve.gov"], credit: "Federal Reserve Board" },
