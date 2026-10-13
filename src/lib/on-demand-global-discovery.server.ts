@@ -529,7 +529,7 @@ const GOVUK_SEARCH_FALLBACKS:readonly OriginalFeed[]=[
 const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   {
     domain:"rare_earth",family:"uk_dbt_original_publisher",
-    url:"https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
+    url:"https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
     media:"atom",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
     topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
@@ -997,12 +997,16 @@ async function discoverOnDemandImpl(
   }
   if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
     if(!topics.length && ["uk_ofsi_original_publisher","ecb_original_publisher",
-      "uk_desnz_original_publisher"].includes(source.family)) continue;
+      "uk_desnz_original_publisher","uk_hmt_original_publisher"].includes(source.family)) continue;
     if (categories.includes(source.domain) &&
         (!source.scopedTopics || !topics.length ||
          source.scopedTopics.some(t=>topics.includes(t)))) tasks.push({
       name:source.family,category:source.domain,
-      run:()=>originalOfficialFeed(source,country,name,trackedFetch,now,mineral,topics,newsMaxAgeMs),
+      run:()=>originalOfficialFeed(
+        source.family==="uk_dbt_original_publisher" && topics.length>0
+          ? {...source,url:"https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom"}
+          : source,
+        country,name,trackedFetch,now,mineral,topics,newsMaxAgeMs),
     });
   }
   if (categories.includes("macro")) for (const indicator of [
