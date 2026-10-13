@@ -29,6 +29,7 @@ const routeStats={
   withTitle:0, countryLevelTitle:0, countryAdvisoryTitle:0,
   linkValidHost:0, expectedArticlePath:0, advisoryDirectory:0,
   last30Days:0, last7Days:0,
+  pathClasses:{} as Record<string,number>,
 };
 for(const [,fragment] of items){
   const title=/<title(?:\s[^>]*)?>([^<>]+)<\/title>/iu.exec(fragment)?.[1]??"";
@@ -41,6 +42,9 @@ for(const [,fragment] of items){
     const u=new URL(link);
     if(u.hostname==="travel.state.gov"){
       routeStats.linkValidHost++;
+      const parts=u.pathname.split("/").filter(Boolean);
+      const safePrefix=parts.slice(0,4).join("/").replace(/[^a-z0-9\/-]/giu,"");
+      routeStats.pathClasses[safePrefix]=(routeStats.pathClasses[safePrefix]??0)+1;
       if(u.pathname.includes("traveladvisories"))routeStats.advisoryDirectory++;
       if(/^\/content\/travel\/en\/traveladvisories\/traveladvisories\/[a-z0-9-]+(?:\.html)?$/iu.test(u.pathname))
         routeStats.expectedArticlePath++;
