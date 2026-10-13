@@ -128,7 +128,7 @@ describe("no-card original government structured data adapters",()=>{
     }) as typeof fetch;
     const result=await readCategoryOpenData("macro-fx",{now,fetcher:fake});
     expect(urls).toContain("www.ecb.europa.eu");
-    expect(result.source_families_attempted).toBe(5);
+    expect(result.source_families_attempted).toBe(4);
     const ecb=result.findings.find(x=>x.observation_type==="ecb_daily_fx_reference");
     expect(ecb).toMatchObject({
       observation_period:"2026-10-13",
@@ -210,7 +210,7 @@ describe("no-card original government structured data adapters",()=>{
     }) as typeof fetch;
     const result=await readCategoryOpenData("geopolitics",{now,fetcher:fake});
     expect(calls).toHaveLength(5);
-    expect(result.source_families_attempted).toBe(4);
+    expect(result.source_families_attempted).toBe(5);
     expect(result.source_families_readable).toBe(5);
     expect(result.signed_gro_generated).toBe(false);
     expect(result.x402_payment_required).toBe(false);
