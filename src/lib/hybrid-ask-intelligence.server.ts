@@ -47,6 +47,10 @@ export type HybridAskAnswer = AskAnswer & {
   source_identity_exposed: false;
   durable_live_storage_write: false;
   real_time_message?: string;
+  /** Explicit classification: publisher observation only, not GRO risk evidence. */
+  intelligence_tier?: "official_observation_unscored";
+  signed_gro_generated?: false;
+  independent_same_event_verification?: false;
 };
 
 type StoredEvent = {
