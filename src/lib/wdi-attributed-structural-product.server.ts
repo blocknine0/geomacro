@@ -4,6 +4,10 @@ import { approvedWdiAttribution, isApprovedWdiAttribution,
   type WorldBankWdiIndicator } from "./world-bank-derived-attribution";
 import { readB2CommercialSourceRights, type B2CommercialSourceRight } from "./b2-live.server";
 import { readPinnedWdiAnnualStructuralPair } from "./on-demand-global-discovery.server";
+import type { AgentQueryPlan } from "./agent-query-plan";
+import { signWdiStructuralAnswer,verifyWdiStructuralAnswer } from "./wdi-structural-signing.server";
+import { loadRiskObjectVerificationKeysFromEnv,
+  type RiskObjectSigningMaterial,type RiskObjectVerificationKeys } from "./risk-object-signing.server";
 import type { PrivateOfficialMacroChange } from "./on-demand-global-discovery.server";
 
 /** Exact WDI source=2, two consecutive genuine annual observations, certified
@@ -180,5 +184,72 @@ export async function preparePinnedChinaWdiStructuralNoFunds(
       rights_receipt_sha256:receipt.receipt_sha256};
   } catch {
     return {status:"BLOCKED",code:"WDI_SOURCE_RIGHTS_OR_INTEGRITY_NOT_VERIFIED"};
+  }
+}
+
+
+/** Zero-money signed-product preparation for a single pinned annual CPI
+ * question. Never returns a payment entitlement or calls any payment service.
+ * Reuse the existing canonical query plan, official WDI source=2 adapter,
+ * B2 rights proof, canonical signing material and verification registry.
+ */
+export async function prepareVerifiedChinaCpiStructuralAnswer(
+  plan:AgentQueryPlan, opts:{
+    now?:Date;readRights?:()=>Promise<B2CommercialSourceRight[]|null>;
+    readPair?:typeof readPinnedWdiAnnualStructuralPair;
+    signingMaterial?:RiskObjectSigningMaterial;
+    verifyKeys?:RiskObjectVerificationKeys;
+  }={},
+){
+  if(plan.delivery_tier!=="structural_baseline" ||
+     plan.fulfillment_mode!=="published_only" ||
+     plan.subjects.length!==1 || plan.subjects[0].type!=="country" ||
+     plan.subjects[0].country_iso3!=="CHN" ||
+     plan.topics.length!==1 || plan.topics[0]!=="macro_risk" ||
+     plan.required_modules.length!==1 || plan.required_modules[0]!=="macro_monetary" ||
+     plan.as_of!==null ||
+     !/\b(?:cpi|consumer price inflation)\b/iu.test(plan.question_key) ||
+     !SHA.test(plan.query_plan_hash))
+    return {status:"BLOCKED" as const,code:"WDI_SIGNED_PLAN_SCOPE_UNSUPPORTED"};
+  const rawAge=plan.module_max_age_seconds.macro_monetary;
+  const prep=await preparePinnedChinaWdiStructuralNoFunds({
+    query_plan_hash:plan.query_plan_hash,max_age_seconds:rawAge,
+    indicator:"FP.CPI.TOTL.ZG",
+  },opts);
+  if(prep.status!=="READY_FOR_PRODUCT_INTEGRATION")
+    return {status:"BLOCKED" as const,code:prep.code};
+  let material=opts.signingMaterial;
+  if(!material){
+    // Explicit product-level signing authorization: the GRO key does not
+    // silently authorize a new signature schema; no inference from key presence.
+    if(process.env.GEOMACRO_WDI_STRUCTURAL_SIGNING_ALLOWED!=="true")
+      return {status:"BLOCKED" as const,code:"WDI_STRUCTURAL_SIGNING_NOT_AUTHORIZED"};
+    const keyId=process.env.RISK_OBJECT_SIGNING_KEY_ID;
+    const secret=process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64;
+    const publicKey=process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64;
+    if(!keyId||!secret||!publicKey)
+      return {status:"BLOCKED" as const,code:"WDI_STRUCTURAL_SIGNING_KEYS_UNAVAILABLE"};
+    material={key_id:keyId,private_key_pkcs8_b64:secret,
+      public_key_spki_b64:publicKey};
+  }
+  try{
+    const proof=signWdiStructuralAnswer({
+      product:prep.product,query_plan_hash:plan.query_plan_hash,
+      certified_rights_receipt_sha256:prep.rights_receipt_sha256,material,
+    });
+    const keys=opts.verifyKeys??loadRiskObjectVerificationKeysFromEnv();
+    const validation=verifyWdiStructuralAnswer(proof,keys,{
+      query_plan_hash:plan.query_plan_hash,
+      certified_rights_receipt_sha256:prep.rights_receipt_sha256,
+    });
+    if(!validation.valid)
+      return {status:"BLOCKED" as const,code:"WDI_STRUCTURAL_SIGNATURE_NOT_VERIFIED"};
+    return {status:"PREPARED_NO_FUNDS_ONLY" as const,
+      signed_answer:proof,verified:true as const,
+      rights_receipt_sha256:prep.rights_receipt_sha256,
+      prepared_payload_sha256:proof.integrity.signed_payload_sha256,
+      payment_authorized:false as const};
+  }catch{
+    return {status:"BLOCKED" as const,code:"WDI_STRUCTURAL_SIGNING_UNAVAILABLE"};
   }
 }
