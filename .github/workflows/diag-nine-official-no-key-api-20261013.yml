@@ -1,0 +1,23 @@
+name: One-Time 9 Official No-Key Data API Real Network Readback
+on:
+  push:
+    branches: [diag/noaa-ecb-nine-api-live-20261013]
+permissions:
+  contents: read
+jobs:
+  real-government-network:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.repository == 'blocknine0/geomacro'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - name: Strict no-scoring route and source-clocks contracts
+        run: bunx vitest run src/lib/category-open-data.server.test.ts src/lib/category-intelligence-alias.server.test.ts
+      - name: 9 no-card original government APIs, aggregate-only and no payments
+        run: bun scripts/ops/probe-three-category-open-data.ts
