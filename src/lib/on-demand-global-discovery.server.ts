@@ -75,6 +75,11 @@ export type SourceProbe = {
   retrieval_state?: "RECORDS_OBSERVED"|"NO_MATCHING_RECORDS"|
     "RATE_LIMITED"|"ACCESS_RESTRICTED"|"TRANSPORT_UNAVAILABLE"|
     "COOLDOWN_ACTIVE"|"PROVIDER_INVALID";
+  // Aggregate original-item diagnostics, never titles or article URLs.
+  feed_audit?: {
+    inspected:number; native_dated:number; country_mentioned:number;
+    scope_matched:number; eligible_pub_date:number; allowed_article_paths:number;
+  };
   independent_claim_verified: false;
   derived_commercial_rights_verified: false;
 };
@@ -667,7 +672,10 @@ async function originalOfficialFeed(
     ? [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)]
     : [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)];
   const candidates:PrivateOriginalCandidate[]=[];
+  const audit={inspected:0,native_dated:0,country_mentioned:0,
+    scope_matched:0,eligible_pub_date:0,allowed_article_paths:0};
   for(const [,entry] of entries.slice(0,80)){
+    audit.inspected++;
     const title=atom
       ? /<(?:atom:)?title(?:\s[^>]*)?>([^<]{1,300})<\/(?:atom:)?title>/iu.exec(entry)?.[1] ?? ""
       : rssItemText(entry,"title");
@@ -681,17 +689,21 @@ async function originalOfficialFeed(
     const mineralMatches = !mineral || def.domain !== "rare_earth" ||
       MINERAL_TERMS.some((term) => term.value === mineral && term.pattern.test(contextualText));
     const hasNativeDate=freshPublished(date,now,maxAgeMs);
+    if(date.trim())audit.native_dated++;
+    const matchedCountry=originalHeadlineMentionsCountry(title,countryIso3,countryNameValue) ||
+      originalHeadlineMentionsCountry(summary.slice(0,300),countryIso3,countryNameValue);
+    if(matchedCountry)audit.country_mentioned++;
+    const matchedScope=def.topic.test(contextualText) &&
+      matchesRequestedTopic(contextualText,def.domain,topics) && mineralMatches;
+    if(matchedCountry && matchedScope)audit.scope_matched++;
     const undatedGovukAtom=atom && !date.trim() &&
       ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
        "uk_ofsi_original_publisher","uk_desnz_original_publisher","uk_hmt_original_publisher"].includes(def.family);
     // Missing Atom <published> may enter PRIVATE article-page verification,
     // not score/payment. Never accept <updated>, bad/missing RSS clocks, or
     // a stale/future <published> as original source time.
-    if (!(originalHeadlineMentionsCountry(title,countryIso3,countryNameValue) ||
-          originalHeadlineMentionsCountry(summary.slice(0,300),countryIso3,countryNameValue)) ||
-        !def.topic.test(contextualText) ||
-        !matchesRequestedTopic(contextualText,def.domain,topics) || !mineralMatches ||
-        (!hasNativeDate && !undatedGovukAtom)) continue;
+    if (!matchedCountry || !matchedScope || (!hasNativeDate && !undatedGovukAtom)) continue;
+    audit.eligible_pub_date++;
     let href="";
     if(atom){
       const links=[...entry.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)];
@@ -705,6 +717,7 @@ async function originalOfficialFeed(
     }
     const article_url=originalArticleUrl(href,def);
     if(!article_url)continue;
+    audit.allowed_article_paths++;
     if(candidates.length>=4)continue; // fixed private evidence budget/issuer
     const article_title=title.replace(/\s+/gu," ").trim();
     const article_identity_sha256=digest(def.family+"|"+article_url);
@@ -725,8 +738,9 @@ async function originalOfficialFeed(
       paid_delivery_allowed:false,
     });
   }
-  return {probe:probe(def.family,candidates.length,
+  return {probe:{...probe(def.family,candidates.length,
     candidates.some(x=>x.source_native_feed_publication_date_verified)),
+    feed_audit:audit},
     private_candidates:candidates};
 }
 
