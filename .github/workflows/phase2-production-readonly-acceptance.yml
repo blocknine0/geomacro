@@ -1,0 +1,31 @@
+name: Phase 2 Production Read-only Evidence Acceptance
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/phase2-production-readonly-acceptance.yml"
+      - "scripts/ops/verify-phase2-production-readonly.mjs"
+      - "src/lib/on-demand-private-evidence-package.server.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase2-production-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  production-actual-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Actual deployed SHA and no-charge canonical and category API
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-phase2-production-readonly.mjs
