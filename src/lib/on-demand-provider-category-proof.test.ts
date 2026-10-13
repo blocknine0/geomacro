@@ -106,7 +106,8 @@ describe("natural-language freshness routing without payment/hash changes",()=>{
     expect(inferOnDemandFreshnessSeconds("Lithium exports within 7 days")).toBe(604_800);
     expect(inferOnDemandFreshnessSeconds("Inflation in the past 1 week")).toBe(604_800);
     expect(inferOnDemandFreshnessSeconds("Current inflation")).toBeNull();
-    expect(()=>inferOnDemandFreshnessSeconds("Last 2 weeks")).toThrow("ON_DEMAND_FRESHNESS_UNSUPPORTED");
+    expect(inferOnDemandFreshnessSeconds("Last 2 weeks")).toBe(1_209_600);
+    expect(()=>inferOnDemandFreshnessSeconds("Last 5 weeks")).toThrow("ON_DEMAND_FRESHNESS_UNSUPPORTED");
     expect(()=>inferOnDemandFreshnessSeconds("Last 2 hours and past 3 days")).toThrow("ON_DEMAND_FRESHNESS_AMBIGUOUS");
   });
 });
