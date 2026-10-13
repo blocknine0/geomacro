@@ -75,7 +75,7 @@ export type PrivateOnDemandEvidencePackage = Readonly<{
 }>;
 
 const HEX64=/^[a-f0-9]{64}$/u;
-const ISOTIME=/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$/iu;
+const ISOTIME=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/iu;
 const SUPPORTED_TOPICS=new Set([
  "sanctions_restrictions","conflict_geopolitics","political_governance",
  "macro_risk","sovereign_risk","fx_external_risk","critical_minerals","hot_topics",
@@ -91,9 +91,9 @@ const FAMILY_TO_SOURCE:Readonly<Record<string,{organization:string;source_id:str
   // but do not invent a commercial licence or reviewer registration.
 };
 const MINERAL_PATTERN:Readonly<Record<OnDemandMineral,RegExp>>={
-  lithium:/\\blithium\\b/iu,cobalt:/\\bcobalt\\b/iu,
-  nickel:/\\bnickel\\b/iu,graphite:/\\bgraphite\\b/iu,
-  copper:/\\bcopper\\b/iu,"rare earth":/\\brare[- ]earths?\\b/iu,
+  lithium:/\blithium\b/iu,cobalt:/\bcobalt\b/iu,
+  nickel:/\bnickel\b/iu,graphite:/\bgraphite\b/iu,
+  copper:/\bcopper\b/iu,"rare earth":/\brare[- ]earths?\b/iu,
 };
 const sha=(value:string)=>createHash("sha256").update(value,"utf8").digest("hex");
 const sorted=(a:readonly string[])=>[...new Set(a)].sort();
@@ -105,7 +105,7 @@ const issuerFor=(family:string)=>{
   if(family.startsWith("australian_industry_"))return "australian_industry";
   return FAMILY_TO_SOURCE[family]?.organization??"";
 };
-const titleText=(x:string)=>x.normalize("NFKC").replace(/\\s+/gu," ").trim();
+const titleText=(x:string)=>x.normalize("NFKC").replace(/\s+/gu," ").trim();
 function originalClock(x:string|null,now:Date,maxAgeSeconds:number):string|null{
   if(!x || !ISOTIME.test(x))return null;
   const date=Date.parse(x);
@@ -124,11 +124,11 @@ function safeOriginalUrl(original:PrivateOriginalCandidate):boolean{
       org==="ecb"?"www.ecb.europa.eu":
       org==="australian_industry"?"www.minister.industry.gov.au":"www.gov.uk";
     if(u.hostname!==expectedHost)return false;
-    return org==="un_news"?/^\\/en\\/story\\/20\\d{2}\\/\\d{1,2}\\//u.test(u.pathname):
-      org==="federal_reserve"?/^\\/newsevents\\/pressreleases\\//u.test(u.pathname):
-      org==="ecb"?/^\\/press\\//u.test(u.pathname):
-      org==="australian_industry"?/^\\/(?:t-ayres|king)\\/media\\//u.test(u.pathname):
-      /^\\/government\\/(?:news|speeches|statements|world-location-news|publications)\\//u.test(u.pathname);
+    return org==="un_news"?/^\/en\/story\/20\d{2}\/\d{1,2}\//u.test(u.pathname):
+      org==="federal_reserve"?/^\/newsevents\/pressreleases\//u.test(u.pathname):
+      org==="ecb"?/^\/press\//u.test(u.pathname):
+      org==="australian_industry"?/^\/(?:t-ayres|king)\/media\//u.test(u.pathname):
+      /^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(u.pathname);
   }catch{return false}
 }
 
