@@ -4,6 +4,7 @@ import type { B2CommercialSourceRight } from "./b2-live.server";
 import { readB2CommercialSourceRights } from "./b2-live.server";
 import { commercialSourceEligibilityFromRow } from "./commercial-source-eligibility.server";
 import { canonicalRiskObjectJson } from "./risk-object-signing.server";
+import {approvedIndependentReviewerFromEnv} from "./independent-reviewer-authority.server";
 import type {
   VerifiedOnDemandCategory, VerifiedOnDemandEvidenceReceipt,
 } from "./on-demand-qualified-country-risk.server";
@@ -154,8 +155,10 @@ export function createReviewedRightsOnDemandQualifier(
     events:ReadonlyArray<CountryRiskEventInput>;
     now:Date;
   }>):Promise<VerifiedOnDemandEvidenceReceipt|null>=>{
-    const pem=process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM;
-    if(typeof pem!=="string"||!pem.includes("BEGIN PUBLIC KEY") ||
+    // Independent reviewer pin & GRO signer separation are mandatory BEFORE
+    // any B2 rights read, private scoring or signature. PEM alone is untrusted.
+    const pem=approvedIndependentReviewerFromEnv();
+    if(!pem ||
        !Array.isArray(trustedPrivateBundle?.rows) ||
        !Array.isArray(trustedPrivateBundle?.eventPackages) ||
        trustedPrivateBundle.rows.length!==input.events.length ||
