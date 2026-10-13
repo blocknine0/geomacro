@@ -44,9 +44,10 @@ import {
 import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.server";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import { lookupTelegramFallback } from "./on-demand-telegram-fallback.server";
+import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
-  verifyOnDemandOriginalArticlePages, type OnDemandCategory,
+  inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages, type OnDemandCategory,
 } from "./on-demand-global-discovery.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
@@ -357,6 +358,26 @@ export const mainnetIntelligenceHandlers = {
               execution_authorized:false,
             },422);
           }
+          let requestedNewsAgeSeconds:number|undefined;
+          try {
+            requestedNewsAgeSeconds=plan.requested_max_age_seconds ??
+              inferOnDemandFreshnessSeconds(plan.question_key) ?? undefined;
+          } catch {
+            return json({
+              ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"ON_DEMAND_FRESHNESS_SCOPE_UNSUPPORTED"},
+              execution_authorized:false,
+            },422);
+          }
+          // Read the existing independently signature-verified D1 country GRO
+          // first; an outage/empty object is not a reason to contact Supabase.
+          // Country GRO availability is only a hint, NOT proof that the exact
+          // requested topic/mineral is answered. Never bypass the x402 gate.
+          let existingVerifiedCountryGroAvailable=false;
+          try {
+            existingVerifiedCountryGroAvailable=Boolean(
+              await readD1VerifiedHotCountryGro(subject.country_iso3,new Date().toISOString()));
+          } catch { /* Storage lookup is optional, live retrieval continues. */ }
           let discovery;
           let privatelyQualifiedOriginalCandidateCount=0;
           let privateOriginalReviewCandidateCount=0;
@@ -372,6 +393,8 @@ export const mainnetIntelligenceHandlers = {
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
+              topics:plan.topics,
+              max_age_seconds:requestedNewsAgeSeconds,
             });
             discovery=privateResult.discovery;
             // NEVER copy privateResult.private_candidates into the public
@@ -402,7 +425,8 @@ export const mainnetIntelligenceHandlers = {
             privatePeerMacroStatus=privatePeerProof.status;
             privatePeerScoredDimensions=privatePeerProof.peer_normalized_dimension_count;
             const pageProof=await verifyOnDemandOriginalArticlePages(
-              privateResult.private_original_review_candidates);
+              privateResult.private_original_review_candidates,
+              {maxAgeSeconds:requestedNewsAgeSeconds});
             // No page HTML, original URL, title or publisher identity is
             // serialized. This is only publication-clock consistency, NOT
             // independent facts, commercial source rights or signed risk.
@@ -441,6 +465,7 @@ export const mainnetIntelligenceHandlers = {
               checked_at:discovery.checked_at,
               network_attempts:discovery.network_attempts,
               reached_source_families:discovery.reached_source_families,
+              existing_verified_country_gro_available:existingVerifiedCountryGroAvailable,
               discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
               private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
               duplicate_original_headlines_suppressed:duplicatePrivateOriginalHeadlines,

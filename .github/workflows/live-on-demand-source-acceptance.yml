@@ -7,16 +7,25 @@ on:
     paths:
       - ".github/workflows/live-on-demand-source-acceptance.yml"
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
+      - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
       - "src/lib/on-demand-private-original-review.server.test.ts"
       - "src/__tests__/on-demand-undated-atom-original-date-rescue.test.ts"
       - "scripts/lib/official-original-article-date.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/live-on-demand-source-acceptance.yml"
+      - "scripts/ops/verify-live-on-demand-real-apis.ts"
+      - "scripts/ops/verify-live-on-demand-capabilities.ts"
+      - "src/lib/on-demand-global-discovery.server.ts"
+      - "src/lib/on-demand-provider-category-proof.test.ts"
   schedule:
     # Once per day: max 12 discovery + 4 original-page read-only calls; no B2/D1/funding.
     - cron: "23 8 * * *"
 
 permissions:
   contents: read
+  security-events: read
 
 concurrency:
   group: geomacro-live-on-demand-global-discovery-acceptance
@@ -47,12 +56,92 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          bun scripts/ops/verify-live-on-demand-capabilities.ts
           bun scripts/ops/verify-live-on-demand-real-apis.ts
       - name: Keep redacted no-funds publisher acceptance
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: live-on-demand-global-api-proof-${{ github.run_id }}
+          path: |
+            artifacts/on-demand-live/real-api-proof.json
+            artifacts/on-demand-live/real-category-capability.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  # PR tests exercise the *real* APIs without production environment secrets.
+  # Never expose the production-approved ReliefWeb token to PR execution.
+  real-api-pr-proof:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Checkout PR source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install exact locked modules
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify actual open high-severity CodeQL alert disposition
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 15 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/code-scanning/alerts?state=open&per_page=100" \
+            > /tmp/geomacro-codeql-alerts.json
+          # Pull-request alerts need an exact head/merge ref; the default
+          # repository alert view alone can miss alerts introduced by a PR.
+          if [[ -n "${GITHUB_HEAD_REF:-}" ]]; then
+            for REF in "refs/heads/${GITHUB_HEAD_REF}" "${GITHUB_REF}"; do
+              ENCODED_REF="$(REF="${REF}" python3 -c 'import os,urllib.parse;print(urllib.parse.quote(os.environ["REF"],safe=""))')"
+              curl --fail --silent --show-error --max-time 15 \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/code-scanning/alerts?state=open&per_page=100&ref=${ENCODED_REF}" \
+                > "/tmp/geomacro-codeql-${ENCODED_REF}.json"
+            done
+          fi
+          python3 - <<'PY'
+          import json,sys,glob
+          high={}
+          files=["/tmp/geomacro-codeql-alerts.json"]+glob.glob("/tmp/geomacro-codeql-*.json")
+          for file in files:
+            rows=json.load(open(file,encoding="utf-8"))
+            if not isinstance(rows,list): sys.exit("CODEQL_ALERT_API_INVALID")
+            for a in rows:
+              tool=str((a.get("tool") or {}).get("name") or "")
+              rule=a.get("rule") or {}
+              severity=str(rule.get("security_severity_level") or "").lower()
+              if "codeql" in tool.lower() and severity in ("high","critical"):
+                instance=a.get("most_recent_instance") or {}
+                loc=instance.get("location") or {}
+                high[str(a.get("number"))]={"number":a.get("number"),
+                  "rule":rule.get("id"),"description":str(rule.get("description") or "")[:180],
+                  "severity":severity,"path":loc.get("path"),
+                  "line":loc.get("start_line"),"state":a.get("state")}
+          print(json.dumps({"codeql_open_high_alert_count":len(high),
+            "codeql_open_high_alerts":list(high.values())},separators=(",",":")))
+          if high:sys.exit(4)
+          PY
+      - name: Real no-charge per-category provider readback
+        env:
+          RELIEFWEB_APPROVED_APPNAME: ""
+        run: |
+          bun scripts/ops/verify-live-on-demand-capabilities.ts
+          bun scripts/ops/verify-live-on-demand-real-apis.ts
+      - name: Preserve redacted provider diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: live-on-demand-pr-api-proof-${{ github.run_id }}
           path: artifacts/on-demand-live/real-api-proof.json
           if-no-files-found: warn
           retention-days: 3

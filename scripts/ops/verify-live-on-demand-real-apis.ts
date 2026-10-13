@@ -24,6 +24,7 @@ const FAMILY_BY_HOST:Readonly<Record<string,string>>={
   "www.gov.uk":"gov_uk",
   "news.un.org":"un_news",
   "www.federalreserve.gov":"federal_reserve",
+  "www.ecb.europa.eu":"ecb",
   "www.minister.industry.gov.au":"australian_industry",
 };
 const outcomeCounts=new Map<string,Record<
@@ -66,6 +67,9 @@ const privateEvidence=await discoverOnDemandForPrivateQualification({
   country_iso3:"CHN",
   categories:["geopolitics","macro","rare_earth"],
   mineral:"lithium",
+  // Genuine country/query scope for each of the three existing categories.
+  topics:["sanctions_restrictions","macro_risk","critical_minerals"],
+  max_age_seconds:7*86_400,
 },{fetchImpl:statusOnlyFetch});
 const receipt=privateEvidence.discovery;
 const privateMacroDrivers=buildPrivateOnDemandMacroDrivers(privateEvidence.private_macro_changes);
@@ -73,7 +77,32 @@ const privateMacroDrivers=buildPrivateOnDemandMacroDrivers(privateEvidence.priva
 // artifacts. Original publisher URLs, page HTML and articles remain private.
 const pageProof=await verifyOnDemandOriginalArticlePages(
   privateEvidence.private_original_review_candidates,
-  {fetchImpl:statusOnlyFetch});
+  {fetchImpl:statusOnlyFetch,maxAgeSeconds:7*86_400});
+// A 2xx feed with zero matched records is NOT a usable China/query result.
+// Annual WDI observations are explicitly structural, not current news.
+const categoryRetrievalProof=receipt.categories.map(category=>{
+  const providers=receipt.source_probes.filter(p=>p.category===category);
+  const indexLeads=providers.filter(p=>
+    ["gdelt_doc_discovery","reliefweb_discovery"].includes(p.family))
+    .reduce((n,p)=>n+p.observed_record_count,0);
+  const nativeOriginals=privateEvidence.private_candidates.filter(p=>
+    p.domain===category && p.source_native_feed_publication_date_verified).length;
+  const verifiedPages=pageProof.verified_candidates.filter(p=>
+    p.domain===category).length;
+  const annualStructural=category==="macro"?privateEvidence.private_macro_changes.length:0;
+  return {
+    category,
+    provider_attempts:providers.length,
+    reachable_providers:providers.filter(p=>p.reachable).length,
+    index_only_discovery_leads:indexLeads,
+    native_dated_original_leads:nativeOriginals,
+    original_pages_date_verified:verifiedPages,
+    annual_structural_observations:annualStructural,
+    // Counts signal accessible query-relevant records, NOT rights/signing.
+    sample_records_observed:
+      indexLeads+nativeOriginals+verifiedPages+annualStructural>0,
+  };
+});
 const proof={
   schema:"geomacro.live-on-demand-real-api-safety.v1",
   checked_at:receipt.checked_at,
@@ -82,6 +111,18 @@ const proof={
   sample_case:"CHN_LITHIUM_CURRENT_SUPPLY_RISK",
   category_count:receipt.categories.length,
   categories:receipt.categories,
+  category_retrieval_proof:categoryRetrievalProof,
+  // This is a time-sensitive availability probe, not positive capability
+  // acceptance. Genuine no-news is recorded, not misreported as an outage.
+  current_news_availability:categoryRetrievalProof.map(x=>({
+    category:x.category,
+    status:x.native_dated_original_leads+x.original_pages_date_verified>0
+      ? "ORIGINAL_PUBLISHER_LEAD_FOUND_NOT_SIGNED"
+      : x.reachable_providers>0
+        ? "NO_MATCHING_CURRENT_PUBLISHER_ORIGINAL"
+        : "PROVIDERS_UNAVAILABLE",
+  })),
+  three_category_capability_proven_by_this_probe:false,
   network_attempts:receipt.network_attempts,
   original_article_page_attempts:pageProof.attempted,
   // Fixed-host, HTTP-status-class aggregate only. No original source URL,
@@ -135,7 +176,7 @@ const observedRequests=proof.provider_http_outcomes.reduce((n,row)=>
   n+row.ok_2xx+row.http_403+row.http_429+row.http_5xx+
     row.other_http+row.network_error,0);
 if(observedRequests!==proof.total_bounded_network_attempts ||
-   proof.provider_http_outcomes.length>9 ||
+   proof.provider_http_outcomes.length>10 ||
    proof.current_lithium_risk_answer_verified!==false ||
    proof.x402_commercial_release_authorized!==false ||
    proof.sample_country_iso3!=="CHN" ||
@@ -169,3 +210,10 @@ if(observedRequests!==proof.total_bounded_network_attempts ||
   process.exitCode=2;
 else if(proof.distinct_provider_families_reached===0)
   process.exitCode=3; // zero genuine external sources; NOT false GREEN
+else if(proof.category_retrieval_proof.length!==3 ||
+    proof.category_retrieval_proof.some(p=>p.provider_attempts===0) ||
+    proof.current_news_availability.some(p=>p.status==="PROVIDERS_UNAVAILABLE"))
+  process.exitCode=4; // transport outage (no eligible provider reached)
+else if(proof.three_category_capability_proven_by_this_probe!==false)
+  process.exitCode=5; // negative/current-news probe cannot certify capability
+
