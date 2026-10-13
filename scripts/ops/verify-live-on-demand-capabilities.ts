@@ -66,7 +66,7 @@ for(const sample of cases) {
       topics:[sample.topic],mineral:sample.mineral??null,
       max_age_seconds:sample.max_age_seconds,
     },
-    discovery:r.discovery,originals:r.private_candidates,
+    discovery:r.discovery,originals:r.private_original_review_candidates,
     verifiedCountryName:r.private_verified_country_name,
     pageProof:verified,macroChanges:r.private_macro_changes,
     now:new Date(r.discovery.checked_at),
