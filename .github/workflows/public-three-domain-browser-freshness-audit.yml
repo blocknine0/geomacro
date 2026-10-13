@@ -1,0 +1,58 @@
+name: Public Three-Domain Browser Freshness Audit
+
+# Independent, low-frequency read-only production acceptance for #2052.
+# Fail on missing D1/browser domains, not on an honest quiet publisher day.
+# Public D1 returns only Geomacro-derived news; do not print DOM or journal.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "25 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/public-three-domain-browser-freshness-audit.yml"
+      - "scripts/ops/verify-public-intelligence-browser-freshness.mjs"
+      - "scripts/tests/public-intelligence-browser-freshness.test.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/public-three-domain-browser-freshness-audit.yml"
+      - "scripts/ops/verify-public-intelligence-browser-freshness.mjs"
+      - "scripts/tests/public-intelligence-browser-freshness.test.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-public-browser-freshness-audit
+  cancel-in-progress: true
+
+jobs:
+  no-private-content-contract:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-public-intelligence-browser-freshness.mjs
+          node --test scripts/tests/public-intelligence-browser-freshness.test.mjs
+
+  public-live-browser:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Read public D1 and verify actual three-domain browser cards
+        run: node scripts/ops/verify-public-intelligence-browser-freshness.mjs
