@@ -772,7 +772,7 @@ export function deduplicateOnDemandOriginalHeadlines(
 /** Never returns upstream text, URLs or source identities for paid output. */
 async function discoverOnDemandImpl(
   input: OnDemandSearchInput,
-  options: {fetchImpl?:typeof fetch; now?:Date}={},
+  options: {fetchImpl?:typeof fetch; now?:Date; disableDiscoveryIndex?:boolean}={},
 ): Promise<{
   discovery:OnDemandDiscovery;
   private_candidates:PrivateOriginalCandidate[];
@@ -842,7 +842,7 @@ async function discoverOnDemandImpl(
   catch { name = ""; }
   const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   const approvedReliefAppname=approvedReliefWebAppname();
-  if (name) for (const category of (topics.length?categories.slice(0,1):categories)) {
+  if (name && !options.disableDiscoveryIndex) for (const category of (topics.length?categories.slice(0,1):categories)) {
     tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral,topics,country)});
     // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
     // account approval must not generate repeat 403s on every user query.
