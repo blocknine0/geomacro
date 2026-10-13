@@ -116,6 +116,41 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
   return {
     OPTIONS: async () => mainnetIntelligenceHandlers.OPTIONS(),
     GET: async ({ request }: { request: Request }) => {
+      if (new URL(request.url).searchParams.get("view") === "combined") {
+        // One canonical category endpoint: original-date official releases
+        // and structured source data remain separated by type and clocks.
+        // No current-event claim may be inferred from reference periods.
+        if (!config.category || !["geopolitics","macro-fx","critical-minerals"].includes(config.category))
+          return errorResponse("CATEGORY_COMBINED_VIEW_NOT_AVAILABLE",404);
+        const category=config.category as CommercialIntelligenceCategory;
+        const [releases,data]=await Promise.allSettled([
+          readCategoryLiveObservation(category),
+          readCategoryOpenData(category),
+        ]);
+        if (releases.status==="rejected" && data.status==="rejected") {
+          return Response.json({
+            ok:false,category,chargeable:false,signed_gro_generated:false,
+            error:{code:"CATEGORY_SOURCE_READERS_UNAVAILABLE"},
+          },{status:503,headers:{"Cache-Control":"no-store",
+            "X-Content-Type-Options":"nosniff","Access-Control-Allow-Origin":"*"}});
+        }
+        return Response.json({
+          schema_version:"geomacro.category-combined-coverage.v1",
+          ok:true,category,
+          coverage_status:releases.status==="fulfilled"&&data.status==="fulfilled"
+            ?"BOTH_SOURCE_CLASSES_READABLE":"PARTIAL_SOURCE_CLASS_AVAILABILITY",
+          original_release_observations: releases.status==="fulfilled"
+            ? releases.value : null,
+          structured_open_data: data.status==="fulfilled" ? data.value : null,
+          source_class_count_readable:Number(releases.status==="fulfilled")+
+            Number(data.status==="fulfilled"),
+          current_signed_risk_intelligence_verified:false,
+          signed_gro_generated:false,x402_payment_required:false,
+          chargeable:false,raw_publisher_content_delivered:false,
+          durable_storage_written:false,
+        },{status:200,headers:{"Cache-Control":"no-store",
+          "X-Content-Type-Options":"nosniff","Access-Control-Allow-Origin":"*"}});
+      }
       // Distinct provider-native measurements and dataset reference periods.
       // Never inflate the original-release news feed or change x402 POST.
       if (new URL(request.url).searchParams.get("view") === "open-data") {
