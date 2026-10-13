@@ -34,7 +34,7 @@ export function prepareHybridAgentContext(question: unknown, history: unknown): 
   let totalChars = 0;
   const safe: HybridAgentTurn[] = [];
   for (const turn of history) {
-    if (!isPlainRecord(turn) || Object.keys(turn).some(key => forbiddenKeys.has(key)) ||
+    if (!isPlainRecord(turn) || Object.keys(turn).some(key => forbiddenKeys.has(key) || (key !== "role" && key !== "content")) ||
       (turn.role !== "user" && turn.role !== "assistant") ||
       typeof turn.content !== "string" || !turn.content.trim() ||
       turn.content.length > HYBRID_AGENT_LIMITS.maxCharsPerTurn) {
