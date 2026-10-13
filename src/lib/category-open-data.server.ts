@@ -58,7 +58,6 @@ const UPSTREAMS: readonly Provider[] = Object.freeze([
 const CACHE_MS = 120_000;
 const cache = new Map<Domain,{ until: number; value: Promise<ReturnType<typeof buildSnapshot>> }>();
 const NOW_MAX_SKEW = 5 * 60_000;
-const NO_RAW = /(?:https?:\/\/|www\.)/iu;
 function dateOnly(s: unknown): string | null {
   if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}$/u.test(s)) return null;
   const date = Date.parse(s + "T00:00:00Z");
@@ -67,10 +66,16 @@ function dateOnly(s: unknown): string | null {
 function boundedNumeric(value: unknown, lo: number, hi: number): number | null {
   return typeof value === "number" && Number.isFinite(value) && value>=lo && value<=hi ? value : null;
 }
+function stableKey(input:string):string {
+  // Non-security UI dedupe identifier only. This is not a signing digest.
+  let h=2166136261;
+  for(let i=0;i<input.length;i++){h^=input.charCodeAt(i);h=Math.imul(h,16777619);}
+  return (h>>>0).toString(16).padStart(8,"0");
+}
 function signal(kind: string, key: string, period: string, clock: Timing,
   finding: string, impact: string): OpenDataSignal {
   return {
-    finding_key: kind + ":" + key,
+    finding_key: kind + ":" + stableKey(key),
     evidence_class: "official_open_data_unscored",
     observation_type: kind,
     observation_period: period, clock_semantics: clock,
@@ -81,7 +86,7 @@ function signal(kind: string, key: string, period: string, clock: Timing,
 function fromUsgs(payload: unknown, now: number): Extracted | null {
   const data=payload as Record<string,unknown>;
   if (data?.type!=="FeatureCollection" || !Array.isArray(data.features)) return null;
-  const row = data.features.flatMap((f: unknown): {id:string; ms:number; mag:number}[] => {
+  const row = data.features.slice(0,150).flatMap((f: unknown): {id:string; ms:number}[] => {
     const item = f as Record<string,any>;
     const p=item?.properties;
     const ms=boundedNumeric(p?.time, 1_000_000_000_000, now+NOW_MAX_SKEW);
@@ -89,12 +94,11 @@ function fromUsgs(payload: unknown, now: number): Extracted | null {
     const id=typeof item?.id==="string"&&/^[a-z0-9]{4,32}$/iu.test(item.id)?item.id:"";
     if (!ms || mag===null || !id || ms>now-15*60_000 ||
         ms<now-24*3600_000) return [];
-    return [{id,ms,mag}];
+    return [{id,ms}];
   }).sort((a,b)=>b.ms-a.ms).slice(0,3);
   return { signals:row.map(x=>signal(
     "seismic_hazard",x.id,new Date(x.ms).toISOString(),"event_occurrence",
-    "Geomacro detects an officially recorded M" + x.mag.toFixed(1) +
-      "+ class earthquake event in the last 24 hours.",
+    "Geomacro detects a recorded earthquake in the M4.5-or-higher seismic band within the past day.",
     "Seismic events may disrupt logistics or infrastructure locally; no geopolitical conflict, damage or supply disruption is inferred."
   )),credits:[] };
 }
@@ -104,7 +108,7 @@ function fromCisa(payload: unknown, now: number): Extracted | null {
     return null;
   // Date added is a DAY, not a timestamp of the exploit. Conservative
   // next-day 12:15 UTC embargo prevents publication-before-fact claims.
-  const rows=data.vulnerabilities.flatMap((row:unknown):{day:string;key:string}[]=>{
+  const rows=data.vulnerabilities.slice(-180).flatMap((row:unknown):{day:string;key:string}[]=>{
     const x=row as Record<string,unknown>;
     const day=dateOnly(x?.dateAdded);
     const cve=typeof x?.cveID==="string" && /^CVE-\d{4}-\d{4,10}$/u.test(x.cveID)?x.cveID:null;
