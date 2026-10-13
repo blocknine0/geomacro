@@ -16,6 +16,8 @@ export type OnDemandSearchInput = {
   categories: OnDemandCategory[];
   // Optional fixed vocabulary, never the raw customer question.
   mineral?: OnDemandMineral | null;
+  topics?: readonly string[];
+  max_age_seconds?: number;
 };
 /**
  * PRIVATE EPHEMERAL EVIDENCE ONLY: never put this in response JSON or
