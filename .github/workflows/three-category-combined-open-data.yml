@@ -1,0 +1,56 @@
+name: Three Category Combined Open Data No Funds Production Acceptance
+on:
+  pull_request:
+    paths:
+      - "src/lib/category-open-data.server.ts"
+      - "src/lib/category-intelligence-alias.server.ts"
+      - "scripts/ops/verify-category-combined-production.mjs"
+      - ".github/workflows/three-category-combined-open-data.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/category-open-data.server.ts"
+      - "src/lib/category-intelligence-alias.server.ts"
+      - "scripts/ops/verify-category-combined-production.mjs"
+      - ".github/workflows/three-category-combined-open-data.yml"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-combined-open-data-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  static-no-funds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: No consumer POST/payment, exact-SHA release gate required
+        run: |
+          node --input-type=module -e '
+            import {readFileSync} from "node:fs";
+            const text=readFileSync("scripts/ops/verify-category-combined-production.mjs","utf8");
+            if(!text.includes("exact_shas_match")||
+               !text.includes("method:"GET"")||
+               !text.includes("paid_actions:0")||
+               text.includes("PAYMENT-SIGNATURE")||
+               text.includes("method:"POST""))throw Error("NO_FUNDS_CHECKER_INCOMPLETE");
+          '
+  published-runtime:
+    needs: static-no-funds
+    if: github.event_name != 'pull_request' && github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      EXPECTED_CANONICAL_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Validate 3 published category combined GETs without payments
+        run: node scripts/ops/verify-category-combined-production.mjs
