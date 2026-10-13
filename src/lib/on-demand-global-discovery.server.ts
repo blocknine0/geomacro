@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
-import { indexedHeadlineMatchesOriginalPage } from "./on-demand-index-original-title.server";
+import { indexedHeadlineMatchesOriginalPage, indexedPublisherHasOriginalMetaOutsideScripts } from "./on-demand-index-original-title.server";
 import { chooseJevSourceReviewPriority } from "./on-demand-jev-source-priority.server";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
@@ -905,7 +905,8 @@ export async function verifyOnDemandOriginalArticlePages(
       const originalDate=verifiedPublisherPageDate(html,now);
       if(!originalDate || !freshPublished(originalDate,now) ||
         (candidate.index_original_page_pending===true &&
-         !indexedHeadlineMatchesOriginalPage(candidate.article_title,html)) ||
+         (!indexedHeadlineMatchesOriginalPage(candidate.article_title,html) ||
+          !indexedPublisherHasOriginalMetaOutsideScripts(html))) ||
         (candidate.feed_item_published_at!==null &&
          Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000))
         return null;
