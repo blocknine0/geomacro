@@ -62,6 +62,49 @@ describe("operator public RSS candidate rotating bounded discovery",()=>{
     expect(JSON.stringify(r)).not.toContain("Lithium mining contract");
     expect(JSON.stringify(r)).not.toContain("Central bank interest rate inflation");
   });
+  it("does not call Atom <updated> first publication or count an edited old item as 24h news",async()=>{
+    const atom=`<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">
+      <entry><title>Edited prior-event macro update</title>
+        <published>2026-09-01T09:00:00Z</published>
+        <updated>2026-10-12T11:55:00Z</updated></entry>
+      <entry><title>Only updated, original publication unverified</title>
+        <updated>2026-10-12T11:58:00Z</updated></entry>
+      <entry><title>New publication</title>
+        <published>2026-10-12T11:30:00Z</published>
+        <updated>2026-10-12T11:50:00Z</updated></entry>
+      </feed>`;
+    const mock=vi.fn(async()=>new Response(atom));
+    const out=await observeOperatorFreeFeedRotation({group:1,now,fetchImpl:mock as typeof fetch});
+    expect(mock).toHaveBeenCalledTimes(4);
+    for(const row of out.sources){
+      expect(row.sampled_metadata_items).toBe(3);
+      expect(row.native_dated_24h_items).toBe(1);
+      expect(row.feed_items_with_explicit_publication_date).toBe(2);
+      expect(row.feed_items_updated_without_publication_date).toBe(1);
+      expect(row.timestamp_precision).toBe(
+        "FEED_ITEM_DATE_NOT_ORIGINAL_PUBLISHER_PAGE_VALIDATION");
+    }
+    expect(out.raw_publisher_payload_persisted).toBe(false);
+    expect(out.signed_gro_generated).toBe(false);
+    expect(JSON.stringify(out)).not.toContain("Edited prior-event");
+  });
+  it("rejects timezone-less and vague <date> / <updated> as native original clocks",async()=>{
+    const rssWithVague=`<rss version="2.0"><channel>
+      <item><title>Old press item re-indexed</title><date>2026-10-12</date>
+        <updated>2026-10-12T11:55:00Z</updated></item>
+      <item><title>Implicit timezone date</title><pubDate>2026-10-12 11:30:00</pubDate></item>
+      <item><title>Actual original RSS date</title>
+        <pubDate>Mon, 12 Oct 2026 11:45:00 GMT</pubDate></item>
+      </channel></rss>`;
+    const out=await observeOperatorFreeFeedRotation({group:1,now,
+      fetchImpl:vi.fn(async()=>new Response(rssWithVague)) as typeof fetch,
+    });
+    for(const row of out.sources){
+      expect(row.native_dated_24h_items).toBe(1);
+      expect(row.feed_items_with_explicit_publication_date).toBe(1);
+      expect(row.feed_items_updated_without_publication_date).toBe(1);
+    }
+  });
   it("does not retry on upstream auth/rate denial, keeps group degraded",async()=>{
     const mock=vi.fn(async()=>new Response(null,{status:429}));
     const r=await observeOperatorFreeFeedRotation({group:1,now,fetchImpl:mock as typeof fetch});
