@@ -372,6 +372,8 @@ export const mainnetIntelligenceHandlers = {
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
+              topics:plan.topics,
+              max_age_seconds:plan.requested_max_age_seconds ?? undefined,
             });
             discovery=privateResult.discovery;
             // NEVER copy privateResult.private_candidates into the public
@@ -402,7 +404,8 @@ export const mainnetIntelligenceHandlers = {
             privatePeerMacroStatus=privatePeerProof.status;
             privatePeerScoredDimensions=privatePeerProof.peer_normalized_dimension_count;
             const pageProof=await verifyOnDemandOriginalArticlePages(
-              privateResult.private_original_review_candidates);
+              privateResult.private_original_review_candidates,
+              {maxAgeSeconds:plan.requested_max_age_seconds ?? undefined});
             // No page HTML, original URL, title or publisher identity is
             // serialized. This is only publication-clock consistency, NOT
             // independent facts, commercial source rights or signed risk.
