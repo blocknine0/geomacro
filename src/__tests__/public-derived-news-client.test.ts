@@ -37,6 +37,19 @@ describe("browser public journal fallback",()=>{
     ]),NOW)).toEqual([signal]);
     expect(()=>checkedDerivedNews({...doc([signal]),original_release_delay_minutes:0},NOW)).toThrow();
   });
+  it.each(["geopolitics","macro","rare_earth"])("reads verified D1 original publication DAY in %s without fabricating time",category=>{
+    const day={...signal,
+      id:category+"-1234abcd",category,date_precision:"day",
+      published_at:"2026-10-12"};
+    expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-13T12:14:59Z"))).toEqual([]);
+    expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-13T12:15:00Z"))).toEqual([day]);
+    for (const invalid of ["2026-02-30","2026-10-13","2026-10-12T12:00:00Z"]){
+      expect(checkedDerivedNews(doc([{...day,published_at:invalid}]),
+        Date.parse("2026-10-13T12:15:00Z"))).toEqual([]);
+    }
+    expect(checkedDerivedNews(doc([{...day,severity:70}]),
+      Date.parse("2026-10-13T12:15:00Z"))).toEqual([]);
+  });
   it("does not invent an EU original hour and waits full day-only release delay",()=>{
     const day={...signal,id:"rare_earth-1234abcd",category:"rare_earth",
       published_at:"2026-10-09",date_precision:"day"};
