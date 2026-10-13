@@ -58,6 +58,11 @@ jobs:
     timeout-minutes: 20
     environment: production
     env:
+      # Trusted reusable-workflow input; ONLY the D1-novel-article pulse
+      # supplies true. Manual or historical push scorer paths remain false.
+      # This applies the SHA-bound D1 restriction regardless of whether the
+      # authorized caller woke via cron, push or a same-repo workflow_run.
+      GEOMACRO_AUTOMATIC_D1_PULSE_STAGE: ${{ inputs.bounded_automatic_private_stage == true }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
