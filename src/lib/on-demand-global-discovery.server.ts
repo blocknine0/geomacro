@@ -166,7 +166,7 @@ const MAX_BODY_BYTES = 192 * 1024;
 const MAX_FIRST_PARTY_HTML_BYTES = 384 * 1024;
 const TIMEOUT_MS = 5_000;
 const ONE_DAY_MS = 86_400_000;
-const MAX_NEWS_AGE_MS = 7 * ONE_DAY_MS;
+const MAX_NEWS_AGE_MS = 31 * ONE_DAY_MS;
 const RATE_LIMIT_COOLDOWNS_MS = {403: 60*60_000, 429: 15*60_000};
 const providerCooldownUntil = new Map<string,number>();
 
@@ -980,7 +980,7 @@ export async function verifyOnDemandOriginalArticlePages(
   const dates=await Promise.all(chosen.map(async(candidate)=>{
     try{
       const html=await boundedFetch(options.fetchImpl??fetch,candidate.article_url,"text/html");
-      const originalDate=verifiedPublisherPageDate(html,now);
+      const originalDate=verifiedPublisherPageDate(html,now,null,{maxAgeMs});
       if(!originalDate || !freshPublished(originalDate,now,maxAgeMs) ||
         (candidate.feed_item_published_at!==null &&
          Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000))
