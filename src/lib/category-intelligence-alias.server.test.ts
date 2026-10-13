@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const liveReader = vi.hoisted(() => vi.fn());
+vi.mock("./category-live-observation.server", () => ({ readCategoryLiveObservation: liveReader }));
+
 const mainnetHandlers = vi.hoisted(() => ({
   OPTIONS: vi.fn(),
   GET: vi.fn(),
@@ -152,7 +155,8 @@ describe("category intelligence security routing", () => {
     "/api/v1/intelligence/critical-minerals",
   ])("classifies %s as payment protected", (pathname) => {
     expect(classifyCentralSecurityRoute(pathname, "POST")).toBe("payment");
-    expect(classifyCentralSecurityRoute(pathname, "GET")).toBe("payment");
+    expect(classifyCentralSecurityRoute(pathname, "GET")).toBe("public_api");
+    expect(classifyCentralSecurityRoute(pathname, "OPTIONS")).toBe("payment");
   });
 });
 
@@ -187,6 +191,52 @@ describe("category intelligence HTTP handler boundary", () => {
       question, subjects: [subject], topics: config.topics,
       fulfillment_mode: "live_on_demand",
     });
+  });
+
+  it.each([
+    ["geopolitics", "geopolitics"],
+    ["macro-fx", "macro-fx"],
+    ["critical-minerals", "critical-minerals"],
+  ])("serves bounded derived observations for %s without invoking x402", async (category) => {
+    const path = `/api/v1/intelligence/${category}`;
+    liveReader.mockResolvedValue({
+      schema_version: "geomacro.category-live-official-observation.v1",
+      ok: true, category, findings: [], x402_payment_required: false,
+      paid_delivery_authorized_by_observations: false, signed_gro_generated: false,
+    });
+    const handlers = createCategoryIntelligenceHandlers({
+      category, path, topics: ["critical_minerals"], requiredModules: ["critical_minerals"],
+    });
+    const response = await handlers.GET({ request: new Request(
+      `https://geomacro.live${path}?view=latest`,
+      { headers: { "payment-signature": "must-not-be-used" } },
+    ) });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      category, signed_gro_generated: false, x402_payment_required: false,
+    });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(liveReader).toHaveBeenCalledWith(category);
+    expect(mainnetHandlers.GET).not.toHaveBeenCalled();
+    expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 without payment when official live reader fails", async () => {
+    liveReader.mockRejectedValue(new Error("secret transport failure"));
+    const handlers = createCategoryIntelligenceHandlers({
+      category: "macro-fx", topics: ["macro_risk", "fx_external_risk"],
+      requiredModules: ["external_fx", "macro_monetary", "sovereign_fiscal"],
+    });
+    const response = await handlers.GET({ request: new Request(
+      "https://geomacro.live/api/v1/intelligence/macro-fx?view=latest",
+    )});
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      ok: false, chargeable: false, signed_gro_generated: false,
+      error: { code: "CATEGORY_OFFICIAL_SOURCE_RETRIEVAL_UNAVAILABLE" },
+    });
+    expect(mainnetHandlers.GET).not.toHaveBeenCalled();
+    expect(mainnetHandlers.POST).not.toHaveBeenCalled();
   });
 
   it("rejects invalid scope before invoking the payment handler", async () => {
