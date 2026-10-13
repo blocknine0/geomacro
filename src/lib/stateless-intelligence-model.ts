@@ -84,7 +84,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence." },
     { test: /\b(critical minerals?|critical raw materials?|strategic minerals?|mineral processing|mineral supply|strategic raw materials?|mineral supply chain)\b/i, name: "critical-minerals policy",
       implication: "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast." },
-    { test: /\b(mineral deposits?|mining projects?|mineral production|rare earth elements?|mineral resources?|mining|mineral research|mineral exploration|geology of|mineral mapping|raw material supply)\b/i, name: "mineral exploration and production",
+    { test: /\b(mineral deposits?|mining projects?|mineral production|rare earth elements?|mineral resources?|mining|mineral research|mineral exploration|mineral and groundwater insights|geology of|mineral mapping|raw material supply)\b/i, name: "mineral exploration and production",
       implication: "Extractive-sector updates can affect long-run supply expectations, but an announcement is not proof of operating capacity or delivered output." },
   ],
 };
@@ -376,7 +376,7 @@ export function deriveStatelessSignals(
   for (const item of candidates) {
     if (!item || !["geopolitics", "macro", "rare_earth"].includes(item.category)) continue;
     const dayOnly = item.datePrecision === "day" &&
-      ["eu_top_news","nrcan_releases","canada_foreign_statements"].includes(item.sourceId);
+      ["eu_top_news","nrcan_releases","canada_foreign_statements","au_geoscience"].includes(item.sourceId);
     const conservativeRelease = dayOnly ? conservativeDayReleaseMs(item.publishedAt) : null;
     const native = dayOnly ? Date.parse(item.publishedAt + "T00:00:00.000Z")
       : originalPublicationMs(item.publishedAt, now);

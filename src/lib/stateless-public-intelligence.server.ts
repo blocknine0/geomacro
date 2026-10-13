@@ -9,6 +9,7 @@ import {
   type StatelessSourceSpec, type StatelessIntelligenceSignal,
 } from "./stateless-intelligence-model";
 import { euCommissionTopOriginalCandidates } from "./stateless-eu-original-index.server";
+import { australianNewsIndexCandidates, australianArticleMatchesOriginal } from "./stateless-australian-geoscience-original.server";
 import { readPibMinesOriginalCandidates } from "./stateless-pib-mines-original.server";
 import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
 
@@ -85,15 +86,19 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
     url: "https://natural-resources.canada.ca/simply-science/rss.xml",
     allowedHosts: ["natural-resources.canada.ca", "www.natural-resources.canada.ca"],
     credit: null },
-  { id: "au_industry", category: "rare_earth", media: "rss",
-    url: "https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
-    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
+  // Independent original news index; publisher-printed original day is
+  // bound to the linked article heading before deriving a news observation.
+  { id: "au_geoscience", category: "rare_earth", media: "html_index",
+    url: "https://www.ga.gov.au/news",
+    allowedHosts: ["www.ga.gov.au"], credit: null },
   { id: "uk_energy", category: "rare_earth", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
-  { id: "usgs_minerals", category: "rare_earth", media: "rss",
-    url: "https://www.usgs.gov/news/minerals/feed",
-    allowedHosts: ["www.usgs.gov"], credit: "U.S. Geological Survey" },
+  // Actual publisher-issued RSS publication clocks; independent of the
+  // EU DG GROW landing-page index and previous HTTP-403 mineral feed.
+  { id: "eu_representation_news", category: "rare_earth", media: "rss",
+    url: "https://luxembourg.representation.ec.europa.eu/node/27/rss_en",
+    allowedHosts: ["luxembourg.representation.ec.europa.eu"], credit: null },
   { id: "eu_top_news", category: "rare_earth", media: "html_index",
     url: "https://single-market-economy.ec.europa.eu/index_en",
     allowedHosts: ["single-market-economy.ec.europa.eu"], credit: "European Commission" },
@@ -305,6 +310,43 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       native_clock_valid: 0, undated_original: 0, recovered_original_page: 0,
       transport_ok: false, transport_failure_class: kind } satisfies LaneMetrics,
   });
+  if (source.id === "au_geoscience" && source.media === "html_index") {
+    try {
+      const response = await fetch(source.url, {
+        method: "GET", redirect: "error", cache: "no-store",
+        headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!response.ok) return failed(response.status >= 500 ? "http_5xx" : "http_4xx");
+      if (!/^text\/html(?:;|$)/iu.test(response.headers.get("content-type") ?? ""))
+        return failed("mime");
+      const html = await boundedText(response, 512 * 1024);
+      if (!html) return failed("body");
+      const indexed = australianNewsIndexCandidates(html, now);
+      const recovered = await Promise.all(indexed.slice(0, 6).map(async candidate => {
+        try {
+          const article = await fetch(candidate.articleUrl, {
+            method: "GET", redirect: "error", cache: "no-store",
+            headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
+          });
+          if (!article.ok ||
+              !/^text\/html(?:;|$)/iu.test(article.headers.get("content-type") ?? "")) return null;
+          const body = await boundedText(article, 256 * 1024);
+          return body && australianArticleMatchesOriginal(body, candidate.title)
+            ? candidate : null;
+        } catch { return null; }
+      }));
+      const verified = recovered.filter((value): value is StatelessSourceCandidate => value !== null);
+      return { healthy: true, candidates: verified,
+        metrics: { seen: indexed.length, relevant: indexed.length,
+          original_link_valid: indexed.length, native_clock_valid: verified.length,
+          undated_original: 0, recovered_original_page: verified.length,
+          transport_ok: true },
+      };
+    } catch (error) {
+      const e = error instanceof Error ? error : null;
+      return failed(e?.name === "TimeoutError" || e?.name === "AbortError" ? "timeout" : "network");
+    }
+  }
   try {
     const response = await fetchFirstPartyOriginalFeed(source);
     if (response.status >= 300 && response.status < 400) return failed("redirect");
