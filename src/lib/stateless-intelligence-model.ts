@@ -77,7 +77,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "External-balance releases can affect currency-liquidity and cross-border settlement considerations; this does not indicate a directional FX prediction." },
     { test: /\b(liquidity|financial stability|bank supervision|banking regulation|economic growth|GDP|economic bulletin|bank lending|banking statistics|financial accounts|financial markets|unemployment|labour market|credit conditions|household debt|economic outlook)\b/i, name: "financial conditions",
       implication: "Financial-system developments may matter for credit access and counterparty exposure; a score requires separately verified measurements." },
-    { test: /\b(trade mission|free trade|trade deal|trade agreement|trade negotiations|bilateral trade|international (?:merchandise )?trade|imports? and exports?|export growth|commercial deals|economic partnership|JETCO|tariffs|foreign investment)\b/i, name: "trade and economic relations",
+    { test: /\b(trade mission|free trade|trade deal|trade agreement|trade negotiations|bilateral trade|international (?:merchandise )?trade|imports? and exports?|resources and energy exports?|mineral exports?|resources exports?|export growth|commercial deals|economic partnership|JETCO|tariffs|foreign investment)\b/i, name: "trade and economic relations",
       implication: "Trade and investment agreements can affect market access, cross-border commercial flows and currency exposure; their actual economic impact requires follow-up evidence." },
   ],
   rare_earth: [
@@ -296,6 +296,7 @@ const SAFE_FOCUS: Record<StatelessCategory, readonly { test: RegExp; label: stri
     { test: /\bmilitary\b/i, label: "military policy" },
   ],
   macro: [
+    { test: /\b(?:resources and energy exports?|mineral exports?|resources exports?)\b/i, label: "resources and energy exports" },
     { test: /\b(Basel III|Basel Committee|banking supervisors?|capital adequacy|bank capital requirements?)\b/i,
       label: "prudential banking regulation" },
     { test: /\b(?:trade mission|free trade|trade deal|trade agreement|JETCO)\b/i, label: "international trade" },
@@ -407,7 +408,7 @@ export function deriveStatelessSignals(
   for (const item of candidates) {
     if (!item || !["geopolitics", "macro", "rare_earth"].includes(item.category)) continue;
     const dayOnly = item.datePrecision === "day" &&
-      (["eu_top_news","nrcan_releases","canada_foreign_statements","au_geoscience"].includes(item.sourceId) ||
+      (["eu_top_news","nrcan_releases","canada_foreign_statements","au_geoscience","au_resources_macro_index","au_resources_minerals_index"].includes(item.sourceId) ||
         STATCAN_FEED_IDS.has(item.sourceId));
     const conservativeRelease = dayOnly ? conservativeDayReleaseMs(item.publishedAt) : null;
     const native = dayOnly ? Date.parse(item.publishedAt + "T00:00:00.000Z")
