@@ -19,6 +19,7 @@ on:
       - "src/lib/on-demand-private-macro-rights.server.ts"
       - "scripts/ops/verify-live-wdi-structural.ts"
       - "scripts/ops/phase2-step4-production-no-funds.mjs"
+      - "scripts/ops/phase2-step4-production-private-rights-no-funds.mjs"
       - "src/lib/on-demand-evidence-qualification.server.ts"
       - "src/lib/on-demand-evidence-qualification.server.test.ts"
       - "src/lib/mainnet-intelligence-endpoint.server.ts"
@@ -42,6 +43,7 @@ on:
       - "src/lib/on-demand-private-macro-rights.server.ts"
       - "scripts/ops/verify-live-wdi-structural.ts"
       - "scripts/ops/phase2-step4-production-no-funds.mjs"
+      - "scripts/ops/phase2-step4-production-private-rights-no-funds.mjs"
       - "src/lib/on-demand-evidence-qualification.server.ts"
       - "src/lib/on-demand-evidence-qualification.server.test.ts"
       - "src/lib/mainnet-intelligence-endpoint.server.ts"
@@ -249,5 +251,28 @@ jobs:
         with:
           name: step4-public-hot-isolation-${{ github.run_id }}
           path: artifacts/public-serving/diagnostic.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  # One bounded request through the EXISTING live_on_demand WDI private
+  # rights gate. Server-only D1 quota admission precedes any B2 GET. No
+  # client keys, no raw rights receipt, no signature/payment/settlement.
+  step4-existing-production-private-rights-no-funds:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout existing canonical API no-funds verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: One production WDI rights disposition through quota-governed API
+        run: node scripts/ops/phase2-step4-production-private-rights-no-funds.mjs
+      - name: Keep aggregate statuses only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: step4-production-rights-disposition-${{ github.run_id }}
+          path: artifacts/on-demand-live/step4-private-rights-no-funds.json
           if-no-files-found: warn
           retention-days: 3
