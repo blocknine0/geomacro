@@ -63,8 +63,17 @@ describe("Ask Geomacro realtime search fallback", () => {
     const fallback = read("src/lib/ask-realtime-search.server.ts");
     expect(fallback).toContain("groqClassifyJson");
     expect(fallback).toContain("deterministicStructuredAnswer");
-    expect(fallback).toContain("current observations, latest");
+    expect(fallback).toContain("recently indexed observations, latest");
     expect(fallback).toContain("using deterministic structure");
+    // GDELT seendate is index observation time, NOT first-party publication.
+    expect(fallback).toContain("indexedDate(article.seendate)");
+    expect(fallback).toContain("indexed_at: hit.observedAt");
+    expect(fallback).toContain('intelligence_tier: "index_observation_unverified"');
+    expect(fallback).toContain("signed_gro_generated: false");
+    expect(fallback).toContain("independent_same_event_verification: false");
+    expect(fallback).toContain("const lowConfidence = true");
+    expect(fallback).toContain("mean_relevance: null");
+    expect(fallback).toContain("gri: null");
   });
 
   it("never exposes raw realtime URLs, headlines or provider identity in the public Ask evidence contract", () => {
