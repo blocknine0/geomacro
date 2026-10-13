@@ -48,6 +48,21 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(orchestrator).toContain("not independently corroborated risk assessments");
   });
 
+  it("keeps broad current-news fallback bounded and model-free when no official release qualifies", () => {
+    const orchestrator = read("src/lib/ask-answer.server.ts");
+    const search = read("src/lib/ask-realtime-search.server.ts");
+    expect(orchestrator).toContain("if (selectOfficialNewsCategories(question).length > 0)");
+    expect(orchestrator).toContain("noCurrentPublisherNewsAnswer()");
+    expect(orchestrator).toContain("realtimeSearchAnswer(question, unavailable, { deterministicOnly: true })");
+    expect(orchestrator).toContain("?? unavailable");
+    expect(orchestrator).toContain("insufficient_evidence: true");
+    expect(orchestrator).toContain("signed_gro_generated: false");
+    expect(search).toContain("options: { deterministicOnly?: boolean } = {}");
+    expect(search).toContain("options.deterministicOnly");
+    expect(search).toContain("? deterministicStructuredAnswer(hits)");
+    expect(search).toContain(": await structureWithGroundedModel(question, hits)");
+  });
+
   it("uses a bounded current-web path with broad three-domain coverage", () => {
     const fallback = read("src/lib/ask-realtime-search.server.ts");
     expect(fallback).toContain("api.gdeltproject.org/api/v2/doc/doc");
