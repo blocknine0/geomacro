@@ -22,8 +22,10 @@ describe("automatic current-original private scorer handoff",()=>{
     expect(job).toContain('GEOMACRO_AUTOMATIC_D1_PULSE_STAGE: ${{ inputs.bounded_automatic_private_stage == true }}');
     expect(scorer).toContain('process.env.GITHUB_REF==="refs/heads/main"');
     expect(scorer).toContain('pipeline:"official_source_pulse_30m"');
-    expect(scorer).toContain("selectPrivateNovelPulseRefs(read.get(category),category,now.getTime())");
-    expect(scorer).toContain("privateOriginalMatchesPulse(row,refs,now.getTime())");
+    expect(scorer).toContain("selectPrivateNovelPulseRefs(snapshot,category,now.getTime())");
+    expect(scorer).toContain("expectedClocks");
+    expect(scorer).toContain("fetchPulseRotatedPrivateOriginals");
+    expect(scorer).toContain("privateOriginalMatchesPulse(");
     expect(scorer).toContain("if(refs.size===0)return []");
     for(const unsafe of ["payment_required_now:true","settleCoinbase","SUPABASE_DB_URL"])
       expect(scorer).not.toContain(unsafe);
