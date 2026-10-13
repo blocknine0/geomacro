@@ -49,7 +49,7 @@ export type HybridAskAnswer = AskAnswer & {
   durable_live_storage_write: false;
   real_time_message?: string;
   /** Explicit classification: publisher observation only, not GRO risk evidence. */
-  intelligence_tier?: "official_observation_unscored";
+  intelligence_tier?: "official_observation_unscored" | "index_observation_unverified";
   signed_gro_generated?: false;
   independent_same_event_verification?: false;
   /** Native timestamp of the newest publisher release, never the fetch clock. */

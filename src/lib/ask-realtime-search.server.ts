@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { groqClassifyJson } from "./groq.server";
+import { buildRealtimeSearchPlan } from "./ask-realtime-query-plan";
 import type { AskAnswer } from "./ask-intelligence.server";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 
@@ -9,9 +10,6 @@ const SEARCH_TIMEOUT_MS = 7_000;
 const GROQ_TIMEOUT_MS = 9_000;
 const MAX_RESULTS_PER_QUERY = 12;
 const MAX_PUBLIC_EVIDENCE = 5;
-
-const BROAD_CURRENT_RE =
-  /\b(what changed|what happened|today|latest|current developments?|recent developments?|what is happening|what's happening|right now)\b/i;
 
 const CATEGORY_QUERIES = [
   {
@@ -31,7 +29,7 @@ const CATEGORY_QUERIES = [
 type SearchHit = {
   category: string;
   title: string;
-  publishedAt: string | null;
+  observedAt: string | null;
   domain: string;
 };
 
@@ -51,7 +49,7 @@ function normalizeQuestion(value: string) {
     .slice(0, 220);
 }
 
-function articleDate(value: unknown): string | null {
+function indexedDate(value: unknown): string | null {
   const text = String(value ?? "").trim();
   if (!text) return null;
   const normalized = text.replace(
@@ -108,7 +106,8 @@ async function searchGdelt(query: string, category: string, timespan: string): P
       .map((article) => ({
         category,
         title: String(article.title ?? "").replace(/\s+/g, " ").trim(),
-        publishedAt: articleDate(article.seendate),
+        // GDELT seendate is a provider INDEX observation, not a publisher-native original clock.
+        observedAt: indexedDate(article.seendate),
         domain: hostname(article.url),
       }))
       .filter((item) => item.title.length >= 12);
@@ -121,8 +120,8 @@ function dedupeAndRank(hits: SearchHit[], maxAgeHours: number): SearchHit[] {
   const now = Date.now();
   const byTitle = new Map<string, SearchHit>();
   for (const hit of hits) {
-    const ageHours = hit.publishedAt
-      ? (now - Date.parse(hit.publishedAt)) / 3_600_000
+    const ageHours = hit.observedAt
+      ? (now - Date.parse(hit.observedAt)) / 3_600_000
       : Number.POSITIVE_INFINITY;
     if (ageHours < -0.25 || ageHours > maxAgeHours) continue;
     const key = hit.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -131,7 +130,7 @@ function dedupeAndRank(hits: SearchHit[], maxAgeHours: number): SearchHit[] {
   }
 
   const ordered = [...byTitle.values()].sort((a, b) =>
-    Date.parse(b.publishedAt ?? "") - Date.parse(a.publishedAt ?? ""),
+    Date.parse(b.observedAt ?? "") - Date.parse(a.observedAt ?? ""),
   );
 
   const selected: SearchHit[] = [];
@@ -155,13 +154,17 @@ function dedupeAndRank(hits: SearchHit[], maxAgeHours: number): SearchHit[] {
 
 async function currentSearch(question: string): Promise<SearchHit[]> {
   const clean = normalizeQuestion(question);
-  const broad = BROAD_CURRENT_RE.test(question) || clean.split(" ").length <= 3;
-  const maxAgeHours = broad ? 48 : 7 * 24;
-  const timespan = broad ? "2d" : "7d";
+  const plan = buildRealtimeSearchPlan(question);
+  const { broad, maxAgeHours, timespan } = plan;
 
   if (broad) {
+    // Restrict category-scoped current questions to those sectors. Unknown
+    // categories retain the original broad three-sector fallback.
+    const selectedQueries = CATEGORY_QUERIES.filter(spec =>
+      plan.broadCategories.includes(spec.category)
+    );
     const batches = await Promise.allSettled(
-      CATEGORY_QUERIES.map((spec) => searchGdelt(spec.query, spec.category, timespan)),
+      selectedQueries.map(spec => searchGdelt(spec.query, spec.category, timespan)),
     );
     return dedupeAndRank(
       batches.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
@@ -185,14 +188,14 @@ function deterministicStructuredAnswer(hits: SearchHit[]): GroundedShape {
     grouped.set(hit.category, rows);
   }
   const points = [...grouped.entries()].slice(0, 3).map(([category, rows], index) => {
-    const newest = rows[0]?.publishedAt ?? null;
-    return `${index + 1}) ${categoryLabel(category)}: ${rows.length} current observations, latest ${shortUtcDate(newest)} UTC`;
+    const newest = rows[0]?.observedAt ?? null;
+    return `${index + 1}) ${categoryLabel(category)}: ${rows.length} recently indexed observations, latest ${shortUtcDate(newest)} UTC`;
   });
   const domains = new Set(hits.map((hit) => hit.domain).filter((domain) => domain !== "unknown"));
   return {
     summary: `Current search found activity across ${grouped.size} Geomacro risk ${grouped.size === 1 ? "domain" : "domains"}.`,
     what_changed: points.join("; "),
-    why_it_matters: `${hits.length} current observations were checked${domains.size ? ` across ${domains.size} independent publication paths` : ""}; raw source headlines and provider identity remain private.`,
+    why_it_matters: `${hits.length} recently indexed observations were checked${domains.size ? ` across ${domains.size} independent publication paths` : ""}; raw source headlines and provider identity remain private.`,
     geomacro_view: "This is a current-evidence brief, not a synthetic risk score or forecast.",
     source_indexes: Array.from({ length: Math.min(3, hits.length) }, (_, index) => index),
   };
@@ -204,6 +207,7 @@ async function structureWithGroundedModel(question: string, hits: SearchHit[]): 
       system:
         "You are Ask Geomacro's realtime evidence formatter. Answer ONLY from the supplied current search findings. " +
         "Do not invent facts, dates, numbers, causes, sources or URLs. Do not name publishers or search providers. " +
+        "The supplied indexed_at is a search index timestamp, NOT the publisher original publication time. Do not claim the event was published today, verified, or independently corroborated. " +
         "Paraphrase the findings; do not reproduce source headlines verbatim. " +
         "For broad current-change questions, put the 2 to 4 most material supported developments in what_changed using compact '1) ...; 2) ...' form. " +
         "Keep summary to one short sentence. Keep why_it_matters and geomacro_view concise and analytical, not generic. " +
@@ -214,7 +218,7 @@ async function structureWithGroundedModel(question: string, hits: SearchHit[]): 
           index,
           category: hit.category,
           title: hit.title,
-          published_at: hit.publishedAt,
+          indexed_at: hit.observedAt,
         })),
       }),
       temperature: 0.1,
@@ -239,13 +243,13 @@ function safeIndexes(indexes: number[] | undefined, length: number) {
 
 function fallbackId(hit: SearchHit, index: number) {
   return `web:realtime:${createHash("sha256")
-    .update(`${hit.category}\0${hit.title}\0${hit.publishedAt ?? ""}\0${index}`)
+    .update(`${hit.category}\0${hit.title}\0${hit.observedAt ?? ""}\0${index}`)
     .digest("hex")
     .slice(0, 16)}`;
 }
 
 function publicEvidenceLabel(hit: SearchHit, index: number) {
-  return `Geomacro realtime finding ${index + 1} · ${categoryLabel(hit.category)} · ${shortUtcDate(hit.publishedAt)} UTC`;
+  return `Geomacro indexed lead ${index + 1} · ${categoryLabel(hit.category)} · seen ${shortUtcDate(hit.observedAt)} UTC`;
 }
 
 export async function realtimeSearchAnswer(
@@ -264,18 +268,16 @@ export async function realtimeSearchAnswer(
   }));
   if (!evidence.length) return null;
 
-  const independentDomains = new Set(
-    hits
-      .filter((_, index) => indexes.includes(index))
-      .map((hit) => hit.domain)
-      .filter((domain) => domain !== "unknown"),
-  ).size;
-  const lowConfidence = independentDomains < 2 || evidence.length < 2;
+  // Independent domains do NOT prove independent same-event verification or
+  // native publication clocks. An index lead is always unverified.
+  const lowConfidence = true;
 
   const answer: AskAnswer = {
-    summary: String(grounded.summary ?? grounded.what_changed ?? "Current evidence was found.").trim(),
-    what_changed: String(grounded.what_changed ?? grounded.summary ?? "Current evidence was found.").trim(),
-    why_it_matters: String(
+    summary: "Unverified index observation (original publication date not confirmed): " +
+      String(grounded.summary ?? grounded.what_changed ?? "Recent indexed activity found.").trim(),
+    what_changed: "Recent index leads, not independently verified publisher events: " +
+      String(grounded.what_changed ?? grounded.summary ?? "Recently indexed activity found.").trim(),
+    why_it_matters: "Indexed observation dates are not original publisher release dates. " + String(
       grounded.why_it_matters ??
         "These are current externally observed developments and should be read as evidence, not as a synthetic risk score.",
     ).trim(),
@@ -285,9 +287,9 @@ export async function realtimeSearchAnswer(
     ).trim(),
     evidence,
     insufficient_evidence: false,
-    mean_relevance: lowConfidence ? 0.65 : 0.85,
+    mean_relevance: null,
     low_confidence: lowConfidence,
-    gri: prior.gri,
+    gri: null,
     generatedAt: new Date().toISOString(),
   };
 
@@ -297,6 +299,9 @@ export async function realtimeSearchAnswer(
     cache_status: "bypassed",
     source_identity_exposed: false,
     durable_live_storage_write: false,
-    real_time_message: "Stored evidence was insufficient, so Geomacro checked current public evidence in real time.",
+    real_time_message: "Stored/official evidence insufficient; recently indexed leads are unverified and not signed commercial intelligence.",
+    intelligence_tier: "index_observation_unverified",
+    signed_gro_generated: false,
+    independent_same_event_verification: false,
   };
 }
