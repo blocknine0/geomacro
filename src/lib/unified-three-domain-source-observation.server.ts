@@ -18,7 +18,14 @@ const STATUS = new Set([
 ]);
 const MAX_AGE_MS = 75 * 60_000;
 const MAX_FUTURE_MS = 5 * 60_000;
-const fail = () => ({
+type SourceStatus = {
+  status:string;
+  last_checked_at:string|null;
+  publisher_pairs_sampled:boolean;
+  recent_original_topic_items:number|null;
+  live_feed_event_verified:false;
+};
+const fail = ():SourceStatus => ({
   status: "UNKNOWN_OR_NOT_YET_SYNCED",
   last_checked_at: null,
   publisher_pairs_sampled: false,
@@ -51,7 +58,7 @@ export async function unifiedThreeDomainSourceObservation({
       }
     } catch { /* unknown, never a green source status */ }
   }
-  const categories=Object.create(null) as Record<string,ReturnType<typeof fail>>;
+  const categories=Object.create(null) as Record<string,SourceStatus>;
   let observed=0;
   for(const [name,domain] of Object.entries(CATEGORIES)){
     const row=rows?.[domain] as Record<string,unknown>|undefined;
@@ -62,13 +69,16 @@ export async function unifiedThreeDomainSourceObservation({
       ?row.status:row?"STALE_OR_UNAVAILABLE":"UNKNOWN_OR_NOT_YET_SYNCED";
     const sourceObserved=status==="SOURCE_NATIVE_OBSERVED" &&
       row?.publisher_pair_sample_complete===true&&
-      Number.isSafeInteger(row?.original_publishers_attempted)&&
-      Number.isSafeInteger(row?.original_publishers_successful)&&
-      Number(row?.original_publishers_attempted)>=2&&
-      Number(row?.original_publishers_successful)>=2&&
-      Number.isSafeInteger(row?.original_publisher_topic_items_within_30m)&&
-      Number(row?.original_publisher_topic_items_within_30m)>=0&&
-      Number(row?.original_publisher_topic_items_within_30m)<=1000;
+      typeof row?.original_publishers_attempted==="number"&&
+      Number.isSafeInteger(row.original_publishers_attempted)&&
+      typeof row.original_publishers_successful==="number"&&
+      Number.isSafeInteger(row.original_publishers_successful)&&
+      row.original_publishers_attempted>=2&&
+      row.original_publishers_successful>=2&&
+      typeof row.original_publisher_topic_items_within_30m==="number"&&
+      Number.isSafeInteger(row.original_publisher_topic_items_within_30m)&&
+      row.original_publisher_topic_items_within_30m>=0&&
+      row.original_publisher_topic_items_within_30m<=1000;
     if(sourceObserved)observed++;
     categories[name]={
       status,
