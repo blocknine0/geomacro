@@ -121,6 +121,27 @@ export function inferOnDemandMineral(question: string | null | undefined): OnDem
   return matches[0]?.value ?? null;
 }
 
+// Fixed topic vocabulary. Never send a customer's freeform question upstream.
+// A generic official headline is not evidence for an exact sanctioned topic.
+const TOPIC_TITLE_PATTERNS:Readonly<Record<string,RegExp>>={
+  sanctions_restrictions:/\b(?:sanction|embargo|export control|restrictions?)\b/iu,
+  conflict_geopolitics:/\b(?:conflict|ceasefire|war|military|airstrike|peace|security council)\b/iu,
+  political_governance:/\b(?:government|governance|election|parliament|diplomatic)\b/iu,
+  macro_risk:/\b(?:inflation|gdp|monetary|central bank|growth|interest rate|economic)\b/iu,
+  sovereign_risk:/\b(?:fiscal|sovereign|budget|bond|debt)\b/iu,
+  fx_external_risk:/\b(?:foreign exchange|exchange rate|currency|reserves|fx)\b/iu,
+  critical_minerals:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mining)\b/iu,
+};
+const CATEGORY_TOPICS:Readonly<Record<OnDemandCategory,readonly string[]>>={
+  geopolitics:["sanctions_restrictions","conflict_geopolitics","political_governance"],
+  macro:["macro_risk","sovereign_risk","fx_external_risk"],
+  rare_earth:["critical_minerals"],
+};
+function matchesRequestedTopic(title:string,category:OnDemandCategory,topics:readonly string[]):boolean {
+  const scoped=topics.filter(topic=>CATEGORY_TOPICS[category].includes(topic));
+  return scoped.length===0 || scoped.some(topic=>TOPIC_TITLE_PATTERNS[topic]?.test(title));
+}
+
 const MAX_BODY_BYTES = 192 * 1024;
 // Original first-party government pages regularly exceed ordinary small-feed
 // limits; the shared 30m verifier uses exactly 384KiB. This never applies to
@@ -231,7 +252,7 @@ async function countryName(country: string, fetchImpl: typeof fetch) {
 }
 async function gdelt(
   category: OnDemandCategory, countryNameValue: string, fetchImpl: typeof fetch,
-  mineral: OnDemandMineral | null,
+  mineral: OnDemandMineral | null, topics:readonly string[]=[], countryIso3="",
 ): Promise<SourceProbe> {
   // GDELT is a discovery INDEX. Its "seendate" is NEVER original publication
   // and third-party discovery NEVER proves independent event corroboration.
@@ -260,6 +281,12 @@ async function gdelt(
       const uri = new URL(row.url);
       if (uri.protocol !== "https:" || uri.username || uri.password ||
           uri.port || uri.hash || !uri.hostname) continue;
+      if(topics.length>0 &&
+        (!originalHeadlineMentionsCountry(row.title,countryIso3,countryNameValue) ||
+         !matchesRequestedTopic(row.title,category,topics) ||
+         (category==="rare_earth"&&mineral&&
+           !MINERAL_TERMS.some(term=>term.value===mineral&&term.pattern.test(row.title)))))
+        continue;
       uniqueUrls.add(uri.href);
     } catch { /* Reject an invalid upstream article URL. */ }
   }
@@ -514,6 +541,7 @@ type OriginalFeedResult={probe:SourceProbe;private_candidates:PrivateOriginalCan
 async function originalOfficialFeed(
   def:OriginalFeed,countryIso3:string,countryNameValue:string,
   fetchImpl:typeof fetch,now:Date,mineral:OnDemandMineral|null,
+  topics:readonly string[]=[],maxAgeMs=ONE_DAY_MS,
 ):Promise<OriginalFeedResult>{
   let xml: string;
   try {
@@ -551,14 +579,14 @@ async function originalOfficialFeed(
     // query just because both are under the broad Critical Minerals topic.
     const mineralMatches = !mineral || def.domain !== "rare_earth" ||
       MINERAL_TERMS.some((term) => term.value === mineral && term.pattern.test(title));
-    const hasNativeDate=freshPublished(date,now);
+    const hasNativeDate=freshPublished(date,now,maxAgeMs);
     const undatedGovukAtom=atom && !date.trim() &&
       ["uk_fcdo_original_publisher","uk_dbt_original_publisher"].includes(def.family);
     // Missing Atom <published> may enter PRIVATE article-page verification,
     // not score/payment. Never accept <updated>, bad/missing RSS clocks, or
     // a stale/future <published> as original source time.
     if (!originalHeadlineMentionsCountry(title,countryIso3,countryNameValue) ||
-        !def.topic.test(title) || !mineralMatches ||
+        !def.topic.test(title) || !matchesRequestedTopic(title,def.domain,topics) || !mineralMatches ||
         (!hasNativeDate && !undatedGovukAtom)) continue;
     let href="";
     if(atom){
@@ -717,7 +745,7 @@ async function discoverOnDemandImpl(
   const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   const approvedReliefAppname=approvedReliefWebAppname();
   if (name) for (const category of categories) {
-    tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral)});
+    tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral,topics,country)});
     // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
     // account approval must not generate repeat 403s on every user query.
     if (category==="geopolitics" && approvedReliefAppname)
@@ -727,7 +755,7 @@ async function discoverOnDemandImpl(
   if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
     if (categories.includes(source.domain)) tasks.push({
       name:source.family,category:source.domain,
-      run:()=>originalOfficialFeed(source,country,name,trackedFetch,now,mineral),
+      run:()=>originalOfficialFeed(source,country,name,trackedFetch,now,mineral,topics,newsMaxAgeMs),
     });
   }
   if (categories.includes("macro")) for (const indicator of [
