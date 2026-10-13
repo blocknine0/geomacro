@@ -193,6 +193,20 @@ export async function preparePinnedChinaWdiStructuralNoFunds(
  * Reuse the existing canonical query plan, official WDI source=2 adapter,
  * B2 rights proof, canonical signing material and verification registry.
  */
+/** Exact structural contract only; unrelated Macro/FX queries keep all their
+ * existing required-module and commercial-gate behavior. */
+export function isPinnedChinaCpiStructuralPlan(plan:AgentQueryPlan):boolean{
+  return plan.delivery_tier==="structural_baseline" &&
+     plan.fulfillment_mode==="published_only" &&
+     plan.subjects.length===1 && plan.subjects[0].type==="country" &&
+     plan.subjects[0].country_iso3==="CHN" &&
+     plan.topics.length===1 && plan.topics[0]==="macro_risk" &&
+     plan.required_modules.length===1 && plan.required_modules[0]==="macro_monetary" &&
+     plan.as_of===null &&
+     /\b(?:cpi|consumer price inflation)\b/iu.test(plan.question_key) &&
+     SHA.test(plan.query_plan_hash);
+}
+
 export async function prepareVerifiedChinaCpiStructuralAnswer(
   plan:AgentQueryPlan, opts:{
     now?:Date;readRights?:()=>Promise<B2CommercialSourceRight[]|null>;
@@ -201,15 +215,7 @@ export async function prepareVerifiedChinaCpiStructuralAnswer(
     verifyKeys?:RiskObjectVerificationKeys;
   }={},
 ){
-  if(plan.delivery_tier!=="structural_baseline" ||
-     plan.fulfillment_mode!=="published_only" ||
-     plan.subjects.length!==1 || plan.subjects[0].type!=="country" ||
-     plan.subjects[0].country_iso3!=="CHN" ||
-     plan.topics.length!==1 || plan.topics[0]!=="macro_risk" ||
-     plan.required_modules.length!==1 || plan.required_modules[0]!=="macro_monetary" ||
-     plan.as_of!==null ||
-     !/\b(?:cpi|consumer price inflation)\b/iu.test(plan.question_key) ||
-     !SHA.test(plan.query_plan_hash))
+  if(!isPinnedChinaCpiStructuralPlan(plan))
     return {status:"BLOCKED" as const,code:"WDI_SIGNED_PLAN_SCOPE_UNSUPPORTED"};
   const rawAge=plan.module_max_age_seconds.macro_monetary;
   const prep=await preparePinnedChinaWdiStructuralNoFunds({
