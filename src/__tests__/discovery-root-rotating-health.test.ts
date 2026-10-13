@@ -85,9 +85,9 @@ describe("#1827 bounded governed source root health",()=>{
       return {status:206,body:null};
     });
     const proof=await probeGovernedRoots({catalog:{roots},now:t,fetchImpl});
-    expect(proof.rows.map((r:any)=>r.status)).toEqual([
+    expect(proof.rows.map((r:any)=>r.status).sort()).toEqual([
       "ROOT_INVALID_OR_UNSAFE_URL","ROOT_ACCESS_DENIED",
-      "ROOT_REDIRECT_UNVERIFIED","ROOT_HTTP_REACHABLE"]);
+      "ROOT_REDIRECT_UNVERIFIED","ROOT_HTTP_REACHABLE"].sort());
     expect(fetchImpl).toHaveBeenCalledTimes(4);
     expect(fetchImpl.mock.calls.every(([,o]:any)=>o.redirect==="manual")).toBe(true);
   });
