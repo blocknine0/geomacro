@@ -58,6 +58,7 @@ describe("WDI narrow attributed structural product: synthetic regression only",(
     for(const change of [
       {attribution_required:false},{certification_state:"PENDING"},
       {licence_name:"CC BY-NC 4.0"},{enabled_for_commercial_signals:false},
+       {raw_redistribution_allowed:true},
       {source_id:"world_bank_qpsd"},
     ]){
       expect(()=>buildAttributedWdiStructuralProduct({...input(),
