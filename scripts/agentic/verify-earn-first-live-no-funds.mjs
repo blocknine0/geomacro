@@ -14,6 +14,7 @@ const SCHEMA = "geomacro.earn-first-live-no-funds.v1";
 export async function acceptEarningPilotLive({
   origin = "https://geomacro.live",
   expectedSha,
+  diagnosticOnly = false,
   fetchImpl = fetch,
   now = new Date(),
 } = {}) {
@@ -35,9 +36,16 @@ export async function acceptEarningPilotLive({
   const marker=await get("/.well-known/geomacro-build.json");
   if(marker.schema_version!=="geomacro.deployment-build.v1" ||
      marker.canonical_repository!=="blocknine0/geomacro" ||
-     marker.canonical_main_sha!==expectedSha)
+     !/^[a-f0-9]{40}$/.test(String(marker.canonical_main_sha??"")))
+    throw Error("EARNING_PILOT_BUILD_MARKER_INVALID");
+  const exactMainPublished=marker.canonical_main_sha===expectedSha;
+  if(!exactMainPublished && !diagnosticOnly)
     throw Error("EARNING_PILOT_NOT_EXACT_MAIN_PUBLISHED");
-  steps.push({check:"published_build_sha",status:"PASS"});
+  // Explicit PR diagnostic may inspect an older deployed version at most
+  // once per country/domain, without a wallet. It is NOT a quote-authorizing
+  // production check: a stale deployment can never return earning_ready.
+  steps.push({check:"published_build_sha",
+    status:exactMainPublished?"PASS":"PUBLISHED_SHA_MISMATCH_DIAGNOSTIC_ONLY"});
 
   const offers=await get("/api/v1/intelligence/availability");
   if(offers.schema_version!=="geomacro.earn-first-offers.v1" ||
@@ -132,6 +140,8 @@ export async function acceptEarningPilotLive({
     schema_version:SCHEMA,
     checked_at:now.toISOString(),
     deployed_main_sha:expectedSha,
+    exact_main_published:exactMainPublished,
+    diagnostic_only:diagnosticOnly,
     source_identities_disclosed:false,
     raw_upstream_disclosed:false,
     payment_header_submitted:false,
@@ -143,7 +153,7 @@ export async function acceptEarningPilotLive({
     quote_ready_category_count:quoteReadyCount,
     governed_no_payable_category_count:governedUnavailableCount,
     preflight_transport_error_category_count:requestFailureCount,
-    first_earning_ready:quoteReadyCount>0,
+    first_earning_ready:!diagnosticOnly && exactMainPublished && quoteReadyCount>0,
     no_funds_preflight_complete:true,
     checks:steps,
   };
@@ -155,6 +165,7 @@ if(process.argv[1]?.endsWith("verify-earn-first-live-no-funds.mjs")){
     const result=await acceptEarningPilotLive({
       origin:process.env.GEOMACRO_BASE_URL||"https://geomacro.live",
       expectedSha:process.env.EXPECTED_CANONICAL_SHA,
+      diagnosticOnly:process.argv.includes("--diagnostic-only"),
     });
     console.log(JSON.stringify(result));
     // PR diagnostics are read-only observation, NOT earning acceptance.
