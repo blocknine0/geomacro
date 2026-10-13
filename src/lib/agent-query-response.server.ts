@@ -621,6 +621,24 @@ function buildDirectAnswer(
   plan: AgentQueryPlan,
   states: Awaited<ReturnType<typeof buildCurrentState>>,
 ) {
+  // Structural baseline is sold as original-dated governed MODULE research,
+  // never a currently signed risk score. It cannot acquire a risk label, GRO
+  // signature claim or "latest" headline even if other stored state exists.
+  if (plan.delivery_tier === "structural_baseline") {
+    const state = states[0];
+    const dims = state?.structural?.available_dimensions ?? [];
+    if (!state || dims.length === 0) throw Error("STRUCTURAL_BASELINE_NOT_DELIVERABLE");
+    return {
+      status: "STRUCTURAL_BASELINE",
+      headline: "Geomacro structural research baseline; not current scored or signed risk intelligence.",
+      what_changed: [{
+        subject: state.subject,
+        available_dimensions: dims,
+        latest_observed_at: state.structural?.latest_observed_at ?? null,
+      }],
+      why_it_matters: "The derived methodology reports source-native structural observations and their age, without fabricating live events, a GRO signature, or a current risk score.",
+    } as const;
+  }
   const supported = states.filter((state) => state.risk !== null);
   if (!supported.length) {
     const moduleSupported = states.filter(
@@ -904,6 +922,8 @@ export async function assembleAgentQueryResponse(input: {
     query_plan_hash: plan.query_plan_hash,
     question_interpretation: {
       normalized_question: plan.question_key,
+      ...(plan.delivery_tier === "structural_baseline"
+        ? { delivery_tier: "structural_baseline" as const } : {}),
       intent: plan.intent,
       topics: plan.topics,
       required_modules: plan.required_modules,
@@ -929,6 +949,12 @@ export async function assembleAgentQueryResponse(input: {
       query_schema_version: plan.schema_version,
       response_schema_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
       product_contract_version: GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
+      ...(plan.delivery_tier === "structural_baseline" ? {
+        delivery_tier: "structural_baseline" as const,
+        source_clock: "SOURCE_NATIVE_STRUCTURAL_PUBLICATION",
+        signed_current_risk_object_included: false,
+        independently_scored_current_risk_included: false,
+      } : {}),
       pricing_phase: "EARLY_ADOPTION_10K",
       price_usdc:
         input.priceUsdc === undefined

@@ -85,6 +85,10 @@
       "classification": "REMOVE",
       "status": "REMOVED"
     },
+    "/api/v1/intelligence/availability": {
+      "classification": "PRODUCTION",
+      "status": "NO_FUNDS_PREFLIGHT"
+    },
     "/api/v1/intelligence/query": {
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"

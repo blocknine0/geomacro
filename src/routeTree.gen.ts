@@ -60,6 +60,7 @@ import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
 import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
+import { Route as ApiV1IntelligenceAvailabilityRouteImport } from './routes/api.v1.intelligence.availability'
 import { Route as ApiV1IntelligenceCriticalMineralsRouteImport } from './routes/api.v1.intelligence.critical-minerals'
 import { Route as ApiV1IntelligenceGeopoliticsRouteImport } from './routes/api.v1.intelligence.geopolitics'
 import { Route as ApiV1IntelligenceMacroFxRouteImport } from './routes/api.v1.intelligence.macro-fx'
@@ -324,6 +325,12 @@ const ApiGoatPilotStatusRoute = ApiGoatPilotStatusRouteImport.update({
   path: '/api/goat/pilot/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1IntelligenceAvailabilityRoute =
+  ApiV1IntelligenceAvailabilityRouteImport.update({
+    id: '/api/v1/intelligence/availability',
+    path: '/api/v1/intelligence/availability',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV1IntelligenceCriticalMineralsRoute =
   ApiV1IntelligenceCriticalMineralsRouteImport.update({
     id: '/api/v1/intelligence/critical-minerals',
@@ -417,6 +424,7 @@ export interface FileRoutesByFullPath {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
@@ -477,6 +485,7 @@ export interface FileRoutesByTo {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
@@ -538,6 +547,7 @@ export interface FileRoutesById {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
@@ -600,6 +610,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
     | '/api/v1/intelligence/macro-fx'
@@ -660,6 +671,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
     | '/api/v1/intelligence/macro-fx'
@@ -720,6 +732,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
     | '/api/v1/intelligence/macro-fx'
@@ -781,6 +794,7 @@ export interface RootRouteChildren {
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
   ApiGoatPilotOrderRoute: typeof ApiGoatPilotOrderRoute
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
+  ApiV1IntelligenceAvailabilityRoute: typeof ApiV1IntelligenceAvailabilityRoute
   ApiV1IntelligenceCriticalMineralsRoute: typeof ApiV1IntelligenceCriticalMineralsRoute
   ApiV1IntelligenceGeopoliticsRoute: typeof ApiV1IntelligenceGeopoliticsRoute
   ApiV1IntelligenceMacroFxRoute: typeof ApiV1IntelligenceMacroFxRoute
@@ -1149,6 +1163,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoatPilotStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/intelligence/availability': {
+      id: '/api/v1/intelligence/availability'
+      path: '/api/v1/intelligence/availability'
+      fullPath: '/api/v1/intelligence/availability'
+      preLoaderRoute: typeof ApiV1IntelligenceAvailabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/intelligence/critical-minerals': {
       id: '/api/v1/intelligence/critical-minerals'
       path: '/api/v1/intelligence/critical-minerals'
@@ -1253,6 +1274,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
+  ApiV1IntelligenceAvailabilityRoute: ApiV1IntelligenceAvailabilityRoute,
   ApiV1IntelligenceCriticalMineralsRoute:
     ApiV1IntelligenceCriticalMineralsRoute,
   ApiV1IntelligenceGeopoliticsRoute: ApiV1IntelligenceGeopoliticsRoute,

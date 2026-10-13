@@ -1,0 +1,34 @@
+name: First Earnings Zero-Funds Live Acceptance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/agent-query-plan.ts"
+      - "src/lib/agent-query-response.server.ts"
+      - "src/lib/earn-first-structural-offers.server.ts"
+      - "src/routes/api.v1.intelligence.availability.ts"
+      - "scripts/agentic/verify-earn-first-live-no-funds.mjs"
+      - ".github/workflows/earn-first-live-no-funds-acceptance.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-earn-first-no-funds-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governed-buyer-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Checkout exact canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify exact deployed build, 3 category preflights, no funds
+        env:
+          EXPECTED_CANONICAL_SHA: ${{ github.sha }}
+        run: node scripts/agentic/verify-earn-first-live-no-funds.mjs
