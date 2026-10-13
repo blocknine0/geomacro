@@ -81,6 +81,8 @@ const FAMILIES = Object.freeze({
     ["us_doe", "US Department of Energy critical minerals", "NO_KEY"],
     ["us_dod", "US Department of Defense critical minerals", "NO_KEY"],
     ["eu_crma", "EU Critical Raw Materials Act announcements", "NO_KEY"],
+    // Existing first-party UK government mineral/energy publisher, backup for no-card probe.
+    ["uk_desnz", "UK Department for Energy Security and Net Zero", "NO_KEY"],
   ],
 });
 
