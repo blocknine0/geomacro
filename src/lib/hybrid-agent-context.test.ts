@@ -29,4 +29,9 @@ describe("hybrid agent bounded context", () => {
     expect(prepareHybridAgentContext("q", [null])).toEqual({ ok: false, code: "INVALID_HISTORY" });
     expect(prepareHybridAgentContext("q", [{ role: "user", content: "" }])).toEqual({ ok: false, code: "INVALID_HISTORY" });
   });
+  it("rejects extra conversation fields and inherited values", () => {
+    const inherited = Object.create({ role: "user", content: "untrusted" });
+    expect(prepareHybridAgentContext("q", [inherited])).toEqual({ ok: false, code: "INVALID_HISTORY" });
+    expect(prepareHybridAgentContext("q", [{ role: "user", content: "ok", extra: "unexpected" }])).toEqual({ ok: false, code: "INVALID_HISTORY" });
+  });
 });
