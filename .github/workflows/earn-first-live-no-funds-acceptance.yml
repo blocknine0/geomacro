@@ -10,6 +10,15 @@ on:
       - "src/routes/api.v1.intelligence.availability.ts"
       - "scripts/agentic/verify-earn-first-live-no-funds.mjs"
       - ".github/workflows/earn-first-live-no-funds-acceptance.yml"
+  pull_request:
+    paths:
+      - "src/lib/agent-query-plan.ts"
+      - "src/lib/agent-query-response.server.ts"
+      - "src/lib/earn-first-structural-offers.server.ts"
+      - "src/routes/api.v1.intelligence.availability.ts"
+      - "scripts/agentic/verify-earn-first-live-no-funds.mjs"
+      - "src/__tests__/earn-first-live-no-funds-acceptance.test.ts"
+      - ".github/workflows/earn-first-live-no-funds-acceptance.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -28,7 +37,16 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # PR mode proves only that the published *base* can be examined without
+      # wallets, quotes or payment. A positive diagnostic job is NOT proof
+      # of payable evidence. On main push the original strict gate remains.
+      - name: Read-only three-domain revenue-blocker diagnosis (not earning acceptance)
+        if: github.event_name == 'pull_request'
+        env:
+          EXPECTED_CANONICAL_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/agentic/verify-earn-first-live-no-funds.mjs --diagnostic-only
       - name: Verify exact deployed build, 3 category preflights, no funds
+        if: github.event_name != 'pull_request'
         env:
           EXPECTED_CANONICAL_SHA: ${{ github.sha }}
         run: node scripts/agentic/verify-earn-first-live-no-funds.mjs
