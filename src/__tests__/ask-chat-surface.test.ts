@@ -9,10 +9,13 @@ describe("Ask Geomacro direct chat surface", () => {
   it("keeps a conversational multi-turn UI instead of a fixed report layout", () => {
     expect(workspace).toContain("type ChatTurn");
     expect(workspace).toContain("setTurns");
+    expect(workspace).toContain('"X-Geomacro-Previous-Question"');
+    expect(workspace).toContain("resolvedQuestion");
+    expect(workspace).toContain("New chat");
     expect(workspace).toContain("UserBubble");
     expect(workspace).toContain("AssistantAnswer");
     expect(workspace).toContain("Ask Geomacro…");
-    expect(workspace).toContain("Direct answers only · Shift+Enter for a new line");
+    expect(workspace).toContain("Grounded conversation · Shift+Enter for a new line");
     expect(workspace).not.toContain('label="What changed"');
     expect(workspace).not.toContain('label="Why it matters"');
     expect(workspace).not.toContain('label="Geomacro view · interpretation"');
@@ -33,6 +36,6 @@ describe("Ask Geomacro direct chat surface", () => {
     expect(workspace).toContain("Evidence ({evidence.length})");
     expect(workspace).toContain('!eventId.startsWith("live:")');
     expect(workspace).toContain('!eventId.startsWith("web:")');
-    expect(workspace).toContain("Answers focus on useful risk context and clearly distinguish what is known from what is uncertain.");
+    expect(workspace).toContain("Follow-up context guides topic selection only; every answer is checked against current evidence. Missing evidence is never invented.");
   });
 });
