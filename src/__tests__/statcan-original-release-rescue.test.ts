@@ -35,6 +35,20 @@ describe("Statistics Canada source-native Daily publication rescue", () => {
     expect(parsed.dated).toEqual([]);
     expect(parsed.undatedGov).toEqual([{ title, articleUrl: url }]);
   });
+  it("normalizes issuer-owned HTML title markup and accepts only its pinned alias path", () => {
+    const alias = "https://www.statcan.gc.ca/daily-quotidien/261013/dq261013a-eng.htm";
+    const trusted = { ...source, allowedHosts: ["www150.statcan.gc.ca", "www.statcan.gc.ca"] };
+    const originalAtom = `<feed><entry><title type="html">&lt;span&gt;${title}&lt;/span&gt;</title>
+      <link rel="alternate" href="${alias}"/><updated>2026-10-15T12:00:00Z</updated></entry></feed>`;
+    const result = parseFirstPartyFeed(originalAtom, trusted, now);
+    expect(result.metrics.relevant).toBe(1);
+    expect(result.metrics.original_link_valid).toBe(1);
+    expect(result.dated).toEqual([]);
+    expect(result.undatedGov).toEqual([{ title, articleUrl: alias }]);
+    expect(acceptedOriginalArticleLink(alias, trusted)).toBe(alias);
+    expect(acceptedOriginalArticleLink(alias.replace("www.statcan.gc.ca","attacker.example"), trusted))
+      .toBeNull();
+  });
   it("verifies exact first-party article path, native Released day and headline", () => {
     expect(verifiedStatcanOriginalReleaseDay(html("2026-10-13"),url,title,now))
       .toBe("2026-10-13");
