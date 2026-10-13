@@ -43,7 +43,7 @@ for(const [,fragment] of items){
     if(u.hostname==="travel.state.gov"){
       routeStats.linkValidHost++;
       const parts=u.pathname.split("/").filter(Boolean);
-      const safePrefix=parts.slice(0,4).join("/").replace(/[^a-z0-9\/-]/giu,"");
+      const safePrefix=parts.slice(0,6).join("/").replace(/[^a-z0-9\/-]/giu,"");
       routeStats.pathClasses[safePrefix]=(routeStats.pathClasses[safePrefix]??0)+1;
       if(u.pathname.includes("traveladvisories"))routeStats.advisoryDirectory++;
       if(/^\/content\/travel\/en\/traveladvisories\/traveladvisories\/[a-z0-9-]+(?:\.html)?$/iu.test(u.pathname))
