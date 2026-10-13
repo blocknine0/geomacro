@@ -42,6 +42,13 @@ export function parseB2QuotaWranglerReport(raw,{now=new Date()}={}) {
   if(rows.length===0) return {
     ...basic,status:"UNKNOWN_NO_D1_LEDGER_ROW",ledger_observed:false,
     reserved:null,per_workflow:null,unattributed_reserved:null,
+    // Missing D1 ledger row is not authoritative evidence of free B2
+    // provider quota; do not imply "remaining 25" from absent data.
+    current_hot_audit_gets_required:8,
+    remaining_reserved_total_headroom:null,
+    remaining_reserved_get_headroom:null,
+    quota_allows_full_hot_audit:false,
+    quota_hold_reason:"ACCOUNT_LEDGER_NOT_OBSERVED",
   };
   let reference=null;
   const byWorkflow=new Map();
@@ -83,6 +90,20 @@ export function parseB2QuotaWranglerReport(raw,{now=new Date()}={}) {
     ...basic,status:"D1_LEDGER_OBSERVED",ledger_observed:true,
     reserved,per_workflow:[...byWorkflow.values()].sort((a,b)=>a.workflow_id.localeCompare(b.workflow_id)),
     unattributed_reserved:reserved.total-attributed,
+    // #2124 current-hot B2 readback requires six GETs plus conservative
+    // reservations for retry ambiguity; do NOT spend unless eight remain.
+    current_hot_audit_gets_required:8,
+    remaining_reserved_total_headroom:Math.max(0,B2_DAILY_LIMITS.total-reserved.total),
+    remaining_reserved_get_headroom:Math.max(0,B2_DAILY_LIMITS.GET-reserved.GET),
+    quota_allows_full_hot_audit:B2_DAILY_LIMITS.total-reserved.total>=8 &&
+      B2_DAILY_LIMITS.GET-reserved.GET>=8,
+    quota_hold_reason:
+      B2_DAILY_LIMITS.GET-reserved.GET<8
+        ? "SHARED_DAILY_GET_HEADROOM_HELD"
+        : B2_DAILY_LIMITS.total-reserved.total<8
+          ? "SHARED_DAILY_TOTAL_HEADROOM_HELD" : null,
+    // A D1 reservation ledger does not validate the external B2 provider
+    // billing/capacity and cannot grant B2 network access by itself.
     // No claim that nonparticipating clients or B2 billing totals were audited.
   };
 }

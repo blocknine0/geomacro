@@ -1,4 +1,7 @@
 name: Read-only B2 Account D1 Quota Receipt
+# #2124 bounded one-shot diagnosis (2026-10-13): resolve if current B2
+# audit admission is held by the shared GET allocation or total account cap.
+# No B2 GET and no D1 write. Never infer vendor billing from D1 reservations.
 
 on:
   workflow_dispatch: {}
