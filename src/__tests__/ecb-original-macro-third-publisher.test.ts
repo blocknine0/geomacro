@@ -35,9 +35,10 @@ describe("#2042 free third independent original-publisher Macro/FX route",()=>{
       "fed_monetary_original_press_rss_review",
       "statcan_prices_original_atom_review",
       "ecb_press_original_rss_review",
+      "uk_hmt_original_treasury_atom_review",
     ]);
     const all=new Set<string>();
-    for(let i=0;i<3;i++){
+    for(let i=0;i<4;i++){
       const now=new Date(NOW.getTime()+i*30*60*1000);
       const pair=select30MinPublishers(now).macro;
       expect(pair).toHaveLength(2);
