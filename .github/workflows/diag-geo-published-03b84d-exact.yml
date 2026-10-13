@@ -1,0 +1,24 @@
+name: One-Time Published Geo Coverage 03b84d Exact Readback
+on:
+  push:
+    branches:
+      - diag/geo-published-03b84d-readback-20261013
+permissions:
+  contents: read
+jobs:
+  read-only:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      EXPECTED_CANONICAL_SHA: 03b84d1e3c36e5de6deb24f581d052cc4a2b4b87
+      GEOMACRO_BASE_URL: https://geomacro.live
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Exact-published-SHA and three original-dated category GETs, no funds
+        run: node scripts/ops/verify-three-category-live-official-api.mjs
