@@ -81,6 +81,18 @@ test("main-only dispatch or credentials absent makes zero requests", async () =>
   assert.equal(calls,0);
 });
 
+test("expired pinned production receipt refuses all quota and B2 calls", async () => {
+  let calls = 0;
+  const report = await verifyOneRightsReceipt({
+    env, now: NOW + 26 * 3600_000,
+    fetchImpl: async () => { calls++; throw Error("SHOULD_NOT_FETCH"); },
+  });
+  assert.equal(report.category, "B2_RECEIPT_STALE_NO_GET_ATTEMPT");
+  assert.equal(report.s3_get_attempted, false);
+  assert.equal(report.fresh_d1_get_reserved, false);
+  assert.equal(calls, 0);
+});
+
 test("D1 token rejection, malformed status or exhausted cap makes zero B2 reads", async () => {
   for (const [response, category] of [
     [new Response("",{status:401}),"D1_BEARER_AUTH_DENIED"],
