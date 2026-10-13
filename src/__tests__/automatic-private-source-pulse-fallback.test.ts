@@ -34,8 +34,10 @@ describe("resilient free scheduled original-source pulse to SHA-bound private sc
     expect(scorer).toContain('process.env.GITHUB_REF==="refs/heads/main"');
     expect(scorer).toContain('throw Error("PRIVATE_PULSE_AUTO_CONTEXT_UNVERIFIED")');
     expect(scorer).toContain('pipeline:"official_source_pulse_30m"');
-    expect(scorer).toContain("selectPrivateNovelPulseRefs(read.get(category),category,now.getTime())");
-    expect(scorer).toContain("privateOriginalMatchesPulse(row,refs,now.getTime())");
+    expect(scorer).toContain("selectPrivateNovelPulseRefs(snapshot,category,now.getTime())");
+    expect(scorer).toContain("expectedClocks");
+    expect(scorer).toContain("fetchPulseRotatedPrivateOriginals");
+    expect(scorer).toContain("privateOriginalMatchesPulse(");
     expect(scorer).toContain("if(refs.size===0)return []");
     expect(scorer).not.toContain('process.env.GITHUB_EVENT_NAME==="schedule"');
   });

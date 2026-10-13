@@ -11,7 +11,7 @@ export function validatePrivatePulseRefs(domain, refs) {
     throw Error("PRIVATE_PULSE_REFERENCE_INVALID");
   return new Set(refs);
 }
-export function privateOriginalMatchesPulse(article, hashes, now = Date.now()) {
+export function privateOriginalMatchesPulse(article, hashes, now = Date.now(), expectedClocks = null) {
   if (!(hashes instanceof Set) || !article ||
       article.discoveryProvider !== "official_native_rss" ||
       article.nativePublishedAtVerified !== true ||
@@ -37,7 +37,17 @@ export function privateOriginalMatchesPulse(article, hashes, now = Date.now()) {
   }
   original.searchParams.sort();
   const identity = createHash("sha256").update(original.href).digest("hex");
-  return hashes.has(identity);
+  if (!hashes.has(identity)) return false;
+  // Identity alone is insufficient for original-time authentication.
+  // The scorer must observe exactly the publisher-native timestamp already
+  // persisted and read back from the same D1 pulse when provided.
+  if (expectedClocks !== null) {
+    if (!(expectedClocks instanceof Map)) return false;
+    const expected = expectedClocks.get(identity);
+    if (typeof expected !== "string" ||
+        expected !== new Date(published).toISOString()) return false;
+  }
+  return true;
 }
 
 const DATE = /^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
