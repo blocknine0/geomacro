@@ -44,7 +44,7 @@ describe("#1827 Step-1 official first-party publisher source readiness", () => {
     (un as any).official_same_publisher_fallback_attempted=true;
     (un as any).official_same_publisher_fallback_used=true;
     const accepted=auditOfficialStep1Feeds(good);
-    expect(accepted.categories[0].transport_healthy_independent_issuers).toBe(2);
+    expect(accepted.categories[0].transport_healthy_independent_issuers).toBe(3);
     expect(accepted.per_category_two_independent_issuers_transport_healthy).toBe(true);
     expect(accepted.current_signed_commercial_intelligence_verified).toBeUndefined();
     expect(accepted.commercial_eligible).toBe(false);
@@ -53,7 +53,7 @@ describe("#1827 Step-1 official first-party publisher source readiness", () => {
       expect(()=>auditOfficialStep1Feeds(good)).toThrow("STEP1_SOURCE_RECEIPT_NOT_TRUSTED");
     }
     un.primary_http_status=503;
-    expect(auditOfficialStep1Feeds(good).categories[0].transport_healthy_independent_issuers).toBe(2);
+    expect(auditOfficialStep1Feeds(good).categories[0].transport_healthy_independent_issuers).toBe(3);
     (un as any).fallback_http_status=403;
     expect(()=>auditOfficialStep1Feeds(good)).toThrow("STEP1_SOURCE_RECEIPT_NOT_TRUSTED");
     (un as any).fallback_http_status=200;
@@ -87,7 +87,7 @@ describe("#1827 Step-1 official first-party publisher source readiness", () => {
     expect(out.source_transport_failed_count).toBe(3);
     expect(out.all_sources_working).toBe(false);
     expect(out.per_category_two_independent_issuers_transport_healthy).toBe(true);
-    expect(out.categories[2].transport_healthy_independent_issuers).toBe(3);
+    expect(out.categories[2].transport_healthy_independent_issuers).toBe(4);
     expect(out.safe_source_failures.map((f: any) => f.http_status)).toEqual([403,null,null]);
     expect(out.safe_source_failures.every((f: any) => f.no_access_control_bypass)).toBe(true);
     expect(out.step1_end_to_end_accepted).toBe(false);
@@ -97,7 +97,8 @@ describe("#1827 Step-1 official first-party publisher source readiness", () => {
     const input = fixture();
     for (const id of ["nrcan_government_news_original_atom_review",
       "usgs_minerals_original_news_rss_review",
-      "uk_dbt_critical_minerals_atom_pending_review"]) {
+      "uk_dbt_critical_minerals_atom_pending_review",
+      "uk_desnz_original_energy_minerals_atom_review"]) {
       const row = input.sources.find((r: any) => r.source_id === id)!;
       row.format_valid = false; row.publisher_reachable = false;
       row.primary_http_status = 429;
