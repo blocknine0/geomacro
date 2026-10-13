@@ -16,6 +16,7 @@ import {
 import {
   emptyPrivateScoringDiagnostic, addDiagnosticCount,
   safeGateReasonCode, safePrivateStageErrorCode,
+  classifierExplicitlyRejectsDomain,
 } from './lib/restricted-private-scoring-diagnostics.mjs';
 
 dotenv.config();
@@ -956,8 +957,17 @@ function passesGates(article, assessment, fallbackCategory) {
       ? assessment.category.trim().toLowerCase()
       : 'none';
 
+  // In the documented model contract, relevant=false + category=none
+  // means the original publisher article is NOT a risk event. Classify this
+  // as an intentional model rejection, not a broken category mapping.
+  // A contradictory relevant=true + category=none remains INVALID, and
+  // cross-domain classifications still fail below. Nothing is admitted.
+  if (classifierExplicitlyRejectsDomain(assessment)) {
+    return { ok: false, reason: 'llm relevant=false' };
+  }
+
   // The classifier must explicitly choose one canonical category.
-  // Missing, malformed and "none" results fail closed.
+  // Missing, malformed, relevant=true/"none" and unknown labels fail closed.
   if (!ALLOWED_CATEGORIES.includes(assessedCategory)) {
     return {
       ok: false,
