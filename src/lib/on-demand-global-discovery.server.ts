@@ -162,7 +162,7 @@ async function boundedFetch(
   // arbitrary locations, signed querystrings, credentials or metadata IPs.
   if (target.protocol !== "https:" ||
       !["api.worldbank.org","api.gdeltproject.org","api.reliefweb.int",
-        "www.gov.uk","news.un.org","www.federalreserve.gov",
+        "www.gov.uk","news.un.org","www.federalreserve.gov","www.ecb.europa.eu",
         "www.minister.industry.gov.au"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
@@ -437,6 +437,7 @@ type OriginalFeed = {
   alternateUrl?:string;
   originalPath:RegExp;
   topic:RegExp;
+  scopedTopics?:readonly string[];
 };
 const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   {
@@ -468,6 +469,28 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
     media:"rss",originalHost:"www.federalreserve.gov",
     originalPath:/^\/newsevents\/pressreleases\/[A-Za-z0-9]/u,
     topic:/\b(?:monetary policy|interest rates?|inflation|foreign exchange|economic activity|financial stability|liquidity|federal funds)\b/iu,
+  },
+  {
+    domain:"geopolitics",family:"uk_ofsi_original_publisher",
+    url:"https://www.gov.uk/government/organisations/office-of-financial-sanctions-implementation.atom",
+    media:"atom",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:sanctions?|asset freezes?|designations?|restrictive measures?)\b/iu,
+    scopedTopics:["sanctions_restrictions"],
+  },
+  {
+    domain:"macro",family:"ecb_original_publisher",
+    url:"https://www.ecb.europa.eu/rss/press.html",
+    media:"rss",originalHost:"www.ecb.europa.eu",
+    originalPath:/^\/press\/(?:pr|key|inter|accounts)\/date\/\d{4}\//u,
+    topic:/\b(?:monetary|inflation|interest rates?|foreign exchange|economic|currency)\b/iu,
+  },
+  {
+    domain:"rare_earth",family:"uk_desnz_original_publisher",
+    url:"https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
+    media:"atom",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
   },
   {
     domain:"rare_earth",family:"australian_industry_original_publisher",
@@ -760,7 +783,9 @@ async function discoverOnDemandImpl(
         reliefWeb(name,trackedFetch,now,approvedReliefAppname)});
   }
   if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
-    if (categories.includes(source.domain)) tasks.push({
+    if (categories.includes(source.domain) &&
+        (!source.scopedTopics || !topics.length ||
+         source.scopedTopics.some(t=>topics.includes(t)))) tasks.push({
       name:source.family,category:source.domain,
       run:()=>originalOfficialFeed(source,country,name,trackedFetch,now,mineral,topics,newsMaxAgeMs),
     });
@@ -771,11 +796,17 @@ async function discoverOnDemandImpl(
     run:()=>worldBank(country,indicator,trackedFetch,now)});
   // Exactly one fixed metadata lookup + at most eleven provider requests,
   // no 195-country fanout and no user question passed upstream.
-  const settled=await Promise.allSettled(tasks.map(t=>t.run()));
+  // One country GET + at most eleven provider GETs. Prioritize annual macro
+  // observables when optional approvals increase the configured fanout.
+  const selected=tasks.length>11
+    ? [...tasks.filter(t=>t.name.startsWith("world_bank_official_")),
+       ...tasks.filter(t=>!t.name.startsWith("world_bank_official_"))].slice(0,11)
+    : tasks;
+  const settled=await Promise.allSettled(selected.map(t=>t.run()));
   const source_probes=settled.map((result,i)=>{
-    const row = result.status==="rejected" ? failed(tasks[i].name) :
+    const row = result.status==="rejected" ? failed(selected[i].name) :
       "probe" in result.value ? result.value.probe : result.value;
-    return {...row,category:tasks[i].category};
+    return {...row,category:selected[i].category};
   });
   // Never persist, log, or expose raw first-party titles/articles here.
   // Every candidate requires the later governed article-page/rights/signing
