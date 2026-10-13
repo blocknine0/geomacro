@@ -44,6 +44,7 @@ import {
 import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.server";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import { lookupTelegramFallback } from "./on-demand-telegram-fallback.server";
+import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
   verifyOnDemandOriginalArticlePages, type OnDemandCategory,
@@ -357,6 +358,15 @@ export const mainnetIntelligenceHandlers = {
               execution_authorized:false,
             },422);
           }
+          // Read the existing independently signature-verified D1 country GRO
+          // first; an outage/empty object is not a reason to contact Supabase.
+          // Country GRO availability is only a hint, NOT proof that the exact
+          // requested topic/mineral is answered. Never bypass the x402 gate.
+          let existingVerifiedCountryGroAvailable=false;
+          try {
+            existingVerifiedCountryGroAvailable=Boolean(
+              await readD1VerifiedHotCountryGro(subject.country_iso3,new Date().toISOString()));
+          } catch { /* Storage lookup is optional, live retrieval continues. */ }
           let discovery;
           let privatelyQualifiedOriginalCandidateCount=0;
           let privateOriginalReviewCandidateCount=0;
@@ -444,6 +454,7 @@ export const mainnetIntelligenceHandlers = {
               checked_at:discovery.checked_at,
               network_attempts:discovery.network_attempts,
               reached_source_families:discovery.reached_source_families,
+              existing_verified_country_gro_available:existingVerifiedCountryGroAvailable,
               discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
               private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
               duplicate_original_headlines_suppressed:duplicatePrivateOriginalHeadlines,
