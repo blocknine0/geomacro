@@ -15,6 +15,7 @@ export type StatelessSourceSpec = {
   credit: string | null;
   govContentApi?: boolean;
   canadaOriginalPage?: boolean;
+  statcanOriginalPage?: boolean;
 };
 
 export type StatelessSourceCandidate = {
@@ -133,6 +134,9 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
     if (source.govContentApi &&
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
+    if (source.statcanOriginalPage &&
+        !/^\/n1\/daily-quotidien\/\d{6}\/dq\d{6}[a-z]-eng\.htm$/iu.test(link.pathname))
+      return null;
     if (source.id === "usgs_minerals" && !/^\/news\//u.test(link.pathname)) return null;
     if (source.id === "ecb_press" || source.id === "ecb_stats") {
       // ECB statistical releases use dedicated /press/stats/{bop,md,...}/
@@ -183,6 +187,25 @@ export function selectOfficialTopic(title: string, category: StatelessCategory) 
   return TOPICS[category].find(rule => rule.test.test(title)) ?? null;
 }
 
+// Subject-specific Statistics Canada Daily feeds are macro publications, but
+// Atom <updated> is not original publication. Only an independently verified
+// article day may receive this conservative unscored publication fallback.
+const STATCAN_FEED_IDS = new Set([
+  "statcan_prices", "statcan_accounts", "statcan_trade", "statcan_labour",
+]);
+const STATCAN_DAILY_TOPIC = {
+  test: /./,
+  name: "official economic statistics",
+  implication: "An original-dated first-party economic statistical release may inform macroeconomic context; no metric direction, materiality or risk score is inferred from its headline.",
+};
+function topicForOriginal(
+  title: string, category: StatelessCategory, sourceId: string, dayVerified: boolean,
+) {
+  return selectOfficialTopic(title, category) ??
+    (category === "macro" && dayVerified && STATCAN_FEED_IDS.has(sourceId)
+      ? STATCAN_DAILY_TOPIC : null);
+}
+
 export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, now = Date.now()): {
   dated: StatelessSourceCandidate[];
   undatedGov: { title: string; articleUrl: string }[];
@@ -213,7 +236,7 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
     const item = match[1];
     const title = unescapeXml(tagValue(item, "title") ?? "");
     if (title.length < 12 || title.length > 300 || /[<>]/u.test(title) ||
-        !selectOfficialTopic(title, source.category)) continue;
+        !topicForOriginal(title, source.category, source.id, source.statcanOriginalPage === true)) continue;
     metrics.relevant++;
     const articleUrl = acceptedOriginalArticleLink(entryLink(item, source), source);
     if (!articleUrl || seen.has(articleUrl)) continue;
@@ -235,8 +258,8 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
         sourceId: source.id, category: source.category, title,
         articleUrl, publishedAt: new Date(ms).toISOString(), credit: source.credit,
       });
-    } else if (((!rawClock && source.govContentApi) || source.canadaOriginalPage) &&
-               undatedGov.length < (source.canadaOriginalPage ? 8 : 4)) {
+    } else if (((!rawClock && (source.govContentApi || source.statcanOriginalPage)) || source.canadaOriginalPage) &&
+               undatedGov.length < (source.canadaOriginalPage ? 8 : source.statcanOriginalPage ? 2 : 4)) {
       metrics.undated_original++;
       // Atom "updated" is never substituted for the original publication.
       undatedGov.push({ title, articleUrl });
@@ -376,7 +399,8 @@ export function deriveStatelessSignals(
   for (const item of candidates) {
     if (!item || !["geopolitics", "macro", "rare_earth"].includes(item.category)) continue;
     const dayOnly = item.datePrecision === "day" &&
-      ["eu_top_news","nrcan_releases","canada_foreign_statements","au_geoscience"].includes(item.sourceId);
+      (["eu_top_news","nrcan_releases","canada_foreign_statements","au_geoscience"].includes(item.sourceId) ||
+        STATCAN_FEED_IDS.has(item.sourceId));
     const conservativeRelease = dayOnly ? conservativeDayReleaseMs(item.publishedAt) : null;
     const native = dayOnly ? Date.parse(item.publishedAt + "T00:00:00.000Z")
       : originalPublicationMs(item.publishedAt, now);
@@ -388,7 +412,7 @@ export function deriveStatelessSignals(
     try { url = new URL(item.articleUrl); } catch { continue; }
     if (url.protocol !== "https:" || url.username || url.password || url.port ||
         url.hash || !url.hostname) continue;
-    const topic = selectOfficialTopic(item.title, item.category);
+    const topic = topicForOriginal(item.title, item.category, item.sourceId, dayOnly);
     if (!topic) continue;
     // The same official article can occur in several publisher subject feeds.
     // Deduplicate by the exact admitted article URL within its category,
