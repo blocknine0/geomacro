@@ -31,13 +31,13 @@ const response=await fetch(u,{
 if(!response.ok)throw Error("NEWS_BACKSTOP_GITHUB_RUNS_UNAVAILABLE_"+response.status);
 const data=await response.json();
 if(!Array.isArray(data.workflow_runs))throw Error("NEWS_BACKSTOP_GITHUB_RESPONSE_INVALID");
-const force=process.env.GITHUB_EVENT_NAME==="workflow_dispatch";
+const force=process.env.GITHUB_EVENT_NAME==="workflow_dispatch" || process.env.GITHUB_EVENT_NAME==="push";
 const decision=decideWebsiteNewsBackstop(data.workflow_runs);
 const shouldRun=force||decision.should_run;
 appendFileSync(output,"should_run="+(shouldRun?"true":"false")+"\n");
 console.log(JSON.stringify({
   schema:"geomacro.website-derived-news-cadence-backstop.v1",
-  reason:force?"OPERATOR_RECOVERY_REQUESTED":decision.reason,
+  reason:force?(process.env.GITHUB_EVENT_NAME==="push"?"EXACT_MAIN_PRODUCTION_CANARY":"OPERATOR_RECOVERY_REQUESTED"):decision.reason,
   last_success_at:decision.last_success_at,
   minutes_since_success:decision.age_minutes,
   should_publish:shouldRun,
