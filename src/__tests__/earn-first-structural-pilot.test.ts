@@ -34,7 +34,7 @@ const fakeAvailability = (
   stale_modules: [],
   ineligible_source_ids: [],
   source_contracts: [{
-    source_id: "PRIVATE_PROVENANCE_DO_NOT_RETURN", commercial_usage_status: "allowed",
+    source_id: "PRIVATE_PROVENANCE_DO_NOT_RETURN", commercial_usage_status: "DERIVED_ONLY",
     raw_redistribution_allowed: false, attribution_required: false, licence_name: null,
   }],
   subjects: [{
@@ -149,6 +149,21 @@ describe("earn-first original-dated structural baseline pilot", () => {
         subjects: [{ ...fakeAvailability(plan).subjects[0], available_modules: [] }] }),
       plan => ({ ...fakeAvailability(plan), code: "COMMERCIAL_SOURCE_NOT_ELIGIBLE",
         ineligible_source_ids: ["PRIVATE_DENIED_SOURCE"] }),
+      plan => ({ ...fakeAvailability(plan), source_contracts: [] }),
+      plan => ({ ...fakeAvailability(plan), source_contracts: [{
+        ...fakeAvailability(plan).source_contracts[0], attribution_required: true,
+      }] }),
+      plan => ({ ...fakeAvailability(plan), source_contracts: [{
+        ...fakeAvailability(plan).source_contracts[0],
+        commercial_usage_status: "RESEARCH_ONLY",
+      }] }),
+      plan => ({ ...fakeAvailability(plan), subjects: [{
+        ...fakeAvailability(plan).subjects[0], latest_evidence_at: null,
+      }] }),
+      plan => ({ ...fakeAvailability(plan), subjects: [{
+        ...fakeAvailability(plan).subjects[0],
+        latest_evidence_at: "2099-01-01T00:00:00Z",
+      }] }),
     ];
     for (const build of cases) {
       const res = await preflightStructuralBaseline(request(pilot), {
