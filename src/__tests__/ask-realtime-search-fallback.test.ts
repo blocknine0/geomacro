@@ -9,9 +9,11 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(orchestrator).toContain("answerHybridQuestion(question)");
     expect(orchestrator).toContain("if (!primary.insufficient_evidence) return primary");
     expect(orchestrator).toContain("realtimeSearchAnswer(question, primary)");
-    expect(orchestrator).toContain("if (realtime && !realtime.insufficient_evidence) return realtime");
-    expect(orchestrator).toContain("officialUnscoredReleaseAnswer(question, realtime ?? primary)");
-    expect(orchestrator).toContain("?? realtime ?? primary");
+    expect(orchestrator).toContain("const official = await officialUnscoredReleaseAnswer(question)");
+    expect(orchestrator.indexOf("const official = await officialUnscoredReleaseAnswer(question)"))
+      .toBeLessThan(orchestrator.indexOf("const primary = await answerHybridQuestion(question)"));
+    expect(orchestrator).toContain("if (official) return official");
+    expect(orchestrator).toContain("return realtime ?? primary");
   });
 
   it("offers publisher-observation-only responses without inventing signed or scored risk", () => {
@@ -19,6 +21,13 @@ describe("Ask Geomacro realtime search fallback", () => {
     const type = read("src/lib/hybrid-ask-intelligence.server.ts");
     expect(orchestrator).toContain("readStatelessWebsiteIntelligence");
     expect(orchestrator).toContain("now - issued <= 24 * 3_600_000");
+    expect(orchestrator).toContain("selectOfficialNewsCategories(question)");
+    expect(orchestrator).toContain("Promise.allSettled(");
+    expect(orchestrator).toContain("what (?:has )?changed today");
+    expect(orchestrator).toContain("signal.status === \"official_release_observed_unscored\"");
+    expect(orchestrator).toContain("signal.same_event_corrob_verified === false");
+    expect(orchestrator).toContain("signal.severity === null");
+    expect(orchestrator).toContain("rest.split(/\\s+/).some");
     expect(orchestrator).toContain("insufficient_evidence: false");
     expect(orchestrator).toContain("low_confidence: true");
     expect(orchestrator).toContain("mean_relevance: null");
