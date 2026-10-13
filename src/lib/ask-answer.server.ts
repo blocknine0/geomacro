@@ -23,56 +23,80 @@ import { realtimeSearchAnswer } from "./ask-realtime-search.server";
  * GRO delivery, or payment acceptance. Specific country, asset, numeric-risk,
  * causal, directional and investment questions remain on the governed path.
  */
-async function officialUnscoredReleaseAnswer(
-  question: string,
-  insufficient: HybridAskAnswer,
-): Promise<HybridAskAnswer | null> {
+type OfficialNewsCategory = "geopolitics" | "macro" | "rare_earth";
+
+function selectOfficialNewsCategories(question: string): OfficialNewsCategory[] {
   const q = question.trim().toLowerCase();
-  const broadReleaseQuestion = /\b(latest|recent|current|new|updates?|developments?|releases?|news)\b/i.test(q);
-  const categoryPatterns = [
-    { category: "geopolitics" as const, test: /\b(geopolitic(?:s|al)?|diplomac(?:y|ies)|foreign policy)\b/i },
-    { category: "macro" as const, test: /\b(macro(?:economics?|economic)?|fx|foreign exchange)\b/i },
-    { category: "rare_earth" as const, test: /\b(critical minerals?|rare earths?|rare-earths?)\b/i },
+  const patterns: readonly { category: OfficialNewsCategory; test: RegExp }[] = [
+    { category: "geopolitics", test: /\b(geopolitic(?:s|al)?|diplomac(?:y|ies)|foreign policy)\b/i },
+    { category: "macro", test: /\b(macro(?:economics?|economic)?|fx|foreign exchange)\b/i },
+    { category: "rare_earth", test: /\b(critical minerals?|rare earths?|rare-earths?)\b/i },
   ];
-  const matches = categoryPatterns.filter(item => item.test.test(q));
-  // A small allowlist rather than a blacklist: only broad category/news
-  // requests qualify. Names of countries, corridors, assets, dates, numeric
-  // risk requests and directional questions leave unrecognised tokens and
-  // stay on the verified/signed (or fail-closed) canonical path.
+  const matches = patterns.filter(item => item.test.test(q));
+  const genericNews = /^(?:what (?:has )?changed today|what is new today|latest news|latest developments)\??$/i.test(q);
+  const looksLikeNews = /\b(latest|recent|current|new|updates?|developments?|releases?|news|changed|changing)\b/i.test(q);
+  if (!looksLikeNews || matches.length > 1 || (matches.length === 0 && !genericNews))
+    return [];
   const rest = q
     .replace(/\b(?:geopolitics?|geopolitical|diplomacy|foreign policy|macro\/fx|macroeconomics?|macroeconomic|macro|fx|foreign exchange|critical minerals?|rare[- ]earths?)\b/gi, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
   const allowed = new Set([
-    "what", "whats", "s", "is", "are", "the", "latest", "recent", "current",
-    "new", "news", "update", "updates", "development", "developments",
-    "release", "releases", "show", "me", "give", "tell", "about", "in",
-    "on", "for", "any", "from", "today", "now", "please", "us", "there",
-    "have", "been", "globally", "global", "world",
+    "what", "whats", "s", "is", "are", "has", "the", "latest", "recent",
+    "current", "new", "news", "update", "updates", "development",
+    "developments", "release", "releases", "changed", "changing",
+    "show", "me", "give", "tell", "about", "in", "on", "for", "any",
+    "from", "today", "now", "please", "us", "there", "have", "been",
+    "globally", "global", "world",
   ]);
-  if (!broadReleaseQuestion || matches.length !== 1 ||
-      rest.split(/\s+/).some(token => token && !allowed.has(token))) {
-    return null;
-  }
+  if (rest.split(/\s+/).some(token => token && !allowed.has(token))) return [];
+  return matches.length === 1
+    ? [matches[0].category]
+    : ["geopolitics", "macro", "rare_earth"];
+}
+
+/**
+ * News-only observations must never be mistaken for a signed GRO or a
+ * payment-eligible country/commodity/corridor risk assessment.
+ */
+async function officialUnscoredReleaseAnswer(question: string): Promise<HybridAskAnswer | null> {
+  const categories = selectOfficialNewsCategories(question);
+  if (!categories.length) return null;
   const { readStatelessWebsiteIntelligence } = await import("./stateless-public-intelligence.server");
-  const result = await readStatelessWebsiteIntelligence(matches[0].category);
+  const results = await Promise.allSettled(
+    categories.map(category => readStatelessWebsiteIntelligence(category))
+  );
   const now = Date.now();
-  const recent = result.signals.filter(signal => {
-    const issued = Date.parse(signal.published_at);
-    return Number.isFinite(issued) && issued <= now - 15 * 60_000 &&
-      now - issued <= 24 * 3_600_000;
-  }).slice(0, 3);
-  if (!recent.length) return null;
-  const categoryLabel = matches[0].category === "rare_earth" ? "Critical Minerals"
-    : matches[0].category === "macro" ? "Macro/FX" : "Geopolitics";
+  const signals = results.flatMap(result => {
+    if (result.status !== "fulfilled") return [];
+    const recent = result.value.signals.filter(signal => {
+      const issued = Date.parse(signal.published_at);
+      return Number.isFinite(issued) && issued <= now - 15 * 60_000 &&
+        now - issued <= 24 * 3_600_000 &&
+        signal.status === "official_release_observed_unscored" &&
+        signal.same_event_corrob_verified === false && signal.severity === null;
+    });
+    return recent.slice(0, categories.length === 1 ? 3 : 1);
+  });
+  if (!signals.length) return null;
+  // Report only categories that ACTUALLY yielded native-dated releases.
+  // A healthy request for three categories is not evidence that all three
+  // produced eligible stories today.
+  const observed = Array.from(new Set(signals.map(signal => signal.category)));
+  const categoryLabel = "in " + observed.map(category =>
+    category === "rare_earth" ? "Critical Minerals"
+      : category === "macro" ? "Macro/FX" : "Geopolitics"
+  ).join(", ");
+  const latestOriginal = signals.map(signal => signal.published_at).sort().at(-1)!;
   return {
-    ...insufficient,
-    summary: `Geomacro observed ${recent.length} recent official ${categoryLabel} release${recent.length === 1 ? "" : "s"}; these are unscored observations, not independently corroborated risk assessments.`,
-    what_changed: recent.map(signal => signal.what_changed).join(" "),
-    why_it_matters: recent.map(signal => signal.why_it_matters).join(" "),
+    summary: "Geomacro observed " + signals.length + " recent official release" +
+      (signals.length === 1 ? "" : "s") + " " + categoryLabel +
+      "; these are unscored observations, not independently corroborated risk assessments.",
+    what_changed: signals.map(signal => signal.what_changed).join(" "),
+    why_it_matters: signals.map(signal => signal.why_it_matters).join(" "),
     geomacro_view: "First-party publication dates were checked. No independent same-event corroboration, risk score or signed GRO is claimed.",
-    evidence: recent.map(signal => ({
-      eventId: `live:official:${signal.id}`,
+    evidence: signals.map(signal => ({
+      eventId: "live:official:" + signal.id,
       title: signal.title,
       relevance: 100,
     })),
@@ -81,6 +105,7 @@ async function officialUnscoredReleaseAnswer(
     low_confidence: true,
     gri: null,
     generatedAt: new Date().toISOString(),
+    latest_original_published_at: latestOriginal,
     data_mode: "ephemeral_live",
     cache_status: "bypassed",
     source_identity_exposed: false,
@@ -93,22 +118,27 @@ async function officialUnscoredReleaseAnswer(
 }
 
 export async function answerAskQuestion(question: string): Promise<HybridAskAnswer> {
+  // Route release-only questions directly; unrelated questions keep their
+  // proven B2/live/scored path and existing fail-closed payment boundaries.
+  try {
+    const official = await officialUnscoredReleaseAnswer(question);
+    if (official) return official;
+  } catch (error) {
+    console.error(
+      "[ask-answer] official releases unavailable; preserving canonical Ask",
+      error instanceof Error ? error.message : "unknown error",
+    );
+  }
   const primary = await answerHybridQuestion(question);
   if (!primary.insufficient_evidence) return primary;
-
   try {
     const realtime = await realtimeSearchAnswer(question, primary);
-    if (realtime && !realtime.insufficient_evidence) return realtime;
-    return (await officialUnscoredReleaseAnswer(question, realtime ?? primary)) ?? realtime ?? primary;
+    return realtime ?? primary;
   } catch (error) {
     console.error(
       "[ask-answer] realtime fallback unavailable; preserving fail-closed answer",
       error instanceof Error ? error.message : "unknown error",
     );
-    try {
-      return (await officialUnscoredReleaseAnswer(question, primary)) ?? primary;
-    } catch {
-      return primary;
-    }
+    return primary;
   }
 }
