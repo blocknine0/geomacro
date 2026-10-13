@@ -1,8 +1,13 @@
 name: Issue 2124 B2 D1 current hot read-only audit
 
-# Explicit dispatch only. No automated retries against shared B2 quotas.
+# A one-shot push on this file's merge, plus explicit owner dispatch.
+# No schedule or recurring retry; shared B2 GET quota remains fail-closed.
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/issue-2124-b2-d1-current-audit.yml'
 
 permissions:
   contents: read
@@ -13,7 +18,7 @@ concurrency:
 
 jobs:
   verify:
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     environment: production
@@ -31,7 +36,7 @@ jobs:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Node.js 22
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
