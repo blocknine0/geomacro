@@ -24,6 +24,7 @@ const FAMILY_BY_HOST:Readonly<Record<string,string>>={
   "www.gov.uk":"gov_uk",
   "news.un.org":"un_news",
   "www.federalreserve.gov":"federal_reserve",
+  "www.ecb.europa.eu":"ecb",
   "www.minister.industry.gov.au":"australian_industry",
 };
 const outcomeCounts=new Map<string,Record<
@@ -66,6 +67,9 @@ const privateEvidence=await discoverOnDemandForPrivateQualification({
   country_iso3:"CHN",
   categories:["geopolitics","macro","rare_earth"],
   mineral:"lithium",
+  // Genuine country/query scope for each of the three existing categories.
+  topics:["sanctions_restrictions","macro_risk","critical_minerals"],
+  max_age_seconds:7*86_400,
 },{fetchImpl:statusOnlyFetch});
 const receipt=privateEvidence.discovery;
 const privateMacroDrivers=buildPrivateOnDemandMacroDrivers(privateEvidence.private_macro_changes);
@@ -73,7 +77,7 @@ const privateMacroDrivers=buildPrivateOnDemandMacroDrivers(privateEvidence.priva
 // artifacts. Original publisher URLs, page HTML and articles remain private.
 const pageProof=await verifyOnDemandOriginalArticlePages(
   privateEvidence.private_original_review_candidates,
-  {fetchImpl:statusOnlyFetch});
+  {fetchImpl:statusOnlyFetch,maxAgeSeconds:7*86_400});
 // A 2xx feed with zero matched records is NOT a usable China/query result.
 // Annual WDI observations are explicitly structural, not current news.
 const categoryRetrievalProof=receipt.categories.map(category=>{
@@ -161,7 +165,7 @@ const observedRequests=proof.provider_http_outcomes.reduce((n,row)=>
   n+row.ok_2xx+row.http_403+row.http_429+row.http_5xx+
     row.other_http+row.network_error,0);
 if(observedRequests!==proof.total_bounded_network_attempts ||
-   proof.provider_http_outcomes.length>9 ||
+   proof.provider_http_outcomes.length>10 ||
    proof.current_lithium_risk_answer_verified!==false ||
    proof.x402_commercial_release_authorized!==false ||
    proof.sample_country_iso3!=="CHN" ||
