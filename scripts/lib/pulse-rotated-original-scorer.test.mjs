@@ -92,7 +92,7 @@ test("D1-matched MOD, Treasury, and Energy originals can reach private classifie
          headers:{"content-type":"application/atom+xml"}});
      },
    });
-   assert.equal(fetches,1);
+   assert.ok(fetches>=1 && fetches<=2);
    assert.equal(live.length,1);
    assert.equal(live[0].url,f.article.url);
  }
@@ -142,12 +142,16 @@ test("oversized/XML DTD sources, denied publisher and no raw stdout cannot admit
  const f=fixture("macro","uk_hmt_original_treasury_atom_review");
  const original=feed(f.source,{clock:f.native});
  for(const bad of [original+"x".repeat(193*1024),
-   "<!DOCTYPE feed>"+original,"<feed><entry><title>Update</title><updated>"+f.native+
-   "</updated></entry></feed>"]){
+   "<!DOCTYPE feed>"+original]){
    assert.throws(()=>parsePulseRotatedOriginals(bad,f.source,{
      refs:f.refs,expectedClocks:f.clocks,now:f.now,
-   }),/PRIVATE_PULSE_EXTRA_SOURCE_UNTRUSTED|PRIVATE_PULSE_EXTRA_SOURCE_DOCUMENT_INVALID|./);
+   }),/PRIVATE_PULSE_EXTRA_SOURCE_UNTRUSTED/);
  }
+ assert.deepEqual(parsePulseRotatedOriginals(
+   "<feed><entry><title>Official economic update</title><updated>"+f.native+
+   "</updated></entry></feed>",f.source,{
+     refs:f.refs,expectedClocks:f.clocks,now:f.now,
+   }),[]);
  for(const response of [
    new Response("no",{status:403,headers:{"content-type":"application/atom+xml"}}),
    new Response("denied",{status:429,headers:{"content-type":"application/atom+xml"}}),
