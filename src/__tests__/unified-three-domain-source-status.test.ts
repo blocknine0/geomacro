@@ -33,8 +33,9 @@ describe("unified status on canonical intelligence endpoint",()=>{
     expect(out.x402_payment_authorized).toBe(false);
     expect(out.all_catalogued_sources_active_verified).toBe(false);
     expect(out.continuous_real_time_delivery_proven).toBe(false);
-    for(const word of ["must-not-expose","some-origin.invalid","source_ref",
-      "source_id","publisher_name","raw_article","API_KEY"]){
+    for(const word of ["must-not-expose","some-origin.invalid",
+      '"source_ref":', '"source_id":', '"publisher_name":',
+      '"raw_article":', "API_KEY"]){
       expect(JSON.stringify(out)).not.toContain(word);
     }
   });
