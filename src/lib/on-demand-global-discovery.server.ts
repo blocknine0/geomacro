@@ -925,6 +925,8 @@ async function discoverOnDemandImpl(
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
   private_macro_qualifications:PrivateMacroQualification[];
+  /** Private first-party World Bank country identity; never in public discovery. */
+  private_verified_country_name:string|null;
 }> {
   const now=options.now ?? new Date(), fetchImpl=options.fetchImpl ?? fetch;
   const topics=input.topics??[];
@@ -1106,6 +1108,7 @@ async function discoverOnDemandImpl(
     duplicate_original_headline_count:grouped.duplicate_headlines_removed,
     private_macro_changes,
     private_macro_qualifications,
+    private_verified_country_name:name||null,
   };
 }
 
@@ -1222,6 +1225,7 @@ export async function discoverOnDemandForPrivateQualification(
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
   private_macro_qualifications:PrivateMacroQualification[];
+  private_verified_country_name:string|null;
 }>{
   return discoverOnDemandImpl(input,options);
 }
