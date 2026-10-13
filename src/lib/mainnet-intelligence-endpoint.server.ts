@@ -449,7 +449,7 @@ export const mainnetIntelligenceHandlers = {
                   Math.min(requestedNewsAgeSeconds,31*86_400),
               },
               discovery:privateResult.discovery,
-              originals:privateResult.private_candidates,
+              originals:privateResult.private_original_review_candidates,
               verifiedCountryName:privateResult.private_verified_country_name,
               pageProof,macroChanges:privateResult.private_macro_changes,
               macroRights:rightsProof,
