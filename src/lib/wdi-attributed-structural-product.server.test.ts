@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe,it,expect } from "vitest";
 import { assertAttributedWdiStructuralProduct, buildAttributedWdiStructuralProduct,
-  certifiedWdiAttributionRights } from "./wdi-attributed-structural-product.server";
+  certifiedWdiAttributionRights, preparePinnedChinaWdiStructuralNoFunds } from "./wdi-attributed-structural-product.server";
 import type { B2CommercialSourceRight } from "./b2-live.server";
 
 const rights:B2CommercialSourceRight={
@@ -79,6 +79,35 @@ describe("WDI narrow attributed structural product: synthetic regression only",(
       .toThrow("WDI_DATASET_CLOCK_INVALID");
     expect(()=>buildAttributedWdiStructuralProduct({...input(),max_age_seconds:86400}))
       .toThrow("WDI_ANNUAL_REFERENCE_PERIOD_STALE");
+  });
+  it("prepares the exact attributed product using mock-only official source=2 and B2 rights",async()=>{
+    const pair=privatePair();
+    const r=await preparePinnedChinaWdiStructuralNoFunds({
+      query_plan_hash:"c".repeat(64),max_age_seconds:400*86400,
+    },{
+      now:new Date("2026-10-13T19:00:00Z"),
+      readRights:async()=>[rights],
+      readPair:async()=>({status:"VALID_ANNUAL_CHANGE",source_api_id:"2",
+        lastupdated:"2026-09-30",pair}),
+    });
+    expect(r.status).toBe("READY_FOR_PRODUCT_INTEGRATION");
+    if(r.status!=="READY_FOR_PRODUCT_INTEGRATION")return;
+    expect(r.product.calculated_change.percentage_points).toBe(-0.9);
+    expect(()=>assertAttributedWdiStructuralProduct(r.product)).not.toThrow();
+    expect(r.rights_receipt_sha256).toMatch(/^[a-f0-9]{64}$/);
+  });
+  it("never claims readiness without real rights or an exact WDI source=2",async()=>{
+    const base={query_plan_hash:"c".repeat(64),max_age_seconds:400*86400};
+    const pair=privatePair();
+    const readPair=async()=>({status:"VALID_ANNUAL_CHANGE" as const,
+      source_api_id:"2" as const,lastupdated:"2026-09-30",pair});
+    const a=await preparePinnedChinaWdiStructuralNoFunds(base,{
+      now:new Date("2026-10-13T19:00:00Z"),readPair,readRights:async()=>null});
+    expect(a).toEqual({status:"BLOCKED",code:"WDI_RIGHTS_RECEIPT_UNAVAILABLE"});
+    const b=await preparePinnedChinaWdiStructuralNoFunds(base,{
+      now:new Date("2026-10-13T19:00:00Z"),readPair:async()=>({
+        ...await readPair(),source_api_id:null}),readRights:async()=>[rights]});
+    expect(b).toEqual({status:"BLOCKED",code:"WDI_OFFICIAL_SOURCE2_PAIR_UNAVAILABLE"});
   });
   it("rejects altered values, removed or changed CC BY material credit after hashing",()=>{
     const value=buildAttributedWdiStructuralProduct(input());
