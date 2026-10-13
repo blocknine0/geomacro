@@ -201,12 +201,12 @@ async function reservePrivateB2Read(key: string): Promise<boolean> {
   }
 }
 
-async function signedGetOnce(key: string): Promise<Uint8Array | null> {
+async function signedGetOnce(key: string, freshQuotaReservedGet = false): Promise<Uint8Array | null> {
   const cfg = config();
   if (!cfg || !allowedKey(key) || circuitOpen()) return null;
 
   const cached = cache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.bytes;
+  if (!freshQuotaReservedGet && cached && cached.expiresAt > Date.now()) return cached.bytes;
 
   // Must reserve an account-wide Class B GET ticket before any AWS-signed
   // request. If D1's atomic receipt is unavailable, fail closed (no B2).
@@ -399,13 +399,33 @@ export function diagnoseB2RightsReadPrerequisites(): Readonly<{
   };
 }
 
-export async function readB2CommercialSourceRights(): Promise<B2CommercialSourceRight[] | null> {
-  const payload = await readJsonGzip<{
-    schema?: string;
-    generated_at?: string;
-    source_project?: string;
-    rows?: unknown[];
-  }>(B2_COMMERCIAL_SOURCE_RIGHTS_KEY);
+/**
+ * Server-only exact-receipt read. The explicit operator mode bypasses only
+ * the in-memory hot cache, never D1 quota admission. A successful fresh read
+ * therefore proves a real D1 reservation occurred before its signed B2 GET.
+ * No private inventory is logged or delivered to a public endpoint.
+ */
+export async function readB2CommercialSourceRightsReceipt(
+  options: { freshQuotaReservedGet?: boolean } = {},
+): Promise<{
+  rows: B2CommercialSourceRight[];
+  compressed_sha256: string;
+  generated_at: string;
+  fresh_quota_reserved_get: boolean;
+} | null> {
+  const fresh = options.freshQuotaReservedGet === true;
+  const compressed = fresh
+    ? await signedGetOnce(B2_COMMERCIAL_SOURCE_RIGHTS_KEY, true)
+    : await signedGet(B2_COMMERCIAL_SOURCE_RIGHTS_KEY);
+  if (!compressed) return null;
+  let payload: {
+    schema?: string; generated_at?: string; source_project?: string; rows?: unknown[];
+  };
+  try {
+    payload = JSON.parse(decoder.decode(await gunzip(compressed)));
+  } catch {
+    return null;
+  }
   if (
     payload?.schema !== "geomacro.commercial-source-rights-live.v2" ||
     payload.source_project !== "ldpwajisioljyjtojvfx" ||
@@ -450,5 +470,15 @@ export async function readB2CommercialSourceRights(): Promise<B2CommercialSource
       licence_name: licence as string | null,
     });
   }
-  return output;
+  return {
+    rows: output,
+    compressed_sha256: await sha256(compressed),
+    generated_at: payload.generated_at as string,
+    fresh_quota_reserved_get: fresh,
+  };
+}
+
+export async function readB2CommercialSourceRights(): Promise<B2CommercialSourceRight[] | null> {
+  const receipt = await readB2CommercialSourceRightsReceipt();
+  return receipt?.rows ?? null;
 }
