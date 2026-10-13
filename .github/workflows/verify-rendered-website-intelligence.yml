@@ -56,7 +56,7 @@ jobs:
           # Browser-only DOM cannot mistake source health label for a story:
           # require actual derived cards, one per category, or explicit D1
           # iframe fallback with independently verified all-three ledger.
-          cards=re.findall(r"<article\\b[^>]*>([\\s\\S]*?)</article>",dom,re.I)
+          cards=re.findall(r"<article\b[^>]*>([\s\S]*?)</article>",dom,re.I)
           rendered=set()
           for card in cards:
             txt=html.unescape(re.sub(r"<[^>]+>"," ",card)).lower()
