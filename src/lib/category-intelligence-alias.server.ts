@@ -127,7 +127,11 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
           readCategoryLiveObservation(category),
           readCategoryOpenData(category),
         ]);
-        if (releases.status==="rejected" && data.status==="rejected") {
+        const releasesRead = releases.status==="fulfilled" &&
+          releases.value.status!=="OFFICIAL_SOURCES_UNAVAILABLE";
+        const dataRead = data.status==="fulfilled" &&
+          data.value.source_families_readable>0;
+        if (!releasesRead && !dataRead) {
           return Response.json({
             ok:false,category,chargeable:false,signed_gro_generated:false,
             error:{code:"CATEGORY_SOURCE_READERS_UNAVAILABLE"},
@@ -137,13 +141,12 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
         return Response.json({
           schema_version:"geomacro.category-combined-coverage.v1",
           ok:true,category,
-          coverage_status:releases.status==="fulfilled"&&data.status==="fulfilled"
+          coverage_status:releasesRead&&dataRead
             ?"BOTH_SOURCE_CLASSES_READABLE":"PARTIAL_SOURCE_CLASS_AVAILABILITY",
           original_release_observations: releases.status==="fulfilled"
             ? releases.value : null,
           structured_open_data: data.status==="fulfilled" ? data.value : null,
-          source_class_count_readable:Number(releases.status==="fulfilled")+
-            Number(data.status==="fulfilled"),
+          source_class_count_readable:Number(releasesRead)+Number(dataRead),
           current_signed_risk_intelligence_verified:false,
           signed_gro_generated:false,x402_payment_required:false,
           chargeable:false,raw_publisher_content_delivered:false,
