@@ -28,3 +28,33 @@ export function indexedHeadlineMatchesOriginalPage(
   const overlap=[...sought].filter(w=>original.has(w)).length;
   return overlap>=2 && overlap/Math.min(sought.size,original.size)>=0.5;
 }
+
+
+/**
+ * For a URL supplied only by a global index, require a real publisher HTML
+ * meta publication tag outside script/style/template text. The common native
+ * article verifier independently parses/conflict-checks the precise clock.
+ * Indexed pages without metadata fail closed; never use crawl or index time.
+ */
+export function indexedPublisherHasOriginalMetaOutsideScripts(html:unknown):boolean {
+  if(typeof html!=="string"||html.length===0||html.length>384*1024)
+    return false;
+  const tagPattern=/<[^>]{0,1600}>/gu;
+  let scriptDepth=0,styleDepth=0,templateDepth=0,scanned=0,match:RegExpExecArray|null;
+  while((match=tagPattern.exec(html))!==null && scanned++<1600) {
+    const tag=match[0];
+    if(/^<\s*\/\s*script\b/iu.test(tag)){scriptDepth=Math.max(0,scriptDepth-1);continue;}
+    if(/^<\s*\/\s*style\b/iu.test(tag)){styleDepth=Math.max(0,styleDepth-1);continue;}
+    if(/^<\s*\/\s*template\b/iu.test(tag)){templateDepth=Math.max(0,templateDepth-1);continue;}
+    if(/^<\s*script\b/iu.test(tag)){scriptDepth++;continue;}
+    if(/^<\s*style\b/iu.test(tag)){styleDepth++;continue;}
+    if(/^<\s*template\b/iu.test(tag)){templateDepth++;continue;}
+    if(scriptDepth||styleDepth||templateDepth || !/^<meta\b/iu.test(tag))continue;
+    const name=/\b(?:name|property)\s*=\s*["']([^"']+)["']/iu.exec(tag)?.[1]?.toLowerCase();
+    if(!["article:published_time","datepublished","govuk:first-published-at"].includes(name??""))
+      continue;
+    const value=/\bcontent\s*=\s*["']([^"']{1,80})["']/iu.exec(tag)?.[1];
+    if(value)return true;
+  }
+  return false;
+}
