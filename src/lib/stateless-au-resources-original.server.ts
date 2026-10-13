@@ -76,7 +76,7 @@ export function australianResourcesIndexCandidates(
     const before = html.slice(start >= 0 && cursor - start <= 2200
       ? start : Math.max(0,cursor-1100),cursor);
     const text = visiblePublisherText(before);
-    const allDates = [...text.matchAll(/\\b([1-9]|[12]\\d|3[01])\\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\\s+20\\d{2}\\b/giu)];
+    const allDates = [...text.matchAll(/\b([1-9]|[12]\d|3[01])\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d{2}\b/giu)];
     const publishedAt = allDates.length ? originalDay(allDates[allDates.length-1][0],now) : null;
     if (!publishedAt) continue;
     seen.add(link);
