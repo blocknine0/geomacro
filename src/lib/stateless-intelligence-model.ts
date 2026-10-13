@@ -135,7 +135,7 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
     if (source.statcanOriginalPage &&
-        !/^\/n1\/daily-quotidien\/\d{6}\/dq\d{6}[a-z]-eng\.htm$/iu.test(link.pathname))
+        !/^\/(?:n1\/)?daily-quotidien\/\d{6}\/dq\d{6}[a-z]-eng\.htm$/iu.test(link.pathname))
       return null;
     if (source.id === "usgs_minerals" && !/^\/news\//u.test(link.pathname)) return null;
     if (source.id === "ecb_press" || source.id === "ecb_stats") {
@@ -234,7 +234,15 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
   for (const match of [...xml.matchAll(entryPattern)].slice(0, 75)) {
     metrics.seen++;
     const item = match[1];
-    const title = unescapeXml(tagValue(item, "title") ?? "");
+    const rawTitle = unescapeXml(tagValue(item, "title") ?? "");
+    // Fixed Statistics Canada subject Atom titles encode small HTML fragments.
+    // Strip markup as text ONLY for these four trusted first-party lanes;
+    // never accept an Atom "updated" clock as publication evidence.
+    const title = source.statcanOriginalPage
+      ? rawTitle.replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)>/giu, " ")
+        .replace(/<\/?[a-z][^>]{0,180}>/giu, " ")
+        .replace(/\s+/gu, " ").trim()
+      : rawTitle;
     if (title.length < 12 || title.length > 300 || /[<>]/u.test(title) ||
         !topicForOriginal(title, source.category, source.id, source.statcanOriginalPage === true)) continue;
     metrics.relevant++;
