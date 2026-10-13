@@ -157,7 +157,11 @@ if(process.argv[1]?.endsWith("verify-earn-first-live-no-funds.mjs")){
       expectedSha:process.env.EXPECTED_CANONICAL_SHA,
     });
     console.log(JSON.stringify(result));
-    if(!result.first_earning_ready)process.exitCode=1;
+    // PR diagnostics are read-only observation, NOT earning acceptance.
+    // Only the canonical main push demands an actually eligible quote-ready
+    // module; diagnostic 503/429 stays prominently visible as a blocker.
+    if(!result.first_earning_ready && !process.argv.includes("--diagnostic-only"))
+      process.exitCode=1;
   }catch(error){
     console.log(JSON.stringify({
       schema_version:SCHEMA,ok:false,first_earning_ready:false,
