@@ -1,0 +1,77 @@
+name: Verify Rendered Three-Domain Website Intelligence
+
+# Manual/read-only browser acceptance for #2136 after Lovable publish.
+# No browser screenshots, raw publisher data, cookies or HTML are retained.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/verify-rendered-website-intelligence.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  public-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Prove real browser hydration of derived-only Intelligence page
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          if [[ -z "$chrome" ]]; then
+            echo "::error::NO_HEADLESS_BROWSER_AVAILABLE"
+            exit 2
+          fi
+          dom="$(mktemp)"
+          ledger="$(mktemp)"
+          trap 'rm -f "$dom" "$ledger"' EXIT
+          timeout 48 "$chrome" --headless --no-sandbox --disable-gpu \
+            --disable-dev-shm-usage --disable-background-networking \
+            --virtual-time-budget=18000 \
+            --dump-dom 'https://geomacro.live/intelligence' > "$dom" 2>/dev/null || {
+              echo "::error::PUBLIC_BROWSER_RENDER_UNAVAILABLE"
+              exit 3
+            }
+          code="$(curl --fail-with-body --silent --show-error \
+            --max-time 12 --output "$ledger" --write-out '%{http_code}' \
+            'https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news' || true)"
+          if [[ "$code" != 200 ]]; then
+            echo "::error::PUBLIC_DERIVED_NEWS_D1_UNAVAILABLE"
+            exit 4
+          fi
+          python3 - "$dom" "$ledger" <<'PY'
+          import html,json,re,sys
+          from pathlib import Path
+          dom=Path(sys.argv[1]).read_text(encoding="utf-8",errors="replace")
+          ledger=json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          src=ledger.get("signals",[])
+          required={"geopolitics","macro","rare_earth"}
+          eligible={row.get("category") for row in src if isinstance(row,dict) and
+             row.get("title","").startswith("Geomacro finds ") and
+             row.get("severity","absent") is None and
+             row.get("same_event_corrob_verified") is False}
+          # Browser-only DOM cannot mistake source health label for a story:
+          # require actual derived cards, one per category, or explicit D1
+          # iframe fallback with independently verified all-three ledger.
+          cards=re.findall(r"<article\\b[^>]*>([\\s\\S]*?)</article>",dom,re.I)
+          rendered=set()
+          for card in cards:
+            txt=html.unescape(re.sub(r"<[^>]+>"," ",card)).lower()
+            if "geomacro finds" not in txt:continue
+            if "geopolitics" in txt:rendered.add("geopolitics")
+            if "macro / fx" in txt or "macro & fx" in txt:rendered.add("macro")
+            if "critical minerals" in txt:rendered.add("rare_earth")
+          fallback="website-derived-news-html" in dom and 'title="Geomacro Finds' in dom
+          verified=required.issubset(eligible) and (
+            required.issubset(rendered) or fallback)
+          print(json.dumps({"schema":"geomacro.browser-derived-news.v1",
+            "d1_domains":len(eligible & required),
+            "browser_rendered_domains":len(rendered & required),
+            "browser_fallback_iframe":fallback,
+            "browser_verified":verified,
+            "public_raw_source_text_logged":False}))
+          if not verified:raise SystemExit("BROWSER_THREE_DOMAIN_DERIVED_DELIVERY_NOT_VERIFIED")
+          PY
