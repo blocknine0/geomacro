@@ -3,6 +3,7 @@ import { mainnetIntelligenceHandlers } from "./mainnet-intelligence-endpoint.ser
 import { publicIntelligenceSourceCoverage, type CommercialIntelligenceCategory } from "./public-intelligence-source-coverage";
 import { categoryOriginalSourcePulse } from "./current-30min-original-source-pulse.server";
 import { readCategoryLiveObservation } from "./category-live-observation.server";
+import { readCategoryOpenData } from "./category-open-data.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const CANONICAL_PATH = "/api/v1/intelligence/query";
@@ -115,6 +116,30 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
   return {
     OPTIONS: async () => mainnetIntelligenceHandlers.OPTIONS(),
     GET: async ({ request }: { request: Request }) => {
+      // Distinct provider-native measurements and dataset reference periods.
+      // Never inflate the original-release news feed or change x402 POST.
+      if (new URL(request.url).searchParams.get("view") === "open-data") {
+        if (!config.category || !["geopolitics","macro-fx","critical-minerals"].includes(config.category))
+          return errorResponse("CATEGORY_OPEN_DATA_VIEW_NOT_AVAILABLE",404);
+        try {
+          const result = await readCategoryOpenData(config.category as CommercialIntelligenceCategory);
+          return Response.json(result,{status:200,headers:{
+            "Cache-Control":"no-store",
+            "X-Content-Type-Options":"nosniff",
+            "Access-Control-Allow-Origin":"*",
+          }});
+        }catch{
+          return Response.json({
+            ok:false,category:config.category,chargeable:false,
+            signed_gro_generated:false,
+            error:{code:"CATEGORY_OPEN_DATA_RETRIEVAL_UNAVAILABLE"},
+          },{status:503,headers:{
+            "Cache-Control":"no-store",
+            "X-Content-Type-Options":"nosniff",
+            "Access-Control-Allow-Origin":"*",
+          }});
+        }
+      }
       // Explicit no-charge original-release mode, independent from Coinbase
       // mainnet configuration. The default GET continues to describe x402
       // pricing/discovery, and all POST requests retain canonical binding.
