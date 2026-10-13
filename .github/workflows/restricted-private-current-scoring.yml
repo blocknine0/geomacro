@@ -1,5 +1,6 @@
 name: Restricted Private Current Scoring Staging
 
+# Original-article SHA-bound auto scoring is being regression tested.
 # A single additional current-head private 3-domain canary on protected
 # PR #1934 merge after FCDO geopolitical third-family source correction.
 # Prior #1933/#1929/#1924 runs are historical. D1-gated reusable calls can
