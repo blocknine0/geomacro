@@ -43,7 +43,11 @@ jobs:
       - name: Read-only three-domain revenue-blocker diagnosis (not earning acceptance)
         if: github.event_name == 'pull_request'
         env:
-          EXPECTED_CANONICAL_SHA: ${{ github.event.pull_request.base.sha }}
+          # Founder-published main verified by the prior exact-SHA no-funds
+          # run, before newer unrelated main merges. This PR diagnostic
+          # specifically inspects THAT deployed API. Not a claim that all
+          # current main commits are published or payable.
+          EXPECTED_CANONICAL_SHA: e0003fe32b647eb1a54c3b449f30b42e5ef0e4e9
         run: node scripts/agentic/verify-earn-first-live-no-funds.mjs --diagnostic-only
       - name: Verify exact deployed build, 3 category preflights, no funds
         if: github.event_name != 'pull_request'
