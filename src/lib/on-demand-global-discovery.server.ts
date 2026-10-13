@@ -34,6 +34,7 @@ export type PrivateOriginalCandidate = {
   // Never promote a feed <updated> as original publication. Only an
   // allowlisted GOV.UK Atom first-party page may rescue this private lead.
   undated_atom_original_page_pending?: true;
+  search_index_original_page_pending?: true;
   article_identity_sha256: string;
   first_party_article_url_verified: true;
   source_native_feed_publication_date_verified: boolean;
@@ -494,13 +495,36 @@ type OriginalFeed = {
   domain: OnDemandCategory;
   family:string;
   url:string;
-  media:"rss"|"atom";
+  media:"rss"|"atom"|"search";
   originalHost:string;
   alternateUrl?:string;
   originalPath:RegExp;
   topic:RegExp;
   scopedTopics?:readonly string[];
 };
+const GOVUK_SEARCH_FALLBACKS:readonly OriginalFeed[]=[
+  {
+    domain:"geopolitics",family:"uk_fcdo_search_original_page",
+    url:"https://www.gov.uk/api/search.json",
+    media:"search",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:sanctions?|embargo|export controls?|conflict|war|military|security|peace)\b/iu,
+  },
+  {
+    domain:"macro",family:"uk_hmt_search_original_page",
+    url:"https://www.gov.uk/api/search.json",
+    media:"search",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:econom(?:y|ic|ics)?|financial|chancellor|treasury|inflation|monetary)\b/iu,
+  },
+  {
+    domain:"rare_earth",family:"uk_dbt_search_original_page",
+    url:"https://www.gov.uk/api/search.json",
+    media:"search",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
+  },
+];
 const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   {
     domain:"rare_earth",family:"uk_dbt_original_publisher",
@@ -771,8 +795,8 @@ export function deduplicateOnDemandOriginalHeadlines(
   for(const item of candidates){
     const time=item.feed_item_published_at===null?NaN:
       Date.parse(item.feed_item_published_at);
-    const def=ORIGINAL_FALLBACK_FEEDS.find(x=>x.domain===item.domain &&
-      x.family===item.publisher_family);
+    const def=[...ORIGINAL_FALLBACK_FEEDS,...GOVUK_SEARCH_FALLBACKS].find(x=>
+      x.domain===item.domain && x.family===item.publisher_family);
     const nativeDated=item.source_native_feed_publication_date_verified===true &&
       Number.isFinite(time) && item.undated_atom_original_page_pending!==true;
     const undatedReview=def?.media==="atom" &&
@@ -1004,7 +1028,7 @@ export async function verifyOnDemandOriginalArticlePages(
   if(!Number.isFinite(now.getTime()) || !Number.isFinite(maxAgeMs) || maxAgeMs<=0)
     throw Error("ON_DEMAND_CLOCK_INVALID");
   const eligible=candidates.slice(0,16).filter((candidate)=>{
-    const def=ORIGINAL_FALLBACK_FEEDS.find((feed)=>
+    const def=[...ORIGINAL_FALLBACK_FEEDS,...GOVUK_SEARCH_FALLBACKS].find((feed)=>
       feed.family===candidate.publisher_family && feed.domain===candidate.domain);
     return !!def &&
       originalArticleUrl(candidate.article_url,def)===candidate.article_url &&
