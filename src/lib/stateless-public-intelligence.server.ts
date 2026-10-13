@@ -268,12 +268,17 @@ export async function fetchFirstPartyOriginalFeed(
   const accepted = source.media === "rss"
     ? "application/rss+xml, application/xml, text/xml"
     : "application/atom+xml, application/xml, text/xml";
+  // The separately proven Australian feed occasionally exceeds the common
+  // 5-second stateless HTTP limit on GitHub runners. Allow ONE bounded 9s
+  // first-party attempt; never retry, never bypass 401/403/429, and leave all
+  // other working feeds at their existing 5s quota/latency contract.
+  const sourceTimeout = source.id === "au_industry_minister" ? 9_000 : TIMEOUT_MS;
   let target = source.url;
   for (let hop = 0; hop <= 2; hop++) {
     const response = await fetchImpl(target, {
       method: "GET", redirect: "manual", cache: "no-store",
       headers: { Accept: accepted },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(sourceTimeout),
     });
     if (![301, 302, 307, 308].includes(response.status)) return response;
     // Unrelated providers are never granted a new redirect privilege.
