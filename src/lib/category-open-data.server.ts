@@ -10,7 +10,7 @@
 import type { CommercialIntelligenceCategory } from "./public-intelligence-source-coverage";
 
 type Domain = CommercialIntelligenceCategory;
-type Timing = "event_occurrence" | "catalog_added_day" | "reference_year" |
+type Timing = "event_occurrence" | "catalog_added_day" | "reference_year" | "dataset_edition" |
   "reference_month" | "reference_day" | "retrieval_snapshot" | "award_obligation_day";
 export type OpenDataSignal = {
   finding_key: string;
@@ -38,6 +38,11 @@ const UPSTREAMS: readonly Provider[] = Object.freeze([
   { id: "usgs_earthquakes", category: "geopolitics",
     url: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson",
     maxBytes: 600_000, timeoutMs: 5_000, method: "GET" },
+  // Previously Supabase-ingested humanitarian data, now read-only and
+  // explicitly annual; never presented as a real-time displacement event.
+  { id: "unhcr_refugee_statistics", category: "geopolitics",
+    url: "https://api.unhcr.org/population/v1/population/?yearFrom=2024&yearTo=2024&coo_all=true&coa_all=true&limit=5&page=1",
+    maxBytes: 190_000, timeoutMs: 6_000, method: "GET" },
   { id: "noaa_nhc", category: "geopolitics",
     url: "https://www.nhc.noaa.gov/CurrentStorms.json",
     maxBytes: 75_000, timeoutMs: 5_000, method: "GET" },
@@ -59,6 +64,14 @@ const UPSTREAMS: readonly Provider[] = Object.freeze([
   { id: "world_bank_wdi", category: "macro-fx",
     url: "https://api.worldbank.org/v2/country/USA/indicator/NY.GDP.MKTP.CD?format=json&source=2&per_page=7",
     maxBytes: 100_000, timeoutMs: 5_000, method: "GET" },
+  // Existing BGS and USGS MCS provider families from legacy Supabase
+  // ingest scripts. Catalog year != observation date != newly mined output.
+  { id: "bgs_world_minerals", category: "critical-minerals",
+    url: "https://ogcapi.bgs.ac.uk/collections/world-mineral-statistics/items?f=json&limit=5",
+    maxBytes: 190_000, timeoutMs: 6_000, method: "GET" },
+  { id: "usgs_mcs", category: "critical-minerals",
+    url: "https://www.sciencebase.gov/catalog/item/69837e43b66b01367d7ec7c7?format=json",
+    maxBytes: 400_000, timeoutMs: 6_000, method: "GET" },
   { id: "usaspending", category: "critical-minerals",
     url: "https://api.usaspending.gov/api/v2/search/spending_by_award/",
     maxBytes: 180_000, timeoutMs: 6_000, method: "POST",
@@ -114,6 +127,66 @@ function fromUsgs(payload: unknown, now: number): Extracted | null {
     "Geomacro detects a recorded earthquake in the M4.5-or-higher seismic band within the past day.",
     "Seismic events may disrupt logistics or infrastructure locally; no geopolitical conflict, damage or supply disruption is inferred."
   )),credits:[] };
+}
+function fromUnhcrPopulation(payload:unknown):Extracted|null {
+  const data=payload as Record<string,unknown>;
+  if(!Array.isArray(data?.items) || typeof data?.maxPages!=="number" ||
+     typeof data?.page!=="number" || data.items.length>100)return null;
+  // A live HTTP request to a static annual dataset does not establish any
+  // new displacement in the 24-hour news window.
+  const years=data.items.flatMap((x:unknown):string[]=>{
+    const r=x as Record<string,unknown>;
+    const year=Number(r?.year);
+    const origin=r?.coo_iso;
+    const refugees=Number(r?.refugees);
+    if(!Number.isInteger(year)||year!==2024 ||
+       typeof origin!=="string"||!/^[A-Z]{3}$/u.test(origin) ||
+       !Number.isFinite(refugees)||refugees<0)return [];
+    return [String(year)];
+  });
+  return {signals:years.length?[signal(
+    "unhcr_annual_displacement_context","year:2024",
+    "2024","reference_year",
+    "Geomacro finds official country-origin displacement statistics available for the 2024 annual reference period.",
+    "The historical annual dataset informs humanitarian context; it is not evidence of a new refugee movement or current conflict."
+  )]:[], credits:["UNHCR Refugee Statistics"]};
+}
+function fromBgsMinerals(payload:unknown):Extracted|null {
+  const data=payload as Record<string,unknown>;
+  if(data?.type!=="FeatureCollection" || !Array.isArray(data.features) ||
+     data.features.length>100)return null;
+  const years=data.features.flatMap((f:unknown):string[]=>{
+    const properties=(f as Record<string,unknown>)?.properties as Record<string,unknown>|undefined;
+    const year=Number(properties?.year);
+    if(!Number.isInteger(year)||year<1900||year>2026||
+       typeof properties?.country_iso3_code!=="string" ||
+       !/^[A-Z]{3}$/u.test(properties.country_iso3_code))return [];
+    return [String(year)];
+  }).sort().reverse();
+  // A BGS minerals dataset page is not proof any *specific* critical mineral
+  // currently moved, changed price, or entered production.
+  return {signals:years.length?[signal(
+    "bgs_world_mineral_statistics_period","year:"+years[0],
+    years[0],"reference_year",
+    "Geomacro finds an official British Geological Survey mineral-statistics observation period.",
+    "Mineral statistics are historical production/trade context; a critical-mineral event, forecast or supply disruption is not established."
+  )]:[],credits:["British Geological Survey"]};
+}
+function fromUsgsMcsCatalog(payload:unknown):Extracted|null {
+  const data=payload as Record<string,unknown>;
+  if(data?.id!=="69837e43b66b01367d7ec7c7"||!Array.isArray(data.files)||
+     data.files.length>100)return null;
+  // The historic Supabase-ingest pinned CSV exists. This metadata read does
+  // NOT download or parse that CSV, nor mislabel publication as occurrence.
+  const present=data.files.some((f:unknown)=>{
+    const file=f as Record<string,unknown>;
+    return file?.name==="MCS2026_Commodities_Data.csv";
+  });
+  return {signals:present?[signal(
+    "usgs_mcs_dataset_catalog","edition:2026","2026","dataset_edition",
+    "Geomacro finds the official USGS Mineral Commodity Summaries 2026 dataset listed in its source catalog.",
+    "This verifies the dataset edition's catalog availability, not a new mineral discovery or individual production statistic."
+  )]:[],credits:[]};
 }
 function fromNhc(payload:unknown,now:number):Extracted|null{
   const data=payload as Record<string,unknown>;
@@ -267,6 +340,9 @@ export function extractOpenData(specId: string, body:unknown, now=Date.now()): E
   switch(specId){
     case "usgs_earthquakes":return fromUsgs(body,now);
     case "cisa_kev":return fromCisa(body,now);
+    case "unhcr_refugee_statistics":return fromUnhcrPopulation(body);
+    case "bgs_world_minerals":return fromBgsMinerals(body);
+    case "usgs_mcs":return fromUsgsMcsCatalog(body);
     case "noaa_nhc":return fromNhc(body,now);
     case "federal_register":return fromFederalRegister(body,now);
     case "bls_cpi":return fromBls(body);
