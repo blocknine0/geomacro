@@ -16,10 +16,13 @@ for(const [lane,source] of candidates.entries()){
   const urlLinks=[...around.matchAll(/href=["']([^"']+)["']/giu)].map(m=>m[1]);
   const ownLinks=urlLinks.filter(x=>x.startsWith("/")||/https:\/\/(?:www\.ga\.gov\.au|single-market-economy\.ec\.europa\.eu|luxembourg\.representation\.ec\.europa\.eu)/iu.test(x));
   const date=kind===0?/\b(?:9 October 2026|18 September 2026)\b/iu.test(around):null;
+  const dateMetaNames=[...html.matchAll(/<meta\\b[^>]*>/giu)]
+    .map(m=>/\\b(?:name|property)\\s*=\\s*["']([^"']+)["']/iu.exec(m[0])?.[1]??"")
+    .filter(n=>/date|publish|release|modified|issued|dc\\.date/iu.test(n)).slice(0,12);
   console.log("ORIGINAL_MINERAL_SHAPE",JSON.stringify({lane,kind,http:item.http,bytes:html.length,
    titleFound:pos>=0,dateNearby:date,dateTokens:[...around.matchAll(/\b(?:9 October 2026|18 September 2026)\b/gi)].length,
    linksNearby:urlLinks.length,samePublisherLinksNearby:ownLinks.length,
-   tagSequence:tags,
+   tagSequence:tags,dateMetaNames,
    titleMeta:[...html.matchAll(/<meta\b[^>]{0,400}(?:datepublished|published_time|dcterms\.issued|datecreated|last-modified)[^>]*>/giu)].length,
    jsonLdDates:[...html.matchAll(/"datePublished"\s*:/gu)].length,
    pageLastUpdated:[...html.matchAll(/Page last updated/giu)].length,
