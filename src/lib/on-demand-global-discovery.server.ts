@@ -300,6 +300,7 @@ async function countryName(country: string, fetchImpl: typeof fetch) {
 async function gdelt(
   category: OnDemandCategory, countryNameValue: string, fetchImpl: typeof fetch,
   mineral: OnDemandMineral | null, topics:readonly string[]=[], countryIso3="",
+  maxAgeMs=ONE_DAY_MS,
 ): Promise<SourceProbe> {
   // GDELT is a discovery INDEX. Its "seendate" is NEVER original publication
   // and third-party discovery NEVER proves independent event corroboration.
@@ -314,7 +315,7 @@ async function gdelt(
     (category === "rare_earth" && mineral ? '"' + mineral + '"' : scopedTerms);
   const params = new URLSearchParams({
     query:q,mode:"ArtList",format:"json",maxrecords:"10",
-    sort:"DateDesc",timespan:"24h",
+    sort:"DateDesc",timespan:Math.max(1,Math.ceil(maxAgeMs/ONE_DAY_MS))+"d",
   });
   const url="https://api.gdeltproject.org/api/v2/doc/doc?" + params;
   let body:string;
@@ -987,7 +988,7 @@ async function discoverOnDemandImpl(
   const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   const approvedReliefAppname=approvedReliefWebAppname();
   if (name && !options.disableDiscoveryIndex) for (const category of (topics.length?categories.slice(0,1):categories)) {
-    tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral,topics,country)});
+    tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral,topics,country,newsMaxAgeMs)});
     // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
     // account approval must not generate repeat 403s on every user query.
     if (category==="geopolitics" && approvedReliefAppname)
