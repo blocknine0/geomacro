@@ -58,9 +58,9 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review." },
     { test: /\b(ceasefire|peace talks?|peace agreement|peacekeeping|security council)\b/i, name: "security and diplomacy",
       implication: "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk." },
-    { test: /\b(border|conflict|attack|war|military|disarmament|humanitarian)\b/i, name: "geopolitical security",
+    { test: /\b(border|conflict|attacks?|war|military|disarmament|humanitarian|airstrikes?|missile strikes?|drone strikes?|bombardment|hostilities|ceasefire violations?|evacuations?|forced displacement|refugees?|asylum seekers?|peacekeeping|militias?)\b/i, name: "geopolitical security",
       implication: "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary." },
-    { test: /\b(visa|foreign secretary|foreign policy|diplomacy|treaty|foreign minister|iran|ukraine|international sanctions|state threats|national security|cyber-attack|hybrid attacks)\b/i, name: "foreign policy",
+    { test: /\b(visa|foreign secretary|foreign policy|diplomacy|treaty|foreign minister|iran|ukraine|gaza|west bank|myanmar|sudan|eritrea|ethiopia|israel|lebanon|international sanctions|state threats|national security|cyber-attack|hybrid attacks|democratic participation|election interference|political prisoners?)\b/i, name: "foreign policy",
       implication: "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration." },
   ],
   macro: [
@@ -149,7 +149,7 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
       const statisticalOriginal = /^\/press\/stats\/[a-z]{2,16}\/20\d{2}\/html\/ecb\.[A-Za-z0-9._-]{3,110}~[a-f0-9]{8,16}\.[a-z]{2}\.html$/u;
       if (!legacyOriginal.test(link.pathname) && !statisticalOriginal.test(link.pathname)) return null;
     }
-    if (source.id === "un_news" && !/^\/en\/story\/\d{4}\/\d{1,2}\//u.test(link.pathname)) return null;
+    if (source.id.startsWith("un_news") && !/^\/en\/story\/\d{4}\/\d{1,2}\//u.test(link.pathname)) return null;
     link.search = "";
     return link.href;
   } catch { return null; }
@@ -158,7 +158,7 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
 function entryLink(chunk: string, source: StatelessSourceSpec): string | null {
   if (source.media === "rss") {
     const primary = unescapeXml(tagValue(chunk, "link") ?? "");
-    if (source.id !== "un_news") return primary;
+    if (!source.id.startsWith("un_news")) return primary;
     // UN News has /feed/view/ routing links. A genuine same-article
     // original permalink GUID, not an inferred redirect, is required.
     try {
@@ -286,6 +286,8 @@ const SAFE_FOCUS: Record<StatelessCategory, readonly { test: RegExp; label: stri
   geopolitics: [
     { test: /\b(?:iran|ukraine)\b/i, label: "regional foreign policy" },
     { test: /\b(?:national security|state threats|hybrid attacks)\b/i, label: "national security" },
+    { test: /\b(?:airstrikes?|missile strikes?|drone strikes?|bombardment|hostilities|militias?)\b/i, label: "armed security developments" },
+    { test: /\b(?:refugees?|forced displacement|asylum seekers?|evacuations?)\b/i, label: "humanitarian displacement" },
     { test: /\bsanctions?\b/i, label: "sanctions" },
     { test: /\bceasefire\b/i, label: "ceasefire negotiations" },
     { test: /\bsecurity council\b/i, label: "UN Security Council activity" },
@@ -346,6 +348,13 @@ const GEOGRAPHIES: readonly [RegExp, string][] = [
   [/\b(?:Brazil|Brazilian)\b/i, "Brazil"],
   [/\b(?:Africa|African)\b/i, "Africa"],
   [/\b(?:Middle East)\b/i, "Middle East"],
+  [/\b(?:Myanmar|Burmese)\b/i, "Myanmar"],
+  [/\b(?:Sudan|Sudanese)\b/i, "Sudan"],
+  [/\b(?:Eritrea|Eritrean)\b/i, "Eritrea"],
+  [/\b(?:Ethiopia|Ethiopian)\b/i, "Ethiopia"],
+  [/\b(?:Gaza|West Bank|Palestin(?:e|ian))\b/i, "Palestinian territories"],
+  [/\b(?:Israel|Israeli)\b/i, "Israel"],
+  [/\b(?:Lebanon|Lebanese)\b/i, "Lebanon"],
 ];
 const DEVELOPMENTS: readonly [RegExp, string][] = [
   [/\b(?:export (?:ban|control|restriction)|trade restrictions?|sanctions?|embargo)\b/i, "trade restriction"],
@@ -428,7 +437,9 @@ export function deriveStatelessSignals(
     // Preserve pre-existing stable D1 IDs for previously ingested lanes.
     // Only new Statistics Canada subject feeds share a canonical family ID;
     // an identical original item across two subject feeds is one story.
-    const fingerprint = (item.sourceId.startsWith("statcan_") ? "statcan_daily" : item.sourceId) + "|" + url.href;
+    const family = item.sourceId.startsWith("statcan_") ? "statcan_daily"
+      : item.sourceId.startsWith("un_news") ? "un_news" : item.sourceId;
+    const fingerprint = family + "|" + url.href;
     if (unique.has(fingerprint)) continue;
     unique.add(fingerprint);
     const focus = SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? topic.name;
