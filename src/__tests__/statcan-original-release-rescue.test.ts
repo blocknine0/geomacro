@@ -54,6 +54,13 @@ describe("Statistics Canada source-native Daily publication rescue", () => {
       .toBe("2026-10-13");
     expect(verifiedStatcanOriginalReleaseDay(html("2026-10-14"),url,title,now))
       .toBeNull();
+    // Script/style text must not masquerade as the issuer's original label.
+    // A spaced closing tag previously escaped the naive HTML sanitizer.
+    const injected = `<h1>${title}</h1><script>Released: 2026-10-13</script ><p>Date modified: 2026-10-15</p>`;
+    expect(verifiedStatcanOriginalReleaseDay(injected,url,title,now)).toBeNull();
+    const styled = `<h1>${title}</h1><style>Released: 2026-10-13</style ><p>Date modified: 2026-10-15</p>`;
+    expect(verifiedStatcanOriginalReleaseDay(styled,url,title,now)).toBeNull();
+
     expect(verifiedStatcanOriginalReleaseDay(
       html("2026-10-13","Employment and payroll survey"),url,title,now))
       .toBeNull();
