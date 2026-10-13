@@ -250,8 +250,10 @@ describe("no-storage public Intelligence original-release reader", () => {
     // require the visitor to click each category before a source check.
     expect(desk).toContain('useState<View>("all")');
     expect(desk).toContain("All latest</button>");
-    expect(desk).toContain('["macro", "rare_earth"]');
-    expect(desk).toContain('["geopolitics", "macro", "rare_earth"]');
+    expect(desk).toContain("const missingAtSsr = DOMAINS.map(domain => domain.key)");
+    expect(desk).toContain("if (missingAtSsr.length > 0) void refresh(missingAtSsr)");
+    expect(desk).toContain('DOMAINS.map(domain => domain.key)');
+    expect(page).toContain('const domains = ["geopolitics", "macro", "rare_earth"] as const');
     expect(desk).toContain('document.visibilityState === "visible"');
     expect(desk).toContain('window.addEventListener("focus", onReturn)');
     expect(desk).toContain('manualRefresh.current()');
