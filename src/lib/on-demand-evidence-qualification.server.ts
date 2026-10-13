@@ -218,7 +218,9 @@ export function qualifyRetrievedOnDemandEvidence(input: Readonly<{
     ]));
     const existing=dedup.get(key);
     if (!existing || (record.original_clock_basis==="VERIFIED_ORIGINAL_PAGE" &&
-        existing.original_clock_basis!=="VERIFIED_ORIGINAL_PAGE"))
+        existing.original_clock_basis!=="VERIFIED_ORIGINAL_PAGE") ||
+        (record.original_clock_basis===existing.original_clock_basis &&
+         record.article_identity_sha256<existing.article_identity_sha256))
       dedup.set(key,record);
   }
   const originals=[...dedup.values()].sort((a,b)=>
