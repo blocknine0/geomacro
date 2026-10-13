@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { discoverOnDemandForPrivateQualification, inferOnDemandFreshnessSeconds } from "./on-demand-global-discovery.server";
+import { discoverOnDemandForPrivateQualification, inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages } from "./on-demand-global-discovery.server";
 
 // Regression: true upstream query hits must be counted once per original URL,
 // and a successful Macro result must not be attributed to another category.
@@ -109,5 +109,51 @@ describe("natural-language freshness routing without payment/hash changes",()=>{
     expect(inferOnDemandFreshnessSeconds("Last 2 weeks")).toBe(1_209_600);
     expect(()=>inferOnDemandFreshnessSeconds("Last 5 weeks")).toThrow("ON_DEMAND_FRESHNESS_UNSUPPORTED");
     expect(()=>inferOnDemandFreshnessSeconds("Last 2 hours and past 3 days")).toThrow("ON_DEMAND_FRESHNESS_AMBIGUOUS");
+  });
+});
+
+
+describe("official indexed first-party fallback never confuses search index clock with original",()=>{
+  it("finds a UK lithium article missed by the short Atom feed and verifies its actual page date",async()=>{
+    const now=new Date("2026-10-14T12:00:00Z");
+    const searched:string[]=[];
+    const fetchImpl=async(target:RequestInfo|URL):Promise<Response>=>{
+      const url=new URL(String(target));searched.push(url.href);
+      if(url.hostname==="api.worldbank.org")
+        return Response.json([{total:1},[{id:"GBR",name:"United Kingdom"}]]);
+      if(url.pathname==="/api/search.json")
+        return Response.json({results:[{
+          title:"New lithium mine in Cornwall to unlock industry",
+          description:"UK lithium minerals and mining investment",
+          link:"/government/news/new-lithium-mine-in-cornwall",
+          // Index date is untrusted and cannot substitute for original clock.
+          public_timestamp:"2026-10-14T11:59:00Z",
+        }]});
+      if(url.pathname==="/government/news/new-lithium-mine-in-cornwall")
+        return new Response(
+          '<html><meta name="govuk:first-published-at" content="2026-09-27T12:00:00Z">'+
+          '<meta name="govuk:public-updated-at" content="2026-10-14T11:59:00Z"></html>',
+          {headers:{"content-type":"text/html"}});
+      if(url.pathname.endsWith(".atom"))return new Response("<feed></feed>");
+      return new Response("<rss><channel></channel></rss>");
+    };
+    const scoped=await discoverOnDemandForPrivateQualification({
+      country_iso3:"GBR",categories:["rare_earth"],topics:["critical_minerals"],
+      mineral:"lithium",max_age_seconds:31*86_400,
+    },{fetchImpl:fetchImpl as typeof fetch,now,disableDiscoveryIndex:true});
+    expect(scoped.private_original_review_candidates).toHaveLength(1);
+    const candidate=scoped.private_original_review_candidates[0];
+    expect(candidate.search_index_original_page_pending).toBe(true);
+    expect(candidate.feed_item_published_at).toBeNull();
+    const proof=await verifyOnDemandOriginalArticlePages(
+      scoped.private_original_review_candidates,
+      {fetchImpl:fetchImpl as typeof fetch,now,maxAgeSeconds:31*86_400});
+    expect(proof.verified).toBe(1);
+    expect(proof.verified_candidates[0].page_original_published_at)
+      .toBe("2026-09-27T12:00:00.000Z");
+    expect(scoped.discovery.payable).toBe(false);
+    expect(scoped.discovery.supabase_requests).toBe(0);
+    expect(searched.filter(url=>url.includes("api/search.json"))).toHaveLength(1);
+    expect(searched.some(url=>url.includes("api.gdeltproject.org"))).toBe(false);
   });
 });
