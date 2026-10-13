@@ -6,8 +6,8 @@ scoring, x402 signing or the canonical payment-protected POST.
 
 | Existing category endpoint | New read-only modality |
 | --- | --- |
-| /api/v1/intelligence/geopolitics?view=open-data | USGS earthquake occurrence (M4.5+ band) + CISA KEV catalog inclusion |
-| /api/v1/intelligence/macro-fx?view=open-data | US Treasury interest-rate reference month + World Bank WDI annual GDP period |
+| /api/v1/intelligence/geopolitics?view=open-data | USGS earthquake occurrence (M4.5+ band), CISA KEV catalog inclusion and Federal Register sanctions notices |
+| /api/v1/intelligence/macro-fx?view=open-data | US Treasury interest-rate reference month, BLS CPI reference month and World Bank WDI annual GDP period |
 | /api/v1/intelligence/critical-minerals?view=open-data | USAspending contract award search, qualified by literal mineral terms in award description and original obligation date |
 
 **Combined view:** each of the same three paths also accepts `?view=combined`, which
@@ -38,7 +38,7 @@ rights/attribution, causal risk analysis, signed GRO, and x402 binding.
 
 The user's full source-family inventory remains in
 scripts/lib/operator-commercial-free-source-lineup.mjs. **This PR
-activates five specific APIs, not all listed provider families.**
+activates seven specific APIs, not all listed provider families.**
 Other sources have API key, registration, legal licensing, semantic
 mapping, data cadence and safe quota questions to resolve individually.
 A healthy provider transport does not imply a new qualifying news event.
@@ -59,3 +59,8 @@ published SHA before issuing three `GET ?view=combined` requests. Each response
 must keep original-release and reference-period evidence distinct; zero
 readable source classes is a 503 failure. Source family catalog coverage
 is distinct from observed response availability.
+
+Real GitHub-runner no-funds canary #38435904872 confirmed 7 of 7 pinned
+upstream JSON APIs readable: Geopolitics 3/3, Macro/FX 3/3, Critical
+Minerals 1/1, with 58 local contract tests passing. This is not a
+claim that all 67 catalogued providers are ingestible or currently live.
