@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
 import { indexedHeadlineMatchesOriginalPage } from "./on-demand-index-original-title.server";
+import { chooseJevSourceReviewPriority } from "./on-demand-jev-source-priority.server";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
 
@@ -833,7 +834,7 @@ const MAX_ARTICLE_PAGE_PROBES = 4;
 /** Internal-only evidence continuation; never serialize verified_candidates. */
 export async function verifyOnDemandOriginalArticlePages(
   candidates: readonly PrivateOriginalCandidate[],
-  options: {fetchImpl?:typeof fetch; now?:Date}={},
+  options: {fetchImpl?:typeof fetch; now?:Date; jevFetchImpl?:typeof fetch}={},
 ): Promise<PrivatePageDateResult> {
   const now=options.now ?? new Date();
   if(!Number.isFinite(now.getTime()))throw Error("ON_DEMAND_CLOCK_INVALID");
@@ -876,8 +877,23 @@ export async function verifyOnDemandOriginalArticlePages(
     chosen.push(candidate);
     used.add(candidate.publisher_family);
   };
+  // The optional Jev decision only chooses the order of the limited
+  // publisher article readbacks, never the source's veracity or rights.
+  // If no paid key is configured, the same free deterministic order applies.
+  const categories=["geopolitics","macro","rare_earth"] as const;
+  const present=categories.filter(category=>eligible.some(x=>x.domain===category));
+  const preferred=await chooseJevSourceReviewPriority(present.map(category=>({
+    category,
+    first_party_native_dated_count:eligible.filter(x=>x.domain===category &&
+      x.index_original_page_pending!==true).length,
+    first_party_index_only_count:eligible.filter(x=>x.domain===category &&
+      x.index_original_page_pending===true).length,
+  })),{fetchImpl:options.jevFetchImpl});
+  const reviewOrder=preferred
+    ? [preferred,...categories.filter(x=>x!==preferred)] as OnDemandCategory[]
+    : [...categories];
   // One issuer per category first, then remaining distinct publishers.
-  for(const domain of ["geopolitics","macro","rare_earth"] as const){
+  for(const domain of reviewOrder){
     const next=eligible.find(x=>x.domain===domain && !used.has(x.publisher_family));
     if(next)add(next);
   }
