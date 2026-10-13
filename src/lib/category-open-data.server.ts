@@ -40,9 +40,15 @@ const UPSTREAMS: readonly Provider[] = Object.freeze([
   { id: "cisa_kev", category: "geopolitics",
     url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
     maxBytes: 3_000_000, timeoutMs: 6_000, method: "GET" },
+  { id: "federal_register", category: "geopolitics",
+    url: "https://www.federalregister.gov/api/v1/documents.json?conditions%5Bterm%5D=sanctions&per_page=5&order=newest",
+    maxBytes: 150_000, timeoutMs: 5_000, method: "GET" },
   { id: "treasury_fiscaldata", category: "macro-fx",
     url: "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/avg_interest_rates?page%5Bsize%5D=4&sort=-record_date",
     maxBytes: 100_000, timeoutMs: 5_000, method: "GET" },
+  { id: "bls_cpi", category: "macro-fx",
+    url: "https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",
+    maxBytes: 125_000, timeoutMs: 5_000, method: "GET" },
   { id: "world_bank_wdi", category: "macro-fx",
     url: "https://api.worldbank.org/v2/country/USA/indicator/NY.GDP.MKTP.CD?format=json&source=2&per_page=7",
     maxBytes: 100_000, timeoutMs: 5_000, method: "GET" },
@@ -122,6 +128,45 @@ function fromCisa(payload: unknown, now: number): Extracted | null {
     "The listing may affect cyber-exposure reviews; exploitation date, affected country and event attribution are not established."
   )),credits:[]};
 }
+function fromFederalRegister(payload:unknown,now:number):Extracted|null{
+  const data=payload as Record<string,unknown>;
+  if(!Array.isArray(data?.results) || !Number.isFinite(data?.count))return null;
+  const rows=data.results.flatMap((x:unknown):{day:string}[]=>{
+    const item=x as Record<string,unknown>;
+    if(typeof item?.title!=="string" ||
+        !/\b(?:sanctions?|embargo|assets? freeze|foreign assets? control)\b/iu.test(item.title))
+      return [];
+    const day=dateOnly(item.publication_date);
+    const ms=day?Date.parse(day+"T00:00:00Z")+36*3600_000+15*60_000:0;
+    return day && ms<=now && now-ms<=14*86_400_000 ? [{day}] : [];
+  }).sort((a,b)=>b.day.localeCompare(a.day)).slice(0,2);
+  return {signals:rows.map((r,i)=>signal(
+    "sanctions_federal_publication",r.day+":"+i,r.day,"catalog_added_day",
+    "Geomacro detects a recently published U.S. federal regulatory document concerning sanctions.",
+    "A regulatory publication is not proof sanctions are currently enforceable or that a named counterparty is designated; check effective dates separately."
+  )),credits:[]};
+}
+function fromBls(payload:unknown):Extracted|null{
+  const data=payload as Record<string,unknown>;
+  if(data?.status!=="REQUEST_SUCCEEDED")return null;
+  const series=(data?.Results as Record<string,unknown>)?.series;
+  if(!Array.isArray(series))return null;
+  const periods=series.flatMap((s:unknown):string[]=>{
+    const series=s as Record<string,unknown>;
+    if(series?.seriesID!=="CUUR0000SA0"||!Array.isArray(series?.data))return [];
+    return series.data.flatMap((p:unknown):string[]=>{
+      const x=p as Record<string,unknown>;
+      if(!/^20\d{2}$/u.test(String(x?.year??"")) ||
+          !/^M(?:0[1-9]|1[0-2])$/u.test(String(x?.period??"")))return [];
+      return [String(x.year)+"-"+String(x.period).slice(1)];
+    });
+  }).sort().reverse();
+  return {signals:periods.length?[signal(
+    "consumer_prices_reference_month",periods[0],periods[0],"reference_month",
+    "Geomacro detects an available official U.S. consumer-price index reference month.",
+    "BLS index values, their release date and inflation direction require separate verification; the monthly reference period is not a publication timestamp."
+  )]:[],credits:[]};
+}
 function fromTreasury(payload:unknown): Extracted | null {
   const data=payload as Record<string,unknown>;
   if(!Array.isArray(data?.data))return null;
@@ -179,6 +224,8 @@ export function extractOpenData(specId: string, body:unknown, now=Date.now()): E
   switch(specId){
     case "usgs_earthquakes":return fromUsgs(body,now);
     case "cisa_kev":return fromCisa(body,now);
+    case "federal_register":return fromFederalRegister(body,now);
+    case "bls_cpi":return fromBls(body);
     case "treasury_fiscaldata":return fromTreasury(body);
     case "world_bank_wdi":return fromWorldBank(body);
     case "usaspending":return fromUsaSpending(body,now);
