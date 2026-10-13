@@ -13,6 +13,9 @@ import {
   type PrivateOnDemandMacroRightsStatus,
 } from "./on-demand-private-macro-rights.server";
 import { checkAgentQueryDeliverability, publicAgentQueryAvailability } from "./agent-query-deliverability.server";
+import {
+  isPinnedChinaCpiStructuralPlan,prepareVerifiedChinaCpiStructuralAnswer,
+} from "./wdi-attributed-structural-product.server";
 import { checkAgentQueryExternalModule } from "./agent-query-external-modules.server";
 import { assembleAgentQueryResponse } from "./agent-query-response.server";
 import {
@@ -299,6 +302,28 @@ export const mainnetIntelligenceHandlers = {
             return json({ ok: false, chargeable: false, error: { code: "INVALID_ADAPTIVE_QUERY", issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })) }, execution_authorized: false }, 400);
           }
           return json({ ok: false, chargeable: false, error: { code: "UNSUPPORTED_ADAPTIVE_QUERY", message: error instanceof Error ? error.message : "Query cannot be safely planned." }, execution_authorized: false }, 400);
+        }
+
+        // Safe FIRST product preparation: the availability endpoint and this
+        // canonical query verify the SAME exact plan, official WDI source=2,
+        // B2 rights and registered structural signature. No x402 quote can
+        // escape until a durable, query-bound frozen answer exists before
+        // settlement. Legacy GRO and all unrelated topics are unaffected.
+        if(isPinnedChinaCpiStructuralPlan(plan)){
+          if(request.headers.has("payment-signature"))
+            return json({ok:false,chargeable:false,payment_required_now:false,
+              execution_authorized:false,error:{code:"WDI_PAYMENT_PROOF_NOT_ACCEPTED_BEFORE_FROZEN_OFFER"}},422);
+          const prepared=await prepareVerifiedChinaCpiStructuralAnswer(plan);
+          if(prepared.status!=="PREPARED_NO_FUNDS_ONLY")
+            return json({ok:false,chargeable:false,payment_required_now:false,
+              execution_authorized:false,query_plan_hash:plan.query_plan_hash,
+              error:{code:prepared.code}},422);
+          return json({ok:false,chargeable:false,payment_required_now:false,
+            execution_authorized:false,query_plan_hash:plan.query_plan_hash,
+            prepared_structural_product_sha256:prepared.prepared_payload_sha256,
+            signed_structural_product_verified:true,
+            error:{code:"WDI_PREPARED_X402_DELIVERY_NOT_DURABLY_FROZEN",
+              message:"Source, rights and signature verified privately, but the identical paid deliverable has not been durably frozen and cannot be quoted or settled."}},422);
         }
 
         // Request-time global retrieval is separate from GRO publication and
