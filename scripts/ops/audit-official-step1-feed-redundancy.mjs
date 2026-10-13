@@ -18,17 +18,20 @@ const ORIGINAL_ISSUERS = Object.freeze({
   geopolitics: Object.freeze({
     un_news_security_original_rss_review: "united_nations",
     uk_fcdo_original_foreign_policy_atom_review: "uk_fcdo",
+    uk_mod_original_defence_atom_review: "uk_mod",
   }),
   macro: Object.freeze({
     statcan_prices_original_atom_review: "statistics_canada",
     fed_monetary_original_press_rss_review: "federal_reserve",
     ecb_press_original_rss_review: "ecb",
+    uk_hmt_original_treasury_atom_review: "uk_hmt",
   }),
   rare_earth: Object.freeze({
     nrcan_government_news_original_atom_review: "natural_resources_canada",
     usgs_minerals_original_news_rss_review: "us_geological_survey",
     australia_industry_minister_original_rss_review: "australian_industry_department",
     uk_dbt_critical_minerals_atom_pending_review: "uk_department_business_trade",
+    uk_desnz_original_energy_minerals_atom_review: "uk_desnz",
   }),
 });
 const DOMAINS = Object.freeze(["geopolitics", "macro", "rare_earth"]);

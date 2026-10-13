@@ -168,6 +168,36 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     original_hosts:Object.freeze(["www.ecb.europa.eu"]),
     topic:/\b(?:monetary policy|interest rates?|inflation|economic growth|financial stability|exchange rates?|liquidity|euro area|central bank|bank supervision|balance of payments|market operations)\b/iu,
   }),
+  // Three public government first-party Atom feeds: distinct departmental
+  // editorial organizations, NOT evidence of external independent review.
+  // The weekly canary/HTTP 403 quarantine of unrelated sources is untouched.
+  Object.freeze({
+    id:"uk_mod_original_defence_atom_review",
+    domain:"geopolitics",kind:"original_publisher_defence_policy_release",
+    url:"https://www.gov.uk/government/organisations/ministry-of-defence.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
+    topic:/\b(?:defence|defense|military|armed forces|security|conflict|war|peacekeeping|deployment|airstrike|sanctions?|border|NATO|naval|missile|weapons?|Ukraine)\b/iu,
+  }),
+  Object.freeze({
+    id:"uk_hmt_original_treasury_atom_review",
+    domain:"macro",kind:"original_publisher_treasury_macro_release",
+    url:"https://www.gov.uk/government/organisations/hm-treasury.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
+    topic:/\b(?:inflation|monetary|economy|economic growth|fiscal|budget|finance|financial|foreign exchange|currency|interest rates?|treasury|tax|GDP|public spending)\b/iu,
+  }),
+  Object.freeze({
+    id:"uk_desnz_original_energy_minerals_atom_review",
+    domain:"rare_earth",kind:"original_publisher_energy_materials_policy",
+    url:"https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|copper|magnet|battery|materials? supply|supply chain|mineral processing|energy security)\b/iu,
+  }),
 ]);
 
 const XML_MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
@@ -186,6 +216,9 @@ const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
   usgs_minerals_original_news_rss_review:"usgs",
   australia_industry_minister_original_rss_review:"australian_industry_minister",
   uk_dbt_critical_minerals_atom_pending_review:"uk_dbt",
+  uk_mod_original_defence_atom_review:"uk_mod",
+  uk_hmt_original_treasury_atom_review:"uk_hmt",
+  uk_desnz_original_energy_minerals_atom_review:"uk_desnz",
 });
 // Source-native event articles require the actual first-party article path;
 // a link to the publisher homepage, Atom/RSS endpoint or other press index
@@ -202,6 +235,9 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   usgs_minerals_original_news_rss_review:/^\/(?:news|programs\/mineral-resources-program\/news)(?:\/|$)/u,
   australia_industry_minister_original_rss_review:/^\/(?:t-ayres|king)\/media\//u,
   uk_dbt_critical_minerals_atom_pending_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+  uk_mod_original_defence_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+  uk_hmt_original_treasury_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+  uk_desnz_original_energy_minerals_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
 });
 
 // The original publisher documents www.statcan.gc.ca/daily-quotidien/
