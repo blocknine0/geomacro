@@ -71,7 +71,7 @@ describe("query-driven independent fallback without paid providers",()=>{
     expect(proof.private_candidates[0].feed_item_published_at).toBe("2026-10-13T15:00:00.000Z");
     expect(proof.private_candidates[0].source_native_feed_publication_date_verified).toBe(true);
     expect(proof.private_candidates[0].paid_delivery_allowed).toBe(false);
-    expect(seen.filter(url=>url.includes("api.gdeltproject.org"))).toHaveLength(1);
+    expect(seen.filter(url=>new URL(url).hostname==="api.gdeltproject.org")).toHaveLength(1);
     expect(proof.discovery.supabase_requests).toBe(0);
     expect(proof.discovery.b2_requests).toBe(0);
   });
@@ -153,7 +153,7 @@ describe("official indexed first-party fallback never confuses search index cloc
       .toBe("2026-09-27T12:00:00.000Z");
     expect(scoped.discovery.payable).toBe(false);
     expect(scoped.discovery.supabase_requests).toBe(0);
-    expect(searched.filter(url=>url.includes("api/search.json"))).toHaveLength(1);
-    expect(searched.some(url=>url.includes("api.gdeltproject.org"))).toBe(false);
+    expect(searched.filter(url=>new URL(url).pathname==="/api/search.json")).toHaveLength(1);
+    expect(searched.some(url=>new URL(url).hostname==="api.gdeltproject.org")).toBe(false);
   });
 });
