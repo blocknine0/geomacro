@@ -65,10 +65,14 @@ jobs:
             if "macro / fx" in txt or "macro & fx" in txt:rendered.add("macro")
             if "critical minerals" in txt:rendered.add("rare_earth")
           fallback="website-derived-news-html" in dom and 'title="Geomacro Finds' in dom
-          verified=required.issubset(eligible) and (
+          minerals=[r for r in src if isinstance(r,dict) and r.get("category")=="rare_earth"]
+          # An independently read website D1 ledger must contain both of
+          # the two newly admitted original first-party mineral observations.
+          verified=required.issubset(eligible) and len(minerals)>=7 and (
             required.issubset(rendered) or fallback)
           print(json.dumps({"schema":"geomacro.browser-derived-news.v1",
             "d1_domains":len(eligible & required),
+            "d1_mineral_original_observations":len(minerals),
             "browser_rendered_domains":len(rendered & required),
             "browser_fallback_iframe":fallback,
             "browser_verified":verified,
