@@ -12,6 +12,12 @@ const gov = (id: string, path: string): Lane => ({
   allowedHosts: ["www.gov.uk"], credit: null, govContentApi: true,
 });
 const lanes: Lane[] = [
+  {id:"eu_lu_rep_feed",category:"rare_earth",media:"rss",
+    url:"https://luxembourg.representation.ec.europa.eu/node/27/rss_fr?prefLang=en",
+    allowedHosts:["luxembourg.representation.ec.europa.eu"],credit:null},
+  {id:"eu_lu_rep_feed_en",category:"rare_earth",media:"rss",
+    url:"https://luxembourg.representation.ec.europa.eu/node/27/rss_en",
+    allowedHosts:["luxembourg.representation.ec.europa.eu"],credit:null},
   gov("minerals_probe_foreign", "foreign-commonwealth-development-office"),
   gov("minerals_probe_science", "department-for-science-innovation-and-technology"),
   gov("minerals_probe_defence", "ministry-of-defence"),
