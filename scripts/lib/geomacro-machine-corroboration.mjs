@@ -17,7 +17,7 @@ export function evaluateGeomacroMachineCorroboration({
 }={}){
   const clustered=clusterPrivateIndependentEventCandidates({candidates,now});
   if(clustered.schema!=="geomacro.private-multi-source-review-queue.v1" ||
-     clustered.public_published!==false ||
+     clustered.customer_raw_news_or_sources_exposed!==false ||
      clustered.paid_data_eligible!==false ||
      clustered.independent_human_or_trusted_review_completed!==false)
     throw Error("GEOMACRO_MACHINE_CANDIDATE_BOUNDARY_INVALID");
