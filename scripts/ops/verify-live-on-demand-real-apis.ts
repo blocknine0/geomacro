@@ -112,6 +112,17 @@ const proof={
   category_count:receipt.categories.length,
   categories:receipt.categories,
   category_retrieval_proof:categoryRetrievalProof,
+  // This is a time-sensitive availability probe, not positive capability
+  // acceptance. Genuine no-news is recorded, not misreported as an outage.
+  current_news_availability:categoryRetrievalProof.map(x=>({
+    category:x.category,
+    status:x.native_dated_original_leads+x.original_pages_date_verified>0
+      ? "ORIGINAL_PUBLISHER_LEAD_FOUND_NOT_SIGNED"
+      : x.reachable_providers>0
+        ? "NO_MATCHING_CURRENT_PUBLISHER_ORIGINAL"
+        : "PROVIDERS_UNAVAILABLE",
+  })),
+  three_category_capability_proven_by_this_probe:false,
   network_attempts:receipt.network_attempts,
   original_article_page_attempts:pageProof.attempted,
   // Fixed-host, HTTP-status-class aggregate only. No original source URL,
@@ -200,7 +211,9 @@ if(observedRequests!==proof.total_bounded_network_attempts ||
 else if(proof.distinct_provider_families_reached===0)
   process.exitCode=3; // zero genuine external sources; NOT false GREEN
 else if(proof.category_retrieval_proof.length!==3 ||
-    proof.category_retrieval_proof.some(p=>
-      p.provider_attempts===0 || !p.sample_records_observed))
-  process.exitCode=4; // one or more categories had zero query-relevant records
+    proof.category_retrieval_proof.some(p=>p.provider_attempts===0) ||
+    proof.current_news_availability.some(p=>p.status==="PROVIDERS_UNAVAILABLE"))
+  process.exitCode=4; // transport outage (no eligible provider reached)
+else if(proof.three_category_capability_proven_by_this_probe!==false)
+  process.exitCode=5; // negative/current-news probe cannot certify capability
 
