@@ -85,8 +85,8 @@ function firstTag(block,tag){
 function nativeFeedItemPublishedAt(item){
   const timestamp=firstTag(item,"pubDate")||firstTag(item,"published");
   if(!timestamp)return null;
-  const nativeIso=/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,3})?(?:Z|[+-]\\d\\d:\\d\\d)$/iu;
-  const nativeRfc=/^(?:[A-Za-z]{3},?\\s+)?\\d{1,2}\\s+[A-Za-z]{3}\\s+\\d{4}\\s+\\d\\d:\\d\\d(?::\\d\\d)?\\s+(?:GMT|UTC|UT|[+-]\\d{4})$/iu;
+  const nativeIso=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?(?:Z|[+-]\d\d:\d\d)$/iu;
+  const nativeRfc=/^(?:[A-Za-z]{3},?\s+)?\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d\d:\d\d(?::\d\d)?\s+(?:GMT|UTC|UT|[+-]\d{4})$/iu;
   if(!nativeIso.test(timestamp)&&!nativeRfc.test(timestamp))return null;
   const value=Date.parse(timestamp);
   return Number.isFinite(value)?value:null;
