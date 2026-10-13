@@ -1,8 +1,14 @@
 import {describe,expect,it} from "vitest";
-import {probe30MinThreeDomainPulse} from "../../scripts/ops/probe-30min-three-domain-pulse.mjs";
+import {probe30MinThreeDomainPulse,select30MinPublishers} from "../../scripts/ops/probe-30min-three-domain-pulse.mjs";
 import {projectSourcePulseForD1} from "../../scripts/ops/write-30min-source-pulse-d1.mjs";
 
-const now=new Date("2026-10-11T20:36:29Z");
+const base=new Date("2026-10-11T20:36:29Z");
+// Select the exact rotation where NRCan is the SECOND publisher; never
+// accidentally test a different issuer when the official pool expands.
+const now=Array.from({length:4},(_,i)=>
+  new Date(base.getTime()+i*30*60000)).find(t=>
+  select30MinPublishers(t).rare_earth[1].id===
+    "nrcan_government_news_original_atom_review")!;
 const healthy=(s:{id:string;domain:string})=>({
   source_id:s.id,domain:s.domain,publisher_reachable:true,format_valid:true,
   original_publisher_topical_30m:0,original_publisher_topical_90m:0,
