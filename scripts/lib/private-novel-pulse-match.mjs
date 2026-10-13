@@ -15,6 +15,8 @@ export function privateOriginalMatchesPulse(article, hashes, now = Date.now()) {
   if (!(hashes instanceof Set) || !article ||
       article.discoveryProvider !== "official_native_rss" ||
       article.nativePublishedAtVerified !== true ||
+      !["publisher_rss_item_pubDate","publisher_atom_entry_published",
+        "publisher_original_article_datePublished"].includes(article.nativeTimeEvidence) ||
       article.privateOnly !== true ||
       article.rightsVerified !== false ||
       article.commercialEligible !== false ||
