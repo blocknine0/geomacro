@@ -56,14 +56,17 @@ jobs:
       # PR mode proves only that the published *base* can be examined without
       # wallets, quotes or payment. A positive diagnostic job is NOT proof
       # of payable evidence. On main push the original strict gate remains.
-      - name: Read-only three-domain revenue-blocker diagnosis (not earning acceptance)
+      - name: Read-only three-domain alternate-country diagnosis (not earning acceptance)
         if: github.event_name == 'pull_request'
         env:
           # The PR base is the comparison point. A stale published SHA
           # is explicitly reported, never accepted as production payable.
           # No static old deployment hash or implicit approval to charge.
           EXPECTED_CANONICAL_SHA: ${{ github.event.pull_request.base.sha }}
-        run: node scripts/agentic/verify-earn-first-live-no-funds.mjs --diagnostic-only
+        # Only three other fixed markets (UKR/BRA/AUS) are queried in PR
+        # diagnostics. Main always checks the canonical owner-selected USA
+        # pilot. No double probing, no 195-country enumeration, no wallets.
+        run: node scripts/agentic/verify-earn-first-live-no-funds.mjs --diagnostic-only --alternate-country-probe
       - name: Verify exact deployed build, 3 category preflights, no funds
         if: github.event_name != 'pull_request'
         env:

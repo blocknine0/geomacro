@@ -1,6 +1,6 @@
 import {describe,expect,it,vi} from "vitest";
 import {readFileSync} from "node:fs";
-import {acceptEarningPilotLive,EARNING_PILOT_CASES} from "../../scripts/agentic/verify-earn-first-live-no-funds.mjs";
+import {acceptEarningPilotLive,EARNING_PILOT_CASES,EARNING_PILOT_ALTERNATE_CASES} from "../../scripts/agentic/verify-earn-first-live-no-funds.mjs";
 
 const sha="a".repeat(40);
 const marker={schema_version:"geomacro.deployment-build.v1",
@@ -157,6 +157,40 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     await expect(acceptEarningPilotLive({expectedSha:sha,fetchImpl}))
       .rejects.toThrow("EARNING_PILOT_NOT_EXACT_MAIN_PUBLISHED");
     expect(received).toHaveLength(1);
+  });
+  it("checks exactly 3 alternative markets through the same no-funds buyer API",async()=>{
+    const {fetchImpl,received}=calls([eligible,locked,unavailable]);
+    const result=await acceptEarningPilotLive({
+      expectedSha:sha,diagnosticOnly:true,
+      pilotCases:EARNING_PILOT_ALTERNATE_CASES,fetchImpl,
+    });
+    expect(result.country_profile).toBe("ALTERNATE_COUNTRIES_DIAGNOSTIC_ONLY");
+    expect(result.quote_ready_category_count).toBe(1);
+    expect(result.payment_locked_category_count).toBe(1);
+    expect(result.first_earning_ready).toBe(false);
+    expect(result.real_funds_touched).toBe(false);
+    expect(result.checkout_or_settlement_attempted).toBe(false);
+    const posts=received.filter(x=>x.method==="POST");
+    expect(posts).toHaveLength(3);
+    expect(posts.map(x=>JSON.parse(x.body??"{}").subjects[0].country_iso3))
+      .toEqual(["UKR","BRA","AUS"]);
+    for(const post of posts){
+      expect(post.headers.has("payment-signature")).toBe(false);
+      expect(post.headers.has("authorization")).toBe(false);
+      expect(post.url).toBe("/api/v1/intelligence/availability");
+    }
+  });
+  it("cannot promote alternative or arbitrary country probes into paid authorization",async()=>{
+    const {fetchImpl,received}=calls([eligible,eligible,eligible]);
+    await expect(acceptEarningPilotLive({
+      expectedSha:sha,diagnosticOnly:false,
+      pilotCases:EARNING_PILOT_ALTERNATE_CASES,fetchImpl,
+    })).rejects.toThrow("EARNING_PILOT_ALTERNATE_REQUIRES_DIAGNOSTIC_MODE");
+    await expect(acceptEarningPilotLive({
+      expectedSha:sha,diagnosticOnly:true,
+      pilotCases:[{name:"macro_fx",topic:"macro_risk",country:"CHN"}],fetchImpl,
+    })).rejects.toThrow("EARNING_PILOT_COUNTRY_SET_UNAPPROVED");
+    expect(received).toHaveLength(0);
   });
   it("PR diagnostic inspects all three offer scopes on older live SHA but never authorizes earnings",async()=>{
     const older={...marker,canonical_main_sha:"c".repeat(40)};
