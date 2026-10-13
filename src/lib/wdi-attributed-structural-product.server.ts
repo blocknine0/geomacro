@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { canonicalRiskObjectJson } from "./risk-object-signing.server";
 import { approvedWdiAttribution, isApprovedWdiAttribution,
   type WorldBankWdiIndicator } from "./world-bank-derived-attribution";
-import type { B2CommercialSourceRight } from "./b2-live.server";
+import { readB2CommercialSourceRights, type B2CommercialSourceRight } from "./b2-live.server";
+import { readPinnedWdiAnnualStructuralPair } from "./on-demand-global-discovery.server";
 import type { PrivateOfficialMacroChange } from "./on-demand-global-discovery.server";
 
 /** Exact WDI source=2, two consecutive genuine annual observations, certified
@@ -133,4 +134,51 @@ export function assertAttributedWdiStructuralProduct(value:unknown){
   const {integrity,...body}=v;
   if(sha(body)!==integrity.payload_hash_sha256)
     throw Error("WDI_PRODUCT_INTEGRITY_MISMATCH");
+}
+
+
+/** Operator/zero-money preparation adapter. No payment gate is opened here.
+ * Reuse exactly one official World Bank retrieval and the existing B2 rights
+ * snapshot. A static issuer review never substitutes for an actual receipt.
+ */
+export async function preparePinnedChinaWdiStructuralNoFunds(
+  input:{query_plan_hash:string;max_age_seconds:number;
+    indicator?:"FP.CPI.TOTL.ZG"|"NY.GDP.MKTP.KD.ZG"},
+  options:{
+    now?:Date;
+    fetchImpl?:typeof fetch;
+    readRights?:()=>Promise<B2CommercialSourceRight[]|null>;
+    readPair?:typeof readPinnedWdiAnnualStructuralPair;
+  }={},
+):Promise<{status:"READY_FOR_PRODUCT_INTEGRATION";product:ReturnType<
+    typeof buildAttributedWdiStructuralProduct>;rights_receipt_sha256:string}|
+    {status:"BLOCKED";code:string}>{
+  const now=options.now??new Date();
+  if(!SHA.test(input.query_plan_hash) || !Number.isFinite(now.getTime()) ||
+     !Number.isInteger(input.max_age_seconds) ||
+     input.max_age_seconds<=0 || input.max_age_seconds>400*86400)
+    return {status:"BLOCKED",code:"WDI_REQUEST_SCOPE_UNSUPPORTED"};
+  const indicator=input.indicator??"FP.CPI.TOTL.ZG";
+  try {
+    const data=await (options.readPair??readPinnedWdiAnnualStructuralPair)(
+      "CHN",indicator,{now,fetchImpl:options.fetchImpl});
+    if(data.status!=="VALID_ANNUAL_CHANGE" || data.source_api_id!=="2" ||
+       !data.pair || !data.lastupdated)
+      return {status:"BLOCKED",code:"WDI_OFFICIAL_SOURCE2_PAIR_UNAVAILABLE"};
+    const rights=await (options.readRights??readB2CommercialSourceRights)();
+    const receipt=certifiedWdiAttributionRights(rights);
+    if(!receipt.eligible || !receipt.receipt_sha256)
+      return {status:"BLOCKED",code:receipt.reason};
+    const product=buildAttributedWdiStructuralProduct({
+      country_iso3:"CHN",indicator,source_api_id:"2",
+      pair:data.pair,lastupdated:data.lastupdated,
+      checked_at:now.toISOString(),query_plan_hash:input.query_plan_hash,
+      max_age_seconds:input.max_age_seconds,rights_rows:rights,
+    });
+    assertAttributedWdiStructuralProduct(product);
+    return {status:"READY_FOR_PRODUCT_INTEGRATION",product,
+      rights_receipt_sha256:receipt.receipt_sha256};
+  } catch {
+    return {status:"BLOCKED",code:"WDI_SOURCE_RIGHTS_OR_INTEGRITY_NOT_VERIFIED"};
+  }
 }
