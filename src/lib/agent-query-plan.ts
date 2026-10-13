@@ -65,6 +65,11 @@ export const agentAdaptiveQuerySchema = z.object({
   detail: z.enum(["compact", "standard", "full"]).default("standard"),
   // Explicit opt-in; legacy signed-GRO queries retain original delivery contract.
   fulfillment_mode: z.enum(["published_only", "live_on_demand"]).default("published_only"),
+  // A deliberately narrow, separately payment-hashed earnings pilot. This
+  // is original-dated structural research, NOT a current signed risk object.
+  // Legacy callers retain their pre-existing payment query hashes byte-for-byte.
+  delivery_tier: z.enum(["signed_risk_intelligence", "structural_baseline"])
+    .default("signed_risk_intelligence"),
   risk_gate_context: riskGateContext.optional(),
   client_request_id: z.string().trim().min(4).max(128).optional(),
 }).strict().superRefine((value, ctx) => {
@@ -73,6 +78,32 @@ export const agentAdaptiveQuerySchema = z.object({
   }
 });
 export type AgentAdaptiveQuery = z.infer<typeof agentAdaptiveQuerySchema>;
+
+const BASELINE_TOPICS = new Set<AgentQueryTopic>([
+  "sovereign_risk", "macro_risk", "fx_external_risk",
+  "critical_minerals", "conflict_geopolitics",
+]);
+const LIVE_OR_SIGNED_QUESTION = /\b(?:current|latest|real[- ]?time|today|tonight|yesterday|now|this week|this month|forecast|predict|signed|risk object|risk score|risk index|gri|change|movement|what happened|risk gate|should .* (?:pay|proceed))\b/i;
+
+/**
+ * The first paid pilot may sell an actually available governed STRUCTURAL
+ * module (annual/monthly original observations) without requiring or
+ * pretending to issue current signed GRO/GRI. Buyer must explicitly opt in
+ * and no cross-product risk claim is silently reinterpreted.
+ */
+export function assertStructuralBaselinePilot(input: AgentAdaptiveQuery) {
+  if (input.delivery_tier !== "structural_baseline") return;
+  if (input.fulfillment_mode !== "published_only" ||
+      input.subjects.length !== 1 || input.subjects[0]?.type !== "country" ||
+      input.topics.length !== 1 || !BASELINE_TOPICS.has(input.topics[0]) ||
+      input.as_of !== undefined || input.risk_gate_context !== undefined ||
+      input.change !== undefined || input.ranking !== undefined ||
+      (input.intent && input.intent !== "single_subject") ||
+      (input.question && (LIVE_OR_SIGNED_QUESTION.test(input.question) ||
+        !input.question.replace(/\s+/g," ").trim()))) {
+    throw Error("STRUCTURAL_BASELINE_PILOT_SCOPE_UNSUPPORTED");
+  }
+}
 
 const TOPIC_MODULES: Record<AgentQueryTopic, readonly string[]> = {
   sovereign_risk: ["sovereign_fiscal", "political_governance"],
@@ -281,6 +312,7 @@ export type AgentQueryPlan = {
   evidence: AgentAdaptiveQuery["evidence"];
   detail: AgentAdaptiveQuery["detail"];
   fulfillment_mode: AgentAdaptiveQuery["fulfillment_mode"];
+  delivery_tier: AgentAdaptiveQuery["delivery_tier"];
   risk_gate_context: AgentAdaptiveQuery["risk_gate_context"] | null;
   as_of: string | null;
   query_plan_hash: string;
@@ -288,6 +320,7 @@ export type AgentQueryPlan = {
 
 export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   const parsed = agentAdaptiveQuerySchema.parse(raw);
+  assertStructuralBaselinePilot(parsed);
   const subjects = canonicalSubjects(parsed.subjects);
   const explicitTopics = parsed.topics.length > 0;
   const inferredTopics = explicitTopics ? [] : inferAgentQueryTopics(parsed.question);
@@ -352,10 +385,15 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
     ...(parsed.fulfillment_mode === "live_on_demand" ? {
       fulfillment_mode: parsed.fulfillment_mode,
     } : {}),
+    ...(parsed.delivery_tier === "structural_baseline" ? {
+      delivery_tier: parsed.delivery_tier,
+    } : {}),
     risk_gate_context: parsed.risk_gate_context ?? null,
     as_of: parsed.as_of ?? null,
   };
-  return { ...normalized, fulfillment_mode: parsed.fulfillment_mode, query_plan_hash: stableHash(normalized) };
+  return { ...normalized, fulfillment_mode: parsed.fulfillment_mode,
+    delivery_tier: parsed.delivery_tier,
+    query_plan_hash: stableHash(normalized) };
 }
 
 export function paymentBindingForAgentQuery(input: {
