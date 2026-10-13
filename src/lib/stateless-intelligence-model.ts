@@ -61,6 +61,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration." },
   ],
   macro: [
+    { test: /\b(?:resources and energy exports?|mineral exports?|resources exports?)\b/i, label: "resources and energy exports" },
     { test: /\b(Basel III|Basel Committee|banking supervisors?|capital adequacy|bank capital requirements?|banking supervision)\b/i,
       name: "banking and capital regulation",
       implication: "Official prudential rulemaking can affect bank funding and cross-border credit conditions; any implemented capital requirements or market effects must be verified separately." },
@@ -74,7 +75,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "External-balance releases can affect currency-liquidity and cross-border settlement considerations; this does not indicate a directional FX prediction." },
     { test: /\b(liquidity|financial stability|bank supervision|banking regulation|economic growth|GDP|economic bulletin|bank lending|banking statistics|financial accounts|financial markets|unemployment|labour market|credit conditions|household debt|economic outlook)\b/i, name: "financial conditions",
       implication: "Financial-system developments may matter for credit access and counterparty exposure; a score requires separately verified measurements." },
-    { test: /\b(trade mission|free trade|trade deal|trade agreement|trade negotiations|bilateral trade|international (?:merchandise )?trade|imports? and exports?|export growth|commercial deals|economic partnership|JETCO|tariffs|foreign investment)\b/i, name: "trade and economic relations",
+    { test: /\b(trade mission|free trade|trade deal|trade agreement|trade negotiations|bilateral trade|international (?:merchandise )?trade|imports? and exports?|resources and energy exports?|mineral exports?|resources exports?|export growth|commercial deals|economic partnership|JETCO|tariffs|foreign investment)\b/i, name: "trade and economic relations",
       implication: "Trade and investment agreements can affect market access, cross-border commercial flows and currency exposure; their actual economic impact requires follow-up evidence." },
   ],
   rare_earth: [
