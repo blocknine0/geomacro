@@ -47,6 +47,9 @@ function checkedInputs(originals, now){
     if(!row||typeof row!=="object"||Array.isArray(row)||
        !CATEGORIES.has(row.category)||
        typeof row.original_article_url!=="string"||
+       // Legacy original_article_sha256 in raw discovery is a URL hash,
+       // never an independently reread HTML-body digest.
+       Object.hasOwn(row,"original_article_sha256")||
        typeof row.original_published_at!=="string"||
        !TIME.test(row.original_published_at)||
        typeof row.same_event_claim_sha256!=="string"||
