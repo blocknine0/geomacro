@@ -4,7 +4,7 @@
  * must independently agree; a page Date modified / crawl time is irrelevant.
  * Never expose publisher HTML, URL or original title to customers.
  */
-const ARTICLE_PATH = /^\/n1\/daily-quotidien\/(20\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\/dq\d{6}[a-z]-eng\.htm$/i;
+const ARTICLE_PATH = /^\/n1\/daily-quotidien\/(\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\/dq\d{6}[a-z]-eng\.htm$/i;
 const DAY_MS = 86_400_000;
 const MAX_AGE_MS = 30 * DAY_MS;
 const STOP = new Set(["the","daily","with","from","about","canada","statistic","statistics","release","released","data","survey","monthly"]);
