@@ -55,6 +55,7 @@ function siteView(result,now) {
   const p=result.body?.public_production;
   const hot=p?.hot_snapshot_serving;
   const hotKeys=["intelligence","global_risk","risk_indices"];
+  const verifiedHistoricalBaselines=p?.last_verified_baseline_readable;
   return {
     http_status:result.http_status,
     ok:result.body?.ok===true,
@@ -66,6 +67,11 @@ function siteView(result,now) {
     supabase_required_for_serving:p?.supabase_required_for_serving===false,
     hot_snapshot_proofs: Object.fromEntries(hotKeys.map(k=>[k,
       hot?.[k]?.ok===true && hot?.[k]?.serving_store==="cloudflare-d1"])),
+    // These are real independent historical B2 readback flags, not private
+    // key-presence checks or evidence of a CURRENT scored risk snapshot.
+    historical_b2_baseline_readable: Object.fromEntries(hotKeys.map(k=>[k,
+      typeof verifiedHistoricalBaselines?.[k]==="boolean"
+        ? verifiedHistoricalBaselines[k] : null])),
     snapshot_source_times: Object.fromEntries(hotKeys.map(k=>[k,
       safeTime(hot?.[k]?.source_as_of,now)])),
     public_serving_claim_verified:
@@ -129,6 +135,14 @@ export async function diagnosePublicHotServing({
   const rootCodes=[];
   if (!d1.ok) rootCodes.push("D1_CONTROL_PLANE_UNAVAILABLE");
   if (failing.length) rootCodes.push("D1_PUBLIC_HOT_SNAPSHOT_UNAVAILABLE");
+  const historical=site.historical_b2_baseline_readable;
+  if (Object.values(historical).includes(false))
+    rootCodes.push("HISTORICAL_B2_BASELINE_PROOF_UNREADABLE");
+  if (!site.http_status || !site.deep_checked || !Object.values(historical).every(v=>v!==null)) {
+    rootCodes.push("BASELINE_B2_PROOF_STATUS_NOT_FULLY_OBSERVED");
+  }
+  if(Object.values(site.hot_snapshot_proofs).some(v=>v===false))
+    rootCodes.push("CURRENT_SIGNED_B2_D1_HOT_PROOFS_INCOMPLETE");
   if (site.http_status===503) rootCodes.push("PUBLIC_DEEP_HEALTH_503");
   if (site.http_status===0) rootCodes.push("PUBLIC_SITE_TRANSPORT_UNAVAILABLE");
   if (!site.b2_configured) rootCodes.push("PUBLIC_B2_RUNTIME_UNCONFIGURED_OR_UNOBSERVED");
@@ -166,6 +180,9 @@ export function summarizePublicHotServing(result) {
       status:"NOT_ASSESSED_BY_HOT_SERVING_DIAGNOSTIC",
       geopolitics:null,macro_fx:null,critical_minerals:null,
     },
+    historical_b2_baseline_readable:result.site.historical_b2_baseline_readable,
+    // This report can identify a bad *proof*, not missing B2 S3 credentials.
+    // No arbitrary private key/configuration guess may bypass the public gate.
     unavailable_products:result.unavailable_products,
     products:Object.fromEntries(Object.entries(result.products).map(([k,v])=>[
       k,{status:v.http_status,error:v.error,source_as_of:v.source_as_of,
