@@ -714,14 +714,21 @@ async function discoverOnDemandImpl(
       ? Math.min(MAX_NEWS_AGE_MS,input.max_age_seconds*1000):0;
   if(newsMaxAgeMs===0)throw Error("ON_DEMAND_FRESHNESS_INVALID");
   let networkAttempts=0;
-  const trackedFetch:typeof fetch=((input,init)=>{
-    // Counting real fetch calls is essential when an optional approved API
-    // and one same-publisher transport retry would otherwise exceed quota.
-    // At most 12 query-discovery GETs; blocked attempts are not counted.
+  const trackedFetch:typeof fetch=(async (target,init)=>{
+    const host=new URL(String(target)).hostname;
+    // Per-worker provider cool-down limits calls after explicit denial.
+    // A different publisher stays available; no mirrors for denied APIs.
+    if(options.fetchImpl===undefined && (providerCooldownUntil.get(host)??0)>Date.now())
+      throw Error("ON_DEMAND_PROVIDER_COOLDOWN");
     if(networkAttempts>=12)
-      return Promise.reject(Error("ON_DEMAND_NETWORK_BUDGET_EXHAUSTED"));
+      throw Error("ON_DEMAND_NETWORK_BUDGET_EXHAUSTED");
     networkAttempts++;
-    return fetchImpl(input,init);
+    const response=await fetchImpl(target,init);
+    if(options.fetchImpl===undefined && response.status===429)
+      providerCooldownUntil.set(host,Date.now()+RATE_LIMIT_COOLDOWNS_MS[429]);
+    if(options.fetchImpl===undefined && response.status===403)
+      providerCooldownUntil.set(host,Date.now()+RATE_LIMIT_COOLDOWNS_MS[403]);
+    return response;
   }) as typeof fetch;
   if(!(now instanceof Date) || !Number.isFinite(now.getTime()))
     throw Error("ON_DEMAND_CLOCK_INVALID");
@@ -744,7 +751,7 @@ async function discoverOnDemandImpl(
   catch { name = ""; }
   const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   const approvedReliefAppname=approvedReliefWebAppname();
-  if (name) for (const category of categories) {
+  if (name) for (const category of (topics.length?categories.slice(0,1):categories)) {
     tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral,topics,country)});
     // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
     // account approval must not generate repeat 403s on every user query.
