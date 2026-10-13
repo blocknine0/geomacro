@@ -16,6 +16,17 @@ const GATE_FAMILIES = Object.freeze([
   ["low_severity", /^low severity/u],
 ]);
 
+// Deliberate non-event disposition from the existing classifier prompt:
+// relevant=false AND category=none. This changes rejection *classification*
+// only; it never turns a rejected article into an admitted candidate.
+// A contradictory relevant=true/none, unknown category or cross-domain label
+// must still fail the canonical gates in scripts/ingest-news.js.
+export function classifierExplicitlyRejectsDomain(assessment) {
+  return assessment?.relevant === false &&
+    typeof assessment?.category === "string" &&
+    assessment.category.trim().toLowerCase() === "none";
+}
+
 export function safeGateReasonCode(reason) {
   const message = String(reason ?? "");
   for (const [code, expression] of GATE_FAMILIES) {
