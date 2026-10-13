@@ -68,12 +68,14 @@ beforeEach(()=>{
       status:"DISCOVERY_DEGRADED",searched_in_parallel:true,
       categories:["geopolitics","macro","rare_earth"],country_iso3:"CHN",
       checked_at:"2026-10-11T12:00:00Z",network_attempts:3,
+      query_fingerprint_sha256:"a".repeat(64),
       reached_source_families:0,source_probes:[],
     },
     private_candidates:[],
     private_original_review_candidates:[],
     duplicate_original_headline_count:0,
     private_macro_changes:[],
+    private_verified_country_name:"China",
   });
   mocks.rights.mockResolvedValue({
     status:"NO_ANNUAL_EVIDENCE",checked_driver_count:0,
@@ -114,6 +116,7 @@ describe("production no-charge on-demand search without Coinbase configuration",
         status:"DISCOVERY_OBSERVED_NOT_YET_VERIFIED",searched_in_parallel:true,
         categories:["geopolitics","macro","rare_earth"],country_iso3:"CHN",
         checked_at:"2026-10-12T02:00:00Z",network_attempts:3,
+        query_fingerprint_sha256:"b".repeat(64),
         reached_source_families:2,source_probes:[],
       },
       private_candidates:[],
@@ -121,6 +124,7 @@ describe("production no-charge on-demand search without Coinbase configuration",
       private_original_review_candidates:[{article_identity_sha256:"a".repeat(64)}],
       duplicate_original_headline_count:0,
       private_macro_changes:[],
+    private_verified_country_name:"China",
     });
     mocks.articlePages.mockResolvedValueOnce({attempted:1,verified:1,verified_candidates:[]});
     const response=await post("live_on_demand");

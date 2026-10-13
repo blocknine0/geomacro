@@ -30,6 +30,10 @@ export type PrivateOriginalCandidate = {
   publisher_family: string;
   article_url: string;
   article_title: string;
+  // Only exact same-item original first-party feed summary or GOV.UK
+  // first-party search description. Private, bounded and never returned
+  // in public discovery, user payloads or audit logs.
+  item_scoped_summary_private?: string;
   feed_item_published_at: string | null;
   // Never promote a feed <updated> as original publication. Only an
   // allowlisted GOV.UK Atom first-party page may rescue this private lead.
@@ -147,7 +151,7 @@ const CATEGORY_TOPICS:Readonly<Record<OnDemandCategory,readonly string[]>>={
   macro:["macro_risk","sovereign_risk","fx_external_risk"],
   rare_earth:["critical_minerals"],
 };
-function matchesRequestedTopic(title:string,category:OnDemandCategory,topics:readonly string[]):boolean {
+export function matchesRequestedTopic(title:string,category:OnDemandCategory,topics:readonly string[]):boolean {
   const scoped=topics.filter(topic=>CATEGORY_TOPICS[category].includes(topic));
   return scoped.length===0 || scoped.some(topic=>TOPIC_TITLE_PATTERNS[topic]?.test(title));
 }
@@ -730,6 +734,7 @@ async function govukOriginalSearch(
     if(candidates.some(x=>x.article_identity_sha256===article_identity_sha256))continue;
     candidates.push({
       domain:def.domain,publisher_family:def.family,article_url,article_title:title,
+      item_scoped_summary_private:description,
       feed_item_published_at:null,search_index_original_page_pending:true,
       article_identity_sha256,first_party_article_url_verified:true,
       source_native_feed_publication_date_verified:false,
@@ -827,6 +832,7 @@ async function originalOfficialFeed(
       continue; // Same publisher URL in a second feed entry is one article.
     candidates.push({
       domain:def.domain,publisher_family:def.family,article_url,article_title,
+      item_scoped_summary_private:summary,
       feed_item_published_at:hasNativeDate?new Date(Date.parse(date)).toISOString():null,
       ...(undatedGovukAtom?{undated_atom_original_page_pending:true as const}:{}),
       article_identity_sha256,
@@ -925,6 +931,8 @@ async function discoverOnDemandImpl(
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
   private_macro_qualifications:PrivateMacroQualification[];
+  /** Private first-party World Bank country identity; never in public discovery. */
+  private_verified_country_name:string|null;
 }> {
   const now=options.now ?? new Date(), fetchImpl=options.fetchImpl ?? fetch;
   const topics=input.topics??[];
@@ -1106,6 +1114,7 @@ async function discoverOnDemandImpl(
     duplicate_original_headline_count:grouped.duplicate_headlines_removed,
     private_macro_changes,
     private_macro_qualifications,
+    private_verified_country_name:name||null,
   };
 }
 
@@ -1222,6 +1231,7 @@ export async function discoverOnDemandForPrivateQualification(
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
   private_macro_qualifications:PrivateMacroQualification[];
+  private_verified_country_name:string|null;
 }>{
   return discoverOnDemandImpl(input,options);
 }

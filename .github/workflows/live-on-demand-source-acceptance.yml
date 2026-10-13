@@ -9,6 +9,10 @@ on:
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
+      - "src/lib/on-demand-evidence-qualification.server.ts"
+      - "src/lib/on-demand-evidence-qualification.server.test.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
+      - "scripts/ops/phase2-production-no-funds-readback.mjs"
       - "src/lib/on-demand-private-original-review.server.test.ts"
       - "src/__tests__/on-demand-undated-atom-original-date-rescue.test.ts"
       - "scripts/lib/official-original-article-date.mjs"
@@ -18,6 +22,10 @@ on:
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
+      - "src/lib/on-demand-evidence-qualification.server.ts"
+      - "src/lib/on-demand-evidence-qualification.server.test.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
+      - "scripts/ops/phase2-production-no-funds-readback.mjs"
       - "src/lib/on-demand-provider-category-proof.test.ts"
   schedule:
     # Once per day: max 12 discovery + 4 original-page read-only calls; no B2/D1/funding.
@@ -131,6 +139,8 @@ jobs:
             "codeql_open_high_alerts":list(high.values())},separators=(",",":")))
           if high:sys.exit(4)
           PY
+      - name: Private evidence bridge regression checks
+        run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts
       - name: Real no-charge per-category provider readback
         env:
           RELIEFWEB_APPROVED_APPNAME: ""
@@ -142,6 +152,33 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: live-on-demand-pr-api-proof-${{ github.run_id }}
-          path: artifacts/on-demand-live/real-api-proof.json
+          path: |
+            artifacts/on-demand-live/real-api-proof.json
+            artifacts/on-demand-live/real-category-capability.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  # Read deployed production, not the PR preview. Never activate x402.
+  # If the marker is stale, fail closed and request the existing publication
+  # workflow; PR CI cannot itself prove the live production SHA.
+  phase2-deployed-production-readback:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Checkout PR verification script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Crosscheck deployed Phase 1 merge SHA and no-funds HTTP endpoints
+        env:
+          GEOMACRO_EXPECTED_DEPLOYED_SHA: "295c483d45536a57fbea255f6a98dae68834d5d8"
+        run: node scripts/ops/phase2-production-no-funds-readback.mjs
+      - name: Preserve safe aggregate production proof
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: phase2-production-no-funds-${{ github.run_id }}
+          path: artifacts/on-demand-live/production-phase2-read-only.json
           if-no-files-found: warn
           retention-days: 3

@@ -6,6 +6,7 @@
  * while its 429 is under investigation.
  */
 import { mkdirSync,writeFileSync } from "node:fs";
+import { qualifyRetrievedOnDemandEvidence } from "../../src/lib/on-demand-evidence-qualification.server";
 import {
   discoverOnDemandForPrivateQualification,
   verifyOnDemandOriginalArticlePages,
@@ -59,6 +60,17 @@ for(const sample of cases) {
     r.private_original_review_candidates,{
       fetchImpl,maxAgeSeconds:sample.max_age_seconds,
     });
+  const qualified=qualifyRetrievedOnDemandEvidence({
+    search:{
+      country_iso3:sample.country_iso3,categories:[sample.category],
+      topics:[sample.topic],mineral:sample.mineral??null,
+      max_age_seconds:sample.max_age_seconds,
+    },
+    discovery:r.discovery,originals:r.private_original_review_candidates,
+    verifiedCountryName:r.private_verified_country_name,
+    pageProof:verified,macroChanges:r.private_macro_changes,
+    now:new Date(r.discovery.checked_at),
+  });
   const dated=r.private_candidates
     .filter(x=>x.source_native_feed_publication_date_verified &&
       x.feed_item_published_at!==null);
@@ -67,16 +79,26 @@ for(const sample of cases) {
     x.status==="VALID_ANNUAL_CHANGE" &&
     x.latest_observation_year!==null);
   const independentOriginals=new Set([...dated,...pageVerified].map(x=>x.publisher_family));
-  const hasOriginalEvidence=dated.length>0 || pageVerified.length>0;
+  const hasOriginalEvidence=qualified.originals.length>0;
   // Macro native annual reference observations are a separately labeled
   // structural capability, never treated as original-dated news.
-  const structuralOnly=sample.category==="macro" && historicalMacro.length>0;
+  const structuralOnly=sample.category==="macro" && qualified.structural.length>0;
   const status=hasOriginalEvidence?"FIRST_PARTY_ORIGINAL_DATE_FOUND":
     structuralOnly?"ANNUAL_STRUCTURAL_ONLY":"NO_QUALIFYING_PUBLISHER_EVIDENCE";
   results.push({
     case_id:sample.id,country_iso3:sample.country_iso3,
     category:sample.category,max_age_seconds:sample.max_age_seconds,
     status,
+    qualification_disposition:qualified.disposition,
+    qualification_schema:qualified.schema,
+    private_evidence_fingerprint_sha256:qualified.evidence_fingerprint_sha256,
+    truly_qualified_original_count:qualified.originals.length,
+    claimed_independent_same_event_verified:qualified.qualified_for_same_event_signing,
+    exact_article_rights_verified:qualified.rights.original_article_rights_verified,
+    evidence_source_rights_statuses:[...new Set(qualified.originals.map(x=>x.rights_status))].sort(),
+    confidence:qualified.confidence,
+    uncertainty:qualified.uncertainty,
+    commercial_delivery_eligible:qualified.commercial_delivery_eligible,
     native_feed_published_at:dated.map(x=>x.feed_item_published_at).slice(0,4),
     original_page_published_at:pageVerified.map(x=>x.page_original_published_at).slice(0,4),
     original_publisher_families:[...independentOriginals].sort(),
@@ -115,6 +137,9 @@ console.log(JSON.stringify(proof));
 if(results.some(x=>x.attempts>12 || x.page_attempts>4 ||
   x.actual_http_calls!==x.attempts+x.page_attempts ||
   x.supabase_requests!==0 || x.b2_requests!==0 ||
-  x.payable!==false || x.signed!==false))
+  x.payable!==false || x.signed!==false ||
+  x.commercial_delivery_eligible!==false ||
+  x.claimed_independent_same_event_verified!==false ||
+  x.exact_article_rights_verified!==false))
   process.exitCode=2;
 else if(!proof.all_three_positive) process.exitCode=4;
