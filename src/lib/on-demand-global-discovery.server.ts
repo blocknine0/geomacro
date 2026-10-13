@@ -262,9 +262,18 @@ async function gdelt(
     query:q,mode:"ArtList",format:"json",maxrecords:"10",
     sort:"DateDesc",timespan:"24h",
   });
-  const body = await boundedFetch(fetchImpl,
-    "https://api.gdeltproject.org/api/v2/doc/doc?" + params,
-    "application/json", 12_000);
+  const url="https://api.gdeltproject.org/api/v2/doc/doc?" + params;
+  let body:string;
+  try {
+    body=await boundedFetch(fetchImpl,url,"application/json",12_000);
+  } catch(error) {
+    // One bounded same-provider retry for 404/5xx only. Never retry
+    // authorization (401/403), quota (429), invalid JSON, or bad timestamps.
+    // The outer twelve-request budget also applies to this extra attempt.
+    if(!(error instanceof Error) ||
+       error.message!=="ON_DEMAND_SOURCE_TRANSIENT_HTTP")throw error;
+    body=await boundedFetch(fetchImpl,url,"application/json",12_000);
+  }
   const parsed: unknown = JSON.parse(body);
   const articles = typeof parsed === "object" && parsed !== null &&
     Array.isArray((parsed as {articles?:unknown}).articles)
