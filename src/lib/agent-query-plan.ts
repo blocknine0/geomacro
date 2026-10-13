@@ -103,7 +103,8 @@ export function assertStructuralBaselinePilot(input: AgentAdaptiveQuery) {
         !input.question.replace(/\s+/g," ").trim() ||
         // Explicit pilot topic is an exact buyer contract: a request asking
         // about another domain cannot be silently billed as the selected one.
-        inferAgentQueryTopics(input.question).some(topic => topic !== input.topics[0])))) {
+        inferAgentQueryTopics(input.question).some(topic => topic !== input.topics[0]) ||
+        inferAgentQueryIntent(input.question) !== null))) {
     throw Error("STRUCTURAL_BASELINE_PILOT_SCOPE_UNSUPPORTED");
   }
 }
