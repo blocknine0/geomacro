@@ -77,6 +77,54 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     expect(JSON.stringify(report)).not.toContain("source_url");
     expect(report.real_funds_touched).toBe(false);
   });
+  it("distinguishes safe central security vs data store outage without copying private errors",async()=>{
+    const {fetchImpl}=calls([
+      {__httpStatus:503,error:{code:"CENTRAL_SECURITY_UNAVAILABLE",
+        secret_key:"NEVER_LOG_SECRET"}},
+      {__httpStatus:503,error:{code:"PREFLIGHT_GOVERNED_DATA_UNAVAILABLE",
+        source_url:"https://private.example.invalid"}},
+      {__httpStatus:422,...unavailable,availability:{
+        missing_modules:["sovereign_fiscal","macro_monetary"],
+        stale_modules:["external_fx"],ineligible_source_count:3,
+      }},
+    ]);
+    const report=await acceptEarningPilotLive({expectedSha:sha,fetchImpl});
+    expect(report.checks.slice(2)).toMatchObject([
+      {status:"PREFLIGHT_SERVER_UNAVAILABLE",
+        blocker_code:"CENTRAL_SECURITY_UNAVAILABLE"},
+      {status:"PREFLIGHT_SERVER_UNAVAILABLE",
+        blocker_code:"PREFLIGHT_GOVERNED_DATA_UNAVAILABLE"},
+      {status:"NO_PAYABLE_EVIDENCE",missing_module_count:2,
+        stale_module_count:1,ineligible_source_count:3},
+    ]);
+    expect(report.quote_ready_category_count).toBe(0);
+    expect(report.first_earning_ready).toBe(false);
+    for (const text of ["NEVER_LOG_SECRET","private.example.invalid",
+      "SOURCE_PRIVATE_DO_NOT_EXPOSE","required_source_ids","source_url"]) {
+      expect(JSON.stringify(report)).not.toContain(text);
+    }
+    expect(report.payment_header_submitted).toBe(false);
+    expect(report.real_funds_touched).toBe(false);
+  });
+  it("treats leaked issuer IDs on a 422 response as an invalid buyer boundary",async()=>{
+    const leak=calls([unavailable,{...unavailable,availability:{
+      required_source_ids:["NEVER_EXPORT_SOURCE_ID"]}},unavailable]);
+    await expect(acceptEarningPilotLive({expectedSha:sha,fetchImpl:leak.fetchImpl}))
+      .rejects.toThrow("EARNING_PILOT_PRIVATE_OR_PAYMENT_BOUNDARY_INVALID");
+  });
+  it("rejects arbitrary server-provided error codes as public diagnostics",async()=>{
+    const {fetchImpl}=calls([
+      {__httpStatus:503,error:{code:"INTERNAL_DATABASE_PASSWORD_123"}},
+      {__httpStatus:503,error:{code:"SOURCE_EXPIRED_PROVENANCE_SECRET"}},
+      unavailable,
+    ]);
+    const report=await acceptEarningPilotLive({expectedSha:sha,fetchImpl});
+    expect(report.checks.slice(2,4).map(x=>x.blocker_code))
+      .toEqual(["UNKNOWN_PREFLIGHT_BLOCKER","UNKNOWN_PREFLIGHT_BLOCKER"]);
+    expect(JSON.stringify(report)).not.toContain("INTERNAL_DATABASE_PASSWORD_123");
+    expect(JSON.stringify(report)).not.toContain("SOURCE_EXPIRED_PROVENANCE_SECRET");
+    expect(report.first_earning_ready).toBe(false);
+  });
   it("keeps all 503/429 preflights NON-payable and reports each independently",async()=>{
     const {fetchImpl}=calls([
       {__httpStatus:503},{__httpStatus:429},unavailable,

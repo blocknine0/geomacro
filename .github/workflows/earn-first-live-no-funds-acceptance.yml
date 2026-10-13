@@ -7,6 +7,16 @@ on:
       - "src/lib/agent-query-plan.ts"
       - "src/lib/agent-query-response.server.ts"
       - "src/lib/earn-first-structural-offers.server.ts"
+      # The security classifier for unpaid POST and both fallback module
+      # gateways materially determine buyer eligibility. Re-test exact-main
+      # no-funds behavior whenever they change, not only when the public
+      # availability route source is edited.
+      - "src/lib/central-security.server.ts"
+      - "src/lib/agent-query-deliverability.server.ts"
+      - "src/lib/structural-context.server.ts"
+      - "src/lib/agent-query-world-bank-modules.server.ts"
+      - "src/lib/agent-query-critical-minerals.server.ts"
+      - "src/lib/coinbase-x402.server.ts"
       - "src/routes/api.v1.intelligence.availability.ts"
       - "scripts/agentic/verify-earn-first-live-no-funds.mjs"
       - ".github/workflows/earn-first-live-no-funds-acceptance.yml"
@@ -18,6 +28,12 @@ on:
       - "src/routes/api.v1.intelligence.availability.ts"
       - "scripts/agentic/verify-earn-first-live-no-funds.mjs"
       - "src/__tests__/earn-first-live-no-funds-acceptance.test.ts"
+      - "src/lib/central-security.server.ts"
+      - "src/lib/agent-query-deliverability.server.ts"
+      - "src/lib/structural-context.server.ts"
+      - "src/lib/agent-query-world-bank-modules.server.ts"
+      - "src/lib/agent-query-critical-minerals.server.ts"
+      - "src/lib/coinbase-x402.server.ts"
       - ".github/workflows/earn-first-live-no-funds-acceptance.yml"
   workflow_dispatch: {}
 
