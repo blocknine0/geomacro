@@ -19,6 +19,7 @@ describe("U.S. State Dept original advisory RSS geopolitics admission",()=>{
   it("accepts one first-party native-original-date travel advisory without risk score",()=>{
     const result=parseFirstPartyFeed(xml("Qatar - Level 3: Reconsider Travel"),source,now);
     expect(result.dated).toHaveLength(1);
+    expect(parseFirstPartyFeed(xml("Qatar Travel Advisory"),source,now).dated).toHaveLength(1);
     const findings=deriveStatelessSignals(result.dated,now);
     expect(findings).toHaveLength(1);
     expect(findings[0]).toMatchObject({
