@@ -34,6 +34,24 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_mod", category: "geopolitics", media: "atom",
     url: "https://www.gov.uk/government/organisations/ministry-of-defence.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  // Separate original UK sanctions issuers. Same first-party Content API
+  // verifies first_published_at for undated GOV.UK Atom entries; never use
+  // Atom updated/HTTP/reader clock as an original-event timestamp.
+  { id: "uk_ofsi_sanctions", category: "geopolitics", media: "atom",
+    url: "https://www.gov.uk/government/organisations/office-of-financial-sanctions-implementation.atom",
+    allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  { id: "uk_otsi_trade_sanctions", category: "geopolitics", media: "atom",
+    url: "https://www.gov.uk/government/organisations/office-of-trade-sanctions-implementation.atom",
+    allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  // UN News subject/region publisher feeds complement (do not independently
+  // corroborate) the existing all-news feed. Stable article fingerprinting
+  // collapses one UN release repeated across several UN feed variants.
+  { id: "un_news_security", category: "geopolitics", media: "rss",
+    url: "https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml",
+    allowedHosts: ["news.un.org"], credit: null },
+  { id: "un_news_africa", category: "geopolitics", media: "rss",
+    url: "https://news.un.org/feed/subscribe/en/news/region/africa/feed/rss.xml",
+    allowedHosts: ["news.un.org"], credit: null },
   { id: "uk_home", category: "geopolitics", media: "atom",
     url: "https://www.gov.uk/government/organisations/home-office.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
