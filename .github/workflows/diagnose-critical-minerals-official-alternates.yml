@@ -63,3 +63,40 @@ jobs:
           echo "MINERAL_ALTERNATIVE_SUMMARY html_reachable=$html_ok tested=${#endpoints[@]}"
           # Discovery only: HTTP 200 does not establish parsed first-original
           # dates, 30-day recency, rights or derived D1 publication.
+
+      - name: Diagnose structured first-publication shape of reachable government news index
+        shell: bash
+        run: |
+          set -euo pipefail
+          page="$(mktemp)"
+          trap 'rm -f "$page"' EXIT
+          code="$(curl --http1.1 --max-time 10 --connect-timeout 4 \
+            --proto '=https' --silent --output "$page" \
+            --max-filesize 524288 --write-out '%{http_code}' \
+            'https://www.ga.gov.au/news' 2>/dev/null || true)"
+          if [[ "$code" != "200" ]]; then
+            echo "MINERAL_INDEX_METADATA_CHECK reachable=false"
+            exit 0
+          fi
+          python3 - "$page" <<'PY'
+          import re,sys
+          html=open(sys.argv[1],encoding="utf-8",errors="replace").read()
+          # Aggregate lexical/structural facts only. Never emit raw HTML,
+          # publisher article titles, URLs, IDs or exact date strings.
+          heads=list(re.finditer(r"<h[234]\\b[^>]*>[\\s\\S]{0,1500}?</h[234]>",html,re.I))
+          anchors=list(re.finditer(r"<a\\b[^>]*href\\s*=\\s*['\"][^'\"]{1,600}['\"]",html,re.I))
+          dates=list(re.finditer(r"\\b(?:[12]?[0-9]|3[01])\\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\\s+20[0-9]{2}\\b",html,re.I))
+          times=list(re.finditer(r"<time\\b[^>]*datetime\\s*=",html,re.I))
+          jsonlds=list(re.finditer(r"application/ld\\+json",html,re.I))
+          newsrefs=list(re.finditer(r"""href\\s*=\\s*['\"](?:https://www\\.ga\\.gov\\.au)?/news/[a-z0-9%_!.-]{6,200}['\"]""",html,re.I))
+          before=0;after=0
+          for h in heads[:30]:
+            a=max(0,h.start()-1100);b=min(len(html),h.end()+1100)
+            if any(a<=d.start()<h.start() for d in dates):before+=1
+            if any(h.end()<=d.start()<b for d in dates):after+=1
+          print("MINERAL_INDEX_METADATA_COUNTS",
+            f"heads={len(heads)} links={len(anchors)} news_links={len(newsrefs)}",
+            f"day_strings={len(dates)} time_tags={len(times)} ldjson={len(jsonlds)}",
+            f"head_date_before={before} head_date_after={after}",
+            f"bounded_html={len(html)<=524288}")
+          PY
