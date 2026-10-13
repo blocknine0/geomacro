@@ -20,6 +20,9 @@ describe("U.S. State Dept original advisory RSS geopolitics admission",()=>{
     const result=parseFirstPartyFeed(xml("Qatar - Level 3: Reconsider Travel"),source,now);
     expect(result.dated).toHaveLength(1);
     expect(parseFirstPartyFeed(xml("Qatar Travel Advisory"),source,now).dated).toHaveLength(1);
+    const currentOfficial = "https://travel.state.gov/content/tsgaem/us/en/home/international-travel/travel-advisories/qatar.html";
+    expect(parseFirstPartyFeed(xml("Qatar - Level 3: Reconsider Travel",currentOfficial),source,now).dated)
+      .toHaveLength(1);
     const findings=deriveStatelessSignals(result.dated,now);
     expect(findings).toHaveLength(1);
     expect(findings[0]).toMatchObject({
@@ -33,6 +36,9 @@ describe("U.S. State Dept original advisory RSS geopolitics admission",()=>{
     )).toBeNull();
     expect(acceptedOriginalArticleLink(
       "https://travel.state.gov/content/travel/en/news.html",source
+    )).toBeNull();
+    expect(acceptedOriginalArticleLink(
+      "https://travel.state.gov/content/tsgaem/us/en/home/passports/qatar.html",source
     )).toBeNull();
     expect(parseFirstPartyFeed(xml("Unrelated country weather"),source,now).dated).toHaveLength(0);
     expect(parseFirstPartyFeed(xml("Qatar - Level 9: Fake advisory"),source,now).dated).toHaveLength(0);
