@@ -10,7 +10,6 @@
 import {select30MinPublishers} from "../ops/probe-30min-three-domain-pulse.mjs";
 import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
 import {privateOriginalMatchesPulse} from "./private-novel-pulse-match.mjs";
-import {fetchOriginalPublisherWithRecovery} from "./official-native-network-retry.mjs";
 
 const MAX_BYTES=192*1024;
 const MAX_ENTRIES=40;
@@ -158,12 +157,17 @@ export async function fetchPulseRotatedPrivateOriginals({
   // Two at most; no search discovery and no fanout over 195 countries.
   const results=await Promise.all(sources.map(async source=>{
     try{
-      const response=await fetchOriginalPublisherWithRecovery(source.url,{
-        fetchImpl,headers:{
+      // Single 6s try per immutable publisher: no retry on 403/429, no
+      // alternate proxy, no follow-redirect behavior, and no extra network
+      // on a quiet D1 pulse. This is stricter than legacy RSS retry logic.
+      const response=await fetchImpl(source.url,{
+        method:"GET",redirect:"error",cache:"no-store",
+        headers:{
           accept:source.media==="atom"
             ?"application/atom+xml, application/xml;q=0.9, text/xml;q=0.8"
             :"application/rss+xml, application/xml;q=0.9, text/xml;q=0.8",
-        },timeoutMs:6000,
+        },
+        signal:AbortSignal.timeout(6000),
       });
       const xml=await boundedXml(response);
       return xml?parsePulseRotatedOriginals(xml,source,{refs,expectedClocks,now}):[];
