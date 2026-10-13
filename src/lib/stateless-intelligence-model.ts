@@ -150,9 +150,14 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
       if (!legacyOriginal.test(link.pathname) && !statisticalOriginal.test(link.pathname)) return null;
     }
     if (source.id.startsWith("un_news") && !/^\/en\/story\/\d{4}\/\d{1,2}\//u.test(link.pathname)) return null;
-    if (source.id === "us_state_advisories" &&
-        !/^\/content\/travel\/en\/traveladvisories\/traveladvisories\/[a-z0-9-]+(?:\.html)?$/iu.test(link.pathname))
-      return null;
+    if (source.id === "us_state_advisories") {
+      const classic = /^\/content\/travel\/en\/traveladvisories\/traveladvisories\/[a-z0-9-]+(?:\.html)?$/iu;
+      // Current State Department RSS uses this separate first-party AEM
+      // travel subtree. No third-party hosts, queries or unrelated services.
+      const current = /^\/content\/tsgaem\/us\/en\/home\/international-travel\/(?:[a-z0-9-]+\/){0,6}[a-z0-9-]+(?:\.html)?$/iu;
+      if (!classic.test(link.pathname) && !current.test(link.pathname))
+        return null;
+    }
     link.search = "";
     return link.href;
   } catch { return null; }
