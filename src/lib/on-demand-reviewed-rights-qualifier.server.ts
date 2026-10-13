@@ -47,7 +47,7 @@ export type TrustedReviewBundle = Readonly<{
 
 /** The publisher organization and its rights row must be pinned together;
  * a caller-controlled source_id must not borrow another agency's licence. */
-const ACCEPTED_SOURCE_IDS:Readonly<Record<string,readonly string[]>>={
+export const ACCEPTED_SOURCE_IDS:Readonly<Record<string,readonly string[]>>={
   un_news:["un_news","un_news_security_original_rss_review"],
   uk_fcdo:["uk_fcdo","uk_fcdo_original_foreign_policy_atom_review"],
   un_geneva:["un_geneva"],
