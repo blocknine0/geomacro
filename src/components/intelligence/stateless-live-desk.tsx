@@ -3,6 +3,7 @@ import { AlertCircle, Clock3, RefreshCw } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
+import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
 import type { StatelessCategory, StatelessIntelligenceSignal } from "@/lib/stateless-intelligence-model";
 
@@ -119,7 +120,11 @@ export function StatelessLiveDesk({ initial, initialJournal = [] }: {
       try {
         const results = await Promise.allSettled(categories.map(async category => ({
           category,
-          value: await getStatelessIntelligence({ data: { category } }),
+          value: await withPublicRuntimeTimeout(
+            getStatelessIntelligence({ data: { category } }),
+            9_000,
+            "Intelligence publisher check timed out.",
+          ),
         })));
         if (!alive) return;
         const nextFeeds: FeedState = {};
@@ -184,7 +189,11 @@ export function StatelessLiveDesk({ initial, initialJournal = [] }: {
         // The legacy server function is only a secondary fallback; preserve
         // previously rendered SSR or in-tab cards if BOTH paths fail.
         try {
-          const result = await getWebsiteDerivedNews();
+          const result = await withPublicRuntimeTimeout(
+            getWebsiteDerivedNews(),
+            9_000,
+            "Intelligence journal fallback timed out.",
+          );
           if (alive) { setJournal(result.signals); setJournalUnavailable(false); }
         } catch { if (alive) setJournalUnavailable(true); }
       }
