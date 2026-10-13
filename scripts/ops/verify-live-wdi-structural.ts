@@ -6,6 +6,8 @@
 import { createHash } from "node:crypto";
 import { mkdirSync,writeFileSync } from "node:fs";
 import { readPinnedWdiAnnualStructuralPair } from "../../src/lib/on-demand-global-discovery.server";
+import { preparePinnedChinaWdiStructuralNoFunds } from "../../src/lib/wdi-attributed-structural-product.server";
+import { buildAgentQueryPlan } from "../../src/lib/agent-query-plan";
 const checked_at=new Date().toISOString();
 const report:Record<string,unknown>={
   schema:"geomacro.phase2-step4-real-wdi-no-funds.v1",
@@ -28,6 +30,24 @@ try {
   report.observation_fingerprint_sha256=p?.source_observation_sha256??null;
   report.source2_facts_verified=r.source_api_id==="2" && Boolean(p) &&
     typeof r.lastupdated==="string" && p?.latest_observation_year===p?.previous_observation_year+1;
+  const plan=buildAgentQueryPlan({
+    question:"China CPI inflation annual structural baseline",
+    subjects:[{type:"country",country_iso3:"CHN"}],
+    topics:["macro_risk"],delivery_tier:"structural_baseline",
+    fulfillment_mode:"published_only",max_age_seconds:400*86400,
+    detail:"compact",
+  });
+  const candidate=await preparePinnedChinaWdiStructuralNoFunds({
+    query_plan_hash:plan.query_plan_hash,max_age_seconds:400*86400,
+  },{now:new Date(checked_at),readPair:async()=>r});
+  report.private_product_prepared=candidate.status==="READY_FOR_PRODUCT_INTEGRATION";
+  report.rights_status=candidate.status==="BLOCKED"
+    ?candidate.code:"EXACT_WDI_RIGHTS_CERTIFIED";
+  report.product_payload_sha256=candidate.status==="READY_FOR_PRODUCT_INTEGRATION"
+    ?candidate.product.integrity.payload_hash_sha256:null;
+  report.rights_receipt_sha256=candidate.status==="READY_FOR_PRODUCT_INTEGRATION"
+    ?candidate.rights_receipt_sha256:null;
+  report.customer_product_signature_claimed=false;
 } catch(e) {
   report.source2_facts_verified=false;
   report.error=e instanceof Error?e.message:"OFFICIAL_WDI_FETCH_UNAVAILABLE";
