@@ -15,7 +15,7 @@ const SPECS = [
   {
     id: "cisa_kev", category: "geopolitics",
     url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
-    format: "head", maxBytes: 0, nature: "security-advisory-not-event-proof",
+    format: "json", maxBytes: 3_000_000, nature: "security-advisory-not-event-proof",
   },
   {
     id: "bls", category: "macro",
@@ -86,7 +86,10 @@ export function validateFreeLineupProbePayload(spec, payload) {
   try { data = JSON.parse(String(payload)); }
   catch { return { valid: false, format_checked: false, kind: "INVALID_JSON",
     native_publisher_original_date_verified: false }; }
-  const match = spec.id === "usgs_earthquakes"
+  const match = spec.id === "cisa_kev"
+    ? Array.isArray(data?.vulnerabilities) &&
+      typeof data?.catalogVersion === "string"
+    : spec.id === "usgs_earthquakes"
     ? data?.type === "FeatureCollection" && Array.isArray(data.features)
     : spec.id === "bls"
       ? data?.status === "REQUEST_SUCCEEDED" && Array.isArray(data?.Results?.series)
