@@ -86,7 +86,6 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
       {__httpStatus:422,...unavailable,availability:{
         missing_modules:["sovereign_fiscal","macro_monetary"],
         stale_modules:["external_fx"],ineligible_source_count:3,
-        required_source_ids:["SOURCE_PRIVATE_DO_NOT_EXPOSE"],
       }},
     ]);
     const report=await acceptEarningPilotLive({expectedSha:sha,fetchImpl});
@@ -106,6 +105,12 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     }
     expect(report.payment_header_submitted).toBe(false);
     expect(report.real_funds_touched).toBe(false);
+  });
+  it("treats leaked issuer IDs on a 422 response as an invalid buyer boundary",async()=>{
+    const leak=calls([unavailable,{...unavailable,availability:{
+      required_source_ids:["NEVER_EXPORT_SOURCE_ID"]}},unavailable]);
+    await expect(acceptEarningPilotLive({expectedSha:sha,fetchImpl:leak.fetchImpl}))
+      .rejects.toThrow("EARNING_PILOT_PRIVATE_OR_PAYMENT_BOUNDARY_INVALID");
   });
   it("rejects arbitrary server-provided error codes as public diagnostics",async()=>{
     const {fetchImpl}=calls([
