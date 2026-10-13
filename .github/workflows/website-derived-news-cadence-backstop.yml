@@ -1,0 +1,127 @@
+name: Website Derived News Cadence Backstop
+
+# Recovery window offset from canonical :07/:37 newsroom collection.
+# GitHub schedules are best-effort, not an exact 30-minute SLA.
+# Only publish if the *last genuinely completed successful D1 writer* is
+# stale, never based on a recently visited site or an original news date.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "22,52 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/website-derived-news-cadence-backstop.yml"
+      - "scripts/ops/check-website-derived-news-cadence.mjs"
+      - "scripts/lib/website-derived-news-failover.mjs"
+      - "scripts/tests/website-derived-news-failover.test.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/website-derived-news-cadence-backstop.yml"
+      - "scripts/ops/check-website-derived-news-cadence.mjs"
+      - "scripts/lib/website-derived-news-failover.mjs"
+      - "scripts/tests/website-derived-news-failover.test.mjs"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: geomacro-derived-news-cadence-backstop
+  cancel-in-progress: false
+
+jobs:
+  cadence-contract:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Verify privacy-safe missed-tick recovery rules
+        run: |
+          node --check scripts/lib/website-derived-news-failover.mjs
+          node --check scripts/ops/check-website-derived-news-cadence.mjs
+          node --test scripts/tests/website-derived-news-failover.test.mjs
+
+  catch-up-derived-only:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Read latest successful actual primary D1 publication clock
+        id: decide
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/ops/check-website-derived-news-cadence.mjs
+      - name: Install pinned Bun only when recovery is necessary
+        if: steps.decide.outputs.should_run == 'true'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Publish bounded 3-domain derived news to existing D1 (idempotent)
+        if: steps.decide.outputs.should_run == 'true'
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || {
+            echo "::error::D1 derived-news recovery authorization missing"
+            exit 2
+          }
+          bun scripts/ops/publish-website-derived-news.ts
+      - name: Independently prove private-source-free D1 readback after recovery
+        if: steps.decide.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          trap 'rm -f "$body"' EXIT
+          code="$(curl -sS --max-time 12 --proto '=https' \
+            -o "$body" -w '%{http_code}' \
+            https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news || true)"
+          test "$code" = "200" || {
+            echo "::error::DERIVED_NEWS_BACKSTOP_D1_READBACK_UNAVAILABLE"
+            exit 3
+          }
+          node - "$body" <<'NODE'
+          const fs=require("node:fs");
+          const body=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
+          if(body.ok!==true || body.schema!=="geomacro.website-derived-news-feed.v1" ||
+             body.original_release_delay_minutes!==15 ||
+             body.delivery_scope!=="free_website_only" ||
+             !Array.isArray(body.signals) || body.signals.length>250 ||
+             body.signals.some(s=>s.severity!==null ||
+               s.same_event_corrob_verified!==false ||
+               /https?:\/\/|www\./iu.test(JSON.stringify(s))))
+            throw Error("DERIVED_NEWS_BACKSTOP_PUBLIC_CONTRACT_INVALID");
+          const now=Date.now();
+          const counts=Object.fromEntries(["geopolitics","macro","rare_earth"].map(c=>[
+            c,{
+              stored_30d:body.signals.filter(s=>s.category===c).length,
+              original_last_24h:body.signals.filter(s=>s.category===c &&
+                Date.parse(s.published_at)>=now-86_400_000).length,
+            },
+          ]));
+          console.log(JSON.stringify({
+            schema:"geomacro.website-derived-news-backstop-readback.v1",
+            verified:true,derived_rows:body.signals.length,domains:counts,
+            original_release_delay_minutes:15,source_content_logged:false,
+            supabase_dependency:false,payments_performed:0,
+          }));
+          NODE
+      - name: Print explicit successful no-write decision
+        if: steps.decide.outputs.should_run != 'true'
+        run: echo "NEWS_BACKSTOP_SKIPPED_PRIMARY_PUBLISHER_CURRENT"
