@@ -150,6 +150,9 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
       if (!legacyOriginal.test(link.pathname) && !statisticalOriginal.test(link.pathname)) return null;
     }
     if (source.id.startsWith("un_news") && !/^\/en\/story\/\d{4}\/\d{1,2}\//u.test(link.pathname)) return null;
+    if (source.id === "us_state_advisories" &&
+        !/^\/content\/travel\/en\/traveladvisories\/traveladvisories\/[a-z0-9-]+(?:\.html)?$/iu.test(link.pathname))
+      return null;
     link.search = "";
     return link.href;
   } catch { return null; }
@@ -195,6 +198,14 @@ export function selectOfficialTopic(title: string, category: StatelessCategory) 
 const STATCAN_FEED_IDS = new Set([
   "statcan_prices", "statcan_accounts", "statcan_trade", "statcan_labour",
 ]);
+// U.S. State Dept publishes country-specific Travel Advisories as RSS.
+// Treat the native RSS pubDate as the original publisher release clock,
+// not a score or independent evidence of conflict.
+const US_STATE_ADVISORY_TOPIC = {
+  test: /./,
+  name: "official travel advisory",
+  implication: "An original-dated government travel advisory can change travel and operational planning context; level does not establish active conflict or signed country risk.",
+};
 const STATCAN_DAILY_TOPIC = {
   test: /./,
   name: "official economic statistics",
@@ -203,9 +214,13 @@ const STATCAN_DAILY_TOPIC = {
 function topicForOriginal(
   title: string, category: StatelessCategory, sourceId: string, dayVerified: boolean,
 ) {
+  const travelAdvisory = category === "geopolitics" &&
+    sourceId === "us_state_advisories" &&
+    /^[A-Za-z][A-Za-z .'-]{2,100}\s+-\s+Level [1-4]:\s+.{8,160}$/u.test(title);
   return selectOfficialTopic(title, category) ??
-    (category === "macro" && dayVerified && STATCAN_FEED_IDS.has(sourceId)
-      ? STATCAN_DAILY_TOPIC : null);
+    (travelAdvisory ? US_STATE_ADVISORY_TOPIC :
+      category === "macro" && dayVerified && STATCAN_FEED_IDS.has(sourceId)
+        ? STATCAN_DAILY_TOPIC : null);
 }
 
 export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, now = Date.now()): {
