@@ -102,11 +102,11 @@ describe("#2041 publication-unknown data no longer vanishes before discovery",()
       loadRows:async()=>db,
     });
     const inputs=[valid,feed(entry(url(60))+entry(url(1)))];
-    // Macro now has 3 issuing institutions, of which two are sampled each
-    // slot. Pick adjacent slots sharing StatCan so the same D1 history is
-    // reconciled, rather than silently testing an unpolled issuer.
+    // Macro now rotates four approved issuers, two per window.
+    // Choose the [Fed, StatCan] then [StatCan, ECB] adjacent windows
+    // so both observations actually include the same StatCan origin.
     const baseSlot=Math.floor(now.getTime()/(30*60000));
-    const firstAt=new Date(now.getTime()+((3-baseSlot%3)%3)*30*60000);
+    const firstAt=new Date(now.getTime()+((4-baseSlot%4)%4)*30*60000);
     for(let idx=0;idx<2;idx++){
       const at=new Date(firstAt.getTime()+idx*30*60000);
       const xs=getObs(inputs[idx],at);
