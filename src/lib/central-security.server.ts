@@ -154,6 +154,18 @@ export function classifyCentralSecurityRoute(
   const pathname = normalizedPathname(pathnameInput);
   const method = String(methodInput || "GET").toUpperCase();
 
+  // These three category GETs are read-only discovery/official-observation
+  // surfaces. Public abuse controls still apply, including an HMAC client
+  // fingerprint and local burst guard. POST / payment-signature methods remain
+  // on the strict distributed/fail-closed PAYMENT path without exceptions.
+  if (method === "GET" && [
+    "/api/v1/intelligence/geopolitics",
+    "/api/v1/intelligence/macro-fx",
+    "/api/v1/intelligence/critical-minerals",
+  ].includes(pathname)) {
+    return "public_api";
+  }
+
   if (
     pathname.startsWith("/api/x402") ||
     pathname === "/api/v1/intelligence/query" ||

@@ -2,6 +2,7 @@ import { buildAgentQueryPlan, inferAgentQueryTopics, type AgentQueryTopic } from
 import { mainnetIntelligenceHandlers } from "./mainnet-intelligence-endpoint.server";
 import { publicIntelligenceSourceCoverage, type CommercialIntelligenceCategory } from "./public-intelligence-source-coverage";
 import { categoryOriginalSourcePulse } from "./current-30min-original-source-pulse.server";
+import { readCategoryLiveObservation } from "./category-live-observation.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const CANONICAL_PATH = "/api/v1/intelligence/query";
@@ -114,6 +115,40 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
   return {
     OPTIONS: async () => mainnetIntelligenceHandlers.OPTIONS(),
     GET: async ({ request }: { request: Request }) => {
+      // Explicit no-charge original-release mode, independent from Coinbase
+      // mainnet configuration. The default GET continues to describe x402
+      // pricing/discovery, and all POST requests retain canonical binding.
+      if (new URL(request.url).searchParams.get("view") === "latest") {
+        if (!config.category || !Object.prototype.hasOwnProperty.call({
+          geopolitics: true, "macro-fx": true, "critical-minerals": true,
+        }, config.category)) return errorResponse("CATEGORY_LIVE_VIEW_NOT_AVAILABLE", 404);
+        try {
+          const observation = await readCategoryLiveObservation(
+            config.category as CommercialIntelligenceCategory,
+          );
+          return Response.json(observation, {
+            status: 200,
+            headers: {
+              "Cache-Control": "no-store",
+              "X-Content-Type-Options": "nosniff",
+              "Access-Control-Allow-Origin": "*",
+            },
+          });
+        } catch {
+          return Response.json({
+            ok: false,
+            category: config.category,
+            error: { code: "CATEGORY_OFFICIAL_SOURCE_RETRIEVAL_UNAVAILABLE" },
+            chargeable: false,
+            x402_payment_required: false,
+            signed_gro_generated: false,
+          }, { status: 503, headers: {
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Access-Control-Allow-Origin": "*",
+          } });
+        }
+      }
       const response = await mainnetIntelligenceHandlers.GET({ request: canonicalGetRequest(request) });
       // Keep configuration failures and the actual payment environment intact.
       // Discovery describes this fixed scope; it is not evidence of fresh data.
