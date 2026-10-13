@@ -59,6 +59,11 @@ describe("Phase 2 real-retrieval -> governed private evidence seam",()=>{
     const first=await qualifyPrivateOnDemandEvidence(q,{readRights:async()=>[rights("uk_fcdo_original_foreign_policy_atom_review")]});
     const second=await qualifyPrivateOnDemandEvidence(q,{readRights:async()=>[rights("uk_fcdo_original_foreign_policy_atom_review")]});
     expect(first.exact_evidence_sha256).toBe(second.exact_evidence_sha256);
+    const rightsUnavailable=await qualifyPrivateOnDemandEvidence(q,{
+      readRights:async()=>null,
+    });
+    expect(rightsUnavailable.exact_evidence_sha256).toBe(first.exact_evidence_sha256);
+    expect(rightsUnavailable.commercial_derived_rights_verified).toBe(false);
     expect(first.distinct_original_articles).toBe(1);
     expect(first.duplicate_announcements_discarded).toBe(1);
     expect(first.disposition).toBe("SOURCE_RIGHTS_VERIFIED_REVIEW_PENDING");
@@ -147,7 +152,7 @@ describe("Phase 2 real-retrieval -> governed private evidence seam",()=>{
         annual_macro_changes:[annual]}),{readRights:async()=>[]});
     expect(pkg.annual_structural_observations).toBe(1);
     expect(pkg.distinct_original_articles).toBe(0);
-    expect(pkg.disposition).toBe("INSUFFICIENT_EVIDENCE");
+    expect(pkg.disposition).toBe("NO_CURRENT_EVIDENCE");
     expect(pkg.x402_payment_authorized).toBe(false);
   });
 });
