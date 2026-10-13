@@ -10,6 +10,12 @@ scoring, x402 signing or the canonical payment-protected POST.
 | /api/v1/intelligence/macro-fx?view=open-data | US Treasury interest-rate reference month + World Bank WDI annual GDP period |
 | /api/v1/intelligence/critical-minerals?view=open-data | USAspending contract award search, qualified by literal mineral terms in award description and original obligation date |
 
+**Combined view:** each of the same three paths also accepts `?view=combined`, which
+returns `original_release_observations` and `structured_open_data` in separate
+namespaces with different clocks, source-class availability and no payment. This
+is not one flattened or falsely corroborated feed. `?view=latest` remains
+unchanged, and both classes can be separately requested.
+
 Every upstream is a pinned HTTPS host and path, no user-provided URL,
 no redirect, 5–6s timeout, bounded JSON and 2-minute in-process cache.
 USAspending's **upstream read-only POST search** has nothing to do with
@@ -47,3 +53,9 @@ denials and rate limits stay unavailable rather than synthetic success.
 GitHub main and the linked Lovable repository must sync. The website
 must publish the matching main SHA before these GETs are truly live.
 CI green or GitHub mirror sync is not proof of public deployment.
+
+The GitHub `three-category-combined-open-data.yml` acceptance requires exact
+published SHA before issuing three `GET ?view=combined` requests. Each response
+must keep original-release and reference-period evidence distinct; zero
+readable source classes is a 503 failure. Source family catalog coverage
+is distinct from observed response availability.
