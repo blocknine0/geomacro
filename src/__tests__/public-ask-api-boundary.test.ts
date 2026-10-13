@@ -38,4 +38,18 @@ describe("Ask Geomacro public API boundary", () => {
     expect(core).toContain("checkAskRateLimit(clientKey)");
     expect(core).toContain("toCommercialAskBrief");
   });
+
+  it("adds bounded untrusted follow-up context without replacing the proven GET transport", () => {
+    const workspace = read("src/components/ask/ask-workspace.tsx");
+    const api = read("server/api/public-ask.get.ts");
+    const adapter = read("src/lib/hybrid-agent-chat.server.ts");
+
+    expect(api).toContain('const PREVIOUS_QUESTION_HEADER = "x-geomacro-previous-question"');
+    expect(api).toContain("executeHybridChatTurn(");
+    expect(api).toContain("executeAskGeomacro({ question }, clientKey(event))");
+    expect(api).not.toContain("readRawBody");
+    expect(api).not.toContain("searchParams");
+    expect(adapter).toContain("parseAskGeomacroInput({ question: parsed.question })");
+    expect(adapter).toContain("executeAskGeomacro({ question: resolved.question }, clientKey)");
+  });
 });

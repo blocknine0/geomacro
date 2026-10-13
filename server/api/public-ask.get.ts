@@ -12,8 +12,10 @@ import {
   AskGeomacroRateLimitError,
   executeAskGeomacro,
 } from "../../src/lib/ask-geomacro-core.server";
+import { executeHybridChatTurn } from "../../src/lib/hybrid-agent-chat.server";
 
 const QUESTION_HEADER = "x-geomacro-question";
+const PREVIOUS_QUESTION_HEADER = "x-geomacro-previous-question";
 const DEFAULT_ALLOWED_ORIGINS = new Set([
   "geomacro.live",
   "www.geomacro.live",
@@ -98,8 +100,25 @@ export default defineEventHandler(async (event) => {
   try {
     assertBrowserOrigin(event);
     const question = getRequestHeader(event, QUESTION_HEADER) ?? "";
-    const data = await executeAskGeomacro({ question }, clientKey(event));
-    return { ok: true, data } as const;
+    const previousQuestion = getRequestHeader(event, PREVIOUS_QUESTION_HEADER);
+    // Existing one-turn requests remain byte-for-byte on their proven path.
+    if (!previousQuestion) {
+      const data = await executeAskGeomacro({ question }, clientKey(event));
+      return { ok: true, data } as const;
+    }
+    // The optional context is untrusted and bounded before use by the adapter.
+    const result = await executeHybridChatTurn(
+      { question, history: [{ role: "user", content: previousQuestion }] },
+      clientKey(event),
+    );
+    return {
+      ok: true,
+      data: result.answer,
+      context: {
+        mode: result.mode,
+        resolved_question: result.resolved_question,
+      },
+    } as const;
   } catch (error) {
     if (error instanceof AskGeomacroRateLimitError) {
       setResponseStatus(event, 429);
@@ -110,6 +129,16 @@ export default defineEventHandler(async (event) => {
     if (error instanceof Error && error.message === "ASK_ORIGIN_FORBIDDEN") {
       setResponseStatus(event, 403);
       return errorPayload("ASK_FORBIDDEN", "Request origin is not allowed.");
+    }
+
+    if (error instanceof Error && error.message === "AMBIGUOUS_FOLLOW_UP") {
+      setResponseStatus(event, 422);
+      return errorPayload("ASK_CLARIFY_FOLLOW_UP", "Please ask a complete risk question or specify one risk topic and location.");
+    }
+
+    if (error instanceof Error && ["INVALID_HISTORY", "INVALID_QUESTION", "QUESTION_TOO_LONG"].includes(error.message)) {
+      setResponseStatus(event, 400);
+      return errorPayload("ASK_INVALID_CONTEXT", "Invalid or oversized conversation context.");
     }
 
     if (error instanceof Error && error.name === "ZodError") {
