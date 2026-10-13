@@ -9,6 +9,10 @@ on:
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
+      - "src/lib/wdi-attributed-structural-product.server.ts"
+      - "src/lib/wdi-attributed-structural-product.server.test.ts"
+      - "src/lib/on-demand-private-macro-rights.server.ts"
+      - "scripts/ops/verify-live-wdi-structural.ts"
       - "src/lib/on-demand-evidence-qualification.server.ts"
       - "src/lib/on-demand-evidence-qualification.server.test.ts"
       - "src/lib/mainnet-intelligence-endpoint.server.ts"
@@ -22,6 +26,10 @@ on:
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
+      - "src/lib/wdi-attributed-structural-product.server.ts"
+      - "src/lib/wdi-attributed-structural-product.server.test.ts"
+      - "src/lib/on-demand-private-macro-rights.server.ts"
+      - "scripts/ops/verify-live-wdi-structural.ts"
       - "src/lib/on-demand-evidence-qualification.server.ts"
       - "src/lib/on-demand-evidence-qualification.server.test.ts"
       - "src/lib/mainnet-intelligence-endpoint.server.ts"
@@ -66,6 +74,7 @@ jobs:
           set -euo pipefail
           bun scripts/ops/verify-live-on-demand-capabilities.ts
           bun scripts/ops/verify-live-on-demand-real-apis.ts
+          bun scripts/ops/verify-live-wdi-structural.ts
       - name: Keep redacted no-funds publisher acceptance
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -74,6 +83,7 @@ jobs:
           path: |
             artifacts/on-demand-live/real-api-proof.json
             artifacts/on-demand-live/real-category-capability.json
+            artifacts/on-demand-live/step4-real-wdi-no-funds.json
           if-no-files-found: warn
           retention-days: 3
 
@@ -140,7 +150,7 @@ jobs:
           if high:sys.exit(4)
           PY
       - name: Private evidence bridge regression checks
-        run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts
+        run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts src/lib/wdi-attributed-structural-product.server.test.ts
       - name: Real no-charge per-category provider readback
         env:
           RELIEFWEB_APPROVED_APPNAME: ""
@@ -170,9 +180,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Crosscheck deployed Phase 1 merge SHA and no-funds HTTP endpoints
+      - name: Crosscheck deployed Phase 2 merge SHA and no-funds HTTP endpoints
         env:
-          GEOMACRO_EXPECTED_DEPLOYED_SHA: "295c483d45536a57fbea255f6a98dae68834d5d8"
+          GEOMACRO_EXPECTED_DEPLOYED_SHA: "a7fb150c6b78c32a44a33c49b72a43e09c90c242"
         run: node scripts/ops/phase2-production-no-funds-readback.mjs
       - name: Preserve safe aggregate production proof
         if: always()
