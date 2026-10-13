@@ -52,7 +52,12 @@ try{
     b?.canonical_repository==="blocknine0/geomacro" &&
     b?.production_activation_performed===false &&
     report.deployed_sha===expected;
-  if(!report.exact_sha_verified)throw Error("PRODUCTION_EXACT_SHA_NOT_CONFIRMED");
+  // Still perform harmless read-only GET diagnostics against a stale live site,
+  // but never interpret them as Phase 1 acceptance or issue query POSTs.
+  if(!report.exact_sha_verified){
+    failed=true;
+    report.error="PRODUCTION_EXACT_SHA_NOT_CONFIRMED";
+  }
 
   const canonical=await json(base+"/api/v1/intelligence/query");
   report.canonical_get={http:canonical.http,
@@ -76,7 +81,7 @@ try{
     }
   }
   if(report.category_gets.some(x=>!x.contract_valid))failed=true;
-  for(let i=0;i<cases.length;i++){
+  if(report.exact_sha_verified) for(let i=0;i<cases.length;i++){
     if(i>0)await delay(65_000); // honour the existing per-client 2/min provider budget
     const x=cases[i];
     try{
