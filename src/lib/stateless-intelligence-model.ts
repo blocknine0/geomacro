@@ -1,3 +1,5 @@
+import { visiblePublisherText } from "./stateless-publisher-text";
+
 /**
  * Non-persistent, per-request Intelligence signal classification.
  * Inputs are first-party publisher release titles + ORIGINAL publication dates.
@@ -239,9 +241,7 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
     // Strip markup as text ONLY for these four trusted first-party lanes;
     // never accept an Atom "updated" clock as publication evidence.
     const title = source.statcanOriginalPage
-      ? rawTitle.replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)\s*>/giu, " ")
-        .replace(/<\/?[a-z][^>]{0,180}>/giu, " ")
-        .replace(/\s+/gu, " ").trim()
+      ? visiblePublisherText(rawTitle)
       : rawTitle;
     if (title.length < 12 || title.length > 300 || /[<>]/u.test(title) ||
         !topicForOriginal(title, source.category, source.id, source.statcanOriginalPage === true)) continue;
