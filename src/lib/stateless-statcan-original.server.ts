@@ -10,7 +10,7 @@ const MAX_AGE_MS = 30 * DAY_MS;
 const STOP = new Set(["the","daily","with","from","about","canada","statistic","statistics","release","released","data","survey","monthly"]);
 
 function visibleText(html: string): string {
-  return html.replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)>/gi," ")
+  return html.replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)\s*>/gi," ")
     .replace(/<[^>]{0,700}>/g," ")
     .replace(/&nbsp;|&#160;/gi," ")
     .replace(/&amp;/gi,"&").replace(/\s+/g," ").trim();
