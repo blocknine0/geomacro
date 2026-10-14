@@ -27,8 +27,8 @@ describe("Geomacro post-launch commercial website presentation", () => {
 
   it("offers all three commercial buying paths without faking checkout or entitlements", () => {
     expect(pricing).toContain("Free Explorer");
-    expect(pricing).toContain("GEOMACRO_PRICING_GROUPS");
-    expect(pricing).toContain("GEOMACRO_CAPABILITY_PRICES");
+    expect(pricing).toContain("0.05");
+    expect(pricing).toContain("20,000");
     expect(pricing).toContain("Monthly access");
     expect(pricing).toContain("mailto:contact@geomacro.live?subject=Geomacro%20monthly");
     expect(pricing).toContain("Annual & enterprise");
