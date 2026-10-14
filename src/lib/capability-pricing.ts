@@ -1,0 +1,144 @@
+import {createHash} from "node:crypto";
+import type {GeomacroCreditCapability} from "./commercial-access-contract";
+
+/** Founder-locked USDC price policy. Credit costs remain separate usage units. */
+export const GEOMACRO_CAPABILITY_PRICING_VERSION =
+  "geomacro.capability-usdc.v1" as const;
+export const GEOMACRO_USDC_DECIMALS=6 as const;
+export const GEOMACRO_CAPABILITY_PRICES={
+  gri_read:{
+    verified_cached:"0.005",verified_change_attribution:"0.01",
+  },
+  structural_country_digest:{standard:"0.02"},
+  structural_corridor_digest:{standard:"0.05"},
+  structural_country_profile:{standard:"0.03"},
+  structural_corridor_profile:{standard:"0.08"},
+  intelligence_query:{
+    focused:"0.05",standard:"0.10",complex_multi_source:"0.15",
+  },
+  signed_risk_object:{
+    existing_valid_signed:"0.05",newly_qualified_signed:"0.10",
+  },
+  risk_gate_bundle:{
+    existing_proof_preflight:"0.10",standard:"0.15",complex_multi_source:"0.25",
+  },
+} as const satisfies Record<GeomacroCreditCapability,Record<string,string>>;
+
+export type PricedCapability=keyof typeof GEOMACRO_CAPABILITY_PRICES;
+export type PriceVariant={ [K in PricedCapability]:
+  keyof (typeof GEOMACRO_CAPABILITY_PRICES)[K] }[PricedCapability];
+export const GEOMACRO_PRICING_GROUPS=[
+  {label:"Global Risk Index",ids:["gri_read"]},
+  {label:"Structural digests",ids:["structural_country_digest","structural_corridor_digest"]},
+  {label:"Structural profiles",ids:["structural_country_profile","structural_corridor_profile"]},
+  {label:"Intelligence queries",ids:["intelligence_query"]},
+  {label:"Signed Risk Objects",ids:["signed_risk_object"]},
+  {label:"Risk Gate bundles",ids:["risk_gate_bundle"]},
+] as const;
+
+/** Reject floats and scientific notation; USDC always has six atomic places. */
+export function usdcDecimalToAtomic(value:string):string{
+  if(typeof value!=="string"||!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(value))
+    throw Error("USDC_DECIMAL_PRECISION_INVALID");
+  const [whole,fraction=""]=value.split(".");
+  const amount=BigInt(whole)*1_000_000n+BigInt(fraction.padEnd(6,"0"));
+  if(amount<=0n||amount>250_000n)throw Error("USDC_FOUNDER_MAX_PRICE_EXCEEDED");
+  return amount.toString();
+}
+export type CapabilityPrice=Readonly<{
+  version:typeof GEOMACRO_CAPABILITY_PRICING_VERSION;
+  capability:PricedCapability;
+  variant:string;
+  amount_usdc:string;
+  amount_atomic:string;
+  currency:"USDC";
+  output_contract:"GEOMACRO_DERIVED_STRUCTURED_ONLY";
+  included_signed_object_charge:"INCLUDED_NO_DOUBLE_CHARGE"|"NOT_APPLICABLE";
+}>;
+export function resolveGeomacroCapabilityPrice(capability:string,variant:string):CapabilityPrice{
+  if(!Object.hasOwn(GEOMACRO_CAPABILITY_PRICES,capability))
+    throw Error("CAPABILITY_NOT_IN_FOUNDER_SCHEDULE");
+  const options=GEOMACRO_CAPABILITY_PRICES[capability as PricedCapability] as Record<string,string>;
+  if(!Object.hasOwn(options,variant))throw Error("CAPABILITY_PRICE_VARIANT_NOT_APPROVED");
+  const amount_usdc=options[variant];
+  return Object.freeze({
+    version:GEOMACRO_CAPABILITY_PRICING_VERSION,
+    capability:capability as PricedCapability,variant,
+    amount_usdc,amount_atomic:usdcDecimalToAtomic(amount_usdc),
+    currency:"USDC" as const,
+    output_contract:"GEOMACRO_DERIVED_STRUCTURED_ONLY" as const,
+    included_signed_object_charge:capability==="risk_gate_bundle"?
+      "INCLUDED_NO_DOUBLE_CHARGE" as const:"NOT_APPLICABLE" as const,
+  });
+}
+
+export function capabilityPricingCatalog(){
+  return (Object.entries(GEOMACRO_CAPABILITY_PRICES) as
+    [PricedCapability,Record<string,string>][]).map(([capability,variants])=>({
+      capability,variants:Object.keys(variants).map(variant=>
+        resolveGeomacroCapabilityPrice(capability,variant)),
+      // A published price schedule alone does not verify an available product.
+      availability:"CHECK_LIVE_PROOF_BEFORE_PAYMENT" as const,
+    }));
+}
+export type CapabilityQuote=Readonly<CapabilityPrice&{
+  quote_id:string;issued_at:string;expires_at:string;
+  quote_window_seconds:300;request_fingerprint_sha256:string;
+  network:string;asset_contract:string;recipient:string;
+  availability:"VERIFIED_DELIVERABLE";
+  payment_rail:"coinbase_x402"|"circle_gateway_x402";
+  execution_authorized:false;
+}>;
+const SHA=/^[a-f0-9]{64}$/u;
+const ADDRESS=/^0x[0-9a-fA-F]{40}$/u;
+const digest=(s:string)=>createHash("sha256").update(s,"utf8").digest("hex");
+/** Five-minute exact challenge bucket: re-quote at expiry, never float a price. */
+export function quoteGeomacroCapability(input:Readonly<{
+  capability:string;variant:string;
+  requestFingerprint:string;network:string;asset:string;recipient:string;
+  rail:"coinbase_x402"|"circle_gateway_x402";
+  availabilityVerified:boolean;now?:Date;
+}>):CapabilityQuote{
+  if(input.availabilityVerified!==true)throw Error("CAPABILITY_NOT_DELIVERABLE_NO_CHARGE");
+  if(!SHA.test(input.requestFingerprint)||!/^eip155:\d+$/.test(input.network)||
+    !ADDRESS.test(input.asset)||!ADDRESS.test(input.recipient))
+    throw Error("CAPABILITY_QUOTE_SCOPE_INVALID");
+  const now=input.now??new Date();
+  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
+    throw Error("CAPABILITY_QUOTE_TIME_INVALID");
+  const price=resolveGeomacroCapabilityPrice(input.capability,input.variant);
+  const startMs=Math.floor(now.getTime()/300_000)*300_000;
+  const expiresMs=startMs+300_000;
+  const issued_at=new Date(startMs).toISOString();
+  const expires_at=new Date(expiresMs).toISOString();
+  const network=input.network,asset_contract=input.asset.toLowerCase(),
+    recipient=input.recipient.toLowerCase();
+  const quote_id=digest(JSON.stringify([
+    price.version,price.capability,price.variant,price.amount_atomic,
+    input.requestFingerprint,network,asset_contract,recipient,
+    input.rail,issued_at,expires_at,"VERIFIED_DELIVERABLE",
+  ]));
+  return Object.freeze({
+    ...price,quote_id,issued_at,expires_at,
+    quote_window_seconds:300 as const,
+    request_fingerprint_sha256:input.requestFingerprint,
+    network,asset_contract,recipient,
+    availability:"VERIFIED_DELIVERABLE" as const,
+    payment_rail:input.rail,
+    execution_authorized:false as const,
+  });
+}
+export function verifyGeomacroCapabilityQuote(
+  supplied:unknown,expected:CapabilityQuote,now=new Date(),
+):void{
+  if(!Number.isFinite(now.getTime())||now.getTime()>=Date.parse(expected.expires_at))
+    throw Error("CAPABILITY_QUOTE_EXPIRED");
+  if(!supplied||typeof supplied!=="object"||Array.isArray(supplied))
+    throw Error("CAPABILITY_QUOTE_BINDING_MISSING");
+  const actual=supplied as Record<string,unknown>;
+  for(const [k,v]of Object.entries(expected)){
+    if(actual[k]!==v)throw Error("CAPABILITY_QUOTE_BINDING_MISMATCH_"+k.toUpperCase());
+  }
+  if(Object.keys(actual).length!==Object.keys(expected).length)
+    throw Error("CAPABILITY_QUOTE_UNKNOWN_FIELDS");
+}
