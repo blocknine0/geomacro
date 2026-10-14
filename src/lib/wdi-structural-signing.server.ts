@@ -4,8 +4,11 @@ import { canonicalRiskObjectJson, assertRiskObjectJsonKeysSafe,
   normalizeRiskObjectVerificationKeys,
   type RiskObjectSigningMaterial, type RiskObjectVerificationKeys,
 } from "./risk-object-signing.server";
-import { assertAttributedWdiStructuralProduct,
+import { assertAttributedWdiStructuralProduct, certifiedWdiAttributionRights,
   type buildAttributedWdiStructuralProduct } from "./wdi-attributed-structural-product.server";
+import { readB2CommercialSourceRightsReceipt } from "./b2-live.server";
+import { freezeWdiPrequoteInDurableLedger, readbackWdiPrequoteFromDurableLedger,
+  type WdiDurablePrequote } from "./agent-commerce-delivery.server";
 
 const DOMAIN="geomacro.signed-wdi-structural-answer.v1\n";
 const SHA=/^[a-f0-9]{64}$/u;
@@ -180,6 +183,123 @@ export function prepareWdiStructuralNoFundsQuoteBinding(input:{
     customer_visible_attribution_present:true as const,
     independently_signature_verified:true as const,
     durable_prequote_readback_verified:false as const,
+    quote_authorized:false as const,
+    payment_authorized:false as const,
+    settlement_attempted:false as const,
+  };
+}
+
+
+/**
+ * WDI-only, no-funds durable preparation. A genuine rights receipt is read
+ * again on EACH new freeze; the GitHub production attestation is not a token
+ * that silently certifies Lovable. Readback proves exact immutable buyer bytes
+ * and replay; public 402, facilitator calls and settlement remain disabled.
+ */
+export async function durablyFreezeWdiNoFundsAnswer(input:{
+  signed_answer:SignedWdiStructuralAnswer;
+  verification_keys:RiskObjectVerificationKeys;
+  query_plan:AgentQueryPlan;
+  payment_terms:{amountAtomic:string;network:string;asset:string;payTo:string};
+},opts:{
+  now?:Date;
+  readRightsReceipt?:typeof readB2CommercialSourceRightsReceipt;
+  freeze?:typeof freezeWdiPrequoteInDurableLedger;
+  readback?:typeof readbackWdiPrequoteFromDurableLedger;
+}={}){
+  const now=opts.now??new Date();
+  if(!Number.isFinite(now.getTime()))
+    throw Error("WDI_DURABLE_CLOCK_INVALID");
+  const rights=await (opts.readRightsReceipt??readB2CommercialSourceRightsReceipt)();
+  if(!rights || !SHA.test(rights.compressed_sha256))
+    throw Error("WDI_DURABLE_GENUINE_RECEIPT_UNAVAILABLE");
+  const generatedAt=Date.parse(rights.generated_at);
+  const expiry=generatedAt+24*60*60*1000;
+  if(!Number.isFinite(generatedAt) || rights.generated_at!==new Date(generatedAt).toISOString() ||
+     generatedAt>now.getTime()+5*60_000 || now.getTime()>=expiry)
+    throw Error("WDI_DURABLE_RIGHTS_RECEIPT_EXPIRED");
+  const certified=certifiedWdiAttributionRights(rights.rows);
+  if(!certified.eligible || !certified.receipt_sha256)
+    throw Error("WDI_DURABLE_WDI_RIGHTS_NOT_CERTIFIED");
+  const candidate=prepareWdiStructuralNoFundsQuoteBinding({
+    signed_answer:input.signed_answer,
+    verification_keys:input.verification_keys,
+    query_plan:input.query_plan,
+    certified_rights_receipt_sha256:certified.receipt_sha256,
+    payment_terms:input.payment_terms,
+  });
+  const bindingHash=digest({
+    schema:"geomacro.wdi-durable-prequote-binding.v1",
+    prepared_binding_sha256:candidate.prepared_binding_sha256,
+    receipt_sha256:rights.compressed_sha256,
+    receipt_generated_at:rights.generated_at,
+    expires_at_ms:expiry,
+  });
+  const frozen:WdiDurablePrequote={
+    bindingHash,queryHash:candidate.query_plan_hash,
+    rightsHash:candidate.source_rights_sha256,
+    receiptHash:rights.compressed_sha256,
+    answerHash:candidate.signed_customer_answer_sha256,
+    termsHash:candidate.legacy_x402_payment_binding,
+    rightsGeneratedAt:rights.generated_at,
+    customerBytes:candidate.customer_bytes,
+  };
+  const freeze=opts.freeze??freezeWdiPrequoteInDurableLedger;
+  const readback=opts.readback??readbackWdiPrequoteFromDurableLedger;
+  const result=await freeze(frozen);
+  if(result.binding_hash!==bindingHash ||
+     result.answer_sha256!==frozen.answerHash ||
+     result.expires_at_ms!==expiry ||
+     !["FROZEN","EXACT_REPLAY"].includes(result.disposition))
+    throw Error("WDI_DURABLE_FREEZE_ACK_MISMATCH");
+  // Two independent authenticated storage reads: one post-write integrity
+  // check and one idempotent replay. Never accept reconstructed customer JSON.
+  const check=async()=>{
+    const item=await readback(bindingHash);
+    if(item.bindingHash!==bindingHash ||
+       item.queryHash!==frozen.queryHash ||
+       item.rightsHash!==frozen.rightsHash ||
+       item.receiptHash!==frozen.receiptHash ||
+       item.answerHash!==frozen.answerHash ||
+       item.termsHash!==frozen.termsHash ||
+       item.rightsGeneratedAt!==rights.generated_at ||
+       item.expiresAtMs!==expiry ||
+       item.customerBytes!==frozen.customerBytes ||
+       shaBytes(Buffer.from(item.customerBytes,"utf8"))!==frozen.answerHash ||
+       item.payment_authorized!==false ||
+       item.settlement_attempted!==false ||
+       (opts.now??new Date()).getTime()>=expiry)
+      throw Error("WDI_DURABLE_PREQUOTE_READBACK_MISMATCH");
+    let stored:SignedWdiStructuralAnswer;
+    try{stored=JSON.parse(item.customerBytes) as SignedWdiStructuralAnswer;}
+    catch{throw Error("WDI_DURABLE_STORED_CUSTOMER_BYTES_INVALID");}
+    const verified=verifyWdiStructuralAnswer(stored,input.verification_keys,{
+      query_plan_hash:input.query_plan.query_plan_hash,
+      certified_rights_receipt_sha256:certified.receipt_sha256,
+    });
+    if(!verified.valid ||
+       canonicalRiskObjectJson(stored)!==item.customerBytes)
+      throw Error("WDI_DURABLE_STORED_SIGNATURE_OR_ATTRIBUTION_UNVERIFIED");
+    return item.customerBytes;
+  };
+  const original=await check();
+  const replay=await check();
+  if(original!==replay)throw Error("WDI_DURABLE_REPLAY_BYTES_MISMATCH");
+  return {
+    schema:"geomacro.wdi-durable-no-funds-prequote.v1" as const,
+    frozen_quote_reference:bindingHash,
+    signed_customer_answer_sha256:frozen.answerHash,
+    query_plan_hash:frozen.queryHash,
+    source_rights_fingerprint:frozen.rightsHash,
+    rights_receipt_compressed_sha256:frozen.receiptHash,
+    rights_generated_at:frozen.rightsGeneratedAt,
+    rights_expires_at:new Date(expiry).toISOString(),
+    payment_terms_binding:frozen.termsHash,
+    write_disposition:result.disposition,
+    durable_prequote_readback_verified:true as const,
+    identical_no_funds_replay_verified:true as const,
+    independently_signature_verified:true as const,
+    customer_visible_attribution_present:true as const,
     quote_authorized:false as const,
     payment_authorized:false as const,
     settlement_attempted:false as const,
