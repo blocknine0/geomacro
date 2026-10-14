@@ -5,6 +5,7 @@ import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-a
 import { country195ByIso3 } from "./canonical-country-registry-195";
 import { classifyGlobalEntity } from "./global-entity-classification";
 import { verifiedFedBoardDiscountMinutesOriginal } from "./on-demand-fed-board-discount-release.server";
+import { originalFedDiscountMinutesArchiveLinks } from "./on-demand-fed-official-archive.server";
 import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
 
 /**
@@ -43,6 +44,7 @@ export type PrivateOriginalCandidate = {
   // official original article pages may rescue an undated Atom lead.
   undated_atom_original_page_pending?: true;
   search_index_original_page_pending?: true;
+  official_archive_release_day?: string; // official issuer index day, never exact clock
   article_identity_sha256: string;
   first_party_article_url_verified: true;
   source_native_feed_publication_date_verified: boolean;
@@ -1162,6 +1164,50 @@ async function discoverOnDemandImpl(
       }
     }
   }
+  // A live Federal Reserve RSS is rolling-window limited. This ONE
+  // optional official annual press index GET recovers missing source leads.
+  // It does not prove a precise release clock, licence, corroboration or GRO.
+  if(country==="USA" && categories.includes("macro") &&
+     topics.includes("macro_risk") && networkAttempts<12 &&
+     !settled.some(result=>result.status==="fulfilled" &&
+       "private_candidates" in result.value &&
+       result.value.private_candidates.some(x=>
+         x.publisher_family==="us_federal_reserve_original_publisher"))){
+    const def=ORIGINAL_FALLBACK_FEEDS.find(x=>
+      x.family==="us_federal_reserve_original_publisher")!;
+    try{
+      const index=await boundedFetch(trackedFetch,
+        "https://www.federalreserve.gov/newsevents/pressreleases/"+
+          now.getUTCFullYear()+"-press.htm","text/html");
+      const leads=originalFedDiscountMinutesArchiveLinks(
+        index,now.getUTCFullYear(),now,newsMaxAgeMs);
+      const results:PrivateOriginalCandidate[]=leads.flatMap(x=>{
+        if(originalArticleUrl(x.article_url,def)!==x.article_url ||
+           !def.topic.test(x.article_title) ||
+           !matchesRequestedTopic(x.article_title,"macro",topics))return [];
+        return [{
+          domain:"macro" as const,publisher_family:def.family,
+          article_url:x.article_url,article_title:x.article_title,
+          official_archive_release_day:x.official_archive_release_day,
+          feed_item_published_at:null,
+          article_identity_sha256:digest(def.family+"|"+x.article_url),
+          first_party_article_url_verified:true as const,
+          source_native_feed_publication_date_verified:false,
+          publisher_article_page_date_verified:false as const,
+          independent_same_event_verified:false as const,
+          derived_commercial_rights_verified:false as const,
+          score_verified:false as const,signed_gro_verified:false as const,
+          paid_delivery_allowed:false as const,
+        }];
+      });
+      source_probes.push({...probe("us_federal_reserve_annual_archive",
+        results.length,false),category:"macro"});
+      if(results.length)fallbackIssuerGroups.push(results);
+    }catch(error){
+      source_probes.push({...failed("us_federal_reserve_annual_archive",error),
+        category:"macro"});
+    }
+  }
   // A reachable 2xx feed with zero exact-topic records is a valid search
   // miss, not proof the original publisher has no matching article.
   // Reuse one bounded public issuer search only when the original feed mesh
@@ -1312,7 +1358,12 @@ export async function verifyOnDemandOriginalArticlePages(
          candidate.undated_atom_original_page_pending===true) ||
         (def.media==="search" && candidate.search_index_original_page_pending===true &&
          candidate.feed_item_published_at===null &&
-         candidate.source_native_feed_publication_date_verified===false)
+         candidate.source_native_feed_publication_date_verified===false) ||
+         (def.family==="us_federal_reserve_original_publisher" &&
+          candidate.source_native_feed_publication_date_verified===false &&
+          candidate.feed_item_published_at===null &&
+          typeof candidate.official_archive_release_day==="string" &&
+          /^20\d{2}-\d{2}-\d{2}$/u.test(candidate.official_archive_release_day))
       );
   });
   const chosen:PrivateOriginalCandidate[]=[];
@@ -1356,7 +1407,8 @@ export async function verifyOnDemandOriginalArticlePages(
       const boardRelease=candidate.publisher_family==="us_federal_reserve_original_publisher"
         ? verifiedFedBoardDiscountMinutesOriginal(
             html,candidate.article_url,candidate.article_title,
-            candidate.feed_item_published_at,now):null;
+            candidate.feed_item_published_at,now,
+            candidate.official_archive_release_day??null):null;
       // Never let a plausible visible clock override contradictory original
       // publisher datePublished metadata. Also require the requested window.
       const boardBodyTimeAdmissible=boardRelease!==null &&
@@ -1367,6 +1419,8 @@ export async function verifyOnDemandOriginalArticlePages(
         ? null : (precise??(boardBodyTimeAdmissible?boardRelease?.publication_utc:null)??null);
       if(originalDate && freshPublished(originalDate,now,maxAgeMs) &&
           (!isCanada || originalDate.slice(0,10)===canadaDay) &&
+          (!candidate.official_archive_release_day ||
+           originalDate.slice(0,10)===candidate.official_archive_release_day) &&
           (candidate.feed_item_published_at===null ||
            Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))<=10*60*1000))
         return {verified:{...candidate,publisher_article_page_date_verified:true as const,
