@@ -69,3 +69,52 @@ test("prequote rejects wrong digest, invalid rights clock and missing records",a
     ...input,rightsGeneratedAt:"not-a-timestamp",
   })).status,409);
 });
+
+
+test("synthetic-only legacy x402 claim/prepare/deliver/replay preserves frozen bytes",async()=>{
+  // This test does NOT invoke Coinbase, settle real funds, or write production.
+  const s=ledger();
+  const frozen=await post(s,"wdi-prequote-freeze",input);
+  assert.equal(frozen.status,200);
+  const quote=await post(s,"wdi-prequote-readback",{bindingHash:input.bindingHash});
+  assert.equal(quote.status,200);
+  const paymentFingerprint=sha("synthetic-no-funds-payment");
+  const requestFingerprint=sha(JSON.stringify({
+    quote_ref:input.bindingHash,query:input.queryHash,terms:input.termsHash,
+  }));
+  const claim={
+    provider:"coinbase_x402",providerEnvironment:"mainnet",
+    paymentFingerprint,requestFingerprint,productId:"geomacro_wdi_china_cpi_v1",
+    network:"eip155:8453",asset:"0x"+"1".repeat(40),
+    amountAtomic:"50000",recipientHash:sha("synthetic-payee"),
+  };
+  const first=await post(s,"claim",claim);
+  assert.equal(first.body.disposition,"CLAIMED");
+  const claimToken=first.body.claim_token;
+  const payload={frozen_quote_reference:input.bindingHash,
+    customer_bytes:quote.body.customerBytes};
+  assert.equal((await post(s,"prepare",{
+    paymentFingerprint,claimToken,responsePayload:payload,
+    responseSha256:sha(JSON.stringify(payload)),
+  })).body.ok,true);
+  assert.equal((await post(s,"claim",claim)).body.disposition,"IN_PROGRESS");
+  // In-memory synthetic ledger finalization, NOT a real settlement.
+  assert.equal((await post(s,"complete",{
+    paymentFingerprint,claimToken,
+    settlementReference:"synthetic-no-funds-local-only",
+    settlementNetwork:"test-only",
+  })).body.ok,true);
+  const replay=await post(s,"claim",claim);
+  assert.equal(replay.body.disposition,"REPLAY");
+  assert.deepEqual(replay.body.response_payload,payload);
+  assert.equal(replay.body.response_payload.customer_bytes,customerBytes);
+  assert.equal((await post(s,"claim",{
+    ...claim,amountAtomic:"60000",
+  })).body.disposition,"CONFLICT");
+  assert.equal((await post(s,"claim",{
+    ...claim,recipientHash:sha("changed-payee"),
+  })).body.disposition,"CONFLICT");
+  assert.equal((await post(s,"claim",{
+    ...claim,requestFingerprint:sha("modified-query"),
+  })).body.disposition,"CONFLICT");
+});
