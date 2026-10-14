@@ -1,3 +1,4 @@
+import {country195ByIso3} from "./canonical-country-registry-195";
 /**
  * Conservative country mention matching for private original-publisher titles.
  * Verified World Bank country name is the default. Reviewed demonyms bridge
@@ -32,7 +33,14 @@ export function originalHeadlineMentionsCountry(
     return false;
   const clean=normalized(title);
   // Reject substrings like "Chinatown" for China and "IndiaMart" for India.
-  const terms=[verifiedOfficialName,...(REVIEWED_DEMONYMS[countryIso3]??[])];
+  // Offline 195-state registry supplies independently reviewed country
+  // names when World Bank does not expose a country (e.g. Holy See, PSE),
+  // plus bounded short-form aliases. No fuzzy/sub-string ISO3 attribution.
+  // This is only country RELEVANCE, not publisher provenance or same-event
+  // corroboration. A non-country ISO3 still cannot borrow country aliases.
+  const registry=country195ByIso3(countryIso3);
+  const terms=[verifiedOfficialName,...(registry?[registry.name,...registry.aliases]:[]),
+    ...(REVIEWED_DEMONYMS[countryIso3]??[])];
   return terms.some(term=>{
     const pattern=new RegExp(
       "(?:^|[^\\p{L}\\p{N}])"+escaped(normalized(term))+
