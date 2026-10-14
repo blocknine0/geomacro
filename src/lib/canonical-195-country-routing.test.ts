@@ -76,6 +76,16 @@ describe("195 UN-member + observer country routing against 250-entity legacy uni
    .not.toThrow();
   expect(originalHeadlineMentionsCountry("Palestinian foreign-policy announcement",
     "PSE","State of Palestine")).toBe(true);
+  expect(originalHeadlineMentionsCountry("Gaza ceasefire negotiations",
+    "PSE","State of Palestine")).toBe(true);
+  expect(originalHeadlineMentionsCountry("West Bank security update",
+    "PSE","State of Palestine")).toBe(true);
+  expect(originalHeadlineMentionsCountry("Ivory Coast election announcement",
+    "CIV","Côte d'Ivoire")).toBe(true);
+  expect(originalHeadlineMentionsCountry("Burma economic report",
+    "MMR","Myanmar")).toBe(true);
+  expect(originalHeadlineMentionsCountry("BurmaBay container news",
+    "MMR","Myanmar")).toBe(false);
   expect(originalHeadlineMentionsCountry("Vatican City announces a decision",
     "VAT","Holy See")).toBe(true);
   expect(originalHeadlineMentionsCountry("South Korean policy release",
