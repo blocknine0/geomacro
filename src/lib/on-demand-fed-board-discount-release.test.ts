@@ -91,6 +91,12 @@ describe("genuine Fed issuer-original context to private structured answer, not 
  });
  it("rejects forged/mismatched calendar days, off-host links and stale archive without invention",()=>{
    expect(originalFedDiscountMinutesArchiveLinks(
+     ARCHIVE.replace(TITLE,"<span>"+TITLE+"</span>"),2026,NOW,86400_000))
+       .toHaveLength(1);
+   expect(originalFedDiscountMinutesArchiveLinks(
+     ARCHIVE.replace(TITLE,"<script>"+TITLE+"</script>"),2026,NOW,86400_000))
+       .toHaveLength(0);
+   expect(originalFedDiscountMinutesArchiveLinks(
      ARCHIVE.replace("10/13/2026","10/12/2026"),2026,NOW,86400_000)).toEqual([]);
    expect(originalFedDiscountMinutesArchiveLinks(
      ARCHIVE.replace("monetary20261013a.htm","https://example.com/newsevents/pressreleases/monetary20261013a.htm"),
