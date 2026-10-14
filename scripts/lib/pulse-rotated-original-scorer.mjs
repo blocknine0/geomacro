@@ -10,6 +10,8 @@
 import {select30MinPublishers} from "../ops/probe-30min-three-domain-pulse.mjs";
 import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
 import {privateOriginalMatchesPulse} from "./private-novel-pulse-match.mjs";
+import {fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN} from "./official-original-article-date.mjs";
+import {createHash} from "node:crypto";
 
 const MAX_BYTES=192*1024;
 const MAX_ENTRIES=40;
@@ -128,6 +130,71 @@ export function parsePulseRotatedOriginals(xml,source,{
   return matched;
 }
 
+/**
+ * The original 30m pulse may independently establish a precise GOV.UK
+ * original-page date for an Atom <entry> that lacks <published>. Re-fetch
+ * only the exact source-URL SHA and precise UTC clock independently read
+ * back from D1; never use <updated>, feed seenAt, guessed midnight or title.
+ * This is PRIVATE CLASSIFIER DISCOVERY, not provenance/rights/signing proof.
+ */
+export async function recoverPulseRotatedOriginalPageDates(
+  xml,source,{refs,expectedClocks,now=new Date(),fetchImpl=fetch,
+    pageBudget={used:0}}={},
+){
+  if(!source || source.media!=="atom" ||
+     !["uk_mod_original_defence_atom_review",
+       "uk_desnz_original_energy_minerals_atom_review"].includes(source.id) ||
+     !(refs instanceof Set) || !(expectedClocks instanceof Map) ||
+     !(now instanceof Date) || !Number.isFinite(now.getTime()) ||
+     !pageBudget || !Number.isInteger(pageBudget.used) ||
+     pageBudget.used<0 || pageBudget.used>ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN ||
+     typeof xml!=="string" || Buffer.byteLength(xml,"utf8")>MAX_BYTES ||
+     /<!DOCTYPE|<!ENTITY/iu.test(xml) ||
+     !/<(?:atom:)?feed(?:\\s|>)/iu.test(xml))
+    return [];
+  const matched=[],seen=new Set();
+  const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)]
+    .slice(0,MAX_ENTRIES);
+  for(const [,item] of entries){
+    if(pageBudget.used>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN ||
+       matched.length>=LIMIT_PER_DOMAIN)break;
+    // Conflicting/stale <published> may never be rescued from page content.
+    // <updated> is neither an original clock nor a negative claim.
+    if(tag(item,"published"))continue;
+    const original=originalLink(atomLink(item),source);
+    if(!original||seen.has(original))continue;
+    seen.add(original);
+    const title=tag(item,"title");
+    if(title.length<16||title.length>500)continue;
+    // No arbitrary original-page probes: hash match BEFORE network GET.
+    const identity=createHash("sha256").update(original).digest("hex");
+    if(!refs.has(identity))continue;
+    const required=expectedClocks.get(identity);
+    if(typeof required!=="string" ||
+       !/^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(required) ||
+       !Number.isFinite(Date.parse(required)) ||
+       Date.parse(required)>now.getTime() ||
+       now.getTime()-Date.parse(required)>86400_000)continue;
+    // Only an exact, fixed official original-page path is allowed by the
+    // existing shared verifier. Increment before await for shared budget.
+    pageBudget.used++;
+    const pageDate=await fetchVerifiedPublisherPageDate(original,source.domain,{
+      now,fetchImpl,
+    });
+    if(pageDate!==required)continue;
+    const host=new URL(original).hostname;
+    const article={
+      title,description:"",url:original,publishedAt:pageDate,
+      source:host,sourceDomain:host,discoveryProvider:"official_native_rss",
+      nativePublishedAtVerified:true,
+      nativeTimeEvidence:"publisher_original_article_datePublished",
+      privateOnly:true,rightsVerified:false,commercialEligible:false,
+    };
+    if(privateOriginalMatchesPulse(article,refs,now.getTime(),expectedClocks))
+      matched.push(article);
+  }
+  return matched;
+}
 async function boundedXml(response) {
   if(!response?.ok||!MIME.test(response.headers.get("content-type")??"")||
     Number(response.headers.get("content-length")||0)>MAX_BYTES||
@@ -154,6 +221,9 @@ export async function fetchPulseRotatedPrivateOriginals({
     throw Error("PRIVATE_PULSE_EXTRA_SOURCE_CONTEXT_INVALID");
   if(refs.size===0)return [];
   const sources=selectedPulseRotatedScorerSources(category,checkedAt);
+  // An entire category gets at most TWO issuer-page verifications regardless
+  // of how many same-slot fixed original publishers are present.
+  const pageBudget={used:0};
   // Two at most; no search discovery and no fanout over 195 countries.
   const results=await Promise.all(sources.map(async source=>{
     try{
@@ -170,7 +240,17 @@ export async function fetchPulseRotatedPrivateOriginals({
         signal:AbortSignal.timeout(6000),
       });
       const xml=await boundedXml(response);
-      return xml?parsePulseRotatedOriginals(xml,source,{refs,expectedClocks,now}):[];
+      if(!xml)return [];
+      const native=parsePulseRotatedOriginals(xml,source,{
+        refs,expectedClocks,now,
+      });
+      if(source.media!=="atom" || native.length>=LIMIT_PER_DOMAIN)return native;
+      const recovered=await recoverPulseRotatedOriginalPageDates(xml,source,{
+        refs,expectedClocks,now,fetchImpl,pageBudget,
+      });
+      const identities=new Set(native.map(x=>x.url));
+      return [...native,...recovered.filter(x=>!identities.has(x.url))]
+        .slice(0,LIMIT_PER_DOMAIN);
     }catch{return []}
   }));
   const ids=new Set();
