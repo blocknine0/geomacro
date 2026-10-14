@@ -278,6 +278,10 @@ describe("no-funds structural answer and existing x402 payment-binding adapter",
       ...opts,readback:tampered,
     })).rejects.toThrow("WDI_DURABLE_PREQUOTE_READBACK_MISMATCH");
     const changedTerms={...terms,payTo:"0x"+"3".repeat(40)};
+    await expect(durablyFreezeWdiNoFundsAnswer({
+      ...input,payment_terms:changedTerms,
+      expected_frozen_quote_reference:a.frozen_quote_reference,
+    },opts)).rejects.toThrow("WDI_FROZEN_QUOTE_REPLAY_BINDING_MISMATCH");
     const changed=await durablyFreezeWdiNoFundsAnswer({...input,payment_terms:changedTerms},opts);
     expect(changed.frozen_quote_reference).not.toBe(a.frozen_quote_reference);
     await expect(durablyFreezeWdiNoFundsAnswer({
