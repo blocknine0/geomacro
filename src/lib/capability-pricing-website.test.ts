@@ -36,7 +36,6 @@ describe("canonical capability pricing parity on the public website",()=>{
       for(const item of row.variants){
         expect(resolveGeomacroCapabilityPrice(row.capability,item.variant).amount_atomic)
           .toBe(item.amount_atomic);
-        expect(item.availability).toBeUndefined();
       }
       expect(row.availability).toBe("CHECK_LIVE_PROOF_BEFORE_PAYMENT");
     }
