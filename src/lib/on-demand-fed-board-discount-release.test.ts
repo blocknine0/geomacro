@@ -346,3 +346,67 @@ describe("genuine Fed issuer-original context to private structured answer, not 
   expect(buildPrivateVerifiedFedMinutesFinding({...q,country_iso3:"CHN"},page)).toBeNull();
  });
 });
+
+describe("Part 7 bounded historical Fed publication and exact customer question",()=>{
+ it("keeps the 13 October 2026 minutes release historical on 15 October; builds only an unsigned private exact-query draft",async()=>{
+  const now=new Date("2026-10-15T10:00:00.000Z");
+  const windowSeconds=7*86_400;
+  const research={...SEARCH,max_age_seconds:windowSeconds};
+  const received={
+    question:"When did the Federal Reserve Board publish its August and September 2026 discount-rate meeting minutes?",
+    subjects:[{type:"country" as const,country_iso3:"USA"}],
+    topics:["macro_risk" as const],fulfillment_mode:"live_on_demand" as const,
+    max_age_seconds:windowSeconds,
+  };
+  const plan=buildAgentQueryPlan(received);
+  const {fetchImpl,calls}=fetcher(PAGE,EMPTY_FEED);
+  const evidence=await discoverOnDemandForPrivateQualification(research,{
+    now,fetchImpl,disableDiscoveryIndex:true,
+  });
+  const fed=evidence.private_original_review_candidates.filter(x=>
+    x.publisher_family==="us_federal_reserve_original_publisher");
+  expect(fed).toHaveLength(1);
+  expect(fed[0].official_archive_release_day).toBe("2026-10-13");
+  const pages=await verifyOnDemandOriginalArticlePages(fed,{
+    now,fetchImpl,maxAgeSeconds:windowSeconds,
+  });
+  expect(pages.verified_candidates).toHaveLength(1);
+  expect(pages.verified_candidates[0].page_original_published_at).toBe(FEED_TIME);
+  const q=qualifyRetrievedOnDemandEvidence({
+    search:research,discovery:evidence.discovery,originals:fed,pageProof:pages,
+    verifiedCountryName:evidence.private_verified_country_name,macroChanges:[],now,
+  });
+  const finding=buildPrivateVerifiedFedMinutesFinding(q,pages,{
+    observedAt:now,queryPlanHash:plan.query_plan_hash,
+  });
+  expect(finding?.source_freshness?.classification).toBe("HISTORICAL_ORIGINAL");
+  expect(finding?.new_rate_decision_verified).toBe(false);
+  expect(finding?.rights.item_specific_commercial_admission_verified).toBe(false);
+  expect(finding?.reviewer.independent_same_event_verified).toBe(false);
+  expect(finding?.registered_signing_eligible).toBe(false);
+  expect(finding?.x402_payment_authorized).toBe(false);
+  const bound=bindPrivateFedMinutesToExactCustomerQuery({
+    receivedRequest:received,canonicalPlan:plan,finding:finding!,
+  });
+  expect(bound.ok).toBe(true);
+  if(bound.ok){
+    expect(bound.draft.source_classification).toBe("HISTORICAL_ORIGINAL");
+    expect(bound.draft.original_published_at_utc).toBe(FEED_TIME);
+    expect(bound.draft.expiry_at_utc).toBe("2026-10-20T18:00:00.000Z");
+    expect(bound.draft.signing_eligible).toBe(false);
+    expect(bound.draft.item_commercial_rights_admitted).toBe(false);
+    expect(bound.draft.risk_score).toBeNull();
+    expect(bound.canonical_private_json).not.toContain(received.question);
+    expect(bound.canonical_private_json).not.toContain(ARTICLE_URL);
+  }
+  const currentOnly={...received,max_age_seconds:86_400};
+  const currentPlan=buildAgentQueryPlan(currentOnly);
+  expect(bindPrivateFedMinutesToExactCustomerQuery({
+    receivedRequest:currentOnly,canonicalPlan:currentPlan,
+    finding:{...finding!,query_binding:{...finding!.query_binding,
+      received_query_plan_hash:currentPlan.query_plan_hash}},
+  })).toEqual({ok:false,reason:"ORIGINAL_OUTSIDE_QUERY_WINDOW"});
+  expect(evidence.discovery.network_attempts).toBeLessThanOrEqual(12);
+  expect(calls.filter(url=>url===ARTICLE_URL)).toHaveLength(1);
+ });
+});
