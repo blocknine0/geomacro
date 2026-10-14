@@ -3,7 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 
 import { agentAdaptiveQuerySchema, buildAgentQueryPlan } from "../lib/agent-query-plan";
-import {approvedAdaptiveIntelligencePrice,quoteGeomacroCapability,
+import {approvedAdaptiveIntelligencePrice,fingerprintAgentQueryAvailability,
+  quoteGeomacroCapability,
   verifyGeomacroCapabilityQuote,type CapabilityQuote} from "../lib/capability-pricing";
 import {capabilityPricingCatalog,GEOMACRO_CAPABILITY_PRICING_VERSION}
   from "../lib/capability-pricing-catalog";
@@ -348,7 +349,9 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           const price=approvedAdaptiveIntelligencePrice(plan);
           capabilityQuote=quoteGeomacroCapability({
             capability:price.capability,variant:price.variant,
-            requestFingerprint,network:requirement.network,asset:requirement.asset,
+            requestFingerprint,
+            availabilityFingerprint:fingerprintAgentQueryAvailability(availability),
+            network:requirement.network,asset:requirement.asset,
             recipient:requirement.payTo,rail:"circle_gateway_x402",
             availabilityVerified:availability.deliverable,
           });
@@ -580,6 +583,17 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             },
             503,
           );
+        }
+        if(fingerprintAgentQueryAvailability(finalAvailability)!==
+            capabilityQuote.availability_fingerprint_sha256){
+          await releaseAgentCommerceDelivery({
+            provider:"circle_gateway_x402",providerEnvironment:config.environment,
+            paymentFingerprint,claimToken,failureCode:"CAPABILITY_QUOTE_AVAILABILITY_CHANGED",
+          });
+          return json({ok:false,chargeable:false,
+            error:{code:"CAPABILITY_QUOTE_AVAILABILITY_CHANGED",
+              message:"Evidence or source rights changed before settlement; re-quote required."},
+            execution_authorized:false},409);
         }
         if (!finalAvailability.deliverable) {
           await releaseAgentCommerceDelivery({
