@@ -26,7 +26,8 @@ const health=await healthRes.json().catch(()=>null);
 if(!healthRes.ok||health?.service!=="geomacro-commerce-ledger"||
    health?.storage!=="durable_objects_sqlite"||
    health?.wdi_prequote_contract_version!=="geomacro.wdi-prequote-worker.v1"||
-   !["delivery","usage_guard","product_audit","wdi_prequote_readback"]
+   health?.wdi_prequote_available!==true ||
+   !["delivery","usage_guard","product_audit"]
      .every(s=>health?.capabilities?.includes(s)))
   throw Error("WDI_VAULT_PRODUCTION_DEPLOYMENT_VERSION_UNVERIFIED");
 const check=async(action,body)=>{
