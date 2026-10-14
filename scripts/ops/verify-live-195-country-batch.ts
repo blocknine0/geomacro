@@ -58,9 +58,8 @@ for(const country of COUNTRIES_195.slice(from,from+count)){
  }
 }
 const matrix=buildCanonical195x3CoverageMatrix(observations);
-const cells=matrix.cells.filter(x=>x.country_iso3===
-    COUNTRIES_195[from]?.iso3||COUNTRIES_195.slice(from,from+count)
-    .some(c=>c.iso3===x.country_iso3));
+const selectedCountries=new Set(COUNTRIES_195.slice(from,from+count).map(c=>c.iso3));
+const cells=matrix.cells.filter(x=>selectedCountries.has(x.country_iso3));
 console.log(JSON.stringify({
  schema:"geomacro.195-country-safe-readonly-batch.v1",
  country_registry_version:matrix.country_registry_version,
