@@ -165,10 +165,14 @@ export async function settleCircleGatewayProduction(
     settlement_reference: settled.transaction ?? null,
     network: settled.network || requirement.network,
     amount_atomic: requirement.amount,
-    amount_usdc: (Number(requirement.amount) / 1_000_000)
-      .toFixed(6)
-      .replace(/0+$/, "")
-      .replace(/\.$/, ""),
+    // Human-readable receipt uses exact integer arithmetic; settlement
+    // itself uses requirement.amount without floating-point coercion.
+    amount_usdc: (() => {
+      const units=BigInt(requirement.amount);
+      const whole=(units/1_000_000n).toString();
+      const fractional=(units%1_000_000n).toString().padStart(6,"0").replace(/0+$/u,"");
+      return fractional?whole+"."+fractional:whole;
+    })(),
     accounting_state: "commercial_pending_accounting" as const,
     reconciliation_required: true as const,
     execution_authorized: false as const,

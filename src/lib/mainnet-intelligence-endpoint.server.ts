@@ -1,4 +1,13 @@
 import { randomUUID } from "node:crypto";
+import {GEOMACRO_CAPABILITY_PRICING_VERSION, type CapabilityQuote} from "./capability-pricing";
+import {prepareVerifiedCapabilityOffer} from "./capability-x402-offer.server";
+import {readVerifiedCapabilityAnswer,assertFrozenCapabilityIntelligenceProjection} from "./capability-x402-prequote.server";
+import {readAlreadyDeliveredCapabilityReplay} from "./capability-x402-replay.server";
+import {freezeCanonicalCapabilityHttpBody,sendFrozenCapabilityHttpBody,type FrozenCapabilityHttpBody}
+  from "./capability-x402-exact-http-body.server";
+import {assertAcceptedCapabilityQuote,coinbaseRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
+  capabilityLedgerRequestFingerprint,capabilityQuoteFromPaymentPayload}
+  from "./capability-x402-payment-contract.server";
 import {
   qualifyRetrievedOnDemandEvidence, publicOnDemandQualificationStatus,
   buildPrivateVerifiedFedMinutesFinding,
@@ -66,7 +75,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, PAYMENT-SIGNATURE, payment-signature",
-  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
+  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, X-Geomacro-Delivery-SHA256, X-Geomacro-Prepared-Answer-SHA256",
   "Access-Control-Max-Age": "600",
 };
 
@@ -167,7 +176,8 @@ function adaptiveBazaarExtension(planHash: string) {
   };
 }
 
-function adaptivePaymentRequired(request: Request, config: CoinbaseX402Config, planHash: string) {
+function adaptivePaymentRequired(request: Request, config: CoinbaseX402Config, planHash: string, quote:CapabilityQuote) {
+  const source=adaptiveBazaarExtension(planHash);
   const resourceUrl = new URL(CANONICAL_MAINNET_INTELLIGENCE_PATH, request.url).toString();
   return {
     x402Version: 2,
@@ -179,8 +189,9 @@ function adaptivePaymentRequired(request: Request, config: CoinbaseX402Config, p
       serviceName: "Geomacro",
       tags: ["geopolitical-risk", "macro-risk", "critical-minerals", "country-risk", "hot-topics", "risk-gate", "ai-agents"],
     },
-    accepts: [coinbaseX402PaymentRequirements(config)],
-    extensions: adaptiveBazaarExtension(planHash),
+    accepts: [coinbaseRequirementsForCapabilityQuote(config,quote)],
+    extensions: {...source,geomacro:{...source.geomacro,
+      info:{...source.geomacro.info,capability_quote:quote}}},
   };
 }
 
@@ -204,8 +215,8 @@ function assertAdaptiveQueryBinding(paymentPayload: Record<string, unknown>, pla
   }
 }
 
-function paymentRequiredResponse(request: Request, config: CoinbaseX402Config, planHash: string) {
-  const required = adaptivePaymentRequired(request, config, planHash);
+function paymentRequiredResponse(request: Request, config: CoinbaseX402Config, planHash: string, quote:CapabilityQuote) {
+  const required = adaptivePaymentRequired(request, config, planHash,quote);
   return json(required, 402, { "PAYMENT-REQUIRED": encodeX402Header(required) });
 }
 
@@ -270,7 +281,8 @@ export const mainnetIntelligenceHandlers = {
           environment: config.environment,
           network: config.network,
           asset: "USDC",
-          exact_price_usdc: config.priceUsdc,
+          pricing_contract_version: GEOMACRO_CAPABILITY_PRICING_VERSION,
+          exact_price_requires_verified_capability_quote: true,
           topics: AGENT_QUERY_TOPICS,
           coverage: "data-driven; only currently deliverable subjects are payable",
           live_on_demand_discovery_supported: true,
@@ -565,26 +577,88 @@ export const mainnetIntelligenceHandlers = {
           return json({ ok: false, chargeable: false, payment_required_now: false, availability: publicAgentQueryAvailability(availability), error: { code: availability.code, message: "Requested intelligence is not currently fully deliverable; no payment is accepted." }, execution_authorized: false }, 422);
         }
 
+        const requestFingerprint=coinbaseRequestFingerprint({
+          product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,request:parsed,
+        });
         const paymentHeader = request.headers.get("payment-signature");
-        if (!paymentHeader) return paymentRequiredResponse(request, config, plan.query_plan_hash);
+        if (!paymentHeader) {
+          try {
+            const offered=await prepareVerifiedCapabilityOffer({
+              plan,availability,clientRequestId:parsed.client_request_id??null,
+              requestFingerprint,rail:"coinbase_x402",network:config.network,
+              asset:config.asset,recipient:config.payTo,
+            });
+            return paymentRequiredResponse(request,config,plan.query_plan_hash,offered.quote);
+          } catch {
+            console.error("[x402-capability] signed prequote unavailable (fail closed)");
+            return json({ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"CAPABILITY_SIGNED_PREQUOTE_UNAVAILABLE",
+                message:"Verified signed immutable intelligence or prequote readback is unavailable; no payment is offered."},
+              execution_authorized:false},422);
+          }
+        }
+        // A settled delivery can be replayed after the quote expires, but
+        // never refreshed or settled again. Read-only Durable Object lookup.
+        try {
+          const claimedPayload=decodeCoinbasePaymentHeader(paymentHeader);
+          const historicQuote=capabilityQuoteFromPaymentPayload(claimedPayload);
+          const prior=await readAlreadyDeliveredCapabilityReplay({
+            quote:historicQuote,paymentPayload:claimedPayload,
+            paymentFingerprint:coinbasePaymentFingerprint(claimedPayload),
+            requestFingerprint,config,
+          });
+          if(prior){
+            const receipt:CoinbaseSettleResult={success:true,
+              transaction:prior.settlementReference??undefined,
+              network:prior.settlementNetwork??undefined,
+              extra:{idempotentReplay:true}};
+            return sendFrozenCapabilityHttpBody(
+              freezeCanonicalCapabilityHttpBody(prior.response), prior.responseSha256, {
+                ...corsHeaders,
+                "PAYMENT-RESPONSE":coinbaseX402PaymentResponseHeader(receipt),
+                "X-Geomacro-Prepared-Answer-SHA256":historicQuote.prepared_answer_sha256,
+              });
+          }
+        }catch(error){
+          // Never fall through to settlement if a past payment cannot be
+          // safely resolved. A fresh request gets a new unpaid quote.
+          return json({ok:false,chargeable:false,
+            error:{code:"X402_DELIVERED_REPLAY_PROOF_INVALID_OR_UNAVAILABLE",
+              message:"Cannot verify exact replay; no automatic charge."},
+            execution_authorized:false},409);
+        }
         if (!config.apiKeyId || !config.apiKeySecret) {
           return json({ ok: false, error: { code: "CDP_API_CREDENTIALS_MISSING", message: "Coinbase CDP settlement credentials are not configured." }, execution_authorized: false }, 503);
         }
 
-        let paymentPayload: Record<string, unknown>;
+        let paymentPayload:Record<string,unknown>;
+        let capabilityQuote:CapabilityQuote;
+        let frozenIntelligence:Record<string,unknown>;
+        let pricedConfig:CoinbaseX402Config;
         try {
-          paymentPayload = decodeCoinbasePaymentHeader(paymentHeader);
-          assertCoinbasePaymentBinding(paymentPayload, config);
-          assertAdaptiveQueryBinding(paymentPayload, plan.query_plan_hash);
-        } catch (error) {
-          return json({ ok: false, error: { code: "X402_PAYMENT_BINDING_INVALID", message: error instanceof Error ? error.message : "Payment proof does not match this query." }, execution_authorized: false }, 402, { "PAYMENT-REQUIRED": encodeX402Header(adaptivePaymentRequired(request, config, plan.query_plan_hash)) });
+          paymentPayload=decodeCoinbasePaymentHeader(paymentHeader);
+          const proposed=capabilityQuoteFromPaymentPayload(paymentPayload);
+          const frozen=await readVerifiedCapabilityAnswer({quote:proposed,requestFingerprint});
+          capabilityQuote=frozen.quote;
+          frozenIntelligence=frozen.intelligence;
+          pricedConfig={...config,priceUsdc:capabilityQuote.amount_usdc,
+            amountAtomic:capabilityQuote.amount_atomic};
+          const requirement=coinbaseRequirementsForCapabilityQuote(pricedConfig,capabilityQuote);
+          assertCapabilityPaymentBinding(paymentPayload,capabilityQuote,requirement);
+          assertCoinbasePaymentBinding(paymentPayload,pricedConfig);
+          assertAdaptiveQueryBinding(paymentPayload,plan.query_plan_hash);
+        } catch(error) {
+          return json({ok:false,chargeable:false,
+            error:{code:"X402_CAPABILITY_QUOTE_OR_PAYMENT_BINDING_INVALID",
+              message:"This payment proof does not match a current, immutable, signed capability quote; request a fresh unpaid offer."},
+            execution_authorized:false},402);
         }
 
-        const paymentFingerprint = coinbasePaymentFingerprint(paymentPayload);
-        const requestFingerprint = coinbaseRequestFingerprint({ product: PRODUCT_ID, query_plan_hash: plan.query_plan_hash, request: parsed });
+        const paymentFingerprint=coinbasePaymentFingerprint(paymentPayload);
+        const ledgerRequestFingerprint=capabilityLedgerRequestFingerprint(capabilityQuote);
         let claim;
         try {
-          claim = await claimCoinbaseX402Delivery({ paymentFingerprint, requestFingerprint, clientRequestId: parsed.client_request_id ?? null, config });
+          claim = await claimCoinbaseX402Delivery({ paymentFingerprint, requestFingerprint:ledgerRequestFingerprint, clientRequestId: parsed.client_request_id ?? null, config:pricedConfig });
         } catch (error) {
           console.error("[x402-adaptive] delivery claim failed", error);
           return json({ ok: false, error: { code: "X402_DELIVERY_LEDGER_UNAVAILABLE", message: "Paid delivery ledger is unavailable." }, execution_authorized: false }, 503);
@@ -595,24 +669,24 @@ export const mainnetIntelligenceHandlers = {
         if (claim.disposition === "MANUAL_REVIEW") return json({ ok: false, error: { code: "X402_SETTLEMENT_RECONCILIATION_REQUIRED", message: "A prior settlement outcome is ambiguous; automatic re-charge is blocked." }, execution_authorized: false }, 503);
         if (claim.disposition === "REPLAY" && claim.response_payload) {
           const settlement = replaySettlement(claim.settlement_tx, claim.settlement_network);
-          return json(finalResponse(claim.response_payload as Record<string, unknown>, settlement, config, true), 200, { "PAYMENT-RESPONSE": coinbaseX402PaymentResponseHeader(settlement) });
+          return json(claim.response_payload,200,{"PAYMENT-RESPONSE":coinbaseX402PaymentResponseHeader(settlement)});
         }
         if (claim.disposition !== "CLAIMED" || !claim.claim_token) return json({ ok: false, error: { code: "X402_DELIVERY_CLAIM_FAILED", message: "Unable to claim this paid query." }, execution_authorized: false }, 503);
         const claimToken = claim.claim_token;
 
         let verified;
-        try { verified = await verifyCoinbaseX402(paymentPayload, config); } catch (error) {
+        try { verified = await verifyCoinbaseX402(paymentPayload, pricedConfig); } catch (error) {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: error instanceof Error ? error.message : "CDP_VERIFY_FAILED" });
           return json({ ok: false, error: { code: "X402_VERIFY_UNAVAILABLE", message: "Coinbase payment verification is temporarily unavailable." }, execution_authorized: false }, 503);
         }
         if (!verified.isValid) {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: verified.invalidReason ?? "CDP_VERIFY_INVALID" });
-          return json({ ok: false, error: { code: "X402_PAYMENT_INVALID", reason: verified.invalidReason ?? "invalid_payment", message: verified.invalidMessage ?? "Payment authorization is invalid." }, execution_authorized: false }, 402, { "PAYMENT-REQUIRED": encodeX402Header(adaptivePaymentRequired(request, config, plan.query_plan_hash)) });
+          return json({ok:false,chargeable:false,error:{code:"X402_PAYMENT_INVALID",message:"Payment authorization invalid; no funds accepted."},execution_authorized:false},402);
         }
 
         let usageReservation;
         try {
-          usageReservation = await reserveCoinbaseX402AgentUsage({ paymentFingerprint, payer: verified.payer, config });
+          usageReservation = await reserveCoinbaseX402AgentUsage({ paymentFingerprint, payer: verified.payer, config:pricedConfig });
         } catch (error) {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: error instanceof Error ? error.message : "X402_USAGE_GUARD_UNAVAILABLE" });
           return json({ ok: false, chargeable: false, error: { code: "X402_USAGE_GUARD_UNAVAILABLE", message: "Agent spend controls could not be proven; settlement is disabled." }, execution_authorized: false }, 503);
@@ -637,18 +711,17 @@ export const mainnetIntelligenceHandlers = {
           return json({ ok: false, chargeable: false, availability: publicAgentQueryAvailability(finalAvailability), error: { code: `FINAL_${finalAvailability.code}`, message: "Required data changed before settlement; no payment was taken." }, execution_authorized: false }, 409);
         }
 
-        const requestId = randomUUID();
+        const requestId=String(frozenIntelligence.request_id);
         let prepared: Record<string, unknown>;
         let preparedResponseSha256: string;
+        let frozenHttpBody: FrozenCapabilityHttpBody;
         try {
-          const assembled = await assembleAgentQueryResponse({ plan, requestId, clientRequestId: parsed.client_request_id ?? null, priceUsdc: config.priceUsdc });
-          // Reject embedded publisher links in newly assembled intelligence before
-          // ANY durable payment preparation, receipt reservation or settlement.
-          // Already-settled ledger replay uses safe scrub-and-rehash mode.
-          const intelligence = sanitizeAndRehashPaidPreparedResponse(
-            assembled as Record<string, unknown>, { rejectEmbeddedLinks: true },
-          );
+          // The exact response was assembled, signing-verified, validated and
+          // durably frozen BEFORE the buyer received the priced 402 challenge.
+          // Never reassemble after accepting a signed payment authorization.
+          const intelligence=frozenIntelligence;
           assertGeomacroIntelligenceResponseContract(intelligence);
+          assertPublicPaidOutputBoundary(intelligence);
           prepared = {
             ...intelligence,
             availability: publicAgentQueryAvailability(finalAvailability),
@@ -658,21 +731,35 @@ export const mainnetIntelligenceHandlers = {
               asset: "USDC",
               asset_contract: config.asset,
               network: config.network,
-              amount_atomic: config.amountAtomic,
-              amount_usdc: config.priceUsdc,
-              payer: verified.payer ?? null,
+              amount_atomic: capabilityQuote.amount_atomic,
+              amount_usdc: capabilityQuote.amount_usdc,
+              capability:capabilityQuote.capability,
+              variant:capabilityQuote.variant,
+              pricing_contract_version:capabilityQuote.version,
+              quote_id:capabilityQuote.quote_id,
+              prepared_answer_sha256:capabilityQuote.prepared_answer_sha256,
+              payer: null,
               settlement_reference: null,
+              settlement_proof:"PAYMENT-RESPONSE_HEADER_ONLY",
               bazaar_extension_echoed: paymentPayloadEchoesBazaar(paymentPayload),
               query_plan_bound: true,
             },
           };
           assertPublicPaidOutputBoundary(prepared);
+          assertFrozenCapabilityIntelligenceProjection({
+            quote:capabilityQuote,frozen:frozenIntelligence,delivered:prepared,
+            addedEnvelopeKeys:["availability","payment"],
+          });
+          // Freeze exact successful HTTP wire bytes BEFORE any charge.
+          frozenHttpBody = freezeCanonicalCapabilityHttpBody(prepared);
           const preparedResult = await prepareCoinbaseX402Delivery({
             paymentFingerprint,
             claimToken,
             responsePayload: prepared,
           });
           preparedResponseSha256 = preparedResult.responseSha256;
+          if (frozenHttpBody.sha256 !== preparedResponseSha256)
+            throw Error("X402_FINAL_HTTP_LEDGER_BODY_HASH_MISMATCH");
           await upsertCoinbaseX402ProductAudit({
             requestId,
             clientRequestId: parsed.client_request_id ?? null,
@@ -681,7 +768,7 @@ export const mainnetIntelligenceHandlers = {
             productId: PRODUCT_ID,
             deliveredProductHash: String(intelligence.delivered_product_hash),
             status: "prepared",
-            config,
+            config:pricedConfig,
           });
         } catch (error) {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: error instanceof Error ? error.message : "PRODUCT_PREPARATION_FAILED" });
@@ -689,11 +776,24 @@ export const mainnetIntelligenceHandlers = {
           return json({ ok: false, chargeable: false, error: { code: "PRODUCT_PREPARATION_FAILED", message: "Requested intelligence could not be durably prepared; no settlement was attempted." }, execution_authorized: false }, 503);
         }
 
+        // Quote expiry is re-evaluated at the irreversible settlement
+        // boundary, not just when the payment signature first arrived.
+        try { assertAcceptedCapabilityQuote(capabilityQuote); } catch {
+          await releaseCoinbaseX402DeliveryForRetry({
+            paymentFingerprint,claimToken,failureCode:"CAPABILITY_QUOTE_EXPIRED_BEFORE_SETTLEMENT",
+          });
+          if(usageReservation.enforced) await releaseCoinbaseX402AgentUsage(paymentFingerprint);
+          return json({ok:false,chargeable:false,payment_required_now:false,
+            error:{code:"CAPABILITY_QUOTE_EXPIRED_BEFORE_SETTLEMENT",
+              message:"The quote expired before settlement; no payment was taken."},
+            execution_authorized:false},409);
+        }
+
         let settlement: CoinbaseSettleResult;
-        try { settlement = await settleCoinbaseX402(paymentPayload, config); } catch (error) {
+        try { settlement = await settleCoinbaseX402(paymentPayload, pricedConfig); } catch (error) {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: error instanceof Error ? error.message : "CDP_SETTLE_AMBIGUOUS", manualReview: true });
           if (usageReservation.enforced) await releaseCoinbaseX402AgentUsage(paymentFingerprint, true);
-          try { await upsertCoinbaseX402ProductAudit({ requestId, clientRequestId: parsed.client_request_id ?? null, paymentFingerprint, queryPlanHash: plan.query_plan_hash, productId: PRODUCT_ID, deliveredProductHash: String(prepared.delivered_product_hash ?? ""), status: "manual_review", config }); } catch (auditError) { console.error("[x402-adaptive] manual review audit failed", auditError); }
+          try { await upsertCoinbaseX402ProductAudit({ requestId, clientRequestId: parsed.client_request_id ?? null, paymentFingerprint, queryPlanHash: plan.query_plan_hash, productId: PRODUCT_ID, deliveredProductHash: String(prepared.delivered_product_hash ?? ""), status: "manual_review", config:pricedConfig }); } catch (auditError) { console.error("[x402-adaptive] manual review audit failed", auditError); }
           return json({ ok: false, error: { code: "X402_SETTLEMENT_AMBIGUOUS", message: "Settlement outcome is ambiguous. The proof is locked against automatic re-charge pending reconciliation." }, execution_authorized: false }, 503);
         }
 
@@ -737,7 +837,7 @@ export const mainnetIntelligenceHandlers = {
           payer: settlement.payer ?? verified.payer ?? null,
           settlementTx: settlement.transaction,
           settlementNetwork: settlement.network ?? config.networkName,
-          config,
+          config:pricedConfig,
           paymentFingerprint,
           responseSha256: preparedResponseSha256,
           capability: "adaptive_risk_intelligence_coinbase_x402",
@@ -746,12 +846,16 @@ export const mainnetIntelligenceHandlers = {
           bazaarRejectedReason: bazaar.rejectedReason,
         });
         try {
-          await upsertCoinbaseX402ProductAudit({ requestId, clientRequestId: parsed.client_request_id ?? null, paymentFingerprint, queryPlanHash: plan.query_plan_hash, productId: PRODUCT_ID, deliveredProductHash: String(prepared.delivered_product_hash ?? ""), settlementTx: settlement.transaction, status: "delivered", config });
+          await upsertCoinbaseX402ProductAudit({ requestId, clientRequestId: parsed.client_request_id ?? null, paymentFingerprint, queryPlanHash: plan.query_plan_hash, productId: PRODUCT_ID, deliveredProductHash: String(prepared.delivered_product_hash ?? ""), settlementTx: settlement.transaction, status: "delivered", config:pricedConfig });
         } catch (error) {
           console.error("[x402-adaptive] post-settlement audit projection failed; delivery ledger remains canonical", error);
         }
 
-        return json(finalResponse(prepared, settlement, config), 200, { "PAYMENT-RESPONSE": coinbaseX402PaymentResponseHeader(settlement) });
+        return sendFrozenCapabilityHttpBody(frozenHttpBody,preparedResponseSha256,{
+          ...corsHeaders,
+          "PAYMENT-RESPONSE":coinbaseX402PaymentResponseHeader(settlement),
+          "X-Geomacro-Prepared-Answer-SHA256":capabilityQuote.prepared_answer_sha256,
+        });
       },
 };
 

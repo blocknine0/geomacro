@@ -20,11 +20,16 @@ describe("Coinbase x402 adaptive availability boundary", () => {
     expect(availabilityRoute).not.toContain("PAYMENT-REQUIRED");
   });
 
-  it("returns exact configured price information only as pre-payment metadata", () => {
+  it("keeps free coverage checks distinct from immutable signed mainnet quotes", () => {
     expect(availabilityRoute).toContain("getCoinbaseX402Config");
     expect(availabilityRoute).toContain("amount_usdc: config.priceUsdc");
     expect(availabilityRoute).toContain("amount_atomic: config.amountAtomic");
-    expect(availabilityRoute).toContain("chargeable: availability.deliverable");
+    expect(availabilityRoute).toContain('exact_price: config.environment === "testnet" ? {');
+    expect(availabilityRoute).toContain("testnet_hint_only: true");
+    expect(availabilityRoute).toContain("chargeable: false");
+    expect(availabilityRoute).toContain("capability_price_quote_required: true");
+    expect(availabilityRoute).toContain("signed_customer_answer_prepared: false");
+    expect(availabilityRoute).not.toContain("chargeable: availability.deliverable");
   });
 
   it("advertises a standards-shaped Geomacro query-binding extension with the source-free delivery boundary", () => {

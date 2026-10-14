@@ -315,7 +315,7 @@
           "const": "geomacro.intelligence-contract.v1"
         },
         "pricing_phase": {
-          "const": "EARLY_ADOPTION_10K"
+          "enum": ["EARLY_ADOPTION_10K", "CAPABILITY_USDC_V1"]
         },
         "price_usdc": {
           "type": [

@@ -4,6 +4,7 @@ import { buildAgentQueryPlan } from "../lib/agent-query-plan";
 import { checkAgentQueryDeliverability } from "../lib/agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "../lib/agent-query-external-modules.server";
 import { getCoinbaseX402Config } from "../lib/coinbase-x402.server";
+import { GEOMACRO_CAPABILITY_PRICING_VERSION } from "../lib/capability-pricing-catalog";
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -81,21 +82,28 @@ export const Route = createFileRoute("/api/x402/risk/availability")({
           });
           return json({
             ok: availability.deliverable,
-            chargeable: availability.deliverable,
+            chargeable: false,
             payment_required_now: false,
+            pricing_contract_version: GEOMACRO_CAPABILITY_PRICING_VERSION,
+            capability_price_quote_required: true,
+            signed_customer_answer_prepared: false,
             product: "geomacro_adaptive_risk_intelligence_v1",
             query_plan_hash: plan.query_plan_hash,
-            exact_price: {
+            // Legacy Base Sepolia probes retain their non-chargeable testnet
+            // hint; production must never advertise the old configured flat
+            // price as a purchasable quote before signed-answer preparation.
+            exact_price: config.environment === "testnet" ? {
               amount_usdc: config.priceUsdc,
               amount_atomic: config.amountAtomic,
               asset: "USDC",
               asset_contract: config.asset,
               network: config.network,
-            },
+              testnet_hint_only: true,
+            } : null,
             availability,
             execution_authorized: false,
             note: availability.deliverable
-              ? "No-charge check passed. The exact requested product is currently deliverable; payment occurs only on the paid resource."
+              ? "No-charge coverage preflight passed. Payment still requires an independently verified signed prepared answer, exact capability quote and authenticated immutable prequote readback."
               : "Geomacro will not request or settle payment while required coverage is unavailable, stale, or commercially ineligible.",
           }, availability.deliverable ? 200 : 422);
         } catch (error) {

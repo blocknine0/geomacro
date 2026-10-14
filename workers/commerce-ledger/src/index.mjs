@@ -115,7 +115,10 @@ export class CommerceLedger {
     try {
       if (action === "wdi-prequote-freeze") return json(await this.wdiPrequoteFreeze(body));
       if (action === "wdi-prequote-readback") return json(await this.wdiPrequoteReadback(body));
+      if (action === "capability-prequote-freeze") return json(await this.capabilityPrequoteFreeze(body));
+      if (action === "capability-prequote-readback") return json(await this.capabilityPrequoteReadback(body));
       if (action === "claim") return json(await this.claim(body));
+      if (action === "replay") return json(await this.deliveredReplay(body));
       if (action === "prepare") return json({ ok: await this.prepare(body) });
       if (action === "complete") return json({ ok: await this.complete(body) });
       if (action === "release") return json({ ok: await this.release(body) });
@@ -182,6 +185,64 @@ export class CommerceLedger {
       throw new Error("WDI_PREQUOTE_MISSING_STALE_OR_CORRUPT");
     return { ok:true, schema:"geomacro.wdi-prequote-readback.v1",
       ...value, payment_authorized:false, settlement_attempted:false };
+  }
+
+  // Generic capability contract. Exactly the buyer-visible prepared answer
+  // bytes are snapshotted BEFORE creating an x402 challenge. This is not a
+  // quote authorization, payment claim, settlement or signing operation.
+  async capabilityPrequoteFreeze(body) {
+    const quote=body.quote;
+    const customerBytes=body.customerBytes;
+    if (!quote || typeof quote!=="object" || Array.isArray(quote) ||
+        typeof quote.quote_id!=="string" || !PAYMENT_HASH_RE.test(quote.quote_id) ||
+        typeof quote.request_fingerprint_sha256!=="string" ||
+        !PAYMENT_HASH_RE.test(quote.request_fingerprint_sha256) ||
+        typeof quote.prepared_answer_sha256!=="string" ||
+        !PAYMENT_HASH_RE.test(quote.prepared_answer_sha256) ||
+        quote.version!=="geomacro.capability-usdc.v1" ||
+        quote.availability!=="VERIFIED_DELIVERABLE" ||
+        quote.execution_authorized!==false ||
+        !["coinbase_x402","circle_gateway_x402"].includes(quote.payment_rail) ||
+        body.provider!==quote.payment_rail ||
+        !["mainnet","production"].includes(body.providerEnvironment) ||
+        typeof quote.amount_atomic!=="string" ||
+        !/^[1-9][0-9]*$/u.test(quote.amount_atomic) ||
+        BigInt(quote.amount_atomic)>250_000n ||
+        typeof customerBytes!=="string" ||
+        new TextEncoder().encode(customerBytes).byteLength>WDI_PREQUOTE_MAX_BYTES ||
+        await sha256Text(customerBytes)!==quote.prepared_answer_sha256)
+      throw Error("CAPABILITY_PREQUOTE_INVALID_OR_UNVERIFIED");
+    const issued=Date.parse(quote.issued_at),expires=Date.parse(quote.expires_at),now=Date.now();
+    if(!Number.isFinite(issued)||!Number.isFinite(expires)||issued>now||
+        expires<=now||expires>now+LEASE_MS||expires-issued!==LEASE_MS)
+      throw Error("CAPABILITY_PREQUOTE_EXPIRED_OR_INVALID");
+    const item={quote,customerBytes,expiresAtMs:expires};
+    const key="capability-prequote:"+quote.quote_id;
+    return this.ctx.storage.transaction(async txn=>{
+      const existing=await txn.get(key);
+      if(existing){
+        if(JSON.stringify(existing)!==JSON.stringify(item))
+          throw Error("CAPABILITY_PREQUOTE_IMMUTABLE_CONFLICT");
+        return {ok:true,disposition:"EXACT_REPLAY",quote_id:quote.quote_id,
+          prepared_answer_sha256:quote.prepared_answer_sha256};
+      }
+      await txn.put(key,item);
+      return {ok:true,disposition:"FROZEN",quote_id:quote.quote_id,
+        prepared_answer_sha256:quote.prepared_answer_sha256};
+    });
+  }
+
+  async capabilityPrequoteReadback(body) {
+    const quoteId=validateRequestFingerprint(body.quoteId);
+    const value=await this.ctx.storage.get("capability-prequote:"+quoteId);
+    if(!value || value.quote?.quote_id!==quoteId ||
+        !Number.isSafeInteger(value.expiresAtMs) ||
+        Date.now()>=value.expiresAtMs ||
+        typeof value.customerBytes!=="string" ||
+        await sha256Text(value.customerBytes)!==value.quote?.prepared_answer_sha256)
+      throw Error("CAPABILITY_PREQUOTE_MISSING_EXPIRED_OR_CORRUPT");
+    return {ok:true,schema:"geomacro.capability-prequote.v1",
+      ...value,payment_authorized:false,settlement_attempted:false};
   }
 
   async claim(body) {
@@ -285,6 +346,42 @@ export class CommerceLedger {
 
       return claimResponse(record, "IN_PROGRESS");
     });
+  }
+
+  /** Delivered-only, read-only replay. Never creates a claim or transitions
+   * a pending/failed/expired authorization into a billable settlement.
+   * An expired quote is allowed only for this already-delivered exact payment.
+   */
+  async deliveredReplay(body) {
+    const paymentFingerprint=validatePaymentFingerprint(body.paymentFingerprint);
+    const requestFingerprint=validateRequestFingerprint(body.requestFingerprint);
+    const productId=bounded(body.productId,128);
+    const network=bounded(body.network,128);
+    const asset=bounded(body.asset,128);
+    const recipientHash=body.recipientHash==null?null:String(body.recipientHash).toLowerCase();
+    const amountAtomic=body.amountAtomic==null?null:String(body.amountAtomic);
+    const rail=bounded(body.rail,96);
+    if(!productId||!network||!asset||!rail||
+       !amountAtomic||!/^[1-9][0-9]*$/u.test(amountAtomic)||
+       !PAYMENT_HASH_RE.test(String(recipientHash??"")))
+      throw Error("DELIVERED_REPLAY_SCOPE_INVALID");
+    const record=await this.ctx.storage.get(paymentKey(paymentFingerprint));
+    if(!record||record.state!=="delivered"||record.responsePayload==null||
+       !PAYMENT_HASH_RE.test(String(record.responseSha256??""))||
+       record.requestFingerprint!==requestFingerprint ||
+       record.productId!==productId || record.rail!==rail ||
+       record.network!==network ||
+       String(record.asset??"").toLowerCase()!==asset.toLowerCase() ||
+       record.amountAtomic!==amountAtomic ||
+       record.recipientHash!==recipientHash) {
+      return {disposition:"NOT_FOUND",response_payload:null};
+    }
+    return {
+      disposition:"REPLAY",response_payload:record.responsePayload,
+      response_sha256:record.responseSha256,
+      settlement_reference:record.settlementReference,
+      settlement_network:record.settlementNetwork,
+    };
   }
 
   async prepare(body) {
@@ -484,7 +581,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") {
-      return json({ ok: true, service: "geomacro-commerce-ledger", storage: "durable_objects_sqlite", capabilities: ["delivery", "usage_guard", "product_audit"], wdi_prequote_contract_version: "geomacro.wdi-prequote-worker.v1", wdi_prequote_available: true });
+      return json({ ok: true, service: "geomacro-commerce-ledger", storage: "durable_objects_sqlite", capabilities: ["delivery", "usage_guard", "product_audit"], wdi_prequote_contract_version: "geomacro.wdi-prequote-worker.v1", wdi_prequote_available: true, capability_prequote_contract_version: "geomacro.capability-prequote-worker.v1", capability_prequote_available: true });
     }
     const route = url.pathname.match(/^\/v1\/(delivery|usage|audit)\/([a-z-]+)$/);
     if (request.method !== "POST" || !route) {

@@ -11,6 +11,7 @@ export type CapabilityQuote=Readonly<CapabilityPrice&{
   availability:"VERIFIED_DELIVERABLE";
   payment_rail:"coinbase_x402"|"circle_gateway_x402";
   execution_authorized:false;
+  prepared_answer_sha256?:string;
 }>;
 const SHA=/^[a-f0-9]{64}$/u;
 const ADDRESS=/^0x[0-9a-fA-F]{40}$/u;
@@ -20,7 +21,7 @@ export function quoteGeomacroCapability(input:Readonly<{
   capability:string;variant:string;
   requestFingerprint:string;network:string;asset:string;recipient:string;
   rail:"coinbase_x402"|"circle_gateway_x402";
-  availabilityVerified:boolean;now?:Date;
+  availabilityVerified:boolean;preparedAnswerSha256?:string;now?:Date;
 }>):CapabilityQuote{
   if(input.availabilityVerified!==true)throw Error("CAPABILITY_NOT_DELIVERABLE_NO_CHARGE");
   if(!SHA.test(input.requestFingerprint)||!/^eip155:\d+$/.test(input.network)||
@@ -29,6 +30,8 @@ export function quoteGeomacroCapability(input:Readonly<{
   const now=input.now??new Date();
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     throw Error("CAPABILITY_QUOTE_TIME_INVALID");
+  if(input.preparedAnswerSha256!==undefined&&!SHA.test(input.preparedAnswerSha256))
+    throw Error("CAPABILITY_PREPARED_ANSWER_HASH_INVALID");
   const price=resolveGeomacroCapabilityPrice(input.capability,input.variant);
   const startMs=Math.floor(now.getTime()/300_000)*300_000;
   const expiresMs=startMs+300_000;
@@ -40,6 +43,7 @@ export function quoteGeomacroCapability(input:Readonly<{
     price.version,price.capability,price.variant,price.amount_atomic,
     input.requestFingerprint,network,asset_contract,recipient,
     input.rail,issued_at,expires_at,"VERIFIED_DELIVERABLE",
+    ...(input.preparedAnswerSha256===undefined?[]:[input.preparedAnswerSha256]),
   ]));
   return Object.freeze({
     ...price,quote_id,issued_at,expires_at,
@@ -48,6 +52,7 @@ export function quoteGeomacroCapability(input:Readonly<{
     network,asset_contract,recipient,
     availability:"VERIFIED_DELIVERABLE" as const,
     payment_rail:input.rail,
+    ...(input.preparedAnswerSha256===undefined?{}:{prepared_answer_sha256:input.preparedAnswerSha256}),
     execution_authorized:false as const,
   });
 }

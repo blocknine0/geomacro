@@ -200,14 +200,20 @@ describe("source-free paid output boundary", () => {
     })).toThrow(/PAID_OUTPUT_(PROVIDER_IDENTITY_LEAK|EMBEDDED_SOURCE_URL)/);
   });
 
-  it("wires sanitation before durable x402 preparation and on replay", async () => {
+  it("sanitizes and re-hashes before prequote freeze; replay returns exact stored bytes", async () => {
     const fs = await import("node:fs/promises");
     const route = await fs.readFile("src/lib/mainnet-intelligence-endpoint.server.ts", "utf8");
-    expect(route).toContain("sanitizeAndRehashPaidPreparedResponse(\n            assembled");
-    expect(route).toContain("{ rejectEmbeddedLinks: true }");
+    const offer = await fs.readFile("src/lib/capability-x402-offer.server.ts", "utf8");
+    expect(offer).toContain("sanitizeAndRehashPaidPreparedResponse(");
+    expect(offer).toContain("rejectEmbeddedLinks:true");
+    expect(offer).toContain("assertPublicPaidOutputBoundary(prepared)");
+    expect(offer.indexOf("sanitizeAndRehashPaidPreparedResponse(")).toBeLessThan(
+      offer.indexOf("freezeVerifiedCapabilityAnswer("));
+    expect(route).toContain("readVerifiedCapabilityAnswer");
+    expect(route).toContain("assertPublicPaidOutputBoundary(prepared)");
     expect(route).toContain("availability: publicAgentQueryAvailability(finalAvailability)");
     expect(route).not.toContain("availability: finalAvailability,");
-    expect(route).toContain("assertPublicPaidOutputBoundary(prepared)");
-    expect(route).toContain("const safePrepared = sanitizeAndRehashPaidPreparedResponse(prepared)");
+    expect(route).toContain("return json(claim.response_payload,200");
+    expect(route).not.toContain("return json(finalResponse(prepared, settlement, config)");
   });
 });

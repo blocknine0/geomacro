@@ -80,8 +80,9 @@ function durableLedgerConfig() {
   return { url: url.toString().replace(/\/$/, ""), token };
 }
 
-async function callDurableLedger<T>(
-  action: "claim" | "prepare" | "complete" | "release",
+export async function callDurableLedger<T>(
+  action: "claim" | "prepare" | "complete" | "release" | "replay" |
+    "capability-prequote-freeze" | "capability-prequote-readback",
   payload: Record<string, unknown>,
 ): Promise<T> {
   const cfg = durableLedgerConfig();
