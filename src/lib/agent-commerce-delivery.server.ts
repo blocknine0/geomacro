@@ -81,7 +81,7 @@ function durableLedgerConfig() {
 }
 
 export async function callDurableLedger<T>(
-  action: "claim" | "prepare" | "complete" | "release" |
+  action: "claim" | "prepare" | "complete" | "release" | "replay" |
     "capability-prequote-freeze" | "capability-prequote-readback",
   payload: Record<string, unknown>,
 ): Promise<T> {

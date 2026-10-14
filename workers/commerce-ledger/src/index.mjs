@@ -118,6 +118,7 @@ export class CommerceLedger {
       if (action === "capability-prequote-freeze") return json(await this.capabilityPrequoteFreeze(body));
       if (action === "capability-prequote-readback") return json(await this.capabilityPrequoteReadback(body));
       if (action === "claim") return json(await this.claim(body));
+      if (action === "replay") return json(await this.deliveredReplay(body));
       if (action === "prepare") return json({ ok: await this.prepare(body) });
       if (action === "complete") return json({ ok: await this.complete(body) });
       if (action === "release") return json({ ok: await this.release(body) });
@@ -345,6 +346,42 @@ export class CommerceLedger {
 
       return claimResponse(record, "IN_PROGRESS");
     });
+  }
+
+  /** Delivered-only, read-only replay. Never creates a claim or transitions
+   * a pending/failed/expired authorization into a billable settlement.
+   * An expired quote is allowed only for this already-delivered exact payment.
+   */
+  async deliveredReplay(body) {
+    const paymentFingerprint=validatePaymentFingerprint(body.paymentFingerprint);
+    const requestFingerprint=validateRequestFingerprint(body.requestFingerprint);
+    const productId=bounded(body.productId,128);
+    const network=bounded(body.network,128);
+    const asset=bounded(body.asset,128);
+    const recipientHash=body.recipientHash==null?null:String(body.recipientHash).toLowerCase();
+    const amountAtomic=body.amountAtomic==null?null:String(body.amountAtomic);
+    const rail=bounded(body.rail,96);
+    if(!productId||!network||!asset||!rail||
+       !amountAtomic||!/^[1-9][0-9]*$/u.test(amountAtomic)||
+       !PAYMENT_HASH_RE.test(String(recipientHash??"")))
+      throw Error("DELIVERED_REPLAY_SCOPE_INVALID");
+    const record=await this.ctx.storage.get(paymentKey(paymentFingerprint));
+    if(!record||record.state!=="delivered"||record.responsePayload==null||
+       !PAYMENT_HASH_RE.test(String(record.responseSha256??""))||
+       record.requestFingerprint!==requestFingerprint ||
+       record.productId!==productId || record.rail!==rail ||
+       record.network!==network ||
+       String(record.asset??"").toLowerCase()!==asset.toLowerCase() ||
+       record.amountAtomic!==amountAtomic ||
+       record.recipientHash!==recipientHash) {
+      return {disposition:"NOT_FOUND",response_payload:null};
+    }
+    return {
+      disposition:"REPLAY",response_payload:record.responsePayload,
+      response_sha256:record.responseSha256,
+      settlement_reference:record.settlementReference,
+      settlement_network:record.settlementNetwork,
+    };
   }
 
   async prepare(body) {
