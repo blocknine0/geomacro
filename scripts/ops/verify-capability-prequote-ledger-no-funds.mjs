@@ -113,11 +113,47 @@ const wrongRail=await post("capability-prequote-freeze",{
 if(wrongRail.status===200||wrongRail.body?.ok===true)
   throw Error("CAPABILITY_NO_FUNDS_WRONG_RAIL_ACCEPTED");
 
+// Verify Circle's independent provider/environment Durable Object namespace.
+// Identical amount and source-free synthetic payload, but independently
+// server-priced Circle rail terms and a different immutable quote identifier.
+const circleQuote={
+  ...quote,payment_rail:"circle_gateway_x402",
+  quote_id:digest(JSON.stringify(terms.map((v,i)=>i===8?"circle_gateway_x402":v))),
+};
+const circlePayload={
+  provider:"circle_gateway_x402",providerEnvironment:"production",
+  quote:circleQuote,customerBytes:bytes,
+};
+const circleFreeze=requireOk(
+  await post("capability-prequote-freeze",circlePayload),"CIRCLE_FREEZE");
+if(circleFreeze.disposition!=="FROZEN"||
+   circleFreeze.quote_id!==circleQuote.quote_id)
+  throw Error("CAPABILITY_NO_FUNDS_CIRCLE_QUOTE_FREEZE_MISSING");
+for(let i=0;i<2;i++){
+  const result=requireOk(await post("capability-prequote-readback",{
+    provider:"circle_gateway_x402",providerEnvironment:"production",
+    quoteId:circleQuote.quote_id,
+  }),"CIRCLE_READBACK");
+  if(result.customerBytes!==bytes ||
+     digest(result.customerBytes)!==answerHash||
+     result.quote?.payment_rail!=="circle_gateway_x402"||
+     result.quote?.quote_id!==circleQuote.quote_id||
+     result.settlement_attempted!==false)
+    throw Error("CAPABILITY_NO_FUNDS_CIRCLE_IMMUTABLE_READBACK_INVALID");
+}
+const circleWrongScope=await post("capability-prequote-readback",{
+  provider:"coinbase_x402",providerEnvironment:"mainnet",
+  quoteId:circleQuote.quote_id,
+});
+if(circleWrongScope.status===200&&circleWrongScope.body?.ok===true)
+  throw Error("CAPABILITY_NO_FUNDS_CROSS_RAIL_PREQUOTE_VISIBLE");
+
 console.log(JSON.stringify({
   schema:"geomacro.capability-prequote-synthetic-production-acceptance.v1",
   status:"SYNTHETIC_NO_FUNDS_CAPABILITY_DO_VERIFIED",
   version:health.capability_prequote_contract_version,
   authenticated:true,two_independent_readbacks:true,
+  both_coinbase_circle_production_namespaces:true,cross_rail_scope_isolated:true,
   immutable_freeze:true,exact_replay:true,
   corrupt_bytes_rejected:true,terms_conflict_rejected:true,
   expired_quote_rejected:true,wrong_rail_rejected:true,
