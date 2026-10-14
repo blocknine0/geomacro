@@ -52,8 +52,8 @@ const summary={
   original_board_minute_release_body_verified:Boolean(finding),
   source_bound_structured_answer_candidates:finding?1:0,
   // Aggregate-only exact original release age, no raw source URL/title/hash.
-  verified_original_release_age_seconds:finding?.source_freshness.original_age_seconds??null,
-  original_freshness_classification:finding?.source_freshness.classification??null,
+  verified_original_release_age_seconds:finding?.source_freshness?.original_age_seconds??null,
+  original_freshness_classification:finding?.source_freshness?.classification??null,
   source_query_evidence_fingerprint_bound:Boolean(finding?.query_binding.discovery_query_fingerprint_sha256),
   exact_customer_question_verified:false,
   independent_same_event_review_verified:false,

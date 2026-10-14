@@ -184,7 +184,9 @@ describe("genuine Fed issuer-original context to private structured answer, not 
   })).toBeNull();
   expect(buildPrivateVerifiedFedMinutesFinding(q,page,{
     observedAt:new Date("2026-10-15T18:01:00.000Z"),
-  })?.source_freshness.classification).toBe("HISTORICAL_ORIGINAL");
+  })?.source_freshness?.classification).toBe("HISTORICAL_ORIGINAL");
+  expect(buildPrivateVerifiedFedMinutesFinding(q,page)?.source_freshness)
+    .toBeNull(); // No real probe clock: unknown, never silently use Date.now()
   expect(buildPrivateVerifiedFedMinutesFinding(q,page,{
     observedAt:new Date("2026-10-13T17:59:59.000Z"),
   })).toBeNull();

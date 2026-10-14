@@ -335,7 +335,7 @@ export function buildPrivateVerifiedFedMinutesFinding(
   original_age_seconds:number;
   current_24h_window_expires_utc:string;
   classification:"CURRENT_24H_ORIGINAL"|"HISTORICAL_ORIGINAL";
- }>;
+ }>|null;
  reviewer:Readonly<{
   independent_same_event_verified:false;original_item_relevance_verified:true;
   commercial_item_admission_verified:false;
@@ -355,8 +355,11 @@ export function buildPrivateVerifiedFedMinutesFinding(
  immutable_customer_bytes_prepared:false;x402_payment_authorized:false;
 }>|null {
  if(options.queryPlanHash!==undefined && !SHA.test(options.queryPlanHash))return null;
- const observedAt=options.observedAt??new Date();
- if(!Number.isFinite(observedAt.getTime()))return null;
+ // No implicit wall clock: deterministic fixtures and delayed review must not
+ // fabricate an observation instant. Only a real caller's checked_at may age.
+ const observedAt=options.observedAt??null;
+ if(observedAt!==null &&
+   (!(observedAt instanceof Date)||!Number.isFinite(observedAt.getTime())))return null;
  if(qualification.schema!=="geomacro.on-demand-private-evidence-qualification.v1" ||
     qualification.country_iso3!=="USA" || qualification.commercial_delivery_eligible!==false ||
     qualification.qualified_for_same_event_signing!==false ||
@@ -387,8 +390,10 @@ export function buildPrivateVerifiedFedMinutesFinding(
   if(!record || !/^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u
       .test(record.original_published_at))continue;
   const publishedAt=Date.parse(record.original_published_at);
-  const ageSeconds=Math.floor((observedAt.getTime()-publishedAt)/1000);
-  if(!Number.isSafeInteger(ageSeconds)||ageSeconds<0||ageSeconds>31*86400||
+  const ageSeconds=observedAt===null?null:
+    Math.floor((observedAt.getTime()-publishedAt)/1000);
+  if((ageSeconds!==null && (!Number.isSafeInteger(ageSeconds)||
+      ageSeconds<0||ageSeconds>31*86400))||
      !SHA.test(qualification.query_fingerprint_sha256)||
      !SHA.test(qualification.evidence_fingerprint_sha256))continue;
   const currentNewsExpiry=new Date(publishedAt+86400_000).toISOString();
@@ -407,11 +412,11 @@ export function buildPrivateVerifiedFedMinutesFinding(
       received_query_plan_hash:options.queryPlanHash??null,
       exact_customer_question_verified:false as const,
     },
-    source_freshness:{
+    source_freshness:observedAt===null?null:{
       checked_at_utc:observedAt.toISOString(),
-      original_age_seconds:ageSeconds,
+      original_age_seconds:ageSeconds!,
       current_24h_window_expires_utc:currentNewsExpiry,
-      classification:ageSeconds<=86400?"CURRENT_24H_ORIGINAL" as const:
+      classification:ageSeconds! <= 86400?"CURRENT_24H_ORIGINAL" as const:
         "HISTORICAL_ORIGINAL" as const,
     },
     reviewer:{
