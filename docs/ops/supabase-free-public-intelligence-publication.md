@@ -13,7 +13,7 @@ admission, B2 account governor and D1 publication/readback helper.
 
 ## Execution boundary
 
-Run `node scripts/ops/publish-supabase-free-public-intelligence.mjs
+Run `bun scripts/ops/publish-supabase-free-public-intelligence.mjs
 --verified-publication` only in the existing protected production job, with no
 Supabase credentials injected. Required configuration:
 
@@ -21,7 +21,10 @@ Supabase credentials injected. Required configuration:
   `rows` and `eventPackages`, produced by the trusted reviewed-evidence lane.
 - `GEOMACRO_QUALIFIED_INTELLIGENCE_SHA256`: independently pinned exact file hash.
 - `GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM`: existing trusted Ed25519 review
-  public key; never supplied by the input artifact.
+  public key; never supplied by the input artifact. The existing authority
+  checker additionally requires `GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256`
+  and `RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64`: the reviewer fingerprint must
+  match the approved pin and its key must differ from the GRO signing key.
 - Existing B2 write credentials, Cloudflare account/token and D1 database ID.
 - `B2_ACCOUNT_QUOTA_REQUIRED=1`, a valid `B2_ACCOUNT_QUOTA_WORKFLOW_ID`, and
   `B2_REQUEST_BUDGET=12` (bounded retries share the existing daily D1 governor).
