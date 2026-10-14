@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/live-on-demand-source-acceptance.yml"
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
+      - "scripts/ops/verify-live-on-demand-representative-cases.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
       - "src/lib/on-demand-evidence-qualification.server.ts"
@@ -20,6 +21,7 @@ on:
     paths:
       - ".github/workflows/live-on-demand-source-acceptance.yml"
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
+      - "scripts/ops/verify-live-on-demand-representative-cases.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
       - "src/lib/on-demand-evidence-qualification.server.ts"
@@ -66,6 +68,7 @@ jobs:
           set -euo pipefail
           bun scripts/ops/verify-live-on-demand-capabilities.ts
           bun scripts/ops/verify-live-on-demand-real-apis.ts
+          bun scripts/ops/verify-live-on-demand-representative-cases.ts
       - name: Keep redacted no-funds publisher acceptance
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -74,6 +77,7 @@ jobs:
           path: |
             artifacts/on-demand-live/real-api-proof.json
             artifacts/on-demand-live/real-category-capability.json
+            artifacts/on-demand-live/representative-source-cases.json
           if-no-files-found: warn
           retention-days: 3
 
@@ -147,6 +151,7 @@ jobs:
         run: |
           bun scripts/ops/verify-live-on-demand-capabilities.ts
           bun scripts/ops/verify-live-on-demand-real-apis.ts
+          bun scripts/ops/verify-live-on-demand-representative-cases.ts
       - name: Preserve redacted provider diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -155,6 +160,7 @@ jobs:
           path: |
             artifacts/on-demand-live/real-api-proof.json
             artifacts/on-demand-live/real-category-capability.json
+            artifacts/on-demand-live/representative-source-cases.json
           if-no-files-found: warn
           retention-days: 3
 
