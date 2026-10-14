@@ -10,7 +10,7 @@ import {CANONICAL_CLASSIFIER_VERSION} from "../lib/restricted-private-scored-sta
 import {
  PRIVATE_SCORING_ATTEMPTS_PIPELINE,pickPrivateClassifierWork,
  claimPrivateClassifierWork,acknowledgePrivateClassifierWork,
- validateClaimForPrivateScorer,
+ validateClaimForPrivateScorer,readPrivateClassifierAttempts,
 } from "../lib/private-classifier-retry-ledger.mjs";
 const [operation,domain]=process.argv.slice(2);
 const DOMAINS=new Set(["geopolitics","macro","rare_earth"]);
@@ -117,6 +117,20 @@ try{
      data.diagnostics.classifier_returned_count<
        data.returned_original_article_refs.length))
    throw Error("PRIVATE_CLASSIFIER_RESULT_PROOF_INVALID");
+  if(operation==="finish" && data.records.length>0){
+    // Only the existing, independently authenticated B2/D1 archival step
+    // can complete an eligible private stage. Do not spend an ACK here.
+    const claimed=readPrivateClassifierAttempts(previous,domain,Date.parse(now))
+      .filter(e=>e.run_id===runId&&e.status==="CLAIMED");
+    if(claimed.length!==1||data.attempted_original_article_refs.length!==1||
+       data.returned_original_article_refs.length!==1||
+       data.returned_original_article_refs[0]!==claimed[0].article_sha256||
+       data.attempted_original_article_refs[0]!==claimed[0].article_sha256)
+      throw Error("PRIVATE_CLASSIFIER_ARCHIVE_PENDING_IDENTITY_UNVERIFIED");
+    console.log(JSON.stringify({domain,status:"AWAITING_VERIFIED_B2_D1_ARCHIVE",
+      private_only:true,payment_allowed:false}));
+    process.exit(0);
+  }
   // Source fetch failures or HTTP restrictions never earn a retry.
   // A failed classifier batch with an authenticated selected source hash
   // may use its single delayed retry; absent/corrupt proof is terminal.
