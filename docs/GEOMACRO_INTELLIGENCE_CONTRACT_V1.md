@@ -125,17 +125,28 @@ The response is JSON and includes:
 
 These identifiers allow a machine to persist the exact Geomacro state it last consumed and later determine whether the state has changed.
 
-## Pricing phase
+## Founder-locked capability-based x402 pricing (supersedes legacy pilot)
 
-Early-adoption launch price:
+Canonical source: `src/lib/capability-pricing-catalog.ts` (`geomacro.capability-usdc.v1`).
+Exact prices (USDC, six-decimal precision):
 
-**0.05 USDC per successfully settled and delivered intelligence call for the first 20,000 successful paid deliveries**
+| Capability ID | Approved variant and exact price |
+| --- | --- |
+| `gri_read` | verified cached 0.005; verified change attribution 0.01 |
+| `structural_country_digest` | standard 0.02 |
+| `structural_corridor_digest` | standard 0.05 |
+| `structural_country_profile` | standard 0.03 |
+| `structural_corridor_profile` | standard 0.08 |
+| `intelligence_query` | focused 0.05; standard 0.10; complex multi-source 0.15 |
+| `signed_risk_object` | existing valid signed 0.05; newly qualified signed 0.10 |
+| `risk_gate_bundle` | existing-proof preflight 0.10; standard 0.15; complex multi-source 0.25 |
 
-Initial adoption milestone:
+The Risk Gate bundle includes its signed Risk Object; never charge it again.
+Capability credits are independent usage units and cannot silently convert into USDC.
 
-**20,000 successful paid deliveries = 1,000 USDC gross at the launch price, before provider/network/hosting costs, refunds or disputes.**
+**Pay only for successfully prepared, verified and deliverable intelligence. No mandatory subscription.**
 
-Failed, stale, unavailable, replayed, refunded, internal, testnet and unpaid requests do not count as successful paid deliveries. The post-cohort price is an operator-controlled commercial change and must be published explicitly before it takes effect; there is no automatic price increase inside the intelligence calculation.
+The public catalog is free. A buyer receives an exact capability/variant/network/asset/recipient/amount/expiry quotation **only after live availability, rights, signing and delivery prerequisites** are verified. Unavailable, stale, unverified or out-of-scope requests fail without payment. A tier change needs an explicit new buyer authorization. Historical technical/testnet references to 0.05 USDC per call and the former first-20,000 target are not the public launch schedule, are not automatically repriced and do not create credits or funding obligations. The first 0.05 USDC actual mainnet purchase remains a separate owner-authorized launch canary.
 
 ## Product boundary
 

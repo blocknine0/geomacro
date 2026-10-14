@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
-  GEOMACRO_INTELLIGENCE_LAUNCH_DELIVERY_TARGET,
-  GEOMACRO_INTELLIGENCE_PRICE_USDC,
   GEOMACRO_INTELLIGENCE_PRODUCT_ID,
   GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
 } from "../lib/geomacro-intelligence-contract";
+import {GEOMACRO_CAPABILITY_PRICING_VERSION,capabilityPricingCatalog}
+  from "../lib/capability-pricing-catalog";
 
 export const Route = createFileRoute("/api/intelligence/capabilities")({
   server: {
@@ -25,10 +25,20 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
               contract_version: GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
               delivery: "x402",
               asset: "USDC",
-              early_adoption_price_usdc: GEOMACRO_INTELLIGENCE_PRICE_USDC,
-              initial_successful_delivery_target:
-                GEOMACRO_INTELLIGENCE_LAUNCH_DELIVERY_TARGET,
-              later_reference_price_usdc: "0.10",
+              pricing_contract_version: GEOMACRO_CAPABILITY_PRICING_VERSION,
+              pricing_model:"EXACT_CAPABILITY_VARIANT_NO_FLAT_PRICE",
+              availability:"REALTIME_EVIDENCE_AND_DELIVERY_PROOF_REQUIRED",
+            },
+            capability_pricing:{
+              version:GEOMACRO_CAPABILITY_PRICING_VERSION,
+              currency:"USDC",decimals:6,
+              capabilities:capabilityPricingCatalog(),
+              available_before_payment:false,
+              fixed_tier_only:true,automatic_upgrade:false,
+              risk_gate_includes_signed_object:true,
+              credit_units_are_not_usdc:true,
+              no_charge_when_unavailable:true,
+              label:"Pay only for successfully prepared, verified and deliverable intelligence. No mandatory subscription.",
             },
             coverage: {
               scope: "country_and_directional_corridor",
