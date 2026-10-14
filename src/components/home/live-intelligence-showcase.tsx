@@ -46,7 +46,7 @@ function AccessOptions() {
             Decision-ready API · Pay per call
           </span>
           <span className="inline-flex items-center justify-between gap-2 text-sm font-semibold text-primary">
-            From 0.05 USDC / successful call
+            From capability-priced USDC / successful call
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </span>
         </Link>
