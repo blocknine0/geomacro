@@ -75,11 +75,15 @@ const summary={
   original_board_minute_release_body_verified:Boolean(finding),
   source_bound_structured_answer_candidates:finding?1:0,
   exact_customer_question_sha256_bound:bound?.ok===true,
+  // Evaluate typed, immutable draft gates and cryptographic bytes, not a
+  // substring of a URL. A substring cannot securely identify an origin,
+  // and the existing private draft schema has no raw-source URL field.
   canonical_private_query_draft_verified:bound?.ok===true &&
     /^[a-f0-9]{64}$/u.test(bound.canonical_private_sha256) &&
-    !bound.canonical_private_json.includes(customerRequest.question) &&
-    !bound.canonical_private_json.includes(
-      "https://www.federalreserve.gov/newsevents/pressreleases/"),
+    bound.draft.source_page_verified===true &&
+    bound.draft.signing_eligible===false &&
+    bound.draft.x402_payment_authorized===false &&
+    !bound.canonical_private_json.includes(customerRequest.question),
   query_binding_rejection:bound&&!bound.ok?bound.reason:null,
   explicit_historical_window_seconds:HISTORICAL_WINDOW_SECONDS,
   actually_historical_not_current:finding?.source_freshness?.classification===
