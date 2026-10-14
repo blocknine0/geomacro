@@ -57,6 +57,9 @@ describe("genuine Fed issuer-original context to private structured answer, not 
  it("joins existing canonical discovery, page verification, private qualification and structured finding",async()=>{
   const {fetchImpl,calls}=fetcher();
   const d=await discoverOnDemandForPrivateQualification(SEARCH,{fetchImpl,now:NOW});
+  // World Bank issuer-country identity must be independently resolved before
+  // any official Fed country-specific original can be selected.
+  expect(Boolean(d.private_verified_country_name)).toBe(true);
   const fed=d.private_original_review_candidates.filter(x=>x.publisher_family==="us_federal_reserve_original_publisher");
   // Only numeric producer audit counters; do not leak source URL/title.
   const probe=d.discovery.source_probes.find(x=>x.family==="us_federal_reserve_original_publisher");
