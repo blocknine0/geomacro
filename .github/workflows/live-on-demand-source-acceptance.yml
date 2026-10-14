@@ -159,8 +159,9 @@ jobs:
           retention-days: 3
 
   # Read deployed production, not the PR preview. Never activate x402.
-  # If the marker is stale, fail closed and request the existing publication
-  # workflow; PR CI cannot itself prove the live production SHA.
+  # Compare against the reviewed PR base (protected current main), never an
+  # obsolete historical Phase 1 SHA. If the marker is stale, fail closed and
+  # request the existing Lovable owner Publish action; PR CI alone is not live proof.
   phase2-deployed-production-readback:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
@@ -170,9 +171,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Crosscheck deployed Phase 1 merge SHA and no-funds HTTP endpoints
+      - name: Crosscheck current protected main base SHA and no-funds HTTP endpoints
         env:
-          GEOMACRO_EXPECTED_DEPLOYED_SHA: "295c483d45536a57fbea255f6a98dae68834d5d8"
+          GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ github.event.pull_request.base.sha }}
         run: node scripts/ops/phase2-production-no-funds-readback.mjs
       - name: Preserve safe aggregate production proof
         if: always()
