@@ -6,7 +6,8 @@ import {
 } from "./on-demand-evidence-qualification.server";
 import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "./agent-query-plan";
-import {approvedAdaptiveIntelligencePrice,quoteGeomacroCapability,
+import {approvedAdaptiveIntelligencePrice,fingerprintAgentQueryAvailability,
+  quoteGeomacroCapability,
   verifyGeomacroCapabilityQuote,type CapabilityQuote}
   from "./capability-pricing";
 import {capabilityPricingCatalog,GEOMACRO_CAPABILITY_PRICING_VERSION}
@@ -587,7 +588,9 @@ export const mainnetIntelligenceHandlers = {
             const price=approvedAdaptiveIntelligencePrice(plan);
             capabilityQuote=quoteGeomacroCapability({
               capability:price.capability,variant:price.variant,
-              requestFingerprint,network:config.network,asset:config.asset,
+              requestFingerprint,
+              availabilityFingerprint:fingerprintAgentQueryAvailability(availability),
+              network:config.network,asset:config.asset,
               recipient:config.payTo,rail:"coinbase_x402",
               availabilityVerified:availability.deliverable,
             });
@@ -666,6 +669,17 @@ export const mainnetIntelligenceHandlers = {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: "FINAL_AVAILABILITY_CHECK_FAILED" });
           if (usageReservation.enforced) await releaseCoinbaseX402AgentUsage(paymentFingerprint);
           return json({ ok: false, chargeable: false, error: { code: "FINAL_AVAILABILITY_CHECK_FAILED", message: "Final deliverability could not be proven; no settlement was attempted." }, execution_authorized: false }, 503);
+        }
+        if(capabilityQuote&&fingerprintAgentQueryAvailability(finalAvailability)!==
+            capabilityQuote.availability_fingerprint_sha256){
+          await releaseCoinbaseX402DeliveryForRetry({
+            paymentFingerprint,claimToken,failureCode:"CAPABILITY_QUOTE_AVAILABILITY_CHANGED",
+          });
+          if(usageReservation.enforced)await releaseCoinbaseX402AgentUsage(paymentFingerprint);
+          return json({ok:false,chargeable:false,
+            error:{code:"CAPABILITY_QUOTE_AVAILABILITY_CHANGED",
+              message:"Verified evidence or source rights changed; new quote required."},
+            execution_authorized:false},409);
         }
         if (!finalAvailability.deliverable) {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: `FINAL_${finalAvailability.code}` });
