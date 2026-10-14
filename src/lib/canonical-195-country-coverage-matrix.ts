@@ -5,7 +5,10 @@ export const COVERAGE_DOMAINS_195=["geopolitics","macro","rare_earth"] as const;
 export type CoverageDomain195=typeof COVERAGE_DOMAINS_195[number];
 export type CoverageObservation195=Readonly<{
   iso3:string;category:CoverageDomain195;
+  source_adapter_registered?:boolean;
   live_source_reachable?:boolean;
+  country_relevance_verified?:boolean;
+  independent_fallback_verified?:boolean;
   original_evidence_verified?:boolean;
   current_evidence_available?:boolean;
   rights_qualified?:boolean;
@@ -29,7 +32,10 @@ export type CoverageCell195=Readonly<{
  country_iso3:string;country_iso2:string;country_name:string;
  observer_state:boolean;category:CoverageDomain195;
  ROUTING_VERIFIED:true;
+ SOURCE_ADAPTER_REGISTERED:Dimension;
  LIVE_SOURCE_REACHABLE:Dimension;
+ COUNTRY_RELEVANCE_VERIFIED:Dimension;
+ INDEPENDENT_FALLBACK_VERIFIED:Dimension;
  ORIGINAL_EVIDENCE_VERIFIED:Dimension;
  CURRENT_EVIDENCE_AVAILABLE:Dimension;
  RIGHTS_QUALIFIED:Dimension;
@@ -52,7 +58,11 @@ export function buildCanonical195x3CoverageMatrix(
   // A current genuine event requires a verified original and a reachable
   // issuer; a signed answer requires verified rights, original and current
   // evidence. Never deduce successful proof from a configured endpoint.
-  if(result.original_evidence_verified===true &&
+  if(result.country_relevance_verified===true &&
+       (result.live_source_reachable!==true || result.source_adapter_registered===false) ||
+     result.independent_fallback_verified===true &&
+       (result.country_relevance_verified!==true || result.original_evidence_verified!==true) ||
+     result.original_evidence_verified===true &&
        result.live_source_reachable!==true ||
      result.current_evidence_available===true &&
        result.original_evidence_verified!==true ||
@@ -73,7 +83,10 @@ export function buildCanonical195x3CoverageMatrix(
     country_iso3:country.iso3,country_iso2:country.iso2,
     country_name:country.name,observer_state:country.observer_state,category,
     ROUTING_VERIFIED:true as const,
+    SOURCE_ADAPTER_REGISTERED:r?.source_adapter_registered??null,
     LIVE_SOURCE_REACHABLE:r?.live_source_reachable??null,
+    COUNTRY_RELEVANCE_VERIFIED:r?.country_relevance_verified??null,
+    INDEPENDENT_FALLBACK_VERIFIED:r?.independent_fallback_verified??null,
     ORIGINAL_EVIDENCE_VERIFIED:r?.original_evidence_verified??null,
     CURRENT_EVIDENCE_AVAILABLE:r?.current_evidence_available??null,
     RIGHTS_QUALIFIED:r?.rights_qualified??null,
