@@ -3,7 +3,7 @@ import {GEOMACRO_CAPABILITY_PRICING_VERSION, type CapabilityQuote} from "./capab
 import {prepareVerifiedCapabilityOffer} from "./capability-x402-offer.server";
 import {readVerifiedCapabilityAnswer} from "./capability-x402-prequote.server";
 import {readAlreadyDeliveredCapabilityReplay} from "./capability-x402-replay.server";
-import {coinbaseRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
+import {assertAcceptedCapabilityQuote,coinbaseRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
   capabilityLedgerRequestFingerprint,capabilityQuoteFromPaymentPayload}
   from "./capability-x402-payment-contract.server";
 import {
@@ -758,6 +758,19 @@ export const mainnetIntelligenceHandlers = {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: error instanceof Error ? error.message : "PRODUCT_PREPARATION_FAILED" });
           if (usageReservation.enforced) await releaseCoinbaseX402AgentUsage(paymentFingerprint);
           return json({ ok: false, chargeable: false, error: { code: "PRODUCT_PREPARATION_FAILED", message: "Requested intelligence could not be durably prepared; no settlement was attempted." }, execution_authorized: false }, 503);
+        }
+
+        // Quote expiry is re-evaluated at the irreversible settlement
+        // boundary, not just when the payment signature first arrived.
+        try { assertAcceptedCapabilityQuote(capabilityQuote); } catch {
+          await releaseCoinbaseX402DeliveryForRetry({
+            paymentFingerprint,claimToken,failureCode:"CAPABILITY_QUOTE_EXPIRED_BEFORE_SETTLEMENT",
+          });
+          if(usageReservation.enforced) await releaseCoinbaseX402AgentUsage(paymentFingerprint);
+          return json({ok:false,chargeable:false,payment_required_now:false,
+            error:{code:"CAPABILITY_QUOTE_EXPIRED_BEFORE_SETTLEMENT",
+              message:"The quote expired before settlement; no payment was taken."},
+            execution_authorized:false},409);
         }
 
         let settlement: CoinbaseSettleResult;

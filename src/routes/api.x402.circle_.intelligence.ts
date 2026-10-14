@@ -3,7 +3,7 @@ import {GEOMACRO_CAPABILITY_PRICING_VERSION,type CapabilityQuote} from "../lib/c
 import {prepareVerifiedCapabilityOffer} from "../lib/capability-x402-offer.server";
 import {readVerifiedCapabilityAnswer} from "../lib/capability-x402-prequote.server";
 import {readAlreadyDeliveredCapabilityReplay} from "../lib/capability-x402-replay.server";
-import {circleRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
+import {assertAcceptedCapabilityQuote,circleRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
   capabilityLedgerRequestFingerprint,capabilityQuoteFromPaymentPayload}
   from "../lib/capability-x402-payment-contract.server";
 import {assertGeomacroIntelligenceResponseContract} from "../lib/geomacro-intelligence-contract";
@@ -695,6 +695,17 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             },
             503,
           );
+        }
+
+        try { assertAcceptedCapabilityQuote(capabilityQuote); } catch {
+          await releaseAgentCommerceDelivery({
+            provider:"circle_gateway_x402",providerEnvironment:config.environment,
+            paymentFingerprint,claimToken,failureCode:"CAPABILITY_QUOTE_EXPIRED_BEFORE_SETTLEMENT",
+          });
+          return json({ok:false,chargeable:false,payment_required_now:false,
+            error:{code:"CAPABILITY_QUOTE_EXPIRED_BEFORE_SETTLEMENT",
+              message:"The verified quote expired before settlement; no payment was taken."},
+            execution_authorized:false},409);
         }
 
         let settlement;
