@@ -25,7 +25,7 @@ const qualified=qualifyRetrievedOnDemandEvidence({
  search,discovery:proof.discovery,originals:fed,pageProof:pages,
  verifiedCountryName:proof.private_verified_country_name,macroChanges:[],now,
 });
-const finding=buildPrivateVerifiedFedMinutesFinding(qualified,pages);
+const finding=buildPrivateVerifiedFedMinutesFinding(qualified,pages,{observedAt:now});
 const originalPageVerified=pages.verified_candidates.filter(x=>
   x.publisher_family==="us_federal_reserve_original_publisher").length;
 const archiveProbe=proof.discovery.source_probes.find(x=>
@@ -51,6 +51,12 @@ const summary={
   page_original_dates_verified:originalPageVerified,
   original_board_minute_release_body_verified:Boolean(finding),
   source_bound_structured_answer_candidates:finding?1:0,
+  // Aggregate-only exact original release age, no raw source URL/title/hash.
+  verified_original_release_age_seconds:finding?.source_freshness.original_age_seconds??null,
+  original_freshness_classification:finding?.source_freshness.classification??null,
+  source_query_evidence_fingerprint_bound:Boolean(finding?.query_binding.discovery_query_fingerprint_sha256),
+  exact_customer_question_verified:false,
+  independent_same_event_review_verified:false,
   derived_only_answer_contains_required_attribution:Boolean(finding),
   rights_basis_review:"BOARD_OWNED_PUBLIC_DOMAIN_ATTRIBUTION_THIRD_PARTY_EXCLUSIONS",
   item_specific_commercial_admission_verified:false,

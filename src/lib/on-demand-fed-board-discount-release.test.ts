@@ -158,7 +158,40 @@ describe("genuine Fed issuer-original context to private structured answer, not 
   const q=qualifyRetrievedOnDemandEvidence({search:SEARCH,
     discovery:d.discovery,originals:fed,pageProof:page,
     verifiedCountryName:d.private_verified_country_name,macroChanges:[],now:NOW});
-  const finding=buildPrivateVerifiedFedMinutesFinding(q,page);
+  const planHash="f".repeat(64);
+  const finding=buildPrivateVerifiedFedMinutesFinding(q,page,{
+    observedAt:NOW,queryPlanHash:planHash,
+  });
+  expect(finding?.query_binding).toEqual({
+    discovery_query_fingerprint_sha256:d.discovery.query_fingerprint_sha256,
+    received_query_plan_hash:planHash,
+    exact_customer_question_verified:false,
+  });
+  expect(finding?.evidence_fingerprint_sha256).toBe(q.evidence_fingerprint_sha256);
+  expect(finding?.source_freshness).toEqual({
+    checked_at_utc:NOW.toISOString(),original_age_seconds:61200,
+    current_24h_window_expires_utc:"2026-10-14T18:00:00.000Z",
+    classification:"CURRENT_24H_ORIGINAL",
+  });
+  expect(finding?.reviewer).toEqual({
+    independent_same_event_verified:false,
+    original_item_relevance_verified:true,
+    commercial_item_admission_verified:false,
+    acceptance_status:"BLOCKED_ITEM_RIGHTS_AND_INDEPENDENT_REVIEW",
+  });
+  expect(buildPrivateVerifiedFedMinutesFinding(q,page,{
+    observedAt:NOW,queryPlanHash:"not-a-hash",
+  })).toBeNull();
+  expect(buildPrivateVerifiedFedMinutesFinding(q,page,{
+    observedAt:new Date("2026-10-15T18:01:00.000Z"),
+  })?.source_freshness.classification).toBe("HISTORICAL_ORIGINAL");
+  expect(buildPrivateVerifiedFedMinutesFinding(q,page,{
+    observedAt:new Date("2026-10-13T17:59:59.000Z"),
+  })).toBeNull();
+  expect(buildPrivateVerifiedFedMinutesFinding({...q,originals:q.originals.map(
+    e=>({...e,rights_status:"SOURCE_RIGHTS_CERTIFIED"}))},page,{
+    observedAt:NOW,
+  })).toBeNull(); // never borrow a rights state from missing item review
   expect(finding).toMatchObject({
     country_iso3:"USA",category:"macro",original_publication_utc:FEED_TIME,
     provenance:{issuer:"Board of Governors of the Federal Reserve System",

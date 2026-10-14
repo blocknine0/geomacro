@@ -319,10 +319,28 @@ export function publicOnDemandQualificationStatus(
  */
 export function buildPrivateVerifiedFedMinutesFinding(
  qualification:QualifiedPrivateEvidence,pageProof:PrivatePageDateResult,
+ options:{observedAt?:Date;queryPlanHash?:string}={},
 ):Readonly<{
  schema:"geomacro.private-source-bound-intelligence-candidate.v1";
  country_iso3:"USA";category:"macro";finding:string;
  verified_event:string;original_publication_utc:string;
+ evidence_fingerprint_sha256:string;
+ query_binding:Readonly<{
+  discovery_query_fingerprint_sha256:string;
+  received_query_plan_hash:string|null;
+  exact_customer_question_verified:false;
+ }>;
+ source_freshness:Readonly<{
+  checked_at_utc:string;
+  original_age_seconds:number;
+  current_24h_window_expires_utc:string;
+  classification:"CURRENT_24H_ORIGINAL"|"HISTORICAL_ORIGINAL";
+ }>;
+ reviewer:Readonly<{
+  independent_same_event_verified:false;original_item_relevance_verified:true;
+  commercial_item_admission_verified:false;
+  acceptance_status:"BLOCKED_ITEM_RIGHTS_AND_INDEPENDENT_REVIEW";
+ }>;
  cause_context:string;supported_implications:readonly string[];
  uncertainty:readonly string[];
  provenance:Readonly<{article_identity_sha256:string;
@@ -336,6 +354,9 @@ export function buildPrivateVerifiedFedMinutesFinding(
  registered_signing_eligible:false;signed:false;
  immutable_customer_bytes_prepared:false;x402_payment_authorized:false;
 }>|null {
+ if(options.queryPlanHash!==undefined && !SHA.test(options.queryPlanHash))return null;
+ const observedAt=options.observedAt??new Date();
+ if(!Number.isFinite(observedAt.getTime()))return null;
  if(qualification.schema!=="geomacro.on-demand-private-evidence-qualification.v1" ||
     qualification.country_iso3!=="USA" || qualification.commercial_delivery_eligible!==false ||
     qualification.qualified_for_same_event_signing!==false ||
@@ -361,9 +382,16 @@ export function buildPrivateVerifiedFedMinutesFinding(
      e.original_clock_basis==="VERIFIED_ORIGINAL_PAGE" &&
      e.original_published_at===page.page_original_published_at &&
      e.factual_claim_independently_verified===false &&
-     e.article_commercial_rights_verified===false);
+     e.article_commercial_rights_verified===false &&
+     e.rights_status==="HOLD_ITEM_LEVEL_EXCEPTIONS");
   if(!record || !/^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u
       .test(record.original_published_at))continue;
+  const publishedAt=Date.parse(record.original_published_at);
+  const ageSeconds=Math.floor((observedAt.getTime()-publishedAt)/1000);
+  if(!Number.isSafeInteger(ageSeconds)||ageSeconds<0||ageSeconds>31*86400||
+     !SHA.test(qualification.query_fingerprint_sha256)||
+     !SHA.test(qualification.evidence_fingerprint_sha256))continue;
+  const currentNewsExpiry=new Date(publishedAt+86400_000).toISOString();
   // Board page text is Board-authored; never include the linked PDF,
   // charts, logo, seal or third-party material. Attribution is explicit
   // but its later customer-contract compliance needs separate approval.
@@ -373,6 +401,25 @@ export function buildPrivateVerifiedFedMinutesFinding(
     finding:"The Federal Reserve Board published minutes of earlier discount-window rate-setting meetings.",
     verified_event:"FED_BOARD_DISCOUNT_WINDOW_MEETING_MINUTES_PUBLISHED",
     original_publication_utc:record.original_published_at,
+    evidence_fingerprint_sha256:qualification.evidence_fingerprint_sha256,
+    query_binding:{
+      discovery_query_fingerprint_sha256:qualification.query_fingerprint_sha256,
+      received_query_plan_hash:options.queryPlanHash??null,
+      exact_customer_question_verified:false as const,
+    },
+    source_freshness:{
+      checked_at_utc:observedAt.toISOString(),
+      original_age_seconds:ageSeconds,
+      current_24h_window_expires_utc:currentNewsExpiry,
+      classification:ageSeconds<=86400?"CURRENT_24H_ORIGINAL" as const:
+        "HISTORICAL_ORIGINAL" as const,
+    },
+    reviewer:{
+      independent_same_event_verified:false as const,
+      original_item_relevance_verified:true as const,
+      commercial_item_admission_verified:false as const,
+      acceptance_status:"BLOCKED_ITEM_RIGHTS_AND_INDEPENDENT_REVIEW" as const,
+    },
     cause_context:"The Board publicly released its recorded discussions of discount rates for depository-institution discount-window lending; publication is distinct from a fresh monetary-policy decision.",
     supported_implications:[
       "Provides historical discount-window policy and central-bank liquidity context.",
