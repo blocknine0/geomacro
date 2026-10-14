@@ -173,7 +173,7 @@ function DataApiPage() {
       <section id="pricing" className="scroll-mt-24 border-y border-border/55 bg-card/15">
         <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Access & pricing</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Free to explore. Exact capability pricing when verified.</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Free to explore. x402 pay per call with exact capability pricing when verified.</h2>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
             Pay only for successfully prepared, verified and deliverable intelligence. No mandatory subscription.
             Free access includes website exploration, availability checks and schemas.
