@@ -31,6 +31,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify immutable WDI prequote worker contracts locally (no secrets, no funds)
+        run: node --test scripts/ops/verify-wdi-durable-ledger.test.mjs
+
       - name: Require Cloudflare production deployment secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -71,9 +74,10 @@ jobs:
           esac
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Wait for deployed Worker health propagation
+      - name: Wait for deployed WDI-capable Worker version propagation
         env:
           GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
+          GEOMACRO_COMMERCE_LEDGER_EXPECTED_WDI_VERSION: geomacro.wdi-prequote-worker.v1
         run: node scripts/ops/wait-commerce-ledger-health.mjs
 
       - name: Run no-funds delivery-ledger acceptance
@@ -87,6 +91,12 @@ jobs:
           GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: node scripts/ops/verify-commerce-control-plane-worker.mjs
+
+      - name: Verify deployed WDI prequote vault and authenticated readback (synthetic no funds)
+        env:
+          GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: node scripts/ops/verify-wdi-prequote-ledger-no-funds.mjs
 
       - name: Confirm real-funds activation remains separate
         shell: bash
