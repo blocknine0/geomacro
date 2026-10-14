@@ -1029,6 +1029,11 @@ async function discoverOnDemandImpl(
         reliefWeb(name,trackedFetch,now,approvedReliefAppname,newsMaxAgeMs)});
   }
   if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
+    // Do not steal a scarce original-provider slot from existing multi-domain
+    // country coverage for a newly added Canadian publisher. Canadian queries
+    // and single-domain mineral requests can search this independent issuer.
+    if(source.family==="canada_nrcan_original_publisher" &&
+       country!=="CAN" && categories.length>1) continue;
     if(!topics.length && ["uk_ofsi_original_publisher","ecb_original_publisher",
       "uk_desnz_original_publisher","uk_hmt_original_publisher"].includes(source.family)) continue;
     if (categories.includes(source.domain) &&
