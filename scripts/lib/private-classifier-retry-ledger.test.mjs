@@ -121,3 +121,26 @@ test("quiet pulse has zero model work; premature retry forbidden",()=>{
  assert.deepEqual(find(pulse("macro",at,[]),ledger(first),at),[]);
  assert.deepEqual(find(pulse("macro",later,[]),ledger(first),later,[]),[]);
 });
+
+test("forbidden or unavailable original never becomes a scheduled retry",()=>{
+ const first=find(pulse())[0];
+ const claimed=claimPrivateClassifierWork({domain:"macro",
+   work:first,now:at,runId:"300"});
+ const unverified=acknowledgePrivateClassifierWork({
+  domain:"macro",ledger:ledger(claimed),now:at,runId:"300",
+  attempted:[],returned:[],
+ });
+ assert.equal(unverified.records[0].status,"EXHAUSTED");
+ assert.deepEqual(find(pulse("macro",later,[]),ledger(unverified),later),[]);
+});
+test("failed classifier with proven original SHA keeps precisely one delayed retry",()=>{
+ const claimed=claimPrivateClassifierWork({domain:"macro",
+  work:find(pulse())[0],now:at,runId:"301"});
+ const failed=acknowledgePrivateClassifierWork({
+  domain:"macro",ledger:ledger(claimed),now:at,runId:"301",
+  attempted:[SHA],returned:[],
+ });
+ assert.equal(failed.records[0].status,"CLAIMED");
+ assert.deepEqual(find(pulse("macro",at,[]),ledger(failed),at),[]);
+ assert.equal(find(pulse("macro",later,[]),ledger(failed),later)[0].next_attempts,2);
+});
