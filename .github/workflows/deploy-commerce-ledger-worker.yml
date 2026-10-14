@@ -74,9 +74,10 @@ jobs:
           esac
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Wait for deployed Worker health propagation
+      - name: Wait for deployed WDI-capable Worker version propagation
         env:
           GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
+          GEOMACRO_COMMERCE_LEDGER_EXPECTED_WDI_VERSION: geomacro.wdi-prequote-worker.v1
         run: node scripts/ops/wait-commerce-ledger-health.mjs
 
       - name: Run no-funds delivery-ledger acceptance
