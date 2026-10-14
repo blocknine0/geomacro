@@ -484,7 +484,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") {
-      return json({ ok: true, service: "geomacro-commerce-ledger", storage: "durable_objects_sqlite", capabilities: ["delivery", "usage_guard", "product_audit", "wdi_prequote_readback"], wdi_prequote_contract_version: "geomacro.wdi-prequote-worker.v1" });
+      return json({ ok: true, service: "geomacro-commerce-ledger", storage: "durable_objects_sqlite", capabilities: ["delivery", "usage_guard", "product_audit"], wdi_prequote_contract_version: "geomacro.wdi-prequote-worker.v1", wdi_prequote_available: true });
     }
     const route = url.pathname.match(/^\/v1\/(delivery|usage|audit)\/([a-z-]+)$/);
     if (request.method !== "POST" || !route) {
