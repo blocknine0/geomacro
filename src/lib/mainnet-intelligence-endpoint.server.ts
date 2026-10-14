@@ -576,8 +576,34 @@ export const mainnetIntelligenceHandlers = {
           return json({ ok: false, chargeable: false, payment_required_now: false, availability: publicAgentQueryAvailability(availability), error: { code: availability.code, message: "Requested intelligence is not currently fully deliverable; no payment is accepted." }, execution_authorized: false }, 422);
         }
 
+        // Only explicit opt-in capability pricing is commercial in production.
+        // Historical testnet transactions keep their legacy payment hash/rate.
+        const requestFingerprint=coinbaseRequestFingerprint({
+          product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,request:parsed,
+        });
+        let capabilityQuote:CapabilityQuote|null=null;
+        if(config.environment==="production"){
+          try{
+            const price=approvedAdaptiveIntelligencePrice(plan);
+            capabilityQuote=quoteGeomacroCapability({
+              capability:price.capability,variant:price.variant,
+              requestFingerprint,network:config.network,asset:config.asset,
+              recipient:config.payTo,rail:"coinbase_x402",
+              availabilityVerified:availability.deliverable,
+            });
+            // Canonical resolver, not old COINBASE_X402_PRICE_USDC env, owns
+            // the payable amount. Same resolved config flows to every stage.
+            config={...config,priceUsdc:capabilityQuote.amount_usdc,
+              amountAtomic:capabilityQuote.amount_atomic};
+          }catch(error){
+            return json({ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"CAPABILITY_PRICE_SELECTION_NOT_ACCEPTED",
+                reason:error instanceof Error?error.message:"PRICE_SCOPE_INVALID"},
+              execution_authorized:false},422);
+          }
+        }
         const paymentHeader = request.headers.get("payment-signature");
-        if (!paymentHeader) return paymentRequiredResponse(request, config, plan.query_plan_hash);
+        if (!paymentHeader) return paymentRequiredResponse(request, config, plan.query_plan_hash,capabilityQuote);
         if (!config.apiKeyId || !config.apiKeySecret) {
           return json({ ok: false, error: { code: "CDP_API_CREDENTIALS_MISSING", message: "Coinbase CDP settlement credentials are not configured." }, execution_authorized: false }, 503);
         }
@@ -586,14 +612,13 @@ export const mainnetIntelligenceHandlers = {
         try {
           paymentPayload = decodeCoinbasePaymentHeader(paymentHeader);
           assertCoinbasePaymentBinding(paymentPayload, config);
-          assertAdaptiveQueryBinding(paymentPayload, plan.query_plan_hash);
+          assertAdaptiveQueryBinding(paymentPayload, plan.query_plan_hash,capabilityQuote);
         } catch (error) {
-          return json({ ok: false, error: { code: "X402_PAYMENT_BINDING_INVALID", message: error instanceof Error ? error.message : "Payment proof does not match this query." }, execution_authorized: false }, 402, { "PAYMENT-REQUIRED": encodeX402Header(adaptivePaymentRequired(request, config, plan.query_plan_hash)) });
+          return json({ ok: false, error: { code: "X402_PAYMENT_BINDING_INVALID", message: error instanceof Error ? error.message : "Payment proof does not match this query." }, execution_authorized: false }, 402, { "PAYMENT-REQUIRED": encodeX402Header(adaptivePaymentRequired(request, config, plan.query_plan_hash,capabilityQuote)) });
         }
 
         const paymentFingerprint = coinbasePaymentFingerprint(paymentPayload);
-        const requestFingerprint = coinbaseRequestFingerprint({ product: PRODUCT_ID, query_plan_hash: plan.query_plan_hash, request: parsed });
-        let claim;
+          let claim;
         try {
           claim = await claimCoinbaseX402Delivery({ paymentFingerprint, requestFingerprint, clientRequestId: parsed.client_request_id ?? null, config });
         } catch (error) {
@@ -618,7 +643,7 @@ export const mainnetIntelligenceHandlers = {
         }
         if (!verified.isValid) {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: verified.invalidReason ?? "CDP_VERIFY_INVALID" });
-          return json({ ok: false, error: { code: "X402_PAYMENT_INVALID", reason: verified.invalidReason ?? "invalid_payment", message: verified.invalidMessage ?? "Payment authorization is invalid." }, execution_authorized: false }, 402, { "PAYMENT-REQUIRED": encodeX402Header(adaptivePaymentRequired(request, config, plan.query_plan_hash)) });
+          return json({ ok: false, error: { code: "X402_PAYMENT_INVALID", reason: verified.invalidReason ?? "invalid_payment", message: verified.invalidMessage ?? "Payment authorization is invalid." }, execution_authorized: false }, 402, { "PAYMENT-REQUIRED": encodeX402Header(adaptivePaymentRequired(request, config, plan.query_plan_hash,capabilityQuote)) });
         }
 
         let usageReservation;
@@ -671,6 +696,14 @@ export const mainnetIntelligenceHandlers = {
               network: config.network,
               amount_atomic: config.amountAtomic,
               amount_usdc: config.priceUsdc,
+              ...(capabilityQuote?{
+                capability:capabilityQuote.capability,
+                price_variant:capabilityQuote.variant,
+                pricing_contract_version:capabilityQuote.version,
+                quote_id:capabilityQuote.quote_id,
+                quote_expires_at:capabilityQuote.expires_at,
+                quote_request_fingerprint:capabilityQuote.request_fingerprint_sha256,
+              }:{}),
               payer: verified.payer ?? null,
               settlement_reference: null,
               bazaar_extension_echoed: paymentPayloadEchoesBazaar(paymentPayload),
