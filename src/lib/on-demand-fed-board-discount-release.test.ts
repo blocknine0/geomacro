@@ -1,5 +1,6 @@
 import {describe,it,expect,vi} from "vitest";
 import {verifiedFedBoardDiscountMinutesOriginal} from "./on-demand-fed-board-discount-release.server";
+import {originalFedDiscountMinutesArchiveLinks} from "./on-demand-fed-official-archive.server";
 import {deriveStatelessSignals} from "./stateless-intelligence-model";
 import {discoverOnDemandForPrivateQualification,verifyOnDemandOriginalArticlePages}
  from "./on-demand-global-discovery.server";
@@ -14,6 +15,9 @@ const PAGE="<html><head><title>"+TITLE+"</title></head><body><h3>Press Release</
  "<p>For release at 2:00 p.m. EDT</p>"+
  "<p>The Federal Reserve Board on Tuesday released the minutes from its recent meetings to review and determine the discount rates provided to depository institutions through the discount window.</p>"+
  "<p>The Board's process for setting the discount rate is distinct from the process the Federal Open Market Committee follows in setting the target range for the federal funds rate.</p></body></html>";
+const EMPTY_FEED="<rss><channel></channel></rss>";
+const ARCHIVE="<html><body><div>10/13/2026</div><div>"+
+ '<a href="monetary20261013a.htm">'+TITLE+"</a></div></body></html>";
 const FEED="<rss><channel><item><title>"+TITLE+"</title><link>"+ARTICLE_URL+
  "</link><pubDate>Tue, 13 Oct 2026 18:00:00 GMT</pubDate></item></channel></rss>";
 const SEARCH={country_iso3:"USA",categories:["macro" as const],topics:["macro_risk"],max_age_seconds:86400};
@@ -26,6 +30,8 @@ function fetcher(page=PAGE,feed=FEED){
   if(host==="api.worldbank.org")return Response.json([{page:1},[]]);
   if(host==="www.federalreserve.gov" && url.endsWith("/feeds/press_all.xml"))
     return new Response(feed,{headers:{"content-type":"application/rss+xml"}});
+  if(url.endsWith("/newsevents/pressreleases/2026-press.htm"))
+    return new Response(ARCHIVE,{headers:{"content-type":"text/html"}});
   if(url===ARTICLE_URL)return new Response(page,{headers:{"content-type":"text/html"}});
   if(host==="www.gov.uk")return new Response("<feed></feed>",{headers:{"content-type":"application/atom+xml"}});
   if(host==="www.ecb.europa.eu")return new Response("<rss></rss>",{headers:{"content-type":"application/rss+xml"}});
@@ -35,6 +41,70 @@ function fetcher(page=PAGE,feed=FEED){
  return {fetchImpl,calls};
 }
 describe("genuine Fed issuer-original context to private structured answer, not paid",()=>{
+ it("binds only issuer-owned annual index date and exact original-page clock; no RSS item needed",async()=>{
+  const extracted=originalFedDiscountMinutesArchiveLinks(ARCHIVE,2026,NOW,86400_000);
+  expect(extracted).toEqual([{
+    article_url:ARTICLE_URL,article_title:TITLE,
+    official_archive_release_day:"2026-10-13",
+  }]);
+  const {fetchImpl,calls}=fetcher(PAGE,EMPTY_FEED);
+  const d=await discoverOnDemandForPrivateQualification(SEARCH,{fetchImpl,now:NOW});
+  const fed=d.private_original_review_candidates.filter(x=>
+    x.publisher_family==="us_federal_reserve_original_publisher");
+  expect(fed).toHaveLength(1);
+  expect(fed[0]).toMatchObject({
+    official_archive_release_day:"2026-10-13",
+    feed_item_published_at:null,
+    source_native_feed_publication_date_verified:false,
+    paid_delivery_allowed:false,
+  });
+  expect(d.discovery.source_probes.some(x=>
+    x.family==="us_federal_reserve_annual_archive" &&
+    x.observed_record_count===1)).toBe(true);
+  const proof=await verifyOnDemandOriginalArticlePages(fed,{
+    fetchImpl,now:NOW,maxAgeSeconds:86400});
+  expect(proof).toMatchObject({verified:1,verified_candidates:[{
+    verified_original_event_kind:"FED_BOARD_DISCOUNT_WINDOW_MEETING_MINUTES_PUBLISHED",
+    publisher_article_page_date_verified:true,
+    page_original_published_at:FEED_TIME,
+    official_archive_release_day:"2026-10-13",
+  }]});
+  const qualified=qualifyRetrievedOnDemandEvidence({
+    search:SEARCH,discovery:d.discovery,originals:fed,pageProof:proof,
+    verifiedCountryName:d.private_verified_country_name,macroChanges:[],now:NOW});
+  const finding=buildPrivateVerifiedFedMinutesFinding(qualified,proof);
+  expect(finding).toMatchObject({
+    original_publication_utc:FEED_TIME,
+    country_iso3:"USA",category:"macro",
+    rights:{item_specific_commercial_admission_verified:false,
+      attribution_required:true},
+    signed:false,registered_signing_eligible:false,x402_payment_authorized:false,
+  });
+  expect(qualified.originals).toHaveLength(1);
+  expect(qualified.originals[0].rights_status).toBe("HOLD_ITEM_LEVEL_EXCEPTIONS");
+  expect(qualified.originals[0].original_clock_basis).toBe("VERIFIED_ORIGINAL_PAGE");
+  expect(qualified.commercial_delivery_eligible).toBe(false);
+  expect(d.discovery.network_attempts).toBeLessThanOrEqual(12);
+  expect(calls.filter(x=>x===ARTICLE_URL)).toHaveLength(1);
+  expect(JSON.stringify(d.discovery)).not.toContain(ARTICLE_URL);
+  expect(JSON.stringify(d.discovery)).not.toContain(TITLE);
+ });
+ it("rejects forged/mismatched calendar days, off-host links and stale archive without invention",()=>{
+   expect(originalFedDiscountMinutesArchiveLinks(
+     ARCHIVE.replace("10/13/2026","10/12/2026"),2026,NOW,86400_000)).toEqual([]);
+   expect(originalFedDiscountMinutesArchiveLinks(
+     ARCHIVE.replace("monetary20261013a.htm","https://example.com/newsevents/pressreleases/monetary20261013a.htm"),
+     2026,NOW,86400_000)).toEqual([]);
+   expect(originalFedDiscountMinutesArchiveLinks(ARCHIVE,2026,
+     new Date("2026-11-20T11:00:00Z"),86400_000)).toEqual([]);
+   expect(verifiedFedBoardDiscountMinutesOriginal(PAGE,ARTICLE_URL,TITLE,null,
+     NOW,"2026-10-12")).toBeNull();
+   expect(verifiedFedBoardDiscountMinutesOriginal(PAGE,ARTICLE_URL,TITLE,null,
+     NOW,"2026-10-13")?.publication_utc).toBe(FEED_TIME);
+   expect(verifiedFedBoardDiscountMinutesOriginal(
+     PAGE.replace("For release at 2:00 p.m. EDT","Last Modified 2:00 p.m. EDT"),
+     ARTICLE_URL,TITLE,null,NOW,"2026-10-13")).toBeNull();
+ });
  it("matches the actual D1 display-key candidate without treating FNV as cryptographic proof",()=>{
   const rows=deriveStatelessSignals([{sourceId:"fed_press",category:"macro",
     title:TITLE,articleUrl:ARTICLE_URL,publishedAt:FEED_TIME,
