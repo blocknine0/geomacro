@@ -6,6 +6,11 @@ import {
 } from "./on-demand-evidence-qualification.server";
 import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "./agent-query-plan";
+import {approvedAdaptiveIntelligencePrice,quoteGeomacroCapability,
+  verifyGeomacroCapabilityQuote,type CapabilityQuote}
+  from "./capability-pricing";
+import {capabilityPricingCatalog,GEOMACRO_CAPABILITY_PRICING_VERSION}
+  from "./capability-pricing-catalog";
 import {bindPrivateFedMinutesToExactCustomerQuery}
   from "./on-demand-private-query-bound-draft.server";
 import { assertGeomacroIntelligenceResponseContract } from "./geomacro-intelligence-contract";
@@ -102,7 +107,7 @@ async function parseJsonBody(request: Request) {
   }
 }
 
-function adaptiveBazaarExtension(planHash: string) {
+function adaptiveBazaarExtension(planHash: string,quote:CapabilityQuote|null=null) {
   return {
     bazaar: {
       info: {
@@ -145,6 +150,7 @@ function adaptiveBazaarExtension(planHash: string) {
       info: {
         product: PRODUCT_ID,
         query_plan_hash: planHash,
+        ...(quote?{capability_quote:quote}:{}),
         delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY",
         raw_data_delivered: false,
         source_identity_delivered: false,
@@ -156,18 +162,19 @@ function adaptiveBazaarExtension(planHash: string) {
         properties: {
           product: { type: "string" },
           query_plan_hash: { type: "string" },
+          ...(quote?{capability_quote:{type:"object"}}:{}),
           delivery_boundary: { type: "string", const: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY" },
           raw_data_delivered: { type: "boolean", const: false },
           source_identity_delivered: { type: "boolean", const: false },
           execution_authorized: { type: "boolean", const: false },
         },
-        required: ["product", "query_plan_hash", "delivery_boundary", "raw_data_delivered", "source_identity_delivered", "execution_authorized"],
+        required: ["product", "query_plan_hash", ...(quote?["capability_quote"]:[]), "delivery_boundary", "raw_data_delivered", "source_identity_delivered", "execution_authorized"],
       },
     },
   };
 }
 
-function adaptivePaymentRequired(request: Request, config: CoinbaseX402Config, planHash: string) {
+function adaptivePaymentRequired(request: Request, config: CoinbaseX402Config, planHash: string,quote:CapabilityQuote|null=null) {
   const resourceUrl = new URL(CANONICAL_MAINNET_INTELLIGENCE_PATH, request.url).toString();
   return {
     x402Version: 2,
@@ -180,11 +187,11 @@ function adaptivePaymentRequired(request: Request, config: CoinbaseX402Config, p
       tags: ["geopolitical-risk", "macro-risk", "critical-minerals", "country-risk", "hot-topics", "risk-gate", "ai-agents"],
     },
     accepts: [coinbaseX402PaymentRequirements(config)],
-    extensions: adaptiveBazaarExtension(planHash),
+    extensions: adaptiveBazaarExtension(planHash,quote),
   };
 }
 
-function assertAdaptiveQueryBinding(paymentPayload: Record<string, unknown>, planHash: string) {
+function assertAdaptiveQueryBinding(paymentPayload: Record<string, unknown>, planHash: string,quote:CapabilityQuote|null=null) {
   const extensions = paymentPayload.extensions;
   if (!extensions || typeof extensions !== "object" || Array.isArray(extensions)) {
     throw new Error("PAYMENT_QUERY_BINDING_EXTENSION_MISSING");
@@ -202,10 +209,11 @@ function assertAdaptiveQueryBinding(paymentPayload: Record<string, unknown>, pla
   if (binding.product !== PRODUCT_ID || binding.query_plan_hash !== planHash) {
     throw new Error("PAYMENT_QUERY_PLAN_MISMATCH");
   }
+  if(quote)verifyGeomacroCapabilityQuote(binding.capability_quote,quote);
 }
 
-function paymentRequiredResponse(request: Request, config: CoinbaseX402Config, planHash: string) {
-  const required = adaptivePaymentRequired(request, config, planHash);
+function paymentRequiredResponse(request: Request, config: CoinbaseX402Config, planHash: string,quote:CapabilityQuote|null=null) {
+  const required = adaptivePaymentRequired(request, config, planHash,quote);
   return json(required, 402, { "PAYMENT-REQUIRED": encodeX402Header(required) });
 }
 
@@ -270,7 +278,10 @@ export const mainnetIntelligenceHandlers = {
           environment: config.environment,
           network: config.network,
           asset: "USDC",
-          exact_price_usdc: config.priceUsdc,
+          pricing_contract_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
+          capability_prices:capabilityPricingCatalog(),
+          legacy_testnet_reference_price_usdc:config.environment==="testnet"?config.priceUsdc:null,
+          exact_price_usdc:null,
           topics: AGENT_QUERY_TOPICS,
           coverage: "data-driven; only currently deliverable subjects are payable",
           live_on_demand_discovery_supported: true,
