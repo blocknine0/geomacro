@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
+import { originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 import { canonicalRiskObjectJson } from "./risk-object-signing.server";
 import {
   type OnDemandCategory, type OnDemandSearchInput,
@@ -112,9 +112,9 @@ function safeOriginal(candidate: PrivateOriginalCandidate, nowMs: number,
   // Exactly the same first-party item summary that the live discovery
   // engine originally scoped. A search index or feed excerpt NEVER proves
   // the described factual claim: it is only first-party query relevance.
-  if(!verifiedName || !(
-     originalHeadlineMentionsCountry(candidate.article_title,search.country_iso3,verifiedName) ||
-     originalHeadlineMentionsCountry(summary.slice(0,300),search.country_iso3,verifiedName)
+  if(!verifiedName || !originalPublisherMatchesCountry(
+    candidate.article_title,summary,search.country_iso3,verifiedName,
+    candidate.publisher_family,
   ))return false;
   const contextualText=(candidate.article_title+" "+summary).slice(0,850);
   const topics = search.topics ?? [];
