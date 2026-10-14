@@ -211,8 +211,12 @@ export async function durablyFreezeWdiNoFundsAnswer(input:{
   const now=opts.now??new Date();
   if(!Number.isFinite(now.getTime()))
     throw Error("WDI_DURABLE_CLOCK_INVALID");
-  const rights=await (opts.readRightsReceipt??readB2CommercialSourceRightsReceipt)();
-  if(!rights || !SHA.test(rights.compressed_sha256))
+  // Operator-only proof: require a new D1-reserved B2 GET, not an in-memory
+  // rights cache or a copied GitHub attestation verdict.
+  const rights=await (opts.readRightsReceipt??readB2CommercialSourceRightsReceipt)(
+    {freshQuotaReservedGet:true});
+  if(!rights || rights.fresh_quota_reserved_get!==true ||
+     !SHA.test(rights.compressed_sha256))
     throw Error("WDI_DURABLE_GENUINE_RECEIPT_UNAVAILABLE");
   const generatedAt=Date.parse(rights.generated_at);
   const expiry=generatedAt+24*60*60*1000;
