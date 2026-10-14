@@ -27,7 +27,7 @@ const SHA = /^[a-f0-9]{64}$/u;
 const hmac = (key, msg) => createHmac("sha256", key).update(msg).digest();
 const sha = (data) => createHash("sha256").update(data).digest("hex");
 
-function fail(category, { reserved = false, attempted = false, d1Authenticated = false, exact = false } = {}) {
+function fail(category, { reserved = false, attempted = false, d1Authenticated = false, exact = false, wdiPredicates = null } = {}) {
   return {
     schema: "geomacro.one-shot-wdi-rights-main-production.v1",
     status: "BLOCKED", category,
@@ -37,6 +37,7 @@ function fail(category, { reserved = false, attempted = false, d1Authenticated =
     max_s3_get_attempts: 1,
     exact_b2_receipt_matched: exact,
     wdi_rights_certified: false,
+    ...(wdiPredicates ? { wdi_predicates: wdiPredicates } : {}),
     b2_puts: 0, supabase_requests: 0, d1_payload_writes: 0,
     payments: 0, payment_authorized: false, lovable_runtime_verified: false,
   };
@@ -77,7 +78,7 @@ function strictPresent(env) {
     typeof env.GEOMACRO_COMMERCE_LEDGER_TOKEN === "string" &&
     env.GEOMACRO_COMMERCE_LEDGER_TOKEN.trim().length >= 32;
 }
-export function qualifyExactRights(bytes, { now = Date.now(), expectedSha = EXPECTED_SHA, expectedAt = EXPECTED_AT } = {}) {
+export function qualifyExactRights(bytes, { now = Date.now(), expectedSha = EXPECTED_SHA, expectedAt = EXPECTED_AT, diagnostics = null } = {}) {
   if (!Buffer.isBuffer(bytes) || bytes.length < 10 || bytes.length > MAX_GZIP)
     return "B2_RECEIPT_BYTES_INVALID";
   if (!SHA.test(expectedSha) || sha(bytes) !== expectedSha)
@@ -114,14 +115,24 @@ export function qualifyExactRights(bytes, { now = Date.now(), expectedSha = EXPE
     if (row.source_id === "world_bank_indicators") wdi = row;
   }
   if (!wdi) return "WDI_EXACT_SOURCE_NOT_CERTIFIED";
-  if (wdi.certification_state !== "CERTIFIED" ||
-      !["COMMERCIAL_OK", "DERIVED_ONLY"].includes(wdi.commercial_usage_status) ||
-      wdi.enabled_for_ingestion !== true ||
-      wdi.enabled_for_commercial_signals !== true ||
-      wdi.attribution_required !== true ||
-      !/^CC[\s-]*BY[\s-]*4\.0(?:\b|$)/iu.test(wdi.licence_name ?? "") ||
-      !["macro", "macro_fx", "macro-fx", null].includes(wdi.category))
+  // Canonical live_external_sources category is uppercase MACRO. Preserve all
+  // existing explicit aliases and all independent commercial-rights predicates.
+  const predicates = {
+    certification_state: wdi.certification_state === "CERTIFIED",
+    commercial_usage: ["COMMERCIAL_OK", "DERIVED_ONLY"].includes(wdi.commercial_usage_status),
+    ingestion_enabled: wdi.enabled_for_ingestion === true,
+    commercial_signals_enabled: wdi.enabled_for_commercial_signals === true,
+    attribution_required: wdi.attribution_required === true,
+    licence_cc_by_4: /^CC[\s-]*BY[\s-]*4\.0(?:\b|$)/iu.test(wdi.licence_name ?? ""),
+    macro_category: ["MACRO", "macro", "macro_fx", "macro-fx", null].includes(wdi.category),
+  };
+  if (!Object.values(predicates).every(Boolean)) {
+    // Only fixed Boolean predicates for the already-identified WDI source.
+    // No raw row values, source inventory, secrets or upstream evidence.
+    if (diagnostics && typeof diagnostics === "object" && !Array.isArray(diagnostics))
+      Object.assign(diagnostics, predicates);
     return "WDI_RIGHTS_CONTRACT_MISMATCH";
+  }
   // Upstream raw-redistribution permission is not Geomacro customer-delivery policy.
   return "RIGHTS_CERTIFIED";
 }
@@ -230,10 +241,12 @@ export async function verifyOneRightsReceipt({
   } catch {
     return fail("B2_READ_BODY_UNAVAILABLE", {reserved:true,attempted:true,d1Authenticated:true});
   }
-  const verdict = qualifyExactRights(bytes, {now:Date.now()});
+  const wdiPredicates = {};
+  const verdict = qualifyExactRights(bytes, {now:Date.now(), diagnostics:wdiPredicates});
   if (verdict !== "RIGHTS_CERTIFIED")
     return fail(verdict, {reserved:true,attempted:true,d1Authenticated:true,
-      exact:verdict === "WDI_RIGHTS_CONTRACT_MISMATCH" || verdict === "WDI_EXACT_SOURCE_NOT_CERTIFIED"});
+      exact:verdict === "WDI_RIGHTS_CONTRACT_MISMATCH" || verdict === "WDI_EXACT_SOURCE_NOT_CERTIFIED",
+      wdiPredicates:verdict === "WDI_RIGHTS_CONTRACT_MISMATCH" ? wdiPredicates : null});
   return success();
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
