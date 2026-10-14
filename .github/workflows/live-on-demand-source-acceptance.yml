@@ -25,6 +25,7 @@ on:
       - "src/lib/canonical-195-country-coverage-matrix.ts"
       - "src/lib/on-demand-original-subject-matching.ts"
       - "scripts/ops/verify-live-195-country-batch.ts"
+      - "scripts/ops/export-canonical-195-country-matrix.ts"
       - "scripts/ops/verify-live-on-demand-nrcan-original.ts"
       - "src/lib/on-demand-nrcan-day-only-rescue.test.ts"
       - "src/lib/on-demand-evidence-qualification.server.ts"
@@ -45,6 +46,7 @@ on:
       - "src/lib/canonical-195-country-coverage-matrix.ts"
       - "src/lib/on-demand-original-subject-matching.ts"
       - "scripts/ops/verify-live-195-country-batch.ts"
+      - "scripts/ops/export-canonical-195-country-matrix.ts"
       - "scripts/ops/verify-live-on-demand-nrcan-original.ts"
       - "src/lib/on-demand-nrcan-day-only-rescue.test.ts"
       - "src/lib/on-demand-evidence-qualification.server.ts"
@@ -93,6 +95,7 @@ jobs:
           bun scripts/ops/verify-live-on-demand-real-apis.ts
           bun scripts/ops/verify-live-on-demand-representative-cases.ts
           bun scripts/ops/verify-live-on-demand-nrcan-original.ts
+          bun scripts/ops/export-canonical-195-country-matrix.ts
       # Existing once-daily original API acceptance owns the rotating probe.
       # No separate Cron, per-country poller or Supabase/B2 production reads.
       # PR runners never run this optional additional network probing stage.
@@ -121,6 +124,7 @@ jobs:
             artifacts/on-demand-live/real-api-proof.json
             artifacts/on-demand-live/real-category-capability.json
             artifacts/on-demand-live/representative-source-cases.json
+            artifacts/country-195/routing-matrix.v1.json
           if-no-files-found: warn
           retention-days: 3
 
@@ -196,6 +200,7 @@ jobs:
           bun scripts/ops/verify-live-on-demand-real-apis.ts
           bun scripts/ops/verify-live-on-demand-representative-cases.ts
           bun scripts/ops/verify-live-on-demand-nrcan-original.ts
+          bun scripts/ops/export-canonical-195-country-matrix.ts
       - name: Preserve redacted provider diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -205,6 +210,7 @@ jobs:
             artifacts/on-demand-live/real-api-proof.json
             artifacts/on-demand-live/real-category-capability.json
             artifacts/on-demand-live/representative-source-cases.json
+            artifacts/country-195/routing-matrix.v1.json
           if-no-files-found: warn
           retention-days: 3
 
