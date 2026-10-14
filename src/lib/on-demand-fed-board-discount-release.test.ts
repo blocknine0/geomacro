@@ -1,4 +1,6 @@
 import {describe,it,expect,vi} from "vitest";
+import {buildAgentQueryPlan} from "./agent-query-plan";
+import {bindPrivateFedMinutesToExactCustomerQuery} from "./on-demand-private-query-bound-draft.server";
 import {verifiedFedBoardDiscountMinutesOriginal} from "./on-demand-fed-board-discount-release.server";
 import {originalFedDiscountMinutesArchiveLinks} from "./on-demand-fed-official-archive.server";
 import {deriveStatelessSignals} from "./stateless-intelligence-model";
@@ -88,6 +90,107 @@ describe("genuine Fed issuer-original context to private structured answer, not 
   expect(calls.filter(x=>x===ARTICLE_URL)).toHaveLength(1);
   expect(JSON.stringify(d.discovery)).not.toContain(ARTICLE_URL);
   expect(JSON.stringify(d.discovery)).not.toContain(TITLE);
+ });
+ it("binds the EXACT customer question to authentic Fed issuer proof, not generic macro risk",async()=>{
+  const received={
+    question:"When did the Federal Reserve Board publish its August and September 2026 discount-rate meeting minutes?",
+    subjects:[{type:"country" as const,country_iso3:"USA"}],
+    topics:["macro_risk" as const],
+    fulfillment_mode:"live_on_demand" as const,
+    max_age_seconds:86_400,
+  };
+  const canonicalPlan=buildAgentQueryPlan(received);
+  const {fetchImpl}=fetcher();
+  const discovered=await discoverOnDemandForPrivateQualification(SEARCH,{fetchImpl,now:NOW});
+  const fed=discovered.private_original_review_candidates.filter(c=>
+    c.publisher_family==="us_federal_reserve_original_publisher");
+  const verified=await verifyOnDemandOriginalArticlePages(fed,{
+    fetchImpl,now:NOW,maxAgeSeconds:86_400});
+  const qualified=qualifyRetrievedOnDemandEvidence({
+    search:SEARCH,discovery:discovered.discovery,originals:fed,pageProof:verified,
+    verifiedCountryName:discovered.private_verified_country_name,macroChanges:[],now:NOW,
+  });
+  const finding=buildPrivateVerifiedFedMinutesFinding(qualified,verified,{
+    queryPlanHash:canonicalPlan.query_plan_hash,observedAt:NOW,
+  });
+  expect(finding).not.toBeNull();
+  const bind=(receivedRequest:unknown,plan=canonicalPlan,f= finding!)=>
+    bindPrivateFedMinutesToExactCustomerQuery({
+      receivedRequest,canonicalPlan:plan,finding:f,
+    });
+  const accepted=bind(received);
+  expect(accepted.ok).toBe(true);
+  if(!accepted.ok)throw Error("TEST_QUERY_EXPECTED_BOUND");
+  expect(accepted.draft).toMatchObject({
+    query_plan_sha256:canonicalPlan.query_plan_hash,
+    exact_customer_question_sha256:expect.stringMatching(/^[a-f0-9]{64}$/),
+    original_published_at_utc:FEED_TIME,
+    original_age_seconds:61_200,
+    country_iso3:"USA",category:"macro",
+    source_page_verified:true,signing_eligible:false,
+    independent_review_accepted:false,item_commercial_rights_admitted:false,
+    durable_freeze_authorized:false,x402_payment_authorized:false,
+    risk_score:null,status:"QUERY_BOUND_DRAFT_NOT_COMMERCIALLY_ADMITTED",
+  });
+  const again=bind(received);
+  expect(again.ok).toBe(true);
+  if(again.ok)expect(again.canonical_private_sha256).toBe(accepted.canonical_private_sha256);
+  expect(accepted.canonical_private_sha256).toMatch(/^[a-f0-9]{64}$/);
+  expect(accepted.canonical_private_json).not.toContain(ARTICLE_URL);
+  expect(accepted.canonical_private_json).not.toContain(received.question);
+  const modified={...received,question:received.question+" And what was the FX impact?"};
+  expect(bind(modified)).toEqual({ok:false,reason:"CANONICAL_QUERY_PLAN_MISMATCH"});
+  expect(bind(modified,buildAgentQueryPlan(modified))).toEqual({
+    ok:false,reason:"UNSUPPORTED_QUESTION_CLAIM",
+  }); // Note a newly generated plan must still face narrow supported-claim rejection.
+  const wrongCountry={...received,subjects:[{type:"country" as const,country_iso3:"GBR"}]};
+  expect(bind(wrongCountry,buildAgentQueryPlan(wrongCountry))).toEqual({
+    ok:false,reason:"SUBJECT_COUNTRY_CATEGORY_MISMATCH",
+  });
+  const wrongCategory={...received,topics:["critical_minerals" as const]};
+  expect(bind(wrongCategory,buildAgentQueryPlan(wrongCategory))).toEqual({
+    ok:false,reason:"SUBJECT_COUNTRY_CATEGORY_MISMATCH",
+  });
+  const sameSemanticDifferentBytes={...received,question:"  "+received.question+" "};
+  const differentExact=bind(sameSemanticDifferentBytes);
+  expect(differentExact.ok).toBe(true);
+  if(differentExact.ok) {
+    expect(differentExact.draft.exact_customer_question_sha256)
+      .not.toBe(accepted.draft.exact_customer_question_sha256);
+    expect(differentExact.canonical_private_sha256)
+      .not.toBe(accepted.canonical_private_sha256);
+  }
+  const noClock={...finding!,source_freshness:null};
+  expect(bind(received,canonicalPlan,noClock)).toEqual({
+    ok:false,reason:"REAL_SOURCE_OBSERVATION_CLOCK_MISSING",
+  });
+  const expired={...finding!,source_freshness:{
+    ...finding!.source_freshness!,checked_at_utc:"2026-10-14T18:01:00.000Z",
+    original_age_seconds:86_460,
+    classification:"HISTORICAL_ORIGINAL" as const,
+  }};
+  expect(bind(received,canonicalPlan,expired)).toEqual({
+    ok:false,reason:"ORIGINAL_OUTSIDE_QUERY_WINDOW",
+  });
+  const wider={...received,max_age_seconds:31*86_400};
+  const widePlan=buildAgentQueryPlan(wider);
+  const historic={...expired,query_binding:{
+    ...finding!.query_binding,received_query_plan_hash:widePlan.query_plan_hash,
+  }};
+  const historyResult=bind(wider,widePlan,historic);
+  expect(historyResult.ok).toBe(true);
+  if(historyResult.ok) {
+    expect(historyResult.draft.source_classification).toBe("HISTORICAL_ORIGINAL");
+    expect(historyResult.draft.signing_eligible).toBe(false);
+  }
+  const current={...wider,question:received.question.replace("When did","What is the current date when")};
+  const currentPlan=buildAgentQueryPlan(current);
+  const currentFinding={...historic,query_binding:{
+    ...historic.query_binding,received_query_plan_hash:currentPlan.query_plan_hash,
+  }};
+  expect(bind(current,currentPlan,currentFinding)).toEqual({
+    ok:false,reason:"CURRENT_QUERY_REQUIRES_FRESH_ORIGINAL",
+  });
  });
  it("rejects forged/mismatched calendar days, off-host links and stale archive without invention",()=>{
    expect(originalFedDiscountMinutesArchiveLinks(
