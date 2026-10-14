@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, CalendarDays, Check, CircleDollarSign, Mail, ShieldCheck } from "lucide-react";
 import { AgentCommerceStatus } from "@/components/agent-commerce-status";
+import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
 import { Button } from "@/components/ui/button";
 
 const TITLE = "Pricing | Geomacro";
@@ -105,14 +106,14 @@ function PricingPage() {
                     x402 pay per call
                   </p>
                   <div className="mt-3 flex flex-wrap items-end gap-x-2 gap-y-1">
-                    <p className="text-5xl font-semibold">0.05</p>
-                    <span className="pb-1 text-sm text-muted-foreground">USDC / successful delivery</span>
+                    <p className="text-2xl font-semibold">Capability-based USDC</p>
+                    <span className="pb-1 text-sm text-muted-foreground">Exact price shown below</span>
                   </div>
                 </div>
                 <CircleDollarSign className="h-6 w-6 text-primary" />
               </div>
               <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                Launch price for the first 20,000 successfully settled and delivered commercial intelligence calls. There is no subscription requirement for this launch offer.
+                Each approved capability and variant has its own exact price. No subscription is required. Live eligibility must be verified before any x402 quote or charge.
               </p>
               <ul className="mt-7 space-y-3">
                 {PAID_ACCESS.map((item) => (
@@ -141,6 +142,7 @@ function PricingPage() {
             </div>
           </article>
         </div>
+        <div className="mt-8"><CapabilityPriceSchedule /></div>
       </section>
 
       <section className="border-t border-border/55 bg-card/15">
