@@ -39,8 +39,11 @@ for(const country of COUNTRIES_195.slice(from,from+count)){
    totalPageRequests+=verified.attempted;
    if(verified.attempted>4)throw Error("ARTICLE_BUDGET_EXCEEDED");
    const proofs=verified.verified_candidates.filter(x=>x.domain===category);
+   // HTTP 200 from a global feed alone is NOT country-specific original
+   // coverage. An actual country-relevant first-party original is required.
+   const countryRelevantOrigin=issuers.length>0 && candidates.length>0;
    const observed:CoverageObservation195={
-     iso3:country.iso3,category,live_source_reachable:issuers.length>0,
+     iso3:country.iso3,category,live_source_reachable:countryRelevantOrigin,
      original_evidence_verified:proofs.length>0,
      current_evidence_available:proofs.length>0 ? true : undefined,
      rights_qualified:false,signed_delivery_verified:false,
@@ -65,7 +68,8 @@ console.log(JSON.stringify({
  country_registry_version:matrix.country_registry_version,
  batch_start:from,batch_count:count,category_count:3,
  observed_cells:cells.length,total_country_baseline:195,
- live_issuer_reachable:cells.filter(x=>x.LIVE_SOURCE_REACHABLE===true).length,
+ country_relevant_live_original_candidates:cells.filter(x=>x.LIVE_SOURCE_REACHABLE===true).length,
+ HTTP_reachability_without_country_original_is_not_coverage:true,
  original_page_verified:cells.filter(x=>x.ORIGINAL_EVIDENCE_VERIFIED===true).length,
  // No fresh-event licence or independent reviewer receipt was checked.
  commercial_rights_verified:0,signed_delivery_verified:0,
