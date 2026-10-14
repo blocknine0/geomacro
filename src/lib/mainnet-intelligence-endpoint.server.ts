@@ -73,7 +73,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, PAYMENT-SIGNATURE, payment-signature",
-  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
+  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, X-Geomacro-Delivery-SHA256, X-Geomacro-Prepared-Answer-SHA256",
   "Access-Control-Max-Age": "600",
 };
 
@@ -610,7 +610,11 @@ export const mainnetIntelligenceHandlers = {
               transaction:prior.settlementReference??undefined,
               network:prior.settlementNetwork??undefined,
               extra:{idempotentReplay:true}};
-            return json(prior.response,200,{"PAYMENT-RESPONSE":coinbaseX402PaymentResponseHeader(receipt)});
+            return json(prior.response,200,{
+              "PAYMENT-RESPONSE":coinbaseX402PaymentResponseHeader(receipt),
+              "X-Geomacro-Delivery-SHA256":prior.responseSha256,
+              "X-Geomacro-Prepared-Answer-SHA256":historicQuote.prepared_answer_sha256,
+            });
           }
         }catch(error){
           // Never fall through to settlement if a past payment cannot be
@@ -839,7 +843,11 @@ export const mainnetIntelligenceHandlers = {
           console.error("[x402-adaptive] post-settlement audit projection failed; delivery ledger remains canonical", error);
         }
 
-        return json(prepared,200,{"PAYMENT-RESPONSE":coinbaseX402PaymentResponseHeader(settlement)});
+        return json(prepared,200,{
+          "PAYMENT-RESPONSE":coinbaseX402PaymentResponseHeader(settlement),
+          "X-Geomacro-Delivery-SHA256":preparedResponseSha256,
+          "X-Geomacro-Prepared-Answer-SHA256":capabilityQuote.prepared_answer_sha256,
+        });
       },
 };
 
