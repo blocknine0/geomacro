@@ -37,6 +37,16 @@ describe("production customer-query acceptance without B2, new services or money
     expect(script).not.toContain("console.log(uri)");
     expect(script).not.toContain("fetch(uri");
   });
+  it("serializes real provider jobs without unrelated PRs cancelling running acceptance",()=>{
+    expect(workflow).toContain("group: geomacro-live-on-demand-global-discovery-acceptance");
+    expect(workflow).toContain("cancel-in-progress: false");
+    expect(workflow).not.toContain("cancel-in-progress: true");
+    expect(workflow).toContain('cron: "23 8 * * *"');
+    expect(workflow).toContain("GEOMACRO_COUNTRY_BATCH_COUNT");
+    // Source-protecting concurrency must cover both PR and production jobs.
+    expect(workflow.indexOf("concurrency:")).toBeLessThan(workflow.indexOf("jobs:"));
+    expect(workflow).not.toContain("group: ${{ github.event.pull_request.number }}");
+  });
   it("keeps quota-constrained daily workflow with limited original-page reads",()=>{
     expect(workflow).toContain("bun scripts/ops/verify-live-on-demand-real-apis.ts");
     expect(workflow).toContain('paths:');
