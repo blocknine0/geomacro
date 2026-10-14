@@ -10,6 +10,6 @@ describe("canonical read-only production deployment proof",()=>{
     expect(probe).toContain("if(report.exact_sha_verified)");
     expect(probe).toContain("payment_attempts:0,settlement_attempts:0");
     expect(workflow).toContain("github.event_name == 'pull_request'");
-    expect(workflow).toContain("No raw response body");
+    expect(probe).toContain("No raw response body");
   });
 });
