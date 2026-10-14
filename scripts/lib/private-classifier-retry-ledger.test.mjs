@@ -84,8 +84,11 @@ test("original clock/SHA changes, expiration, source absence all refuse unsafe r
    "2026-10-14T10:00:01.000Z"),ledger(old),later,
    [candidate(SHA,"2026-10-14T10:00:01.000Z")]),
  /PRIVATE_CLASSIFIER_ATTEMPT_LEDGER_INVALID/);
- assert.deepEqual(find(pulse("macro",later,[],OTHER),ledger(old),later,
-    [candidate(OTHER)]),[]); // source itself no matching reviewed SHA
+ const replacement=find(pulse("macro",later,[],OTHER),ledger(old),later,
+   [candidate(OTHER)]);
+ assert.equal(replacement.length,1);
+ assert.equal(replacement[0].article_sha256,OTHER);
+ assert.equal(replacement[0].next_attempts,2); // new SHA cannot borrow old claim/ACK
  assert.deepEqual(find(pulse("macro",later,[]),ledger(old),later,[]),[]);
  const expired="2026-10-12T08:00:00.000Z";
  assert.deepEqual(find(pulse("macro",later,[],SHA,expired),null,later,
