@@ -4,6 +4,8 @@ import {createD1ControlPlaneStateClient} from "./d1-control-plane-state.mjs";
 import {selectPrivateNovelPulseRefs} from "./private-novel-pulse-match.mjs";
 import {fetchPulseRotatedPrivateOriginals} from "./pulse-rotated-original-scorer.mjs";
 import {PRIVATE_SCORING_ATTEMPTS_PIPELINE,validateClaimForPrivateScorer} from "./private-classifier-retry-ledger.mjs";
+import {officialOriginalRssArticleUrl} from "./official-rss-original-link.mjs";
+import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
 import { fetchOfficialThirdPublisherArticles } from "./official-native-third-fallback.mjs";
 import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "./official-original-article-date.mjs";
@@ -89,9 +91,16 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
   for (const match of items) {
     const block = match[1];
     const title = field(block, "title");
-    const url = safeOriginalUrl(field(block, "link"), config.host);
+    // UN News RSS may point to its /feed/view/ router while an exact
+    // same-ID first-party permalink GUID names the true article identity.
+    // Reuse the ORIGINAL pulse's strict, already-reviewed resolver so URL
+    // SHA and source-native timestamp match the separately readback D1 row.
+    const link=category==="geopolitics"
+      ?officialOriginalRssArticleUrl(block,{id:"un_news_security_original_rss_review"})
+      :field(block,"link");
+    const url = safeOriginalUrl(link, config.host);
     const original = field(block, "pubDate");
-    const at = Date.parse(original);
+    const at = officialItemNativePublicationMs(original);
     if (Number.isFinite(at)) stats.item_native_pubdate_count += 1;
     // Publication dates later than the evaluation clock are not evidence of
     // a published event; even short future skew must fail closed.
