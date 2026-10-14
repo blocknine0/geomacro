@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
+import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
 
