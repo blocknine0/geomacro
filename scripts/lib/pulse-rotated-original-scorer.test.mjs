@@ -5,6 +5,7 @@ import {
   selectedPulseRotatedScorerSources,
   parsePulseRotatedOriginals,
   fetchPulseRotatedPrivateOriginals,
+  recoverPulseRotatedOriginalPageDates,
 } from "./pulse-rotated-original-scorer.mjs";
 import {privateOriginalMatchesPulse} from "./private-novel-pulse-match.mjs";
 
@@ -178,4 +179,86 @@ test("oversized/XML DTD sources, denied publisher and no raw stdout cannot admit
    });
    assert.equal(found.length,0);
  }
+});
+
+
+test("D1-matched undated DESNZ Atom gets exact first-published original page, never <updated>",async()=>{
+ const f=fixture("rare_earth","uk_desnz_original_energy_minerals_atom_review");
+ const xml=feed(f.source,{clock:new Date(f.now.getTime()-30_000).toISOString(),updatedOnly:true});
+ const originalPage='<html><head>'+
+   '<meta name="govuk:first-published-at" content="'+f.native+'">'+
+   '<meta name="govuk:public-updated-at" content="'+f.now.toISOString()+'">'+
+   '</head><body>Official first-party announcement</body></html>';
+ let pageReads=0,otherReads=0;
+ const fetchImpl=async(url)=>{
+  if(url===f.article.url){pageReads++;return new Response(originalPage,{
+    status:200,headers:{"content-type":"text/html"},
+  });}
+  otherReads++;
+  return new Response(url===f.source.url?xml:"<rss><channel></channel></rss>",{
+    status:200,headers:{"content-type":"application/atom+xml"},
+  });
+ };
+ const direct=await recoverPulseRotatedOriginalPageDates(xml,f.source,{
+   refs:f.refs,expectedClocks:f.clocks,now:f.now,fetchImpl,
+ });
+ assert.equal(direct.length,1);
+ assert.equal(direct[0].nativeTimeEvidence,"publisher_original_article_datePublished");
+ assert.equal(direct[0].publishedAt,f.native);
+ assert.equal(direct[0].commercialEligible,false);
+ assert.equal(direct[0].rightsVerified,false);
+ assert.equal(privateOriginalMatchesPulse(direct[0],f.refs,f.now.getTime(),f.clocks),true);
+ assert.equal(pageReads,1);
+ const matched=await fetchPulseRotatedPrivateOriginals({
+   category:"rare_earth",checkedAt:f.checkedAt,refs:f.refs,
+   expectedClocks:f.clocks,now:f.now,fetchImpl,
+ });
+ assert.equal(matched.length,1);
+ assert.equal(matched[0].url,f.article.url);
+ assert.equal(matched[0].publishedAt,f.native);
+ assert.equal(pageReads,2);
+ assert.ok(otherReads>=1&&otherReads<=3);
+});
+test("private undated original recovery fails closed on stale, changed, missing, off-host and unbound page clocks",async()=>{
+ const f=fixture("rare_earth","uk_desnz_original_energy_minerals_atom_review");
+ const xml=feed(f.source,{clock:f.now.toISOString(),updatedOnly:true});
+ const page=clock=>'<html><head><meta name="govuk:first-published-at" content="'+clock+
+   '"></head></html>';
+ let requests=0;
+ const check=async (xmlBody,expected,html,refs=f.refs)=>{
+  const budget={used:0};requests=0;
+  const got=await recoverPulseRotatedOriginalPageDates(xmlBody,f.source,{
+   refs,expectedClocks:expected,now:f.now,pageBudget:budget,
+   fetchImpl:async()=>{requests++;return new Response(html,{
+     status:200,headers:{"content-type":"text/html"},
+   });},
+  });
+  return {got,budget};
+ };
+ let result=await check(xml,f.clocks,page(new Date(Date.parse(f.native)+60000).toISOString()));
+ assert.deepEqual(result.got,[]);
+ assert.equal(requests,1);
+ result=await check(xml,f.clocks,page(f.now.toISOString()));
+ assert.deepEqual(result.got,[]);
+ result=await check(xml,f.clocks,'<html><meta name="govuk:public-updated-at" content="'+f.native+'"></html>');
+ assert.deepEqual(result.got,[]);
+ result=await check(xml,new Map([[sha(f.article.url),f.now.toISOString()]]),page(f.native));
+ assert.deepEqual(result.got,[]);
+ result=await check(xml,f.clocks,page(f.native),new Set([sha(f.article.url+"-other")]));
+ assert.deepEqual(result.got,[]);
+ assert.equal(requests,0);
+ result=await check(feed(f.source,{clock:f.native,url:f.article.url.replace("www.gov.uk","www.gov.uk.evil.invalid"),updatedOnly:true}),
+  f.clocks,page(f.native));
+ assert.deepEqual(result.got,[]);
+ assert.equal(requests,0);
+ result=await check(feed(f.source,{clock:f.native,updatedOnly:false}),f.clocks,page(f.native));
+ assert.deepEqual(result.got,[]);
+ assert.equal(requests,0);
+ const budget={used:2};
+ result=await recoverPulseRotatedOriginalPageDates(xml,f.source,{
+  refs:f.refs,expectedClocks:f.clocks,now:f.now,pageBudget:budget,
+  fetchImpl:()=>{throw Error("UNAUTHORIZED_REQUEST")},
+ });
+ assert.deepEqual(result,[]);
+ assert.equal(budget.used,2);
 });
