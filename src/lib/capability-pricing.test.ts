@@ -1,8 +1,10 @@
 import {describe,expect,it} from "vitest";
 import {GEOMACRO_CAPABILITY_PRICES,GEOMACRO_CAPABILITY_PRICING_VERSION,
-  capabilityPricingCatalog,quoteGeomacroCapability,resolveGeomacroCapabilityPrice,
+  capabilityPricingCatalog,approvedAdaptiveIntelligencePrice,
+  quoteGeomacroCapability,resolveGeomacroCapabilityPrice,
   usdcDecimalToAtomic,verifyGeomacroCapabilityQuote} from "./capability-pricing";
 import {GEOMACRO_CREDIT_COSTS} from "./commercial-access-contract";
+import {buildAgentQueryPlan} from "./agent-query-plan";
 
 const FIXED=[
  ["gri_read","verified_cached","0.005","5000"],
@@ -43,6 +45,37 @@ describe("founder-approved deterministic capability pricing — NO FUNDS",()=>{
    expect(GEOMACRO_CREDIT_COSTS.gri_read).toBe(1);
    expect(GEOMACRO_CREDIT_COSTS.risk_gate_bundle).toBe(15);
    expect(Object.keys(GEOMACRO_CAPABILITY_PRICES).length).toBe(8);
+ });
+ it("explicit query selection is hashed only when opted in; no hidden tier upgrades",()=>{
+   const base={subjects:[{type:"country" as const,country_iso3:"USA"}],
+      topics:["macro_risk" as const],detail:"standard" as const};
+   const legacy=buildAgentQueryPlan(base);
+   expect(legacy.pricing_selection).toBeNull();
+   expect(()=>approvedAdaptiveIntelligencePrice(legacy))
+     .toThrow("CAPABILITY_PRICE_SELECTION_REQUIRED");
+   const selected=buildAgentQueryPlan({...base,
+     pricing_selection:{capability:"intelligence_query" as const,variant:"standard"}});
+   expect(selected.query_plan_hash).not.toBe(legacy.query_plan_hash);
+   expect(approvedAdaptiveIntelligencePrice(selected).amount_atomic).toBe("100000");
+   const altered=buildAgentQueryPlan({...base,
+     pricing_selection:{capability:"intelligence_query" as const,variant:"focused"}});
+   expect(altered.query_plan_hash).not.toBe(selected.query_plan_hash);
+   expect(()=>approvedAdaptiveIntelligencePrice(altered))
+     .toThrow("CAPABILITY_TIER_ACCEPTANCE_REQUIRED:standard");
+   const wrong=buildAgentQueryPlan({...base,
+     pricing_selection:{capability:"risk_gate_bundle" as const,variant:"standard"}});
+   expect(()=>approvedAdaptiveIntelligencePrice(wrong))
+     .toThrow("CAPABILITY_PRODUCT_ROUTE_MISMATCH");
+   const focused=buildAgentQueryPlan({...base,detail:"compact" as const,
+     pricing_selection:{capability:"intelligence_query" as const,variant:"focused"}});
+   expect(approvedAdaptiveIntelligencePrice(focused).amount_atomic).toBe("50000");
+   const complex=buildAgentQueryPlan({...base,detail:"full" as const,
+     pricing_selection:{capability:"intelligence_query" as const,variant:"complex_multi_source"}});
+   expect(approvedAdaptiveIntelligencePrice(complex).amount_atomic).toBe("150000");
+   expect(()=>approvedAdaptiveIntelligencePrice(buildAgentQueryPlan({...base,
+     fulfillment_mode:"live_on_demand" as const,
+     pricing_selection:{capability:"intelligence_query" as const,variant:"standard"},
+   }))).toThrow("CAPABILITY_OUTPUT_CONTRACT_UNSUPPORTED");
  });
  it("does not float-convert money, invent variants or charge outside bounds",()=>{
    for(const value of ["0","0.0000001","0.0010e2","-0.01","00.01",
