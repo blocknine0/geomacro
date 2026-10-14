@@ -106,7 +106,7 @@ export function verifiedFedBoardDiscountMinutesOriginal(
   const archiveDay=[m[1],m[2],m[3]].join("-");
   if(officialArchiveDay!==null &&
      (officialArchiveDay!==archiveDay ||
-      !/^20\\d{2}-\\d{2}-\\d{2}$/u.test(officialArchiveDay)))return null;
+      !/^20\d{2}-\d{2}-\d{2}$/u.test(officialArchiveDay)))return null;
   const native=nativeFeedPublishedAt!==null?Date.parse(nativeFeedPublishedAt):NaN;
   if(!Number.isFinite(ms) || ms>now.getTime() ||
     now.getTime()-ms>31*86_400_000 ||
