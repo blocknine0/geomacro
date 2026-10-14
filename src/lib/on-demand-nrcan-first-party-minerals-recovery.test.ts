@@ -25,7 +25,8 @@ function fixtures(variant:"real"|"unrelated"|"stale"|"denied"="real") {
        {headers:{"content-type":"application/atom+xml"}});
     }
     if(url.href===ARTICLE)return new Response(
-      '<html><meta property="article:published_time" content="2026-10-14T08:00:00Z"></html>',
+      '<html><h1>'+TITLE+'</h1><meta name="dcterms.issued" content="2026-10-14">'+
+      '<meta property="article:published_time" content="2026-10-14T08:00:00Z"></html>',
       {headers:{"content-type":"text/html"}});
     if(url.hostname==="www.gov.uk")return new Response("<feed></feed>",
       {headers:{"content-type":"application/atom+xml"}});
