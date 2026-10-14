@@ -157,3 +157,43 @@ describe("official indexed first-party fallback never confuses search index cloc
     expect(searched.some(url=>new URL(url).hostname==="api.gdeltproject.org")).toBe(false);
   });
 });
+
+describe("Part 6 country-specific original publisher reservation",()=>{
+  it.each([
+    ["CAN","Canada","canada_nrcan_original_publisher"],
+    ["AUS","Australia","australian_industry_original_publisher"],
+    ["GBR","United Kingdom","uk_dbt_original_publisher"],
+  ])("does not starve the national mineral issuer for %s",async(iso3,name,expected)=>{
+    const requested:string[]=[];
+    const fetchImpl=async(target:RequestInfo|URL):Promise<Response>=>{
+      const uri=new URL(String(target));
+      requested.push(uri.href);
+      if(uri.hostname==="api.worldbank.org"&&uri.pathname.includes("/indicator/"))
+        return Response.json([{page:1,pages:0},[]]);
+      if(uri.hostname==="api.worldbank.org")
+        return Response.json([{page:1,pages:1},[{id:iso3,name}]]);
+      if(uri.hostname==="api.gdeltproject.org")
+        return Response.json({articles:[]});
+      if(uri.hostname==="api.io.canada.ca"||
+         uri.pathname.endsWith(".atom"))
+        return new Response("<feed></feed>",{headers:{"content-type":"application/atom+xml"}});
+      return new Response("<rss><channel></channel></rss>",{
+        headers:{"content-type":"application/rss+xml"}});
+    };
+    const result=await discoverOnDemandForPrivateQualification({
+      country_iso3:iso3,categories:["geopolitics","macro","rare_earth"],
+      topics:["sanctions_restrictions","macro_risk","critical_minerals"],
+      max_age_seconds:86400,
+    },{fetchImpl:fetchImpl as typeof fetch,
+      now:new Date("2026-10-14T18:00:00.000Z")});
+    const national=result.discovery.source_probes.find(p=>
+      p.category==="rare_earth"&&p.family===expected);
+    expect(national?.attempted).toBe(true);
+    expect(result.discovery.network_attempts).toBeLessThanOrEqual(12);
+    expect(requested.length).toBeLessThanOrEqual(12);
+    expect(result.private_original_review_candidates).toHaveLength(0);
+    expect(result.discovery.payable).toBe(false);
+    expect(result.discovery.b2_requests).toBe(0);
+    expect(result.discovery.supabase_requests).toBe(0);
+  });
+});
