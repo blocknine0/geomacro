@@ -227,7 +227,9 @@ describe("earn-first original-dated structural baseline pilot", () => {
       "checkAgentQueryDeliverability(plan",
       "prepareCoinbaseX402Delivery",
       "assertPublicPaidOutputBoundary(prepared)",
-      "settleCoinbaseX402(paymentPayload, config)",
+      "settleCoinbaseX402(paymentPayload, pricedConfig)",
+      "prepareVerifiedCapabilityOffer",
+      "capabilityLedgerRequestFingerprint",
       "claimCoinbaseX402Delivery",
       "X402_PAYMENT_REPLAY_CONFLICT",
     ]) expect(source).toContain(required);
