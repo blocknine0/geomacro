@@ -929,10 +929,19 @@ export function deduplicateOnDemandOriginalHeadlines(
       item.search_index_original_page_pending===true &&
       item.feed_item_published_at===null &&
       item.source_native_feed_publication_date_verified===false;
+    // Fixed Fed first-party archive is a narrow, same-issuer, day-only
+    // review lead; never mark archive-only records feed-clock verified.
+    const archiveReview=def?.family==="us_federal_reserve_original_publisher" &&
+      def?.domain==="macro" &&
+      item.feed_item_published_at===null &&
+      item.source_native_feed_publication_date_verified===false &&
+      typeof item.official_archive_release_day==="string" &&
+      /^20\d{2}-\d{2}-\d{2}$/u.test(item.official_archive_release_day);
     // Preserve established native-dated candidate dedup contracts.
     // Enforce fixed issuer/host/path and exact SHA binding additionally ONLY
     // on the new missing-<published> GOV.UK Atom rescue path.
-    const reviewedUndated=(undatedReview===true || searchReview===true) && !!def &&
+    const reviewedUndated=(undatedReview===true || searchReview===true ||
+      archiveReview===true) && !!def &&
       originalArticleUrl(item.article_url,def)===item.article_url &&
       item.article_identity_sha256===digest(def.family+"|"+item.article_url);
     if((!nativeDated&&!reviewedUndated)||
