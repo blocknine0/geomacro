@@ -130,3 +130,22 @@ export function capabilityLedgerRequestFingerprint(quote:CapabilityQuote,now?:Da
     accepted.recipient,accepted.payment_rail,
   ]));
 }
+
+/** Only parse the claimed quote identity here. The quote has NO authority
+ * until the authenticated DO readback and full catalog/expiry validation pass.
+ */
+export function capabilityQuoteFromPaymentPayload(payload:unknown):CapabilityQuote {
+  if(!isRecord(payload)||!isRecord(payload.extensions)||
+     !isRecord(payload.extensions.geomacro)||
+     !isRecord(payload.extensions.geomacro.info)||
+     !isRecord(payload.extensions.geomacro.info.capability_quote)) {
+    throw Error("X402_CAPABILITY_QUOTE_NOT_PRESENT");
+  }
+  const quote=payload.extensions.geomacro.info.capability_quote;
+  if(!SHA256.test(String(quote.quote_id??"")) ||
+     !SHA256.test(String(quote.request_fingerprint_sha256??"")) ||
+     !SHA256.test(String(quote.prepared_answer_sha256??""))) {
+    throw Error("X402_CAPABILITY_QUOTE_HASH_INVALID");
+  }
+  return quote as CapabilityQuote;
+}
