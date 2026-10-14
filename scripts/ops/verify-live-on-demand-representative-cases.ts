@@ -72,7 +72,12 @@ for(const sample of CASES){
     max_age_seconds:sample.max_age_seconds,
   };
   const result=await discoverOnDemandForPrivateQualification(query,{
-    fetchImpl:countedFetch,now:checkedAt});
+    fetchImpl:countedFetch,now:checkedAt,
+    // Three source-aligned single-category checks rely on ORIGINAL publishers;
+    // the separate cross-domain case still verifies index outage/fallback.
+    // The injected observer deliberately does not inherit SSR process cooldown.
+    disableDiscoveryIndex:sample.time_class==="CURRENT_24H",
+  });
   const page=await verifyOnDemandOriginalArticlePages(
     result.private_original_review_candidates,{
       fetchImpl:countedFetch,now:checkedAt,maxAgeSeconds:sample.max_age_seconds,
