@@ -39,9 +39,10 @@ describe("OECD bounded official SDMX original dataflow health",()=>{
     await expect(publicSources.oecd()).rejects.toThrow("PUBLIC_SOURCE_HTTP_"+status);
   });
   it("rejects oversized OECD SDMX responses without exposing the bytes",async()=>{
-    vi.stubGlobal("fetch",vi.fn(async()=>new Response(
-      "<str:Dataflow id='x'/>",
-      {headers:{"content-length":String(2*1024*1024+1)}})));
+    const response=new Response("<str:Dataflow id='x'/>",
+      {headers:{"content-length":String(2*1024*1024+1)}});
+    Object.defineProperty(response,"url",{value:expectedUrl});
+    vi.stubGlobal("fetch",vi.fn(async()=>response));
     await expect(publicSources.oecd()).rejects.toThrow("PUBLIC_SOURCE_OVERSIZE");
   });
 });
