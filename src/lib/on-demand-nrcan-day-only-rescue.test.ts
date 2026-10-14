@@ -4,7 +4,7 @@ import {discoverOnDemandForPrivateQualification,verifyOnDemandOriginalArticlePag
 import {qualifyRetrievedOnDemandEvidence} from "./on-demand-evidence-qualification.server";
 
 const NOW=new Date("2026-10-14T11:00:00.000Z");
-const RELEASE_DAY="2026-10-13";
+const RELEASE_DAY="2026-10-14";
 const URL_PREFIX="https://www.canada.ca/en/natural-resources-canada/news/2026/10/";
 const TOPICS=[
   ["copper","Canada strengthens copper critical minerals supply chain"],
@@ -89,7 +89,7 @@ describe("official Canadian undated Atom first-publication rescue in existing on
    expect(candidates).toHaveLength(1);
    const proof=await verifyOnDemandOriginalArticlePages(candidates,{now:NOW,fetchImpl});
    expect(proof).toMatchObject({verified:1,
-     verified_candidates:[{page_original_published_at:"2026-10-13T08:00:00.000Z",
+     verified_candidates:[{page_original_published_at:"2026-10-14T08:00:00.000Z",
        publisher_article_page_date_verified:true,derived_commercial_rights_verified:false}]});
    const q=qualifyRetrievedOnDemandEvidence({
      search:{...params,mineral:"lithium"},
