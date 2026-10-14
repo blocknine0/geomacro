@@ -42,9 +42,28 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-intelligence-three-domain-ssr-visible-20261013");
+    expect(config.lock_revision).toBe("founder-capability-x402-pricing-presentation-20261015");
+    const pricingApproval = config.approved_pricing_presentation_change;
+    expect(pricingApproval?.approved_pr).toBe(2240);
+    expect(pricingApproval?.pricing_contract_version).toBe("geomacro.capability-usdc.v1");
+    expect(pricingApproval?.previous_baseline_sha).toBe("8f44e21fee0ddc1c3f8ffec6f6c0d42ca879f15e");
+    expect(pricingApproval?.approved_ui_commit).toBe(config.baseline_sha);
+    expect(pricingApproval?.scope).toEqual([
+      "src/components/agent-commerce-status.tsx",
+      "src/components/capability-price-schedule.tsx",
+      "src/components/commercial-access-guide.tsx",
+      "src/components/home/live-intelligence-showcase.tsx",
+      "src/routes/data-api.tsx",
+      "src/routes/pricing.tsx",
+    ]);
+    expect(pricingApproval?.global_risk_final_lock_unmodified).toBe(true);
+    expect(pricingApproval?.intelligence_risk_indices_ask_presentation_unmodified).toBe(true);
+    expect(pricingApproval?.published_source_sha_unchanged).toBe(true);
+    expect(pricingApproval?.funds_authorized).toBe(false);
+    expect(pricingApproval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    // Previous founder-approved Intelligence/Ask UI baselines remain independent.
     expect(config.intelligence_ssr_change_approval?.approved_ui_commit)
-      .toBe(config.baseline_sha);
+      .toBe("8f44e21fee0ddc1c3f8ffec6f6c0d42ca879f15e");
     expect(config.intelligence_ssr_change_approval?.global_risk_final_lock_unmodified).toBe(true);
     expect(config.intelligence_ssr_change_approval?.hybrid_ask_lock_unmodified).toBe(true);
     expect(config.intelligence_ssr_change_approval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
