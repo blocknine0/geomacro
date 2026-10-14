@@ -207,7 +207,7 @@ export type Country195=Readonly<{
  observer_state:boolean;
 }>;
 const EXACT_ALIASES:Readonly<Record<string,readonly string[]>>=Object.freeze({
- PSE:["Palestine","Palestinian","Occupied Palestinian Territory","West Bank and Gaza"],
+ PSE:["Palestine","Palestinian","Occupied Palestinian Territory","West Bank and Gaza","Gaza","West Bank"],
  VAT:["Vatican City","Vatican","Holy See"],
  USA:["United States of America","U.S.A."],
  GBR:["Britain","Great Britain","U.K.","UK"],
@@ -221,6 +221,7 @@ const EXACT_ALIASES:Readonly<Record<string,readonly string[]>>=Object.freeze({
  BOL:["Plurinational State of Bolivia"],FSM:["Micronesia"],
  BRN:["Brunei"],CPV:["Cape Verde"],MKD:["Macedonia"],
  TLS:["East Timor"],SYR:["Syrian Arab Republic"],
+ CIV:["Ivory Coast"],MMR:["Burma"],
 });
 export const COUNTRIES_195:readonly Country195[]=Object.freeze(
  COUNTRY_ROWS.trim().split(String.fromCharCode(10)).map(s=>{
