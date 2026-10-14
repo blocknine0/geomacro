@@ -116,7 +116,7 @@ describe("cross-provider post-settlement recovery", () => {
     const prepare = circleRoute.indexOf("prepareAgentCommerceDelivery({");
     const settle = circleRoute.indexOf("settleCircleGatewayProduction(");
     const complete = circleRoute.indexOf("completeAgentCommerceDelivery({");
-    const response = circleRoute.lastIndexOf("return json(responsePayload, 200");
+    const response = circleRoute.lastIndexOf("return sendFrozenCapabilityHttpBody(frozenHttpBody,prepared.responseSha256");
     expect(prepare).toBeGreaterThan(-1);
     expect(settle).toBeGreaterThan(prepare);
     expect(complete).toBeGreaterThan(settle);
