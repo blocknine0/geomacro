@@ -1,8 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, CalendarDays, Check, CircleDollarSign, Mail, ShieldCheck } from "lucide-react";
 import { AgentCommerceStatus } from "@/components/agent-commerce-status";
-import {GEOMACRO_PRICING_GROUPS,GEOMACRO_CAPABILITY_PRICES,
-  GEOMACRO_CAPABILITY_PRICING_VERSION} from "@/lib/capability-pricing-catalog";
 import { Button } from "@/components/ui/button";
 
 const TITLE = "Pricing | Geomacro";
@@ -98,53 +96,48 @@ function PricingPage() {
             </Button>
           </article>
 
-          <article className="rounded-[1.65rem] border border-primary/30 bg-card/40 p-6 sm:p-8">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">x402 capability-based pay per call</p>
-                <h2 className="mt-3 text-2xl font-semibold">Exact prices before payment</h2>
-              </div>
-              <CircleDollarSign className="h-6 w-6 shrink-0 text-primary" />
-            </div>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              Pay only for successfully prepared, verified and deliverable intelligence. No mandatory subscription.
-              Unavailable, expired or unverified products are not chargeable.
-            </p>
-            <p className="mt-2 font-mono text-[10px] text-muted-foreground">Price contract: {GEOMACRO_CAPABILITY_PRICING_VERSION}</p>
-            <div className="mt-5 space-y-5">
-              {GEOMACRO_PRICING_GROUPS.map((group) => (
-                <div key={group.label} className="rounded-xl border border-border/60 p-4">
-                  <h3 className="text-sm font-semibold">{group.label}</h3>
-                  <div className="mt-3 space-y-2">
-                    {group.ids.map((id) => (
-                      <div key={id} className="border-t border-border/35 pt-2 first:border-0 first:pt-0">
-                        <p className="font-mono text-xs text-foreground">{id}</p>
-                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                          {Object.entries(GEOMACRO_CAPABILITY_PRICES[id]).map(([variant,amount]) => (
-                            <span key={variant} className="text-xs text-muted-foreground">
-                              {variant.replaceAll("_"," ")}: <strong className="text-foreground">{amount} USDC</strong>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+          <article className="relative overflow-hidden rounded-[1.65rem] border border-primary/30 bg-[linear-gradient(145deg,color-mix(in_oklab,var(--primary)_12%,var(--card)),var(--card)_48%)] p-6 sm:p-8">
+            <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+            <div className="relative">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
+                    x402 pay per call
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-end gap-x-2 gap-y-1">
+                    <p className="text-5xl font-semibold">0.05</p>
+                    <span className="pb-1 text-sm text-muted-foreground">USDC / successful delivery</span>
                   </div>
                 </div>
-              ))}
-            </div>
-            <p className="mt-4 text-xs leading-5 text-muted-foreground">
-              Risk Gate bundles include their signed Risk Object; no second object charge.
-              Prices are the approved schedule, not a guarantee of live product availability.
-              No hidden tier changes or credit-to-USDC conversions.
-            </p>
-            <ul className="mt-5 space-y-3">
-              {PAID_ACCESS.map((item) => <li key={item} className="flex gap-3 text-sm leading-6">
-                <Check className="mt-1 h-4 w-4 shrink-0 text-primary" /><span>{item}</span>
-              </li>)}
-            </ul>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Button asChild><Link to="/data-api">API & Agents <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
-              <Button asChild variant="outline"><Link to="/contact">Discuss integration</Link></Button>
+                <CircleDollarSign className="h-6 w-6 text-primary" />
+              </div>
+              <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                Launch price for the first 20,000 successfully settled and delivered commercial intelligence calls. There is no subscription requirement for this launch offer.
+              </p>
+              <ul className="mt-7 space-y-3">
+                {PAID_ACCESS.map((item) => (
+                  <li key={item} className="flex gap-3 text-sm leading-6">
+                    <Check className="mt-1 h-4 w-4 shrink-0 text-primary" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-7 rounded-xl border border-primary/20 bg-background/25 p-4">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <ShieldCheck className="h-4 w-4 text-primary" /> No-charge failure boundary
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  Failed, stale, unavailable, replayed, refunded, internal and unpaid requests do not count as successful paid deliveries.
+                </p>
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Button asChild>
+                  <Link to="/data-api">API & Agents <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to="/contact">Discuss integration</Link>
+                </Button>
+              </div>
             </div>
           </article>
         </div>
