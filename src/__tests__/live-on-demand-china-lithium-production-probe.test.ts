@@ -60,6 +60,23 @@ describe("production customer-query acceptance without B2, new services or money
     expect(readback).not.toContain("PAYMENT-SIGNATURE: ");
     expect(readback).not.toContain("settleCoinbaseX402");
   });
+  it("makes existing genuine hosted canonical customer POST acceptance explicitly opt-in after real Lovable publication",()=>{
+    expect(workflow).toContain("verify_hosted_customer_post:");
+    expect(workflow).toContain("type: boolean");
+    expect(workflow).toContain("default: false");
+    expect(workflow).toContain("hosted-customer-post-no-funds:");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch'");
+    expect(workflow).toContain("inputs.verify_hosted_customer_post == true");
+    expect(workflow).toContain("github.ref == 'refs/heads/main'");
+    expect(workflow).toContain("needs: real-api-proof");
+    expect(workflow).toContain("GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ github.sha }}");
+    expect(workflow).toContain("node scripts/ops/phase2-production-no-funds-readback.mjs");
+    expect(workflow).toContain("group: geomacro-live-on-demand-global-discovery-acceptance");
+    expect(workflow).toContain("cancel-in-progress: false");
+    expect(workflow.match(/cron:/gu)).toHaveLength(1);
+    expect(workflow).not.toContain("settleCoinbaseX402");
+    expect(workflow).not.toContain("PAYMENT-SIGNATURE");
+  });
   it("keeps quota-constrained daily workflow with limited original-page reads",()=>{
     expect(workflow).toContain("bun scripts/ops/verify-live-on-demand-real-apis.ts");
     expect(workflow).toContain('paths:');

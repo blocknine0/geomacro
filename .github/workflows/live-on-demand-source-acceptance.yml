@@ -3,6 +3,11 @@ name: Live On-Demand Original API Read-only Acceptance
 on:
   workflow_dispatch:
     inputs:
+      verify_hosted_customer_post:
+        description: "Opt-in no-funds exact-SHA hosted POST acceptance after Lovable Publish"
+        required: false
+        type: boolean
+        default: false
       country_batch_start:
         description: "Optional 0-194 offset into fixed 195-country registry; no country-wide polling"
         required: false
@@ -273,6 +278,34 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: phase2-production-no-funds-${{ github.run_id }}
+          path: artifacts/on-demand-live/production-phase2-read-only.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  # Opt-in ONLY after owner Lovable Publish. Reuses the same existing, bounded
+  # no-funds production readback; never runs on push, schedule, PR or routine
+  # country rotation. Real upstream provider probes finish first so this
+  # cannot double-spend per-minute free quotas inside the same workflow.
+  # GitHub's shared run-level concurrency protects across concurrent PRs.
+  hosted-customer-post-no-funds:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.verify_hosted_customer_post == true }}
+    needs: real-api-proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Checkout exact protected main verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Prove deployed SHA and four real canonical customer POSTs, no funds
+        env:
+          GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ github.sha }}
+        run: node scripts/ops/phase2-production-no-funds-readback.mjs
+      - name: Preserve aggregate, source-free hosted acceptance receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: hosted-customer-post-no-funds-${{ github.run_id }}
           path: artifacts/on-demand-live/production-phase2-read-only.json
           if-no-files-found: warn
           retention-days: 3
