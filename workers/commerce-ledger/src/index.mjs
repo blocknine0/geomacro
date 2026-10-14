@@ -145,7 +145,7 @@ export class CommerceLedger {
     const expiry = Date.parse(generatedAt);
     const now = Date.now();
     if (typeof generatedAt !== "string" ||
-        !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/u.test(generatedAt) ||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(generatedAt) ||
         !Number.isFinite(expiry) || new Date(expiry).toISOString() !== generatedAt ||
         expiry > now + 5 * 60_000 || now >= expiry + WDI_RIGHTS_MAX_AGE_MS)
       throw new Error("WDI_PREQUOTE_RIGHTS_EXPIRED_OR_INVALID");
