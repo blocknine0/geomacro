@@ -65,6 +65,16 @@ export const agentAdaptiveQuerySchema = z.object({
   detail: z.enum(["compact", "standard", "full"]).default("standard"),
   // Explicit opt-in; legacy signed-GRO queries retain original delivery contract.
   fulfillment_mode: z.enum(["published_only", "live_on_demand"]).default("published_only"),
+  // Opt-in commercial quote selection: only existing eight founder IDs;
+  // the canonical server resolver verifies exact variant and price.
+  pricing_selection:z.object({
+    capability:z.enum([
+      "gri_read","structural_country_digest","structural_corridor_digest",
+      "structural_country_profile","structural_corridor_profile",
+      "intelligence_query","signed_risk_object","risk_gate_bundle",
+    ]),
+    variant:z.string().regex(/^[a-z][a-z0-9_]{2,48}$/),
+  }).strict().optional(),
   // A deliberately narrow, separately payment-hashed earnings pilot. This
   // is original-dated structural research, NOT a current signed risk object.
   // Legacy callers retain their pre-existing payment query hashes byte-for-byte.
@@ -317,6 +327,7 @@ export type AgentQueryPlan = {
   detail: AgentAdaptiveQuery["detail"];
   fulfillment_mode: AgentAdaptiveQuery["fulfillment_mode"];
   delivery_tier: AgentAdaptiveQuery["delivery_tier"];
+  pricing_selection:AgentAdaptiveQuery["pricing_selection"]|null;
   risk_gate_context: AgentAdaptiveQuery["risk_gate_context"] | null;
   as_of: string | null;
   query_plan_hash: string;
@@ -392,11 +403,15 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
     ...(parsed.delivery_tier === "structural_baseline" ? {
       delivery_tier: parsed.delivery_tier,
     } : {}),
+    // Explicit opt-in changes payment query hash. Legacy settled or testnet
+    // queries retain their former hashes, never retroactively repriced.
+    ...(parsed.pricing_selection ? {pricing_selection:parsed.pricing_selection}:{}),
     risk_gate_context: parsed.risk_gate_context ?? null,
     as_of: parsed.as_of ?? null,
   };
   return { ...normalized, fulfillment_mode: parsed.fulfillment_mode,
     delivery_tier: parsed.delivery_tier,
+    pricing_selection: parsed.pricing_selection??null,
     query_plan_hash: stableHash(normalized) };
 }
 
