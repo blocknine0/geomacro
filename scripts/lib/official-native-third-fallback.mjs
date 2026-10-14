@@ -1,4 +1,6 @@
 import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
+import {officialOriginalRssArticleUrl} from "./official-rss-original-link.mjs";
+import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "./official-original-article-date.mjs";
 
 // Fixed, independently public-publisher-addressed discovery ONLY.
@@ -97,10 +99,18 @@ export function parseOfficialThirdRss(xml,category,{
   };
   for(const [,block] of entries) {
     const title=field(block,"title");
+    // An ECB press original can carry one duplicated separator after host.
+    // The source pulse already normalizes this exact pinned release shape.
     const hostUrl=config.format==="atom"
       ? originalAtomHref(block,config.host)
-      : exactUrl(field(block,"link"),config.host);
-    const publication=Date.parse(config.format==="atom"
+      : category==="macro"
+        // No raw-link fallback: an invalid or doubled ECB press URL must
+        // never enter the canonical scorer under a different SHA than D1.
+        ? exactUrl(officialOriginalRssArticleUrl(block,{
+            id:"ecb_press_original_rss_review",
+          }),config.host)
+        : exactUrl(field(block,"link"),config.host);
+    const publication=officialItemNativePublicationMs(config.format==="atom"
       ? field(block,"published") : field(block,"pubDate"));
     const timeValid=Number.isFinite(publication);
     const current=timeValid && publication<=clock &&
