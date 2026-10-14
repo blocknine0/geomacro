@@ -4,6 +4,7 @@ import {describe,expect,it} from "vitest";
 const coinbase=readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts","utf8");
 const circle=readFileSync("src/routes/api.x402.circle_.intelligence.ts","utf8");
 const replay=readFileSync("src/lib/capability-x402-replay.server.ts","utf8");
+const exact=readFileSync("src/lib/capability-x402-exact-http-body.server.ts","utf8");
 const worker=readFileSync("workers/commerce-ledger/src/index.mjs","utf8");
 
 describe("authenticated final HTTP x402 envelope contract, NO FUNDS",()=>{
@@ -14,12 +15,14 @@ describe("authenticated final HTTP x402 envelope contract, NO FUNDS",()=>{
    expect(text).toContain("Access-Control-Expose-Headers");
    expect(text).toContain("assertFrozenCapabilityIntelligenceProjection");
    expect(text).toContain("prepared_answer_sha256");
-   expect(text).toContain("return json(prior.response,200,");
+   expect(text).toContain("freezeCanonicalCapabilityHttpBody(prior.response)");
+   expect(text).toContain("sendFrozenCapabilityHttpBody(");
   }
-  expect(coinbase).toContain('"X-Geomacro-Delivery-SHA256":preparedResponseSha256');
-  expect(coinbase).toContain('"X-Geomacro-Delivery-SHA256":prior.responseSha256');
-  expect(circle).toContain('"X-Geomacro-Delivery-SHA256":prepared.responseSha256');
-  expect(circle).toContain('"X-Geomacro-Delivery-SHA256":prior.responseSha256');
+  expect(coinbase).toContain("sendFrozenCapabilityHttpBody(frozenHttpBody,preparedResponseSha256");
+  expect(circle).toContain("sendFrozenCapabilityHttpBody(frozenHttpBody,prepared.responseSha256");
+  expect(exact).toContain("new Response(frozen.body");
+  expect(exact).toContain("commerceSha256(frozen.body)!==frozen.sha256");
+  expect(exact).toContain('"X-Geomacro-Delivery-SHA256":frozen.sha256');
  });
  it("does not regenerate final signed answer or settle before immutable delivery prepare",()=>{
   for(const text of [coinbase,circle]){
