@@ -95,9 +95,20 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
     // same-ID first-party permalink GUID names the true article identity.
     // Reuse the ORIGINAL pulse's strict, already-reviewed resolver so URL
     // SHA and source-native timestamp match the separately readback D1 row.
-    const link=category==="geopolitics"
+    const rawLink=field(block,"link");
+    const canonical=category==="geopolitics"
       ?officialOriginalRssArticleUrl(block,{id:"un_news_security_original_rss_review"})
-      :field(block,"link");
+      :null;
+    // Preserve existing non-router first-party RSS intake: historic live
+    // same-host article paths are still discovery hints, but an actual UN
+    // /feed/view/ router must NEVER enter the classifier without an exact
+    // same-ID publisher permalink GUID.
+    const isUnFeedRouter=category==="geopolitics" && (()=>{
+      try {const u=new URL(rawLink);return u.hostname===config.host &&
+        u.pathname.startsWith("/feed/");}catch{return false;}
+    })();
+    const link=category==="geopolitics"
+      ?(canonical??(isUnFeedRouter?null:rawLink)):rawLink;
     const url = safeOriginalUrl(link, config.host);
     const original = field(block, "pubDate");
     const at = officialItemNativePublicationMs(original);
