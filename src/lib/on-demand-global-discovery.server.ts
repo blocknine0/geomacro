@@ -600,6 +600,9 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   {
     domain:"rare_earth",family:"australian_industry_original_publisher",
     url:"https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
+    // Official all-minister media releases from the same government publisher;
+    // this is transport resilience, NOT independent source corroboration.
+    alternateUrl:"https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
     media:"rss",originalHost:"www.minister.industry.gov.au",
     originalPath:/^\/(?:t-ayres|king)\/media\//u,
     topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
@@ -769,10 +772,12 @@ async function originalOfficialFeed(
     const retryable = error instanceof Error &&
       ["ON_DEMAND_SOURCE_TRANSPORT_FAILURE","ON_DEMAND_SOURCE_TRANSIENT_HTTP"]
         .includes(error.message);
-    if (!retryable || def.family !== "un_news_original_publisher" ||
-        !def.alternateUrl) throw error;
-    // One same-UN-News issuer alternate: not a second independent source.
-    // No retry for malformed XML, oversized body, 401/403 or 429.
+    if (!retryable ||
+        !["un_news_original_publisher","australian_industry_original_publisher"]
+          .includes(def.family) || !def.alternateUrl) throw error;
+    // One exact same-publisher alternate (UN News or Australia Industry);
+    // never count this as corroboration or bypass an explicit 401/403/429.
+    // No retry for malformed XML, oversized responses or bad publication.
     xml = await boundedFetch(fetchImpl,def.alternateUrl,
       "application/rss+xml,application/atom+xml,application/xml");
   }
