@@ -9,7 +9,7 @@ import {
 const NOW = Date.parse("2026-10-13T22:17:00.000Z");
 const GENERATED = "2026-10-13T22:04:53.102Z";
 const wdi = {
-  source_id: "world_bank_indicators", category: "macro",
+  source_id: "world_bank_indicators", category: "MACRO",
   certification_state: "CERTIFIED", commercial_usage_status: "DERIVED_ONLY",
   enabled_for_ingestion: true, enabled_for_commercial_signals: true,
   raw_redistribution_allowed: true, attribution_required: true,
@@ -45,6 +45,9 @@ test("exact gzip bytes, source project and single WDI certified row qualify", ()
   const {bytes, expectedSha} = make();
   assert.equal(qualifyExactRights(bytes,{now:NOW,expectedSha,expectedAt:GENERATED}),
     "RIGHTS_CERTIFIED");
+  const alias=make([{...wdi,category:"macro"}]);
+  assert.equal(qualifyExactRights(alias.bytes,{now:NOW,
+    expectedSha:alias.expectedSha,expectedAt:GENERATED}),"RIGHTS_CERTIFIED");
   assert.equal(qualifyExactRights(bytes,{now:NOW,expectedSha: "0".repeat(64),expectedAt:GENERATED}),
     "B2_RECEIPT_SHA_MISMATCH");
   assert.equal(qualifyExactRights(bytes,{now:NOW + 26 * 3600_000,expectedSha,expectedAt:GENERATED}),
@@ -57,6 +60,11 @@ test("duplicate, uncertified, disabled and unexpected generation always reject",
     [[{...wdi,certification_state:"REVIEW"}], "WDI_RIGHTS_CONTRACT_MISMATCH"],
     [[{...wdi,enabled_for_commercial_signals:false}], "WDI_RIGHTS_CONTRACT_MISMATCH"],
     [[{...wdi,licence_name:"unknown"}], "WDI_RIGHTS_CONTRACT_MISMATCH"],
+    [[{...wdi,category:"GEOPOLITICS"}], "WDI_RIGHTS_CONTRACT_MISMATCH"],
+    [[{...wdi,category:"Macro"}], "WDI_RIGHTS_CONTRACT_MISMATCH"],
+    [[{...wdi,commercial_usage_status:"REVIEW_REQUIRED"}], "WDI_RIGHTS_CONTRACT_MISMATCH"],
+    [[{...wdi,enabled_for_ingestion:false}], "WDI_RIGHTS_CONTRACT_MISMATCH"],
+    [[{...wdi,attribution_required:false}], "WDI_RIGHTS_CONTRACT_MISMATCH"],
   ]) {
     const {bytes,expectedSha}=make(rows);
     assert.equal(qualifyExactRights(bytes,{now:NOW,expectedSha,expectedAt:GENERATED}),expected);
@@ -67,6 +75,25 @@ test("duplicate, uncertified, disabled and unexpected generation always reject",
   const absent=make([{...wdi,source_id:"other_valid_source"}]);
   assert.equal(qualifyExactRights(absent.bytes,{now:NOW,
     expectedSha:absent.expectedSha,expectedAt:GENERATED}),"WDI_EXACT_SOURCE_NOT_CERTIFIED");
+});
+
+test("on exact verified source only, rejects incorrect category with fixed Boolean checks", () => {
+  const {bytes,expectedSha} = make([{...wdi,category:"GEOPOLITICS"}]);
+  const diagnostics = {};
+  const result = qualifyExactRights(bytes,{
+    now:NOW,expectedSha,expectedAt:GENERATED,diagnostics,
+  });
+  assert.equal(result,"WDI_RIGHTS_CONTRACT_MISMATCH");
+  assert.deepEqual(diagnostics,{
+    certification_state:true,commercial_usage:true,ingestion_enabled:true,
+    commercial_signals_enabled:true,attribution_required:true,
+    licence_cc_by_4:true,macro_category:false,
+  });
+  assert.ok(!JSON.stringify(diagnostics).includes("world_bank_indicators"));
+  const unverified={};
+  qualifyExactRights(bytes,{now:NOW,expectedSha:"0".repeat(64),
+    expectedAt:GENERATED,diagnostics:unverified});
+  assert.deepEqual(unverified,{});
 });
 
 test("main-only dispatch or credentials absent makes zero requests", async () => {
