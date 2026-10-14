@@ -3,6 +3,8 @@ import {GEOMACRO_CAPABILITY_PRICING_VERSION, type CapabilityQuote} from "./capab
 import {prepareVerifiedCapabilityOffer} from "./capability-x402-offer.server";
 import {readVerifiedCapabilityAnswer,assertFrozenCapabilityIntelligenceProjection} from "./capability-x402-prequote.server";
 import {readAlreadyDeliveredCapabilityReplay} from "./capability-x402-replay.server";
+import {freezeCanonicalCapabilityHttpBody,sendFrozenCapabilityHttpBody,type FrozenCapabilityHttpBody}
+  from "./capability-x402-exact-http-body.server";
 import {assertAcceptedCapabilityQuote,coinbaseRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
   capabilityLedgerRequestFingerprint,capabilityQuoteFromPaymentPayload}
   from "./capability-x402-payment-contract.server";
@@ -610,11 +612,12 @@ export const mainnetIntelligenceHandlers = {
               transaction:prior.settlementReference??undefined,
               network:prior.settlementNetwork??undefined,
               extra:{idempotentReplay:true}};
-            return json(prior.response,200,{
-              "PAYMENT-RESPONSE":coinbaseX402PaymentResponseHeader(receipt),
-              "X-Geomacro-Delivery-SHA256":prior.responseSha256,
-              "X-Geomacro-Prepared-Answer-SHA256":historicQuote.prepared_answer_sha256,
-            });
+            return sendFrozenCapabilityHttpBody(
+              freezeCanonicalCapabilityHttpBody(prior.response), prior.responseSha256, {
+                ...corsHeaders,
+                "PAYMENT-RESPONSE":coinbaseX402PaymentResponseHeader(receipt),
+                "X-Geomacro-Prepared-Answer-SHA256":historicQuote.prepared_answer_sha256,
+              });
           }
         }catch(error){
           // Never fall through to settlement if a past payment cannot be
@@ -711,6 +714,7 @@ export const mainnetIntelligenceHandlers = {
         const requestId=String(frozenIntelligence.request_id);
         let prepared: Record<string, unknown>;
         let preparedResponseSha256: string;
+        let frozenHttpBody: FrozenCapabilityHttpBody;
         try {
           // The exact response was assembled, signing-verified, validated and
           // durably frozen BEFORE the buyer received the priced 402 challenge.
@@ -746,12 +750,16 @@ export const mainnetIntelligenceHandlers = {
             quote:capabilityQuote,frozen:frozenIntelligence,delivered:prepared,
             addedEnvelopeKeys:["availability","payment"],
           });
+          // Freeze exact successful HTTP wire bytes BEFORE any charge.
+          frozenHttpBody = freezeCanonicalCapabilityHttpBody(prepared);
           const preparedResult = await prepareCoinbaseX402Delivery({
             paymentFingerprint,
             claimToken,
             responsePayload: prepared,
           });
           preparedResponseSha256 = preparedResult.responseSha256;
+          if (frozenHttpBody.sha256 !== preparedResponseSha256)
+            throw Error("X402_FINAL_HTTP_LEDGER_BODY_HASH_MISMATCH");
           await upsertCoinbaseX402ProductAudit({
             requestId,
             clientRequestId: parsed.client_request_id ?? null,
@@ -843,9 +851,9 @@ export const mainnetIntelligenceHandlers = {
           console.error("[x402-adaptive] post-settlement audit projection failed; delivery ledger remains canonical", error);
         }
 
-        return json(prepared,200,{
+        return sendFrozenCapabilityHttpBody(frozenHttpBody,preparedResponseSha256,{
+          ...corsHeaders,
           "PAYMENT-RESPONSE":coinbaseX402PaymentResponseHeader(settlement),
-          "X-Geomacro-Delivery-SHA256":preparedResponseSha256,
           "X-Geomacro-Prepared-Answer-SHA256":capabilityQuote.prepared_answer_sha256,
         });
       },
