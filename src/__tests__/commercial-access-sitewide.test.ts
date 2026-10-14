@@ -24,7 +24,7 @@ describe("commercial access is explained sitewide", () => {
     expect(guide).toContain("Browse public Intelligence and Risk Indices");
     expect(guide).toContain("Ask Geomacro and read research");
     expect(guide).toContain("Pay per call");
-    expect(guide).toContain("approved capability-specific USDC price per successfully verified delivery");
+    expect(guide).toContain("0.05 USDC per successful delivery");
     expect(guide).toContain("Structured intelligence for APIs and AI agents");
     expect(guide).toContain("Monthly access");
     expect(guide).toContain("Recurring intelligence for teams and workflows");
