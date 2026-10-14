@@ -80,6 +80,8 @@ describe("Part 2 country-specific original issuer acceptance and quota boundary"
   expect(proof.observation.original_evidence_verified).toBe(true);
   expect(proof.verdict).toBe("CURRENT_EVIDENCE_VERIFIED");
   expect(proof.fallback_original_publisher_families).toBe(2);
+  expect(proof.latest_verified_original_publication_utc)
+    .toBe("2026-10-14T12:30:00.000Z");
   const row=buildCanonical195x3CoverageMatrix([proof.observation])
     .cells.find(x=>x.country_iso3==="PSE"&&x.category==="geopolitics")!;
   expect(row.INDEPENDENT_FALLBACK_VERIFIED).toBe(true);
