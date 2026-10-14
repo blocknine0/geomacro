@@ -46,7 +46,7 @@ for(const country of COUNTRIES_195.slice(from,from+count)){
      iso3:country.iso3,category,live_source_reachable:countryRelevantOrigin,
      original_evidence_verified:proofs.length>0,
      current_evidence_available:proofs.length>0 ? true : undefined,
-     rights_qualified:false,signed_delivery_verified:false,
+     // No item-specific source-rights or registered-signer acceptance ran.
      blocked_reason:proofs.length>0?"ITEM_RIGHTS_REVIEW_PENDING":
        candidates.length?"ORIGINAL_PUBLICATION_UNVERIFIED":
        issuers.length?"NO_COUNTRY_RELEVANT_ORIGINAL":"PROVIDER_UNAVAILABLE",
@@ -55,7 +55,7 @@ for(const country of COUNTRIES_195.slice(from,from+count)){
   }catch{
    observations.push({iso3:country.iso3,category,
      live_source_reachable:false,original_evidence_verified:false,
-     rights_qualified:false,signed_delivery_verified:false,
+     // No item-specific source-rights or registered-signer acceptance ran.
      blocked_reason:"PROVIDER_UNAVAILABLE"});
   }
  }
@@ -73,6 +73,7 @@ console.log(JSON.stringify({
  original_page_verified:cells.filter(x=>x.ORIGINAL_EVIDENCE_VERIFIED===true).length,
  // No fresh-event licence or independent reviewer receipt was checked.
  commercial_rights_verified:0,signed_delivery_verified:0,
+ rights_checked:false,signing_checked:false,
  provider_requests:totalProviderRequests,original_page_requests:totalPageRequests,
  source_urls_logged:false,source_titles_logged:false,raw_data_persisted:false,
  supabase_requests:0,b2_requests:0,real_money_payments:0,
