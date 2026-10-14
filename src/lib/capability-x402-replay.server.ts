@@ -24,8 +24,8 @@ export async function readAlreadyDeliveredCapabilityReplay(input:{
   requestFingerprint:string;
   config:CoinbaseX402Config|CircleGatewayProductionConfig;
   circleRequirement?:CircleGatewayPaymentRequirement;
-}):Promise<null|{response:Record<string,unknown>;settlementReference:string|null;
-  settlementNetwork:string|null}> {
+}):Promise<null|{response:Record<string,unknown>;responseSha256:string;
+  settlementReference:string|null;settlementNetwork:string|null}> {
   const {quote,config}=input;
   if(input.paymentFingerprint.length!==64||!(/^[a-f0-9]{64}$/u.test(input.paymentFingerprint)) ||
      quote.request_fingerprint_sha256!==input.requestFingerprint ||
@@ -64,6 +64,7 @@ export async function readAlreadyDeliveredCapabilityReplay(input:{
     throw Error("X402_REPLAY_IMMUTABLE_BYTES_MISMATCH");
   return {
     response:record.response_payload as Record<string,unknown>,
+    responseSha256:record.response_sha256,
     settlementReference:typeof record.settlement_reference==="string"?record.settlement_reference:null,
     settlementNetwork:typeof record.settlement_network==="string"?record.settlement_network:null,
   };
