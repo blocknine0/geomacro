@@ -39,7 +39,7 @@ function payload(quote:ReturnType<typeof offer>,requirement:{
  scheme:string;network:string;asset:string;amount:string;payTo:string
  }){
  return {x402Version:2,accepted:{...requirement},
- ...capabilityQuotePaymentExtension(quote,now)};
+ extensions:capabilityQuotePaymentExtension(quote,now)};
 }
 const pairs=Object.entries(GEOMACRO_CAPABILITY_PRICES).flatMap(([cap,variants])=>
  Object.keys(variants).map(v=>[cap,v] as const));
