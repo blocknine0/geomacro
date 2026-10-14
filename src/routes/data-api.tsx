@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AgentCommerceStatus } from "@/components/agent-commerce-status";
+import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
 
 const TITLE = "API & Agent Access | Geomacro";
 const DESCRIPTION =
@@ -195,13 +196,13 @@ function DataApiPage() {
                   <div>
                     <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">x402 pay per call</p>
                     <div className="mt-3 flex flex-wrap items-end gap-x-2 gap-y-1">
-                      <p className="text-4xl font-semibold">0.05</p>
-                      <span className="pb-1 text-sm text-muted-foreground">USDC / successful delivery</span>
+                      <p className="text-2xl font-semibold">Capability-based USDC</p>
+                      <span className="pb-1 text-sm text-muted-foreground">Exact price shown below</span>
                     </div>
                   </div>
                   <CircleDollarSign className="h-6 w-6 text-primary" />
                 </div>
-                <p className="mt-4 text-sm leading-6 text-muted-foreground">Launch price for the first 20,000 successfully settled and delivered commercial intelligence calls. Failed, stale, unavailable, replayed, refunded, internal or unpaid requests do not count as successful paid deliveries.</p>
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">Only verified eligible deliveries use a capability-specific exact USDC quote. Failed, stale, unavailable, replayed, refunded, internal or unpaid requests are not charged.</p>
                 <ul className="mt-6 space-y-3">
                   {PAID_ACCESS.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 h-4 w-4 shrink-0 text-primary" /><span>{item}</span></li>)}
                 </ul>
@@ -212,6 +213,7 @@ function DataApiPage() {
               </div>
             </article>
           </div>
+          <div className="mt-8"><CapabilityPriceSchedule compact /></div>
         </div>
       </section>
 

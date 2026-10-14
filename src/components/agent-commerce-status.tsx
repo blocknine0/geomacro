@@ -4,19 +4,16 @@ export type AgentCommerceMode = "checking" | "unavailable" | "prelaunch" | "prod
 
 type AgentCommerceState = {
   mode: AgentCommerceMode;
-  priceUsdc: string | null;
   network: string | null;
 };
 
 const DEFAULT_STATE: AgentCommerceState = {
   mode: "checking",
-  priceUsdc: null,
   network: null,
 };
 
 const UNAVAILABLE_STATE: AgentCommerceState = {
   mode: "unavailable",
-  priceUsdc: null,
   network: null,
 };
 
@@ -57,12 +54,10 @@ export function useAgentCommerceStatus() {
           : null;
         const configured = x402?.configured === true;
         const production = configured && x402?.environment === "production";
-        const priceUsdc = production && typeof x402?.exact_price_usdc === "string" ? x402.exact_price_usdc : null;
         const network = production && typeof x402?.network === "string" ? x402.network : null;
 
         setState({
           mode: production ? "production" : "prelaunch",
-          priceUsdc,
           network,
         });
       } catch {
@@ -86,7 +81,7 @@ export function AgentCommerceStatus({ compact = false }: { compact?: boolean }) 
   const state = useAgentCommerceStatus();
 
   const label = state.mode === "production"
-    ? `x402 commercial access · live${state.priceUsdc ? ` · ${state.priceUsdc} USDC/call` : ""}`
+    ? "x402 provider configured · capability quotes gated"
     : state.mode === "checking"
       ? "x402 commercial access · verifying production status"
       : state.mode === "unavailable"
@@ -114,7 +109,7 @@ export function AgentCommerceStatus({ compact = false }: { compact?: boolean }) 
       <p className="mt-2 text-sm font-medium text-foreground">{label}</p>
       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
         {state.mode === "production"
-          ? `The paid endpoint is advertising production x402 access${state.network ? ` on ${state.network}` : ""}. The live HTTP 402 challenge remains the payment authority.`
+          ? `The production x402 provider is configured${state.network ? ` on ${state.network}` : ""}. This does not certify a chargeable capability. Only a freshly verified, immutable capability-specific HTTP 402 quote can establish payable availability.`
           : state.mode === "unavailable"
             ? "The status probe did not return a usable result in time. Commercial access is not inferred from a failed health check; the paid endpoint remains the payment authority."
             : state.mode === "checking"
