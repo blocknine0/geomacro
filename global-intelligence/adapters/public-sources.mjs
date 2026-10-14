@@ -59,7 +59,7 @@ export const publicSources={
       "https://sdmx.oecd.org/public/rest/dataflow/OECD.SDD.NAD/DSD_NAAG@DF_NAAG_I/latest?references=none",
       {accept:"application/vnd.sdmx.structure+xml;version=2.1, application/xml;q=0.8"}
     );
-    if(!/<(?:[a-z][a-z0-9._-]*:)?Dataflow\\b/iu.test(body))
+    // Match an actual SDMX 2.1 Dataflow XML element, including namespace\n    // prefixes. A literal backslash-b never matches real <str:Dataflow>.\n    if(!/<(?:[a-z][a-z0-9._-]*:)?Dataflow\b/iu.test(body))
       throw Error("OECD_SDMX_DATAFLOW_UNVERIFIED");
     return{source_id:"oecd_sdmx",observations:1};
   },
