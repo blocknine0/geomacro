@@ -1,10 +1,12 @@
 import { createHash, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { buildAttributedWdiStructuralProduct } from "./wdi-attributed-structural-product.server";
-import { prepareWdiStructuralNoFundsQuoteBinding, signWdiStructuralAnswer, verifyWdiStructuralAnswer } from "./wdi-structural-signing.server";
+import { durablyFreezeWdiNoFundsAnswer, prepareWdiStructuralNoFundsQuoteBinding, signWdiStructuralAnswer, verifyWdiStructuralAnswer } from "./wdi-structural-signing.server";
 import { prepareVerifiedChinaCpiStructuralAnswer } from "./wdi-attributed-structural-product.server";
 import { buildAgentQueryPlan } from "./agent-query-plan";
 import type { B2CommercialSourceRight } from "./b2-live.server";
+import { certifiedWdiAttributionRights } from "./wdi-attributed-structural-product.server";
+import type { WdiDurablePrequote } from "./agent-commerce-delivery.server";
 const {privateKey,publicKey}=generateKeyPairSync("ed25519");
 const material={
   key_id:"wdi-structural-test-2026",
@@ -218,6 +220,79 @@ describe("no-funds structural answer and existing x402 payment-binding adapter",
     expect(a.signed_customer_answer_sha256).toEqual(b.signed_customer_answer_sha256);
     expect(a.legacy_x402_payment_binding).not.toEqual(b.legacy_x402_payment_binding);
     expect(a.prepared_binding_sha256).not.toEqual(b.prepared_binding_sha256);
+  });
+
+  it("authentically requalifies receipt before immutable durable bytes, readback and replay",async()=>{
+    const stored=new Map<string,unknown>();
+    let reads=0,writes=0;
+    const rightsReceipt={rows:[{...row,category:"MACRO"}],
+      compressed_sha256:"f".repeat(64),generated_at:"2026-10-13T22:04:53.102Z",
+      fresh_quota_reserved_get:true};
+    const signedAnswer=signWdiStructuralAnswer({
+      product:original(),certified_rights_receipt_sha256:
+        // Rebind to canonical MACRO row so exact source fingerprint matches.
+        certifiedWdiAttributionRights(rightsReceipt.rows).receipt_sha256!,
+      query_plan_hash:plan.query_plan_hash,material,
+    });
+    const fakeFreeze=async(x:WdiDurablePrequote)=>{
+      writes++;
+      const prior=stored.get(x.bindingHash);
+      if(prior && JSON.stringify(prior)!==JSON.stringify(x))
+        throw Error("IMMUTABLE_CONFLICT");
+      stored.set(x.bindingHash,structuredClone(x));
+      return {ok:true,disposition:prior?"EXACT_REPLAY":"FROZEN",
+        binding_hash:x.bindingHash,answer_sha256:x.answerHash,
+        expires_at_ms:Date.parse(x.rightsGeneratedAt)+86400000};
+    };
+    const fakeReadback=async(bindingHash:string)=>{
+      reads++;
+      const v=stored.get(bindingHash) as WdiDurablePrequote;
+      return {ok:true,schema:"geomacro.wdi-prequote-readback.v1",
+        ...structuredClone(v),
+        expiresAtMs:Date.parse(v.rightsGeneratedAt)+86400000,
+        payment_authorized:false,settlement_attempted:false};
+    };
+    const input={signed_answer:signedAnswer,verification_keys:keys(),
+      query_plan:plan,payment_terms:terms};
+    const opts={now:new Date("2026-10-14T06:00:00Z"),
+      readRightsReceipt:async()=>rightsReceipt,
+      freeze:fakeFreeze,readback:fakeReadback};
+    const a=await durablyFreezeWdiNoFundsAnswer(input,opts);
+    const b=await durablyFreezeWdiNoFundsAnswer(input,opts);
+    expect(a.frozen_quote_reference).toEqual(b.frozen_quote_reference);
+    expect(a.write_disposition).toBe("FROZEN");
+    expect(b.write_disposition).toBe("EXACT_REPLAY");
+    expect(reads).toBe(4);
+    expect(writes).toBe(2);
+    expect(a.durable_prequote_readback_verified).toBe(true);
+    expect(a.identical_no_funds_replay_verified).toBe(true);
+    expect(a.quote_authorized).toBe(false);
+    expect(a.payment_authorized).toBe(false);
+    expect(a.settlement_attempted).toBe(false);
+
+    const tampered=async(hash:string)=>{
+      const v=await fakeReadback(hash);
+      return {...v,customerBytes:v.customerBytes.replace("World Bank", "Unknown Bank")};
+    };
+    await expect(durablyFreezeWdiNoFundsAnswer(input,{
+      ...opts,readback:tampered,
+    })).rejects.toThrow("WDI_DURABLE_PREQUOTE_READBACK_MISMATCH");
+    const changedTerms={...terms,payTo:"0x"+"3".repeat(40)};
+    const changed=await durablyFreezeWdiNoFundsAnswer({...input,payment_terms:changedTerms},opts);
+    expect(changed.frozen_quote_reference).not.toBe(a.frozen_quote_reference);
+    await expect(durablyFreezeWdiNoFundsAnswer({
+      ...input,signed_answer:{...signedAnswer,integrity:{
+        ...signedAnswer.integrity,signature_base64:"AA==",
+      }},
+    },opts)).rejects.toThrow("WDI_QUOTE_PREPARATION_SIGNATURE_UNVERIFIED");
+    await expect(durablyFreezeWdiNoFundsAnswer(input,{
+      ...opts,readRightsReceipt:async()=>({
+        ...rightsReceipt,rows:[{...row,enabled_for_commercial_signals:false}],
+      }),
+    })).rejects.toThrow("WDI_DURABLE_WDI_RIGHTS_NOT_CERTIFIED");
+    await expect(durablyFreezeWdiNoFundsAnswer(input,{
+      ...opts,now:new Date("2026-10-14T23:00:00Z"),
+    })).rejects.toThrow("WDI_DURABLE_RIGHTS_RECEIPT_EXPIRED");
   });
   it("rejects unsigned/tampered source periods, wrong rights, and malformed terms",()=>{
     const s=candidate();
