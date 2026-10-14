@@ -88,6 +88,9 @@ export function projectSourcePulseForD1(report) {
 export async function write30MinSourcePulseToD1({
   report,fetchImpl=fetch,
   createClient=createD1ControlPlaneStateClient,
+  // Separate injection is optional for legacy test fixtures. Production always
+  // uses the authenticated D1 attempts pipeline and refuses access failures.
+  createAttemptsClient=null,
 }){
   const rows=projectSourcePulseForD1(report);
   // The in-memory injected client for tests needs no live Cloudflare account.
@@ -116,8 +119,10 @@ export async function write30MinSourcePulseToD1({
   const previousRows=await client.loadRows();
   // Separate D1 checkpoint pipeline: producer never overwrites the scorer's
   // classifier claim/ack ledger, and a missing/unreachable ledger fails closed.
-  const attemptsClient=createClient({pipeline:PRIVATE_SCORING_ATTEMPTS_PIPELINE});
-  const priorAttempts=await attemptsClient.loadRows();
+  const attemptClientFactory=createAttemptsClient??(createClient===createD1ControlPlaneStateClient?createClient:null);
+  const priorAttempts=attemptClientFactory
+    ?await attemptClientFactory({pipeline:PRIVATE_SCORING_ATTEMPTS_PIPELINE}).loadRows()
+    :new Map();
   const privateDedup=new Map();
   const pendingWork=new Map();
   const undatedDedup=new Map();
