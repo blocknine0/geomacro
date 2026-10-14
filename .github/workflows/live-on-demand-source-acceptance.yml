@@ -10,6 +10,8 @@ on:
       - "scripts/ops/verify-live-on-demand-representative-cases.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
+      - "src/lib/on-demand-fed-board-discount-release.server.ts"
+      - "scripts/ops/verify-live-fed-board-private-finding.ts"
       - "scripts/ops/verify-live-on-demand-nrcan-original.ts"
       - "src/lib/on-demand-nrcan-day-only-rescue.test.ts"
       - "src/lib/on-demand-evidence-qualification.server.ts"
@@ -26,6 +28,8 @@ on:
       - "scripts/ops/verify-live-on-demand-representative-cases.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
+      - "src/lib/on-demand-fed-board-discount-release.server.ts"
+      - "scripts/ops/verify-live-fed-board-private-finding.ts"
       - "scripts/ops/verify-live-on-demand-nrcan-original.ts"
       - "src/lib/on-demand-nrcan-day-only-rescue.test.ts"
       - "src/lib/on-demand-evidence-qualification.server.ts"
@@ -74,6 +78,7 @@ jobs:
           bun scripts/ops/verify-live-on-demand-real-apis.ts
           bun scripts/ops/verify-live-on-demand-representative-cases.ts
           bun scripts/ops/verify-live-on-demand-nrcan-original.ts
+          bun scripts/ops/verify-live-fed-board-private-finding.ts
       - name: Keep redacted no-funds publisher acceptance
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -158,6 +163,7 @@ jobs:
           bun scripts/ops/verify-live-on-demand-real-apis.ts
           bun scripts/ops/verify-live-on-demand-representative-cases.ts
           bun scripts/ops/verify-live-on-demand-nrcan-original.ts
+          bun scripts/ops/verify-live-fed-board-private-finding.ts
       - name: Preserve redacted provider diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

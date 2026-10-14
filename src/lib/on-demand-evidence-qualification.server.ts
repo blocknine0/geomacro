@@ -304,3 +304,101 @@ export function publicOnDemandQualificationStatus(
     signing_eligible:false,payment_eligible:false,
   } as const;
 }
+
+/**
+ * Private, source-bound structured Geomacro answer CANDIDATE.
+ *
+ * The first-party page validator attests only the narrow original event:
+ * the Board published its earlier discount-window meeting minutes. No
+ * claim about a newly changed 13 Oct rate, FX reaction or risk score.
+ *
+ * This remains request-local until a genuinely governed reviewer rights
+ * decision, customer attribution, registered signer and immutable delivery
+ * are independently accepted. It must NEVER be sent to public x402, D1 or
+ * ledger in this provisional state.
+ */
+export function buildPrivateVerifiedFedMinutesFinding(
+ qualification:QualifiedPrivateEvidence,pageProof:PrivatePageDateResult,
+):Readonly<{
+ schema:"geomacro.private-source-bound-intelligence-candidate.v1";
+ country_iso3:"USA";category:"macro";finding:string;
+ verified_event:string;original_publication_utc:string;
+ cause_context:string;supported_implications:readonly string[];
+ uncertainty:readonly string[];
+ provenance:Readonly<{article_identity_sha256:string;
+  issuer:"Board of Governors of the Federal Reserve System";
+  source_url_private:string;original_page_verified:true}>;
+ rights:Readonly<{source_use_basis:string;attribution:string;
+  attribution_required:true; third_party_material_excluded_from_answer:true;
+  item_specific_commercial_admission_verified:false}>;
+ source_supported:true;new_rate_decision_verified:false;
+ external_fx_market_impact_verified:false;
+ registered_signing_eligible:false;signed:false;
+ immutable_customer_bytes_prepared:false;x402_payment_authorized:false;
+}>|null {
+ if(qualification.schema!=="geomacro.on-demand-private-evidence-qualification.v1" ||
+    qualification.country_iso3!=="USA" || qualification.commercial_delivery_eligible!==false ||
+    qualification.qualified_for_same_event_signing!==false ||
+    !Array.isArray(pageProof.verified_candidates))return null;
+ for(const page of pageProof.verified_candidates){
+  if(page.verified_original_event_kind!==
+     "FED_BOARD_DISCOUNT_WINDOW_MEETING_MINUTES_PUBLISHED" ||
+     page.publisher_family!=="us_federal_reserve_original_publisher" ||
+     page.publisher_article_page_date_verified!==true ||
+     page.source_native_feed_publication_date_verified!==true ||
+     page.feed_item_published_at===null ||
+     page.independent_same_event_verified!==false ||
+     page.paid_delivery_allowed!==false)continue;
+  const record=qualification.originals.find(e=>
+     e.source_family===page.publisher_family &&
+     e.category==="macro" && e.subject_country_iso3==="USA" &&
+     e.article_identity_sha256===page.article_identity_sha256 &&
+     e.original_url_private===page.article_url &&
+     e.publisher_claim===page.article_title &&
+     e.original_clock_basis==="VERIFIED_ORIGINAL_PAGE" &&
+     e.original_published_at===page.page_original_published_at &&
+     e.factual_claim_independently_verified===false &&
+     e.article_commercial_rights_verified===false);
+  if(!record || !/^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u
+      .test(record.original_published_at))continue;
+  // Board page text is Board-authored; never include the linked PDF,
+  // charts, logo, seal or third-party material. Attribution is explicit
+  // but its later customer-contract compliance needs separate approval.
+  return Object.freeze({
+    schema:"geomacro.private-source-bound-intelligence-candidate.v1" as const,
+    country_iso3:"USA" as const,category:"macro" as const,
+    finding:"The Federal Reserve Board published minutes of earlier discount-window rate-setting meetings.",
+    verified_event:"FED_BOARD_DISCOUNT_WINDOW_MEETING_MINUTES_PUBLISHED",
+    original_publication_utc:record.original_published_at,
+    cause_context:"The Board publicly released its recorded discussions of discount rates for depository-institution discount-window lending; publication is distinct from a fresh monetary-policy decision.",
+    supported_implications:[
+      "Provides historical discount-window policy and central-bank liquidity context.",
+      "Does not by itself establish a new October 13 rate change, a currency-price movement or a revised country-risk score.",
+    ],
+    uncertainty:[
+      "Market reaction and downstream FX implications have not been independently measured.",
+      "Independent same-event fact review and any conflicting economic evidence remain outstanding.",
+      "Item-specific commercial rights/attribution certification and the customer delivery contract remain pending.",
+    ],
+    provenance:{
+      article_identity_sha256:record.article_identity_sha256,
+      issuer:"Board of Governors of the Federal Reserve System" as const,
+      source_url_private:record.original_url_private,
+      original_page_verified:true as const,
+    },
+    rights:{
+      source_use_basis:"FEDERAL_RESERVE_BOARD_AUTHORED_RELEASE_PUBLIC_DOMAIN_UNLESS_NOTED",
+      attribution:"Board of Governors of the Federal Reserve System",
+      attribution_required:true as const,
+      third_party_material_excluded_from_answer:true as const,
+      item_specific_commercial_admission_verified:false as const,
+    },
+    source_supported:true as const,new_rate_decision_verified:false as const,
+    external_fx_market_impact_verified:false as const,
+    registered_signing_eligible:false as const,signed:false as const,
+    immutable_customer_bytes_prepared:false as const,
+    x402_payment_authorized:false as const,
+  });
+ }
+ return null;
+}

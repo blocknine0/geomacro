@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
+import { verifiedFedBoardDiscountMinutesOriginal } from "./on-demand-fed-board-discount-release.server";
 import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
 
 /**
@@ -1236,7 +1237,9 @@ async function discoverOnDemandImpl(
  */
 export type PrivatePageDatedOriginal = Omit<
   PrivateOriginalCandidate, "publisher_article_page_date_verified"
-> & { publisher_article_page_date_verified: true; page_original_published_at: string };
+> & { publisher_article_page_date_verified: true; page_original_published_at: string;
+  verified_original_event_kind?:"FED_BOARD_DISCOUNT_WINDOW_MEETING_MINUTES_PUBLISHED";
+};
 
 export type PrivatePageDayOriginal = Readonly<{
   publisher_family:"canada_nrcan_original_publisher";
@@ -1329,13 +1332,32 @@ export async function verifyOnDemandOriginalArticlePages(
       const canadaDay=isCanada?canadaOriginalPublicationDay(
         html,candidate.article_url,candidate.article_title,now.getTime()):null;
       if(isCanada && !canadaDay)return {verified:null,dayOnly:null,denied:false};
-      const precise=verifiedPublisherPageDate(html,now,null,{maxAgeMs});
-      if(precise && freshPublished(precise,now,maxAgeMs) &&
-          (!isCanada || precise.slice(0,10)===canadaDay) &&
+      const publisherDateDiagnostics:{date_reason?:string}={};
+      const precise=verifiedPublisherPageDate(html,now,publisherDateDiagnostics,{maxAgeMs});
+      // For a Board discount-meeting minutes original whose page has a
+      // timezone-labelled release line but not machine-readable precise
+      // metadata, independently bind issuer URL, native feed clock, the
+      // actual first-party Board release body and New York DST.
+      const boardRelease=candidate.publisher_family==="us_federal_reserve_original_publisher"
+        ? verifiedFedBoardDiscountMinutesOriginal(
+            html,candidate.article_url,candidate.article_title,
+            candidate.feed_item_published_at,now):null;
+      // Never let a plausible visible clock override contradictory original
+      // publisher datePublished metadata. Also require the requested window.
+      const boardBodyTimeAdmissible=boardRelease!==null &&
+        (precise!==null ||
+         publisherDateDiagnostics.date_reason==="MISSING_PUBLISHER_PUBLICATION_METADATA");
+      const originalDate=precise && boardRelease &&
+         Math.abs(Date.parse(precise)-Date.parse(boardRelease.publication_utc))>60_000
+        ? null : (precise??(boardBodyTimeAdmissible?boardRelease?.publication_utc:null)??null);
+      if(originalDate && freshPublished(originalDate,now,maxAgeMs) &&
+          (!isCanada || originalDate.slice(0,10)===canadaDay) &&
           (candidate.feed_item_published_at===null ||
-           Math.abs(Date.parse(precise)-Date.parse(candidate.feed_item_published_at))<=10*60*1000))
+           Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))<=10*60*1000))
         return {verified:{...candidate,publisher_article_page_date_verified:true as const,
-          page_original_published_at:precise},dayOnly:null,denied:false};
+          page_original_published_at:originalDate,
+          ...(boardRelease?{verified_original_event_kind:boardRelease.verified_event}:{})},
+          dayOnly:null,denied:false};
       // Conservative boundary: require the beginning of the publisher's
       // calendar day to fit the requested window. This may reject useful
       // news, but cannot claim an invented exact hour of publication.

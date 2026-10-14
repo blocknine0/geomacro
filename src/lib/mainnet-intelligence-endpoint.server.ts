@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   qualifyRetrievedOnDemandEvidence, publicOnDemandQualificationStatus,
+  buildPrivateVerifiedFedMinutesFinding,
   type QualifiedPrivateEvidence,
 } from "./on-demand-evidence-qualification.server";
 import { ZodError } from "zod";
@@ -388,6 +389,7 @@ export const mainnetIntelligenceHandlers = {
           let duplicatePrivateOriginalHeadlines=0;
           let articlePageChecks=0;
           let articleDatesVerified=0;
+          let privateFedSourceBoundFindingCandidateCount=0;
           let privateOfficialAnnualChanges=0;
           let privateAnnualDirectionalDrivers=0;
           let privateAnnualRightsVerifiedDrivers=0;
@@ -455,6 +457,10 @@ export const mainnetIntelligenceHandlers = {
               macroRights:rightsProof,
               now:new Date(privateResult.discovery.checked_at),
             });
+            // Existing query engine, request-local only. No private source
+            // references, event prose or hashes enter the public 422 body.
+            privateFedSourceBoundFindingCandidateCount=
+              buildPrivateVerifiedFedMinutesFinding(qualification,pageProof)?1:0;
             privateEvidenceQualification=publicOnDemandQualificationStatus(qualification);
           } catch(error) {
             console.error("[x402-live] bounded discovery failed",error);
@@ -501,6 +507,8 @@ export const mainnetIntelligenceHandlers = {
               private_macro_peer_scored_dimension_count:privatePeerScoredDimensions,
               original_article_page_checks:articlePageChecks,
               article_page_publication_dates_verified:articleDatesVerified,
+              private_source_bound_structured_finding_candidates:privateFedSourceBoundFindingCandidateCount,
+              structured_candidate_commercially_admitted:false,
               private_evidence_qualification:privateEvidenceQualification,
               private_originals_article_page_verified:
                 privateOriginalReviewCandidateCount>0 &&
