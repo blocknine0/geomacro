@@ -35,7 +35,8 @@ describe("capability prices selected only from verified canonical plans (NO FUND
       included_signed_object_charge:"INCLUDED_NO_DOUBLE_CHARGE"});
     expect(resolveVerifiedPublishedPlanPrice(gate,{...proof,signed_object_lifecycle:"new"})).toMatchObject({
       variant:"standard",amount_atomic:"150000"});
-    expect(resolveVerifiedPublishedPlanPrice(plan({...gate, topics:["risk_gate","macro_risk","conflict_geopolitics","critical_minerals"],
+    expect(resolveVerifiedPublishedPlanPrice(plan({topics:["risk_gate","macro_risk","conflict_geopolitics","critical_minerals"],
+      intent:"risk_gate", risk_gate_context:{action_type:"agent_payment",policy_preset:"balanced"},
       detail:"full"}),proof)).toMatchObject({capability:"risk_gate_bundle",variant:"complex_multi_source",amount_atomic:"250000"});
   });
   it("cannot pretend GRI change attribution or structural rights",()=>{
