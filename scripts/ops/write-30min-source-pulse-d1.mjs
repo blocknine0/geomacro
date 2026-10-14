@@ -11,7 +11,8 @@ import {createD1ControlPlaneStateClient} from "../lib/d1-control-plane-state.mjs
 import {reconcile30mPrivateArticleFingerprints} from "../lib/private-original-cross-poll-dedupe.mjs";
 import {reconcileUndatedPrivateFeedObservations} from "../lib/private-undated-feed-dedup.mjs";
 import {reconcilePrivateOriginalReviewQueue} from "../lib/private-original-review-queue.mjs";
-import {PRIVATE_SCORING_ATTEMPTS_PIPELINE,pickPrivateClassifierWork} from "../lib/private-classifier-retry-ledger.mjs";
+import {PRIVATE_SCORING_ATTEMPTS_PIPELINE,pickPrivateClassifierWork,
+ readPrivateClassifierAttempts} from "../lib/private-classifier-retry-ledger.mjs";
 
 const DOMAINS=["geopolitics","macro","rare_earth"];
 function validCount(value) {return Number.isSafeInteger(value)&&value>=0&&value<=1000;}
@@ -125,6 +126,7 @@ export async function write30MinSourcePulseToD1({
     :new Map();
   const privateDedup=new Map();
   const pendingWork=new Map();
+  const acknowledgedExclusions=new Map();
   const undatedDedup=new Map();
   const privateReviewQueue=new Map();
   for(const row of rows){
@@ -176,6 +178,28 @@ export async function write30MinSourcePulseToD1({
       currentCandidates:original?.private_original_article_candidates??[],
     });
     pendingWork.set(row.domain,eligible);
+    // Issue #2229: compare each still-retained, durably ACKed original SHA
+    // AND its source-native publication clock against current D1 history.
+    // The receipt exports aggregate counts only, never SHA, URL or titles.
+    // No new D1 query, model invocation, source fetch or B2 request.
+    const acked=readPrivateClassifierAttempts(
+      priorAttempts.get(row.domain),row.domain,Date.parse(row.checked_at),
+    ).filter(e=>e.status==="ACKED_CLASSIFIED");
+    const clocks=new Map(result.recent_private_article_fingerprints.map(e=>
+      [e.article_sha256,e.native_published_at]));
+    let ackedReobserved=0;
+    for(const e of acked){
+      const clock=clocks.get(e.article_sha256);
+      if(clock===undefined)continue;
+      if(clock!==e.native_published_at)
+        throw Error("PRIVATE_CLASSIFIER_ACK_SOURCE_CLOCK_MISMATCH");
+      if(eligible.some(w=>w.article_sha256===e.article_sha256))
+        throw Error("PRIVATE_CLASSIFIER_ACKED_ORIGINAL_RESELECTED");
+      ackedReobserved++;
+    }
+    acknowledgedExclusions.set(row.domain,{
+      ledgerAcked:acked.length,reobserved:ackedReobserved,
+    });
     state.private_classifier_work_refs=eligible.map(e=>e.article_sha256);
     await client.persist(row.domain,state,{
       last_attempt_at:row.checked_at,
@@ -245,6 +269,14 @@ export async function write30MinSourcePulseToD1({
       [...pendingWork.values()].reduce((n,x)=>n+x.length,0),
     selected_private_classifier_retry_count:
       [...pendingWork.values()].reduce((n,x)=>n+x.filter(v=>v.retry).length,0),
+    // Authenticated private D1 SHA+native-clock comparison, after the
+    // existing source-checkpoint readback. A zero means NOT PROVEN, not
+    // absence of ACK history; counts alone never authorize issue closure.
+    classifier_acked_ledger_entries:
+      [...acknowledgedExclusions.values()].reduce((n,x)=>n+x.ledgerAcked,0),
+    classifier_acked_sha_clock_reobserved_and_excluded:
+      [...acknowledgedExclusions.values()].reduce((n,x)=>n+x.reobserved,0),
+    classifier_acked_exclusion_is_commercial_evidence:false,
     undated_feed_first_observation_baseline_count:
       [...undatedDedup.values()].reduce((n,r)=>n+r.initial_backlog_entries_baselined,0),
     undated_feed_new_since_previous_poll_count:
@@ -293,6 +325,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       "SOURCE_PULSE_PREVIOUS_HISTORY_INVALID",
       "SOURCE_PULSE_UNSAFE_OR_UNDATED_CANDIDATE",
       "SOURCE_PULSE_HISTORY_CAPACITY_EXCEEDED",
+      "PRIVATE_CLASSIFIER_ACK_SOURCE_CLOCK_MISMATCH",
+      "PRIVATE_CLASSIFIER_ACKED_ORIGINAL_RESELECTED",
       "PRIVATE_ORIGINAL_REVIEW_QUEUE_INVALID",
       "PRIVATE_ORIGINAL_REVIEW_QUEUE_CAPACITY_EXCEEDED",
       "UNDATED_PULSE_HISTORY_INVALID",
