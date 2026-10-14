@@ -126,7 +126,8 @@ export function acknowledgePrivateClassifierWork({
   const chosen=claim[0];
   const updated={
     ...chosen,status:returned.includes(chosen.article_sha256)
-      ?"ACKED_CLASSIFIED":chosen.attempts===2?"EXHAUSTED":"CLAIMED",
+      ?"ACKED_CLASSIFIED":chosen.attempts===2||
+        !attempted.includes(chosen.article_sha256)?"EXHAUSTED":"CLAIMED",
     acknowledged_at:returned.includes(chosen.article_sha256)?now:null,
   };
   const next=records.map(e=>e.article_sha256===chosen.article_sha256?updated:e);
