@@ -46,7 +46,7 @@ function cleanText(html:string):string {
   if(ignored)return "";
   return fragments.join(" ").replace(/&#(?:39|x27);|&apos;/giu,"'")
     .replace(/&(?:nbsp|#160);/giu," ")
-    .replace(/&amp;/giu,"&").replace(/\\s+/gu," ").trim();
+    .replace(/&amp;/giu,"&").replace(/\s+/gu," ").trim();
 }
 
 function norm(s:string):string {
