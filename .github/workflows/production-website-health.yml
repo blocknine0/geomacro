@@ -83,9 +83,10 @@ jobs:
           grep -Fq 'Ask Geomacro' src/components/ask/ask-workspace.tsx
           grep -Fq 'Geomacro turns global developments into clear risk intelligence for teams, decisions and AI agents.' src/components/home/commercial-home.tsx
 
-          grep -Fq '0.05' src/routes/pricing.tsx
-          grep -Fq 'USDC / successful delivery' src/routes/pricing.tsx
-          grep -Fq 'first 20,000' src/routes/pricing.tsx
+          grep -Fq 'CapabilityPriceSchedule' src/routes/pricing.tsx
+          grep -Fq 'GEOMACRO_CAPABILITY_PRICES' src/components/capability-price-schedule.tsx
+          grep -Fq 'GEOMACRO_PRICING_GROUPS' src/components/capability-price-schedule.tsx
+          grep -Fq 'CapabilityPriceSchedule' src/routes/data-api.tsx
           grep -Fq 'No-charge failure boundary' src/routes/pricing.tsx
           grep -Fq 'Pay-per-call availability is confirmed by the live checkout, not the advertised price.' src/routes/pricing.tsx
 
