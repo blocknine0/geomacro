@@ -149,5 +149,28 @@
     "raw_private_warehouse_delivery": false,
     "full_physical_route_or_vessel_model": false,
     "future_event_guarantee": false
-  }
+  },
+  "x-geomacro-capability-pricing": {
+    "version": "geomacro.capability-usdc.v1",
+    "canonical_catalog": "https://geomacro.live/api/intelligence/capabilities",
+    "capabilities": [
+      "gri_read",
+      "structural_country_digest",
+      "structural_corridor_digest",
+      "structural_country_profile",
+      "structural_corridor_profile",
+      "intelligence_query",
+      "signed_risk_object",
+      "risk_gate_bundle"
+    ],
+    "exact_approved_variants_only": true,
+    "credit_units_not_usdc": true,
+    "no_charge_when_undeliverable": true,
+    "source_verification_required": true,
+    "signing_required_where_applicable": true,
+    "quote_source": "exact_live_runtime_x402_402_only_after_availability",
+    "current_payment_authorized": false
+  },
+  "pricing_catalog_uri": "https://geomacro.live/api/intelligence/capabilities",
+  "pricing_version": "geomacro.capability-usdc.v1"
 }
