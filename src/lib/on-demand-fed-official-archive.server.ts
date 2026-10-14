@@ -7,8 +7,29 @@
  */
 const MINUTES_TITLE=/^Minutes of the Board['\u2019]s discount rate meetings on\s+[A-Z]/iu;
 const URL=/^\/newsevents\/pressreleases\/monetary(20\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])a\.htm$/u;
-const htmlEntities=(text:string)=>text.replace(/&(?:#39|apos|rsquo);/giu,"'")
+const htmlEntities=(text:string)=>text.replace(/&(?:#39|apos|rsquo|#8217);/giu,"'")
+  .replace(/&(?:nbsp|#160);/giu," ")
   .replace(/&amp;/giu,"&").replace(/\s+/gu," ").trim();
+/** The public Board index often formats link labels with nested <span>.
+ * Extract visible anchor text using a bounded scanner, not an HTML tag-
+ * stripping regex. Reject scripts/styles and malformed markup entirely.
+ */
+function visibleLinkText(fragment:string):string {
+ if(fragment.length>1400)return "";
+ let out="",at=0;
+ while(at<fragment.length){
+   const open=fragment.indexOf("<",at);
+   if(open<0){out+=fragment.slice(at);break;}
+   out+=fragment.slice(at,open);
+   const close=fragment.indexOf(">",open+1);
+   if(close<0 || close-open>256)return "";
+   const tag=fragment.slice(open+1,close).trim().toLowerCase();
+   if(!/^\/?(?:span|strong|em|b|i|small|sup|sub)(?:\s[^<>]{0,180})?\/?$/u.test(tag))
+     return "";
+   at=close+1;
+ }
+ return htmlEntities(out);
+}
 export type FedArchiveOriginal=Readonly<{
  article_url:string;article_title:string;
  official_archive_release_day:string;
@@ -25,12 +46,12 @@ export function originalFedDiscountMinutesArchiveLinks(
  const base="https://www.federalreserve.gov/newsevents/pressreleases/"+year+"-press.htm";
  // Parse fixed first-party link markup ONLY; never treat site page text or
  // script fields as a verified original. No HTML content is printed/stored.
- const anchors=html.matchAll(/<a\b([^<>]{0,1400})>([^<>]{12,380})<\/a\s*>/giu);
+ const anchors=html.matchAll(/<a\b([^<>]{0,1400})>([\s\S]{12,1400}?)<\/a\s*>/giu);
  for(const a of anchors){
   if(result.length>=2)break;
   const href=/\bhref\s*=\s*["']([^"']{1,350})["']/iu.exec(a[1])?.[1];
   if(!href)continue;
-  const title=htmlEntities(a[2]);
+  const title=visibleLinkText(a[2]);
   if(title.length>300||!MINUTES_TITLE.test(title))continue;
   let uri:URL;
   try{uri=new globalThis.URL(href.replace(/&amp;/giu,"&"),base);}catch{continue;}
