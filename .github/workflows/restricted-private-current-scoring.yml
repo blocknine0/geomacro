@@ -217,6 +217,25 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/ops/archive-restricted-private-scored-stage.mjs --private-stage-only
+          if [[ "${GEOMACRO_AUTOMATIC_D1_PULSE_STAGE}" == "true" ]]; then
+            for domain in geopolitics macro rare_earth; do
+              HAS_CLAIM="$(DOMAIN="$domain" node --input-type=module -e '
+                import {readFileSync} from "node:fs";
+                const d=process.env.DOMAIN;
+                const p=JSON.parse(readFileSync(`artifacts/restricted-current-scoring/${d}-claim.json`));
+                process.stdout.write(p.claimed===true?"true":"false");')"
+              if [[ "$HAS_CLAIM" == "true" ]]; then
+                HAS_STAGE="$(DOMAIN="$domain" node --input-type=module -e '
+                  import {readFileSync} from "node:fs";
+                  const d=process.env.DOMAIN;
+                  const p=JSON.parse(readFileSync(`artifacts/restricted-current-scoring/${d}.json`));
+                  process.stdout.write(p.records?.length>0?"true":"false");')"
+                if [[ "$HAS_STAGE" == "true" ]]; then
+                  node scripts/ops/private-classifier-retry-lifecycle.mjs commit "$domain"
+                fi
+              fi
+            done
+          fi
 
       - name: Prepare source-bound canonical private GRI v1.2 proof locally (no network)
         if: >-
