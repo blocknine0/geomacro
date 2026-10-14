@@ -56,3 +56,40 @@ export async function readVerifiedCapabilityAnswer(input:{
     throw Error("CAPABILITY_PREQUOTE_CUSTOMER_CONTENT_INVALID");
   return {quote,intelligence:value as Record<string,unknown>};
 }
+
+/**
+ * Preserve the cryptographically frozen customer intelligence despite
+ * transport-only settlement/availability metadata on the final HTTP envelope.
+ *
+ * The signed intelligence projection must remain canonical-byte identical.
+ * Enclosing HTTP JSON, including payment metadata, is a separate delivery
+ * envelope governed by the existing prepared-response ledger/hash.
+ * This does not replace independent final-envelope delivery acceptance.
+ */
+export function assertFrozenCapabilityIntelligenceProjection(input:{
+  quote:CapabilityQuote;
+  frozen:Record<string,unknown>;
+  delivered:Record<string,unknown>;
+  addedEnvelopeKeys:readonly string[];
+}):void {
+  const canonical=stableCommerceJson(input.frozen);
+  if(commerceSha256(canonical)!==input.quote.prepared_answer_sha256)
+    throw Error("CAPABILITY_DELIVERY_FROZEN_HASH_MISMATCH");
+
+  const allowed=new Set(input.addedEnvelopeKeys);
+  if(allowed.size!==input.addedEnvelopeKeys.length ||
+      [...allowed].some(key=>!["payment","availability"].includes(key) ||
+        Object.prototype.hasOwnProperty.call(input.frozen,key)))
+    throw Error("CAPABILITY_DELIVERY_ENVELOPE_SCOPE_INVALID");
+
+  const projection:Record<string,unknown>=Object.create(null);
+  for(const [key,value] of Object.entries(input.delivered)){
+    if(!allowed.has(key))projection[key]=value;
+  }
+  if(stableCommerceJson(projection)!==canonical)
+    throw Error("CAPABILITY_DELIVERY_SIGNED_INTELLIGENCE_MUTATED");
+  for(const key of allowed){
+    if(!Object.prototype.hasOwnProperty.call(input.delivered,key))
+      throw Error("CAPABILITY_DELIVERY_ENVELOPE_FIELD_MISSING");
+  }
+}
