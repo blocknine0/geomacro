@@ -78,9 +78,15 @@ permissions:
   contents: read
   security-events: read
 
+# One source-protected lane across PR, protected main and daily research.
+# An unrelated CI run must NEVER cancel a live bounded original-provider
+# acceptance after it has begun. The shared group still serializes provider
+# work across every trigger; do not partition by PR or remove the quota cap.
+# GitHub keeps at most one pending run: its supersession is NOT a passing
+# provider acceptance, and must be rerun explicitly before merging.
 concurrency:
   group: geomacro-live-on-demand-global-discovery-acceptance
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   real-api-proof:

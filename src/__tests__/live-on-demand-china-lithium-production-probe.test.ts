@@ -37,6 +37,29 @@ describe("production customer-query acceptance without B2, new services or money
     expect(script).not.toContain("console.log(uri)");
     expect(script).not.toContain("fetch(uri");
   });
+  it("serializes real provider jobs without unrelated PRs cancelling running acceptance",()=>{
+    expect(workflow).toContain("group: geomacro-live-on-demand-global-discovery-acceptance");
+    expect(workflow).toContain("cancel-in-progress: false");
+    expect(workflow).not.toContain("cancel-in-progress: true");
+    expect(workflow).toContain('cron: "23 8 * * *"');
+    expect(workflow).toContain("GEOMACRO_COUNTRY_BATCH_COUNT");
+    // Source-protecting concurrency must cover both PR and production jobs.
+    expect(workflow.indexOf("concurrency:")).toBeLessThan(workflow.indexOf("jobs:"));
+    expect(workflow).not.toContain("group: ${{ github.event.pull_request.number }}");
+  });
+  it("production POST checks the genuine Fed original across historical and default-current source windows",()=>{
+    const readback=readFileSync("scripts/ops/phase2-production-no-funds-readback.mjs","utf8");
+    expect(readback).toContain("USA_FED_HISTORICAL");
+    expect(readback).toContain("USA_FED_CURRENT_REJECTION");
+    expect(readback).toContain("private_exact_query_bound_fed_drafts===1");
+    expect(readback).toContain("private_exact_query_bound_fed_drafts===0");
+    expect(readback).toContain("article_page_publication_dates_verified>=1");
+    expect(readback).toContain("if(report.exact_sha_verified) for");
+    expect(readback).toContain("GEOMACRO_EXPECTED_DEPLOYED_SHA");
+    expect(readback).toContain('payment_attempts:0,settlement_attempts:0');
+    expect(readback).not.toContain("PAYMENT-SIGNATURE: ");
+    expect(readback).not.toContain("settleCoinbaseX402");
+  });
   it("keeps quota-constrained daily workflow with limited original-page reads",()=>{
     expect(workflow).toContain("bun scripts/ops/verify-live-on-demand-real-apis.ts");
     expect(workflow).toContain('paths:');

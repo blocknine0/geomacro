@@ -13,12 +13,18 @@ const expected=String(process.env.GEOMACRO_EXPECTED_DEPLOYED_SHA||"").toLowerCas
 const cases=[
   {id:"RUS_HISTORICAL_GEO",country:"RUS",topic:"conflict_geopolitics",
    question:"Russia conflict developments in the past 31 days",age:31*86400},
-  {id:"CHN_HISTORICAL_MACRO",country:"CHN",topic:"macro_risk",
-   question:"China macroeconomic announcements in the past 7 days",age:7*86400},
+  // The published Board minutes are a historical event by 15 October,
+  // NEVER a new rate decision. Reuse the exact canonical customer route.
+  // These replace the two general CHN macro probes, NOT add two expensive
+  // provider bursts: RUS/GBR and the separate CHN API acceptance remain.
+  {id:"USA_FED_HISTORICAL",country:"USA",topic:"macro_risk",
+   question:"When did the Federal Reserve Board publish its August and September 2026 discount-rate meeting minutes?",
+   age:7*86400},
   {id:"GBR_HISTORICAL_LITHIUM",country:"GBR",topic:"critical_minerals",
    question:"UK lithium announcements in the past 31 days",age:31*86400},
-  {id:"CHN_CURRENT_MACRO",country:"CHN",topic:"macro_risk",
-   question:"Current China macroeconomic announcements within 24 hours",age:86400},
+  {id:"USA_FED_CURRENT_REJECTION",country:"USA",topic:"macro_risk",
+   question:"When did the Federal Reserve Board publish its August and September 2026 discount-rate meeting minutes?",
+   age:86400},
 ];
 const report={
   schema:"geomacro.phase2-production-no-funds.v1",
@@ -101,6 +107,16 @@ try{
         !body?.payment && !body?.accepts;
       const contract=(r.http===422 && body?.error?.code==="ON_DEMAND_VERIFICATION_PENDING") ||
         (r.http===429 && body?.error?.code==="ON_DEMAND_PROVIDER_BUDGET_RATE_LIMITED");
+      const isFed=x.id.startsWith("USA_FED_");
+      const verifiedBoundDraft=body?.on_demand?.private_exact_query_bound_fed_drafts===1 &&
+        body?.on_demand?.private_source_bound_structured_finding_candidates===1 &&
+        body?.on_demand?.article_page_publication_dates_verified>=1;
+      // This is an exact, real customer POST. A 422 never becomes signing
+      // eligibility; an actual source-backed draft is proved only when the
+      // existing private canonical engine reports a verified match.
+      const fedExactClaimAccepted=!isFed ||
+        (x.age>86400 ? verifiedBoundDraft :
+          body?.on_demand?.private_exact_query_bound_fed_drafts===0);
       const summarized={
         id:x.id,http:r.http,code:body?.error?.code??null,
         provider_attempts:typeof body?.on_demand?.network_attempts==="number"
@@ -108,11 +124,14 @@ try{
         original_page_checks:typeof body?.on_demand?.original_article_page_checks==="number"
           ?body.on_demand.original_article_page_checks:null,
         qualification_status:body?.on_demand?.private_evidence_qualification?.status??null,
+        historical_query_draft_verified:isFed&&x.age>86400?verifiedBoundDraft:null,
+        historical_original_rejected_by_current_scope:isFed&&x.age===86400?
+          body?.on_demand?.private_exact_query_bound_fed_drafts===0:null,
         no_payment:noFunds,contract_valid:contract,
         is_history:x.age>86400,
       };
       report.cases.push(summarized);
-      if(!noFunds || !contract)failed=true;
+      if(!noFunds || !contract || !fedExactClaimAccepted)failed=true;
     }catch{
       report.cases.push({id:x.id,http:0,code:"TRANSPORT_UNAVAILABLE",
         provider_attempts:null,original_page_checks:null,
