@@ -297,6 +297,10 @@ describe("no-funds structural answer and existing x402 payment-binding adapter",
     await expect(durablyFreezeWdiNoFundsAnswer(input,{
       ...opts,now:new Date("2026-10-14T23:00:00Z"),
     })).rejects.toThrow("WDI_DURABLE_RIGHTS_RECEIPT_EXPIRED");
+    await expect(durablyFreezeWdiNoFundsAnswer(input,{
+      ...opts,readRightsReceipt:async()=>({...rightsReceipt,
+        fresh_quota_reserved_get:false}),
+    })).rejects.toThrow("WDI_DURABLE_GENUINE_RECEIPT_UNAVAILABLE");
   });
   it("rejects unsigned/tampered source periods, wrong rights, and malformed terms",()=>{
     const s=candidate();
