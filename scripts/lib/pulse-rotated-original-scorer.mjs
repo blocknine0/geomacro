@@ -153,7 +153,7 @@ export async function recoverPulseRotatedOriginalPageDates(
      !/<(?:atom:)?feed(?:\\s|>)/iu.test(xml))
     return [];
   const matched=[],seen=new Set();
-  const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:atom:)?entry>/giu)]
+  const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)]
     .slice(0,MAX_ENTRIES);
   for(const [,item] of entries){
     if(pageBudget.used>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN ||
@@ -171,7 +171,7 @@ export async function recoverPulseRotatedOriginalPageDates(
     if(!refs.has(identity))continue;
     const required=expectedClocks.get(identity);
     if(typeof required!=="string" ||
-       !/^20\\d{2}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/u.test(required) ||
+       !/^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(required) ||
        !Number.isFinite(Date.parse(required)) ||
        Date.parse(required)>now.getTime() ||
        now.getTime()-Date.parse(required)>86400_000)continue;
