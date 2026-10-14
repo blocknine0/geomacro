@@ -28,6 +28,8 @@ on:
       - "src/lib/canonical-country-registry-195.ts"
       - "src/lib/canonical-195-country-coverage-matrix.ts"
       - "src/lib/on-demand-original-subject-matching.ts"
+      - "src/lib/country-195-batch-evidence.ts"
+      - "src/lib/country-195-batch-evidence.test.ts"
       - "scripts/ops/verify-live-195-country-batch.ts"
       - "scripts/ops/export-canonical-195-country-matrix.ts"
       - "src/lib/on-demand-fed-board-discount-release.server.ts"
@@ -55,6 +57,8 @@ on:
       - "src/lib/canonical-country-registry-195.ts"
       - "src/lib/canonical-195-country-coverage-matrix.ts"
       - "src/lib/on-demand-original-subject-matching.ts"
+      - "src/lib/country-195-batch-evidence.ts"
+      - "src/lib/country-195-batch-evidence.test.ts"
       - "scripts/ops/verify-live-195-country-batch.ts"
       - "scripts/ops/export-canonical-195-country-matrix.ts"
       - "src/lib/on-demand-fed-board-discount-release.server.ts"
@@ -108,9 +112,12 @@ jobs:
           bun scripts/ops/verify-live-on-demand-representative-cases.ts
           bun scripts/ops/verify-live-on-demand-nrcan-original.ts
           bun scripts/ops/export-canonical-195-country-matrix.ts
+          bunx vitest run src/lib/country-195-batch-evidence.test.ts
           bun scripts/ops/verify-live-fed-board-private-finding.ts
       # Existing once-daily original API acceptance owns the rotating probe.
-      # No separate Cron, per-country poller or Supabase/B2 production reads.
+      # One canonical three-category request per country, <=12 discovery GETs
+      # and <=4 original-page reads PER COUNTRY (max two countries/run).
+      # No separate cron or B2/Supabase/D1 intake.
       # PR runners never run this optional additional network probing stage.
       # One bounded sample also runs once after protected-main merge.
       - name: Rotate one real country through canonical three-category retrieval
@@ -129,6 +136,14 @@ jobs:
           GEOMACRO_COUNTRY_BATCH_START="$START" \
           GEOMACRO_COUNTRY_BATCH_COUNT="${REQUESTED_COUNT:-1}" \
             bun scripts/ops/verify-live-195-country-batch.ts
+      - name: Persist source-free bounded country resume checkpoint
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: live-country-195-resume-${{ github.run_id }}
+          path: artifacts/country-195/live-batch-checkpoint.v1.json
+          if-no-files-found: warn
+          retention-days: 90
       - name: Keep redacted no-funds publisher acceptance
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -215,6 +230,7 @@ jobs:
           bun scripts/ops/verify-live-on-demand-representative-cases.ts
           bun scripts/ops/verify-live-on-demand-nrcan-original.ts
           bun scripts/ops/export-canonical-195-country-matrix.ts
+          bunx vitest run src/lib/country-195-batch-evidence.test.ts
           bun scripts/ops/verify-live-fed-board-private-finding.ts
       - name: Preserve redacted provider diagnostics
         if: always()
