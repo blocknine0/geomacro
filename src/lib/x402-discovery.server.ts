@@ -12,6 +12,8 @@ import {
 } from "./nevermined-x402.server";
 import { providerRealFundsSecurityState } from "./provider-real-funds-security.server";
 import { getCommercialLaunchState } from "./commercial-launch-gate.server";
+import {capabilityPricingCatalog,GEOMACRO_CAPABILITY_PRICING_VERSION}
+  from "./capability-pricing-catalog";
 
 const CANONICAL_PRODUCT = "geomacro_adaptive_risk_intelligence_v1" as const;
 
@@ -130,6 +132,17 @@ export async function buildX402DiscoveryDocument(originInput: string) {
     status: resources.length > 0 ? "production" : "prelaunch",
     productionFundsAuthorized: resources.length > 0,
     resources,
+    capabilityPricing:{
+      version:GEOMACRO_CAPABILITY_PRICING_VERSION,
+      unit:"USDC",decimals:6,
+      capabilities:capabilityPricingCatalog(),
+      price_requires_exact_capability_variant:true,
+      price_is_not_runtime_availability:true,
+      buyer_must_accept_changed_tier:true,
+      risk_gate_bundle_single_charge:true,
+      credits_separate_from_money:true,
+      free_on_unavailable:true,
+    },
     freeResources: [
       {
         resource: `${origin}/api/x402/risk/availability`,
