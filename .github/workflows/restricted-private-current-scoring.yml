@@ -166,6 +166,11 @@ jobs:
             # classifier/discovery stdout in public GitHub Actions logs.
             if ! GDELT_FORCE_CATEGORY="$domain" node scripts/ingest-news.js --private-scored-stage \
               > "artifacts/restricted-current-scoring/$domain.log" 2>&1; then
+              if [[ "${GEOMACRO_AUTOMATIC_D1_PULSE_STAGE}" == "true" ]]; then
+                # Fail-closed D1 terminal ACK for unverified upstream 403/429,
+                # preserving a bounded retry only for proven classifier failure.
+                node scripts/ops/private-classifier-retry-lifecycle.mjs abort "$domain"
+              fi
               echo "::error::PRIVATE_SCORING_CANONICAL_DOMAIN_FAILED:$domain"
               exit 1
             fi
