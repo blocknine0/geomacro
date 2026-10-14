@@ -304,7 +304,7 @@ async function countryName(country: string, fetchImpl: typeof fetch) {
 async function gdelt(
   category: OnDemandCategory, countryNameValue: string, fetchImpl: typeof fetch,
   mineral: OnDemandMineral | null, topics:readonly string[]=[], countryIso3="",
-  maxAgeMs=ONE_DAY_MS,
+  maxAgeMs=ONE_DAY_MS, deadlineMs=Date.now()+12_000,
 ): Promise<SourceProbe> {
   // GDELT is a discovery INDEX. Its "seendate" is NEVER original publication
   // and third-party discovery NEVER proves independent event corroboration.
@@ -322,16 +322,23 @@ async function gdelt(
     sort:"DateDesc",timespan:Math.max(1,Math.ceil(maxAgeMs/ONE_DAY_MS))+"d",
   });
   const url="https://api.gdeltproject.org/api/v2/doc/doc?" + params;
+  // Share ONE 12s latency envelope among the requested category-specific
+  // GDELT indexes. Every retry consumes the same original deadline.
+  const readIndex=()=>{
+    const remaining=deadlineMs-Date.now();
+    if(remaining<250)throw Error("ON_DEMAND_PROVIDER_COOLDOWN");
+    return boundedFetch(fetchImpl,url,"application/json",Math.min(12_000,remaining));
+  };
   let body:string;
   try {
-    body=await boundedFetch(fetchImpl,url,"application/json",12_000);
+    body=await readIndex();
   } catch(error) {
     // One bounded same-provider retry for 404/5xx only. Never retry
     // authorization (401/403), quota (429), invalid JSON, or bad timestamps.
     // The outer twelve-request budget also applies to this extra attempt.
     if(!(error instanceof Error) ||
        error.message!=="ON_DEMAND_SOURCE_TRANSIENT_HTTP")throw error;
-    body=await boundedFetch(fetchImpl,url,"application/json",12_000);
+    body=await readIndex();
   }
   const parsed: unknown = JSON.parse(body);
   const articles = typeof parsed === "object" && parsed !== null &&
@@ -993,10 +1000,11 @@ async function discoverOnDemandImpl(
   let name: string;
   try { name = await countryName(country,trackedFetch); }
   catch { name = ""; }
+  const gdeltDeadline=Date.now()+12_000;
   const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   const approvedReliefAppname=approvedReliefWebAppname();
   if (name && !options.disableDiscoveryIndex) for (const category of categories) {
-    tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral,topics,country,newsMaxAgeMs)});
+    tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral,topics,country,newsMaxAgeMs,gdeltDeadline)});
     // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
     // account approval must not generate repeat 403s on every user query.
     if (category==="geopolitics" && approvedReliefAppname)
@@ -1050,7 +1058,32 @@ async function discoverOnDemandImpl(
       ? [...tasks.filter(t=>t.name.startsWith("world_bank_official_")),
          ...tasks.filter(t=>!t.name.startsWith("world_bank_official_"))].slice(0,maxPrimary)
       : tasks;
-  const settled=await Promise.allSettled(selected.map(t=>t.run()));
+  // A single user query never bursts 2-3 category-index calls into GDELT
+  // simultaneously. A real 429/403 on the FIRST scoped index suppresses
+  // subsequent GDELT calls *for this request only*. Other independently
+  // approved original publishers remain concurrent and unaffected.
+  let gdeltDenied=false;
+  let gdeltQueue:Promise<void>=Promise.resolve();
+  const runPrimary=(task:(typeof tasks)[number])=>{
+    if(task.name!=="gdelt_doc_discovery")return task.run();
+    const pending=gdeltQueue.then(async()=>{
+      if(gdeltDenied || gdeltDeadline-Date.now()<250){
+        return {...probe("gdelt_doc_discovery",0,false),attempted:false,
+          reachable:false,retrieval_state:"COOLDOWN_ACTIVE" as const};
+      }
+      try{return await task.run();}
+      catch(error){
+        if(error instanceof Error &&
+          ["ON_DEMAND_SOURCE_RATE_LIMITED","ON_DEMAND_SOURCE_ACCESS_RESTRICTED",
+           "ON_DEMAND_PROVIDER_COOLDOWN"].includes(error.message))
+          gdeltDenied=true;
+        throw error;
+      }
+    });
+    gdeltQueue=pending.then(()=>{},()=>{});
+    return pending;
+  };
+  const settled=await Promise.allSettled(selected.map(runPrimary));
   const source_probes:SourceProbe[]=settled.map((result,i)=>{
     const row = result.status==="rejected" ? failed(selected[i].name,result.reason) :
       "probe" in result.value ? result.value.probe : result.value;
