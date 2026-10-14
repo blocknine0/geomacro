@@ -104,8 +104,9 @@ jobs:
       # Existing once-daily original API acceptance owns the rotating probe.
       # No separate Cron, per-country poller or Supabase/B2 production reads.
       # PR runners never run this optional additional network probing stage.
+      # One bounded sample also runs once after protected-main merge.
       - name: Rotate one real country through canonical three-category retrieval
-        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         shell: bash
         env:
           REQUESTED_START: ${{ inputs.country_batch_start }}
