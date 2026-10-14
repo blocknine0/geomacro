@@ -341,6 +341,10 @@ it("#2229 D1 producer can recover one failed original with readback, then suppre
  });
  expect(third.selected_private_classifier_ref_count).toBe(0);
  expect(third.selected_private_classifier_retry_count).toBe(0);
+ expect(third.classifier_acked_ledger_entries).toBe(1);
+ expect(third.classifier_acked_sha_clock_reobserved_and_excluded).toBe(1);
+ expect(third.classifier_acked_exclusion_is_commercial_evidence).toBe(false);
+ expect(JSON.stringify(third)).not.toContain(sha);
  expect(third.new_private_original_article_fingerprints).toBe(0);
  expect(data.get("geopolitics").payload.private_classifier_work_refs).toEqual([]);
  expect(third.supabase_requests).toBe(0);
