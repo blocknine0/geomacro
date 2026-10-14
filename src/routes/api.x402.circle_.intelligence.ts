@@ -3,6 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 
 import { agentAdaptiveQuerySchema, buildAgentQueryPlan } from "../lib/agent-query-plan";
+import {approvedAdaptiveIntelligencePrice,quoteGeomacroCapability,
+  verifyGeomacroCapabilityQuote,type CapabilityQuote} from "../lib/capability-pricing";
+import {capabilityPricingCatalog,GEOMACRO_CAPABILITY_PRICING_VERSION}
+  from "../lib/capability-pricing-catalog";
 import { checkAgentQueryDeliverability } from "../lib/agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "../lib/agent-query-external-modules.server";
 import { assembleAgentQueryResponse } from "../lib/agent-query-response.server";
@@ -91,7 +95,7 @@ async function parseJsonBody(request: Request) {
   }
 }
 
-function paymentRequiredDocument(request: Request, requirement: CircleGatewayPaymentRequirement) {
+function paymentRequiredDocument(request: Request, requirement: CircleGatewayPaymentRequirement,quote:CapabilityQuote|null=null) {
   return {
     x402Version: 2,
     resource: {
@@ -101,6 +105,10 @@ function paymentRequiredDocument(request: Request, requirement: CircleGatewayPay
       mimeType: "application/json",
     },
     accepts: [requirement],
+    ...(quote?{extensions:{geomacro:{info:{
+      product:PRODUCT_ID,request_fingerprint_sha256:quote.request_fingerprint_sha256,
+      capability_quote:quote,
+    }}}}:{}),
   };
 }
 
@@ -205,7 +213,9 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           scheme: configured.requirement.scheme,
           network: configured.requirement.network,
           asset: configured.requirement.asset,
-          price_usdc: configured.config.priceUsdc,
+          pricing_contract_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
+          capability_prices:capabilityPricingCatalog(),
+          exact_price_usdc:null,
           launch_state: "coordinated_launch_only",
           coverage: "data-driven; only currently deliverable and commercially eligible requests are payable",
           reconciliation_required: true,
@@ -233,7 +243,7 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
 
         const configured = await configuredCircleRequirement(request);
         if ("error" in configured) return configured.error;
-        const { config, requirement, paymentRequired } = configured;
+        let { config, requirement, paymentRequired } = configured;
 
         if (
           !allowPublicDemoRequest(request, {
