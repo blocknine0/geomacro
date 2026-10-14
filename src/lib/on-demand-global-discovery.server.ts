@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
+import { country195ByIso3 } from "./canonical-country-registry-195";
+import { classifyGlobalEntity } from "./global-entity-classification";
 import { verifiedFedBoardDiscountMinutesOriginal } from "./on-demand-fed-board-discount-release.server";
 import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
 
@@ -262,8 +264,12 @@ function digest(s: string) {
   return createHash("sha256").update(s,"utf8").digest("hex");
 }
 function iso3(value: string) {
-  const country = String(value || "").toUpperCase();
-  if (!/^[A-Z]{3}$/.test(country)) throw Error("ON_DEMAND_ISO3_INVALID");
+  const country=String(value||"").toUpperCase();
+  if(!/^[A-Z]{3}$/u.test(country))
+    throw Error("ON_DEMAND_ISO3_INVALID");
+  if(!country195ByIso3(country) &&
+     classifyGlobalEntity(country)==="UNCLASSIFIED")
+    throw Error("ON_DEMAND_COUNTRY_NOT_IN_CANONICAL_REGISTRY");
   return country;
 }
 function freshPublished(value: string, now: Date, maxAgeMs=ONE_DAY_MS) {
@@ -1019,8 +1025,17 @@ async function discoverOnDemandImpl(
   // Always bound fan-out; missing country metadata is not substituted by an
   // ungrounded guessed country name.
   let name: string;
-  try { name = await countryName(country,trackedFetch); }
-  catch { name = ""; }
+  try { name=await countryName(country,trackedFetch); }
+  catch {
+    // World Bank coverage is NOT the country registry. Its absence,
+    // restricted lookup or response drift must not disable all independent
+    // official/UN government-source discovery for an otherwise recognized
+    // country. This offline lookup does not imply a live source or evidence.
+    name=country195ByIso3(country)?.name??"";
+  }
+  // World Bank describes Palestine as "West Bank and Gaza", but routing a
+  // PSE query must still match the UN observer-state country denominator.
+  if(country==="PSE" && name)name="State of Palestine";
   const gdeltDeadline=Date.now()+12_000;
   const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   const approvedReliefAppname=approvedReliefWebAppname();

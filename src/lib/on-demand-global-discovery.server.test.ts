@@ -92,6 +92,8 @@ describe("Global on-demand private retrieval, not pre-generated GRO",()=>{
   it("rejects invalid country, duplicate family scope and oversized category fanout",async()=>{
     await expect(discoverOnDemandGlobal({country_iso3:"IND/path",categories:["macro"]},{fetchImpl,now}))
       .rejects.toThrow("ON_DEMAND_ISO3_INVALID");
+    await expect(discoverOnDemandGlobal({country_iso3:"ZZZ",categories:["macro"]},{fetchImpl,now}))
+      .rejects.toThrow("ON_DEMAND_COUNTRY_NOT_IN_CANONICAL_REGISTRY");
     await expect(discoverOnDemandGlobal({country_iso3:"IND",categories:["macro","macro"]},{fetchImpl,now}))
       .rejects.toThrow("ON_DEMAND_CATEGORIES_INVALID");
     await expect(discoverOnDemandGlobal({country_iso3:"IND",categories:["unknown" as never]},{fetchImpl,now}))
@@ -102,7 +104,11 @@ describe("Global on-demand private retrieval, not pre-generated GRO",()=>{
     const result=await discoverOnDemandGlobal({
       country_iso3:"IND",categories:["geopolitics","rare_earth"],
     },{fetchImpl:failing,now});
-    expect(result.network_attempts).toBe(1);
+    // When World Bank identity is unavailable, an approved offline name
+    // enables existing independent publisher fallback (still <=12 calls).
+    // The old one-GET shortcut silently disabled all 195-country discovery.
+    expect(result.network_attempts).toBeGreaterThan(1);
+    expect(result.network_attempts).toBeLessThanOrEqual(12);
     expect(result.status).toBe("DISCOVERY_DEGRADED");
     expect(result.payable).toBe(false);
     expect(result.reached_source_families).toBe(0);
@@ -141,7 +147,10 @@ describe("Live source free-tier quota and memory safety",()=>{
     expect(proof.status).toBe("DISCOVERY_DEGRADED");
     expect(proof.payable).toBe(false);
     expect(proof.settlement_attempted).toBe(false);
-    expect(proof.network_attempts).toBe(3);
+    // Country-name fallback may attempt other publishers after the first
+    // oversized World Bank response, but source-byte caps remain enforced.
+    expect(proof.network_attempts).toBeGreaterThanOrEqual(3);
+    expect(proof.network_attempts).toBeLessThanOrEqual(12);
   });
   it("requests fixed HTTPS source URLs without redirects or customer freeform strings",async()=>{
     const requests: Array<{url:string;opts:RequestInit|undefined}>=[];
