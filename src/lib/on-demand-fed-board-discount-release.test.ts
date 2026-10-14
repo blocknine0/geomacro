@@ -1,5 +1,6 @@
 import {describe,it,expect,vi} from "vitest";
 import {verifiedFedBoardDiscountMinutesOriginal} from "./on-demand-fed-board-discount-release.server";
+import {deriveStatelessSignals} from "./stateless-intelligence-model";
 import {discoverOnDemandForPrivateQualification,verifyOnDemandOriginalArticlePages}
  from "./on-demand-global-discovery.server";
 import {qualifyRetrievedOnDemandEvidence,buildPrivateVerifiedFedMinutesFinding}
@@ -33,6 +34,17 @@ function fetcher(page=PAGE,feed=FEED){
  return {fetchImpl,calls};
 }
 describe("genuine Fed issuer-original context to private structured answer, not paid",()=>{
+ it("matches the actual D1 display-key candidate without treating FNV as cryptographic proof",()=>{
+  const rows=deriveStatelessSignals([{sourceId:"fed_press",category:"macro",
+    title:TITLE,articleUrl:URL,publishedAt:FEED_TIME,
+    credit:"Federal Reserve Board"}],NOW.getTime());
+  expect(rows).toHaveLength(1);
+  expect(rows[0].id).toBe("macro-f6445c13");
+  expect(rows[0].status).toBe("official_release_observed_unscored");
+  expect(rows[0].same_event_corrob_verified).toBe(false);
+  expect(rows[0].severity).toBeNull();
+  expect(JSON.stringify(rows)).not.toContain(URL);
+ });
  it("derives a verified 18:00 UTC original announcement from Board page and independent native feed clock",()=>{
   const verified=verifiedFedBoardDiscountMinutesOriginal(PAGE,URL,TITLE,FEED_TIME,NOW);
   expect(verified).toMatchObject({
