@@ -28,6 +28,8 @@ const qualified=qualifyRetrievedOnDemandEvidence({
 const finding=buildPrivateVerifiedFedMinutesFinding(qualified,pages);
 const originalPageVerified=pages.verified_candidates.filter(x=>
   x.publisher_family==="us_federal_reserve_original_publisher").length;
+const archiveProbe=proof.discovery.source_probes.find(x=>
+  x.family==="us_federal_reserve_annual_archive");
 const status=finding
  ? "GENUINE_SOURCE_BOUND_STRUCTURED_DRAFT_REVIEW_PENDING":
    fed.length && originalPageVerified
@@ -41,6 +43,10 @@ const summary={
   official_feed_reached:proof.discovery.source_probes.some(x=>
     x.family==="us_federal_reserve_original_publisher" && x.reachable===true),
   original_feed_candidates:fed.length,
+  official_archive_attempted:Boolean(archiveProbe),
+  official_archive_reachable:archiveProbe?.reachable===true,
+  official_archive_matching_article_leads:archiveProbe?.observed_record_count??0,
+  official_archive_transport_state:archiveProbe?.retrieval_state??"NOT_ATTEMPTED",
   publisher_page_attempts:pages.attempted,
   page_original_dates_verified:originalPageVerified,
   original_board_minute_release_body_verified:Boolean(finding),
