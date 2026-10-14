@@ -8,8 +8,8 @@ const contract = fs.readFileSync("src/lib/geomacro-intelligence-contract.ts", "u
 describe("public intelligence machine surfaces", () => {
   it("keeps capability discovery free and payment-bound", () => {
     expect(capabilities).toContain('"/api/v1/intelligence/query"');
-    expect(capabilities).toContain('early_adoption_price_usdc');
-    expect(capabilities).toContain('"0.10"');
+    expect(capabilities).toContain('pricing_contract_version');
+    expect(capabilities).toContain('capabilityPricingCatalog()');
     expect(capabilities).toContain('raw_source_identity_exposed: false');
   });
 
