@@ -28,7 +28,7 @@ export function certifiedWdiAttributionRights(rows:readonly B2CommercialSourceRi
      r.enabled_for_commercial_signals!==true ||
      r.attribution_required!==true ||
      !/^CC[\s-]*BY[\s-]*4\.0(?:\b|$)/iu.test(r.licence_name??"") ||
-     !["macro","macro_fx","macro-fx",null].includes(r.category))
+     !["MACRO","macro","macro_fx","macro-fx",null].includes(r.category))
     return {eligible:false,reason:"WDI_RIGHTS_CONTRACT_MISMATCH",receipt_sha256:null};
   return {eligible:true,reason:"WDI_EXACT_RIGHTS_CERTIFIED",receipt_sha256:sha(r)};
 }
