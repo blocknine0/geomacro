@@ -54,13 +54,16 @@ function norm(s:string):string {
     .replace(/\s+/gu," ").trim();
 }
 
-/** Precise UTC timestamp ONLY if both original issuer's native feed clock AND
- * first-party original page's local, timezone-labelled release clock agree.
- * The parent verifier additionally checks any published-time <meta> conflicts.
+/** Precise UTC time from the ORIGINAL issuer release page, requiring either
+ * an agreeing original-feed native clock or a separately fetched same-issuer
+ * press archive's EXACT calendar-day link. Archive day is only discovery
+ * metadata and never a synthetic publication timestamp. The page's genuine
+ * explicit EDT/EST clock is indispensable; parent checks metadata conflicts.
  */
 export function verifiedFedBoardDiscountMinutesOriginal(
   html:string, articleUrl:string, exactFeedTitle:string,
   nativeFeedPublishedAt:string|null, now=new Date(),
+  officialArchiveDay:string|null=null,
 ):Readonly<{
   publication_utc:string;
   verified_event:"FED_BOARD_DISCOUNT_WINDOW_MEETING_MINUTES_PUBLISHED";
@@ -70,7 +73,8 @@ export function verifiedFedBoardDiscountMinutesOriginal(
 }>|null {
   if(typeof html!=="string"||html.length>384*1024 ||
      typeof exactFeedTitle!=="string"||exactFeedTitle.length>300 ||
-     typeof nativeFeedPublishedAt!=="string" ||
+     (nativeFeedPublishedAt===null && officialArchiveDay===null) ||
+     (nativeFeedPublishedAt!==null && typeof nativeFeedPublishedAt!=="string") ||
      !Number.isFinite(now.getTime()) ||
      !TITLE.test(norm(exactFeedTitle)))return null;
   let url:URL;
@@ -98,9 +102,16 @@ export function verifiedFedBoardDiscountMinutesOriginal(
   const offset=zone.toUpperCase()==="EDT"?"-04:00":"-05:00";
   const authored=[m[1],m[2],m[3]].join("-")+"T"+
     String(hour).padStart(2,"0")+":"+min+":00"+offset;
-  const ms=Date.parse(authored),native=Date.parse(nativeFeedPublishedAt);
-  if(!Number.isFinite(ms)||!Number.isFinite(native)||ms>now.getTime() ||
-    now.getTime()-ms>31*86_400_000||Math.abs(ms-native)>10*60_000)return null;
+  const ms=Date.parse(authored);
+  const archiveDay=[m[1],m[2],m[3]].join("-");
+  if(officialArchiveDay!==null &&
+     (officialArchiveDay!==archiveDay ||
+      !/^20\d{2}-\d{2}-\d{2}$/u.test(officialArchiveDay)))return null;
+  const native=nativeFeedPublishedAt!==null?Date.parse(nativeFeedPublishedAt):NaN;
+  if(!Number.isFinite(ms) || ms>now.getTime() ||
+    now.getTime()-ms>31*86_400_000 ||
+    (nativeFeedPublishedAt!==null &&
+      (!Number.isFinite(native)||Math.abs(ms-native)>10*60_000)))return null;
   // Refuse a year-round fixed UTC-4/-5 guess. EDT/EST must be the genuine
   // New York timezone abbreviation for the claimed calendar date.
   const actual= new Intl.DateTimeFormat("en-US",{
