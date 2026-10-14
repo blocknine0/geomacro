@@ -50,6 +50,9 @@ jobs:
           mkdir -p artifacts
           bun run test:app 2>&1 | tee artifacts/product-ci-tests.log
 
+      - name: Supabase-free verified Intelligence publication contract (no network or funds)
+        run: node --test scripts/ops/supabase-free-public-intelligence-publisher.test.mjs
+
       - name: Upload app test evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

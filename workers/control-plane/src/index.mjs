@@ -613,7 +613,7 @@ function validDerivedIntelligencePayload(value,now,maximumOriginalAgeMs) {
 const INDEPENDENT_ORIGINALS_SOURCE_ID="qualified_independent_original_publishers_v1";
 const INDEPENDENT_ORIGINALS_EVIDENCE_CONTRACT="geomacro.qualified-original-event-claims.v1";
 
-function validateHotSnapshot(body, product, now = Date.now()) {
+export function validateHotSnapshot(body, product, now = Date.now()) {
   const config = HOT_SNAPSHOT_PRODUCTS[product];
   if (!config || !body || typeof body !== "object" || Array.isArray(body)) throw new Error("INVALID_HOT_SNAPSHOT");
   const value = body.value;
