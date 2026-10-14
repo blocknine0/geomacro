@@ -201,6 +201,7 @@ export async function durablyFreezeWdiNoFundsAnswer(input:{
   verification_keys:RiskObjectVerificationKeys;
   query_plan:AgentQueryPlan;
   payment_terms:{amountAtomic:string;network:string;asset:string;payTo:string};
+  expected_frozen_quote_reference?:string;
 },opts:{
   now?:Date;
   readRightsReceipt?:typeof readB2CommercialSourceRightsReceipt;
@@ -235,6 +236,11 @@ export async function durablyFreezeWdiNoFundsAnswer(input:{
     receipt_generated_at:rights.generated_at,
     expires_at_ms:expiry,
   });
+  // An existing quote ID must NEVER be repointed to a different payment,
+  // signer, query, rights snapshot, expiry or customer response.
+  if(input.expected_frozen_quote_reference !== undefined &&
+     input.expected_frozen_quote_reference !== bindingHash)
+    throw Error("WDI_FROZEN_QUOTE_REPLAY_BINDING_MISMATCH");
   const frozen:WdiDurablePrequote={
     bindingHash,queryHash:candidate.query_plan_hash,
     rightsHash:candidate.source_rights_sha256,
