@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,type CapabilityQuote} from "../lib/capability-pricing";
 import {prepareVerifiedCapabilityOffer} from "../lib/capability-x402-offer.server";
-import {readVerifiedCapabilityAnswer} from "../lib/capability-x402-prequote.server";
+import {readVerifiedCapabilityAnswer,assertFrozenCapabilityIntelligenceProjection} from "../lib/capability-x402-prequote.server";
 import {readAlreadyDeliveredCapabilityReplay} from "../lib/capability-x402-replay.server";
 import {assertAcceptedCapabilityQuote,circleRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
   capabilityLedgerRequestFingerprint,capabilityQuoteFromPaymentPayload}
@@ -642,6 +642,10 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             },
             execution_authorized: false,
           };
+          assertFrozenCapabilityIntelligenceProjection({
+            quote:capabilityQuote,frozen:frozenIntelligence,delivered:responsePayload,
+            addedEnvelopeKeys:["payment"],
+          });
         } catch (error) {
           await releaseAgentCommerceDelivery({
             provider: "circle_gateway_x402",
