@@ -3,6 +3,8 @@ import {GEOMACRO_CAPABILITY_PRICING_VERSION,type CapabilityQuote} from "../lib/c
 import {prepareVerifiedCapabilityOffer} from "../lib/capability-x402-offer.server";
 import {readVerifiedCapabilityAnswer,assertFrozenCapabilityIntelligenceProjection} from "../lib/capability-x402-prequote.server";
 import {readAlreadyDeliveredCapabilityReplay} from "../lib/capability-x402-replay.server";
+import {freezeCanonicalCapabilityHttpBody,sendFrozenCapabilityHttpBody,type FrozenCapabilityHttpBody}
+  from "../lib/capability-x402-exact-http-body.server";
 import {assertAcceptedCapabilityQuote,circleRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
   capabilityLedgerRequestFingerprint,capabilityQuoteFromPaymentPayload}
   from "../lib/capability-x402-payment-contract.server";
@@ -407,14 +409,15 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             paymentFingerprint:commerceSha256(paymentToken),requestFingerprint,
             config,circleRequirement:requirement,
           });
-          if(prior) return json(prior.response,200,{
-            "PAYMENT-RESPONSE":encodePaymentHeader({success:true,idempotentReplay:true,
-              provider:"circle_gateway_x402",
-              settlement_reference:prior.settlementReference,
-              network:prior.settlementNetwork}),
-            "X-Geomacro-Delivery-SHA256":prior.responseSha256,
-            "X-Geomacro-Prepared-Answer-SHA256":original.prepared_answer_sha256,
-          });
+          if(prior) return sendFrozenCapabilityHttpBody(
+            freezeCanonicalCapabilityHttpBody(prior.response),prior.responseSha256,{
+              ...corsHeaders,
+              "PAYMENT-RESPONSE":encodePaymentHeader({success:true,idempotentReplay:true,
+                provider:"circle_gateway_x402",
+                settlement_reference:prior.settlementReference,
+                network:prior.settlementNetwork}),
+              "X-Geomacro-Prepared-Answer-SHA256":original.prepared_answer_sha256,
+            });
         }catch {
           return json({ok:false,chargeable:false,error:{
             code:"X402_DELIVERED_REPLAY_PROOF_INVALID_OR_UNAVAILABLE",
@@ -672,7 +675,10 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
         }
 
         let prepared;
+        let frozenHttpBody: FrozenCapabilityHttpBody;
         try {
+          // Final HTTP wire representation is immutable BEFORE settlement.
+          frozenHttpBody=freezeCanonicalCapabilityHttpBody(responsePayload);
           prepared = await prepareAgentCommerceDelivery({
             provider: "circle_gateway_x402",
             providerEnvironment: config.environment,
@@ -680,6 +686,8 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             claimToken,
             responsePayload,
           });
+          if (prepared.responseSha256!==frozenHttpBody.sha256)
+            throw Error("X402_FINAL_HTTP_LEDGER_BODY_HASH_MISMATCH");
         } catch (error) {
           await releaseAgentCommerceDelivery({
             provider: "circle_gateway_x402",
@@ -860,7 +868,8 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           console.error("[circle-x402] commercial telemetry persistence failed", error);
         }
 
-        return json(responsePayload, 200, {
+        return sendFrozenCapabilityHttpBody(frozenHttpBody,prepared.responseSha256,{
+          ...corsHeaders,
           "PAYMENT-RESPONSE": encodePaymentHeader({
             success: true,
             provider: "circle_gateway_x402",
@@ -871,7 +880,6 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             asset: "USDC",
             reconciliation_status: "pending",
           }),
-          "X-Geomacro-Delivery-SHA256":prepared.responseSha256,
           "X-Geomacro-Prepared-Answer-SHA256":capabilityQuote.prepared_answer_sha256,
         });
       },
