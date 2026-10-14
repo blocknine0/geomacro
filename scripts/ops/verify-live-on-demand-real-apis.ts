@@ -26,6 +26,8 @@ const FAMILY_BY_HOST:Readonly<Record<string,string>>={
   "www.federalreserve.gov":"federal_reserve",
   "www.ecb.europa.eu":"ecb",
   "www.minister.industry.gov.au":"australian_industry",
+  "api.io.canada.ca":"canada_nrcan",
+  "www.canada.ca":"canada_nrcan",
 };
 const outcomeCounts=new Map<string,Record<
   "ok_2xx"|"http_403"|"http_429"|"http_5xx"|"other_http"|"network_error",number

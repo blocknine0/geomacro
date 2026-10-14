@@ -26,7 +26,8 @@ const cases:readonly {
    max_age_seconds:31*86_400},
 ] as const;
 const hosts=new Set(["api.worldbank.org","www.gov.uk","news.un.org",
-  "www.federalreserve.gov","www.ecb.europa.eu","www.minister.industry.gov.au"]);
+  "www.federalreserve.gov","www.ecb.europa.eu","www.minister.industry.gov.au",
+  "api.io.canada.ca","www.canada.ca"]);
 const results=[];
 for(const sample of cases) {
   const responses:Record<string,Record<string,number>>={};

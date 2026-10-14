@@ -75,6 +75,7 @@ const HOST_BY_FAMILY: Readonly<Record<string,string>> = Object.freeze({
   us_federal_reserve_original_publisher:"www.federalreserve.gov",
   ecb_original_publisher:"www.ecb.europa.eu",
   australian_industry_original_publisher:"www.minister.industry.gov.au",
+  canada_nrcan_original_publisher:"www.canada.ca",
 });
 const REVIEW_RIGHTS_ID: Readonly<Record<string,string>> = Object.freeze({
   uk_fcdo_original_publisher:"uk_fcdo_original_foreign_policy_atom_review",
@@ -84,6 +85,7 @@ const REVIEW_RIGHTS_ID: Readonly<Record<string,string>> = Object.freeze({
   uk_dbt_original_publisher:"uk_dbt_critical_minerals_atom_pending_review",
   uk_dbt_search_original_page:"uk_dbt_critical_minerals_atom_pending_review",
   australian_industry_original_publisher:"australia_industry_minister_original_rss_review",
+  canada_nrcan_original_publisher:"nrcan_government_news_original_atom_review",
 });
 const MINERALS = /^(lithium|cobalt|nickel|graphite|copper|rare earth)$/u;
 const encode = (value: unknown) => canonicalRiskObjectJson(value);

@@ -470,3 +470,34 @@ export function deriveStatelessSignals(
     b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id)
   ).slice(0, 50);
 }
+
+// PRIVATE, in-memory original-reference recovery from a successful existing
+// website publisher read. Source URLs, upstream titles and issuer IDs MUST
+// never be returned via the website feed or persisted to public D1.
+// Matching a derived display ID to a first-party feed reference does NOT
+// verify an independent fact, commercial rights, signing or payment eligibility.
+export function reconcilePrivateDerivedSourceRefs(
+  candidates:readonly StatelessSourceCandidate[],
+  published:readonly StatelessIntelligenceSignal[],
+  now=Date.now(),
+):ReadonlyMap<string,StatelessSourceCandidate> {
+  const expected=new Map(published.map(s=>[s.id,s]));
+  const found=new Map<string,StatelessSourceCandidate>();
+  const collisions=new Set<string>();
+  if(!Number.isFinite(now)||published.length>250||candidates.length>1_000)
+    return new Map();
+  for(const c of candidates){
+    if(!c || typeof c.articleUrl!=="string"||!c.articleUrl.startsWith("https://"))continue;
+    const derived=deriveStatelessSignals([c],now)[0];
+    if(!derived)continue;
+    const d=expected.get(derived.id);
+    if(!d || Object.keys(d).some(k=>
+       JSON.stringify((d as unknown as Record<string,unknown>)[k])!==
+       JSON.stringify((derived as unknown as Record<string,unknown>)[k])))continue;
+    const prior=found.get(derived.id);
+    if(prior && prior.articleUrl!==c.articleUrl)collisions.add(derived.id);
+    else if(!prior)found.set(derived.id,c);
+  }
+  for(const id of collisions)found.delete(id);
+  return found;
+}

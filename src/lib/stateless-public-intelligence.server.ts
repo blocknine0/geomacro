@@ -486,6 +486,7 @@ export type StatelessIntelligenceResult = {
 export async function readStatelessWebsiteIntelligence(
   category: StatelessCategory, now = Date.now(),
   onLaneDiagnostic?: (index: number, diagnostics: LaneMetrics) => void,
+  onPrivateOriginals?: (candidates:readonly StatelessSourceCandidate[])=>void,
 ): Promise<StatelessIntelligenceResult> {
   if (!["geopolitics", "macro", "rare_earth"].includes(category) ||
       !Number.isFinite(now)) throw Error("STATELESS_INTELLIGENCE_CATEGORY_OR_CLOCK_INVALID");
@@ -497,7 +498,11 @@ export async function readStatelessWebsiteIntelligence(
     lane.metrics ?? { seen: 0, relevant: 0, original_link_valid: 0,
       native_clock_valid: 0, undated_original: 0,
       recovered_original_page: 0, transport_ok: false }));
-  const signals = deriveStatelessSignals(batch.flatMap(x => x.candidates), now);
+  const originalCandidates=batch.flatMap(x=>x.candidates);
+  // This callback is PRIVATE to trusted server-side operators. Never add it
+  // to StatelessIntelligenceResult or public derived-news D1 payloads.
+  onPrivateOriginals?.(originalCandidates);
+  const signals = deriveStatelessSignals(originalCandidates, now);
   const healthy = batch.filter(x => x.healthy).length;
   return {
     schema: "geomacro.website-stateless-intelligence.v1",
