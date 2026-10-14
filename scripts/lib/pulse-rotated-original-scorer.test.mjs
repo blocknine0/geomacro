@@ -184,7 +184,9 @@ test("oversized/XML DTD sources, denied publisher and no raw stdout cannot admit
 
 test("D1-matched undated DESNZ Atom gets exact first-published original page, never <updated>",async()=>{
  const f=fixture("rare_earth","uk_desnz_original_energy_minerals_atom_review");
- const xml=feed(f.source,{clock:new Date(f.now.getTime()-30_000).toISOString(),updatedOnly:true});
+ // Real GOV.UK Atom roots have xmlns attributes: test the actual source shape.
+ const xml=feed(f.source,{clock:new Date(f.now.getTime()-30_000).toISOString(),updatedOnly:true})
+   .replace("<feed>",'<feed xmlns="http://www.w3.org/2005/Atom">');
  const originalPage='<html><head>'+
    '<meta name="govuk:first-published-at" content="'+f.native+'">'+
    '<meta name="govuk:public-updated-at" content="'+f.now.toISOString()+'">'+
