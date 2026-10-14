@@ -1094,11 +1094,25 @@ async function discoverOnDemandImpl(
   const selected=topics.length>0 && categories.length>1
     ? (()=>{
       const macro=tasks.filter(t=>t.name.startsWith("world_bank_official_"));
-      const originals=categories.map(category=>tasks.find(t=>
+      // Prefer a registered first-party NATIONAL issuer within the same
+      // single original-source reservation. The generic UK publisher cannot
+      // displace NRCan for Canada or Australia's own minerals minister for
+      // Australia. This changes only bounded source selection, not scoring,
+      // evidence truth, rights, paid delivery or the 12-GET request ceiling.
+      const preferredNational=(category:OnDemandCategory):string|null=>
+        category==="rare_earth" && country==="CAN"
+          ?"canada_nrcan_original_publisher":
+        category==="rare_earth" && country==="AUS"
+          ?"australian_industry_original_publisher":null;
+      const originalTask=(t:(typeof tasks)[number],category:OnDemandCategory)=>
         t.category===category && t.name!=="gdelt_doc_discovery" &&
         t.name!=="reliefweb_discovery" &&
-        !t.name.startsWith("world_bank_official_"))).filter(
-          (t):t is (typeof tasks)[number]=>Boolean(t));
+        !t.name.startsWith("world_bank_official_");
+      const originals=categories.map(category=>
+        tasks.find(t=>originalTask(t,category) &&
+          t.name===preferredNational(category)) ??
+        tasks.find(t=>originalTask(t,category)),
+      ).filter((t):t is (typeof tasks)[number]=>Boolean(t));
       const indexes=categories.map(category=>tasks.find(t=>
         t.category===category && t.name==="gdelt_doc_discovery")).filter(
           (t):t is (typeof tasks)[number]=>Boolean(t));
