@@ -101,12 +101,15 @@ export function parseOfficialThirdRss(xml,category,{
     const title=field(block,"title");
     // An ECB press original can carry one duplicated separator after host.
     // The source pulse already normalizes this exact pinned release shape.
-    const ecbOriginal=category==="macro" && config.format==="rss"
-      ?officialOriginalRssArticleUrl(block,{id:"ecb_press_original_rss_review"})
-      :null;
     const hostUrl=config.format==="atom"
       ? originalAtomHref(block,config.host)
-      : exactUrl(ecbOriginal??field(block,"link"),config.host);
+      : category==="macro"
+        // No raw-link fallback: an invalid or doubled ECB press URL must
+        // never enter the canonical scorer under a different SHA than D1.
+        ? exactUrl(officialOriginalRssArticleUrl(block,{
+            id:"ecb_press_original_rss_review",
+          }),config.host)
+        : exactUrl(field(block,"link"),config.host);
     const publication=officialItemNativePublicationMs(config.format==="atom"
       ? field(block,"published") : field(block,"pubDate"));
     const timeValid=Number.isFinite(publication);
