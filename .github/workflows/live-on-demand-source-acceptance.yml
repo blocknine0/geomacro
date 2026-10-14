@@ -9,6 +9,17 @@ on:
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
+      - "src/lib/wdi-attributed-structural-product.server.ts"
+      - "src/lib/wdi-attributed-structural-product.server.test.ts"
+      - "src/lib/wdi-structural-signing.server.ts"
+      - "src/lib/wdi-structural-signing.server.test.ts"
+      - "src/lib/b2-live.server.ts"
+      - "src/lib/b2-commercial-rights-diagnostics.server.test.ts"
+      - "src/lib/on-demand-wdi-source2-acceptance.test.ts"
+      - "src/lib/on-demand-private-macro-rights.server.ts"
+      - "scripts/ops/verify-live-wdi-structural.ts"
+      - "scripts/ops/phase2-step4-production-no-funds.mjs"
+      - "scripts/ops/phase2-step4-production-private-rights-no-funds.mjs"
       - "src/lib/on-demand-evidence-qualification.server.ts"
       - "src/lib/on-demand-evidence-qualification.server.test.ts"
       - "src/lib/mainnet-intelligence-endpoint.server.ts"
@@ -22,6 +33,17 @@ on:
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
+      - "src/lib/wdi-attributed-structural-product.server.ts"
+      - "src/lib/wdi-attributed-structural-product.server.test.ts"
+      - "src/lib/wdi-structural-signing.server.ts"
+      - "src/lib/wdi-structural-signing.server.test.ts"
+      - "src/lib/b2-live.server.ts"
+      - "src/lib/b2-commercial-rights-diagnostics.server.test.ts"
+      - "src/lib/on-demand-wdi-source2-acceptance.test.ts"
+      - "src/lib/on-demand-private-macro-rights.server.ts"
+      - "scripts/ops/verify-live-wdi-structural.ts"
+      - "scripts/ops/phase2-step4-production-no-funds.mjs"
+      - "scripts/ops/phase2-step4-production-private-rights-no-funds.mjs"
       - "src/lib/on-demand-evidence-qualification.server.ts"
       - "src/lib/on-demand-evidence-qualification.server.test.ts"
       - "src/lib/mainnet-intelligence-endpoint.server.ts"
@@ -66,6 +88,7 @@ jobs:
           set -euo pipefail
           bun scripts/ops/verify-live-on-demand-capabilities.ts
           bun scripts/ops/verify-live-on-demand-real-apis.ts
+          bun scripts/ops/verify-live-wdi-structural.ts
       - name: Keep redacted no-funds publisher acceptance
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -74,6 +97,7 @@ jobs:
           path: |
             artifacts/on-demand-live/real-api-proof.json
             artifacts/on-demand-live/real-category-capability.json
+            artifacts/on-demand-live/step4-real-wdi-no-funds.json
           if-no-files-found: warn
           retention-days: 3
 
@@ -140,13 +164,15 @@ jobs:
           if high:sys.exit(4)
           PY
       - name: Private evidence bridge regression checks
-        run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts
+        run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts src/lib/wdi-attributed-structural-product.server.test.ts src/lib/on-demand-wdi-source2-acceptance.test.ts src/lib/wdi-structural-signing.server.test.ts src/lib/b2-commercial-rights-diagnostics.server.test.ts
       - name: Real no-charge per-category provider readback
         env:
           RELIEFWEB_APPROVED_APPNAME: ""
         run: |
           bun scripts/ops/verify-live-on-demand-capabilities.ts
           bun scripts/ops/verify-live-on-demand-real-apis.ts
+      - name: Pinned World Bank source=2 real no-funds acceptance
+        run: bun scripts/ops/verify-live-wdi-structural.ts
       - name: Preserve redacted provider diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -170,9 +196,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Crosscheck deployed Phase 1 merge SHA and no-funds HTTP endpoints
+      - name: Crosscheck deployed Phase 2 merge SHA and no-funds HTTP endpoints
         env:
-          GEOMACRO_EXPECTED_DEPLOYED_SHA: "295c483d45536a57fbea255f6a98dae68834d5d8"
+          GEOMACRO_EXPECTED_DEPLOYED_SHA: "a7fb150c6b78c32a44a33c49b72a43e09c90c242"
         run: node scripts/ops/phase2-production-no-funds-readback.mjs
       - name: Preserve safe aggregate production proof
         if: always()
@@ -180,5 +206,73 @@ jobs:
         with:
           name: phase2-production-no-funds-${{ github.run_id }}
           path: artifacts/on-demand-live/production-phase2-read-only.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  # Exact public HTTPS preflight + canonical POST with fixed structural input;
+  # no PAYMENT-SIGNATURE, settlement or mainnet ACK.
+  step4-production-same-request-no-funds:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Checkout PR no-funds verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Live Phase 2 deployment, same structural preflight and query
+        run: node scripts/ops/phase2-step4-production-no-funds.mjs
+      - name: Save aggregate readback
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: step4-production-no-funds-${{ github.run_id }}
+          path: artifacts/on-demand-live/step4-production-no-funds.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  # PR-contained outside-in check: three *individual* public D1 hot
+  # snapshot endpoints plus deep health. No Cloudflare/B2 credentials,
+  # private object reads, D1 writes, production deploy or x402.
+  step4-public-d1-hot-failure-isolation:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Checkout existing read-only public hot diagnostic
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Independently classify current public D1 hot snapshot failures
+        run: node scripts/ops/diagnose-public-hot-serving.mjs
+      - name: Preserve only redacted read-only status
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: step4-public-hot-isolation-${{ github.run_id }}
+          path: artifacts/public-serving/diagnostic.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  # One bounded request through the EXISTING live_on_demand WDI private
+  # rights gate. Server-only D1 quota admission precedes any B2 GET. No
+  # client keys, no raw rights receipt, no signature/payment/settlement.
+  step4-existing-production-private-rights-no-funds:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout existing canonical API no-funds verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: One production WDI rights disposition through quota-governed API
+        run: node scripts/ops/phase2-step4-production-private-rights-no-funds.mjs
+      - name: Keep aggregate statuses only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: step4-production-rights-disposition-${{ github.run_id }}
+          path: artifacts/on-demand-live/step4-private-rights-no-funds.json
           if-no-files-found: warn
           retention-days: 3

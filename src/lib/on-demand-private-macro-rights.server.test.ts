@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { checkPrivateOnDemandMacroRights } from "./on-demand-private-macro-rights.server";
 import type { PrivateOnDemandMacroDriver } from "./on-demand-private-macro-drivers.server";
 import type { B2CommercialSourceRight } from "./b2-live.server";
+import { approvedWdiAttribution } from "./world-bank-derived-attribution";
 
 function driver(overrides: Partial<PrivateOnDemandMacroDriver> = {}):PrivateOnDemandMacroDriver {
   return {
@@ -89,14 +90,15 @@ describe("private B2-only macro derived-use rights gate",()=>{
     expect(out.signed_intelligence_verified).toBe(false);
   });
 
-  it("rejects WDI CC BY 4.0 mandatory public credit when customer source identities are confidential",async()=>{
+  it("admits only fixed WDI CC BY 4.0 attribution as PRIVATE rights prerequisite, without enabling payment",async()=>{
     const rights=await checkPrivateOnDemandMacroRights(
       [driver(),driver({driver:"real_gdp_growth"})],
       {readRights:reader([right({attribution_required:true,licence_name:"CC BY 4.0",
         commercial_usage_status:"COMMERCIAL_OK",raw_redistribution_allowed:true})])});
-    expect(rights.status).toBe("ATTRIBUTION_NOT_SUPPORTED_BY_PRIVATE_OUTPUT");
-    expect(rights.rights_verified_driver_count).toBe(0);
-    expect(rights.required_data_attribution).toBeNull();
+    expect(rights.status).toBe("DERIVED_SOURCE_RIGHTS_VERIFIED_NOT_A_PAID_PRODUCT");
+    expect(rights.rights_verified_driver_count).toBe(2);
+    expect(rights.required_data_attribution).toEqual(
+      approvedWdiAttribution(["FP.CPI.TOTL.ZG","NY.GDP.MKTP.KD.ZG"]));
     expect(rights.signed_intelligence_verified).toBe(false);
     expect(rights.payment_eligible).toBe(false);
   });
