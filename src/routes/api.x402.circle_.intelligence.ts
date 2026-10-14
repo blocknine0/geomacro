@@ -46,7 +46,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, PAYMENT-SIGNATURE, payment-signature",
-  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
+  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, X-Geomacro-Delivery-SHA256, X-Geomacro-Prepared-Answer-SHA256",
   "Access-Control-Max-Age": "600",
 };
 
@@ -412,6 +412,8 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
               provider:"circle_gateway_x402",
               settlement_reference:prior.settlementReference,
               network:prior.settlementNetwork}),
+            "X-Geomacro-Delivery-SHA256":prior.responseSha256,
+            "X-Geomacro-Prepared-Answer-SHA256":original.prepared_answer_sha256,
           });
         }catch {
           return json({ok:false,chargeable:false,error:{
@@ -869,6 +871,8 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             asset: "USDC",
             reconciliation_status: "pending",
           }),
+          "X-Geomacro-Delivery-SHA256":prepared.responseSha256,
+          "X-Geomacro-Prepared-Answer-SHA256":capabilityQuote.prepared_answer_sha256,
         });
       },
     },
