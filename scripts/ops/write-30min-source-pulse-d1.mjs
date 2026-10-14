@@ -11,6 +11,7 @@ import {createD1ControlPlaneStateClient} from "../lib/d1-control-plane-state.mjs
 import {reconcile30mPrivateArticleFingerprints} from "../lib/private-original-cross-poll-dedupe.mjs";
 import {reconcileUndatedPrivateFeedObservations} from "../lib/private-undated-feed-dedup.mjs";
 import {reconcilePrivateOriginalReviewQueue} from "../lib/private-original-review-queue.mjs";
+import {PRIVATE_SCORING_ATTEMPTS_PIPELINE,pickPrivateClassifierWork} from "../lib/private-classifier-retry-ledger.mjs";
 
 const DOMAINS=["geopolitics","macro","rare_earth"];
 function validCount(value) {return Number.isSafeInteger(value)&&value>=0&&value<=1000;}
@@ -113,7 +114,12 @@ export async function write30MinSourcePulseToD1({
   // observation. GitHub concurrency serializes this one producer workflow;
   // no raw article bodies/URLs/titles or signed paid data enter this ledger.
   const previousRows=await client.loadRows();
+  // Separate D1 checkpoint pipeline: producer never overwrites the scorer's
+  // classifier claim/ack ledger, and a missing/unreachable ledger fails closed.
+  const attemptsClient=createClient({pipeline:PRIVATE_SCORING_ATTEMPTS_PIPELINE});
+  const priorAttempts=await attemptsClient.loadRows();
   const privateDedup=new Map();
+  const pendingWork=new Map();
   const undatedDedup=new Map();
   const privateReviewQueue=new Map();
   for(const row of rows){
@@ -159,6 +165,13 @@ export async function write30MinSourcePulseToD1({
       private_undated_feed_new_unverified_topic_hints:feedResult.new_feed_entries_with_unverified_topic_hint,
       private_undated_feed_repeated_count:feedResult.existing_feed_entries_repeated,
     };
+    const eligible=pickPrivateClassifierWork({
+      domain:row.domain,source:state,ledger:priorAttempts.get(row.domain),
+      now:Date.parse(row.checked_at),
+      currentCandidates:original?.private_original_article_candidates??[],
+    });
+    pendingWork.set(row.domain,eligible);
+    state.private_classifier_work_refs=eligible.map(e=>e.article_sha256);
     await client.persist(row.domain,state,{
       last_attempt_at:row.checked_at,
       last_success_at:row.last_success_at,
@@ -203,6 +216,8 @@ export async function write30MinSourcePulseToD1({
          JSON.stringify(privateDedup.get(row.domain).recent_private_article_fingerprints) ||
        JSON.stringify(stored?.payload?.newly_seen_private_article_refs)!==
          JSON.stringify(privateDedup.get(row.domain).newly_seen_private_article_refs) ||
+       JSON.stringify(stored?.payload?.private_classifier_work_refs)!==
+         JSON.stringify(pendingWork.get(row.domain).map(x=>x.article_sha256)) ||
        JSON.stringify(stored?.payload?.private_original_review_refs)!==
          JSON.stringify(privateReviewQueue.get(row.domain).private_review_refs) ||
        stored?.payload?.private_original_review_pending_count!==
@@ -221,6 +236,10 @@ export async function write30MinSourcePulseToD1({
       [...privateDedup.values()].reduce((n,r)=>n+r.new_article_fingerprint_count,0),
     repeated_private_original_article_fingerprints:
       [...privateDedup.values()].reduce((n,r)=>n+r.repeated_article_fingerprint_count,0),
+    selected_private_classifier_ref_count:
+      [...pendingWork.values()].reduce((n,x)=>n+x.length,0),
+    selected_private_classifier_retry_count:
+      [...pendingWork.values()].reduce((n,x)=>n+x.filter(v=>v.retry).length,0),
     undated_feed_first_observation_baseline_count:
       [...undatedDedup.values()].reduce((n,r)=>n+r.initial_backlog_entries_baselined,0),
     undated_feed_new_since_previous_poll_count:
