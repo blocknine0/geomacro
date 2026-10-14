@@ -2,11 +2,13 @@ import {createHash} from "node:crypto";
 import {resolveGeomacroCapabilityPrice,
   type CapabilityPrice,type PricedCapability,
 } from "./capability-pricing-catalog";
+import type {AgentQueryDeliverability} from "./agent-query-deliverability.server";
 export * from "./capability-pricing-catalog";
 
 export type CapabilityQuote=Readonly<CapabilityPrice&{
   quote_id:string;issued_at:string;expires_at:string;
   quote_window_seconds:300;request_fingerprint_sha256:string;
+  availability_fingerprint_sha256:string;
   network:string;asset_contract:string;recipient:string;
   availability:"VERIFIED_DELIVERABLE";
   payment_rail:"coinbase_x402"|"circle_gateway_x402";
@@ -18,12 +20,14 @@ const digest=(s:string)=>createHash("sha256").update(s,"utf8").digest("hex");
 /** Five-minute exact challenge bucket: re-quote at expiry, never float a price. */
 export function quoteGeomacroCapability(input:Readonly<{
   capability:string;variant:string;
-  requestFingerprint:string;network:string;asset:string;recipient:string;
+  requestFingerprint:string;availabilityFingerprint:string;
+  network:string;asset:string;recipient:string;
   rail:"coinbase_x402"|"circle_gateway_x402";
   availabilityVerified:boolean;now?:Date;
 }>):CapabilityQuote{
   if(input.availabilityVerified!==true)throw Error("CAPABILITY_NOT_DELIVERABLE_NO_CHARGE");
-  if(!SHA.test(input.requestFingerprint)||!/^eip155:\d+$/.test(input.network)||
+  if(!SHA.test(input.requestFingerprint)||!SHA.test(input.availabilityFingerprint)||
+    !/^eip155:\d+$/.test(input.network)||
     !ADDRESS.test(input.asset)||!ADDRESS.test(input.recipient))
     throw Error("CAPABILITY_QUOTE_SCOPE_INVALID");
   const now=input.now??new Date();
@@ -38,13 +42,15 @@ export function quoteGeomacroCapability(input:Readonly<{
     recipient=input.recipient.toLowerCase();
   const quote_id=digest(JSON.stringify([
     price.version,price.capability,price.variant,price.amount_atomic,
-    input.requestFingerprint,network,asset_contract,recipient,
+    input.requestFingerprint,input.availabilityFingerprint,
+    network,asset_contract,recipient,
     input.rail,issued_at,expires_at,"VERIFIED_DELIVERABLE",
   ]));
   return Object.freeze({
     ...price,quote_id,issued_at,expires_at,
     quote_window_seconds:300 as const,
     request_fingerprint_sha256:input.requestFingerprint,
+    availability_fingerprint_sha256:input.availabilityFingerprint,
     network,asset_contract,recipient,
     availability:"VERIFIED_DELIVERABLE" as const,
     payment_rail:input.rail,
@@ -98,4 +104,27 @@ export function approvedAdaptiveIntelligencePrice(plan:AgentQueryPlan):Capabilit
   if(!required)throw Error("CAPABILITY_NO_SAFE_APPROVED_TIER");
   if(selected.variant!==required)throw Error("CAPABILITY_TIER_ACCEPTANCE_REQUIRED:"+required);
   return resolveGeomacroCapabilityPrice("intelligence_query",required);
+}
+
+
+/**
+ * A change in certified evidence/rights/coverage changes the exact quote ID.
+ * Exclude checked_at probe wall-clock; original native evidence clocks and
+ * governed source contracts are the bound authoritative state.
+ * Never expose issuer IDs: only the fingerprint crosses to the buyer.
+ */
+export function fingerprintAgentQueryAvailability(a:AgentQueryDeliverability):string{
+  const contracts=a.source_contracts.map(x=>[
+    x.source_id,x.commercial_usage_status,x.raw_redistribution_allowed,
+    x.attribution_required,x.licence_name,
+  ]).sort((x,y)=>String(x[0]).localeCompare(String(y[0])));
+  const subjects=a.subjects.map(x=>[
+    x.subject,x.status,[...x.available_modules].sort(),x.latest_evidence_at,
+    [...x.required_source_ids].sort(),[...x.governed_fallback_modules].sort(),
+  ]).sort((x,y)=>JSON.stringify(x[0]).localeCompare(JSON.stringify(y[0])));
+  return digest(JSON.stringify([
+    a.deliverable,a.code,a.query_plan_hash,
+    [...a.missing_modules].sort(),[...a.stale_modules].sort(),
+    [...a.ineligible_source_ids].sort(),contracts,subjects,
+  ]));
 }
