@@ -20,6 +20,7 @@ describe("representative real source acceptance",()=>{
     expect(workflow.split("artifacts/on-demand-live/representative-source-cases.json"))
       .toHaveLength(3);
     expect(probe).toContain("strict_max_requests_per_case:16");
+    expect(probe).toContain('disableDiscoveryIndex:sample.time_class==="CURRENT_24H"');
     expect(probe).toContain("allNetwork>64");
     expect(probe).toContain("result.discovery.network_attempts>12");
     expect(probe).toContain("page.attempted>4");
