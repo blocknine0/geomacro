@@ -264,8 +264,10 @@ function digest(s: string) {
 }
 function iso3(value: string) {
   const country=String(value||"").toUpperCase();
-  if(!/^[A-Z]{3}$/u.test(country) ||
-     (!country195ByIso3(country) && classifyGlobalEntity(country)==="UNCLASSIFIED"))
+  if(!/^[A-Z]{3}$/u.test(country))
+    throw Error("ON_DEMAND_ISO3_INVALID");
+  if(!country195ByIso3(country) &&
+     classifyGlobalEntity(country)==="UNCLASSIFIED")
     throw Error("ON_DEMAND_COUNTRY_NOT_IN_CANONICAL_REGISTRY");
   return country;
 }
