@@ -10,6 +10,7 @@ on:
       - "scripts/ops/wait-commerce-ledger-health.mjs"
       - "scripts/ops/verify-commerce-ledger-worker.mjs"
       - "scripts/ops/verify-commerce-control-plane-worker.mjs"
+      - "scripts/ops/verify-capability-prequote-ledger-no-funds.mjs"
       - ".github/workflows/deploy-commerce-ledger-worker.yml"
 
 permissions:
@@ -97,6 +98,12 @@ jobs:
           GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: node scripts/ops/verify-wdi-prequote-ledger-no-funds.mjs
+
+      - name: Verify deployed capability prequote freeze/readback (synthetic no funds)
+        env:
+          GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: node scripts/ops/verify-capability-prequote-ledger-no-funds.mjs
 
       - name: Confirm real-funds activation remains separate
         shell: bash
