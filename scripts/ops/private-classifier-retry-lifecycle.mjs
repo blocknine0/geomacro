@@ -32,7 +32,7 @@ function emptyStage(){
  });
 }
 try{
- if(!DOMAINS.has(domain)||!["claim","finish","abort"].includes(operation)||
+ if(!DOMAINS.has(domain)||!["claim","finish","abort","commit"].includes(operation)||
     process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
     process.env.GITHUB_REF!=="refs/heads/main"||
     process.env.GEOMACRO_AUTOMATIC_D1_PULSE_STAGE!=="true"||
@@ -88,6 +88,15 @@ try{
   let data=null;
   try {data=JSON.parse(readFileSync(`${DIR}/${domain}.json`,"utf8"));}
   catch {if(operation!=="abort")throw Error("PRIVATE_CLASSIFIER_RESULT_MISSING");}
+  if(operation==="commit"){
+    const proof=JSON.parse(readFileSync(`${DIR}/archive-proof.json`,"utf8"));
+    if(proof?.schema!=="geomacro.restricted-private-scoring-archive-proof.v1"||
+       proof.ok!==true||proof.b2_full_readback_sha256_verified!==true||
+       proof.b2_exact_gzip_restore_verified!==true||
+       proof.d1_checkpoint_readback_verified!==true||proof.supabase_writes!==0||
+       proof.public_published!==false||proof.commercial_eligible!==false)
+      throw Error("PRIVATE_CLASSIFIER_ARCHIVE_DURABILITY_UNVERIFIED");
+  }
   const valid=data?.schema==="geomacro.private-scoring-candidates.v1"&&
      data.category===domain&&data.private_only===true&&
      data.diagnostics?.domain===domain&&
@@ -95,10 +104,10 @@ try{
      Array.isArray(data.returned_original_article_refs)&&
      data.diagnostics.classifier_attempted_count>=data.attempted_original_article_refs.length&&
      data.diagnostics.classifier_returned_count>=data.returned_original_article_refs.length;
-  if(operation==="finish"&&!valid)throw Error("PRIVATE_CLASSIFIER_RESULT_PROOF_INVALID");
+  if(["finish","commit"].includes(operation)&&!valid)throw Error("PRIVATE_CLASSIFIER_RESULT_PROOF_INVALID");
   if(operation==="abort"&&data!==null&&!valid)throw Error("PRIVATE_CLASSIFIER_ABORT_PROOF_INVALID");
   /* Prior full proof assertion retained for normal finish only. */
-  if(operation==="finish" && (data?.schema!=="geomacro.private-scoring-candidates.v1"||
+  if(["finish","commit"].includes(operation) && (data?.schema!=="geomacro.private-scoring-candidates.v1"||
      data.category!==domain||data.private_only!==true||
      data.diagnostics?.domain!==domain||
      !Array.isArray(data.attempted_original_article_refs)||
@@ -114,9 +123,16 @@ try{
   const retriableClassifierFailure=operation==="abort" && valid &&
     data.diagnostics.classifier_failed_batch_count>0 &&
     data.returned_original_article_refs.length===0;
-  const attempted=operation==="finish"?data.attempted_original_article_refs:
+  const attempted=operation==="finish"||operation==="commit"
+    ?data.attempted_original_article_refs:
     retriableClassifierFailure?data.attempted_original_article_refs:[];
-  const returned=operation==="finish"?data.returned_original_article_refs:[];
+  // Qualified stage records MUST complete existing verified B2 + D1 archive
+  // before a final classifier-processing ACK. No funds or rights are granted.
+  const returned=operation==="commit" ||
+     (operation==="finish" && data.records.length===0)
+      ?data.returned_original_article_refs:[];
+  if(operation==="commit" && (!data.records.length||!returned.length))
+    throw Error("PRIVATE_CLASSIFIER_COMMIT_WITHOUT_DURABLE_RESULT");
   const state=acknowledgePrivateClassifierWork({
    domain,ledger:previous,now,runId,
    attempted,returned,
@@ -128,7 +144,7 @@ try{
    throw Error("PRIVATE_CLASSIFIER_ACK_D1_READBACK_FAILED");
   const e=state.records.find(x=>x.run_id===runId);
   console.log(JSON.stringify({
-   domain,status:e.status,d1_readback_verified:true,
+   domain,operation,status:e.status,d1_readback_verified:true,
    classifier_attempted_originals:attempted.length,
    classifier_returned_originals:returned.length,
    commercially_qualified:false,payment_allowed:false,
