@@ -460,7 +460,10 @@ export const mainnetIntelligenceHandlers = {
             // Existing query engine, request-local only. No private source
             // references, event prose or hashes enter the public 422 body.
             privateFedSourceBoundFindingCandidateCount=
-              buildPrivateVerifiedFedMinutesFinding(qualification,pageProof)?1:0;
+              buildPrivateVerifiedFedMinutesFinding(qualification,pageProof,{
+                queryPlanHash:plan.query_plan_hash,
+                observedAt:new Date(privateResult.discovery.checked_at),
+              })?1:0;
             privateEvidenceQualification=publicOnDemandQualificationStatus(qualification);
           } catch(error) {
             console.error("[x402-live] bounded discovery failed",error);
