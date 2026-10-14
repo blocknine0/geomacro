@@ -86,7 +86,7 @@ for(const sample of CASES){
   });
   const perCategory=sample.categories.map(category=>{
     const probes=result.discovery.source_probes.filter(p=>p.category===category);
-    const originals=qualified.originals.filter(p=>p.domain===category);
+    const originals=qualified.originals.filter(p=>p.category===category);
     return {
       category,provider_attempts:probes.filter(p=>p.attempted).length,
       reachable_providers:probes.filter(p=>p.reachable).length,
