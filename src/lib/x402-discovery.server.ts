@@ -48,7 +48,10 @@ export async function buildX402DiscoveryDocument(originInput: string) {
             "risk-gate",
             "ai-agents",
           ],
-          accepts: [coinbaseX402PaymentRequirements(config)],
+          accepts: [],
+          pricing: "EXACT_CAPABILITY_VARIANT_QUOTED_PER_VERIFIED_REQUEST",
+          price_authority: "IMMUTABLE_SERVER_QUOTE_ONLY",
+          quote_endpoint: `${origin}/api/v1/intelligence/query`,
           availability: `${origin}/api/x402/risk/availability`,
           execution_authorized: false,
         });
@@ -80,7 +83,10 @@ export async function buildX402DiscoveryDocument(originInput: string) {
             "circle-gateway",
             "ai-agents",
           ],
-          accepts: [requirement],
+          accepts: [],
+          pricing: "EXACT_CAPABILITY_VARIANT_QUOTED_PER_VERIFIED_REQUEST",
+          price_authority: "IMMUTABLE_SERVER_QUOTE_ONLY",
+          quote_endpoint: `${origin}/api/x402/circle/intelligence`,
           availability: `${origin}/api/x402/risk/availability`,
           execution_authorized: false,
         });

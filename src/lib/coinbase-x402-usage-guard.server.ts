@@ -7,7 +7,9 @@ import {
 } from "./commerce-control-plane.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
-const DEFAULT_MAINNET_MAX_PRICE_USDC = "0.05";
+// Maximum one quoted capability under the founder-approved schedule, not an extra price tier.
+// Keep the existing 1.00 USDC daily ceiling and per-agent quotas unchanged.
+const DEFAULT_MAINNET_MAX_PRICE_USDC = "0.25";
 const DEFAULT_DAILY_SPEND_USDC = "1.00";
 const DEFAULT_DAILY_REQUEST_LIMIT = 50;
 
