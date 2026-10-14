@@ -1,0 +1,67 @@
+name: WDI Registered Signer Production Preflight (NO FUNDS)
+# This is credential and trust-chain preflight ONLY, not WDI signed-byte acceptance.
+# No PR, push, schedule, repository_dispatch or workflow_run trigger.
+on:
+  workflow_dispatch:
+    inputs:
+      wdi_no_funds_authorization:
+        description: "Owner-only, manual, one-run WDI signer prerequisite check. No signing or durable writes."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-wdi-registered-signer-production-preflight
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.actor == 'blocknine0' &&
+      github.run_attempt == 1 &&
+      inputs.wdi_no_funds_authorization == 'I_AUTHORIZE_SINGLE_WDI_SIGNER_PREFLIGHT_NO_FUNDS'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: production
+    env:
+      GEOMACRO_WDI_OPERATOR_ACK: ${{ inputs.wdi_no_funds_authorization }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      COINBASE_X402_PAY_TO: ${{ secrets.COINBASE_X402_PAY_TO }}
+      COINBASE_X402_PRICE_USDC: ${{ secrets.COINBASE_X402_PRICE_USDC }}
+    steps:
+      - name: Checkout protected canonical main only without persistent credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify checked-out SHA matches exact protected main event
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$GITHUB_EVENT_NAME" = 'workflow_dispatch'
+      - name: Set up Bun 1.4.2 for existing TypeScript registry (no install)
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Authenticated read-only prereq check; no signing, B2 GET or payment
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/verify-wdi-protected-signer-preflight.ts
+      - name: Preserve real-money boundary
+        if: always()
+        run: |
+          echo 'Read-only operator preflight: no signed customer bytes, Durable Object writes, x402 quote, facilitator or settlement.'
+          echo 'A separate reviewed protected-main signer/freeze path and explicit fresh owner authorization are still required.'
