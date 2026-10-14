@@ -175,7 +175,8 @@ export async function diagnosePublicHotServing({
     Object.values(site.hot_snapshot_proofs).every(Boolean);
   const rootCodes=[];
   if (!d1.ok) rootCodes.push("D1_CONTROL_PLANE_UNAVAILABLE");
-  if (!historicalGlobalRisk.anchor_valid_in_d1)
+  if (!historicalGlobalRisk.anchor_valid_in_d1 &&
+      site.historical_b2_baseline_readable.global_risk !== true)
     rootCodes.push("GRI_HISTORICAL_D1_ARCHIVE_ANCHOR_UNAVAILABLE_OR_INVALID");
   else if (site.historical_b2_baseline_readable.global_risk !== true)
     rootCodes.push("GRI_D1_ARCHIVE_ANCHOR_VALID_BUT_PUBLIC_BASELINE_READ_UNAVAILABLE");
