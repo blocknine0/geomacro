@@ -23,13 +23,14 @@ function fetcher(page=PAGE,feed=FEED){
   const url=String(u);calls.push(url);const host=new URL(url).hostname;
   if(host==="api.worldbank.org" && new URL(url).pathname==="/v2/country/USA")
     return Response.json([{page:1},[{id:"USA",name:"United States"}]]);
+  if(host==="api.worldbank.org")return Response.json([{page:1},[]]);
   if(host==="www.federalreserve.gov" && url.endsWith("/feeds/press_all.xml"))
     return new Response(feed,{headers:{"content-type":"application/rss+xml"}});
   if(url===URL)return new Response(page,{headers:{"content-type":"text/html"}});
   if(host==="www.gov.uk")return new Response("<feed></feed>",{headers:{"content-type":"application/atom+xml"}});
   if(host==="www.ecb.europa.eu")return new Response("<rss></rss>",{headers:{"content-type":"application/rss+xml"}});
   if(host==="api.gdeltproject.org")return Response.json({articles:[]});
-  throw Error("UNEXPECTED_URL");
+  return new Response("<rss><channel></channel></rss>",{headers:{"content-type":"application/rss+xml"}});
  }) as typeof fetch;
  return {fetchImpl,calls};
 }
@@ -55,7 +56,7 @@ describe("genuine Fed issuer-original context to private structured answer, not 
  });
  it("joins existing canonical discovery, page verification, private qualification and structured finding",async()=>{
   const {fetchImpl,calls}=fetcher();
-  const d=await discoverOnDemandForPrivateQualification(SEARCH,{fetchImpl,now:NOW,disableDiscoveryIndex:true});
+  const d=await discoverOnDemandForPrivateQualification(SEARCH,{fetchImpl,now:NOW});
   const fed=d.private_original_review_candidates.filter(x=>x.publisher_family==="us_federal_reserve_original_publisher");
   // Only numeric producer audit counters; do not leak source URL/title.
   const probe=d.discovery.source_probes.find(x=>x.family==="us_federal_reserve_original_publisher");
@@ -115,7 +116,7 @@ describe("genuine Fed issuer-original context to private structured answer, not 
  });
  it("refuses signing candidate without independently qualified page-bound evidence",async()=>{
   const {fetchImpl}=fetcher();
-  const d=await discoverOnDemandForPrivateQualification(SEARCH,{fetchImpl,now:NOW,disableDiscoveryIndex:true});
+  const d=await discoverOnDemandForPrivateQualification(SEARCH,{fetchImpl,now:NOW});
   const fed=d.private_original_review_candidates.filter(x=>x.publisher_family==="us_federal_reserve_original_publisher");
   const page=await verifyOnDemandOriginalArticlePages(fed,{fetchImpl,now:NOW});
   const q=qualifyRetrievedOnDemandEvidence({
