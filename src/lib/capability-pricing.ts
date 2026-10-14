@@ -1,86 +1,9 @@
 import {createHash} from "node:crypto";
-import type {GeomacroCreditCapability} from "./commercial-access-contract";
+import {resolveGeomacroCapabilityPrice,
+  type CapabilityPrice,type PricedCapability,
+} from "./capability-pricing-catalog";
+export * from "./capability-pricing-catalog";
 
-/** Founder-locked USDC price policy. Credit costs remain separate usage units. */
-export const GEOMACRO_CAPABILITY_PRICING_VERSION =
-  "geomacro.capability-usdc.v1" as const;
-export const GEOMACRO_USDC_DECIMALS=6 as const;
-export const GEOMACRO_CAPABILITY_PRICES={
-  gri_read:{
-    verified_cached:"0.005",verified_change_attribution:"0.01",
-  },
-  structural_country_digest:{standard:"0.02"},
-  structural_corridor_digest:{standard:"0.05"},
-  structural_country_profile:{standard:"0.03"},
-  structural_corridor_profile:{standard:"0.08"},
-  intelligence_query:{
-    focused:"0.05",standard:"0.10",complex_multi_source:"0.15",
-  },
-  signed_risk_object:{
-    existing_valid_signed:"0.05",newly_qualified_signed:"0.10",
-  },
-  risk_gate_bundle:{
-    existing_proof_preflight:"0.10",standard:"0.15",complex_multi_source:"0.25",
-  },
-} as const satisfies Record<GeomacroCreditCapability,Record<string,string>>;
-
-export type PricedCapability=keyof typeof GEOMACRO_CAPABILITY_PRICES;
-export type PriceVariant={ [K in PricedCapability]:
-  keyof (typeof GEOMACRO_CAPABILITY_PRICES)[K] }[PricedCapability];
-export const GEOMACRO_PRICING_GROUPS=[
-  {label:"Global Risk Index",ids:["gri_read"]},
-  {label:"Structural digests",ids:["structural_country_digest","structural_corridor_digest"]},
-  {label:"Structural profiles",ids:["structural_country_profile","structural_corridor_profile"]},
-  {label:"Intelligence queries",ids:["intelligence_query"]},
-  {label:"Signed Risk Objects",ids:["signed_risk_object"]},
-  {label:"Risk Gate bundles",ids:["risk_gate_bundle"]},
-] as const;
-
-/** Reject floats and scientific notation; USDC always has six atomic places. */
-export function usdcDecimalToAtomic(value:string):string{
-  if(typeof value!=="string"||!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(value))
-    throw Error("USDC_DECIMAL_PRECISION_INVALID");
-  const [whole,fraction=""]=value.split(".");
-  const amount=BigInt(whole)*1_000_000n+BigInt(fraction.padEnd(6,"0"));
-  if(amount<=0n||amount>250_000n)throw Error("USDC_FOUNDER_MAX_PRICE_EXCEEDED");
-  return amount.toString();
-}
-export type CapabilityPrice=Readonly<{
-  version:typeof GEOMACRO_CAPABILITY_PRICING_VERSION;
-  capability:PricedCapability;
-  variant:string;
-  amount_usdc:string;
-  amount_atomic:string;
-  currency:"USDC";
-  output_contract:"GEOMACRO_DERIVED_STRUCTURED_ONLY";
-  included_signed_object_charge:"INCLUDED_NO_DOUBLE_CHARGE"|"NOT_APPLICABLE";
-}>;
-export function resolveGeomacroCapabilityPrice(capability:string,variant:string):CapabilityPrice{
-  if(!Object.hasOwn(GEOMACRO_CAPABILITY_PRICES,capability))
-    throw Error("CAPABILITY_NOT_IN_FOUNDER_SCHEDULE");
-  const options=GEOMACRO_CAPABILITY_PRICES[capability as PricedCapability] as Record<string,string>;
-  if(!Object.hasOwn(options,variant))throw Error("CAPABILITY_PRICE_VARIANT_NOT_APPROVED");
-  const amount_usdc=options[variant];
-  return Object.freeze({
-    version:GEOMACRO_CAPABILITY_PRICING_VERSION,
-    capability:capability as PricedCapability,variant,
-    amount_usdc,amount_atomic:usdcDecimalToAtomic(amount_usdc),
-    currency:"USDC" as const,
-    output_contract:"GEOMACRO_DERIVED_STRUCTURED_ONLY" as const,
-    included_signed_object_charge:capability==="risk_gate_bundle"?
-      "INCLUDED_NO_DOUBLE_CHARGE" as const:"NOT_APPLICABLE" as const,
-  });
-}
-
-export function capabilityPricingCatalog(){
-  return (Object.entries(GEOMACRO_CAPABILITY_PRICES) as
-    [PricedCapability,Record<string,string>][]).map(([capability,variants])=>({
-      capability,variants:Object.keys(variants).map(variant=>
-        resolveGeomacroCapabilityPrice(capability,variant)),
-      // A published price schedule alone does not verify an available product.
-      availability:"CHECK_LIVE_PROOF_BEFORE_PAYMENT" as const,
-    }));
-}
 export type CapabilityQuote=Readonly<CapabilityPrice&{
   quote_id:string;issued_at:string;expires_at:string;
   quote_window_seconds:300;request_fingerprint_sha256:string;
