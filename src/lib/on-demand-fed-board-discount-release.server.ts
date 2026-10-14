@@ -14,16 +14,41 @@ const MONTHS=["January","February","March","April","May","June","July",
  "August","September","October","November","December"];
 
 function cleanText(html:string):string {
-  // First-party issuer HTML is already subject to existing 384 KiB cap and
-  // no-redirect fetch. HTML is never stored or serialized.
-  return html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu," ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu," ")
-    .replace(/<[^>]*>/gu," ")
-    .replace(/&#(?:39|x27);|&apos;/giu,"'")
+  // Linear, bounded first-party text extraction; never filter HTML with
+  // a regexp (CodeQL js/bad-tag-filter). Script/style content is excluded,
+  // including any forged announcement strings or release clocks there.
+  const fragments:string[]=[];
+  let offset=0,ignored:"script"|"style"|null=null;
+  while(offset<html.length){
+    const begin=html.indexOf("<",offset);
+    if(begin<0){
+      if(!ignored)fragments.push(html.slice(offset));
+      break;
+    }
+    if(!ignored && begin>offset)fragments.push(html.slice(offset,begin));
+    const end=html.indexOf(">",begin+1);
+    if(end<0 || end-begin>2048)return "";
+    const raw=html.slice(begin+1,end).trim().toLowerCase();
+    const closing=raw.startsWith("/");
+    const nameInput=closing?raw.slice(1):raw;
+    let size=0;
+    while(size<nameInput.length){
+      const ch=nameInput.charCodeAt(size);
+      if(ch<97||ch>122)break;
+      size++;
+    }
+    const name=nameInput.slice(0,size);
+    if(!ignored && !closing && (name==="script"||name==="style"))
+      ignored=name;
+    else if(ignored===name && closing)ignored=null;
+    offset=end+1;
+  }
+  if(ignored)return "";
+  return fragments.join(" ").replace(/&#(?:39|x27);|&apos;/giu,"'")
     .replace(/&(?:nbsp|#160);/giu," ")
-    .replace(/&amp;/giu,"&")
-    .replace(/\s+/gu," ").trim();
+    .replace(/&amp;/giu,"&").replace(/\\s+/gu," ").trim();
 }
+
 function norm(s:string):string {
   return s.normalize("NFKC").replace(/[\u2018\u2019]/gu,"'")
     .replace(/\s+/gu," ").trim();
