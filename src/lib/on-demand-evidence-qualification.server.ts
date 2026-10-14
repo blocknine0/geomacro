@@ -416,7 +416,7 @@ export function buildPrivateVerifiedFedMinutesFinding(
       checked_at_utc:observedAt.toISOString(),
       original_age_seconds:ageSeconds!,
       current_24h_window_expires_utc:currentNewsExpiry,
-      classification:ageSeconds!<=86400?"CURRENT_24H_ORIGINAL" as const:
+      classification:ageSeconds! <= 86400?"CURRENT_24H_ORIGINAL" as const:
         "HISTORICAL_ORIGINAL" as const,
     },
     reviewer:{
