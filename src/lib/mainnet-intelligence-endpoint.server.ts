@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION, type CapabilityQuote} from "./capability-pricing";
 import {prepareVerifiedCapabilityOffer} from "./capability-x402-offer.server";
 import {readVerifiedCapabilityAnswer} from "./capability-x402-prequote.server";
+import {readAlreadyDeliveredCapabilityReplay} from "./capability-x402-replay.server";
 import {coinbaseRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
   capabilityLedgerRequestFingerprint,capabilityQuoteFromPaymentPayload}
   from "./capability-x402-payment-contract.server";
@@ -593,6 +594,31 @@ export const mainnetIntelligenceHandlers = {
                 message:"Verified signed immutable intelligence or prequote readback is unavailable; no payment is offered."},
               execution_authorized:false},422);
           }
+        }
+        // A settled delivery can be replayed after the quote expires, but
+        // never refreshed or settled again. Read-only Durable Object lookup.
+        try {
+          const claimedPayload=decodeCoinbasePaymentHeader(paymentHeader);
+          const historicQuote=capabilityQuoteFromPaymentPayload(claimedPayload);
+          const prior=await readAlreadyDeliveredCapabilityReplay({
+            quote:historicQuote,paymentPayload:claimedPayload,
+            paymentFingerprint:coinbasePaymentFingerprint(claimedPayload),
+            requestFingerprint,config,
+          });
+          if(prior){
+            const receipt:CoinbaseSettleResult={success:true,
+              transaction:prior.settlementReference??undefined,
+              network:prior.settlementNetwork??undefined,
+              extra:{idempotentReplay:true}};
+            return json(prior.response,200,{"PAYMENT-RESPONSE":coinbaseX402PaymentResponseHeader(receipt)});
+          }
+        }catch(error){
+          // Never fall through to settlement if a past payment cannot be
+          // safely resolved. A fresh request gets a new unpaid quote.
+          return json({ok:false,chargeable:false,
+            error:{code:"X402_DELIVERED_REPLAY_PROOF_INVALID_OR_UNAVAILABLE",
+              message:"Cannot verify exact replay; no automatic charge."},
+            execution_authorized:false},409);
         }
         if (!config.apiKeyId || !config.apiKeySecret) {
           return json({ ok: false, error: { code: "CDP_API_CREDENTIALS_MISSING", message: "Coinbase CDP settlement credentials are not configured." }, execution_authorized: false }, 503);

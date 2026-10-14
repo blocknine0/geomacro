@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,type CapabilityQuote} from "../lib/capability-pricing";
 import {prepareVerifiedCapabilityOffer} from "../lib/capability-x402-offer.server";
 import {readVerifiedCapabilityAnswer} from "../lib/capability-x402-prequote.server";
+import {readAlreadyDeliveredCapabilityReplay} from "../lib/capability-x402-replay.server";
 import {circleRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
   capabilityLedgerRequestFingerprint,capabilityQuoteFromPaymentPayload}
   from "../lib/capability-x402-payment-contract.server";
@@ -395,6 +396,28 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             },
             400,
           );
+        }
+
+        // Attempt a read-only delivered replay BEFORE requiring a current
+        // quote. This branch never claims funds or generates a new offer.
+        try {
+          const original=capabilityQuoteFromPaymentPayload(paymentPayload);
+          const prior=await readAlreadyDeliveredCapabilityReplay({
+            quote:original,paymentPayload,
+            paymentFingerprint:commerceSha256(paymentToken),requestFingerprint,
+            config,circleRequirement:requirement,
+          });
+          if(prior) return json(prior.response,200,{
+            "PAYMENT-RESPONSE":encodePaymentHeader({success:true,idempotentReplay:true,
+              provider:"circle_gateway_x402",
+              settlement_reference:prior.settlementReference,
+              network:prior.settlementNetwork}),
+          });
+        }catch {
+          return json({ok:false,chargeable:false,error:{
+            code:"X402_DELIVERED_REPLAY_PROOF_INVALID_OR_UNAVAILABLE",
+            message:"Previously settled delivery could not be verified; no new charge."
+          },execution_authorized:false},409);
         }
 
         let capabilityQuote:CapabilityQuote;
