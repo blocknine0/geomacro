@@ -995,7 +995,7 @@ async function discoverOnDemandImpl(
   catch { name = ""; }
   const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   const approvedReliefAppname=approvedReliefWebAppname();
-  if (name && !options.disableDiscoveryIndex) for (const category of (topics.length?categories.slice(0,1):categories)) {
+  if (name && !options.disableDiscoveryIndex) for (const category of categories) {
     tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral,topics,country,newsMaxAgeMs)});
     // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
     // account approval must not generate repeat 403s on every user query.
@@ -1026,10 +1026,30 @@ async function discoverOnDemandImpl(
   // One country GET + at most eleven provider GETs. Prioritize annual macro
   // observables when optional approvals increase the configured fanout.
   const maxPrimary=topics.length?11-Math.min(categories.length,3):11;
-  const selected=tasks.length>maxPrimary
-    ? [...tasks.filter(t=>t.name.startsWith("world_bank_official_")),
-       ...tasks.filter(t=>!t.name.startsWith("world_bank_official_"))].slice(0,maxPrimary)
-    : tasks;
+  // An explicit cross-category question must not silently send all index
+  // requests to only the first alphabetic category, or starve a category's
+  // original publisher when the fixed request budget is tight. Reserve one
+  // original publisher AND one optional discovery index per requested category,
+  // retaining official annual macro reads and the existing <=12 total limit.
+  // Unscoped legacy requests keep their existing selection/order intact.
+  const selected=topics.length>0 && categories.length>1
+    ? (()=>{
+      const macro=tasks.filter(t=>t.name.startsWith("world_bank_official_"));
+      const originals=categories.map(category=>tasks.find(t=>
+        t.category===category && t.name!=="gdelt_doc_discovery" &&
+        t.name!=="reliefweb_discovery" &&
+        !t.name.startsWith("world_bank_official_"))).filter(
+          (t):t is (typeof tasks)[number]=>Boolean(t));
+      const indexes=categories.map(category=>tasks.find(t=>
+        t.category===category && t.name==="gdelt_doc_discovery")).filter(
+          (t):t is (typeof tasks)[number]=>Boolean(t));
+      const primary=[...new Set([...macro,...originals,...indexes])];
+      return [...primary,...tasks.filter(t=>!primary.includes(t))].slice(0,maxPrimary);
+    })()
+    : tasks.length>maxPrimary
+      ? [...tasks.filter(t=>t.name.startsWith("world_bank_official_")),
+         ...tasks.filter(t=>!t.name.startsWith("world_bank_official_"))].slice(0,maxPrimary)
+      : tasks;
   const settled=await Promise.allSettled(selected.map(t=>t.run()));
   const source_probes:SourceProbe[]=settled.map((result,i)=>{
     const row = result.status==="rejected" ? failed(selected[i].name,result.reason) :
@@ -1037,6 +1057,38 @@ async function discoverOnDemandImpl(
     return {...row,category:selected[i].category};
   });
   const fallbackIssuerGroups:PrivateOriginalCandidate[][]=[];
+  // If a selected original publisher fails or returns zero matching records,
+  // try another already registered original institution within the SAME
+  // twelve-request budget. Do not promote GDELT index links to originals, and
+  // do not turn a source outage into a positive coverage claim.
+  if(name && topics.length>0 && categories.length>1){
+    for(const category of categories){
+      const hasOriginal=()=>settled.some(result=>
+        result.status==="fulfilled" &&
+        "private_candidates" in result.value &&
+        result.value.private_candidates.some(item=>item.domain===category)) ||
+        fallbackIssuerGroups.some(group=>group.some(item=>item.domain===category));
+      if(hasOriginal()||networkAttempts>=12)continue;
+      const alternates=tasks.filter(t=>
+        t.category===category && !selected.includes(t) &&
+        t.name!=="gdelt_doc_discovery" && t.name!=="reliefweb_discovery" &&
+        !t.name.startsWith("world_bank_official_"));
+      for(const alternate of alternates){
+        if(networkAttempts>=12)break;
+        try{
+          const found=await alternate.run();
+          if(!("private_candidates" in found))continue;
+          source_probes.push({...found.probe,category});
+          if(found.private_candidates.length>0){
+            fallbackIssuerGroups.push(found.private_candidates);
+            break;
+          }
+        }catch(error){
+          source_probes.push({...failed(alternate.name,error),category});
+        }
+      }
+    }
+  }
   // A reachable 2xx feed with zero exact-topic records is a valid search
   // miss, not proof the original publisher has no matching article.
   // Reuse one bounded public issuer search only when the original feed mesh
