@@ -55,8 +55,24 @@ export async function publishSupabaseFreePublicIntelligence({
   // client creation, quota reservation or B2 request. These prospective
   // readback flags are never persisted until actual byte verification below.
   admit(now);
+  // One PRIVATE content-addressed bundle contains all three domains, exact
+  // customer bytes, signed review packages and the source-free admission
+  // receipt. Restore/replay needs one Class-B GET, not one GET per row or
+  // per-domain private review object. Public latest remains derived-only.
+  const archiveRaw = Buffer.from(JSON.stringify({
+    schema: "geomacro.private-qualified-intelligence-bundle.v1",
+    value, private_event_packages: input.eventPackages,
+    admission_receipt: qualification.receipt,
+    admission_receipt_sha256: qualification.receipt_sha256,
+    public_payload_sha256: sha(raw),
+    public_gzip_sha256: digest,
+  }));
+  if (archiveRaw.length > 2 * 1024 * 1024)
+    throw new Error("SUPABASE_FREE_INTELLIGENCE_PRIVATE_BUNDLE_TOO_LARGE");
+  const archivePacked = gzipSync(archiveRaw, { level: 9 });
+  const archiveDigest = sha(archivePacked);
+  const historyKey = `geomacro-evidence/v1/private/qualified-intelligence-bundles/${archiveDigest}.json.gz`;
   const b2 = createArchiveClient();
-  const historyKey = `geomacro-evidence/v1/history/public-intelligence/${digest}.json.gz`;
   async function putAndVerify(key, bytes) {
     await b2.put(key, bytes);
     const readback = await b2.get(key);
@@ -65,8 +81,8 @@ export async function publishSupabaseFreePublicIntelligence({
     return Buffer.from(readback);
   }
   // Keep a durable content-addressed recovery copy before replacing latest.
-  const historical = await putAndVerify(historyKey, packed);
-  if (!gunzipSync(historical).equals(raw))
+  const historical = await putAndVerify(historyKey, archivePacked);
+  if (!gunzipSync(historical).equals(archiveRaw))
     throw new Error("SUPABASE_FREE_INTELLIGENCE_GZIP_RESTORE_MISMATCH");
   admit(clock());
   const live = await putAndVerify(LIVE_KEY, packed);
@@ -86,5 +102,7 @@ export async function publishSupabaseFreePublicIntelligence({
     payload_sha256: sha(raw), b2_sha256: digest,
     full_b2_readback_verified: true, exact_gzip_restore_verified: true,
     d1_hot_snapshot_published: true, supabase_reads: 0, supabase_writes: 0,
+    private_bundle_sha256: archiveDigest,
+    successful_b2_readback_gets: 3, private_bundle_restore_gets: 1,
     external_payment_executed: false };
 }

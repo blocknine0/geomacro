@@ -71,7 +71,15 @@ test("signed three-domain originals publish exact B2 bytes before D1; private ev
   assert.equal(hash(raw),report.payload_sha256);
   assert.equal(hash(packed),report.b2_sha256);
   assert.equal(JSON.parse(raw).rows.length,3);
-  for(const [key,value] of h.stored) if(key!=="promotion") {
+  const privateBundleKey = [...h.stored.keys()].find(key=>key.includes("/private/qualified-intelligence-bundles/"));
+  const privateBundle = JSON.parse(gunzipSync(h.stored.get(privateBundleKey)).toString());
+  assert.equal(privateBundle.private_event_packages.length,3);
+  assert.deepEqual(privateBundle.value.rows,JSON.parse(raw).rows);
+  assert.equal(privateBundle.public_payload_sha256,report.payload_sha256);
+  assert.equal(h.calls.filter(call=>call===`get:${privateBundleKey}`).length,1);
+  assert.equal(report.private_bundle_restore_gets,1);
+  assert.equal(h.calls.filter(call=>call.startsWith("get:")).length,3);
+  for(const [key,value] of h.stored) if(key!=="promotion" && !key.includes("/private/")) {
     const publicText = key.endsWith(".gz") ? gunzipSync(value).toString() : value.toString();
     assert.doesNotMatch(publicText,/federalreserve\.gov|review_signature|eventPackages/);
   }

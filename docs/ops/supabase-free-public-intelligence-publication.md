@@ -35,10 +35,18 @@ Supabase credentials injected. Required configuration:
 All three categories, customer-field allowlists, exact signed-row bindings,
 independent evidence, rights receipts, review signatures and native freshness
 must pass before any B2 traffic. An immutable content-addressed B2 recovery
-copy is read back before latest is replaced. Exact live gzip bytes and proof
+private bundle is read back before latest is replaced. The bundle contains
+all three categories, exact derived rows, signed private event packages and
+their admission receipt under `private/qualified-intelligence-bundles/`.
+A complete private restore/replay requires one Class B GET, with no separate
+per-event or per-category reads. It is never a public serving object.
+Exact live gzip bytes and proof
 bytes are independently read back before D1 promotion. Source deadlines are
 checked again after network activity. Private packages never enter public B2
-or D1 payloads. Slow requests cannot refresh source timestamps.
+or D1 payloads. Slow requests cannot refresh source timestamps. A successful
+publication still requires three GETs (private bundle, public latest, public
+proof); retry attempts additionally consume the unchanged shared account
+ledger. Bundling does not remove the required latest/proof verification.
 
 There is deliberately no automatic invocation from the private scorer:
 its artifacts explicitly state rights/corroboration pending and public
