@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
+import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 import {
   discoverOnDemandGlobal, discoverOnDemandForPrivateQualification,
+  matchesRequestedTopic,
 } from "./on-demand-global-discovery.server";
 
 const now=new Date("2026-10-11T12:00:00Z");
@@ -24,6 +25,25 @@ describe("fixed country qualification for original publisher evidence",()=>{
     title,iso,name,expected,
   )=>{
     expect(originalHeadlineMentionsCountry(title,iso,name)).toBe(expected);
+  });
+  it("recognizes original Fed discount-rate policy as macro, not FX or mineral evidence",()=>{
+    const genuineTitle="Minutes of the Board's discount rate meetings on August 17, September 9, and September 16, 2026";
+    expect(matchesRequestedTopic(genuineTitle,"macro",["macro_risk"])).toBe(true);
+    expect(matchesRequestedTopic(genuineTitle,"macro",["fx_external_risk"])).toBe(false);
+    expect(matchesRequestedTopic(genuineTitle,"rare_earth",["critical_minerals"])).toBe(false);
+  });
+  it("admits only authenticated US Fed domestic discount-rate meeting releases for implicit US scope",()=>{
+    const original="Minutes of the Board's discount rate meetings on August 17, September 9, and September 16, 2026";
+    expect(originalPublisherMatchesCountry(original,"","USA","United States",
+      "us_federal_reserve_original_publisher")).toBe(true);
+    expect(originalPublisherMatchesCountry(original,"","GBR","United Kingdom",
+      "us_federal_reserve_original_publisher")).toBe(false);
+    expect(originalPublisherMatchesCountry(original,"","USA","United States",
+      "uk_hmt_original_publisher")).toBe(false);
+    expect(originalPublisherMatchesCountry("Federal Reserve Bank acquires overseas securities",
+      "","USA","United States","us_federal_reserve_original_publisher")).toBe(false);
+    expect(originalPublisherMatchesCountry(original,"","USA","",
+      "us_federal_reserve_original_publisher")).toBe(false);
   });
   it("fails closed when no real country name has been established",()=>{
     expect(originalHeadlineMentionsCountry("Chinese lithium","CHN","")).toBe(false);
