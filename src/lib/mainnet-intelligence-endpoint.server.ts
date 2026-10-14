@@ -583,7 +583,7 @@ export const mainnetIntelligenceHandlers = {
           product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,request:parsed,
         });
         let capabilityQuote:CapabilityQuote|null=null;
-        if(config.environment==="production"){
+        if(config.environment==="production"||plan.pricing_selection!==null){
           try{
             const price=approvedAdaptiveIntelligencePrice(plan);
             capabilityQuote=quoteGeomacroCapability({
