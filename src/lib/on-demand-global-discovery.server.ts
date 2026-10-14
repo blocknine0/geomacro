@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
+import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
 
 /**
  * Query-time, bounded, Supabase/B2-free GLOBAL DISCOVERY for a future paid
@@ -35,8 +36,8 @@ export type PrivateOriginalCandidate = {
   // in public discovery, user payloads or audit logs.
   item_scoped_summary_private?: string;
   feed_item_published_at: string | null;
-  // Never promote a feed <updated> as original publication. Only an
-  // allowlisted GOV.UK Atom first-party page may rescue this private lead.
+  // Never promote a feed <updated> as original publication. Only allowlisted
+  // official original article pages may rescue an undated Atom lead.
   undated_atom_original_page_pending?: true;
   search_index_original_page_pending?: true;
   article_identity_sha256: string;
@@ -826,13 +827,14 @@ async function originalOfficialFeed(
     const matchedScope=def.topic.test(contextualText) &&
       matchesRequestedTopic(contextualText,def.domain,topics) && mineralMatches;
     if(matchedCountry && matchedScope)audit.scope_matched++;
-    const undatedGovukAtom=atom && !date.trim() &&
+    const undatedFirstPartyAtom=atom && !date.trim() &&
       ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
-       "uk_ofsi_original_publisher","uk_desnz_original_publisher","uk_hmt_original_publisher"].includes(def.family);
+       "uk_ofsi_original_publisher","uk_desnz_original_publisher","uk_hmt_original_publisher",
+       "canada_nrcan_original_publisher"].includes(def.family);
     // Missing Atom <published> may enter PRIVATE article-page verification,
     // not score/payment. Never accept <updated>, bad/missing RSS clocks, or
     // a stale/future <published> as original source time.
-    if (!matchedCountry || !matchedScope || (!hasNativeDate && !undatedGovukAtom)) continue;
+    if (!matchedCountry || !matchedScope || (!hasNativeDate && !undatedFirstPartyAtom)) continue;
     audit.eligible_pub_date++;
     let href="";
     if(atom){
@@ -857,7 +859,7 @@ async function originalOfficialFeed(
       domain:def.domain,publisher_family:def.family,article_url,article_title,
       item_scoped_summary_private:summary,
       feed_item_published_at:hasNativeDate?new Date(Date.parse(date)).toISOString():null,
-      ...(undatedGovukAtom?{undated_atom_original_page_pending:true as const}:{}),
+      ...(undatedFirstPartyAtom?{undated_atom_original_page_pending:true as const}:{}),
       article_identity_sha256,
       first_party_article_url_verified:true,
       source_native_feed_publication_date_verified:hasNativeDate,
@@ -908,7 +910,8 @@ export function deduplicateOnDemandOriginalHeadlines(
       Number.isFinite(time) && item.undated_atom_original_page_pending!==true;
     const undatedReview=def?.media==="atom" &&
       ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
-       "uk_ofsi_original_publisher","uk_desnz_original_publisher","uk_hmt_original_publisher"]
+       "uk_ofsi_original_publisher","uk_desnz_original_publisher","uk_hmt_original_publisher",
+       "canada_nrcan_original_publisher"]
         .includes(item.publisher_family) &&
       item.undated_atom_original_page_pending===true &&
       item.feed_item_published_at===null &&
@@ -1235,10 +1238,22 @@ export type PrivatePageDatedOriginal = Omit<
   PrivateOriginalCandidate, "publisher_article_page_date_verified"
 > & { publisher_article_page_date_verified: true; page_original_published_at: string };
 
+export type PrivatePageDayOriginal = Readonly<{
+  publisher_family:"canada_nrcan_original_publisher";
+  article_identity_sha256:string;
+  page_original_publication_day:string; // YYYY-MM-DD; never a synthetic UTC clock
+  original_clock_precision:"day";
+  original_issuer_page_verified:true;
+  article_commercial_rights_verified:false;
+  signed_customer_answer_verified:false;
+}>;
 export type PrivatePageDateResult = {
   attempted: number;
   verified: number;
   verified_candidates: PrivatePageDatedOriginal[];
+  // Present only for a verified Canada.ca calendar-day original. This is
+  // NEVER admitted as an exact-dated or signed customer evidence object.
+  day_only_originals?: PrivatePageDayOriginal[];
 };
 
 const MAX_ARTICLE_PAGE_PROBES = 4;
@@ -1271,7 +1286,8 @@ export async function verifyOnDemandOriginalArticlePages(
          candidate.undated_atom_original_page_pending!==true) ||
         (def.media==="atom" &&
          ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
-       "uk_ofsi_original_publisher","uk_desnz_original_publisher","uk_hmt_original_publisher"]
+       "uk_ofsi_original_publisher","uk_desnz_original_publisher","uk_hmt_original_publisher",
+           "canada_nrcan_original_publisher"]
            .includes(def.family) &&
          candidate.source_native_feed_publication_date_verified===false &&
          candidate.feed_item_published_at===null &&
@@ -1301,27 +1317,49 @@ export async function verifyOnDemandOriginalArticlePages(
   // attempt if its first article failed publication-clock verification and
   // the four-page budget still has headroom; it is never independent proof.
   const verifyCandidate=async(candidate:PrivateOriginalCandidate):Promise<{
-    verified:PrivatePageDatedOriginal|null; denied:boolean;
+    verified:PrivatePageDatedOriginal|null;
+    dayOnly:PrivatePageDayOriginal|null; denied:boolean;
   }>=>{
     try{
       const html=await boundedFetch(options.fetchImpl??fetch,candidate.article_url,"text/html");
-      const originalDate=verifiedPublisherPageDate(html,now,null,{maxAgeMs});
-      if(!originalDate || !freshPublished(originalDate,now,maxAgeMs) ||
-        (candidate.feed_item_published_at!==null &&
-         Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000))
-        return {verified:null,denied:false};
-      return {verified:{...candidate,publisher_article_page_date_verified:true as const,
-        page_original_published_at:originalDate},denied:false};
+      const isCanada=candidate.publisher_family==="canada_nrcan_original_publisher";
+      // Reuse the independently tested Canada.ca issuer/H1/first-publication
+      // verifier already powering the official website feed; never substitute
+      // Atom <updated>, crawl clocks, or article URL month for issue date.
+      const canadaDay=isCanada?canadaOriginalPublicationDay(
+        html,candidate.article_url,candidate.article_title,now.getTime()):null;
+      if(isCanada && !canadaDay)return {verified:null,dayOnly:null,denied:false};
+      const precise=verifiedPublisherPageDate(html,now,null,{maxAgeMs});
+      if(precise && freshPublished(precise,now,maxAgeMs) &&
+          (!isCanada || precise.slice(0,10)===canadaDay) &&
+          (candidate.feed_item_published_at===null ||
+           Math.abs(Date.parse(precise)-Date.parse(candidate.feed_item_published_at))<=10*60*1000))
+        return {verified:{...candidate,publisher_article_page_date_verified:true as const,
+          page_original_published_at:precise},dayOnly:null,denied:false};
+      // Conservative boundary: require the beginning of the publisher's
+      // calendar day to fit the requested window. This may reject useful
+      // news, but cannot claim an invented exact hour of publication.
+      const at=canadaDay?Date.parse(canadaDay+"T00:00:00.000Z"):NaN;
+      const dayOnly=canadaDay && Number.isFinite(at) && at<=now.getTime() &&
+          now.getTime()-at<=maxAgeMs
+        ? {publisher_family:"canada_nrcan_original_publisher" as const,
+           article_identity_sha256:candidate.article_identity_sha256,
+           page_original_publication_day:canadaDay,
+           original_clock_precision:"day" as const,
+           original_issuer_page_verified:true as const,
+           article_commercial_rights_verified:false as const,
+           signed_customer_answer_verified:false as const}:null;
+      return {verified:null,dayOnly,denied:false};
     }catch(error){
-      // An explicit access/rate-limit denial may NEVER trigger another
-      // URL request on the same publisher. This is not a 403/429 bypass.
       const code=error instanceof Error?error.message:"";
-      return {verified:null,denied:["ON_DEMAND_SOURCE_ACCESS_RESTRICTED",
-        "ON_DEMAND_SOURCE_RATE_LIMITED"].includes(code)};
+      return {verified:null,dayOnly:null,denied:[
+        "ON_DEMAND_SOURCE_ACCESS_RESTRICTED","ON_DEMAND_SOURCE_RATE_LIMITED"
+      ].includes(code)};
     }
   };
   const first=await Promise.all(chosen.map(verifyCandidate));
   const verified_candidates:PrivatePageDatedOriginal[]=[];
+  const day_only_originals:PrivatePageDayOriginal[]=[];
   const blockedFamilies=new Set<string>();
   const successfulFamilies=new Set<string>();
   const seenIds=new Set(chosen.map(x=>x.article_identity_sha256));
@@ -1330,6 +1368,8 @@ export async function verifyOnDemandOriginalArticlePages(
       verified_candidates.push(first[i].verified!);
       successfulFamilies.add(chosen[i].publisher_family);
     }
+    if(first[i].dayOnly){day_only_originals.push(first[i].dayOnly!);
+      successfulFamilies.add(chosen[i].publisher_family);}
     if(first[i].denied)blockedFamilies.add(chosen[i].publisher_family);
   }
   let attempted=chosen.length;
@@ -1348,9 +1388,11 @@ export async function verifyOnDemandOriginalArticlePages(
       verified_candidates.push(outcome.verified);
       successfulFamilies.add(family);
     }
+    if(outcome.dayOnly){day_only_originals.push(outcome.dayOnly);successfulFamilies.add(family);}
     if(outcome.denied)blockedFamilies.add(family);
   }
-  return {attempted,verified:verified_candidates.length,verified_candidates};
+  return {attempted,verified:verified_candidates.length,verified_candidates,
+    ...(day_only_originals.length?{day_only_originals}:{})};
 }
 
 /** Client-safe shape: no upstream article, URLs, text, or private evidence. */
