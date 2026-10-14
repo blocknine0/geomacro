@@ -107,23 +107,20 @@ describe("Nevermined settlement ordering", () => {
 });
 
 describe("cross-provider post-settlement recovery", () => {
-  it("never persists a Circle prepared response as already settled", () => {
+  it("freezes Circle customer bytes before settlement and never mutates delivered/replayed JSON", () => {
     expect(circleRoute).toContain('settled: false');
     expect(circleRoute).toContain('accounting_state: "pending_settlement"');
-    expect(circleRoute).toContain('settled: true');
-    expect(circleRoute).toContain(
-      'accounting_state: "commercial_pending_accounting"',
-    );
-
+    expect(circleRoute).toContain('settlement_proof:"PAYMENT-RESPONSE_HEADER_ONLY"');
+    expect(circleRoute).not.toContain("responsePayload.payment =");
     const prepare = circleRoute.indexOf("prepareAgentCommerceDelivery({");
     const settle = circleRoute.indexOf("settleCircleGatewayProduction(");
-    const durableSettled = circleRoute.indexOf(
-      'accounting_state: "commercial_pending_accounting"',
-      prepare,
-    );
+    const complete = circleRoute.indexOf("completeAgentCommerceDelivery({");
+    const response = circleRoute.lastIndexOf("return json(responsePayload, 200");
     expect(prepare).toBeGreaterThan(-1);
     expect(settle).toBeGreaterThan(prepare);
-    expect(durableSettled).toBeGreaterThan(settle);
+    expect(complete).toBeGreaterThan(settle);
+    expect(response).toBeGreaterThan(complete);
+    expect(circleRoute).toContain('"PAYMENT-RESPONSE": encodePaymentHeader({');
   });
 
   it("returns durable settlement evidence when Circle finalization needs reconciliation", () => {
