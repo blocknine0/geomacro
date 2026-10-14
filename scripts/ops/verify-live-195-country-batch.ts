@@ -20,6 +20,7 @@ if(!Number.isSafeInteger(from)||from<0||from>=195||
 
 const observations:CoverageObservation195[]=[];
 const review=new Map<string,CountryBatchCellEvidence>();
+const macroReferenceYears=new Map<string,number>();
 const probeStartedAt=new Date().toISOString();
 let totalProviderRequests=0,totalPageRequests=0;
 let completedCountries=0,discoveryCalls=0,verifiedPageCalls=0;
@@ -58,8 +59,12 @@ for(const country of COUNTRIES_195.slice(from,from+count)){
    observations.push(evidence.observation);
    review.set(country.iso3+":"+category,evidence);
   }
-  if(fetched.private_macro_changes.length>0)
+  if(fetched.private_macro_changes.length>0){
    structuralAnnualObservationCells++;
+   const years=fetched.private_macro_changes.map(x=>x.latest_observation_year)
+     .filter(x=>Number.isSafeInteger(x)&&x>=1900&&x<=observedAt.getUTCFullYear());
+   if(years.length)macroReferenceYears.set(country.iso3,Math.max(...years));
+  }
  }catch(error){
   // Budget excess is fatal rather than falsely reported as an ordinary
   // inaccessible publisher. Provider failures remain explicitly unverified.
@@ -118,6 +123,13 @@ const report={
      LIVE_SOURCE_REACHABLE:x.LIVE_SOURCE_REACHABLE,
      COUNTRY_RELEVANCE_VERIFIED:x.COUNTRY_RELEVANCE_VERIFIED,
      ORIGINAL_EVIDENCE_VERIFIED:x.ORIGINAL_EVIDENCE_VERIFIED,
+     ORIGINAL_PAGE_VERIFIED:x.ORIGINAL_EVIDENCE_VERIFIED,
+     // Source-native page publication UTC is a different timestamp from
+     // the probe and a World Bank statistical reference year.
+     original_page_publication_utc:
+       evidence?.latest_verified_original_publication_utc??null,
+     statistical_observation_period_year:x.category==="macro"
+       ?macroReferenceYears.get(x.country_iso3)??null:null,
      CURRENT_EVIDENCE_AVAILABLE:x.CURRENT_EVIDENCE_AVAILABLE,
      INDEPENDENT_FALLBACK_VERIFIED:x.INDEPENDENT_FALLBACK_VERIFIED,
      RIGHTS_QUALIFIED:x.RIGHTS_QUALIFIED,
