@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import { gunzipSync } from "node:zlib";
+import controlPlane from "../../workers/control-plane/src/index.mjs";
 import { publishSupabaseFreePublicIntelligence } from "../lib/supabase-free-public-intelligence-publisher.mjs";
 import { SAME_EVENT_QUALIFICATION_SCHEMA, sameEventClaimHash,
   derivedCustomerRowSha256, qualificationReviewSigningBytes } from "../lib/independent-same-event-qualification.mjs";
@@ -107,4 +108,20 @@ test("an upload passing the native deadline never refreshes source time or promo
   await assert.rejects(publishSupabaseFreePublicIntelligence(h.options));
   assert.equal(h.calls.includes("promote"),false);
   assert.equal(h.stored.has("geomacro-evidence/v1/live/public-intelligence/latest.json.gz"),false);
+});
+test("deployed Worker health exposes exact source SHA without changing B2/D1 authority or readiness", async () => {
+  const DB = {prepare:() => ({bind:() => ({first:async () => ({version:5})})})};
+  const expected = "a".repeat(40);
+  for (const configured of [expected,undefined,"not-a-commit"]) {
+    const response = await controlPlane.fetch(new Request("https://worker.invalid/health"),
+      {DB,GEOMACRO_SOURCE_SHA:configured});
+    const body = await response.json();
+    assert.equal(response.status,200); assert.equal(body.ok,true);
+    assert.equal(body.durable_payload_store,"b2");
+    assert.equal(body.deployed_source_sha,configured===expected ? expected : null);
+    assert.equal(body.current_hot_product_ready,undefined);
+  }
+  const unavailable = await controlPlane.fetch(new Request("https://worker.invalid/health"),
+    {GEOMACRO_SOURCE_SHA:expected});
+  assert.equal(unavailable.status,503);
 });

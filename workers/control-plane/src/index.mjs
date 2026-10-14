@@ -1035,7 +1035,9 @@ async function health(env) {
       .bind("control-plane")
       .first();
     if (!row || Number(row.version) < 1) return json({ ok: false, error: "D1_SCHEMA_NOT_READY" }, 503);
-    return json({ ok: true, store: "d1", schema_version: Number(row.version), durable_payload_store: "b2", commerce_ledger: "durable_object" });
+    return json({ ok: true, store: "d1", schema_version: Number(row.version), durable_payload_store: "b2", commerce_ledger: "durable_object",
+      deployed_source_sha: /^[a-f0-9]{40}$/.test(String(env.GEOMACRO_SOURCE_SHA ?? ""))
+        ? env.GEOMACRO_SOURCE_SHA : null });
   } catch {
     return json({ ok: false, error: "D1_UNAVAILABLE" }, 503);
   }
