@@ -203,7 +203,8 @@ async function boundedFetch(
   if (target.protocol !== "https:" ||
       !["api.worldbank.org","api.gdeltproject.org","api.reliefweb.int",
         "www.gov.uk","news.un.org","www.federalreserve.gov","www.ecb.europa.eu",
-        "www.minister.industry.gov.au"].includes(target.hostname)) {
+        "www.minister.industry.gov.au","api.io.canada.ca",
+        "www.canada.ca"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
   const maxBytes = accept === "text/html" ? MAX_FIRST_PARTY_HTML_BYTES : MAX_BODY_BYTES;
@@ -598,6 +599,16 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
     topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
   },
   {
+    // Reuse the original Natural Resources Canada Atom connector already
+    // running in the Supabase-free website newsroom. A lead is never itself
+    // signed, rights-certified or evidence of actual mineral output.
+    domain:"rare_earth",family:"canada_nrcan_original_publisher",
+    url:"https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+    media:"atom",originalHost:"www.canada.ca",
+    originalPath:/^\/en\/natural-resources-canada\/news\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\.html$/u,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining|mineral processing)\b/iu,
+  },
+  {
     domain:"rare_earth",family:"australian_industry_original_publisher",
     url:"https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
     // Official all-minister media releases from the same government publisher;
@@ -966,7 +977,8 @@ async function discoverOnDemandImpl(
     const permittedHosts=["api.worldbank.org","api.gdeltproject.org",
       "api.reliefweb.int","www.gov.uk","news.un.org",
       "www.federalreserve.gov","www.ecb.europa.eu",
-      "www.minister.industry.gov.au"];
+      "www.minister.industry.gov.au","api.io.canada.ca",
+      "www.canada.ca"];
     if(upstream.protocol!=="https:" || !permittedHosts.includes(upstream.hostname) ||
        upstream.username || upstream.password || upstream.port || upstream.hash)
       throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
