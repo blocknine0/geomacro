@@ -162,7 +162,7 @@ const QUESTION_TOPIC_RULES: ReadonlyArray<{ topic: AgentQueryTopic; patterns: Re
   { topic: "conflict_geopolitics", patterns: [/\bwar\b/i, /\bconflict\b/i, /\bgeopolit/i, /\bmilitary\b/i, /\bescalat/i, /\bsecurity\b/i] },
   { topic: "trade_corridor", patterns: [/\btrade\b/i, /\bcorridor\b/i, /\bsupply chain\b/i, /\bshipping\b/i, /\broute\b/i, /\btariff/i] },
   { topic: "energy_commodities", patterns: [/\benergy\b/i, /\boil\b/i, /\bgas\b/i, /\bcommodity/i, /\bpower\b/i] },
-  { topic: "critical_minerals", patterns: [/\bcritical mineral/i, /\blithium\b/i, /\bcobalt\b/i, /\bnickel\b/i, /\brare earth/i] },
+  { topic: "critical_minerals", patterns: [/\bcritical mineral/i, /\blithium\b/i, /\bcobalt\b/i, /\bnickel\b/i, /\bgraphite\b/i, /\bcopper\b/i, /\brare[- ]earths?\b/i] },
   { topic: "political_governance", patterns: [/\bgovernance\b/i, /\belection/i, /\bcoup\b/i, /\bpolitical\b/i, /\binstitution/i] },
   { topic: "banking_financial_system", patterns: [/\bbank/i, /\bfinancial system\b/i, /\bliquidity\b/i, /\bcredit\b/i] },
   { topic: "food_agriculture", patterns: [/\bfood\b/i, /\bagricultur/i, /\bwheat\b/i, /\bcrop/i, /\bfertilizer/i] },
