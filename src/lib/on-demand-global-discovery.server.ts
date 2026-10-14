@@ -183,9 +183,9 @@ const ONE_DAY_MS = 86_400_000;
 const MAX_NEWS_AGE_MS = 31 * ONE_DAY_MS;
 const RATE_LIMIT_COOLDOWNS_MS = {403: 60*60_000, 429: 15*60_000};
 const providerCooldownUntil = new Map<string,number>();
-function retryAfterCooldownMs(value:string|null, now=Date.now()):number {
+export function retryAfterCooldownMs(value:string|null, now=Date.now()):number {
   if(!value)return RATE_LIMIT_COOLDOWNS_MS[429];
-  const seconds=/^\\d{1,8}$/.test(value.trim())?Number(value.trim()):NaN;
+  const seconds=/^\d{1,8}$/.test(value.trim())?Number(value.trim()):NaN;
   const deadline=Number.isFinite(seconds)?now+seconds*1_000:Date.parse(value);
   if(!Number.isFinite(deadline) || deadline<=now)return RATE_LIMIT_COOLDOWNS_MS[429];
   // Honor Retry-After up to one month, with a floor for invalid/short hints.
@@ -1097,7 +1097,8 @@ async function discoverOnDemandImpl(
     const originalPresent=settled.some(result=>
       result.status==="fulfilled" &&
       "private_candidates" in result.value &&
-      result.value.private_candidates.some(item=>item.domain===category));
+      result.value.private_candidates.some(item=>item.domain===category)) ||
+      fallbackIssuerGroups.some(group=>group.some(item=>item.domain===category));
     if(originalPresent || networkAttempts>=12)continue;
     const def=GOVUK_SEARCH_FALLBACKS.find(item=>item.domain===category)!;
     try {
