@@ -345,8 +345,11 @@ export function buildPrivateVerifiedFedMinutesFinding(
      "FED_BOARD_DISCOUNT_WINDOW_MEETING_MINUTES_PUBLISHED" ||
      page.publisher_family!=="us_federal_reserve_original_publisher" ||
      page.publisher_article_page_date_verified!==true ||
-     page.source_native_feed_publication_date_verified!==true ||
-     page.feed_item_published_at===null ||
+     !(page.source_native_feed_publication_date_verified===true &&
+       page.feed_item_published_at!==null ||
+       page.source_native_feed_publication_date_verified===false &&
+       page.feed_item_published_at===null &&
+       page.official_archive_release_day===page.page_original_published_at.slice(0,10)) ||
      page.independent_same_event_verified!==false ||
      page.paid_delivery_allowed!==false)continue;
   const record=qualification.originals.find(e=>
