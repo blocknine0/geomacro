@@ -25,7 +25,7 @@ const qualified=qualifyRetrievedOnDemandEvidence({
  search,discovery:proof.discovery,originals:fed,pageProof:pages,
  verifiedCountryName:proof.private_verified_country_name,macroChanges:[],now,
 });
-const finding=buildPrivateVerifiedFedMinutesFinding(qualified,pages);
+const finding=buildPrivateVerifiedFedMinutesFinding(qualified,pages,{observedAt:now});
 const originalPageVerified=pages.verified_candidates.filter(x=>
   x.publisher_family==="us_federal_reserve_original_publisher").length;
 const archiveProbe=proof.discovery.source_probes.find(x=>
