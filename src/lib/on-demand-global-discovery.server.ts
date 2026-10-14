@@ -527,14 +527,14 @@ const GOVUK_SEARCH_FALLBACKS:readonly OriginalFeed[]=[
     url:"https://www.gov.uk/api/search.json",
     media:"search",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:econom(?:y|ic|ics)?|financial|chancellor|treasury|inflation|monetary)\b/iu,
+    topic:/\b(?:econom(?:y|ic|ics)?|financial|chancellor|treasury|inflation|monetary|foreign exchange|exchange rates?|currency|reserves?)\b/iu,
   },
   {
     domain:"rare_earth",family:"uk_dbt_search_original_page",
     url:"https://www.gov.uk/api/search.json",
     media:"search",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
   },
 ];
 const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
@@ -543,7 +543,7 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
     url:"https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
     media:"atom",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
   },
   {
     domain:"geopolitics",family:"un_news_original_publisher",
@@ -581,7 +581,7 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
     url:"https://www.gov.uk/government/organisations/hm-treasury.atom",
     media:"atom",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:financial|econom|inflation|interest rates?|treasury|chancellor|monetary)\b/iu,
+    topic:/\b(?:financial|econom|inflation|interest rates?|treasury|chancellor|monetary|foreign exchange|exchange rates?|currency|reserves?)\b/iu,
   },
   {
     domain:"macro",family:"ecb_original_publisher",
@@ -595,7 +595,7 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
     url:"https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
     media:"atom",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
   },
   {
     domain:"rare_earth",family:"australian_industry_original_publisher",
@@ -605,7 +605,7 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
     alternateUrl:"https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
     media:"rss",originalHost:"www.minister.industry.gov.au",
     originalPath:/^\/(?:t-ayres|king)\/media\//u,
-    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
   },
 ];
 function originalArticleUrl(value:string, def:OriginalFeed):string|null {
