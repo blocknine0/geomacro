@@ -65,3 +65,37 @@ export function verifyGeomacroCapabilityQuote(
   if(Object.keys(actual).length!==Object.keys(expected).length)
     throw Error("CAPABILITY_QUOTE_UNKNOWN_FIELDS");
 }
+
+
+import type {AgentQueryPlan} from "./agent-query-plan";
+
+/**
+ * Strict route-specific price admission. This existing adaptive endpoint can
+ * serve only intelligence_query after the established signed-evidence checks.
+ * Other seven capabilities are catalogued but require their own verified
+ * entitlement/output contract, not mislabelled adaptive intelligence.
+ */
+export function approvedAdaptiveIntelligencePrice(plan:AgentQueryPlan):CapabilityPrice{
+  const selected=plan.pricing_selection;
+  if(!selected)throw Error("CAPABILITY_PRICE_SELECTION_REQUIRED");
+  if(selected.capability!=="intelligence_query")
+    throw Error("CAPABILITY_PRODUCT_ROUTE_MISMATCH");
+  if(plan.fulfillment_mode!=="published_only"||
+     plan.delivery_tier!=="signed_risk_intelligence"||
+     plan.risk_gate_context!==null||
+     plan.topics.includes("risk_gate")||
+     plan.topics.includes("gri_context")||
+     plan.intent==="risk_gate")
+    throw Error("CAPABILITY_OUTPUT_CONTRACT_UNSUPPORTED");
+  const subjects=plan.subjects.length;
+  const topics=plan.topics.filter(t=>t!=="risk_object"&&t!=="hot_topics").length;
+  const scoped=subjects>=1&&subjects<=2&&topics>=1&&topics<=5;
+  if(!scoped)throw Error("CAPABILITY_EXECUTION_SCOPE_EXCEEDED");
+  const required=plan.detail==="compact"&&subjects===1&&topics===1
+      ?"focused":plan.detail==="standard"&&subjects===1&&topics<=3
+      ?"standard":plan.detail==="full"&&subjects<=2&&topics<=5
+      ?"complex_multi_source":null;
+  if(!required)throw Error("CAPABILITY_NO_SAFE_APPROVED_TIER");
+  if(selected.variant!==required)throw Error("CAPABILITY_TIER_ACCEPTANCE_REQUIRED:"+required);
+  return resolveGeomacroCapabilityPrice("intelligence_query",required);
+}
