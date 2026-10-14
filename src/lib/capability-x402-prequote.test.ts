@@ -3,6 +3,7 @@ import {describe,expect,it} from "vitest";
 import {CommerceLedger} from "../../workers/commerce-ledger/src/index.mjs";
 import {quoteGeomacroCapability} from "./capability-pricing";
 import {stableCommerceJson} from "./agent-commerce-delivery.server";
+import {assertFrozenCapabilityIntelligenceProjection} from "./capability-x402-prequote.server";
 const h=(s:string)=>createHash("sha256").update(s).digest("hex");
 function ledger(){
  const map=new Map<string,unknown>();
@@ -54,5 +55,43 @@ describe("capability prequote immutable original bytes in existing Durable Objec
     quote:{...cb.quote,prepared_answer_sha256:h("wrong")}})).status).toBe(409);
   expect((await post(l,"capability-prequote-freeze",circle)).status).toBe(200);
   expect((await post(l,"capability-prequote-readback",{quoteId:circle.quote.quote_id})).status).toBe(200);
+ });
+});
+
+describe("both x402 provider envelopes preserve exact frozen intelligence projection — NO FUNDS",()=>{
+ it("accepts only transport metadata appended beside byte-identical original intelligence",()=>{
+  for(const rail of ["coinbase_x402","circle_gateway_x402"] as const){
+   const {quote,customerBytes}=freshOffer(rail);
+   const frozen=JSON.parse(customerBytes) as Record<string,unknown>;
+   const keys=rail==="coinbase_x402"?["availability","payment"]:["payment"];
+   const delivered={
+    ...frozen,
+    ...(rail==="coinbase_x402"?{availability:{deliverable:true}}:{}),
+    payment:{rail,quote_id:quote.quote_id,amount_atomic:quote.amount_atomic},
+   };
+   expect(()=>assertFrozenCapabilityIntelligenceProjection({
+    quote,frozen,delivered,addedEnvelopeKeys:keys,
+   })).not.toThrow();
+   expect(()=>assertFrozenCapabilityIntelligenceProjection({
+    quote,frozen,delivered:{...delivered,execution_authorized:true},
+    addedEnvelopeKeys:keys,
+   })).toThrow("CAPABILITY_DELIVERY_SIGNED_INTELLIGENCE_MUTATED");
+   expect(()=>assertFrozenCapabilityIntelligenceProjection({
+    quote,frozen,delivered:{...delivered,unexpected_field:"unbound"},
+    addedEnvelopeKeys:keys,
+   })).toThrow("CAPABILITY_DELIVERY_SIGNED_INTELLIGENCE_MUTATED");
+  }
+ });
+ it("rejects altered prepared answer hashes or reinterpretation of signed keys as metadata",()=>{
+  const {quote,customerBytes}=freshOffer();
+  const frozen=JSON.parse(customerBytes) as Record<string,unknown>;
+  const delivered={...frozen,payment:{quote_id:quote.quote_id}};
+  expect(()=>assertFrozenCapabilityIntelligenceProjection({
+   quote:{...quote,prepared_answer_sha256:h("wrong")},
+   frozen,delivered,addedEnvelopeKeys:["payment"],
+  })).toThrow("CAPABILITY_DELIVERY_FROZEN_HASH_MISMATCH");
+  expect(()=>assertFrozenCapabilityIntelligenceProjection({
+   quote,frozen,delivered,addedEnvelopeKeys:["payment","execution_authorized"],
+  })).toThrow("CAPABILITY_DELIVERY_ENVELOPE_SCOPE_INVALID");
  });
 });
