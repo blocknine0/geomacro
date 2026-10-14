@@ -32,7 +32,7 @@ function emptyStage(){
  });
 }
 try{
- if(!DOMAINS.has(domain)||!["claim","finish"].includes(operation)||
+ if(!DOMAINS.has(domain)||!["claim","finish","abort"].includes(operation)||
     process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
     process.env.GITHUB_REF!=="refs/heads/main"||
     process.env.GEOMACRO_AUTOMATIC_D1_PULSE_STAGE!=="true"||
@@ -85,8 +85,20 @@ try{
  }else{
   const claim=JSON.parse(readFileSync(`${DIR}/${domain}-claim.json`,"utf8"));
   if(claim?.claimed!==true)throw Error("PRIVATE_CLASSIFIER_FINISH_WITHOUT_CLAIM");
-  const data=JSON.parse(readFileSync(`${DIR}/${domain}.json`,"utf8"));
-  if(data?.schema!=="geomacro.private-scoring-candidates.v1"||
+  let data=null;
+  try {data=JSON.parse(readFileSync(`${DIR}/${domain}.json`,"utf8"));}
+  catch {if(operation!=="abort")throw Error("PRIVATE_CLASSIFIER_RESULT_MISSING");}
+  const valid=data?.schema==="geomacro.private-scoring-candidates.v1"&&
+     data.category===domain&&data.private_only===true&&
+     data.diagnostics?.domain===domain&&
+     Array.isArray(data.attempted_original_article_refs)&&
+     Array.isArray(data.returned_original_article_refs)&&
+     data.diagnostics.classifier_attempted_count>=data.attempted_original_article_refs.length&&
+     data.diagnostics.classifier_returned_count>=data.returned_original_article_refs.length;
+  if(operation==="finish"&&!valid)throw Error("PRIVATE_CLASSIFIER_RESULT_PROOF_INVALID");
+  if(operation==="abort"&&data!==null&&!valid)throw Error("PRIVATE_CLASSIFIER_ABORT_PROOF_INVALID");
+  /* Prior full proof assertion retained for normal finish only. */
+  if(operation==="finish" && (data?.schema!=="geomacro.private-scoring-candidates.v1"||
      data.category!==domain||data.private_only!==true||
      data.diagnostics?.domain!==domain||
      !Array.isArray(data.attempted_original_article_refs)||
@@ -94,12 +106,20 @@ try{
      data.diagnostics.classifier_attempted_count<
        data.attempted_original_article_refs.length||
      data.diagnostics.classifier_returned_count<
-       data.returned_original_article_refs.length)
+       data.returned_original_article_refs.length))
    throw Error("PRIVATE_CLASSIFIER_RESULT_PROOF_INVALID");
+  // Source fetch failures or HTTP restrictions never earn a retry.
+  // A failed classifier batch with an authenticated selected source hash
+  // may use its single delayed retry; absent/corrupt proof is terminal.
+  const retriableClassifierFailure=operation==="abort" && valid &&
+    data.diagnostics.classifier_failed_batch_count>0 &&
+    data.returned_original_article_refs.length===0;
+  const attempted=operation==="finish"?data.attempted_original_article_refs:
+    retriableClassifierFailure?data.attempted_original_article_refs:[];
+  const returned=operation==="finish"?data.returned_original_article_refs:[];
   const state=acknowledgePrivateClassifierWork({
    domain,ledger:previous,now,runId,
-   attempted:data.attempted_original_article_refs,
-   returned:data.returned_original_article_refs,
+   attempted,returned,
   });
   await attempts.persist(domain,{cursor:{status:"PRIVATE_CLASSIFIER_PROCESSING"},...state},
     {last_attempt_at:now});
@@ -109,8 +129,8 @@ try{
   const e=state.records.find(x=>x.run_id===runId);
   console.log(JSON.stringify({
    domain,status:e.status,d1_readback_verified:true,
-   classifier_attempted_originals:data.attempted_original_article_refs.length,
-   classifier_returned_originals:data.returned_original_article_refs.length,
+   classifier_attempted_originals:attempted.length,
+   classifier_returned_originals:returned.length,
    commercially_qualified:false,payment_allowed:false,
   }));
  }
