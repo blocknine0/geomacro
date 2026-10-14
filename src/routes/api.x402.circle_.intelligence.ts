@@ -360,8 +360,8 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
               quote_id:offered.quote.quote_id,network:acceptedRequirement.network,
               asset:acceptedRequirement.asset,execution_authorized:false},
               402,{"PAYMENT-REQUIRED":encodePaymentHeader(acceptedDocument)});
-          }catch(error){
-            console.error("[circle-x402] immutable signed capability prequote unavailable",error);
+          }catch{
+            console.error("[circle-x402] immutable signed capability prequote unavailable (fail closed)");
             return json({ok:false,chargeable:false,payment_required_now:false,
               error:{code:"CAPABILITY_SIGNED_PREQUOTE_UNAVAILABLE",
                 message:"No verified signed, immutable and provider-eligible answer can be quoted; no charge."},

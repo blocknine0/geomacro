@@ -587,8 +587,8 @@ export const mainnetIntelligenceHandlers = {
               asset:config.asset,recipient:config.payTo,
             });
             return paymentRequiredResponse(request,config,plan.query_plan_hash,offered.quote);
-          } catch(error) {
-            console.error("[x402-capability] signed prequote unavailable",error);
+          } catch {
+            console.error("[x402-capability] signed prequote unavailable (fail closed)");
             return json({ok:false,chargeable:false,payment_required_now:false,
               error:{code:"CAPABILITY_SIGNED_PREQUOTE_UNAVAILABLE",
                 message:"Verified signed immutable intelligence or prequote readback is unavailable; no payment is offered."},

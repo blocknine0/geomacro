@@ -12,6 +12,9 @@ export async function freezeVerifiedCapabilityAnswer(input:{
   preparedIntelligence:Record<string,unknown>;
 }):Promise<{quote:CapabilityQuote;intelligence:Record<string,unknown>}> {
   const quote=assertAcceptedCapabilityQuote(input.quote);
+  if(quote.network!=="eip155:8453" ||
+     quote.asset_contract!=="0x833589fcd6edb6e08f4c7c32d4f71b54bda02913")
+    throw Error("CAPABILITY_PREQUOTE_ONLY_CANONICAL_BASE_USDC");
   const customerBytes=stableCommerceJson(input.preparedIntelligence);
   if (new TextEncoder().encode(customerBytes).byteLength>96*1024 ||
       commerceSha256(customerBytes)!==quote.prepared_answer_sha256)
@@ -30,6 +33,9 @@ export async function readVerifiedCapabilityAnswer(input:{
   requestFingerprint:string;
 }):Promise<{quote:CapabilityQuote;intelligence:Record<string,unknown>}> {
   const quote=assertAcceptedCapabilityQuote(input.quote);
+  if(quote.network!=="eip155:8453" ||
+     quote.asset_contract!=="0x833589fcd6edb6e08f4c7c32d4f71b54bda02913")
+    throw Error("CAPABILITY_PREQUOTE_ONLY_CANONICAL_BASE_USDC");
   if(!SHA.test(input.requestFingerprint) ||
       input.requestFingerprint!==quote.request_fingerprint_sha256)
     throw Error("CAPABILITY_PREQUOTE_REQUEST_MISMATCH");
