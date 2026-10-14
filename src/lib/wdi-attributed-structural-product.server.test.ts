@@ -5,7 +5,7 @@ import { assertAttributedWdiStructuralProduct, buildAttributedWdiStructuralProdu
 import type { B2CommercialSourceRight } from "./b2-live.server";
 
 const rights:B2CommercialSourceRight={
-  source_id:"world_bank_indicators",category:"macro",
+  source_id:"world_bank_indicators",category:"MACRO",
   certification_state:"CERTIFIED",commercial_usage_status:"DERIVED_ONLY",
   enabled_for_ingestion:true,enabled_for_commercial_signals:true,
   raw_redistribution_allowed:false,attribution_required:true,licence_name:"CC BY 4.0",
@@ -51,6 +51,9 @@ describe("WDI narrow attributed structural product: synthetic regression only",(
     expect(a.integrity.signature_status).toBe("UNSIGNED_NOT_A_GRO");
     expect(()=>assertAttributedWdiStructuralProduct(a)).not.toThrow();
     expect(certifiedWdiAttributionRights([rights]).receipt_sha256).toMatch(/^[a-f0-9]{64}$/);
+    const alias=certifiedWdiAttributionRights([{...rights,category:"macro"}]);
+    expect(alias.eligible).toBe(true);
+    expect(alias.receipt_sha256).toMatch(/^[a-f0-9]{64}$/);
   });
   it("fails closed on missing, unlicensed, miscertified or misattributed rights",()=>{
     expect(()=>buildAttributedWdiStructuralProduct({...input(),rights_rows:null}))
@@ -59,10 +62,21 @@ describe("WDI narrow attributed structural product: synthetic regression only",(
       {attribution_required:false},{certification_state:"PENDING"},
       {licence_name:"CC BY-NC 4.0"},{enabled_for_commercial_signals:false},
       {source_id:"world_bank_qpsd"},
+      {category:"GEOPOLITICS"},{category:"Macro"},
+      {commercial_usage_status:"REVIEW_REQUIRED"},
+      {enabled_for_ingestion:false},
     ]){
       expect(()=>buildAttributedWdiStructuralProduct({...input(),
         rights_rows:[{...rights,...change}]})).toThrow();
     }
+  });
+  it("rejects wrong macro categories without weakening valid WDI rights",()=>{
+    for(const category of ["GEOPOLITICS","Macro","CRITICAL_MINERALS"]){
+      const result=certifiedWdiAttributionRights([{...rights,category}]);
+      expect(result).toEqual({eligible:false,
+        reason:"WDI_RIGHTS_CONTRACT_MISMATCH",receipt_sha256:null});
+    }
+    expect(certifiedWdiAttributionRights([{...rights,category:"MACRO"}]).eligible).toBe(true);
   });
   it("rejects wrong WDI API contract, forged source fact hash and nonconsecutive years",()=>{
     expect(()=>buildAttributedWdiStructuralProduct({...input(),source_api_id:"3" as "2"}))
