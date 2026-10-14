@@ -22,7 +22,8 @@ const FIXED=[
 ] as const;
 const now=new Date("2026-10-15T00:02:00.000Z");
 const opts={capability:"risk_gate_bundle",variant:"complex_multi_source",
- requestFingerprint:"c".repeat(64),network:"eip155:8453",
+ requestFingerprint:"c".repeat(64),availabilityFingerprint:"e".repeat(64),
+ network:"eip155:8453",
  asset:"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
  recipient:"0x"+"a".repeat(40),rail:"coinbase_x402" as const,
  availabilityVerified:true,now};
@@ -74,6 +75,7 @@ describe("founder-approved deterministic capability pricing — NO FUNDS",()=>{
      {capability:"signed_risk_object"},
      {variant:"existing_proof_preflight"},
      {requestFingerprint:"d".repeat(64)},
+     {availabilityFingerprint:"f".repeat(64)},
      {network:"eip155:84532"},
      {asset:"0x"+"b".repeat(40)},
      {recipient:"0x"+"b".repeat(40)},
