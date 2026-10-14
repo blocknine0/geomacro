@@ -338,6 +338,30 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
 
+        // Circle uses the SAME founder-approved price resolver and no hidden
+        // provider-specific amounts. Price changes require a fresh buyer quote.
+        const requestFingerprint=commerceFingerprint({
+          product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,request:parsed,
+        });
+        let capabilityQuote:CapabilityQuote;
+        try{
+          const price=approvedAdaptiveIntelligencePrice(plan);
+          capabilityQuote=quoteGeomacroCapability({
+            capability:price.capability,variant:price.variant,
+            requestFingerprint,network:requirement.network,asset:requirement.asset,
+            recipient:requirement.payTo,rail:"circle_gateway_x402",
+            availabilityVerified:availability.deliverable,
+          });
+          config={...config,priceUsdc:capabilityQuote.amount_usdc,
+            amountAtomic:capabilityQuote.amount_atomic};
+          requirement={...requirement,amount:capabilityQuote.amount_atomic};
+          paymentRequired=paymentRequiredDocument(request,requirement,capabilityQuote);
+        }catch(error){
+          return json({ok:false,chargeable:false,payment_required_now:false,
+            error:{code:"CAPABILITY_PRICE_SELECTION_NOT_ACCEPTED",
+              reason:error instanceof Error?error.message:"PRICE_SCOPE_INVALID"},
+            execution_authorized:false},422);
+        }
         const paymentToken = request.headers.get("payment-signature")?.trim() ?? "";
         if (!paymentToken) {
           return json(
@@ -383,12 +407,26 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
 
+        // Quote echo must be exact before any durable delivery claim.
+        try{
+          if(!paymentPayload||typeof paymentPayload!=="object"||Array.isArray(paymentPayload))
+            throw Error("CIRCLE_PAYMENT_QUOTE_MISSING");
+          const extensions=(paymentPayload as Record<string,unknown>).extensions;
+          const geomacro=extensions&&typeof extensions==="object"&&!Array.isArray(extensions)?
+            (extensions as Record<string,unknown>).geomacro:null;
+          const info=geomacro&&typeof geomacro==="object"&&!Array.isArray(geomacro)?
+            (geomacro as Record<string,unknown>).info:null;
+          const quote=info&&typeof info==="object"&&!Array.isArray(info)?
+            (info as Record<string,unknown>).capability_quote:null;
+          verifyGeomacroCapabilityQuote(quote,capabilityQuote);
+        }catch(error){
+          return json({ok:false,chargeable:false,
+            error:{code:"CIRCLE_CAPABILITY_QUOTE_BINDING_INVALID",
+              reason:error instanceof Error?error.message:"QUOTE_INVALID"},
+            execution_authorized:false},402,
+            {"PAYMENT-REQUIRED":encodePaymentHeader(paymentRequired)});
+        }
         const paymentFingerprint = commerceSha256(paymentToken);
-        const requestFingerprint = commerceFingerprint({
-          product: PRODUCT_ID,
-          query_plan_hash: plan.query_plan_hash,
-          request: parsed,
-        });
 
         let claim;
         try {
@@ -583,6 +621,12 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
               settled: false,
               amount_atomic: requirement.amount,
               amount_usdc: config.priceUsdc,
+              capability:capabilityQuote.capability,
+              price_variant:capabilityQuote.variant,
+              pricing_contract_version:capabilityQuote.version,
+              quote_id:capabilityQuote.quote_id,
+              quote_expires_at:capabilityQuote.expires_at,
+              quote_request_fingerprint:capabilityQuote.request_fingerprint_sha256,
               asset: "USDC",
               asset_contract: CIRCLE_X402_BASE_MAINNET_USDC,
               network: requirement.network,
