@@ -626,7 +626,6 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             ...frozenIntelligence,
             payment: {
               provider: "circle_gateway_x402",
-              settled: false,
               amount_atomic: requirement.amount,
               amount_usdc: capabilityQuote.amount_usdc,
               capability:capabilityQuote.capability,
@@ -639,9 +638,7 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
               asset_contract: CIRCLE_X402_BASE_MAINNET_USDC,
               network: requirement.network,
               recipient: requirement.payTo,
-              accounting_state: "pending_settlement",
               reconciliation_required: true,
-              idempotent_replay: false,
             },
             execution_authorized: false,
           };

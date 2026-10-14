@@ -108,8 +108,9 @@ describe("Nevermined settlement ordering", () => {
 
 describe("cross-provider post-settlement recovery", () => {
   it("freezes Circle customer bytes before settlement and never mutates delivered/replayed JSON", () => {
-    expect(circleRoute).toContain('settled: false');
-    expect(circleRoute).toContain('accounting_state: "pending_settlement"');
+    expect(circleRoute).not.toContain('settled: false');
+    expect(circleRoute).not.toContain('accounting_state: "pending_settlement"');
+    expect(circleRoute).not.toContain('idempotent_replay: false');
     expect(circleRoute).toContain('settlement_proof:"PAYMENT-RESPONSE_HEADER_ONLY"');
     expect(circleRoute).not.toContain("responsePayload.payment =");
     const prepare = circleRoute.indexOf("prepareAgentCommerceDelivery({");
