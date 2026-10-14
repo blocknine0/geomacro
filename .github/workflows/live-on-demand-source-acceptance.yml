@@ -26,6 +26,8 @@ on:
       - "src/lib/on-demand-original-subject-matching.ts"
       - "scripts/ops/verify-live-195-country-batch.ts"
       - "scripts/ops/export-canonical-195-country-matrix.ts"
+      - "src/lib/on-demand-fed-board-discount-release.server.ts"
+      - "scripts/ops/verify-live-fed-board-private-finding.ts"
       - "scripts/ops/verify-live-on-demand-nrcan-original.ts"
       - "src/lib/on-demand-nrcan-day-only-rescue.test.ts"
       - "src/lib/on-demand-evidence-qualification.server.ts"
@@ -47,6 +49,8 @@ on:
       - "src/lib/on-demand-original-subject-matching.ts"
       - "scripts/ops/verify-live-195-country-batch.ts"
       - "scripts/ops/export-canonical-195-country-matrix.ts"
+      - "src/lib/on-demand-fed-board-discount-release.server.ts"
+      - "scripts/ops/verify-live-fed-board-private-finding.ts"
       - "scripts/ops/verify-live-on-demand-nrcan-original.ts"
       - "src/lib/on-demand-nrcan-day-only-rescue.test.ts"
       - "src/lib/on-demand-evidence-qualification.server.ts"
@@ -96,6 +100,7 @@ jobs:
           bun scripts/ops/verify-live-on-demand-representative-cases.ts
           bun scripts/ops/verify-live-on-demand-nrcan-original.ts
           bun scripts/ops/export-canonical-195-country-matrix.ts
+          bun scripts/ops/verify-live-fed-board-private-finding.ts
       # Existing once-daily original API acceptance owns the rotating probe.
       # No separate Cron, per-country poller or Supabase/B2 production reads.
       # PR runners never run this optional additional network probing stage.
@@ -201,6 +206,7 @@ jobs:
           bun scripts/ops/verify-live-on-demand-representative-cases.ts
           bun scripts/ops/verify-live-on-demand-nrcan-original.ts
           bun scripts/ops/export-canonical-195-country-matrix.ts
+          bun scripts/ops/verify-live-fed-board-private-finding.ts
       - name: Preserve redacted provider diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
