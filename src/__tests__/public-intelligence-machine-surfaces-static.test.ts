@@ -23,9 +23,10 @@ describe("public intelligence machine surfaces", () => {
     expect(state).not.toContain("event.title");
   });
 
-  it("locks the early-adoption price and delivery target in one contract", () => {
+  it("keeps legacy testnet reference separate from live capability-specific pricing", () => {
     expect(contract).toContain('GEOMACRO_INTELLIGENCE_PRICE_USDC');
-    expect(contract).toContain('"0.05"');
-    expect(contract).toContain("10_000");
+    expect(capabilities).toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
+    expect(capabilities).not.toContain("early_adoption_price_usdc");
+    expect(capabilities).not.toContain("later_reference_price_usdc");
   });
 });
