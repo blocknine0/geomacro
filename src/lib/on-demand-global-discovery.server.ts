@@ -1280,24 +1280,61 @@ export async function verifyOnDemandOriginalArticlePages(
   }
   for(const candidate of eligible)add(candidate);
 
-  const dates=await Promise.all(chosen.map(async(candidate)=>{
+  // First pass covers distinct approved originating publishers/categories.
+  // A secondary page from the SAME publisher is only an evidence-rescue
+  // attempt if its first article failed publication-clock verification and
+  // the four-page budget still has headroom; it is never independent proof.
+  const verifyCandidate=async(candidate:PrivateOriginalCandidate):Promise<{
+    verified:PrivatePageDatedOriginal|null; denied:boolean;
+  }>=>{
     try{
       const html=await boundedFetch(options.fetchImpl??fetch,candidate.article_url,"text/html");
       const originalDate=verifiedPublisherPageDate(html,now,null,{maxAgeMs});
       if(!originalDate || !freshPublished(originalDate,now,maxAgeMs) ||
         (candidate.feed_item_published_at!==null &&
          Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000))
-        return null;
-      return {...candidate,publisher_article_page_date_verified:true as const,
-        page_original_published_at:originalDate};
-    }catch{
-      // Redirect, source outage, oversized page or invalid clock => no proof.
-      // Never log private originals, URLs or source payloads.
-      return null;
+        return {verified:null,denied:false};
+      return {verified:{...candidate,publisher_article_page_date_verified:true as const,
+        page_original_published_at:originalDate},denied:false};
+    }catch(error){
+      // An explicit access/rate-limit denial may NEVER trigger another
+      // URL request on the same publisher. This is not a 403/429 bypass.
+      const code=error instanceof Error?error.message:"";
+      return {verified:null,denied:["ON_DEMAND_SOURCE_ACCESS_RESTRICTED",
+        "ON_DEMAND_SOURCE_RATE_LIMITED"].includes(code)};
     }
-  }));
-  const verified_candidates=dates.filter((c):c is PrivatePageDatedOriginal=>c!==null);
-  return {attempted:chosen.length,verified:verified_candidates.length,verified_candidates};
+  };
+  const first=await Promise.all(chosen.map(verifyCandidate));
+  const verified_candidates:PrivatePageDatedOriginal[]=[];
+  const blockedFamilies=new Set<string>();
+  const successfulFamilies=new Set<string>();
+  const seenIds=new Set(chosen.map(x=>x.article_identity_sha256));
+  for(let i=0;i<chosen.length;i++){
+    if(first[i].verified){
+      verified_candidates.push(first[i].verified!);
+      successfulFamilies.add(chosen[i].publisher_family);
+    }
+    if(first[i].denied)blockedFamilies.add(chosen[i].publisher_family);
+  }
+  let attempted=chosen.length;
+  // Try at most one different original article per failed publisher.
+  // Keep independent source identity intact and never exceed total page quota.
+  for(let i=0;i<chosen.length && attempted<MAX_ARTICLE_PAGE_PROBES;i++){
+    const family=chosen[i].publisher_family;
+    if(successfulFamilies.has(family) || blockedFamilies.has(family))continue;
+    const alternate=eligible.find(x=>x.publisher_family===family &&
+      !seenIds.has(x.article_identity_sha256));
+    if(!alternate)continue;
+    seenIds.add(alternate.article_identity_sha256);
+    attempted++;
+    const outcome=await verifyCandidate(alternate);
+    if(outcome.verified){
+      verified_candidates.push(outcome.verified);
+      successfulFamilies.add(family);
+    }
+    if(outcome.denied)blockedFamilies.add(family);
+  }
+  return {attempted,verified:verified_candidates.length,verified_candidates};
 }
 
 /** Client-safe shape: no upstream article, URLs, text, or private evidence. */
