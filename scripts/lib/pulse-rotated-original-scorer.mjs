@@ -150,7 +150,7 @@ export async function recoverPulseRotatedOriginalPageDates(
      pageBudget.used<0 || pageBudget.used>ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN ||
      typeof xml!=="string" || Buffer.byteLength(xml,"utf8")>MAX_BYTES ||
      /<!DOCTYPE|<!ENTITY/iu.test(xml) ||
-     !/<(?:atom:)?feed(?:\\s|>)/iu.test(xml))
+     !/<(?:atom:)?feed(?:\s|>)/iu.test(xml))
     return [];
   const matched=[],seen=new Set();
   const entries=[...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)]
