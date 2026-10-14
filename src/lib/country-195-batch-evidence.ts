@@ -23,6 +23,7 @@ export type CountryBatchCellEvidence={
   live_original_publisher_families:number;
   country_relevant_originals:number;
   verified_original_pages:number;
+  latest_verified_original_publication_utc:string|null;
   fallback_original_publisher_families:number;
   restricted_original_publishers:number;
   rate_limited_original_publishers:number;
@@ -80,6 +81,8 @@ export function summarizeCountryBatchCell(
     live_original_publisher_families:reachable.size,
     country_relevant_originals:matched.length,
     verified_original_pages:pages.length,
+    latest_verified_original_publication_utc:pages.length?
+      pages.map(x=>x.page_original_published_at).sort().at(-1)??null:null,
     fallback_original_publisher_families:verifiedFamilies.size,
     restricted_original_publishers:restricted,
     rate_limited_original_publishers:throttled,
