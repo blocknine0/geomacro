@@ -28,18 +28,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 6
     environment: production
-    env:
-      GEOMACRO_WDI_OPERATOR_ACK: ${{ inputs.wdi_no_funds_authorization }}
-      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
-      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
-      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
-      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
-      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
-      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      COINBASE_X402_PAY_TO: ${{ secrets.COINBASE_X402_PAY_TO }}
-      COINBASE_X402_PRICE_USDC: ${{ secrets.COINBASE_X402_PRICE_USDC }}
     steps:
       - name: Checkout protected canonical main only without persistent credentials
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -57,6 +45,18 @@ jobs:
           bun-version: 1.4.2
       - name: Authenticated read-only prereq check; no signing, B2 GET or payment
         shell: bash
+        env:
+          GEOMACRO_WDI_OPERATOR_ACK: ${{ inputs.wdi_no_funds_authorization }}
+          RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+          RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+          RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+          B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+          B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          COINBASE_X402_PAY_TO: ${{ secrets.COINBASE_X402_PAY_TO }}
+          COINBASE_X402_PRICE_USDC: ${{ secrets.COINBASE_X402_PRICE_USDC }}
         run: |
           set -euo pipefail
           bun scripts/ops/verify-wdi-protected-signer-preflight.ts
