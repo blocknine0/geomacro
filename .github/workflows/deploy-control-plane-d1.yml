@@ -91,7 +91,11 @@ jobs:
           if (!/^[0-9a-f-]{20,}$/i.test(id)) throw new Error('INVALID_D1_DATABASE_ID');
           const output = source.replace('REPLACE_WITH_D1_DATABASE_ID', id);
           if (output.includes('REPLACE_WITH_D1_DATABASE_ID')) throw new Error('D1_ID_REPLACEMENT_FAILED');
-          fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', output);
+          const sourceSha = String(process.env.GITHUB_SHA ?? '');
+          if (!/^[a-f0-9]{40}$/.test(sourceSha)) throw new Error('INVALID_DEPLOY_SOURCE_SHA');
+          const config = JSON.parse(output);
+          config.vars = { ...(config.vars ?? {}), GEOMACRO_SOURCE_SHA: sourceSha };
+          fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', JSON.stringify(config, null, 2));
           NODE
 
       - name: Apply committed D1 migrations remotely
@@ -154,10 +158,11 @@ jobs:
           HEALTH=''
           for attempt in 1 2 3 4 5 6; do
             HEALTH="$(curl -fsS --max-time 10 "$CONTROL_PLANE_URL/health" || true)"
-            if printf '%s' "$HEALTH" | grep -q '"ok":true'; then break; fi
+            if printf '%s' "$HEALTH" | jq -e --arg sha "$GITHUB_SHA" '.ok == true and .deployed_source_sha == $sha' >/dev/null; then break; fi
             sleep $((attempt * 2))
           done
           printf '%s' "$HEALTH" | jq -e '.schema_version >= 3' >/dev/null || { echo "D1 Worker schema v2 health acceptance failed"; exit 7; }
+          printf '%s' "$HEALTH" | jq -e --arg sha "$GITHUB_SHA" '.deployed_source_sha == $sha' >/dev/null || { echo "D1 Worker exact source SHA acceptance failed"; exit 7; }
           printf '%s' "$HEALTH" | grep -q '"durable_payload_store":"b2"' || { echo "B2 authority contract missing"; exit 7; }
           printf '%s' "$HEALTH" | grep -q '"commerce_ledger":"durable_object"' || { echo "Commerce authority contract missing"; exit 7; }
 
