@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
+import { originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
 
@@ -141,7 +141,7 @@ const TOPIC_TITLE_PATTERNS:Readonly<Record<string,RegExp>>={
   sanctions_restrictions:/\b(?:sanctions?|embargo|export controls?|restrictions?)\b/iu,
   conflict_geopolitics:/\b(?:conflict|ceasefire|war|military|airstrike|peace|security council)\b/iu,
   political_governance:/\b(?:government|governance|election|parliament|diplomatic)\b/iu,
-  macro_risk:/\b(?:inflation|gdp|monetary|central bank|growth|interest rate|economy|economic|financial|chancellor|treasury)\b/iu,
+  macro_risk:/\b(?:inflation|gdp|monetary|central bank|growth|interest rates?|discount rates?|economy|economic|financial|chancellor|treasury)\b/iu,
   sovereign_risk:/\b(?:fiscal|sovereign|budget|bond|debt)\b/iu,
   fx_external_risk:/\b(?:foreign exchange|exchange rate|currency|reserves|fx)\b/iu,
   critical_minerals:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mining)\b/iu,
@@ -566,7 +566,7 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
     url:"https://www.federalreserve.gov/feeds/press_all.xml",
     media:"rss",originalHost:"www.federalreserve.gov",
     originalPath:/^\/newsevents\/pressreleases\/[A-Za-z0-9]/u,
-    topic:/\b(?:monetary policy|interest rates?|inflation|foreign exchange|economic activity|financial stability|liquidity|federal funds)\b/iu,
+    topic:/\b(?:monetary policy|interest rates?|discount rates?|inflation|foreign exchange|economic activity|financial stability|liquidity|federal funds)\b/iu,
   },
   {
     domain:"geopolitics",family:"uk_ofsi_original_publisher",
@@ -809,8 +809,8 @@ async function originalOfficialFeed(
       MINERAL_TERMS.some((term) => term.value === mineral && term.pattern.test(contextualText));
     const hasNativeDate=freshPublished(date,now,maxAgeMs);
     if(date.trim())audit.native_dated++;
-    const matchedCountry=originalHeadlineMentionsCountry(title,countryIso3,countryNameValue) ||
-      originalHeadlineMentionsCountry(summary.slice(0,300),countryIso3,countryNameValue);
+    const matchedCountry=originalPublisherMatchesCountry(
+      title,summary,countryIso3,countryNameValue,def.family);
     if(matchedCountry)audit.country_mentioned++;
     const matchedScope=def.topic.test(contextualText) &&
       matchesRequestedTopic(contextualText,def.domain,topics) && mineralMatches;
