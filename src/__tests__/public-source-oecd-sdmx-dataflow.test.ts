@@ -3,7 +3,11 @@ import {publicSources} from "../../global-intelligence/adapters/public-sources.m
 
 const expectedUrl="https://sdmx.oecd.org/public/rest/dataflow/OECD.SDD.NAD/DSD_NAAG@DF_NAAG_I/latest?references=none";
 function fixtureResponse(xml:string,status=200):Response{
-  return new Response(xml,{status,headers:{"content-type":"application/vnd.sdmx.structure+xml;version=2.1"}});
+  const response=new Response(xml,{status,headers:{"content-type":"application/vnd.sdmx.structure+xml;version=2.1"}});
+  // Real fetch provides response.url; an in-memory Response fixture does not.
+  // Preserve the existing same-origin redirect verification in fetchText.
+  Object.defineProperty(response,"url",{value:expectedUrl});
+  return response;
 }
 
 describe("OECD bounded official SDMX original dataflow health",()=>{
