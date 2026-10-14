@@ -40,3 +40,20 @@ export function originalHeadlineMentionsCountry(
     return pattern.test(clean);
   });
 }
+/** A publisher-authenticated US discount-rate policy release is inherently US
+ * scope even if its official headline omits the literal country name. This is
+ * narrowly limited to the Fed's original policy-meeting release family;
+ * other publishers and topics still require an explicit country mention.
+ * Issuer identity only establishes relevance, never rights or factual truth.
+ */
+export function originalPublisherMatchesCountry(
+  title:string, summary:string, countryIso3:string,
+  verifiedOfficialName:string, publisherFamily:string,
+):boolean {
+  if (originalHeadlineMentionsCountry(title,countryIso3,verifiedOfficialName) ||
+      originalHeadlineMentionsCountry(summary.slice(0,300),countryIso3,verifiedOfficialName))
+    return true;
+  return countryIso3==="USA" && verifiedOfficialName==="United States" &&
+    publisherFamily==="us_federal_reserve_original_publisher" &&
+    /^Minutes of the Board['\u2019]s discount rate meetings on\s+\S/iu.test(title);
+}
