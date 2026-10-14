@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION, type CapabilityQuote} from "./capability-pricing";
 import {prepareVerifiedCapabilityOffer} from "./capability-x402-offer.server";
-import {readVerifiedCapabilityAnswer} from "./capability-x402-prequote.server";
+import {readVerifiedCapabilityAnswer,assertFrozenCapabilityIntelligenceProjection} from "./capability-x402-prequote.server";
 import {readAlreadyDeliveredCapabilityReplay} from "./capability-x402-replay.server";
 import {assertAcceptedCapabilityQuote,coinbaseRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
   capabilityLedgerRequestFingerprint,capabilityQuoteFromPaymentPayload}
@@ -738,6 +738,10 @@ export const mainnetIntelligenceHandlers = {
             },
           };
           assertPublicPaidOutputBoundary(prepared);
+          assertFrozenCapabilityIntelligenceProjection({
+            quote:capabilityQuote,frozen:frozenIntelligence,delivered:prepared,
+            addedEnvelopeKeys:["availability","payment"],
+          });
           const preparedResult = await prepareCoinbaseX402Delivery({
             paymentFingerprint,
             claimToken,
