@@ -223,7 +223,7 @@ const EXACT_ALIASES:Readonly<Record<string,readonly string[]>>=Object.freeze({
  TLS:["East Timor"],SYR:["Syrian Arab Republic"],
 });
 export const COUNTRIES_195:readonly Country195[]=Object.freeze(
- COUNTRY_ROWS.trim().split("\\n").map(s=>{
+ COUNTRY_ROWS.trim().split(String.fromCharCode(10)).map(s=>{
   const [iso3,iso2,name]=s.split("|");
   return Object.freeze({iso3,iso2,name,aliases:EXACT_ALIASES[iso3]??[],
     observer_state:iso3==="VAT"||iso3==="PSE"});
