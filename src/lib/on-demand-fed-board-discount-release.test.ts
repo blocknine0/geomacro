@@ -394,6 +394,10 @@ describe("Part 7 bounded historical Fed publication and exact customer question"
     expect(bound.draft.original_published_at_utc).toBe(FEED_TIME);
     expect(bound.draft.expiry_at_utc).toBe("2026-10-20T18:00:00.000Z");
     expect(bound.draft.signing_eligible).toBe(false);
+    expect(bound.draft.required_data_attribution.credit)
+      .toBe("Board of Governors of the Federal Reserve System");
+    expect(bound.draft.required_data_attribution.material)
+      .toContain("October 13, 2026");
     expect(bound.draft.item_commercial_rights_admitted).toBe(false);
     expect(bound.draft.risk_score).toBeNull();
     expect(bound.canonical_private_json).not.toContain(received.question);
