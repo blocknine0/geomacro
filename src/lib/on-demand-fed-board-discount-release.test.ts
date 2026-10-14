@@ -57,6 +57,12 @@ describe("genuine Fed issuer-original context to private structured answer, not 
   const {fetchImpl,calls}=fetcher();
   const d=await discoverOnDemandForPrivateQualification(SEARCH,{fetchImpl,now:NOW,disableDiscoveryIndex:true});
   const fed=d.private_original_review_candidates.filter(x=>x.publisher_family==="us_federal_reserve_original_publisher");
+  // Only numeric producer audit counters; do not leak source URL/title.
+  const probe=d.discovery.source_probes.find(x=>x.family==="us_federal_reserve_original_publisher");
+  expect(probe?.feed_audit).toMatchObject({
+    inspected:1,native_dated:1,country_mentioned:1,
+    scope_matched:1,eligible_pub_date:1,allowed_article_paths:1,
+  });
   expect(fed).toHaveLength(1);
   expect(fed[0].article_url).toBe(URL);
   expect(fed[0].feed_item_published_at).toBe(FEED_TIME);
