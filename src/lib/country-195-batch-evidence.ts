@@ -52,11 +52,10 @@ export function summarizeCountryBatchCell(
   const pageVerified=pages.length>0;
   const live=reachable.size>0 || pageVerified;
   const countryRelevant=sourceFamilies.size>0;
-  const blocked=restricted>0?"PROVIDER_DENIED_401_403":
+  const blocked=pageVerified?"ITEM_RIGHTS_REVIEW_PENDING":
+    restricted>0?"PROVIDER_DENIED_401_403":
     throttled>0?"PROVIDER_RATE_LIMIT_429":
-    !relevant.length?"PROVIDER_UNAVAILABLE":
-    !live?"PROVIDER_UNAVAILABLE":
-    pageVerified?"ITEM_RIGHTS_REVIEW_PENDING":
+    !relevant.length||!live?"PROVIDER_UNAVAILABLE":
     countryRelevant?"ORIGINAL_PUBLICATION_UNVERIFIED":
     "NO_COUNTRY_RELEVANT_ORIGINAL";
   const verdict=pageVerified?"CURRENT_EVIDENCE_VERIFIED":
