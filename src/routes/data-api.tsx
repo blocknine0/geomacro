@@ -15,6 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AgentCommerceStatus } from "@/components/agent-commerce-status";
+import {GEOMACRO_PRICING_GROUPS,GEOMACRO_CAPABILITY_PRICES,
+  GEOMACRO_CAPABILITY_PRICING_VERSION} from "@/lib/capability-pricing-catalog";
 
 const TITLE = "API & Agent Access | Geomacro";
 const DESCRIPTION =
@@ -170,48 +172,39 @@ function DataApiPage() {
 
       <section id="pricing" className="scroll-mt-24 border-y border-border/55 bg-card/15">
         <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-          <div className="max-w-3xl">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Access & pricing</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Free to explore. x402 pay per successful commercial call.</h2>
-            <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">No subscription tier is required for the launch offer. The public site remains free; commercial machine delivery is priced per successful x402 delivery in USDC.</p>
-          </div>
-
-          <div className="mt-9 grid gap-5 lg:grid-cols-2">
-            <article className="rounded-[1.65rem] border border-border/60 bg-background/30 p-6 sm:p-8">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Free Explorer</p>
-              <p className="mt-3 text-4xl font-semibold">$0</p>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">For people evaluating Geomacro or following the public risk-intelligence product.</p>
-              <ul className="mt-6 space-y-3">
-                {FREE_ACCESS.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 h-4 w-4 shrink-0 text-primary" /><span>{item}</span></li>)}
-              </ul>
-              <p className="mt-6 rounded-xl border border-border/60 bg-card/30 p-4 text-xs leading-5 text-muted-foreground">Free Explorer does not include a free structured commercial API.</p>
-              <Button asChild variant="outline" className="mt-6"><Link to="/intelligence">Open Free Explorer</Link></Button>
-            </article>
-
-            <article className="relative overflow-hidden rounded-[1.65rem] border border-primary/30 bg-[linear-gradient(145deg,color-mix(in_oklab,var(--primary)_12%,var(--card)),var(--card)_48%)] p-6 sm:p-8">
-              <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
-              <div className="relative">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">x402 pay per call</p>
-                    <div className="mt-3 flex flex-wrap items-end gap-x-2 gap-y-1">
-                      <p className="text-4xl font-semibold">0.05</p>
-                      <span className="pb-1 text-sm text-muted-foreground">USDC / successful delivery</span>
-                    </div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Access & pricing</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Free to explore. Exact capability pricing when verified.</h2>
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
+            Pay only for successfully prepared, verified and deliverable intelligence. No mandatory subscription.
+            Free access includes website exploration, availability checks and schemas.
+          </p>
+          <p className="mt-3 font-mono text-[10px] text-muted-foreground">{GEOMACRO_CAPABILITY_PRICING_VERSION}</p>
+          <div className="mt-9 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {GEOMACRO_PRICING_GROUPS.map((group) => (
+              <article key={group.label} className="rounded-2xl border border-border/60 bg-background/35 p-5">
+                <h3 className="text-base font-semibold">{group.label}</h3>
+                {group.ids.map((id) => (
+                  <div key={id} className="mt-4 border-t border-border/35 pt-3">
+                    <p className="font-mono text-xs">{id}</p>
+                    {Object.entries(GEOMACRO_CAPABILITY_PRICES[id]).map(([variant,amount]) => (
+                      <p key={variant} className="mt-1 text-xs text-muted-foreground">
+                        {variant.replaceAll("_"," ")} — <strong className="text-foreground">{amount} USDC</strong>
+                      </p>
+                    ))}
                   </div>
-                  <CircleDollarSign className="h-6 w-6 text-primary" />
-                </div>
-                <p className="mt-4 text-sm leading-6 text-muted-foreground">Launch price for the first 20,000 successfully settled and delivered commercial intelligence calls. Failed, stale, unavailable, replayed, refunded, internal or unpaid requests do not count as successful paid deliveries.</p>
-                <ul className="mt-6 space-y-3">
-                  {PAID_ACCESS.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 h-4 w-4 shrink-0 text-primary" /><span>{item}</span></li>)}
-                </ul>
-                <div className="mt-6 rounded-xl border border-primary/20 bg-background/25 p-4">
-                  <p className="text-xs font-medium">No-charge failure policy</p>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">If Geomacro cannot deliver a fresh, eligible result, the request must fail closed rather than manufacture a chargeable answer.</p>
-                </div>
-              </div>
-            </article>
+                ))}
+              </article>
+            ))}
           </div>
+          <p className="mt-6 text-xs leading-6 text-muted-foreground">
+            Risk Gate bundle prices include the signed Risk Object with no duplicate charge.
+            Actual paid availability depends on live evidence, source rights, reviewer and signature verification.
+            Unsupported, expired or undeliverable requests remain free to decline; no automatic tier upgrades.
+            Capability credits are usage units, not USDC.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Private pilot or contracted subscription: separately negotiated and only where genuinely available.
+          </p>
         </div>
       </section>
 
