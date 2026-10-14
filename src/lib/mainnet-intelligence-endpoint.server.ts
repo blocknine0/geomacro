@@ -6,6 +6,8 @@ import {
 } from "./on-demand-evidence-qualification.server";
 import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "./agent-query-plan";
+import {bindPrivateFedMinutesToExactCustomerQuery}
+  from "./on-demand-private-query-bound-draft.server";
 import { assertGeomacroIntelligenceResponseContract } from "./geomacro-intelligence-contract";
 import { buildPrivateOnDemandMacroDrivers } from "./on-demand-private-macro-drivers.server";
 import { scorePrivateOnDemandMacroPeers, type PrivatePeerMacroResult } from "./on-demand-private-macro-peer-score.server";
@@ -390,6 +392,7 @@ export const mainnetIntelligenceHandlers = {
           let articlePageChecks=0;
           let articleDatesVerified=0;
           let privateFedSourceBoundFindingCandidateCount=0;
+          let privateExactQueryBoundFedDraftCount=0;
           let privateOfficialAnnualChanges=0;
           let privateAnnualDirectionalDrivers=0;
           let privateAnnualRightsVerifiedDrivers=0;
@@ -459,11 +462,20 @@ export const mainnetIntelligenceHandlers = {
             });
             // Existing query engine, request-local only. No private source
             // references, event prose or hashes enter the public 422 body.
-            privateFedSourceBoundFindingCandidateCount=
-              buildPrivateVerifiedFedMinutesFinding(qualification,pageProof,{
+            const privateFedFinding=buildPrivateVerifiedFedMinutesFinding(
+              qualification,pageProof,{
                 queryPlanHash:plan.query_plan_hash,
                 observedAt:new Date(privateResult.discovery.checked_at),
-              })?1:0;
+              });
+            privateFedSourceBoundFindingCandidateCount=privateFedFinding?1:0;
+            if(privateFedFinding){
+              const queryBound=bindPrivateFedMinutesToExactCustomerQuery({
+                receivedRequest:raw,canonicalPlan:plan,finding:privateFedFinding,
+              });
+              privateExactQueryBoundFedDraftCount=queryBound.ok?1:0;
+              // The unsigned private JSON and article SHA NEVER leave memory.
+              // A matching question is NOT rights, reviewer or payment admission.
+            }
             privateEvidenceQualification=publicOnDemandQualificationStatus(qualification);
           } catch(error) {
             console.error("[x402-live] bounded discovery failed",error);
@@ -511,6 +523,7 @@ export const mainnetIntelligenceHandlers = {
               original_article_page_checks:articlePageChecks,
               article_page_publication_dates_verified:articleDatesVerified,
               private_source_bound_structured_finding_candidates:privateFedSourceBoundFindingCandidateCount,
+              private_exact_query_bound_fed_drafts:privateExactQueryBoundFedDraftCount,
               structured_candidate_commercially_admitted:false,
               private_evidence_qualification:privateEvidenceQualification,
               private_originals_article_page_verified:
