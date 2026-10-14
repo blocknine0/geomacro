@@ -81,7 +81,7 @@ function durableLedgerConfig() {
 }
 
 async function callDurableLedger<T>(
-  action: "claim" | "prepare" | "complete" | "release",
+  action: "claim" | "prepare" | "complete" | "release" | "wdi-prequote-freeze" | "wdi-prequote-readback",
   payload: Record<string, unknown>,
 ): Promise<T> {
   const cfg = durableLedgerConfig();
@@ -131,6 +131,56 @@ function assertDurableClaim(value: unknown): AgentCommerceDeliveryClaim {
 async function assertDurableMutation(action: "prepare" | "complete" | "release", payload: Record<string, unknown>) {
   const result = await callDurableLedger<{ ok?: unknown }>(action, payload);
   if (result?.ok !== true) throw new Error(`AGENT_COMMERCE_DELIVERY_${action.toUpperCase()}_LOST_CLAIM`);
+}
+
+/**
+ * Private WDI pre-quote vault in the EXISTING commerce Durable Object. Never
+ * falls back to frozen Supabase or the payment-claim keyspace, and cannot settle.
+ */
+export type WdiDurablePrequote = {
+  bindingHash: string;
+  queryHash: string;
+  rightsHash: string;
+  receiptHash: string;
+  answerHash: string;
+  termsHash: string;
+  rightsGeneratedAt: string;
+  customerBytes: string;
+};
+export async function freezeWdiPrequoteInDurableLedger(input:WdiDurablePrequote) {
+  if(commerceLedgerBackend()!=="durable_object")
+    throw Error("WDI_DURABLE_PREQUOTE_BACKEND_REQUIRED");
+  const report=await callDurableLedger<{
+    ok:boolean;disposition:string;binding_hash:string;
+    answer_sha256:string;expires_at_ms:number;
+  }>("wdi-prequote-freeze",{
+    provider:"coinbase_x402",providerEnvironment:"mainnet",...input,
+  });
+  if(report?.ok!==true ||
+     !["FROZEN","EXACT_REPLAY"].includes(report.disposition) ||
+     report.binding_hash!==input.bindingHash ||
+     report.answer_sha256!==input.answerHash)
+    throw Error("WDI_DURABLE_PREQUOTE_FREEZE_UNVERIFIED");
+  return report;
+}
+
+export async function readbackWdiPrequoteFromDurableLedger(bindingHash:string) {
+  if(commerceLedgerBackend()!=="durable_object")
+    throw Error("WDI_DURABLE_PREQUOTE_BACKEND_REQUIRED");
+  const result=await callDurableLedger<{
+    ok:boolean;schema:string;bindingHash:string;queryHash:string;
+    rightsHash:string;receiptHash:string;answerHash:string;termsHash:string;
+    rightsGeneratedAt:string;expiresAtMs:number;customerBytes:string;
+    payment_authorized:boolean;settlement_attempted:boolean;
+  }>("wdi-prequote-readback",{
+    provider:"coinbase_x402",providerEnvironment:"mainnet",bindingHash,
+  });
+  if(result?.ok!==true ||
+     result.schema!=="geomacro.wdi-prequote-readback.v1" ||
+     result.bindingHash!==bindingHash ||
+     result.payment_authorized!==false ||result.settlement_attempted!==false)
+    throw Error("WDI_DURABLE_PREQUOTE_READBACK_INVALID");
+  return result;
 }
 
 export async function claimAgentCommerceDelivery(input: {
