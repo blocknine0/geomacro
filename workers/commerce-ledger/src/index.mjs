@@ -3,6 +3,8 @@ const NAME_RE = /^[a-z0-9][a-z0-9_.-]{1,63}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const LEASE_MS = 5 * 60 * 1000;
 const MAX_BODY_BYTES = 512 * 1024;
+const WDI_PREQUOTE_MAX_BYTES = 96 * 1024;
+const WDI_RIGHTS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 function json(payload, status = 200) {
   return Response.json(payload, {
@@ -111,6 +113,8 @@ export class CommerceLedger {
     }
 
     try {
+      if (action === "wdi-prequote-freeze") return json(await this.wdiPrequoteFreeze(body));
+      if (action === "wdi-prequote-readback") return json(await this.wdiPrequoteReadback(body));
       if (action === "claim") return json(await this.claim(body));
       if (action === "prepare") return json({ ok: await this.prepare(body) });
       if (action === "complete") return json({ ok: await this.complete(body) });
@@ -124,6 +128,60 @@ export class CommerceLedger {
       console.error("[commerce-ledger-do] transition failed", error instanceof Error ? error.message : "unknown");
       return json({ ok: false, error: "LEDGER_TRANSITION_FAILED" }, 409);
     }
+  }
+
+  // Strictly separate from payment claims: this is a private, immutable,
+  // pre-quote signed-answer byte freezer. It NEVER creates an x402 offer,
+  // payment entitlement, claim token or a settlement record.
+  async wdiPrequoteFreeze(body) {
+    const hash = validateRequestFingerprint(body.bindingHash);
+    const queryHash = validateRequestFingerprint(body.queryHash);
+    const rightsHash = validateRequestFingerprint(body.rightsHash);
+    const receiptHash = validateRequestFingerprint(body.receiptHash);
+    const answerHash = validateRequestFingerprint(body.answerHash);
+    const termsHash = validateRequestFingerprint(body.termsHash);
+    const generatedAt = body.rightsGeneratedAt;
+    const bytes = body.customerBytes;
+    const expiry = Date.parse(generatedAt);
+    const now = Date.now();
+    if (typeof generatedAt !== "string" ||
+        !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/u.test(generatedAt) ||
+        !Number.isFinite(expiry) || new Date(expiry).toISOString() !== generatedAt ||
+        expiry > now + 5 * 60_000 || now >= expiry + WDI_RIGHTS_MAX_AGE_MS)
+      throw new Error("WDI_PREQUOTE_RIGHTS_EXPIRED_OR_INVALID");
+    if (typeof bytes !== "string" || !bytes ||
+        new TextEncoder().encode(bytes).byteLength > WDI_PREQUOTE_MAX_BYTES ||
+        await sha256Text(bytes) !== answerHash)
+      throw new Error("WDI_PREQUOTE_CUSTOMER_BYTES_UNVERIFIED");
+    const value = { bindingHash:hash, queryHash, rightsHash, receiptHash,
+      answerHash, termsHash, rightsGeneratedAt:generatedAt,
+      expiresAtMs:expiry + WDI_RIGHTS_MAX_AGE_MS, customerBytes:bytes };
+    const key = "wdi-prequote:" + hash;
+    return this.ctx.storage.transaction(async txn => {
+      const existing = await txn.get(key);
+      if (existing) {
+        if (JSON.stringify(existing) !== JSON.stringify(value))
+          throw new Error("WDI_PREQUOTE_IMMUTABLE_CONFLICT");
+        return { ok:true, disposition:"EXACT_REPLAY", binding_hash:hash,
+          answer_sha256:answerHash, expires_at_ms:value.expiresAtMs };
+      }
+      await txn.put(key, value);
+      return { ok:true, disposition:"FROZEN", binding_hash:hash,
+        answer_sha256:answerHash, expires_at_ms:value.expiresAtMs };
+    });
+  }
+
+  async wdiPrequoteReadback(body) {
+    const hash = validateRequestFingerprint(body.bindingHash);
+    const value = await this.ctx.storage.get("wdi-prequote:" + hash);
+    if (!value || value.bindingHash !== hash ||
+        !Number.isSafeInteger(value.expiresAtMs) ||
+        Date.now() >= value.expiresAtMs ||
+        typeof value.customerBytes !== "string" ||
+        await sha256Text(value.customerBytes) !== value.answerHash)
+      throw new Error("WDI_PREQUOTE_MISSING_STALE_OR_CORRUPT");
+    return { ok:true, schema:"geomacro.wdi-prequote-readback.v1",
+      ...value, payment_authorized:false, settlement_attempted:false };
   }
 
   async claim(body) {
