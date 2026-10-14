@@ -59,7 +59,9 @@ export function selectPrivateNovelPulseRefs(row, domain, now = Date.now()) {
   const stamp = p?.checked_at;
   const checked = typeof stamp === "string" && DATE.test(stamp)
     ? Date.parse(stamp) : NaN;
-  const refs = validatePrivatePulseRefs(domain, p?.newly_seen_private_article_refs);
+  const novel=validatePrivatePulseRefs(domain,p?.newly_seen_private_article_refs);
+  const selected=p?.private_classifier_work_refs;
+  const refs=selected===undefined?novel:validatePrivatePulseRefs(domain,selected);
   const retained = p?.recent_private_article_fingerprints;
   if (p?.schema !== "geomacro.private-source-pulse-checkpoint.v1" ||
       p.domain !== domain || row?.last_attempt_at !== stamp ||
@@ -68,7 +70,8 @@ export function selectPrivateNovelPulseRefs(row, domain, now = Date.now()) {
       p.commercial_eligible !== false ||
       p.original_review_claims_verified !== false ||
       !Number.isSafeInteger(p.new_private_article_fingerprint_count) ||
-      p.new_private_article_fingerprint_count !== refs.size ||
+      p.new_private_article_fingerprint_count !== novel.size ||
+      (selected!==undefined && refs.size>1) ||
       !Array.isArray(retained) || retained.length > 240)
     throw Error("PRIVATE_PULSE_D1_READBACK_UNVERIFIED");
   const history = new Set();

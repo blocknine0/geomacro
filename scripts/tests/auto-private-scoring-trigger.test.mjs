@@ -22,8 +22,19 @@ test("new source-native original fingerprints trigger PRIVATE canonical rescorin
   assert.deepEqual(Object.keys(proof).sort(),[
     "commercial_eligible","independently_verified_current_intelligence",
     "new_original_fingerprints","payment_performed","private_scoring_needed",
+    "selected_classifier_refs","selected_retries",
     "public_published","status","supabase_writes",
   ].sort());
+});
+test("still-unacknowledged verified D1 retry can safely wake private scorer",()=>{
+  const p=evaluatePulsePrivateScoringTrigger({...good(0),
+    repeated_private_original_article_fingerprints:3,
+    selected_private_classifier_ref_count:1,
+    selected_private_classifier_retry_count:1,
+  },now);
+  assert.equal(p.private_scoring_needed,true);
+  assert.equal(p.selected_retries,1);
+  assert.equal(p.commercial_eligible,false);
 });
 test("empty or deduped pulse cannot burn model/B2 quotas",()=>{
   const p=evaluatePulsePrivateScoringTrigger({...good(0),

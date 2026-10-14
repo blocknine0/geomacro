@@ -45,6 +45,9 @@ on:
       - "src/__tests__/fed-native-cdata-original-article-link.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
       - "scripts/lib/auto-private-scoring-trigger.mjs"
+      - "scripts/lib/private-classifier-retry-ledger.mjs"
+      - "scripts/lib/private-classifier-retry-ledger.test.mjs"
+      - "scripts/ops/private-classifier-retry-lifecycle.mjs"
       - "scripts/tests/auto-private-scoring-trigger.test.mjs"
       - "scripts/lib/private-original-cross-poll-dedupe.mjs"
       - "src/__tests__/private-original-cross-poll-dedupe.test.ts"
@@ -83,6 +86,9 @@ on:
       - "src/__tests__/fed-native-cdata-original-article-link.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
       - "scripts/lib/auto-private-scoring-trigger.mjs"
+      - "scripts/lib/private-classifier-retry-ledger.mjs"
+      - "scripts/lib/private-classifier-retry-ledger.test.mjs"
+      - "scripts/ops/private-classifier-retry-lifecycle.mjs"
       - "scripts/tests/auto-private-scoring-trigger.test.mjs"
       - "scripts/lib/private-original-cross-poll-dedupe.mjs"
       - "src/__tests__/private-original-cross-poll-dedupe.test.ts"
@@ -119,6 +125,8 @@ jobs:
           node --check scripts/lib/private-original-cross-poll-dedupe.mjs
           node --check scripts/ops/write-30min-source-pulse-d1.mjs
           node --test scripts/tests/auto-private-scoring-trigger.test.mjs
+          node --test scripts/lib/private-classifier-retry-ledger.test.mjs
+          node --check scripts/ops/private-classifier-retry-lifecycle.mjs
           node --test scripts/lib/pulse-rotated-original-scorer.test.mjs
           node --check workers/control-plane/src/source-pulse-public.mjs
           node --check scripts/ops/probe-expanded-official-source-mesh.mjs

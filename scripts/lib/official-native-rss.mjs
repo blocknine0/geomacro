@@ -3,6 +3,7 @@ import {validatePrivatePulseRefs,privateOriginalMatchesPulse} from "./private-no
 import {createD1ControlPlaneStateClient} from "./d1-control-plane-state.mjs";
 import {selectPrivateNovelPulseRefs} from "./private-novel-pulse-match.mjs";
 import {fetchPulseRotatedPrivateOriginals} from "./pulse-rotated-original-scorer.mjs";
+import {PRIVATE_SCORING_ATTEMPTS_PIPELINE,validateClaimForPrivateScorer} from "./private-classifier-retry-ledger.mjs";
 import { fetchOfficialThirdPublisherArticles } from "./official-native-third-fallback.mjs";
 import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "./official-original-article-date.mjs";
@@ -237,7 +238,16 @@ export async function fetchOfficialNativeArticles(category, {
     }).loadRows();
     const snapshot=read.get(category);
     refs=selectPrivateNovelPulseRefs(snapshot,category,now.getTime());
-    // No novel item in THIS category: no native network or model budget.
+    if(snapshot?.payload?.private_classifier_work_refs!==undefined){
+      const attemptRow=(await createD1ControlPlaneStateClient({
+        pipeline:PRIVATE_SCORING_ATTEMPTS_PIPELINE,
+      }).loadRows()).get(category);
+      const allowed=validateClaimForPrivateScorer(snapshot,attemptRow,
+        category,process.env.GITHUB_RUN_ID,now.getTime());
+      if(allowed.size!==refs.size||[...refs].some(x=>!allowed.has(x)))
+        throw Error("PRIVATE_CLASSIFIER_WORK_CLAIM_MISMATCH");
+    }
+    // No claimed original in THIS category: no native network or model budget.
     if(refs.size===0)return [];
     originalPulseAt=snapshot.payload.checked_at;
     expectedClocks=new Map(
