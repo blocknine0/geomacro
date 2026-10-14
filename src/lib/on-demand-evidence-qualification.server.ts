@@ -359,7 +359,7 @@ export function buildPrivateVerifiedFedMinutesFinding(
      e.original_published_at===page.page_original_published_at &&
      e.factual_claim_independently_verified===false &&
      e.article_commercial_rights_verified===false);
-  if(!record || !/^20\\d{2}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/u
+  if(!record || !/^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u
       .test(record.original_published_at))continue;
   // Board page text is Board-authored; never include the linked PDF,
   // charts, logo, seal or third-party material. Attribution is explicit
