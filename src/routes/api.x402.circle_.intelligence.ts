@@ -1,4 +1,12 @@
 import { randomUUID } from "node:crypto";
+import {GEOMACRO_CAPABILITY_PRICING_VERSION,type CapabilityQuote} from "../lib/capability-pricing";
+import {prepareVerifiedCapabilityOffer} from "../lib/capability-x402-offer.server";
+import {readVerifiedCapabilityAnswer} from "../lib/capability-x402-prequote.server";
+import {circleRequirementsForCapabilityQuote,assertCapabilityPaymentBinding,
+  capabilityLedgerRequestFingerprint,capabilityQuoteFromPaymentPayload}
+  from "../lib/capability-x402-payment-contract.server";
+import {assertGeomacroIntelligenceResponseContract} from "../lib/geomacro-intelligence-contract";
+import {assertPublicPaidOutputBoundary} from "../lib/public-paid-output-boundary";
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 
@@ -91,7 +99,7 @@ async function parseJsonBody(request: Request) {
   }
 }
 
-function paymentRequiredDocument(request: Request, requirement: CircleGatewayPaymentRequirement) {
+function paymentRequiredDocument(request: Request, requirement: CircleGatewayPaymentRequirement,quote?:CapabilityQuote) {
   return {
     x402Version: 2,
     resource: {
@@ -101,6 +109,7 @@ function paymentRequiredDocument(request: Request, requirement: CircleGatewayPay
       mimeType: "application/json",
     },
     accepts: [requirement],
+    ...(quote?{extensions:{geomacro:{info:{capability_quote:quote}}}}:{}),
   };
 }
 
@@ -205,7 +214,8 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           scheme: configured.requirement.scheme,
           network: configured.requirement.network,
           asset: configured.requirement.asset,
-          price_usdc: configured.config.priceUsdc,
+          pricing_contract_version: GEOMACRO_CAPABILITY_PRICING_VERSION,
+          exact_price_requires_verified_capability_quote:true,
           launch_state: "coordinated_launch_only",
           coverage: "data-driven; only currently deliverable and commercially eligible requests are payable",
           reconciliation_required: true,
@@ -233,7 +243,9 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
 
         const configured = await configuredCircleRequirement(request);
         if ("error" in configured) return configured.error;
-        const { config, requirement, paymentRequired } = configured;
+        const {config}=configured;
+        let requirement=configured.requirement;
+        let paymentRequired=configured.paymentRequired;
 
         if (
           !allowPublicDemoRequest(request, {
@@ -328,20 +340,32 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
 
+        const requestFingerprint=commerceFingerprint({
+          product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,request:parsed,
+        });
         const paymentToken = request.headers.get("payment-signature")?.trim() ?? "";
-        if (!paymentToken) {
-          return json(
-            {
-              ok: false,
-              payment_required: true,
-              price: `${config.priceUsdc} USDC`,
-              network: requirement.network,
-              asset: requirement.asset,
-              execution_authorized: false,
-            },
-            402,
-            { "PAYMENT-REQUIRED": encodePaymentHeader(paymentRequired) },
-          );
+        if(!paymentToken) {
+          try {
+            const offered=await prepareVerifiedCapabilityOffer({
+              plan,availability,clientRequestId:parsed.client_request_id??null,
+              requestFingerprint,rail:"circle_gateway_x402",
+              network:requirement.network,asset:requirement.asset,recipient:requirement.payTo,
+            });
+            const acceptedRequirement=circleRequirementsForCapabilityQuote(config,requirement,offered.quote);
+            const acceptedDocument=paymentRequiredDocument(request,acceptedRequirement,offered.quote);
+            return json({ok:false,payment_required:true,
+              capability:offered.quote.capability,variant:offered.quote.variant,
+              price:`${offered.quote.amount_usdc} USDC`,
+              quote_id:offered.quote.quote_id,network:acceptedRequirement.network,
+              asset:acceptedRequirement.asset,execution_authorized:false},
+              402,{"PAYMENT-REQUIRED":encodePaymentHeader(acceptedDocument)});
+          }catch(error){
+            console.error("[circle-x402] immutable signed capability prequote unavailable",error);
+            return json({ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"CAPABILITY_SIGNED_PREQUOTE_UNAVAILABLE",
+                message:"No verified signed, immutable and provider-eligible answer can be quoted; no charge."},
+              execution_authorized:false},422);
+          }
         }
         if (new TextEncoder().encode(paymentToken).byteLength > MAX_PAYMENT_HEADER_BYTES) {
           return json(
@@ -373,12 +397,27 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
 
+        let capabilityQuote:CapabilityQuote;
+        let frozenIntelligence:Record<string,unknown>;
+        let pricedConfig:CircleGatewayProductionConfig;
+        try{
+          const proposed=capabilityQuoteFromPaymentPayload(paymentPayload);
+          const frozen=await readVerifiedCapabilityAnswer({quote:proposed,requestFingerprint});
+          capabilityQuote=frozen.quote;
+          frozenIntelligence=frozen.intelligence;
+          requirement=circleRequirementsForCapabilityQuote(config,requirement,capabilityQuote);
+          paymentRequired=paymentRequiredDocument(request,requirement,capabilityQuote);
+          assertCapabilityPaymentBinding(paymentPayload,capabilityQuote,requirement);
+          pricedConfig={...config,priceUsdc:capabilityQuote.amount_usdc,
+            amountAtomic:capabilityQuote.amount_atomic};
+        }catch(error){
+          return json({ok:false,chargeable:false,
+            error:{code:"X402_CAPABILITY_QUOTE_OR_PAYMENT_BINDING_INVALID",
+              message:"This payment proof does not match a current, immutable signed capability quote; request a new unpaid offer."},
+            execution_authorized:false},402);
+        }
         const paymentFingerprint = commerceSha256(paymentToken);
-        const requestFingerprint = commerceFingerprint({
-          product: PRODUCT_ID,
-          query_plan_hash: plan.query_plan_hash,
-          request: parsed,
-        });
+        const ledgerRequestFingerprint=capabilityLedgerRequestFingerprint(capabilityQuote);
 
         let claim;
         try {
@@ -386,7 +425,7 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             provider: "circle_gateway_x402",
             providerEnvironment: config.environment,
             paymentFingerprint,
-            requestFingerprint,
+            requestFingerprint:ledgerRequestFingerprint,
             productId: PRODUCT_ID,
             clientRequestId: parsed.client_request_id ?? null,
             sourceChannel: "circle_gateway_x402",
@@ -444,11 +483,7 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
         }
         if (claim.disposition === "REPLAY" && claim.response_payload) {
           return json(
-            replayResponse(
-              claim.response_payload as Record<string, unknown>,
-              claim.settlement_reference,
-              claim.settlement_network,
-            ),
+            claim.response_payload,
             200,
           );
         }
@@ -557,22 +592,26 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
 
-        const requestId = randomUUID();
+        const requestId=String(frozenIntelligence.request_id);
         let responsePayload: Record<string, unknown>;
         try {
-          const assembled = await assembleAgentQueryResponse({
-            plan,
-            requestId,
-            clientRequestId: parsed.client_request_id ?? null,
-            priceUsdc: config.priceUsdc,
-          });
+          // This exact signed/rights-qualified answer was durably frozen
+          // before 402; never assemble a different customer answer afterward.
+          assertGeomacroIntelligenceResponseContract(frozenIntelligence);
+          assertPublicPaidOutputBoundary(frozenIntelligence);
           responsePayload = {
-            ...assembled,
+            ...frozenIntelligence,
             payment: {
               provider: "circle_gateway_x402",
               settled: false,
               amount_atomic: requirement.amount,
-              amount_usdc: config.priceUsdc,
+              amount_usdc: capabilityQuote.amount_usdc,
+              capability:capabilityQuote.capability,
+              variant:capabilityQuote.variant,
+              pricing_contract_version:capabilityQuote.version,
+              quote_id:capabilityQuote.quote_id,
+              prepared_answer_sha256:capabilityQuote.prepared_answer_sha256,
+              settlement_proof:"PAYMENT-RESPONSE_HEADER_ONLY",
               asset: "USDC",
               asset_contract: CIRCLE_X402_BASE_MAINNET_USDC,
               network: requirement.network,
@@ -730,15 +769,8 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
 
-        responsePayload.payment = {
-          ...(responsePayload.payment as Record<string, unknown>),
-          settled: true,
-          accounting_state: "commercial_pending_accounting",
-          settlement_reference: settlement.settlement_reference,
-          settlement_network: settlement.network,
-          payer: settlement.payer,
-        };
-
+        // Settlement details travel in PAYMENT-RESPONSE, not in mutated
+        // customer bytes. The identical ledger-prepared payload is replayed.
         let paymentEventId: string | null = null;
         try {
           paymentEventId = await recordCommercialPaymentEvent({
@@ -757,7 +789,7 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             asset_symbol: "USDC",
             asset_contract: CIRCLE_X402_BASE_MAINNET_USDC,
             amount_atomic: requirement.amount,
-            amount_decimal: Number(config.priceUsdc),
+            amount_decimal: Number(pricedConfig.priceUsdc),
             payer_reference: settlement.payer,
             recipient_reference: requirement.payTo,
             settled_at: new Date().toISOString(),
