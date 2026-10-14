@@ -2,6 +2,9 @@ import {createHash} from "node:crypto";
 import {agentAdaptiveQuerySchema,buildAgentQueryPlan,
   type AgentQueryPlan} from "./agent-query-plan";
 import {canonicalRiskObjectJson} from "./risk-object-signing.server";
+import {approvedFedBoardMinutesAttribution,
+  type FederalReserveBoardDerivedAttribution}
+  from "./federal-reserve-board-derived-attribution";
 import {type buildPrivateVerifiedFedMinutesFinding} from "./on-demand-evidence-qualification.server";
 
 /**
@@ -36,6 +39,7 @@ type PrivateQueryBoundDraft=Readonly<{
  finding:string;cause_context:string;
  supported_implications:readonly string[];uncertainty:readonly string[];
  required_attribution:"Board of Governors of the Federal Reserve System";
+ required_data_attribution:FederalReserveBoardDerivedAttribution;
  risk_score:null;
  source_page_verified:true;
  independent_review_accepted:false;
@@ -158,6 +162,8 @@ export function bindPrivateFedMinutesToExactCustomerQuery(input:Readonly<{
    supported_implications:f.supported_implications,
    uncertainty:f.uncertainty,
    required_attribution:"Board of Governors of the Federal Reserve System",
+   // Bound to canonical PRIVATE draft bytes; no output, signer or payment.
+   required_data_attribution:approvedFedBoardMinutesAttribution(),
    risk_score:null,source_page_verified:true,
    independent_review_accepted:false,item_commercial_rights_admitted:false,
    signing_eligible:false,signed:false,
