@@ -104,19 +104,7 @@ async function main(){
       gunzipSync(back).equals(historyBytes),"HISTORY_B2_READBACK_FAILED");
   }
   // Recheck after any B2 wait; a stale parent cannot be made current by PUT.
-  assertVerifiedCurrentGlobalRiskD1Parent({
-    ok:true,product:"global-risk",schema:"geomacro.public-global-risk-live.v1",
-    proof_schema:"geomacro.public-global-risk-live-proof.v1",
-    verification_mode:"direct-b2-readback",
-    b2_object_key:"geomacro-evidence/v1/live/global-risk/latest.json.gz",
-    b2_sha256:parent.parentB2Sha256,payload_sha256:parent.parentPayloadSha256,
-    full_b2_readback_verified:true,exact_gzip_restore_verified:true,
-    generated_at:parent.parentGeneratedAt,source_as_of:parent.sourceAsOf,
-    expires_at:new Date(Date.parse(parent.sourceAsOf)+90*60_000).toISOString(),
-    payload_json:JSON.stringify({schema:"geomacro.public-global-risk-live.v1",
-      source_project:"ldpwajisioljyjtojvfx",generated_at:parent.parentGeneratedAt,
-      data:parent.risk}),
-  });
+  assertVerifiedCurrentGlobalRiskD1Parent(parent.originalSnapshot);
   // Parent state may have been superseded while B2 work ran. Refuse to write
   // a latest pointer sourced from a different D1 authoritative parent.
   const latestParent=await fetchParent();
