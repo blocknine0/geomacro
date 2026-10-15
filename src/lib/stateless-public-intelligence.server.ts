@@ -80,15 +80,16 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "bis_press", category: "macro", media: "rss",
     url: "https://www.bis.org/doclist/all_pressrels.rss",
     allowedHosts: ["www.bis.org"], credit: "Bank for International Settlements" },
-  // Publisher-native BLS release feeds verified against its official RSS
-  // directory; no raw release tables or text are returned by this service.
-  { id: "bls_cpi", category: "macro", media: "rss",
+  // BLS names these .rss endpoints but serves Atom XML with original
+  // <published> and <link href> metadata (verified on exact GitHub runner).
+  // Never substitute <updated>, fetch time, or a current headline as clock.
+  { id: "bls_cpi", category: "macro", media: "atom",
     url: "https://www.bls.gov/feed/cpi.rss",
     allowedHosts: ["www.bls.gov"], credit: null },
-  { id: "bls_employment", category: "macro", media: "rss",
+  { id: "bls_employment", category: "macro", media: "atom",
     url: "https://www.bls.gov/feed/empsit.rss",
     allowedHosts: ["www.bls.gov"], credit: null },
-  { id: "bls_external_prices", category: "macro", media: "rss",
+  { id: "bls_external_prices", category: "macro", media: "atom",
     url: "https://www.bls.gov/feed/ximpim.rss",
     allowedHosts: ["www.bls.gov"], credit: null },
   { id: "fed_press", category: "macro", media: "rss",
