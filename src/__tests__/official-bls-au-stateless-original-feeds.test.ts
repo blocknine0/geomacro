@@ -13,7 +13,7 @@ const bls = [
   ["bls_external_prices","ximpim","U.S. Import and Export Price Indexes for September"],
 ] as const;
 const spec = (id:string, category:"macro"|"rare_earth"="macro"): StatelessSourceSpec => ({
-  id,category,media:"rss",credit:null,
+  id,category,media:id.startsWith("bls_")?"atom":"rss",credit:null,
   url:id==="au_industry_minister"
     ?"https://www.minister.industry.gov.au/feed/t-ayres/rss.xml"
     :`https://www.bls.gov/feed/${id==="bls_cpi"?"cpi":id==="bls_employment"?"empsit":"ximpim"}.rss`,
@@ -21,12 +21,14 @@ const spec = (id:string, category:"macro"|"rare_earth"="macro"): StatelessSource
 });
 const item=(title:string,link:string,when=fixedClock)=>
   `<rss version="2.0"><channel><item><title>${title}</title><link>${link}</link><pubDate>${when}</pubDate></item></channel></rss>`;
+const atom=(title:string,link:string,when="2026-10-08T12:30:00Z")=>
+  `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><entry><title>${title}</title><link rel="alternate" href="${link}"/><published>${when}</published><updated>2026-10-15T00:00:00Z</updated></entry></feed>`;
 describe("independent first-party publisher feeds, strictly unscored",()=>{
   for(const [id,family,title] of bls){
     it("accepts BLS "+id+" only with its own original dated release",()=>{
       const source=spec(id);
       const url=`https://www.bls.gov/news.release/${family}.nr0.htm`;
-      const result=parseFirstPartyFeed(item(title,url),source,date);
+      const result=parseFirstPartyFeed(atom(title,url),source,date);
       expect(result.metrics).toMatchObject({seen:1,relevant:1,original_link_valid:1,native_clock_valid:1});
       expect(result.dated).toHaveLength(1);
       const signals=deriveStatelessSignals(result.dated,date);
@@ -43,7 +45,7 @@ describe("independent first-party publisher feeds, strictly unscored",()=>{
       ];
       for(const link of bad)expect(acceptedOriginalArticleLink(link,source)).toBeNull();
       for(const raw of ["","2026-10-08","2026-10-08T12:30:00"]){
-        expect(parseFirstPartyFeed(item(title,url,raw),source,date).dated).toHaveLength(0);
+        expect(parseFirstPartyFeed(atom(title,url,raw),source,date).dated).toHaveLength(0);
       }
       const at=Date.parse("2026-10-08T12:30:00Z");
       expect(deriveStatelessSignals(result.dated,at+14*60_000)).toHaveLength(0);
