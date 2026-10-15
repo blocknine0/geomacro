@@ -62,7 +62,8 @@ publication must fail closed.
    `geomacro-evidence/v1/private/reviewed-intelligence-current/<sha256>.json`
    and supply its independently obtained SHA and key at dispatch. The workflow
    validates the pinned independent reviewer before the first B2 GET, reuses
-   the shared quota governor and publisher, then compares the unauthenticated
+   the shared quota governor and publisher (4 input-read attempts plus 8
+   publication attempts, at most 12 B2 requests in total), then compares the unauthenticated
    public D1 payload/hash/native clock/proof/expiry to the publication
    receipt. It does not require a frontend republish. It never creates review
    signatures or promotes a private-scoring bundle. Both the review public key

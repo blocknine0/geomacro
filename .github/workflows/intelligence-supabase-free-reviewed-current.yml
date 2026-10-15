@@ -94,6 +94,10 @@ jobs:
           '
 
       - name: Read independently pinned reviewed input from quota-governed B2
+        # Separate processes must not each reset the full per-job allowance.
+        # 4 input-read attempts + 8 publication attempts = at most 12 total.
+        env:
+          B2_REQUEST_BUDGET: "4"
         shell: bash
         run: |
           set -euo pipefail
@@ -117,6 +121,8 @@ jobs:
           echo "GEOMACRO_QUALIFIED_INTELLIGENCE_SHA256=$REVIEWED_B2_SHA256" >> "$GITHUB_ENV"
 
       - name: Publish signed current Intelligence and verify independent public D1 readback
+        env:
+          B2_REQUEST_BUDGET: "8"
         shell: bash
         run: |
           set -euo pipefail
