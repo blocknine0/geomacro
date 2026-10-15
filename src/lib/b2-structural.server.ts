@@ -208,6 +208,18 @@ function observation(value: unknown): value is StructuralObservation {
   );
 }
 
+/** Proof-level country identity: country profiles may not contain foreign
+ * observations even if every record is otherwise individually well-formed. */
+export function verifiedStructuralCountryProfileRows(
+  countryIso3: unknown,
+  rows: unknown,
+): rows is StructuralObservation[] {
+  return iso3(countryIso3) &&
+    Array.isArray(rows) &&
+    rows.length <= 250 &&
+    rows.every((item) => observation(item) && item.country_iso3 === countryIso3);
+}
+
 function coverageRow(value: unknown): value is StructuralCoverage {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const row = value as Record<string, unknown>;
@@ -264,8 +276,11 @@ export async function readB2StructuralServingSnapshot(): Promise<B2StructuralSer
       if (!value || typeof value !== "object" || Array.isArray(value)) return null;
       const row = value as Record<string, unknown>;
       if (!iso3(row.country_iso3) || seenCountries.has(row.country_iso3)) return null;
-      if (!Array.isArray(row.latest_observations) || row.latest_observations.length > 250) return null;
-      if (!row.latest_observations.every(observation)) return null;
+      // The archive's compressed SHA is necessary but not sufficient:
+      // every source observation must be bound to this exact country.
+      if (!verifiedStructuralCountryProfileRows(
+        row.country_iso3, row.latest_observations
+      )) return null;
       seenCountries.add(row.country_iso3);
       countryProfiles.push({
         country_iso3: row.country_iso3,

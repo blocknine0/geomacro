@@ -83,6 +83,17 @@ function observationTime(row: StructuralObservation, asOfMs: number): number | n
   return sourceNativeObservationTime(row, asOfMs);
 }
 
+// Ensure an observation from a foreign country cannot qualify the buyer's
+// requested ISO3, even if a misassembled profile or mocked loader contains it.
+function belongsToSubject(context: StructuralContext, row: { country_iso3: string | null }): boolean {
+  if (context.subject.type === "country") {
+    return row.country_iso3 === context.subject.country_iso3;
+  }
+  // Corridors have separately reviewed direct and endpoint-composed evidence;
+  // this change does not redefine their existing composition semantics.
+  return true;
+}
+
 function moduleMatchesDimension(module: string, dimension: string) {
   const normalized = dimension.trim().toLowerCase();
   return (STRUCTURAL_MODULE_ALIASES[module] ?? [module]).some(
@@ -93,12 +104,15 @@ function moduleMatchesDimension(module: string, dimension: string) {
 function structuralModulesFor(context: StructuralContext) {
   const modules = new Set<string>();
   for (const module of Object.keys(STRUCTURAL_MODULE_ALIASES)) {
-    if (context.observations.some((row) => moduleMatchesDimension(module, row.dimension))) {
+    if (context.observations.some((row) =>
+      belongsToSubject(context, row) && moduleMatchesDimension(module, row.dimension)
+    )) {
       modules.add(module);
     }
     if (
       context.metadata.coverage.some(
         (row) =>
+          belongsToSubject(context, row) &&
           moduleMatchesDimension(module, row.dimension) &&
           row.coverage_status.toUpperCase() !== "UNAVAILABLE",
       )
@@ -112,7 +126,7 @@ function structuralModulesFor(context: StructuralContext) {
 function latestModuleTime(context: StructuralContext, module: string, asOfMs: number): number | null {
   let latest: number | null = null;
   for (const row of context.observations) {
-    if (!moduleMatchesDimension(module, row.dimension)) continue;
+    if (!belongsToSubject(context, row) || !moduleMatchesDimension(module, row.dimension)) continue;
     const time = observationTime(row, asOfMs);
     if (time !== null && (latest === null || time > latest)) latest = time;
   }
@@ -125,12 +139,14 @@ function latestModuleTime(context: StructuralContext, module: string, asOfMs: nu
 function requiredSourceIds(context: StructuralContext, requiredModules: string[]) {
   const ids = new Set<string>();
   for (const row of context.observations) {
-    if (requiredModules.some((module) => moduleMatchesDimension(module, row.dimension))) {
+    if (belongsToSubject(context, row) &&
+        requiredModules.some((module) => moduleMatchesDimension(module, row.dimension))) {
       ids.add(row.source_id);
     }
   }
   for (const row of context.metadata.coverage) {
     if (
+      belongsToSubject(context, row) &&
       row.coverage_status.toUpperCase() !== "UNAVAILABLE" &&
       requiredModules.some((module) => moduleMatchesDimension(module, row.dimension))
     ) {
