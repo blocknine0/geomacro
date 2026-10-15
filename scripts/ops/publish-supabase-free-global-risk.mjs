@@ -10,6 +10,7 @@ import { readFileSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { createB2Client } from "./b2-s3-client.mjs";
+import { verifyThreeDomainReviewerHandoff } from "../lib/three-domain-reviewed-handoff.mjs";
 import { publishB2VerifiedHotSnapshot } from "./publish-b2-verified-hot-snapshot.mjs";
 import { approvedIndependentReviewerFromEnv } from "../../src/lib/independent-reviewer-authority.server.ts";
 import {
@@ -56,7 +57,22 @@ function config() {
   let reviewed;
   try { reviewed = JSON.parse(raw.toString("utf8")); }
   catch { throw Error("GRI_SUPABASE_FREE_REVIEWED_JSON_INVALID"); }
-  return { reviewed, trustedReviewerPublicKeyPem };
+  const certFile=process.env.GEOMACRO_GRI_SIGNED_COUNTRY_CERTIFICATES;
+  const certHash=String(process.env.GEOMACRO_GRI_SIGNED_COUNTRY_CERTIFICATES_SHA256??"");
+  assert(typeof certFile==="string"&&certFile.length>0&&
+    /^[a-f0-9]{64}$/u.test(certHash)&&
+    statSync(certFile).size>=100&&statSync(certFile).size<=512*1024,
+  "INDEPENDENT_COUNTRY_CERTIFICATE_PIN_REQUIRED");
+  const certBytes=readFileSync(certFile);
+  assert(sha(certBytes)===certHash,"COUNTRY_CERTIFICATES_EXACT_SHA_MISMATCH");
+  let countryCategoryCertificates;
+  try{countryCategoryCertificates=JSON.parse(certBytes.toString("utf8"))}
+  catch{throw Error("GRI_SUPABASE_FREE_COUNTRY_CERTIFICATES_JSON_INVALID")}
+  assert(Array.isArray(countryCategoryCertificates)&&
+    countryCategoryCertificates.length>=3&&
+    countryCategoryCertificates.length<=80,
+  "COUNTRY_CERTIFICATION_ARRAY_REQUIRED");
+  return { reviewed, trustedReviewerPublicKeyPem, countryCategoryCertificates };
 }
 
 function parseVerifiedB2History(bytes, expectedSha) {
@@ -84,7 +100,7 @@ async function putAndRestore(b2, key, packed, expectedRaw) {
 }
 
 async function main() {
-  const { reviewed, trustedReviewerPublicKeyPem } = config();
+  const { reviewed, trustedReviewerPublicKeyPem, countryCategoryCertificates } = config();
   // NO B2 reads, writes, HTTP or D1 state mutations on invalid signed input,
   // private-only source, stale original publication or unqualified review.
   const admissible = preflightReviewedCurrentGlobalRisk({
@@ -98,6 +114,26 @@ async function main() {
   // Existing shared D1 ticket governor in b2-s3-client accounts for each GET.
   const archived = await b2.get(admissible.history_b2_key);
   const history = parseVerifiedB2History(archived, admissible.history_b2_sha256);
+  // PR #2250 independently signed country/domain CERTIFIED proofs are
+  // mandatory, *not* optional. A GRI reviewer signature alone cannot
+  // certify country-specific original evidence or commercial source rights.
+  // This pure verifier runs BEFORE B2 PUT, live archive or public D1.
+  const handoff=verifyThreeDomainReviewerHandoff({
+    intelligence:{
+      rows:reviewed.signed_input.customerRows,
+      eventPackages:reviewed.signed_input.eventPackages,
+    },
+    reviewedGri:reviewed,
+    countryCategoryCertificates,
+    historicalB2Bytes:Buffer.from(archived),
+    trustedReviewerPublicKeyPem,
+  });
+  assert(handoff.receipt?.independently_reviewer_signed===true&&
+    handoff.receipt.current_three_domain_originals_verified===true&&
+    handoff.receipt.historical_b2_sha256===admissible.history_b2_sha256&&
+    handoff.receipt.gri_input_sha256===sha(Buffer.from(JSON.stringify(reviewed)))&&
+    handoff.receipt.qualified_event_count===reviewed.signed_input.events.length,
+  "REVIEWED_COUNTRY_CATEGORY_HANDOFF_NOT_VERIFIED");
   const produced = computeReviewedCurrentGlobalRisk({
     reviewed, history, verifiedHistoryB2Sha256: sha(Buffer.from(archived)),
     trustedReviewerPublicKeyPem,
