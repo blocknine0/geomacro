@@ -1094,16 +1094,30 @@ async function discoverOnDemandImpl(
   const selected=topics.length>0 && categories.length>1
     ? (()=>{
       const macro=tasks.filter(t=>t.name.startsWith("world_bank_official_"));
-      // Prefer a registered first-party NATIONAL issuer within the same
-      // single original-source reservation. The generic UK publisher cannot
-      // displace NRCan for Canada or Australia's own minerals minister for
-      // Australia. This changes only bounded source selection, not scoring,
-      // evidence truth, rights, paid delivery or the 12-GET request ceiling.
+      // Use an already registered country-relevant issuer for the first
+      // source-native release slot. All other publishers remain fallback
+      // candidates; no new URL, credential, source rights or network budget.
+      // Current euro-area membership includes Bulgaria from 1 January 2026.
+      // An ECB release is only a country lead when the item's own text
+      // passes the existing exact-country relevance and page-date checks.
+      const euroAreaIso3=new Set([
+        "AUT","BEL","BGR","HRV","CYP","EST","FIN","FRA","DEU",
+        "GRC","IRL","ITA","LVA","LTU","LUX","MLT","NLD",
+        "PRT","SVK","SVN","ESP",
+      ]);
       const preferredNational=(category:OnDemandCategory):string|null=>
         category==="rare_earth" && country==="CAN"
           ?"canada_nrcan_original_publisher":
         category==="rare_earth" && country==="AUS"
-          ?"australian_industry_original_publisher":null;
+          ?"australian_industry_original_publisher":
+        category==="geopolitics" && country==="GBR"
+          ?"uk_fcdo_original_publisher":
+        category==="macro" && country==="GBR"
+          ?"uk_hmt_original_publisher":
+        category==="macro" && euroAreaIso3.has(country)
+          ?"ecb_original_publisher":
+        category==="macro" && country==="USA"
+          ?"us_federal_reserve_original_publisher":null;
       const originalTask=(t:(typeof tasks)[number],category:OnDemandCategory)=>
         t.category===category && t.name!=="gdelt_doc_discovery" &&
         t.name!=="reliefweb_discovery" &&
