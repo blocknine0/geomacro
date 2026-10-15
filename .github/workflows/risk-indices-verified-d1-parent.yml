@@ -66,6 +66,28 @@ jobs:
       - run: bun install --frozen-lockfile --ignore-scripts
       - name: Validate pure verified-source guard
         run: node --test scripts/lib/risk-indices-verified-d1-parent.test.mjs
+      - name: Require exact deployed main SHA before any B2 GET or D1 write
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SHA" = "$(git rev-parse HEAD)" || {
+            echo "::error::INDICES_EXACT_CHECKOUT_SHA_MISMATCH"; exit 2;
+          }
+          curl --fail --silent --show-error --max-time 15 \
+            "https://geomacro.live/.well-known/geomacro-build.json" \
+            > /tmp/geomacro-indices-build.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const marker=JSON.parse(readFileSync('/tmp/geomacro-indices-build.json','utf8'));
+          if(marker.schema_version!=='geomacro.deployment-build.v1' ||
+             marker.canonical_repository!=='blocknine0/geomacro' ||
+             marker.canonical_main_sha!==process.env.EXPECTED_SHA)
+            throw Error('INDICES_EXACT_PRODUCTION_DEPLOYMENT_SHA_MISMATCH');
+          console.log('PASS: exact published canonical main verified before quota consumption');
+          NODE
+
       - name: Resolve governed production D1 ID
         run: |
           set -euo pipefail
