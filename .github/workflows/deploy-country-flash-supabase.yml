@@ -48,7 +48,7 @@ jobs:
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'version: 2.117.0' "$file"
           ! grep -q '^  push:' "$file"
-          grep -Fq 'if: ${{ false }}' "$file"
+          grep -Eq '^[[:space:]]+if:[[:space:]]+[$][{][{][[:space:]]*false[[:space:]]*[}][}]' "$file"
           grep -q 'production-history-only.mjs verify' "$file"
           grep -q 'exceed_egress_quota' "$file"
           grep -q 'begin read only;' "$file"
