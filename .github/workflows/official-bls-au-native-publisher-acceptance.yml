@@ -1,0 +1,84 @@
+name: Official BLS and Australia Native Publisher Readonly Acceptance
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/stateless-intelligence-model.ts"
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - "src/__tests__/official-bls-au-stateless-original-feeds.test.ts"
+      - ".github/workflows/official-bls-au-native-publisher-acceptance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/stateless-intelligence-model.ts"
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - ".github/workflows/official-bls-au-native-publisher-acceptance.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  official-originals:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Prove each first-party publisher actually responds with native dates and own-site original links
+        shell: bash
+        env:
+          SUPABASE_URL: ""
+          APP_SUPABASE_URL: ""
+          SUPABASE_DB_URL: ""
+          SUPABASE_SERVICE_ROLE_KEY: ""
+          APP_SUPABASE_SERVICE_ROLE_KEY: ""
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const feeds=[
+            ["bls_cpi","https://www.bls.gov/feed/cpi.rss","www.bls.gov",/^\/news\.release\/(?:archives\/)?cpi(?:\.nr\d+|_\d{8})\.htm$/],
+            ["bls_employment","https://www.bls.gov/feed/empsit.rss","www.bls.gov",/^\/news\.release\/(?:archives\/)?empsit(?:\.nr\d+|_\d{8})\.htm$/],
+            ["bls_external_prices","https://www.bls.gov/feed/ximpim.rss","www.bls.gov",/^\/news\.release\/(?:archives\/)?ximpim(?:\.nr\d+|_\d{8})\.htm$/],
+            ["au_industry_minister","https://www.minister.industry.gov.au/feed/t-ayres/rss.xml","www.minister.industry.gov.au",/^\/t-ayres\/media\/[a-z0-9][a-z0-9-]{10,180}$/],
+          ];
+          const results=[];
+          for(const [id,feed,host,path] of feeds){
+            const res=await fetch(feed,{method:"GET",redirect:"error",cache:"no-store",
+              headers:{Accept:"application/rss+xml, application/xml;q=0.9, text/xml;q=0.8"},
+              signal:AbortSignal.timeout(id==="au_industry_minister"?15000:10000)});
+            if(!res.ok)throw Error("ORIGINAL_FEED_UNAVAILABLE:"+id+":HTTP_"+res.status);
+            const type=(res.headers.get("content-type")||"").toLowerCase();
+            if(!/(?:rss\+xml|xml)/.test(type))throw Error("ORIGINAL_FEED_NOT_RSS:"+id);
+            const length=Number(res.headers.get("content-length")||0);
+            if(length>384*1024)throw Error("ORIGINAL_FEED_OVERSIZE:"+id);
+            const raw=await res.text();
+            if(raw.length>384*1024 || !/<rss(?:\s|>)/i.test(raw) ||
+               /<!DOCTYPE|<!ENTITY/i.test(raw))throw Error("ORIGINAL_FEED_INVALID_XML:"+id);
+            const items=[...raw.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi)].slice(0,75);
+            let native=0,own=0;
+            for(const [,item] of items){
+              const t=/<pubDate(?:\s[^>]*)?>([^<>]{8,100})<\/pubDate>/i.exec(item)?.[1]||"";
+              const url=/<link(?:\s[^>]*)?>([^<>]{10,1200})<\/link>/i.exec(item)?.[1]?.trim()||"";
+              if(!/(?:GMT|UTC|[+-]\d{4})$/i.test(t) || !Number.isFinite(Date.parse(t)))continue;
+              native++;
+              try{
+                const link=new URL(url.replaceAll("&amp;","&"));
+                if(link.protocol==="https:"&&link.hostname===host&&!link.search&&!link.hash&&path.test(link.pathname))own++;
+              }catch{}
+            }
+            if(items.length===0||native===0||own===0)
+              throw Error("ORIGINAL_FEED_NATIVE_OR_ARTICLE_MISSING:"+id);
+            results.push({id,transport_ok:true,seen_items:items.length,native_dates:native,
+              same_issuer_original_links:own,commercial_activation:false,payment_attempts:0});
+          }
+          console.log(JSON.stringify({schema:"geomacro.official-bls-au-readonly.v1",
+            validated:results.length,supabase_calls:0,b2_calls:0,d1_writes:0,
+            current_24h_events_certified:0,signed_products_generated:0,results}));
+          NODE
