@@ -313,7 +313,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(productionWorkflow).not.toContain(
       "supabase/isolated-signal",
     );
-    expect(productionWorkflow).not.toMatch(/(?:^|\\n)  push:/);
+    expect(productionWorkflow).not.toMatch(/^  push:/m);
     expect(productionWorkflow).toContain("    if: ${{ false }}");
     expect(isolatedWorkflow).toContain(
       "SUPABASE_WORKDIR=supabase/isolated-signal",
