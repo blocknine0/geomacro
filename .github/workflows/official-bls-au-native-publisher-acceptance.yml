@@ -75,6 +75,10 @@ jobs:
                 item_count:raw.split("<item").length-1,
                 native_pubdate:raw.split("<pubDate").length-1,
                 native_dcdate:raw.split("<dc:date").length-1,
+                atom_entry_count:raw.split("<entry").length-1,
+                atom_published_count:raw.split("<published").length-1,
+                atom_updated_count:raw.split("<updated").length-1,
+                atom_link_count:raw.split("<link").length-1,
                 bytes:raw.length,first_byte_codes:Array.from(bodyBytes.slice(0,8)),
                 content_encoding:res.headers.get("content-encoding")?"present":"absent"}));
               throw Error("ORIGINAL_FEED_NOT_RSS2_ENVELOPE:"+id);
