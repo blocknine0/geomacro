@@ -20,6 +20,50 @@ const MAX_AGE_MS=30*24*3600_000;
 const assert=(v,k)=>{if(!v)throw Error("HISTORICAL_GRI_B2_"+k)};
 const sha=bytes=>createHash("sha256").update(bytes).digest("hex");
 
+/**
+ * No-B2 metadata triage of the authenticated D1 historical pin. The D1
+ * anchor has two distinct provenance modes. A prior baseline embedded in an
+ * independently verified new GRI overlay does NOT attest that the mutable
+ * live/latest.json.gz still contains those prior baseline compressed bytes.
+ * Do not burn another Class-B GET against an unversioned historical pin.
+ *
+ * This returns only coarse metadata; it does not prove a live B2 readback.
+ */
+export function classifyPinnedGlobalRiskAnchor({anchor,now=new Date()}={}){
+ const at=now instanceof Date?now.getTime():NaN;
+ assert(Number.isFinite(at),"CLOCK_INVALID");
+ assert(anchor?.schema==="geomacro.global-risk-b2-anchor.v1" &&
+   anchor.product==="global-risk" && anchor.ok===true &&
+   anchor.b2_object_key===EXPECTED_KEY &&
+   HASH.test(String(anchor.b2_sha256??"")) &&
+   HASH.test(String(anchor.payload_sha256??"")) &&
+   RUN.test(String(anchor.source_run_id??"")) &&
+   anchor.baseline_b2_readback_verified===true &&
+   anchor.baseline_exact_gzip_restore_verified===true,
+   "D1_ANCHOR_PROVENANCE_INVALID");
+ const generatedAt=Date.parse(String(anchor.generated_at??""));
+ assert(Number.isFinite(generatedAt) &&
+   generatedAt<=at+5*60_000 && at-generatedAt<=MAX_AGE_MS,
+   "D1_ANCHOR_TOO_OLD_OR_FUTURE");
+ const kind=anchor.anchor_kind;
+ assert(kind==="direct_verified_b2_snapshot" ||
+   kind==="prior_b2_baseline_of_independent_gri_proof",
+   "D1_ANCHOR_KIND_UNPROVEN");
+ return Object.freeze({
+   schema:"geomacro.gri-historical-d1-metadata-triage.v1",
+   anchor_kind:kind,
+   metadata_accepted:true,
+   mutable_live_object_read_safe_to_attempt:
+     kind==="direct_verified_b2_snapshot",
+   immutable_version_or_independent_original_pin_required:
+     kind!=="direct_verified_b2_snapshot",
+   historical_b2_readback_verified:false,
+   current_gri_qualified:false,
+   real_funds_touched:false,
+   b2_operations:0,supabase_network_attempts:0,d1_writes:0,x402_charges:0,
+ });
+}
+
 /** Verifies actual compressed bytes, not a stored D1 boolean or public URL. */
 export function verifyPinnedGlobalRiskBaseline({anchor,compressed,now=new Date()}={}){
  const at=now instanceof Date?now.getTime():NaN;
@@ -101,9 +145,11 @@ export async function runCurrentB2HistoricalReadback({
    "GOVERNED_READ_ONLY_RUNTIME_REQUIRED");
  // Fully validate the D1 anchor before opening even one B2 connection.
  const anchor=await getAnchor();
- assert(anchor?.b2_object_key===EXPECTED_KEY&&
-   HASH.test(String(anchor?.b2_sha256??"")),
-   "AUTHORIZED_D1_HOT_ANCHOR_UNAVAILABLE");
+ const diagnosis=classifyPinnedGlobalRiskAnchor({anchor,now});
+ // This is a metadata-only distinction, BEFORE any B2 request or quota
+ // reservation. A prior anchor is not an immutable historical object pin.
+ assert(diagnosis.mutable_live_object_read_safe_to_attempt,
+   "PRIOR_BASELINE_MUTABLE_LIVE_KEY_UNPROVEN");
  const b2=createClient({
    endpointUrl:B2_ENDPOINT,bucket:B2_BUCKET,
    accessKey:process.env.B2_KEY_ID,secretKey:process.env.B2_APPLICATION_KEY,
@@ -129,6 +175,8 @@ export function classifyHistoricalGriReadbackFailure(error) {
     "HISTORICAL_GRI_B2_GZIP_OR_JSON_INVALID",
     "HISTORICAL_GRI_B2_ORIGINAL_PAYLOAD_SHA_MISMATCH",
     "HISTORICAL_GRI_B2_ORIGINAL_GRI_BASELINE_INVALID",
+    "HISTORICAL_GRI_B2_D1_ANCHOR_KIND_UNPROVEN",
+    "HISTORICAL_GRI_B2_PRIOR_BASELINE_MUTABLE_LIVE_KEY_UNPROVEN",
     "HISTORICAL_GRI_B2_AUTHORIZED_D1_HOT_ANCHOR_UNAVAILABLE",
     "HISTORICAL_GRI_B2_GOVERNED_READ_ONLY_RUNTIME_REQUIRED",
     "HISTORICAL_GRI_B2_FORBIDDEN_SUPABASE_OR_PAYMENT_CREDENTIAL",
@@ -146,8 +194,20 @@ export function classifyHistoricalGriReadbackFailure(error) {
 
 if(process.argv[1]?.endsWith("verify-global-risk-b2-historical-readback.mjs")){
  try {
-   assert(process.argv.length===3&&
-     process.argv[2]==="--governed-read-only","EXPLICIT_READ_ONLY_MODE_REQUIRED");
+   assert(process.argv.length===3 &&
+     ["--governed-read-only","--metadata-only"].includes(process.argv[2]),
+     "EXPLICIT_READ_ONLY_MODE_REQUIRED");
+   if (process.argv[2]==="--metadata-only") {
+     for(const key of ["SUPABASE_DB_URL","SUPABASE_URL","APP_SUPABASE_URL",
+       "SUPABASE_SERVICE_ROLE_KEY","APP_SUPABASE_SERVICE_ROLE_KEY",
+       "COINBASE_API_KEY","COINBASE_COMMERCE_API_KEY"])
+       assert(!process.env[key],"FORBIDDEN_SUPABASE_OR_PAYMENT_CREDENTIAL");
+     const diagnosis=classifyPinnedGlobalRiskAnchor({
+       anchor:await readGlobalRiskB2Anchor(),now:new Date(),
+     });
+     console.log(JSON.stringify(diagnosis));
+     // A completed metadata diagnosis is NEVER historical B2 verification.
+   } else {
    const result=await runCurrentB2HistoricalReadback();
    mkdirSync("artifacts/gri-b2-history",{recursive:true});
    writeFileSync("artifacts/gri-b2-history/verified-readback.json",
@@ -159,6 +219,7 @@ if(process.argv[1]?.endsWith("verify-global-risk-b2-historical-readback.mjs")){
      current_gri_qualified:false,paid_intelligence_available:false,
      supabase_network_attempts:0,b2_puts:0,d1_writes:0,x402_charges:0,
    }));
+   }
  }catch(error){
    console.error(JSON.stringify({
      schema:"geomacro.gri-b2-readback-safe-failure.v1",
