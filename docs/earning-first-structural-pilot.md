@@ -25,7 +25,7 @@ The existing `signed_risk_intelligence` contract is unchanged, including its pre
 ```
 
 3. The response requires actual module availability, source-native freshness, rights eligibility and an identical `query_plan_hash`. HTTP **422** means the request is **not deliverable**; never offer a payment. HTTP **200** with `ELIGIBLE_BUT_PAYMENT_RAIL_LOCKED` means data preflight passes but owner/facilitator/mainnet setup is still locked. HTTP **200** with `ELIGIBLE_FOR_X402_QUOTE` only means the buyer *may ask* for a quote; it does not request or collect payment.
-4. The buyer POSTs the **exact same JSON body** to `/api/v1/intelligence/query`. The canonical adaptive handler independently checks deliverability **again** and may return HTTP **422**. If real Coinbase production config is authorized, it returns the authoritative **402 PAYMENT-REQUIRED** quote. The price in this quote—not a guessed website price—is the contractual amount.
+4. The buyer POSTs the **exact same JSON body** to `/api/v1/intelligence/query`. The canonical adaptive handler independently checks deliverability **again** and may return HTTP **422**. If real Coinbase production config is authorized, it returns the authoritative **402 PAYMENT-REQUIRED** quote. The quote must exactly match the locked capability contract: **`structural_country_digest` = 0.02 USDC**, with the prepared request, deterministic query-plan hash and specific deliverable bound together. Any mismatch blocks payment; a public website label cannot override the canonical price.
 5. After the buyer explicitly pays through its own x402 client, the unchanged Coinbase flow validates proof, claim/idempotency, final deliverability, prepared sanitized/hash-bound derived response and settlement **in that order**, and returns the paid answer. Failed availability never becomes chargeable. Ambiguous settlement is frozen for reconciliation, never charged again automatically.
 
 Other supported pilot topics: `sovereign_risk`, `fx_external_risk`, `critical_minerals`, `conflict_geopolitics`. Only one topic and one country per pilot purchase; corridor, multi-country, ranking, current news, risk gate, signed risk object or GRI requests remain on their own existing gated contracts.
@@ -46,7 +46,7 @@ Other supported pilot topics: `sovereign_risk`, `fx_external_risk`, `critical_mi
 - [ ] Merge and deploy canonical main + verify exact live SHA.
 - [ ] Confirm `GET /api/v1/intelligence/availability` and POST live for at least one actually eligible country/topic, or state precisely if none exists.
 - [ ] Confirm existing canonical x402 422 → 402 only for genuinely deliverable cases in **no-funds** run.
-- [ ] Explicit user real-money ACK before any mainnet payment; run first 0.05 USDC payment *only* against actual ready signed or properly labelled baseline intelligence.
+- [ ] Explicit user real-money ACK before any mainnet payment; for the first independently eligible `structural_country_digest`, verify the exact **0.02 USDC** capability-bound quote in a zero-funds rehearsal, then require a separate explicit founder/mainnet ACK before any real purchase. Never use the superseded flat 0.05 USDC price.
 - [ ] Verify Coinbase settlement on Base and idempotent ledger replay; then earn and expand gradually.
 
 The large signed GRO/GRI B2/D1 hot recovery remains a separate blocker for **signed risk products**. Structural_baseline does not pretend it solved #2124.
