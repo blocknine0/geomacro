@@ -23,12 +23,9 @@ concurrency:
 
 jobs:
   score-current-all-domains:
-    if: >-
-      github.repository == 'blocknine0/geomacro' &&
-      github.ref == 'refs/heads/main' &&
-      github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.permit_legacy_supabase_scoring == 'true' &&
-      vars.GEOMACRO_ENABLE_LEGACY_SUPABASE_SCORING == 'true'
+    # Legacy Supabase recovery retired: never execute from manual dispatch,
+    # push or schedule. Keep reviewed historical logic for forensic replay only.
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: production
