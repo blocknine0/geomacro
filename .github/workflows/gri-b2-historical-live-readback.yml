@@ -1,7 +1,8 @@
 name: GRI Historical B2 Exact Readback (No Funds)
 
-# One bounded production readback after this verifier changes, plus explicit
-# owner dispatch. Never a cron, publisher, website freshness or payment gate.
+# Push runs metadata-only D1 provenance triage, never an automatic B2 GET.
+# Any future governed B2 readback requires explicit owner dispatch and the
+# existing account-wide atomic quota governor. No publication or payment.
 on:
   workflow_dispatch:
     inputs:
