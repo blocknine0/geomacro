@@ -80,6 +80,17 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "bis_press", category: "macro", media: "rss",
     url: "https://www.bis.org/doclist/all_pressrels.rss",
     allowedHosts: ["www.bis.org"], credit: "Bank for International Settlements" },
+  // Publisher-native BLS release feeds verified against its official RSS
+  // directory; no raw release tables or text are returned by this service.
+  { id: "bls_cpi", category: "macro", media: "rss",
+    url: "https://www.bls.gov/feed/cpi.rss",
+    allowedHosts: ["www.bls.gov"], credit: null },
+  { id: "bls_employment", category: "macro", media: "rss",
+    url: "https://www.bls.gov/feed/empsit.rss",
+    allowedHosts: ["www.bls.gov"], credit: null },
+  { id: "bls_external_prices", category: "macro", media: "rss",
+    url: "https://www.bls.gov/feed/ximpim.rss",
+    allowedHosts: ["www.bls.gov"], credit: null },
   { id: "fed_press", category: "macro", media: "rss",
     url: "https://www.federalreserve.gov/feeds/press_all.xml",
     allowedHosts: ["www.federalreserve.gov"], credit: "Federal Reserve Board" },
@@ -110,6 +121,11 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "au_geoscience", category: "rare_earth", media: "html_index",
     url: "https://www.ga.gov.au/news",
     allowedHosts: ["www.ga.gov.au"], credit: null },
+  // Independently live-probed 2026-10-13 publisher-native RSS. Never
+  // substitute King's unresponsive feed or a crawler timestamp as pubDate.
+  { id: "au_industry_minister", category: "rare_earth", media: "rss",
+    url: "https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   { id: "uk_energy", category: "rare_earth", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
@@ -280,10 +296,16 @@ export async function fetchFirstPartyOriginalFeed(
     : "application/atom+xml, application/xml, text/xml";
   let target = source.url;
   for (let hop = 0; hop <= 2; hop++) {
+    const isVerifiedAuIssuer = source.id === "au_industry_minister";
     const response = await fetchImpl(target, {
-      method: "GET", redirect: "manual", cache: "no-store",
-      headers: { Accept: accepted },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      method: "GET", redirect: isVerifiedAuIssuer ? "error" : "manual",
+      cache: "no-store",
+      headers: { Accept: isVerifiedAuIssuer
+        ? "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8"
+        : accepted },
+      // One bounded longer origin attempt only for the separately verified
+      // Australia publisher; never retry, redirect, or relax other sources.
+      signal: AbortSignal.timeout(isVerifiedAuIssuer ? 9_000 : TIMEOUT_MS),
     });
     if (![301, 302, 307, 308].includes(response.status)) return response;
     // Unrelated providers are never granted a new redirect privilege.
