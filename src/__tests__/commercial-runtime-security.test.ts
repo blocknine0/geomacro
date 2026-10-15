@@ -81,7 +81,12 @@ describe("commercial runtime security baseline", () => {
     ]) {
       const source = read(path);
       expectPinnedActions(path);
-      expect(source, path).toContain("github.ref == 'refs/heads/main'");
+      if (path.endsWith("/auto-ingest-news.yml")) {
+        expect(source, path).toContain("  recover-news-ingest:\n    # Legacy Supabase recovery retired:");
+        expect(source, path).toContain("    if: ${{ false }}");
+      } else {
+        expect(source, path).toContain("github.ref == 'refs/heads/main'");
+      }
       expect(source, path).not.toMatch(/\bnpm install\b/);
     }
 
