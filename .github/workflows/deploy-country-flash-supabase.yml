@@ -1,16 +1,9 @@
 name: Deploy country flash intelligence to Supabase
 
-# Federico certification trigger anchor: no behavioral change.
+# Supabase production is frozen: no unattended main-push deployment or manual DB operations.
+# Preserved commands are inert historical reference until a separately reviewed recovery.
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "supabase/migrations/**"
-      - "supabase/functions/live-flash-ingest/**"
-      - "supabase/functions/live-flash-corroborate/**"
-      - ".github/workflows/deploy-country-flash-supabase.yml"
   workflow_dispatch:
     inputs:
       mode:
@@ -54,7 +47,8 @@ jobs:
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'version: 2.117.0' "$file"
-          grep -q 'push:' "$file"
+          ! grep -q '^  push:' "$file"
+          grep -Fq 'if: ${{ false }}' "$file"
           grep -q 'production-history-only.mjs verify' "$file"
           grep -q 'exceed_egress_quota' "$file"
           grep -q 'begin read only;' "$file"
@@ -64,7 +58,8 @@ jobs:
           echo "Supabase deployment workflow safety guardrails are present."
 
   deploy:
-    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
+    # Supabase-independent replacement required before separate reviewed restoration.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
