@@ -68,7 +68,9 @@ jobs:
           src/__tests__/risk-gate-v2-world-bank-qpsd-production-static.test.ts
 
   promote-and-census:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    # Supabase-only legacy execution retired. Replaced by reviewed official
+    # source read-only or B2/D1-native signed publication; no DB credential restore.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 55
     environment: production
