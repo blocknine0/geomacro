@@ -158,7 +158,7 @@ function finite(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function riskState(value: unknown, expectedModule: string): value is B2AgentGovernedRiskState {
+export function riskState(value: unknown, expectedModule: string): value is B2AgentGovernedRiskState {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const state = value as Record<string, unknown>;
   if (
@@ -173,6 +173,9 @@ function riskState(value: unknown, expectedModule: string): value is B2AgentGove
     typeof state.expires_at !== "string" ||
     !Number.isFinite(Date.parse(state.expires_at)) ||
     Date.parse(state.expires_at) <= Date.parse(String(state.generated_at)) ||
+    // The serving snapshot can be recent even when a constituent derived
+    // module expired earlier. Do not revive expired evidence through repackage.
+    Date.parse(state.expires_at) <= Date.now() ||
     typeof state.methodology_version !== "string" || !state.methodology_version ||
     !Array.isArray(state.drivers) || state.drivers.length > 32
   ) return false;
