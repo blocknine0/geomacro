@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/public-source-runtime.yml"
+      - "scripts/tests/existing-source-runtime-activation.test.mjs"
       - "global-intelligence/scripts/probe-public-sources.mjs"
       - "global-intelligence/adapters/public-sources.mjs"
       - "src/__tests__/public-source-scheduled-isolation.test.ts"
@@ -14,6 +15,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/public-source-runtime.yml"
+      - "scripts/tests/existing-source-runtime-activation.test.mjs"
       - "global-intelligence/scripts/probe-public-sources.mjs"
       - "global-intelligence/adapters/public-sources.mjs"
 
@@ -38,6 +40,7 @@ jobs:
       - name: Verify bounded public-source code and no storage writers
         run: |
           set -euo pipefail
+          node --test scripts/tests/existing-source-runtime-activation.test.mjs
           node --check global-intelligence/scripts/probe-public-sources.mjs
           node --check global-intelligence/adapters/public-sources.mjs
           grep -q 'PUBLIC_SOURCE_OVERSIZE' global-intelligence/adapters/public-sources.mjs
