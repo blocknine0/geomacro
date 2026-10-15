@@ -70,6 +70,7 @@ export function assertVerifiedCurrentGlobalRiskD1Parent(snapshot, now = Date.now
   }
 
   return Object.freeze({
+    originalSnapshot: snapshot,
     risk, sourceAsOf: new Date(sourceMs).toISOString(),
     parentB2Sha256: snapshot.b2_sha256,
     parentPayloadSha256: snapshot.payload_sha256,
