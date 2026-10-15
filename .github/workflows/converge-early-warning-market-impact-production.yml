@@ -38,7 +38,7 @@ jobs:
           grep -q 'converge-early-warning-market-impact.sql' "$file"
           grep -q 'degraded !== false' "$file"
           ! grep -q '^  push:' "$file"
-          grep -Fq 'if: ${{ false }}' "$file"
+          grep -Eq '^[[:space:]]+if:[[:space:]]+[$][{][{][[:space:]]*false[[:space:]]*[}][}]' "$file"
           grep -q 'add column if not exists market_impact jsonb' "$sql"
           grep -q 'revoke all on function public.guard_published_early_warning_core() from PUBLIC, anon, authenticated' "$sql"
           broad_migration_command='supabase db '"'"'push'
