@@ -4,10 +4,15 @@ const read=(p:string)=>readFileSync(p,"utf8");
 const workflows=[
   {file:".github/workflows/phase-a-runtime-freshness-repair.yml",
    input:"permit_legacy_supabase_repair",writer:"bun scripts/ops/phase-a-runtime-freshness-repair.mjs"},
-  {file:".github/workflows/gdelt-gal-live-sync.yml",
-   input:"permit_legacy_supabase_gal",writer:"node scripts/run-gdelt-gal-cycle.mjs"},
 ];
 describe("#1827 Supabase-free hard stop: no automatic legacy recovery SQL writes",()=>{
+  it("permanently retires the old GDELT GAL Postgres recovery job",()=>{
+    const workflow=read(".github/workflows/gdelt-gal-live-sync.yml");
+    expect(workflow).toContain("  sync:\n    # Legacy Supabase recovery retired:");
+    expect(workflow).toContain("    if: ${{ false }}");
+    expect(workflow).not.toContain("\n  schedule:\n");
+    expect(workflow).not.toContain("\n  push:\n");
+  });
   it.each(workflows)("$file is gated by explicit owner action and current live bulk-write free headroom",
   ({file,input,writer})=>{
     const s=read(file);
