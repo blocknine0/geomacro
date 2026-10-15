@@ -103,7 +103,8 @@ describe("commercial runtime security baseline", () => {
 
     expect(ingestRecovery).toContain("workflow_dispatch");
     expect(ingestRecovery).not.toContain("schedule:");
-    expect(ingestRecovery).toContain("github.repository == 'blocknine0/geomacro'");
+    expect(ingestRecovery).toContain("  recover-news-ingest:\n    # Legacy Supabase recovery retired:");
+    expect(ingestRecovery).toContain("    if: ${{ false }}");
     expect(ingestRecovery).toContain("group: geomacro-intelligence-orchestrator");
     expect(ingestRecovery).toContain("D1_DATABASE_NAME: geomacro-control-plane");
     expect(ingestRecovery).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest");
