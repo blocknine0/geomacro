@@ -57,7 +57,9 @@ jobs:
           echo "Production migration workflow manual-only direct-database safety guardrails are present."
 
   migrate:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    # Permanently retired Supabase-only runtime; keep historical audit code
+    # immutable and use existing D1/B2-native replacements instead.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
