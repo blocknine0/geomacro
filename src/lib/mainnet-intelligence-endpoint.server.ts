@@ -18,6 +18,7 @@ import {
 import { checkAgentQueryDeliverability, publicAgentQueryAvailability } from "./agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "./agent-query-external-modules.server";
 import { assembleAgentQueryResponse } from "./agent-query-response.server";
+import { resolveEligibleCoinbaseCapabilityConfig } from "./verified-capability-coinbase-binding.server";
 import {
   assertPublicPaidOutputBoundary,
   sanitizeAndRehashPaidPreparedResponse,
@@ -270,7 +271,10 @@ export const mainnetIntelligenceHandlers = {
           environment: config.environment,
           network: config.network,
           asset: "USDC",
-          exact_price_usdc: config.priceUsdc,
+          // One global flat price is not a valid capability quote.
+          // Buyers must POST a proven plan for an exact server-derived amount.
+          exact_price_usdc: null,
+          pricing_policy: "SERVER_VERIFIED_CAPABILITY_AND_VARIANT",
           topics: AGENT_QUERY_TOPICS,
           coverage: "data-driven; only currently deliverable subjects are payable",
           live_on_demand_discovery_supported: true,
@@ -564,6 +568,16 @@ export const mainnetIntelligenceHandlers = {
         if (!availability.deliverable) {
           return json({ ok: false, chargeable: false, payment_required_now: false, availability: publicAgentQueryAvailability(availability), error: { code: availability.code, message: "Requested intelligence is not currently fully deliverable; no payment is accepted." }, execution_authorized: false }, 422);
         }
+        // The same verified capability-price configuration travels through the
+        // HTTP 402, signed payment binding, durable claim, usage guard,
+        // prepared response, and final settlement. No mutable client price.
+        try {
+          config = resolveEligibleCoinbaseCapabilityConfig(plan, availability, config);
+        } catch {
+          return json({ ok: false, chargeable: false, payment_required_now: false,
+            error: { code: "CAPABILITY_PRICE_UNVERIFIED_NO_CHARGE" },
+            execution_authorized: false }, 422);
+        }
 
         const paymentHeader = request.headers.get("payment-signature");
         if (!paymentHeader) return paymentRequiredResponse(request, config, plan.query_plan_hash);
@@ -635,6 +649,22 @@ export const mainnetIntelligenceHandlers = {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: `FINAL_${finalAvailability.code}` });
           if (usageReservation.enforced) await releaseCoinbaseX402AgentUsage(paymentFingerprint);
           return json({ ok: false, chargeable: false, availability: publicAgentQueryAvailability(finalAvailability), error: { code: `FINAL_${finalAvailability.code}`, message: "Required data changed before settlement; no payment was taken." }, execution_authorized: false }, 409);
+        }
+        // A plan can become ineligible or change its price class after the
+        // original quote. Never settle against an unverified final capability.
+        try {
+          const finalConfig = resolveEligibleCoinbaseCapabilityConfig(plan, finalAvailability, config);
+          if (finalConfig.amountAtomic !== config.amountAtomic ||
+              finalConfig.priceUsdc !== config.priceUsdc) {
+            throw Error("FINAL_CAPABILITY_PRICE_MISMATCH");
+          }
+        } catch {
+          await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken,
+            failureCode: "FINAL_CAPABILITY_PRICE_UNVERIFIED" });
+          if (usageReservation.enforced) await releaseCoinbaseX402AgentUsage(paymentFingerprint);
+          return json({ ok: false, chargeable: false, payment_required_now: false,
+            error: { code: "FINAL_CAPABILITY_PRICE_UNVERIFIED" },
+            execution_authorized: false }, 409);
         }
 
         const requestId = randomUUID();

@@ -22,8 +22,12 @@ export function resolveVerifiedPublishedPlanPrice(
   plan: AgentQueryPlan,
   proof: VerifiedCapabilityPriceProof,
 ): CapabilityPrice {
+  // A structural-only country digest does not purport to contain a signed GRO.
+  // Never waive a cryptographic signature on an actual signed risk product.
+  const signedProofRequired = plan.delivery_tier !== "structural_baseline";
   if (!proof || proof.evidence_verified !== true || proof.rights_verified !== true ||
-      proof.signing_verified !== true || proof.deliverable !== true) {
+      (signedProofRequired && proof.signing_verified !== true) ||
+      proof.deliverable !== true) {
     throw new Error("CAPABILITY_PRICE_ELIGIBILITY_UNVERIFIED_NO_CHARGE");
   }
   if (plan.fulfillment_mode !== "published_only" || plan.subjects.length < 1) {
@@ -36,6 +40,11 @@ export function resolveVerifiedPublishedPlanPrice(
   }
 
   if (plan.delivery_tier === "structural_baseline") {
+    if (proof.signed_object_lifecycle !== "none" ||
+        plan.required_modules.some(module =>
+          ["signed_risk_object", "risk_gate", "gri_context", "hot_topics"].includes(module))) {
+      throw new Error("CAPABILITY_PRICE_STRUCTURAL_ONLY_NO_SIGNED_CLAIMS");
+    }
     if (plan.subjects.length !== 1 || plan.subjects[0]?.type !== "country" ||
         plan.topics.length !== 1 || plan.intent !== "single_subject") {
       throw new Error("CAPABILITY_PRICE_STRUCTURAL_SCOPE_UNSUPPORTED");
