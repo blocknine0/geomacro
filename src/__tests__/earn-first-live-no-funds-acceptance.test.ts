@@ -47,6 +47,7 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     expect(report.checkout_or_settlement_attempted).toBe(false);
     expect(received).toHaveLength(5); // build SHA, catalog, three categories
     expect(received.filter(x=>x.method==="POST")).toHaveLength(3);
+    expect(report.checks.slice(2).map(x=>x.country_iso3)).toEqual(["USA","USA","USA"]);
     for(const x of received){
       expect(x.headers.has("payment-signature")).toBe(false);
       expect(x.headers.has("authorization")).toBe(false);
@@ -106,6 +107,35 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     expect(report.payment_header_submitted).toBe(false);
     expect(report.real_funds_touched).toBe(false);
   });
+  it("reports each tested ISO3 and exact allowlisted structural blockers without source identities",async()=>{
+    const {fetchImpl}=calls([
+      {...unavailable,availability:{
+        missing_modules:["sovereign_fiscal","PRIVATE_SOURCE_DO_NOT_EXPORT"],
+        stale_modules:["external_fx"],ineligible_source_count:1,
+      }},
+      {...unavailable,availability:{
+        missing_modules:["macro_monetary"],stale_modules:[],ineligible_source_count:0,
+      }},
+      {...unavailable,availability:{
+        missing_modules:[],stale_modules:["critical_minerals"],ineligible_source_count:0,
+      }},
+    ]);
+    const report=await acceptEarningPilotLive({expectedSha:sha,fetchImpl});
+    expect(report.first_earning_ready).toBe(false);
+    expect(report.checks.slice(2)).toMatchObject([
+      {check:"geopolitics",country_iso3:"USA",topic:"conflict_geopolitics",
+        missing_public_modules:["sovereign_fiscal"],stale_public_modules:["external_fx"],
+        ineligible_source_count:1},
+      {check:"macro_fx",country_iso3:"USA",topic:"macro_risk",
+        missing_public_modules:["macro_monetary"],stale_public_modules:[]},
+      {check:"critical_minerals",country_iso3:"USA",topic:"critical_minerals",
+        missing_public_modules:[],stale_public_modules:["critical_minerals"]},
+    ]);
+    expect(JSON.stringify(report)).not.toContain("PRIVATE_SOURCE_DO_NOT_EXPORT");
+    expect(report.real_funds_touched).toBe(false);
+    expect(report.payment_header_submitted).toBe(false);
+  });
+
   it("treats leaked issuer IDs on a 422 response as an invalid buyer boundary",async()=>{
     const leak=calls([unavailable,{...unavailable,availability:{
       required_source_ids:["NEVER_EXPORT_SOURCE_ID"]}},unavailable]);
