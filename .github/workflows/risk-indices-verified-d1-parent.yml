@@ -4,6 +4,12 @@ name: Risk Indices from Verified D1 Global Risk (No Funds)
 # Requires already-current original GRI proof in D1; cannot synthesize it.
 on:
   workflow_dispatch: {}
+  # Automatic downstream continuation only after the independently reviewed,
+  # production-authorized GRI publisher actually succeeds on exact main.
+  # Does not authorize/source/compute GRI, and does not bypass D1/B2 proof.
+  workflow_run:
+    workflows: ["GRI v1.2 Supabase-Free Current Promotion"]
+    types: [completed]
   pull_request:
     paths:
       - ".github/workflows/risk-indices-verified-d1-parent.yml"
@@ -39,7 +45,20 @@ jobs:
           node --test scripts/lib/risk-indices-verified-d1-parent.test.mjs
   publish:
     needs: source-contract-tests
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'workflow_dispatch' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+          github.event.workflow_run.head_sha == github.sha
+        )
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: production
