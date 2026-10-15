@@ -2,6 +2,7 @@ import type { AgentQueryPlan } from "./agent-query-plan";
 import { readB2AgentGovernedModule, type B2AgentGovernedRiskState } from "./b2-agent-governed-modules.server";
 import { checkCommercialSourceEligibility } from "./commercial-source-eligibility.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
+import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
 import { generateRiskGateV2PoliticalGovernanceModuleState } from "./risk-gate-v2-political-governance-module-state.server";
 
 export const AGENT_POLITICAL_GOVERNANCE_SOURCE_ID =
@@ -145,6 +146,25 @@ export async function loadAgentPoliticalGovernanceModule(input: {
     return unavailable(input.subject, "SOURCE_NOT_ELIGIBLE", sourceContract);
   }
 
+  // The independently hash-verified B2 derived state is the production
+  // authority. Do not consult legacy Supabase first when an eligible B2 state
+  // already exists; a successful-but-empty historical query is not proof that
+  // the verified B2 continuity object is missing.
+  let b2State: AgentPoliticalGovernanceModule | null = null;
+  try {
+    b2State = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
+  } catch {
+    // A B2 outage is never source eligibility; keep fail-closed semantics.
+  }
+  if (b2State?.deliverable) return b2State;
+
+  // In frozen-production mode do not even construct a Supabase client. A
+  // correctly rejected expired/stale B2 module remains unavailable; it is
+  // never silently refreshed from a retrieval/packaging timestamp.
+  if (!supabaseReadFallbackAllowed()) {
+    return b2State ?? unavailable(input.subject, "OBSERVATION_NOT_AVAILABLE", sourceContract);
+  }
+
   try {
     const db = requireRiskSupabase();
     const observation = await db
@@ -250,11 +270,9 @@ export async function loadAgentPoliticalGovernanceModule(input: {
       },
     };
   } catch (primaryError) {
-    const fallback = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
-    if (fallback) {
-      console.warn("[agent-wgi] primary governed store unavailable; using fresh verified B2 derived state");
-      return fallback;
-    }
+    // No second B2 GET under fallback failure/quota pressure: the same pinned
+    // current B2 proof was already examined before this optional standby path.
+    if (b2State) return b2State;
     throw primaryError;
   }
 }
