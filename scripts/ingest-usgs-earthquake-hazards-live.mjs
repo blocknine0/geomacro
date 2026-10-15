@@ -81,8 +81,18 @@ if (!Number.isFinite(MAX_EVENT_AGE_HOURS) || MAX_EVENT_AGE_HOURS <= 0) {
   throw new Error("USGS_MAX_EVENT_AGE_HOURS must be positive")
 }
 
-const db = createDb()
-const sourceRegistration = await loadSourceRegistration(db)
+// Read-only official-source verification must not initialize the legacy
+// Supabase/Postgres adapter. Its source registration is NOT recertified by
+// a successful public HTTP response. The dormant --write path remains
+// fail-closed on its original governed registration and database checks.
+const db = WRITE ? createDb() : null
+const sourceRegistration = WRITE
+  ? await loadSourceRegistration(db)
+  : {
+      commercial_usage_status: "NOT_ASSESSED_READ_ONLY",
+      enabled_for_ingestion: false,
+      enabled_for_commercial_signals: false,
+    }
 if (WRITE) assertWriteGovernance(sourceRegistration)
 
 const response = await fetchWithRetry(FEED_URL)
