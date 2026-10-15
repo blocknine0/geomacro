@@ -114,6 +114,36 @@ export async function runCurrentB2HistoricalReadback({
  return {...receipt,account_quota_governed:true,b2_usage:b2.usage()};
 }
 
+/**
+ * Only source-authored, non-sensitive diagnostic codes leave this private
+ * verifier. Never print raw B2 errors, object keys, token names, original
+ * payloads or any upstream response body.
+ */
+export function classifyHistoricalGriReadbackFailure(error) {
+  const message=error instanceof Error?error.message:"";
+  const allowed=new Set([
+    "HISTORICAL_GRI_B2_CLOCK_INVALID",
+    "HISTORICAL_GRI_B2_D1_ANCHOR_PROVENANCE_INVALID",
+    "HISTORICAL_GRI_B2_D1_ANCHOR_TOO_OLD_OR_FUTURE",
+    "HISTORICAL_GRI_B2_COMPRESSED_B2_READBACK_SHA_MISMATCH",
+    "HISTORICAL_GRI_B2_GZIP_OR_JSON_INVALID",
+    "HISTORICAL_GRI_B2_ORIGINAL_PAYLOAD_SHA_MISMATCH",
+    "HISTORICAL_GRI_B2_ORIGINAL_GRI_BASELINE_INVALID",
+    "HISTORICAL_GRI_B2_AUTHORIZED_D1_HOT_ANCHOR_UNAVAILABLE",
+    "HISTORICAL_GRI_B2_GOVERNED_READ_ONLY_RUNTIME_REQUIRED",
+    "HISTORICAL_GRI_B2_FORBIDDEN_SUPABASE_OR_PAYMENT_CREDENTIAL",
+    "HISTORICAL_GRI_B2_EXPLICIT_READ_ONLY_MODE_REQUIRED",
+  ]);
+  if(allowed.has(message))return message;
+  if(/^GLOBAL_RISK_B2_ANCHOR_UNAVAILABLE_\\d{3}$/.test(message))
+    return "HISTORICAL_GRI_B2_D1_ANCHOR_HTTP_UNAVAILABLE";
+  if(/^(?:B2_REQUEST_BUDGET_EXHAUSTED|B2_GLOBAL_DAILY_[A-Z_]+)$/.test(message))
+    return "HISTORICAL_GRI_B2_SHARED_QUOTA_HELD";
+  if(/^B2_[A-Z0-9_]+$/.test(message))
+    return "HISTORICAL_GRI_B2_TRANSPORT_OR_AUTH_UNAVAILABLE";
+  return "HISTORICAL_GRI_B2_UNKNOWN_FAIL_CLOSED";
+}
+
 if(process.argv[1]?.endsWith("verify-global-risk-b2-historical-readback.mjs")){
  try {
    assert(process.argv.length===3&&
@@ -129,8 +159,17 @@ if(process.argv[1]?.endsWith("verify-global-risk-b2-historical-readback.mjs")){
      current_gri_qualified:false,paid_intelligence_available:false,
      supabase_network_attempts:0,b2_puts:0,d1_writes:0,x402_charges:0,
    }));
- }catch{
-   console.error("HISTORICAL_GRI_B2_READBACK_FAILED_CLOSED");
+ }catch(error){
+   console.error(JSON.stringify({
+     schema:"geomacro.gri-b2-readback-safe-failure.v1",
+     ok:false,
+     error_code:classifyHistoricalGriReadbackFailure(error),
+     historical_b2_readback_verified:false,
+     immutable_historical_lineage_verified:false,
+     current_gri_qualified:false,
+     paid_intelligence_available:false,
+     supabase_requests:0,d1_writes:0,b2_puts:0,x402_charges:0,
+   }));
    process.exitCode=2;
  }
 }
