@@ -20,14 +20,9 @@ concurrency:
 
 jobs:
   dry-run:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      GRI_DB_MODE: direct_postgres
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -44,8 +39,16 @@ jobs:
 
       - name: Run live USGS dry-run
         shell: bash
+        env:
+          GRI_DB_MODE: ""
+          SUPABASE_DB_URL: ""
+          SUPABASE_URL: ""
+          APP_SUPABASE_URL: ""
+          SUPABASE_SERVICE_ROLE_KEY: ""
+          APP_SUPABASE_SERVICE_ROLE_KEY: ""
         run: |
           set -euo pipefail
+          test -z "${SUPABASE_DB_URL}${SUPABASE_URL}${APP_SUPABASE_URL}${SUPABASE_SERVICE_ROLE_KEY}${APP_SUPABASE_SERVICE_ROLE_KEY}"
           bun scripts/ingest-usgs-earthquake-hazards-live.mjs 2>&1 | tee usgs-earthquake-dry-run.log
           grep -q 'PASS: USGS EARTHQUAKE DRY RUN CLEAN; DATABASE UNCHANGED' usgs-earthquake-dry-run.log
           grep -q '"country_mapped_rows": 0' usgs-earthquake-dry-run.log
