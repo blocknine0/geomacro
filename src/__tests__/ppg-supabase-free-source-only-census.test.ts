@@ -40,6 +40,22 @@ describe("World Bank source-only Supabase-free PPG census",()=>{
       supabase_connections:0,d1_writes:0,b2_gets:0,usdc_spent:0,
     });
   });
+  it("does not count source economic territory XKX as a UN195 country",()=>{
+    const report=auditedFiscalFixture();
+    report.states.push({
+      module:"sovereign_fiscal",coverage:"LIMITED",
+      commercial_eligibility_status:"VERIFIED",
+      module_state_id:"rgv2:XKX:sovereign_fiscal:world-bank-ppg-external-debt:source",
+    });
+    report.shadow_summary.eligible_shadow_country_count=101;
+    report.report_hash=hash({...report,report_hash:""});
+    expect(auditPpgSourceOnlyCensus(report)).toMatchObject({
+      country_count:195,ppg_fiscal_shadow_countries:100,
+      excluded_noncanonical_source_economies:1,
+      source_fiscal_country_or_economy_count:101,
+      four_module_accepted_country_count:null,
+    });
+  });
   it("rejects tampering, double-counting and falsely relabelled debt",()=>{
     const bad=auditedFiscalFixture();bad.states.push(bad.states[0]);
     expect(()=>auditPpgSourceOnlyCensus(bad)).toThrow();
