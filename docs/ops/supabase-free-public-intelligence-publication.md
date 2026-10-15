@@ -63,7 +63,7 @@ publication must fail closed.
    and supply its independently obtained SHA and key at dispatch. The workflow
    validates the pinned independent reviewer before the first B2 GET, reuses
    the shared quota governor and publisher, then compares the unauthenticated
-   public D1 payload/hash/native clock/proof/expiry/source run to the publication
+   public D1 payload/hash/native clock/proof/expiry to the publication
    receipt. It does not require a frontend republish. It never creates review
    signatures or promotes a private-scoring bundle. Both the review public key
    pin and `RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64` must be configured as
