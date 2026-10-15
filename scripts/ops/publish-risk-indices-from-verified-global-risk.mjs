@@ -40,7 +40,7 @@ function project(parent,now=Date.now()){
   must(indices.contractVersion===PUBLIC_RISK_INDICES_CONTRACT_VERSION &&
     indices.parentMethodologyVersion==="gri-v1.2.0" &&
     indices.verificationStatus==="verified" &&
-    indices.snapshotAsOf===parent.sourceAsOf &&
+    Date.parse(indices.snapshotAsOf)===Date.parse(parent.sourceAsOf) &&
     indices.proofHash===parent.risk.proofHash &&
     Array.isArray(indices.indices) && indices.indices.length===3,
     "INDICES_PROOF_BINDING_INVALID");
