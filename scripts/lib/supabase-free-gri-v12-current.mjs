@@ -270,3 +270,39 @@ export function computeReviewedCurrentGlobalRisk({
     portableProof: portable, // RETURNED PRIVATE: NEVER WRITE TO D1/PUBLIC B2
   };
 }
+
+
+/** Credentials-free preflight, before reserving a single B2 Class-B ticket. */
+export function preflightReviewedCurrentGlobalRisk({
+  reviewed, trustedReviewerPublicKeyPem, now = new Date(),
+} = {}) {
+  const nowMs = now instanceof Date ? now.getTime() : NaN;
+  assert(Number.isFinite(nowMs), "CLOCK_INVALID");
+  const signed = reviewed?.signed_input;
+  assert(signed && typeof signed === "object" &&
+    Object.keys(reviewed).length === 2 &&
+    Object.keys(reviewed).every(k => ["signed_input","review_signature_base64"].includes(k)),
+  "SIGNED_ENVELOPE_REQUIRED");
+  checkReviewedInput(signed, nowMs);
+  const reviewer = trustedSignature(signed, reviewed.review_signature_base64,
+    trustedReviewerPublicKeyPem);
+  const sourceQualification = qualifyIndependentSameEvent({
+    rows: signed.customerRows, eventPackages: signed.eventPackages,
+    now, trustedReviewerPublicKeyPem,
+  });
+  assert(sourceQualification.receipt.qualified_event_count === signed.events.length &&
+    sourceQualification.receipt.commercial_event_admission === true,
+  "SIGNED_ORIGINAL_EVIDENCE_NOT_QUALIFIED");
+  assert(typeof signed.history_b2_key === "string" &&
+    signed.history_b2_key.startsWith(HISTORY_PREFIX) &&
+    /^[a-zA-Z0-9/_.-]+\.json\.gz$/u.test(signed.history_b2_key) &&
+    !signed.history_b2_key.includes("..") &&
+    SHA.test(signed.history_b2_sha256), "HISTORY_PIN_REQUIRED");
+  return {
+    history_b2_key: signed.history_b2_key,
+    history_b2_sha256: signed.history_b2_sha256,
+    reviewer_spki_sha256: reviewer,
+    reviewed_input_sha256: digest(Buffer.from(JSON.stringify(signed))),
+    qualified_receipt_sha256: sourceQualification.receipt_sha256,
+  };
+}
