@@ -1,6 +1,7 @@
 import {describe,expect,it} from "vitest";
 import {createHash} from "node:crypto";
 import {gzipSync} from "node:zlib";
+import {readFileSync} from "node:fs";
 import {verifyPinnedGlobalRiskBaseline} from "../../scripts/ops/verify-global-risk-b2-historical-readback.mjs";
 const sha=(v:Uint8Array)=>createHash("sha256").update(v).digest("hex");
 const now=new Date("2026-10-15T13:00:00.000Z");
@@ -54,9 +55,8 @@ describe("GRI historical B2 actual independent GET readback",()=>{
     })).toThrow();
   });
   it("keeps live workflow no-funds, no-Supabase and quota governed",()=>{
-    const fs=require("node:fs");
-    const workflow=fs.readFileSync(".github/workflows/gri-b2-historical-live-readback.yml","utf8");
-    const source=fs.readFileSync("scripts/ops/verify-global-risk-b2-historical-readback.mjs","utf8");
+    const workflow=readFileSync(".github/workflows/gri-b2-historical-live-readback.yml","utf8");
+    const source=readFileSync("scripts/ops/verify-global-risk-b2-historical-readback.mjs","utf8");
     expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
     expect(workflow).toContain("B2_ACCOUNT_QUOTA_WORKFLOW_ID: historical_gri_readback");
     expect(workflow).toContain('B2_REQUEST_BUDGET: "4"');
