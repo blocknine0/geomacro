@@ -4,13 +4,39 @@ name: Risk Indices from Verified D1 Global Risk (No Funds)
 # Requires already-current original GRI proof in D1; cannot synthesize it.
 on:
   workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/risk-indices-verified-d1-parent.yml"
+      - "scripts/lib/risk-indices-verified-d1-parent.mjs"
+      - "scripts/lib/risk-indices-verified-d1-parent.test.mjs"
+      - "scripts/ops/publish-risk-indices-from-verified-global-risk.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/risk-indices-verified-d1-parent.yml"
+      - "scripts/lib/risk-indices-verified-d1-parent.mjs"
+      - "scripts/lib/risk-indices-verified-d1-parent.test.mjs"
+      - "scripts/ops/publish-risk-indices-from-verified-global-risk.mjs"
 permissions:
   contents: read
 concurrency:
   group: risk-indices-verified-d1-parent
   cancel-in-progress: false
 jobs:
+  source-contract-tests:
+    if: ${{ github.repository == 'blocknine0/geomacro' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Fail-closed current D1 source tests (no credentials or writes)
+        run: |
+          node --check scripts/lib/risk-indices-verified-d1-parent.mjs
+          node --check scripts/lib/risk-indices-verified-d1-parent.test.mjs
+          node --check scripts/ops/publish-risk-indices-from-verified-global-risk.mjs
+          node --test scripts/lib/risk-indices-verified-d1-parent.test.mjs
   publish:
+    needs: source-contract-tests
     if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
