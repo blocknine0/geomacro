@@ -1,20 +1,12 @@
 name: B2 structural serving snapshot maintenance
 
+# Quota-held historical Supabase producer. Previously a scheduled/push
+# workflow instantiated an active Supabase service-role reader and performed
+# ungoverned B2 Class-B operations. Preserve its code for forensic recovery
+# but forbid automatic or operator-triggered production execution until a
+# separate, reviewed Supabase-free + account-quota-governed successor exists.
 on:
   workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - "config/historical-data-producer.v1.json"
-      - "global-intelligence/sources/historical-data.registry.v1.json"
-      - "global-intelligence/adapters/historical-data.mjs"
-      - "src/lib/b2-structural.server.ts"
-      - "src/lib/structural-context.server.ts"
-      - "scripts/ops/b2-s3-client.mjs"
-      - "scripts/ops/publish-b2-structural-serving-snapshot.ts"
-      - ".github/workflows/b2-structural-serving-snapshot.yml"
-  schedule:
-    - cron: "17 3 * * *"
 
 permissions:
   contents: read
@@ -25,7 +17,9 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    # Absolute production hold. Neither a push, a cron, nor a manual
+    # dispatch can resume the historical Supabase reader by accident.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     environment: production
