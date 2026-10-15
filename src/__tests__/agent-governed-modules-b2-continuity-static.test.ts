@@ -71,17 +71,23 @@ describe("verified B2 governed agent module continuity", () => {
     expect(wgi).toContain("readB2AgentGovernedModule");
 
     for (const source of [wdi, usgs]) {
-      const authorization = source.indexOf("checkCommercialSourceEligibility");
-      const b2Read = source.indexOf("const primary = await b2Fallback");
-      const standby = source.indexOf("const db = requireRiskSupabase()");
+      const loader = source.slice(source.indexOf("export async function loadAgent"));
+      const authorization = loader.indexOf("checkCommercialSourceEligibility");
+      const b2Read = loader.indexOf("b2State = await b2Fallback(");
+      const noSupabase = loader.indexOf("if (!supabaseReadFallbackAllowed())");
+      const standby = loader.indexOf("const db = requireRiskSupabase()");
       expect(authorization).toBeGreaterThanOrEqual(0);
       expect(b2Read).toBeGreaterThan(authorization);
-      expect(standby).toBeGreaterThan(b2Read);
+      expect(loader.match(/await b2Fallback\\(/g)).toHaveLength(1);
+      expect(loader.indexOf("if (b2State?.deliverable) return b2State"))
+        .toBeGreaterThan(b2Read);
+      expect(noSupabase).toBeGreaterThan(b2Read);
+      expect(standby).toBeGreaterThan(noSupabase);
     }
     expect(wdi).toContain("Production serving is B2-primary");
     expect(usgs).toContain("B2 is the production serving authority");
-    expect(wdi).toContain("using fresh verified B2 governed derived state");
-    expect(usgs).toContain("using fresh verified B2 governed derived state");
+    expect(wdi).toContain("return b2State ?? unavailable(");
+    expect(usgs).toContain("return b2State ?? unavailable(");
     expect(rights).toContain("export async function readCommercialSourceRightsRow");
     expect(rights).toContain('certificationState === "CERTIFIED"');
   });
