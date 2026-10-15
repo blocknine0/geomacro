@@ -1,0 +1,78 @@
+name: Scoped Three-Domain Real-Source Readonly Verification
+
+# PR-only read-only transport probe. This is NOT source-rights,
+# country certification, scorer, signature or publication acceptance.
+on:
+  pull_request:
+    paths:
+      - 'scripts/lib/official-native-item-publication-date.mjs'
+      - 'scripts/lib/three-domain-reviewed-handoff.mjs'
+      - 'scripts/ops/verify-three-domain-reviewed-handoff.mjs'
+      - 'src/__tests__/native-publisher-clock-strict-20261015.test.ts'
+      - 'src/__tests__/three-domain-reviewed-handoff.test.js'
+      - '.github/workflows/three-domain-real-source-pr-readonly.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-public-original-transport:
+    if: github.repository == 'blocknine0/geomacro' && github.event.pull_request.head.repo.full_name == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact PR source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Probe each configured active original publisher read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Network is restricted to the existing pinned public fixed feeds.
+          # Exit 3 means real source transport degraded; it is NOT an excuse
+          # to convert zero original events or unlicensed data into scoring.
+          status=0
+          node scripts/ops/probe-expanded-official-source-mesh.mjs > /tmp/geomacro-real-sources.json || status=$?
+          test "$status" -eq 0 -o "$status" -eq 3
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const r=JSON.parse(readFileSync('/tmp/geomacro-real-sources.json','utf8'));
+          const registered=r.sources??[];
+          if(r.schema!=='geomacro.expanded-official-source-observation.v1'||
+             registered.length!==18||
+             r.active_source_count!==15||r.quarantined_source_count!==3||
+             r.verified_country_count!==0||r.verified_current_event_domains!==0||
+             r.commercial_eligible!==false||r.source_rights_verified!==false||
+             r.supabase_reads!==0||r.supabase_writes!==0||r.d1_writes!==0||
+             r.b2_requests!==0||r.payment_performed!==false||
+             registered.some(s=>s.commercial_eligible!==false||
+               s.commercial_rights_verified!==false||
+               (s.quarantined===true&&s.reason!=='QUARANTINED_NOT_POLLED')))
+            throw Error('REAL_SOURCE_OBSERVATION_BOUNDARY_INVALID');
+          console.log(JSON.stringify({
+            checked_at:r.observed_at,scope:'READ_ONLY_ORIGINAL_TRANSPORT_NOT_PUBLICATION',
+            source_count:registered.length,active:r.active_source_count,
+            quarantined:r.quarantined_source_count,
+            reachable_active:registered.filter(s=>s.quarantined!==true&&
+              s.publisher_reachable===true&&s.format_valid===true).length,
+            degraded_active:registered.filter(s=>s.quarantined!==true&&
+              (s.publisher_reachable!==true||s.format_valid!==true)).map(s=>s.source_id),
+            current_original_24h_topics:r.original_publisher_native_24h_topic_counts,
+            qualified_current_event_domains:0,country_certifications_verified:0,
+            reviewer_signed_inputs_produced:0,production_published:false,
+            b2_requests:0,d1_writes:0,supabase_requests:0,usdc_spent:0,
+          }));
+          NODE
+      - name: Save private sanitized source-transport diagnostic only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: scoped-real-source-readonly-${{ github.run_id }}
+          path: artifacts/expanded-official-source/transport.json
+          if-no-files-found: warn
+          retention-days: 3
