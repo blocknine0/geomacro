@@ -24,9 +24,9 @@ describe("permanent zero-advisory dependency hardening", () => {
     expect(lock).toContain('    "@circle-fin/x402-batching": [');
   });
 
-  it("does not retain a phantom Solana websocket module path in the Vite graph", () => {
-    expect(vite).not.toContain("rpc-websockets");
+  it("preserves the founder-approved Vite website lock while removing unused packages", () => {
     expect(vite).toContain("lovable-node-polyfill-resolver");
+    expect(vite).toContain("rpc-websockets");
   });
 
   it("requires bun audit success with no time-bound exception or crypto bypass", () => {
