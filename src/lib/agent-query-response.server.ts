@@ -12,7 +12,8 @@ import {
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { readProductionGlobalRisk } from "./production-global-risk.server";
-import { loadStructuralContext } from "./structural-context.server";
+import { loadStructuralContext, type StructuralObservation } from "./structural-context.server";
+import { sourceNativeObservationTime } from "./source-native-observation-time";
 import { buildDecisionIntelligence } from "./decision-intelligence-output";
 import {
   GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
@@ -75,17 +76,18 @@ function perModuleLimit(detail: AgentQueryPlan["detail"]) {
   return detail === "compact" ? 2 : detail === "full" ? 12 : 5;
 }
 
-function latestModuleTimestamp(
-  observations: ReturnType<typeof publicStructuralObservation>[],
-  coverage: ReturnType<typeof publicStructuralCoverage>[],
-) {
-  const values = [
-    ...observations.map((row) => row.observed_at ?? row.published_at ?? row.retrieved_at),
-    ...coverage.map((row) => row.latest_observed_at),
-  ]
-    .filter((value): value is string => Boolean(value))
-    .map((value) => Date.parse(value))
-    .filter(Number.isFinite);
+/**
+ * Prepared paid delivery MUST use the same source-native evidence clock as
+ * the canonical availability checker. Coverage metadata and retrieval
+ * timestamps describe indexing, not a qualifying original observation.
+ */
+export function latestModuleTimestamp(
+  observations: readonly StructuralObservation[],
+  asOfMs: number,
+): number | null {
+  const values = observations
+    .map((row) => sourceNativeObservationTime(row, asOfMs))
+    .filter((value): value is number => value !== null);
   return values.length ? Math.max(...values) : null;
 }
 
@@ -101,15 +103,22 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
   const governedFallbackTimes: string[] = [];
 
   for (const module of structuralModules) {
-    const observations = context.observations
-      .filter((row) => moduleMatches(module, row.dimension))
+    // Exact country/observation identity is part of the buyer's paid plan.
+    // A foreign profile row or modern coverage timestamp cannot grant local
+    // freshness, even if the archive itself is well formed.
+    const nativeRows = context.observations.filter((row) =>
+      moduleMatches(module, row.dimension) &&
+      (subject.type !== "country" || row.country_iso3 === subject.country_iso3),
+    );
+    const observations = nativeRows
       .slice(0, limit)
       .map((row) => publicStructuralObservation(row, asOf));
     const coverage = context.metadata.coverage
-      .filter((row) => moduleMatches(module, row.dimension))
+      .filter((row) => moduleMatches(module, row.dimension) &&
+        (subject.type !== "country" || row.country_iso3 === subject.country_iso3))
       .slice(0, limit)
       .map((row) => publicStructuralCoverage(row));
-    const latest = latestModuleTimestamp(observations, coverage);
+    const latest = latestModuleTimestamp(nativeRows, asOfMs);
     const maxAgeSeconds = plan.module_max_age_seconds[module];
     const structuralFresh =
       context.status === "AVAILABLE" &&
@@ -209,8 +218,10 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
       continue;
     }
 
-    if (context.status !== "AVAILABLE") {
-      throw new Error("STRUCTURAL_CONTEXT_NOT_DELIVERABLE");
+    if (context.status !== "AVAILABLE" || !structuralFresh) {
+      // This is independent of the earlier availability preflight: a
+      // source/rights clock may change between quote and preparation.
+      throw new Error("STRUCTURAL_LOCAL_NATIVE_EVIDENCE_NOT_DELIVERABLE");
     }
     intelligence[module] = { observations, coverage };
   }
