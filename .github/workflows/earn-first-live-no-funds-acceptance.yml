@@ -17,6 +17,10 @@ on:
       - "src/lib/agent-query-world-bank-modules.server.ts"
       - "src/lib/agent-query-critical-minerals.server.ts"
       - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
+      - "src/lib/verified-capability-coinbase-binding.server.ts"
+      - "src/lib/capability-pricing-verified-plan.server.ts"
+      - "src/lib/capability-pricing-catalog.ts"
       - "src/routes/api.v1.intelligence.availability.ts"
       - "scripts/agentic/verify-earn-first-live-no-funds.mjs"
       - ".github/workflows/earn-first-live-no-funds-acceptance.yml"
@@ -34,6 +38,10 @@ on:
       - "src/lib/agent-query-world-bank-modules.server.ts"
       - "src/lib/agent-query-critical-minerals.server.ts"
       - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
+      - "src/lib/verified-capability-coinbase-binding.server.ts"
+      - "src/lib/capability-pricing-verified-plan.server.ts"
+      - "src/lib/capability-pricing-catalog.ts"
       - ".github/workflows/earn-first-live-no-funds-acceptance.yml"
   workflow_dispatch: {}
 
