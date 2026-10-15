@@ -116,7 +116,10 @@ function latestModuleTime(context: StructuralContext, module: string, asOfMs: nu
     const time = observationTime(row, asOfMs);
     if (time !== null && (latest === null || time > latest)) latest = time;
   }
-  // Coverage metadata describes discovered source availability, not a\n  // verified, deliverable observation. Never mint a source-native freshness\n  // timestamp from a profile/coverage record without an actual matching row.\n  return latest;
+  // Coverage metadata describes discovered source availability, not a
+  // verified, deliverable observation. Never mint a source-native freshness
+  // timestamp from a profile/coverage record without an actual matching row.
+  return latest;
 }
 
 function requiredSourceIds(context: StructuralContext, requiredModules: string[]) {
