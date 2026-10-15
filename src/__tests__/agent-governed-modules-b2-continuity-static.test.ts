@@ -78,7 +78,7 @@ describe("verified B2 governed agent module continuity", () => {
       const standby = loader.indexOf("const db = requireRiskSupabase()");
       expect(authorization).toBeGreaterThanOrEqual(0);
       expect(b2Read).toBeGreaterThan(authorization);
-      expect(loader.match(/await b2Fallback\\(/g)).toHaveLength(1);
+      expect(loader.match(/await b2Fallback\(/g)).toHaveLength(1);
       expect(loader.indexOf("if (b2State?.deliverable) return b2State"))
         .toBeGreaterThan(b2Read);
       expect(noSupabase).toBeGreaterThan(b2Read);
