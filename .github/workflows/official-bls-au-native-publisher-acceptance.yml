@@ -58,7 +58,8 @@ jobs:
             if(!/(?:rss\+xml|xml)/.test(type))throw Error("ORIGINAL_FEED_NOT_RSS:"+id);
             const length=Number(res.headers.get("content-length")||0);
             if(length>384*1024)throw Error("ORIGINAL_FEED_OVERSIZE:"+id);
-            const raw=await res.text();
+            const bodyBytes=new Uint8Array(await res.arrayBuffer());
+            const raw=new TextDecoder("utf-8").decode(bodyBytes);
             if(raw.length>384*1024)throw Error("ORIGINAL_FEED_BODY_SIZE_EXCEEDS_EXISTING_READER_LIMIT:"+id+":"+raw.length);
             if(!/<rss(?:\s|>)/i.test(raw)){
               console.log(JSON.stringify({id,diagnostic:"SOURCE_FEED_ENVELOPE_ONLY",
@@ -69,7 +70,8 @@ jobs:
                 item_count:(raw.match(/<item(?:\\s|>)/gi)||[]).length,
                 native_pubdate:(raw.match(/<pubDate(?:\\s|>)/gi)||[]).length,
                 native_dcdate:(raw.match(/<dc:date(?:\\s|>)/gi)||[]).length,
-                bytes:raw.length}));
+                bytes:raw.length,first_byte_codes:Array.from(bodyBytes.slice(0,8)),
+                content_encoding:res.headers.get("content-encoding")?"present":"absent"}));
               throw Error("ORIGINAL_FEED_NOT_RSS2_ENVELOPE:"+id);
             }
             if(/<!DOCTYPE|<!ENTITY/i.test(raw))throw Error("ORIGINAL_FEED_UNSAFE_DTD_OR_ENTITY:"+id);
