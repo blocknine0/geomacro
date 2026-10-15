@@ -2,7 +2,7 @@ import {describe,expect,it} from "vitest";
 import {createHash} from "node:crypto";
 import {gzipSync} from "node:zlib";
 import {readFileSync} from "node:fs";
-import {verifyPinnedGlobalRiskBaseline,classifyHistoricalGriReadbackFailure} from "../../scripts/ops/verify-global-risk-b2-historical-readback.mjs";
+import {verifyPinnedGlobalRiskBaseline,classifyHistoricalGriReadbackFailure,classifyPinnedGlobalRiskAnchor} from "../../scripts/ops/verify-global-risk-b2-historical-readback.mjs";
 const sha=(v:Uint8Array)=>createHash("sha256").update(v).digest("hex");
 const now=new Date("2026-10-15T13:00:00.000Z");
 const value={
@@ -73,6 +73,34 @@ describe("GRI historical B2 actual independent GET readback",()=>{
     expect(classifyHistoricalGriReadbackFailure(null))
       .toBe("HISTORICAL_GRI_B2_UNKNOWN_FAIL_CLOSED");
   });
+  it("triages a direct D1 B2 anchor without declaring actual readback",()=>{
+    const result=classifyPinnedGlobalRiskAnchor({
+      anchor:{...anchor,anchor_kind:"direct_verified_b2_snapshot"},now,
+    });
+    expect(result).toMatchObject({
+      metadata_accepted:true,
+      mutable_live_object_read_safe_to_attempt:true,
+      historical_b2_readback_verified:false,
+      current_gri_qualified:false,b2_operations:0,x402_charges:0,
+    });
+    expect(JSON.stringify(result)).not.toContain(anchor.b2_sha256);
+  });
+  it("refuses to spend Class-B reading mutable live key for independently proved prior baseline",()=>{
+    const result=classifyPinnedGlobalRiskAnchor({
+      anchor:{...anchor,anchor_kind:"prior_b2_baseline_of_independent_gri_proof"},now,
+    });
+    expect(result).toMatchObject({
+      immutable_version_or_independent_original_pin_required:true,
+      mutable_live_object_read_safe_to_attempt:false,
+      historical_b2_readback_verified:false,b2_operations:0,
+    });
+    for (const altered of [
+      {...anchor,anchor_kind:"UNKNOWN"},
+      {...anchor,anchor_kind:"direct_verified_b2_snapshot",b2_sha256:"?" },
+      {...anchor,anchor_kind:"direct_verified_b2_snapshot",generated_at:"2099-01-01T00:00:00Z"},
+    ]) expect(()=>classifyPinnedGlobalRiskAnchor({anchor:altered,now})).toThrow();
+  });
+
   it("keeps live workflow no-funds, no-Supabase and quota governed",()=>{
     const workflow=readFileSync(".github/workflows/gri-b2-historical-live-readback.yml","utf8");
     const source=readFileSync("scripts/ops/verify-global-risk-b2-historical-readback.mjs","utf8");
@@ -80,6 +108,13 @@ describe("GRI historical B2 actual independent GET readback",()=>{
     expect(workflow).toContain("B2_ACCOUNT_QUOTA_WORKFLOW_ID: historical_gri_readback");
     expect(workflow).toContain('B2_REQUEST_BUDGET: "4"');
     expect(workflow).not.toContain("secrets.SUPABASE");
+    expect(workflow).toContain("inputs.mode == 'governed_b2_readback'");
+    expect(workflow).toContain("inputs.mode == 'metadata_only'");
+    expect(workflow).toContain("node scripts/ops/verify-global-risk-b2-historical-readback.mjs --metadata-only");
+    // Merging verifier fixes must not trigger another billable B2 GET.
+    const job=workflow.slice(workflow.indexOf("  actual-governed-historical-b2-readback:"));
+    expect(job).toContain("github.event_name == 'workflow_dispatch'");
+    expect(job).not.toContain("github.event_name != 'pull_request'");
     expect(workflow).not.toContain("schedule:");
     expect(source).toContain("readGlobalRiskB2Anchor");
     expect(source).toContain("verifyPinnedGlobalRiskBaseline");
