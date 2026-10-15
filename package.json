@@ -46,8 +46,6 @@
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "2.0.75",
-    "@circle-fin/adapter-ethers-v6": "1.11.2",
-    "@circle-fin/app-kit": "1.14.0",
     "@circle-fin/x402-batching": "3.4.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
