@@ -56,7 +56,18 @@ publication must fail closed.
 ## Remaining production recovery
 
 1. Produce current three-category reviewed signed event input through the
-   existing canonical evidence lane; wire this adapter into its protected job.
+   existing canonical evidence lane. The protected manual workflow is now
+   `intelligence-supabase-free-reviewed-current.yml`. Store the exact reviewed
+   `{rows,eventPackages}` JSON at
+   `geomacro-evidence/v1/private/reviewed-intelligence-current/<sha256>.json`
+   and supply its independently obtained SHA and key at dispatch. The workflow
+   validates the pinned independent reviewer before the first B2 GET, reuses
+   the shared quota governor and publisher, then compares the unauthenticated
+   public D1 payload/hash/native clock/proof/expiry/source run to the publication
+   receipt. It does not require a frontend republish. It never creates review
+   signatures or promotes a private-scoring bundle. Both the review public key
+   pin and `RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64` must be configured as
+   protected production secrets; no private signing key is used by this job.
 2. Migrate the Global Risk producer's verified history and calculation input
    from frozen Postgres to independently verified B2/D1 state. Preserve real
    historical buckets and the existing v1.2 replay/hash contracts.

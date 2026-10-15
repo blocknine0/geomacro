@@ -52,7 +52,8 @@ jobs:
 
       - name: Supabase-free verified Intelligence publication contract (no network or funds)
         run: |
-          node --test scripts/ops/supabase-free-public-intelligence-publisher.test.mjs
+          node --test scripts/ops/supabase-free-public-intelligence-publisher.test.mjs \
+            scripts/lib/published-intelligence-readback.test.mjs
           bun build scripts/ops/publish-supabase-free-public-intelligence.mjs \
             --target=bun --outfile=/tmp/geomacro-verified-intelligence-publisher-smoke.js
           test -s /tmp/geomacro-verified-intelligence-publisher-smoke.js
