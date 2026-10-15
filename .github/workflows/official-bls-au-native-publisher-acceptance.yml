@@ -60,7 +60,18 @@ jobs:
             if(length>384*1024)throw Error("ORIGINAL_FEED_OVERSIZE:"+id);
             const raw=await res.text();
             if(raw.length>384*1024)throw Error("ORIGINAL_FEED_BODY_SIZE_EXCEEDS_EXISTING_READER_LIMIT:"+id+":"+raw.length);
-            if(!/<rss(?:\s|>)/i.test(raw))throw Error("ORIGINAL_FEED_NOT_RSS2_ENVELOPE:"+id);
+            if(!/<rss(?:\s|>)/i.test(raw)){
+              console.log(JSON.stringify({id,diagnostic:"SOURCE_FEED_ENVELOPE_ONLY",
+                rdf:/<rdf:RDF(?:\\s|>)/i.test(raw),
+                atom:/<(?:atom:)?feed(?:\\s|>)/i.test(raw),
+                html:/<html(?:\\s|>)/i.test(raw),
+                xml:/<\\?xml/i.test(raw),
+                item_count:(raw.match(/<item(?:\\s|>)/gi)||[]).length,
+                native_pubdate:(raw.match(/<pubDate(?:\\s|>)/gi)||[]).length,
+                native_dcdate:(raw.match(/<dc:date(?:\\s|>)/gi)||[]).length,
+                bytes:raw.length}));
+              throw Error("ORIGINAL_FEED_NOT_RSS2_ENVELOPE:"+id);
+            }
             if(/<!DOCTYPE|<!ENTITY/i.test(raw))throw Error("ORIGINAL_FEED_UNSAFE_DTD_OR_ENTITY:"+id);
             const items=[...raw.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi)].slice(0,75);
             let native=0,own=0;
