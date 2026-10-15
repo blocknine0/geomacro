@@ -219,7 +219,7 @@ describe("bounded original-publisher article precise-date fallback", () => {
     expect(denied).toEqual({code:"URL_UNAPPROVED"});
   });
 
-  it("restricts new UK FCDO, Fed and USGS HTML date fallbacks to fixed first-party article paths",async()=>{
+  it("restricts UK, Fed and USGS HTML date fallbacks to fixed first-party article paths",async()=>{
     const valid=[
       ["geopolitics","https://www.gov.uk/government/news/uk-foreign-policy-security-statement"],
       ["macro","https://www.federalreserve.gov/newsevents/pressreleases/monetary20261009a.htm"],
@@ -250,11 +250,16 @@ describe("bounded original-publisher article precise-date fallback", () => {
       }
     }
     expect(fetchImpl).toHaveBeenCalledTimes(3);
-    for(const [domain,url] of valid){
+    // GOV.UK original article paths are shared by the existing Treasury,
+    // FCDO and DBT lanes; a category does not certify department or relevance.
+    expect(await fetchVerifiedPublisherPageDate(valid[0][1],"macro",{
+      now,fetchImpl,
+    })).toBe("2026-10-09T12:45:00.000Z");
+    for(const [domain,url] of valid.slice(1)){
       expect(await fetchVerifiedPublisherPageDate(url,"macro"===domain
         ?"rare_earth":"macro",{now,fetchImpl})).toBeNull();
     }
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
   });
 
   it("uses a maximum two original publisher pages; outputs only private derived evidence", async () => {

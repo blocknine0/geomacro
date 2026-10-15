@@ -143,6 +143,7 @@ export async function recoverPulseRotatedOriginalPageDates(
 ){
   if(!source || source.media!=="atom" ||
      !["uk_mod_original_defence_atom_review",
+       "uk_hmt_original_treasury_atom_review",
        "uk_desnz_original_energy_minerals_atom_review"].includes(source.id) ||
      !(refs instanceof Set) || !(expectedClocks instanceof Map) ||
      !(now instanceof Date) || !Number.isFinite(now.getTime()) ||
