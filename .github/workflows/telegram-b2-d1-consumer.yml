@@ -10,7 +10,9 @@ on:
     paths:
       - ".github/workflows/telegram-b2-d1-consumer.yml"
       - "scripts/ops/drain-telegram-b2-leads.mjs"
-      - "scripts/run-live-flash-ingest-local.ts"
+      - "scripts/ops/intake-telegram-b2-d1-leads.mjs"
+      - "scripts/ops/check-telegram-b2-d1-admission.mjs"
+      - "workers/control-plane/migrations/0018_telegram_private_unverified_b2_intake.sql"
       - "scripts/verify-telegram-lead-envelope.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "config/telegram-private-signal-bridge.json"
@@ -22,7 +24,9 @@ on:
     paths:
       - ".github/workflows/telegram-b2-d1-consumer.yml"
       - "scripts/ops/drain-telegram-b2-leads.mjs"
-      - "scripts/run-live-flash-ingest-local.ts"
+      - "scripts/ops/intake-telegram-b2-d1-leads.mjs"
+      - "scripts/ops/check-telegram-b2-d1-admission.mjs"
+      - "workers/control-plane/migrations/0018_telegram_private_unverified_b2_intake.sql"
       - "scripts/verify-telegram-lead-envelope.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "config/telegram-private-signal-bridge.json"
@@ -56,8 +60,11 @@ jobs:
           grep -q 'TELEGRAM_B2_QUEUE_HASH_MISMATCH' scripts/ops/drain-telegram-b2-leads.mjs
           grep -q 'TELEGRAM_QUEUE_DELIVERY_ID_MISMATCH' scripts/ops/drain-telegram-b2-leads.mjs
           grep -q 'verifyTelegramLeadEnvelope' scripts/ops/drain-telegram-b2-leads.mjs
-          grep -q 'LIVE_FLASH_LOCAL_REQUIRES_DIRECT_POSTGRES' scripts/run-live-flash-ingest-local.ts
-          grep -q 'source_channel_key' scripts/run-live-flash-ingest-local.ts
+          grep -q 'telegram_private_unverified_leads' workers/control-plane/migrations/0018_telegram_private_unverified_b2_intake.sql
+          grep -q 'TELEGRAM_D1_INTAKE_DURABLE_READBACK_MISMATCH' scripts/ops/intake-telegram-b2-d1-leads.mjs
+          grep -q 'telegramD1AckSql' scripts/ops/intake-telegram-b2-d1-leads.mjs
+          node --check scripts/ops/intake-telegram-b2-d1-leads.mjs
+          node --check scripts/ops/check-telegram-b2-d1-admission.mjs
           grep -q '6da33ed2a966d58122039ba38d83e801476a6318bc89634d0b3d951e8ad017c9' config/telegram-private-signal-bridge.json
           grep -q 'geomacro.telegram-lead-envelope.v2' scripts/verify-telegram-lead-envelope.mjs
           grep -q 'B2_ACCOUNT_QUOTA_REQUIRED: "1"' .github/workflows/telegram-b2-d1-consumer.yml
@@ -85,9 +92,6 @@ jobs:
       B2_REQUEST_BUDGET: "4"
       B2_ACCOUNT_QUOTA_REQUIRED: "1"
       B2_ACCOUNT_QUOTA_WORKFLOW_ID: telegram_b2_d1_consumer
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      GRI_DB_MODE: direct_postgres
-      FLASH_INGEST_TOKEN: telegram-main-local-consumer
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -103,13 +107,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID B2_KEY_ID B2_APPLICATION_KEY SUPABASE_DB_URL; do
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID B2_KEY_ID B2_APPLICATION_KEY; do
             test -n "${!name:-}" || { echo "::error::Missing ${name}"; exit 1; }
           done
           test "$B2_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com" || exit 2
           test "$B2_BUCKET" = "geomacro-private-archive" || exit 3
-          test "$GRI_DB_MODE" = "direct_postgres" || exit 4
-          test -z "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::PostgREST service key must not be injected"; exit 5; }
+          for key in SUPABASE_DB_URL SUPABASE_URL APP_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_SERVICE_ROLE_KEY; do
+            test -z "${!key:-}" || { echo "::error::Telegram D1 intake forbids all Supabase credentials"; exit 5; }
+          done
       - name: Resolve existing D1 control plane
         id: d1
         shell: bash
@@ -190,7 +195,7 @@ jobs:
           node scripts/ops/check-telegram-b2-d1-admission.mjs --stage queue \
             --queue-file artifacts/telegram-lead-intake/d1-queue.json
 
-      - name: Hold B2 reads if canonical Supabase writer is frozen or shared D1 GET budget unavailable
+      - name: Hold B2 reads only if the existing shared D1 GET budget is unavailable
         id: admission
         if: steps.queue.outputs.pending == 'true'
         shell: bash
@@ -202,32 +207,14 @@ jobs:
       - name: Verify D1 queue pointers against B2 and sanitize leads
         if: steps.admission.outputs.can_consume == 'true'
         run: node scripts/ops/drain-telegram-b2-leads.mjs --queue-file artifacts/telegram-lead-intake/d1-queue.json --out-dir artifacts/telegram-lead-intake/verified --max 4
-      - name: Ingest verified leads through canonical direct-Postgres handler and acknowledge exact delivery
+      - name: Persist hash-pinned private UNVERIFIED leads to D1, read back and ACK exact deliveries
         if: steps.admission.outputs.can_consume == 'true'
         shell: bash
         run: |
           set -euo pipefail
           SUMMARY=artifacts/telegram-lead-intake/verified/summary.json
           test -s "$SUMMARY"
-          node <<'NODE' > /tmp/telegram-queue-items.tsv
-          const fs=require('fs');
-          const s=JSON.parse(fs.readFileSync('artifacts/telegram-lead-intake/verified/summary.json','utf8'));
-          for (const item of s.accepted ?? []) {
-            if (!/^tg_[a-f0-9]{32}_[a-f0-9]{16}$/.test(String(item.delivery_id ?? ''))) throw new Error('TELEGRAM_DELIVERY_ID_INVALID');
-            if (String(item.payload_file ?? '').includes('\t') || String(item.payload_file ?? '').includes('\n')) throw new Error('TELEGRAM_PAYLOAD_PATH_INVALID');
-            console.log(`${item.delivery_id}\t${item.payload_file}`);
-          }
-          NODE
-          while IFS=$'\t' read -r delivery payload; do
-            [[ -n "$delivery" ]] || continue
-            [[ "$delivery" =~ ^tg_[a-f0-9]{32}_[a-f0-9]{16}$ ]] || { echo "invalid delivery id"; exit 7; }
-            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET attempt_count=attempt_count+1,last_attempt_at=datetime('now'),last_error_code='CANONICAL_INGEST_IN_PROGRESS' WHERE delivery_id='$delivery' AND state='PENDING';" >/tmp/telegram-attempt.json
-            if ! node scripts/run-live-flash-ingest-local.ts --payload-file "$payload"; then
-              npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET last_error_code='CANONICAL_INGEST_FAILED',last_attempt_at=datetime('now') WHERE delivery_id='$delivery' AND state='PENDING';" >/tmp/telegram-failed.json || true
-              exit 8
-            fi
-            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "UPDATE telegram_signal_lead_queue SET state='CONSUMED',consumed_at=datetime('now'),last_error_code=NULL,last_attempt_at=datetime('now') WHERE delivery_id='$delivery' AND state='PENDING';" >/tmp/telegram-consumed.json
-          done < /tmp/telegram-queue-items.tsv
+          node scripts/ops/intake-telegram-b2-d1-leads.mjs --summary "$SUMMARY"
       - name: Assert no Telegram pre-promotion occurred and prune old consumed pointers
         if: steps.admission.outputs.can_consume == 'true'
         shell: bash
