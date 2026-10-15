@@ -96,6 +96,44 @@ describe("adaptive query pre-payment deliverability", () => {
     expect(result.missing_modules).toContain("sovereign_fiscal");
   });
 
+  it("coverage-only metadata cannot make an unrelated structural module payable", async () => {
+    const base = context();
+    mocks.loadStructuralContext.mockResolvedValue({
+      ...base,
+      // This is a real macro row, not a sanctions observation.
+      observations: [base.observations[0]],
+      metadata: {
+        ...base.metadata,
+        coverage: [{
+          source_id: "official_unverified_coverage_only",
+          dimension: "sanctions_restrictions",
+          country_iso3: "USA",
+          coverage_year: 2026,
+          coverage_status: "AVAILABLE",
+          observation_count: 4,
+          latest_observed_at: "2026-09-15T00:00:00.000Z",
+          updated_at: "2026-09-16T00:00:00.000Z",
+          audit_metadata: {},
+        }],
+      },
+    });
+    const plan = buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "USA" }],
+      topics: ["sanctions_restrictions"],
+      max_age_seconds: 7 * 86400,
+    });
+    const sourceChecker = vi.fn(commercialOk);
+    const result = await checkAgentQueryDeliverability(plan, {
+      now: new Date("2026-09-16T00:00:00.000Z"),
+      sourceEligibilityChecker: sourceChecker,
+    });
+    expect(result.deliverable).toBe(false);
+    expect(result.code).toBe("STALE_REQUIRED_DATA");
+    expect(result.stale_modules).toContain("sanctions_restrictions");
+    expect(result.subjects[0].latest_evidence_at).toBeNull();
+    expect(sourceChecker).not.toHaveBeenCalled();
+  });
+
   it("never treats a new retrieval as fresh original macro evidence", async () => {
     const base = context();
     mocks.loadStructuralContext.mockResolvedValue({
