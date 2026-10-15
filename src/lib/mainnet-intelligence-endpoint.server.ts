@@ -271,7 +271,10 @@ export const mainnetIntelligenceHandlers = {
           environment: config.environment,
           network: config.network,
           asset: "USDC",
-          exact_price_usdc: config.priceUsdc,
+          // One global flat price is not a valid capability quote.
+          // Buyers must POST a proven plan for an exact server-derived amount.
+          exact_price_usdc: null,
+          pricing_policy: "SERVER_VERIFIED_CAPABILITY_AND_VARIANT",
           topics: AGENT_QUERY_TOPICS,
           coverage: "data-driven; only currently deliverable subjects are payable",
           live_on_demand_discovery_supported: true,
