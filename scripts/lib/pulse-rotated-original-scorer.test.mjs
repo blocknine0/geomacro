@@ -264,3 +264,61 @@ test("private undated original recovery fails closed on stale, changed, missing,
  assert.deepEqual(result,[]);
  assert.equal(budget.used,2);
 });
+
+test("Treasury undated Atom revalidates only the D1-claimed original page and exact first-published clock",async()=>{
+ const f=fixture("macro","uk_hmt_original_treasury_atom_review");
+ const entry=(url,title=f.article.title)=>'<entry><title>'+title+'</title>'+
+   '<updated>'+f.now.toISOString()+'</updated><link rel="alternate" href="'+url+'"/></entry>';
+ const xml='<feed>'+entry(f.article.url+'-unrelated-one')+
+   entry(f.article.url+'-unrelated-two')+entry(f.article.url)+'</feed>';
+ const page=clock=>'<html><head><meta name="govuk:first-published-at" content="'+clock+'">'+
+   '<meta name="govuk:public-updated-at" content="'+f.now.toISOString()+'"></head></html>';
+ let reads=0;
+ const fetchImpl=async(url,options)=>{
+   reads++;
+   assert.equal(url,f.article.url);
+   assert.equal(options.redirect,"error");
+   return new Response(page(f.native),{headers:{"content-type":"text/html"}});
+ };
+ const budget={used:0};
+ const got=await recoverPulseRotatedOriginalPageDates(xml,f.source,{
+   refs:f.refs,expectedClocks:f.clocks,now:f.now,fetchImpl,pageBudget:budget,
+ });
+ assert.equal(reads,1);
+ assert.equal(budget.used,1);
+ assert.equal(got.length,1);
+ assert.equal(got[0].publishedAt,f.native);
+ assert.equal(got[0].url,f.article.url);
+ assert.equal(got[0].nativeTimeEvidence,"publisher_original_article_datePublished");
+ assert.equal(got[0].privateOnly,true);
+ assert.equal(got[0].rightsVerified,false);
+ assert.equal(got[0].commercialEligible,false);
+ assert.equal(privateOriginalMatchesPulse(got[0],f.refs,f.now.getTime(),f.clocks),true);
+ // Exercise the real feed-to-page scorer bridge, not just its parser.
+ const live=await fetchPulseRotatedPrivateOriginals({
+   category:"macro",checkedAt:f.checkedAt,refs:f.refs,expectedClocks:f.clocks,now:f.now,
+   fetchImpl:async(url,options)=>url===f.source.url
+     ?new Response(xml,{headers:{"content-type":"application/atom+xml"}})
+     :fetchImpl(url,options),
+ });
+ assert.equal(live.length,1);
+ assert.equal(live[0].url,f.article.url);
+ assert.equal(reads,2);
+ for(const clock of [new Date(Date.parse(f.native)+60000).toISOString(),
+   new Date(f.now.getTime()+60000).toISOString(),
+   new Date(f.now.getTime()-86400001).toISOString()]){
+   const invalid=await recoverPulseRotatedOriginalPageDates(xml,f.source,{
+     refs:f.refs,expectedClocks:f.clocks,now:f.now,pageBudget:{used:0},
+     fetchImpl:async()=>new Response(page(clock),{headers:{"content-type":"text/html"}}),
+   });
+   assert.deepEqual(invalid,[]);
+ }
+ for(const options of [
+   {refs:new Set()}, {expectedClocks:new Map()}, {pageBudget:{used:2}},
+ ]){
+   assert.deepEqual(await recoverPulseRotatedOriginalPageDates(xml,f.source,{
+     refs:f.refs,expectedClocks:f.clocks,now:f.now,pageBudget:{used:0},...options,
+     fetchImpl:()=>{throw Error("MUST_NOT_FETCH_UNBOUND_OR_OVER_BUDGET")},
+   }),[]);
+ }
+});
