@@ -2,16 +2,7 @@ name: Production Source Alignment and Guarded Certification
 
 on:
   workflow_dispatch: {}
-  push:
-    branches:
-      - main
-      - fix/production-source-alignment-20261002
-    paths:
-      - "scripts/ops/reconcile-production-source-certification.mjs"
-      - "scripts/commercial-source-rights-evidence.mjs"
-      - ".github/workflows/source-evidence-graph-auto-promotion.yml"
-      - "src/__tests__/production-source-alignment-static.test.ts"
-      - "src/__tests__/source-evidence-graph-contract.test.ts"
+  # Frozen Supabase legacy writer; static contract retained without execution.
 
 concurrency:
   group: geomacro-intelligence-orchestrator
@@ -22,12 +13,8 @@ permissions:
 
 jobs:
   production-source-alignment:
-    if: >-
-      ${{
-        github.repository == 'blocknine0/geomacro' &&
-        (github.event_name == 'workflow_dispatch' ||
-         github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/production-source-alignment-20261002')
-      }}
+    # D1/B2-native source qualification replaces this direct-Postgres writer.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment: production

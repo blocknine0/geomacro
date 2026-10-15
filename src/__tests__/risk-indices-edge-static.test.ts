@@ -47,19 +47,20 @@ describe("independent verified Risk Indices edge", () => {
     expect(worker).not.toContain("request.json()");
   });
 
-  it("keeps publisher quota-free and separate from Global Risk and Intelligence workflows", () => {
+  it("keeps retired Postgres publisher paused while independent edge contracts remain separate", () => {
     expect(refresh).toContain("group: geomacro-risk-indices-realtime");
     expect(refresh).not.toContain('cron: "38 * * * *"');
     expect(refresh).not.toContain("  schedule:");
     expect(refresh).toContain("workflow_dispatch: {}");
-    expect(refresh).toContain("workflow_run:");
-    expect(refresh).toContain('"GRI Realtime Direct Postgres"');
-    expect(refresh).toContain("github.event.workflow_run.conclusion == 'success'");
-    expect(refresh).toContain("github.event.workflow_run.head_branch == 'main'");
+    expect(refresh).not.toContain("  workflow_run:");
+    expect(refresh).toContain("    if: ${{ false }}");
+    expect(refresh).not.toContain('      - "GRI Realtime Direct Postgres"');
+    expect(refresh).not.toContain("github.event.workflow_run.conclusion");
+    expect(refresh).not.toContain("github.event.workflow_run.head_branch");
     expect(refresh).not.toContain("  push:");
-    expect(refresh).toContain("github.event_name == 'workflow_dispatch'");
+    expect(refresh).not.toContain("github.event_name == 'workflow_dispatch'");
     expect(refresh).toContain("bun scripts/ops/publish-b2-risk-indices-direct-postgres.mjs");
-    expect(refresh).toContain("GRI Realtime Direct Postgres");
+    expect(refresh).toContain("Legacy Postgres parent must never publish");
     expect(refresh).toContain("publish-b2-risk-indices-direct-postgres.mjs");
     expect(refresh).not.toContain("scripts/ingest-news.js");
     expect(refresh).not.toContain("GUARDIAN_QUERY_BUDGET_PER_CATEGORY");

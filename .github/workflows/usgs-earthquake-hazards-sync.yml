@@ -8,15 +8,6 @@ on:
       - "scripts/commercial-source-policy.mjs"
       - "supabase/migrations/922_multidomain_observation_and_usgs_ingestion.sql"
       - ".github/workflows/usgs-earthquake-hazards-sync.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - "scripts/ingest-usgs-earthquake-hazards-live.mjs"
-      - "scripts/lib-live-source-utils.mjs"
-      - "scripts/commercial-source-policy.mjs"
-      - "supabase/migrations/922_multidomain_observation_and_usgs_ingestion.sql"
-      - ".github/workflows/usgs-earthquake-hazards-sync.yml"
   workflow_dispatch:
   # Emergency quota hold. Manual dispatch remains available.
 
@@ -85,7 +76,8 @@ jobs:
           retention-days: 30
 
   sync:
-    if: github.event_name != 'pull_request'
+    # Original USGS dry-run contract remains testable; Supabase write lane frozen.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
