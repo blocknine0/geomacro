@@ -283,10 +283,12 @@ jobs:
             cat "$body"
             exit 1
           fi
+          # Shallow health intentionally does not run bounded B2/D1 origin probes;
+          # only the deep 200 gate above can attest current data readiness.
           for marker in \
             '"alignment_contract":"github-main-b2-primary-supabase-standby-lovable-v2"' \
             '"production_data_authority":"backblaze-b2"' \
-            '"production_data_runtime_configured":true' \
+            '"production_data_runtime_configured":null' \
             '"commerce_control_plane":"cloudflare-durable-objects"' \
             '"supabase_role":"ingestion-recovery-standby"'
           do
