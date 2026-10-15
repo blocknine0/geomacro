@@ -135,7 +135,7 @@ export function classifyHistoricalGriReadbackFailure(error) {
     "HISTORICAL_GRI_B2_EXPLICIT_READ_ONLY_MODE_REQUIRED",
   ]);
   if(allowed.has(message))return message;
-  if(/^GLOBAL_RISK_B2_ANCHOR_UNAVAILABLE_\\d{3}$/.test(message))
+  if(/^GLOBAL_RISK_B2_ANCHOR_UNAVAILABLE_\d{3}$/.test(message))
     return "HISTORICAL_GRI_B2_D1_ANCHOR_HTTP_UNAVAILABLE";
   if(/^(?:B2_REQUEST_BUDGET_EXHAUSTED|B2_GLOBAL_DAILY_[A-Z_]+)$/.test(message))
     return "HISTORICAL_GRI_B2_SHARED_QUOTA_HELD";
