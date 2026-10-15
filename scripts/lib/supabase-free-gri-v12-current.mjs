@@ -166,9 +166,11 @@ export function computeReviewedCurrentGlobalRisk({
   "SIGNED_ENVELOPE_REQUIRED");
   // Reject private-only or historical stand-ins BEFORE creating an archive
   // client or issuing any B2 request in the caller.
-  const at = checkReviewedInput(input, nowMs);
+  // Authenticate the *entire* reviewed envelope before interpreting any
+  // current score, source clock or story lineage as trusted information.
   const reviewerSpkiSha256 = trustedSignature(input,
     reviewed.review_signature_base64, trustedReviewerPublicKeyPem);
+  const at = checkReviewedInput(input, nowMs);
   const qualified = qualifyIndependentSameEvent({
     rows: input.customerRows,
     eventPackages: input.eventPackages,
@@ -283,9 +285,9 @@ export function preflightReviewedCurrentGlobalRisk({
     Object.keys(reviewed).length === 2 &&
     Object.keys(reviewed).every(k => ["signed_input","review_signature_base64"].includes(k)),
   "SIGNED_ENVELOPE_REQUIRED");
-  checkReviewedInput(signed, nowMs);
   const reviewer = trustedSignature(signed, reviewed.review_signature_base64,
     trustedReviewerPublicKeyPem);
+  checkReviewedInput(signed, nowMs);
   const sourceQualification = qualifyIndependentSameEvent({
     rows: signed.customerRows, eventPackages: signed.eventPackages,
     now, trustedReviewerPublicKeyPem,
