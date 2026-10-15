@@ -1,0 +1,62 @@
+name: Active Supabase Dependency Inventory
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - "scripts/ops/inventory-active-supabase-workflows.mjs"
+      - "src/__tests__/active-supabase-dependency-inventory.test.ts"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/inventory-active-supabase-workflows.mjs"
+      - "src/__tests__/active-supabase-dependency-inventory.test.ts"
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact canonical commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Statically enumerate every workflow and job, without Supabase credentials
+        env:
+          SUPABASE_DB_URL: ""
+          SUPABASE_URL: ""
+          APP_SUPABASE_URL: ""
+          SUPABASE_SERVICE_ROLE_KEY: ""
+          APP_SUPABASE_SERVICE_ROLE_KEY: ""
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/inventory-active-supabase-workflows.mjs
+          node scripts/ops/inventory-active-supabase-workflows.mjs
+          node - <<'NODE'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('artifacts/active-supabase-dependency-inventory.json','utf8'));
+          if(r.report_name!=='ACTIVE_SUPABASE_DEPENDENCY_INVENTORY' ||
+             r.workflow_file_count<250 || r.job_entry_count<r.workflow_file_count ||
+             r.zero_reachable_supabase_dependencies_proven!==false ||
+             r.no_new_supabase_connection!==true || r.b2_requests!==0 ||
+             r.d1_writes!==0 || r.x402_payment_attempts!==0)
+            throw Error('SUPABASE_INVENTORY_NOT_CONSERVATIVE_OR_INCOMPLETE');
+          console.log(JSON.stringify({total_workflows:r.workflow_file_count,jobs:r.job_entry_count,
+            potentially_reachable_static_supabase_matches:r.suspicious_reachable_job_count,
+            zero_runtime_supabase_proven:false}));
+          NODE
+      - name: Upload machine-readable inventory for scoped permanent remediation
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: active-supabase-dependency-inventory-${{ github.run_id }}
+          path: artifacts/active-supabase-dependency-inventory.json
+          retention-days: 14
+          if-no-files-found: error
