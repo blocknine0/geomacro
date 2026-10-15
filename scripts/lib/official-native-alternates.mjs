@@ -1,3 +1,6 @@
+import {canonicalPrivateOriginalArticleSha,privateOriginalMatchesPulse,
+  assertPrivatePulseArticleContext} from "./private-novel-pulse-match.mjs";
+import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
 import {
   fetchVerifiedPublisherPageDate,
   ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN,
@@ -158,7 +161,7 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
       if (tag(block,"dcterms:issued")) stats.alternate_atom_dcterms_issued_tag_items++;
     }
     const dateText=config.format === "rss" ? tag(block,"pubDate") : publishedTag;
-    const time=Date.parse(dateText);
+    const time=officialItemNativePublicationMs(dateText);
     const raw=config.format === "rss" ? tag(block,"link") : atomOriginalLink(block);
     if (config.format === "atom" && raw) {
       stats.alternate_atom_link_href_items++;
@@ -212,18 +215,22 @@ export function parseOfficialAlternate(xml, category, now = new Date(), diagnost
   return out.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
 }
 
-function undatedOriginalArticleCandidates(xml, category, broadPrivateIntake = false) {
+function undatedOriginalArticleCandidates(xml, category, broadPrivateIntake = false,pulseRefs=null) {
   const config = ORIGINAL_PUBLISHER_ALTERNATES[category];
   if (!config || config.format !== "atom") return [];
   const seen = new Set(), out = [];
   const items = [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)]
     .slice(0, MAX_ITEMS);
   for (const [, block] of items) {
-    if (tag(block, "published")) continue;
+    if (/<(?:atom:)?published\b[^>]*>/iu.test(block)) continue;
     const title = tag(block, "title");
     if (title.length < 16 || title.length > 500 || (!broadPrivateIntake && !config.topics.test(title))) continue;
     const uri = officialUrl(atomOriginalLink(block), config.articleHosts, category);
     if (!uri || seen.has(uri.href)) continue;
+    if(pulseRefs instanceof Set){
+      const id=canonicalPrivateOriginalArticleSha(uri.href);
+      if(!id||!pulseRefs.has(id))continue;
+    }
     seen.add(uri.href);
     out.push({ title, uri });
     if (out.length >= ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN) break;
@@ -232,7 +239,9 @@ function undatedOriginalArticleCandidates(xml, category, broadPrivateIntake = fa
 }
 
 export async function fetchOriginalAlternate(category, { now=new Date(), fetchImpl=fetch,
-  diagnostics=null, maxAgeMs=DAY_MS, broadPrivateIntake=false }={}) {
+  diagnostics=null, maxAgeMs=DAY_MS, broadPrivateIntake=false,
+  pulseRefs=null,pulseExpectedClocks=null }={}) {
+  assertPrivatePulseArticleContext(pulseRefs,pulseExpectedClocks);
   const cfg=ORIGINAL_PUBLISHER_ALTERNATES[category];
   if (!cfg) throw new Error("OFFICIAL_ALTERNATE_CATEGORY_INVALID");
   if(!Number.isFinite(maxAgeMs)||maxAgeMs<60_000||maxAgeMs>DAY_MS)
@@ -259,12 +268,15 @@ export async function fetchOriginalAlternate(category, { now=new Date(), fetchIm
   } finally {reader.releaseLock()}
   const xml = new TextDecoder("utf-8",{fatal:true}).decode(
     Buffer.concat(chunks.map(x=>Buffer.from(x))));
-  const parsed = parseOfficialAlternate(xml, category, now, diagnostics, maxAgeMs, broadPrivateIntake);
+  const rows = parseOfficialAlternate(xml, category, now, diagnostics, maxAgeMs, broadPrivateIntake);
+  const parsed=pulseRefs instanceof Set
+    ?rows.filter(row=>privateOriginalMatchesPulse(row,pulseRefs,now.getTime(),pulseExpectedClocks))
+    :rows;
   if (parsed.length || cfg.format !== "atom") return parsed;
   // Only two SAME-PUBLISHER article pages maximum per category (<=4s each).
   // Article-level precise datePublished, never Atom updated, can admit PRIVATE
   // evidence; zero source rights or paid/scoring approval is inferred.
-  const candidates = undatedOriginalArticleCandidates(xml, category, broadPrivateIntake);
+  const candidates = undatedOriginalArticleCandidates(xml, category, broadPrivateIntake,pulseRefs);
   for (const { title, uri } of candidates) {
     if (diagnostics) diagnostics.alternate_article_page_probes++;
     const pageDiagnostic = {};
@@ -280,17 +292,20 @@ export async function fetchOriginalAlternate(category, { now=new Date(), fetchIm
       );
     }
     if (!publishedAt || now.getTime()-Date.parse(publishedAt)>maxAgeMs) continue;
-    if (diagnostics) {
-      diagnostics.alternate_article_page_precise++;
-      diagnostics.alternate_article_page_admitted++;
-    }
-    parsed.push({
+    const article={
       title, description: "", url: uri.href, publishedAt,
       source: uri.hostname, sourceDomain: uri.hostname,
       discoveryProvider: "official_native_rss", nativePublishedAtVerified: true,
       nativeTimeEvidence: "publisher_original_article_datePublished",
       privateOnly: true, rightsVerified: false, commercialEligible: false,
-    });
+    };
+    if(pulseRefs instanceof Set&&
+       !privateOriginalMatchesPulse(article,pulseRefs,now.getTime(),pulseExpectedClocks))continue;
+    if (diagnostics) {
+      diagnostics.alternate_article_page_precise++;
+      diagnostics.alternate_article_page_admitted++;
+    }
+    parsed.push(article);
   }
   return parsed.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
 }

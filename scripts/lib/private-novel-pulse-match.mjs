@@ -20,6 +20,18 @@ export function canonicalPrivateOriginalArticleSha(value) {
   original.searchParams.sort();
   return createHash("sha256").update(original.href).digest("hex");
 }
+// Optional scope for bounded original-page recovery. A partial, multi-item,
+// unbound or noncanonical clock context must fail before any issuer GET.
+export function assertPrivatePulseArticleContext(refs,clocks) {
+  if(refs===null&&clocks===null)return;
+  if(!(refs instanceof Set)||!(clocks instanceof Map)||refs.size>1||
+     clocks.size!==refs.size||[...refs].some(id=>{
+       const clock=clocks.get(id);
+       if(typeof id!=="string"||!SHA.test(id)||typeof clock!=="string")return true;
+       const at=Date.parse(clock);
+       return !Number.isFinite(at)||new Date(at).toISOString()!==clock;
+     }))throw Error("PRIVATE_PULSE_ARTICLE_CONTEXT_INVALID");
+}
 export function validatePrivatePulseRefs(domain, refs) {
   if (!DOMAINS.includes(domain) || !Array.isArray(refs) ||
       refs.length > 80 || new Set(refs).size !== refs.length ||
