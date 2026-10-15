@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("private Supabase runtime audit workflow contract", () => {
-  it("is manually executable against only the authoritative production Supabase project", () => {
+  it("retains authoritative forensic target but never runs the retired legacy Supabase runtime audit", () => {
     const workflow = read(".github/workflows/private-supabase-runtime-audit.yml");
 
     expect(workflow).toContain("workflow_dispatch");
+    expect(workflow).toContain("  audit:\n    # Permanently retired Supabase-only runtime;");
+    expect(workflow).toContain("    if: ${{ false }}");
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("ldpwajisioljyjtojvfx");
     expect(workflow).toContain("scripts/db/assert-authoritative-supabase.mjs");
