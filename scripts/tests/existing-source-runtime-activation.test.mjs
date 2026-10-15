@@ -8,7 +8,21 @@ function jobAllowed(file,job,event,repo='blocknine0/geomacro',ref='refs/heads/ma
  const block=text.split('\n  '+job+':\n')[1]?.split(/\n  [a-z][a-z-]+:\n/u)[0];
  const expression=block?.match(/^    if: (.+)$/mu)?.[1].replace(/^\$\{\{\s*|\s*\}\}$/gu,'');
  assert.ok(expression,'job activation expression missing');
- return Function('github','return ('+expression+');')({event_name:event,repository:repo,ref});
+ // Interpret this small boolean grammar; never execute workflow text as code.
+ const context={'github.event_name':event,'github.repository':repo,'github.ref':ref};
+ const tokens=expression.match(/github\.(?:event_name|repository|ref)|'[^']*'|==|!=|&&|\|\||[()]/gu)??[];
+ assert.equal(tokens.join(''),expression.replace(/\s+/gu,''));
+ let cursor=0;
+ function atom(){
+   if(tokens[cursor]==='('){cursor++;const v=or();assert.equal(tokens[cursor++],')');return v;}
+   const key=tokens[cursor++],op=tokens[cursor++],literal=tokens[cursor++];
+   assert.ok(Object.hasOwn(context,key));assert.ok(op==='=='||op==='!=');
+   assert.match(literal??'',/^'[^']*'$/u);
+   const equal=context[key]===literal.slice(1,-1);return op==='=='?equal:!equal;
+ }
+ function and(){let v=atom();while(tokens[cursor]==='&&'){cursor++;const right=atom();v=v&&right;}return v;}
+ function or(){let v=and();while(tokens[cursor]==='||'){cursor++;const right=and();v=v||right;}return v;}
+ const result=or();assert.equal(cursor,tokens.length);return result;
 }
 test('credentialed cron actually runs on protected main and cannot inject credentials into forks or PRs',()=>{
  for(const event of ['push','workflow_dispatch','schedule']){
