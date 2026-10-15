@@ -371,6 +371,8 @@ export async function fetchOfficialNativeArticles(category, {
   try {
     const third=await fetchOfficialThirdPublisherArticles(category,{
       now,fetchImpl,maxAgeMs,diagnostics,broadPrivateIntake,
+      pulseRefs:fromAutomaticPulse?refs:null,
+      pulseExpectedClocks:fromAutomaticPulse?expectedClocks:null,
     });
     if (diagnostics && typeof diagnostics === "object")
       diagnostics.third_feed_ok = true;

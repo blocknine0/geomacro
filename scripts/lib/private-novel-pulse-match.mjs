@@ -4,6 +4,22 @@ import { createHash } from "node:crypto";
 // event truth, source rights, corroboration, or signing eligibility.
 const SHA = /^[a-f0-9]{64}$/u;
 const DOMAINS = ["geopolitics", "macro", "rare_earth"];
+
+// URL identity only: NOT a publication-time, rights or article-body proof.
+// Shared by the SHA-bound pulse and its exact-article fallback prefilter.
+export function canonicalPrivateOriginalArticleSha(value) {
+  if (typeof value !== "string" || value.length > 2048) return null;
+  let original;
+  try { original = new URL(value); } catch { return null; }
+  if (original.protocol !== "https:" || original.username || original.password)
+    return null;
+  for (const key of [...original.searchParams.keys()]) {
+    if (/^utm_|^(?:fbclid|gclid|mc_cid|mc_eid)$/iu.test(key))
+      original.searchParams.delete(key);
+  }
+  original.searchParams.sort();
+  return createHash("sha256").update(original.href).digest("hex");
+}
 export function validatePrivatePulseRefs(domain, refs) {
   if (!DOMAINS.includes(domain) || !Array.isArray(refs) ||
       refs.length > 80 || new Set(refs).size !== refs.length ||
@@ -31,13 +47,8 @@ export function privateOriginalMatchesPulse(article, hashes, now = Date.now(), e
   const published = Date.parse(article.publishedAt);
   if (!Number.isFinite(published) || published > now ||
       now - published > 24 * 60 * 60 * 1000) return false;
-  for(const key of [...original.searchParams.keys()]) {
-    if(/^utm_|^(?:fbclid|gclid|mc_cid|mc_eid)$/iu.test(key))
-      original.searchParams.delete(key);
-  }
-  original.searchParams.sort();
-  const identity = createHash("sha256").update(original.href).digest("hex");
-  if (!hashes.has(identity)) return false;
+  const identity = canonicalPrivateOriginalArticleSha(article.url);
+  if (!identity || !hashes.has(identity)) return false;
   // Identity alone is insufficient for original-time authentication.
   // The scorer must observe exactly the publisher-native timestamp already
   // persisted and read back from the same D1 pulse when provided.
