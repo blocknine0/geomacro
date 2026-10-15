@@ -75,6 +75,24 @@ export function select30MinPublishers(now=new Date()) {
     return [domain,[current,next]];
   }));
 }
+/** Scheduled opportunities for THIS issuer, not every global clock slot.
+ * Each issuer appears in two phases per publisher cycle. Number those
+ * opportunities consecutively so page-pair modulo cannot lock out articles.
+ * This is a sampling cursor only; it never supplies a publication clock.
+ */
+export function sourcePulsePageRotationSlot(domain,sourceId,now=new Date()) {
+  const ids=Object.hasOwn(THIRTY_MIN_PUBLISHER_PAIRS,domain)
+    ?THIRTY_MIN_PUBLISHER_PAIRS[domain]:null;
+  if(!ids || !(now instanceof Date)||!Number.isFinite(now.getTime())||
+     now.getTime()<0)throw Error("30M_SOURCE_PAGE_ROTATION_CONTEXT_INVALID");
+  const index=ids.indexOf(sourceId);
+  if(index<0)throw Error("30M_SOURCE_PAGE_ROTATION_CONTEXT_INVALID");
+  const slot=Math.floor(now.getTime()/INTERVAL_MS);
+  const phases=[(index+ids.length-1)%ids.length,index].sort((a,b)=>a-b);
+  const rank=phases.indexOf(slot%ids.length);
+  if(rank<0)throw Error("30M_SOURCE_PAGE_ROTATION_CONTEXT_INVALID");
+  return Math.floor(slot/ids.length)*2+rank;
+}
 function safeInt(x) {return Number.isSafeInteger(x)&&x>=0?x:null}
 // Fixed, source-free reason codes for failed first-party probes. Never forward
 // arbitrary upstream errors, URLs, response headers or article content to D1.
@@ -98,7 +116,10 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       // Source-specific transport failure is an unknown, not zero news.
       // Open discovery: no topical/keyword gate before capturing a dated,
       // fixed-host first-party article. Semantic relevance is assessed later.
-      try { return await probe(source,{now,collectPrivateCandidates:true,openDiscovery:true}); }
+      try { return await probe(source,{
+        now,collectPrivateCandidates:true,openDiscovery:true,
+        originalPageRotationSlot:sourcePulsePageRotationSlot(domain,source.id,now),
+      }); }
       catch { return {source_id:source.id,domain,format_valid:false,primary_http_status:null}; }
     }
     const valid=(result,source)=>result?.format_valid===true &&
