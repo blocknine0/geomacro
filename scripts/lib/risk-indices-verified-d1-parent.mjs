@@ -35,7 +35,7 @@ export function assertVerifiedCurrentGlobalRiskD1Parent(snapshot, now = Date.now
     fail("SOURCE_CLOCK_OR_EXPIRY_INVALID");
 
   const raw = snapshot.payload_json;
-  if (typeof raw !== "string" || raw.length < 50 || raw.length > 256 * 1024 ||
+  if (typeof raw !== "string" || raw.length < 50 || Buffer.byteLength(raw, "utf8") > 768 * 1024 ||
       createHash("sha256").update(raw).digest("hex") !== snapshot.payload_sha256)
     fail("EXACT_PAYLOAD_HASH_INVALID");
 
