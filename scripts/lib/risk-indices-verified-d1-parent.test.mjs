@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { assertVerifiedCurrentGlobalRiskD1Parent } from "./risk-indices-verified-d1-parent.mjs";
+import { assertVerifiedCurrentGlobalRiskD1Parent, assertPublishedRiskIndicesD1Readback } from "./risk-indices-verified-d1-parent.mjs";
 
 const NOW = Date.parse("2026-10-15T06:00:00.000Z");
 const sha = value => createHash("sha256").update(value).digest("hex");
@@ -71,4 +71,64 @@ for(const category of ["geopolitics","macro","rare_earth"]){
 test("rejects missing 7D domain continuity",()=>{
   const f=fixture();mutatePayload(f,p=>p.data.domainIndices.macro.series["7D"].buckets=[]);
   assert.throws(()=>assertVerifiedCurrentGlobalRiskD1Parent(f,NOW),/DOMAIN_MACRO_NOT_CURRENT/);
+});
+
+
+function indicesReadbackFixture() {
+  const source=new Date(NOW-10*60_000).toISOString();
+  const generated=new Date(NOW-2*60_000).toISOString();
+  const parentPayload="a".repeat(64),parentB2="b".repeat(64);
+  const value={
+    schema:"geomacro.public-risk-indices-live.v1",
+    generated_at:generated,source_project:"ldpwajisioljyjtojvfx",
+    parent_global_risk_payload_sha256:parentPayload,
+    parent_global_risk_b2_sha256:parentB2,
+    data:{snapshotAsOf:source,parentMethodologyVersion:"gri-v1.2.0"},
+  };
+  const payloadJson=JSON.stringify(value);
+  const proof={
+    schema:"geomacro.public-risk-indices-live-proof.v1",
+    live_key:"geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz",
+    snapshot_as_of:source,generated_at:generated,
+    parent_global_risk_payload_sha256:parentPayload,
+    parent_global_risk_b2_sha256:parentB2,
+    compressed_sha256:"c".repeat(64),
+    full_b2_readback_verified:true,exact_gzip_restore_verified:true,
+  };
+  const snapshot={
+    ok:true,product:"risk-indices",schema:value.schema,
+    proof_schema:proof.schema,
+    verification_mode:"direct-b2-readback",
+    b2_object_key:proof.live_key,b2_sha256:proof.compressed_sha256,
+    payload_sha256:sha(payloadJson),payload_json:payloadJson,
+    generated_at:generated,source_as_of:source,
+    expires_at:new Date(NOW+80*60_000).toISOString(),
+    current_b2_readback_verified:true,
+    full_b2_readback_verified:true,exact_gzip_restore_verified:true,
+  };
+  return {snapshot,value,proof,payloadJson,now:NOW};
+}
+test("checks independent D1 public row against exact B2 bytes and GRI v1.2 parent",()=>{
+  const d=indicesReadbackFixture();
+  const verified=assertPublishedRiskIndicesD1Readback(d.snapshot,d);
+  assert.equal(verified.parentPayloadSha256,d.value.parent_global_risk_payload_sha256);
+  assert.equal(verified.b2Sha256,d.proof.compressed_sha256);
+});
+test("rejects independently read D1 rows with stale or altered object identity",()=>{
+  const mutations=[
+    d=>{d.snapshot.payload_json=JSON.stringify({...d.value,malicious:true})},
+    d=>{d.snapshot.b2_sha256="d".repeat(64)},
+    d=>{d.snapshot.current_b2_readback_verified=false},
+    d=>{d.snapshot.verification_mode="independent-gri-proof-over-b2-baseline"},
+    d=>{d.snapshot.expires_at=new Date(NOW-10_000).toISOString()},
+    d=>{d.snapshot.source_as_of=new Date(NOW-91*60_000).toISOString()},
+    d=>{d.value.parent_global_risk_b2_sha256="f".repeat(64)},
+    d=>{d.proof.parent_global_risk_payload_sha256="f".repeat(64)},
+  ];
+  for(const mutate of mutations) {
+    const data=indicesReadbackFixture();
+    mutate(data);
+    assert.throws(()=>assertPublishedRiskIndicesD1Readback(data.snapshot,data),
+      /INDICES_D1_PUBLIC_READBACK_/);
+  }
 });
