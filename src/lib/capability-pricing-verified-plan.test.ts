@@ -48,8 +48,12 @@ describe("capability prices selected only from verified canonical plans (NO FUND
     expect(resolveVerifiedPublishedPlanPrice(changed,{...proof,change_attribution_verified:true}))
       .toMatchObject({variant:"verified_change_attribution",amount_atomic:"10000"});
     const structural=plan({delivery_tier:"structural_baseline"});
-    expect(resolveVerifiedPublishedPlanPrice(structural,proof))
-      .toMatchObject({capability:"structural_country_digest",amount_atomic:"20000"});
+    // Historical structural digests never claim a signed current GRO.
+    expect(resolveVerifiedPublishedPlanPrice(structural,{
+      ...proof,signing_verified:false,signed_object_lifecycle:"none",
+    })).toMatchObject({capability:"structural_country_digest",amount_atomic:"20000"});
+    expect(()=>resolveVerifiedPublishedPlanPrice(structural,proof))
+      .toThrow("CAPABILITY_PRICE_STRUCTURAL_ONLY_NO_SIGNED_CLAIMS");
   });
   it("rejects missing evidence, rights, signing and delivery proofs",()=>{
     const p=plan({});
