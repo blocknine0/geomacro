@@ -52,6 +52,8 @@ describe("P0 Supabase free legacy job retirement",()=>{
     const pricing=read("src/lib/capability-pricing-catalog.ts");
     const ledger=read("src/lib/mainnet-intelligence-endpoint.server.ts");
     expect(pricing).toContain("intelligence_query");
-    expect(ledger).toContain("durableCommerceControlPlaneEnabled");
+    expect(ledger).toContain("published_only");
+    const binding=read("src/lib/verified-capability-coinbase-binding.server.ts");
+    expect(binding).toContain("resolveVerifiedPublishedPlanPrice");
   });
 });
