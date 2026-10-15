@@ -1,3 +1,5 @@
+import { createPerKeySingleFlight } from "./b2-single-flight";
+import { reservePrivateB2Read } from "./b2-live.server";
 import type {
   StructuralCoverage,
   StructuralObservation,
@@ -23,6 +25,9 @@ const decoder = new TextDecoder();
 type B2Config = { accessKey: string; secretKey: string; role: "read" | "primary" };
 type CacheEntry = { expiresAt: number; bytes: Uint8Array };
 const cache = new Map<string, CacheEntry>();
+// Collapse concurrent buyer preflight reads into a single account-governed B2
+// request per key, without extending cache lifetime or overriding freshness.
+const shareStructuralB2Read = createPerKeySingleFlight<string, Uint8Array | null>();
 let failureCount = 0;
 let circuitOpenedAt = 0;
 
@@ -109,6 +114,10 @@ function noteFailure() {
 }
 
 async function signedGet(key: string): Promise<Uint8Array | null> {
+  return shareStructuralB2Read(key, () => signedGetOnce(key));
+}
+
+async function signedGetOnce(key: string): Promise<Uint8Array | null> {
   const candidates = config();
   if (!candidates || circuitOpen()) return null;
   const cached = cache.get(key);
@@ -118,6 +127,10 @@ async function signedGet(key: string): Promise<Uint8Array | null> {
   const host = new URL(B2_ENDPOINT).host;
   for (let index = 0; index < candidates.length; index++) {
     const cfg = candidates[index];
+    // One durable D1 reservation for EVERY attempted B2 Class-B GET,
+    // including a secondary credential retry. A missing/failed ticket blocks
+    // the network call even if a local credential and HTTP endpoint exist.
+    if (!(await reservePrivateB2Read(key))) return null;
     try {
       const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
       const day = timestamp.slice(0, 8);

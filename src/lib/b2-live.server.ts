@@ -159,7 +159,7 @@ async function signedGet(key: string): Promise<Uint8Array | null> {
 const B2_QUOTA_WORKER =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/b2-quota/reserve";
 
-async function reservePrivateB2Read(key: string): Promise<boolean> {
+export async function reservePrivateB2Read(key: string): Promise<boolean> {
   if (typeof window !== "undefined" || typeof process === "undefined") return false;
   const token = String(
     process.env.GEOMACRO_CONTROL_PLANE_TOKEN ??
@@ -171,7 +171,10 @@ async function reservePrivateB2Read(key: string): Promise<boolean> {
     ? "app_private_source_rights"
     : key === B2_SOURCE_NETWORK_STATUS_KEY
       ? "app_private_source_status"
-      : null;
+      : key === "geomacro-evidence/v1/structural/serving/latest.json.gz" ||
+        key === "geomacro-evidence/v1/structural/serving/latest-proof.json"
+        ? "app_private_structural_serving"
+        : null;
   if (!workflowId) return false;
   try {
     const res = await fetch(B2_QUOTA_WORKER, {
