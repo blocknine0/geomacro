@@ -2,6 +2,7 @@ import type { AgentQueryPlan } from "./agent-query-plan";
 import { readB2AgentGovernedModule, type B2AgentGovernedRiskState } from "./b2-agent-governed-modules.server";
 import { checkCommercialSourceEligibility } from "./commercial-source-eligibility.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
+import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
 import { generateCountryRiskGateV2WdiMacroModuleStates } from "./risk-gate-v2-macro-module-state.server";
 import { generateRiskGateV2FinancialModuleState } from "./risk-gate-v2-financial-module-state.server";
 
@@ -191,15 +192,20 @@ export async function loadAgentWorldBankModule(input: {
   // Production serving is B2-primary. Only verified, source-authorized, fresh
   // derived state can satisfy this path. Supabase is a standby/recovery source,
   // not the customer-facing authority.
+  // The original B2 snapshot is the production authority; rights and
+  // source-native freshness remain mandatory. Do not retry this governed GET.
+  let b2State: AgentWorldBankModuleResult | null = null;
   try {
-    const primary = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
-    if (primary?.deliverable) {
-      console.warn("[agent-world-bank] using fresh verified B2 governed derived state");
-      return primary;
-    }
+    b2State = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
   } catch {
-    // A B2 read problem never broadens delivery. Continue to the bounded
-    // standby path, which remains fail-closed under standby runtime mode.
+    // A missing/unreachable B2 source cannot be promoted to payable data.
+  }
+  if (b2State?.deliverable) return b2State;
+
+  // A frozen Supabase project must never be probed by a buyer preflight.
+  // Keep unverified or stale B2 evidence unavailable without changing clocks.
+  if (!supabaseReadFallbackAllowed()) {
+    return b2State ?? unavailable(input.module, input.subject, "OBSERVATION_NOT_AVAILABLE", sourceContract);
   }
 
   try {
@@ -301,13 +307,9 @@ export async function loadAgentWorldBankModule(input: {
       state: publicState(state),
     };
   } catch (primaryError) {
-    // Retry B2 once for transient first-read failures. This retry is still
-    // fully source-gated and freshness-bounded.
-    const fallback = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
-    if (fallback?.deliverable) {
-      console.warn("[agent-world-bank] standby governed store unavailable; using fresh verified B2 derived state");
-      return fallback;
-    }
+    // Preserve the previous fail-closed B2 status. Repeated GETs during a
+    // standby failure spend extra shared Class-B quota without new evidence.
+    if (b2State) return b2State;
     throw primaryError;
   }
 }
