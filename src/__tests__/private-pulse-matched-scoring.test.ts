@@ -9,6 +9,26 @@ describe("automatic current-original private scorer handoff",()=>{
       {encoding:"utf8",timeout:15_000,maxBuffer:400_000});
     expect(r.status,r.stdout+"\n"+r.stderr).toBe(0);
   });
+  it("runs source pulse again after changing exact SHA/native-clock scoring adapters",()=>{
+    const workflow=readFileSync(".github/workflows/three-domain-30m-original-publisher-pulse.yml","utf8");
+    const push=workflow.split("\n  push:\n")[1]?.split("\n  pull_request:\n")[0];
+    const pr=workflow.split("\n  pull_request:\n")[1]?.split("\npermissions:\n")[0];
+    expect(push).toBeTruthy();
+    expect(pr).toBeTruthy();
+    // The D1 SHA-binding correction must be exercised on protected main,
+    // rather than pass CI but await an unrelated best-effort cron wakeup.
+    for(const section of [push,pr]){
+      for(const path of [
+        "scripts/lib/official-native-rss.mjs",
+        "scripts/lib/official-native-third-fallback.mjs",
+        "scripts/lib/private-novel-pulse-match.mjs",
+        "src/__tests__/official-native-third-fallback.test.ts",
+      ]) expect(section).toContain('"' + path + '"');
+    }
+    expect(workflow).toContain("bounded_automatic_private_stage: true");
+    expect(workflow).toContain("needs.original-publisher-pulse.outputs.private_scoring_needed == 'true'");
+    expect(workflow).toContain("github.ref == 'refs/heads/main'");
+  });
   it("only scheduled main private scoring reads real D1 novel fingerprints",()=>{
     const scorer=readFileSync("scripts/lib/official-native-rss.mjs","utf8");
     const pulse=readFileSync(".github/workflows/three-domain-30m-original-publisher-pulse.yml","utf8");
