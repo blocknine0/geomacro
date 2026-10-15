@@ -62,14 +62,19 @@ jobs:
             const raw=new TextDecoder("utf-8").decode(bodyBytes);
             if(raw.length>384*1024)throw Error("ORIGINAL_FEED_BODY_SIZE_EXCEEDS_EXISTING_READER_LIMIT:"+id+":"+raw.length);
             if(!/<rss(?:\s|>)/i.test(raw)){
+              const afterDeclaration=raw.indexOf("?>");
+              const rootPart=raw.slice(afterDeclaration>=0?afterDeclaration+2:0).trimStart();
+              const rootTag=rootPart.startsWith("<")
+                ?rootPart.slice(1).split(/[ >\t\r\n]/)[0]:null;
               console.log(JSON.stringify({id,diagnostic:"SOURCE_FEED_ENVELOPE_ONLY",
-                rdf:/<rdf:RDF(?:\\s|>)/i.test(raw),
-                atom:/<(?:atom:)?feed(?:\\s|>)/i.test(raw),
-                html:/<html(?:\\s|>)/i.test(raw),
-                xml:/<\\?xml/i.test(raw),
-                item_count:(raw.match(/<item(?:\\s|>)/gi)||[]).length,
-                native_pubdate:(raw.match(/<pubDate(?:\\s|>)/gi)||[]).length,
-                native_dcdate:(raw.match(/<dc:date(?:\\s|>)/gi)||[]).length,
+                root_tag:rootTag,
+                rdf:raw.includes("<rdf:RDF")||raw.includes("<rdf:rdf"),
+                atom:raw.includes("<feed")||raw.includes("<atom:feed"),
+                html:raw.includes("<html"),
+                xml:raw.startsWith("<?xml"),
+                item_count:raw.split("<item").length-1,
+                native_pubdate:raw.split("<pubDate").length-1,
+                native_dcdate:raw.split("<dc:date").length-1,
                 bytes:raw.length,first_byte_codes:Array.from(bodyBytes.slice(0,8)),
                 content_encoding:res.headers.get("content-encoding")?"present":"absent"}));
               throw Error("ORIGINAL_FEED_NOT_RSS2_ENVELOPE:"+id);
