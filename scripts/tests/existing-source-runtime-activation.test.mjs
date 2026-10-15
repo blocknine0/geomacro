@@ -60,7 +60,7 @@ test('one upstream denial does not prevent all other source attempts and bodies 
 });
 test('reuses actual existing UK parser; malformed provider pages remain unavailable',async()=>{
  const r=await observeExistingPrivateP0Sources({now,fetchImpl:async url=>{
-   if(url.includes('sanctionslist.fcdo.gov.uk'))return new Response('<Designations><Designation><UniqueID>UK001</UniqueID><PrimaryName>Example</PrimaryName><RegimeName>Example</RegimeName></Designation></Designations>',{headers:{'content-type':'application/xml'}});
+   if(new URL(url).hostname==='sanctionslist.fcdo.gov.uk')return new Response('<Designations><Designation><UniqueID>UK001</UniqueID><PrimaryName>Example</PrimaryName><RegimeName>Example</RegimeName></Designation></Designations>',{headers:{'content-type':'application/xml'}});
    return new Response('<html>PRIVATE not actual provider records</html>',{headers:{'content-type':'text/html'}});
  }});
  const uk=r.results.find(s=>s.source_id==='uk_sanctions_list');
@@ -82,7 +82,7 @@ test('enforces byte bound from headers and streams and isolates failures without
 });
 test('dataset ZIP and HTML transport are never promoted to parsed observations or current events',async()=>{
  const r=await observeExistingPrivateP0Sources({now,fetchImpl:async url=>{
-   if(url.includes('worldbank')){const b=Buffer.alloc(120);b[0]=0x50;b[1]=0x4b;return new Response(b);}
+   if(new URL(url).hostname==='thedocs.worldbank.org'){const b=Buffer.alloc(120);b[0]=0x50;b[1]=0x4b;return new Response(b);}
    return new Response('<html>context</html>',{headers:{'content-type':'text/html'}});
  }});
  const wb=r.results.find(s=>s.source_id==='world_bank_commodity_prices');

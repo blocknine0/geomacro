@@ -40,18 +40,3 @@ jobs:
         uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
         with:
           category: "/language:javascript-typescript"
-      - name: Report actionable CodeQL locations without source bodies
-        if: always()
-        run: |
-          node --input-type=module <<'NODE'
-          import {existsSync,readFileSync} from 'node:fs';
-          const path='results/javascript.sarif';
-          if(!existsSync(path))process.exit(0);
-          const report=JSON.parse(readFileSync(path,'utf8'));
-          for(const run of report.runs??[])for(const result of run.results??[]){
-            const location=result.locations?.[0]?.physicalLocation;
-            console.log(JSON.stringify({rule:result.ruleId,
-              file:location?.artifactLocation?.uri,line:location?.region?.startLine,
-              message:result.message?.text}));
-          }
-          NODE
