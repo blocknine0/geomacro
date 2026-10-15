@@ -1,5 +1,5 @@
 import { fetchOriginalAlternate } from "./official-native-alternates.mjs";
-import {validatePrivatePulseRefs,privateOriginalMatchesPulse} from "./private-novel-pulse-match.mjs";
+import {validatePrivatePulseRefs,privateOriginalMatchesPulse,canonicalPrivateOriginalArticleSha,assertPrivatePulseArticleContext} from "./private-novel-pulse-match.mjs";
 import {createD1ControlPlaneStateClient} from "./d1-control-plane-state.mjs";
 import {selectPrivateNovelPulseRefs} from "./private-novel-pulse-match.mjs";
 import {fetchPulseRotatedPrivateOriginals} from "./pulse-rotated-original-scorer.mjs";
@@ -151,8 +151,9 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
 // URL cannot add a new destination, even with a first-party hostname.
 export async function recoverPrivateOfficialRssMissingDates(xml, category,{
   now=new Date(),maxAgeMs=MAX_AGE_MS,fetchImpl=fetch,diagnostics=null,
-  broadPrivateIntake=false,
+  broadPrivateIntake=false,pulseRefs=null,pulseExpectedClocks=null,
 }={}) {
+  assertPrivatePulseArticleContext(pulseRefs,pulseExpectedClocks);
   const config=OFFICIAL_NATIVE_FEEDS[category];
   const nowMs=now.getTime();
   if(!["macro","rare_earth"].includes(category) || !config ||
@@ -162,10 +163,14 @@ export async function recoverPrivateOfficialRssMissingDates(xml, category,{
      maxAgeMs<60000 || maxAgeMs>MAX_AGE_MS) return [];
   const candidates=[],seen=new Set();
   for(const [,block] of [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,MAX_ITEM_COUNT)){
-    if(/<pubDate(?:\s[^>]*)?>/iu.test(block))continue;
+    if(/<pubDate\b[^>]*>/iu.test(block))continue;
     const title=field(block,"title"),url=safeOriginalUrl(field(block,"link"),config.host);
     if(!url || (!broadPrivateIntake && !config.topics.test(title)) || title.length<16 ||
        title.length>500 || seen.has(url))continue;
+    if(pulseRefs instanceof Set){
+      const id=canonicalPrivateOriginalArticleSha(url);
+      if(!id||!pulseRefs.has(id))continue;
+    }
     seen.add(url);
     candidates.push({title,url});
     if(candidates.length>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
@@ -181,14 +186,17 @@ export async function recoverPrivateOfficialRssMissingDates(xml, category,{
     if(!date)continue;
     const asOf=Date.parse(date);
     if(!Number.isFinite(asOf)||asOf>nowMs||nowMs-asOf>maxAgeMs)continue;
-    result.push({
+    const article={
       title:row.title,description:"",url:row.url,
       publishedAt:date,source:config.host,sourceDomain:config.host,
       discoveryProvider:"official_native_rss",
       nativePublishedAtVerified:true,
       nativeTimeEvidence:"publisher_original_article_datePublished",
       privateOnly:true,rightsVerified:false,commercialEligible:false,
-    });
+    };
+    if(pulseRefs instanceof Set&&
+       !privateOriginalMatchesPulse(article,pulseRefs,nowMs,pulseExpectedClocks))continue;
+    result.push(article);
   }
   if(diagnostics && typeof diagnostics==="object" && !Array.isArray(diagnostics))
     diagnostics.original_page_precise_date_admitted=result.length;
@@ -311,10 +319,12 @@ export async function fetchOfficialNativeArticles(category, {
   try {
     const rss=await boundedRssFetch(config.url,fetchImpl);
     primary=parseOfficialNativeRss(rss,category,now,maxAgeMs,diagnostics,broadPrivateIntake);
-    if(primary.length===0 && includeOriginalPageDateFallback &&
+    if(selected(primary).length===0 && includeOriginalPageDateFallback &&
         (category==="macro" || category==="rare_earth")){
       primary=await recoverPrivateOfficialRssMissingDates(rss,category,{
         now,maxAgeMs,fetchImpl,diagnostics,broadPrivateIntake,
+        pulseRefs:fromAutomaticPulse?refs:null,
+        pulseExpectedClocks:fromAutomaticPulse?expectedClocks:null,
       });
     }
   } catch {
@@ -340,6 +350,8 @@ export async function fetchOfficialNativeArticles(category, {
   try {
     alternate = await fetchOriginalAlternate(category,{
       now,fetchImpl,diagnostics,maxAgeMs,broadPrivateIntake,
+      pulseRefs:fromAutomaticPulse?refs:null,
+      pulseExpectedClocks:fromAutomaticPulse?expectedClocks:null,
     });
     if (diagnostics && typeof diagnostics === "object")
       diagnostics.alternate_feed_ok = true;
