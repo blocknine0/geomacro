@@ -62,6 +62,21 @@ async function safePublicBlockerCode(response) {
 function safeCount(value) {
   return Number.isSafeInteger(value) && value>=0 && value<=1000 ? value : null;
 }
+// These names are already public deterministic query modules, NEVER private
+// publisher IDs, article URLs or source inventory keys. Only this exact
+// allowlist may appear in logged eligibility diagnostics.
+const PUBLIC_MODULE_NAMES = new Set([
+  "sovereign_fiscal", "political_governance", "macro_monetary",
+  "external_fx", "geopolitical_security", "critical_minerals",
+  "sanctions_restrictions", "trade_corridor", "energy_commodities",
+  "banking_financial_system", "food_agriculture", "natural_hazards",
+]);
+function safePublicModuleNames(rows) {
+  if (!Array.isArray(rows)) return [];
+  return [...new Set(rows.slice(0,32).filter(value =>
+    typeof value === "string" && PUBLIC_MODULE_NAMES.has(value),
+  ))].sort();
+}
 function publicCoverageCounts(body) {
   const availability=body?.availability;
   return {
@@ -70,6 +85,8 @@ function publicCoverageCounts(body) {
     stale_module_count:Array.isArray(availability?.stale_modules)
       ? Math.min(availability.stale_modules.length,1000) : null,
     ineligible_source_count:safeCount(availability?.ineligible_source_count),
+    missing_public_modules:safePublicModuleNames(availability?.missing_modules),
+    stale_public_modules:safePublicModuleNames(availability?.stale_modules),
   };
 }
 
@@ -151,7 +168,7 @@ export async function acceptEarningPilotLive({
       });
     }catch{
       requestFailureCount++;
-      steps.push({check:item.name,status:"PREFLIGHT_TRANSPORT_UNAVAILABLE",
+      steps.push({check:item.name,country_iso3:item.country,topic:item.topic,status:"PREFLIGHT_TRANSPORT_UNAVAILABLE",
         payment_rail_state:"NOT_APPLICABLE"});
       continue;
     }
@@ -167,14 +184,14 @@ export async function acceptEarningPilotLive({
       // most 4 KiB and emit one public allow-listed gate code; never copy
       // arbitrary provider responses to the GitHub or user-facing logs.
       const blocker=await safePublicBlockerCode(res);
-      steps.push({check:item.name,status:code,http_status:res.status,
+      steps.push({check:item.name,country_iso3:item.country,topic:item.topic,status:code,http_status:res.status,
         blocker_code:blocker,payment_rail_state:"NOT_APPLICABLE"});
       continue;
     }
     let data;
     try{data=await res.json();}catch{
       requestFailureCount++;
-      steps.push({check:item.name,status:"PREFLIGHT_INVALID_RESPONSE",
+      steps.push({check:item.name,country_iso3:item.country,topic:item.topic,status:"PREFLIGHT_INVALID_RESPONSE",
         payment_rail_state:"NOT_APPLICABLE"});
       continue;
     }
@@ -200,7 +217,7 @@ export async function acceptEarningPilotLive({
     if(available && data.status==="ELIGIBLE_BUT_PAYMENT_RAIL_LOCKED")lockedCount++;
     if(!available)governedUnavailableCount++;
     steps.push({
-      check:item.name,
+      check:item.name,country_iso3:item.country,topic:item.topic,
       status:available?"ELIGIBLE_GOVERNED_BASELINE":"NO_PAYABLE_EVIDENCE",
       // Aggregate module + rights counts only. Source identities and
       // raw upstream data are never part of this buyer preflight receipt.
