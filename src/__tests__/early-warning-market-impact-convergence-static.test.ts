@@ -14,7 +14,7 @@ describe("Early Warning market-impact production convergence", () => {
   it("is narrow, authoritative-project-only and frozen before any DB write", () => {
     expect(workflow).toContain("ldpwajisioljyjtojvfx");
     expect(workflow).toContain("environment: production");
-    expect(workflow).not.toMatch(/(?:^|\\n)  push:/);
+    expect(workflow).not.toMatch(/^  push:/m);
     expect(workflow).toContain("    if: ${{ false }}");
     expect(workflow).toContain(
       "psql \"$SUPABASE_DB_URL\" -X -v ON_ERROR_STOP=1 -f scripts/ops/converge-early-warning-market-impact.sql",
