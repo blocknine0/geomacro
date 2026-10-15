@@ -23,8 +23,8 @@ describe("GDELT GAL production freshness workflow", () => {
     expect(workflow).toContain("permit_legacy_supabase_gal");
     expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
     expect(workflow).not.toContain("\n  push:\n");
-    expect(workflow).toContain("github.ref == 'refs/heads/main'");
-    expect(workflow).toContain("inputs.permit_legacy_supabase_gal == true");
+    expect(workflow).toContain("  sync:\n    # Legacy Supabase recovery retired:");
+    expect(workflow).toContain("    if: ${{ false }}");
     expect(workflow).not.toContain("schedule:");
     const orchestrator = readFileSync(join(process.cwd(), "scripts/intelligence-orchestrator.mjs"), "utf8");
     expect(orchestrator).toContain('key: "gdelt_gal"');
