@@ -1169,6 +1169,37 @@ async function discoverOnDemandImpl(
     return {...row,category:selected[i].category};
   });
   const fallbackIssuerGroups:PrivateOriginalCandidate[][]=[];
+  const searchedGovukCategories=new Set<OnDemandCategory>();
+  // For an explicit three-domain country question, the fixed primary
+  // 1-country + 8-provider budget often leaves only three source GETs.
+  // If all rotating feeds missed an original, the old sequence consumed the
+  // remaining GETs on unrelated global feeds BEFORE the country-filtered
+  // official GOV.UK Search API was reached. Reserve at most two issuer-index
+  // attempts for the weakest world-wide categories (minerals, geopolitics),
+  // preserving at least one remaining network slot for an independent
+  // original-publisher fallback. Every search lead still requires its
+  // first-party article page and real original publication date.
+  if(name && topics.length>0 && categories.length===3){
+    const targeted=["rare_earth","geopolitics"] as const;
+    for(const category of targeted){
+      if(!categories.includes(category) || networkAttempts>=11)break;
+      const originalPresent=settled.some(result=>
+        result.status==="fulfilled" &&
+        "private_candidates" in result.value &&
+        result.value.private_candidates.some(item=>item.domain===category));
+      if(originalPresent)continue;
+      const def=GOVUK_SEARCH_FALLBACKS.find(item=>item.domain===category)!;
+      searchedGovukCategories.add(category);
+      try{
+        const found=await govukOriginalSearch(def,country,name,trackedFetch,topics,mineral);
+        source_probes.push({...found.probe,category});
+        if(found.private_candidates.length>0)
+          fallbackIssuerGroups.push(found.private_candidates);
+      }catch(error){
+        source_probes.push({...failed(def.family,error),category});
+      }
+    }
+  }
   // If a selected original publisher fails or returns zero matching records,
   // try another already registered original institution within the SAME
   // twelve-request budget. Do not promote GDELT index links to originals, and
@@ -1255,7 +1286,8 @@ async function discoverOnDemandImpl(
       "private_candidates" in result.value &&
       result.value.private_candidates.some(item=>item.domain===category)) ||
       fallbackIssuerGroups.some(group=>group.some(item=>item.domain===category));
-    if(originalPresent || networkAttempts>=12)continue;
+    if(originalPresent || searchedGovukCategories.has(category) ||
+       networkAttempts>=12)continue;
     const def=GOVUK_SEARCH_FALLBACKS.find(item=>item.domain===category)!;
     try {
       const found=await govukOriginalSearch(def,country,name,trackedFetch,topics,mineral);
