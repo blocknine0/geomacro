@@ -22,10 +22,12 @@ describe("D1 shadow backfill", () => {
     expect(script).toContain('gro_index: { migrated: false');
   });
 
-  it("runs automatically only after successful D1 bootstrap and never cuts over production", () => {
-    expect(workflow).toContain("workflow_run:");
-    expect(workflow).toContain("Deploy D1 Control Plane");
-    expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'");
+  it("retains forensic migration proof but never automatically or manually runs Supabase shadow copy", () => {
+    const triggers = workflow.slice(workflow.indexOf("\non:\n"), workflow.indexOf("\npermissions:"));
+    expect(triggers).toContain("workflow_dispatch: {}");
+    expect(triggers).not.toMatch(/^  (?:push|workflow_run|schedule):/m);
+    expect(workflow).toContain("  verified-shadow-backfill:");
+    expect(workflow).toContain("    if: ${{ false }}");
     expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
     expect(workflow).toContain("Upload parity evidence only");
     expect(workflow).toContain("not a production cutover");
