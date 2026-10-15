@@ -265,7 +265,12 @@ export async function readB2StructuralServingSnapshot(): Promise<B2StructuralSer
       const row = value as Record<string, unknown>;
       if (!iso3(row.country_iso3) || seenCountries.has(row.country_iso3)) return null;
       if (!Array.isArray(row.latest_observations) || row.latest_observations.length > 250) return null;
-      if (!row.latest_observations.every(observation)) return null;
+      // A valid ISO3 inside a row is not proof that the observation belongs
+      // to the country profile serving it. Reject contaminated archives rather
+      // than turning foreign evidence into a payable country digest.
+      if (!row.latest_observations.every((item) =>
+        observation(item) && item.country_iso3 === row.country_iso3
+      )) return null;
       seenCountries.add(row.country_iso3);
       countryProfiles.push({
         country_iso3: row.country_iso3,
