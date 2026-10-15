@@ -77,3 +77,60 @@ export function assertVerifiedCurrentGlobalRiskD1Parent(snapshot, now = Date.now
     parentGeneratedAt: snapshot.generated_at,
   });
 }
+
+
+/**
+ * Verify the independently READ public D1 hot row against the exact already
+ * B2-readback verified publisher bytes and its immutable verified GRI parent.
+ * The authenticated PUT acknowledgement alone is never acceptance.
+ */
+export function assertPublishedRiskIndicesD1Readback(
+  snapshot, { value, proof, payloadJson, now = Date.now() } = {},
+) {
+  const fail = code => { throw Error("INDICES_D1_PUBLIC_READBACK_" + code); };
+  if (!Number.isFinite(now) || !snapshot || typeof snapshot !== "object" ||
+      snapshot.ok !== true || snapshot.product !== "risk-indices" ||
+      snapshot.schema !== "geomacro.public-risk-indices-live.v1" ||
+      snapshot.proof_schema !== "geomacro.public-risk-indices-live-proof.v1" ||
+      snapshot.verification_mode !== "direct-b2-readback" ||
+      snapshot.b2_object_key !== "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz" ||
+      snapshot.full_b2_readback_verified !== true ||
+      snapshot.current_b2_readback_verified !== true ||
+      snapshot.exact_gzip_restore_verified !== true ||
+      !value || !proof || proof.live_key !== snapshot.b2_object_key ||
+      proof.schema !== snapshot.proof_schema ||
+      proof.full_b2_readback_verified !== true ||
+      proof.exact_gzip_restore_verified !== true ||
+      !HASH.test(String(proof.compressed_sha256 ?? "")) ||
+      snapshot.b2_sha256 !== proof.compressed_sha256 ||
+      !HASH.test(String(snapshot.payload_sha256 ?? "")) ||
+      typeof payloadJson !== "string" ||
+      payloadJson !== JSON.stringify(value) ||
+      snapshot.payload_json !== payloadJson ||
+      createHash("sha256").update(payloadJson).digest("hex") !== snapshot.payload_sha256)
+    fail("EXACT_B2_AND_D1_HASH_BINDING_REQUIRED");
+  const clock = Date.parse(String(snapshot.source_as_of ?? ""));
+  const expire = Date.parse(String(snapshot.expires_at ?? ""));
+  const generated = Date.parse(String(snapshot.generated_at ?? ""));
+  if (![clock,expire,generated].every(Number.isFinite) ||
+      clock > now + MAX_FUTURE_MS || now - clock > MAX_AGE_MS ||
+      generated > now + MAX_FUTURE_MS || generated < clock ||
+      expire <= now || expire > clock + MAX_AGE_MS ||
+      snapshot.source_as_of !== proof.snapshot_as_of ||
+      snapshot.generated_at !== value.generated_at ||
+      snapshot.generated_at !== proof.generated_at ||
+      value.data?.snapshotAsOf !== snapshot.source_as_of ||
+      value.data?.parentMethodologyVersion !== "gri-v1.2.0" ||
+      value.parent_global_risk_payload_sha256 !== proof.parent_global_risk_payload_sha256 ||
+      value.parent_global_risk_b2_sha256 !== proof.parent_global_risk_b2_sha256 ||
+      !HASH.test(String(value.parent_global_risk_payload_sha256 ?? "")) ||
+      !HASH.test(String(value.parent_global_risk_b2_sha256 ?? "")))
+    fail("ORIGINAL_GRI_PARENT_OR_CLOCK_MISMATCH");
+  return Object.freeze({
+    ok:true, sourceAsOf:snapshot.source_as_of,
+    b2Sha256:snapshot.b2_sha256,
+    payloadSha256:snapshot.payload_sha256,
+    parentPayloadSha256:value.parent_global_risk_payload_sha256,
+    parentB2Sha256:value.parent_global_risk_b2_sha256,
+  });
+}
