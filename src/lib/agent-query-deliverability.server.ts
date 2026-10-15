@@ -89,8 +89,9 @@ function belongsToSubject(context: StructuralContext, row: { country_iso3: strin
   if (context.subject.type === "country") {
     return row.country_iso3 === context.subject.country_iso3;
   }
-  return row.country_iso3 === context.subject.origin_country_iso3 ||
-    row.country_iso3 === context.subject.destination_country_iso3;
+  // Corridors have separately reviewed direct and endpoint-composed evidence;
+  // this change does not redefine their existing composition semantics.
+  return true;
 }
 
 function moduleMatchesDimension(module: string, dimension: string) {
