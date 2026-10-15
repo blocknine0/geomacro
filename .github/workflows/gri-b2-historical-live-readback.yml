@@ -1,9 +1,19 @@
 name: GRI Historical B2 Exact Readback (No Funds)
 
-# One bounded production readback after this verifier changes, plus explicit
-# owner dispatch. Never a cron, publisher, website freshness or payment gate.
+# Push runs metadata-only D1 provenance triage, never an automatic B2 GET.
+# Any future governed B2 readback requires explicit owner dispatch and the
+# existing account-wide atomic quota governor. No publication or payment.
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Metadata-only triage by default; full B2 readback needs a fresh quota reservation and explicit owner selection"
+        required: true
+        type: choice
+        default: metadata_only
+        options:
+          - metadata_only
+          - governed_b2_readback
   pull_request:
     paths:
       - "scripts/ops/verify-global-risk-b2-historical-readback.mjs"
@@ -45,8 +55,34 @@ jobs:
           grep -q 'current_gri_qualified:false' scripts/ops/verify-global-risk-b2-historical-readback.mjs
           ! grep -q 'b2.put(' scripts/ops/verify-global-risk-b2-historical-readback.mjs
 
+  # A push that changes the verifier runs ONLY D1 metadata triage. It must
+  # not repeat the same known compressed SHA mismatch at the mutable live key.
+  # A completed triage is never treated as proof of a historical B2 GET.
+  metadata-only-anchor-triage:
+    if: github.repository == 'blocknine0/geomacro' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'metadata_only'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    env:
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+    steps:
+      - name: Checkout exact protected main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Classify authenticated D1 original anchor without B2, Supabase or funds
+        run: |
+          set -euo pipefail
+          test -n "${GEOMACRO_COMMERCE_LEDGER_TOKEN:-}" || exit 2
+          node scripts/ops/verify-global-risk-b2-historical-readback.mjs --metadata-only
+
   actual-governed-historical-b2-readback:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.mode == 'governed_b2_readback'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     environment: production
