@@ -50,9 +50,16 @@ jobs:
           ];
           const results=[];
           for(const [id,feed,host,path] of feeds){
-            const res=await fetch(feed,{method:"GET",redirect:"error",cache:"no-store",
-              headers:{Accept:"application/rss+xml, application/xml;q=0.9, text/xml;q=0.8"},
-              signal:AbortSignal.timeout(id==="au_industry_minister"?15000:10000)});
+            let res;
+            try {
+              res=await fetch(feed,{method:"GET",redirect:"error",cache:"no-store",
+                headers:{Accept:id.startsWith("bls_")
+                  ?"application/atom+xml, application/xml;q=0.9"
+                  :"application/rss+xml, application/xml;q=0.9, text/xml;q=0.8"},
+                signal:AbortSignal.timeout(id==="au_industry_minister"?15000:10000)});
+            } catch {
+              throw Error("ORIGINAL_FEED_TRANSPORT_TIMEOUT_OR_NETWORK:"+id);
+            }
             if(!res.ok)throw Error("ORIGINAL_FEED_UNAVAILABLE:"+id+":HTTP_"+res.status);
             const type=(res.headers.get("content-type")||"").toLowerCase();
             if(!/(?:rss\+xml|xml)/.test(type))throw Error("ORIGINAL_FEED_NOT_RSS:"+id);
@@ -89,6 +96,10 @@ jobs:
               throw Error("ORIGINAL_FEED_NATIVE_OR_ARTICLE_MISSING:"+id);
             results.push({id,transport_ok:true,seen_items:items.length,native_dates:native,
               same_issuer_original_links:own,commercial_activation:false,payment_attempts:0});
+            // Aggregate-only progress per publisher avoids losing all proof
+            // when a later, unrelated issuer has a transport timeout.
+            console.log(JSON.stringify({source_id:id,transport_ok:true,
+              native_dates:native,original_links:own,paid_promotion:false}));
           }
           console.log(JSON.stringify({schema:"geomacro.official-bls-au-readonly.v1",
             validated:results.length,supabase_calls:0,b2_calls:0,d1_writes:0,
