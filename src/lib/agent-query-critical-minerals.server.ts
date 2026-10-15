@@ -4,6 +4,7 @@ import type { AgentQueryPlan } from "./agent-query-plan";
 import { readB2AgentGovernedModule, type B2AgentCriticalMineralsState } from "./b2-agent-governed-modules.server";
 import { checkCommercialSourceEligibility } from "./commercial-source-eligibility.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
+import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
 
 export const AGENT_CRITICAL_MINERALS_SOURCE_ID = "usgs_mcs" as const;
 export const AGENT_CRITICAL_MINERALS_METHOD_VERSION =
@@ -150,14 +151,20 @@ export async function loadAgentCriticalMineralsModule(input: {
 
   // B2 is the production serving authority for this verified derived state.
   // Supabase remains bounded standby/recovery only.
+  // The original B2 snapshot is the production authority; rights and
+  // source-native freshness remain mandatory. Do not retry this governed GET.
+  let b2State: AgentCriticalMineralsModuleResult | null = null;
   try {
-    const primary = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
-    if (primary?.deliverable) {
-      console.warn("[agent-critical-minerals] using fresh verified B2 governed derived state");
-      return primary;
-    }
+    b2State = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
   } catch {
-    // Never widen delivery on B2 failure; continue to the bounded standby path.
+    // A missing/unreachable B2 source cannot be promoted to payable data.
+  }
+  if (b2State?.deliverable) return b2State;
+
+  // A frozen Supabase project must never be probed by a buyer preflight.
+  // Keep unverified or stale B2 evidence unavailable without changing clocks.
+  if (!supabaseReadFallbackAllowed()) {
+    return b2State ?? unavailable(input.subject, "OBSERVATION_NOT_AVAILABLE", sourceContract);
   }
 
   try {
@@ -285,11 +292,9 @@ export async function loadAgentCriticalMineralsModule(input: {
       },
     };
   } catch (primaryError) {
-    const fallback = await b2Fallback({ ...input, subject: input.subject }, sourceContract);
-    if (fallback?.deliverable) {
-      console.warn("[agent-critical-minerals] standby governed store unavailable; using fresh verified B2 derived state");
-      return fallback;
-    }
+    // Preserve the previous fail-closed B2 status. Repeated GETs during a
+    // standby failure spend extra shared Class-B quota without new evidence.
+    if (b2State) return b2State;
     throw primaryError;
   }
 }
