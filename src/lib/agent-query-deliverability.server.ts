@@ -116,15 +116,7 @@ function latestModuleTime(context: StructuralContext, module: string, asOfMs: nu
     const time = observationTime(row, asOfMs);
     if (time !== null && (latest === null || time > latest)) latest = time;
   }
-  for (const row of context.metadata.coverage) {
-    if (!moduleMatchesDimension(module, row.dimension) || !row.latest_observed_at) continue;
-    const time = Date.parse(row.latest_observed_at);
-    // The governed coverage timestamp is an observation clock, not updated_at.
-    // Reject future data rather than allowing negative source ages.
-    if (Number.isFinite(time) && time <= asOfMs &&
-        (latest === null || time > latest)) latest = time;
-  }
-  return latest;
+  // Coverage metadata describes discovered source availability, not a\n  // verified, deliverable observation. Never mint a source-native freshness\n  // timestamp from a profile/coverage record without an actual matching row.\n  return latest;
 }
 
 function requiredSourceIds(context: StructuralContext, requiredModules: string[]) {
