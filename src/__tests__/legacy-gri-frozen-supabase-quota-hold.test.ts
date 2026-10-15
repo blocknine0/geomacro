@@ -19,8 +19,13 @@ describe("#1827 frozen Supabase GRI quota hold (no fake currentness)",()=>{
     expect(yaml).not.toContain("\n  schedule:\n");
     expect(yaml).not.toContain("\n  push:\n");
     expect(yaml).not.toContain("\n  workflow_run:\n");
-    expect(yaml).toContain("github.ref == 'refs/heads/main'");
-    expect(yaml).toContain("github.event_name == 'workflow_dispatch'");
+    if (_name === "hourly PostgreSQL GRI") {
+      expect(yaml).toContain("  refresh-three-domain-gri:\n    # Supabase-only legacy execution retired.");
+      expect(yaml).toContain("    if: ${{ false }}");
+    } else {
+      expect(yaml).toContain("github.ref == 'refs/heads/main'");
+      expect(yaml).toContain("github.event_name == 'workflow_dispatch'");
+    }
     expect(yaml).not.toContain("execution_authorized=true");
   });
 
