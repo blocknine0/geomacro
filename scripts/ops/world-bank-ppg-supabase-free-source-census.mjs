@@ -36,17 +36,25 @@ export function auditPpgSourceOnlyCensus(report,target=100){
    "PPG_SOURCE_CENSUS_METHODOLOGY_OR_PEER_INVALID");
  const countries=new Set(COUNTRIES_195.map(c=>c.iso3));
  const accepted=new Set();
+ const excludedOutside195=new Set();
+ const seenSourceIso3=new Set();
  const rejected=new Set();
  for(const state of report.states??[]){
    const m=/^rgv2:([A-Z]{3}):sovereign_fiscal:world-bank-ppg-external-debt:/.exec(String(state.module_state_id??""));
-   if(!m||!countries.has(m[1])||accepted.has(m[1])||
+   if(!m||seenSourceIso3.has(m[1])||
       state.module!=="sovereign_fiscal" ||
       state.coverage!=="LIMITED" ||
       state.commercial_eligibility_status!=="VERIFIED")
       throw Error("PPG_SOURCE_CENSUS_MODULE_STATE_INVALID");
-   accepted.add(m[1]);
+   seenSourceIso3.add(m[1]);
+   // World Bank source universe includes economic entities not in the
+   // founder-locked UN193+two observer sovereign routing baseline (e.g.
+   // XKX). Never promote such source entities into one of the 195 cells.
+   if(countries.has(m[1]))accepted.add(m[1]);
+   else excludedOutside195.add(m[1]);
  }
- assert(accepted.size===report.shadow_summary.eligible_shadow_country_count,
+ assert(seenSourceIso3.size===report.shadow_summary.eligible_shadow_country_count &&
+   accepted.size+excludedOutside195.size===seenSourceIso3.size,
    "PPG_SOURCE_CENSUS_PROOF_COUNT_MISMATCH");
  for(const c of COUNTRIES_195)if(!accepted.has(c.iso3))rejected.add(c.iso3);
  assert(accepted.size+rejected.size===195,"PPG_SOURCE_CENSUS_COUNTRY_UNIVERSE_INVALID");
@@ -58,6 +66,8 @@ export function auditPpgSourceOnlyCensus(report,target=100){
    source_report_sha256:report.report_hash,
    country_count:195,
    ppg_fiscal_shadow_countries:accepted.size,
+   excluded_noncanonical_source_economies:excludedOutside195.size,
+   source_fiscal_country_or_economy_count:seenSourceIso3.size,
    ppg_fiscal_missing_countries:rejected.size,
    target_country_count:target,
    source_only_target_reached:targetReached,
