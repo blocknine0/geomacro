@@ -25,6 +25,7 @@ function jobAllowed(file,job,event,repo='blocknine0/geomacro',ref='refs/heads/ma
  const result=or();assert.equal(cursor,tokens.length);return result;
 }
 test('credentialed cron actually runs on protected main and cannot inject credentials into forks or PRs',()=>{
+ assert.ok(readFileSync('.github/workflows/credentialed-source-runtime.yml','utf8').includes('group: geomacro-credentialed-source-runtime-${{ github.ref }}'));
  for(const event of ['push','workflow_dispatch','schedule']){
    assert.equal(jobAllowed('credentialed-source-runtime.yml','runtime',event),true);
    assert.equal(jobAllowed('credentialed-source-runtime.yml','runtime',event,'untrusted/fork'),false);
