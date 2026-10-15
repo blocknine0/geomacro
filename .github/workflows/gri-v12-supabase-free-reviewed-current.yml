@@ -12,6 +12,14 @@ on:
         description: "Independently pinned private input SHA256"
         required: true
         type: string
+      reviewed_certificates_b2_key:
+        description: "Immutable independently signed country-category certificates B2 key"
+        required: true
+        type: string
+      reviewed_certificates_b2_sha256:
+        description: "Independently pinned exact SHA256 of signed country certificates JSON"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -30,6 +38,8 @@ jobs:
       EXPECTED_SHA: ${{ github.sha }}
       REVIEWED_B2_KEY: ${{ inputs.reviewed_b2_key }}
       REVIEWED_B2_SHA256: ${{ inputs.reviewed_b2_sha256 }}
+      REVIEWED_CERTIFICATES_B2_KEY: ${{ inputs.reviewed_certificates_b2_key }}
+      REVIEWED_CERTIFICATES_B2_SHA256: ${{ inputs.reviewed_certificates_b2_sha256 }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
@@ -130,6 +140,35 @@ jobs:
           '
           echo "GEOMACRO_GRI_REVIEWED_INPUT=artifacts/private-gri-v12/reviewed-input.json" >> "$GITHUB_ENV"
           echo "GEOMACRO_GRI_REVIEWED_INPUT_SHA256=$REVIEWED_B2_SHA256" >> "$GITHUB_ENV"
+
+      - name: Retrieve exact independently signed country-category certifications from governed B2
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          bun --eval '
+            import {writeFileSync} from "node:fs";
+            import {createHash} from "node:crypto";
+            import {createB2Client} from "./scripts/ops/b2-s3-client.mjs";
+            const key=process.env.REVIEWED_CERTIFICATES_B2_KEY??"";
+            const pin=process.env.REVIEWED_CERTIFICATES_B2_SHA256??"";
+            if(!/^geomacro-evidence\/v1\/private\/reviewed-country-certification\/[a-f0-9]{64}\.json$/.test(key)||
+               !/^[a-f0-9]{64}$/.test(pin))
+              throw Error("EXTERNAL_SIGNED_COUNTRY_CERTIFICATE_PIN_REQUIRED");
+            const b2=createB2Client({
+              endpointUrl:"https://s3.us-east-005.backblazeb2.com",
+              bucket:"geomacro-private-archive",
+              accessKey:process.env.B2_KEY_ID,secretKey:process.env.B2_APPLICATION_KEY});
+            const bytes=Buffer.from(await b2.get(key));
+            if(bytes.length<100||bytes.length>512*1024||
+               createHash("sha256").update(bytes).digest("hex")!==pin)
+              throw Error("COUNTRY_CERTIFICATES_B2_BYTES_NOT_VERIFIED");
+            writeFileSync("artifacts/private-gri-v12/reviewed-country-certificates.json",
+              bytes,{flag:"wx",mode:0o600});
+            console.log("PASS: independent country-category certification B2 SHA; no source data printed");
+          '
+          echo "GEOMACRO_GRI_SIGNED_COUNTRY_CERTIFICATES=artifacts/private-gri-v12/reviewed-country-certificates.json" >> "$GITHUB_ENV"
+          echo "GEOMACRO_GRI_SIGNED_COUNTRY_CERTIFICATES_SHA256=$REVIEWED_CERTIFICATES_B2_SHA256" >> "$GITHUB_ENV"
 
       - name: Publish current verified GRI and prove B2/D1 public readback without funds
         shell: bash
