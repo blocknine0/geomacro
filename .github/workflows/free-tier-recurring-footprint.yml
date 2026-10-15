@@ -24,6 +24,8 @@ on:
       - "src/__tests__/phase-a-runtime-freshness-repair-static.test.ts"
       - "src/__tests__/full-source-production-alignment-static.test.ts"
       - "src/__tests__/supabase-free-tier-b2-first.test.ts"
+      - "scripts/ops/read-account-free-tier-footprint.mjs"
+      - "src/__tests__/free-tier-recurring-footprint-supabase-free.test.ts"
   workflow_dispatch: {}
 
 permissions:
