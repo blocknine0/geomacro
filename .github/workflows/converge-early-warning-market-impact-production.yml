@@ -1,4 +1,4 @@
-name: Converge Early Warning Market Impact Production
+name: Converge Early Warning Market Impact Production (Supabase Frozen)
 
 on:
   pull_request:
@@ -7,12 +7,7 @@ on:
       - 'scripts/ops/converge-early-warning-market-impact.sql'
       - '.github/workflows/converge-early-warning-market-impact-production.yml'
       - 'src/__tests__/early-warning-market-impact-convergence-static.test.ts'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/ops/converge-early-warning-market-impact.sql'
-      - '.github/workflows/converge-early-warning-market-impact-production.yml'
-      - 'src/__tests__/early-warning-market-impact-convergence-static.test.ts'
+  # Supabase production frozen: PR-only static verification; no automatic DB runs.
 
 permissions:
   contents: read
@@ -42,6 +37,8 @@ jobs:
           grep -q 'psql "\$SUPABASE_DB_URL"' "$file"
           grep -q 'converge-early-warning-market-impact.sql' "$file"
           grep -q 'degraded !== false' "$file"
+          ! grep -q '^  push:' "$file"
+          grep -Fq 'if: ${{ false }}' "$file"
           grep -q 'add column if not exists market_impact jsonb' "$sql"
           grep -q 'revoke all on function public.guard_published_early_warning_core() from PUBLIC, anon, authenticated' "$sql"
           broad_migration_command='supabase db '"'"'push'
@@ -56,7 +53,8 @@ jobs:
           echo 'PASS: narrow production convergence guardrails verified.'
 
   converge:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    # Preserve historical SQL implementation, but never execute with frozen Supabase.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
