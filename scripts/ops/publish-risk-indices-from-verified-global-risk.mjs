@@ -9,7 +9,7 @@ import { createHash } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { createB2Client } from "./b2-s3-client.mjs";
 import { publishB2VerifiedHotSnapshot } from "./publish-b2-verified-hot-snapshot.mjs";
-import { assertVerifiedCurrentGlobalRiskD1Parent } from "../lib/risk-indices-verified-d1-parent.mjs";
+import { assertVerifiedCurrentGlobalRiskD1Parent, assertPublishedRiskIndicesD1Readback } from "../lib/risk-indices-verified-d1-parent.mjs";
 import { validateGlobalRiskContinuity } from "../../src/lib/global-risk-continuity.ts";
 import { riskIndicesFromGlobalRisk } from "../../src/lib/risk-indices-from-global-risk.ts";
 import { PUBLIC_RISK_INDICES_CONTRACT_VERSION } from "../../src/lib/risk-indices.types.ts";
@@ -147,9 +147,27 @@ async function main(){
   const hot=await publishB2VerifiedHotSnapshot({
     product:"risk-indices",value,proof,
   });
-  must(hot?.full_b2_readback_verified===true &&
+  must(hot?.ok===true && hot?.product==="risk-indices" &&
+    hot?.b2_object_key===LIVE_KEY &&
+    hot?.b2_sha256===digest &&
+    hot?.full_b2_readback_verified===true &&
+    hot?.current_b2_readback_verified===true &&
     hot?.exact_gzip_restore_verified===true &&
     hot?.payload_sha256===sha(raw),"D1_HOT_READBACK_UNVERIFIED");
+  // Independently READ the public D1 row. This catches a stale/superseded
+  // pointer, wrong B2 object SHA, mutated payload or different GRI parent.
+  const readbackResponse=await fetch(CONTROL+"/v1/public/hot-snapshot/risk-indices",{
+    headers:{"Accept":"application/json","Cache-Control":"no-cache"},
+    signal:AbortSignal.timeout(15_000),
+  });
+  must(readbackResponse.ok,"D1_PUBLIC_READBACK_HTTP_UNAVAILABLE");
+  const publicReadback=await readbackResponse.json();
+  const bound=assertPublishedRiskIndicesD1Readback(publicReadback,{
+    value,proof,payloadJson:raw.toString("utf8"),
+  });
+  must(bound.parentPayloadSha256===parent.parentPayloadSha256 &&
+    bound.parentB2Sha256===parent.parentB2Sha256 &&
+    bound.b2Sha256===digest,"D1_PUBLIC_PARENT_SHA_MISMATCH");
   console.log(JSON.stringify({
     ok:true,schema:"geomacro.risk-indices-d1-parent-publication.v1",
     authority_read:"verified-current-global-risk-d1",
@@ -158,6 +176,7 @@ async function main(){
     published_payload_sha256:sha(raw),
     b2_full_readback_verified:true,
     d1_hot_snapshot_published:true,
+    d1_public_readback_verified:true,
     supabase_reads:0,supabase_writes:0,real_funds_touched:false,
   }));
 }
