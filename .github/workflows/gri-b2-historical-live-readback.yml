@@ -1,0 +1,112 @@
+name: GRI Historical B2 Exact Readback (No Funds)
+
+# One bounded production readback after this verifier changes, plus explicit
+# owner dispatch. Never a cron, publisher, website freshness or payment gate.
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "scripts/ops/verify-global-risk-b2-historical-readback.mjs"
+      - ".github/workflows/gri-b2-historical-live-readback.yml"
+      - "src/__tests__/gri-b2-historical-live-readback.test.ts"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/verify-global-risk-b2-historical-readback.mjs"
+      - ".github/workflows/gri-b2-historical-live-readback.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-gri-b2-historical-readback
+  cancel-in-progress: false
+
+jobs:
+  safety-contract:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Validate strict no-funds one-object GET contract
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-global-risk-b2-historical-readback.mjs
+          grep -q 'verifyPinnedGlobalRiskBaseline' scripts/ops/verify-global-risk-b2-historical-readback.mjs
+          grep -q 'immutable_historical_lineage_verified:false' scripts/ops/verify-global-risk-b2-historical-readback.mjs
+          grep -q 'current_gri_qualified:false' scripts/ops/verify-global-risk-b2-historical-readback.mjs
+          ! grep -q 'b2.put(' scripts/ops/verify-global-risk-b2-historical-readback.mjs
+
+  actual-governed-historical-b2-readback:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_REQUEST_BUDGET: "4"
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: historical_gri_readback
+    steps:
+      - name: Checkout immutable protected main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Require credentials and no Supabase fallback
+        run: |
+          set -euo pipefail
+          for key in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID GEOMACRO_COMMERCE_LEDGER_TOKEN B2_KEY_ID B2_APPLICATION_KEY; do
+            test -n "${!key:-}" || { echo "::error::Missing governed read-only credential"; exit 2; }
+          done
+          for key in SUPABASE_DB_URL SUPABASE_URL APP_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_SERVICE_ROLE_KEY COINBASE_API_KEY; do
+            test -z "${!key:-}" || { echo "::error::Forbidden legacy or payment credential"; exit 2; }
+          done
+      - name: Resolve existing shared account-governed D1 id
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIST_JSON="$(npx -y wrangler@4.136.3 d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let s=""; process.stdin.on("data",d=>s+=d);
+            process.stdin.on("end",()=>{
+              const rows=JSON.parse(s);
+              const match=rows.filter(x=>x.name==="geomacro-control-plane");
+              if(match.length!==1)process.exit(3);
+              process.stdout.write(match[0].uuid??match[0].id??"");
+            });
+          ')"
+          test -n "$DB_ID" || { echo "::error::D1 quota governor unavailable"; exit 3; }
+          echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
+      - name: Recheck pinned B2 bytes and gzip at original source clock
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-global-risk-b2-historical-readback.mjs --governed-read-only
+      - name: Upload only SHA-bound historical readback metadata
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: global-risk-historical-b2-readback-${{ github.run_id }}
+          path: artifacts/gri-b2-history/verified-readback.json
+          if-no-files-found: warn
+          retention-days: 7
