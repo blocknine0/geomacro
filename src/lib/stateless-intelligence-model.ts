@@ -136,6 +136,19 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
     if (source.govContentApi &&
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
+    // BLS official original statistical releases: feed landing pages,
+    // arbitrary same-host content and cross-family releases are never valid.
+    if (["bls_cpi", "bls_employment", "bls_external_prices"].includes(source.id)) {
+      const family = source.id === "bls_cpi" ? "cpi"
+        : source.id === "bls_employment" ? "empsit" : "ximpim";
+      const live = new RegExp("^/news\\.release/" + family + "\\.nr[0-9]+\\.htm$", "u");
+      const archive = new RegExp("^/news\\.release/archives/" + family + "_[0-9]{8}\\.htm$", "u");
+      if (link.search || (!live.test(link.pathname) && !archive.test(link.pathname))) return null;
+    }
+    // Verified direct first-party minister RSS; refuse another minister,
+    // redirects, cloned article paths and query-based article identities.
+    if (source.id === "au_industry_minister" &&
+        (link.search || !/^\/t-ayres\/media\/[a-z0-9][a-z0-9-]{10,180}$/u.test(link.pathname))) return null;
     if (source.statcanOriginalPage &&
         !/^\/(?:n1\/)?daily-quotidien\/\d{6}\/dq\d{6}[a-z]-eng\.htm$/iu.test(link.pathname))
       return null;
