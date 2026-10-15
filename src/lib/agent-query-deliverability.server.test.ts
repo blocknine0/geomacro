@@ -134,6 +134,72 @@ describe("adaptive query pre-payment deliverability", () => {
     expect(sourceChecker).not.toHaveBeenCalled();
   });
 
+  it("never promotes another country's observation or coverage into a USA paid digest", async () => {
+    const base = context();
+    const unrelated = {
+      ...base.observations[0],
+      observation_id: "foreign-obs",
+      dimension: "geopolitical_security",
+      country_iso3: "CHN",
+      source_id: "foreign-not-approved",
+    };
+    mocks.loadStructuralContext.mockResolvedValue({
+      ...base,
+      observations: [unrelated],
+      metadata: {
+        ...base.metadata,
+        coverage: [{
+          source_id: "foreign-not-approved",
+          dimension: "geopolitical_security", country_iso3: "CHN",
+          coverage_year: 2026, coverage_status: "AVAILABLE",
+          observation_count: 1, latest_observed_at: "2026-09-15T00:00:00.000Z",
+          updated_at: "2026-09-16T00:00:00.000Z", audit_metadata: {},
+        }],
+      },
+    });
+    const checker = vi.fn(commercialOk);
+    const plan = buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "USA" }],
+      topics: ["conflict_geopolitics"],
+    });
+    const result = await checkAgentQueryDeliverability(plan, {
+      now: new Date("2026-09-16T00:00:00.000Z"),
+      sourceEligibilityChecker: checker,
+    });
+    expect(result.deliverable).toBe(false);
+    expect(result.subjects[0].latest_evidence_at).toBeNull();
+    expect(result.subjects[0].required_source_ids).toEqual([]);
+    expect(result.subjects[0].available_modules).not.toContain("geopolitical_security");
+    expect(result.missing_modules).toContain("geopolitical_security");
+    expect(checker).not.toHaveBeenCalled();
+  });
+
+  it("checks source rights only for evidence belonging to the exact requested ISO3", async () => {
+    const base = context();
+    mocks.loadStructuralContext.mockResolvedValue({
+      ...base,
+      observations: [
+        ...base.observations,
+        { ...base.observations[0], observation_id: "foreign-row",
+          source_id: "foreign-not-approved", country_iso3: "CHN" },
+      ],
+    });
+    const checker = vi.fn(async (ids: string[]) => ({
+      eligible: true, ineligible_source_ids: [] as string[],
+    }));
+    const plan = buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "USA" }],
+      topics: ["macro_risk"],
+    });
+    const result = await checkAgentQueryDeliverability(plan, {
+      now: new Date("2026-09-16T00:00:00.000Z"),
+      sourceEligibilityChecker: checker,
+    });
+    expect(result.deliverable).toBe(true);
+    expect(checker).toHaveBeenCalledWith(["world_bank_wdi"]);
+    expect(result.subjects[0].required_source_ids).toEqual(["world_bank_wdi"]);
+  });
+
   it("never treats a new retrieval as fresh original macro evidence", async () => {
     const base = context();
     mocks.loadStructuralContext.mockResolvedValue({
