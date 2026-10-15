@@ -80,7 +80,7 @@ describe("World Bank QPSD governed production sovereign-fiscal fallback", () => 
   });
 
   it("ingests while scoring is locked, then promotes transactionally and proves 100+", () => {
-    expect(promotion).toContain("github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'");
+    // Legacy Supabase-specific promotion is retired; retain its forensic\n    // transaction/rollback contract for a future separately reviewed D1/B2 adapter.\n    expect(promotion).toContain("  promote-and-census:\\n    # Supabase-only legacy execution retired.");\n    expect(promotion).toContain("    if: ${{ false }}");
     expect(promotion).toContain("supabase/migrations/938_world_bank_qpsd_production_source.sql");
     const ingestIndex = promotion.indexOf("Ingest and verify fresh QPSD while scoring stays locked");
     const promoteIndex = promotion.indexOf("Enable QPSD as a reversible production candidate");

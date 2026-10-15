@@ -61,7 +61,9 @@ jobs:
           echo 'PASS: Eurostat is a fallback-only fiscal methodology and cannot blend with WDI fiscal peers.'
 
   production-promotion:
-    if: github.event_name == 'push'
+    # Supabase-only legacy execution retired. Replaced by reviewed official
+    # source read-only or B2/D1-native signed publication; no DB credential restore.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment: production

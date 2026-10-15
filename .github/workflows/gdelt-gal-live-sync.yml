@@ -19,7 +19,9 @@ concurrency:
 
 jobs:
   sync:
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.permit_legacy_supabase_gal == true }}
+    # Legacy Supabase recovery retired: never execute from manual dispatch,
+    # push or schedule. Keep reviewed historical logic for forensic replay only.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: production
