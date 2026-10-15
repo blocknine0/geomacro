@@ -11,6 +11,13 @@ const netStub = fileURLToPath(new URL("./src/lib/polyfills/empty-net.js", import
 const bufferShim = fileURLToPath(new URL("./src/lib/polyfills/buffer-shim.js", import.meta.url));
 const eventsShim = fileURLToPath(new URL("./src/lib/polyfills/events-shim.js", import.meta.url));
 
+// rpc-websockets (pulled in transitively by @solana/web3.js via @circle-fin/app-kit)
+// only declares "browser" and "node" export conditions, so the Worker/edge build
+// ("workerd"/"worker") cannot resolve it. Point it straight at the browser ESM build.
+const rpcWebsockets = fileURLToPath(
+  new URL("./node_modules/rpc-websockets/dist/index.browser.mjs", import.meta.url),
+);
+
 // Vite's vite:resolve plugin externalizes Node built-ins (events, buffer, net,
 // node:events, ...) before resolve.alias runs in the client/Worker builds, so
 // downstream alias entries never match. This pre-plugin runs with enforce:'pre'
@@ -23,6 +30,7 @@ const polyfillResolver = () => {
     ["node:buffer", bufferShim],
     ["net", netStub],
     ["node:net", netStub],
+    ["rpc-websockets", rpcWebsockets],
   ]);
   return {
     name: "lovable-node-polyfill-resolver",
@@ -69,6 +77,7 @@ export default defineConfig({
         "node:buffer": bufferShim,
         events: eventsShim,
         "node:events": eventsShim,
+        "rpc-websockets": rpcWebsockets,
       },
     },
   },
