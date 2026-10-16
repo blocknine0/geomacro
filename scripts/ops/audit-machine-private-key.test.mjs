@@ -2,6 +2,9 @@ import {test} from "node:test";
 import {strict as assert} from "node:assert";
 import {createHash,createPrivateKey,createPublicKey,generateKeyPairSync} from "node:crypto";
 import {spawnSync} from "node:child_process";
+import {mkdtempSync,writeFileSync,chmodSync,symlinkSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {auditIssuerPrivateKey} from "./audit-machine-private-key.mjs";
 const fixture=()=>{
  const issuer=generateKeyPairSync("ed25519"),gro=generateKeyPairSync("ed25519");
@@ -50,7 +53,7 @@ test("wrong private, wrong pin, reused GRO signer and malformed private all fail
  assert.throws(()=>auditIssuerPrivateKey({
   ...env,GEOMACRO_MACHINE_KEY_AUDIT_ROLE:"facts_and_rights"}),/ROLE_INVALID/);
 });
-test("CLI prints no private bytes, never signs, and exits nonzero on missing key",()=>{
+test("CLI prints no private bytes, never signs, and treats intentionally offline keys as inventory-only",()=>{
  const {env}=fixture();
  const good=spawnSync(process.execPath,["scripts/ops/audit-machine-private-key.mjs"],{
   encoding:"utf8",env:{...process.env,...env}});
@@ -61,6 +64,33 @@ test("CLI prints no private bytes, never signs, and exits nonzero on missing key
  const missing=spawnSync(process.execPath,["scripts/ops/audit-machine-private-key.mjs"],{
   encoding:"utf8",env:{...process.env,...env,
     GEOMACRO_MACHINE_KEY_AUDIT_PRIVATE_PKCS8_B64:""}});
- assert.equal(missing.status,2);
+ assert.equal(missing.status,0);
  assert.equal(JSON.parse(missing.stdout).state,"NOT_AVAILABLE_IN_THIS_ENVIRONMENT");
+ const invalid=spawnSync(process.execPath,["scripts/ops/audit-machine-private-key.mjs"],{
+  encoding:"utf8",env:{...process.env,...env,
+    GEOMACRO_MACHINE_KEY_AUDIT_PUBLIC_SHA256:"0".repeat(64)}});
+ assert.equal(invalid.status,2);
+ assert.equal(JSON.parse(invalid.stdout).state,"PRIVATE_KEY_OR_PIN_INVALID");
+});
+
+test("owner-only PEM file held outside repo matches public pin and rejects insecure exposure",()=>{
+ const {env,issuer}=fixture(),dir=mkdtempSync(join(tmpdir(),"geomacro-issuer-"));
+ const path=join(dir,"offline-issuer.pem");
+ try{
+  writeFileSync(path,issuer.privateKey.export({format:"pem",type:"pkcs8"}),{mode:0o600});
+  const offline={...env,GEOMACRO_MACHINE_KEY_AUDIT_PRIVATE_PKCS8_B64:"",
+   GEOMACRO_MACHINE_KEY_AUDIT_PRIVATE_PEM_FILE:path};
+  assert.equal(auditIssuerPrivateKey(offline).state,"PINNED_PRIVATE_KEY_MATCH");
+  chmodSync(path,0o644);
+  assert.equal(auditIssuerPrivateKey(offline).state,"PRIVATE_KEY_OR_PIN_INVALID");
+  chmodSync(path,0o600);
+  const symlink=join(dir,"link.pem");symlinkSync(path,symlink);
+  assert.equal(auditIssuerPrivateKey({
+   ...offline,GEOMACRO_MACHINE_KEY_AUDIT_PRIVATE_PEM_FILE:symlink
+  }).state,"PRIVATE_KEY_OR_PIN_INVALID");
+  assert.equal(auditIssuerPrivateKey({
+   ...offline,GEOMACRO_MACHINE_KEY_AUDIT_PRIVATE_PKCS8_B64:
+    env.GEOMACRO_MACHINE_KEY_AUDIT_PRIVATE_PKCS8_B64
+  }).state,"PRIVATE_KEY_OR_PIN_INVALID");
+ }finally{rmSync(dir,{recursive:true,force:true});}
 });

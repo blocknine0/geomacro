@@ -114,3 +114,31 @@ Existing workflows and guards:
 
 Never collapse steps 1-5 into a fake green CI result or invent current
 coverage across all 195 countries x 3 domains.
+
+## Confirmed 17 October production inventory outcome and local recovery
+
+The newly protected read-only GitHub audit on main reported
+`NOT_AVAILABLE_IN_THIS_ENVIRONMENT` for BOTH facts and rights private keys.
+This matches the original founder key bundle distribution: on 16 October the
+owner was given `geomacro-machine-authority-keys-20261016.zip` containing
+two issuer Ed25519 private PEMs and public config, with EXPLICIT instructions
+to upload to Codespaces ONLY `public-config.json` and
+`install-public-config.py`. The GitHub production environment was configured
+with public keys/pins, not the private PEMs. **Do not upload the private PEM
+to GitHub merely to make the inventory job green.** Absent GitHub secrets are
+normal for independently controlled offline/issuer signing authorities.
+
+The local read-only audit CLI also accepts an existing private PEM file via
+`GEOMACRO_MACHINE_KEY_AUDIT_PRIVATE_PEM_FILE` alongside its approved public
+PEM/SHA pin and GRO public SPKI. No private PEM bytes are printed, transferred,
+signed, written to artifacts or accepted if symlink/world-readable/inside the
+git checkout. Keep facts/rights PEMs in separately protected locations outside
+the repo. `PINNED_PRIVATE_KEY_MATCH` only proves key identity on that host,
+not actual attestation execution or facts/rights authority approval.
+
+GitHub workflow keeps the absence status as inventory data; an incorrectly
+configured, wrong or reused private key remains a hard failure. Genuine
+independent proof issuance still requires the two trusted signer processes
+to verify current original event facts and article-level no-attribution
+permissions first. A missing key cannot be regenerated under the old public
+pin; rotation requires a distinct explicitly approved security process.
