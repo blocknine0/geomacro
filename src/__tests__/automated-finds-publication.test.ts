@@ -6,6 +6,7 @@ import {publishAutomatedFinds} from "../lib/automated-finds-publisher.server";
 import {putAutomatedFinds,getAutomatedFinds} from "../../workers/control-plane/src/automated-finds";
 import worker from "../../workers/control-plane/src/index.mjs";
 import {automatedFindsResponse} from "../lib/automated-finds-reader.server";
+import {auditSupabaseFreeCountryRuntime} from "../../scripts/audit-supabase-free-country-runtime";
 
 const NOW=Date.parse("2026-10-16T12:30:00.000Z");
 const pair=generateKeyPairSync("ed25519");
@@ -52,6 +53,22 @@ async function published(){
 beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(NOW);});
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();vi.unstubAllEnvs();});
 describe("Supabase-free automated issuer-signed Finds",()=>{
+  it("audits 195 country routes without promoting global signed Finds to 585 country proofs",async()=>{
+    const batches=await Promise.all(FINDS_CATEGORIES.map(category=>sign(payload(category))));
+    vi.stubEnv("RISK_OBJECT_SIGNING_KEY_ID",material.key_id);
+    vi.stubEnv("RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64",pub);
+    vi.stubEnv("RISK_OBJECT_VERIFY_KEYS_JSON",JSON.stringify(keys));
+    const fake=vi.fn(async(input:any)=>Response.json(String(input).endsWith("source-runtime")?{
+      ok:true,schema:"geomacro.supabase-free-source-runtime-public.v1",status:"ALL_CATEGORY_LANES_READABLE",
+      supabase_requests:0,chargeable:false,contexts:FINDS_CATEGORIES.map(category=>({category})),
+    }:{ok:true,schema:"geomacro.automated-finds-feed.v1",batches}));
+    vi.stubGlobal("fetch",fake);
+    const report=await auditSupabaseFreeCountryRuntime();
+    expect(report.routing_cell_count).toBe(585);expect(fake).toHaveBeenCalledTimes(2);
+    expect(report.paid_country_readiness_assessed).toBe(false);
+    expect(report.country_category_matrix.cells.every(c=>c.CURRENT_EVIDENCE_AVAILABLE===null&&c.SIGNED_DELIVERY_VERIFIED===null)).toBe(true);
+    expect(report.current_signed_country_delivery_verified_count).toBe(0);
+  });
   it("signs, exactly restores archive, promotes and separately serves all three categories",async()=>{
     const {env,body,receipt,archive}=await published();
     expect(archive.putWithMetadataVerification).toHaveBeenCalledOnce();

@@ -12,6 +12,8 @@ const ROOT=resolve(".github/workflows");
 const OUTPUT="artifacts/active-supabase-dependency-inventory.json";
 const SIGNAL=/\b(?:SUPABASE_DB_URL|APP_SUPABASE_URL|SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY|APP_SUPABASE_SERVICE_ROLE_KEY|SUPABASE_PROJECT_ID|GRI_DB_MODE|requireRiskSupabase|createGriDbClient|assert-authoritative-supabase|supabase\/functions|supabase\.co|psql\s|supabase\s+db\s|@supabase\/supabase-js)\b/iu;
 const CONFIGS={
+  "global-country-readiness-audit.yml":"Canonical 195-country routing plus actual public D1 source/Finds audit; no legacy DB census",
+  "intelligence-orchestrator.yml":"D1 source-runtime replacement task; frozen legacy SQL tasks stay excluded",
   "usgs-earthquake-hazards-sync.yml":"#2258 / official USGS read-only validation",
   "eurostat-government-debt-sync.yml":"#2258 / official Eurostat read-only validation",
   "world-bank-ppg-global-shadow-census.yml":"#2261 / official World Bank source-only census (full 4-module pending)",

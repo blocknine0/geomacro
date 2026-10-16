@@ -30,7 +30,8 @@ function utcFromStamp(value){
   const ms=Date.parse(iso);
   return Number.isFinite(ms)&&new Date(ms).toISOString()===iso?iso:null;
 }
-export function parseGdeltGkgLastupdate(raw,{now=new Date(),maxBytes=MAX_INDEX_BYTES}={}){
+export function parseGdeltGkgLastupdate(raw,{now=new Date(),maxBytes=MAX_INDEX_BYTES,kind="gkg"}={}){
+  if(!["gkg","events"].includes(kind))throw Error("GKG_MANIFEST_KIND_INVALID");
   if(!Number.isSafeInteger(maxBytes)||maxBytes<1||maxBytes>MAX_MASTERFILE_TAIL_BYTES||
      typeof raw!=="string"||Buffer.byteLength(raw)>maxBytes||
      !Number.isFinite(now.getTime()))throw Error("GKG_MANIFEST_INVALID");
@@ -43,7 +44,8 @@ export function parseGdeltGkgLastupdate(raw,{now=new Date(),maxBytes=MAX_INDEX_B
     if(!/^[0-9a-f]{32}$/iu.test(checksum)||!/^[1-9]\d{0,8}$/u.test(size))continue;
     let uri;
     try{uri=new URL(path);}catch{continue}
-    const name=/^\/gdeltv2\/(\d{14})\.gkg\.csv\.zip$/u.exec(uri.pathname);
+    const name=(kind==="gkg"?/^\/gdeltv2\/(\d{14})\.gkg\.csv\.zip$/u:
+      /^\/gdeltv2\/(\d{14})\.export\.CSV\.zip$/u).exec(uri.pathname);
     if(!name||uri.hostname!=="data.gdeltproject.org"||
        !["http:","https:"].includes(uri.protocol)||uri.port||
        uri.search||uri.hash||uri.username||uri.password)continue;
@@ -58,10 +60,11 @@ export function parseGdeltGkgLastupdate(raw,{now=new Date(),maxBytes=MAX_INDEX_B
   if(!matches.length)throw Error("GKG_NO_CURRENT_PINNED_BATCH");
   return matches[0];
 }
-async function limitedBody(response,limit){
+export async function limitedGdeltBody(response,limit){
+  if(!Number.isSafeInteger(limit)||limit<1||limit>64*1024*1024)throw Error("GKG_BODY_LIMIT_INVALID");
   if(!response?.body)throw Error("GKG_BODY_MISSING");
   const header=Number(response.headers?.get?.("content-length")??0);
-  if(header>limit)throw Error("GKG_BODY_OVERSIZE");
+  if(header>limit){await response.body.cancel();throw Error("GKG_BODY_OVERSIZE");}
   const reader=response.body.getReader(),chunks=[];let total=0;
   try{
     for(;;){
@@ -71,12 +74,14 @@ async function limitedBody(response,limit){
       if(total>limit)throw Error("GKG_BODY_OVERSIZE");
       chunks.push(Buffer.from(value));
     }
-  }finally{reader.releaseLock();}
+  }finally{await reader.cancel().catch(()=>undefined);reader.releaseLock();}
   return Buffer.concat(chunks);
 }
 // ZIP single-member parser. Deflate only, no encryption, multi-file, zip64,
 // paths, or unbounded decompression. Central directory is authoritative.
-export function unpackSingleGkgZip(blob,expectedStamp){
+export function unpackSingleGkgZip(blob,expectedStamp,kind="gkg"){
+  if(!["gkg","events"].includes(kind))throw Error("GKG_ZIP_KIND_INVALID");
+  const expectedName=expectedStamp+(kind==="gkg"?".gkg.csv":".export.CSV");
   if(!Buffer.isBuffer(blob)||blob.length<120||blob.length>MAX_PACKED_BYTES)
     throw Error("GKG_ZIP_INVALID");
   let end=-1;
@@ -100,7 +105,7 @@ export function unpackSingleGkgZip(blob,expectedStamp){
      central+46+nameSize+extra+comment>central+directorySize||
      central+46+nameSize>blob.length||
      blob.toString("utf8",central+46,central+46+nameSize)!==
-       expectedStamp+".gkg.csv"||local+30>central||
+       expectedName||local+30>central||
      blob.readUInt32LE(local)!==0x04034b50||
      blob.readUInt16LE(local+8)!==method)
     throw Error("GKG_ZIP_ENTRY_INVALID");
@@ -109,7 +114,7 @@ export function unpackSingleGkgZip(blob,expectedStamp){
   const offset=local+30+localName+localExtra;
   if(offset+packed>central||offset<0||offset>blob.length||
      blob.toString("utf8",local+30,local+30+localName)!==
-       expectedStamp+".gkg.csv")throw Error("GKG_ZIP_ENTRY_INVALID");
+       expectedName)throw Error("GKG_ZIP_ENTRY_INVALID");
   const zipped=blob.subarray(offset,offset+packed);
   let plain;
   try{
@@ -275,7 +280,7 @@ export async function probeGdeltGkgBulk({fetchImpl=fetch,now=new Date(),reviewFi
     });
     const index=await request(GDELT_GKG_LATEST_URL,12000);
     if(!index?.ok)throw Error("GKG_MANIFEST_HTTP_"+(index?.status??"UNKNOWN"));
-    const text=(await limitedBody(index,MAX_INDEX_BYTES)).toString("utf8");
+    const text=(await limitedGdeltBody(index,MAX_INDEX_BYTES)).toString("utf8");
     let manifest;
     let manifest_route="LASTUPDATE";
     try{manifest=parseGdeltGkgLastupdate(text,{now});}
@@ -297,7 +302,7 @@ export async function probeGdeltGkgBulk({fetchImpl=fetch,now=new Date(),reviewFi
          Number(parts[3])<=Number(parts[2])||
          Number(parts[2])-Number(parts[1])+1>MAX_MASTERFILE_TAIL_BYTES)
         throw Error("GKG_MASTERFILE_RANGE_INVALID");
-      const recovered=await limitedBody(tail,MAX_MASTERFILE_TAIL_BYTES);
+      const recovered=await limitedGdeltBody(tail,MAX_MASTERFILE_TAIL_BYTES);
       const batchText=recovered.toString("utf8");
       // Truncated first line cannot become a candidate.
       const trimmed=Number(parts[1])>0?
@@ -308,7 +313,7 @@ export async function probeGdeltGkgBulk({fetchImpl=fetch,now=new Date(),reviewFi
     }
     const archive=await request(manifest.fetch_url,25000);
     if(!archive?.ok)throw Error("GKG_ARCHIVE_HTTP_"+(archive?.status??"UNKNOWN"));
-    const zipped=await limitedBody(archive,MAX_PACKED_BYTES);
+    const zipped=await limitedGdeltBody(archive,MAX_PACKED_BYTES);
     if(zipped.length!==manifest.expected_bytes||md5(zipped)!==manifest.expected_md5)
       throw Error("GKG_ARCHIVE_MD5_OR_SIZE_MISMATCH");
     const stamp=manifest.batch_at.replace(/\D/gu,"").slice(0,14);

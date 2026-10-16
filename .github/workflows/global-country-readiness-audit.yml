@@ -1,173 +1,57 @@
 name: Global Country Readiness Audit
 
+# Canonical routing and live source-state audit, not the legacy Risk Gate census.
 on:
-  workflow_dispatch:
-  # Emergency Supabase quota hold. The country census performs a large governed
-  # read fanout, so keep it manual/change-triggered until free-tier recovery ends.
+  workflow_dispatch: {}
+  workflow_run:
+    workflows: ["Geomacro Intelligence Orchestrator"]
+    branches: [main]
+    types: [completed]
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - ".github/workflows/global-country-readiness-audit.yml"
-      - "scripts/audit-global-country-remediation.ts"
-      - "scripts/global-risk-gate-country-census.ts"
-      - "scripts/audit-geopolitical-production-diagnostics.ts"
-      - "src/lib/risk-gate-v2-**"
-      - "src/lib/country-risk-**"
-      - "src/lib/risk-object-**"
-
+      - "scripts/audit-supabase-free-country-runtime.ts"
+      - "src/lib/canonical-country-registry-195.ts"
+      - "src/lib/canonical-195-country-coverage-matrix.ts"
 permissions:
   contents: read
-
 concurrency:
   group: geomacro-global-country-readiness-audit
   cancel-in-progress: false
-
 jobs:
   audit:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 8
+    environment: production
     env:
-      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
-      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
-
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-
-      - name: Setup Bun 1.4.2
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: 1.4.2
-
-      - name: Install locked dependencies
-        run: bun install --frozen-lockfile --ignore-scripts
-
-      - name: Validate audit runtime configuration
-        shell: bash
+          bun-version: "1.4.2"
+      - name: Read canonical 195-country routing and actual D1 source proofs
+        run: bun scripts/audit-supabase-free-country-runtime.ts
+      - name: Enforce country evidence boundaries
         run: |
-          set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
-            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
-          done
-
-      - name: Run CANONICAL remediation audit
-        shell: bash
-        run: |
-          set -euo pipefail
-          GLOBAL_REMEDIATION_AUDIT_OUTPUT=/tmp/global-country-remediation.json \
-            bun scripts/audit-global-country-remediation.ts >/tmp/global-country-remediation.stdout.json
           jq -e '
-            .schema_version == "geomacro-global-country-remediation-v1" and
-            .boundaries.raw_source_urls_emitted == false and
-            .boundaries.raw_source_material_emitted == false and
-            .boundaries.payment_performed == false and
-            .boundaries.execution_authorized == false
-          ' /tmp/global-country-remediation.json >/dev/null
-
-      - name: Run four-module Risk Gate country census
-        shell: bash
-        run: |
-          set -euo pipefail
-          GLOBAL_RISK_GATE_CENSUS_OUTPUT=/tmp/global-risk-gate-country-census.json \
-            bun scripts/global-risk-gate-country-census.ts >/tmp/global-risk-gate-country-census.stdout.json
-          jq -e '
-            .schema_version == "geomacro-global-risk-gate-country-census-2.2" and
-            .claim_boundary.country_review_readiness_only == true and
-            .claim_boundary.all_action_classes_not_implied == true and
-            .claim_boundary.missing_or_unverified_input_fails_closed == true and
-            .claim_boundary.source_state_diagnostics_exclude_credentials_and_raw_payloads == true and
-            .claim_boundary.execution_authorized_is_false == true
-          ' /tmp/global-risk-gate-country-census.json >/dev/null
-
-      - name: Run geopolitical production diagnostics
-        shell: bash
-        run: |
-          set -euo pipefail
-          GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT=/tmp/geopolitical-production-diagnostics.json \
-            bun scripts/audit-geopolitical-production-diagnostics.ts >/tmp/geopolitical-production-diagnostics.stdout.json
-          jq -e '
-            .schema_version == "geomacro-geopolitical-production-diagnostics-1.0" and
-            .writes_performed == false and
-            .raw_event_material_included == false and
-            .interpretation_boundary.diagnostic_only == true and
-            .interpretation_boundary.event_text_or_publisher_material_redistributed == false and
-            .interpretation_boundary.source_rights_changed == false and
-            .interpretation_boundary.scoring_changed == false
-          ' /tmp/geopolitical-production-diagnostics.json >/dev/null
-
-      - name: Publish sanitized readiness summary
+            .schema == "geomacro.supabase-free-country-runtime-audit.v1" and
+            .country_count == 195 and .routing_cell_count == 585 and
+            .paid_country_readiness_assessed == false and
+            .country_current_evidence_not_inferred_from_global_feeds == true and
+            .boundaries.supabase_requests == 0 and .boundaries.b2_requests == 0 and
+            .boundaries.payments == 0 and .boundaries.raw_source_urls_emitted == false
+          ' /tmp/global-country-runtime.json >/dev/null
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
-        shell: bash
-        run: |
-          {
-            echo "## Global country readiness"
-            echo
-            if [ -s /tmp/global-country-remediation.json ]; then
-              jq '{
-                generated_at,
-                denominator,
-                paid_ready_country_count,
-                fail_closed_country_count,
-                summary
-              }' /tmp/global-country-remediation.json
-            else
-              echo "CANONICAL remediation audit did not produce a report."
-            fi
-            echo
-            echo "## Four-module Risk Gate census"
-            echo
-            if [ -s /tmp/global-risk-gate-country-census.json ]; then
-              jq '{
-                generated_at,
-                denominator,
-                required_country_modules,
-                governed_source_state,
-                summary: {
-                  accepted_country_count: .summary.accepted_country_count,
-                  fail_closed_country_count: .summary.fail_closed_country_count,
-                  accepted_pct: .summary.accepted_pct,
-                  module_ready_country_counts: .summary.module_ready_country_counts,
-                  module_error_country_counts: .summary.module_error_country_counts,
-                  missing_country_iso3_by_module: .summary.missing_country_iso3_by_module,
-                  unverified_country_iso3_by_module: .summary.unverified_country_iso3_by_module,
-                  module_error_reason_counts: .summary.module_error_reason_counts
-                },
-                claim_boundary
-              }' /tmp/global-risk-gate-country-census.json
-            else
-              echo "Risk Gate country census did not produce a report."
-            fi
-            echo
-            echo "## Geopolitical module diagnostics"
-            echo
-            if [ -s /tmp/geopolitical-production-diagnostics.json ]; then
-              jq '{
-                generated_at,
-                sovereign_denominator,
-                release_manifest,
-                release_window,
-                summary,
-                fail_closed_countries: [.countries[] | select(.module_available == false) | {iso3, blocker}],
-                interpretation_boundary
-              }' /tmp/geopolitical-production-diagnostics.json
-            else
-              echo "Geopolitical diagnostics did not produce a report."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload sanitized country readiness evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: global-country-readiness-${{ github.run_id }}
-          retention-days: 30
-          if-no-files-found: error
-          path: |
-            /tmp/global-country-remediation.json
-            /tmp/global-risk-gate-country-census.json
-            /tmp/geopolitical-production-diagnostics.json
+          name: global-country-runtime-${{ github.run_id }}
+          path: /tmp/global-country-runtime.json
+          retention-days: 14
+          if-no-files-found: warn
