@@ -5,6 +5,8 @@ on:
       - "src/lib/geomacro-machine-commercial-qualification.server.ts"
       - "src/lib/geomacro-machine-commercial-qualification.server.test.ts"
       - "src/lib/geomacro-machine-research-gro.server.ts"
+      - "scripts/ops/accept-private-geomacro-machine-commercial-gro.ts"
+      - "src/lib/geomacro-machine-commercial-operator.server.test.ts"
       - "src/lib/geomacro-machine-source-rights.server.ts"
       - "docs/ops/GEOMACRO_AUTOMATED_COMMERCIAL_GRO_V1.md"
       - ".github/workflows/machine-commercial-gro-no-funds.yml"
@@ -14,6 +16,8 @@ on:
       - "src/lib/geomacro-machine-commercial-qualification.server.ts"
       - "src/lib/geomacro-machine-commercial-qualification.server.test.ts"
       - ".github/workflows/machine-commercial-gro-no-funds.yml"
+      - "scripts/ops/accept-private-geomacro-machine-commercial-gro.ts"
+      - "src/lib/geomacro-machine-commercial-operator.server.test.ts"
   workflow_dispatch:
 
 permissions:
@@ -34,7 +38,11 @@ jobs:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - name: Dual-attestation, canonical GRO and negative source/rights tests
-        run: bunx vitest run src/lib/geomacro-machine-commercial-qualification.server.test.ts src/lib/geomacro-machine-research-gro.server.test.ts src/lib/geomacro-machine-source-rights.server.test.ts src/lib/on-demand-qualified-country-risk.server.test.ts
+        run: bunx vitest run src/lib/geomacro-machine-commercial-qualification.server.test.ts src/lib/geomacro-machine-research-gro.server.test.ts src/lib/geomacro-machine-source-rights.server.test.ts src/lib/on-demand-qualified-country-risk.server.test.ts src/lib/geomacro-machine-commercial-operator.server.test.ts
+      - name: Compile private machine acceptance, without running or supplying secrets
+        run: |
+          bun build scripts/ops/accept-private-geomacro-machine-commercial-gro.ts --target=bun --outfile=/tmp/geomacro-machine-commercial-operator.js
+          test -s /tmp/geomacro-machine-commercial-operator.js
       - name: Explicit no-funds/no-prod-mutation source boundary
         run: |
           node --input-type=module <<'NODE'
