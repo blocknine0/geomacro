@@ -87,3 +87,25 @@ test("unmatched provider shape reveals only bounded column names, never values",
  }
  assert.doesNotMatch(JSON.stringify(report),/31415926|secret-example-value|secret-again/);
 });
+
+test("FAO area numeric key maps only through source-published ISO3 identity",()=>{
+ const p="REF_AREA,REF_AREA_ISO3,SERIES,TIME_PERIOD,OBS_VALUE,UNIT_MEASURE\n"+
+  "840,USA,SN_ITK_DEFC,2024,3.3,PERCENT\n"+
+  "156,CHN,SN_ITK_DEFC,2024,2.8,PERCENT\n";
+ const x=extractExactCountryStatistic("faostat",p);
+ assert.equal(x.country_iso3,"USA");
+ assert.equal(x.reference_period,"2024");
+ assert.equal(x.observed_value,3.3);
+ assert.equal(x.commercial_rights_verified,false);
+});
+test("ILOSTAT official categorical dimension census reveals no observation values",async()=>{
+ const p=[{ref_area:"USA",indicator:"SOME_OTHER_NATIVE_CODE",
+   sex:"SEX_T",classif1:"AGE_TOTAL",time:2024,obs_value:9988123}];
+ const r=await actualCountryStatisticsReceipt({read:async id=>
+  extractExactCountryStatistic(id==="faostat"?"ilostat":id,p)});
+ assert.equal(r.extracted,0);
+ assert.equal(r.results[1].shape.indicator_codes[0],"SOME_OTHER_NATIVE_CODE");
+ assert.equal(r.results[1].shape.sex_codes[0],"SEX_T");
+ assert.equal(r.results[1].shape.classif1_codes[0],"AGE_TOTAL");
+ assert.doesNotMatch(JSON.stringify(r),/9988123/);
+});

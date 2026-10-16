@@ -38,7 +38,7 @@ function numeric(raw){
  return Number.isFinite(n)?n:null;
 }
 function countryOf(row){
- return String(row.REF_AREA??row.ref_area??row.REF_AREA_CODE??"").trim().toUpperCase();
+ return String(row.REF_AREA_ISO3??row.ref_area_iso3??row.ref_area??row.REF_AREA??"").trim().toUpperCase();
 }
 function periodOf(row){
  const value=String(row.TIME_PERIOD??row.time??row.Time??"");
@@ -74,7 +74,14 @@ export function extractExactCountryStatistic(id,payload){
      total_rows:Math.min(rows.length,20000),
      country_matches:mapped.filter(x=>x.iso3===spec.country).length,
      indicator_matches:mapped.filter(x=>x.indicator===spec.indicator).length,
-     year_matches:mapped.filter(x=>x.period!==null).length};
+     year_matches:mapped.filter(x=>x.period!==null).length,
+     // Only official categorical codes, never descriptions/numeric observations.
+     indicator_codes:[...new Set(mapped.map(x=>x.indicator).filter(x=>
+       /^[A-Z][A-Z0-9_]{0,63}$/u.test(x)))].slice(0,6),
+     sex_codes:[...new Set(rows.map(x=>String(x.sex??x.SEX??"").trim()).filter(x=>
+       /^[A-Z][A-Z0-9_]{0,31}$/u.test(x)))].slice(0,8),
+     classif1_codes:[...new Set(rows.map(x=>String(x.classif1??x.CLASSIF1??"").trim()).filter(x=>
+       /^[A-Z][A-Z0-9_]{0,63}$/u.test(x)))].slice(0,8)};
    throw error;
  }
  const top=exact[0];
