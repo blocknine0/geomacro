@@ -314,7 +314,7 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
       },{fetchImpl:recovering,now});
       expect(seen.filter(x=>x===primary)).toHaveLength(1);
       expect(seen.filter(x=>x===alternate)).toHaveLength(1);
-      expect(result.discovery.network_attempts).toBe(3);
+      expect(result.discovery.network_attempts).toBe(4);
       expect(result.discovery.source_probes.filter(x=>x.family==="un_news_original_publisher")).toHaveLength(1);
       expect(result.private_candidates.some(x=>x.publisher_family==="un_news_original_publisher")).toBe(true);
       expect(result.discovery.payable).toBe(false);
@@ -370,7 +370,7 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
         country_iso3:"IND",categories:["geopolitics"],
       },{fetchImpl:blocked,now});
       expect(seen.filter(x=>x===alternate)).toHaveLength(0);
-      expect(result.discovery.network_attempts).toBe(4);
+      expect(result.discovery.network_attempts).toBe(3);
       expect(result.private_candidates.some(x=>x.publisher_family==="un_news_original_publisher")).toBe(false);
       expect(result.discovery.payable).toBe(false);
     }
