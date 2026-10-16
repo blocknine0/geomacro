@@ -1,4 +1,4 @@
-import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS,verifiedGlobalRdfFeed,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { createHash } from "node:crypto";
 import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
@@ -211,7 +211,7 @@ async function boundedFetch(
       !["api.worldbank.org","api.gdeltproject.org","api.reliefweb.int",
         "www.gov.uk","news.un.org","www.federalreserve.gov","www.ecb.europa.eu",
         "www.minister.industry.gov.au","api.io.canada.ca",
-        "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org"].includes(target.hostname)) {
+        "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.rba.gov.au","www.bankofcanada.ca","news.gov.bc.ca"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
   const maxBytes = accept === "text/html" ? MAX_FIRST_PARTY_HTML_BYTES : MAX_BODY_BYTES;
@@ -828,8 +828,7 @@ async function originalOfficialFeed(
   if (/<!DOCTYPE|<!ENTITY/iu.test(xml))
     throw Error("ON_DEMAND_ORIGINAL_FEED_XML_UNSAFE");
   const atom=def.media==="atom";
-  const rdf=def.family==='bis_original_publisher'&&def.url==='https://www.bis.org/doclist/all_pressrels.rss'&&
-    /<rdf:RDF(?:\s|>)/iu.test(xml)&&/xmlns:dc=["']http:\/\/purl.org\/dc\/elements\/1.1\/["']/u.test(xml);
+  const rdf=verifiedGlobalRdfFeed(def.family,def.url,xml);
   if(atom ? !/<(?:atom:)?feed(?:\s|>)/iu.test(xml)
           : !/<rss(?:\s|>)/iu.test(xml)&&!rdf)
     throw Error("ON_DEMAND_ORIGINAL_FEED_FORMAT_INVALID");
@@ -1024,7 +1023,7 @@ async function discoverOnDemandImpl(
       "api.reliefweb.int","www.gov.uk","news.un.org",
       "www.federalreserve.gov","www.ecb.europa.eu",
       "www.minister.industry.gov.au","api.io.canada.ca",
-      "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org"];
+      "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.rba.gov.au","www.bankofcanada.ca","news.gov.bc.ca"];
     if(upstream.protocol!=="https:" || !permittedHosts.includes(upstream.hostname) ||
        upstream.username || upstream.password || upstream.port || upstream.hash)
       throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
@@ -1139,6 +1138,10 @@ async function discoverOnDemandImpl(
           ?"uk_dbt_original_publisher":
         category==="geopolitics" && country==="GBR"
           ?"uk_fcdo_original_publisher":
+        category==="macro" && country==="AUS"
+          ?"rba_original_publisher":
+        category==="macro" && country==="CAN"
+          ?"boc_original_publisher":
         category==="macro" && country==="GBR"
           ?"uk_hmt_original_publisher":
         category==="macro" && euroAreaIso3.has(country)

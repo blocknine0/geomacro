@@ -1,4 +1,4 @@
-import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl} from '../../scripts/lib/global-official-release-feeds.mjs';
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,verifiedGlobalRdfFeed} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { visiblePublisherText } from "./stateless-publisher-text";
 
 /**
@@ -231,11 +231,7 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
   // RSS 1.0 uses an RDF envelope, but ONLY the exact publisher whose
   // original first-party media feed format was verified on a live runner.
   // Never grant RDF parsing to a synthetic/unknown source.
-  const verifiedRdfPress = source.id === "bis_press" &&
-    source.media === "rss" &&
-    source.url === "https://www.bis.org/doclist/all_pressrels.rss" &&
-    /<rdf:RDF(?:\s|>)/iu.test(xml) &&
-    /xmlns:dc\s*=\s*["']http:\/\/purl\.org\/dc\/elements\/1\.1\/["']/iu.test(xml);
+  const verifiedRdfPress = source.media === "rss" && verifiedGlobalRdfFeed(source.id,source.url,xml);
   if (source.media === "rss" && !/<rss(?:\s|>)/iu.test(xml) && !verifiedRdfPress)
     return { dated: [], undatedGov: [], metrics };
   if (source.media === "atom" && !/<(?:atom:)?feed(?:\s|>)/iu.test(xml)) return { dated: [], undatedGov: [], metrics };

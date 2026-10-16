@@ -27,7 +27,7 @@ const cases:readonly {
 ] as const;
 const hosts=new Set(["api.worldbank.org","www.gov.uk","news.un.org",
   "www.federalreserve.gov","www.ecb.europa.eu","www.minister.industry.gov.au",
-  "api.io.canada.ca","www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org"]);
+  "api.io.canada.ca","www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.rba.gov.au","www.bankofcanada.ca","news.gov.bc.ca"]);
 const results=[];
 for(const sample of cases) {
   const responses:Record<string,Record<string,number>>={};

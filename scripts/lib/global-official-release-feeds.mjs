@@ -13,6 +13,9 @@ export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
  {id:'bis_press_global',category:'macro',url:'https://www.bis.org/doclist/all_pressrels.rss',format:'rss',host:'www.bis.org',path:/^\/(?:press\/p\d{6}[a-z]?\.htm|media-releases\/20\d{6}-[a-z0-9-]+)$/u,topic:macro,credit:'Bank for International Settlements',family:'bis_original_publisher',rdf:true,websiteId:'bis_press'},
  {id:'boj_press_global',category:'macro',url:'https://www.boj.or.jp/en/rss/whatsnew.xml',format:'rss',host:'www.boj.or.jp',path:/^\/en\/(?:about|announcements|mopo|statistics|research)\/[A-Za-z0-9_./-]+\.htm$/u,topic:macro,credit:'Bank of Japan',family:'boj_original_publisher'},
  {id:'un_news_minerals',category:'rare_earth',url:'https://news.un.org/feed/subscribe/en/news/all/rss.xml',format:'rss',host:'news.un.org',path:/^\/en\/story\/20\d{2}\/\d{1,2}\/[a-z0-9-]+$/u,topic:MINERAL_RELEASE_TOPIC,credit:'UN News',family:'un_minerals_original_publisher'},
+ {id:'rba_press_global',category:'macro',url:'https://www.rba.gov.au/rss/rss-cb-media-releases.xml',format:'rss',host:'www.rba.gov.au',path:/^\/media-releases\/20\d{2}\/mr-\d{2}-\d{2}\.html$/u,topic:macro,credit:'Reserve Bank of Australia',family:'rba_original_publisher',rdf:true},
+ {id:'boc_press_global',category:'macro',url:'https://www.bankofcanada.ca/content_type/press-releases/feed/',format:'rss',host:'www.bankofcanada.ca',path:/^\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\/$/u,topic:macro,credit:'Bank of Canada',family:'boc_original_publisher',rdf:true},
+ {id:'bc_minerals_global',category:'rare_earth',url:'https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed',format:'rss',host:'news.gov.bc.ca',path:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,topic:MINERAL_RELEASE_TOPIC,credit:'Province of British Columbia',family:'bc_minerals_original_publisher'},
  {id:'iea_minerals_global',category:'rare_earth',url:'https://www.iea.org/news?topic%5B0%5D=critical-minerals',format:'html',host:'www.iea.org',path:/^\/news\/[a-z0-9]+(?:-[a-z0-9]+){1,35}$/u,topic:MINERAL_RELEASE_TOPIC,credit:'International Energy Agency',family:'iea_minerals_original_publisher'},
 ].map(s=>{
  const u=new URL(s.url);if(u.protocol!=='https:'||u.hostname!==s.host||u.username||u.password||u.port||u.hash)throw Error('GLOBAL_RELEASE_REGISTRY_INVALID');
@@ -57,4 +60,9 @@ export function verifiedIeaOriginalPublication(html,candidate,now=new Date(),max
  const diagnostics={};const metadata=verifiedPublisherPageDate(html,now,diagnostics,{maxAgeMs});
  if(metadata?Math.abs(Date.parse(metadata)-ms)>60000:diagnostics.date_reason!=='MISSING_PUBLISHER_PUBLICATION_METADATA')return null;
  return Number.isFinite(ms)&&ms<=now.getTime()&&now.getTime()-ms<=maxAgeMs?new Date(ms).toISOString():null;
+}
+
+export function verifiedGlobalRdfFeed(id,url,xml){
+ const spec=GLOBAL_OFFICIAL_RELEASE_FEEDS.find(s=>(s.id===id||s.websiteId===id||s.family===id)&&s.url===url&&s.rdf===true);
+ return Boolean(spec&&typeof xml==='string'&&!/<!DOCTYPE|<!ENTITY/iu.test(xml)&&/<rdf:RDF(?:\s|>)/iu.test(xml)&&/xmlns:dc\s*=\s*["']http:\/\/purl\.org\/dc\/elements\/1\.1\/["']/iu.test(xml));
 }
