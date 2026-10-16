@@ -3,7 +3,7 @@ import {discoverOnDemandForPrivateQualification}
   from "./on-demand-global-discovery.server";
 
 describe("cross-category canonical on-demand bounded original-publisher recovery",()=>{
-  it("retains all three original categories, three distinct GDELT scopes, and an independent issuer fallback",async()=>{
+  it("prioritizes two distinct original publishers per category ahead of index-only discovery within cap",async()=>{
     const seen:string[]=[];
     const now=new Date("2026-10-14T09:00:00.000Z");
     const fake=vi.fn(async (target:RequestInfo|URL):Promise<Response>=>{
@@ -43,10 +43,25 @@ describe("cross-category canonical on-demand bounded original-publisher recovery
       topics:["conflict_geopolitics","macro_risk","critical_minerals"],
     },{fetchImpl:fake,now});
     expect(result.discovery.network_attempts).toBeLessThanOrEqual(12);
+    expect(result.discovery.network_attempts).toBeGreaterThanOrEqual(6);
     expect(seen).toHaveLength(result.discovery.network_attempts);
     const gdelt=result.discovery.source_probes.filter(p=>p.family==="gdelt_doc_discovery");
+    // Three domains x two distinct originating publishers, one annual
+    // WDI context read, and three index-only GDELT scopes = 10 primary
+    // GETs, leaving two slots for approved country original issuer search.
     expect(gdelt.map(p=>p.category).sort()).toEqual(["geopolitics","macro","rare_earth"]);
     expect(seen.filter(x=>new URL(x).hostname==="api.gdeltproject.org")).toHaveLength(3);
+    expect(result.discovery.source_probes.filter(p=>
+      p.family.startsWith("world_bank_official_"))).toHaveLength(1);
+    for(const domain of ["geopolitics","macro","rare_earth"] as const){
+      const attempted=result.discovery.source_probes.filter(p=>
+        p.category===domain &&
+        p.family!=="gdelt_doc_discovery" &&
+        !p.family.startsWith("world_bank_official_") &&
+        p.family!=="reliefweb_discovery" &&
+        p.attempted);
+      expect(new Set(attempted.map(p=>p.family)).size).toBeGreaterThanOrEqual(2);
+    }
     const titles=result.private_candidates;
     expect(new Set(titles.map(c=>c.domain))).toEqual(
       new Set(["geopolitics","macro","rare_earth"]));
@@ -65,6 +80,9 @@ describe("cross-category canonical on-demand bounded original-publisher recovery
     expect(result.discovery.settlement_attempted).toBe(false);
     expect(result.discovery.supabase_requests).toBe(0);
     expect(result.discovery.b2_requests).toBe(0);
+    expect(result.private_original_review_candidates.every(x=>
+      x.country_iso3==="IND" && x.independent_same_event_verified===false &&
+      x.derived_commercial_rights_verified===false)).toBe(true);
     const publicSummary=JSON.stringify(result.discovery);
     expect(publicSummary).not.toContain("india-lithium-critical");
     expect(publicSummary).not.toContain("diplomatic-ceasefire");

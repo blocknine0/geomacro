@@ -85,3 +85,28 @@ To confirm safe interface and compile with no credentials:
 The existing recovery preflight now has an explicit `GEOMACRO_PUBLICATION_PROFILE=GEOMACRO_AUTOMATED_CROSS_SOURCE_NOT_EXTERNAL_REVIEWED_V1` mode. It reuses the exact dual-authority parser used for signature qualification, checks both pinned Ed25519 authorities are distinct from each other and from a valid Ed25519 GRO signer, and does not require an external reviewer for this separate machine profile. The default independent-reviewed profile remains unchanged; unknown profile names fail closed.
 
 The protected production job in `machine-commercial-gro-no-funds.yml` injects only the public authority keys/pins and credential-presence booleans. Its sanitized receipt identifies missing or invalid configuration with zero source/B2/D1/payment operations. A passing configuration preflight is explicitly not proof of real signed facts/rights input, current product publication, public-route wiring, historical B2 readback or health recovery. Missing authorities cannot be generated/self-approved by this verifier.
+
+## Production no-funds authority auto-preflight on original-retrieval changes (2026-10-17)
+
+The protected `machine-commercial-gro-no-funds.yml` production-authority-preflight
+runs whenever the approved canonical original-discovery engine changes on
+`main`. This verifies configured public signing authorities and the presence
+of existing production publication/B2/D1 credentials using boolean/hashed
+checks only; it does not run any private key, issue fact or rights approvals,
+produce qualified same-event evidence, or pay funds. Missing authority
+credentials remain an explicit human operator blocker rather than being
+silently interpreted as a successful machine signature.
+
+The canonical multi-domain (2–3 category) on-demand engine now chooses up to
+two **distinct original issuer feeds per category before GDELT** within its
+previous 12-request ceiling. All three existing index scopes remain eligible
+when room is available, with unchanged 403/429 circuit-breakers. A source feed HTTP 200, two feeds from
+different issuers, or publisher date metadata are NOT a certified same-event
+claim, legal permission, signer receipt, or signed hot public product.
+
+The tri-domain current-question allocation reserves at least two of the
+12 bounded provider GET tickets for existing country-targeted GOV.UK original
+search rescue, while permitting two independent original issuers per domain,
+all three GDELT index scopes, and one World Bank annual context indicator.
+The other WDI annual indicator remains available in single-/two-category
+queries; it is not a current event substitute.
