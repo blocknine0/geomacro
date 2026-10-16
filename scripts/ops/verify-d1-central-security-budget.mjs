@@ -11,8 +11,19 @@ async function request(path,body,auth=true){
  const raw=await r.text();if(raw.length>8192)throw Error('SECURITY_ACCEPTANCE_RESPONSE_INVALID');
  return {status:r.status,data:JSON.parse(raw)};
 }
-const health=await request('/health');
-if(health.status!==200||health.data.deployed_source_sha!==sha)throw Error('SECURITY_ACCEPTANCE_DEPLOY_SHA_MISMATCH');
+// Wrangler deploy followed by secret put creates separate Cloudflare edge
+// revisions. The prior pipeline independently verified the Worker SHA, but
+// this second script could hit a temporarily stale revision milliseconds later.
+// Poll only /health for the exact committed SHA; never accept an old build.
+let health;
+for(let attempt=1;attempt<=12;attempt++){
+  health=await request('/health');
+  if(health.status===200&&health.data?.deployed_source_sha===sha)break;
+  if(health.status!==200&&health.status!==404)
+    throw Error('SECURITY_ACCEPTANCE_HEALTH_UNEXPECTED_STATUS');
+  if(attempt===12)throw Error('SECURITY_ACCEPTANCE_DEPLOY_SHA_MISMATCH');
+  await new Promise(resolve=>setTimeout(resolve,4000));
+}
 const body={route_class:'internal',client_key:createHash('sha256').update('central-security-deploy-smoke:'+sha).digest('hex')};
 const denied=await request('/v1/security/budget',body,false);
 if(denied.status!==401)throw Error('SECURITY_ACCEPTANCE_AUTH_NOT_ENFORCED');

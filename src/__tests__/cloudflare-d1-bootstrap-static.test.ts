@@ -31,6 +31,16 @@ describe("D1 control-plane bootstrap", () => {
     expect(workflow).not.toContain("VITE_");
   });
 
+  it("retries only exact deployed SHA propagation before any authenticated D1 budget request",()=>{
+    const verifier=readFileSync("scripts/ops/verify-d1-central-security-budget.mjs","utf8");
+    expect(verifier).toContain("for(let attempt=1;attempt<=12;attempt++)");
+    expect(verifier).toContain("health.data?.deployed_source_sha===sha");
+    expect(verifier).toContain("SECURITY_ACCEPTANCE_HEALTH_UNEXPECTED_STATUS");
+    expect(verifier).toContain("SECURITY_ACCEPTANCE_DEPLOY_SHA_MISMATCH");
+    expect(verifier).toContain("setTimeout(resolve,4000)");
+    expect(verifier.indexOf("health.data?.deployed_source_sha===sha"))
+      .toBeLessThan(verifier.indexOf("const accepted=await request('/v1/security/budget',body)"));
+  });
   it("reruns D1 security acceptance on verifier changes and redacts untrusted upstream replies",()=>{
     const verifier=readFileSync("scripts/ops/verify-d1-central-security-budget.mjs","utf8");
     expect(workflow).toContain('"scripts/ops/verify-d1-central-security-budget.mjs"');
