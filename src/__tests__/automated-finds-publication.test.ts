@@ -167,3 +167,22 @@ describe("Supabase-free automated issuer-signed Finds",()=>{
     expect((await automatedFindsResponse(new Request("https://geomacro.live/api/v1/intelligence/query?view=finds&country=USA"))).status).toBe(400);
   });
 });
+
+
+it("missed-tick recovery signs the same free Finds under shared writer serialization and quota",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const source=readFileSync(".github/workflows/website-derived-news-cadence-backstop.yml","utf8");
+  expect(source).toContain('ref: ${{ github.sha }}');
+  expect(readFileSync(".github/workflows/website-derived-news-continuity.yml","utf8")).toContain('ref: ${{ github.sha }}');
+  expect(source).toContain('GEOMACRO_AUTOMATED_FINDS_PUBLICATION: "1"');
+  expect(source).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+  expect(source).toContain('B2_REQUEST_BUDGET: "12"');
+  expect(source).toContain('group: geomacro-website-derived-news-continuity');
+  expect(source).toContain('workflows: ["Geomacro Intelligence Orchestrator"]');
+  expect(source).toContain("github.event.workflow_run.conclusion == 'success'");
+  expect(source.indexOf("Resolve existing D1 shared B2 quota ledger")).toBeLessThan(source.indexOf("bun scripts/ops/publish-website-derived-news.ts"));
+  expect(source).toContain('await verifyAutomatedFindsEnvelope(envelope,keys)');
+  expect(source).toContain('envelope.payload.source_sha!==process.env.GITHUB_SHA');
+  expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+  expect(source).not.toContain('GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM');
+});
