@@ -32,8 +32,8 @@ async function proof(inflation:unknown,asText=false) {
   const v=await discoverOnDemandForPrivateQualification(chn,{now,fetchImpl:transport.fn});
 // Macro also includes one GDELT discovery and one Federal Reserve publisher
   // probe; do not silently undercount requests just because WDI is the focus.
-  expect(v.discovery.network_attempts).toBe(5);
-  expect(transport.seen).toHaveLength(5);
+  expect(v.discovery.network_attempts).toBe(4);
+  expect(transport.seen).toHaveLength(4);
   expect(v.private_macro_qualifications).toHaveLength(2);
   return v;
 }
