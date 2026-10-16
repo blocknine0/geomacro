@@ -1,5 +1,6 @@
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,verifiedGlobalRdfFeed,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { createHash } from "node:crypto";
+import {fetchGdeltDocWithBudget,gdeltRetryAfterMs} from "../../scripts/lib/gdelt-doc-request-gate.mjs";
 import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
@@ -191,13 +192,7 @@ const MAX_NEWS_AGE_MS = 31 * ONE_DAY_MS;
 const RATE_LIMIT_COOLDOWNS_MS = {403: 60*60_000, 429: 15*60_000};
 const providerCooldownUntil = new Map<string,number>();
 export function retryAfterCooldownMs(value:string|null, now=Date.now()):number {
-  if(!value)return RATE_LIMIT_COOLDOWNS_MS[429];
-  const seconds=/^\d{1,8}$/.test(value.trim())?Number(value.trim()):NaN;
-  const deadline=Number.isFinite(seconds)?now+seconds*1_000:Date.parse(value);
-  if(!Number.isFinite(deadline) || deadline<=now)return RATE_LIMIT_COOLDOWNS_MS[429];
-  // Honor Retry-After up to one month, with a floor for invalid/short hints.
-  return Math.max(RATE_LIMIT_COOLDOWNS_MS[429],
-    Math.min(31*ONE_DAY_MS,deadline-now));
+  return gdeltRetryAfterMs(value,now);
 }
 
 async function boundedFetch(
@@ -223,7 +218,8 @@ async function boundedFetch(
       headers: { Accept: accept },
       signal: AbortSignal.timeout(timeoutMs),
     });
-  } catch {
+  } catch(error) {
+    if(error instanceof Error&&error.message==="ON_DEMAND_PROVIDER_COOLDOWN")throw error;
     // A network failure may use a specifically approved alternate; an
     // explicit 401/403/429 denial must never be worked around.
     throw Error("ON_DEMAND_SOURCE_TRANSPORT_FAILURE");
@@ -1035,7 +1031,8 @@ async function discoverOnDemandImpl(
     if(networkAttempts>=12)
       throw Error("ON_DEMAND_NETWORK_BUDGET_EXHAUSTED");
     networkAttempts++;
-    const response=await fetchImpl(target,init);
+    const response=host==="api.gdeltproject.org"&&options.fetchImpl===undefined
+      ?await fetchGdeltDocWithBudget(String(target),init,fetchImpl):await fetchImpl(target,init);
     if(options.fetchImpl===undefined && response.status===429)
       providerCooldownUntil.set(host,Date.now()+
         retryAfterCooldownMs(response.headers.get("retry-after")));

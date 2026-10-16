@@ -6,6 +6,7 @@ import {
   parseGdeltGkgLastupdate,unpackSingleGkgZip,
   summarizeGdeltGkgBulk,probeGdeltGkgBulk,
 } from "../../scripts/lib/gdelt-gkg-bulk-discovery.mjs";
+import {parseGdeltFipsCountries,summarizeGdeltEventDiscovery,readGdeltEventDiscovery} from "../lib/gdelt-event-discovery.server";
 
 const now=new Date("2026-10-12T12:00:00.000Z");
 const stamp="20261012114500",date="2026-10-12T11:45:00.000Z";
@@ -48,6 +49,44 @@ const md5=createHash("md5").update(archive).digest("hex");
 const manifest=(digest=md5,bytes=archive.length)=>
   String(bytes)+" "+digest+" http://data.gdeltproject.org/gdeltv2/"+stamp+".gkg.csv.zip\n"+
   "42 "+"e".repeat(32)+" http://data.gdeltproject.org/gdeltv2/"+stamp+".export.CSV.zip\n";
+
+describe("Supabase-free GDELT Event export restores the former source stage",()=>{
+  const fipsRows=new Map<string,string>();
+  for(let i=0;i<205;i++)fipsRows.set(String.fromCharCode(65+Math.floor(i/26))+String.fromCharCode(65+i%26),"Unknown country "+i);
+  fipsRows.set("CH","China");fipsRows.set("US","United States");fipsRows.set("SW","Switzerland");
+  const fips=[...fipsRows].map(x=>x.join("\t")).join("\n");
+  const event=(id:string,code:string,root="19")=>{const f=Array(61).fill("");f[0]=id;f[1]="20261012";f[28]=root;f[53]=code;f[60]="https://private-original.invalid/never-persist";return f.join("\t");};
+  const text=[event("1","CH"),event("2","SW"),event("3","US"),event("3","US"),event("4","XX"),event("5","US","01")].join("\n");
+  it("uses official FIPS names plus canonical countries, never confusing FIPS CH with ISO CH",()=>{
+    const lookup=parseGdeltFipsCountries(fips);
+    const r=summarizeGdeltEventDiscovery(text,lookup,date,now);
+    expect(r.country_counts).toEqual([{country_iso3:"CHE",indexed_records:1},{country_iso3:"CHN",indexed_records:1},{country_iso3:"USA",indexed_records:1}]);
+    expect(r.unmapped_conflict_rows).toBe(1);expect(r.conflict_root_rows).toBe(4);
+    expect(r.original_news_freshness_verified).toBe(false);expect(JSON.stringify(r)).not.toContain("private-original");
+  });
+  it("reuses the bounded ZIP verifier for the exact Event filename and rejects cross-kind members",()=>{
+    const bytes=zip(text,stamp+".export.CSV");
+    expect(unpackSingleGkgZip(bytes,stamp,"events")).toBe(text);
+    expect(()=>unpackSingleGkgZip(bytes,stamp)).toThrow();
+    expect(()=>unpackSingleGkgZip(bytes,stamp,"unknown")).toThrow();
+  });
+  it("fetches current integrity-matched exports and aggregates without a DB, raw store or DOC calls",async()=>{
+    const bytes=zip(text,stamp+".export.CSV"),digest=createHash("md5").update(bytes).digest("hex");
+    const index=String(bytes.length)+" "+digest+" http://data.gdeltproject.org/gdeltv2/"+stamp+".export.CSV.zip";
+    const fake=vi.fn(async(url:string)=>new Response(url.endsWith("lastupdate.txt")?index:url.endsWith("FIPS.country.txt")?fips:bytes));
+    const r=await readGdeltEventDiscovery({fetchImpl:fake as any,now});
+    expect(r.archive_integrity_verified).toBe(true);expect(fake).toHaveBeenCalledTimes(3);
+    expect(fake.mock.calls.some(c=>c[0].includes("supabase")||c[0].includes("api/v2/doc"))).toBe(false);
+    expect(r.supabase_requests).toBe(0);
+  });
+  it("preserves actual integrity/auth/future-date failures without promoting indexed news",async()=>{
+    const denied=vi.fn(async()=>new Response("",{status:429}));
+    const r=await readGdeltEventDiscovery({fetchImpl:denied as any,now});
+    expect(r.archive_integrity_verified).toBe(false);expect(r.reason).toBe("GDELT_EVENT_HTTP_429");expect(denied).toHaveBeenCalledOnce();
+    expect(()=>summarizeGdeltEventDiscovery(text,parseGdeltFipsCountries(fips),"2026-10-12T12:15:00Z",now)).toThrow();
+    expect(()=>parseGdeltFipsCountries(fips+"\nCH\tSwitzerland")).toThrow();
+  });
+});
 
 describe("#2042 static GDELT 15-minute global discovery independent of DOC 429",()=>{
   it("validates pinned GKG only; rejects old, future, malformed, off-host and excessive batches",()=>{
