@@ -1,0 +1,78 @@
+name: GRI Pinned Historical Version Recovery (Read Only)
+# Owner-authorized bounded recovery: no cron, B2 mutation or product promotion.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/recover-gri-pinned-b2-version.mjs"
+      - ".github/workflows/gri-pinned-version-recovery.yml"
+  pull_request:
+    paths:
+      - "scripts/ops/recover-gri-pinned-b2-version.mjs"
+      - "src/__tests__/gri-pinned-version-recovery.test.ts"
+      - ".github/workflows/gri-pinned-version-recovery.yml"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-gri-b2-historical-readback
+  cancel-in-progress: false
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bunx vitest run src/__tests__/gri-pinned-version-recovery.test.ts src/__tests__/gri-b2-historical-live-readback.test.ts
+  pinned-original-version:
+    needs: contract
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: historical_gri_version_recovery
+      B2_REQUEST_BUDGET: "4"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Resolve the existing D1 account-wide quota ledger
+        run: |
+          node --input-type=module <<'JS'
+          import {appendFileSync} from 'node:fs';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!/^[a-f0-9]{32}$/.test(account??'')||!token)throw Error('GRI_VERSION_D1_CONFIG_REQUIRED');
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database?per_page=100',{
+            headers:{Authorization:'Bearer '+token},redirect:'error',signal:AbortSignal.timeout(15000)});
+          if(!r.ok)throw Error('GRI_VERSION_D1_DISCOVERY_UNAVAILABLE');
+          const d=await r.json();const rows=d.success===true&&Array.isArray(d.result)?d.result.filter(x=>x.name==='geomacro-control-plane'):[];
+          if(rows.length!==1||!/^[a-f0-9-]{36}$/.test(rows[0].uuid??''))throw Error('GRI_VERSION_D1_LEDGER_REQUIRED');
+          appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+rows[0].uuid+'\n');
+          JS
+      - name: Verify exactly one immutable version against the original D1 compressed and payload pins
+        run: node scripts/ops/recover-gri-pinned-b2-version.mjs
+      - name: Preserve only sanitized historical readback metadata
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: gri-pinned-version-readback-${{ github.run_id }}
+          path: artifacts/gri-b2-history/immutable-version-readback.json
+          if-no-files-found: warn
+          retention-days: 14
