@@ -3,12 +3,13 @@ import {parseCsvRecords} from "./public-reference-extraction.mjs";
 const SPECS=Object.freeze({
  faostat:Object.freeze({
    url:"https://nsi-release-ro-statsuite.fao.org/rest/data/FAO,DF_SDG_ALL_INDICATORS,1.0/A.SN_ITK_DEFC..........?startPeriod=2023&dimensionAtObservation=AllDimensions&format=csvfile",
-   country:"USA",indicator:"SN_ITK_DEFC",
+   country:"IND",indicator:"SN_ITK_DEFC",
    provider:"FAO",category:"MACRO",
  }),
  ilostat:Object.freeze({
    url:"https://rplumber.ilo.org/data/indicator/?id=EMP_TEMP_SEX_AGE_NB_A&ref_area=USA&timefrom=2024&timeto=2024",
-   country:"USA",indicator:"EMP_TEMP_SEX_AGE_NB_A",
+   country:"USA",indicator:"EMP_TEMP_SEX_AGE_NB",
+   required_sex:"SEX_T",required_classif1:"AGE_AGGREGATE_YGE15",
    provider:"ILO",category:"MACRO",
  }),
 });
@@ -61,8 +62,13 @@ export function extractExactCountryStatistic(id,payload){
    // Preserve evidence quality/flags; a number alone is not a release date.
    unit:String(row.UNIT_MEASURE??row.unit??row.unit_measure??"").slice(0,64),
    source_flag:String(row.OBS_STATUS??row.obs_status??"").slice(0,32),
+   sex:String(row.sex??row.SEX??"").trim().toUpperCase(),
+   classif1:String(row.classif1??row.CLASSIF1??"").trim().toUpperCase(),
  }));
- const exact=mapped.filter(r=>r.iso3===spec.country&&r.indicator===spec.indicator&&r.period&&r.value!==null);
+ const exact=mapped.filter(r=>r.iso3===spec.country&&r.indicator===spec.indicator&&
+   r.period&&r.value!==null&&
+   (!spec.required_sex||r.sex===spec.required_sex)&&
+   (!spec.required_classif1||r.classif1===spec.required_classif1));
  exact.sort((a,b)=>b.period.localeCompare(a.period));
  if(!exact.length){
    // Provider schema census only: column names and dimension-match counts,
@@ -81,7 +87,11 @@ export function extractExactCountryStatistic(id,payload){
      sex_codes:[...new Set(rows.map(x=>String(x.sex??x.SEX??"").trim()).filter(x=>
        /^[A-Z][A-Z0-9_]{0,31}$/u.test(x)))].slice(0,8),
      classif1_codes:[...new Set(rows.map(x=>String(x.classif1??x.CLASSIF1??"").trim()).filter(x=>
-       /^[A-Z][A-Z0-9_]{0,63}$/u.test(x)))].slice(0,8)};
+       /^[A-Z][A-Z0-9_]{0,63}$/u.test(x)))].slice(0,8),
+     complete_selected_scope_count:mapped.filter(x=>
+       x.iso3===spec.country&&x.indicator===spec.indicator&&
+       (!spec.required_sex||x.sex===spec.required_sex)&&
+       (!spec.required_classif1||x.classif1===spec.required_classif1)).length};
    throw error;
  }
  const top=exact[0];
@@ -138,7 +148,7 @@ export async function actualCountryStatisticsReceipt({read=readExactCountryStati
      const x=await read(id);
      if(x?.source_id!==id||x?.commercial_rights_verified!==false||
         x?.release_timestamp_verified!==false||
-        x?.country_iso3!=="USA")throw Error("COUNTRY_STATS_CONTRACT_INVALID");
+        x?.country_iso3!==SPECS[id].country)throw Error("COUNTRY_STATS_CONTRACT_INVALID");
      rows.push({id,state:"EXACT_COUNTRY_SERIES_EXTRACTED",
        country_iso3:x.country_iso3,indicator:x.indicator,period:x.reference_period,
        unit:x.observed_unit,original_release_verified:false,
