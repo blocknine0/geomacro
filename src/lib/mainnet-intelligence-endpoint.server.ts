@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import {makeGeomacroNoChargeResponse} from "./geomacro-nocharge";
 import {
   qualifyRetrievedOnDemandEvidence, publicOnDemandQualificationStatus,
   buildPrivateVerifiedFedMinutesFinding,
@@ -580,7 +581,23 @@ export const mainnetIntelligenceHandlers = {
           return json({ ok: false, chargeable: false, error: { code: "AVAILABILITY_CHECK_UNAVAILABLE", message: "Deliverability could not be proven. Payment is disabled for this request." }, execution_authorized: false }, 503);
         }
         if (!availability.deliverable) {
-          return json({ ok: false, chargeable: false, payment_required_now: false, availability: publicAgentQueryAvailability(availability), error: { code: availability.code, message: "Requested intelligence is not currently fully deliverable; no payment is accepted." }, execution_authorized: false }, 422);
+          // Existing 422 status and availability contract remain unchanged. Add an
+          // explicitly zero-price machine receipt *before* any payment claim.
+          const noChargeReason = availability.code === "STALE_REQUIRED_DATA"
+            ? "STALE_NO_CHARGE" as const
+            : availability.code === "INSUFFICIENT_COVERAGE"
+              ? "INSUFFICIENT_EVIDENCE_NO_CHARGE" as const
+              : "UNAVAILABLE_NO_CHARGE" as const;
+          const no_charge = makeGeomacroNoChargeResponse({
+            request_id: randomUUID(), capability: "intelligence_query",
+            subject: {type:"query", id:plan.query_plan_hash},
+            reason: noChargeReason,
+            reason_detail: "Verified deliverable evidence is not available; this request was not charged.",
+            payment_attempted:false,delivery_committed:false,
+          });
+          return json({ ok: false, chargeable: false, payment_required_now: false,
+            no_charge, availability: publicAgentQueryAvailability(availability),
+            error: { code: availability.code, message: "Requested intelligence is not currently fully deliverable; no payment is accepted." }, execution_authorized: false }, 422);
         }
         // The same verified capability-price configuration travels through the
         // HTTP 402, signed payment binding, durable claim, usage guard,
