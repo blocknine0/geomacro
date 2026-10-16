@@ -54,7 +54,7 @@ describe('actual immutable original GRI -> existing D1 historical website ring',
  it('validates D1 configuration before any request and binds SQL parameters instead of shell interpolation',async()=>{
   const fetcher=vi.fn();expect(()=>existingD1HistoryWriter({},fetcher)).toThrow();expect(fetcher).not.toHaveBeenCalled();
   const fake=vi.fn(async(url:string,init:any)=>{
-   expect(url).toMatch(/^https:\/\/api.cloudflare.com/);expect(init.method).toBe('POST');
+   expect(new URL(url).origin).toBe('https://api.cloudflare.com');expect(init.method).toBe('POST');
    expect(JSON.parse(init.body).params).toEqual(["a'b"]);
    return Response.json({success:true,result:[{success:true,results:[]}]});
   });
