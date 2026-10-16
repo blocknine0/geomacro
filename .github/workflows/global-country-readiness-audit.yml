@@ -3,17 +3,21 @@ name: Global Country Readiness Audit
 # Canonical routing and live source-state audit, not the legacy Risk Gate census.
 on:
   workflow_dispatch: {}
+  # The D1 Worker must be fully deployed before its new public source-runtime
+  # routes can be read. The old push/orchestrator triggers raced the deployment.
   workflow_run:
-    workflows: ["Geomacro Intelligence Orchestrator"]
+    workflows: ["Deploy D1 Control Plane"]
     branches: [main]
     types: [completed]
   push:
     branches: [main]
     paths:
       - ".github/workflows/global-country-readiness-audit.yml"
-      - "scripts/audit-supabase-free-country-runtime.ts"
       - "src/lib/canonical-country-registry-195.ts"
       - "src/lib/canonical-195-country-coverage-matrix.ts"
+  schedule:
+    # Read-only daily consistency check; no B2/Supabase/paid requests.
+    - cron: "27 6 * * *"
 permissions:
   contents: read
 concurrency:
@@ -21,7 +25,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   audit:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 8
     environment: production
