@@ -42,14 +42,22 @@ export async function probeConfiguredCredentialedSources({
       // known, exact error CLASS tokens are allowed into monitoring output.
       const message=String(error?.message??"");
       const http=message.match(/^HTTP ([1-5][0-9]{2}) for /u)?.[1];
+      const code=String(error?.cause?.code??"");
       const cause=http?("HTTP_"+http):
         message==="HTTP_BODY_LIMIT"?"RESPONSE_SIZE_LIMIT":
         message==="HTTP_BODY_EMPTY"?"RESPONSE_EMPTY":
+        message==="HTTP_BODY_BOUND_INVALID"?"RESPONSE_BOUND_INVALID":
+        message==="WTO_CANONICAL_SCOPE_INVALID"?"WTO_QUERY_SCOPE_REJECTED":
         message==="WTO_CANONICAL_REDIRECT_REFUSED"||error?.cause?.message==="unexpected redirect"?"REDIRECT_REFUSED":
-        ["UND_ERR_CONNECT_TIMEOUT","ENOTFOUND","ECONNRESET","ECONNREFUSED"].includes(error?.cause?.code)?"UPSTREAM_CONNECTION_FAILURE":
+        ["UND_ERR_CONNECT_TIMEOUT","UND_ERR_HEADERS_TIMEOUT","UND_ERR_BODY_TIMEOUT","ETIMEDOUT"].includes(code)?"UPSTREAM_TIMEOUT":
+        ["ENOTFOUND","EAI_AGAIN"].includes(code)?"UPSTREAM_DNS_FAILURE":
+        ["ECONNRESET","ECONNREFUSED","UND_ERR_SOCKET","UND_ERR_CONNECT"].includes(code)?"UPSTREAM_CONNECTION_FAILURE":
+        ["CERT_HAS_EXPIRED","UNABLE_TO_VERIFY_LEAF_SIGNATURE","ERR_TLS_CERT_ALTNAME_INVALID"].includes(code)?"UPSTREAM_TLS_FAILURE":
+        message==="Non-JSON response from bounded credentialed request"||
         message.startsWith("Non-JSON response from ")?"RESPONSE_NOT_JSON":
         message==="Unexpected response shape for "+source.id?"RESPONSE_SHAPE_INVALID":
         error?.name==="AbortError"||error?.name==="TimeoutError"?"UPSTREAM_TIMEOUT":
+        message==="fetch failed"||error?.name==="TypeError"?"UPSTREAM_FETCH_ERROR":
         "UPSTREAM_UNKNOWN_FAILURE";
       results.push({source_id:source.id,category:source.category,
         status:"CONFIGURED_BUT_PROBE_FAILED",http_probed:true,
