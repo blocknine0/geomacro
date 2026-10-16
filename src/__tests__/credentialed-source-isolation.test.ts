@@ -19,7 +19,7 @@ describe("#1827 independently activate configured credentialed sources",()=>{
     const adapter=readFileSync("global-intelligence/adapters/credentialed-sources.mjs","utf8");
     expect(adapter).toContain('sourceId==="bea"?30000:15000');
     expect(adapter).toContain("method=GetDataSetList&ResultFormat=JSON");
-    expect(adapter).toContain("const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs})");
+    expect(adapter).toContain('const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error"})');
   });
   it("does not block healthy sources when a different provider key is missing",async()=>{
     const env={...allCredentials};
@@ -29,13 +29,13 @@ describe("#1827 independently activate configured credentialed sources",()=>{
       return {source_id:id,category:source.category};
     });
     const receipt=await probeConfiguredCredentialedSources({env,probe,now:when});
-    expect(probe).toHaveBeenCalledTimes(6);
+    expect(probe).toHaveBeenCalledTimes(7);
     expect(probe).not.toHaveBeenCalledWith("bea");
     expect(receipt.status).toBe("CONFIGURED_SOURCES_WORKING_PARTIAL");
-    expect(receipt.working).toBe(6);
+    expect(receipt.working).toBe(7);
     expect(receipt.configured_failed).toBe(0);
     expect(receipt.results.find((r:any)=>r.source_id==="bea").status).toBe("CREDENTIAL_NOT_CONFIGURED");
-    expect(receipt.per_domain.GEOPOLITICS.working).toBe(2);
+    expect(receipt.per_domain.GEOPOLITICS.working).toBe(3);
     expect(receipt.per_domain.CRITICAL_MINERALS.working).toBe(1);
     expect(receipt.b2_requests+receipt.d1_writes+receipt.supabase_writes).toBe(0);
     expect(receipt.commercial_eligible).toBe(false);
@@ -49,7 +49,7 @@ describe("#1827 independently activate configured credentialed sources",()=>{
       },
     });
     expect(receipt.status).toBe("CONFIGURED_SOURCES_DEGRADED");
-    expect(receipt.working).toBe(6);
+    expect(receipt.working).toBe(7);
     expect(receipt.configured_failed).toBe(1);
     expect(JSON.stringify(receipt)).not.toContain("private-token-do-not-emit");
     expect(JSON.stringify(receipt)).not.toContain("api.example");
@@ -76,10 +76,10 @@ describe("#1827 independently activate configured credentialed sources",()=>{
     const empty=await probeConfiguredCredentialedSources({env:{},probe,now:when});
     expect(probe).not.toHaveBeenCalled();
     expect(empty.status).toBe("NO_CREDENTIALS_CONFIGURED");
-    expect(empty.missing_credentials).toBe(7);
+    expect(empty.missing_credentials).toBe(8);
     const wrong=await probeConfiguredCredentialedSources({env:allCredentials,
       probe:async id=>({source_id:id,category:"INVALID"}),now:when});
-    expect(wrong.configured_failed).toBe(7);
+    expect(wrong.configured_failed).toBe(8);
     expect(wrong.working).toBe(0);
   });
 });

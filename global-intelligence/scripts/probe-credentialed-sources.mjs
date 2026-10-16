@@ -12,6 +12,7 @@ export const CREDENTIALED_SOURCE_ACCOUNTS = Object.freeze([
   Object.freeze({id:"eia_api_v2",category:"CRITICAL_MINERALS",env:"EIA_API_KEY"}),
   Object.freeze({id:"noaa_ncei",category:"GEOPOLITICS",env:"NOAA_NCEI_TOKEN"}),
   Object.freeze({id:"wto_timeseries",category:"MACRO",env:"WTO_API_KEY"}),
+  Object.freeze({id:"ucdp_ged",category:"GEOPOLITICS",env:"UCDP_API_TOKEN"}),
   Object.freeze({id:"opensanctions",category:"GEOPOLITICS",env:"OPENSANCTIONS_API_KEY"}),
 ]);
 
@@ -64,7 +65,7 @@ export async function probeConfiguredCredentialedSources({
     status:counts.configured===0?"NO_CREDENTIALS_CONFIGURED":
       counts.configured_failed>0?"CONFIGURED_SOURCES_DEGRADED":
       counts.missing_credentials>0?"CONFIGURED_SOURCES_WORKING_PARTIAL":
-      "ALL_SEVEN_CONFIGURED_SOURCES_WORKING",
+      "ALL_CONFIGURED_SOURCES_WORKING",
     source_count:CREDENTIALED_SOURCE_ACCOUNTS.length,
     ...counts,
     per_domain:Object.fromEntries(["GEOPOLITICS","MACRO","CRITICAL_MINERALS"].map(domain=>{
