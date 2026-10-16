@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
-export const ICJ_CASES_URL = "https://www.icj-cij.org/cases";
+// /cases is an overview, not the source's actual case inventory.
+export const ICJ_CASES_URL = "https://www.icj-cij.org/list-of-all-cases";
 
 function clean(value) {
   return String(value ?? "").replace(/\s+/g, " ").trim();
@@ -43,11 +44,17 @@ export function parseIcjCasesHtml(html, { retrievedAt = new Date().toISOString()
   }
 
   const records = [];
-  const anchorRe = /<a\b[^>]*href=["']([^"']*(?:\/cases\/|\/case\/|\/contentious-cases(?:\/|\?))[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const anchorRe = /<a\b[^>]*href\s*=\s*["']([^"']{1,1800})["'][^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of input.matchAll(anchorRe)) {
     const title = extractTextFragment(match[2]);
     const url = absoluteUrl(match[1], baseUrl);
     if (!url || title.length < 8) continue;
+    const original = new URL(url);
+    // The real list uses document-relative case/NN links. Resolve those
+    // against the official list, then admit only an exact first-party case.
+    if (original.protocol !== "https:" || original.hostname !== "www.icj-cij.org" ||
+        original.username || original.password || original.port ||
+        original.search || original.hash || !/^\/cases?\/[1-9][0-9]{0,4}\/?$/.test(original.pathname)) continue;
     const context = extractTextFragment(input.slice(Math.max(0, match.index - 500), Math.min(input.length, match.index + match[0].length + 500)));
     const date = dateFromText(context);
     const id = new URL(url).pathname.split("/").filter(Boolean).at(-1) ?? encodeURIComponent(url).slice(-80);

@@ -4,7 +4,7 @@ import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {parseUkSanctionsXml} from '../../global-intelligence/adapters/uk-sanctions-list.mjs';
-import {parseEuSanctionsXml} from '../../global-intelligence/adapters/eu-sanctions.mjs';
+import {parseEuSanctionsXml,EU_SANCTIONS_URL} from '../../global-intelligence/adapters/eu-sanctions.mjs';
 import {parseMofcomExportControlHtml} from '../../global-intelligence/adapters/china-mofcom.mjs';
 import {parseAustraliaCriticalMineralsHtml} from '../../global-intelligence/adapters/australia-critical-minerals.mjs';
 import {parseCochilcoAnuarioHtml} from '../../global-intelligence/adapters/cochilco-minerals.mjs';
@@ -23,6 +23,8 @@ export const P0_MAX_BYTES=2*1024*1024;
 // Protected live readback observed the exact UK XML at 22,051,272 bytes.
 // Permit bounded growth only for this checked-in first-party dataset.
 export const UK_SANCTIONS_MAX_BYTES=32*1024*1024;
+// The official public EU XML was measured at 25,767,041 bytes.
+export const EU_SANCTIONS_MAX_BYTES=32*1024*1024;
 export function existingPrivateP0Sources(){
  const registry=JSON.parse(readFileSync(new URL('../../config/global-p0-source-expansion.json',import.meta.url),'utf8'));
  const sources=Object.entries(registry.p0_global_source_expansion.sources);
@@ -63,7 +65,9 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
      else{
        const isUkDataset=source.id==='uk_sanctions_list'&&
          source.url==='https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.xml';
-       const bytes=await boundedBody(response,isUkDataset?UK_SANCTIONS_MAX_BYTES:P0_MAX_BYTES);
+       const isEuDataset=source.id==='eu_sanctions_consolidated'&&source.url===EU_SANCTIONS_URL;
+       const bytes=await boundedBody(response,isUkDataset?UK_SANCTIONS_MAX_BYTES:
+         isEuDataset?EU_SANCTIONS_MAX_BYTES:P0_MAX_BYTES);
        const type=response.headers.get('content-type')??'';
        if(source.id==='world_bank_commodity_prices'){
          if(bytes.length<100||bytes[0]!==0x50||bytes[1]!==0x4b)throw Error('FORMAT_NOT_VERIFIED');
