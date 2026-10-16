@@ -26,14 +26,15 @@ export async function runSupabaseFreeSourceRuntime({state,fetchImpl=fetch,now=ne
   const at=now.getTime();if(!Number.isFinite(at))throw Error("SOURCE_RUNTIME_CLOCK_INVALID");
   const previous=await state.loadRows();
   let supabaseAttempts=0;const blockedHosts=new Set<string>();
-  let manifest:Promise<Response>|null=null;
+  const manifests=new Map<string,Promise<Response>>();
   const safeFetch=(async(input:RequestInfo|URL,init?:RequestInit)=>{
     const url=new URL(input instanceof Request?input.url:String(input));
     if(/(?:^|\.)supabase\.(?:co|com)$/i.test(url.hostname)){supabaseAttempts++;throw Error("SOURCE_RUNTIME_SUPABASE_BLOCKED");}
     if(blockedHosts.has(url.hostname))throw Error("SOURCE_RUNTIME_UPSTREAM_DENIAL_HELD");
-    if(url.href==="https://data.gdeltproject.org/gdeltv2/lastupdate.txt"){
+    if(["https://data.gdeltproject.org/gdeltv2/lastupdate.txt","https://data.gdeltproject.org/gdeltv2/masterfilelist.txt"].includes(url.href)){
       // The existing GKG and Event adapters share ONE small manifest read.
-      manifest??=fetchImpl(input,init);return (await manifest).clone();
+      if(!manifests.has(url.href))manifests.set(url.href,fetchImpl(input,init));
+      return (await manifests.get(url.href)!).clone();
     }
     const response=url.hostname==="api.gdeltproject.org"&&fetchImpl===fetch
       ?await fetchGdeltDocWithBudget(String(input),init,fetchImpl):await fetchImpl(input,init);

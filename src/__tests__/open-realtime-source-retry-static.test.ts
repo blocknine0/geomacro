@@ -13,9 +13,11 @@ describe("open realtime source retry contract", () => {
     expect(runner).toContain("process.exit(lastCode || 1)");
   });
 
-  it("uses the retry runner in both governed workflows", () => {
+  it("retains legacy governed retry but migrates operator recovery to D1", () => {
     expect(productionGate).toContain("node scripts/run-open-live-source-mesh-with-retry.mjs");
-    expect(operatorWorkflow).toContain("node scripts/run-open-live-source-mesh-with-retry.mjs");
+    expect(operatorWorkflow).toContain("bun scripts/ops/run-supabase-free-source-runtime.ts");
+    expect(operatorWorkflow).not.toMatch(/secrets\.(?:APP_)?SUPABASE/);
+    expect(operatorWorkflow).not.toContain("live-structure-intelligence");
   });
 
   it("does not weaken production readiness or payment safety boundaries", () => {
