@@ -38,6 +38,7 @@ jobs:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Require existing Cloudflare production secrets
@@ -211,6 +212,9 @@ jobs:
           done
           test "$CODE" = "200" || { echo "Authenticated control-plane write failed: HTTP $CODE"; cat /tmp/auth.json; exit 9; }
           grep -q '"ok":true' /tmp/auth.json || { echo "Authenticated response missing ok=true"; exit 9; }
+
+      - name: Verify authenticated D1 central security budgets without B2 or payment
+        run: node scripts/ops/verify-d1-central-security-budget.mjs
 
       - name: Verify last-verified Global Risk historical status without B2 or payment
         env:

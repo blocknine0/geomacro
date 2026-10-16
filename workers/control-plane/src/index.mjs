@@ -1,3 +1,4 @@
+import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 import { readDerivedStories, publishDerivedStories, renderDerivedStoriesHtml } from "./website-derived-intelligence.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
@@ -1288,6 +1289,10 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      if(request.method==='POST'&&url.pathname==='/v1/security/budget'&&!url.search){
+        const receipt=await consumeCentralSecurityBudget(env.DB,await readJson(request,256));
+        return json(receipt,receipt.allowed?200:429);
+      }
       if(request.method==="PUT"&&url.pathname==="/v1/automated-finds"&&!url.search)
         return putAutomatedFinds(env,await readJson(request,300_000));
       if (

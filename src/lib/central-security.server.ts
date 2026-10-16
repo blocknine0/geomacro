@@ -2,9 +2,9 @@ import {
   createHmac,
 } from "node:crypto";
 
-import {
-  requireRiskSupabase,
-} from "./risk-supabase.server";
+import { CENTRAL_SECURITY_POLICIES } from "../../workers/control-plane/src/central-security-policies.mjs";
+import { consumeD1CentralSecurityBudget } from "./d1-central-security-budget.server";
+const POLICIES = CENTRAL_SECURITY_POLICIES as Record<Exclude<CentralSecurityRouteClass, "page">, BudgetPolicy>;
 
 
 export const CENTRAL_SECURITY_VERSION =
@@ -55,67 +55,7 @@ const localClientBuckets = new Map<string, Bucket>();
 const localGlobalBuckets = new Map<string, Bucket>();
 
 
-const POLICIES: Record<Exclude<CentralSecurityRouteClass, "page">, BudgetPolicy> = {
-  public_api: {
-    windowSeconds: 60,
-    perClient: 240,
-    global: 5000,
-    maxBodyBytes: 128 * 1024,
-    distributed: true,
-    // Public read/proof surfaces remain available for diagnosis if the
-    // privileged abuse-control store is temporarily unavailable. They still
-    // receive the bounded in-process burst guard.
-    failClosed: false,
-  },
-  api_write: {
-    windowSeconds: 60,
-    perClient: 60,
-    global: 1200,
-    maxBodyBytes: 64 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-  server_function: {
-    windowSeconds: 60,
-    perClient: 60,
-    global: 1200,
-    maxBodyBytes: 128 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-  risk_gate: {
-    windowSeconds: 60,
-    perClient: 90,
-    global: 1500,
-    maxBodyBytes: 32 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-  commercial: {
-    windowSeconds: 60,
-    perClient: 90,
-    global: 1500,
-    maxBodyBytes: 32 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-  payment: {
-    windowSeconds: 60,
-    perClient: 45,
-    global: 900,
-    maxBodyBytes: 32 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-  internal: {
-    windowSeconds: 60,
-    perClient: 30,
-    global: 300,
-    maxBodyBytes: 64 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-};
+
 
 
 function normalizedPathname(pathname: string): string {
@@ -568,30 +508,7 @@ export async function enforceCentralRequestSecurity(
   }
 
   try {
-    const db = requireRiskSupabase();
-    const { data, error } = await db.rpc(
-      "consume_central_security_budget",
-      {
-        p_route_class: routeClass,
-        p_client_key: clientKey,
-        p_window_seconds: policy.windowSeconds,
-        p_client_limit: policy.perClient,
-        p_global_limit: policy.global,
-      },
-    );
-
-    if (error) throw error;
-
-    const result =
-      data &&
-      typeof data === "object" &&
-      !Array.isArray(data)
-        ? data as Record<string, unknown>
-        : null;
-
-    if (!result || result.ok !== true) {
-      throw new Error("Central security budget returned invalid state");
-    }
+    const result = await consumeD1CentralSecurityBudget(routeClass, clientKey);
 
     const retryAfterSeconds =
       Number.isFinite(Number(result.retry_after_seconds))
@@ -618,7 +535,7 @@ export async function enforceCentralRequestSecurity(
     console.error(
       "[central-security] distributed abuse control unavailable",
       routeClass,
-      error instanceof Error ? error.message : "unknown error",
+      "D1_BUDGET_UNAVAILABLE",
     );
 
     if (
