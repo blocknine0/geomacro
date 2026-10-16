@@ -4,7 +4,7 @@ import {parseCsvRecords} from "./public-reference-extraction.mjs";
 // Pinned official OECD Data Explorer monthly unemployment dataset, bounded
 // to one historical month; exact United States row will be selected only if
 // independently unambiguous. Dataset reference != native release timestamp.
-const OECD_ENDPOINT="https://sdmx.oecd.org/public/rest/data/OECD.SDD.TPS,DSD_LFS@DF_IALFS_UNE_M,1.0/..._Z.Y._T.Y_GE15..M?startPeriod=2025-06&endPeriod=2025-06&dimensionAtObservation=AllDimensions&format=csvfile";
+const OECD_ENDPOINT="https://sdmx.oecd.org/public/rest/data/OECD.SDD.TPS,DSD_LFS@DF_IALFS_INDIC,1.0/.UNE_LF_M...Y._T.Y_GE15..M?startPeriod=2025-06&endPeriod=2025-06&dimensionAtObservation=AllDimensions&format=csvfile";
 const MAX_BYTES=1024*1024;
 function num(x){if(x==null||String(x).trim()==="")return null;const v=Number(x);return Number.isFinite(v)?v:null;}
 export function extractOecdUsMonthlyUnemployment(text){
@@ -15,7 +15,11 @@ export function extractOecdUsMonthlyUnemployment(text){
  if(required.some(x=>!columns.includes(x)))throw Error("OECD_SOURCE_COLUMNS_INVALID");
  const available=rows.filter(r=>r.REF_AREA==="USA" &&
    r.TIME_PERIOD==="2025-06" && num(r.OBS_VALUE)!==null &&
-   (!r.FREQ||r.FREQ==="M"));
+   (!r.FREQ||r.FREQ==="M") &&
+   (!r.COMBINED_MEASURE||r.COMBINED_MEASURE==="UNE_LF_M") &&
+   (!r.ADJUSTMENT||r.ADJUSTMENT==="Y") &&
+   (!r.SEX||r.SEX==="_T") &&
+   (!r.AGE||r.AGE==="Y_GE15"));
  if(available.length!==1){
    const error=Error("OECD_EXACT_SERIES_UNVERIFIED");
    error.sanitized={returned_rows:rows.length,usa_rows:rows.filter(x=>x.REF_AREA==="USA").length,
@@ -71,8 +75,9 @@ export async function verifyImfOecdReference({imf=fetchImfDataMapper,oecd=fetchO
      native_release_time_verified:false,commercial_rights_verified:false});
  }catch(error){
    const e=String(error?.message??"");
+   const http=e.match(/^HTTP ([1-5][0-9]{2}) for bounded credentialed request$/u)?.[1];
    receipt.readers.push({id:"imf",state:"EXACT_SERIES_UNVERIFIED",
-     reason:/^IMF_[A-Z0-9_]+$/.test(e)?e:"SOURCE_DENIAL_OR_SCHEMA_UNKNOWN"});
+     reason:http?"IMF_HTTP_"+http:/^IMF_[A-Z0-9_]+$/.test(e)?e:"SOURCE_DENIAL_OR_SCHEMA_UNKNOWN"});
  }
  try{
    const r=await oecd();
