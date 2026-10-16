@@ -7,6 +7,8 @@ export async function consumeD1CentralSecurityBudget(route:string,key:string,fet
  const r=await fetchImpl(ENDPOINT,{method:'POST',redirect:'error',
    headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
    body:JSON.stringify({route_class:route,client_key:key}),signal:AbortSignal.timeout(3500)});
+ if(r.status===401||r.status===403)throw Error('D1_SECURITY_BUDGET_AUTH_REJECTED');
+ if(r.status===404||r.status===405)throw Error('D1_SECURITY_BUDGET_ROUTE_NOT_READY');
  if(r.status!==200&&r.status!==429)throw Error('D1_SECURITY_BUDGET_UNAVAILABLE');
  const text=await r.text();if(text.length>2048)throw Error('D1_SECURITY_BUDGET_INVALID');
  const d=JSON.parse(text);
@@ -15,4 +17,14 @@ export async function consumeD1CentralSecurityBudget(route:string,key:string,fet
    !Number.isSafeInteger(d.retry_after_seconds)||d.retry_after_seconds<1||d.retry_after_seconds>60)
    throw Error('D1_SECURITY_BUDGET_INVALID');
  return d as {allowed:boolean;retry_after_seconds:number};
+}
+
+// Fixed public diagnostics only. Never propagate provider bodies or messages.
+export function centralSecurityBudgetFailureCode(error:unknown){
+ const code=error instanceof Error?error.message:'';
+ if(code==='D1_SECURITY_BUDGET_CONFIGURATION_REQUIRED')return 'CENTRAL_SECURITY_D1_CONFIGURATION_REQUIRED';
+ if(code==='D1_SECURITY_BUDGET_AUTH_REJECTED')return 'CENTRAL_SECURITY_D1_AUTH_REJECTED';
+ if(code==='D1_SECURITY_BUDGET_ROUTE_NOT_READY')return 'CENTRAL_SECURITY_D1_ROUTE_NOT_READY';
+ if(code==='D1_SECURITY_BUDGET_INVALID')return 'CENTRAL_SECURITY_D1_RECEIPT_INVALID';
+ return 'CENTRAL_SECURITY_UNAVAILABLE';
 }
