@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { mainnetIntelligenceHandlers } from "../lib/mainnet-intelligence-endpoint.server";
 import { unifiedThreeDomainSourceObservation } from "../lib/unified-three-domain-source-observation.server";
+import {automatedFindsResponse} from "../lib/automated-finds-reader.server";
 
 export const Route = createFileRoute("/api/v1/intelligence/query")({
   server: {
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/api/v1/intelligence/query")({
       ...mainnetIntelligenceHandlers,
       GET: async ({request}:{request:Request}) => {
         const url=new URL(request.url);
+        if(url.searchParams.get("view")==="finds")return automatedFindsResponse(request);
         if(url.searchParams.get("view")!=="source-status")
           return mainnetIntelligenceHandlers.GET({request});
         if([...url.searchParams.keys()].some(key=>key!=="view") ||

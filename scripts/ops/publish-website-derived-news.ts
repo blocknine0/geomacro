@@ -12,6 +12,7 @@ import {
   type StatelessSourceCandidate,
 } from "../../src/lib/stateless-intelligence-model";
 import {checkedDerivedNews} from "../../src/lib/public-derived-news-client";
+import type {StatelessIntelligenceResult} from "../../src/lib/stateless-public-intelligence.server";
 
 const ROOT = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
 if (ROOT.length < 32) throw Error("DERIVED_NEWS_PUBLISH_TOKEN_MISSING");
@@ -32,11 +33,13 @@ globalThis.fetch=(async(input:RequestInfo|URL,init?:RequestInit)=>{
 
 let success=true;
 const privateOriginals:StatelessSourceCandidate[]=[];
+const reports:StatelessIntelligenceResult[]=[];
 for (const category of categories) {
   try {
     const report=await readStatelessWebsiteIntelligence(category,Date.now(),undefined,
       candidates=>privateOriginals.push(...candidates));
     if (report.healthy_feed_count === 0) throw Error("OFFICIAL_FEEDS_UNREACHABLE");
+    reports.push(report);
     // Already derived by the publisher model; this is a belt-and-braces
     // 15-minute gate before D1 writes. Day-only releases conservatively wait.
     const checked=Date.parse(report.checked_at);
@@ -76,6 +79,22 @@ for (const category of categories) {
   }
 }
 if (denied!==0||!success) process.exitCode=2;
+
+// Opted in only in the existing protected continuity workflow. The free D1
+// journal above remains independent if signing/archive publication fails.
+if(process.env.GEOMACRO_AUTOMATED_FINDS_PUBLICATION==="1"){
+  try{
+    if(denied!==0||!success)throw Error("AUTOMATED_FINDS_SOURCE_READ_INCOMPLETE");
+    const {publishCollectedAutomatedFinds}=await import("./publish-automated-finds");
+    await publishCollectedAutomatedFinds(reports);
+  }catch(error){
+    process.exitCode=2;
+    const message=error instanceof Error?error.message:"";
+    const reason=/^AUTOMATED_FINDS_[A-Z0-9_]+$/.test(message)?message:
+      "AUTOMATED_FINDS_SIGNED_ARCHIVE_PUBLICATION_UNAVAILABLE";
+    console.error("::error::"+reason);
+  }
+}
 
 
 // One bounded, metadata-only D1 readback after publishing. The original URLs
