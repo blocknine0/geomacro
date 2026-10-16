@@ -41,3 +41,26 @@ describe('international original releases in the existing global pipeline',()=>{
   }
  });
 });
+describe('global publisher searches preserve originating clocks and existing story identity',()=>{
+ it('uses Content API first publication, never fresh search index time, and retains an existing issuer card once',async()=>{
+  const path='/government/news/zambia-copper-critical-minerals-agreement';
+  let published='2026-10-16T06:00:00Z',legacy=true;
+  const actual=(async(target:RequestInfo|URL)=>{
+   const u=new URL(String(target));
+   if(u.hostname!=='www.gov.uk')return new Response('',{status:503});
+   if(u.pathname==='/api/search.json')return Response.json({total:1,results:[{title:titles.minerals,link:path,public_timestamp:'2026-10-16T07:59:00Z'}]});
+   if(u.pathname==='/api/content'+path)return Response.json({base_path:path,title:titles.minerals,document_type:'news_story',first_published_at:published,public_updated_at:'2026-10-16T07:59:00Z'});
+   if(legacy&&u.pathname.includes('department-for-business-innovation-science-and-trade.atom'))return new Response(`<feed><entry><title>${titles.minerals}</title><published>${published}</published><link rel="alternate" href="https://www.gov.uk${path}"/></entry></feed>`,{headers:{'content-type':'application/atom+xml'}});
+   return new Response('',{status:503});
+  }) as typeof fetch;
+  vi.stubGlobal('fetch',actual);
+  const current=await readStatelessWebsiteIntelligence('rare_earth',now.getTime());
+  expect(current.current_24h_count).toBe(1);expect(current.signals).toHaveLength(1);
+  expect(current.signals[0].published_at).toBe('2026-10-16T06:00:00.000Z');
+  legacy=false;published='2025-01-01T06:00:00Z';
+  const stale=await readStatelessWebsiteIntelligence('rare_earth',now.getTime());
+  expect(stale.signals).toHaveLength(0);expect(stale.current_24h_count).toBe(0);
+  published='2026-10-17T06:00:00Z';
+  expect((await readStatelessWebsiteIntelligence('rare_earth',now.getTime())).signals).toHaveLength(0);
+ });
+});

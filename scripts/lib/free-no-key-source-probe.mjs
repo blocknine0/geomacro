@@ -70,6 +70,9 @@ export function validateFreeLineupProbePayload(spec, payload) {
   if(spec.production_update_reader===true){
     const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.find(s=>s.id===spec.id&&s.url===spec.url);
     if(global){
+      if(global.format==='json'){
+        try{const x=JSON.parse(payload);return {valid:Array.isArray(x?.results)&&Number.isFinite(x.total),format_checked:true,kind:'GLOBAL_PUBLISHER_SEARCH_INDEX'};}catch{return {valid:false};}
+      }
       const valid=typeof payload==='string'&&payload.trim()&&
         (global.format==='html'?/^\s*(?:<!doctype html|<html)\b/iu.test(payload)&&!(/<!ENTITY|<!DOCTYPE\s+[^>]*\[/iu.test(payload)):
          !(/<!DOCTYPE|<!ENTITY/iu.test(payload))&&(global.rdf?/<rdf:RDF(?:\s|>)/iu.test(payload)&&/xmlns:dc=["']http:\/\/purl.org\/dc\/elements\/1.1\/["']/u.test(payload):/<rss(?:\s|>)/iu.test(payload)));

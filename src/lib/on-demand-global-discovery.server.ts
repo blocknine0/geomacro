@@ -549,9 +549,9 @@ const GOVUK_SEARCH_FALLBACKS:readonly OriginalFeed[]=[
     topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
   },
 ];
-const INTERNATIONAL_ORIGINAL_FEEDS:readonly OriginalFeed[]=GLOBAL_OFFICIAL_RELEASE_FEEDS.map(
+const INTERNATIONAL_ORIGINAL_FEEDS:readonly OriginalFeed[]=GLOBAL_OFFICIAL_RELEASE_FEEDS.filter((s:{format:string})=>s.format!=='json').map(
   (s:{category:OnDemandCategory;family:string;url:string;format:string;host:string;path:RegExp;topic:RegExp})=>({
-    domain:s.category,family:s.family,url:s.url,media:s.format==='html'?'search' as const:'rss' as const,
+    domain:s.category,family:s.family,url:s.url,media:s.format==='rss'?'rss' as const:'search' as const,
     originalHost:s.host,originalPath:s.path,topic:s.topic,
   }));
 const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [

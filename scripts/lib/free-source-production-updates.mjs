@@ -76,6 +76,7 @@ export function summarizeFreeSourceUpdates(spec,payload,now){
      rows=x.features.map(f=>({id:f.id,time:f.properties?.time,updated:f.properties?.updated}));
    }else if(spec.id==='cisa_kev'){kind='SECURITY_CATALOGUE_CHANGE';rows=[...x.vulnerabilities].sort((a,b)=>String(b.dateAdded??'').localeCompare(String(a.dateAdded??'')));}
    else if(['federal_register','us_bis_export_controls'].includes(spec.id)){kind='REGULATORY_DOCUMENT_CHANGE';rows=x.results;}
+   else if(spec.id.startsWith('govuk_global_')){kind='PUBLISHER_INDEX_CHANGE';rows=x.results;}
    else if(spec.id==='uk_fcdo_advisories'){kind='ADVISORY_DOCUMENT_CHANGE';rows=x.results;}
    else if(spec.id==='ny_fed')rows=x.refRates;
    else if(spec.id==='wikimedia_pageviews')rows=x.items;
