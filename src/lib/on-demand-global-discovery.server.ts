@@ -1,3 +1,4 @@
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { createHash } from "node:crypto";
 import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
@@ -210,7 +211,7 @@ async function boundedFetch(
       !["api.worldbank.org","api.gdeltproject.org","api.reliefweb.int",
         "www.gov.uk","news.un.org","www.federalreserve.gov","www.ecb.europa.eu",
         "www.minister.industry.gov.au","api.io.canada.ca",
-        "www.canada.ca"].includes(target.hostname)) {
+        "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
   const maxBytes = accept === "text/html" ? MAX_FIRST_PARTY_HTML_BYTES : MAX_BODY_BYTES;
@@ -548,6 +549,11 @@ const GOVUK_SEARCH_FALLBACKS:readonly OriginalFeed[]=[
     topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
   },
 ];
+const INTERNATIONAL_ORIGINAL_FEEDS:readonly OriginalFeed[]=GLOBAL_OFFICIAL_RELEASE_FEEDS.filter((s:{format:string})=>s.format!=='json').map(
+  (s:{category:OnDemandCategory;family:string;url:string;format:string;host:string;path:RegExp;topic:RegExp})=>({
+    domain:s.category,family:s.family,url:s.url,media:s.format==='rss'?'rss' as const:'search' as const,
+    originalHost:s.host,originalPath:s.path,topic:s.topic,
+  }));
 const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   {
     domain:"rare_earth",family:"uk_dbt_original_publisher",
@@ -630,6 +636,8 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   },
 ];
 function originalArticleUrl(value:string, def:OriginalFeed):string|null {
+  const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((s:{family:string})=>s.family===def.family);
+  if(global)return globalOriginalArticleUrl(value,global);
   try {
     const u=new URL(value.replace(/&amp;/giu,"&"));
     if(u.protocol!=="https:" || u.hostname!==def.originalHost ||
@@ -660,7 +668,7 @@ function rssItemText(entry: string, tag: "title" | "pubDate" | "link"): string {
  */
 function originalRssArticleLink(entry: string, def: OriginalFeed): string {
   const link = rssItemText(entry, "link");
-  if (def.family !== "un_news_original_publisher") return link;
+  if (def.originalHost !== "news.un.org") return link;
   try {
     const router = new URL(link);
     if (router.protocol !== "https:" || router.hostname !== "news.un.org" ||
@@ -785,6 +793,21 @@ async function originalOfficialFeed(
   fetchImpl:typeof fetch,now:Date,mineral:OnDemandMineral|null,
   topics:readonly string[]=[],maxAgeMs=ONE_DAY_MS,
 ):Promise<OriginalFeedResult>{
+  if(def.family==='iea_minerals_original_publisher'){
+    const html=await boundedFetch(fetchImpl,def.url,'text/html');
+    const candidates:PrivateOriginalCandidate[]=ieaMineralsIndexCandidates(html)
+      .filter((row:{title:string})=>originalHeadlineMentionsCountry(row.title,countryIso3,countryNameValue)&&
+        matchesRequestedTopic(row.title,def.domain,topics)&&(!mineral||row.title.toLowerCase().includes(mineral)))
+      .slice(0,2).map((row:{title:string;articleUrl:string})=>({
+        domain:def.domain,publisher_family:def.family,article_url:row.articleUrl,article_title:row.title,
+        feed_item_published_at:null,search_index_original_page_pending:true as const,
+        article_identity_sha256:digest(def.family+'|'+row.articleUrl),first_party_article_url_verified:true as const,
+        source_native_feed_publication_date_verified:false,publisher_article_page_date_verified:false as const,
+        independent_same_event_verified:false as const,derived_commercial_rights_verified:false as const,
+        score_verified:false as const,signed_gro_verified:false as const,paid_delivery_allowed:false as const,
+      }));
+    return {probe:probe(def.family,candidates.length,false),private_candidates:candidates};
+  }
   let xml: string;
   try {
     xml = await boundedFetch(fetchImpl,def.url,
@@ -805,8 +828,10 @@ async function originalOfficialFeed(
   if (/<!DOCTYPE|<!ENTITY/iu.test(xml))
     throw Error("ON_DEMAND_ORIGINAL_FEED_XML_UNSAFE");
   const atom=def.media==="atom";
+  const rdf=def.family==='bis_original_publisher'&&def.url==='https://www.bis.org/doclist/all_pressrels.rss'&&
+    /<rdf:RDF(?:\s|>)/iu.test(xml)&&/xmlns:dc=["']http:\/\/purl.org\/dc\/elements\/1.1\/["']/u.test(xml);
   if(atom ? !/<(?:atom:)?feed(?:\s|>)/iu.test(xml)
-          : !/<rss(?:\s|>)/iu.test(xml))
+          : !/<rss(?:\s|>)/iu.test(xml)&&!rdf)
     throw Error("ON_DEMAND_ORIGINAL_FEED_FORMAT_INVALID");
   const entries=atom
     ? [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)]
@@ -821,7 +846,7 @@ async function originalOfficialFeed(
       : rssItemText(entry,"title");
     const date=atom
       ? /<(?:atom:)?published(?:\s[^>]*)?>([^<]+)<\/(?:atom:)?published>/iu.exec(entry)?.[1] ?? ""
-      : rssItemText(entry,"pubDate");
+      : rdf?(/<dc:date(?:\s[^>]*)?>([^<>]+)<\/dc:date>/iu.exec(entry)?.[1]??""):rssItemText(entry,"pubDate");
     // A different mineral's article must not qualify as evidence for this
     // query just because both are under the broad Critical Minerals topic.
     const summary=originalItemSummary(entry,atom);
@@ -913,7 +938,7 @@ export function deduplicateOnDemandOriginalHeadlines(
   for(const item of candidates){
     const time=item.feed_item_published_at===null?NaN:
       Date.parse(item.feed_item_published_at);
-    const def=[...ORIGINAL_FALLBACK_FEEDS,...GOVUK_SEARCH_FALLBACKS].find(x=>
+    const def=[...ORIGINAL_FALLBACK_FEEDS,...INTERNATIONAL_ORIGINAL_FEEDS,...GOVUK_SEARCH_FALLBACKS].find(x=>
       x.domain===item.domain && x.family===item.publisher_family);
     const nativeDated=item.source_native_feed_publication_date_verified===true &&
       Number.isFinite(time) && item.undated_atom_original_page_pending!==true;
@@ -999,7 +1024,7 @@ async function discoverOnDemandImpl(
       "api.reliefweb.int","www.gov.uk","news.un.org",
       "www.federalreserve.gov","www.ecb.europa.eu",
       "www.minister.industry.gov.au","api.io.canada.ca",
-      "www.canada.ca"];
+      "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org"];
     if(upstream.protocol!=="https:" || !permittedHosts.includes(upstream.hostname) ||
        upstream.username || upstream.password || upstream.port || upstream.hash)
       throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
@@ -1058,7 +1083,7 @@ async function discoverOnDemandImpl(
       tasks.push({name:"reliefweb_discovery",category,run:()=>
         reliefWeb(name,trackedFetch,now,approvedReliefAppname,newsMaxAgeMs)});
   }
-  if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
+  if (name) for (const source of [...ORIGINAL_FALLBACK_FEEDS,...(topics.length?INTERNATIONAL_ORIGINAL_FEEDS:[])]) {
     // Reuse the Canadian government publisher for verified Canadian country
     // scope only. Do not consume a scarce original-provider slot or alter
     // unrelated global/China queries simply because a new issuer was added.
@@ -1110,6 +1135,8 @@ async function discoverOnDemandImpl(
           ?"canada_nrcan_original_publisher":
         category==="rare_earth" && country==="AUS"
           ?"australian_industry_original_publisher":
+        category==="rare_earth" && country==="GBR"
+          ?"uk_dbt_original_publisher":
         category==="geopolitics" && country==="GBR"
           ?"uk_fcdo_original_publisher":
         category==="macro" && country==="GBR"
@@ -1125,6 +1152,9 @@ async function discoverOnDemandImpl(
       const originals=categories.map(category=>
         tasks.find(t=>originalTask(t,category) &&
           t.name===preferredNational(category)) ??
+        (input.max_age_seconds!==undefined&&input.max_age_seconds<=86400
+          ?tasks.find(t=>originalTask(t,category)&&t.name===
+            (category==='geopolitics'?'un_press_original_publisher':category==='macro'?'bis_original_publisher':'un_minerals_original_publisher')):undefined) ??
         tasks.find(t=>originalTask(t,category)),
       ).filter((t):t is (typeof tasks)[number]=>Boolean(t));
       const indexes=categories.map(category=>tasks.find(t=>
@@ -1406,7 +1436,7 @@ export async function verifyOnDemandOriginalArticlePages(
   if(!Number.isFinite(now.getTime()) || !Number.isFinite(maxAgeMs) || maxAgeMs<=0)
     throw Error("ON_DEMAND_CLOCK_INVALID");
   const eligible=candidates.slice(0,16).filter((candidate)=>{
-    const def=[...ORIGINAL_FALLBACK_FEEDS,...GOVUK_SEARCH_FALLBACKS].find((feed)=>
+    const def=[...ORIGINAL_FALLBACK_FEEDS,...INTERNATIONAL_ORIGINAL_FEEDS,...GOVUK_SEARCH_FALLBACKS].find((feed)=>
       feed.family===candidate.publisher_family && feed.domain===candidate.domain);
     return !!def &&
       originalArticleUrl(candidate.article_url,def)===candidate.article_url &&
@@ -1468,7 +1498,14 @@ export async function verifyOnDemandOriginalArticlePages(
         html,candidate.article_url,candidate.article_title,now.getTime()):null;
       if(isCanada && !canadaDay)return {verified:null,dayOnly:null,denied:false};
       const publisherDateDiagnostics:{date_reason?:string}={};
-      const precise=verifiedPublisherPageDate(html,now,publisherDateDiagnostics,{maxAgeMs});
+      const metadataDate=verifiedPublisherPageDate(html,now,publisherDateDiagnostics,{maxAgeMs});
+      const ieaDate=candidate.publisher_family==='iea_minerals_original_publisher'
+        ?verifiedIeaOriginalPublication(html,{title:candidate.article_title,articleUrl:candidate.article_url},now,maxAgeMs):null;
+      if(candidate.publisher_family==='iea_minerals_original_publisher'&&!ieaDate)
+        return {verified:null,dayOnly:null,denied:false};
+      // A pinned issuer-specific visible original may rescue absent metadata,
+      // never conflicting, stale, future or malformed original metadata.
+      const precise=metadataDate??(publisherDateDiagnostics.date_reason==='MISSING_PUBLISHER_PUBLICATION_METADATA'?ieaDate:null);
       // For a Board discount-meeting minutes original whose page has a
       // timezone-labelled release line but not machine-readable precise
       // metadata, independently bind issuer URL, native feed clock, the

@@ -40,7 +40,7 @@ const CASES:readonly Case[]=[
 const HOSTS=new Set(["api.worldbank.org","api.gdeltproject.org",
   "api.reliefweb.int","www.gov.uk","news.un.org",
   "www.federalreserve.gov","www.ecb.europa.eu",
-  "www.minister.industry.gov.au","api.io.canada.ca","www.canada.ca"]);
+  "www.minister.industry.gov.au","api.io.canada.ca","www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org"]);
 const checkedAt=new Date();
 const cases=[];
 let allNetwork=0;

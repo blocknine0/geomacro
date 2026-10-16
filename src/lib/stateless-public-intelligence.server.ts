@@ -1,3 +1,4 @@
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 /**
  * On-demand website Intelligence reader. No B2/D1/Supabase/KV/files/queues,
  * no writes, no cron, no background tasks, no durable snapshot or raw logs.
@@ -140,6 +141,15 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
     url: "https://www.pib.gov.in/AllRelease.aspx?lang=1&reg=6",
     allowedHosts: ["www.pib.gov.in"], credit: null },
 ]);
+
+// Reuse the same international connector definitions in on-demand website
+// reads and the protected half-hour update collector. Existing BIS is reused.
+const GLOBAL_SOURCES:readonly StatelessSourceSpec[]=GLOBAL_OFFICIAL_RELEASE_FEEDS
+  .filter((s:{websiteId?:string})=>!SOURCES.some(old=>old.id===s.websiteId))
+  .map((s:{id:string;category:StatelessCategory;format:string;url:string;host:string;credit:string})=>({
+    id:s.id,category:s.category,media:s.format==='rss'?'rss' as const:'html_index' as const,
+    url:s.url,allowedHosts:[s.host],credit:s.credit,...(s.format==='json'?{govContentApi:true}:{}),
+  }));
 
 const MAX_FEED_BYTES = 384 * 1024;
 const MAX_PAGE_BYTES = 128 * 1024;
@@ -346,6 +356,43 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   candidates: StatelessSourceCandidate[]; healthy: boolean;
   metrics?: LaneMetrics;
 }> {
+  if(source.id==='govuk_global_economy'||source.id==='govuk_global_minerals'){
+    try{
+      const response=await fetch(source.url,{redirect:'error',headers:{Accept:'application/json'},signal:AbortSignal.timeout(TIMEOUT_MS)});
+      const body=await boundedText(response,192*1024);if(!body)return {healthy:false,candidates:[]};
+      const data=JSON.parse(body);if(!Array.isArray(data.results)||!Number.isFinite(data.total))return {healthy:false,candidates:[]};
+      const spec=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((s:{id:string})=>s.id===source.id);
+      const seen=new Set<string>();
+      const leads=data.results.slice(0,10).flatMap((row:{title?:unknown;link?:unknown})=>{
+        if(typeof row.title!=='string'||typeof row.link!=='string'||row.title.length>300||/[<>]/u.test(row.title)||!spec.topic.test(row.title)||!row.link.startsWith('/government/'))return [];
+        const articleUrl=globalOriginalArticleUrl('https://www.gov.uk'+row.link,spec);
+        if(!articleUrl||seen.has(articleUrl))return [];seen.add(articleUrl);
+        return [{title:row.title,articleUrl}];
+      }).slice(0,4);
+      // Search public_timestamp is an index clock. Independently read each
+      // exact originating Content API first_published_at before derivation.
+      const recovered=await Promise.all(leads.map((lead:{title:string;articleUrl:string})=>readGovContentOriginalDate(lead,source,now)));
+      const candidates=recovered.filter((x:StatelessSourceCandidate|null):x is StatelessSourceCandidate=>x!==null);
+      return {healthy:true,candidates,metrics:{seen:data.results.length,relevant:leads.length,original_link_valid:leads.length,native_clock_valid:candidates.length,undated_original:leads.length,recovered_original_page:candidates.length,transport_ok:true}};
+    }catch{return {healthy:false,candidates:[]};}
+  }
+  if(source.id==='iea_minerals_global'){
+    try{
+      const response=await fetch(source.url,{redirect:'error',headers:{Accept:'text/html'},signal:AbortSignal.timeout(TIMEOUT_MS)});
+      const html=await boundedText(response,MAX_FEED_BYTES);if(!html)return {candidates:[],healthy:false};
+      const indexed=ieaMineralsIndexCandidates(html).slice(0,2);
+      const rows=await Promise.all(indexed.map(async(candidate:{title:string;articleUrl:string})=>{
+        try{
+          const response=await fetch(candidate.articleUrl,{redirect:'error',headers:{Accept:'text/html'},signal:AbortSignal.timeout(TIMEOUT_MS)});
+          const body=await boundedText(response,MAX_FEED_BYTES);
+          const date=body?verifiedIeaOriginalPublication(body,candidate,new Date(now),STATELESS_LOOKBACK_MS):null;
+          return date?{...candidate,sourceId:source.id,category:source.category,publishedAt:date,credit:source.credit}:null;
+        }catch{return null;}
+      }));
+      const candidates=rows.filter((x):x is StatelessSourceCandidate=>x!==null);
+      return {healthy:true,candidates,metrics:{seen:indexed.length,relevant:indexed.length,original_link_valid:indexed.length,native_clock_valid:candidates.length,undated_original:0,recovered_original_page:candidates.length,transport_ok:true}};
+    }catch{return {candidates:[],healthy:false};}
+  }
   if(source.id === "in_pib_mines" && source.media === "html_index"){
     const release=await readPibMinesOriginalCandidates(now);
     return {healthy:release.healthy,candidates:release.candidates,
@@ -502,7 +549,7 @@ export async function readStatelessWebsiteIntelligence(
 ): Promise<StatelessIntelligenceResult> {
   if (!["geopolitics", "macro", "rare_earth"].includes(category) ||
       !Number.isFinite(now)) throw Error("STATELESS_INTELLIGENCE_CATEGORY_OR_CLOCK_INVALID");
-  const sourceGroup = SOURCES.filter(source => source.category === category);
+  const sourceGroup = [...SOURCES,...GLOBAL_SOURCES].filter(source => source.category === category);
   const batch = await Promise.all(sourceGroup.map(source => readSource(source, now)));
   // The optional callback is used only by the private acceptance runner;
   // no publisher identity, URL or diagnostic lane details reach the browser.
@@ -510,7 +557,13 @@ export async function readStatelessWebsiteIntelligence(
     lane.metrics ?? { seen: 0, relevant: 0, original_link_valid: 0,
       native_clock_valid: 0, undated_original: 0,
       recovered_original_page: 0, transport_ok: false }));
-  const originalCandidates=batch.flatMap(x=>x.candidates);
+  const allOriginals=batch.flatMap(x=>x.candidates);
+  // A new global index can surface an article already admitted by an older
+  // issuer feed. Keep the established card identity and count that exact
+  // original once; the added search is not independent corroboration.
+  const legacyUrls=new Set(allOriginals.filter(c=>SOURCES.some(s=>s.id===c.sourceId)).map(c=>c.articleUrl));
+  const addedIds=new Set(GLOBAL_SOURCES.map(s=>s.id));
+  const originalCandidates=allOriginals.filter(c=>!addedIds.has(c.sourceId)||!legacyUrls.has(c.articleUrl));
   // This callback is PRIVATE to trusted server-side operators. Never add it
   // to StatelessIntelligenceResult or public derived-news D1 payloads.
   onPrivateOriginals?.(originalCandidates);

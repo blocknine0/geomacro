@@ -1,3 +1,4 @@
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { visiblePublisherText } from "./stateless-publisher-text";
 
 /**
@@ -124,6 +125,8 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
   if (!raw || raw.length > 1600) return null;
   try {
     let normalized = unescapeXml(raw);
+    const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((s:{id:string})=>s.id===source.id);
+    if(global)return globalOriginalArticleUrl(normalized,global);
     // Official ECB first-party feeds are known to emit a second slash
     // immediately after their fixed origin before /press/{pr,key,stats}.
     if ((source.id === "ecb_press" || source.id === "ecb_stats") &&
