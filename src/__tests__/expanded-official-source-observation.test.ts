@@ -34,7 +34,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     }
     expect(EXPANDED_OFFICIAL_SOURCES[2].alternate_url)
       .toBe("https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/de/statistics-update.rss");
-    expect(EXPANDED_OFFICIAL_SOURCES.filter((s:any)=>s.alternate_url)).toHaveLength(2);
+    expect(EXPANDED_OFFICIAL_SOURCES.filter((s:any)=>s.alternate_url)).toHaveLength(3);
     expect(EXPANDED_OFFICIAL_SOURCES[6].alternate_url)
       .toBe("https://news.un.org/feed/subscribe/en/news/all/rss.xml");
     expect(EXPANDED_OFFICIAL_SOURCES[6].network_fallback_same_publisher).toBe(true);
@@ -42,6 +42,39 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       .toBe(new URL(EXPANDED_OFFICIAL_SOURCES[6].url).hostname);
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
       .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca","www.gov.uk","www.federalreserve.gov","www.usgs.gov","www.minister.industry.gov.au","www.gov.uk","www.ecb.europa.eu","www.gov.uk","www.gov.uk","www.gov.uk"]);
+  });
+  it("uses only exact same-issuer Fed monetary RSS after actual press_all 404, not after access denial",async()=>{
+    const fed=EXPANDED_OFFICIAL_SOURCES.find((s:any)=>
+      s.id==="fed_monetary_original_press_rss_review")!;
+    expect(fed.alternate_url).toBe("https://www.federalreserve.gov/feeds/press_monetary.xml");
+    expect(fed.network_fallback_same_publisher).toBe(true);
+    expect(new URL(fed.alternate_url).origin).toBe(new URL(fed.url).origin);
+    const xml='<rss><channel><item><title>Federal Reserve issues FOMC monetary policy statement</title>'+
+      '<pubDate>Sat, 10 Oct 2026 06:25:00 GMT</pubDate>'+
+      '<link>https://www.federalreserve.gov/newsevents/pressreleases/monetary20261010a.htm</link>'+
+      '</item></channel></rss>';
+    const called:string[]=[];
+    const fallback=await probeExpandedSource(fed,{now,fetchImpl:async(url:string)=>{
+      called.push(url);
+      if(url===fed.url)return new Response("",{status:404});
+      return new Response(xml,{status:200,headers:{"content-type":"application/rss+xml"}});
+    }});
+    expect(called).toEqual([fed.url,fed.alternate_url]);
+    expect(fallback.publisher_reachable).toBe(true);
+    expect(fallback.source_native_24h_release_items).toBe(1);
+    expect(fallback.official_same_publisher_fallback_attempted).toBe(true);
+    expect(fallback.primary_http_status).toBe(404);
+    expect(fallback.fallback_http_status).toBe(200);
+    expect(fallback.commercial_eligible).toBe(false);
+    for(const deniedCode of [401,403,429]){
+      const attempts:string[]=[];
+      const denied=await probeExpandedSource(fed,{now,fetchImpl:async(url:string)=>{
+        attempts.push(url);return new Response("",{status:deniedCode});
+      }});
+      expect(attempts).toEqual([fed.url]);
+      expect(denied.publisher_reachable).toBe(false);
+      expect(denied.official_same_publisher_fallback_attempted).toBe(false);
+    }
   });
   it("accepts Australian government minerals RSS native date and actual first-party article path",async()=>{
     const source=EXPANDED_OFFICIAL_SOURCES.find((s:any)=>s.id==="australia_industry_minister_original_rss_review");
