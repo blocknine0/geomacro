@@ -1,6 +1,6 @@
 // Existing free-source reader, with bounded source-update fingerprints and
 // native clocks. This does not score, sign, grant rights or publish articles.
-import {GLOBAL_OFFICIAL_RELEASE_FEEDS,ieaMineralsIndexCandidates} from './global-official-release-feeds.mjs';
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS,ieaMineralsIndexCandidates,verifiedGlobalRdfFeed} from './global-official-release-feeds.mjs';
 import {createHash} from 'node:crypto';
 import {FREE_NO_KEY_TRANSPORT_SPECS,probeNoKeySource} from './free-no-key-source-probe.mjs';
 import {SOURCE_LINEUP_BY_ID,SOURCE_LINEUP} from './operator-commercial-free-source-lineup.mjs';
@@ -57,9 +57,10 @@ export function summarizeFreeSourceUpdates(spec,payload,now){
    // A feed's updated clock, fetch time and date-only fields are not original
    // publication. Future or invalid explicit publication is never accepted.
    const atom=spec.format==='atom';
+   const rdf=verifiedGlobalRdfFeed(spec.id,spec.url,payload);
    const entries=[...payload.matchAll(atom?/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu:/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,40);
    for(const [,item] of entries){
-     const published=xmlField(item,spec.id==='bis_press_global'?'date':atom?'published':'pubDate');
+     const published=xmlField(item,rdf?'date':atom?'published':'pubDate');
      if(spec.topic&&!spec.topic.test(xmlField(item,'title')))continue;
      const clock=published?nativeClock(published,now):null;
      if(published&&!clock)continue;

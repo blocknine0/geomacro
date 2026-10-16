@@ -32,6 +32,8 @@ const FAMILY_BY_HOST:Readonly<Record<string,string>>={
   "www.bis.org":"bis",
   "www.boj.or.jp":"bank_of_japan",
   "www.iea.org":"iea",
+  "www.bankofcanada.ca":"bank_of_canada",
+  "news.gov.bc.ca":"bc_minerals",
 };
 const outcomeCounts=new Map<string,Record<
   "ok_2xx"|"http_403"|"http_429"|"http_5xx"|"other_http"|"network_error",number
