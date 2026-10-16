@@ -125,7 +125,7 @@ jobs:
           }
           bun scripts/ops/publish-website-derived-news.ts
       - name: Independently verify signed Finds across combined and category reads
-        if: steps.decide.outputs.should_run == 'true'
+        if: always() && steps.decide.outputs.should_run == 'true'
         shell: bash
         run: |
           bun - <<'TS'
