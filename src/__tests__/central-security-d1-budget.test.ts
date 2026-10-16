@@ -28,6 +28,31 @@ describe('Supabase-free distributed central security',()=>{
   catch(e){expect(centralSecurityBudgetFailureCode(e)).toBe('CENTRAL_SECURITY_D1_CONFIGURATION_REQUIRED');}
   expect(centralSecurityBudgetFailureCode(Error('secret-value-leak'))).toBe('CENTRAL_SECURITY_UNAVAILABLE');
  });
+ it('classifies network/timeout/upstream failures without retrying or leaking provider data',async()=>{
+  process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN='r'.repeat(64);
+  const network=vi.fn(async()=>{throw TypeError('secret-bearing upstream URL');});
+  await expect(consumeD1CentralSecurityBudget('api_write',input.client_key,network)).rejects.toThrow('D1_SECURITY_BUDGET_TRANSPORT_FAILED');
+  expect(network).toHaveBeenCalledTimes(1);
+  expect(centralSecurityBudgetFailureCode(Error('D1_SECURITY_BUDGET_TRANSPORT_FAILED'))).toBe('CENTRAL_SECURITY_D1_TRANSPORT_FAILED');
+  const controller=new AbortController();controller.abort();
+  vi.spyOn(AbortSignal,'timeout').mockReturnValue(controller.signal);
+  await expect(consumeD1CentralSecurityBudget('api_write',input.client_key,network)).rejects.toThrow('D1_SECURITY_BUDGET_TIMEOUT');
+  expect(centralSecurityBudgetFailureCode(Error('D1_SECURITY_BUDGET_TIMEOUT'))).toBe('CENTRAL_SECURITY_D1_TIMEOUT');
+  await expect(consumeD1CentralSecurityBudget('api_write',input.client_key,async()=>new Response('private',{status:503}))).rejects.toThrow('D1_SECURITY_BUDGET_UPSTREAM_REJECTED');
+  expect(centralSecurityBudgetFailureCode(Error('D1_SECURITY_BUDGET_UPSTREAM_REJECTED'))).toBe('CENTRAL_SECURITY_D1_UPSTREAM_REJECTED');
+ });
+ it('bounds streamed bytes and rejects malformed or truncated receipts safely',async()=>{
+  process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN='r'.repeat(64);
+  let cancelled=false;
+  const stream=new ReadableStream({pull(c){c.enqueue(new Uint8Array(2049));},cancel(){cancelled=true;}});
+  await expect(consumeD1CentralSecurityBudget('api_write',input.client_key,async()=>new Response(stream))).rejects.toThrow('D1_SECURITY_BUDGET_INVALID');
+  expect(cancelled).toBe(true);
+  for(const payload of ['not JSON',new Uint8Array([255])]){
+   await expect(consumeD1CentralSecurityBudget('api_write',input.client_key,async()=>new Response(payload))).rejects.toThrow('D1_SECURITY_BUDGET_INVALID');
+  }
+  const broken=new ReadableStream({pull(c){c.error(Error('private transport details'));}});
+  await expect(consumeD1CentralSecurityBudget('api_write',input.client_key,async()=>new Response(broken))).rejects.toThrow('D1_SECURITY_BUDGET_TRANSPORT_FAILED');
+ });
  it('runs both counters in one transaction with server clocks, private slots and fixed limits',async()=>{
   const db=dbWithCounts();expect(await consumeCentralSecurityBudget(db,input,{now:60001})).toMatchObject({allowed:true,store:'d1',retry_after_seconds:60});
   const plans=db.batch.mock.calls[0][0];
@@ -92,6 +117,6 @@ print(json.dumps({'client':a,'global':b,'reset':c,'late':late,'current':current,
   const request={pathname:'/api/demo/preflight',method:'POST',headers:new Headers({'cf-connecting-ip':'203.0.113.249'})};
   expect(await enforceCentralRequestSecurity(request)).toMatchObject({allowed:true,code:'CENTRAL_SECURITY_DISTRIBUTED_PASS'});
   fetchMock.mockImplementation(async()=>{throw Error('outage')});
-  expect(await enforceCentralRequestSecurity(request)).toMatchObject({allowed:false,status:503,code:'CENTRAL_SECURITY_UNAVAILABLE'});
+  expect(await enforceCentralRequestSecurity(request)).toMatchObject({allowed:false,status:503,code:'CENTRAL_SECURITY_D1_TRANSPORT_FAILED'});
  });
 });
