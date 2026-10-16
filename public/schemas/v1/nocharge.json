@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geomacro.live/schemas/v1/nocharge.json",
+  "title": "Geomacro No-Charge Response v1",
+  "description": "Derived-only billing-negative receipt. Cannot assert paid delivery or current licensed risk.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "request_id",
+    "capability",
+    "billing",
+    "subject",
+    "reason_detail"
+  ],
+  "properties": {
+    "schema": {
+      "const": "geomacro.nocharge.v1"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{8,128}$"
+    },
+    "capability": {
+      "enum": [
+        "gri_read",
+        "structural_country_digest",
+        "structural_corridor_digest",
+        "structural_country_profile",
+        "structural_corridor_profile",
+        "signed_risk_object",
+        "risk_gate_bundle",
+        "intelligence_query"
+      ]
+    },
+    "billing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "charged",
+        "price_usdc",
+        "reason"
+      ],
+      "properties": {
+        "charged": {
+          "const": false
+        },
+        "price_usdc": {
+          "const": "0"
+        },
+        "reason": {
+          "enum": [
+            "UNCHANGED_NO_CHARGE",
+            "STALE_NO_CHARGE",
+            "UNAVAILABLE_NO_CHARGE",
+            "INSUFFICIENT_EVIDENCE_NO_CHARGE",
+            "FAILED_NO_CHARGE"
+          ]
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "country",
+            "corridor",
+            "query",
+            "global"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.:-]{1,128}$"
+        }
+      }
+    },
+    "reason_detail": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "retry_after_s": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 86400
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "billing": {
+            "properties": {
+              "reason": {
+                "const": "UNCHANGED_NO_CHARGE"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "content_hash"
+        ]
+      }
+    }
+  ]
+}
