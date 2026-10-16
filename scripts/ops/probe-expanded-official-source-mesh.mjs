@@ -119,6 +119,12 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     id:"fed_monetary_original_press_rss_review",
     domain:"macro",kind:"original_publisher_central_bank_monetary_release",
     url:"https://www.federalreserve.gov/feeds/press_all.xml",
+    // Monetary Policy is a separately published first-party Fed RSS feed.
+    // Real production observed press_all HTTP 404; retry the exact official
+    // monetary feed only on primary transport failure/404/5xx, never 401,
+    // 403 or 429, and never treat it as a second independent issuer.
+    alternate_url:"https://www.federalreserve.gov/feeds/press_monetary.xml",
+    network_fallback_same_publisher:true,
     media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
     event_intelligence:false,country_coverage_verified:false,
     original_hosts:Object.freeze(["www.federalreserve.gov","federalreserve.gov"]),
