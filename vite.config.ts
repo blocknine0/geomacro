@@ -49,6 +49,12 @@ export default defineConfig({
     server: { entry: "server" },
   },
   nitro: {
+    // Cross-Worker D1 reads/budget reservations must resolve through the
+    // public HTTPS route, including when the caller shares its zone/account.
+    // Keep authentication and fixed destination URLs in the server clients.
+    cloudflare: {
+      wrangler: { compatibility_flags: ["global_fetch_strictly_public"] },
+    },
     // Geomacro's Nitro handlers live under ./server/{api,routes,...}.
     // Nitro 3 scans this directory for server routes, so legacy standalone
     // Testnet Access HTML handlers must be excluded: the React route
