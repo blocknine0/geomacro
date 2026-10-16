@@ -533,6 +533,20 @@ export const mainnetIntelligenceHandlers = {
               private_originals_article_page_verified:
                 privateOriginalReviewCandidateCount>0 &&
                 articleDatesVerified===privateOriginalReviewCandidateCount,
+              // A missing *verified* current event is scoped to this
+              // bounded on-demand search, not an assertion that no real
+              // event occurred anywhere. Index hits cannot promote it.
+              verified_signed_current_event_count:0,
+              current_evidence_state:articleDatesVerified>0
+                ?"ORIGINAL_PAGE_DATED_BUT_UNQUALIFIED"
+                :"NO_VERIFIED_CURRENT_EVENT_IN_BOUNDED_SEARCH",
+              searched_country_category_cells:categories.length,
+              bounded_search_exhaustive:false,
+              missing_proof_dimensions:[
+                "INDEPENDENT_SAME_EVENT",
+                "ITEM_COMMERCIAL_RIGHTS",
+                "CURRENT_SIGNED_CUSTOMER_READBACK",
+              ],
               independent_same_event_corroboration_verified:false,
               source_derived_commercial_rights_verified:false,
               signed_derived_intelligence_created:false,

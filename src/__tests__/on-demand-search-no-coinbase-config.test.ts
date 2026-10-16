@@ -98,6 +98,15 @@ describe("production no-charge on-demand search without Coinbase configuration",
     expect(response.status).toBe(422);
     expect(body.error.code).toBe("ON_DEMAND_VERIFICATION_PENDING");
     expect(body.on_demand.categories).toEqual(["geopolitics","macro","rare_earth"]);
+    expect(body.on_demand.current_evidence_state)
+      .toBe("NO_VERIFIED_CURRENT_EVENT_IN_BOUNDED_SEARCH");
+    expect(body.on_demand.verified_signed_current_event_count).toBe(0);
+    expect(body.on_demand.searched_country_category_cells).toBe(3);
+    expect(body.on_demand.bounded_search_exhaustive).toBe(false);
+    expect(body.on_demand.missing_proof_dimensions).toEqual([
+      "INDEPENDENT_SAME_EVENT","ITEM_COMMERCIAL_RIGHTS",
+      "CURRENT_SIGNED_CUSTOMER_READBACK",
+    ]);
     expect(body.on_demand.country_iso3).toBe("CHN");
     expect(body.chargeable).toBe(false);
     expect(body.payment_required_now).toBe(false);
@@ -132,6 +141,9 @@ describe("production no-charge on-demand search without Coinbase configuration",
     expect(response.status).toBe(422);
     expect(body.chargeable).toBe(false);
     expect(body.payment_required_now).toBe(false);
+    expect(body.on_demand.current_evidence_state)
+      .toBe("ORIGINAL_PAGE_DATED_BUT_UNQUALIFIED");
+    expect(body.on_demand.verified_signed_current_event_count).toBe(0);
     expect(mocks.telegram).toHaveBeenCalledWith({
       country_iso3:"CHN",
       categories:["geopolitics","macro","rare_earth"],
