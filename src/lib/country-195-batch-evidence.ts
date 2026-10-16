@@ -17,7 +17,7 @@ const nonOriginal=(family:string)=>family==="gdelt_doc_discovery"||
 
 export type CountryBatchCellEvidence={
   observation:CoverageObservation195;
-  verdict:"CURRENT_EVIDENCE_VERIFIED"|"PARTIAL_SOURCE_COVERAGE"|
+  verdict:"PARTIAL_SOURCE_COVERAGE"|
     "NO_QUALIFYING_CURRENT_EVIDENCE"|"SOURCE_BLOCKED"|"UNTESTED";
   registered_source_adapters:number;
   live_original_publisher_families:number;
@@ -45,31 +45,45 @@ export function summarizeCountryBatchCell(
   const reachable=new Set(relevant.filter(p=>p.reachable===true).map(p=>p.family));
   const restricted=relevant.filter(p=>p.retrieval_state==="ACCESS_RESTRICTED").length;
   const throttled=relevant.filter(p=>p.retrieval_state==="RATE_LIMITED").length;
-  const matched=candidates.filter(x=>x.domain===category);
+  const matched=candidates.filter(x=>x.domain===category && x.country_iso3===country);
   // Re-check a native original publication clock at the final coverage
   // boundary. A previously page-verified but replayed/stale/future original
   // must not be promoted just because its source remains transport-reachable.
   const pages=originals.filter(x=>{
     const published=Date.parse(x.page_original_published_at);
-    return x.domain===category && Number.isFinite(published) &&
+    return x.domain===category && x.country_iso3===country &&
+      x.publisher_article_page_date_verified===true &&
+      Number.isFinite(published) &&
       published<=nowMs && nowMs-published<=86_400_000 &&
       matched.some(y=>y.article_identity_sha256===x.article_identity_sha256 &&
-        y.publisher_family===x.publisher_family);
+        y.publisher_family===x.publisher_family &&
+        y.article_url===x.article_url &&
+        y.article_title===x.article_title);
   });
   const sourceFamilies=new Set(matched.map(x=>x.publisher_family));
   const verifiedFamilies=new Set(pages.map(x=>x.publisher_family));
-  // Only two independently verified original publisher *pages* prove a
-  // country-relevant evidence fallback. Two accessible feeds do not.
+  // At least two different publisher families + actual distinct ORIGINAL
+  // URLs and identities are required even for a page-only fallback.
+  // This still DOES NOT check semantic same-event equivalence, source rights,
+  // counterevidence, two signed authorities, GRO or customer readback.
+  const distinctPages=new Set(pages.map(x=>x.article_identity_sha256)).size;
+  const distinctUrls=new Set(pages.map(x=>x.article_url)).size;
   const pageVerified=pages.length>0;
+  const twoOriginalPageLeads=verifiedFamilies.size>=2 &&
+    distinctPages>=2 && distinctUrls>=2;
   const live=reachable.size>0 || pageVerified;
   const countryRelevant=sourceFamilies.size>0;
-  const blocked=pageVerified?"ITEM_RIGHTS_REVIEW_PENDING":
-    restricted>0?"PROVIDER_DENIED_401_403":
+  const blocked=pageVerified
+    ? twoOriginalPageLeads?"SAME_EVENT_AND_RIGHTS_REVIEW_PENDING":
+      "SECOND_INDEPENDENT_ORIGINAL_MISSING"
+    :restricted>0?"PROVIDER_DENIED_401_403":
     throttled>0?"PROVIDER_RATE_LIMIT_429":
     !relevant.length||!live?"PROVIDER_UNAVAILABLE":
     countryRelevant?"ORIGINAL_PUBLICATION_UNVERIFIED":
     "NO_COUNTRY_RELEVANT_ORIGINAL";
-  const verdict=pageVerified?"CURRENT_EVIDENCE_VERIFIED":
+  // A source page-date check can never truthfully return a qualified current
+  // event. That requires the separate actual same-event/rights/signing gates.
+  const verdict=pageVerified?"PARTIAL_SOURCE_COVERAGE":
     !live&&relevant.some(p=>p.attempted)?"SOURCE_BLOCKED":
     !live?"UNTESTED":
     countryRelevant?"PARTIAL_SOURCE_COVERAGE":
@@ -82,8 +96,9 @@ export function summarizeCountryBatchCell(
       live_source_reachable:live,
       country_relevance_verified:countryRelevant,
       original_evidence_verified:pageVerified,
-      current_evidence_available:pageVerified?true:undefined,
-      independent_fallback_verified:verifiedFamilies.size>=2,
+      // Explicitly unknown: a current, SAME event is not established merely
+      // because publisher page dates are verified (even for two origins).
+      independent_fallback_verified:twoOriginalPageLeads,
       blocked_reason:blocked,
     },
     verdict,

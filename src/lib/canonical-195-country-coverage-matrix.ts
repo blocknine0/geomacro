@@ -21,6 +21,7 @@ const SAFE_BLOCKERS=new Set([
   "PROVIDER_UNAVAILABLE","NO_COUNTRY_RELEVANT_ORIGINAL",
   "ORIGINAL_PUBLICATION_UNVERIFIED","SOURCE_IDENTITY_UNRESOLVED",
   "ITEM_RIGHTS_REVIEW_PENDING","NO_CURRENT_QUALIFYING_EVENT",
+  "SECOND_INDEPENDENT_ORIGINAL_MISSING","SAME_EVENT_AND_RIGHTS_REVIEW_PENDING",
   "NO_REGISTERED_SIGNATURE","NO_DURABLE_CUSTOMER_READBACK",
 ]);
 type Dimension=true|false|null;
@@ -65,7 +66,10 @@ export function buildCanonical195x3CoverageMatrix(
      result.original_evidence_verified===true &&
        result.live_source_reachable!==true ||
      result.current_evidence_available===true &&
-       result.original_evidence_verified!==true ||
+       (result.original_evidence_verified!==true ||
+        result.independent_fallback_verified!==true ||
+        result.country_relevance_verified!==true ||
+        result.rights_qualified!==true) ||
      result.rights_qualified===true &&
        result.original_evidence_verified!==true ||
      result.signed_delivery_verified===true &&
