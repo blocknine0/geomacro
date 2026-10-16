@@ -172,6 +172,8 @@ describe("Supabase-free automated issuer-signed Finds",()=>{
 it("missed-tick recovery signs the same free Finds under shared writer serialization and quota",async()=>{
   const {readFileSync}=await import("node:fs");
   const source=readFileSync(".github/workflows/website-derived-news-cadence-backstop.yml","utf8");
+  expect(source).toContain('ref: ${{ github.sha }}');
+  expect(readFileSync(".github/workflows/website-derived-news-continuity.yml","utf8")).toContain('ref: ${{ github.sha }}');
   expect(source).toContain('GEOMACRO_AUTOMATED_FINDS_PUBLICATION: "1"');
   expect(source).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
   expect(source).toContain('B2_REQUEST_BUDGET: "12"');
