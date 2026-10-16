@@ -70,3 +70,20 @@ test("403/429 and oversized upstream responses rejected without raw body",async(
    fetchImpl:async()=>new Response("x",{headers:{"content-length":"2100000"}})
  }),/COUNTRY_STATS_BODY_LIMIT/);
 });
+
+test("unmatched provider shape reveals only bounded column names, never values",async()=>{
+ const report=await actualCountryStatisticsReceipt({
+   read:async id=>extractExactCountryStatistic(id,[{
+     COUNTRY:"USA",MEASURE:"wrong-private-code",TIME:"2024",OBS_VALUE:31415926,
+     SECRET_TEST_FIELD:"secret-example-value",absurdFieldWithSlash:"secret-again"
+   }])
+ });
+ assert.equal(report.extracted,0);
+ for(const row of report.results){
+   assert.equal(row.reason,"COUNTRY_STATS_EXACT_SERIES_NOT_FOUND");
+   assert.equal(row.shape.total_rows,1);
+   assert.ok(row.shape.column_names.includes("COUNTRY"));
+   assert.equal(row.shape.country_matches,0);
+ }
+ assert.doesNotMatch(JSON.stringify(report),/31415926|secret-example-value|secret-again/);
+});

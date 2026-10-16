@@ -64,7 +64,19 @@ export function extractExactCountryStatistic(id,payload){
  }));
  const exact=mapped.filter(r=>r.iso3===spec.country&&r.indicator===spec.indicator&&r.period&&r.value!==null);
  exact.sort((a,b)=>b.period.localeCompare(a.period));
- if(!exact.length)throw Error("COUNTRY_STATS_EXACT_SERIES_NOT_FOUND");
+ if(!exact.length){
+   // Provider schema census only: column names and dimension-match counts,
+   // never provider values, filenames, source URLs or secret-bearing bodies.
+   const names=Object.keys(rows[0]??{}).filter(k=>
+     /^[A-Za-z][A-Za-z0-9_.]{0,47}$/.test(k)).sort().slice(0,30);
+   const error=Error("COUNTRY_STATS_EXACT_SERIES_NOT_FOUND");
+   error.safe_shape={column_names:names,
+     total_rows:Math.min(rows.length,20000),
+     country_matches:mapped.filter(x=>x.iso3===spec.country).length,
+     indicator_matches:mapped.filter(x=>x.indicator===spec.indicator).length,
+     year_matches:mapped.filter(x=>x.period!==null).length};
+   throw error;
+ }
  const top=exact[0];
  const competing=exact.filter(r=>r.period===top.period);
  if(competing.length!==1)throw Error("COUNTRY_STATS_SERIES_SCOPE_AMBIGUOUS");
@@ -127,7 +139,8 @@ export async function actualCountryStatisticsReceipt({read=readExactCountryStati
    }catch(e){
      const cause=String(e?.message??"");
      rows.push({id,state:"EXACT_SERIES_UNVERIFIED",
-       reason:/^COUNTRY_STATS_[A-Z0-9_]+$/.test(cause)?cause:"UPSTREAM_OR_SHAPE_UNVERIFIED"});
+       reason:/^COUNTRY_STATS_[A-Z0-9_]+$/.test(cause)?cause:"UPSTREAM_OR_SHAPE_UNVERIFIED",
+       ...(e?.safe_shape?{shape:e.safe_shape}:{})});
    }
  }
  return {
