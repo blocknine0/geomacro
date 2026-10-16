@@ -26,3 +26,13 @@ test('credentialed HTTP body bound covers header and streamed bytes, never follo
   }
  }finally{globalThis.fetch=original;}
 });
+
+test('denial status is preserved before body limits and credentialed errors omit URL/token/body',async()=>{
+ const original=globalThis.fetch;
+ try{
+  globalThis.fetch=async()=>new Response('private-body'.repeat(200),{status:403,headers:{'content-length':'100000'}});
+  await assert.rejects(getJson('https://example.invalid?key=private-token',{maxBytes:1000,redirect:'error'}),e=>e.message==='HTTP 403 for bounded credentialed request');
+  globalThis.fetch=async()=>new Response('private-malformed-body');
+  await assert.rejects(getJson('https://example.invalid?key=private-token',{maxBytes:1000,redirect:'error'}),e=>e.message==='Non-JSON response from bounded credentialed request');
+ }finally{globalThis.fetch=original;}
+});
