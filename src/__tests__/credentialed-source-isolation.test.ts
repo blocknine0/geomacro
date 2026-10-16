@@ -82,6 +82,31 @@ describe("#1827 independently activate configured credentialed sources",()=>{
       expect(JSON.stringify(r)).not.toContain('private-token-do-not-emit');
     }
   });
+  it("classifies WTO-specific denial, body, format, DNS and TLS without leaking keys",async()=>{
+    const cases=[
+      [Error("HTTP 403 for bounded credentialed request"),"HTTP_403"],
+      [Error("HTTP 429 for bounded credentialed request"),"HTTP_429"],
+      [Error("HTTP_BODY_LIMIT"),"RESPONSE_SIZE_LIMIT"],
+      [Error("Non-JSON response from bounded credentialed request"),"RESPONSE_NOT_JSON"],
+      [Error("WTO_CANONICAL_SCOPE_INVALID"),"WTO_QUERY_SCOPE_REJECTED"],
+      [Object.assign(new TypeError("fetch failed"),{cause:{code:"ENOTFOUND",message:"private-token-do-not-emit"}}),"UPSTREAM_DNS_FAILURE"],
+      [Object.assign(new TypeError("fetch failed"),{cause:{code:"CERT_HAS_EXPIRED",message:"private-token-do-not-emit"}}),"UPSTREAM_TLS_FAILURE"],
+      [Object.assign(new TypeError("fetch failed"),{cause:{code:"UND_ERR_SOCKET",message:"private-token-do-not-emit"}}),"UPSTREAM_CONNECTION_FAILURE"],
+      [new TypeError("fetch failed"),"UPSTREAM_FETCH_ERROR"],
+    ] as const;
+    for(const [error,reason] of cases){
+      const receipt=await probeConfiguredCredentialedSources({
+        env:allCredentials,now:when,probe:async id=>{
+          if(id==="wto_timeseries")throw error;
+          return validProbe(id);
+        }
+      });
+      expect(receipt.configured_failed).toBe(1);
+      expect(receipt.working).toBe(7);
+      expect(receipt.results.find((x:any)=>x.source_id==="wto_timeseries").reason).toBe(reason);
+      expect(JSON.stringify(receipt)).not.toContain("private-token-do-not-emit");
+    }
+  });
   it("does not attempt network when no credentials exist or a result has wrong domain",async()=>{
     const probe=vi.fn();
     const empty=await probeConfiguredCredentialedSources({env:{},probe,now:when});
