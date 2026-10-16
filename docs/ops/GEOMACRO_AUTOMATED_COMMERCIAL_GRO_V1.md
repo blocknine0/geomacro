@@ -99,6 +99,7 @@ silently interpreted as a successful machine signature.
 
 The canonical multi-domain (2–3 category) on-demand engine now chooses up to
 two **distinct original issuer feeds per category before GDELT** within its
-previous bounded source-call budget. A source feed HTTP 200, two feeds from
+previous 12-request ceiling. All three existing index scopes remain eligible
+when room is available, with unchanged 403/429 circuit-breakers. A source feed HTTP 200, two feeds from
 different issuers, or publisher date metadata are NOT a certified same-event
 claim, legal permission, signer receipt, or signed hot public product.

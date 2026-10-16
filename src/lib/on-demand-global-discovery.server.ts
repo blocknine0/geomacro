@@ -1110,7 +1110,12 @@ async function discoverOnDemandImpl(
   // no 195-country fanout and no user question passed upstream.
   // One country GET + at most eleven provider GETs. Prioritize annual macro
   // observables when optional approvals increase the configured fanout.
-  const maxPrimary=topics.length?11-Math.min(categories.length,3):11;
+  // The canonical country registry already avoids a World Bank identity GET;
+  // even legacy ISO3 areas use at most one such GET. Eleven issuer/index
+  // reads therefore fit the existing 12-GET hard cap, with no extra quota,
+  // while preserving BOTH second-original diversity and the tested GDELT
+  // 403/429 sequential circuit breaker.
+  const maxPrimary=11;
   // Multi-category current-event questions must sample two distinct
   // ORIGINAL issuers per requested domain before spending the bounded
   // request budget on GDELT discovery indexes (never original evidence).
