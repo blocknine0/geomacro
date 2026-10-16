@@ -8,6 +8,12 @@ export const SECURITY_COUNTER_SQL = `INSERT INTO central_security_budget
  request_count=CASE WHEN central_security_budget.window_start>=excluded.window_start
  THEN min(central_security_budget.request_count+1,?) ELSE 1 END
  RETURNING request_count`;
+// A late request on a new client slot must use the already-advanced global
+// window too; otherwise its next request could reopen a fresh client budget.
+export const SECURITY_CLIENT_COUNTER_SQL=SECURITY_COUNTER_SQL.replace(
+ 'VALUES (?,?,?,?,1)',
+ "VALUES (?,?,?,(SELECT window_start FROM central_security_budget WHERE route_class=? AND bucket_kind='global' AND bucket_key='all'),1)"
+);
 export async function consumeCentralSecurityBudget(db,body,{now=Date.now()}={}){
  const route=body?.route_class,key=body?.client_key;
  if(!Object.hasOwn(CENTRAL_SECURITY_POLICIES,route??'')||
@@ -19,7 +25,7 @@ export async function consumeCentralSecurityBudget(db,body,{now=Date.now()}={}){
  const start=Math.floor(now/(seconds*1000))*seconds;
  const result=await db.batch([
    db.prepare(SECURITY_COUNTER_SQL).bind(route,'global','all',start,policy.global+1),
-   db.prepare(SECURITY_COUNTER_SQL).bind(route,'client',key.slice(0,6),start,policy.perClient+1),
+   db.prepare(SECURITY_CLIENT_COUNTER_SQL).bind(route,'client',key.slice(0,6),route,policy.perClient+1),
  ]);
  if(!Array.isArray(result)||result.length!==2||result.some(x=>x.success!==true||
    x.results?.length!==1||!Number.isSafeInteger(x.results[0].request_count)||x.results[0].request_count<1))

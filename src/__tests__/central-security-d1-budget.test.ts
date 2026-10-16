@@ -1,7 +1,7 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
-import {consumeCentralSecurityBudget,SECURITY_COUNTER_SQL} from '../../workers/control-plane/src/central-security-budget.mjs';
+import {consumeCentralSecurityBudget,SECURITY_COUNTER_SQL,SECURITY_CLIENT_COUNTER_SQL} from '../../workers/control-plane/src/central-security-budget.mjs';
 import {consumeD1CentralSecurityBudget} from '../lib/d1-central-security-budget.server';
 import {enforceCentralRequestSecurity} from '../lib/central-security.server';
 import worker from '../../workers/control-plane/src/index.mjs';
@@ -21,7 +21,7 @@ describe('Supabase-free distributed central security',()=>{
   const db=dbWithCounts();expect(await consumeCentralSecurityBudget(db,input,{now:60001})).toMatchObject({allowed:true,store:'d1',retry_after_seconds:60});
   const plans=db.batch.mock.calls[0][0];
   expect(plans.map(x=>x.params)).toEqual([
-   ['api_write','global','all',60,1201],['api_write','client','aaaaaa',60,61],
+   ['api_write','global','all',60,1201],['api_write','client','aaaaaa','api_write',61],
   ]);
   const source=readFileSync('src/lib/central-security.server.ts','utf8');
   expect(source).not.toContain('requireRiskSupabase');
@@ -32,20 +32,23 @@ x=json.load(sys.stdin);db=sqlite3.connect(':memory:');db.executescript(x['migrat
 def reserve(key,start=60):
  with db:
   g=db.execute(x['sql'],['api_write','global','all',start,1201]).fetchone()[0]
-  c=db.execute(x['sql'],['api_write','client',key,start,61]).fetchone()[0]
+  c=db.execute(x['client_sql'],['api_write','client',key,'api_write',61]).fetchone()[0]
  return g<=1200 and c<=60,g,c
 a=[reserve('aaaaaa') for _ in range(65)]
 b=[reserve(format(i,'06x')) for i in range(1200)]
 c=reserve('aaaaaa',120)
 late=reserve('aaaaaa',60)
 current=reserve('aaaaaa',120)
-print(json.dumps({'client':a,'global':b,'reset':c,'late':late,'current':current,'rows':db.execute('select count(*) from central_security_budget').fetchone()[0]}))`],{
-    input:JSON.stringify({sql:SECURITY_COUNTER_SQL,migration:readFileSync('workers/control-plane/migrations/0019_central_security_budget.sql','utf8')}),encoding:'utf8'});
+late_new=reserve('bbbbbb',60)
+current_new=reserve('bbbbbb',120)
+print(json.dumps({'client':a,'global':b,'reset':c,'late':late,'current':current,'late_new':late_new,'current_new':current_new,'rows':db.execute('select count(*) from central_security_budget').fetchone()[0]}))`],{
+    input:JSON.stringify({sql:SECURITY_COUNTER_SQL,client_sql:SECURITY_CLIENT_COUNTER_SQL,migration:readFileSync('workers/control-plane/migrations/0019_central_security_budget.sql','utf8')}),encoding:'utf8'});
   const d=JSON.parse(result);expect(d.client.slice(0,60).every(x=>x[0])).toBe(true);
   expect(d.client.slice(60).every(x=>!x[0]&&x[2]===61)).toBe(true);
   expect(d.global.filter(x=>x[0])).toHaveLength(1135);
   expect(d.global.at(-1)).toEqual([false,1201,1]);expect(d.reset).toEqual([true,1,1]);
   expect(d.late).toEqual([true,2,2]);expect(d.current).toEqual([true,3,3]);
+  expect(d.late_new).toEqual([true,4,1]);expect(d.current_new).toEqual([true,5,2]);
  });
  it('denies either exhausted budget and rejects caller limits, invalid keys, or malformed DB results',async()=>{
   for(const counts of [[1,61],[1201,1]])expect((await consumeCentralSecurityBudget(dbWithCounts(counts),input)).allowed).toBe(false);
