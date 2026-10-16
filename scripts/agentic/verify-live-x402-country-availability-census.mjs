@@ -1,5 +1,5 @@
-import {selectCountryCensusScope} from "./x402-census-scope.mjs";
 #!/usr/bin/env node
+import {selectCountryCensusScope} from "./x402-census-scope.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const BASE = String(process.env.GEOMACRO_LIVE_HOST ?? "https://geomacro.live").replace(/\/$/, "");
