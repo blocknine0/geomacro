@@ -70,7 +70,7 @@ describe("Global on-demand private retrieval, not pre-generated GRO",()=>{
     // World Bank data is still read, but its country-name lookup is not
     // necessary for canonical 195 countries, leaving provider budget for
     // original government and international feeds.
-    expect(fetchImpl).not.toHaveBeenCalledWith(expect.stringMatching(/\\/v2\\/country\\/IND\\?/),expect.anything());
+    expect(fetchImpl).not.toHaveBeenCalledWith(expect.stringContaining("/v2/country/IND?"),expect.anything());
     expect(result.source_probes.some(x=>x.family==="world_bank_official_FP.CPI.TOTL.ZG" &&
       x.observed_record_count===2)).toBe(true);
     expect(result.source_probes.find(x=>x.family==="gdelt_doc_discovery")?.publication_clock_verified)
