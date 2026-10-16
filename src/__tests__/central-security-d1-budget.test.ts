@@ -108,6 +108,15 @@ print(json.dumps({'client':a,'global':b,'reset':c,'late':late,'current':current,
   for(const bad of [{...good,store:'supabase'},{...good,route_class:'payment'},{...good,allowed:false},{...good,retry_after_seconds:Infinity}])
    await expect(consumeD1CentralSecurityBudget('api_write',input.client_key,async()=>Response.json(bad))).rejects.toThrow();
  });
+ it('keeps free canonical Finds GET available under D1 outage while paid POST fails closed',async()=>{
+  process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN='r'.repeat(64);
+  process.env.GEOMACRO_SECURITY_FINGERPRINT_PEPPER='s'.repeat(64);
+  vi.spyOn(console,'error').mockImplementation(()=>{});
+  vi.stubGlobal('fetch',vi.fn(async()=>{throw TypeError('upstream network unavailable');}));
+  const input={pathname:'/api/v1/intelligence/query',headers:new Headers({'cf-connecting-ip':'203.0.113.247'})};
+  expect(await enforceCentralRequestSecurity({...input,method:'GET'})).toMatchObject({allowed:true,routeClass:'public_api',code:'CENTRAL_SECURITY_LOCAL_DEGRADED_PASS'});
+  expect(await enforceCentralRequestSecurity({...input,method:'POST'})).toMatchObject({allowed:false,status:503,routeClass:'payment'});
+ });
  it('keeps middleware distributed enforcement on POST and fails closed on D1 outage',async()=>{
   process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN='r'.repeat(64);
   process.env.GEOMACRO_SECURITY_FINGERPRINT_PEPPER='s'.repeat(64);

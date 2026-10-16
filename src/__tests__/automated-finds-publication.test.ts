@@ -179,7 +179,8 @@ it("missed-tick recovery signs the same free Finds under shared writer serializa
   expect(source).toContain('B2_REQUEST_BUDGET: "12"');
   expect(source).toContain('group: geomacro-website-derived-news-continuity');
   expect(source).toContain('workflows: ["Geomacro Intelligence Orchestrator"]');
-  expect(source).toContain("github.event.workflow_run.conclusion == 'success'");
+  expect(source).toContain('github.event.workflow_run.head_repository.full_name == github.repository');
+  expect(source).toContain(`contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion)`);
   expect(source.indexOf("Resolve existing D1 shared B2 quota ledger")).toBeLessThan(source.indexOf("bun scripts/ops/publish-website-derived-news.ts"));
   expect(source).toContain('await verifyAutomatedFindsEnvelope(envelope,keys)');
   expect(source).toContain('envelope.payload.source_sha!==process.env.GITHUB_SHA');

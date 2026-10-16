@@ -1,3 +1,4 @@
+import {automatedFindsRunHealth} from "../lib/automated-finds-run-health.mjs";
 import {createHash,createHmac} from "node:crypto";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {publishAutomatedFinds} from "../../src/lib/automated-finds-publisher.server";
@@ -56,6 +57,11 @@ export async function publishCollectedAutomatedFinds(reports:StatelessIntelligen
     if(createHash("sha256").update(canonicalJson(restored)).digest("hex")!==expectedHash)
       throw Error("AUTOMATED_FINDS_D1_EXACT_READBACK_MISMATCH");
   }});
-  console.log(JSON.stringify(receipt));
-  if(["BACKUP_FAILED_CURRENT_D1_ONLY","BACKUP_BACKOFF_HELD"].includes(receipt.archive_status))process.exitCode=2;
+  const health=automatedFindsRunHealth(receipt);
+  console.log(JSON.stringify({...receipt,...health}));
+  // D1 exact readback and all signed categories already passed above. A held
+  // backup must not advertise a source/publisher outage or cause extra polls.
+  // Actual source/signing/D1 failures still throw and fail the caller.
+  if(health.archive_backup_degraded)
+    console.warn("::warning::AUTOMATED_FINDS_ARCHIVE_DEGRADED_CURRENT_D1_VERIFIED");
 }

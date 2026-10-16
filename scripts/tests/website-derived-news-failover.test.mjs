@@ -53,3 +53,21 @@ test("a branch-run not completed is not false evidence and missing list fails sa
   assert.throws(()=>decideWebsiteNewsBackstop(null,NOW),/INPUT_INVALID/);
   assert.throws(()=>decideWebsiteNewsBackstop([],Number.NaN),/INPUT_INVALID/);
 });
+
+test('actual cadence CLI coalesces a recent primary on push but preserves manual recovery',async()=>{
+  const {mkdtempSync,readFileSync,rmSync}=await import('node:fs');
+  const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+  const {spawnSync}=await import('node:child_process');
+  const script=new URL('../ops/check-website-derived-news-cadence.mjs',import.meta.url).href;
+  const temp=mkdtempSync(join(tmpdir(),'news-cadence-'));
+  try{
+    for(const [event,minutes,expected] of [['push',5,false],['workflow_run',50,true],['workflow_dispatch',5,true]]){
+      const output=join(temp,event);
+      const code=`globalThis.fetch=async()=>Response.json({workflow_runs:[{status:'completed',conclusion:'success',head_branch:'main',updated_at:new Date(Date.now()-${minutes}*60000).toISOString()}]});await import(${JSON.stringify(script)});`;
+      const result=spawnSync(process.execPath,['--input-type=module','-e',code],{encoding:'utf8',env:{...process.env,
+        GITHUB_REPOSITORY:'blocknine0/geomacro',GITHUB_TOKEN:'synthetic-token',GITHUB_OUTPUT:output,GITHUB_EVENT_NAME:event}});
+      assert.equal(result.status,0,result.stderr);
+      assert.equal(readFileSync(output,'utf8'),`should_run=${expected}\n`);
+    }
+  }finally{rmSync(temp,{recursive:true,force:true});}
+});

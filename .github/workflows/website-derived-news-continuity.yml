@@ -21,6 +21,7 @@ on:
       - "src/lib/automated-finds*"
       - "src/lib/risk-object-signing.server.ts"
       - "scripts/ops/publish-automated-finds.ts"
+      - "scripts/lib/automated-finds-run-health.mjs"
   schedule:
     - cron: "7,37 * * * *"
 
