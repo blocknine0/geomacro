@@ -2,7 +2,29 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {existingPrivateP0Sources,observeExistingPrivateP0Sources,P0_MAX_BYTES,UK_SANCTIONS_MAX_BYTES} from '../ops/observe-p0-private-source-runtime.mjs';
+import {parseIcjCasesHtml} from '../../global-intelligence/adapters/icj-cases.mjs';
 const now=new Date('2026-10-15T21:30:00.000Z');
+test('ICJ collection uses the actual list and resolves real document-relative first-party cases',async()=>{
+ const source=existingPrivateP0Sources().find(s=>s.id==='icj_cases');
+ assert.equal(source.url,'https://www.icj-cij.org/list-of-all-cases');
+ const html='<html>International Court of Justice Cases '+
+   '<a href="case/24">Official historical case description</a>'+
+   '<a href="/case/24">Duplicate official description</a>'+
+   '<a href="https://evil.example/case/25">Untrusted external case</a>'+
+   '<a href="//evil.example/case/26">Untrusted protocol relative</a>'+
+   '<a href="/cases-by-country">Navigation, not an actual case</a>'+
+   '<a href="/case/27?redirect=evil">Query is not the canonical case</a></html>';
+ const parsed=parseIcjCasesHtml(html,{retrievedAt:now.toISOString()});
+ assert.equal(parsed.length,1);assert.equal(parsed[0].source_url,'https://www.icj-cij.org/case/24');
+ assert.equal(parsed[0].published_at,null);
+ const r=await observeExistingPrivateP0Sources({now,fetchImpl:async url=>{
+   if(url===source.url)return new Response(html,{headers:{'content-type':'text/html'}});
+   return new Response('',{status:403});
+ }});
+ const row=r.results.find(s=>s.source_id==='icj_cases');
+ assert.equal(row.status,'PRIVATE_CANDIDATES_PARSED');assert.equal(row.parsed_candidate_count,1);
+ assert.equal(row.current_original_publication_verified,false);
+});
 function jobAllowed(file,job,event,repo='blocknine0/geomacro',ref='refs/heads/main'){
  const text=readFileSync('.github/workflows/'+file,'utf8');
  const block=text.split('\n  '+job+':\n')[1]?.split(/\n  [a-z][a-z-]+:\n/u)[0];
