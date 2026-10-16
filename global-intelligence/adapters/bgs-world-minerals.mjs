@@ -27,13 +27,16 @@ export function normalizeBgsWorldMineralsFeature(feature) {
   const year = toNumber(first(p, ["year", "Year"]));
   const country = first(p, ["country_iso3_code", "country_iso2_code", "country", "Country", "country_name"]);
   const commodity = first(p, ["commodity", "Commodity", "sub_commodity", "subCommodity"]);
-  const statisticType = first(p, ["bgs_statistic_type_trans", "statistic_type", "statisticType", "statistic", "Statistic type"]);
+  const statisticType = first(p, ["bgs_statistic_type_trans", "statistic_type", "statisticType", "statistic", "Statistic type", "statistic type"]);
   const quantity = toNumber(first(p, ["quantity", "Quantity", "value", "Value", "amount"]));
   const unit = first(p, ["units", "unit", "Unit", "unit_of_measure"]);
   return {
     source_id: "bgs_world_minerals_statistics",
     evidence_type: normalizeStatistic(statisticType),
     country,
+    country_iso3: /^[A-Z]{3}$/u.test(String(first(p, ["country_iso3_code"]) ?? "")) ? String(p.country_iso3_code) : null,
+    native_publication_at: null,
+    historical_reference_only: true,
     commodity,
     year,
     value: quantity,
@@ -51,28 +54,60 @@ export async function fetchBgsWorldMinerals({
   commodity,
   yearFrom,
   yearTo,
-  limit = 100
+  limit = 100,
+  fetchImpl = fetch
 } = {}) {
-  const url = new URL(`${baseUrl}/collections/${encodeURIComponent(collection)}/items`);
+  const origin=new URL(baseUrl);
+  if(origin.protocol!=="https:"||origin.hostname!=="ogcapi.bgs.ac.uk"||
+     origin.port||origin.username||origin.password||origin.search||origin.hash||
+     origin.pathname!=="/" || collection!=="world-mineral-statistics")
+    throw Error("BGS_SOURCE_SCOPE_UNVERIFIED");
+  if(!Number.isSafeInteger(limit)||limit<1||limit>1000)
+    throw Error("BGS_LIMIT_INVALID");
+  const url = new URL(origin.origin+"/collections/world-mineral-statistics/items");
   url.searchParams.set("f", "json");
   url.searchParams.set("limit", String(Math.min(Math.max(limit, 1), 1000)));
   if (country) url.searchParams.set("filter", `country = '${String(country).replaceAll("'", "''")}'`);
-  const response = await fetch(url);
+  const response = await fetchImpl(url,{redirect:"error",signal:AbortSignal.timeout(15000),
+    headers:{accept:"application/json"}});
   if (!response.ok) {
-    throw new Error(`BGS World Mineral Statistics HTTP ${response.status}`);
+    await response.body?.cancel().catch(()=>undefined);
+    throw new Error("BGS_HTTP_"+response.status);
   }
-  const body = await response.json();
+  const maxBytes=1024*1024;
+  if(Number(response.headers.get("content-length")??0)>maxBytes||!response.body)
+    throw Error("BGS_BODY_UNVERIFIED");
+  const reader=response.body.getReader(), chunks=[];let size=0;
+  try {
+    for(;;){
+      const next=await reader.read();if(next.done)break;
+      size+=next.value.byteLength;if(size>maxBytes)throw Error("BGS_BODY_UNVERIFIED");
+      chunks.push(next.value);
+    }
+  } finally {
+    await reader.cancel().catch(()=>undefined);
+    reader.releaseLock();
+  }
+  const bytes=new Uint8Array(size);let pos=0;
+  for(const chunk of chunks){bytes.set(chunk,pos);pos+=chunk.byteLength;}
+  let body;try{body=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));}
+  catch{throw Error("BGS_JSON_UNVERIFIED");}
+  if(body?.type!=="FeatureCollection"||!Array.isArray(body.features))
+    throw Error("BGS_FEATURE_COLLECTION_UNVERIFIED");
   const features = Array.isArray(body?.features) ? body.features : [];
   let rows = features.map(normalizeBgsWorldMineralsFeature);
   if (commodity) rows = rows.filter((r) => String(r.commodity ?? "").toLowerCase() === String(commodity).toLowerCase());
-  if (yearFrom !== undefined) rows = rows.filter((r) => r.year === null || r.year >= Number(yearFrom));
-  if (yearTo !== undefined) rows = rows.filter((r) => r.year === null || r.year <= Number(yearTo));
+  if (yearFrom !== undefined) rows = rows.filter((r) => r.year !== null && r.year >= Number(yearFrom));
+  if (yearTo !== undefined) rows = rows.filter((r) => r.year !== null && r.year <= Number(yearTo));
   return {
     source_id: "bgs_world_minerals_statistics",
     endpoint: url.toString(),
     fetched_at: new Date().toISOString(),
     rows,
     count: rows.length,
-    commercial_terms_review_required: true
+    commercial_terms_review_required: true,
+    native_current_publication_proven: false,
+    country_iso3_certified: false,
+    raw_customer_distribution_allowed: false
   };
 }
