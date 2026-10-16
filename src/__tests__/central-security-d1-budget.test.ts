@@ -2,7 +2,7 @@ import {afterEach,describe,expect,it,vi} from 'vitest';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {consumeCentralSecurityBudget,SECURITY_COUNTER_SQL,SECURITY_CLIENT_COUNTER_SQL} from '../../workers/control-plane/src/central-security-budget.mjs';
-import {consumeD1CentralSecurityBudget} from '../lib/d1-central-security-budget.server';
+import {consumeD1CentralSecurityBudget,centralSecurityBudgetFailureCode} from '../lib/d1-central-security-budget.server';
 import {enforceCentralRequestSecurity} from '../lib/central-security.server';
 import worker from '../../workers/control-plane/src/index.mjs';
 const initialRoot=process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
@@ -17,6 +17,17 @@ function dbWithCounts(counts=[1,1]){return {
 };}
 const input={route_class:'api_write',client_key:'a'.repeat(64)};
 describe('Supabase-free distributed central security',()=>{
+ it('reports fixed safe configuration/auth/route failures without reflecting secret-bearing messages',async()=>{
+  for(const [status,code] of [[401,'CENTRAL_SECURITY_D1_AUTH_REJECTED'],[403,'CENTRAL_SECURITY_D1_AUTH_REJECTED'],[404,'CENTRAL_SECURITY_D1_ROUTE_NOT_READY'],[405,'CENTRAL_SECURITY_D1_ROUTE_NOT_READY']]){
+   process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN='r'.repeat(64);
+   try{await consumeD1CentralSecurityBudget('api_write',input.client_key,async()=>new Response('untrusted secret-bearing provider message',{status}));throw Error('EXPECTED_REJECTION');}
+   catch(e){expect(centralSecurityBudgetFailureCode(e)).toBe(code);}
+  }
+  delete process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
+  try{await consumeD1CentralSecurityBudget('api_write',input.client_key);throw Error('EXPECTED_REJECTION');}
+  catch(e){expect(centralSecurityBudgetFailureCode(e)).toBe('CENTRAL_SECURITY_D1_CONFIGURATION_REQUIRED');}
+  expect(centralSecurityBudgetFailureCode(Error('secret-value-leak'))).toBe('CENTRAL_SECURITY_UNAVAILABLE');
+ });
  it('runs both counters in one transaction with server clocks, private slots and fixed limits',async()=>{
   const db=dbWithCounts();expect(await consumeCentralSecurityBudget(db,input,{now:60001})).toMatchObject({allowed:true,store:'d1',retry_after_seconds:60});
   const plans=db.batch.mock.calls[0][0];

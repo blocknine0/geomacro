@@ -3,12 +3,12 @@ import {
 } from "node:crypto";
 
 import { CENTRAL_SECURITY_POLICIES } from "../../workers/control-plane/src/central-security-policies.mjs";
-import { consumeD1CentralSecurityBudget } from "./d1-central-security-budget.server";
+import { consumeD1CentralSecurityBudget, centralSecurityBudgetFailureCode } from "./d1-central-security-budget.server";
 const POLICIES = CENTRAL_SECURITY_POLICIES as Record<Exclude<CentralSecurityRouteClass, "page">, BudgetPolicy>;
 
 
 export const CENTRAL_SECURITY_VERSION =
-  "geomacro-central-security-v1.0.0" as const;
+  "geomacro-central-security-v1.1.0-d1" as const;
 
 export const REAL_FUNDS_SECURITY_ACK =
   "I_ACCEPT_REAL_FUNDS_SECURITY_GATES" as const;
@@ -535,7 +535,7 @@ export async function enforceCentralRequestSecurity(
     console.error(
       "[central-security] distributed abuse control unavailable",
       routeClass,
-      "D1_BUDGET_UNAVAILABLE",
+      centralSecurityBudgetFailureCode(error),
     );
 
     if (
@@ -556,7 +556,7 @@ export async function enforceCentralRequestSecurity(
       return {
         allowed: false,
         status: 503,
-        code: "CENTRAL_SECURITY_UNAVAILABLE",
+        code: centralSecurityBudgetFailureCode(error),
         routeClass,
       };
     }
