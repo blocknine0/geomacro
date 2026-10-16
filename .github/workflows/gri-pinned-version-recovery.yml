@@ -1,16 +1,20 @@
-name: GRI Pinned Historical Version Recovery (Read Only)
-# Owner-authorized bounded recovery: no cron, B2 mutation or product promotion.
+name: GRI Pinned Historical Version Recovery
+# Owner-authorized B2 read-only recovery + one existing D1 historical-ring insert.
+# No cron, B2 mutation, current hot promotion or source-clock refresh.
 on:
   workflow_dispatch: {}
   push:
     branches: [main]
     paths:
       - "scripts/ops/recover-gri-pinned-b2-version.mjs"
+      - "scripts/ops/restore-gri-verified-version-to-d1.mjs"
       - ".github/workflows/gri-pinned-version-recovery.yml"
   pull_request:
     paths:
       - "scripts/ops/recover-gri-pinned-b2-version.mjs"
+      - "scripts/ops/restore-gri-verified-version-to-d1.mjs"
       - "src/__tests__/gri-pinned-version-recovery.test.ts"
+      - "src/__tests__/gri-verified-version-d1-restore.test.ts"
       - ".github/workflows/gri-pinned-version-recovery.yml"
 permissions:
   contents: read
@@ -29,7 +33,7 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
-      - run: bunx vitest run src/__tests__/gri-pinned-version-recovery.test.ts src/__tests__/gri-b2-historical-live-readback.test.ts
+      - run: bunx vitest run src/__tests__/gri-pinned-version-recovery.test.ts src/__tests__/gri-b2-historical-live-readback.test.ts src/__tests__/gri-verified-version-d1-restore.test.ts
   pinned-original-version:
     needs: contract
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -45,6 +49,7 @@ jobs:
       B2_ACCOUNT_QUOTA_REQUIRED: "1"
       B2_ACCOUNT_QUOTA_WORKFLOW_ID: historical_gri_version_recovery
       B2_REQUEST_BUDGET: "4"
+      GEOMACRO_GRI_RESTORE_WEBSITE_HISTORY: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -66,13 +71,13 @@ jobs:
           if(rows.length!==1||!/^[a-f0-9-]{36}$/.test(rows[0].uuid??''))throw Error('GRI_VERSION_D1_LEDGER_REQUIRED');
           appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+rows[0].uuid+'\n');
           JS
-      - name: Verify exactly one immutable version against the original D1 compressed and payload pins
-        run: node scripts/ops/recover-gri-pinned-b2-version.mjs
+      - name: Restore the exact pinned original to D1 history and independently verify the historical website view
+        run: node scripts/ops/restore-gri-verified-version-to-d1.mjs
       - name: Preserve only sanitized historical readback metadata
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: gri-pinned-version-readback-${{ github.run_id }}
-          path: artifacts/gri-b2-history/immutable-version-readback.json
+          path: artifacts/gri-b2-history/historical-d1-restore.json
           if-no-files-found: warn
           retention-days: 14

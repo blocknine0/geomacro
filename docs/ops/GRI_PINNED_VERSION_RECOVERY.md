@@ -11,3 +11,9 @@ The existing 30-day historical bound and native snapshot clock stay intact. A ma
 The protected workflow has no schedule. Its narrowly scoped main push canary and explicit operator dispatch run the same four-operation maximum under the existing historical-recovery concurrency group. The prior metadata-only workflow keeps its original policy unchanged.
 
 Official protocol references: https://www.backblaze.com/apidocs/b2-authorize-account ; https://www.backblaze.com/apidocs/b2-list-file-versions ; https://www.backblaze.com/apidocs/b2-download-file-by-id
+
+## Restore the verified original to existing D1 history
+
+After the original immutable version was actually recovered in protected run 38953797441, the same recovery can feed `restore-gri-verified-version-to-d1.mjs`. It re-verifies both old pins, validates the existing source-private website projection and performs one `INSERT OR IGNORE` into the existing historical ring. It preserves the exact original JSON, archive generation and native snapshot dates; the new verification timestamp records today's actual B2 readback, never a new source event. No current hot-product row, risk-object index or score is written.
+
+The inserted row is independently selected and checked against the exact original payload hash, and the public historical website projection is compared to the existing pure projector output. A collision, corrupt body, stale/invalid historical schema or altered public derived values fails closed. The protected workflow now explicitly enables this historical-only restore and reports historical insert attempts separately from quota reservations and zero current-product promotions. No B2 PUT or new database/migration is needed.
