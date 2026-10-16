@@ -15,7 +15,7 @@ function api(override?:Record<string,unknown>[]) {
     const u=new URL(String(input));
     urls.push(u.href);
     expect(u.protocol).toBe("https:");
-    expect(opts?.redirect).toBe("error");
+    expect(opts?.redirect).toBe("manual");
     if(u.hostname==="api.worldbank.org" && u.pathname==="/v2/country/IND")
       return Response.json([{page:1,total:1},[{id:"IND",name:"India"}]]);
     if(u.hostname==="api.worldbank.org" && u.pathname.includes("/indicator/"))

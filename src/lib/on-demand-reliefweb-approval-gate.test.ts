@@ -13,7 +13,7 @@ function provider() {
     seen.push(uri.href);
     expect(uri.protocol).toBe("https:");
     expect(opts?.method).toBe("GET");
-    expect(opts?.redirect).toBe("error");
+    expect(opts?.redirect).toBe("manual");
     if(uri.hostname==="api.worldbank.org")
       return Response.json([{page:1,total:1},[{id:"CHN",name:"China"}]]);
     if(uri.hostname==="api.gdeltproject.org")

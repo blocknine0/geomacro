@@ -1,3 +1,4 @@
+import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
 import {createHmac} from 'node:crypto';
 const ENDPOINT='https://geomacro-control-plane.daspallab202391.workers.dev/v1/security/budget';
 export async function consumeD1CentralSecurityBudget(route:string,key:string,fetchImpl=fetch){
@@ -7,7 +8,7 @@ export async function consumeD1CentralSecurityBudget(route:string,key:string,fet
  const signal=AbortSignal.timeout(3500);
  let r:Response;
  try {
-  r=await fetchImpl(ENDPOINT,{method:'POST',redirect:'error',
+  r=await fetchWithoutRedirectUsing(fetchImpl,ENDPOINT,{method:'POST',redirect:'error',
    headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
    body:JSON.stringify({route_class:route,client_key:key}),signal});
  } catch {

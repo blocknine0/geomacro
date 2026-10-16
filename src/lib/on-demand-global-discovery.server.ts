@@ -1,3 +1,4 @@
+import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,verifiedGlobalRdfFeed,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { createHash } from "node:crypto";
 import {fetchGdeltDocWithBudget,gdeltRetryAfterMs} from "../../scripts/lib/gdelt-doc-request-gate.mjs";
@@ -215,7 +216,7 @@ async function boundedFetch(
   const maxBytes = accept === "text/html" ? MAX_FIRST_PARTY_HTML_BYTES : MAX_BODY_BYTES;
   let response: Response;
   try {
-    response = await fetchImpl(url, {
+    response = await fetchWithoutRedirectUsing(fetchImpl,url, {
       method: "GET",
       redirect: "error",
       headers: { Accept: accept },
@@ -1035,7 +1036,7 @@ async function discoverOnDemandImpl(
       throw Error("ON_DEMAND_NETWORK_BUDGET_EXHAUSTED");
     networkAttempts++;
     const response=host==="api.gdeltproject.org"&&options.fetchImpl===undefined
-      ?await fetchGdeltDocWithBudget(String(target),init,fetchImpl):await fetchImpl(target,init);
+      ?await fetchGdeltDocWithBudget(String(target),init,(input,options)=>fetchWithoutRedirectUsing(fetchImpl,input,options)):await fetchWithoutRedirectUsing(fetchImpl,target,init);
     if(options.fetchImpl===undefined && response.status===429)
       providerCooldownUntil.set(host,Date.now()+
         retryAfterCooldownMs(response.headers.get("retry-after")));

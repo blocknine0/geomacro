@@ -168,7 +168,7 @@ describe("Live source free-tier quota and memory safety",()=>{
     expect(proof.network_attempts).toBe(7);
     expect(requests).toHaveLength(7);
     expect(requests.every(({url,opts})=>url.startsWith("https://") &&
-      opts?.redirect==="error" && opts?.method==="GET")).toBe(true);
+      opts?.redirect==="manual" && opts?.method==="GET")).toBe(true);
     expect(requests.every(({url})=>!url.includes("password") &&
       !url.includes("What%20are"))).toBe(true);
   });

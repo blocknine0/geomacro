@@ -59,6 +59,9 @@ jobs:
       - name: Verify public data boundary
         run: bunx vitest run src/__tests__/public-data-proxy-contract.test.ts
 
+      - name: Verify real Workers D1 transport and redirect isolation
+        run: npm exec --yes --package=workerd@1.20261016.1 -- bun scripts/tests/workerd-d1-transport.ts
+
       - name: Verify Lovable-compatible production build
         run: bun run build
 

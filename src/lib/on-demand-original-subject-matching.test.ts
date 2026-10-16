@@ -64,7 +64,7 @@ describe("China lithium exact customer question — one shared bounded on-demand
     const fetchImpl=vi.fn(async(input:RequestInfo|URL,opts?:RequestInit)=>{
       const uri=new URL(String(input));requests.push(uri.href);
       expect(opts?.method).toBe("GET");
-      expect(opts?.redirect).toBe("error");
+      expect(opts?.redirect).toBe("manual");
       if(uri.hostname==="api.worldbank.org")
         return Response.json([{page:1,total:1},[{id:"CHN",name:"China"}]]);
       if(uri.hostname==="api.gdeltproject.org")

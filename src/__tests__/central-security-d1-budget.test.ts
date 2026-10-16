@@ -104,7 +104,7 @@ print(json.dumps({'client':a,'global':b,'reset':c,'late':late,'current':current,
   const fetchImpl=vi.fn(async()=>Response.json(good));
   await consumeD1CentralSecurityBudget('api_write',input.client_key,fetchImpl);
   expect(fetchImpl.mock.calls[0][0]).toBe('https://geomacro-control-plane.daspallab202391.workers.dev/v1/security/budget');
-  expect(fetchImpl.mock.calls[0][1].redirect).toBe('error');
+  expect(fetchImpl.mock.calls[0][1].redirect).toBe('manual');
   for(const bad of [{...good,store:'supabase'},{...good,route_class:'payment'},{...good,allowed:false},{...good,retry_after_seconds:Infinity}])
    await expect(consumeD1CentralSecurityBudget('api_write',input.client_key,async()=>Response.json(bad))).rejects.toThrow();
  });

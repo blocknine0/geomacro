@@ -1,3 +1,4 @@
+import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
 /**
  * Unpaid observational status on category discovery GET. Never a basis for
  * paid availability/rights/scoring. A missing control plane reports UNKNOWN.
@@ -30,7 +31,7 @@ export async function categoryOriginalSourcePulse(
     raw=cached.value;
   }else {
     try {
-      const res=await fetchImpl(PULSE_URL,{
+      const res=await fetchWithoutRedirectUsing(fetchImpl,PULSE_URL,{
         method:"GET",redirect:"error",
         headers:{Accept:"application/json"},
         signal:AbortSignal.timeout(1800),

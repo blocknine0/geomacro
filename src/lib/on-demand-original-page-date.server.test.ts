@@ -69,7 +69,7 @@ describe("private on-demand publisher page date checks",()=>{
     const urls:string[]=[];
     const pageFetch=vi.fn(async(input:RequestInfo|URL,options?:RequestInit)=>{
       urls.push(String(input));
-      expect(options?.redirect).toBe("error");
+      expect(options?.redirect).toBe("manual");
       expect(options?.method).toBe("GET");
       return new Response(articleHtml(
         '<meta property="article:published_time" content="'+published+'">'),

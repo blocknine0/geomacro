@@ -194,7 +194,7 @@ describe("no-card original government structured data adapters",()=>{
       const url=String(input);
       calls.push(url);
       expect(new URL(url).protocol).toBe("https:");
-      expect(init?.redirect).toBe("error");
+      expect(init?.redirect).toBe("manual");
       expect(init?.cache).toBe("no-store");
       const host=new URL(url).hostname;
       const body=host==="earthquake.usgs.gov"

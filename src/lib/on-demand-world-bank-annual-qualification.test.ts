@@ -13,7 +13,7 @@ const caseFetch=(inflation:unknown,asText=false)=>{
     const url=new URL(String(input));
     seen.push(url.href);
     expect(url.protocol).toBe("https:");
-    expect(options?.redirect).toBe("error");
+    expect(options?.redirect).toBe("manual");
     expect(options?.method).toBe("GET");
     if(url.pathname==="/v2/country/CHN")
       return Response.json([{page:1,total:1},[{id:"CHN",name:"China"}]]);

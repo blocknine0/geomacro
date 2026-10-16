@@ -1,3 +1,4 @@
+import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
 import { createHash } from "node:crypto";
 import { buildMacroNormalizationSnapshot } from "./country-risk-v02-normalization";
 import { buildCountryMacroRiskComponent } from "./country-risk-v02-macro";
@@ -46,7 +47,7 @@ function result(
 async function getOfficialJson(
   url:string, fetchImpl:typeof fetch,
 ):Promise<unknown> {
-  const response=await fetchImpl(url,{
+  const response=await fetchWithoutRedirectUsing(fetchImpl,url,{
     method:"GET",redirect:"error",headers:{Accept:"application/json"},
     signal:AbortSignal.timeout(8_000),
   });
