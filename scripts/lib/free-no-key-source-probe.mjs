@@ -144,18 +144,52 @@ async function boundedBody(response, maxBytes) {
   finally { await reader.cancel().catch(() => undefined); }
 }
 
+// The UN publisher now emits a short-lived, anonymous read-only Azure
+// distribution URL. Follow exactly this observed publisher-owned file once;
+// never follow arbitrary provider redirects or retain/log the signed query.
+function unOfficialDistribution(spec, response) {
+  if(spec.id!=="un_security_council_sanctions"||
+     spec.url!=="https://scsanctions.un.org/resources/xml/en/consolidated.xml"||
+     ![301,302,303,307,308].includes(response.status))return null;
+  try{
+    const u=new URL(response.headers.get("location"));
+    const allowed=new Set(['sv','st','se','sr','sp','sig','rscd']);
+    const names=[...u.searchParams.keys()];
+    const expiry=Date.parse(u.searchParams.get('se')??'');
+    const start=Date.parse(u.searchParams.get('st')??'');
+    const now=Date.now();
+    if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash||
+       u.hostname!=="unsolprodfiles.blob.core.windows.net"||
+       u.pathname!=="/publiclegacyxmlfiles/EN/consolidatedLegacyByPRN.xml"||
+       u.href.length>2048||new Set(names).size!==names.length||names.some(k=>!allowed.has(k))||
+       u.searchParams.get('sp')!=='r'||u.searchParams.get('sr')!=='b'||
+       !/^[A-Za-z0-9+/=]{20,128}$/u.test(u.searchParams.get('sig')??'')||
+       !Number.isFinite(expiry)||expiry<=now||expiry>now+2*3600000||
+       !Number.isFinite(start)||start>now+5*60000||start<now-2*3600000)
+      return null;
+    return u.href;
+  }catch{return null;}
+}
+
 export async function probeNoKeySource(spec, fetchImpl = fetch, {onPayload=null}={}) {
   let state = "NETWORK_UNAVAILABLE", code = null;
   try {
-    const url = new URL(spec.url);
-    const response = await fetchImpl(spec.url, {
+    const unDistribution=spec.id==="un_security_council_sanctions"&&spec.url==="https://scsanctions.un.org/resources/xml/en/consolidated.xml";
+    const options={
       method: spec.format === "head" ? "HEAD" : "GET",
-      redirect: "error",
+      redirect: unDistribution?"manual":"error",
       headers: { Accept: spec.format === "html" ? "text/html" :
         ['atom','rss','xml'].includes(spec.format) ? "application/rss+xml, application/atom+xml, application/xml, text/xml" :
           "application/json", 'user-agent':'Geomacro-Source-Updates/1.0 (contact@geomacro.live)' },
       signal: AbortSignal.timeout(7_000),
-    });
+    };
+    let response=await fetchImpl(spec.url,options);
+    if(unDistribution&&response.status>=300&&response.status<400){
+      const target=unOfficialDistribution(spec,response);
+      await response.body?.cancel().catch(()=>undefined);
+      if(!target)throw Error('UN_OFFICIAL_DISTRIBUTION_UNVERIFIED');
+      response=await fetchImpl(target,{...options,redirect:'error',signal:AbortSignal.timeout(7_000)});
+    }
     code = response.status;
     state = [401, 403, 429].includes(code) ? "DENIED_OR_RATE_LIMIT" :
       !response.ok ? "HTTP_UNAVAILABLE" : "UNVERIFIED_CONTENT";

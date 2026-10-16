@@ -14,7 +14,7 @@ const EXTRA=[
  {id:'federal_reserve',category:'macro',url:'https://www.federalreserve.gov/feeds/press_all.xml',format:'rss',maxBytes:384000},
  {id:'noaa_nhc',category:'geopolitics',url:'https://www.nhc.noaa.gov/index-at.xml',format:'rss',maxBytes:256000},
  {id:'uk_fcdo_advisories',category:'geopolitics',url:'https://www.gov.uk/api/search.json?filter_format=travel_advice&order=-public_timestamp&count=5',format:'json',maxBytes:128000},
- {id:'un_security_council_sanctions',category:'geopolitics',url:'https://scsanctions.un.org/resources/xml/en/consolidated.xml',format:'xml',maxBytes:4*1024*1024,baseline:true},
+ {id:'un_security_council_sanctions',reader_revision:2,category:'geopolitics',url:'https://scsanctions.un.org/resources/xml/en/consolidated.xml',format:'xml',maxBytes:4*1024*1024,baseline:true},
  {id:'ons',category:'macro',url:'https://www.ons.gov.uk/releasecalendar?rss&highlight=true&limit=10&page=1&release-type=type-published&sort=date-newest',format:'rss',maxBytes:256000},
  {id:'ny_fed',category:'macro',url:'https://markets.newyorkfed.org/api/rates/secured/sofr/last/5.json',format:'json',maxBytes:128000,baseline:true},
  {id:'ecb_fx',category:'macro',url:'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml',format:'xml',maxBytes:128000,baseline:true},
@@ -103,7 +103,8 @@ function previousSnapshot(row,category){
    if(!PRODUCTION_FREE_UPDATE_SOURCES.some(x=>x.id===id&&x.category===category)||
       !Array.isArray(s.fingerprints)||s.fingerprints.length>MAX_HASHES||
       s.fingerprints.some(x=>!/^[a-f0-9]{64}$/u.test(x))||
-      Object.keys(s).some(k=>!['fingerprints','last_attempt_at','last_success_at','state','kind','latest_native_publication_at','http_status'].includes(k))||
+      !(s.reader_revision===undefined||(Number.isInteger(s.reader_revision)&&s.reader_revision>=1&&s.reader_revision<=100))||
+      Object.keys(s).some(k=>!['reader_revision','fingerprints','last_attempt_at','last_success_at','state','kind','latest_native_publication_at','http_status'].includes(k))||
       !(s.http_status===null||(Number.isInteger(s.http_status)&&s.http_status>=100&&s.http_status<=599))||
       !(s.kind===null||['REFERENCE_DATASET_CHANGE','PUBLISHER_FEED_CHANGE','HAZARD_OBSERVATION_CHANGE','SECURITY_CATALOGUE_CHANGE','REGULATORY_DOCUMENT_CHANGE','ADVISORY_DOCUMENT_CHANGE','DATASET_SNAPSHOT_CHANGE','CONTEXT_ONLY_NO_UPDATE_RECORDS'].includes(s.kind))||
       !['TRANSPORT_READABLE','NETWORK_UNAVAILABLE','DENIED_OR_RATE_LIMIT','HTTP_UNAVAILABLE','FORMAT_OR_SIZE_UNVERIFIED'].includes(s.state)||
@@ -124,7 +125,13 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
    const last=Date.parse(old?.last_attempt_at??'');
    const interval=!old||old.state==='TRANSPORT_READABLE'?spec.poll_minutes:
      old.state==='DENIED_OR_RATE_LIMIT'?Math.max(360,spec.poll_minutes):Math.min(60,spec.poll_minutes);
-   if(Number.isFinite(last)&&last<=now.getTime()&&now.getTime()-last<interval*60000){
+   // Scheduled jobs start with jitter. Deduplicate healthy reads by UTC
+   // polling slot, not an elapsed cutoff that can skip every other cron run.
+   // Publisher denials retain a full elapsed backoff, regardless of slots.
+   const notDue=old?.state==='TRANSPORT_READABLE'
+     ?Math.floor(now.getTime()/(interval*60000))===Math.floor(last/(interval*60000))
+     :now.getTime()-last<interval*60000;
+   if((old?.state==='DENIED_OR_RATE_LIMIT'||(old?.reader_revision??1)===(spec.reader_revision??1))&&Number.isFinite(last)&&last<=now.getTime()&&notDue){
      outcomes.push({category:spec.category,state:'NOT_DUE',new_updates:0});continue;
    }
    let observed=null;
@@ -134,6 +141,7 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
    const known=new Set(old?.fingerprints??[]);
    const fresh=healthy&&old?.last_success_at?observed.fingerprints.filter(x=>!known.has(x)).length:0;
    snapshots[spec.category].sources[spec.id]={
+     reader_revision:spec.reader_revision??1,
      fingerprints:healthy?[...new Set([...(old?.fingerprints??[]),...observed.fingerprints])].slice(-MAX_HASHES):old?.fingerprints??[],
      last_attempt_at:now.toISOString(),last_success_at:healthy?now.toISOString():old?.last_success_at??null,
      state:result.state,kind:observed?.kind??old?.kind??null,
