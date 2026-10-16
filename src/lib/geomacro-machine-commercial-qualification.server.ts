@@ -157,7 +157,13 @@ function validateProof(
   for(const c of candidates){
     const id=c.source_registry_id,org=c.originating_reporting_organization_id;
     const article=c.original_article_sha256,claim=c.same_event_claim_sha256;
-    if(typeof id!=="string"||typeof org!=="string"||
+    const native=c.event as Record<string,unknown>|undefined;
+    if(!native||native.country_iso3!==input.country_iso3||
+       native.event_type!==e.event_type||
+       native.occurred_at!==e.material_evidence_at||
+       Date.parse(String(c.original_published_at??""))>
+         now || !within(String(c.original_published_at??""),now,6*60*60*1000)||
+       typeof id!=="string"||typeof org!=="string"||
        !HASH.test(String(article))||claim!==proof.same_event_claim_sha256||
        srcIds.has(id)||orgIds.has(org)||articleIds.has(String(article))||
        c.category!==input.category)return false;
@@ -180,6 +186,9 @@ function validateProof(
        Date.parse(p.permission_expires_at)<Date.parse(p.permission_verified_at))
       return false;
   }
+  const latest=Math.max(...candidates.map(x=>Date.parse(String(x.original_published_at))));
+  if(Date.parse(e.first_seen_at)!==Date.parse(String(candidates[0].event?.occurred_at))||
+     Date.parse(e.last_seen_at)!==latest)return false;
   const same=(a:readonly string[],b:readonly string[])=>
     JSON.stringify([...a].sort())===JSON.stringify([...b].sort());
   return same(e.source_ids,[...srcIds])&&
