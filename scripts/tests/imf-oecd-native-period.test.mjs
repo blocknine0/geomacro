@@ -53,6 +53,7 @@ test("OECD bounded network rejects 429/oversize, never follows redirects",async(
  }});
  assert.equal(r.observation_value,4.5);
  assert.equal(opts.redirect,"error");
+ assert.equal(opts.headers.accept,"text/csv");
  await assert.rejects(()=>fetchOecdExactReference({fetchImpl:async()=>new Response("denied",{status:429})}),/OECD_HTTP_429/);
  await assert.rejects(()=>fetchOecdExactReference({fetchImpl:async()=>new Response("{}",{
    headers:{"content-length":"1100000"}
@@ -97,4 +98,24 @@ test("IMF upstream 403 is a sanitized denial class and cannot trigger a paywall 
  assert.equal(r.readers[1].reason,"OECD_HTTP_500");
  assert.equal(r.paid_eligible,false);
  assert.equal(r.payments,0);
+});
+
+test("OECD official query is bounded to USA and uses standard CSV negotiation",async()=>{
+ let u;
+ const row=await fetchOecdExactReference({fetchImpl:async(url,opts)=>{
+   u=new URL(url);
+   assert.equal(opts.redirect,"error");
+   assert.equal(opts.headers.accept,"text/csv");
+   return new Response([
+     "REF_AREA,FREQ,TIME_PERIOD,OBS_VALUE,COMBINED_MEASURE,ADJUSTMENT,SEX,AGE",
+     "USA,M,2025-06,4.5,UNE_LF_M,Y,_T,Y_GE15"
+   ].join(String.fromCharCode(10)));
+ }});
+ assert.equal(row.country_iso3,"USA");
+ assert.equal(row.observation_value,4.5);
+ assert.equal(u.hostname,"sdmx.oecd.org");
+ assert.ok(u.pathname.includes("/USA.UNE_LF_M...Y._T.Y_GE15..M"));
+ assert.equal(u.searchParams.get("startPeriod"),"2025-06");
+ assert.equal(u.searchParams.get("endPeriod"),"2025-06");
+ assert.equal(u.searchParams.get("format"),"csvfile");
 });
