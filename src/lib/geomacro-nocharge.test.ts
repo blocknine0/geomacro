@@ -16,7 +16,7 @@ const base={
 };
 describe("no-charge v1: fail closed before settlement",()=>{
  it("locks schema to the existing founder-approved 8-capability catalog",()=>{
-  const schema=JSON.parse(readFileSync("public/schemas/v1/nocharge.json","utf8"));
+  const schema=JSON.parse(readFileSync("src/contracts/schemas/v1/nocharge.json","utf8"));
   expect(schema.$id).toBe("https://geomacro.live/schemas/v1/nocharge.json");
   expect(schema.additionalProperties).toBe(false);
   expect(schema.properties.capability.enum.sort()).toEqual(Object.keys(GEOMACRO_CAPABILITY_PRICES).sort());
