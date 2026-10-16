@@ -33,3 +33,11 @@ independent same-event verification, commercial rights or paid GRO readiness.
 Verify a real protected run with three category read receipts, signed-batch
 verification, exact D1 readback, truthful original dates and privacy-safe public
 readback. A green contract/unit test alone is insufficient live evidence.
+
+Canonical `GET /api/v1/intelligence/query?view=finds` serves the same free
+signed feed. It uses public-read HMAC and burst controls like the category
+GET aliases; no GET in that handler performs fulfillment or settlement.
+Canonical/category POST and all x402 payment handlers retain distributed,
+fail-closed security. A D1 budget outage must not turn free news GET into a
+payment-class failure. This website middleware change requires normal hosting
+publication; backend automatic collection is deployed by the workflow merge.
