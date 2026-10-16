@@ -51,6 +51,9 @@ describe("global Risk Gate country census diagnostics", () => {
     expect(legacy).toContain("scoring_changed: false");
     expect(workflow).toContain("audit-supabase-free-country-runtime.ts");
     expect(workflow).toContain(".country_current_evidence_not_inferred_from_global_feeds == true");
+    const audit=readFileSync("scripts/audit-supabase-free-country-runtime.ts","utf8");
+    expect(audit).toContain("buildCanonical195x3CoverageMatrix()");
+    expect(audit).not.toContain("source_adapter_registered:true");
     expect(workflow).not.toContain("secrets.APP_SUPABASE_URL");
     expect(workflow).not.toContain("secrets.SUPABASE_SERVICE_ROLE_KEY");
     expect(workflow).not.toContain("secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64");
