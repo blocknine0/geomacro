@@ -33,3 +33,24 @@ signed Intelligence/GRI/Risk Indices, repair downstream legacy Risk Gate
 dependencies, activate the isolated Predge pilot, establish a countersigned
 LOI or authorize payment. Predge kickoff remains October 19, 2026, with the
 separate pilot's default 100/day budget and absolute 500/day ceiling.
+
+## Website request failure isolation
+
+The public static build marker is not proof that the running SSR middleware
+matches it. Denied middleware responses also carry `data.security_version`.
+Version `geomacro-central-security-v1.1.1-d1` preserves the original 3.5-second
+request deadline and distinguishes these fixed, non-secret failures:
+
+- `CENTRAL_SECURITY_D1_TIMEOUT`: request or receipt body exceeded its deadline.
+- `CENTRAL_SECURITY_D1_TRANSPORT_FAILED`: fetch or receipt stream failed.
+- `CENTRAL_SECURITY_D1_UPSTREAM_REJECTED`: upstream HTTP status was neither a
+  valid budget result nor the separately classified authentication/route errors.
+- `CENTRAL_SECURITY_D1_RECEIPT_INVALID`: malformed JSON/UTF-8, oversized body,
+  wrong route/store/schema, or invalid result binding.
+
+The receipt body is limited to 2 KiB while streaming, not after full buffering.
+No upstream body, token, URL query, or arbitrary exception message is exposed.
+There is no retry of ambiguous reservations and no local fail-open fallback
+for strict routes. An error classification change is not production recovery:
+require an actual distributed-pass response from the deployed website before
+claiming the central-security outage resolved. D1 health alone is insufficient.

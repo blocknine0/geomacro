@@ -8,7 +8,7 @@ const POLICIES = CENTRAL_SECURITY_POLICIES as Record<Exclude<CentralSecurityRout
 
 
 export const CENTRAL_SECURITY_VERSION =
-  "geomacro-central-security-v1.1.0-d1" as const;
+  "geomacro-central-security-v1.1.1-d1" as const;
 
 export const REAL_FUNDS_SECURITY_ACK =
   "I_ACCEPT_REAL_FUNDS_SECURITY_GATES" as const;
