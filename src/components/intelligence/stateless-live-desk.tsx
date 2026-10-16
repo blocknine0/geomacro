@@ -3,6 +3,7 @@ import { AlertCircle, Clock3, RefreshCw } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
+import { findCardFromObservedRelease } from "@/lib/find-card-v1";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
 import type { StatelessCategory, StatelessIntelligenceSignal } from "@/lib/stateless-intelligence-model";
@@ -45,6 +46,49 @@ function Story({ signal, checkedAt }: {
   checkedAt: number;
 }) {
   const isCurrent = Date.parse(signal.published_at) >= checkedAt - 86_400_000;
+  // Display a strict Find Card only for source-credit-free verified journal
+  // signals. Credited originals stay in the legacy card with their mandatory
+  // publisher attribution, never stripped to satisfy no-source prose.
+  const card = findCardFromObservedRelease(signal, checkedAt);
+  if (card) return (
+    <article data-testid="geomacro-find-card-v1"
+      className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">
+          GEOMACRO FINDS
+        </span>
+        <span aria-hidden>·</span><span>{labelFor(card.domain)}</span>
+        <span aria-hidden>·</span>
+        <time dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
+        <span aria-hidden>·</span><span>{card.ladder} · {card.detail_state}</span>
+        {!isCurrent ? <span>· Earlier original release</span> : null}
+      </div>
+      <h3 className="mt-3 text-lg font-semibold leading-snug sm:text-xl">{card.headline}</h3>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">
+            What changed
+          </h4>
+          <p className="mt-1 text-sm leading-6">{card.what_changed}</p>
+        </div>
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Why it matters
+          </h4>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {card.why_it_matters}
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 border-t border-border/60 pt-3">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">Watch next</h4>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{card.watch_next.text}</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Details not captured · No independent corroboration or risk score claimed
+        </p>
+      </div>
+    </article>
+  );
   return (
     <article className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6">
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
