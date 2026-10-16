@@ -103,3 +103,10 @@ previous 12-request ceiling. All three existing index scopes remain eligible
 when room is available, with unchanged 403/429 circuit-breakers. A source feed HTTP 200, two feeds from
 different issuers, or publisher date metadata are NOT a certified same-event
 claim, legal permission, signer receipt, or signed hot public product.
+
+The tri-domain current-question allocation reserves at least two of the
+12 bounded provider GET tickets for existing country-targeted GOV.UK original
+search rescue, while permitting two independent original issuers per domain,
+all three GDELT index scopes, and one World Bank annual context indicator.
+The other WDI annual indicator remains available in single-/two-category
+queries; it is not a current event substitute.

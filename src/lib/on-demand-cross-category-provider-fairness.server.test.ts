@@ -46,11 +46,13 @@ describe("cross-category canonical on-demand bounded original-publisher recovery
     expect(result.discovery.network_attempts).toBeGreaterThanOrEqual(6);
     expect(seen).toHaveLength(result.discovery.network_attempts);
     const gdelt=result.discovery.source_probes.filter(p=>p.family==="gdelt_doc_discovery");
-    // Three domains x two distinct originating publishers, two official
-    // WDI contextual reads, and three index-only GDELT scopes fit the
-    // original 12-request ceiling (one slot remains for an issuer search).
+    // Three domains x two distinct originating publishers, one annual
+    // WDI context read, and three index-only GDELT scopes = 10 primary
+    // GETs, leaving two slots for approved country original issuer search.
     expect(gdelt.map(p=>p.category).sort()).toEqual(["geopolitics","macro","rare_earth"]);
     expect(seen.filter(x=>new URL(x).hostname==="api.gdeltproject.org")).toHaveLength(3);
+    expect(result.discovery.source_probes.filter(p=>
+      p.family.startsWith("world_bank_official_"))).toHaveLength(1);
     for(const domain of ["geopolitics","macro","rare_earth"] as const){
       const attempted=result.discovery.source_probes.filter(p=>
         p.category===domain &&
