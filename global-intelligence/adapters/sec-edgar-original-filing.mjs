@@ -41,7 +41,6 @@ export function verifySecOriginalHeader(filing,prefix){
  if(typeof prefix!=="string"||prefix.length<100||prefix.length>HEAD_LIMIT||
     !prefix.includes("<SEC-DOCUMENT>")||!prefix.includes("<SEC-HEADER>"))
    throw Error("SEC_NATIVE_HEADER_UNVERIFIED");
- const esc=filing.accession.replaceAll("-","\\-");
  const a=prefix.match(/^\s*ACCESSION NUMBER:\s*(\d{10}-\d{2}-\d{6})\s*$/m);
  const t=prefix.match(/^\s*CONFORMED SUBMISSION TYPE:\s*([A-Z0-9/-]+)\s*$/m);
  const d=prefix.match(/^\s*FILED AS OF DATE:\s*(\d{8})\s*$/m);
