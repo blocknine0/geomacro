@@ -15,9 +15,9 @@ const validProbe=vi.fn(async id=>{
 });
 
 describe("#1827 independently activate configured credentialed sources",()=>{
-  it("uses only one bounded 30s BEA official metadata check, other providers keep 15s",()=>{
+  it("uses one bounded 30s BEA/UCDP read while other providers keep 15s",()=>{
     const adapter=readFileSync("global-intelligence/adapters/credentialed-sources.mjs","utf8");
-    expect(adapter).toContain('sourceId==="bea"?30000:15000');
+    expect(adapter).toContain('sourceId==="bea"?30000:sourceId==="ucdp_ged"?30000:15000');
     expect(adapter).toContain("method=GetDataSetList&ResultFormat=JSON");
     expect(adapter).toContain('const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error"})');
   });
@@ -70,6 +70,17 @@ describe("#1827 independently activate configured credentialed sources",()=>{
     expect(failure.status).toBe("CONFIGURED_BUT_PROBE_FAILED");
     expect(failure.reason).toBe("HTTP_403");
     expect(JSON.stringify(report)).not.toContain("private-token-do-not-emit");
+  });
+  it("distinguishes bounded-body, redirect and connection failures without leaking error content",async()=>{
+    for(const [failure,reason] of [
+      [Error('HTTP_BODY_LIMIT'),'RESPONSE_SIZE_LIMIT'],
+      [new TypeError('fetch failed: private-token-do-not-emit',{cause:Error('unexpected redirect')}),'REDIRECT_REFUSED'],
+      [new TypeError('fetch failed: private-token-do-not-emit',{cause:Object.assign(Error('private-token-do-not-emit'),{code:'ECONNRESET'})}),'UPSTREAM_CONNECTION_FAILURE'],
+    ] as const){
+      const r=await probeConfiguredCredentialedSources({env:allCredentials,now:when,probe:async()=>{throw failure;}});
+      expect(r.results.every((x:any)=>x.reason===reason)).toBe(true);
+      expect(JSON.stringify(r)).not.toContain('private-token-do-not-emit');
+    }
   });
   it("does not attempt network when no credentials exist or a result has wrong domain",async()=>{
     const probe=vi.fn();
