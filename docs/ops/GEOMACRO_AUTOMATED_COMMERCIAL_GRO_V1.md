@@ -49,3 +49,33 @@ The tests prove both a valid **synthetic** dual-authority private GRO and fail-c
 - Complete separate x402 no-funds acceptance and explicit real-money authorization; do not turn any research flag true as a shortcut.
 
 The old `FEDERICO_STRICT` independent-review contract remains unchanged. Synthetic/single-source/stale/denied original evidence cannot be presented as commercially ready.
+
+## Protected private production operator
+
+`scripts/ops/accept-private-geomacro-machine-commercial-gro.ts` is the
+owner-only executable for a real, separately dual-attested commercial candidate.
+Prepare a 0600 JSON file outside the repository, in the existing protected
+`GEOMACRO_PRIVATE_REVIEW_DIR` 0700 directory. Input schema:
+`geomacro.private-machine-commercial-request.v1`. Fields: `category`,
+`country_iso3`, optional `country_name`, one real structured `event`, an
+array of 2–4 first-party `candidates`, and `envelope` consisting of the
+identical signed `geomacro.automated-commercial-proof.v1` payload together
+with `facts_signature_b64` and `rights_signature_b64`.
+
+```bash
+bun scripts/ops/accept-private-geomacro-machine-commercial-gro.ts \
+  --input=/secure/geomacro-private/current-machine-commercial.json \
+  --out=/secure/geomacro-private/private-machine-commercial-gro.json
+```
+
+It NEVER auto-creates attestation signatures or approves a source licence.
+Missing real rights, counterevidence audit, pinned authority keys, original
+HTML bytes, signed facts or genuine source-native clocks must fail closed.
+Successful operator output stays 0600/private and contains a locally verified
+canonical GRO plus explicit `x402_payment_authorized:false`,
+`independently_published_and_readback_verified:false`, and
+`external_reviewer_attested:false`. Stdout logs only country/category and
+canonical record SHA256. A valid private artifact alone is not a live product.
+
+To confirm safe interface and compile with no credentials:
+`bunx vitest run src/lib/geomacro-machine-commercial-operator.server.test.ts`.
