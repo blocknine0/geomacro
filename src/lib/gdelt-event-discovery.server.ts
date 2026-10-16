@@ -1,9 +1,7 @@
-import {createHash} from "node:crypto";
 import {COUNTRIES_195} from "./canonical-country-registry-195";
-import {parseGdeltGkgLastupdate,unpackSingleGkgZip,limitedGdeltBody} from "../../scripts/lib/gdelt-gkg-bulk-discovery.mjs";
+import {readGdeltStaticArchive,limitedGdeltBody} from "../../scripts/lib/gdelt-gkg-bulk-discovery.mjs";
 
-const INDEX="https://data.gdeltproject.org/gdeltv2/lastupdate.txt";
-const LOOKUP="https://www.gdeltproject.org/data/lookups/FIPS.country.txt";
+const LOOKUP="https://gdeltproject.org/data/lookups/FIPS.country.txt";
 const normalize=(s:string)=>s.normalize("NFKD").replace(/\p{Diacritic}/gu,"").trim().toLowerCase();
 const extra:Record<string,string>={"Bahamas, The":"BHS","Bosnia-Herzegovina":"BIH","Congo":"COG",
   "Democratic Republic of the Congo":"COD","Cote dIvoire":"CIV","Gambia, The":"GMB",
@@ -56,19 +54,14 @@ export async function readGdeltEventDiscovery({fetchImpl=fetch,now=new Date()}={
       if(!r.ok)throw Error("GDELT_EVENT_HTTP_"+r.status);
       return limitedGdeltBody(r,max);
     };
-    const index=(await request(INDEX,8192)).toString("utf8");
-    const manifest=parseGdeltGkgLastupdate(index,{now,kind:"events"});
+    const {manifest,manifest_route,decoded:text}=await readGdeltStaticArchive({fetchImpl,now,kind:"events"});
     if(now.getTime()-Date.parse(manifest.batch_at)>60*60_000)throw Error("GDELT_EVENT_BATCH_INVALID");
-    const zipped=await request(manifest.fetch_url,18*1024*1024);
-    if(zipped.length!==manifest.expected_bytes||createHash("md5").update(zipped).digest("hex")!==manifest.expected_md5)
-      throw Error("GDELT_EVENT_ARCHIVE_INTEGRITY_INVALID");
-    const text=unpackSingleGkgZip(zipped,manifest.batch_at.replace(/\D/g,"").slice(0,14),"events");
     const fips=parseGdeltFipsCountries((await request(LOOKUP,64000)).toString("utf8"));
-    return {...summarizeGdeltEventDiscovery(text,fips,manifest.batch_at,now),archive_integrity_verified:true};
+    return {...summarizeGdeltEventDiscovery(text,fips,manifest.batch_at,now),archive_integrity_verified:true,manifest_route};
   }catch(error){
     const message=error instanceof Error?error.message:"";
     return {schema:"geomacro.gdelt-event-d1-discovery.v1",status:"GDELT_EVENT_DEGRADED",checked_at:now.toISOString(),
-      reason:/^GDELT_(?:EVENT|FIPS)_[A-Z0-9_]+$/.test(message)?message:"GDELT_EVENT_TRANSPORT_OR_FORMAT_UNAVAILABLE",
+      reason:/^(?:GDELT_(?:EVENT|FIPS)|GKG)_[A-Z0-9_]+$/.test(message)?message:"GDELT_EVENT_TRANSPORT_OR_FORMAT_UNAVAILABLE",
       archive_integrity_verified:false,original_news_freshness_verified:false,independent_event_verified:false,
       scored:false,chargeable:false,raw_records_persisted:false,source_urls_exposed:false,supabase_requests:0,b2_requests:0,payments:0};
   }

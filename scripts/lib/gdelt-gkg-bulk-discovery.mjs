@@ -30,7 +30,7 @@ function utcFromStamp(value){
   const ms=Date.parse(iso);
   return Number.isFinite(ms)&&new Date(ms).toISOString()===iso?iso:null;
 }
-export function parseGdeltGkgLastupdate(raw,{now=new Date(),maxBytes=MAX_INDEX_BYTES,kind="gkg"}={}){
+export function parseGdeltGkgLastupdate(raw,{now=new Date(),maxBytes=MAX_INDEX_BYTES,kind="gkg",before=null}={}){
   if(!["gkg","events"].includes(kind))throw Error("GKG_MANIFEST_KIND_INVALID");
   if(!Number.isSafeInteger(maxBytes)||maxBytes<1||maxBytes>MAX_MASTERFILE_TAIL_BYTES||
      typeof raw!=="string"||Buffer.byteLength(raw)>maxBytes||
@@ -50,7 +50,8 @@ export function parseGdeltGkgLastupdate(raw,{now=new Date(),maxBytes=MAX_INDEX_B
        !["http:","https:"].includes(uri.protocol)||uri.port||
        uri.search||uri.hash||uri.username||uri.password)continue;
     const batch=utcFromStamp(name[1]);const age=now.getTime()-Date.parse(batch??"");
-    if(!batch||age<0||age>MAX_AGE_MS||Number(size)>MAX_PACKED_BYTES)continue;
+    if(!batch||age<0||age>MAX_AGE_MS||Number(size)>MAX_PACKED_BYTES||
+       (before!==null&&batch>=before))continue;
     matches.push({batch_at:batch,expected_md5:checksum.toLowerCase(),
       expected_bytes:Number(size),
       // No source URL from untrusted file: reconstruct exact pinned HTTPS.
@@ -271,53 +272,57 @@ export async function reviewGkgFirstPartyPublicationDates(content,{
   };
 }
 
+// One manifest, one bounded index tail and at most two DISTINCT pinned ZIPs.
+// A 404 is an advertised-object publication race, never an access-denial retry.
+export async function readGdeltStaticArchive({fetchImpl=fetch,now=new Date(),kind="gkg"}={}){
+  if(!["gkg","events"].includes(kind))throw Error("GKG_MANIFEST_KIND_INVALID");
+  const request=(url,timeout,headers={})=>fetchImpl(url,{redirect:"error",
+    headers:{accept:"*/*","user-agent":"Geomacro-GDELT-Static/1.0",...headers},
+    signal:AbortSignal.timeout(timeout)});
+  const index=await request(GDELT_GKG_LATEST_URL,12000);
+  if(!index?.ok){await index?.body?.cancel();throw Error("GKG_MANIFEST_HTTP_"+(index?.status??"UNKNOWN"));}
+  const text=(await limitedGdeltBody(index,MAX_INDEX_BYTES)).toString("utf8");
+  let tailText=null;
+  const earlier=async(before=null)=>{
+    if(tailText===null){
+      const tail=await request(GDELT_GKG_MASTERFILE_URL,12000,
+        {accept:"text/plain",range:"bytes=-"+MAX_MASTERFILE_TAIL_BYTES});
+      if(tail?.status!==206){await tail?.body?.cancel();throw Error("GKG_MASTERFILE_RANGE_UNAVAILABLE");}
+      const parts=/^bytes (\d+)-(\d+)\/(\d+)$/u.exec(String(tail.headers.get("content-range")??""));
+      if(!parts||Number(parts[2])<Number(parts[1])||Number(parts[3])<=Number(parts[2])||
+        Number(parts[2])-Number(parts[1])+1>MAX_MASTERFILE_TAIL_BYTES){
+        await tail.body?.cancel();throw Error("GKG_MASTERFILE_RANGE_INVALID");
+      }
+      const recovered=await limitedGdeltBody(tail,MAX_MASTERFILE_TAIL_BYTES);
+      if(recovered.length!==Number(parts[2])-Number(parts[1])+1)throw Error("GKG_MASTERFILE_RANGE_INVALID");
+      const body=recovered.toString("utf8");
+      tailText=Number(parts[1])>0?body.slice(body.indexOf("\n")+1):body;
+    }
+    return parseGdeltGkgLastupdate(tailText,{now,kind,before,maxBytes:MAX_MASTERFILE_TAIL_BYTES});
+  };
+  let manifest,manifest_route="LASTUPDATE";
+  try{manifest=parseGdeltGkgLastupdate(text,{now,kind});}
+  catch(error){
+    if(error?.message!=="GKG_NO_CURRENT_PINNED_BATCH")throw error;
+    manifest=await earlier();manifest_route="MASTERFILE_TAIL";
+  }
+  let archive=await request(manifest.fetch_url,25000);
+  if(archive?.status===404){
+    await archive.body?.cancel();
+    manifest=await earlier(manifest.batch_at);manifest_route="MASTERFILE_EARLIER_AFTER_404";
+    archive=await request(manifest.fetch_url,25000);
+  }
+  if(!archive?.ok){await archive?.body?.cancel();throw Error("GKG_ARCHIVE_HTTP_"+(archive?.status??"UNKNOWN"));}
+  const zipped=await limitedGdeltBody(archive,MAX_PACKED_BYTES);
+  if(zipped.length!==manifest.expected_bytes||md5(zipped)!==manifest.expected_md5)
+    throw Error("GKG_ARCHIVE_MD5_OR_SIZE_MISMATCH");
+  const decoded=unpackSingleGkgZip(zipped,manifest.batch_at.replace(/\D/gu,"").slice(0,14),kind);
+  return {manifest,manifest_route,decoded,zipped};
+}
+
 export async function probeGdeltGkgBulk({fetchImpl=fetch,now=new Date(),reviewFirstParty=false}={}){
   try{
-    const request=async(url,timeout)=>fetchImpl(url,{
-      redirect:"error",headers:{accept:"*/*",
-        "user-agent":"Geomacro-Private-GDELT-Static-GKG/1.0"},
-      signal:AbortSignal.timeout(timeout),
-    });
-    const index=await request(GDELT_GKG_LATEST_URL,12000);
-    if(!index?.ok)throw Error("GKG_MANIFEST_HTTP_"+(index?.status??"UNKNOWN"));
-    const text=(await limitedGdeltBody(index,MAX_INDEX_BYTES)).toString("utf8");
-    let manifest;
-    let manifest_route="LASTUPDATE";
-    try{manifest=parseGdeltGkgLastupdate(text,{now});}
-    catch(error){
-      if(!(error instanceof Error)||error.message!=="GKG_NO_CURRENT_PINNED_BATCH")throw error;
-      // During boundary rollover the official lastupdate pointer can
-      // advertise a not-yet-current/future batch. Never mint its timestamp.
-      // Read bounded earlier GKG manifest entries, max ONE Range GET.
-      const tail=await fetchImpl(GDELT_GKG_MASTERFILE_URL,{
-        redirect:"error",
-        headers:{accept:"text/plain","range":"bytes=-"+MAX_MASTERFILE_TAIL_BYTES,
-          "user-agent":"Geomacro-Private-GDELT-Static-GKG/1.0"},
-        signal:AbortSignal.timeout(12000),
-      });
-      if(tail?.status!==206)throw Error("GKG_MASTERFILE_RANGE_UNAVAILABLE");
-      const range=String(tail.headers?.get?.("content-range")??"");
-      const parts=/^bytes (\d+)-(\d+)\/(\d+)$/u.exec(range);
-      if(!parts||Number(parts[2])<Number(parts[1])||
-         Number(parts[3])<=Number(parts[2])||
-         Number(parts[2])-Number(parts[1])+1>MAX_MASTERFILE_TAIL_BYTES)
-        throw Error("GKG_MASTERFILE_RANGE_INVALID");
-      const recovered=await limitedGdeltBody(tail,MAX_MASTERFILE_TAIL_BYTES);
-      const batchText=recovered.toString("utf8");
-      // Truncated first line cannot become a candidate.
-      const trimmed=Number(parts[1])>0?
-        batchText.slice(batchText.indexOf("\n")+1):batchText;
-      manifest=parseGdeltGkgLastupdate(trimmed,{now,
-        maxBytes:MAX_MASTERFILE_TAIL_BYTES});
-      manifest_route="MASTERFILE_TAIL";
-    }
-    const archive=await request(manifest.fetch_url,25000);
-    if(!archive?.ok)throw Error("GKG_ARCHIVE_HTTP_"+(archive?.status??"UNKNOWN"));
-    const zipped=await limitedGdeltBody(archive,MAX_PACKED_BYTES);
-    if(zipped.length!==manifest.expected_bytes||md5(zipped)!==manifest.expected_md5)
-      throw Error("GKG_ARCHIVE_MD5_OR_SIZE_MISMATCH");
-    const stamp=manifest.batch_at.replace(/\D/gu,"").slice(0,14);
-    const decoded=unpackSingleGkgZip(zipped,stamp);
+    const {manifest,manifest_route,decoded,zipped}=await readGdeltStaticArchive({fetchImpl,now,kind:"gkg"});
     const publicSafe=summarizeGdeltGkgBulk(decoded,{now,batch_at:manifest.batch_at});
     // Production can request only a bounded PRIVATE official-page date probe.
     // Even a valid first-party timestamp cannot certify event relevance,

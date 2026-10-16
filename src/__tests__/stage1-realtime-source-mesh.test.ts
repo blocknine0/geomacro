@@ -36,8 +36,9 @@ describe("Stage 1 realtime source mesh", () => {
     expect(workflow).not.toContain("schedule:");
     const orchestrator = fs.readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
     expect(orchestrator).toContain('key: "open_realtime_mesh"');
-    expect(workflow).toContain("scripts/sync-open-live-source-mesh.mjs");
-    expect(workflow).toContain("live-structure-intelligence");
+    expect(workflow).toContain("scripts/ops/run-supabase-free-source-runtime.ts");
+    expect(workflow).not.toContain("live-structure-intelligence");
+    expect(workflow).not.toMatch(/secrets\.(?:APP_)?SUPABASE/);
   });
 
   it("keeps source identities server-side", () => {

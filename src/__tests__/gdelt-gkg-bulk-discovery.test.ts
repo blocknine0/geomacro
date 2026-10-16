@@ -3,7 +3,7 @@ import {createHash} from "node:crypto";
 import {deflateRawSync} from "node:zlib";
 import {
   GDELT_GKG_BULK_SCHEMA,GDELT_GKG_LATEST_URL,
-  parseGdeltGkgLastupdate,unpackSingleGkgZip,
+  parseGdeltGkgLastupdate,unpackSingleGkgZip,readGdeltStaticArchive,
   summarizeGdeltGkgBulk,probeGdeltGkgBulk,
 } from "../../scripts/lib/gdelt-gkg-bulk-discovery.mjs";
 import {parseGdeltFipsCountries,summarizeGdeltEventDiscovery,readGdeltEventDiscovery} from "../lib/gdelt-event-discovery.server";
@@ -76,13 +76,14 @@ describe("Supabase-free GDELT Event export restores the former source stage",()=
     const fake=vi.fn(async(url:string)=>new Response(url.endsWith("lastupdate.txt")?index:url.endsWith("FIPS.country.txt")?fips:bytes));
     const r=await readGdeltEventDiscovery({fetchImpl:fake as any,now});
     expect(r.archive_integrity_verified).toBe(true);expect(fake).toHaveBeenCalledTimes(3);
+    expect(fake.mock.calls[2][0]).toBe("https://gdeltproject.org/data/lookups/FIPS.country.txt");
     expect(fake.mock.calls.some(c=>c[0].includes("supabase")||c[0].includes("api/v2/doc"))).toBe(false);
     expect(r.supabase_requests).toBe(0);
   });
   it("preserves actual integrity/auth/future-date failures without promoting indexed news",async()=>{
     const denied=vi.fn(async()=>new Response("",{status:429}));
     const r=await readGdeltEventDiscovery({fetchImpl:denied as any,now});
-    expect(r.archive_integrity_verified).toBe(false);expect(r.reason).toBe("GDELT_EVENT_HTTP_429");expect(denied).toHaveBeenCalledOnce();
+    expect(r.archive_integrity_verified).toBe(false);expect(r.reason).toBe("GKG_MANIFEST_HTTP_429");expect(denied).toHaveBeenCalledOnce();
     expect(()=>summarizeGdeltEventDiscovery(text,parseGdeltFipsCountries(fips),"2026-10-12T12:15:00Z",now)).toThrow();
     expect(()=>parseGdeltFipsCountries(fips+"\nCH\tSwitzerland")).toThrow();
   });
@@ -224,5 +225,45 @@ describe("#2042 static GDELT 15-minute global discovery independent of DOC 429",
     expect(denied).toMatchObject({state:"GKG_BULK_DEGRADED",
       reason:"GKG_MANIFEST_HTTP_429",public_published:false,chargeable:false});
     expect(JSON.stringify(denied)).not.toContain("sensitive");
+  });
+});
+
+
+describe("bounded static archive publication-race recovery",()=>{
+  const missingStamp="20261012120000";
+  const entry=(kind:string,ts:string,bytes:Buffer)=>`${bytes.length} ${createHash("md5").update(bytes).digest("hex")} http://data.gdeltproject.org/gdeltv2/${ts}.${kind==="gkg"?"gkg.csv":"export.CSV"}.zip\n`;
+  for(const kind of ["gkg","events"] as const){
+    it(`${kind}: recovers one 404 using a strictly older checksum-pinned entry, never the missing URL again`,async()=>{
+      const bytes=zip(raw,stamp+(kind==="gkg"?".gkg.csv":".export.CSV"));
+      const latest=entry(kind,missingStamp,bytes),tail=entry(kind,stamp,bytes)+latest;
+      const fetcher=vi.fn(async(url:string)=>{
+        if(url.endsWith("lastupdate.txt"))return new Response(latest);
+        if(url.endsWith("masterfilelist.txt"))return new Response(tail,{status:206,headers:{"content-range":`bytes 0-${Buffer.byteLength(tail)-1}/${Buffer.byteLength(tail)}`}});
+        return url.includes(missingStamp)?new Response("missing",{status:404}):new Response(bytes);
+      });
+      const r=await readGdeltStaticArchive({fetchImpl:fetcher,now,kind});
+      expect(r.manifest.batch_at).toBe(date);expect(r.manifest_route).toBe("MASTERFILE_EARLIER_AFTER_404");
+      expect(fetcher).toHaveBeenCalledTimes(4);
+      expect(fetcher.mock.calls.filter(c=>c[0].includes(missingStamp))).toHaveLength(1);
+    });
+  }
+  it("never falls back on denial or checksum failure",async()=>{
+    for(const status of [401,403,429,500]){
+      const fake=vi.fn(async(url:string)=>url.endsWith("lastupdate.txt")?new Response(manifest()):new Response("held",{status}));
+      await expect(readGdeltStaticArchive({fetchImpl:fake,now})).rejects.toThrow(`GKG_ARCHIVE_HTTP_${status}`);
+      expect(fake).toHaveBeenCalledTimes(2);
+    }
+    const fake=vi.fn(async(url:string)=>url.endsWith("lastupdate.txt")?new Response(manifest("0".repeat(32))):new Response(archive));
+    await expect(readGdeltStaticArchive({fetchImpl:fake,now})).rejects.toThrow("GKG_ARCHIVE_MD5_OR_SIZE_MISMATCH");
+    expect(fake).toHaveBeenCalledTimes(2);
+  });
+  it("stops after a second missing object and refuses a tail containing only the same or future entries",async()=>{
+    for(const older of [true,false]){
+      const latest=entry("gkg",missingStamp,archive),tail=(older?manifest():"")+latest;
+      const fake=vi.fn(async(url:string)=>url.endsWith("lastupdate.txt")?new Response(latest):url.endsWith("masterfilelist.txt")?
+        new Response(tail,{status:206,headers:{"content-range":`bytes 0-${Buffer.byteLength(tail)-1}/${Buffer.byteLength(tail)}`}}):new Response("missing",{status:404}));
+      await expect(readGdeltStaticArchive({fetchImpl:fake,now})).rejects.toThrow(older?"GKG_ARCHIVE_HTTP_404":"GKG_NO_CURRENT_PINNED_BATCH");
+      expect(fake).toHaveBeenCalledTimes(older?4:3);
+    }
   });
 });
