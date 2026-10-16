@@ -173,6 +173,32 @@ test('cron startup jitter cannot suppress the next half-hour slot or reset denia
  const calendar=await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('two'),now:new Date('2026-10-17T00:17:00.000Z')});
  assert.equal(calendar.attempted,29);
 });
+test('USGS MCS repair revision rechecks same-publisher fallback before annual interval without event promotion',async()=>{
+ const state=memoryState();
+ await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network(),now:at});
+ const p=state.rows.get('rare_earth').payload;
+ p.snapshot.sources.usgs_mcs.reader_revision=1;
+ p.snapshot.sources.usgs_mcs.state='NETWORK_UNAVAILABLE';
+ p.snapshot_sha256=createHash('sha256').update(JSON.stringify(p.snapshot)).digest('hex');
+ const spec=PRODUCTION_FREE_UPDATE_SOURCES.find(x=>x.id==='usgs_mcs');
+ assert.equal(spec.reader_revision,2);
+ const official='https://www.usgs.gov/centers/national-minerals-information-center/mineral-commodity-summaries';
+ const calls=[];
+ const result=await collectProductionFreeSourceUpdates({stateClient:state,
+  now:new Date(at.getTime()+60000),
+  fetchImpl:async(url)=>{
+   calls.push(url);
+   if(url===spec.url)throw Error('temporary primary network problem');
+   assert.equal(url,official);
+   return new Response('<!doctype html><html><h1>National Minerals Information Center</h1><h2>Mineral Commodity Summaries 2026</h2></html>');
+  }});
+ assert.deepEqual(calls,[spec.url,official]);
+ assert.equal(result.attempted,1);
+ assert.equal(result.retained_degraded_readers,0);
+ assert.equal(result.current_verified_intelligence,false);
+ assert.equal(result.commercial_eligible,false);
+ assert.equal(state.rows.get('rare_earth').payload.snapshot.sources.usgs_mcs.reader_revision,2);
+});
 test('a reader revision never shortens an existing publisher-denial backoff',async()=>{
  const state=memoryState();await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('one','un_security_council_sanctions'),now:at});
  const p=state.rows.get('geopolitics').payload;
