@@ -108,7 +108,8 @@ describe("China lithium exact customer question — one shared bounded on-demand
     expect(serialized).not.toContain("article_title");
     expect(serialized).not.toContain("Chinese lithium");
     expect(serialized).not.toContain("chinese-lithium-export-licensing");
-    expect(requests).toHaveLength(8);
+    expect(requests).toHaveLength(6);
+    expect(requests.some(url=>url.includes("/v2/country/CHN?"))).toBe(false);
     expect(requests.every(v=>v.startsWith("https://"))).toBe(true);
   });
 });
