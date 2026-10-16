@@ -79,3 +79,9 @@ canonical record SHA256. A valid private artifact alone is not a live product.
 
 To confirm safe interface and compile with no credentials:
 `bunx vitest run src/lib/geomacro-machine-commercial-operator.server.test.ts`.
+
+## Production configuration verification
+
+The existing recovery preflight now has an explicit `GEOMACRO_PUBLICATION_PROFILE=GEOMACRO_AUTOMATED_CROSS_SOURCE_NOT_EXTERNAL_REVIEWED_V1` mode. It reuses the exact dual-authority parser used for signature qualification, checks both pinned Ed25519 authorities are distinct from each other and from a valid Ed25519 GRO signer, and does not require an external reviewer for this separate machine profile. The default independent-reviewed profile remains unchanged; unknown profile names fail closed.
+
+The protected production job in `machine-commercial-gro-no-funds.yml` injects only the public authority keys/pins and credential-presence booleans. Its sanitized receipt identifies missing or invalid configuration with zero source/B2/D1/payment operations. A passing configuration preflight is explicitly not proof of real signed facts/rights input, current product publication, public-route wiring, historical B2 readback or health recovery. Missing authorities cannot be generated/self-approved by this verifier.
