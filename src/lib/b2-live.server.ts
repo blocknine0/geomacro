@@ -1,3 +1,4 @@
+import {fetchWithoutRedirect} from "./fetch-without-redirect";
 import { createPerKeySingleFlight } from "./b2-single-flight";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 import type { GlobalRisk } from "./global-risk.types";
@@ -177,7 +178,7 @@ export async function reservePrivateB2Read(key: string): Promise<boolean> {
         : null;
   if (!workflowId) return false;
   try {
-    const res = await fetch(B2_QUOTA_WORKER, {
+    const res = await fetchWithoutRedirect(B2_QUOTA_WORKER, {
       method: "POST",
       redirect: "error",
       headers: {
@@ -241,7 +242,7 @@ async function signedGetOnce(key: string): Promise<Uint8Array | null> {
     );
     const signature = hex(await hmac(signingKey, stringToSign));
 
-    const response = await fetch(`${B2_ENDPOINT}${path}`, {
+    const response = await fetchWithoutRedirect(`${B2_ENDPOINT}${path}`, {
       method: "GET",
       headers: {
         "x-amz-content-sha256": emptyHash,
@@ -295,7 +296,7 @@ function recentEnough(value: unknown, maxAgeMs = 24 * 60 * 60 * 1000): boolean {
 
 async function readPublicIntelligenceEdge(): Promise<PublicIntelligenceRow[] | null> {
   try {
-    const response = await fetch(PUBLIC_INTELLIGENCE_EDGE_URL, {
+    const response = await fetchWithoutRedirect(PUBLIC_INTELLIGENCE_EDGE_URL, {
       method: "GET",
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(4_500),

@@ -1,3 +1,4 @@
+import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
 /**
  * One source-private observational status read for all three category surfaces.
  * This reuses the existing bounded public D1 projection; it never scrapes,
@@ -41,7 +42,7 @@ export async function unifiedThreeDomainSourceObservation({
   let rows: Record<string, unknown> | null=null;
   if(now instanceof Date&&Number.isFinite(now.getTime())){
     try {
-      const response=await fetchImpl(PULSE_URL,{
+      const response=await fetchWithoutRedirectUsing(fetchImpl,PULSE_URL,{
         method:"GET",redirect:"error",
         headers:{Accept:"application/json"},
         signal:AbortSignal.timeout(2500),

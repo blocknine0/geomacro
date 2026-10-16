@@ -1,3 +1,4 @@
+import {fetchWithoutRedirect} from "./fetch-without-redirect";
 const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/automated-finds";
 const aliases:Record<string,string>={geopolitics:"geopolitics","macro-fx":"macro","critical-minerals":"rare_earth"};
 /** Worker verifies signatures against its separately provisioned public-key
@@ -9,7 +10,7 @@ export async function automatedFindsResponse(request:Request,category?:string){
     return Response.json({ok:false,error:"AUTOMATED_FINDS_QUERY_INVALID",chargeable:false},{status:400});
   try{
     const endpoint=category?ROOT+"?category="+aliases[category]:ROOT;
-    const reply=await fetch(endpoint,{redirect:"error",cache:"no-store",headers:{Accept:"application/json"},signal:AbortSignal.timeout(8_000)});
+    const reply=await fetchWithoutRedirect(endpoint,{redirect:"error",cache:"no-store",headers:{Accept:"application/json"},signal:AbortSignal.timeout(8_000)});
     if(!reply.ok||Number(reply.headers.get("content-length")??0)>300_000)throw Error("UNAVAILABLE");
     const raw=await reply.text();if(raw.length>300_000)throw Error("OVERSIZE");
     const doc=JSON.parse(raw);

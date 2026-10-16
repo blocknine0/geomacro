@@ -1,3 +1,4 @@
+import {fetchWithoutRedirect} from "./fetch-without-redirect";
 import { createServerFn } from "@tanstack/react-start";
 import type { StatelessIntelligenceSignal } from "./stateless-intelligence-model";
 
@@ -18,7 +19,7 @@ export const getWebsiteDerivedNews = createServerFn({ method: "GET" })
   .handler(async (): Promise<WebsiteDerivedNewsResult> => {
     const { setResponseHeaders } = await import("@tanstack/react-start/server");
     setResponseHeaders(new Headers({ "Cache-Control": "no-store", "CDN-Cache-Control": "no-store" }));
-    const response = await fetch(JOURNAL, {
+    const response = await fetchWithoutRedirect(JOURNAL, {
       method: "GET", redirect: "error", cache: "no-store",
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(4_500),

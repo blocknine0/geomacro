@@ -66,7 +66,7 @@ describe("undated GOV.UK Atom query-time original publication rescue",()=>{
       x.family.startsWith("uk_")).every(x=>x.publication_clock_verified===false)).toBe(true);
     const pageFetch=vi.fn(async(url:RequestInfo|URL,options?:RequestInit)=>{
       expect([urls.geo,urls.mineral]).toContain(String(url));
-      expect(options?.redirect).toBe("error");
+      expect(options?.redirect).toBe("manual");
       return new Response('<html><meta name="govuk:first-published-at" '+
         'content="2026-10-12T11:30:00+00:00"></html>',{
         headers:{"content-type":"text/html"},

@@ -1,3 +1,4 @@
+import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
 /**
  * No-key OPEN DATA measurement layer for the 3 existing category endpoints.
  *
@@ -378,7 +379,7 @@ async function boundedJson(r:Response,maxBytes:number,format:"json"|"xml"="json"
 async function fetchOne(spec:Provider,now:number,fetcher:typeof fetch):
   Promise<{readable:boolean;data:Extracted|null}> {
   try {
-    const response=await fetcher(spec.url,{
+    const response=await fetchWithoutRedirectUsing(fetcher,spec.url,{
       method:spec.method,redirect:"error",cache:"no-store",
       headers:{
         Accept:"application/json",
@@ -450,7 +451,7 @@ export async function readCategoryOpenData(
 }
 async function readD1ContextFallback(category:Domain,unavailable:ReturnType<typeof buildSnapshot>,now:number,fetcher:typeof fetch){
   try{
-    const response=await fetcher("https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/source-runtime-context?category="+category,{
+    const response=await fetchWithoutRedirectUsing(fetcher,"https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/source-runtime-context?category="+category,{
       redirect:"error",cache:"no-store",signal:AbortSignal.timeout(3500)});
     if(!response.ok||Number(response.headers.get("content-length")??0)>48000)return unavailable;
     const raw=await response.text();if(raw.length>48000)return unavailable;

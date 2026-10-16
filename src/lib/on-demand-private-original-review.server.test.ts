@@ -44,7 +44,7 @@ describe("private originals survive presentation headline dedup",()=>{
     const visited:string[]=[];
     const fetchImpl=vi.fn(async(url:RequestInfo|URL,options?:RequestInit)=>{
       visited.push(String(url));
-      expect(options?.redirect).toBe("error");
+      expect(options?.redirect).toBe("manual");
       expect(options?.method).toBe("GET");
       return new Response(
         '<html><head><meta property="article:published_time" content="2026-10-11T07:00:00Z"></head></html>',

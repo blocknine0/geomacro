@@ -1,3 +1,4 @@
+import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
 import {COUNTRIES_195} from "./canonical-country-registry-195";
 import {readGdeltStaticArchive,limitedGdeltBody} from "../../scripts/lib/gdelt-gkg-bulk-discovery.mjs";
 
@@ -50,11 +51,11 @@ export function summarizeGdeltEventDiscovery(text:string,fips:Map<string,string|
 export async function readGdeltEventDiscovery({fetchImpl=fetch,now=new Date()}={}){
   try{
     const request=async(url:string,max:number)=>{
-      const r=await fetchImpl(url,{redirect:"error",headers:{Accept:"*/*"},signal:AbortSignal.timeout(20_000)});
+      const r=await fetchWithoutRedirectUsing(fetchImpl,url,{redirect:"error",headers:{Accept:"*/*"},signal:AbortSignal.timeout(20_000)});
       if(!r.ok)throw Error("GDELT_EVENT_HTTP_"+r.status);
       return limitedGdeltBody(r,max);
     };
-    const {manifest,manifest_route,decoded:text}=await readGdeltStaticArchive({fetchImpl,now,kind:"events"});
+    const {manifest,manifest_route,decoded:text}=await readGdeltStaticArchive({fetchImpl:(input,init)=>fetchWithoutRedirectUsing(fetchImpl,input,init),now,kind:"events"});
     if(now.getTime()-Date.parse(manifest.batch_at)>60*60_000)throw Error("GDELT_EVENT_BATCH_INVALID");
     const fips=parseGdeltFipsCountries((await request(LOOKUP,64000)).toString("utf8"));
     return {...summarizeGdeltEventDiscovery(text,fips,manifest.batch_at,now),archive_integrity_verified:true,manifest_route};

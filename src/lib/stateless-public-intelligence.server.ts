@@ -1,3 +1,4 @@
+import {fetchWithoutRedirect} from "./fetch-without-redirect";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 /**
  * On-demand website Intelligence reader. No B2/D1/Supabase/KV/files/queues,
@@ -188,7 +189,7 @@ async function readGovContentOriginalDate(candidate: {
   if (!/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9-]+$/u.test(path))
     return null;
   try {
-    const response = await fetch("https://www.gov.uk/api/content" + path, {
+    const response = await fetchWithoutRedirect("https://www.gov.uk/api/content" + path, {
       method: "GET", redirect: "error", cache: "no-store",
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -227,7 +228,7 @@ async function readCanadaNewsOriginalDay(candidate: {
     return null;
   note?.("path_ok");
   try {
-    const response=await fetch(candidate.articleUrl,{
+    const response=await fetchWithoutRedirect(candidate.articleUrl,{
       method:"GET",redirect:"error",cache:"no-store",
       headers:{Accept:"text/html"},signal:AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -268,7 +269,7 @@ async function readStatcanDailyOriginalDay(
       : article.href;
   } catch { return null; }
   try {
-    const response = await fetch(canonical, {
+    const response = await fetchWithoutRedirect(canonical, {
       method: "GET", redirect: "error", cache: "no-store",
       headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -358,7 +359,7 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
 }> {
   if(source.id==='govuk_global_economy'||source.id==='govuk_global_minerals'){
     try{
-      const response=await fetch(source.url,{redirect:'error',headers:{Accept:'application/json'},signal:AbortSignal.timeout(TIMEOUT_MS)});
+      const response=await fetchWithoutRedirect(source.url,{redirect:'error',headers:{Accept:'application/json'},signal:AbortSignal.timeout(TIMEOUT_MS)});
       const body=await boundedText(response,192*1024);if(!body)return {healthy:false,candidates:[]};
       const data=JSON.parse(body);if(!Array.isArray(data.results)||!Number.isFinite(data.total))return {healthy:false,candidates:[]};
       const spec=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((s:{id:string})=>s.id===source.id);
@@ -378,12 +379,12 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   }
   if(source.id==='iea_minerals_global'){
     try{
-      const response=await fetch(source.url,{redirect:'error',headers:{Accept:'text/html'},signal:AbortSignal.timeout(TIMEOUT_MS)});
+      const response=await fetchWithoutRedirect(source.url,{redirect:'error',headers:{Accept:'text/html'},signal:AbortSignal.timeout(TIMEOUT_MS)});
       const html=await boundedText(response,MAX_FEED_BYTES);if(!html)return {candidates:[],healthy:false};
       const indexed=ieaMineralsIndexCandidates(html).slice(0,2);
       const rows=await Promise.all(indexed.map(async(candidate:{title:string;articleUrl:string})=>{
         try{
-          const response=await fetch(candidate.articleUrl,{redirect:'error',headers:{Accept:'text/html'},signal:AbortSignal.timeout(TIMEOUT_MS)});
+          const response=await fetchWithoutRedirect(candidate.articleUrl,{redirect:'error',headers:{Accept:'text/html'},signal:AbortSignal.timeout(TIMEOUT_MS)});
           const body=await boundedText(response,MAX_FEED_BYTES);
           const date=body?verifiedIeaOriginalPublication(body,candidate,new Date(now),STATELESS_LOOKBACK_MS):null;
           return date?{...candidate,sourceId:source.id,category:source.category,publishedAt:date,credit:source.credit}:null;
@@ -403,7 +404,7 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   }
   if (source.id === "eu_top_news" && source.media === "html_index") {
     try {
-      const response = await fetch(source.url, {
+      const response = await fetchWithoutRedirect(source.url, {
         method: "GET", redirect: "error", cache: "no-store",
         headers: { Accept: "text/html" },
         signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -431,7 +432,7 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   });
   if (source.id === "au_geoscience" && source.media === "html_index") {
     try {
-      const response = await fetch(source.url, {
+      const response = await fetchWithoutRedirect(source.url, {
         method: "GET", redirect: "error", cache: "no-store",
         headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
       });
@@ -443,7 +444,7 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       const indexed = australianNewsIndexCandidates(html, now);
       const recovered = await Promise.all(indexed.slice(0, 6).map(async candidate => {
         try {
-          const article = await fetch(candidate.articleUrl, {
+          const article = await fetchWithoutRedirect(candidate.articleUrl, {
             method: "GET", redirect: "error", cache: "no-store",
             headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
           });

@@ -1,3 +1,4 @@
+import {fetchWithoutRedirect} from "./fetch-without-redirect";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAppSupabase } from "./supabase-app.server";
 import { readB2PublicRisk } from "./b2-live.server";
@@ -121,7 +122,7 @@ export async function readWebsiteLaggedGlobalRisk(
   // and verifies the immutable original public B2-readback SHA-256 before
   // returning a privacy-redacted (not raw-source) GRI projection.
   try{
-    const response=await fetch(
+    const response=await fetchWithoutRedirect(
       "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-lagged-global-risk",
       {method:"GET",redirect:"error",headers:{Accept:"application/json"},
        cache:"no-store",signal:AbortSignal.timeout(3500)},

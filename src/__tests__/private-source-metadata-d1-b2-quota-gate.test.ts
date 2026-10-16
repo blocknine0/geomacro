@@ -37,7 +37,7 @@ describe("private source metadata B2 Class B access / frozen Supabase quota fail
    vi.stubGlobal("fetch",vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
      hits.push(String(input));
      expect(init?.method).toBe("POST");
-     expect(init?.redirect).toBe("error");
+     expect(init?.redirect).toBe("manual");
      expect(JSON.parse(String(init?.body)).kind).toBe("GET");
      return Response.json({ok:false,error:"B2_GLOBAL_DAILY_QUOTA_EXHAUSTED"},{status:429});
    }));

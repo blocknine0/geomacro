@@ -1,3 +1,4 @@
+import {fetchWithoutRedirect} from "./fetch-without-redirect";
 /**
  * Optional private, per-question research lookup. It never turns a Telegram
  * lead into verified intelligence or an x402 deliverable.
@@ -78,7 +79,7 @@ export async function lookupTelegramFallback(input: {
       input.categories.length > 3 || new Set(input.categories).size !== input.categories.length)
     return { attempted: false, status: "UNAVAILABLE", ...EMPTY };
   try {
-    const response = await fetch(config.url, {
+    const response = await fetchWithoutRedirect(config.url, {
       method: "POST", redirect: "error", cache: "no-store",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${config.token}` },
       body: JSON.stringify({ schema: "geomacro.private-telegram-query.v1",
