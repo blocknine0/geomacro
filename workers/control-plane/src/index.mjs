@@ -1,5 +1,6 @@
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 import { readDerivedStories, publishDerivedStories, renderDerivedStoriesHtml } from "./website-derived-intelligence.mjs";
+import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
 import { makeRiskIndicesHistoricalMetadata } from "./risk-indices-historical-status.mjs";
 import { projectPublic30mPulse } from "./source-pulse-public.mjs";
@@ -1245,6 +1246,11 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
+    if(request.method==="GET"&&url.pathname==="/v1/public/automated-finds"){
+      if([...url.searchParams.keys()].some(k=>k!=="category")||url.searchParams.getAll("category").length>1)
+        return json({ok:false,error:"AUTOMATED_FINDS_QUERY_INVALID"},400);
+      return getAutomatedFinds(env,url.searchParams.get("category"));
+    }
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
       return renderDerivedStoriesHtml(env);
     }
@@ -1275,6 +1281,8 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      if(request.method==="PUT"&&url.pathname==="/v1/automated-finds"&&!url.search)
+        return putAutomatedFinds(env,await readJson(request,300_000));
       if (
         request.method === "GET" &&
         parts[0] === "v1" &&

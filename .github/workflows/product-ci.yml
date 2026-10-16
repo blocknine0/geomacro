@@ -57,6 +57,9 @@ jobs:
           bun build scripts/ops/publish-supabase-free-public-intelligence.mjs \
             --target=bun --outfile=/tmp/geomacro-verified-intelligence-publisher-smoke.js
           test -s /tmp/geomacro-verified-intelligence-publisher-smoke.js
+          bun build scripts/ops/publish-automated-finds.ts \
+            --target=bun --outfile=/tmp/geomacro-automated-finds-publisher-smoke.js
+          test -s /tmp/geomacro-automated-finds-publisher-smoke.js
 
       - name: Upload app test evidence
         if: always()

@@ -4,6 +4,7 @@ import { publicIntelligenceSourceCoverage, type CommercialIntelligenceCategory }
 import { categoryOriginalSourcePulse } from "./current-30min-original-source-pulse.server";
 import { readCategoryLiveObservation } from "./category-live-observation.server";
 import { readCategoryOpenData } from "./category-open-data.server";
+import {automatedFindsResponse} from "./automated-finds-reader.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const CANONICAL_PATH = "/api/v1/intelligence/query";
@@ -116,6 +117,8 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
   return {
     OPTIONS: async () => mainnetIntelligenceHandlers.OPTIONS(),
     GET: async ({ request }: { request: Request }) => {
+      if(new URL(request.url).searchParams.get("view")==="finds")
+        return automatedFindsResponse(request,config.category);
       if (new URL(request.url).searchParams.get("view") === "combined") {
         // One canonical category endpoint: original-date official releases
         // and structured source data remain separated by type and clocks.
