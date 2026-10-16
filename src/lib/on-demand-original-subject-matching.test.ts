@@ -89,7 +89,7 @@ describe("China lithium exact customer question — one shared bounded on-demand
     }) as unknown as typeof fetch;
     const scoped={country_iso3:"CHN",categories:["rare_earth" as const],mineral:"lithium" as const};
     const privateProof=await discoverOnDemandForPrivateQualification(scoped,{fetchImpl,now});
-    expect(privateProof.discovery.network_attempts).toBe(4);
+    expect(privateProof.discovery.network_attempts).toBe(3);
     expect(privateProof.private_candidates).toHaveLength(2);
     expect(privateProof.private_candidates.map(x=>x.publisher_family).sort())
       .toEqual(["australian_industry_original_publisher","uk_dbt_original_publisher"]);
