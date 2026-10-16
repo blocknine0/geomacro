@@ -1,0 +1,59 @@
+name: BGS exact native historical minerals verification
+on:
+  pull_request:
+    paths:
+      - "global-intelligence/adapters/bgs-world-minerals.mjs"
+      - "scripts/tests/bgs-source-integrity.test.mjs"
+      - "scripts/ops/verify-bgs-native-reference.mjs"
+      - ".github/workflows/bgs-native-mineral-reference.yml"
+  push:
+    branches: [main]
+    paths:
+      - "global-intelligence/adapters/bgs-world-minerals.mjs"
+      - "scripts/tests/bgs-source-integrity.test.mjs"
+      - "scripts/ops/verify-bgs-native-reference.mjs"
+      - ".github/workflows/bgs-native-mineral-reference.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "19 5 * * *"
+permissions:
+  contents: read
+concurrency:
+  group: bgs-native-historical-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: |
+          set -euo pipefail
+          node --check global-intelligence/adapters/bgs-world-minerals.mjs
+          node --check scripts/ops/verify-bgs-native-reference.mjs
+          node --test scripts/tests/bgs-source-integrity.test.mjs
+  real-bgs-source:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: source-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: node scripts/ops/verify-bgs-native-reference.mjs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: bgs-native-reference-${{ github.run_id }}
+          path: artifacts/bgs-native-reference/receipt.json
+          retention-days: 7
+          if-no-files-found: warn

@@ -7,6 +7,14 @@ function toNumber(value) {
   return Number.isFinite(n) ? n : null;
 }
 
+function nativeYear(value){
+  // BGS OGC native year may be "2024-01-01 00:00:00"; this is a
+  // reference YEAR, never original publication day.
+  const s=String(value??"").trim();
+  const match=s.match(/^((?:19|20)\d{2})(?:-01-01(?:[ T]00:00:00(?:\.0+)?)?)?$/u);
+  return match?Number(match[1]):null;
+}
+
 function first(obj, keys) {
   for (const key of keys) {
     if (obj?.[key] !== undefined && obj?.[key] !== null && obj?.[key] !== "") return obj[key];
@@ -24,9 +32,9 @@ function normalizeStatistic(value) {
 
 export function normalizeBgsWorldMineralsFeature(feature) {
   const p = feature?.properties ?? feature ?? {};
-  const year = toNumber(first(p, ["year", "Year"]));
-  const country = first(p, ["country_iso3_code", "country_iso2_code", "country", "Country", "country_name"]);
-  const commodity = first(p, ["commodity", "Commodity", "sub_commodity", "subCommodity"]);
+  const year = nativeYear(first(p, ["year", "Year"]));
+  const country = first(p, ["country_trans", "country", "Country", "country_name", "country_iso3_code", "country_iso2_code"]);
+  const commodity = first(p, ["bgs_commodity_trans", "bgs_sub_commodity_trans", "commodity", "Commodity", "sub_commodity", "subCommodity"]);
   const statisticType = first(p, ["bgs_statistic_type_trans", "statistic_type", "statisticType", "statistic", "Statistic type", "statistic type"]);
   const quantity = toNumber(first(p, ["quantity", "Quantity", "value", "Value", "amount"]));
   const unit = first(p, ["units", "unit", "Unit", "unit_of_measure"]);
@@ -38,8 +46,11 @@ export function normalizeBgsWorldMineralsFeature(feature) {
     native_publication_at: null,
     historical_reference_only: true,
     commodity,
+    sub_commodity:first(p,["bgs_sub_commodity_trans"]),
     year,
     value: quantity,
+    native_data_precision: first(p,["data_precision_description"]),
+    native_sdmx_translation: first(p,["sdmx_translation"]),
     unit,
     source_feature_id: feature?.id ?? null,
     source_url: feature?.links?.find?.((x) => x.rel === "self")?.href ?? null,
@@ -67,6 +78,7 @@ export async function fetchBgsWorldMinerals({
   const url = new URL(origin.origin+"/collections/world-mineral-statistics/items");
   url.searchParams.set("f", "json");
   url.searchParams.set("limit", String(Math.min(Math.max(limit, 1), 1000)));
+  url.searchParams.set("sortby","-year");
   if (country) url.searchParams.set("filter", `country = '${String(country).replaceAll("'", "''")}'`);
   const response = await fetchImpl(url,{redirect:"error",signal:AbortSignal.timeout(15000),
     headers:{accept:"application/json"}});
