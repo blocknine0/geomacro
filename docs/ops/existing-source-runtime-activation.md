@@ -14,7 +14,8 @@ Counts below overlap by provider and are not a total of independent sources.
 
 P0 private execution reuses the checked-in sanctions, mineral, policy and
 international institution parsers. One source request, 15-second deadline,
-2 MiB response bound, no redirect following and no retries per source. Denial,
+2 MiB default response bound (32 MiB only for the exact UK sanctions XML,
+observed at 22,051,272 bytes), no redirect following and no retries per source. Denial,
 oversize, missing schema and parser failure remain individual unavailable
 results. It never sends raw titles, URLs or publisher bodies to artifacts.
 World Bank ZIP signature and UNCTAD HTML are explicitly transport/context

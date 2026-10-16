@@ -20,6 +20,9 @@ const PARSERS=Object.freeze({uk_sanctions_list:parseUkSanctionsXml,
  icj_cases:parseIcjCasesHtml,icc_news:parseIccNewsHtml});
 const DOMAINS=['GEOPOLITICS','MACRO','CRITICAL_MINERALS'];
 export const P0_MAX_BYTES=2*1024*1024;
+// Protected live readback observed the exact UK XML at 22,051,272 bytes.
+// Permit bounded growth only for this checked-in first-party dataset.
+export const UK_SANCTIONS_MAX_BYTES=32*1024*1024;
 export function existingPrivateP0Sources(){
  const registry=JSON.parse(readFileSync(new URL('../../config/global-p0-source-expansion.json',import.meta.url),'utf8'));
  const sources=Object.entries(registry.p0_global_source_expansion.sources);
@@ -32,15 +35,15 @@ export function existingPrivateP0Sources(){
    return {id,category:s.category,url:url.href};
  });
 }
-async function boundedBody(response){
- if(Number(response.headers.get('content-length')??0)>P0_MAX_BYTES){
+async function boundedBody(response,maxBytes=P0_MAX_BYTES){
+ if(Number(response.headers.get('content-length')??0)>maxBytes){
    await response.body?.cancel();throw Error('BODY_SIZE_LIMIT');
  }
  if(!response.body)throw Error('BODY_EMPTY');
  const reader=response.body.getReader(),chunks=[];let size=0;
  try{for(;;){const {done,value}=await reader.read();if(done)break;
    size+=value.byteLength;
-   if(size>P0_MAX_BYTES){await reader.cancel();throw Error('BODY_SIZE_LIMIT');}
+   if(size>maxBytes){await reader.cancel();throw Error('BODY_SIZE_LIMIT');}
    chunks.push(Buffer.from(value));
  }}finally{reader.releaseLock();}
  if(!size)throw Error('BODY_EMPTY');
@@ -58,7 +61,9 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
        signal:AbortSignal.timeout(15000),headers:{'user-agent':'Geomacro-Private-P0-Discovery/1.0'}});
      if(!response.ok){row.reason='HTTP_'+response.status;await response.body?.cancel();}
      else{
-       const bytes=await boundedBody(response);
+       const isUkDataset=source.id==='uk_sanctions_list'&&
+         source.url==='https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.xml';
+       const bytes=await boundedBody(response,isUkDataset?UK_SANCTIONS_MAX_BYTES:P0_MAX_BYTES);
        const type=response.headers.get('content-type')??'';
        if(source.id==='world_bank_commodity_prices'){
          if(bytes.length<100||bytes[0]!==0x50||bytes[1]!==0x4b)throw Error('FORMAT_NOT_VERIFIED');

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {existingPrivateP0Sources,observeExistingPrivateP0Sources,P0_MAX_BYTES} from '../ops/observe-p0-private-source-runtime.mjs';
+import {existingPrivateP0Sources,observeExistingPrivateP0Sources,P0_MAX_BYTES,UK_SANCTIONS_MAX_BYTES} from '../ops/observe-p0-private-source-runtime.mjs';
 const now=new Date('2026-10-15T21:30:00.000Z');
 function jobAllowed(file,job,event,repo='blocknine0/geomacro',ref='refs/heads/main'){
  const text=readFileSync('.github/workflows/'+file,'utf8');
@@ -25,6 +25,7 @@ function jobAllowed(file,job,event,repo='blocknine0/geomacro',ref='refs/heads/ma
  const result=or();assert.equal(cursor,tokens.length);return result;
 }
 test('credentialed cron actually runs on protected main and cannot inject credentials into forks or PRs',()=>{
+ assert.ok(readFileSync('.github/workflows/credentialed-source-runtime.yml','utf8').includes('group: geomacro-credentialed-source-runtime-${{ github.ref }}'));
  for(const event of ['push','workflow_dispatch','schedule']){
    assert.equal(jobAllowed('credentialed-source-runtime.yml','runtime',event),true);
    assert.equal(jobAllowed('credentialed-source-runtime.yml','runtime',event,'untrusted/fork'),false);
@@ -73,7 +74,7 @@ test('reuses actual existing UK parser; malformed provider pages remain unavaila
 test('enforces byte bound from headers and streams and isolates failures without leaking error details',async()=>{
  let n=0;
  const r=await observeExistingPrivateP0Sources({now,fetchImpl:async()=>{
-   if(n++===0)return new Response('x',{headers:{'content-length':String(P0_MAX_BYTES+1)}});
+   if(n++===0)return new Response('x',{headers:{'content-length':String(UK_SANCTIONS_MAX_BYTES+1)}});
    if(n===2)return new Response(new Uint8Array(P0_MAX_BYTES+1));
    throw Error('secret-token upstream response body');
  }});
@@ -88,4 +89,16 @@ test('dataset ZIP and HTML transport are never promoted to parsed observations o
  const wb=r.results.find(s=>s.source_id==='world_bank_commodity_prices');
  assert.equal(wb.status,'DATASET_TRANSPORT_ONLY');assert.equal(wb.parsed_candidate_count,null);
  assert.equal(r.source_publication_clocks_requalified,false);assert.equal(r.signed_intelligence_published,false);
+});
+
+test('the exact large UK dataset gets its own bound, all other sources retain 2 MiB',async()=>{
+ const xml='<Designations><Designation><UniqueID>UK002</UniqueID><PrimaryName>Example Large</PrimaryName></Designation></Designations>';
+ const r=await observeExistingPrivateP0Sources({now,fetchImpl:async url=>{
+   if(new URL(url).hostname==='sanctionslist.fcdo.gov.uk')return new Response(' '.repeat(P0_MAX_BYTES)+xml,{headers:{'content-type':'text/xml'}});
+   return new Response('too large',{headers:{'content-length':String(P0_MAX_BYTES+1)}});
+ }});
+ assert.equal(r.results[0].status,'PRIVATE_CANDIDATES_PARSED');
+ assert.equal(r.results[0].parsed_candidate_count,1);
+ assert.ok(r.results.slice(1).every(s=>s.reason==='BODY_SIZE_LIMIT'));
+ assert.equal(r.results[0].current_original_publication_verified,false);
 });
