@@ -43,3 +43,48 @@ test("unsafe host, oversized data, provider denial, and bad shape fail closed",a
     headers:{"content-length":"1048577"}
   })}),/BGS_BODY_UNVERIFIED/);
 });
+
+test("official BGS native OGC feature uses year timestamp, country and commodity nomenclature",()=>{
+ const item={type:"Feature",id:"1-106-596-18-2024",
+   properties:{
+     year:"2024-01-01 00:00:00",
+     country_trans:"Guatemala",country_iso3_code:"GTM",
+     bgs_commodity_trans:"bentonite and fuller's earth",
+     bgs_sub_commodity_trans:"Bentonite",
+     bgs_statistic_type_trans:"Production",
+     quantity:2024,units:"tonnes (metric)",
+     sdmx_translation:"Normal value",
+     data_precision_description:"None"}};
+ const r=normalizeBgsWorldMineralsFeature(item);
+ assert.equal(r.year,2024);
+ assert.equal(r.country,"Guatemala");
+ assert.equal(r.country_iso3,"GTM");
+ assert.equal(r.commodity,"bentonite and fuller's earth");
+ assert.equal(r.sub_commodity,"Bentonite");
+ assert.equal(r.evidence_type,"PRODUCTION");
+ assert.equal(r.value,2024);
+ assert.equal(r.native_sdmx_translation,"Normal value");
+ assert.equal(r.native_publication_at,null);
+ assert.equal(r.historical_reference_only,true);
+ const invalid=normalizeBgsWorldMineralsFeature({
+   properties:{year:"2024-05-31",country_iso3_code:"GTM"}});
+ assert.equal(invalid.year,null);
+});
+test("official BGS request sorts latest native reporting years but never calls them releases",async()=>{
+ let url;
+ const r=await fetchBgsWorldMinerals({limit:1,fetchImpl:async target=>{
+   url=new URL(target);
+   return new Response(JSON.stringify({type:"FeatureCollection",features:[
+     {type:"Feature",id:"m1",properties:{
+       year:"2024-01-01 00:00:00",country_trans:"Guatemala",
+       country_iso3_code:"GTM",bgs_commodity_trans:"Bentonite",
+       bgs_statistic_type_trans:"Production",quantity:210,units:"tonnes"
+     }}
+   ]}));
+ }});
+ assert.equal(url.searchParams.get("sortby"),"-year");
+ assert.equal(r.rows[0].year,2024);
+ assert.equal(r.rows[0].country_iso3,"GTM");
+ assert.equal(r.native_current_publication_proven,false);
+ assert.equal(r.commercial_terms_review_required,true);
+});
