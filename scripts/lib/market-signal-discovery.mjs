@@ -2,6 +2,7 @@
 // corroborated event, commercial right, scored GRO, or payable intelligence.
 // Similar to the observation/verification separation documented by ACLED,
 // Dataminr and GDELT. No publisher article text/URL is ever exported.
+import {fetchGdeltDocWithBudget} from "./gdelt-doc-request-gate.mjs";
 export const MARKET_SIGNAL_SCHEMA = "geomacro.global-open-signal-discovery.v1";
 export const DISCOVERY_CATEGORIES = Object.freeze(["geopolitics", "macro", "rare_earth"]);
 export const DISCOVERY_QUERIES = Object.freeze({
@@ -152,7 +153,8 @@ export async function pollOpenDiscovery(category, { now = new Date(), fetchImpl 
   endpoint.searchParams.set("format", "json");
   let response;
   try {
-    response = await fetchImpl(endpoint.href, {
+    const reader=fetchImpl===fetch?fetchGdeltDocWithBudget:fetchImpl;
+    response = await reader(endpoint.href, {
       redirect: "error",
       headers: { accept: "application/json, text/plain;q=0.6", "user-agent": "Geomacro-Private-Global-Signal-Discovery/1.0" },
       signal: AbortSignal.timeout(12_000),

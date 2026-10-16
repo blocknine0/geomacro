@@ -8,6 +8,7 @@
  * this module, and no raw data is persisted. All upstream URLs are fixed.
  */
 import type { CommercialIntelligenceCategory } from "./public-intelligence-source-coverage";
+import {validOpenDataContext} from "./category-open-data-contract";
 
 type Domain = CommercialIntelligenceCategory;
 type Timing = "event_occurrence" | "catalog_added_day" | "reference_year" | "dataset_edition" |
@@ -426,22 +427,38 @@ function buildSnapshot(category:Domain,rows:{readable:boolean;data:Extracted|nul
   };
 }
 export async function readCategoryOpenData(
-  category:Domain,{now=Date.now(),fetcher=fetch}:{now?:number;fetcher?:typeof fetch}={}
+  category:Domain,{now=Date.now(),fetcher=fetch,fallbackToD1=true}:{now?:number;fetcher?:typeof fetch;fallbackToD1?:boolean}={}
 ){
   if(!["geopolitics","macro-fx","critical-minerals"].includes(category)||
       !Number.isFinite(now))throw Error("OPEN_DATA_CATEGORY_INVALID");
   const selected=UPSTREAMS.filter(x=>x.category===category);
   if(fetcher!==fetch){
     const responses=await Promise.all(selected.map(x=>fetchOne(x,now,fetcher)));
-    return buildSnapshot(category,responses,now);
+    const value=buildSnapshot(category,responses,now);
+    return fallbackToD1&&value.source_families_readable===0?readD1ContextFallback(category,value,now,fetcher):value;
   }
   const cached=cache.get(category);
   if(cached&&cached.until>now)return cached.value;
-  const value=Promise.all(selected.map(x=>fetchOne(x,now,fetch))).then(x=>buildSnapshot(category,x,now)).catch(e=>{
+  const value=Promise.all(selected.map(x=>fetchOne(x,now,fetch))).then(async x=>{
+    const value=buildSnapshot(category,x,now);
+    return fallbackToD1&&value.source_families_readable===0?readD1ContextFallback(category,value,now,fetch):value;
+  }).catch(e=>{
     cache.delete(category);throw e;
   });
   cache.set(category,{until:now+CACHE_MS,value});
   return value;
+}
+async function readD1ContextFallback(category:Domain,unavailable:ReturnType<typeof buildSnapshot>,now:number,fetcher:typeof fetch){
+  try{
+    const response=await fetcher("https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/source-runtime-context?category="+category,{
+      redirect:"error",cache:"no-store",signal:AbortSignal.timeout(3500)});
+    if(!response.ok||Number(response.headers.get("content-length")??0)>48000)return unavailable;
+    const raw=await response.text();if(raw.length>48000)return unavailable;
+    const v=JSON.parse(raw);
+    // Preserve the actual producer observation clock and native periods.
+    // A fallback read never renews source freshness or authorizes payment.
+    return validOpenDataContext(v,category,now)?v as ReturnType<typeof buildSnapshot>:unavailable;
+  }catch{return unavailable;}
 }
 export const OPEN_DATA_SOURCE_FAMILIES=Object.freeze(
   Object.fromEntries((["geopolitics","macro-fx","critical-minerals"] as const).map(category=>
