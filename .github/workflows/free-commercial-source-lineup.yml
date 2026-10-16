@@ -1,13 +1,15 @@
 name: Free Commercial Source Lineup No-Funds Rotation
 
-# Bounded one-source-per-category GET/HEAD probes; no B2, D1, Supabase or payment.
-# Scheduled twice daily (~6 requests per category per 72 hours); this is
-# transport observation, NOT a live intelligence publication SLA.
+# Bounded existing free readers: 30-minute feed target, daily reference data.
+# Hash-only checkpoints in existing D1; no B2, Supabase, payment or signing.
+# GitHub scheduling is best effort, not a real-time delivery SLA.
 on:
   pull_request:
     paths:
       - "scripts/lib/operator-commercial-free-source-lineup.mjs"
       - "scripts/lib/free-no-key-source-probe.mjs"
+      - "scripts/lib/free-source-production-updates.mjs"
+      - "scripts/tests/free-source-production-updates.test.mjs"
       - "scripts/tests/operator-commercial-free-source-lineup.test.mjs"
       - "scripts/ops/probe-commercial-free-source-lineup.mjs"
       - ".github/workflows/free-commercial-source-lineup.yml"
@@ -16,19 +18,21 @@ on:
     paths:
       - "scripts/lib/operator-commercial-free-source-lineup.mjs"
       - "scripts/lib/free-no-key-source-probe.mjs"
+      - "scripts/lib/free-source-production-updates.mjs"
+      - "scripts/tests/free-source-production-updates.test.mjs"
       - "scripts/tests/operator-commercial-free-source-lineup.test.mjs"
       - "scripts/ops/probe-commercial-free-source-lineup.mjs"
       - ".github/workflows/free-commercial-source-lineup.yml"
   schedule:
-    - cron: "17 4,16 * * *"
+    - cron: "17,47 * * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
 concurrency:
-  group: geomacro-free-commercial-lineup
-  cancel-in-progress: true
+  group: geomacro-free-commercial-lineup-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   source-contract:
@@ -42,13 +46,18 @@ jobs:
         with:
           node-version: "22"
       - name: Exact dataset rights plus 3-category source transport contracts
-        run: node --test scripts/tests/operator-commercial-free-source-lineup.test.mjs
+        run: node --test scripts/tests/operator-commercial-free-source-lineup.test.mjs scripts/tests/free-source-production-updates.test.mjs
 
   read-only-production-mesh:
     needs: source-contract
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 8
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: geomacro-control-plane
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -56,5 +65,30 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
-      - name: Probe one free/no-card source per launch category, no writes or funds
-        run: node scripts/ops/probe-commercial-free-source-lineup.mjs
+      - name: Resolve existing control-plane checkpoint database
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" && test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          list="$(npx -y wrangler@4.136.3 d1 list --json)"
+          db_id="$(printf '%s' "$list" | node -e '
+            let data="";
+            process.stdin.on("data",d=>data+=d);
+            process.stdin.on("end",()=>{
+              const found=JSON.parse(data).filter(x=>x.name===process.env.D1_DATABASE_NAME);
+              if(found.length!==1)process.exit(2);
+              process.stdout.write(found[0].uuid??found[0].id??"");
+            });
+          ')"
+          test -n "$db_id"
+          echo "D1_DATABASE_ID=$db_id" >> "$GITHUB_ENV"
+      - name: Collect bounded source changes and verify D1 checkpoint readback
+        run: node scripts/ops/probe-commercial-free-source-lineup.mjs --production-updates
+      - name: Retain source-free update receipt only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: free-source-updates-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/free-source-updates/receipt.json
+          if-no-files-found: ignore
+          retention-days: 3

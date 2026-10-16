@@ -66,6 +66,22 @@ export const FREE_NO_KEY_TRANSPORT_SPECS = Object.freeze(SPECS.map(spec => {
 }));
 
 export function validateFreeLineupProbePayload(spec, payload) {
+  if(spec.production_update_reader===true){
+    if(typeof payload!=="string"||!payload.trim()||/<!DOCTYPE|<!ENTITY/iu.test(payload))
+      return {valid:false,format_checked:true,kind:"INVALID_UPDATE_BODY"};
+    if(spec.format==='rss')return {valid:/<rss(?:\s|>)/iu.test(payload),format_checked:true,kind:'RSS_UPDATE_RECORDS'};
+    if(spec.format==='xml')return {valid:spec.id==='un_security_council_sanctions'
+      ?/<CONSOLIDATED_LIST(?:\s|>)/u.test(payload)
+      :spec.id==='ecb_fx'?/<Cube\b[^>]*currency=/u.test(payload):false,
+      format_checked:true,kind:'XML_DATASET_UPDATE'};
+    if(spec.format==='json'){
+      try{const x=JSON.parse(payload);return {valid:spec.id==='ny_fed'?Array.isArray(x?.refRates):
+        spec.id==='uk_fcdo_advisories'?Array.isArray(x?.results)&&Number.isFinite(x.total):
+        spec.id==='us_bis_export_controls'?Array.isArray(x?.results)&&Number.isFinite(x.count):
+        spec.id==='wikimedia_pageviews'?Array.isArray(x?.items):false,
+        format_checked:true,kind:'JSON_REFERENCE_OR_DOCUMENT_UPDATE'};}catch{return {valid:false};}
+    }
+  }
   if (spec.format === "head") return {
     format_checked: false, valid: true, kind: "HEAD_REACHABLE_ONLY",
     native_publisher_original_date_verified: false,
@@ -128,7 +144,7 @@ async function boundedBody(response, maxBytes) {
   finally { await reader.cancel().catch(() => undefined); }
 }
 
-export async function probeNoKeySource(spec, fetchImpl = fetch) {
+export async function probeNoKeySource(spec, fetchImpl = fetch, {onPayload=null}={}) {
   let state = "NETWORK_UNAVAILABLE", code = null;
   try {
     const url = new URL(spec.url);
@@ -136,19 +152,19 @@ export async function probeNoKeySource(spec, fetchImpl = fetch) {
       method: spec.format === "head" ? "HEAD" : "GET",
       redirect: "error",
       headers: { Accept: spec.format === "html" ? "text/html" :
-        spec.format === "atom" ? "application/atom+xml, application/xml" :
-          "application/json" },
+        ['atom','rss','xml'].includes(spec.format) ? "application/rss+xml, application/atom+xml, application/xml, text/xml" :
+          "application/json", 'user-agent':'Geomacro-Source-Updates/1.0 (contact@geomacro.live)' },
       signal: AbortSignal.timeout(7_000),
     });
     code = response.status;
     state = [401, 403, 429].includes(code) ? "DENIED_OR_RATE_LIMIT" :
       !response.ok ? "HTTP_UNAVAILABLE" : "UNVERIFIED_CONTENT";
     if (response.ok) {
-      const safe = spec.format === "head" ?
-        validateFreeLineupProbePayload(spec, "") :
-        validateFreeLineupProbePayload(spec, await boundedBody(response, spec.maxBytes));
+      const payload=spec.format==='head'?'':await boundedBody(response,spec.maxBytes);
+      const safe=validateFreeLineupProbePayload(spec,payload);
       state = safe.valid && spec.format === "head" ? "ENDPOINT_REACHABLE_FORMAT_UNVERIFIED"
         : safe.valid ? "TRANSPORT_READABLE" : "FORMAT_OR_SIZE_UNVERIFIED";
+      if(safe.valid&&onPayload)onPayload(payload);
     }
   } catch {
     state = "NETWORK_UNAVAILABLE";

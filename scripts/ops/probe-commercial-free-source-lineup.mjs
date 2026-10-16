@@ -7,6 +7,27 @@
  */
 import { observeNoKeyLineup } from "../lib/free-no-key-source-probe.mjs";
 import { sourceLineupSummary } from "../lib/operator-commercial-free-source-lineup.mjs";
+import {collectProductionFreeSourceUpdates} from '../lib/free-source-production-updates.mjs';
+import {createD1ControlPlaneStateClient} from '../lib/d1-control-plane-state.mjs';
+import {mkdirSync,writeFileSync} from 'node:fs';
+
+if(process.argv.includes('--production-updates')){
+ try{
+   if(process.argv.length!==3||process.env.GITHUB_REPOSITORY!=='blocknine0/geomacro'||
+      process.env.GITHUB_REF!=='refs/heads/main'||!/^\d{1,20}$/u.test(process.env.GITHUB_RUN_ID??''))
+     throw Error('PROTECTED_SOURCE_READER_REQUIRED');
+   for(const key of ['SUPABASE_URL','APP_SUPABASE_URL','SUPABASE_DB_URL',
+     'SUPABASE_SERVICE_ROLE_KEY','APP_SUPABASE_SERVICE_ROLE_KEY','B2_KEY_ID',
+     'B2_APPLICATION_KEY','COINBASE_API_KEY','RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64'])
+     if(process.env[key])throw Error('SOURCE_READER_FORBIDDEN_CREDENTIAL');
+   const client=createD1ControlPlaneStateClient({pipeline:'free_source_production_updates'});
+   const receipt=await collectProductionFreeSourceUpdates({stateClient:client,onObservation:row=>console.log(JSON.stringify({schema:"geomacro.free-source-reader-outcome.v1",...row}))});
+   mkdirSync('artifacts/free-source-updates',{recursive:true,mode:0o700});
+   writeFileSync('artifacts/free-source-updates/receipt.json',JSON.stringify(receipt,null,2)+'\n',{mode:0o600});
+   console.log(JSON.stringify(receipt));
+   if(receipt.retained_degraded_readers)process.exitCode=3;
+ }catch{console.error('PRODUCTION_FREE_SOURCE_UPDATES_FAILED_CLOSED');process.exitCode=2;}
+}else{
 
 const DAY_PART_MS = 12 * 60 * 60 * 1000;
 const group = process.env.FREE_SOURCE_GROUP == null
@@ -49,4 +70,5 @@ console.log(JSON.stringify(safe));
 if (!Object.values(report.per_category).every(x => x.readable >= 1)) {
   console.error("FREE_SOURCE_MESH_PARTIAL_OR_BLOCKED; check feed rights/transport before promotion");
   process.exitCode = 2;
+}
 }
