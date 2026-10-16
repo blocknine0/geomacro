@@ -104,6 +104,11 @@ export function classifyCentralSecurityRoute(
   if (pathname === "/api/v1/intelligence/availability" &&
       ["GET", "POST", "OPTIONS"].includes(method)) return "public_api";
 
+  // Official agent discovery/OpenAPI are no-charge reads; ALL tool POSTs
+  // enter the same payment-class fail-closed control as canonical x402.
+  if (pathname === "/api/v1/agent" &&
+      ["GET", "HEAD", "OPTIONS"].includes(method)) return "public_api";
+
   // These three category GETs are read-only discovery/official-observation
   // surfaces. Public abuse controls still apply, including an HMAC client
   // fingerprint and local burst guard. POST / payment-signature methods remain
@@ -118,6 +123,7 @@ export function classifyCentralSecurityRoute(
 
   if (
     pathname.startsWith("/api/x402") ||
+    pathname === "/api/v1/agent" ||
     pathname === "/api/v1/intelligence/query" ||
     pathname === "/api/v1/intelligence/geopolitics" ||
     pathname === "/api/v1/intelligence/macro-fx" ||
