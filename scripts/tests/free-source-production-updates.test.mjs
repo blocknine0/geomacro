@@ -171,3 +171,12 @@ test('cron startup jitter cannot suppress the next half-hour slot or reset denia
  const calendar=await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('two'),now:new Date('2026-10-17T00:17:00.000Z')});
  assert.equal(calendar.attempted,19);
 });
+test('a reader revision never shortens an existing publisher-denial backoff',async()=>{
+ const state=memoryState();await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('one','un_security_council_sanctions'),now:at});
+ const p=state.rows.get('geopolitics').payload;
+ p.snapshot.sources.un_security_council_sanctions.reader_revision=1;
+ p.snapshot_sha256=createHash('sha256').update(JSON.stringify(p.snapshot)).digest('hex');
+ let calls=0;
+ const r=await collectProductionFreeSourceUpdates({stateClient:state,now:new Date(at.getTime()+60000),fetchImpl:async()=>{calls++;throw Error('denial must not be retried');}});
+ assert.equal(calls,0);assert.equal(r.attempted,0);assert.equal(r.retained_degraded_readers,1);
+});

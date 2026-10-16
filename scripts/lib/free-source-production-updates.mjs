@@ -131,7 +131,7 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
    const notDue=old?.state==='TRANSPORT_READABLE'
      ?Math.floor(now.getTime()/(interval*60000))===Math.floor(last/(interval*60000))
      :now.getTime()-last<interval*60000;
-   if((old?.reader_revision??1)===(spec.reader_revision??1)&&Number.isFinite(last)&&last<=now.getTime()&&notDue){
+   if((old?.state==='DENIED_OR_RATE_LIMIT'||(old?.reader_revision??1)===(spec.reader_revision??1))&&Number.isFinite(last)&&last<=now.getTime()&&notDue){
      outcomes.push({category:spec.category,state:'NOT_DUE',new_updates:0});continue;
    }
    let observed=null;
