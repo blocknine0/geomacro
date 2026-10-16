@@ -33,7 +33,23 @@ test("Eurostat uses exact DEU geographic scope and latest quarterly record",()=>
   assert.equal(row.reference_period,"2026-Q1");
   assert.equal(row.value,995);
   assert.equal(row.native_original_publication_proven,false);
-  assert.throws(()=>extractPublicReference("eurostat",{...x,size:[2,2]}),/EUROSTAT_MIXED_SCOPE/);
+  const mixed={id:["geo","unreviewed","time"],size:[1,2,2],
+    dimension:{...x.dimension,unreviewed:{category:{index:{a:0,b:1}}}},value:{"0":100,"1":101}};
+  assert.throws(()=>extractPublicReference("eurostat",mixed),/EUROSTAT_MIXED_SCOPE/);
+  const exactMulti={id:["geo","freq","s_adj","na_item","unit","time"],
+    size:[2,1,2,1,1,2],
+    dimension:{
+      geo:{category:{index:{DE:0,FR:1}}},
+      freq:{category:{index:{Q:0}}},
+      s_adj:{category:{index:{SCA:0,NSA:1}}},
+      na_item:{category:{index:{B1GQ:0}}},
+      unit:{category:{index:{CP_MEUR:0}}},
+      time:{category:{index:{"2025-Q4":0,"2026-Q1":1}}}
+    },value:{"1":-999,"3":995,"7":222}};
+  const onlyGermanUnadjusted=extractPublicReference("eurostat",exactMulti);
+  assert.equal(onlyGermanUnadjusted.value,995);
+  assert.equal(onlyGermanUnadjusted.country_iso3,"DEU");
+  assert.equal(onlyGermanUnadjusted.reference_period,"2026-Q1");
 });
 test("BLS CPI is an index, not YoY inflation or a publication timestamp",()=>{
   const x={status:"REQUEST_SUCCEEDED",Results:{series:[{data:[
@@ -88,4 +104,22 @@ test("production receipt is sanitized, classified, isolated, and never grants pa
   assert.equal(result.payments,0);
   assert.equal(result.commercial_paid_eligible,false);
   assert.doesNotMatch(JSON.stringify(result),/secret|test-key|evil/);
+});
+
+test("Eurostat network requests pin quarterly unadjusted one-country GDP scope",async()=>{
+  let endpoint;
+  const x={id:["geo","time"],size:[1,1],
+    dimension:{geo:{category:{index:{DE:0}}},time:{category:{index:{"2026-Q2":0}}}},
+    value:{"0":100}};
+  const row=await readPublicReference("eurostat",{fetchImpl:async(url)=>{
+    endpoint=new URL(url);
+    return new Response(JSON.stringify(x),{headers:{"content-type":"application/json"}});
+  }});
+  assert.equal(endpoint.searchParams.get("geo"),"DE");
+  assert.equal(endpoint.searchParams.get("na_item"),"B1GQ");
+  assert.equal(endpoint.searchParams.get("unit"),"CP_MEUR");
+  assert.equal(endpoint.searchParams.get("s_adj"),"NSA");
+  assert.equal(endpoint.searchParams.get("freq"),"Q");
+  assert.equal(row.reference_period,"2026-Q2");
+  assert.equal(row.country_iso3,"DEU");
 });
