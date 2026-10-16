@@ -21,7 +21,11 @@ if(invalid.status!==400)throw Error('SECURITY_ACCEPTANCE_POLICY_OVERRIDE_NOT_REJ
 const accepted=await request('/v1/security/budget',body);
 if(accepted.status!==200||accepted.data.ok!==true||accepted.data.allowed!==true||accepted.data.store!=='d1'||
  accepted.data.schema!=='geomacro.central-security-budget.v1'||accepted.data.route_class!=='internal')
- throw Error('SECURITY_ACCEPTANCE_D1_NOT_VERIFIED');
+ {
+  const error=typeof accepted.data?.error==='string'&&/^[A-Z0-9_]{1,80}$/.test(accepted.data.error)?accepted.data.error:'NO_SAFE_ERROR_CODE';
+  console.error(JSON.stringify({schema:'geomacro.central-security-d1-acceptance-failure.v1',http_status:accepted.status,error_code:error,ok:accepted.data?.ok===true,allowed:accepted.data?.allowed===true,store_is_d1:accepted.data?.store==='d1',schema_matches:accepted.data?.schema==='geomacro.central-security-budget.v1',route_matches:accepted.data?.route_class==='internal',payments:0,b2_requests:0}));
+  throw Error('SECURITY_ACCEPTANCE_D1_NOT_VERIFIED');
+ }
 const quota=await request('/v1/b2-quota/status');
 if(quota.status!==200||quota.data.ok!==true||quota.data.schema!=='geomacro.b2-account-quota-status.v1')
  throw Error('SECURITY_ACCEPTANCE_QUOTA_STATUS_UNAVAILABLE');
