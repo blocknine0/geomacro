@@ -4,7 +4,7 @@ import {parseCsvRecords} from "./public-reference-extraction.mjs";
 // Pinned official OECD Data Explorer monthly unemployment dataset, bounded
 // to one historical month; exact United States row will be selected only if
 // independently unambiguous. Dataset reference != native release timestamp.
-const OECD_ENDPOINT="https://sdmx.oecd.org/public/rest/data/OECD.SDD.TPS,DSD_LFS@DF_IALFS_INDIC,1.0/.UNE_LF_M...Y._T.Y_GE15..M?startPeriod=2025-06&endPeriod=2025-06&dimensionAtObservation=AllDimensions&format=csvfile";
+const OECD_ENDPOINT="https://sdmx.oecd.org/public/rest/data/OECD.SDD.TPS,DSD_LFS@DF_IALFS_INDIC,1.0/USA.UNE_LF_M...Y._T.Y_GE15..M?startPeriod=2025-06&endPeriod=2025-06&dimensionAtObservation=AllDimensions&format=csvfile";
 const MAX_BYTES=1024*1024;
 function num(x){if(x==null||String(x).trim()==="")return null;const v=Number(x);return Number.isFinite(v)?v:null;}
 export function extractOecdUsMonthlyUnemployment(text){
@@ -39,7 +39,8 @@ export function extractOecdUsMonthlyUnemployment(text){
 async function boundedBody(url,fetchImpl){
  const res=await fetchImpl(url,{
    method:"GET",redirect:"error",signal:AbortSignal.timeout(15000),
-   headers:{accept:"csvfile,application/vnd.sdmx.data+csv;version=2, text/csv;q=0.8"}
+   // CSV response is already requested by the official format=csvfile query.
+   headers:{accept:"text/csv"}
  });
  if(!res.ok){await res.body?.cancel().catch(()=>{});throw Error("OECD_HTTP_"+res.status);}
  if(!res.body||Number(res.headers.get("content-length")??0)>MAX_BYTES)
