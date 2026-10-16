@@ -75,7 +75,7 @@ describe("Part 2 country-specific original issuer acceptance and quota boundary"
   const proof=summarizeCountryBatchCell("PSE","geopolitics",[
    mkProbe(a.publisher_family,"geopolitics",true),
    mkProbe(b.publisher_family,"geopolitics",true),
-  ],[a,b],[verified(a),verified(b)]);
+  ],[a,b],[verified(a),verified(b)],new Date("2026-10-14T13:00:00.000Z"));
   expect(proof.observation.independent_fallback_verified).toBe(true);
   expect(proof.observation.original_evidence_verified).toBe(true);
   expect(proof.verdict).toBe("CURRENT_EVIDENCE_VERIFIED");
@@ -87,6 +87,27 @@ describe("Part 2 country-specific original issuer acceptance and quota boundary"
   expect(row.INDEPENDENT_FALLBACK_VERIFIED).toBe(true);
   expect(row.RIGHTS_QUALIFIED).toBeNull();
   expect(row.SIGNED_DELIVERY_VERIFIED).toBeNull();
+ });
+ it("stale, future and malformed original release clocks cannot be counted as current",()=>{
+  const lead=mkOriginal("geopolitics","un_news_original_publisher",SHA1);
+  const probed=[mkProbe(lead.publisher_family,"geopolitics",true)];
+  const asOf=new Date("2026-10-16T14:00:00.000Z");
+  for(const date of ["2026-10-14T12:00:00.000Z",
+    "2026-10-16T14:01:00.000Z","not-a-date"]){
+    const p=summarizeCountryBatchCell("PSE","geopolitics",probed,[lead],
+      [{...verified(lead),page_original_published_at:date}],asOf);
+    expect(p.observation.original_evidence_verified).toBe(false);
+    expect(p.observation.current_evidence_available).toBeUndefined();
+    expect(p.observation.independent_fallback_verified).toBe(false);
+    expect(p.signed_delivery_verified).toBe(false);
+  }
+  const fresh=summarizeCountryBatchCell("PSE","geopolitics",probed,[lead],
+    [{...verified(lead),page_original_published_at:"2026-10-16T13:30:00.000Z"}],asOf);
+  expect(fresh.observation.original_evidence_verified).toBe(true);
+  expect(fresh.observation.current_evidence_available).toBe(true);
+  expect(fresh.commercial_rights_qualified).toBe(false);
+  expect(()=>summarizeCountryBatchCell("PSE","geopolitics",probed,[lead],[],
+    new Date("invalid"))).toThrow("COUNTRY_195_PROOF_CLOCK_INVALID");
  });
  it("World Bank structural indicator and GDELT index are not originating publishers",()=>{
   const one=summarizeCountryBatchCell("BEL","macro",[
