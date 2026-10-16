@@ -32,7 +32,6 @@ const FAMILY_BY_HOST:Readonly<Record<string,string>>={
   "www.bis.org":"bis",
   "www.boj.or.jp":"bank_of_japan",
   "www.iea.org":"iea",
-  "www.rba.gov.au":"rba",
   "www.bankofcanada.ca":"bank_of_canada",
   "news.gov.bc.ca":"bc_minerals",
 };

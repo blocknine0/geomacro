@@ -65,28 +65,27 @@ describe('global publisher searches preserve originating clocks and existing sto
  });
 });
 
-describe('Australian and Canadian publisher additions',()=>{
+describe('Canadian publisher additions',()=>{
  const rdf=(title:string,url:string)=>`<rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/"><item><title>${title}</title><link>${url}</link><dc:date>2026-10-16T07:00:00Z</dc:date></item></rdf:RDF>`;
  const issuerNetwork=(async(target:RequestInfo|URL)=>{
   const u=new URL(String(target));
   if(u.hostname==='api.worldbank.org')return Response.json([{page:1},[{id:'AUS',name:'Australia'}]]);
-  if(u.hostname==='www.rba.gov.au')return new Response(rdf('Australia monetary policy and inflation decision','https://www.rba.gov.au/media-releases/2026/mr-26-27.html'),{headers:{'content-type':'application/rss+xml'}});
   if(u.hostname==='www.bankofcanada.ca')return new Response(rdf('Canada monetary policy and inflation decision','https://www.bankofcanada.ca/2026/10/canada-monetary-policy/'),{headers:{'content-type':'application/rss+xml'}});
   if(u.hostname==='news.gov.bc.ca')return new Response(item('Canada copper critical minerals mining agreement','https://news.gov.bc.ca/releases/2026MCM0031-001120'),{headers:{'content-type':'application/rss+xml'}});
   return new Response('',{status:503});
  }) as typeof fetch;
  it('separate website category reads derive new issuers without copying titles or URLs',async()=>{
   vi.stubGlobal('fetch',issuerNetwork);
-  for(const [category,count] of [['macro',2],['rare_earth',1]] as const){
+  for(const [category,count] of [['macro',1],['rare_earth',1]] as const){
    const r=await readStatelessWebsiteIntelligence(category,now.getTime());
    expect(r.current_24h_count).toBe(count);
    expect(JSON.stringify(r.signals)).not.toMatch(/https:\/\/|Australia monetary policy and inflation decision|Canada copper critical minerals mining agreement/);
   }
  });
- it('a combined Australian request reserves its native central bank in the existing budget',async()=>{
-  const r=await discoverOnDemandForPrivateQualification({country_iso3:'AUS',categories:['geopolitics','macro','rare_earth'],topics:['conflict_geopolitics','macro_risk','critical_minerals'],max_age_seconds:86400},{fetchImpl:issuerNetwork,now});
+ it('a combined Canadian request reserves its native central bank in the existing budget',async()=>{
+  const r=await discoverOnDemandForPrivateQualification({country_iso3:'CAN',categories:['geopolitics','macro','rare_earth'],topics:['conflict_geopolitics','macro_risk','critical_minerals'],max_age_seconds:86400},{fetchImpl:issuerNetwork,now});
   expect(r.discovery.network_attempts).toBeLessThanOrEqual(12);
-  expect(r.private_candidates.some(c=>c.publisher_family==='rba_original_publisher')).toBe(true);
+  expect(r.private_candidates.some(c=>c.publisher_family==='boc_original_publisher')).toBe(true);
   expect(r.private_candidates.every(c=>!c.paid_delivery_allowed&&!c.independent_same_event_verified)).toBe(true);
  });
 });

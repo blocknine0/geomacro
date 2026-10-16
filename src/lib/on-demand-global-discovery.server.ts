@@ -211,7 +211,7 @@ async function boundedFetch(
       !["api.worldbank.org","api.gdeltproject.org","api.reliefweb.int",
         "www.gov.uk","news.un.org","www.federalreserve.gov","www.ecb.europa.eu",
         "www.minister.industry.gov.au","api.io.canada.ca",
-        "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.rba.gov.au","www.bankofcanada.ca","news.gov.bc.ca"].includes(target.hostname)) {
+        "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
   const maxBytes = accept === "text/html" ? MAX_FIRST_PARTY_HTML_BYTES : MAX_BODY_BYTES;
@@ -1023,7 +1023,7 @@ async function discoverOnDemandImpl(
       "api.reliefweb.int","www.gov.uk","news.un.org",
       "www.federalreserve.gov","www.ecb.europa.eu",
       "www.minister.industry.gov.au","api.io.canada.ca",
-      "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.rba.gov.au","www.bankofcanada.ca","news.gov.bc.ca"];
+      "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca"];
     if(upstream.protocol!=="https:" || !permittedHosts.includes(upstream.hostname) ||
        upstream.username || upstream.password || upstream.port || upstream.hash)
       throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
@@ -1138,8 +1138,6 @@ async function discoverOnDemandImpl(
           ?"uk_dbt_original_publisher":
         category==="geopolitics" && country==="GBR"
           ?"uk_fcdo_original_publisher":
-        category==="macro" && country==="AUS"
-          ?"rba_original_publisher":
         category==="macro" && country==="CAN"
           ?"boc_original_publisher":
         category==="macro" && country==="GBR"

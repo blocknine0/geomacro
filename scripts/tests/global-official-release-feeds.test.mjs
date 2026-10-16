@@ -6,8 +6,8 @@ import {validateFreeLineupProbePayload} from '../lib/free-no-key-source-probe.mj
 const now=new Date('2026-10-16T08:00:00Z');
 const candidate={articleUrl:'https://www.iea.org/news/zambia-critical-minerals-supply-security',title:'Zambia critical minerals supply security'};
 const page=(clock='2026-10-16T07:00:00Z',extra='')=>`<!doctype html><html><h1>${candidate.title}</h1><p class="o-hero-news__meta">News<br/><time datetime="${clock}">16 October 2026</time></p>${extra}</html>`;
-test('eleven pinned international connectors cover all three categories without credentials',()=>{
- assert.equal(feeds.length,11);assert.equal(new Set(feeds.map(s=>s.id)).size,11);
+test('ten pinned international connectors cover all three categories without credentials',()=>{
+ assert.equal(feeds.length,10);assert.equal(new Set(feeds.map(s=>s.id)).size,10);
  assert.deepEqual(new Set(feeds.map(s=>s.category)),new Set(['geopolitics','macro','rare_earth']));
  for(const s of feeds){const u=new URL(s.url);assert.equal(u.hostname,s.host);assert.equal(u.protocol,'https:');assert.ok(!u.username&&!u.password);assert.equal(s.poll_minutes,30);}
 });
@@ -37,10 +37,10 @@ test('IEA exact original News header must match the same article and consistent 
  assert.equal(verifiedIeaOriginalPublication(page(),{...candidate,articleUrl:'https://untrusted.example/news/zambia-critical-minerals-supply-security'},now),null);
 });
 
-test('new Australian and Canadian RDF readers require the exact registry and original clock',()=>{
- for(const id of ['rba_press_global','boc_press_global']){
+test('new Canadian RDF reader require the exact registry and original clock',()=>{
+ for(const id of ['boc_press_global']){
   const spec=feeds.find(s=>s.id===id);
-  const url=id==='rba_press_global'?'https://www.rba.gov.au/media-releases/2026/mr-26-27.html':'https://www.bankofcanada.ca/2026/10/canada-monetary-policy/';
+  const url='https://www.bankofcanada.ca/2026/10/canada-monetary-policy/';
   const body=`<rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/"><item><title>Canada Australia monetary policy decision</title><link>${url}</link><dc:date>2026-10-16T07:00:00Z</dc:date></item></rdf:RDF>`;
   assert.equal(globalOriginalArticleUrl(url,spec),url);
   assert.equal(validateFreeLineupProbePayload(spec,body).valid,true);

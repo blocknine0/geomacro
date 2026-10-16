@@ -274,6 +274,7 @@ jobs:
           GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ github.event.pull_request.base.sha }}
         run: node scripts/ops/phase2-production-no-funds-readback.mjs
       - name: Verify all three deployed combined category views against the same main build
+        if: always()
         env:
           EXPECTED_CANONICAL_SHA: ${{ github.event.pull_request.base.sha }}
         run: node scripts/ops/verify-category-combined-production.mjs
