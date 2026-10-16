@@ -18,7 +18,7 @@ test("IMF exact country-year has no invented publication clock and no fresh news
  assert.equal(calls[0].opts.redirect,"error");
  assert.equal(calls[0].opts.signal.aborted,false);
  assert.match(calls[0].url,/NGDP_RPCH\/IND\?periods=/);
- assert.throws(()=>fetchImfDataMapper({indicator:"bad/flow",countryIso3:"IND"}),/IMF_INDICATOR_INVALID/);
+ await assert.rejects(()=>fetchImfDataMapper({indicator:"bad/flow",countryIso3:"IND"}),/IMF_INDICATOR_INVALID/);
  await assert.rejects(()=>fetchImfDataMapper({indicator:"NGDP_RPCH",countryIso3:"IND",periods:["2024","invalid"]}),/IMF_PERIOD_FILTER_INVALID/);
 });
 test("IMF excludes null, untrusted periods, NaN and other country",async()=>{
