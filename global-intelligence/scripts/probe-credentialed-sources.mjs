@@ -45,7 +45,7 @@ export async function probeConfiguredCredentialedSources({
       const cause=http?("HTTP_"+http):
         message==="HTTP_BODY_LIMIT"?"RESPONSE_SIZE_LIMIT":
         message==="HTTP_BODY_EMPTY"?"RESPONSE_EMPTY":
-        error?.cause?.message==="unexpected redirect"?"REDIRECT_REFUSED":
+        message==="WTO_CANONICAL_REDIRECT_REFUSED"||error?.cause?.message==="unexpected redirect"?"REDIRECT_REFUSED":
         ["UND_ERR_CONNECT_TIMEOUT","ENOTFOUND","ECONNRESET","ECONNREFUSED"].includes(error?.cause?.code)?"UPSTREAM_CONNECTION_FAILURE":
         message.startsWith("Non-JSON response from ")?"RESPONSE_NOT_JSON":
         message==="Unexpected response shape for "+source.id?"RESPONSE_SHAPE_INVALID":

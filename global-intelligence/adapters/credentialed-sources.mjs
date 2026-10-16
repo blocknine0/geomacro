@@ -6,6 +6,32 @@ function required(name) {
   return value;
 }
 
+// Only WTO's exact registered data operation may canonicalize one trailing
+// slash on its own HTTPS origin. Credentials/scope cannot move to another
+// host, port, path or query. Every denial and second redirect stays closed.
+export async function fetchWtoCanonical(url,init,fetchImpl=fetch,wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))){
+  const from=new URL(url);
+  const names=[...from.searchParams.keys()];
+  if(from.protocol!=='https:'||from.hostname!=='api.wto.org'||from.port||from.username||from.password||from.hash||
+     from.pathname!=='/timeseries/v1/data'||names.length!==4||new Set(names).size!==4||
+     !['i','r','ps','subscription-key'].every(k=>names.includes(k))||
+     from.searchParams.get('i')!=='ITS_MTV_AX'||from.searchParams.get('r')!=='000'||from.searchParams.get('ps')!=='2024')
+    throw Error('WTO_CANONICAL_SCOPE_INVALID');
+  const first=await fetchImpl(from.href,{...init,redirect:'manual'});
+  if(![301,302,307,308].includes(first.status))return first;
+  const location=first.headers.get('location');
+  let target;try{target=new URL(location??'',from);}catch{}
+  const expected=new URL(from);expected.pathname+='/';
+  if(!location||!target||target.origin!==from.origin||target.username||target.password||target.port||target.hash||
+     target.pathname!==expected.pathname||(target.search!==''&&target.search!==from.search)){
+    await first.body?.cancel();throw Error('WTO_CANONICAL_REDIRECT_REFUSED');
+  }
+  await first.body?.cancel();
+  // WTO's documented limit is one call/second; share the original deadline.
+  await wait(1100);
+  return fetchImpl(expected.href,{...init,redirect:'error'});
+}
+
 export async function probeCredentialedSource(sourceId) {
   const configs = {
     bls: {
@@ -68,7 +94,7 @@ export async function probeCredentialedSource(sourceId) {
   // six-hour status probe permits ONE 30s BEA/UCDP request without retries,
   // quotas/paid data change, or extra query fanout.
   const timeoutMs=sourceId==="bea"?30000:sourceId==="ucdp_ged"?30000:15000;
-  const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error"});
+  const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error",fetchImpl:sourceId==="wto_timeseries"?fetchWtoCanonical:fetch});
   if (!config.validate(raw)) throw new Error(`Unexpected response shape for ${sourceId}`);
 
   return {
