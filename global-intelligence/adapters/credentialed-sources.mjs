@@ -43,7 +43,9 @@ export async function probeCredentialedSource(sourceId) {
       category: "GEOPOLITICS", countryIso3: null, env: "UCDP_API_TOKEN",
       // Officially documented stable release. Dataset edition and event days
       // remain historical context, never original current news clocks.
-      build: () => "https://ucdpapi.pcr.uu.se/api/gedevents/26.1?pagesize=1&page=1",
+      // Pin the documented single event too: pagesize alone still requests
+      // a count over the entire historical release. No country-wide fanout.
+      build: () => "https://ucdpapi.pcr.uu.se/api/gedevents/26.1?pagesize=1&page=1&Id=4",
       headers: key => ({"x-ucdp-access-token":key}),
       validate: x => Array.isArray(x?.Result) && x.Result.length<=1 &&
         Number.isSafeInteger(x.TotalCount) && x.TotalCount>=x.Result.length &&
@@ -63,9 +65,9 @@ export async function probeCredentialedSource(sourceId) {
   const url = config.build(key);
   // Production BEA metadata probe #38125780711 hit the generic 15-second
   // HTTP deadline, even with the official JSON method. The low-frequency
-  // six-hour status probe can afford ONE 30s BEA request without any retries,
+  // six-hour status probe permits ONE 30s BEA/UCDP request without retries,
   // quotas/paid data change, or extra query fanout.
-  const timeoutMs=sourceId==="bea"?30000:15000;
+  const timeoutMs=sourceId==="bea"?30000:sourceId==="ucdp_ged"?30000:15000;
   const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error"});
   if (!config.validate(raw)) throw new Error(`Unexpected response shape for ${sourceId}`);
 

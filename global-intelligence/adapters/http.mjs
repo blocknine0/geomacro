@@ -3,6 +3,9 @@ export async function getJson(url, {headers={}, timeoutMs=15000,maxBytes=null,re
   const timer = setTimeout(()=>controller.abort(), timeoutMs);
   try {
     const res = await fetch(url,{redirect,headers:{accept:"application/json",...headers},signal:controller.signal});
+    // Credentialed bounded reads must preserve denial status before a large
+    // error body can mask it, and never attach key-bearing URLs to errors.
+    if(maxBytes!==null&&!res.ok){await res.body?.cancel();throw Error(`HTTP ${res.status} for bounded credentialed request`);}
     let text;
     if(maxBytes===null)text=await res.text();
     else {
@@ -17,7 +20,7 @@ export async function getJson(url, {headers={}, timeoutMs=15000,maxBytes=null,re
       text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
     }
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}: ${text.slice(0,500)}`);
-    try { return JSON.parse(text); } catch { throw new Error(`Non-JSON response from ${url}`); }
+    try { return JSON.parse(text); } catch { throw new Error(maxBytes===null?`Non-JSON response from ${url}`:"Non-JSON response from bounded credentialed request"); }
   } finally { clearTimeout(timer); }
 }
 export function observation({sourceId,category,countryIso3,publishedAt=null,observedAt=new Date().toISOString(),title,summary,url,confidence=0.5,raw=null}) {

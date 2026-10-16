@@ -8,7 +8,7 @@ test('UCDP uses one pinned official version, header-only token, and no guessed m
  process.env.UCDP_API_TOKEN='private-ucdp-token';let calls=0;
  try{
   globalThis.fetch=async(url,options)=>{
-   calls++;assert.equal(url,'https://ucdpapi.pcr.uu.se/api/gedevents/26.1?pagesize=1&page=1');
+   calls++;assert.equal(url,'https://ucdpapi.pcr.uu.se/api/gedevents/26.1?pagesize=1&page=1&Id=4');
    assert.equal(options.redirect,'error');assert.equal(options.headers['x-ucdp-access-token'],'private-ucdp-token');
    return Response.json({TotalCount:1,Result:[{id:4,date_end:'2010-09-25',source_article:'private-original'}]});
   };
@@ -24,5 +24,15 @@ test('credentialed HTTP body bound covers header and streamed bytes, never follo
    globalThis.fetch=async(_url,options)=>{assert.equal(options.redirect,'error');return response;};
    await assert.rejects(getJson('https://example.invalid',{maxBytes:1000,redirect:'error'}),/HTTP_BODY_LIMIT/);
   }
+ }finally{globalThis.fetch=original;}
+});
+
+test('denial status is preserved before body limits and credentialed errors omit URL/token/body',async()=>{
+ const original=globalThis.fetch;
+ try{
+  globalThis.fetch=async()=>new Response('private-body'.repeat(200),{status:403,headers:{'content-length':'100000'}});
+  await assert.rejects(getJson('https://example.invalid?key=private-token',{maxBytes:1000,redirect:'error'}),e=>e.message==='HTTP 403 for bounded credentialed request');
+  globalThis.fetch=async()=>new Response('private-malformed-body');
+  await assert.rejects(getJson('https://example.invalid?key=private-token',{maxBytes:1000,redirect:'error'}),e=>e.message==='Non-JSON response from bounded credentialed request');
  }finally{globalThis.fetch=original;}
 });
