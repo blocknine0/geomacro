@@ -1,0 +1,64 @@
+name: Public reference data extraction (research-only)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "43 5 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "global-intelligence/adapters/public-reference-extraction.mjs"
+      - "scripts/tests/public-reference-extraction.test.mjs"
+      - "scripts/ops/record-public-reference-snapshot.mjs"
+      - ".github/workflows/public-reference-extraction.yml"
+  pull_request:
+    paths:
+      - "global-intelligence/adapters/public-reference-extraction.mjs"
+      - "scripts/tests/public-reference-extraction.test.mjs"
+      - "scripts/ops/record-public-reference-snapshot.mjs"
+      - ".github/workflows/public-reference-extraction.yml"
+
+permissions:
+  contents: read
+concurrency:
+  group: public-reference-extraction-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reference-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: |
+          set -euo pipefail
+          node --check global-intelligence/adapters/public-reference-extraction.mjs
+          node --check scripts/ops/record-public-reference-snapshot.mjs
+          node --test scripts/tests/public-reference-extraction.test.mjs
+
+  reference-public-probe:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [reference-contract]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - name: Read bounded official references; fail closed on degradation
+        run: node scripts/ops/record-public-reference-snapshot.mjs
+      - name: Upload sanitized research-only receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: public-reference-extraction-${{ github.run_id }}
+          path: artifacts/reference-extraction/receipt.json
+          if-no-files-found: warn
+          retention-days: 7
