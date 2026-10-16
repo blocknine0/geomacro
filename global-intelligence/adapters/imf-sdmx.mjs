@@ -1,6 +1,10 @@
 import {getJson,observation} from "./http.mjs";
 
-const DATAMAPPER_BASE = "https://www.imf.org/external/datamapper/api/v2";
+// IMF's own public DataMapper guide documents the anonymous v1 endpoint.
+// The legacy v2 host returned a real HTTP 403 from the production runner.
+// Do not attach a credential or bypass the 403; use the separately documented
+// public API operation and keep rights/publication authority unverified.
+const DATAMAPPER_BASE = "https://www.imf.org/external/datamapper/api/v1";
 
 function authHeaders() {
   return process.env.IMF_API_TOKEN
@@ -43,7 +47,7 @@ export async function fetchImfDataMapper({
     : `/${indicator}/${countryIso3.toUpperCase()}`;
 
   const url = DATAMAPPER_BASE + path;
-  const data = await getJson(url, {headers: authHeaders(),timeoutMs:12000,
+  const data = await getJson(url, {headers: {},timeoutMs:12000,
     maxBytes:256*1024,redirect:"error",fetchImpl});
   const rows = rowsFromDataMapper(data, indicator, countryIso3, periods);
 
@@ -70,11 +74,12 @@ export async function fetchImfDataMapper({
 }
 
 export async function fetchImfDataMapperCatalog() {
+  // The public catalogue requires no bearer credential.
   const [indicators, countries, regions, groups] = await Promise.all([
-    getJson(`${DATAMAPPER_BASE}/indicators`, {headers: authHeaders()}),
-    getJson(`${DATAMAPPER_BASE}/countries`, {headers: authHeaders()}),
-    getJson(`${DATAMAPPER_BASE}/regions`, {headers: authHeaders()}),
-    getJson(`${DATAMAPPER_BASE}/groups`, {headers: authHeaders()})
+    getJson(`${DATAMAPPER_BASE}/indicators`, {headers: {},maxBytes:256*1024,redirect:"error"}),
+    getJson(`${DATAMAPPER_BASE}/countries`, {headers: {},maxBytes:256*1024,redirect:"error"}),
+    getJson(`${DATAMAPPER_BASE}/regions`, {headers: {},maxBytes:256*1024,redirect:"error"}),
+    getJson(`${DATAMAPPER_BASE}/groups`, {headers: {},maxBytes:256*1024,redirect:"error"})
   ]);
 
   return {
