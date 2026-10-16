@@ -70,9 +70,9 @@ const HASH=/^[0-9a-f]{64}$/u;
 const B64=/^[A-Za-z0-9+/]{86}==$/u; // Ed25519 64-byte signature
 const FAIL="GEOMACRO_MACHINE_COMMERCIAL_PROOF_NOT_VERIFIED";
 const sha=(x:string)=>createHash("sha256").update(x,"utf8").digest("hex");
-function readAuthority(prefix:string){
-  const pem=process.env[prefix+"_PUBLIC_KEY_PEM"];
-  const expected=process.env[prefix+"_PUBLIC_KEY_SHA256"];
+function readAuthority(prefix:string,env:Record<string,string|undefined>=process.env){
+  const pem=env[prefix+"_PUBLIC_KEY_PEM"];
+  const expected=env[prefix+"_PUBLIC_KEY_SHA256"];
   if(!pem||!HASH.test(expected??""))return null;
   try{
     const key=createPublicKey(pem);
@@ -83,21 +83,30 @@ function readAuthority(prefix:string){
     return {key,actual};
   }catch{return null;}
 }
-function proofSignaturesValid(envelope:MachineCommercialEnvelope){
-  const fact=readAuthority("GEOMACRO_MACHINE_FACTS");
-  const rights=readAuthority("GEOMACRO_MACHINE_RIGHTS");
-  if(!fact||!rights||fact.actual===rights.actual||
-     !B64.test(envelope.facts_signature_b64)||
-     !B64.test(envelope.rights_signature_b64))return false;
-  // The existing GRO key cannot impersonate either source-auditing authority.
-  const groKey=process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64;
-  if(!groKey)return false;
+function machineAuthorities(env:Record<string,string|undefined>){
+  const facts=readAuthority("GEOMACRO_MACHINE_FACTS",env);
+  const rights=readAuthority("GEOMACRO_MACHINE_RIGHTS",env);
+  if(!facts||!rights||facts.actual===rights.actual)return null;
   try{
-    const groHash=createHash("sha256").update(Buffer.from(groKey,"base64")).digest("hex");
-    if(groHash===fact.actual||groHash===rights.actual)return false;
+    const raw=env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64;
+    if(!raw||!/^[A-Za-z0-9+/]+={0,2}$/.test(raw))return null;
+    const gro=createPublicKey({key:Buffer.from(raw,"base64"),format:"der",type:"spki"});
+    if(gro.asymmetricKeyType!=="ed25519")return null;
+    const groHash=createHash("sha256").update(gro.export({format:"der",type:"spki"})).digest("hex");
+    return groHash===facts.actual||groHash===rights.actual?null:{facts,rights};
+  }catch{return null;}
+}
+// Public-key configuration only: never attests facts, rights or an input package.
+export function machineCommercialAuthorityConfigurationValid(env:Record<string,string|undefined>=process.env){
+  return machineAuthorities(env)!==null;
+}
+function proofSignaturesValid(envelope:MachineCommercialEnvelope){
+  const authorities=machineAuthorities(process.env);
+  if(!authorities||!B64.test(envelope.facts_signature_b64)||!B64.test(envelope.rights_signature_b64))return false;
+  try{
     const bytes=Buffer.from(canonicalRiskObjectJson(envelope.proof),"utf8");
-    return verifyEd25519(null,bytes,fact.key,Buffer.from(envelope.facts_signature_b64,"base64")) &&
-      verifyEd25519(null,bytes,rights.key,Buffer.from(envelope.rights_signature_b64,"base64"));
+    return verifyEd25519(null,bytes,authorities.facts.key,Buffer.from(envelope.facts_signature_b64,"base64")) &&
+      verifyEd25519(null,bytes,authorities.rights.key,Buffer.from(envelope.rights_signature_b64,"base64"));
   }catch{return false;}
 }
 const within=(value:string,now:number,maxAge:number)=>{
