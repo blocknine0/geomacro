@@ -55,6 +55,7 @@ import { Route as ApiTameionApproveRouteImport } from './routes/api.tameion.appr
 import { Route as ApiTameionConfirmRouteImport } from './routes/api.tameion.confirm'
 import { Route as ApiTameionDecisionRouteImport } from './routes/api.tameion.decision'
 import { Route as ApiTestnetTesterSplatRouteImport } from './routes/api/testnet-tester/$'
+import { Route as ApiV1AgentRouteImport } from './routes/api.v1.agent'
 import { Route as ApiV1FindsRouteImport } from './routes/api.v1.finds'
 import { Route as ApiX402IntelligenceRouteImport } from './routes/api.x402.intelligence'
 import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
@@ -301,6 +302,11 @@ const ApiTestnetTesterSplatRoute = ApiTestnetTesterSplatRouteImport.update({
   path: '/api/testnet-tester/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1AgentRoute = ApiV1AgentRouteImport.update({
+  id: '/api/v1/agent',
+  path: '/api/v1/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1FindsRoute = ApiV1FindsRouteImport.update({
   id: '/api/v1/finds',
   path: '/api/v1/finds',
@@ -425,6 +431,7 @@ export interface FileRoutesByFullPath {
   '/api/tameion/confirm': typeof ApiTameionConfirmRoute
   '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/v1/agent': typeof ApiV1AgentRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -487,6 +494,7 @@ export interface FileRoutesByTo {
   '/api/tameion/confirm': typeof ApiTameionConfirmRoute
   '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/v1/agent': typeof ApiV1AgentRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -550,6 +558,7 @@ export interface FileRoutesById {
   '/api/tameion/confirm': typeof ApiTameionConfirmRoute
   '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/v1/agent': typeof ApiV1AgentRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -614,6 +623,7 @@ export interface FileRouteTypes {
     | '/api/tameion/confirm'
     | '/api/tameion/decision'
     | '/api/testnet-tester/$'
+    | '/api/v1/agent'
     | '/api/v1/finds'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -676,6 +686,7 @@ export interface FileRouteTypes {
     | '/api/tameion/confirm'
     | '/api/tameion/decision'
     | '/api/testnet-tester/$'
+    | '/api/v1/agent'
     | '/api/v1/finds'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -738,6 +749,7 @@ export interface FileRouteTypes {
     | '/api/tameion/confirm'
     | '/api/tameion/decision'
     | '/api/testnet-tester/$'
+    | '/api/v1/agent'
     | '/api/v1/finds'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -801,6 +813,7 @@ export interface RootRouteChildren {
   ApiTameionConfirmRoute: typeof ApiTameionConfirmRoute
   ApiTameionDecisionRoute: typeof ApiTameionDecisionRoute
   ApiTestnetTesterSplatRoute: typeof ApiTestnetTesterSplatRoute
+  ApiV1AgentRoute: typeof ApiV1AgentRoute
   ApiV1FindsRoute: typeof ApiV1FindsRoute
   ApiX402IntelligenceRoute: typeof ApiX402IntelligenceRoute
   ApiX402RiskRoute: typeof ApiX402RiskRoute
@@ -1141,6 +1154,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTestnetTesterSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/agent': {
+      id: '/api/v1/agent'
+      path: '/api/v1/agent'
+      fullPath: '/api/v1/agent'
+      preLoaderRoute: typeof ApiV1AgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/finds': {
       id: '/api/v1/finds'
       path: '/api/v1/finds'
@@ -1289,6 +1309,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTameionConfirmRoute: ApiTameionConfirmRoute,
   ApiTameionDecisionRoute: ApiTameionDecisionRoute,
   ApiTestnetTesterSplatRoute: ApiTestnetTesterSplatRoute,
+  ApiV1AgentRoute: ApiV1AgentRoute,
   ApiV1FindsRoute: ApiV1FindsRoute,
   ApiX402IntelligenceRoute: ApiX402IntelligenceRoute,
   ApiX402RiskRoute: ApiX402RiskRoute,
