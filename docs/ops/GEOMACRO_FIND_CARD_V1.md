@@ -60,3 +60,7 @@ credit/licence remains visible; no rights are silently stripped or upgraded.
 4. Validate day-only original publication labels and pre-embargo rejection.
 5. This DOES NOT fix separately stale signed Intelligence, GRI, Risk Indices,
    HTTP deep health or x402. A signed free-derived observation is not a paid GRO.
+
+The headline retains the pre-approved **topic taxonomy** (such as monetary
+policy or critical-minerals policy) to distinguish cards without copying an
+upstream article headline. It never injects an unverified event actor/value.

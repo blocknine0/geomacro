@@ -56,6 +56,8 @@ describe("Geomacro Find Card v1—supplied exact public JSON Schema",()=>{
   assertFindCardV1(card);
   expect(card!.domain).toBe(domain);
   expect(card!.headline).not.toContain("SECRET UPSTREAM");
+  expect(card!.headline).toContain(input.topic);
+  expect(card!.what_changed).toContain(input.topic);
   expect(JSON.stringify(card)).not.toContain("sources_credited");
   expect(JSON.stringify(card)).not.toContain("source_url");
   expect(card!.ladder).toBe("ANNOUNCED");

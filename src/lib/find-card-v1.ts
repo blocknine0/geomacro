@@ -105,11 +105,6 @@ const meaning:Record<StatelessCategory,string>={
  macro:"Macroeconomic releases can inform funding, FX and cross-border exposures; a directional impact is not established.",
  rare_earth:"Critical-mineral announcements can affect supply-chain planning; production or price effects are not yet established.",
 };
-const headline:Record<StatelessCategory,string>={
- geopolitics:"Official publisher issues geopolitical release",
- macro:"Official publisher issues macroeconomic release",
- rare_earth:"Official publisher issues critical-minerals release",
-};
 const changed:Record<StatelessCategory,string>={
  geopolitics:"A dated first-party geopolitical release was observed. The available derived observation does not establish event specifics.",
  macro:"A dated first-party macroeconomic release was observed. Indicator values and changes were not verified in this observation.",
@@ -135,8 +130,9 @@ export function findCardFromObservedRelease(
  const card:FindCardV1={
    schema:"geomacro.find.v1",id:s.id,domain:s.category,
    published_at:originalDate,date_precision:s.date_precision,
-   action_class:"official_release",headline:headline[s.category],
-   what_changed:changed[s.category],
+   action_class:"official_release",
+   headline:"Official publisher issues "+s.topic+" release",
+   what_changed:changed[s.category]+" Classified topic: "+s.topic+".",
    facts:[],why_it_matters:meaning[s.category],
    watch_next:{kind:"follow_up_check",
      text:"Check later official releases for confirmed details; no specific deadline was verified."},
