@@ -37,15 +37,25 @@ export function summarizeCountryBatchCell(
   probes:readonly SourceProbe[],
   candidates:readonly PrivateOriginalCandidate[],
   originals:readonly PrivatePageDatedOriginal[],
+  now:Date=new Date(),
 ):CountryBatchCellEvidence{
+  const nowMs=now.getTime();
+  if(!Number.isFinite(nowMs))throw Error("COUNTRY_195_PROOF_CLOCK_INVALID");
   const relevant=probes.filter(p=>p.category===category&&!nonOriginal(p.family));
   const reachable=new Set(relevant.filter(p=>p.reachable===true).map(p=>p.family));
   const restricted=relevant.filter(p=>p.retrieval_state==="ACCESS_RESTRICTED").length;
   const throttled=relevant.filter(p=>p.retrieval_state==="RATE_LIMITED").length;
   const matched=candidates.filter(x=>x.domain===category);
-  const pages=originals.filter(x=>x.domain===category &&
-    matched.some(y=>y.article_identity_sha256===x.article_identity_sha256 &&
-      y.publisher_family===x.publisher_family));
+  // Re-check a native original publication clock at the final coverage
+  // boundary. A previously page-verified but replayed/stale/future original
+  // must not be promoted just because its source remains transport-reachable.
+  const pages=originals.filter(x=>{
+    const published=Date.parse(x.page_original_published_at);
+    return x.domain===category && Number.isFinite(published) &&
+      published<=nowMs && nowMs-published<=86_400_000 &&
+      matched.some(y=>y.article_identity_sha256===x.article_identity_sha256 &&
+        y.publisher_family===x.publisher_family);
+  });
   const sourceFamilies=new Set(matched.map(x=>x.publisher_family));
   const verifiedFamilies=new Set(pages.map(x=>x.publisher_family));
   // Only two independently verified original publisher *pages* prove a
