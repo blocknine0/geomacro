@@ -32,3 +32,7 @@ The same existing `RISK_OBJECT_SIGNING_*` and verification-registry secrets are 
 `independent_reviewed`, `scored` and `chargeable` remain false. This path does not promote a paid object, approve source rights, create a reviewer identity, change x402 prices, or unlock settlement. Existing independently reviewed Intelligence/GRI/Risk Indices publishers and their freshness/signature/rights checks are preserved. The default `/api/health?deep=1` still tests those products; it must remain HTTP 503 while they are unavailable. A healthy automated Finds feed is not evidence that those signed products recovered.
 
 The website's existing derived journal and fallback continue unchanged. Newly added website `view=finds` handlers require Lovable Publish changes; the directly deployed Worker does not depend on that manual publish.
+
+## Missed-tick signed recovery
+
+The existing cadence backstop must run the same signed Finds stage as the primary collector, not just update the unsigned derived journal. Both writers share one concurrency group and the existing D1-governed B2 budget/six-hour archive cadence. The backstop resolves that ledger before publication and independently verifies combined plus each category signature and exact source SHA. No TTL or original publication time is extended. A successful master source-runtime run also checks whether catch-up is due, without adding another schedule or chaining the master to itself. GitHub schedules remain best effort.
