@@ -1,8 +1,8 @@
-export async function getJson(url, {headers={}, timeoutMs=15000,maxBytes=null,redirect="follow"}={}) {
+export async function getJson(url, {headers={}, timeoutMs=15000,maxBytes=null,redirect="follow",fetchImpl=fetch}={}) {
   const controller = new AbortController();
   const timer = setTimeout(()=>controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url,{redirect,headers:{accept:"application/json",...headers},signal:controller.signal});
+    const res = await fetchImpl(url,{redirect,headers:{accept:"application/json",...headers},signal:controller.signal});
     // Credentialed bounded reads must preserve denial status before a large
     // error body can mask it, and never attach key-bearing URLs to errors.
     if(maxBytes!==null&&!res.ok){await res.body?.cancel();throw Error(`HTTP ${res.status} for bounded credentialed request`);}

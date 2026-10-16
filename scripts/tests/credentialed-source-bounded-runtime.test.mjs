@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {probeCredentialedSource} from '../../global-intelligence/adapters/credentialed-sources.mjs';
+import {probeCredentialedSource,fetchWtoCanonical} from '../../global-intelligence/adapters/credentialed-sources.mjs';
 import {getJson} from '../../global-intelligence/adapters/http.mjs';
 
 test('UCDP uses one pinned official version, header-only token, and no guessed monthly publication',async()=>{
@@ -35,4 +35,25 @@ test('denial status is preserved before body limits and credentialed errors omit
   globalThis.fetch=async()=>new Response('private-malformed-body');
   await assert.rejects(getJson('https://example.invalid?key=private-token',{maxBytes:1000,redirect:'error'}),e=>e.message==='Non-JSON response from bounded credentialed request');
  }finally{globalThis.fetch=original;}
+});
+
+test('WTO permits one exact same-origin trailing-slash canonicalization without changing credential or query scope',async()=>{
+ const url='https://api.wto.org/timeseries/v1/data?i=ITS_MTV_AX&r=000&ps=2024&subscription-key=private-token';
+ const init={headers:{accept:'application/json'},signal:AbortSignal.timeout(15000)},calls=[];
+ const result=await fetchWtoCanonical(url,init,async(target,options)=>{
+  calls.push(target);assert.equal(options.signal,init.signal);
+  if(calls.length===1){assert.equal(options.redirect,'manual');return new Response(null,{status:301,headers:{location:'/timeseries/v1/data/'}});}
+  assert.equal(options.redirect,'error');assert.equal(new URL(target).search,new URL(url).search);
+  return Response.json({Dataset:[]});
+ },async ms=>assert.equal(ms,1100));
+ assert.equal(result.status,200);assert.equal(calls.length,2);
+ for(const status of [401,403,429]){
+  let n=0;const response=await fetchWtoCanonical(url,init,async()=>{n++;return new Response('',{status});},async()=>{});
+  assert.equal(response.status,status);assert.equal(n,1);
+ }
+ for(const location of ['http://api.wto.org/timeseries/v1/data/','https://api.wto.org.evil.example/timeseries/v1/data/','/timeseries/v1/data/?i=OTHER','https://user@api.wto.org/timeseries/v1/data/','/timeseries/v1/other/','/timeseries/v1/data/#fragment']){
+  let n=0;
+  await assert.rejects(fetchWtoCanonical(url,init,async()=>{n++;return new Response(null,{status:302,headers:{location}});},async()=>{}),/WTO_CANONICAL_REDIRECT_REFUSED/);
+  assert.equal(n,1);
+ }
 });

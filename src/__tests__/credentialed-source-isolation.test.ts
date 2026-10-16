@@ -19,7 +19,7 @@ describe("#1827 independently activate configured credentialed sources",()=>{
     const adapter=readFileSync("global-intelligence/adapters/credentialed-sources.mjs","utf8");
     expect(adapter).toContain('sourceId==="bea"?30000:sourceId==="ucdp_ged"?30000:15000');
     expect(adapter).toContain("method=GetDataSetList&ResultFormat=JSON");
-    expect(adapter).toContain('const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error"})');
+    expect(adapter).toContain('const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error",fetchImpl:sourceId==="wto_timeseries"?fetchWtoCanonical:fetch})');
   });
   it("does not block healthy sources when a different provider key is missing",async()=>{
     const env={...allCredentials};

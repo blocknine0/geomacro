@@ -17,7 +17,7 @@ The owner-provided list contains secret **names**, not proof of deployed access,
 | Supabase and Telegram Supabase keys | Frozen legacy paths | Not injected into the credentialed runtime or recovery preflight |
 | Lovable mirror/source-intake/Telegram bot keys | Existing deployment/catalogue/discovery paths | Deployment/catalogue access is not current source evidence or permission to message users |
 
-Credentialed requests now reject redirects and enforce a 256 KiB response limit from both headers and streamed bytes. No credential-bearing URL, raw upstream record or provider error body enters the health receipt. UCDP uses the official documented stable version; it does not guess an unpublished previous-month candidate release. No new Supabase writer or raw-content store is enabled.
+Credentialed requests reject arbitrary redirects and enforce a 256 KiB response limit from both headers and streamed bytes. WTO alone permits one exact HTTPS same-origin `/timeseries/v1/data` to `/timeseries/v1/data/` canonicalization, preserving the registered query and key scope. A shared deadline and 1.1-second spacing retain the published one-call-per-second bound. Any changed host/path/query, downgrade, denial, loop or second redirect stays rejected. This transport allowance is not proof the live WTO endpoint will return a valid response. No credential-bearing URL, raw upstream record or provider error body enters the health receipt. UCDP uses the official documented stable version; it does not guess an unpublished previous-month candidate release. No new Supabase writer or raw-content store is enabled.
 
 ## Why signed hot serving remains separate
 
