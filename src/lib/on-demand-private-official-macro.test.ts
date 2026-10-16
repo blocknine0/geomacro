@@ -33,7 +33,7 @@ describe("private official annual change evidence — NOT live scored news",()=>
     const {fetchImpl,urls}=api();
     const input={country_iso3:"IND",categories:["macro" as const]};
     const privateProof=await discoverOnDemandForPrivateQualification(input,{fetchImpl,now});
-    expect(privateProof.discovery.network_attempts).toBe(5);
+    expect(privateProof.discovery.network_attempts).toBe(4);
     expect(privateProof.private_macro_changes).toHaveLength(2);
     for(const x of privateProof.private_macro_changes){
       expect(x.country_iso3).toBe("IND");

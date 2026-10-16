@@ -1056,14 +1056,16 @@ async function discoverOnDemandImpl(
     throw Error("ON_DEMAND_MINERAL_SCOPE_INVALID");
   // Always bound fan-out; missing country metadata is not substituted by an
   // ungrounded guessed country name.
-  let name: string;
-  try { name=await countryName(country,trackedFetch); }
-  catch {
-    // World Bank coverage is NOT the country registry. Its absence,
-    // restricted lookup or response drift must not disable all independent
-    // official/UN government-source discovery for an otherwise recognized
-    // country. This offline lookup does not imply a live source or evidence.
-    name=country195ByIso3(country)?.name??"";
+  // The canonical 195-country registry is the authoritative local query
+  // label. No speculative World Bank GET is needed for any of those 195
+  // countries; avoid burning one of only twelve provider requests per
+  // on-demand query before the original publishers are even consulted.
+  // Non-195 legacy territories may still use the existing bounded external
+  // lookup, which never proves a current source or country-specific event.
+  let name=country195ByIso3(country)?.name??"";
+  if(!name){
+    try {name=await countryName(country,trackedFetch);}
+    catch {name="";}
   }
   // World Bank describes Palestine as "West Bank and Gaza", but routing a
   // PSE query must still match the UN observer-state country denominator.

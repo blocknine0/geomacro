@@ -34,7 +34,7 @@ describe("on-demand provider attribution and index deduplication",()=>{
     expect(result.discovery.source_probes.filter(p=>
       p.category==="macro" && p.family.startsWith("world_bank_official_"))).toHaveLength(2);
     expect(result.discovery.source_probes.every(p=>p.category!==undefined)).toBe(true);
-    expect(result.discovery.network_attempts).toBe(11);
+    expect(result.discovery.network_attempts).toBe(10);
     expect(result.discovery.supabase_requests).toBe(0);
     expect(result.discovery.b2_requests).toBe(0);
     expect(result.discovery.payable).toBe(false);
