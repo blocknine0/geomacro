@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geomacro.live/schemas/v1/delivery.json",
+  "title": "Geomacro Delivery Envelope v1 (verified-only)",
+  "description": "Shape only: does NOT verify Ed25519 signature, JCS content hashing, commercial rights, D1/B2 or payment settlement. Server must independently verify all of these before charged delivery.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "request_id",
+    "capability",
+    "delivered_at",
+    "billing",
+    "subject",
+    "data_state",
+    "freshness",
+    "summary",
+    "result",
+    "provenance",
+    "limits",
+    "attribution",
+    "integrity"
+  ],
+  "properties": {
+    "schema": {
+      "const": "geomacro.delivery.v1"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{8,128}$"
+    },
+    "capability": {
+      "enum": [
+        "gri_read",
+        "structural_country_digest",
+        "structural_corridor_digest",
+        "structural_country_profile",
+        "structural_corridor_profile",
+        "signed_risk_object",
+        "risk_gate_bundle",
+        "intelligence_query"
+      ]
+    },
+    "delivered_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "billing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "charged",
+        "price_usdc",
+        "reason"
+      ],
+      "properties": {
+        "charged": {
+          "const": true
+        },
+        "price_usdc": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$"
+        },
+        "reason": {
+          "const": "DELIVERED"
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "global",
+            "country",
+            "corridor",
+            "query"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.:-]{1,128}$"
+        }
+      }
+    },
+    "data_state": {
+      "const": "AVAILABLE"
+    },
+    "freshness": {
+      "type": "object",
+      "required": [
+        "as_of",
+        "label",
+        "max_age_s",
+        "stale"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "as_of": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "label": {
+          "enum": [
+            "realtime",
+            "near_realtime",
+            "daily",
+            "weekly",
+            "monthly",
+            "quarterly",
+            "annual"
+          ]
+        },
+        "max_age_s": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 31536000
+        },
+        "stale": {
+          "const": false
+        }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "result": {
+      "type": "object"
+    },
+    "provenance": {
+      "type": "object"
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "execution_authorized",
+        "advisory_only"
+      ],
+      "properties": {
+        "execution_authorized": {
+          "const": false
+        },
+        "advisory_only": {
+          "const": true
+        }
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "required": [
+        "notice",
+        "url"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "notice": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "url": {
+          "const": "https://geomacro.live/attributions"
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "required": [
+        "alg",
+        "key_id",
+        "canonicalization",
+        "content_hash",
+        "signature"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "alg": {
+          "const": "ed25519"
+        },
+        "key_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.:-]{1,128}$"
+        },
+        "canonicalization": {
+          "const": "JCS-RFC8785"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "signature": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 512
+        }
+      }
+    }
+  }
+}
