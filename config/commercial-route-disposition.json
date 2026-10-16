@@ -240,6 +240,10 @@
     "/api/v1/finds": {
       "classification": "PRODUCTION",
       "status": "FREE_DERIVED_ONLY"
+    },
+    "/api/v1/agent": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
     }
   }
 }
