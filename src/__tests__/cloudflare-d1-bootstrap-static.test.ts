@@ -31,6 +31,15 @@ describe("D1 control-plane bootstrap", () => {
     expect(workflow).not.toContain("VITE_");
   });
 
+  it("reruns D1 security acceptance on verifier changes and redacts untrusted upstream replies",()=>{
+    const verifier=readFileSync("scripts/ops/verify-d1-central-security-budget.mjs","utf8");
+    expect(workflow).toContain('"scripts/ops/verify-d1-central-security-budget.mjs"');
+    expect(verifier).toContain("geomacro.central-security-d1-acceptance-failure.v1");
+    expect(verifier).toContain("NO_SAFE_ERROR_CODE");
+    expect(verifier).toContain("SECURITY_ACCEPTANCE_D1_NOT_VERIFIED");
+    expect(verifier).not.toContain("console.error(accepted.data)");
+    expect(verifier).not.toContain("console.error(raw)");
+  });
   it("requires fail-closed live acceptance and retries only the bounded workers.dev 1042 propagation case", () => {
     expect(workflow).toContain('test "$CODE" = "401"');
     expect(workflow).toContain('test "$CODE" = "200"');
