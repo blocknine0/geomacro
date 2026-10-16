@@ -142,7 +142,16 @@ jobs:
           test -n "$DB_ID" || { echo "D1 database not available"; exit 3; }
           echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
 
+      - name: Check shared D1 B2 headroom before any original claim or classifier call
+        id: headroom
+        run: node scripts/ops/check-private-scoring-b2-headroom.mjs
+
+      - name: Explain the quota-held evidence stage without claiming readiness
+        if: steps.headroom.outputs.admitted == 'false'
+        run: echo "PRIVATE_SCORING_QUOTA_HELD_NO_EVENT_OR_COMMERCE_PROMOTION"
+
       - name: Score three bounded domains using canonical classifier, no Supabase
+        if: steps.headroom.outputs.admitted == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -191,6 +200,7 @@ jobs:
           done
 
       - name: Publish privacy-safe stage rejection diagnostics
+        if: steps.headroom.outputs.admitted == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -198,6 +208,7 @@ jobs:
 
       - name: Prove genuine original-source three-domain singleton eligibility BEFORE B2 PUT
         if: >-
+          steps.headroom.outputs.admitted == 'true' && (
           (github.event_name == 'push' && (
             contains(github.event.head_commit.message, 'Merge pull request #1891') ||
             contains(github.event.head_commit.message, '(#1924)') ||
@@ -207,12 +218,14 @@ jobs:
           )) ||
           (github.event_name == 'workflow_dispatch' &&
             github.event.inputs.private_gri_singleton == 'true')
+          )
         shell: bash
         run: |
           set -euo pipefail
           node scripts/ops/preflight-private-griv12-singleton.mjs
 
       - name: Verify one private B2 bundle then write compact D1 checkpoint
+        if: steps.headroom.outputs.admitted == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -239,6 +252,7 @@ jobs:
 
       - name: Prepare source-bound canonical private GRI v1.2 proof locally (no network)
         if: >-
+          steps.headroom.outputs.admitted == 'true' && (
           (github.event_name == 'push' && (
             contains(github.event.head_commit.message, 'Merge pull request #1891') ||
             contains(github.event.head_commit.message, '(#1924)') ||
@@ -248,6 +262,7 @@ jobs:
           )) ||
           (github.event_name == 'workflow_dispatch' &&
             github.event.inputs.private_gri_singleton == 'true')
+          )
         shell: bash
         run: |
           set -euo pipefail
@@ -288,6 +303,7 @@ jobs:
 
       - name: Independently verify private GRI proof B2 restore then D1 checkpoint
         if: >-
+          steps.headroom.outputs.admitted == 'true' && (
           (github.event_name == 'push' && (
             contains(github.event.head_commit.message, 'Merge pull request #1891') ||
             contains(github.event.head_commit.message, '(#1924)') ||
@@ -297,6 +313,7 @@ jobs:
           )) ||
           (github.event_name == 'workflow_dispatch' &&
             github.event.inputs.private_gri_singleton == 'true')
+          )
         shell: bash
         env:
           # Preserve strict global shared D1 account-level B2 tickets.

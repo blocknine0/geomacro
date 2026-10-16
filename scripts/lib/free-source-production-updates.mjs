@@ -11,6 +11,9 @@ const sha=x=>createHash('sha256').update(x).digest('hex');
 const MAX_HASHES=96;
 const SCHEMA='geomacro.free-source-production-update-checkpoint.v1';
 const BASELINE=new Set(['bls','world_bank_wdi','treasury_fiscaldata','usgs_mcs']);
+export const USGS_MCS_OFFICIAL_LANDING_URL =
+  'https://www.usgs.gov/centers/national-minerals-information-center/mineral-commodity-summaries';
+
 const EXTRA=[
  {id:'federal_reserve',category:'macro',url:'https://www.federalreserve.gov/feeds/press_all.xml',format:'rss',maxBytes:384000},
  {id:'noaa_nhc',category:'geopolitics',url:'https://www.nhc.noaa.gov/index-at.xml',format:'rss',maxBytes:256000},
@@ -122,6 +125,37 @@ function previousSnapshot(row,category){
  }
  return p.snapshot;
 }
+// The annual MCS publication landing endpoint sometimes times out while the
+// first-party USGS centre page remains accessible. This is a SAME-PUBLISHER,
+// exact-URL transport fallback, never another independent original event.
+export async function probeProductionFreeUpdateSource(spec,fetchImpl=fetch,now=new Date()){
+ if(!PRODUCTION_FREE_UPDATE_SOURCES.includes(spec))throw Error('FREE_SOURCE_UPDATE_SPEC_UNREGISTERED');
+ let observed=null,official_fallback_used=false;
+ let result=await probeNoKeySource(spec,fetchImpl,{
+   onPayload:body=>{observed=summarizeFreeSourceUpdates(spec,body,now);},
+ });
+ if(spec.id==='usgs_mcs'&&spec.category==='rare_earth'&&
+    spec.url==='https://pubs.usgs.gov/publication/mcs2026'&&
+    spec.format==='html'&&result.state==='NETWORK_UNAVAILABLE'){
+   let fallbackObservation=null;
+   const fallback=await probeNoKeySource(
+     {...spec,url:USGS_MCS_OFFICIAL_LANDING_URL},fetchImpl,{
+       onPayload:body=>{
+         if(!/Mineral Commodity Summaries 2026/iu.test(body)||
+            !/National Minerals Information Center/iu.test(body))
+           throw Error('USGS_MCS_OFFICIAL_LANDING_CONTENT_UNVERIFIED');
+         fallbackObservation=summarizeFreeSourceUpdates(spec,body,now);
+       },
+     });
+   if(fallback.state==='TRANSPORT_READABLE'&&
+      fallbackObservation?.kind==='CONTEXT_ONLY_NO_UPDATE_RECORDS'){
+     result=fallback;
+     observed=fallbackObservation;
+     official_fallback_used=true;
+   }
+ }
+ return {result,observed,official_fallback_used};
+}
 export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=fetch,now=new Date(),onObservation=null}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))throw Error('FREE_SOURCE_UPDATE_CLOCK_INVALID');
  const before=await stateClient.loadRows();
@@ -143,9 +177,10 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
    if((old?.state==='DENIED_OR_RATE_LIMIT'||(old?.reader_revision??1)===(spec.reader_revision??1))&&Number.isFinite(last)&&last<=now.getTime()&&notDue){
      outcomes.push({category:spec.category,state:'NOT_DUE',new_updates:0});continue;
    }
-   let observed=null;
-   const result=await probeNoKeySource(spec,fetchImpl,{onPayload:body=>{observed=summarizeFreeSourceUpdates(spec,body,now);}});
-   if(onObservation)onObservation({id:spec.id,category:spec.category,state:result.state,http_status:result.http_status});
+   const {result,observed,official_fallback_used}=
+     await probeProductionFreeUpdateSource(spec,fetchImpl,now);
+   if(onObservation)onObservation({id:spec.id,category:spec.category,state:result.state,
+     http_status:result.http_status,official_same_publisher_fallback_used:official_fallback_used});
    const healthy=result.state==='TRANSPORT_READABLE'&&observed!==null;
    const known=new Set(old?.fingerprints??[]);
    const fresh=healthy&&old?.last_success_at?observed.fingerprints.filter(x=>!known.has(x)).length:0;
