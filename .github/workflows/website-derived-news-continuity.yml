@@ -123,6 +123,7 @@ jobs:
           }
           TS
       - name: Independently verify public derived-news journal
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
