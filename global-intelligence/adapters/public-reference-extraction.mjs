@@ -78,28 +78,52 @@ export function extractPublicReference(id,payload){
   }
   if(id==="eurostat"){
     const x=payload;
-    if(!x||!Array.isArray(x.id)||!Array.isArray(x.size)||x.id.length!==x.size.length||
-       !x.id.includes("time")||!x.id.includes("geo")||!x.value||
-       !x.dimension?.time?.category?.index)throw Error("EUROSTAT_JSONSTAT_INVALID");
-    const time=x.dimension.time.category.index;
-    const labels=Array.isArray(time)?time:Object.entries(time).sort((a,b)=>a[1]-b[1]).map(([k])=>k);
-    const timeAxis=x.id.indexOf("time"),geoAxis=x.id.indexOf("geo");
-    if(geoAxis<0||!x.dimension.geo?.category?.index)throw Error("EUROSTAT_GEO_MISSING");
-    const geoIndex=x.dimension.geo.category.index;
-    if(!Object.prototype.hasOwnProperty.call(geoIndex,"DE"))throw Error("EUROSTAT_COUNTRY_MISMATCH");
-    const nonTimeAxes=x.id.filter(axis=>axis!=="time");
-    if(nonTimeAxes.some(axis=>x.size[x.id.indexOf(axis)]!==1))throw Error("EUROSTAT_MIXED_SCOPE");
+    if(!x||!Array.isArray(x.id)||!Array.isArray(x.size)||
+       x.id.length!==x.size.length||!x.id.includes("time")||
+       !x.id.includes("geo")||!x.value||typeof x.value!=="object"||
+       x.size.some(n=>!Number.isSafeInteger(n)||n<1)||
+       x.size.reduce((a,b)=>a*b,1)>10000)
+      throw Error("EUROSTAT_JSONSTAT_INVALID");
+    // Even when the upstream API ignores a dimension filter, select only
+    // the exact fully pinned intersection; never aggregate across axes.
+    const expected={geo:"DE",freq:"Q",s_adj:"NSA",na_item:"B1GQ",unit:"CP_MEUR"};
+    function codeIndex(axis,code){
+      const index=x.dimension?.[axis]?.category?.index;
+      if(Array.isArray(index))return index.indexOf(code);
+      if(index&&typeof index==="object"&&Number.isSafeInteger(index[code]))
+        return index[code];
+      return -1;
+    }
+    const selected=x.id.map((axis,i)=>{
+      if(axis==="time")return null;
+      if(Object.prototype.hasOwnProperty.call(expected,axis)){
+        const at=codeIndex(axis,expected[axis]);
+        if(at<0||at>=x.size[i])throw Error("EUROSTAT_EXACT_DIMENSION_MISSING");
+        return at;
+      }
+      if(x.size[i]!==1)throw Error("EUROSTAT_MIXED_SCOPE");
+      return 0;
+    });
+    const periodIndex=x.dimension?.time?.category?.index;
+    if(!periodIndex)throw Error("EUROSTAT_JSONSTAT_INVALID");
+    const times=Array.isArray(periodIndex)?periodIndex.map((k,i)=>[k,i]):
+      Object.entries(periodIndex);
     const observations=[];
-    for(let i=0;i<labels.length;i++){
-      const period=String(labels[i]);
-      if(!/^(?:19|20)\d{2}-Q[1-4]$/.test(period))continue;
-      const v=presentNumber(x.value[String(i)]);
-      if(v!==null)observations.push({period,v});
+    for(const [label,at] of times){
+      const period=String(label);
+      if(!/^(?:19|20)\d{2}-Q[1-4]$/.test(period)||
+         !Number.isSafeInteger(at)||at<0||
+         at>=x.size[x.id.indexOf("time")])continue;
+      let flat=0;
+      for(let j=0;j<x.id.length;j++)
+        flat=flat*x.size[j]+(x.id[j]==="time"?at:selected[j]);
+      const value=presentNumber(x.value[String(flat)]);
+      if(value!==null)observations.push({period,value});
     }
     observations.sort((a,b)=>b.period.localeCompare(a.period));
     if(!observations.length)throw Error("EUROSTAT_OBSERVATION_MISSING");
     return entry(id,{country_iso3:"DEU",reference_period:observations[0].period,
-      value:observations[0].v,unit:"million EUR current prices",
+      value:observations[0].value,unit:"million EUR current prices",
       source_record_count:observations.length,kind:"QUARTERLY_GDP_REFERENCE"});
   }
   if(id==="bls"){
