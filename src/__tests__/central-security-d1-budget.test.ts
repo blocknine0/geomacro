@@ -37,12 +37,15 @@ def reserve(key,start=60):
 a=[reserve('aaaaaa') for _ in range(65)]
 b=[reserve(format(i,'06x')) for i in range(1200)]
 c=reserve('aaaaaa',120)
-print(json.dumps({'client':a,'global':b,'reset':c,'rows':db.execute('select count(*) from central_security_budget').fetchone()[0]}))`],{
+late=reserve('aaaaaa',60)
+current=reserve('aaaaaa',120)
+print(json.dumps({'client':a,'global':b,'reset':c,'late':late,'current':current,'rows':db.execute('select count(*) from central_security_budget').fetchone()[0]}))`],{
     input:JSON.stringify({sql:SECURITY_COUNTER_SQL,migration:readFileSync('workers/control-plane/migrations/0019_central_security_budget.sql','utf8')}),encoding:'utf8'});
   const d=JSON.parse(result);expect(d.client.slice(0,60).every(x=>x[0])).toBe(true);
   expect(d.client.slice(60).every(x=>!x[0]&&x[2]===61)).toBe(true);
   expect(d.global.filter(x=>x[0])).toHaveLength(1135);
   expect(d.global.at(-1)).toEqual([false,1201,1]);expect(d.reset).toEqual([true,1,1]);
+  expect(d.late).toEqual([true,2,2]);expect(d.current).toEqual([true,3,3]);
  });
  it('denies either exhausted budget and rejects caller limits, invalid keys, or malformed DB results',async()=>{
   for(const counts of [[1,61],[1201,1]])expect((await consumeCentralSecurityBudget(dbWithCounts(counts),input)).allowed).toBe(false);

@@ -4,8 +4,8 @@ import {CENTRAL_SECURITY_POLICIES} from './central-security-policies.mjs';
 export const SECURITY_COUNTER_SQL = `INSERT INTO central_security_budget
  (route_class,bucket_kind,bucket_key,window_start,request_count) VALUES (?,?,?,?,1)
  ON CONFLICT(route_class,bucket_kind,bucket_key) DO UPDATE SET
- window_start=excluded.window_start,
- request_count=CASE WHEN central_security_budget.window_start=excluded.window_start
+ window_start=max(central_security_budget.window_start,excluded.window_start),
+ request_count=CASE WHEN central_security_budget.window_start>=excluded.window_start
  THEN min(central_security_budget.request_count+1,?) ELSE 1 END
  RETURNING request_count`;
 export async function consumeCentralSecurityBudget(db,body,{now=Date.now()}={}){
