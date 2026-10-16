@@ -114,3 +114,13 @@ test('production schedule isolates refs and exposes only checkpoint credentials 
  assert.deepEqual([...workflow.matchAll(/secrets\.([A-Z0-9_]+)/gu)].map(m=>m[1]).sort(),['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN']);
  assert.ok(workflow.includes("github.event_name != 'pull_request'"));
 });
+test('CISA bounded window selects latest catalogue additions rather than the first historical rows',()=>{
+ const s=PRODUCTION_FREE_UPDATE_SOURCES.find(x=>x.id==='cisa_kev');
+ const rows=Array.from({length:60},(_,i)=>({cveID:'historical-'+i,dateAdded:'2025-01-01'}));
+ rows.push({cveID:'latest',dateAdded:'2026-10-16'});
+ const a=summarizeFreeSourceUpdates(s,JSON.stringify({vulnerabilities:rows}),at);
+ rows.at(-1).cveID='latest-correction';
+ const b=summarizeFreeSourceUpdates(s,JSON.stringify({vulnerabilities:rows}),at);
+ assert.equal(a.sampled_records,40);assert.notDeepEqual(a.fingerprints,b.fingerprints);
+ assert.equal(b.latest_native_publication_at,null);
+});

@@ -7,7 +7,7 @@ import {officialItemNativePublicationMs} from './official-native-item-publicatio
 
 const DOMAINS=['geopolitics','macro','rare_earth'];
 const sha=x=>createHash('sha256').update(x).digest('hex');
-const MAX_HASHES=120;
+const MAX_HASHES=96;
 const SCHEMA='geomacro.free-source-production-update-checkpoint.v1';
 const BASELINE=new Set(['bls','world_bank_wdi','treasury_fiscaldata','usgs_mcs']);
 const EXTRA=[
@@ -70,7 +70,7 @@ export function summarizeFreeSourceUpdates(spec,payload,now){
    if(spec.id==='usgs_earthquakes'){
      kind='HAZARD_OBSERVATION_CHANGE';
      rows=x.features.map(f=>({id:f.id,time:f.properties?.time,updated:f.properties?.updated}));
-   }else if(spec.id==='cisa_kev'){kind='SECURITY_CATALOGUE_CHANGE';rows=x.vulnerabilities;}
+   }else if(spec.id==='cisa_kev'){kind='SECURITY_CATALOGUE_CHANGE';rows=[...x.vulnerabilities].sort((a,b)=>String(b.dateAdded??'').localeCompare(String(a.dateAdded??'')));}
    else if(['federal_register','us_bis_export_controls'].includes(spec.id)){kind='REGULATORY_DOCUMENT_CHANGE';rows=x.results;}
    else if(spec.id==='uk_fcdo_advisories'){kind='ADVISORY_DOCUMENT_CHANGE';rows=x.results;}
    else if(spec.id==='ny_fed')rows=x.refRates;

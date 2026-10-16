@@ -164,7 +164,9 @@ export async function probeNoKeySource(spec, fetchImpl = fetch, {onPayload=null}
       const safe=validateFreeLineupProbePayload(spec,payload);
       state = safe.valid && spec.format === "head" ? "ENDPOINT_REACHABLE_FORMAT_UNVERIFIED"
         : safe.valid ? "TRANSPORT_READABLE" : "FORMAT_OR_SIZE_UNVERIFIED";
-      if(safe.valid&&onPayload)onPayload(payload);
+      if(safe.valid&&onPayload){
+        try{onPayload(payload);}catch{state="FORMAT_OR_SIZE_UNVERIFIED";}
+      }
     }
   } catch {
     state = "NETWORK_UNAVAILABLE";
