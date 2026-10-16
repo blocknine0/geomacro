@@ -1,3 +1,4 @@
+import {selectCountryCensusScope} from "./x402-census-scope.mjs";
 #!/usr/bin/env node
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -236,7 +237,14 @@ async function mapLimit(rows, limit, fn) {
   return output;
 }
 
-const results = await mapLimit(entities, CONCURRENCY, fetchAvailability);
+// PR safety diagnostics must not fan out across all 250 entities on every
+// revision. Enforced release acceptance always retains the complete census.
+const {diagnostic,selected}=selectCountryCensusScope(entities,{
+  event:process.env.GITHUB_EVENT_NAME,
+  requested:process.env.GEOMACRO_X402_PR_DIAGNOSTIC === "true",
+  enforce:ENFORCE,
+});
+const results = await mapLimit(selected, CONCURRENCY, fetchAvailability);
 const available = results.filter((row) => row.outcome === "AVAILABLE");
 const failClosed = results.filter((row) => row.outcome === "FAIL_CLOSED");
 const unsafe = results.filter((row) => row.outcome === "UNSAFE");
@@ -272,6 +280,9 @@ const evidence = {
   real_funds_touched: false,
   execution_authorized: false,
   canonical_entity_count: entities.length,
+  sampled_entity_count: selected.length,
+  full_census_performed: !diagnostic,
+  diagnostic_only: diagnostic,
   canonical_sovereign_count: groups.SOVEREIGN.length,
   canonical_territory_count: groups.TERRITORY.length,
   canonical_special_entity_count: groups.SPECIAL_ENTITY.length,
