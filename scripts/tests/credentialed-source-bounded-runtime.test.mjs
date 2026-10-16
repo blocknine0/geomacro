@@ -8,7 +8,7 @@ test('UCDP uses one pinned official version, header-only token, and no guessed m
  process.env.UCDP_API_TOKEN='private-ucdp-token';let calls=0;
  try{
   globalThis.fetch=async(url,options)=>{
-   calls++;assert.equal(url,'https://ucdpapi.pcr.uu.se/api/gedevents/26.1?pagesize=1&page=1');
+   calls++;assert.equal(url,'https://ucdpapi.pcr.uu.se/api/gedevents/26.1?pagesize=1&page=1&Id=4');
    assert.equal(options.redirect,'error');assert.equal(options.headers['x-ucdp-access-token'],'private-ucdp-token');
    return Response.json({TotalCount:1,Result:[{id:4,date_end:'2010-09-25',source_article:'private-original'}]});
   };

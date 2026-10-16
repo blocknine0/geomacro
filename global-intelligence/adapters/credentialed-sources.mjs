@@ -43,7 +43,9 @@ export async function probeCredentialedSource(sourceId) {
       category: "GEOPOLITICS", countryIso3: null, env: "UCDP_API_TOKEN",
       // Officially documented stable release. Dataset edition and event days
       // remain historical context, never original current news clocks.
-      build: () => "https://ucdpapi.pcr.uu.se/api/gedevents/26.1?pagesize=1&page=1",
+      // Pin the documented single event too: pagesize alone still requests
+      // a count over the entire historical release. No country-wide fanout.
+      build: () => "https://ucdpapi.pcr.uu.se/api/gedevents/26.1?pagesize=1&page=1&Id=4",
       headers: key => ({"x-ucdp-access-token":key}),
       validate: x => Array.isArray(x?.Result) && x.Result.length<=1 &&
         Number.isSafeInteger(x.TotalCount) && x.TotalCount>=x.Result.length &&
