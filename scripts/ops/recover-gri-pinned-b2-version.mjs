@@ -77,8 +77,8 @@ export async function recoverPinnedGriVersion({env=process.env,fetchImpl=fetch,g
  const {r,bytes}=await request(d.href,'GET',{headers},MAX);
  let name;try{name=decodeURIComponent(r.headers.get('x-bz-file-name')??'');}catch{fail('DOWNLOADED_IDENTITY_INVALID');}
  if(r.headers.get('x-bz-file-id')!==selected.fileId||name!==KEY||bytes.length!==selected.contentLength)fail('DOWNLOADED_IDENTITY_INVALID');
- const verified=verifyPinnedGlobalRiskBaseline({anchor,compressed:bytes,now});
- return {...verified,schema:'geomacro.gri-immutable-version-readback.v1',
+ const {d1_writes:unusedProductWriteCount,...verified}=verifyPinnedGlobalRiskBaseline({anchor,compressed:bytes,now});
+ return {...verified,d1_product_writes:0,d1_quota_reservations:operations,schema:'geomacro.gri-immutable-version-readback.v1',
   anchor_key_type:'IMMUTABLE_B2_FILE_VERSION_AT_EXISTING_D1_PIN',immutable_file_version_verified:true,
   immutable_file_id_sha256:sha(selected.fileId),retained_version_uploaded_at:new Date(Number(selected.uploadTimestamp)).toISOString(),
   actual_b2_operations:operations,maximum_b2_operations:4,metadata_page_limit:1,maximum_downloaded_versions:1,

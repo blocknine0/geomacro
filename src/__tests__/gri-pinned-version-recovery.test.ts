@@ -29,7 +29,8 @@ function fixture(options:any={}){
 describe('bounded historical B2 immutable version recovery',()=>{
  it('reads the original compressed bytes matching the pre-existing D1 pin and preserves old source clocks',async()=>{
   const f=fixture();const r=await recoverPinnedGriVersion(f);
-  expect(r).toMatchObject({immutable_file_version_verified:true,actual_b2_operations:3,new_anchor_minted:false,current_gri_qualified:false,immutable_historical_lineage_verified:false,original_generated_at:value.generated_at,original_source_as_of:value.data.snapshotAsOf,d1_writes:0,b2_puts:0,x402_charges:0});
+  expect(r).toMatchObject({immutable_file_version_verified:true,actual_b2_operations:3,new_anchor_minted:false,current_gri_qualified:false,immutable_historical_lineage_verified:false,original_generated_at:value.generated_at,original_source_as_of:value.data.snapshotAsOf,d1_product_writes:0,d1_quota_reservations:3,b2_puts:0,x402_charges:0});
+  expect(r).not.toHaveProperty('d1_writes');
   expect(f.operations).toEqual(['NATIVE_AUTH','GET','GET']);
   expect(JSON.stringify(r)).not.toMatch(/private-native-token|private-fixture|latest.json.gz|4_z_immutable/);
  });
