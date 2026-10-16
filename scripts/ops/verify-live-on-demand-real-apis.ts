@@ -28,6 +28,10 @@ const FAMILY_BY_HOST:Readonly<Record<string,string>>={
   "www.minister.industry.gov.au":"australian_industry",
   "api.io.canada.ca":"canada_nrcan",
   "www.canada.ca":"canada_nrcan",
+  "press.un.org":"un_press",
+  "www.bis.org":"bis",
+  "www.boj.or.jp":"bank_of_japan",
+  "www.iea.org":"iea",
 };
 const outcomeCounts=new Map<string,Record<
   "ok_2xx"|"http_403"|"http_429"|"http_5xx"|"other_http"|"network_error",number
