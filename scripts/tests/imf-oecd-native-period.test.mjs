@@ -53,10 +53,25 @@ test("OECD bounded network rejects 429/oversize, never follows redirects",async(
  }});
  assert.equal(r.observation_value,4.5);
  assert.equal(opts.redirect,"error");
+ assert.equal(opts.headers.accept,"text/csv");
  await assert.rejects(()=>fetchOecdExactReference({fetchImpl:async()=>new Response("denied",{status:429})}),/OECD_HTTP_429/);
  await assert.rejects(()=>fetchOecdExactReference({fetchImpl:async()=>new Response("{}",{
    headers:{"content-length":"1100000"}
  })}),/OECD_BODY_LIMIT/);
+});
+test("OECD official query pins one USA unemployment population and no raw broad download",async()=>{
+ let u;
+ const result=await fetchOecdExactReference({fetchImpl:async(url,opts)=>{
+  u=new URL(url);
+  assert.equal(opts.redirect,"error");
+  return new Response("REF_AREA,FREQ,TIME_PERIOD,OBS_VALUE,COMBINED_MEASURE,ADJUSTMENT,SEX,AGE\\nUSA,M,2025-06,4.5,UNE_LF_M,Y,_T,Y_GE15\\n".replaceAll("\\\\n","\\n"));
+ }});
+ assert.equal(result.country_iso3,"USA");
+ assert.equal(u.hostname,"sdmx.oecd.org");
+ assert.ok(u.pathname.includes("/USA.UNE_LF_M...Y._T.Y_GE15..M"));
+ assert.equal(u.searchParams.get("startPeriod"),"2025-06");
+ assert.equal(u.searchParams.get("endPeriod"),"2025-06");
+ assert.equal(u.searchParams.get("format"),"csvfile");
 });
 test("production receipt is independently fail-closed and never returns values",async()=>{
  const imf=async()=>[{source_id:"imf_sdmx",category:"MACRO",country_iso3:"IND",
