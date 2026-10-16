@@ -10,6 +10,10 @@ on:
       - "scripts/tests/existing-source-runtime-activation.test.mjs"
       - "global-intelligence/scripts/probe-public-sources.mjs"
       - "global-intelligence/adapters/public-sources.mjs"
+      - "global-intelligence/adapters/un-comtrade.mjs"
+      - "global-intelligence/adapters/bgs-world-minerals.mjs"
+      - "scripts/tests/un-comtrade-production-gates.test.mjs"
+      - "scripts/tests/bgs-source-integrity.test.mjs"
       - "src/__tests__/public-source-scheduled-isolation.test.ts"
   push:
     branches: [main]
@@ -41,6 +45,9 @@ jobs:
         run: |
           set -euo pipefail
           node --test scripts/tests/existing-source-runtime-activation.test.mjs
+          node --test scripts/tests/un-comtrade-production-gates.test.mjs scripts/tests/bgs-source-integrity.test.mjs
+          node --check global-intelligence/adapters/un-comtrade.mjs
+          node --check global-intelligence/adapters/bgs-world-minerals.mjs
           node --check global-intelligence/scripts/probe-public-sources.mjs
           node --check global-intelligence/adapters/public-sources.mjs
           grep -q 'PUBLIC_SOURCE_OVERSIZE' global-intelligence/adapters/public-sources.mjs
