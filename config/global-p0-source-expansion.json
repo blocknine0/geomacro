@@ -30,7 +30,7 @@
         "discovery_url": "https://finance.ec.europa.eu/eu-and-world/sanctions-restrictive-measures/overview-sanctions-and-related-resources_en",
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
-        "machine_endpoint": "https://webgate.ec.europa.eu/fsd/fsf",
+        "machine_endpoint": "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw",
         "machine_formats": ["XML", "CSV", "PDF"]
       },
       "opcw_news": {

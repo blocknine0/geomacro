@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
-export const EU_SANCTIONS_URL = "https://webgate.ec.europa.eu/fsd/fsf";
+// Public distribution URL published by the official data.europa.eu catalogue.
+// Its static token identifies the anonymous public download, not an account credential.
+export const EU_SANCTIONS_URL = "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw";
 
 function decodeXml(value) {
   return String(value ?? "")
@@ -13,17 +15,32 @@ function first(...values) {
   return values.find((v) => v != null && String(v).trim()) ?? null;
 }
 
+function attribute(attributes, name) {
+  // Names below are fixed schema fields, never supplied by the document.
+  const match = String(attributes).match(new RegExp("\\b" + name + "\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)')", "i"));
+  return match ? decodeXml(match[1] ?? match[2]) || null : null;
+}
+
 export function parseEuSanctionsXml(xml, { retrievedAt = new Date().toISOString() } = {}) {
   const records = [];
   const input = String(xml);
   const blocks = input.match(/<(?:sanctionEntity|entity|designation|record)\b[^>]*>[\s\S]*?<\/(?:sanctionEntity|entity|designation|record)>/gi) ?? [];
 
   for (const block of blocks) {
+    // The published 1.1 XML uses attributes for native entity identity and
+    // alias names. A nested nameAlias body contains regulation metadata;
+    // that XML must never become an entity name or a fallback identifier.
+    const entityAttributes = block.match(/^<sanctionEntity\b([^>]*)>/i)?.[1] ?? "";
+    const aliasAttributes = block.match(/<nameAlias\b([^>]*)>/i)?.[1] ?? "";
     const id = first(
+      attribute(entityAttributes, "euReferenceNumber"),
+      attribute(entityAttributes, "logicalId"),
       block.match(/<(?:euReferenceNumber|referenceNumber|id|logicalId)\b[^>]*>([\s\S]*?)<\/(?:euReferenceNumber|referenceNumber|id|logicalId)>/i)?.[1]
     );
     const name = first(
-      block.match(/<(?:nameAlias|wholeName|name)\b[^>]*>([\s\S]*?)<\/(?:nameAlias|wholeName|name)>/i)?.[1]
+      attribute(aliasAttributes, "wholeName"),
+      block.match(/<(?:wholeName|name)\b[^>]*>([\s\S]*?)<\/(?:wholeName|name)>/i)?.[1],
+      !entityAttributes ? block.match(/<nameAlias\b[^>]*>([\s\S]*?)<\/nameAlias>/i)?.[1] : null
     );
     const regime = first(
       block.match(/<(?:regime|programme|subjectType)\b[^>]*>([\s\S]*?)<\/(?:regime|programme|subjectType)>/i)?.[1]

@@ -1,9 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {existingPrivateP0Sources,observeExistingPrivateP0Sources,P0_MAX_BYTES,UK_SANCTIONS_MAX_BYTES} from '../ops/observe-p0-private-source-runtime.mjs';
+import {existingPrivateP0Sources,observeExistingPrivateP0Sources,P0_MAX_BYTES,UK_SANCTIONS_MAX_BYTES,EU_SANCTIONS_MAX_BYTES} from '../ops/observe-p0-private-source-runtime.mjs';
 import {parseIcjCasesHtml} from '../../global-intelligence/adapters/icj-cases.mjs';
+import {parseEuSanctionsXml} from '../../global-intelligence/adapters/eu-sanctions.mjs';
 const now=new Date('2026-10-15T21:30:00.000Z');
+test('native EU XML 1.1 attribute identity and names do not become nested regulation XML',()=>{
+ const xml='<export><sanctionEntity euReferenceNumber="EU.1234.56" logicalId="789">'+
+   '<nameAlias wholeName="Example &amp; Entity" logicalId="999">'+
+   '<regulationSummary>Unrelated nested regulation metadata</regulationSummary></nameAlias>'+
+   '</sanctionEntity></export>';
+ const [r]=parseEuSanctionsXml(xml,{retrievedAt:now.toISOString()});
+ assert.equal(r.source_record_id,'EUFS:EU.1234.56');
+ assert.equal(r.title,'EU financial sanctions designation: Example & Entity');
+ assert.equal(r.published_at,null);
+ assert.ok(!r.title.includes('regulation'));
+});
 test('ICJ collection uses the actual list and resolves real document-relative first-party cases',async()=>{
  const source=existingPrivateP0Sources().find(s=>s.id==='icj_cases');
  assert.equal(source.url,'https://www.icj-cij.org/list-of-all-cases');
@@ -97,10 +109,11 @@ test('enforces byte bound from headers and streams and isolates failures without
  let n=0;
  const r=await observeExistingPrivateP0Sources({now,fetchImpl:async()=>{
    if(n++===0)return new Response('x',{headers:{'content-length':String(UK_SANCTIONS_MAX_BYTES+1)}});
-   if(n===2)return new Response(new Uint8Array(P0_MAX_BYTES+1));
+   if(n===2)return new Response('x',{headers:{'content-length':String(EU_SANCTIONS_MAX_BYTES+1)}});
+   if(n===3)return new Response(new Uint8Array(P0_MAX_BYTES+1));
    throw Error('secret-token upstream response body');
  }});
- assert.equal(r.results[0].reason,'BODY_SIZE_LIMIT');assert.equal(r.results[1].reason,'BODY_SIZE_LIMIT');
+ assert.equal(r.results[0].reason,'BODY_SIZE_LIMIT');assert.equal(r.results[1].reason,'BODY_SIZE_LIMIT');assert.equal(r.results[2].reason,'BODY_SIZE_LIMIT');
  assert.equal(r.unavailable,10);assert.ok(!JSON.stringify(r).includes('secret-token'));
 });
 test('dataset ZIP and HTML transport are never promoted to parsed observations or current events',async()=>{
@@ -117,10 +130,26 @@ test('the exact large UK dataset gets its own bound, all other sources retain 2 
  const xml='<Designations><Designation><UniqueID>UK002</UniqueID><PrimaryName>Example Large</PrimaryName></Designation></Designations>';
  const r=await observeExistingPrivateP0Sources({now,fetchImpl:async url=>{
    if(new URL(url).hostname==='sanctionslist.fcdo.gov.uk')return new Response(' '.repeat(P0_MAX_BYTES)+xml,{headers:{'content-type':'text/xml'}});
-   return new Response('too large',{headers:{'content-length':String(P0_MAX_BYTES+1)}});
+   return new Response('too large',{headers:{'content-length':String(new URL(url).hostname==='webgate.ec.europa.eu'?EU_SANCTIONS_MAX_BYTES+1:P0_MAX_BYTES+1)}});
  }});
  assert.equal(r.results[0].status,'PRIVATE_CANDIDATES_PARSED');
  assert.equal(r.results[0].parsed_candidate_count,1);
  assert.ok(r.results.slice(1).every(s=>s.reason==='BODY_SIZE_LIMIT'));
  assert.equal(r.results[0].current_original_publication_verified,false);
+});
+
+test('EU uses the official public XML distribution rather than the authenticated portal',async()=>{
+ const source=existingPrivateP0Sources().find(s=>s.id==='eu_sanctions_consolidated');
+ const u=new URL(source.url);
+ assert.equal(u.hostname,'webgate.ec.europa.eu');
+ assert.equal(u.pathname,'/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content');
+ assert.equal(u.searchParams.get('token'),'dG9rZW4tMjAxNw');
+ const xml='<export><sanctionEntity><id>EU001</id><wholeName>Example EU</wholeName></sanctionEntity></export>';
+ const r=await observeExistingPrivateP0Sources({now,fetchImpl:async url=>{
+   if(url===source.url)return new Response(' '.repeat(P0_MAX_BYTES)+xml,{headers:{'content-type':'application/xml'}});
+   return new Response('',{status:403});
+ }});
+ const row=r.results.find(s=>s.source_id===source.id);
+ assert.equal(row.status,'PRIVATE_CANDIDATES_PARSED');assert.equal(row.parsed_candidate_count,1);
+ assert.equal(row.current_original_publication_verified,false);assert.equal(row.commercial_eligible,false);
 });
