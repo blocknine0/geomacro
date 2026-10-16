@@ -6,7 +6,7 @@
 const ROOTS=Object.freeze({
   ecb:"https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod=2026-01-01&format=csvdata",
   bis:"https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/M.US?format=csvfile",
-  eurostat:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/namq_10_gdp?geo=DE&na_item=B1GQ&unit=CP_MEUR&sinceTimePeriod=2025",
+  eurostat:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/namq_10_gdp?geo=DE&na_item=B1GQ&unit=CP_MEUR&s_adj=NSA&freq=Q&sinceTimePeriod=2025",
   bls:"https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",
   sec_edgar:"https://data.sec.gov/submissions/CIK0000320193.json",
   gdacs:"https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?eventlist=EQ&fromdate=2026-01-01&todate=2026-12-31",
