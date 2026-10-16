@@ -161,3 +161,13 @@ test('a pinned reader repair revision retries only that source without bypassing
  assert.equal(calls,1);assert.equal(r.attempted,1);assert.equal(r.retained_degraded_readers,0);
  assert.equal(r.per_category.geopolitics.newly_detected_update_fingerprints,0);
 });
+test('cron startup jitter cannot suppress the next half-hour slot or reset denial backoff',async()=>{
+ const state=memoryState();const first=new Date('2026-10-16T07:17:01.000Z');
+ await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('one','us_doe'),now:first});
+ const next=await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('two'),now:new Date('2026-10-16T07:47:00.000Z')});
+ // The elapsed duration is 29m59s; all healthy fast readers must still poll.
+ assert.equal(next.attempted,PRODUCTION_FREE_UPDATE_SOURCES.filter(s=>s.poll_minutes===30).length-1);
+ assert.equal(next.retained_degraded_readers,1);
+ const calendar=await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('two'),now:new Date('2026-10-17T00:17:00.000Z')});
+ assert.equal(calendar.attempted,19);
+});
