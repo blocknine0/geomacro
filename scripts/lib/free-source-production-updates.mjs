@@ -27,7 +27,10 @@ const EXTRA=[
  {id:'wikimedia_pageviews',category:'geopolitics',url:(()=>{const day=new Date(Date.now()-86400000).toISOString().slice(0,10).replaceAll('-','')+'00';return 'https://wikimedia.org/api/rest_v1/metrics/pageviews/aggregate/all-projects/all-access/user/daily/'+day+'/'+day;})(),format:'json',maxBytes:128000,baseline:true},
 ];
 export const PRODUCTION_FREE_UPDATE_SOURCES=Object.freeze([
- ...FREE_NO_KEY_TRANSPORT_SPECS.map(s=>({...s,baseline:BASELINE.has(s.id)})),
+ ...FREE_NO_KEY_TRANSPORT_SPECS.map(s=>({...s,baseline:BASELINE.has(s.id),
+   // Re-probe the repaired USGS MCS URL after transport failures without
+   // shortening provider 401/403/429 denial backoff.
+   reader_revision:s.id==='usgs_mcs'?2:s.reader_revision})),
  ...EXTRA.map(s=>({...s,production_update_reader:true})),
  ...GLOBAL_OFFICIAL_RELEASE_FEEDS,
 ].map(s=>{
