@@ -19,8 +19,10 @@ function rowsFromDataMapper(payload, indicator, countryIso3, periods) {
     .filter(([iso, values]) => iso === country && values && typeof values === "object")
     .flatMap(([, values]) =>
       Object.entries(values)
-        .filter(([period, value]) => value !== null && value !== undefined && (!wanted || wanted.has(String(period))))
-        .map(([period, value]) => ({ period, value }))
+        .filter(([period, value]) => /^(?:19|20)\d{2}$/.test(period) &&
+          value !== null && value !== undefined && value !== "" &&
+          Number.isFinite(Number(value)) && (!wanted || wanted.has(period)))
+        .map(([period, value]) => ({ period, value:Number(value) }))
     );
 }
 
@@ -29,21 +31,27 @@ export async function fetchImfDataMapper({
   countryIso3,
   periods = null
 } = {}) {
-  if (!countryIso3) throw new Error("countryIso3 is required");
+  if (!/^[A-Z]{3}$/u.test(String(countryIso3 ?? "").toUpperCase()))throw Error("IMF_COUNTRY_ISO3_INVALID");
+  if (!/^[A-Z][A-Z0-9_]{1,32}$/u.test(indicator))throw Error("IMF_INDICATOR_INVALID");
+  if(periods!==null&&(!Array.isArray(periods)||periods.length<1||periods.length>6||
+     periods.some(p=>!/^(?:19|20)\d{2}$/u.test(String(p)))))
+    throw Error("IMF_PERIOD_FILTER_INVALID");
 
   const path = periods?.length
     ? `/${indicator}/${countryIso3.toUpperCase()}?periods=${encodeURIComponent(periods.join(","))}`
     : `/${indicator}/${countryIso3.toUpperCase()}`;
 
   const url = DATAMAPPER_BASE + path;
-  const data = await getJson(url, {headers: authHeaders()});
+  const data = await getJson(url, {headers: authHeaders(),timeoutMs:12000,
+    maxBytes:256*1024,redirect:"error"});
   const rows = rowsFromDataMapper(data, indicator, countryIso3, periods);
 
   return rows.map(r => observation({
     sourceId: "imf_sdmx",
     category: "MACRO",
     countryIso3: countryIso3.toUpperCase(),
-    publishedAt: r.period ? `${r.period}-12-31T00:00:00Z` : null,
+    // A reference period is NOT the native IMF release timestamp.
+    publishedAt:null,observedAt:new Date().toISOString(),
     title: `IMF ${indicator} ${r.period}`,
     summary: JSON.stringify({
       indicator,
@@ -52,7 +60,11 @@ export async function fetchImfDataMapper({
       source: "IMF DataMapper v2"
     }),
     url,
-    confidence: 0.8
+    confidence: 0.8,
+    raw:{evidence_type:"IMF_STATISTICAL_REFERENCE",indicator,
+      reference_period:r.period,reference_country:countryIso3.toUpperCase(),
+      native_release_at:null,commercial_rights_verified:false,
+      independent_original_review_verified:false}
   }));
 }
 
