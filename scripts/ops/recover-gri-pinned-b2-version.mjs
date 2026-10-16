@@ -39,7 +39,7 @@ export function selectPinnedHistoricalVersion(list,anchor,bucketId){
  return candidates[0];
 }
 export async function recoverPinnedGriVersion({env=process.env,fetchImpl=fetch,getAnchor=readGlobalRiskB2Anchor,
- governor,now=new Date()}={}){
+ governor,onVerified,now=new Date()}={}){
  for(const [key,value] of Object.entries(env))if(value&&(/^(?:APP_|HISTORICAL_)?SUPABASE_(?:URL|DB_URL|SERVICE_ROLE_KEY|DB_PASSWORD)$/.test(key)||/^COINBASE_.*(?:KEY|SECRET)$/.test(key)))fail('FORBIDDEN_CREDENTIAL');
  if(env.B2_ACCOUNT_QUOTA_REQUIRED!=='1'||env.B2_ACCOUNT_QUOTA_WORKFLOW_ID!=='historical_gri_version_recovery'||
   env.B2_REQUEST_BUDGET!=='4'||!env.B2_KEY_ID||!env.B2_APPLICATION_KEY)fail('GOVERNED_RUNTIME_REQUIRED');
@@ -78,12 +78,19 @@ export async function recoverPinnedGriVersion({env=process.env,fetchImpl=fetch,g
  let name;try{name=decodeURIComponent(r.headers.get('x-bz-file-name')??'');}catch{fail('DOWNLOADED_IDENTITY_INVALID');}
  if(r.headers.get('x-bz-file-id')!==selected.fileId||name!==KEY||bytes.length!==selected.contentLength)fail('DOWNLOADED_IDENTITY_INVALID');
  const {d1_writes:unusedProductWriteCount,...verified}=verifyPinnedGlobalRiskBaseline({anchor,compressed:bytes,now});
- return {...verified,d1_product_writes:0,d1_quota_reservations:operations,schema:'geomacro.gri-immutable-version-readback.v1',
+ const receipt={...verified,d1_product_writes:0,d1_quota_reservations:operations,schema:'geomacro.gri-immutable-version-readback.v1',
   anchor_key_type:'IMMUTABLE_B2_FILE_VERSION_AT_EXISTING_D1_PIN',immutable_file_version_verified:true,
   immutable_file_id_sha256:sha(selected.fileId),retained_version_uploaded_at:new Date(Number(selected.uploadTimestamp)).toISOString(),
   actual_b2_operations:operations,maximum_b2_operations:4,metadata_page_limit:1,maximum_downloaded_versions:1,
   new_anchor_minted:false,raw_source_content_logged:false,current_gri_qualified:false,
   immutable_historical_lineage_verified:false};
+ if(onVerified){
+  if(typeof onVerified!=="function")fail("VERIFIED_CALLBACK_INVALID");
+  receipt.history_restore=await onVerified({anchor,compressed:bytes,readbackReceipt:receipt});
+  delete receipt.d1_product_writes;
+  receipt.post_readback_action_performed=true;
+ }
+ return receipt;
 }
 if(process.argv[1]?.endsWith('/recover-gri-pinned-b2-version.mjs')){
  try{
