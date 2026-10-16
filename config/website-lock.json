@@ -1,15 +1,15 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "7af9ea7eb5a67743d730bae258dcac3724625473",
+  "baseline_sha": "5b70fc0fc83477662aa314a07dde0706be2c3640",
   "published_baseline": "Founder directs Geomacro to restore actual intelligence news published after 10 October 2026, across Geopolitics, Macro/FX and Critical Minerals, not fabricated or backdated stories. Existing 30d rolling derived-only Cloudflare D1 website journal, direct browser D1 fallback, initial SSR and 30-minute background ingestion stay in place. Source expansion: first-party UK Home Office security, UK DBT Macro/FX economic trade policy, India Ministry of Mines PIB original page clock verified in IST; only admitted first-party and relevant original releases generate generic Geomacro-derived What changed / Why it matters, without copying headlines, original URLs, publisher raw text or secrets. The active /intelligence SSR loader reads independently verified derived news directly from the public D1 endpoint rather than nesting an unreliable server-function RPC, and the source reader preserves actual original time, strict 15-minute original-source delay, dedup, and source-health warnings; no synthetic news from empty publisher windows. no x402 or GRI changes; independent 60m Global Risk remains. User will manually publish only after exact-head source/test/security verification and Lovable sync; live acceptance separate. Founder directs gap recovery from prior Supabase freeze; verified first-party 2026-10-01 onward original-first-publication GOV UK archived Search + Content API, separate manual once/weekly backfill into derived-only D1. If Lovable SSR or browser transport returns no cards, free website shows source-private sandboxed/no-script Cloudflare D1 newsroom HTML fallback with original dates, Geomacro Finds, What changed and Why it matters, not fabricated latest news.  Original founder recovery live-D1 HTML cards pass through the corrected Signal[] array from fetchDirectDerivedNews() to initialJournal first HTML; the formerly erroneous history.value.signals silently discarded all records. Show unknown/loading rather than zero when network/SSR have not provided a verified count. Embedded direct D1 output remains source-private. Founder-authorized source-display recovery (October 13): first HTML paint now requests all three existing official-source category readers independently and in parallel, retains verified D1 30-day journal and explicit per-category fail-closed state, and avoids duplicate immediate browser refresh for already fetched categories. No changes to previously frozen Global Risk presentation or Ask hybrid workflow; still waiting exact-SHA website publish acceptance.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-10T17:25:00Z",
   "published_source_sha": "7215b0d05b05ccc4de1e5f69a333ae615abc38e3",
-  "lock_revision": "founder-capability-x402-pricing-presentation-20261015",
+  "lock_revision": "founder-approved-find-card-v1-public-schema-and-intelligence-cards-20261017",
   "pending_publish_acceptance": true,
-  "website_privacy_baseline_status": "FOUNDER_APPROVED_LOCKED_AWAITING_EXACT_SHA_LIVE_DEPLOYMENT",
+  "website_privacy_baseline_status": "FOUNDER_APPROVED_FIND_CARD_V1_LOCKED_AWAITING_EXACT_SHA_LIVE_DEPLOYMENT",
   "approved_presentation_change": {
     "scope": "src/components/ask/ask-workspace.tsx",
     "approval": "Founder explicitly requested ChatGPT-style Hybrid Ask Geomacro AI Agent completion in ChatGPT on 2026-10-13 (Asia/Kolkata).",
@@ -60,6 +60,20 @@
     "global_risk_final_lock_unmodified": true,
     "intelligence_risk_indices_ask_presentation_unmodified": true,
     "published_source_sha_unchanged": true,
+    "funds_authorized": false,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_find_card_v1_presentation_change": {
+    "scope": [
+      "public/schemas/v1/find-card.json",
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "approval": "Founder explicitly supplied the exact Geomacro Find Card v1 JSON Schema and instructed implementing it in ChatGPT on 2026-10-17 (Asia/Kolkata).",
+    "purpose": "Render public no-source/no-verbatim Geomacro Finds from existing 15-minute delayed original-dated D1 journal with truthful ANNOUNCED/LIMITED metadata; publish JSON Schema at canonical URL. Preserve required publisher attribution in legacy view and never imply signed GRO, independent two-original verification, current GRI, paid x402 or an invented day-only release clock.",
+    "approved_ui_commit": "5b70fc0fc83477662aa314a07dde0706be2c3640",
+    "previous_baseline_sha": "7af9ea7eb5a67743d730bae258dcac3724625473",
+    "global_risk_final_lock_unmodified": true,
+    "supabase_reactivated": false,
     "funds_authorized": false,
     "pending_exact_sha_live_deployment_acceptance": true
   }
