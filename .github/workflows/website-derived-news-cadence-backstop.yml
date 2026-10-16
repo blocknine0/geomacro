@@ -19,12 +19,16 @@ on:
       - "scripts/ops/check-website-derived-news-cadence.mjs"
       - "scripts/lib/website-derived-news-failover.mjs"
       - "scripts/tests/website-derived-news-failover.test.mjs"
+      - "scripts/lib/automated-finds-run-health.mjs"
+      - "scripts/tests/automated-finds-run-health.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/website-derived-news-cadence-backstop.yml"
       - "scripts/ops/check-website-derived-news-cadence.mjs"
       - "scripts/lib/website-derived-news-failover.mjs"
       - "scripts/tests/website-derived-news-failover.test.mjs"
+      - "scripts/lib/automated-finds-run-health.mjs"
+      - "scripts/tests/automated-finds-run-health.test.mjs"
 
 permissions:
   contents: read
@@ -50,10 +54,10 @@ jobs:
         run: |
           node --check scripts/lib/website-derived-news-failover.mjs
           node --check scripts/ops/check-website-derived-news-cadence.mjs
-          node --test scripts/tests/website-derived-news-failover.test.mjs
+          node --test scripts/tests/website-derived-news-failover.test.mjs scripts/tests/automated-finds-run-health.test.mjs
 
   catch-up-derived-only:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion)))
     concurrency:
       group: geomacro-website-derived-news-continuity
       cancel-in-progress: false
