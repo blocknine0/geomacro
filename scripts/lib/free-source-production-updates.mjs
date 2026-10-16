@@ -214,7 +214,17 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
    const restored=previousSnapshot(after.get(category),category);
    if(sha(JSON.stringify(restored))!==expected.get(category))throw Error('FREE_SOURCE_UPDATE_READBACK_MISMATCH');
  }
+ // Only allowlisted public source IDs plus coarse state leave this diagnostic.
+ // The previously unattempted degraded reader must remain visible, instead of
+ // forcing annual baselines or explicit 401/403/429 backoff to be bypassed.
+ const retainedDegraded=DOMAINS.flatMap(category=>
+   Object.entries(snapshots[category].sources).filter(([id,s])=>
+     PRODUCTION_FREE_UPDATE_SOURCES.some(p=>p.id===id&&p.category===category)&&
+     s.state!=='TRANSPORT_READABLE').map(([id,s])=>({
+       id,category,state:s.state,last_attempt_at:s.last_attempt_at,
+     }))).sort((a,b)=>a.category.localeCompare(b.category)||a.id.localeCompare(b.id));
  return {schema:'geomacro.production-free-source-updates.v1',checked_at:now.toISOString(),
+   retained_degraded_source_readers:retainedDegraded,
    families_catalogued:SOURCE_LINEUP.length,
    families_outside_this_reader:SOURCE_LINEUP.filter(s=>!PRODUCTION_FREE_UPDATE_SOURCES.some(r=>r.id===s.id)).length,
    additional_global_release_readers:GLOBAL_OFFICIAL_RELEASE_FEEDS.length,

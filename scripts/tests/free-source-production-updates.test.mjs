@@ -99,6 +99,17 @@ test('first success after denial stays a baseline and degraded state survives no
  // Both other fast minerals feeds already saw "two"; DOE's first success is not a new update.
  assert.equal(recovered.per_category.rare_earth.newly_detected_update_fingerprints,0);
 });
+test('degraded historical source receipt remains explicit and contains no raw publisher content',async()=>{
+ const state=memoryState();
+ await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('one','usgs_mcs'),now:at});
+ const result=await collectProductionFreeSourceUpdates({stateClient:state,
+  fetchImpl:network('two'),now:new Date(at.getTime()+60_000)});
+ assert.deepEqual(result.retained_degraded_source_readers.map(x=>x.id),['usgs_mcs']);
+ assert.equal(result.retained_degraded_source_readers[0].state,'DENIED_OR_RATE_LIMIT');
+ assert.equal(result.current_verified_intelligence,false);
+ assert.equal(result.commercial_eligible,false);
+ assert.ok(!JSON.stringify(result).includes('https://'));
+});
 test('unavailable D1 checkpoint stops all upstream reads',async()=>{
  let calls=0;
  await assert.rejects(()=>collectProductionFreeSourceUpdates({stateClient:{async loadRows(){throw Error('state unavailable');}},fetchImpl:async()=>{calls++;},now:at}),/state unavailable/);
@@ -170,6 +181,9 @@ test('cron startup jitter cannot suppress the next half-hour slot or reset denia
  // The elapsed duration is 29m59s; all healthy fast readers must still poll.
  assert.equal(next.attempted,PRODUCTION_FREE_UPDATE_SOURCES.filter(s=>s.poll_minutes===30).length-1);
  assert.equal(next.retained_degraded_readers,1);
+ assert.deepEqual(next.retained_degraded_source_readers.map(x=>({
+   id:x.id,category:x.category,state:x.state
+ })),[{id:'us_doe',category:'rare_earth',state:'DENIED_OR_RATE_LIMIT'}]);
  const calendar=await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('two'),now:new Date('2026-10-17T00:17:00.000Z')});
  assert.equal(calendar.attempted,29);
 });

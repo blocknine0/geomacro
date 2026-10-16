@@ -15,8 +15,9 @@ const mkProbe=(family:string,category:Domain,reachable:boolean,
   independent_claim_verified:false,derived_commercial_rights_verified:false,
   retrieval_state:reachable?"NO_MATCHING_RECORDS":state,
 });
-const mkOriginal=(domain:Domain,family:string,sha:string):PrivateOriginalCandidate=>({
- domain,publisher_family:family,article_url:"https://www.gov.uk/government/news/sample",
+const mkOriginal=(domain:Domain,family:string,sha:string,country="PSE"):PrivateOriginalCandidate=>({
+ country_iso3:country,
+ domain,publisher_family:family,article_url:"https://www.gov.uk/government/news/sample-"+family,
  article_title:"Private test fixture for Israel diplomacy policy announcement",
  article_identity_sha256:sha,first_party_article_url_verified:true,
  feed_item_published_at:"2026-10-14T12:30:00.000Z",
@@ -61,7 +62,7 @@ describe("Part 2 country-specific original issuer acceptance and quota boundary"
  it("a country-scoped unverified original is PARTIAL, never paid or signed",()=>{
   const v=summarizeCountryBatchCell("IND","rare_earth",[
    mkProbe("canada_nrcan_original_publisher","rare_earth",true),
-  ],[mkOriginal("rare_earth","canada_nrcan_original_publisher",SHA1)],[]);
+  ],[mkOriginal("rare_earth","canada_nrcan_original_publisher",SHA1,"IND")],[]);
   expect(v.verdict).toBe("PARTIAL_SOURCE_COVERAGE");
   expect(v.observation.country_relevance_verified).toBe(true);
   expect(v.observation.original_evidence_verified).toBe(false);
@@ -78,7 +79,9 @@ describe("Part 2 country-specific original issuer acceptance and quota boundary"
   ],[a,b],[verified(a),verified(b)],new Date("2026-10-14T13:00:00.000Z"));
   expect(proof.observation.independent_fallback_verified).toBe(true);
   expect(proof.observation.original_evidence_verified).toBe(true);
-  expect(proof.verdict).toBe("CURRENT_EVIDENCE_VERIFIED");
+  expect(proof.verdict).toBe("PARTIAL_SOURCE_COVERAGE");
+  expect(proof.observation.current_evidence_available).toBeUndefined();
+  expect(proof.observation.blocked_reason).toBe("SAME_EVENT_AND_RIGHTS_REVIEW_PENDING");
   expect(proof.fallback_original_publisher_families).toBe(2);
   expect(proof.latest_verified_original_publication_utc)
     .toBe("2026-10-14T12:30:00.000Z");
@@ -101,13 +104,53 @@ describe("Part 2 country-specific original issuer acceptance and quota boundary"
     expect(p.observation.independent_fallback_verified).toBe(false);
     expect(p.signed_delivery_verified).toBe(false);
   }
-  const fresh=summarizeCountryBatchCell("PSE","geopolitics",probed,[lead],
-    [{...verified(lead),page_original_published_at:"2026-10-16T13:30:00.000Z"}],asOf);
+  const freshLead={...lead,feed_item_published_at:"2026-10-16T13:30:00.000Z"};
+  const fresh=summarizeCountryBatchCell("PSE","geopolitics",probed,[freshLead],
+    [{...verified(freshLead),page_original_published_at:"2026-10-16T13:30:00.000Z"}],asOf);
+  const clockConflict=summarizeCountryBatchCell("PSE","geopolitics",probed,
+    [lead],[{...verified(lead),page_original_published_at:"2026-10-16T13:30:00.000Z"}],asOf);
+  expect(clockConflict.verified_original_pages).toBe(0);
+  expect(clockConflict.observation.current_evidence_available).toBeUndefined();
   expect(fresh.observation.original_evidence_verified).toBe(true);
-  expect(fresh.observation.current_evidence_available).toBe(true);
+  expect(fresh.observation.current_evidence_available).toBeUndefined();
+  expect(fresh.observation.blocked_reason).toBe("SECOND_INDEPENDENT_ORIGINAL_MISSING");
+  expect(fresh.verdict).toBe("PARTIAL_SOURCE_COVERAGE");
   expect(fresh.commercial_rights_qualified).toBe(false);
   expect(()=>summarizeCountryBatchCell("PSE","geopolitics",probed,[lead],[],
     new Date("invalid"))).toThrow("COUNTRY_195_PROOF_CLOCK_INVALID");
+ });
+ it("never accepts cross-country, impersonated page URLs or duplicate-origin event claims",()=>{
+  const a=mkOriginal("geopolitics","un_news_original_publisher",SHA1,"PSE");
+  const b=mkOriginal("geopolitics","uk_fcdo_original_publisher",SHA2,"IND");
+  const clock=new Date("2026-10-14T13:00:00.000Z");
+  const one=summarizeCountryBatchCell("PSE","geopolitics",[
+    mkProbe(a.publisher_family,"geopolitics",true),
+    mkProbe(b.publisher_family,"geopolitics",true),
+  ],[a,b],[verified(a),verified(b)],clock);
+  expect(one.fallback_original_publisher_families).toBe(1);
+  expect(one.observation.independent_fallback_verified).toBe(false);
+  expect(one.observation.current_evidence_available).toBeUndefined();
+  expect(one.observation.blocked_reason).toBe("SECOND_INDEPENDENT_ORIGINAL_MISSING");
+  const bogus={...verified(a),article_url:"https://attacker.example/article"};
+  const altered=summarizeCountryBatchCell("PSE","geopolitics",[],[a],[bogus],clock);
+  expect(altered.verified_original_pages).toBe(0);
+  const sameUrl=mkOriginal("geopolitics",b.publisher_family,SHA2,"PSE");
+  const collision=summarizeCountryBatchCell("PSE","geopolitics",[],[a,sameUrl],
+    [verified(a),{...verified(sameUrl),article_url:a.article_url}],clock);
+  expect(collision.observation.independent_fallback_verified).toBe(false);
+  const noLegalReview=buildCanonical195x3CoverageMatrix([{
+    iso3:"PSE",category:"geopolitics",source_adapter_registered:true,
+    live_source_reachable:true,country_relevance_verified:true,
+    original_evidence_verified:true,independent_fallback_verified:true,
+    current_evidence_available:false,blocked_reason:"SAME_EVENT_AND_RIGHTS_REVIEW_PENDING",
+  }]);
+  expect(noLegalReview.current_evidence_verified_counts.geopolitics).toBe(0);
+  expect(()=>buildCanonical195x3CoverageMatrix([{
+    iso3:"PSE",category:"geopolitics",source_adapter_registered:true,
+    live_source_reachable:true,country_relevance_verified:true,
+    original_evidence_verified:true,independent_fallback_verified:true,
+    current_evidence_available:true,blocked_reason:"SAME_EVENT_AND_RIGHTS_REVIEW_PENDING",
+  }])).toThrow("COUNTRY_195_UNSUPPORTED_PROOF_PROMOTION");
  });
  it("World Bank structural indicator and GDELT index are not originating publishers",()=>{
   const one=summarizeCountryBatchCell("BEL","macro",[

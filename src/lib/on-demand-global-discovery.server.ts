@@ -34,6 +34,9 @@ export type OnDemandSearchInput = {
  */
 export type PrivateOriginalCandidate = {
   domain: OnDemandCategory;
+  // Private country binding is assigned ONLY after canonical ISO3 validation
+  // and issuer-specific subject matching in the discovery engine.
+  country_iso3?: string;
   publisher_family: string;
   article_url: string;
   article_title: string;
@@ -1362,6 +1365,11 @@ async function discoverOnDemandImpl(
     p.family==="uk_dbt_search_original_page" ? "uk_dbt_original_publisher":
     p.family)).size;
   const grouped=deduplicateOnDemandOriginalHeadlines(private_candidates);
+  // Bind each private lead to the exact canonical country searched by the
+  // existing source-specific matcher. The downstream 585-cell compiler must
+  // reject unbound or foreign-country candidates, even with a valid page date.
+  const bindCountry=(candidate:PrivateOriginalCandidate):PrivateOriginalCandidate=>
+    ({...candidate,country_iso3:country});
   const discovery:OnDemandDiscovery={
     schema:"geomacro.on-demand-global-private-discovery.v1",
     country_iso3:country,categories,checked_at:now.toISOString(),
@@ -1380,8 +1388,8 @@ async function discoverOnDemandImpl(
     settlement_attempted:false,
   };
   return {
-    discovery,private_candidates:grouped.unique_candidates,
-    private_original_review_candidates:grouped.original_review_candidates,
+    discovery,private_candidates:grouped.unique_candidates.map(bindCountry),
+    private_original_review_candidates:grouped.original_review_candidates.map(bindCountry),
     duplicate_original_headline_count:grouped.duplicate_headlines_removed,
     private_macro_changes,
     private_macro_qualifications,
