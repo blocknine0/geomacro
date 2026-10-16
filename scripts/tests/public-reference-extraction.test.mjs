@@ -89,3 +89,21 @@ test("production receipt is sanitized, classified, isolated, and never grants pa
   assert.equal(result.commercial_paid_eligible,false);
   assert.doesNotMatch(JSON.stringify(result),/secret|test-key|evil/);
 });
+
+test("Eurostat network requests pin quarterly unadjusted one-country GDP scope",async()=>{
+  let endpoint;
+  const x={id:["geo","time"],size:[1,1],
+    dimension:{geo:{category:{index:{DE:0}}},time:{category:{index:{"2026-Q2":0}}}},
+    value:{"0":100}};
+  const row=await readPublicReference("eurostat",{fetchImpl:async(url)=>{
+    endpoint=new URL(url);
+    return new Response(JSON.stringify(x),{headers:{"content-type":"application/json"}});
+  }});
+  assert.equal(endpoint.searchParams.get("geo"),"DE");
+  assert.equal(endpoint.searchParams.get("na_item"),"B1GQ");
+  assert.equal(endpoint.searchParams.get("unit"),"CP_MEUR");
+  assert.equal(endpoint.searchParams.get("s_adj"),"NSA");
+  assert.equal(endpoint.searchParams.get("freq"),"Q");
+  assert.equal(row.reference_period,"2026-Q2");
+  assert.equal(row.country_iso3,"DEU");
+});
