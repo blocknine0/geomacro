@@ -1,3 +1,4 @@
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 /**
  * On-demand website Intelligence reader. No B2/D1/Supabase/KV/files/queues,
  * no writes, no cron, no background tasks, no durable snapshot or raw logs.
@@ -140,6 +141,15 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
     url: "https://www.pib.gov.in/AllRelease.aspx?lang=1&reg=6",
     allowedHosts: ["www.pib.gov.in"], credit: null },
 ]);
+
+// Reuse the same international connector definitions in on-demand website
+// reads and the protected half-hour update collector. Existing BIS is reused.
+const GLOBAL_SOURCES:readonly StatelessSourceSpec[]=GLOBAL_OFFICIAL_RELEASE_FEEDS
+  .filter((s:{websiteId?:string})=>!SOURCES.some(old=>old.id===s.websiteId))
+  .map((s:{id:string;category:StatelessCategory;format:string;url:string;host:string;credit:string})=>({
+    id:s.id,category:s.category,media:s.format==='html'?'html_index' as const:'rss' as const,
+    url:s.url,allowedHosts:[s.host],credit:s.credit,
+  }));
 
 const MAX_FEED_BYTES = 384 * 1024;
 const MAX_PAGE_BYTES = 128 * 1024;
@@ -346,6 +356,23 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   candidates: StatelessSourceCandidate[]; healthy: boolean;
   metrics?: LaneMetrics;
 }> {
+  if(source.id==='iea_minerals_global'){
+    try{
+      const response=await fetch(source.url,{redirect:'error',headers:{Accept:'text/html'},signal:AbortSignal.timeout(TIMEOUT_MS)});
+      const html=await boundedText(response,MAX_FEED_BYTES);if(!html)return {candidates:[],healthy:false};
+      const indexed=ieaMineralsIndexCandidates(html).slice(0,2);
+      const rows=await Promise.all(indexed.map(async(candidate:{title:string;articleUrl:string})=>{
+        try{
+          const response=await fetch(candidate.articleUrl,{redirect:'error',headers:{Accept:'text/html'},signal:AbortSignal.timeout(TIMEOUT_MS)});
+          const body=await boundedText(response,MAX_FEED_BYTES);
+          const date=body?verifiedIeaOriginalPublication(body,candidate,new Date(now),STATELESS_LOOKBACK_MS):null;
+          return date?{...candidate,sourceId:source.id,category:source.category,publishedAt:date,credit:source.credit}:null;
+        }catch{return null;}
+      }));
+      const candidates=rows.filter((x):x is StatelessSourceCandidate=>x!==null);
+      return {healthy:true,candidates,metrics:{seen:indexed.length,relevant:indexed.length,original_link_valid:indexed.length,native_clock_valid:candidates.length,undated_original:0,recovered_original_page:candidates.length,transport_ok:true}};
+    }catch{return {candidates:[],healthy:false};}
+  }
   if(source.id === "in_pib_mines" && source.media === "html_index"){
     const release=await readPibMinesOriginalCandidates(now);
     return {healthy:release.healthy,candidates:release.candidates,
@@ -502,7 +529,7 @@ export async function readStatelessWebsiteIntelligence(
 ): Promise<StatelessIntelligenceResult> {
   if (!["geopolitics", "macro", "rare_earth"].includes(category) ||
       !Number.isFinite(now)) throw Error("STATELESS_INTELLIGENCE_CATEGORY_OR_CLOCK_INVALID");
-  const sourceGroup = SOURCES.filter(source => source.category === category);
+  const sourceGroup = [...SOURCES,...GLOBAL_SOURCES].filter(source => source.category === category);
   const batch = await Promise.all(sourceGroup.map(source => readSource(source, now)));
   // The optional callback is used only by the private acceptance runner;
   // no publisher identity, URL or diagnostic lane details reach the browser.

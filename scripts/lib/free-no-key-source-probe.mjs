@@ -1,3 +1,4 @@
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "./global-official-release-feeds.mjs";
 import { SOURCE_LINEUP_BY_ID } from "./operator-commercial-free-source-lineup.mjs";
 
 /**
@@ -67,6 +68,13 @@ export const FREE_NO_KEY_TRANSPORT_SPECS = Object.freeze(SPECS.map(spec => {
 
 export function validateFreeLineupProbePayload(spec, payload) {
   if(spec.production_update_reader===true){
+    const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.find(s=>s.id===spec.id&&s.url===spec.url);
+    if(global){
+      const valid=typeof payload==='string'&&payload.trim()&&
+        (global.format==='html'?/^\s*(?:<!doctype html|<html)\b/iu.test(payload)&&!(/<!ENTITY|<!DOCTYPE\s+[^>]*\[/iu.test(payload)):
+         !(/<!DOCTYPE|<!ENTITY/iu.test(payload))&&(global.rdf?/<rdf:RDF(?:\s|>)/iu.test(payload)&&/xmlns:dc=["']http:\/\/purl.org\/dc\/elements\/1.1\/["']/u.test(payload):/<rss(?:\s|>)/iu.test(payload)));
+      return {valid:Boolean(valid),format_checked:true,kind:'GLOBAL_ORIGINAL_RELEASE'};
+    }
     if(typeof payload!=="string"||!payload.trim()||/<!DOCTYPE|<!ENTITY/iu.test(payload))
       return {valid:false,format_checked:true,kind:"INVALID_UPDATE_BODY"};
     if(spec.format==='rss')return {valid:/<rss(?:\s|>)/iu.test(payload),format_checked:true,kind:'RSS_UPDATE_RECORDS'};

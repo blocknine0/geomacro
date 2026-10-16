@@ -1,5 +1,6 @@
 // Existing free-source reader, with bounded source-update fingerprints and
 // native clocks. This does not score, sign, grant rights or publish articles.
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS,ieaMineralsIndexCandidates} from './global-official-release-feeds.mjs';
 import {createHash} from 'node:crypto';
 import {FREE_NO_KEY_TRANSPORT_SPECS,probeNoKeySource} from './free-no-key-source-probe.mjs';
 import {SOURCE_LINEUP_BY_ID,SOURCE_LINEUP} from './operator-commercial-free-source-lineup.mjs';
@@ -25,9 +26,11 @@ const EXTRA=[
 export const PRODUCTION_FREE_UPDATE_SOURCES=Object.freeze([
  ...FREE_NO_KEY_TRANSPORT_SPECS.map(s=>({...s,baseline:BASELINE.has(s.id)})),
  ...EXTRA.map(s=>({...s,production_update_reader:true})),
+ ...GLOBAL_OFFICIAL_RELEASE_FEEDS,
 ].map(s=>{
  const source=SOURCE_LINEUP_BY_ID.get(s.id),u=new URL(s.url);
- if(!source||source.access!=='NO_KEY'||source.category!==s.category||u.protocol!=='https:'||u.username||u.password||u.hash||u.port)
+ const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.some(x=>x.id===s.id&&x.category===s.category&&x.url===s.url);
+ if((!global&&(!source||source.access!=='NO_KEY'||source.category!==s.category))||u.protocol!=='https:'||u.username||u.password||u.hash||u.port)
    throw Error('FREE_SOURCE_UPDATE_REGISTRY_INVALID');
  return Object.freeze({...s,poll_minutes:s.baseline?1440:30});
 }));
@@ -56,7 +59,8 @@ export function summarizeFreeSourceUpdates(spec,payload,now){
    const atom=spec.format==='atom';
    const entries=[...payload.matchAll(atom?/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu:/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,40);
    for(const [,item] of entries){
-     const published=xmlField(item,atom?'published':'pubDate');
+     const published=xmlField(item,spec.id==='bis_press_global'?'date':atom?'published':'pubDate');
+     if(spec.topic&&!spec.topic.test(xmlField(item,'title')))continue;
      const clock=published?nativeClock(published,now):null;
      if(published&&!clock)continue;
      const id=xmlField(item,'guid')||xmlField(item,'id')||xmlField(item,'link')||
@@ -83,6 +87,9 @@ export function summarizeFreeSourceUpdates(spec,payload,now){
    // Only a dataset byte-version observation. No per-entity new designation,
    // intraday publication time or risk event is inferred from a full list.
    kind='DATASET_SNAPSHOT_CHANGE';record(payload);
+ }else if(spec.id==='iea_minerals_global'){
+   kind='PUBLISHER_INDEX_CHANGE';
+   for(const row of ieaMineralsIndexCandidates(payload))record(row.articleUrl+'\n'+row.title);
  }else kind='CONTEXT_ONLY_NO_UPDATE_RECORDS';
  const unique=[...new Set(fingerprints)];
  return {kind,sampled_records:sampled,fingerprints:unique,
@@ -106,7 +113,7 @@ function previousSnapshot(row,category){
       !(s.reader_revision===undefined||(Number.isInteger(s.reader_revision)&&s.reader_revision>=1&&s.reader_revision<=100))||
       Object.keys(s).some(k=>!['reader_revision','fingerprints','last_attempt_at','last_success_at','state','kind','latest_native_publication_at','http_status'].includes(k))||
       !(s.http_status===null||(Number.isInteger(s.http_status)&&s.http_status>=100&&s.http_status<=599))||
-      !(s.kind===null||['REFERENCE_DATASET_CHANGE','PUBLISHER_FEED_CHANGE','HAZARD_OBSERVATION_CHANGE','SECURITY_CATALOGUE_CHANGE','REGULATORY_DOCUMENT_CHANGE','ADVISORY_DOCUMENT_CHANGE','DATASET_SNAPSHOT_CHANGE','CONTEXT_ONLY_NO_UPDATE_RECORDS'].includes(s.kind))||
+      !(s.kind===null||['REFERENCE_DATASET_CHANGE','PUBLISHER_FEED_CHANGE','HAZARD_OBSERVATION_CHANGE','SECURITY_CATALOGUE_CHANGE','REGULATORY_DOCUMENT_CHANGE','ADVISORY_DOCUMENT_CHANGE','DATASET_SNAPSHOT_CHANGE','CONTEXT_ONLY_NO_UPDATE_RECORDS','PUBLISHER_INDEX_CHANGE'].includes(s.kind))||
       !['TRANSPORT_READABLE','NETWORK_UNAVAILABLE','DENIED_OR_RATE_LIMIT','HTTP_UNAVAILABLE','FORMAT_OR_SIZE_UNVERIFIED'].includes(s.state)||
       ['last_attempt_at','last_success_at','latest_native_publication_at'].some(k=>
         s[k]!==null&&(typeof s[k]!=='string'||!Number.isFinite(Date.parse(s[k]))||new Date(s[k]).toISOString()!==s[k])))throw Error('FREE_SOURCE_UPDATE_PREVIOUS_STATE_INVALID');
@@ -157,7 +164,7 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
  const expected=new Map();
  for(const category of DOMAINS){
    const snapshot={category,checked_at:now.toISOString(),sources:snapshots[category].sources};
-   if(Buffer.byteLength(JSON.stringify(snapshot))>64*1024)throw Error('FREE_SOURCE_UPDATE_CHECKPOINT_TOO_LARGE');
+   if(Buffer.byteLength(JSON.stringify(snapshot))>96*1024)throw Error('FREE_SOURCE_UPDATE_CHECKPOINT_TOO_LARGE');
    const hash=sha(JSON.stringify(snapshot));expected.set(category,hash);
    await stateClient.persist(category,{schema:SCHEMA,snapshot,snapshot_sha256:hash},
      {cursor:{status:Object.values(snapshot.sources).some(s=>s.state!=='TRANSPORT_READABLE')?'degraded':'observed'},last_attempt_at:now.toISOString()});
@@ -169,7 +176,8 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
  }
  return {schema:'geomacro.production-free-source-updates.v1',checked_at:now.toISOString(),
    families_catalogued:SOURCE_LINEUP.length,
-   families_outside_this_reader:SOURCE_LINEUP.length-PRODUCTION_FREE_UPDATE_SOURCES.length,
+   families_outside_this_reader:SOURCE_LINEUP.filter(s=>!PRODUCTION_FREE_UPDATE_SOURCES.some(r=>r.id===s.id)).length,
+   additional_global_release_readers:GLOBAL_OFFICIAL_RELEASE_FEEDS.length,
    configured_readers:PRODUCTION_FREE_UPDATE_SOURCES.length,
    attempted:outcomes.filter(x=>x.state!=='NOT_DUE').length,
    unavailable:outcomes.filter(x=>!['TRANSPORT_READABLE','NOT_DUE'].includes(x.state)).length,
