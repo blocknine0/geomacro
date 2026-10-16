@@ -1,0 +1,74 @@
+name: Protected Facts and Rights Key Location Audit (No Funds)
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/audit-machine-private-key.mjs"
+      - "scripts/ops/audit-machine-private-key.test.mjs"
+      - ".github/workflows/machine-private-key-location-audit.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/audit-machine-private-key.mjs"
+      - "scripts/ops/audit-machine-private-key.test.mjs"
+      - ".github/workflows/machine-private-key-location-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  isolated-audit-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Test pin match, denial and non-disclosure with synthetic local-only keys
+        run: |
+          node --check scripts/ops/audit-machine-private-key.mjs
+          node --test scripts/ops/audit-machine-private-key.test.mjs
+      - name: Enforce audit read-only boundary
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const s=readFileSync('scripts/ops/audit-machine-private-key.mjs','utf8');
+          for(const forbidden of ['sign(null','publishB2VerifiedHotSnapshot(','D1.prepare(','settleCoinbaseX402(','fetch('])
+            if(s.includes(forbidden))throw Error('PRIVATE_KEY_AUDIT_MUST_NOT_SIGN_OR_PUBLISH');
+          console.log('PASS: audit cannot issue facts, rights, GRO, payments or snapshots');
+          NODE
+  facts-protected-audit:
+    needs: isolated-audit-tests
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check ONLY facts issuer private key against existing approved public pin
+        env:
+          GEOMACRO_MACHINE_KEY_AUDIT_ROLE: facts
+          GEOMACRO_MACHINE_KEY_AUDIT_PRIVATE_PKCS8_B64: ${{ secrets.GEOMACRO_MACHINE_FACTS_PRIVATE_KEY_PKCS8_B64 }}
+          GEOMACRO_MACHINE_KEY_AUDIT_PUBLIC_PEM: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM }}
+          GEOMACRO_MACHINE_KEY_AUDIT_PUBLIC_SHA256: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+          RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+        run: node scripts/ops/audit-machine-private-key.mjs
+  rights-protected-audit:
+    needs: isolated-audit-tests
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check ONLY rights issuer private key against existing approved public pin
+        env:
+          GEOMACRO_MACHINE_KEY_AUDIT_ROLE: rights
+          GEOMACRO_MACHINE_KEY_AUDIT_PRIVATE_PKCS8_B64: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PRIVATE_KEY_PKCS8_B64 }}
+          GEOMACRO_MACHINE_KEY_AUDIT_PUBLIC_PEM: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM }}
+          GEOMACRO_MACHINE_KEY_AUDIT_PUBLIC_SHA256: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
+          RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+        run: node scripts/ops/audit-machine-private-key.mjs
