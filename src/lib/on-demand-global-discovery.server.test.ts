@@ -66,7 +66,11 @@ describe("Global on-demand private retrieval, not pre-generated GRO",()=>{
     },{fetchImpl,now});
     expect(result.categories).toEqual(["geopolitics","macro","rare_earth"]);
     expect(result.reached_source_families).toBe(7);
-    expect(result.network_attempts).toBe(11);
+    expect(result.network_attempts).toBe(10);
+    // World Bank data is still read, but its country-name lookup is not
+    // necessary for canonical 195 countries, leaving provider budget for
+    // original government and international feeds.
+    expect(fetchImpl).not.toHaveBeenCalledWith(expect.stringMatching(/\\/v2\\/country\\/IND\\?/),expect.anything());
     expect(result.source_probes.some(x=>x.family==="world_bank_official_FP.CPI.TOTL.ZG" &&
       x.observed_record_count===2)).toBe(true);
     expect(result.source_probes.find(x=>x.family==="gdelt_doc_discovery")?.publication_clock_verified)
@@ -161,8 +165,8 @@ describe("Live source free-tier quota and memory safety",()=>{
     const proof=await discoverOnDemandGlobal({
       country_iso3:"IND",categories:["macro","geopolitics"],
     },{fetchImpl:caller,now});
-    expect(proof.network_attempts).toBe(8);
-    expect(requests).toHaveLength(8);
+    expect(proof.network_attempts).toBe(7);
+    expect(requests).toHaveLength(7);
     expect(requests.every(({url,opts})=>url.startsWith("https://") &&
       opts?.redirect==="error" && opts?.method==="GET")).toBe(true);
     expect(requests.every(({url})=>!url.includes("password") &&
@@ -176,7 +180,7 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
     const internal=await discoverOnDemandForPrivateQualification({
       country_iso3:"IND",categories:["geopolitics","macro","rare_earth"],
     },{fetchImpl,now});
-    expect(internal.discovery.network_attempts).toBe(11);
+    expect(internal.discovery.network_attempts).toBe(10);
     const articles=internal.private_candidates;
     expect(articles.length).toBe(5);
     expect(articles.map(x=>x.publisher_family).sort()).toEqual([
@@ -310,7 +314,7 @@ describe("PRIVATE original-article evidence for on-demand owned intelligence",()
       },{fetchImpl:recovering,now});
       expect(seen.filter(x=>x===primary)).toHaveLength(1);
       expect(seen.filter(x=>x===alternate)).toHaveLength(1);
-      expect(result.discovery.network_attempts).toBe(5);
+      expect(result.discovery.network_attempts).toBe(3);
       expect(result.discovery.source_probes.filter(x=>x.family==="un_news_original_publisher")).toHaveLength(1);
       expect(result.private_candidates.some(x=>x.publisher_family==="un_news_original_publisher")).toBe(true);
       expect(result.discovery.payable).toBe(false);
@@ -491,7 +495,7 @@ describe("simplified commodity-aware on-demand routing", () => {
       country_iso3: "IND", categories: ["rare_earth"], mineral: "cobalt",
     }, {fetchImpl: captured, now});
 
-    expect(lithium.discovery.network_attempts).toBe(4);
+    expect(lithium.discovery.network_attempts).toBe(3);
     expect(lithium.private_candidates).toHaveLength(2);
     expect(lithium.private_candidates.every((c) => c.article_title.toLowerCase().includes("lithium")))
       .toBe(true);
