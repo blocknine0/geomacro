@@ -24,7 +24,7 @@ function normalizePeriods(period){
   const out=values.map(v=>String(v).trim()).filter(Boolean);
   if(!out.length) throw new Error("period is required.");
   for(const value of out){
-    if(!/^\\d{4}(?:\\d{2})?$/.test(value)) throw new Error(`Invalid Comtrade period ${value}. Use YYYY or YYYYMM.`);
+    if(!/^\d{4}(?:\d{2})?$/.test(value)) throw new Error(`Invalid Comtrade period ${value}. Use YYYY or YYYYMM.`);
   }
   return out;
 }
@@ -77,12 +77,6 @@ function buildUrl({baseUrl,reporterCode,period,cmdCode,flowCode,partnerCode,part
   return `${baseUrl}/C/A/HS?${params.toString()}`;
 }
 
-function observationDate(period){
-  const p=String(period);
-  if(/^\\d{6}$/.test(p)) return `${p.slice(0,4)}-${p.slice(4)}-01T00:00:00Z`;
-  if(/^\\d{4}$/.test(p)) return `${p}-12-31T00:00:00Z`;
-  return null;
-}
 
 export async function fetchComtrade(countryIso3,{
   reporterCode=null,period="2025",cmdCode="TOTAL",flowCode="X",partnerCode="0",
