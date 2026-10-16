@@ -85,3 +85,9 @@ Registry entries and access classifications are inventory, not evidence that all
 ## Verification
 
 Run `node --test scripts/tests/operator-commercial-free-source-lineup.test.mjs scripts/tests/free-source-production-updates.test.mjs`. The protected production workflow executes `node scripts/ops/probe-commercial-free-source-lineup.mjs --production-updates` after resolving the existing D1 database. Exit 3 means at least one retained reader is degraded; exit 2 means the protected/state operation failed closed. A successful feed read alone never clears the separate signed-publication or category-certification gates.
+
+## UN distribution recovery
+
+The official UN XML endpoint now redirects to a short-lived, anonymous Azure download. Only the exact observed `unsolprodfiles.blob.core.windows.net/publiclegacyxmlfiles/EN/consolidatedLegacyByPRN.xml` destination is accepted, with read-only blob scope and a currently valid short expiry. One redirect is allowed for this source alone; every other source still rejects redirects. Signed query strings are neither persisted nor logged. The XML size/schema checks still apply. A pinned reader revision allows this connector repair to be attempted immediately once, without resetting unrelated sources or their last-success state.
+
+Production verification on 2026-10-16: initial run 38867285231 read 17 of 19 sources and verified all three D1 checkpoint writes exactly. The immediate repeat made zero upstream requests and retained both degraded states honestly. UN redirect recovery and the USGS annual baseline are tracked separately; annual context is never a current event.

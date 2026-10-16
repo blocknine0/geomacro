@@ -27,7 +27,7 @@ function memoryState(){
    async persist(k,p){rows.set(k,{payload:structuredClone(p)});}};
 }
 function network(version='one',deny=null){return async(url,options)=>{
- const s=byUrl.get(url);assert.ok(s);assert.equal(options.redirect,'error');
+ const s=byUrl.get(url);assert.ok(s);assert.equal(options.redirect,s.id==='un_security_council_sanctions'?'manual':'error');
  return s.id===deny?new Response('private upstream denial',{status:403}):new Response(validBody(s,version));
 };}
 test('all configured production sources are unique and baseline clocks remain distinct from intraday publication',()=>{
@@ -123,4 +123,41 @@ test('CISA bounded window selects latest catalogue additions rather than the fir
  const b=summarizeFreeSourceUpdates(s,JSON.stringify({vulnerabilities:rows}),at);
  assert.equal(a.sampled_records,40);assert.notDeepEqual(a.fingerprints,b.fingerprints);
  assert.equal(b.latest_native_publication_at,null);
+});
+test('UN follows only one exact official read-only distribution, never arbitrary or expired redirects',async()=>{
+ const {probeNoKeySource}=await import('../lib/free-no-key-source-probe.mjs');
+ const s=PRODUCTION_FREE_UPDATE_SOURCES.find(x=>x.id==='un_security_council_sanctions');
+ const target=new URL('https://unsolprodfiles.blob.core.windows.net/publiclegacyxmlfiles/EN/consolidatedLegacyByPRN.xml');
+ for(const [k,v] of Object.entries({sv:'2024-05-04',st:new Date(Date.now()-60000).toISOString(),se:new Date(Date.now()+3600000).toISOString(),sr:'b',sp:'r',sig:'public-test-fixture-signature0000'}))target.searchParams.set(k,v);
+ // A syntactically valid public fixture, not a publisher-issued credential.
+ target.searchParams.set('sig','a'.repeat(43)+'=');
+ let calls=0;
+ const fetchImpl=async(url,options)=>{
+   calls++;
+   if(url===s.url){assert.equal(options.redirect,'manual');return new Response(null,{status:302,headers:{location:target.href}});}
+   assert.equal(url,target.href);assert.equal(options.redirect,'error');
+   return new Response(validBody(s));
+ };
+ const result=await probeNoKeySource(s,fetchImpl);
+ assert.equal(result.state,'TRANSPORT_READABLE');assert.equal(calls,2);
+ assert.ok(!JSON.stringify(result).includes('sig='));
+ for(const mutate of [u=>u.hostname='untrusted.example',u=>u.pathname='/other.xml',u=>u.searchParams.set('sp','rw'),u=>u.searchParams.set('se',new Date(Date.now()-60000).toISOString()),u=>u.username='user',u=>u.searchParams.append('sig','another')]){
+   const bad=new URL(target);mutate(bad);let attempts=0;
+   const r=await probeNoKeySource(s,async()=>{attempts++;return new Response(null,{status:302,headers:{location:bad.href}});});
+   assert.equal(attempts,1);assert.notEqual(r.state,'TRANSPORT_READABLE');
+ }
+ let hops=0;
+ const repeated=await probeNoKeySource(s,async()=>{hops++;return new Response(null,{status:302,headers:{location:target.href}});});
+ assert.equal(hops,2);assert.equal(repeated.state,'HTTP_UNAVAILABLE');
+});
+test('a pinned reader repair revision retries only that source without bypassing other polling intervals',async()=>{
+ const state=memoryState();await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network(),now:at});
+ const p=state.rows.get('geopolitics').payload;
+ const old=p.snapshot.sources.un_security_council_sanctions;
+ old.reader_revision=1;old.state='NETWORK_UNAVAILABLE';old.last_success_at=null;old.fingerprints=[];
+ p.snapshot_sha256=createHash('sha256').update(JSON.stringify(p.snapshot)).digest('hex');
+ let calls=0;
+ const r=await collectProductionFreeSourceUpdates({stateClient:state,now:new Date(at.getTime()+60000),fetchImpl:async(url,options)=>{calls++;assert.equal(byUrl.get(url).id,'un_security_council_sanctions');return network()(url,options);}});
+ assert.equal(calls,1);assert.equal(r.attempted,1);assert.equal(r.retained_degraded_readers,0);
+ assert.equal(r.per_category.geopolitics.newly_detected_update_fingerprints,0);
 });
