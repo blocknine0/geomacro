@@ -55,6 +55,7 @@ for(const country of COUNTRIES_195.slice(from,from+count)){
    const evidence=summarizeCountryBatchCell(
      country.iso3,category,fetched.discovery.source_probes,
      fetched.private_original_review_candidates,pages.verified_candidates,
+     observedAt,
    );
    observations.push(evidence.observation);
    review.set(country.iso3+":"+category,evidence);
