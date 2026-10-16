@@ -7,3 +7,5 @@ The new experimental OECD SDMX monthly unemployment series reads one official Da
 Both readers are statistical references only. Neither original publication clock nor exact commercial licence permissions have been proven. No payments, Supabase/D1/B2 writes, signing, GRI/Indices scoring or commercial source promotion are performed.
 
 Production acceptance requires a real `IMF OECD native statistical reference verification` run returning 2/2 with exactly scoped datasets, plus independent release-time, redistribution/use permission and publisher proof before signing paid intelligence. A protected daily run does not by itself prove any country's current news coverage or repair the public D1 503.
+
+After production readback #38927909639 the first historical OECD query returned HTTP 500, so the corrected probe selects the explicitly documented `DSD_LFS@DF_IALFS_INDIC` combined unemployment rate series (`UNE_LF_M`, calendar/seasonal adjustment Y, total sex, age 15+). It continues to fail closed until the new real-source receipt succeeds. IMF provider denial is now classified by sanitized HTTP status; a 403 is not bypassed or treated as a release.
