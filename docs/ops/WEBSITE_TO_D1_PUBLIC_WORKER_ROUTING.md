@@ -8,7 +8,7 @@ it does not by itself establish a particular Cloudflare error code.
 
 The generated website Wrangler configuration lacked the explicit
 `global_fetch_strictly_public` compatibility flag. Set it through the existing
-Nitro `cloudflare.wrangler.compatibility_flags` configuration so global fetch
+server-only `nitro.config.ts` / `cloudflare.wrangler.compatibility_flags` configuration so global fetch
 uses public HTTPS routing, including for same-zone Worker destinations.
 Cloudflare documents this mode for Worker-to-Worker requests:
 
@@ -28,3 +28,7 @@ rotating credentials, adding retries or weakening the gate.
 Fixed control-plane origins, request authentication, receipt bindings,
 timeouts, quota limits and fail-closed payment policies remain unchanged.
 No direct D1 database credential or private signer is added to the website.
+
+This setting lives in the dedicated server deployment configuration, preserving
+all protected website presentation and Vite configuration bytes. Hosting
+Alignment watches this server configuration and inspects the generated artifact.
