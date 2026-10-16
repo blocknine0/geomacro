@@ -58,7 +58,15 @@ export function summarizeCountryBatchCell(
       matched.some(y=>y.article_identity_sha256===x.article_identity_sha256 &&
         y.publisher_family===x.publisher_family &&
         y.article_url===x.article_url &&
-        y.article_title===x.article_title);
+        y.article_title===x.article_title &&
+        // A stale native feed clock never becomes current through a newer
+        // page time. Undated originals must be page-proved upstream.
+        (y.source_native_feed_publication_date_verified!==true ||
+         (typeof y.feed_item_published_at==="string" &&
+          Number.isFinite(Date.parse(y.feed_item_published_at)) &&
+          Date.parse(y.feed_item_published_at)<=nowMs &&
+          nowMs-Date.parse(y.feed_item_published_at)<=86_400_000 &&
+          Math.abs(Date.parse(y.feed_item_published_at)-published)<=600_000)));
   });
   const sourceFamilies=new Set(matched.map(x=>x.publisher_family));
   const verifiedFamilies=new Set(pages.map(x=>x.publisher_family));

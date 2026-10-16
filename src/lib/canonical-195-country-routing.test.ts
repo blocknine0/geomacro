@@ -65,6 +65,7 @@ describe("195 UN-member + observer country routing against 250-entity legacy uni
    .toThrow("COUNTRY_195_UNSUPPORTED_PROOF_PROMOTION");
   expect(()=>buildCanonical195x3CoverageMatrix([
    {iso3:"PSE",category:"macro",live_source_reachable:true,
+     country_relevance_verified:true,independent_fallback_verified:true,
      original_evidence_verified:true,current_evidence_available:true,
      rights_qualified:true,signed_delivery_verified:true,
      blocked_reason:"SOURCE_IDENTITY_UNRESOLVED"},

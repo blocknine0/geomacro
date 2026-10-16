@@ -104,8 +104,13 @@ describe("Part 2 country-specific original issuer acceptance and quota boundary"
     expect(p.observation.independent_fallback_verified).toBe(false);
     expect(p.signed_delivery_verified).toBe(false);
   }
-  const fresh=summarizeCountryBatchCell("PSE","geopolitics",probed,[lead],
-    [{...verified(lead),page_original_published_at:"2026-10-16T13:30:00.000Z"}],asOf);
+  const freshLead={...lead,feed_item_published_at:"2026-10-16T13:30:00.000Z"};
+  const fresh=summarizeCountryBatchCell("PSE","geopolitics",probed,[freshLead],
+    [{...verified(freshLead),page_original_published_at:"2026-10-16T13:30:00.000Z"}],asOf);
+  const clockConflict=summarizeCountryBatchCell("PSE","geopolitics",probed,
+    [lead],[{...verified(lead),page_original_published_at:"2026-10-16T13:30:00.000Z"}],asOf);
+  expect(clockConflict.verified_original_pages).toBe(0);
+  expect(clockConflict.observation.current_evidence_available).toBeUndefined();
   expect(fresh.observation.original_evidence_verified).toBe(true);
   expect(fresh.observation.current_evidence_available).toBeUndefined();
   expect(fresh.observation.blocked_reason).toBe("SECOND_INDEPENDENT_ORIGINAL_MISSING");
