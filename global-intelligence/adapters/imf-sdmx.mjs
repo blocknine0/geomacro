@@ -29,7 +29,8 @@ function rowsFromDataMapper(payload, indicator, countryIso3, periods) {
 export async function fetchImfDataMapper({
   indicator = "NGDP_RPCH",
   countryIso3,
-  periods = null
+  periods = null,
+  fetchImpl=fetch
 } = {}) {
   if (!/^[A-Z]{3}$/u.test(String(countryIso3 ?? "").toUpperCase()))throw Error("IMF_COUNTRY_ISO3_INVALID");
   if (!/^[A-Z][A-Z0-9_]{1,32}$/u.test(indicator))throw Error("IMF_INDICATOR_INVALID");
@@ -43,7 +44,7 @@ export async function fetchImfDataMapper({
 
   const url = DATAMAPPER_BASE + path;
   const data = await getJson(url, {headers: authHeaders(),timeoutMs:12000,
-    maxBytes:256*1024,redirect:"error"});
+    maxBytes:256*1024,redirect:"error",fetchImpl});
   const rows = rowsFromDataMapper(data, indicator, countryIso3, periods);
 
   return rows.map(r => observation({
