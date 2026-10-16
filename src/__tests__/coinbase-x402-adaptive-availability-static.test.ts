@@ -20,10 +20,12 @@ describe("Coinbase x402 adaptive availability boundary", () => {
     expect(availabilityRoute).not.toContain("PAYMENT-REQUIRED");
   });
 
-  it("returns exact configured price information only as pre-payment metadata", () => {
+  it("returns the exact proof-qualified capability price only as pre-payment metadata", () => {
     expect(availabilityRoute).toContain("getCoinbaseX402Config");
-    expect(availabilityRoute).toContain("amount_usdc: config.priceUsdc");
-    expect(availabilityRoute).toContain("amount_atomic: config.amountAtomic");
+    expect(availabilityRoute).toContain("resolveEligibleCoinbaseCapabilityConfig(plan, availability, config)");
+    expect(availabilityRoute).toContain("exact_price: pricedConfig ?");
+    expect(availabilityRoute).toContain("amount_usdc: pricedConfig.priceUsdc");
+    expect(availabilityRoute).toContain("amount_atomic: pricedConfig.amountAtomic");
     expect(availabilityRoute).toContain("chargeable: availability.deliverable");
   });
 

@@ -53,8 +53,6 @@ jobs:
     environment: production
     env:
       GEOMACRO_LIVE_HOST: https://geomacro.live
-      GRI_DB_MODE: direct_postgres
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
     steps:
       - name: Checkout exact main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -66,17 +64,11 @@ jobs:
           bun-version: "1.4.2"
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Require read-only census configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${SUPABASE_DB_URL:-}"
-          test "${GRI_DB_MODE}" = "direct_postgres"
       - name: Verify all-country and corridor paid-product availability without funds
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/agentic/verify-live-x402-global-zero-fund-coverage.mjs | tee /tmp/x402-global-zero-fund.json
+          bun scripts/agentic/verify-live-x402-global-zero-fund-coverage.mjs | tee /tmp/x402-global-zero-fund.json
       - name: Record no-funds boundary
         if: always()
         run: |
@@ -86,12 +78,12 @@ jobs:
             echo "- Real payment performed: **false**"
             echo "- Settlement attempted: **false**"
             echo "- Production activation changed: **false**"
-            echo "- Canonical price expected: **0.05 USDC**"
+            echo "- Pricing: **locked capability catalogue; no flat-price assumption**"
             echo "- Country baseline: **195**"
-            echo "- Corridor proof: registry census + every baseline country in live directional ring"
+            echo "- Corridor proof: static canonical registry + every baseline country in bounded live directional ring"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload sanitized coverage proof
-        if: success()
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: x402-global-zero-fund-coverage-${{ github.run_id }}
