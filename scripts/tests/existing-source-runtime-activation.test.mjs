@@ -60,12 +60,12 @@ function jobAllowed(file,job,event,repo='blocknine0/geomacro',ref='refs/heads/ma
 }
 test('credentialed cron actually runs on protected main and cannot inject credentials into forks or PRs',()=>{
  assert.ok(readFileSync('.github/workflows/credentialed-source-runtime.yml','utf8').includes('group: geomacro-credentialed-source-runtime-${{ github.ref }}'));
- for(const event of ['push','workflow_dispatch','schedule']){
-   assert.equal(jobAllowed('credentialed-source-runtime.yml','runtime',event),true);
-   assert.equal(jobAllowed('credentialed-source-runtime.yml','runtime',event,'untrusted/fork'),false);
-   assert.equal(jobAllowed('credentialed-source-runtime.yml','runtime',event,undefined,'refs/heads/other'),false);
+ for(const job of ['runtime','publication-preflight']) for(const event of ['push','workflow_dispatch','schedule']){
+   assert.equal(jobAllowed('credentialed-source-runtime.yml',job,event),true);
+   assert.equal(jobAllowed('credentialed-source-runtime.yml',job,event,'untrusted/fork'),false);
+   assert.equal(jobAllowed('credentialed-source-runtime.yml',job,event,undefined,'refs/heads/other'),false);
  }
- assert.equal(jobAllowed('credentialed-source-runtime.yml','runtime','pull_request'),false);
+ for(const job of ['runtime','publication-preflight'])assert.equal(jobAllowed('credentialed-source-runtime.yml',job,'pull_request'),false);
 });
 test('manual activation attempts every existing operator group, scheduled rotation remains single-group',()=>{
  for(const event of ['push','workflow_dispatch'])assert.equal(jobAllowed('expanded-official-source-observation.yml','operator-free-feed-initial-acceptance',event),true);

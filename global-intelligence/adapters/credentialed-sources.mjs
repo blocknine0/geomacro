@@ -39,6 +39,16 @@ export async function probeCredentialedSource(sourceId) {
       build: key => `https://api.wto.org/timeseries/v1/data?i=ITS_MTV_AX&r=000&ps=2024&subscription-key=${encodeURIComponent(key)}`,
       validate: x => Array.isArray(x?.Dataset) || Array.isArray(x?.data) || Array.isArray(x?.dataset)
     },
+    ucdp_ged: {
+      category: "GEOPOLITICS", countryIso3: null, env: "UCDP_API_TOKEN",
+      // Officially documented stable release. Dataset edition and event days
+      // remain historical context, never original current news clocks.
+      build: () => "https://ucdpapi.pcr.uu.se/api/gedevents/26.1?pagesize=1&page=1",
+      headers: key => ({"x-ucdp-access-token":key}),
+      validate: x => Array.isArray(x?.Result) && x.Result.length<=1 &&
+        Number.isSafeInteger(x.TotalCount) && x.TotalCount>=x.Result.length &&
+        x.Result.every(r=>Number.isSafeInteger(r?.id)&&r.id>0)
+    },
     opensanctions: {
       category: "GEOPOLITICS", countryIso3: null, env: "OPENSANCTIONS_API_KEY",
       build: () => "https://api.opensanctions.org/search/default?q=United%20States",
@@ -56,7 +66,7 @@ export async function probeCredentialedSource(sourceId) {
   // six-hour status probe can afford ONE 30s BEA request without any retries,
   // quotas/paid data change, or extra query fanout.
   const timeoutMs=sourceId==="bea"?30000:15000;
-  const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs});
+  const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error"});
   if (!config.validate(raw)) throw new Error(`Unexpected response shape for ${sourceId}`);
 
   return {
