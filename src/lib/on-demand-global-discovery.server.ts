@@ -1111,11 +1111,13 @@ async function discoverOnDemandImpl(
   // One country GET + at most eleven provider GETs. Prioritize annual macro
   // observables when optional approvals increase the configured fanout.
   const maxPrimary=topics.length?11-Math.min(categories.length,3):11;
-  // An explicit cross-category question must not silently send all index
-  // requests to only the first alphabetic category, or starve a category's
-  // original publisher when the fixed request budget is tight. Reserve one
-  // original publisher AND one optional discovery index per requested category,
-  // retaining official annual macro reads and the existing <=12 total limit.
+  // Multi-category current-event questions must sample two distinct
+  // ORIGINAL issuers per requested domain before spending the bounded
+  // request budget on GDELT discovery indexes (never original evidence).
+  // Preserve the existing max 12 requests, issuer allowlist, WDI structural
+  // reads where headroom permits, and no-403/429 bypass. A publisher feed
+  // success is still NOT verified same-event facts or commercial rights.
+  // Unscoped legacy requests keep their existing selection/order intact.
   // Unscoped legacy requests keep their existing selection/order intact.
   const selected=topics.length>0 && categories.length>1
     ? (()=>{
@@ -1160,10 +1162,18 @@ async function discoverOnDemandImpl(
             (category==='geopolitics'?'un_press_original_publisher':category==='macro'?'bis_original_publisher':'un_minerals_original_publisher')):undefined) ??
         tasks.find(t=>originalTask(t,category)),
       ).filter((t):t is (typeof tasks)[number]=>Boolean(t));
+      // Never mistake two articles from one institution for two issuers.
+      // Each secondary must have a different registered publisher family
+      // from this category's selected primary. No extra provider requests:
+      // replace lower-priority index-only slots when the cap is full.
+      const secondary=categories.map((category,index)=>
+        tasks.find(t=>originalTask(t,category) &&
+          t.name!==originals[index]?.name),
+      ).filter((t):t is (typeof tasks)[number]=>Boolean(t));
       const indexes=categories.map(category=>tasks.find(t=>
         t.category===category && t.name==="gdelt_doc_discovery")).filter(
           (t):t is (typeof tasks)[number]=>Boolean(t));
-      const primary=[...new Set([...macro,...originals,...indexes])];
+      const primary=[...new Set([...originals,...secondary,...macro,...indexes])];
       return [...primary,...tasks.filter(t=>!primary.includes(t))].slice(0,maxPrimary);
     })()
     : tasks.length>maxPrimary
