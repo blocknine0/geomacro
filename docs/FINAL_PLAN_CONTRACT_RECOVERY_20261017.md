@@ -19,10 +19,10 @@ Canonical source of truth remains src/lib/capability-pricing-catalog.ts (unchang
 
 ## Implemented as a scoped proposal (merge/live still gated)
 
-1. public/schemas/v1/nocharge.json: exact eight-capability billing-negative receipt, five reasons.
+1. src/contracts/schemas/v1/nocharge.json: exact eight-capability billing-negative receipt, five reasons.
 2. src/lib/geomacro-nocharge.ts: immutable redacted no-charge response; refuses post-payment conversion, customer-supplied pricing, source URL/identity, unsupported subjects; unchanged ETag matches only a separately verified current content hash.
 3. Canonical Coinbase intelligence POST: existing pre-payment 422 failure stays uncharged, keeps old error/availability properties, and now includes a versioned no_charge receipt. No challenge, signing or payment is authorized by this extra field.
-4. public/schemas/v1/delivery.json + src/lib/geomacro-delivery-v1.ts: paid V1 shape and STRICT read-only validator (canonical price, original freshness, public privacy, separate actual lawful rights/current evidence proof, real Ed25519 JCS content verification proof, durable settled-payment proof). Not a new signer, publisher, payment handler or trusted positive.
+4. src/contracts/schemas/v1/delivery.json + src/lib/geomacro-delivery-v1.ts: paid V1 shape and STRICT read-only validator (canonical price, original freshness, public privacy, separate actual lawful rights/current evidence proof, real Ed25519 JCS content verification proof, durable settled-payment proof). Not a new signer, publisher, payment handler or trusted positive.
 5. Focused tests: variant parity, no-charge ETag/retry, consumer safety and denial of synthetic/stale/unqualified/unsettled paid envelope. Existing frozen commercial rights remain enforced.
 
 ## Exact remaining production acceptance sequence
