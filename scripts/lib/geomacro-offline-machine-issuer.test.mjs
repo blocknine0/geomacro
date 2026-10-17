@@ -85,6 +85,8 @@ function review(role,p=proof){
    source_registry_id:c.source_registry_id,
    original_article_sha256:c.original_article_sha256,
    basis:"ARTICLE_SPECIFIC_WRITTEN_PERMISSION",attribution_required:false,
+   licensed_article_scope_sha256:p.source_permissions.find(x=>x.source_registry_id===c.source_registry_id).licensed_article_scope_sha256,
+   permission_record_sha256:p.source_permissions.find(x=>x.source_registry_id===c.source_registry_id).permission_record_sha256,
   }))}:common;
 }
 const fetchImpl=async url=>new Response(pages[url.includes("federalreserve")?0:1],
