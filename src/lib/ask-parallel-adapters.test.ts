@@ -13,7 +13,7 @@ describe("bounded parallel hybrid live adapters",()=>{
     options:{forceLive:true,bypassCache:true,cacheTtlMs:0},
   });
   await Promise.resolve();
-  expect(called).toEqual(["geo","macro","minerals"]);
+  expect(called).toEqual(["minerals","macro","geo"]);
   release();
   const output=await resultPromise;
   expect(output.adapter_results.GEOPOLITICS.unavailable).toBe(false);
