@@ -37,7 +37,7 @@ export const Route = createFileRoute("/intelligence")({
     // server-rendered HTML when their independent source readers succeed.
     // Previously only geopolitics was SSR-loaded, so no-JS clients and search
     // indexing always saw misleading "Macro 0 / Critical Minerals 0".
-    // Keep the bounded direct D1 72-hour journal in parallel for continuity.
+    // Keep the bounded direct D1 30-day journal in parallel for continuity.
     // The three category checks are independent: one timeout must never hide
     // another category's valid original-dated releases.
     const domains = ["geopolitics", "macro", "rare_earth"] as const;
