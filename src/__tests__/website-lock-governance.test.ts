@@ -42,7 +42,7 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-modular-ask-budget-fix-20261017");
+    expect(config.lock_revision).toBe("founder-approved-homepage-free-finds-live-d1-20261017");
     const findApproval = config.approved_find_card_v1_presentation_change;
      expect(findApproval?.approved_ui_commit).toBe("5b70fc0fc83477662aa314a07dde0706be2c3640");
     expect(findApproval?.previous_baseline_sha).toBe("7af9ea7eb5a67743d730bae258dcac3724625473");
@@ -54,8 +54,26 @@ describe("website lock governance", () => {
     expect(findApproval?.supabase_reactivated).toBe(false);
     expect(findApproval?.funds_authorized).toBe(false);
     expect(findApproval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
-    // Oct 17 Ask UI is the ONLY additional presentation change. Other
-    // approved historical baselines remain pinned for audit, not overwritten.
+    // Preserve all historical Ask approvals verbatim; the new homepage has
+    // a distinct founder approval with exact UI merge SHA and unchanged funds.
+    const homepage = config.approved_homepage_free_finds_live;
+    expect(homepage?.approved_pr).toBe(2376);
+    expect(homepage?.approved_ui_commit).toBe(config.baseline_sha);
+    expect(homepage?.previous_baseline_sha).toBe("7ad7e57f1b67873de3dbc050cf0eaa847e471081");
+    expect(homepage?.scope).toEqual([
+      "src/routes/index.tsx",
+      "src/components/home/commercial-home.tsx",
+      "src/components/home/live-intelligence-showcase.tsx",
+    ]);
+    expect(homepage?.global_risk_final_lock_unmodified).toBe(true);
+    expect(homepage?.free_derived_find_card_only).toBe(true);
+    expect(homepage?.original_timestamp_embargo_enforced).toBe(true);
+    expect(homepage?.no_external_reviewer_or_paid_gro_claim).toBe(true);
+    expect(homepage?.supabase_reactivated).toBe(false);
+    expect(homepage?.funds_authorized).toBe(false);
+    expect(homepage?.published_source_sha_unchanged).toBe(true);
+    expect(homepage?.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    // All older approvals remain immutable historical records.
     const askApproval = config.approved_chatgpt_ask_presentation_change;
     expect(askApproval?.scope).toEqual(["src/components/ask/ask-workspace.tsx"]);
     expect(askApproval?.approved_pr).toBe(2359);
@@ -65,7 +83,7 @@ describe("website lock governance", () => {
     expect(streamApproval?.approved_ui_commit).toBe("060fedbae69bf51d4a2b5bee0b30618bec70dd3f");
     const modular = config.approved_ask_modular_budget_fix;
     expect(modular?.approved_pr).toBe(2366);
-    expect(modular?.approved_ui_commit).toBe(config.baseline_sha);
+    expect(modular?.approved_ui_commit).toBe("7ad7e57f1b67873de3dbc050cf0eaa847e471081");
     expect(modular?.previous_baseline_sha).toBe("060fedbae69bf51d4a2b5bee0b30618bec70dd3f");
     expect(modular?.scope).toEqual([
       "src/components/ask/ask-workspace.tsx",
@@ -118,7 +136,7 @@ describe("website lock governance", () => {
     expect(config.intelligence_ssr_change_approval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(config.pending_publish_acceptance).toBe(true);
     expect(config.website_privacy_baseline_status)
-      .toBe("FOUNDER_APPROVED_MODULAR_ASK_LOCKED_AWAITING_EXACT_SHA_LIVE_DEPLOYMENT");
+      .toBe("FOUNDER_APPROVED_FREE_HOMEPAGE_FINDS_PENDING_EXACT_SHA_DEPLOYMENT");
     expect(config.published_source_sha).toBe("7215b0d05b05ccc4de1e5f69a333ae615abc38e3");
     expect(config.published_baseline).toContain("User will manually publish only after exact-head source/test/security verification and Lovable sync");
     expect(config.published_baseline).toContain("no x402 or GRI changes");
