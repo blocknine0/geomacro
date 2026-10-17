@@ -114,6 +114,12 @@ jobs:
           NODE
 
       - name: Read exact pinned signed current evidence from quota-governed B2
+        # Separate Bun processes each create their own per-process counter.
+        # 2 input attempts + 2 certificate attempts + 8 final publication
+        # attempts = 12 MAX across this protected GitHub run. The D1
+        # account-wide governor remains mandatory for every B2 request.
+        env:
+          B2_REQUEST_BUDGET: "2"
         shell: bash
         run: |
           set -euo pipefail
@@ -142,6 +148,8 @@ jobs:
           echo "GEOMACRO_GRI_REVIEWED_INPUT_SHA256=$REVIEWED_B2_SHA256" >> "$GITHUB_ENV"
 
       - name: Retrieve exact independently signed country-category certifications from governed B2
+        env:
+          B2_REQUEST_BUDGET: "2"
         shell: bash
         run: |
           set -euo pipefail
@@ -171,6 +179,11 @@ jobs:
           echo "GEOMACRO_GRI_SIGNED_COUNTRY_CERTIFICATES_SHA256=$REVIEWED_CERTIFICATES_B2_SHA256" >> "$GITHUB_ENV"
 
       - name: Publish current verified GRI and prove B2/D1 public readback without funds
+        # Publisher needs at most 8 nominal S3 operations: history read,
+        # immutable-key existence read, optional history PUT/GET, live PUT/GET,
+        # proof PUT/GET. Retries consume these same bounded attempt slots.
+        env:
+          B2_REQUEST_BUDGET: "8"
         shell: bash
         run: |
           set -euo pipefail
