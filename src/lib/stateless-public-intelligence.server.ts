@@ -579,7 +579,19 @@ export async function readStatelessWebsiteIntelligence(
   if (!["geopolitics", "macro", "rare_earth"].includes(category) ||
       !Number.isFinite(now)) throw Error("STATELESS_INTELLIGENCE_CATEGORY_OR_CLOCK_INVALID");
   const sourceGroup = [...SOURCES,...GLOBAL_SOURCES].filter(source => source.category === category);
-  const batch = await Promise.all(sourceGroup.map(source => readSource(source, now)));
+  // BLS publishes three native Atom feeds on the same host. Its live runner
+  // acceptance succeeds with sequential requests, while wide concurrent
+  // website collection has shown intermittent first-party HTTP 4xx. Serialize
+  // only these fixed official lanes, preserving the canonical lane indexes and
+  // parallel execution of all unrelated sources. Never retry an HTTP refusal.
+  const blsIds = new Set(["bls_cpi","bls_employment","bls_external_prices"]);
+  let previousBls:Promise<void> = Promise.resolve();
+  const batch = await Promise.all(sourceGroup.map(source => {
+    if(!blsIds.has(source.id))return readSource(source,now);
+    const next=previousBls.then(()=>readSource(source,now));
+    previousBls=next.then(()=>undefined);
+    return next;
+  }));
   // The optional callback is used only by the private acceptance runner;
   // no publisher identity, URL or diagnostic lane details reach the browser.
   if (onLaneDiagnostic) batch.forEach((lane, index) => onLaneDiagnostic(index,

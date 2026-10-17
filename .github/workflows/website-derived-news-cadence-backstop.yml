@@ -1,6 +1,6 @@
 name: Website Derived News Cadence Backstop
 
-# Fifteen-minute offset from canonical hourly :07 UTC collection.
+# Hourly primary :07 UTC; secondary catch-up slots at :22 and :52 UTC.
 # GitHub schedules are best effort; publisher success clocks, not time slots,
 # determine whether bounded recovery is necessary.
 # Only publish if the *last genuinely completed successful D1 writer* is
@@ -8,11 +8,11 @@ name: Website Derived News Cadence Backstop
 on:
   workflow_dispatch: {}
   workflow_run:
-    workflows: ["Geomacro Intelligence Orchestrator"]
+    workflows: ["Geomacro Intelligence Orchestrator", "Three-Domain 30-Minute Original Publisher Pulse"]
     branches: [main]
     types: [completed]
   schedule:
-    - cron: "22 * * * *"
+    - cron: "22,52 * * * *"
   push:
     branches: [main]
     paths:

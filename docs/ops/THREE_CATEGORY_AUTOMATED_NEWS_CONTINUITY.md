@@ -9,13 +9,13 @@ The existing country-specific on-demand engine remains separate; a global
 publisher feed does not certify current evidence for every one of 585 cells.
 
 The primary Cloudflare D1 derived-news publisher is scheduled **hourly at :07
-UTC**. Its independent hourly :22 backstop checks the last *actually successful*
-primary publication and recovers if the completion clock is at least **70 minutes** old. The common non-canceling writer lock prevents competing
+UTC**. Its two independent **:22 and :52 UTC** backstop checks verify the last *actually successful*
+primary publication and recover if its completion clock is at least **70 minutes** old. The common non-canceling writer lock prevents competing
 writes when the primary is slow. Successful recent collection skips the backstop. A failed
 or timed-out trusted main orchestrator can wake this same recovery; frozen
 legacy tasks must not suppress independently working news ingestion. Recovery
 still runs only canonical main with protected production credentials under the
-same writer concurrency group. The existing two workflows now have one primary and one conditional recovery slot per hour, no new service or paid API.
+same writer concurrency group. The existing two workflows now have one primary and two conditional recovery checkpoints per hour, no new service or paid API. A separate trusted completed three-domain official-source pulse also wakes this same freshness-guarded recovery if an hourly GitHub schedule is delayed. Duplicate source collection is suppressed while the last primary success remains recent.
 
 A verified, signed, exactly read-back D1 batch is current free website delivery.
 Its six-hour B2 backup has separate health: quota hold or archive failure emits
@@ -56,7 +56,7 @@ publication; backend automatic collection is deployed by the workflow merge.
 | Workflow | GitHub Actions UTC schedule | Writes |
 | --- | --- | --- |
 | `website-derived-news-continuity.yml` | `7 * * * *` | Cloudflare D1-only derived journal and signed free Finds; quota-governed B2 backup remains six-hour cadence |
-| `website-derived-news-cadence-backstop.yml` | `22 * * * *` | Same Cloudflare D1 publisher only when last confirmed primary completion is at least 70 minutes old or manual recovery requested |
+| `website-derived-news-cadence-backstop.yml` | `22,52 * * * *` | Same Cloudflare D1 publisher only when last confirmed primary completion is at least 70 minutes old or manual recovery requested |
 
 Production uses existing `GEOMACRO_COMMERCE_LEDGER_TOKEN`, Cloudflare D1, signer
 credentials and B2 account budget.
@@ -126,6 +126,7 @@ Critical Minerals feeds. The three Macro failures correspond to BLS RSS lanes
 and returned HTTP 4xx. An HTTP access refusal is NOT retried using another
 identity or third-party proxy, and cannot honestly be called a working source.
 Existing other official Macro feeds continue to supply eligible originals.
+The three fixed BLS native Atom lanes are collected **sequentially** to avoid simultaneous same-host requests: all other official feed lanes remain parallel and their original stable diagnostic indexes are retained. This reduces simultaneous first-party 4xx failures but does not bypass a publisher refusal or guarantee uptime.
 The Australian minister RSS source gets one *same-origin, fixed-URL* retry
 only after a real timeout, never after HTTP 403/429/500 or a redirect. The IEA
 critical-minerals index now reports HTTP refusal, invalid MIME, empty body,
@@ -139,3 +140,16 @@ If a first-party source requires provider authorization or rejects automated
 access, obtain provider approval or activate a separately verified permitted
 first-party alternative. Never silently replace the source with a scraped
 copy or label an inaccessible feed as healthy.
+
+## Schedule-delay hardening (2026-10-17)
+
+The current Github clock cannot guarantee precisely hourly collection: primary `:07`
+cron may start late or be skipped. The `:22` and `:52` backup checkpoints
+run a **read-only GitHub publisher-success test first**; both use the already
+verified 70-minute expiration and existing noncanceling publication lock. A
+completed trusted `Three-Domain 30-Minute Original Publisher Pulse` workflow,
+in addition to the original orchestrator, can wake the backstop. All wakeups
+remain restricted to canonical main and protected production credentials.
+Actual successful D1 publication and signed readback, not a queued cron or a
+scheduled start timestamp, are the only success signals. The extra checks
+cannot provide an SLA if GitHub Actions or the upstream services are down.

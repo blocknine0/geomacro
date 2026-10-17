@@ -80,7 +80,10 @@ test("hourly Cloudflare collection and +15m recovery retain single-writer and th
   const collector=readFileSync(new URL("scripts/ops/publish-website-derived-news.ts",root),"utf8");
   const legacy=readFileSync(new URL(".github/workflows/auto-ingest-news.yml",root),"utf8");
   assert.ok(primary.includes('cron: "7 * * * *"'));
-  assert.ok(backstop.includes('cron: "22 * * * *"'));
+  assert.ok(backstop.includes('cron: "22,52 * * * *"'));
+  assert.ok(backstop.includes('"Three-Domain 30-Minute Original Publisher Pulse"'));
+  assert.ok(backstop.includes('Read latest successful actual primary D1 publication clock'));
+  assert.ok(backstop.includes('cancel-in-progress: false'));
   assert.equal(BACKSTOP_AFTER_MS,70*60_000);
   assert.ok(primary.includes("group: geomacro-website-derived-news-continuity"));
   assert.ok(backstop.includes("group: geomacro-website-derived-news-continuity"));
