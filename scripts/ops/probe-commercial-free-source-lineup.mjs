@@ -39,12 +39,12 @@ if(process.argv.includes('--production-updates')){
    }
    if(process.env.GITHUB_STEP_SUMMARY)
      appendFileSync(process.env.GITHUB_STEP_SUMMARY,
-       '### Free source data availability (not commercial publication)\\n\\n'+
-       '- D1 checkpoint/readback: VERIFIED\\n'+
-       '- Provider status: '+verdict.operator_status+'\\n'+
-       '- Current attempts unavailable: '+verdict.attempts_unavailable+'\\n'+
-       '- Retained provider failures: '+verdict.retained_degraded_source_count+'\\n'+
-       '- 195-country current signed coverage: NOT VERIFIED\\n');
+       '### Free source data availability (not commercial publication)\n\n'+
+       '- D1 checkpoint/readback: VERIFIED\n'+
+       '- Provider status: '+verdict.operator_status+'\n'+
+       '- Current attempts unavailable: '+verdict.attempts_unavailable+'\n'+
+       '- Retained provider failures: '+verdict.retained_degraded_source_count+'\n'+
+       '- 195-country current signed coverage: NOT VERIFIED\n');
  }catch{console.error('PRODUCTION_FREE_SOURCE_UPDATES_FAILED_CLOSED');process.exitCode=2;}
 }else{
 
