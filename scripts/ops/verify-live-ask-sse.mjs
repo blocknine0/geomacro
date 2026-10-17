@@ -77,6 +77,20 @@ export async function probeAsk(fetchImpl = fetch) {
   const body = await response.text();
   guarded(body.length <= 96_000, "ASK_LIVE_SSE_OVERSIZE");
   const result = inspectAskSse(body, response.headers.get("content-type") ?? "");
+  if (result.answer?.insufficient_evidence === true) {
+    const summary = String(result.answer.summary ?? "").toLowerCase();
+    const failure_lane = summary.includes("matching original numerical") ||
+      summary.includes("observation could not be verified")
+      ? "OFFICIAL_NUMERIC_SOURCE_MISSING"
+      : summary.includes("index") ? "SEARCH_INDEX_UNVERIFIED" :
+      summary.includes("risk") ? "GOVERNED_RISK_UNAVAILABLE" : "UNKNOWN";
+    console.error("ASK_LIVE_PUBLIC_RESULT_DIAG:"+JSON.stringify({
+      lane:failure_lane,insufficient_evidence:true,
+      evidence_count:Array.isArray(result.answer.evidence)?result.answer.evidence.length:0,
+      data_mode:result.answer.data_mode??null,source_identity_exposed:result.answer.source_identity_exposed??null,
+      payment_executed:false,raw_evidence_logged:false
+    }));
+  }
   return { ok: true, schema: "geomacro.ask-live-official-sse-acceptance.v1",
     checked_at: CHECKED_AT, free_research_without_payment: true,
     source_identity_exposed: false, ...checkAnswer(result.answer),
