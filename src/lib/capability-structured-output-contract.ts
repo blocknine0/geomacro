@@ -26,10 +26,6 @@ type VariantSpec=Readonly<{
   description:string;
   prerequisites:readonly string[];
 }>;
-const common=[
-  "subjects", "as_of", "methodology", "limitations",
-  "delivered_product_hash",
-] as const;
 const digest=[
   "structural[*].subject",
   "structural[*].intelligence",
@@ -45,12 +41,13 @@ const core=[
   "current_state[*].live.checked_at",
 ] as const;
 const signed=[
-  "signed_risk_objects[*].object.object_id",
-  "signed_risk_objects[*].object.subject",
+  "signed_risk_objects[*].subject",
+  "signed_risk_objects[*].object.risk_object_id",
+  "signed_risk_objects[*].object.schema_version",
   "signed_risk_objects[*].object.risk",
   "signed_risk_objects[*].object.confidence",
   "signed_risk_objects[*].object.attribution",
-  "signed_risk_objects[*].object.evidence_summary",
+  "signed_risk_objects[*].object.verification",
   "signed_risk_objects[*].object.methodology_version",
   "signed_risk_objects[*].object.generated_at",
   "signed_risk_objects[*].object.expires_at",
@@ -77,13 +74,14 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     },
     verified_change_attribution:{
       subject_scope:"country_or_global",response_kind:"adaptive_intelligence",
-      customer_receives:["gri_context.scope","gri_context.snapshot_id","gri_context.score",
-        "gri_context.change_attribution","change_intelligence[*].subject",
-        "change_intelligence[*].state_version","change_intelligence[*].change",
-        "change_intelligence[*].drivers","as_of","methodology","delivered_product_hash"],
-      only_when_verified:["gri_context.previous_score",
-        "gri_context.change_attribution"],
-      description:"All verified cached GRI context plus a proven previous-state comparison, driver contributions and change direction; null deltas remain null.",
+      customer_receives:["gri_context.scope","gri_context.snapshot_id","gri_context.as_of",
+        "gri_context.score","gri_context.previous_score",
+        "gri_context.coverage","gri_context.change_attribution",
+        "gri_context.verification_status","gri_context.proof_hash",
+        "gri_context.methodology_version","as_of","methodology","delivered_product_hash"],
+      only_when_verified:["change_intelligence[*].previous_verified_state",
+        "change_intelligence[*].drivers"],
+      description:"Verified current and prior GRI snapshot scores plus source-qualified index change attribution; do not substitute unrelated country-GRO deltas.",
       prerequisites:["CURRENT_SIGNED_GRI_V1_2_AND_EXACT_READBACK","SIGNED_PREVIOUS_STATE_AND_CHANGE_ATTRIBUTION_PROVEN"],
     },
   },
@@ -163,7 +161,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
       customer_receives:[...signed],
       only_when_verified:["signed_risk_objects[*].object.risk.previous_score",
         "signed_risk_objects[*].object.risk.delta"],
-      description:"Exact previously issued, still-valid Ed25519-signed country/corridor GRO with confidence, attribution, expiry and verifiable integrity.",
+      description:"Previously issued, still-valid signed country/corridor GRO attestation with risk, confidence, source-free attribution, expiry and integrity metadata; exact signature verification remains a separate proof gate.",
       prerequisites:["EXISTING_VERIFIED_UNEXPIRED_SIGNED_GRO"],
     },
     newly_qualified_signed:{
@@ -171,7 +169,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
       customer_receives:[...signed],
       only_when_verified:["signed_risk_objects[*].object.risk.previous_score",
         "signed_risk_objects[*].object.risk.delta"],
-      description:"Newly qualified and signed GRO with same canonical fields; genuine current evidence, approved risk methodology, new signature and full readback required.",
+      description:"Newly qualified signed GRO attestation with canonical risk/integrity metadata; genuine new evidence, authorized signature and exact readback must be proved separately.",
       prerequisites:["NEWLY_QUALIFIED_CURRENT_SIGNED_GRO_AND_READBACK"],
     },
   },
