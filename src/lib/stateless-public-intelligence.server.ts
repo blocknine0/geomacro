@@ -15,6 +15,7 @@ import { australianNewsIndexCandidates, australianArticleMatchesOriginal } from 
 import { readPibMinesOriginalCandidates } from "./stateless-pib-mines-original.server";
 import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
 import { verifiedStatcanOriginalReleaseDay } from "./stateless-statcan-original.server";
+import {discoverBlsNewsroomOriginals,verifyBlsNewsroomOriginal} from "./stateless-bls-newsroom-original.server";
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
 const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
@@ -93,6 +94,11 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
     allowedHosts: ["www.bls.gov"], credit: null },
   { id: "bls_external_prices", category: "macro", media: "atom",
     url: "https://www.bls.gov/feed/ximpim.rss",
+    allowedHosts: ["www.bls.gov"], credit: null },
+  // Separate first-party BLS newsroom path with independent original-page
+  // day verification. This does not override a 4xx on the three RSS feeds.
+  { id: "bls_newsroom_original", category: "macro", media: "html_index",
+    url: "https://www.bls.gov/newsroom/",
     allowedHosts: ["www.bls.gov"], credit: null },
   { id: "fed_press", category: "macro", media: "rss",
     url: "https://www.federalreserve.gov/feeds/press_all.xml",
@@ -390,6 +396,48 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       native_clock_valid: 0, undated_original: 0, recovered_original_page: 0,
       transport_ok: false, transport_failure_class: kind } satisfies LaneMetrics,
   });
+  if(source.id==="bls_newsroom_original" && source.media==="html_index"){
+    try{
+      const response=await fetchWithoutRedirect(source.url,{
+        method:"GET",redirect:"error",cache:"no-store",
+        headers:{Accept:"text/html"},signal:AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if(!response.ok)return failed(response.status>=500?"http_5xx":"http_4xx");
+      if(!/^text\/html(?:;|$)/iu.test(response.headers.get("content-type")??""))
+        return failed("mime");
+      const html=await boundedText(response,MAX_FEED_BYTES);
+      if(!html||!html.includes("Latest News Releases from the National Office"))
+        return failed("body");
+      const indices=discoverBlsNewsroomOriginals(html,now).slice(0,3);
+      const originals=await Promise.all(indices.map(async candidate=>{
+        try{
+          const article=await fetchWithoutRedirect(candidate.articleUrl,{
+            method:"GET",redirect:"error",cache:"no-store",
+            headers:{Accept:"text/html"},signal:AbortSignal.timeout(TIMEOUT_MS),
+          });
+          if(!article.ok||!/^text\/html(?:;|$)/iu.test(article.headers.get("content-type")??""))
+            return null;
+          const page=await boundedText(article,MAX_FEED_BYTES);
+          const published=page?verifyBlsNewsroomOriginal(page,candidate,now):null;
+          return published?{
+            sourceId:source.id,category:source.category,title:candidate.title,
+            articleUrl:candidate.articleUrl,publishedAt:published,
+            datePrecision:"day" as const,credit:source.credit,
+          }:null;
+        }catch{return null;}
+      }));
+      const candidates=originals.filter((c):c is StatelessSourceCandidate=>c!==null);
+      return {healthy:true,candidates,metrics:{
+        seen:indices.length,relevant:indices.length,
+        original_link_valid:indices.length,native_clock_valid:candidates.length,
+        undated_original:indices.length,recovered_original_page:candidates.length,
+        transport_ok:true,
+      }};
+    }catch(error){
+      const e=error instanceof Error?error:null;
+      return failed(e?.name==="TimeoutError"||e?.name==="AbortError"?"timeout":"network");
+    }
+  }
   if(source.id.startsWith('govuk_global_')){
     try{
       const response=await fetchWithoutRedirect(source.url,{redirect:'error',headers:{Accept:'application/json'},signal:AbortSignal.timeout(TIMEOUT_MS)});
