@@ -235,6 +235,8 @@ jobs:
             "codeql_open_high_alerts":list(high.values())},separators=(",",":")))
           if high:sys.exit(4)
           PY
+      - name: Exact 195-country rotation and 250-area crosswalk offline tests
+        run: node --test scripts/tests/country-195-daily-rotation.test.mjs scripts/tests/free-three-domain-country-gap-audit.test.mjs
       - name: Private evidence bridge regression checks
         run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts
       - name: Real no-charge per-category provider readback
