@@ -57,3 +57,18 @@ No Global Risk, Intelligence, pricing, payment, rights, source-redaction or dela
 The owner directed finishing the live-fetch Ask Geomacro user experience. Exact reviewed PR #2366 merged at `7ad7e57f1b67873de3dbc050cf0eaa847e471081` modularizes the Ask page without increasing the existing 18,000-character source budget: `ask-workspace.tsx` 22,020 → 17,518 characters. Its answer/evidence component moved to `ask-answer-view.tsx` and the GET compatibility reader to `ask-legacy-transport.ts`. No behavior/price/data-rights or risk-product presentation change is authorized. The prior SSE UI approved commit `060fedbae69bf51d4a2b5bee0b30618bec70dd3f` remains pinned in prior approval history.
 
 This is **not** a production acceptance override. Preserve `published_source_sha` and `pending_publish_acceptance: true` until the website is published at exact SHA, the external POST SSE route successfully reads back, and the separate signed D1/B2 current Intelligence/GRI/Risk Indices product health genuinely recovers. Nothing here permits fund movement, Supabase reactivation or fabricated source events.
+
+## Founder-approved free homepage Finds original-date recovery (2026-10-17)
+
+The founder directed completing the public website and automatic live source surfacing. Reviewed website PR #2376 merged at `ecbf82c6bea1d77ad9b38a41cedf8b1f306ca61e`. The **only** newly approved presentation paths are:
+- `src/routes/index.tsx`
+- `src/components/home/commercial-home.tsx`
+- `src/components/home/live-intelligence-showcase.tsx`
+
+Previously the homepage depended on the legacy scored `useIntelligence` feed even though the free three-domain collector already published independently verified D1 readbacks of *unscored official original-date observations*. The approved homepage now SSR-loads the existing read-only public D1 journal within 2.5 seconds, projects a bounded free `geomacro.find.v1` card and refreshes from the existing `/api/v1/finds` GET with a separately guarded D1 direct-read fallback. It does not claim that two independent first-party originals, no-attribution commercial rights, external reviewer signatures, canonical GRO or paid hot GRI/Risk Indices exist. Absence/expiry is shown honestly.
+
+The existing six-hour `Production Website Health` adds a **separate parallel** no-funds free homepage/Ask/Finds/D1 outside-in canary, so the strict commercial hot-data 503 does not suppress true free-website diagnostics. This is not a waiver of exact deployed SHA, security, independent signed hot products or no-funds x402 checks.
+
+The general website presentation baseline is now the exact reviewed merge SHA above. The frozen Global Risk baseline remains `0270ab7876cabe372c246f76fbcf299ed1b0e1fc`. The previously observed `published_source_sha` in `config/website-lock.json` is **not** rewritten, `locked=true`, `pending_publish_acceptance=true`, and no funds or Supabase writes are authorized.
+
+**Deployment requires independent outside-in acceptance:** protected canonical main → Lovable mirror → owner hosted Publish → public build marker exactly matches canonical main → real website free Find card and Ask/Intelligence mobile/desktop smoke → strict signed Intelligence/GRI/Risk Indices and deep-health 200 only from actual current proofs. A merged approval record is not a public site deployment.
