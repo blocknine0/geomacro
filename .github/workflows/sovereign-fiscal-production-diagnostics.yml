@@ -64,7 +64,7 @@ jobs:
           jq '{generated_at,source_state,eurostat_release_manifest,row_coverage,adapter_probe,interpretation_boundary}' "$SOVEREIGN_FISCAL_DIAGNOSTICS_OUTPUT"
 
       - name: Upload sanitized fiscal diagnostics
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: sovereign-fiscal-production-diagnostics
           path: sovereign-fiscal-production-diagnostics.json

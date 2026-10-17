@@ -52,7 +52,7 @@ jobs:
             .boundaries.supabase_requests == 0 and .boundaries.b2_requests == 0 and
             .boundaries.payments == 0 and .boundaries.raw_source_urls_emitted == false
           ' /tmp/global-country-runtime.json >/dev/null
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: global-country-runtime-${{ github.run_id }}

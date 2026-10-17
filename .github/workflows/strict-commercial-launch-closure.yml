@@ -84,7 +84,7 @@ jobs:
           RISK_GATE_DISTRIBUTED_CANDIDATE_SHA: ${{ inputs.published_sha }}
         run: node scripts/scale/audit-risk-gate-provider-path.mjs
       - name: Upload exact-candidate contract evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: strict-commercial-contract-${{ github.run_id }}
           path: |
@@ -114,7 +114,7 @@ jobs:
             if (String(run.head_sha || '').toLowerCase() !== expectedSha) core.setFailed('Evidence closure SHA does not match published candidate');
             if (run.status !== 'completed' || run.conclusion !== 'success') core.setFailed(`Evidence closure is not successful: ${run.status}/${run.conclusion}`);
       - name: Download exact 40k evidence closure artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.distributed_evidence_run_id }}
@@ -144,7 +144,7 @@ jobs:
           console.log('PASS: exact-candidate 40k burst/soak, latency, errors, DB, edge, auth, leakage, replay and provider-path evidence validated.');
           NODE
       - name: Upload strict copy of distributed evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: strict-commercial-distributed-evidence-${{ github.run_id }}
           path: artifacts/distributed-evidence/distributed-40k-launch-evidence-closure.json
@@ -193,7 +193,7 @@ jobs:
       - name: Enforce bounded staging latency and zero-error gates
         run: node scripts/validate-risk-gate-staging-load-report.mjs
       - name: Upload bounded staging safety evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: strict-commercial-staging-safety-${{ github.run_id }}
           path: |
@@ -213,7 +213,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Node 22
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '22'
       - name: Verify exact published live surfaces and discovery
@@ -234,7 +234,7 @@ jobs:
           GEOMACRO_EXTERNAL_SECURITY_EXPECTED_HOST: geomacro.live
         run: node scripts/ops/external-surface-security-smoke.mjs
       - name: Upload exact published live evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: strict-commercial-live-${{ github.run_id }}
           path: |

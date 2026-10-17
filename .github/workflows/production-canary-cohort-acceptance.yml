@@ -60,7 +60,7 @@ jobs:
           }
 
       - name: Verify all three provider workflow runs are successful and same-SHA
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           EXPECTED_SHA: ${{ inputs.candidate_sha }}
           COINBASE_RUN: ${{ inputs.coinbase_run_id }}
@@ -84,7 +84,7 @@ jobs:
             }
 
       - name: Download Coinbase sanitized evidence
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
@@ -92,7 +92,7 @@ jobs:
           path: /tmp/cohort/coinbase
 
       - name: Download Circle sanitized evidence
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
@@ -100,7 +100,7 @@ jobs:
           path: /tmp/cohort/circle
 
       - name: Download Nevermined sanitized evidence
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
@@ -151,7 +151,7 @@ jobs:
         run: node scripts/commerce/verify-production-provider-canaries.mjs
 
       - name: Upload sanitized cohort acceptance only
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: production-canary-cohort-acceptance-${{ github.run_id }}
           path: /tmp/cohort/initial-cohort-acceptance.json
