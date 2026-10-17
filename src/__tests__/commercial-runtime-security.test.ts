@@ -102,10 +102,11 @@ describe("commercial runtime security baseline", () => {
     expect(orchestrator).toContain("Run due intelligence tasks serially");
 
     expect(ingestRecovery).toContain("workflow_dispatch");
-    expect(ingestRecovery).not.toContain("schedule:");
+    expect(ingestRecovery).toContain('cron: "37 * * * *"');
+    expect(ingestRecovery).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
     expect(ingestRecovery).toContain("  recover-news-ingest:\n    # Legacy Supabase recovery retired:");
     expect(ingestRecovery).toContain("    if: ${{ false }}");
-    expect(ingestRecovery).toContain("group: geomacro-intelligence-orchestrator");
+    expect(ingestRecovery).toContain("group: geomacro-auto-ingest-news-recovery");
     expect(ingestRecovery).toContain("D1_DATABASE_NAME: geomacro-control-plane");
     expect(ingestRecovery).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest");
     expect(ingestRecovery).toContain("INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest");
