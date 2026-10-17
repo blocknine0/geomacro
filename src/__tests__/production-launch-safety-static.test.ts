@@ -55,12 +55,15 @@ describe("production launch safety contract", () => {
     expect(gate).toContain("_PRODUCTION_QUARANTINED");
   });
 
-  it("documents the no-funds initial pay-per-call path and post-launch reconciliation", () => {
+  it("documents capability-priced no-funds acceptance and authentic receipt-only revenue", () => {
     const doc = read("docs/PRODUCTION_LAUNCH_ACCEPTANCE.md");
 
-    expect(doc).toContain("Initial Commercial Pay-Per-Call Launch Acceptance");
-    expect(doc).toContain("The first 20,000 deliveries are an adoption and revenue milestone");
-    expect(doc).toContain("The founder does not need to purchase 20,000 calls");
-    expect(doc).toContain("Optional scale certification");
+    expect(doc).toContain("geomacro.capability-usdc.v1");
+    expect(doc).toContain("8 approved capabilities and 14 USDC variants");
+    expect(doc).toContain("REAL FUNDS DISABLED");
+    expect(doc).toContain("separate founder ACK");
+    expect(doc).toContain("Not mandatory for the first legitimate sale");
+    expect(doc).toContain("Testnet payments never count");
+    expect(doc).not.toContain("canonical launch price of **0.05 USDC per successful");
   });
 });
