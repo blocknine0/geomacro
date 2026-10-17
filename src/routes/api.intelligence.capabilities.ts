@@ -6,6 +6,8 @@ import {
 } from "../lib/geomacro-intelligence-contract";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,capabilityPricingCatalog}
   from "../lib/capability-pricing-catalog";
+import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
+  from "../lib/geomacro-structured-commercial-license";
 
 export const Route = createFileRoute("/api/intelligence/capabilities")({
   server: {
@@ -55,6 +57,7 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
               state_version: true,
               signed_risk_object_attestation: true,
             },
+            commercial_license:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
             commercial_boundary: {
               raw_source_identity_exposed: false,
               raw_article_material_exposed: false,
