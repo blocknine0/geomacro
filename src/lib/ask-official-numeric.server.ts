@@ -53,6 +53,9 @@ export function parseEcbFix(text:string,currency:string){
  return rows.filter(x=>x.FREQ==="D"&&x.CURRENCY===currency&&
  x.CURRENCY_DENOM==="EUR"&&x.EXR_TYPE==="SP00"&&x.EXR_SUFFIX==="A"&&
  /^\d{4}-\d{2}-\d{2}$/u.test(x.TIME_PERIOD)&&
+ Number.isFinite(Date.parse(x.TIME_PERIOD+"T00:00:00Z")) &&
+ Date.parse(x.TIME_PERIOD+"T00:00:00Z")<=Date.now() &&
+ Date.now()-Date.parse(x.TIME_PERIOD+"T00:00:00Z")<=14*86400_000 &&
  Number.isFinite(Number(x.OBS_VALUE))&&Number(x.OBS_VALUE)>0)
  .map(x=>({day:x.TIME_PERIOD,value:Number(x.OBS_VALUE)}))
  .sort((a,b)=>b.day.localeCompare(a.day)).slice(0,6);
