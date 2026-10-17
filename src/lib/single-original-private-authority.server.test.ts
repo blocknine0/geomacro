@@ -9,6 +9,7 @@ import {
   type SingleOriginalAuthorityProof,
 } from "./single-original-private-authority.server";
 import type {MachineOriginalWithRegistry} from "./geomacro-machine-source-rights.server";
+import {preparePrivateSingleOriginalFactualHandoff} from "./single-original-private-derived-handoff.server";
 import type {B2CommercialSourceRight} from "./b2-live.server";
 
 const at=new Date("2026-10-10T10:30:00.000Z");
@@ -161,5 +162,49 @@ describe("founder one-source distinct private machine authority",()=>{
     const result=await qualifySingleOriginalPrivateAuthority(d);
     expect(result.status).toBe("SOURCE_REGISTRY_OR_RIGHTS_SCOPE_UNAVAILABLE");
     expect(result.qualified_private_only).toBe(false);
+  });
+});
+
+describe("one-original source-free factual handoff",()=>{
+  it("rechecks dual-signed original, returns factual-only metadata without scores or publisher identities",async()=>{
+    const d=deps();
+    const result=await preparePrivateSingleOriginalFactualHandoff(d);
+    expect(result.accepted).toBe(true);
+    if(!result.accepted||!result.derived_input)throw Error("HANDOFF_EXPECTED");
+    const fact=result.derived_input;
+    expect(fact.schema).toBe("geomacro.private-single-original-factual-handoff.v1");
+    expect(fact.category).toBe("macro");
+    expect(fact.country_iso3).toBe("USA");
+    expect(fact.event_type).toBe("central_bank_policy");
+    expect(fact.original_source_count).toBe(1);
+    expect(fact.independent_corroboration_verified).toBe(false);
+    expect(fact.score).toBeNull();
+    expect(fact.severity).toBeNull();
+    expect(fact.commercial_gro_signed).toBe(false);
+    expect(fact.public_published).toBe(false);
+    expect(fact.gri_country_category_certified).toBe(false);
+    expect(fact.payment_authorized).toBe(false);
+    expect(result.derived_input_sha256).toMatch(/^[0-9a-f]{64}$/u);
+    const serialized=JSON.stringify(fact);
+    expect(serialized).not.toContain("federalreserve.gov");
+    expect(serialized).not.toContain("SYNTHETIC LICENCE");
+    expect(serialized).not.toContain("source_registry_id");
+    expect(serialized).not.toContain("headline");
+    expect(d.fetchImpl).toHaveBeenCalledTimes(1);
+    expect(d.readRights).toHaveBeenCalledTimes(1);
+  });
+  it("never prepares factual input from forged signed rights or changed original bytes",async()=>{
+    const p=proof();
+    const bad=deps({envelope:{...envelope(p),proof:{...p,category:"rare_earth"}}});
+    const x=await preparePrivateSingleOriginalFactualHandoff(bad);
+    expect(x.accepted).toBe(false);
+    expect(x.derived_input).toBeNull();
+    expect(bad.fetchImpl).not.toHaveBeenCalled();
+    const changed=deps({fetchImpl:vi.fn(async()=>new Response(html.replace("FAKE","ALTERED"),{
+      status:200,headers:{"content-type":"text/html"},
+    })) as unknown as typeof fetch});
+    const y=await preparePrivateSingleOriginalFactualHandoff(changed);
+    expect(y.accepted).toBe(false);
+    expect(y.derived_input_sha256).toBeNull();
   });
 });

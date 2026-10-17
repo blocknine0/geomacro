@@ -8,8 +8,8 @@
 import {readFileSync,realpathSync,lstatSync,statSync} from "node:fs";
 import {resolve,sep,basename} from "node:path";
 import {createHash} from "node:crypto";
-import {qualifySingleOriginalPrivateAuthority} from
-  "../../src/lib/single-original-private-authority.server";
+import {preparePrivateSingleOriginalFactualHandoff} from
+  "../../src/lib/single-original-private-derived-handoff.server";
 
 const deny=(code:string)=>{throw Error(code)};
 const PIN=/^[a-f0-9]{64}$/u;
@@ -57,24 +57,26 @@ export async function runPrivateSingleOriginalOperator({
   if(!inputJson||typeof inputJson!=="object"||Array.isArray(inputJson)||
      Object.keys(inputJson).sort().join(",")!=="candidate,envelope")
     deny("PRIVATE_INPUT_CONTRACT_INVALID");
-  const receipt=await qualifySingleOriginalPrivateAuthority({
+  const qualified=await preparePrivateSingleOriginalFactualHandoff({
     candidate:inputJson.candidate,
     envelope:inputJson.envelope,
     authorityEnvironment:env,
   });
+  const fact=qualified.derived_input;
   return Object.freeze({
     schema:"geomacro.protected-single-original-no-funds-operator.v1",
-    accepted:receipt.qualified_private_only===true,
-    status:receipt.status,
-    original_reread_verified:receipt.original_reread_verified,
-    distinct_facts_rights_signatures_verified:
-      receipt.distinct_facts_rights_signatures_verified,
-    source_rights_registry_compatible:receipt.registry_compatible,
+    accepted:qualified.accepted,
+    status:qualified.reason,
+    original_reread_verified:qualified.accepted,
+    distinct_facts_rights_signatures_verified:qualified.accepted,
+    source_rights_registry_compatible:qualified.accepted,
     original_count:1,
     independently_corroborated:false,
     source_input_sha256:pin,
-    proof_sha256:"proof_sha256" in receipt?receipt.proof_sha256:null,
-    qualified_until:"qualified_until" in receipt?receipt.qualified_until:null,
+    proof_sha256:fact?.dual_authority_proof_sha256??null,
+    qualified_until:fact?.qualified_until??null,
+    derived_factual_input_sha256:qualified.derived_input_sha256,
+    derived_factual_input_type:fact?.product_type??null,
     signed_commercial_gro:false,
     public_hot_published:false,
     gri_current_certified:false,

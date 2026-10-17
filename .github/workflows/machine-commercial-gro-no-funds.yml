@@ -12,9 +12,9 @@ on:
       - "src/lib/geomacro-machine-commercial-operator.server.test.ts"
       - "src/lib/single-original-private-authority.server.ts"
       - "src/lib/single-original-private-authority.server.test.ts"
+      - "src/lib/single-original-private-derived-handoff.server.ts"
+      - "scripts/ops/accept-private-single-original-authority.ts"
       - "src/lib/geomacro-machine-source-rights.server.ts"
-      - "src/lib/single-original-private-authority.server.ts"
-      - "src/lib/single-original-private-authority.server.test.ts"
       - "docs/ops/GEOMACRO_AUTOMATED_COMMERCIAL_GRO_V1.md"
       - ".github/workflows/machine-commercial-gro-no-funds.yml"
   push:
@@ -28,6 +28,10 @@ on:
       - ".github/workflows/machine-commercial-gro-no-funds.yml"
       - "scripts/ops/accept-private-geomacro-machine-commercial-gro.ts"
       - "src/lib/geomacro-machine-commercial-operator.server.test.ts"
+      - "src/lib/single-original-private-authority.server.ts"
+      - "src/lib/single-original-private-authority.server.test.ts"
+      - "src/lib/single-original-private-derived-handoff.server.ts"
+      - "scripts/ops/accept-private-single-original-authority.ts"
   workflow_dispatch:
 
 permissions:
