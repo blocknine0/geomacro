@@ -112,3 +112,35 @@ The shared registry now has ten international readers and the protected collecto
 Research on 2026-10-16 read both feeds over HTTPS. Their returned latest records were respectively September 10 (Bank of Canada press releases) and September 22 (BC minerals). Neither was within the last 24 hours. The broader Bank of Canada press feed includes upcoming event notices and is intentionally not used as an original-news publication feed. A proposed RBA media-release connector returned 200 in workspace research but 403 in actual protected-network acceptance, so it was removed before production activation; the denied publisher is not retried or prioritized in customer routing. New registration does not manufacture a fresh macro/mineral event. Production runner receipts, category original-clock counts and live build parity must be checked independently after merge/publish.
 
 After the owner's Publish, production smoke run 38872352802 attempt 2 verified the live and mirror canonical marker at 168c1587b9808350756c6642f78047bec028366d. Its separate deep signed-product health still returned HTTP 503 because current signed B2/D1 hot snapshots were unavailable; that is not a failed feed read and is not repaired by adding RSS sources.
+
+## Expanded free original-news lanes — Macro/FX + Critical Minerals (2026-10-17)
+
+The canonical `global-official-release-feeds.mjs` now contains two additional
+**fixed GOV.UK first-party Search API** news filters:
+`govuk_global_trade_fx` (`q=international trade`, macro) and
+`govuk_global_rare_earth` (`q=rare earth`, critical minerals).
+They reuse the existing official GOV.UK Content API
+`first_published_at` verification; `public_timestamp` / search rank,
+GitHub scheduler time and network-read time NEVER serve as release dates.
+Both searches use the same GOV.UK publisher as the existing global economy
+and minerals filters and MUST NOT be counted as independent originals.
+
+The independently published U.S. Department of Energy RSS, already listed as
+a free first-party update lane, is also activated in the free public Critical
+Minerals newsroom as `us_doe_news_minerals`. It accepts only exact issuer
+`www.energy.gov` original permalinks, matching mineral topic text and native
+RSS `pubDate` (not `lastBuildDate`). Commercial licensing and article reuse
+remain separately unreviewed: free derived, unscored Finds only.
+
+These lanes participate in the existing hourly `:07` publisher and guarded
+`:22/:52` recovery, source-health diagnostics, in-memory deduplication,
+15-minute original-publication embargo and bounded derived-only D1 journal.
+They incur no new database, Supabase, payment or third-party search API.
+Publisher rate limits/403, empty eligible original windows and country-specific
+gaps are reported as such. A readable feed is not a newly verified country
+event or certified 195x3 commercial coverage.
+
+Production acceptance requires Product CI, official live-source workflow and
+a protected-main D1 readback. The source cards must be shown as degraded
+rather than filling them with fabricated stories if an external origin is
+unavailable. Extra discovery lanes never certify commercial reuse rights.
