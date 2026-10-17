@@ -1,20 +1,42 @@
 name: Auto Ingest News
-# Manual recovery only. Recurring ownership belongs exclusively to the
-# Geomacro Intelligence Orchestrator. This wrapper forces the canonical
-# news_ingest task through the same scheduler, direct-Postgres transport,
-# quota guard, structuring path and writer lock used in normal production.
+# Supabase-free permanent ingest watchdog. The working primary newsroom owns
+# hourly collection at :07 UTC; this separate :37 UTC check only catches
+# genuinely missed publications through the SAME canonical D1 recovery writer.
+# GitHub cron is best-effort, not an exact-time SLA. No duplicate raw ingestion,
+# source article storage, Supabase, x402, or new commercial paid products.
+# Previous Supabase/Postgres legacy job remains physically retired below.
 
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: "37 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/auto-ingest-news.yml"
+      - ".github/workflows/website-derived-news-cadence-backstop.yml"
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: geomacro-intelligence-orchestrator
+  group: geomacro-auto-ingest-news-recovery
   cancel-in-progress: false
 
 jobs:
+  ingest-supabase-free-derived-news:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    # Reuse the audited backstop, its 70-minute signed-publication proof,
+    # same Cloudflare D1 writer lock and no-funds/source-private readbacks.
+    # workflow_dispatch intentionally forces one bounded manual recovery;
+    # scheduled/push checks will NOT duplicate a recent real publication.
+    uses: ./.github/workflows/website-derived-news-cadence-backstop.yml
+    permissions:
+      contents: read
+      actions: read
+    secrets: inherit
+
   recover-news-ingest:
     # Legacy Supabase recovery retired: never execute from manual dispatch,
     # push or schedule. Keep reviewed historical logic for forensic replay only.
