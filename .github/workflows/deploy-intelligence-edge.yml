@@ -143,6 +143,28 @@ jobs:
           console.log(JSON.stringify({ ok: true, rows: body.rows.length, generated_at: body.generated_at }));
           NODE
 
+      - name: Require new Worker and current original Intelligence proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import {originalSourceIsCurrent,intelligenceOriginalSourceTime} from "./workers/shared/current-source-clock.mjs";
+          const data=JSON.parse(fs.readFileSync("/tmp/intelligence-edge.json","utf8"));
+          const raw=fs.readFileSync("/tmp/intelligence-edge.headers","utf8");
+          const h=n=>raw.split(/\r?\n/).filter(s=>s.toLowerCase().startsWith(n+":")).at(-1)?.slice(n.length+1).trim()??"";
+          const native=intelligenceOriginalSourceTime(data?.rows);
+          if(h("x-geomacro-native-clock-contract")!=="live-60m-v1")
+            throw Error("INTELLIGENCE_WORKER_RELEASE_MISMATCH");
+          if(!originalSourceIsCurrent(native)||
+             Date.parse(native)!==Date.parse(h("x-geomacro-source-as-of")))
+            throw Error("INTELLIGENCE_NATIVE_SOURCE_NOT_CURRENT");
+          if(!h("x-geomacro-b2-verification")&&!h("x-geomacro-continuity"))
+            throw Error("INTELLIGENCE_B2_PROOF_MISSING");
+          if(/stale-if-error|stale-while-revalidate/.test(h("cache-control")))
+            throw Error("INTELLIGENCE_CDN_STALE_REPLAY");
+          NODE
+
       - name: Confirm narrow non-destructive serving boundary
         shell: bash
         run: |
