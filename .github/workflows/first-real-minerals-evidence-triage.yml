@@ -5,6 +5,8 @@ on:
     paths:
       - "scripts/ops/audit-first-real-minerals-evidence.mjs"
       - "scripts/ops/audit-first-real-minerals-evidence.test.mjs"
+      - "scripts/ops/audit-kazakhstan-worldbank-compact.mjs"
+      - "scripts/ops/audit-kazakhstan-worldbank-compact.test.mjs"
       - "docs/ops/FIRST_REAL_MINERALS_EVENT_EVIDENCE_20261017.md"
       - ".github/workflows/first-real-minerals-evidence-triage.yml"
   push:
@@ -12,6 +14,8 @@ on:
     paths:
       - "scripts/ops/audit-first-real-minerals-evidence.mjs"
       - "scripts/ops/audit-first-real-minerals-evidence.test.mjs"
+      - "scripts/ops/audit-kazakhstan-worldbank-compact.mjs"
+      - "scripts/ops/audit-kazakhstan-worldbank-compact.test.mjs"
       - ".github/workflows/first-real-minerals-evidence-triage.yml"
   workflow_dispatch: {}
 
@@ -37,14 +41,20 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/audit-first-real-minerals-evidence.mjs
-          node --test scripts/ops/audit-first-real-minerals-evidence.test.mjs
+          node --check scripts/ops/audit-kazakhstan-worldbank-compact.mjs
+          node --test scripts/ops/audit-first-real-minerals-evidence.test.mjs scripts/ops/audit-kazakhstan-worldbank-compact.test.mjs
       - name: Read exactly two independently issued official HTML pages without writing raw bytes
         run: node scripts/ops/audit-first-real-minerals-evidence.mjs
+      - name: Read the official Kazakhstan–World Bank same-event candidate from two separate originals
+        run: node scripts/ops/audit-kazakhstan-worldbank-compact.mjs
       - name: Assert no-signature, no-rights approval and no-publication boundary in source
         run: |
           node --input-type=module <<'NODE'
           import {readFileSync} from "node:fs";
-          const source=readFileSync("scripts/ops/audit-first-real-minerals-evidence.mjs","utf8");
+          const source=[
+            "scripts/ops/audit-first-real-minerals-evidence.mjs",
+            "scripts/ops/audit-kazakhstan-worldbank-compact.mjs"
+          ].map(path=>readFileSync(path,"utf8")).join("\n");
           for(const forbidden of [
             "publishB2VerifiedHotSnapshot(", "D1.prepare(", "settleCoinbaseX402(",
             "RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64",
