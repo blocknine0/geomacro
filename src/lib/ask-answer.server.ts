@@ -4,6 +4,7 @@ import {
 } from "./hybrid-ask-intelligence.server";
 import { realtimeSearchAnswer } from "./ask-realtime-search.server";
 import { answerFromCurrentOriginals } from "./ask-on-demand-original.server";
+import { answerOfficialNumeric, planAskOfficialNumeric } from "./ask-official-numeric.server";
 
 /**
  * Canonical Ask Geomacro answer orchestration.
@@ -134,6 +135,23 @@ function noCurrentPublisherNewsAnswer(): HybridAskAnswer {
 }
 
 export async function answerAskQuestion(question: string): Promise<HybridAskAnswer> {
+  // For explicit precise official measurements, either answer with a verified
+  // source period or fail closed: an indexed headline is never a numeric value.
+  if (planAskOfficialNumeric(question)) {
+    const official = await answerOfficialNumeric(question);
+    if (official) return official;
+    return {
+      summary: "The requested exact official observation could not be verified from the live source.",
+      what_changed: "No matching original numerical series was safely retrieved for this request.",
+      why_it_matters: "A missing release or API timeout does not establish a zero value or an unchanged rate.",
+      geomacro_view: "Geomacro will not invent numerical data or substitute news-index timestamps for a statistical reporting period.",
+      evidence: [], insufficient_evidence: true, mean_relevance: null,
+      low_confidence: true, gri: null, generatedAt: new Date().toISOString(),
+      data_mode: "ephemeral_live", cache_status: "bypassed",
+      source_identity_exposed: false, durable_live_storage_write: false,
+      signed_gro_generated: false, independent_same_event_verification: false,
+    };
+  }
   // Narrow first-party source reads are separate from signed/payable intelligence.
   try {
     const original = await answerFromCurrentOriginals(question);

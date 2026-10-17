@@ -3,6 +3,7 @@ import {beforeEach,describe,expect,it,vi} from 'vitest';
 const deps=vi.hoisted(()=>({hybrid:vi.fn(),search:vi.fn(),official:vi.fn(),original:vi.fn()}));
 vi.mock('../lib/hybrid-ask-intelligence.server',()=>({answerQuestion:deps.hybrid}));
 vi.mock('../lib/ask-on-demand-original.server',()=>({answerFromCurrentOriginals:deps.original}));
+vi.mock('../lib/ask-official-numeric.server',()=>({planAskOfficialNumeric:()=>null,answerOfficialNumeric:vi.fn()}));
 vi.mock('../lib/ask-realtime-search.server',()=>({realtimeSearchAnswer:deps.search}));
 vi.mock('../lib/stateless-public-intelligence.server',()=>({readStatelessWebsiteIntelligence:deps.official}));
 import {answerAskQuestion} from '../lib/ask-answer.server';
