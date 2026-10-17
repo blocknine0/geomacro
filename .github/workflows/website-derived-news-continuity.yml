@@ -149,3 +149,12 @@ jobs:
             verified:true,derived_rows:doc.signals.length,release_delay_minutes:15,
             raw_upstream_disclosed:false,supabase_dependency:false}));
           NODE
+
+      - name: Save sanitized hourly three-category source health receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: derived-news-source-health-${{ github.run_id }}
+          path: artifacts/derived-news/source-health.json
+          if-no-files-found: warn
+          retention-days: 14
