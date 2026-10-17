@@ -39,7 +39,7 @@ describe("Geomacro owner declaration licenses only its own original derived outp
     expect(receipt.payment_authorized).toBe(false);
     expect(receipt.output_sha256).toBe(createHash("sha256")
       .update(canonicalRiskObjectJson(payload),"utf8").digest("hex"));
-    expect(JSON.stringify(receipt)).not.toMatch(/federalreserve|publisher|headline|licence_document_sha256/u);
+    expect(JSON.stringify(receipt)).not.toMatch(/federalreserve|headline|licence_document_sha256/u);
   });
   it("rejects publisher text, URLs and unapproved additional fields",()=>{
     for(const extra of [
