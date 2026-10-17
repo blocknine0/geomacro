@@ -12,6 +12,7 @@ import {
 } from "./stateless-intelligence-model";
 import { euCommissionTopOriginalCandidates } from "./stateless-eu-original-index.server";
 import { australianNewsIndexCandidates, australianArticleMatchesOriginal } from "./stateless-australian-geoscience-original.server";
+import { australianResourcesIndexCandidates, verifyAustralianResourcesOriginalArticle } from "./stateless-au-resources-original.server";
 import { readPibMinesOriginalCandidates } from "./stateless-pib-mines-original.server";
 import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
 import { verifiedStatcanOriginalReleaseDay } from "./stateless-statcan-original.server";
@@ -109,6 +110,12 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_dbt_macro", category: "macro", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  // Australian Resources Minister first-party HTML media index, separate from
+  // the intermittently unreachable Industry Minister RSS; exact original
+  // publication day is independently checked against the matched article.
+  { id: "au_resources_macro_index", category: "macro", media: "html_index",
+    url: "https://www.minister.industry.gov.au/king/media?type=media_releases",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   // Natural Resources Canada's official news-release Atom feed (not a
   // search-engine snippet and not a dataset modification timestamp).
   { id: "nrcan_releases", category: "rare_earth", media: "atom",
@@ -128,6 +135,9 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   // Free derived observation only; this is NOT rights-certified commercial GRO.
   { id: "au_industry_minister", category: "rare_earth", media: "rss",
     url: "https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
+  { id: "au_resources_minerals_index", category: "rare_earth", media: "html_index",
+    url: "https://www.minister.industry.gov.au/king/media?type=media_releases",
     allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   { id: "uk_energy", category: "rare_earth", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
@@ -464,6 +474,46 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
     } catch { return { candidates: [], healthy: false }; }
   }
 
+  if ((source.id === "au_resources_macro_index" ||
+       source.id === "au_resources_minerals_index") &&
+      source.media === "html_index") {
+    try {
+      const response = await fetchWithoutRedirect(source.url, {
+        method: "GET", redirect: "error", cache: "no-store",
+        headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!response.ok) return failed(response.status >= 500 ? "http_5xx" : "http_4xx");
+      if (!/^text\/html(?:;|$)/iu.test(response.headers.get("content-type") ?? ""))
+        return failed("mime");
+      const html = await boundedText(response, 512 * 1024);
+      if (!html) return failed("body");
+      const indexed = australianResourcesIndexCandidates(html, source.category, now);
+      const verified = await Promise.all(indexed.map(async candidate => {
+        try {
+          const article = await fetchWithoutRedirect(candidate.articleUrl, {
+            method: "GET", redirect: "error", cache: "no-store",
+            headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
+          });
+          if (!article.ok ||
+              !/^text\/html(?:;|$)/iu.test(article.headers.get("content-type") ?? ""))
+            return null;
+          const text = await boundedText(article, 256 * 1024);
+          return text && verifyAustralianResourcesOriginalArticle(text, candidate, now)
+            ? candidate : null;
+        } catch { return null; }
+      }));
+      const accepted = verified.filter((x): x is StatelessSourceCandidate => x !== null);
+      return { healthy: true, candidates: accepted,
+        metrics: { seen: indexed.length, relevant: indexed.length,
+          original_link_valid: indexed.length, native_clock_valid: accepted.length,
+          undated_original: 0, recovered_original_page: accepted.length,
+          transport_ok: true },
+      };
+    } catch (error) {
+      const e = error instanceof Error ? error : null;
+      return failed(e?.name === "TimeoutError" || e?.name === "AbortError" ? "timeout" : "network");
+    }
+  }
   if (source.id === "au_geoscience" && source.media === "html_index") {
     try {
       const response = await fetchWithoutRedirect(source.url, {
