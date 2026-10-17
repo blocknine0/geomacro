@@ -7,6 +7,30 @@ const requests=[
  {question:"What is the latest EUR USD exchange rate?"},
 ];
 const assert=(test,code)=>{if(!test)throw Error(code);};
+// Independent product-scoped health must not spoof the older signed B2/D1
+// health response or accept a 200 based on source-retrieval time alone.
+const health=await fetch("https://geomacro.live/api/health?deep=1&profile=live-structured",{
+  method:"GET",redirect:"manual",signal:AbortSignal.timeout(20000),
+  headers:{Accept:"application/json"},
+});
+assert((health.headers.get("content-type")??"").includes("application/json"),
+ "LIVE_STRUCTURED_DEEP_HEALTH_NONJSON");
+const healthBody=await health.json();
+assert(healthBody.schema==="geomacro.product-scoped-deep-health.v1",
+ "LIVE_STRUCTURED_DEEP_HEALTH_SCHEMA");
+assert(healthBody.x402_payment_authorized===false&&
+ healthBody.fresh_signed_snapshot_readiness_attested===false&&
+ healthBody.legacy_signed_intelligence_gri_risk_indices==="NOT_EVALUATED_IN_THIS_PROFILE"&&
+ healthBody.new_intelligence_durable_storage_required===false,
+ "LIVE_STRUCTURED_DEEP_HEALTH_FALSE_SIGNED_OR_PAYMENT_PROMOTION");
+const healthStatuses=Object.fromEntries(["geopolitics","macro-fx","critical-minerals"]
+  .map(category=>[category,healthBody.categories?.[category]?.source_fetch_accepted===true]));
+console.log(JSON.stringify({check:"product_scoped_deep_health",
+ http_status:health.status,category_accepted:healthStatuses,
+ ready:health.status===200&&healthBody.ok===true,
+ signed_legacy_products_claimed:false,payment_attempted:false}));
+assert(health.status===200&&healthBody.ok===true&&
+ Object.values(healthStatuses).every(Boolean),"LIVE_STRUCTURED_DEEP_HEALTH_NOT_READY");
 const safe=(s)=>String(s??"").replace(/[^A-Z0-9_-]/giu,"").slice(0,90);
 const discovery=await fetch(host,{method:"GET",signal:AbortSignal.timeout(12000),redirect:"manual",
  headers:{Accept:"application/json"}});
