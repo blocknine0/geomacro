@@ -27,7 +27,10 @@ function normalize(text: string): string {
 function sentenceParts(text: string): string[] {
   const normalized = normalize(text);
   if (!normalized) return [];
-  return normalized.match(/[^.!?]+[.!?]?/g)?.map((part) => part.trim()).filter(Boolean) ?? [normalized];
+  // Split only after terminal punctuation followed by whitespace. Splitting
+  // at every literal dot corrupts exact decimals (4.2%, 83.333333 FX rate)
+  // and makes the "latest" direct answer materially wrong.
+  return normalized.split(/(?<=[.!?])\s+/u).map((part) => part.trim()).filter(Boolean);
 }
 
 function concise(text: string, maxSentences: number, maxChars: number): string {
