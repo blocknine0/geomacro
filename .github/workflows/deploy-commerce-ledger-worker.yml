@@ -12,6 +12,9 @@ on:
       - "scripts/ops/verify-commerce-ledger-worker.mjs"
       - "scripts/ops/verify-commerce-control-plane-worker.mjs"
       - "scripts/ops/verify-capability-prequote-ledger-no-funds.mjs"
+      - "scripts/ops/prepare-first-qualified-country-digest.ts"
+      - "src/lib/qualified-mcs-country-digest.server.ts"
+      - "src/lib/mcs-digest-source-identity.ts"
       - ".github/workflows/deploy-commerce-ledger-worker.yml"
 
 permissions:
@@ -39,7 +42,7 @@ jobs:
           node-version: '24'
 
       - name: Verify immutable WDI prequote worker contracts locally (no secrets, no funds)
-        run: node --test scripts/ops/verify-wdi-durable-ledger.test.mjs scripts/ops/verify-capability-durable-ledger.test.mjs
+        run: node --test scripts/ops/verify-wdi-durable-ledger.test.mjs scripts/ops/verify-capability-durable-ledger.test.mjs scripts/ops/verify-structural-candidate-vault.test.mjs
 
       - name: Require Cloudflare production deployment secrets
         env:
@@ -111,6 +114,32 @@ jobs:
           GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: node scripts/ops/verify-capability-prequote-ledger-no-funds.mjs
+
+      - name: Setup Bun for canonical source-qualified structural preparation
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+
+      - name: Install canonical locked dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Freeze genuine qualified digest and independently read exact private bytes (no B2 or funds)
+        env:
+          NODE_ENV: production
+          GEOMACRO_SUPABASE_RUNTIME_MODE: standby
+          GEOMACRO_FIRST_DIGEST_COUNTRY: CHN
+          GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: bun scripts/ops/prepare-first-qualified-country-digest.ts --freeze-private
+
+      - name: Keep sanitized genuine digest receipt only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: qualified-structural-private-vault-receipt
+          path: artifacts/first-qualified-structural-digest-receipt.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Confirm real-funds activation remains separate
         shell: bash

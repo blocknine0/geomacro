@@ -29,16 +29,30 @@ Success is cached in memory for ten minutes, failures for one minute, and
 concurrent reads share one original acquisition. Access denials are not retried
 or bypassed; there are at most two already-reviewed release IDs.
 
-The protected main workflow `First qualified country digest (no funds)`
-qualifies actual originals, runs the existing canonical availability and
-response assembler, and archives only a private derived customer-byte bundle
-and its private proof hashes. Every B2 operation uses the existing shared D1
-quota governor. Exact gzip restore and a second independent GET must reproduce
-the customer-byte SHA. Public Actions artifacts contain sanitized receipt
-metadata only, never raw input or unpaid customer bytes.
+The Commerce Ledger deploy workflow qualifies actual originals, runs the
+existing canonical availability and response assembler, and freezes exact
+customer bytes in the existing private Durable Object. The dedicated
+`geomacro_structural_candidate:prelaunch` namespace accepts only candidate
+freeze/readback actions. It creates no quote, payment, usage or settlement
+record. Price, country, plan, rights-receipt hash, exact original-file hash,
+native annual period, customer-byte SHA and canonical product hash are bound
+together. Two independent authenticated reads, exact replay and corrupted-byte
+denial must pass. Storage admission alone never verifies source-use rights;
+that remains the separately executed real-original qualifier's responsibility.
+
+Candidates expire after at most 24 hours and the native annual SLA. At most
+32 live candidates are retained; only expired nonpayment candidate records can
+be pruned. Payment, audit, usage and other vault records are never pruned here.
+
+The separate manual `First qualified country digest (no funds)` archive job
+retains the governed private B2 backup path. All B2 operations still require
+the shared D1 quota governor, exact gzip restore and second GET verification.
+B2 quota exhaustion remains a backup deficiency and is never relabeled as
+B2 recovery. Public Actions artifacts contain sanitized receipt metadata only,
+never raw input or unpaid customer bytes.
 
 An offline parser test is not genuine data acceptance. The real workflow must
-produce its positive sanitized receipt. A source-qualified archive is still
+produce its positive sanitized receipt. A source-qualified private vault is still
 not an issued payable offer: live merchant verification, immutable quote-vault
 integration, settlement, reconciliation, public production serving and explicit
 real-money authorization remain separate. Do not close the launch tracker from

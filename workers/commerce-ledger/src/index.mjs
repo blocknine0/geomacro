@@ -1,4 +1,5 @@
 import {assertCapabilityPrequote,CAPABILITY_PREQUOTE_LIMIT} from './capability-prequote.mjs';
+import {assertStructuralCandidate,STRUCTURAL_CANDIDATE_VERSION} from './structural-candidate.mjs';
 const PAYMENT_HASH_RE = /^[0-9a-f]{64}$/;
 const NAME_RE = /^[a-z0-9][a-z0-9_.-]{1,63}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -118,6 +119,8 @@ export class CommerceLedger {
       if (action === "wdi-prequote-readback") return json(await this.wdiPrequoteReadback(body));
       if (action === "capability-prequote-freeze") return json(await this.capabilityPrequoteFreeze(body));
       if (action === "capability-prequote-readback") return json(await this.capabilityPrequoteReadback(body));
+      if (action === "structural-candidate-freeze") return json(await this.structuralCandidateFreeze(body));
+      if (action === "structural-candidate-readback") return json(await this.structuralCandidateReadback(body));
       if (action === "claim") return json(await this.claim(body));
       if (action === "replay") return json(await this.deliveredReplay(body));
       if (action === "prepare") return json({ ok: await this.prepare(body) });
@@ -137,6 +140,39 @@ export class CommerceLedger {
   // Strictly separate from payment claims: this is a private, immutable,
   // pre-quote signed-answer byte freezer. It NEVER creates an x402 offer,
   // payment entitlement, claim token or a settlement record.
+  async structuralCandidateFreeze(body) {
+    const expiresAtMs=await assertStructuralCandidate(body.candidate,body.customerBytes,validateScope(body));
+    const item={candidate:body.candidate,customerBytes:body.customerBytes,expiresAtMs};
+    const key='structural-candidate:'+body.candidate.binding_hash;
+    return this.ctx.storage.transaction(async txn=>{
+      const existing=await txn.get(key);
+      if(existing){
+        if(JSON.stringify(existing)!==JSON.stringify(item))throw Error('STRUCTURAL_CANDIDATE_IMMUTABLE_CONFLICT');
+        return {ok:true,disposition:'EXACT_REPLAY',binding_hash:body.candidate.binding_hash};
+      }
+      const entries=await txn.list({prefix:'structural-candidate:',limit:33});
+      let retained=0;
+      for(const [expiredKey,value]of entries){
+        // These are expiring nonpayment candidates only. Never prune payment,
+        // settlement, usage, audit or other provider-vault records.
+        if(Number.isSafeInteger(value?.expiresAtMs)&&value.expiresAtMs<=Date.now())await txn.delete(expiredKey);
+        else retained++;
+      }
+      if(retained>=32)throw Error('STRUCTURAL_CANDIDATE_VAULT_FULL');
+      await txn.put(key,item);
+      return {ok:true,disposition:'FROZEN',binding_hash:body.candidate.binding_hash};
+    });
+  }
+
+  async structuralCandidateReadback(body) {
+    const hash=validateRequestFingerprint(body.bindingHash);
+    const value=await this.ctx.storage.get('structural-candidate:'+hash);
+    if(!value||value.candidate?.binding_hash!==hash)throw Error('STRUCTURAL_CANDIDATE_NOT_FOUND');
+    const expires=await assertStructuralCandidate(value.candidate,value.customerBytes,validateScope(body));
+    if(value.expiresAtMs!==expires)throw Error('STRUCTURAL_CANDIDATE_EXPIRY_CONFLICT');
+    return {ok:true,schema:STRUCTURAL_CANDIDATE_VERSION,...value,payment_authorized:false,settlement_attempted:false};
+  }
+
   async wdiPrequoteFreeze(body) {
     const hash = validateRequestFingerprint(body.bindingHash);
     const queryHash = validateRequestFingerprint(body.queryHash);
@@ -592,7 +628,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") {
-      return json({ ok: true, service: "geomacro-commerce-ledger", storage: "durable_objects_sqlite", capabilities: ["delivery", "usage_guard", "product_audit"], wdi_prequote_contract_version: "geomacro.wdi-prequote-worker.v1", wdi_prequote_available: true, capability_prequote_contract_version: "geomacro.capability-prequote-worker.v1", capability_prequote_available: true });
+      return json({ ok: true, service: "geomacro-commerce-ledger", storage: "durable_objects_sqlite", capabilities: ["delivery", "usage_guard", "product_audit"], wdi_prequote_contract_version: "geomacro.wdi-prequote-worker.v1", wdi_prequote_available: true, capability_prequote_contract_version: "geomacro.capability-prequote-worker.v1", capability_prequote_available: true, structural_candidate_contract_version: STRUCTURAL_CANDIDATE_VERSION });
     }
     const route = url.pathname.match(/^\/v1\/(delivery|usage|audit)\/([a-z-]+)$/);
     if (request.method !== "POST" || !route) {
@@ -611,6 +647,9 @@ export default {
       const stub = env.COMMERCE_LEDGER.get(id);
       const section = route[1];
       const routeAction = route[2];
+      if(scope.provider==='geomacro_structural_candidate'&&
+         (section!=='delivery'||!['structural-candidate-freeze','structural-candidate-readback'].includes(routeAction)))
+        return json({ok:false,error:'CANDIDATE_NAMESPACE_IS_NOT_PAYMENT'},400);
       const action = section === "delivery" ? routeAction : `${section}-${routeAction}`;
       return stub.fetch(`https://ledger.internal/${action}`, {
         method: "POST",

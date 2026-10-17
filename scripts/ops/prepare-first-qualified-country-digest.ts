@@ -9,11 +9,14 @@ import { loadQualifiedMcsCountryContext, MCS_DIGEST_CSV_SHA256, qualifiedMcsAcqu
   from "../../src/lib/qualified-mcs-country-digest.server";
 import { resolveGeomacroCapabilityPrice } from "../../src/lib/capability-pricing-catalog";
 import { createB2Client } from "./b2-s3-client.mjs";
+import { STRUCTURAL_CANDIDATE_VERSION, STRUCTURAL_CANDIDATE_SCOPE, structuralCandidateHash }
+  from "../../workers/commerce-ledger/src/structural-candidate.mjs";
 
 const sha = (v: string | Uint8Array) => createHash("sha256").update(v).digest("hex");
 const country = process.env.GEOMACRO_FIRST_DIGEST_COUNTRY ?? "CHN";
 if (!["USA", "CHN"].includes(country)) throw Error("FIRST_DIGEST_UNSUPPORTED_COUNTRY");
 const persist = process.argv.includes("--archive-private");
+const freezePrivate = process.argv.includes("--freeze-private");
 // Never load frozen DB/payment credentials or real-money ACKs for this operation.
 process.env.GEOMACRO_SUPABASE_RUNTIME_MODE = "standby";
 for (const name of ["SUPABASE_DB_URL", "SUPABASE_SERVICE_ROLE_KEY", "APP_SUPABASE_SERVICE_ROLE_KEY",
@@ -53,6 +56,59 @@ const bundle = canonicalJson({ schema: "geomacro.qualified-structural-delivery-c
   original_period_kind: "ANNUAL_NOT_CURRENT_NEWS", payment_authorized: false, settlement_verified: false });
 let archived = false;
 let key: string | null = null;
+let vaultVerified = false;
+let vaultBindingHash: string | null = null;
+let vaultExpiry: string | null = null;
+if (freezePrivate) {
+  const origin = (process.env.GEOMACRO_COMMERCE_LEDGER_URL ?? "").trim().replace(/\/$/u, "");
+  const token = (process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
+  const u = new URL(origin);
+  if (u.protocol !== "https:" || u.username || u.password || u.port || u.search || u.hash ||
+      u.pathname !== "/" || !u.hostname.startsWith("geomacro-commerce-ledger.") ||
+      !u.hostname.endsWith(".workers.dev") || token.length < 32)
+    throw Error("FIRST_DIGEST_PRIVATE_VAULT_CONFIG_REQUIRED");
+  const healthRes = await fetch(origin + "/health", { redirect: "manual", signal: AbortSignal.timeout(10_000) });
+  const health = await healthRes.json();
+  if (!healthRes.ok || health.storage !== "durable_objects_sqlite" ||
+      health.structural_candidate_contract_version !== STRUCTURAL_CANDIDATE_VERSION)
+    throw Error("FIRST_DIGEST_PRIVATE_VAULT_VERSION_UNVERIFIED");
+  const native = "2025-12-31T23:59:59.000Z";
+  const candidate = { schema: STRUCTURAL_CANDIDATE_VERSION, capability: "structural_country_digest",
+    variant: "standard", amount_atomic: "20000", country_iso3: country, topic: "critical_minerals",
+    request_hash: plan.query_plan_hash, answer_sha256: hash, source_file_sha256: MCS_DIGEST_CSV_SHA256,
+    rights_metadata_sha256: (provenance[0] as any).rights_metadata_sha256,
+    source_period_end: native, checked_at: checkedAt,
+    expires_at: new Date(Math.min(Date.parse(checkedAt) + 86400_000,
+      Date.parse(native) + 400 * 86400_000)).toISOString(), binding_hash: "" };
+  candidate.binding_hash = await structuralCandidateHash(candidate);
+  async function post(action: string, fields: Record<string, unknown>) {
+    const res = await fetch(origin + "/v1/delivery/" + action, { method: "POST", redirect: "manual",
+      headers: { authorization: "Bearer " + token, "content-type": "application/json" },
+      body: JSON.stringify({ ...STRUCTURAL_CANDIDATE_SCOPE, ...fields }), signal: AbortSignal.timeout(10_000) });
+    const body = await res.json().catch(() => null);
+    return { status: res.status, body };
+  }
+  const frozen = await post("structural-candidate-freeze", { candidate, customerBytes });
+  if (frozen.status !== 200 || frozen.body?.ok !== true ||
+      !["FROZEN", "EXACT_REPLAY"].includes(frozen.body?.disposition) ||
+      frozen.body?.binding_hash !== candidate.binding_hash)
+    throw Error("FIRST_DIGEST_PRIVATE_VAULT_FREEZE_REJECTED");
+  for (let i = 0; i < 2; i++) {
+    const readback = await post("structural-candidate-readback", { bindingHash: candidate.binding_hash });
+    if (readback.status !== 200 || readback.body?.ok !== true ||
+        readback.body?.customerBytes !== customerBytes || sha(readback.body.customerBytes) !== hash ||
+        canonicalJson(readback.body.candidate) !== canonicalJson(candidate) ||
+        readback.body.payment_authorized !== false || readback.body.settlement_attempted !== false)
+      throw Error("FIRST_DIGEST_PRIVATE_VAULT_EXACT_READBACK_FAILED");
+  }
+  const replay = await post("structural-candidate-freeze", { candidate, customerBytes });
+  if (replay.status !== 200 || replay.body?.disposition !== "EXACT_REPLAY")
+    throw Error("FIRST_DIGEST_PRIVATE_VAULT_REPLAY_FAILED");
+  const corrupt = await post("structural-candidate-freeze", { candidate, customerBytes: customerBytes + " " });
+  if (corrupt.status !== 409 || corrupt.body?.ok === true)
+    throw Error("FIRST_DIGEST_PRIVATE_VAULT_CORRUPT_BYTES_ACCEPTED");
+  vaultVerified = true; vaultBindingHash = candidate.binding_hash; vaultExpiry = candidate.expires_at;
+}
 if (persist) {
   if (process.env.B2_ACCOUNT_QUOTA_REQUIRED !== "1" || process.env.B2_REQUEST_BUDGET !== "8")
     throw Error("FIRST_DIGEST_GOVERNED_ARCHIVE_REQUIRED");
@@ -87,6 +143,9 @@ const receipt = { schema: "geomacro.first-qualified-structural-digest-receipt.v1
   canonical_engine_deliverable: true, prepared_customer_bytes_sha256: hash,
   prepared_customer_bytes_length: Buffer.byteLength(customerBytes),
   private_immutable_archive_verified: archived, private_archive_key: key,
+  private_immutable_delivery_bytes_verified: archived || vaultVerified,
+  private_candidate_vault_verified: vaultVerified, vault_binding_hash: vaultBindingHash,
+  vault_expires_at: vaultExpiry,
   query_plan_hash: plan.query_plan_hash, merchant_acceptance_verified: false,
   payable_offer_issued: false, settlement_attempts: 0, execution_authorized: false };
 await mkdir("artifacts", { recursive: true });

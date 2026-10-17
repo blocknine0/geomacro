@@ -56,7 +56,7 @@ jobs:
           node-version: '24'
 
       - name: Native Circle Facilitator verification (offline, no funds)
-        run: node --test scripts/lib/circle-facilitator-verification.test.mjs
+        run: node --test scripts/lib/circle-facilitator-verification.test.mjs scripts/ops/verify-structural-candidate-vault.test.mjs
 
       - name: Supabase-free verified Intelligence publication contract (no network or funds)
         run: |

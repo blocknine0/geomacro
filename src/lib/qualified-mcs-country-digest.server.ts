@@ -6,8 +6,8 @@ import type { SourceRightsRow } from "./commercial-source-eligibility.server";
 
 // A scoped, published CC0 dataset, never blanket authorization for USGS news,
 // pictures, another dataset, a new CSV revision, or the legacy usgs_mcs ID.
-export const MCS_DIGEST_SOURCE_ID = "usgs_mcs_2026_cc0_582a0aa231ae";
-export const MCS_DIGEST_CSV_SHA256 = "582a0aa231aea53d8a97dc8d1cd3dfa5f885cf3760353e3d029d7f0ae4fbaaf5";
+import { MCS_DIGEST_SOURCE_ID, MCS_DIGEST_CSV_SHA256 } from "./mcs-digest-source-identity";
+export { MCS_DIGEST_SOURCE_ID, MCS_DIGEST_CSV_SHA256 } from "./mcs-digest-source-identity";
 const DOI = "10.5066/p1wkq63t";
 const ITEM = "696a75d5d4be0228872d3bf8";
 const ITEMS = ["69837e43b66b01367d7ec7c7", ITEM];
