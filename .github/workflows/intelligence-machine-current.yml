@@ -1,0 +1,137 @@
+name: Machine Dual-Authority Intelligence Publication
+
+# Input must contain real independently facts/rights signed event packages.
+# Manual, immutable private B2 handoff only. No signing or key creation here.
+on:
+  workflow_dispatch:
+    inputs:
+      machine_b2_key:
+        description: "Immutable private machine-intelligence-current/<sha256>.json key"
+        required: true
+        type: string
+      machine_b2_sha256:
+        description: "Independently supplied exact dual-signed input SHA256"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-machine-intelligence-b2-d1
+  cancel-in-progress: false
+
+jobs:
+  verified-publication:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: production
+    env:
+      EXPECTED_SHA: ${{ github.sha }}
+      MACHINE_B2_KEY: ${{ inputs.machine_b2_key }}
+      MACHINE_B2_SHA256: ${{ inputs.machine_b2_sha256 }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: intelligence_machine_publication
+      B2_REQUEST_BUDGET: "12"
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+    steps:
+      - name: Checkout exact canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Require immutable main and Supabase/payment freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SHA" = "$(git rev-parse HEAD)"
+          for key in SUPABASE_DB_URL SUPABASE_URL APP_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_SERVICE_ROLE_KEY COINBASE_API_KEY COINBASE_COMMERCE_API_KEY; do
+            test -z "$(printenv "$key" || true)" || { echo "::error::DATA_OR_PAYMENT_CREDENTIAL_FORBIDDEN"; exit 2; }
+          done
+
+      - name: Resolve shared D1 quota governor before any private B2 GET
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$B2_ACCOUNT_QUOTA_REQUIRED" = "1"
+          test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+          json="$(npx -y wrangler@4.136.3 d1 list --json)"
+          id="$(printf '%s' "$json" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{const r=JSON.parse(s).find(v=>v.name==="geomacro-control-plane");process.stdout.write(r?.uuid??r?.id??"")})')"
+          test -n "$id" || { echo "::error::D1_QUOTA_GOVERNOR_MISSING"; exit 2; }
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+
+      - name: Validate distinct approved machine authorities and input pin before B2
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun --eval '
+            import {machineCommercialAuthorityConfigurationValid} from "./src/lib/geomacro-machine-commercial-qualification.server.ts";
+            const pin=process.env.MACHINE_B2_SHA256??"";
+            const key=process.env.MACHINE_B2_KEY??"";
+            if(!/^[a-f0-9]{64}$/.test(pin)||
+               key!==`geomacro-evidence/v1/private/machine-intelligence-current/${pin}.json`||
+               !machineCommercialAuthorityConfigurationValid())
+              throw Error("MACHINE_INTELLIGENCE_AUTHORITY_OR_PIN_INVALID");
+          '
+
+      - name: Read independently pinned dual-signed input from quota-governed B2
+        # Separate processes must not each reset the full per-job allowance.
+        # 4 input-read attempts + 8 publication attempts = at most 12 total.
+        env:
+          B2_REQUEST_BUDGET: "4"
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p artifacts/private-machine-intelligence
+          bun --eval '
+            import {writeFileSync} from "node:fs";
+            import {createHash} from "node:crypto";
+            import {createB2Client} from "./scripts/ops/b2-s3-client.mjs";
+            const b2=createB2Client({
+              endpointUrl:"https://s3.us-east-005.backblazeb2.com",
+              bucket:"geomacro-private-archive",accessKey:process.env.B2_KEY_ID,
+              secretKey:process.env.B2_APPLICATION_KEY});
+            const bytes=Buffer.from(await b2.get(process.env.MACHINE_B2_KEY));
+            if(bytes.length<100||bytes.length>2*1024*1024||
+               createHash("sha256").update(bytes).digest("hex")!==process.env.MACHINE_B2_SHA256)
+              throw Error("MACHINE_INTELLIGENCE_B2_READBACK_MISMATCH");
+            writeFileSync("artifacts/private-machine-intelligence/input.json",bytes,{flag:"wx",mode:0o600});
+          '
+          echo "GEOMACRO_QUALIFIED_INTELLIGENCE_INPUT=artifacts/private-machine-intelligence/input.json" >> "$GITHUB_ENV"
+          echo "GEOMACRO_QUALIFIED_INTELLIGENCE_SHA256=$MACHINE_B2_SHA256" >> "$GITHUB_ENV"
+
+      - name: Publish signed current Intelligence and verify independent public D1 readback
+        env:
+          B2_REQUEST_BUDGET: "8"
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/publish-machine-public-intelligence.mjs --verified-publication > /tmp/intelligence-publication-receipt.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {verifyPublishedIntelligenceReadback} from './scripts/lib/published-intelligence-readback.mjs';
+          const receipt=JSON.parse(readFileSync('/tmp/intelligence-publication-receipt.json','utf8'));
+          console.log(JSON.stringify(await verifyPublishedIntelligenceReadback(receipt)));
+          NODE

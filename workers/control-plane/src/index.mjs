@@ -1,3 +1,4 @@
+import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 import { readDerivedStories, publishDerivedStories, renderDerivedStoriesHtml } from "./website-derived-intelligence.mjs";
@@ -613,8 +614,6 @@ function validDerivedIntelligencePayload(value,now,maximumOriginalAgeMs) {
 }
 
 // Two independent reviewed original publishers, NOT GDELT index timestamps.
-const INDEPENDENT_ORIGINALS_SOURCE_ID="qualified_independent_original_publishers_v1";
-const INDEPENDENT_ORIGINALS_EVIDENCE_CONTRACT="geomacro.qualified-original-event-claims.v1";
 
 export function validateHotSnapshot(body, product, now = Date.now()) {
   const config = HOT_SNAPSHOT_PRODUCTS[product];
@@ -635,7 +634,7 @@ export function validateHotSnapshot(body, product, now = Date.now()) {
     proof.schema === GLOBAL_RISK_CURRENT_PROOF_SCHEMA &&
     proof.verification_mode === GLOBAL_RISK_CURRENT_PROOF_MODE;
   const directB2 =
-    proof.schema === config.proofSchema &&
+    (proof.schema === config.proofSchema || product === "intelligence" && isIntelligenceProofSchema(proof.schema)) &&
     proof.live_key === config.b2Key &&
     HASH_RE.test(String(proof.compressed_sha256 ?? "")) &&
     proof.full_b2_readback_verified === true &&
@@ -647,8 +646,7 @@ export function validateHotSnapshot(body, product, now = Date.now()) {
     proof.live_key !== config.b2Key ||
     proof.generated_at !== generatedAt ||
     (product === "intelligence" && (
-      proof.current_source_id !== INDEPENDENT_ORIGINALS_SOURCE_ID ||
-      proof.current_evidence_contract !== INDEPENDENT_ORIGINALS_EVIDENCE_CONTRACT
+      !isIntelligenceSourceContract(proof)
     )) ||
     (product !== "intelligence" && (
       proof.snapshot_id !== value.data?.snapshotId ||
@@ -703,6 +701,13 @@ export function validateHotSnapshot(body, product, now = Date.now()) {
     }
   }
 
+  let qualifiedUntil = sourceAsOfMs + config.maxAgeMs;
+  if(product === "intelligence" && proof.schema === MACHINE_INTELLIGENCE_PROOF_SCHEMA) {
+    const deadline=Date.parse(String(proof.qualified_until ?? ""));
+    if(!Number.isFinite(deadline)||deadline<=now||deadline>now+60*60_000)
+      throw Error("HOT_SNAPSHOT_MACHINE_QUALIFICATION_EXPIRED");
+    qualifiedUntil=Math.min(qualifiedUntil,deadline);
+  }
   const sourceRunId = boundedText(body.source_run_id, 32);
   if (!/^\d{1,20}$/.test(sourceRunId)) throw new Error("INVALID_HOT_SNAPSHOT_RUN_ID");
   const payloadSha256 = String(body.payload_sha256 ?? "").trim().toLowerCase();
@@ -712,11 +717,11 @@ export function validateHotSnapshot(body, product, now = Date.now()) {
     schema: config.schema,
     generatedAt,
     sourceAsOf,
-    expiresAt: new Date(sourceAsOfMs + config.maxAgeMs).toISOString(),
+    expiresAt: new Date(qualifiedUntil).toISOString(),
     b2Key: config.b2Key,
     b2Sha256: globalRiskRecovery ? String(proof.baseline_b2_sha256) : String(proof.compressed_sha256),
     payloadSha256,
-    proofSchema: globalRiskRecovery ? GLOBAL_RISK_CURRENT_PROOF_SCHEMA : config.proofSchema,
+    proofSchema: globalRiskRecovery ? GLOBAL_RISK_CURRENT_PROOF_SCHEMA : proof.schema,
     verificationMode: globalRiskRecovery ? GLOBAL_RISK_CURRENT_PROOF_MODE : "direct-b2-readback",
     baselinePayloadSha256: globalRiskRecovery ? String(proof.baseline_payload_sha256) : payloadSha256,
     baselineSourceRunId: globalRiskRecovery ? String(proof.baseline_source_run_id) : sourceRunId,
@@ -898,6 +903,7 @@ async function getPublicHotSnapshot(env, product, now = Date.now()) {
       row.schema_name !== config.schema ||
       !(
         row.proof_schema === config.proofSchema ||
+        product === "intelligence" && isIntelligenceProofSchema(row.proof_schema) ||
         product === "global-risk" && row.proof_schema === GLOBAL_RISK_CURRENT_PROOF_SCHEMA
       ) ||
       row.b2_object_key !== config.b2Key ||

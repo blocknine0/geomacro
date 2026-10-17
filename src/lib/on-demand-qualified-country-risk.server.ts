@@ -78,7 +78,7 @@ function timestamp(value: unknown, clock: number): number {
   return date;
 }
 
-function validatedSnapshot(
+export function validatedSnapshot(
   input: OnDemandCountryScoringInput,
   now: Date,
 ): { evidence: CountryRiskEventInput[]; sha256: string; eventIds: string[] } {
