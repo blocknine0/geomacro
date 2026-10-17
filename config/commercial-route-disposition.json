@@ -244,6 +244,10 @@
     "/api/v1/agent": {
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/v1/intelligence/live-structured": {
+      "classification": "EXPERIMENTAL",
+      "status": "FREE_NO_FUNDS_UNSCORED_SOURCE_OBSERVATIONS"
     }
   }
 }

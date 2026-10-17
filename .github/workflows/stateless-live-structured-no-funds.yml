@@ -1,0 +1,23 @@
+name: Stateless Live Structured No-Funds Acceptance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-stateless-live-no-funds
+  cancel-in-progress: false
+
+jobs:
+  outside-in:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check real stateless provider responses with no funds
+        run: node scripts/ops/verify-live-structured-no-funds.mjs
