@@ -1,0 +1,10 @@
+# Ask Geomacro — exact public numerical research lane
+
+As of October 17, 2026, the Ask orchestrator can fetch outside Geomacro storage from **two deliberately finite official providers**. This is an on-demand, source-period-bound public research mode; no payment, Supabase activation, risk score, signing or raw bulk redistribution.
+
+- **World Bank WDI** source 2, keyless API, exact indicators `FP.CPI.TOTL.ZG` annual CPI inflation and `NY.GDP.MKTP.KD.ZG` annual real GDP growth. Only one exact ISO3 country and indicator may be selected. Source=2, indicator, country identity, numeric finiteness and actual year must match. Latest annual data is not latest monthly CPI. Display the year, value, annual percentage-point movement if prior available, check time and required World Bank CC BY 4.0 attribution.
+- **ECB EXR** D.CCY.EUR.SP00.A official daily reference data from the keyless ECB API. Only explicit two-uppercase-currency pairs drawn from an approved finite set may be queried. For crosses, intersect two released series by the SAME date, then compute derived quote/base; no fictional direct quote, live tick or executable price. Display reference date and required ECB attribution.
+- Bounded HTTPS-only no-redirect 6s requests, 256KiB cap, finite currency/series identifiers, in-flight dedupe and two-minute in-process answer cache. No upstream source URLs, raw datasets or untrusted narrative to public JSON.
+- Explicit numerical questions fail closed on empty result or upstream failures instead of falling through to indexed-news headlines. Other questions keep the existing governed Ask and original-release routes.
+- This does **not** make every country have a current monthly CPI, 195-country FX quote, global live tick feed, autonomous LLM reasoning, or external provider reliability guarantee. National statistical-release adapters require separate exact native series mapping and official confirmation.
+- Real website deployment is separately gated by exact-SHA publication and outside-in checks; PR CI alone is not production proof.

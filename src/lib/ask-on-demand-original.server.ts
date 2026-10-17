@@ -44,7 +44,7 @@ function countrySpans(question:string,country:Country195):CountrySpan[]{
   }
   return spans;
 }
-function resolveCountry(question:string):Country195|null{
+export function resolveAskCountry(question:string):Country195|null{
   const spans=COUNTRIES_195.flatMap(country=>countrySpans(question,country));
   // "South Sudan" must not incorrectly be treated as two countries simply
   // because "Sudan" is a contained substring. Disjoint mentions are ambiguous.
@@ -67,7 +67,7 @@ function ageSeconds(question:string):number {
  * unsupported numeric value. Only fixed identifiers reach providers. */
 export function planAskOriginalQuestion(question:string):AskOriginalPlan|null {
   if(!question || question.length>300 || !CURRENT.test(question) || NUMERIC.test(question))return null;
-  const country=resolveCountry(question);
+  const country=resolveAskCountry(question);
   if(!country)return null;
   const detected=DOMAINS.filter(row=>row.pattern.test(question)).map(row=>row.domain);
   const categories:OnDemandCategory[]=detected.length?detected:["geopolitics","macro","rare_earth"];
