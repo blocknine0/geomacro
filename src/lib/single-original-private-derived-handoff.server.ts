@@ -68,7 +68,7 @@ export async function preparePrivateSingleOriginalFactualHandoff({
     dual_authority_proof_sha256:qualified.proof_sha256,
     qualified_until:qualified.qualified_until,
     original_source_count:1 as const,
-    independent_corrobation_verified:false as const,
+    independent_corroboration_verified:false as const,
     independently_scored_risk:false as const,
     severity:null,
     score:null,
