@@ -15,9 +15,9 @@
 | intelligence_query | focused | 0.05 | One subject/topic: answer status/headline, what changed/why, versioned state, freshness, product hash and limitations. |
 | intelligence_query | standard | 0.10 | One subject with up to three topics: derived answer, current state, qualified modules, relevant developments, methodology and uncertainty. |
 | intelligence_query | complex_multi_source | 0.15 | Qualified multi-topic/multi-subject/cross-domain analysis, comparison/ranking under a verified plan, relevant developments and cross-domain effects when proven. Risk Gate not silently included. |
-| signed_risk_object | existing_valid_signed | 0.05 | Existing unexpired GRO subject, score, risk label/direction, confidence, attributed drivers, evidence summary, methodology, timestamps and Ed25519 proof. |
-| signed_risk_object | newly_qualified_signed | 0.10 | Same canonical fields with genuine newly qualified evidence, new GRO signature and readback. |
-| risk_gate_bundle | existing_proof_preflight | 0.10 | One bounded policy/readiness decision using existing signed proof, reasoned preflight and no transaction execution. GRO proof included. |
+| signed_risk_object | existing_valid_signed | 0.05 | Existing unexpired GRO subject, score, risk label/direction, confidence, attributed drivers, evidence summary, methodology, timestamps and signed-object integrity metadata (signature-byte verification is separate). |
+| signed_risk_object | newly_qualified_signed | 0.10 | Same canonical attestation fields from genuine newly qualified evidence; signing and exact readback must pass separately. |
+| risk_gate_bundle | existing_proof_preflight | 0.10 | One bounded policy/readiness decision using existing verified signed proof, reasoned preflight and no transaction execution. GRO proof included. |
 | risk_gate_bundle | standard | 0.15 | One verified policy evaluation and its GRO, evidence context, disposition/reasons and proof; no separate GRO fee. |
 | risk_gate_bundle | complex_multi_source | 0.25 | More detailed governed multi-source risk-gate assessment plus signed GRO, justified drivers and conditional cross-domain effects; no execution. |
 
