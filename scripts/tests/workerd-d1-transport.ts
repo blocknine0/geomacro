@@ -29,6 +29,7 @@ try{
  const response=await fetch('http://127.0.0.1:'+port,{signal:AbortSignal.timeout(15000)});
  assert.equal(response.status,200,(await response.clone().text())+' '+logs);
  const result=await response.json();
- assert.deepEqual(result,{old_mode_rejected:true,security:{ok:true,schema:'geomacro.central-security-budget.v1',store:'d1',route_class:'api_write',allowed:true,retry_after_seconds:60},finds_status:200,finds_batches:3,redirects_rejected:9,upstream:{requests:11,escaped:0}});
+ assert.deepEqual(result,{old_mode_rejected:true,security:{ok:true,schema:'geomacro.central-security-budget.v1',store:'d1',route_class:'api_write',allowed:true,retry_after_seconds:60},finds_status:200,finds_batches:3,cards_status:200,cards_count:1,redirects_rejected:9,upstream:{requests:12,escaped:0}});
  console.log('WORKERD_D1_SECURITY_FINDS_AND_REDIRECT_ISOLATION_VERIFIED');
+ console.log('WORKERD_PUBLIC_FIND_CARD_FEED_VERIFIED');
 }finally{child?.kill();await rm(directory,{recursive:true,force:true});}
