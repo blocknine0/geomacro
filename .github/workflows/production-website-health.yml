@@ -120,6 +120,9 @@ jobs:
           PY
 
       - name: Verify live build marker matches canonical main
+        # Independent outside-in diagnostic: preserve fail-closed job status,
+        # but do not hide this failure when an earlier release gate is red.
+        if: ${{ !cancelled() }}
         env:
           EXPECTED_SHA: ${{ github.sha }}
         shell: bash
@@ -131,7 +134,7 @@ jobs:
           matched=false
           last_code=""
           last_observed="missing"
-          for attempt in $(seq 1 40); do
+          for attempt in $(seq 1 8); do
             last_code="$(curl -L --retry 2 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL/.well-known/geomacro-build.json" || true)"
             if [[ "$last_code" == "200" ]]; then
               if node - "$body" <<'NODE'
@@ -158,19 +161,22 @@ jobs:
                 last_observed="$(node -e 'const fs=require("fs");try{const b=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(b?.canonical_main_sha||"missing"))}catch{process.stdout.write("invalid")}' "$body")"
               fi
             fi
-            if [[ "$attempt" -lt 40 ]]; then
-              echo "Waiting for production deployment SHA: attempt $attempt/40 expected=$EXPECTED_SHA observed=$last_observed http=$last_code"
+            if [[ "$attempt" -lt 8 ]]; then
+              echo "Waiting for production deployment SHA: attempt $attempt/8 expected=$EXPECTED_SHA observed=$last_observed http=$last_code"
               sleep 15
             fi
           done
           if [[ "$matched" != "true" ]]; then
             cat "$body" || true
-            echo "::error title=Live deployment SHA mismatch::LIVE_DEPLOYMENT_SHA_MISMATCH:expected=$EXPECTED_SHA:observed=$last_observed:http=$last_code"
+            echo "::error title=Lovable Publish required or incomplete::LIVE_DEPLOYMENT_SHA_MISMATCH:expected=$EXPECTED_SHA:observed=$last_observed:http=$last_code; mirror source parity alone is not a deployed site"
             exit 1
           fi
           echo "PASS: live build marker matches exact canonical main $EXPECTED_SHA."
 
       - name: Verify Lovable mirror source parity
+        # Independent outside-in diagnostic: preserve fail-closed job status,
+        # but do not hide this failure when an earlier release gate is red.
+        if: ${{ !cancelled() }}
         env:
           EXPECTED_SHA: ${{ github.sha }}
           GH_TOKEN: ${{ secrets.LOVABLE_MIRROR_TOKEN }}
@@ -183,7 +189,7 @@ jobs:
           fi
           matched=false
           observed="missing"
-          for attempt in $(seq 1 40); do
+          for attempt in $(seq 1 8); do
             encoded="$(gh api 'repos/blocknine0/geomacro-160c8e56/contents/.geomacro-canonical-main?ref=main' --jq '.content' 2>/dev/null || true)"
             if [[ -n "$encoded" ]]; then
               observed="$(printf '%s' "$encoded" | tr -d '\n' | base64 --decode 2>/dev/null | tr -d '\r\n' || true)"
@@ -192,8 +198,8 @@ jobs:
               matched=true
               break
             fi
-            if [[ "$attempt" -lt 40 ]]; then
-              echo "Waiting for Lovable mirror parity: attempt $attempt/40 expected=$EXPECTED_SHA observed=${observed:-missing}"
+            if [[ "$attempt" -lt 8 ]]; then
+              echo "Waiting for Lovable mirror parity: attempt $attempt/8 expected=$EXPECTED_SHA observed=${observed:-missing}"
               sleep 15
             fi
           done
@@ -206,6 +212,9 @@ jobs:
           echo "PASS: Lovable mirror source marker matches exact canonical main $EXPECTED_SHA."
 
       - name: Verify B2 production serving health
+        # Independent outside-in diagnostic: preserve fail-closed job status,
+        # but do not hide this failure when an earlier release gate is red.
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -euo pipefail
@@ -234,6 +243,9 @@ jobs:
           done
 
       - name: Verify live D1 control plane and fail-closed auth
+        # Independent outside-in diagnostic: preserve fail-closed job status,
+        # but do not hide this failure when an earlier release gate is red.
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -euo pipefail
@@ -273,6 +285,9 @@ jobs:
           echo "PASS: D1 serving is healthy and unauthenticated state mutation fails closed."
 
       - name: Verify production alignment contract
+        # Independent outside-in diagnostic: preserve fail-closed job status,
+        # but do not hide this failure when an earlier release gate is red.
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -euo pipefail
@@ -296,6 +311,9 @@ jobs:
           done
 
       - name: Verify independent Global Risk and Risk Indices edges
+        # Independent outside-in diagnostic: preserve fail-closed job status,
+        # but do not hide this failure when an earlier release gate is red.
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -euo pipefail
@@ -333,6 +351,9 @@ jobs:
           fi
 
       - name: Verify public production APIs and current Intelligence contract
+        # Independent outside-in diagnostic: preserve fail-closed job status,
+        # but do not hide this failure when an earlier release gate is red.
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -euo pipefail
@@ -753,6 +774,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Verify free homepage, Ask and D1-derived Finds without credentials
+        # Independent outside-in diagnostic: preserve fail-closed job status,
+        # but do not hide this failure when an earlier release gate is red.
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -euo pipefail
