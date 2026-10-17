@@ -12,24 +12,13 @@ import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
  * canonical data or x402 payment facilitator is production-ready.
  * https://developers.circle.com/facilitator-service/supported-networks
  */
-export const GEOMACRO_USDC_NETWORKS=Object.freeze({
-  base:Object.freeze({
-    id:"base",name:"Base",chain_id:8453,caip2:"eip155:8453",
-    asset:"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-    asset_symbol:"USDC",decimals:6,facilitator:"circle_facilitator_service",
-  }),
-  arc:Object.freeze({
-    id:"arc",name:"Arc",chain_id:5042,caip2:"eip155:5042",
-    asset:"0x3600000000000000000000000000000000000000",
-    asset_symbol:"USDC",decimals:6,facilitator:"circle_facilitator_service",
-  }),
-  polygon:Object.freeze({
-    id:"polygon",name:"Polygon PoS",chain_id:137,caip2:"eip155:137",
-    asset:"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
-    asset_symbol:"USDC",decimals:6,facilitator:"circle_facilitator_service",
-  }),
-} as const);
-export type GeomacroUsdcNetwork=keyof typeof GEOMACRO_USDC_NETWORKS;
+export {GEOMACRO_USDC_NATIVE_RAILS as GEOMACRO_USDC_NETWORKS}
+  from "./usdc-native-rail-identities";
+import {GEOMACRO_USDC_NATIVE_RAILS as GEOMACRO_USDC_NETWORKS}
+  from "./usdc-native-rail-identities";
+export type {GeomacroUsdcNetwork} from "./usdc-native-rail-identities";
+import type {GeomacroUsdcNetwork} from "./usdc-native-rail-identities";
+
 export const GEOMACRO_USDC_NETWORKS_PATH="/api/v1/payments/networks" as const;
 export const GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH="/api/v1/payments/preflight" as const;
 export const GEOMACRO_USDC_RAIL_SCHEMA="geomacro.usdc-rails.v1" as const;
