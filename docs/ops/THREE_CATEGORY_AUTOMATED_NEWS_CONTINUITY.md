@@ -117,3 +117,25 @@ The website copy is under its own approved baseline lock; it may still say a
 previous polling interval until a separately approved hosting publication.
 GitHub Actions actual run evidence and D1 signed/public readbacks, not that
 older UI text, determine the authoritative scheduled-news state.
+
+## Confirmed upstream degradation and bounded first-party recovery
+
+The first hourly post-merge D1 publisher run (2026-10-17T15:19Z) reported
+11/11 healthy Geopolitics feeds, 15/18 healthy Macro feeds, and 11/13 healthy
+Critical Minerals feeds. The three Macro failures correspond to BLS RSS lanes
+and returned HTTP 4xx. An HTTP access refusal is NOT retried using another
+identity or third-party proxy, and cannot honestly be called a working source.
+Existing other official Macro feeds continue to supply eligible originals.
+The Australian minister RSS source gets one *same-origin, fixed-URL* retry
+only after a real timeout, never after HTTP 403/429/500 or a redirect. The IEA
+critical-minerals index now reports HTTP refusal, invalid MIME, empty body,
+timeout and other network exceptions separately, rather than silently
+returning an unexplained unavailable result. All native release dates, 15-minute
+website embargo, D1-only derived persistence, source rights and x402
+restrictions are unchanged.
+
+External source availability cannot be guaranteed permanently by our code.
+If a first-party source requires provider authorization or rejects automated
+access, obtain provider approval or activate a separately verified permitted
+first-party alternative. Never silently replace the source with a scraped
+copy or label an inaccessible feed as healthy.
