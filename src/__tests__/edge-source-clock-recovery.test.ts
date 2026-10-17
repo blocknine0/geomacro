@@ -1,7 +1,7 @@
 import {describe,expect,it} from "vitest";
 import {readFileSync} from "node:fs";
 import {
- originalSourceIsCurrent,intelligenceOriginalSourceTime,validatedCachedLiveResponse,
+ originalSourceIsCurrent,intelligenceOriginalSourceTime,validatedCachedLiveResponse,liveEdgeCacheControl,
 } from "../../workers/shared/current-source-clock.mjs";
 import {assessExistingIndicesBeforeCodeDeploy} from "../../scripts/ops/assess-risk-indices-code-deploy.mjs";
 
@@ -30,6 +30,13 @@ describe("real original-source freshness across B2, POP cache and deployments",(
   expect(originalSourceIsCurrent(iso(120),NOW)).toBe(false);
   expect(originalSourceIsCurrent(iso(-6),NOW)).toBe(false);
   expect(originalSourceIsCurrent(null,NOW)).toBe(false);
+ });
+ it("clamps CDN/cache lifetime to the native original and never uses stale-if-error",()=>{
+   expect(liveEdgeCacheControl(iso(2),NOW)).toBe("public, max-age=30");
+   expect(liveEdgeCacheControl(iso(59.75),NOW)).toBe("public, max-age=14");
+   expect(liveEdgeCacheControl(iso(75),NOW)).toBe("no-store");
+   expect(liveEdgeCacheControl(iso(-7),NOW)).toBe("no-store");
+   expect(liveEdgeCacheControl(iso(2),NOW)).not.toContain("stale");
  });
  it("rejects cached 200 stale or unverifiable even where B2 hash was historically valid",async()=>{
   for(const product of ["intelligence","global-risk","risk-indices"]){
