@@ -303,18 +303,32 @@ export async function fetchFirstPartyOriginalFeed(
   source: StatelessSourceSpec,
   fetchImpl: typeof fetch = fetch,
 ): Promise<Response> {
-  const accepted = source.media === "rss"
-    ? "application/rss+xml, application/xml, text/xml"
-    : "application/atom+xml, application/xml, text/xml";
+  // Use the exact publicly verified BLS native Atom negotiation already
+  // exercised by bls-atom-native-readonly-acceptance.yml. BLS emits Atom
+  // from its .rss addresses; avoid generic content negotiation that can 406.
+  const accepted = ["bls_cpi","bls_employment","bls_external_prices"].includes(source.id)
+    ? "application/atom+xml,application/xml;q=0.9"
+    : source.media === "rss"
+      ? "application/rss+xml, application/xml, text/xml"
+      : "application/atom+xml, application/xml, text/xml";
   let target = source.url;
   for (let hop = 0; hop <= 2; hop++) {
-    const response = await fetchImpl(target, {
+    // The Australian minister feed has intermittent transport timeouts.
+    // Retry once ONLY on a real timeout from this fixed first-party feed:
+    // never retry a 403/429, redirect, bad body or a user-controlled URL.
+    const request = () => fetchImpl(target, {
       method: "GET", redirect: "manual", cache: "no-store",
       headers: { Accept: accepted },
-      // Cloudflare workerd does not support redirect:"error"; manual never
-      // follows a 3xx. Permit ONE bounded 8-second first-party request.
       signal: AbortSignal.timeout(source.id === "au_industry_minister" ? 8_000 : TIMEOUT_MS),
     });
+    let response: Response;
+    try { response = await request(); }
+    catch (error) {
+      const name=error instanceof Error?error.name:"";
+      if(source.id!=="au_industry_minister" || hop!==0 ||
+         name!=="TimeoutError") throw error;
+      response = await request();
+    }
     if (![301, 302, 307, 308].includes(response.status)) return response;
     // Unrelated providers are never granted a new redirect privilege.
     if (source.id !== "nrcan_science" || hop === 2) return response;
@@ -364,6 +378,12 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   candidates: StatelessSourceCandidate[]; healthy: boolean;
   metrics?: LaneMetrics;
 }> {
+  const failed = (kind: NonNullable<LaneMetrics["transport_failure_class"]>) => ({
+    candidates: [] as StatelessSourceCandidate[], healthy: false,
+    metrics: { seen: 0, relevant: 0, original_link_valid: 0,
+      native_clock_valid: 0, undated_original: 0, recovered_original_page: 0,
+      transport_ok: false, transport_failure_class: kind } satisfies LaneMetrics,
+  });
   if(source.id==='govuk_global_economy'||source.id==='govuk_global_minerals'){
     try{
       const response=await fetchWithoutRedirect(source.url,{redirect:'error',headers:{Accept:'application/json'},signal:AbortSignal.timeout(TIMEOUT_MS)});
@@ -387,7 +407,10 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   if(source.id==='iea_minerals_global'){
     try{
       const response=await fetchWithoutRedirect(source.url,{redirect:'error',headers:{Accept:'text/html'},signal:AbortSignal.timeout(TIMEOUT_MS)});
-      const html=await boundedText(response,MAX_FEED_BYTES);if(!html)return {candidates:[],healthy:false};
+      if(!response.ok)return failed(response.status>=500?'http_5xx':'http_4xx');
+      if(!/^text\/html(?:;|$)/iu.test(response.headers.get('content-type')??''))return failed('mime');
+      const html=await boundedText(response,MAX_FEED_BYTES);
+      if(!html)return failed('body');
       const indexed=ieaMineralsIndexCandidates(html).slice(0,2);
       const rows=await Promise.all(indexed.map(async(candidate:{title:string;articleUrl:string})=>{
         try{
@@ -399,7 +422,10 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       }));
       const candidates=rows.filter((x):x is StatelessSourceCandidate=>x!==null);
       return {healthy:true,candidates,metrics:{seen:indexed.length,relevant:indexed.length,original_link_valid:indexed.length,native_clock_valid:candidates.length,undated_original:0,recovered_original_page:candidates.length,transport_ok:true}};
-    }catch{return {candidates:[],healthy:false};}
+    }catch(error){
+      const e=error instanceof Error?error:null;
+      return failed(e?.name==="TimeoutError"||e?.name==="AbortError"?"timeout":"network");
+    }
   }
   if(source.id === "in_pib_mines" && source.media === "html_index"){
     const release=await readPibMinesOriginalCandidates(now);
@@ -431,12 +457,7 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       };
     } catch { return { candidates: [], healthy: false }; }
   }
-  const failed = (kind: NonNullable<LaneMetrics["transport_failure_class"]>) => ({
-    candidates: [] as StatelessSourceCandidate[], healthy: false,
-    metrics: { seen: 0, relevant: 0, original_link_valid: 0,
-      native_clock_valid: 0, undated_original: 0, recovered_original_page: 0,
-      transport_ok: false, transport_failure_class: kind } satisfies LaneMetrics,
-  });
+
   if (source.id === "au_geoscience" && source.media === "html_index") {
     try {
       const response = await fetchWithoutRedirect(source.url, {
