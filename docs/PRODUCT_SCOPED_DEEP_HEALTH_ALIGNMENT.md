@@ -11,9 +11,9 @@ The `profile` query must be exactly `live-structured` with `deep=1`. All other p
 
 ## New deep-health proof shape
 
-`schema: geomacro.product-scoped-deep-health.v1`. Response includes explicit `product: live-structured`, `checked_at`, category read outcomes, scoped `source_fetch_accepted`, `eligible_observations`, `independently_verified_current_events`, `legacy_signed_intelligence_gri_risk_indices: NOT_EVALUATED_IN_THIS_PROFILE`, `fresh_signed_snapshot_readiness_attested:false`, `country_coverage_verified:false`, `x402_payment_authorized:false`, and `new_intelligence_durable_storage_required:false`.
+`schema: geomacro.product-scoped-deep-health.v1`. Response includes explicit `product: live-structured`, `checked_at`, category read outcomes, scoped `source_fetch_accepted`, `eligible_observations`, `event_occurrence_clock_observations`, `legacy_signed_intelligence_gri_risk_indices: NOT_EVALUATED_IN_THIS_PROFILE`, `fresh_signed_snapshot_readiness_attested:false`, `country_coverage_verified:false`, `x402_payment_authorized:false`, and `new_intelligence_durable_storage_required:false`.
 
-Health rejects stale/future `checked_at` and `source_checked_at`, unsupported or empty observations, absent source-specific credit/license scope, unsafe pay/signed/storage flags, or a missing category. A dataset reference year/day and USGS MCS catalog edition cannot count as a newly published geopolitical, macro or mineral event. `independently_verified_current_events` counts ONLY records bearing the event-occurrence clock; it is not event corroboration, so the label is conservative and still does not imply independent confirmation of geopolitical significance.
+Health rejects stale/future `checked_at` and `source_checked_at`, unsupported or empty observations, absent source-specific credit/license scope, unsafe pay/signed/storage flags, or a missing category. A dataset reference year/day and USGS MCS catalog edition cannot count as a newly published geopolitical, macro or mineral event. `event_occurrence_clock_observations` counts ONLY records bearing the event-occurrence clock; it does not imply independent event corroboration or geopolitical significance of geopolitical significance.
 
 ## Production verification
 
