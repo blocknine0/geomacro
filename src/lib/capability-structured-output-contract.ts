@@ -42,7 +42,7 @@ const answer=[
 const core=[
   "current_state[*].subject",
   "current_state[*].state_version",
-  "current_state[*].freshness",
+  "current_state[*].live.checked_at",
 ] as const;
 const signed=[
   "signed_risk_objects[*].object.object_id",
@@ -67,19 +67,22 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
   gri_read:{
     verified_cached:{
       subject_scope:"country_or_global",response_kind:"adaptive_intelligence",
-      customer_receives:["gri_context","as_of","methodology","delivered_product_hash"],
-      only_when_verified:["gri_context.index_version","gri_context.last_verified_at",
-        "gri_context.component_breakdown"],
+      customer_receives:["gri_context.scope","gri_context.snapshot_id","gri_context.as_of",
+        "gri_context.score","gri_context.coverage","gri_context.methodology_version",
+        "gri_context.verification_status","gri_context.proof_hash","as_of","methodology","delivered_product_hash"],
+      only_when_verified:["gri_context.proof_version","gri_context.verification_status",
+        "gri_context.coverage"],
       description:"Cached genuine verified GRI v1.2 state, index scope, freshness and methodology; no change attribution purchased.",
       prerequisites:["CURRENT_SIGNED_GRI_V1_2_AND_EXACT_READBACK"],
     },
     verified_change_attribution:{
       subject_scope:"country_or_global",response_kind:"adaptive_intelligence",
-      customer_receives:["gri_context","change_intelligence[*].subject",
+      customer_receives:["gri_context.scope","gri_context.snapshot_id","gri_context.score",
+        "gri_context.change_attribution","change_intelligence[*].subject",
         "change_intelligence[*].state_version","change_intelligence[*].change",
         "change_intelligence[*].drivers","as_of","methodology","delivered_product_hash"],
-      only_when_verified:["change_intelligence[*].previous_verified_state",
-        "change_intelligence[*].historical_reference_states"],
+      only_when_verified:["gri_context.previous_score",
+        "gri_context.change_attribution"],
       description:"All verified cached GRI context plus a proven previous-state comparison, driver contributions and change direction; null deltas remain null.",
       prerequisites:["CURRENT_SIGNED_GRI_V1_2_AND_EXACT_READBACK","SIGNED_PREVIOUS_STATE_AND_CHANGE_ATTRIBUTION_PROVEN"],
     },
@@ -88,7 +91,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     standard:{
       subject_scope:"country",response_kind:"adaptive_intelligence",
       customer_receives:[...digest,"as_of","methodology","limitations","delivered_product_hash"],
-      only_when_verified:["structural[*].intelligence.available_modules"],
+      only_when_verified:["structural[*].evidence_summary.observation_count"],
       description:"One ISO3 country's compact governed structural dimensions, derived metrics, observation coverage and source-native date; not a current risk score.",
       prerequisites:["ONE_COUNTRY_STRUCTURAL_MODULE_VERIFIED"],
     },
@@ -149,7 +152,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
         "query_plan_hash","as_of","methodology","limitations","delivered_product_hash"],
       only_when_verified:["current_state[*].developments",
         "change_intelligence[*].cross_domain_effects",
-        "structural[*].intelligence","analysis.ranking","analysis.comparison"],
+        "structural[*].intelligence","analysis"],
       description:"Verified multi-topic/multi-subject or cross-domain derived synthesis, comparable versioned states and uncertainty; does NOT bundle a separately priced Risk Gate.",
       prerequisites:["COMPLEX_PLAN_MULTI_SOURCE_EVIDENCE_AND_ALL_REQUIRED_MODULES_VERIFIED"],
     },
