@@ -303,9 +303,14 @@ export async function fetchFirstPartyOriginalFeed(
   source: StatelessSourceSpec,
   fetchImpl: typeof fetch = fetch,
 ): Promise<Response> {
-  const accepted = source.media === "rss"
-    ? "application/rss+xml, application/xml, text/xml"
-    : "application/atom+xml, application/xml, text/xml";
+  // Use the exact publicly verified BLS native Atom negotiation already
+  // exercised by bls-atom-native-readonly-acceptance.yml. BLS emits Atom
+  // from its .rss addresses; avoid generic content negotiation that can 406.
+  const accepted = ["bls_cpi","bls_employment","bls_external_prices"].includes(source.id)
+    ? "application/atom+xml,application/xml;q=0.9"
+    : source.media === "rss"
+      ? "application/rss+xml, application/xml, text/xml"
+      : "application/atom+xml, application/xml, text/xml";
   let target = source.url;
   for (let hop = 0; hop <= 2; hop++) {
     // The Australian minister feed has intermittent transport timeouts.
