@@ -7,6 +7,7 @@ import {
 import { prepareHybridAgentContext } from "./hybrid-agent-context";
 import { planAskOriginalQuestion } from "./ask-on-demand-original.server";
 import { COUNTRIES_195 } from "./canonical-country-registry-195";
+import { planAskOfficialNumeric } from "./ask-official-numeric.server";
 
 type HybridChatMode = "grounded_ask" | "bounded_follow_up";
 
@@ -25,6 +26,19 @@ export function resolveGroundedFollowUp(
   const previous = [...history].reverse().find(turn => turn.role === "user")?.content ?? "";
   // Country-switch follow-ups reuse ONLY the previous query's explicit topic,
   // mineral and requested time window. Previous answers provide NO evidence.
+  const numericPlan = planAskOfficialNumeric(previous);
+  if (numericPlan?.kind === "wdi") {
+    const target = match[1].trim().toLocaleLowerCase();
+    const country = COUNTRIES_195.find(row =>
+      [row.name, row.iso3, ...row.aliases].some(name =>
+        name.toLocaleLowerCase() === target));
+    if (!country) throw new Error("AMBIGUOUS_FOLLOW_UP");
+    const metric = numericPlan.indicator === "FP.CPI.TOTL.ZG" ?
+      "annual inflation rate" : "annual GDP growth";
+    const resolved = "What is the latest " + metric + " in " + country.name + "?";
+    parseAskGeomacroInput({ question: resolved });
+    return { question: resolved, mode: "bounded_follow_up" };
+  }
   const priorPlan = planAskOriginalQuestion(previous);
   if (priorPlan) {
     const targetName = match[1].trim();
