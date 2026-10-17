@@ -36,7 +36,7 @@ globalThis.fetch=(async(input:RequestInfo|URL,init?:RequestInit)=>{
 let success=true;
 const privateOriginals:StatelessSourceCandidate[]=[];
 const reports:StatelessIntelligenceResult[]=[];
-const sourceHealthReceipts:Record<string,unknown>[]=[];
+const sourceHealthReceipts:Array<{category:string}>=[];
 for (const category of categories) {
   try {
     const lanes:{index:number;transport_ok:boolean;failure_class?:string}[]=[];
