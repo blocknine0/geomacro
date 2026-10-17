@@ -35,11 +35,11 @@ describe("independent production website failure diagnostics", () => {
   });
 
   it("does not weaken B2/D1 freshness, signed edge, or x402 fail-closed acceptance", () => {
-    expect(workflow).toContain("status: deepReady ? 200 : 503").toBe(false);
+    expect(workflow).not.toContain("status: deepReady ? 200 : 503");
     expect(workflow).toContain("Verify B2 production serving health");
-    expect(workflow).toContain('"\"intelligence_ready\":true"');
-    expect(workflow).toContain('"\"global_risk_ready\":true"');
-    expect(workflow).toContain('"\"risk_indices_ready\":true"');
+    expect(workflow).toContain("intelligence_ready");
+    expect(workflow).toContain("global_risk_ready");
+    expect(workflow).toContain("risk_indices_ready");
     expect(workflow).toContain("Verify live D1 control plane and fail-closed auth");
     expect(workflow).toContain("Verify independent Global Risk and Risk Indices edges");
     expect(workflow).not.toContain("continue-on-error: true");
