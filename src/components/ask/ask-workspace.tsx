@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/foundation/async-states";
 import type { AskAnswer } from "@/lib/ask-geomacro.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
+import { streamPublicAsk, LegacyAskTransportOnlyError, type AskStreamStage } from "@/lib/ask-sse-client";
 import {
   PUBLIC_ASK_REQUEST_TIMEOUT_MS,
   withPublicRuntimeTimeout,
@@ -79,6 +80,7 @@ export function AskWorkspace() {
   const [failure, setFailure] = useState<{ chatId: number; question: string; error: UserError } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [researchStage, setResearchStage] = useState<AskStreamStage>("researching");
   const sequence = useRef(0);
   const messagesRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -140,12 +142,22 @@ export function AskWorkspace() {
       const turnId = ++sequence.current;
       setFailure(null);
       setPending({ chatId, question });
+      setResearchStage("researching");
       setQuery("");
       setCopiedId(null);
 
       try {
+        const history = active.turns.slice(-8).map(turn => ({
+          role: "user" as const, content: turn.resolvedQuestion,
+        }));
         const result = await withPublicRuntimeTimeout(
-          requestPublicAsk(question, previousQuestion),
+          streamPublicAsk(question, history, setResearchStage).catch(error => {
+            // Old Lovable deploys can temporarily lack the new POST stream;
+            // fallback ONLY on explicit 404/405, never on provider or auth errors.
+            if (error instanceof LegacyAskTransportOnlyError)
+              return requestPublicAsk(question, previousQuestion);
+            throw error;
+          }),
           PUBLIC_ASK_REQUEST_TIMEOUT_MS,
           "Ask Geomacro request timed out.",
         );
@@ -353,7 +365,7 @@ export function AskWorkspace() {
               <div className="space-y-4">
                 <UserBubble>{currentPending}</UserBubble>
                 <div role="status" className="flex items-center gap-2 px-1 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Checking available evidence…
+                  <Loader2 className="h-4 w-4 animate-spin" /> {researchStage === "finalizing" ? "Preparing verified answer…" : "Checking current evidence…"}
                 </div>
               </div>
             ) : null}
