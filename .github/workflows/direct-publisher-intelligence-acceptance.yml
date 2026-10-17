@@ -1,0 +1,47 @@
+name: Direct Publisher Structured Intelligence (no funds)
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - '.github/workflows/direct-publisher-intelligence-acceptance.yml'
+      - 'scripts/ops/verify-direct-publisher-intelligence.ts'
+      - 'src/lib/live-structured-on-demand.server.ts'
+      - 'src/lib/ask-on-demand-original.server.ts'
+      - 'src/lib/direct-publisher-intelligence.test.ts'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/direct-publisher-intelligence-acceptance.yml'
+      - 'scripts/ops/verify-direct-publisher-intelligence.ts'
+      - 'src/lib/live-structured-on-demand.server.ts'
+      - 'src/lib/ask-on-demand-original.server.ts'
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-direct-publisher-real-acceptance
+  cancel-in-progress: false
+jobs:
+  actual-publisher-derived-output:
+    if: github.repository == 'blocknine0/geomacro' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'blocknine0/geomacro')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Offline routing and output checks
+        run: bun x vitest run src/lib/direct-publisher-intelligence.test.ts src/lib/live-structured-on-demand.server.test.ts src/lib/ask-on-demand-original.test.ts src/lib/live-structured-deep-health.server.test.ts
+      - name: Read actual originals and generate own structured observations
+        run: bun scripts/ops/verify-direct-publisher-intelligence.ts
+      - name: Save sanitized proof only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: direct-publisher-structured-receipt
+          path: artifacts/direct-publisher-intelligence-receipt.json
+          if-no-files-found: error
+          retention-days: 3
