@@ -438,9 +438,10 @@ function viewIdentifier(input: string): string {
 export function deriveStatelessSignals(
   candidates: readonly StatelessSourceCandidate[],
   now = Date.now(),
+  options: {websiteDelay?:boolean} = {},
 ): StatelessIntelligenceSignal[] {
   if (!Number.isFinite(now)) return [];
-  const cutoff = now - STATELESS_WEBSITE_DELAY_MS;
+  const cutoff = now - (options.websiteDelay===false?0:STATELESS_WEBSITE_DELAY_MS);
   const unique = new Set<string>();
   const result: StatelessIntelligenceSignal[] = [];
   for (const item of candidates) {

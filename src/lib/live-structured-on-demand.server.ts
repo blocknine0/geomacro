@@ -1,6 +1,8 @@
 import {readCategoryOpenData} from "./category-open-data.server";
 import {OPEN_CONTEXT_CATEGORIES} from "./category-open-data-contract";
 import {answerOfficialNumeric,planAskOfficialNumeric} from "./ask-official-numeric.server";
+import {answerFromOriginalPlan,type AskOriginalPlan} from "./ask-on-demand-original.server";
+import {country195ByIso3} from "./canonical-country-registry-195";
 
 /** Stateless request-time observations only. No paid rights are implied by access. */
 type Category=(typeof OPEN_CONTEXT_CATEGORIES)[number];
@@ -9,6 +11,7 @@ type NumericAnswer=Awaited<ReturnType<typeof answerOfficialNumeric>>;
 type Dependencies={
   categoryReader?: (category:Category)=>Promise<CategorySnapshot>;
   numericReader?: (question:string)=>Promise<NumericAnswer>;
+  originalReader?: typeof answerFromOriginalPlan;
   now?:()=>Date;
 };
 const REVIEWED:Record<Category,Readonly<Record<string,{credit:string;rights:string}>>>={
@@ -24,11 +27,20 @@ const REVIEWED:Record<Category,Readonly<Record<string,{credit:string;rights:stri
   },
 };
 const categories=new Set<string>(OPEN_CONTEXT_CATEGORIES);
-export type LiveStructuredRequest={category:Category}|{question:string};
+export type LiveStructuredRequest={category:Category}|{question:string}|
+  {category:Category;country_iso3:string;lookback_days:number};
 export function parseLiveStructuredRequest(raw:unknown):LiveStructuredRequest|null{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
  const obj=raw as Record<string,unknown>;
  const keys=Object.keys(obj);
+ if((keys.length===2||keys.length===3)&&keys.includes("country_iso3")&&
+    keys.every(key=>["category","country_iso3","lookback_days"].includes(key))&&
+    typeof obj.category==="string"&&categories.has(obj.category)&&
+    typeof obj.country_iso3==="string"&&country195ByIso3(obj.country_iso3)&&
+    (obj.lookback_days===undefined||(Number.isInteger(obj.lookback_days)&&
+      Number(obj.lookback_days)>=1&&Number(obj.lookback_days)<=7)))
+   return {category:obj.category as Category,country_iso3:obj.country_iso3,
+     lookback_days:Number(obj.lookback_days??1)};
  if(keys.length!==1)return null;
  if(keys[0]==="category"&&typeof obj.category==="string"&&categories.has(obj.category))
    return {category:obj.category as Category};
@@ -51,6 +63,42 @@ export async function liveStructuredData(raw:unknown,dep:Dependencies={}){
  const at=(dep.now??(()=>new Date()))().toISOString();
  const input=parseLiveStructuredRequest(raw);
  if(!input)return {statusCode:400,body:denied(at,"INVALID_INPUT")};
+ if("country_iso3" in input){
+  const country=country195ByIso3(input.country_iso3)!;
+  const scope={geopolitics:{category:"geopolitics",topics:["sanctions_restrictions","conflict_geopolitics","political_governance"]},
+    "macro-fx":{category:"macro",topics:["macro_risk","sovereign_risk","fx_external_risk"]},
+    "critical-minerals":{category:"rare_earth",topics:["critical_minerals"]}} as const;
+  const plan:AskOriginalPlan={country_iso3:country.iso3,country_name:country.name,
+    categories:[scope[input.category].category],topics:[...scope[input.category].topics],
+    mineral:null,max_age_seconds:input.lookback_days*86400};
+  let answer:Awaited<ReturnType<typeof answerFromOriginalPlan>>;
+  try{answer=await (dep.originalReader??answerFromOriginalPlan)(plan,
+    {now:new Date(at),websiteDelay:false});}
+  catch{return {statusCode:503,body:denied(at,"ORIGINAL_PUBLISHER_FETCH_UNAVAILABLE")};}
+  const stamp=Date.parse(answer?.latest_original_published_at??"");
+  const valid=answer&&answer.insufficient_evidence===false&&
+    answer.source_identity_exposed===false&&answer.durable_live_storage_write===false&&
+    answer.signed_gro_generated===false&&Number.isFinite(stamp)&&stamp<=Date.parse(at)&&
+    stamp>=Date.parse(at)-input.lookback_days*86400_000;
+  if(!answer||!valid)return {statusCode:422,body:{...denied(at,"NO_CURRENT_COUNTRY_TOPIC_ORIGINAL"),
+    category:input.category,country_iso3:input.country_iso3,lookback_days:input.lookback_days}};
+  // Reuse Ask's own derived wording. Do not serialize its private evidence,
+  // upstream titles, article URLs, original text, provider IDs or source hashes.
+  return {statusCode:200,body:{schema:"geomacro.live-structured.v1",
+    status:"CURRENT_ORIGINAL_OBSERVATION_DERIVED",category:input.category,
+    country_iso3:input.country_iso3,lookback_days:input.lookback_days,
+    coverage:"COUNTRY_TOPIC_MATCHED_OBSERVATION_NOT_GLOBAL_COVERAGE",
+    source_mode:"DIRECT_ORIGINAL_PUBLISHERS",checked_at:at,source_checked_at:at,
+    observation_period:answer.latest_original_published_at,
+    clock_semantics:"original_publication",source_period_is_not_retrieval_time:true,
+    observations:[{finding:answer.summary,change:answer.what_changed,
+      why_it_matters:answer.why_it_matters,score:null}],observation_count:1,
+    independent_same_event_verified:false,source_commercial_rights_verified:false,
+    signed_gro_required:false,signature:null,score:null,payment_required:false,
+    chargeable:false,settlement_performed:false,durable_storage_written:false,
+    raw_upstream_delivered:false,
+  }};
+ }
  if("category" in input){
   let snapshot:CategorySnapshot;
   try{snapshot=await (dep.categoryReader??readFresh)(input.category);}

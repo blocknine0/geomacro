@@ -1,5 +1,6 @@
-import { COUNTRIES_195, type Country195 } from "./canonical-country-registry-195";
-import { discoverOnDemandForPrivateQualification, verifyOnDemandOriginalArticlePages,
+import { COUNTRIES_195, country195ByIso3, type Country195 } from "./canonical-country-registry-195";
+import { discoverOnDemandForPrivateQualification, discoverDirectPublisherForPrivateQualification,
+  verifyOnDemandOriginalArticlePages,
   inferOnDemandMineral, matchesRequestedTopic, type OnDemandCategory,
   type OnDemandMineral } from "./on-demand-global-discovery.server";
 import { deriveStatelessSignals } from "./stateless-intelligence-model";
@@ -90,15 +91,23 @@ export function planAskOriginalQuestion(question:string):AskOriginalPlan|null {
   return {country_iso3:country.iso3,country_name:country.name,
     categories,topics,mineral,max_age_seconds:ageSeconds(question)};
 }
-export async function answerFromCurrentOriginals(
-  question:string,
-  options:{now?:Date;discover?:typeof discoverOnDemandForPrivateQualification;
-    verifyPages?:typeof verifyOnDemandOriginalArticlePages}={},
+type OriginalReadOptions={now?:Date;discover?:typeof discoverOnDemandForPrivateQualification;
+  verifyPages?:typeof verifyOnDemandOriginalArticlePages;websiteDelay?:boolean};
+export async function answerFromCurrentOriginals(question:string,options:OriginalReadOptions={}
 ):Promise<HybridAskAnswer|null>{
   const plan=planAskOriginalQuestion(question);
   if(!plan)return null;
+  return answerFromOriginalPlan(plan,options);
+}
+/** Structured callers supply the SAME country-bound plan, not generated
+ * prose which could silently narrow a category to one keyword/topic. */
+export async function answerFromOriginalPlan(plan:AskOriginalPlan,options:OriginalReadOptions={}
+):Promise<HybridAskAnswer|null>{
+  const country=country195ByIso3(plan.country_iso3);
+  if(!country||country.name!==plan.country_name||!Number.isInteger(plan.max_age_seconds)||
+    plan.max_age_seconds<=0||plan.max_age_seconds>31*86400)return null;
   const now=options.now??new Date();
-  const discover=options.discover??discoverOnDemandForPrivateQualification;
+  const discover=options.discover??discoverDirectPublisherForPrivateQualification;
   const verifyPages=options.verifyPages??verifyOnDemandOriginalArticlePages;
   const privateResult=await discover({country_iso3:plan.country_iso3,
     categories:plan.categories,topics:plan.topics,mineral:plan.mineral,
@@ -123,9 +132,9 @@ export async function answerFromCurrentOriginals(
     title:item.article_title,articleUrl:item.article_url,
     publishedAt:item.page_original_published_at,sourceId:item.publisher_family,
     category:item.domain,credit:null,
-  })),now.getTime()).filter(item=>{
+  })),now.getTime(),{websiteDelay:options.websiteDelay}).filter(item=>{
     const at=Date.parse(item.published_at);
-    return Number.isFinite(at) && at<=now.getTime()-15*60_000 &&
+    return Number.isFinite(at) && at<=now.getTime()-(options.websiteDelay===false?0:15*60_000) &&
       at>=now.getTime()-plan.max_age_seconds*1000;
   }).slice(0,3);
   if(!signals.length)return null;

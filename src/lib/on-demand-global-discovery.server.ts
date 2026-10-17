@@ -990,7 +990,8 @@ export function deduplicateOnDemandOriginalHeadlines(
 /** Never returns upstream text, URLs or source identities for paid output. */
 async function discoverOnDemandImpl(
   input: OnDemandSearchInput,
-  options: {fetchImpl?:typeof fetch; now?:Date; disableDiscoveryIndex?:boolean}={},
+  options: {fetchImpl?:typeof fetch; now?:Date; disableDiscoveryIndex?:boolean;
+    directPublisherOnly?:boolean}={},
 ): Promise<{
   discovery:OnDemandDiscovery;
   private_candidates:PrivateOriginalCandidate[];
@@ -1103,7 +1104,7 @@ async function discoverOnDemandImpl(
         country,name,trackedFetch,now,mineral,topics,newsMaxAgeMs),
     });
   }
-  if (categories.includes("macro")) for (const indicator of [
+  if (!options.directPublisherOnly && categories.includes("macro")) for (const indicator of [
     "FP.CPI.TOTL.ZG","NY.GDP.MKTP.KD.ZG",
   ] as const) tasks.push({name:"world_bank_official_" + indicator,category:"macro",
     run:()=>worldBank(country,indicator,trackedFetch,now)});
@@ -1644,4 +1645,19 @@ export async function discoverOnDemandForPrivateQualification(
   private_verified_country_name:string|null;
 }>{
   return discoverOnDemandImpl(input,options);
+}
+
+/** Same canonical engine, current original-publisher research only.
+ * Fixed country/category terms reach publishers; no Telegram, discovery
+ * index or annual statistical record can masquerade as current news.
+ */
+export async function discoverDirectPublisherForPrivateQualification(
+  input:OnDemandSearchInput,
+  options:{fetchImpl?:typeof fetch;now?:Date}={},
+){
+  if(!country195ByIso3(input.country_iso3))throw Error("ON_DEMAND_COUNTRY_INVALID");
+  const topics=input.topics?.length?input.topics:
+    input.categories.flatMap(category=>CATEGORY_TOPICS[category]??[]);
+  return discoverOnDemandImpl({...input,topics},{...options,
+    disableDiscoveryIndex:true,directPublisherOnly:true});
 }
