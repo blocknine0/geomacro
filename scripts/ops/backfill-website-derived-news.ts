@@ -32,11 +32,11 @@ const D1="https://geomacro-control-plane.daspallab202391.workers.dev";
 const OGL="Contains public sector information licensed under the Open Government Licence v3.0.";
 const TODAY=Date.now();
 // Supabase stopped providing a reliable news continuum before this reader
-// launched. Scan the COMPLETE bounded 30-day website retention window so
+// launched. Scan the COMPLETE bounded 72-hour website retention window so
 // any gap in the shutdown-to-present period can be reconstructed from
 // independently verified original publication dates, not archive updated_at.
 const DAY_MS=86_400_000;
-const START=new Date(TODAY-29*DAY_MS).toISOString().slice(0,10);
+const START=new Date(TODAY-3*DAY_MS).toISOString().slice(0,10);
 const START_MS=Date.parse(START+"T00:00:00.000Z");
 const END=new Date(TODAY).toISOString().slice(0,10);
 const ORGS=Object.freeze([
