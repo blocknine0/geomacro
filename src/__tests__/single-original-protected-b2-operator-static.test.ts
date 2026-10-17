@@ -30,7 +30,7 @@ describe("private one-original B2 machine facts/rights operator",()=>{
       "lstatSync(input).isSymbolicLink()",
       "(st.mode&0o077)!==0",
       'createHash("sha256").update(bytes).digest("hex")!==pin',
-      'qualifySingleOriginalPrivateAuthority({',
+      'preparePrivateSingleOriginalFactualHandoff({',
       'Object.keys(inputJson).sort().join(",")!=="candidate,envelope"',
     ])expect(operator).toContain(s);
     expect(operator).not.toContain("publishB2VerifiedHotSnapshot");
@@ -38,6 +38,7 @@ describe("private one-original B2 machine facts/rights operator",()=>{
     expect(operator).not.toContain("signRiskObject");
     expect(operator).not.toContain("source_article_url");
     expect(operator).toContain("public_hot_published:false");
+    expect(operator).toContain("derived_factual_input_sha256:qualified.derived_input_sha256");
     expect(operator).toContain("gri_current_certified:false");
     expect(operator).toContain("payments:0");
   });
