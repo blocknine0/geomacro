@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LiveIntelligenceShowcase } from "@/components/home/live-intelligence-showcase";
+import type {FindCardV1} from "@/lib/find-card-v1";
 
 const DOMAINS = [
   {
@@ -54,7 +55,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function CommercialHome() {
+export function CommercialHome({initialFindCards=[]}:{initialFindCards?:FindCardV1[]}) {
   return (
     <>
       <section className="relative overflow-hidden border-b border-border/50">
@@ -87,7 +88,7 @@ export function CommercialHome() {
             </div>
           </div>
 
-          <LiveIntelligenceShowcase />
+          <LiveIntelligenceShowcase initialFindCards={initialFindCards} />
         </div>
       </section>
 

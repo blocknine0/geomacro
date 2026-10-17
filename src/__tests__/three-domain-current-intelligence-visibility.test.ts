@@ -82,13 +82,14 @@ describe("#1827 website Intelligence freshness visibility without invented three
     expect(source).toContain("scoredNews(intel.data?.all ?? [])");
     expect(source).not.toContain("severity: 50");
   });
-  it("homepage retains one canonical verified headline, but truthfully exposes per-domain monitoring status", () => {
+  it("homepage uses three honest free original-release states without inventing scores", () => {
     const source = readFileSync("src/components/home/live-intelligence-showcase.tsx","utf8");
-    expect(source).toContain("selectHomepageShowcase(intelligence.data.all)");
-    expect(source).toContain("intelligenceDomainPulse(intelligence.data?.all ?? [])");
-    expect(source).toContain("Evidence freshness · three global domains");
-    expect(source).toContain("Historical verified");
-    expect(source).toContain("Fresh signal · unscored");
-    expect(source).toContain("Awaiting verification");
+    expect(source).toContain("selectHomepageFreeFind(cards)");
+    expect(source).toContain("homeFindsPulse(cards)");
+    expect(source).toContain("Original release coverage · three global domains");
+    expect(source).toContain("Earlier release · unscored");
+    expect(source).toContain("Recent release · unscored");
+    expect(source).toContain("No eligible release");
+    expect(source).not.toContain("RiskBadge");
   });
 });
