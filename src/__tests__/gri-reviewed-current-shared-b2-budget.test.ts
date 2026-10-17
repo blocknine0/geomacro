@@ -10,7 +10,7 @@ const stage=(name:string)=>{
 };
 const budget=(name:string)=>{
   const s=stage(name);
-  expect(s).toMatch(/\n        env:\n          B2_REQUEST_BUDGET: "\d+"/u);
+  expect(s).toMatch(/(?:^|\n)\s*env:\n\s*B2_REQUEST_BUDGET: "\d+"/u);
   return Number(s.match(/B2_REQUEST_BUDGET: "(\d+)"/u)?.[1]);
 };
 
