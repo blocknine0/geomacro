@@ -1,5 +1,5 @@
 import continuity from "./continuity.mjs";
-import {originalSourceIsCurrent,validatedCachedLiveResponse} from "../../shared/current-source-clock.mjs";
+import {originalSourceIsCurrent,liveEdgeCacheControl,validatedCachedLiveResponse} from "../../shared/current-source-clock.mjs";
 import { reserveB2AccountQuota } from "../../control-plane/src/b2-account-quota.mjs";
 import { b2OriginFailureCacheKey, failedB2OriginRecently, rememberFailedB2Origin } from "../../shared/b2-origin-negative-cache.mjs";
 
@@ -150,7 +150,7 @@ async function buildContinuityResponse() {
     status: 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
+      "cache-control": liveEdgeCacheControl(data.snapshotAsOf),
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-verified-edge",
       "x-geomacro-continuity": "github-actions-b2-readback-verified",
@@ -272,7 +272,7 @@ async function readD1HotSnapshot(env) {
       status: 200,
       headers: {
         "content-type": "application/json; charset=utf-8",
-        "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
+        "cache-control": liveEdgeCacheControl(snapshot.source_as_of),
         "x-content-type-options": "nosniff",
         "x-geomacro-authority": "backblaze-b2-verified-edge",
         "x-geomacro-continuity": "d1-b2-readback-verified-hot-snapshot",
@@ -346,7 +346,7 @@ async function buildResponse(env) {
       "content-type": "application/json; charset=utf-8",
       "x-geomacro-source-as-of": data.snapshotAsOf,
       "x-geomacro-b2-verification": "full-readback-hash-exact-restore",
-      "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
+      "cache-control": liveEdgeCacheControl(data.snapshotAsOf),
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-verified-edge",
       "access-control-allow-origin": "*",
