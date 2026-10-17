@@ -1,9 +1,9 @@
 import {resolveGeomacroCapabilityPrice} from '../../../src/lib/capability-pricing-catalog.ts';
+import {exactGeomacroUsdcRail} from '../../../src/lib/usdc-native-rail-identities.ts';
 
 export const CAPABILITY_PREQUOTE_LIMIT=64;
 const HASH=/^[a-f0-9]{64}$/u;
 const ADDRESS=/^0x[0-9a-f]{40}$/u;
-const ASSET='0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
 export async function capabilityQuoteHash(quote){
  const values=[quote.version,quote.capability,quote.variant,quote.amount_atomic,
   quote.request_fingerprint_sha256,quote.network,quote.asset_contract,
@@ -29,7 +29,10 @@ export async function assertCapabilityPrequote(quote,scope,now=Date.now()){
   Object.entries(price).some(([k,v])=>quote[k]!==v)||
   !HASH.test(quote.quote_id)||!HASH.test(quote.request_fingerprint_sha256)||
   !HASH.test(quote.prepared_answer_sha256)||quote.quote_window_seconds!==300||
-  quote.network!=='eip155:8453'||quote.asset_contract!==ASSET||
+  !exactGeomacroUsdcRail(quote.network,quote.asset_contract)||
+  // The Coinbase CDP settlement adapter is not a Circle facilitator and
+  // MUST never inherit Arc/Polygon from the Circle discovery catalog.
+  (quote.payment_rail==='coinbase_x402'&&quote.network!=='eip155:8453')||
   !ADDRESS.test(quote.recipient)||quote.execution_authorized!==false||
   quote.availability!=='VERIFIED_DELIVERABLE'||
   !['coinbase_x402','circle_gateway_x402'].includes(quote.payment_rail)||
