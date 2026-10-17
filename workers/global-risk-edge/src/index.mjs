@@ -1,4 +1,5 @@
 import continuity from "./continuity.mjs";
+import {originalSourceIsCurrent,validatedCachedLiveResponse} from "../../shared/current-source-clock.mjs";
 import { reserveB2AccountQuota } from "../../control-plane/src/b2-account-quota.mjs";
 import { b2OriginFailureCacheKey, failedB2OriginRecently, rememberFailedB2Origin } from "../../shared/b2-origin-negative-cache.mjs";
 
@@ -138,6 +139,7 @@ async function buildContinuityResponse() {
     live?.schema !== "geomacro.public-global-risk-live.v1" ||
     live?.source_project !== PROJECT_REF ||
     !recentEnough(live?.generated_at) ||
+    !originalSourceIsCurrent(data?.snapshotAsOf) ||
     data?.methodologyVersion !== METHOD ||
     data?.verificationStatus !== "verified" ||
     data?.auditPersisted !== true ||
@@ -152,6 +154,7 @@ async function buildContinuityResponse() {
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-verified-edge",
       "x-geomacro-continuity": "github-actions-b2-readback-verified",
+      "x-geomacro-source-as-of": data.snapshotAsOf,
       "access-control-allow-origin": "*",
       "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity",
     },
@@ -328,6 +331,7 @@ async function buildResponse(env) {
     live?.schema !== "geomacro.public-global-risk-live.v1" ||
     live?.source_project !== PROJECT_REF ||
     !recentEnough(live?.generated_at) ||
+    !originalSourceIsCurrent(data?.snapshotAsOf) ||
     data?.snapshotId !== proof?.snapshot_id ||
     data?.snapshotAsOf !== proof?.snapshot_as_of ||
     data?.methodologyVersion !== METHOD ||
@@ -340,6 +344,8 @@ async function buildResponse(env) {
     status: 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
+      "x-geomacro-source-as-of": data.snapshotAsOf,
+      "x-geomacro-b2-verification": "full-readback-hash-exact-restore",
       "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-verified-edge",
@@ -364,7 +370,7 @@ export default {
     }
 
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    if (await validatedCachedLiveResponse(cached,"global-risk")) return cached;
 
     // Only after D1 hot and verified positive POP cache miss. A short private
     // failure marker prevents repeated B2 GETs for the same unavailable state.
