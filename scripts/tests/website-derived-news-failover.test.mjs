@@ -93,6 +93,14 @@ test("hourly Cloudflare collection and +15m recovery retain single-writer and th
   assert.ok(collector.includes('GEOMACRO_AUTOMATED_FINDS_PUBLICATION==="1"'));
   assert.ok(primary.includes('GEOMACRO_AUTOMATED_FINDS_PUBLICATION: "1"'));
   assert.ok(legacy.includes("if: " + "$" + "{{ false }}"));
+  assert.ok(legacy.includes('cron: "37 * * * *"'));
+  assert.ok(legacy.includes("ingest-supabase-free-derived-news:"));
+  assert.ok(legacy.includes("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml"));
+  assert.ok(legacy.includes("secrets: inherit"));
+  assert.ok(backstop.includes("workflow_call: {}"));
+  assert.ok(legacy.includes("actions: read"));
+  assert.ok(legacy.includes("cancel-in-progress: false"));
+  assert.ok(!legacy.includes("  recover-news-ingest:\n    runs-on:"));
 });
 
 const finishedRecovery=(completedAt)=>({

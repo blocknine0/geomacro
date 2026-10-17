@@ -9,11 +9,13 @@ const ingest = readFileSync("scripts/ingest-news.js", "utf8");
 const rights = readFileSync("scripts/commercial-source-rights-evidence.mjs", "utf8");
 
 describe("canonical Auto Ingest News recovery", () => {
-  it("is manual-only because the master orchestrator is the sole recurring ingestion owner", () => {
+  it("recurs only through the proven derived-D1 backstop; frozen legacy Postgres task stays retired", () => {
     expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).not.toContain("schedule:");
-    expect(workflow).not.toContain("\n  push:\n");
-    expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
+    expect(workflow).toContain('cron: "37 * * * *"');
+    expect(workflow).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    expect(workflow).toContain("    if: ${{ false }}");
+    expect(workflow).toContain('      - ".github/workflows/auto-ingest-news.yml"');
+    expect(workflow).toContain("group: geomacro-auto-ingest-news-recovery");
     expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest');
     expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest');
     expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: "1"');

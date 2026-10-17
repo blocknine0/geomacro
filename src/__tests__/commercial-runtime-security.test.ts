@@ -23,7 +23,14 @@ function expectPinnedActions(path: string) {
   const source = read(path);
   expect(source, path).not.toMatch(/uses:\s+[^\s]+@v\d+(?:\.\d+)*\b/);
   for (const line of source.split("\n").filter((item) => item.includes("uses:"))) {
-    expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
+    if (line.includes("uses: ./.github/workflows/")) {
+      // A same-commit local reusable workflow is bound to the checked-out
+      // commit; GitHub does not allow an @SHA on relative reusable paths.
+      expect(line, `${path}: ${line}`).toContain(
+        "uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    } else {
+      expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
+    }
   }
   if (source.includes("actions/checkout@")) {
     expect(source, path).toContain("persist-credentials: false");
@@ -102,10 +109,11 @@ describe("commercial runtime security baseline", () => {
     expect(orchestrator).toContain("Run due intelligence tasks serially");
 
     expect(ingestRecovery).toContain("workflow_dispatch");
-    expect(ingestRecovery).not.toContain("schedule:");
+    expect(ingestRecovery).toContain('cron: "37 * * * *"');
+    expect(ingestRecovery).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
     expect(ingestRecovery).toContain("  recover-news-ingest:\n    # Legacy Supabase recovery retired:");
     expect(ingestRecovery).toContain("    if: ${{ false }}");
-    expect(ingestRecovery).toContain("group: geomacro-intelligence-orchestrator");
+    expect(ingestRecovery).toContain("group: geomacro-auto-ingest-news-recovery");
     expect(ingestRecovery).toContain("D1_DATABASE_NAME: geomacro-control-plane");
     expect(ingestRecovery).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest");
     expect(ingestRecovery).toContain("INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest");

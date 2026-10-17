@@ -108,7 +108,6 @@ describe("permanent intelligence orchestration contract", () => {
       ".github/workflows/ingest-reliefweb-live.yml",
       ".github/workflows/global-realtime-source-proof.yml",
       ".github/workflows/production-intelligence-readiness.yml",
-      ".github/workflows/auto-ingest-news.yml",
       ".github/workflows/intelligence-current-scoring-fastlane.yml",
     ]) {
       const source = read(path);
@@ -118,12 +117,14 @@ describe("permanent intelligence orchestration contract", () => {
     }
   });
 
-  it("keeps Auto Ingest as a one-task manual recovery through the master path", () => {
+  it("keeps Auto Ingest recurring only through verified D1 recovery, with old Supabase writer retired", () => {
     const workflow = read(".github/workflows/auto-ingest-news.yml");
     expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).not.toContain("schedule:");
-    expect(workflow).not.toContain("\n  push:\n");
-    expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
+    expect(workflow).toContain('cron: "37 * * * *"');
+    expect(workflow).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    expect(workflow).toContain("    if: ${{ false }}");
+    expect(workflow).toContain('      - ".github/workflows/auto-ingest-news.yml"');
+    expect(workflow).toContain("group: geomacro-auto-ingest-news-recovery");
     expect(workflow).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest");
     expect(workflow).toContain("INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest");
     expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");

@@ -92,7 +92,9 @@ describe('shared source discovery hardening', () => {
     expect(orchestrator).toContain('group: geomacro-intelligence-orchestrator');
     expect(orchestrator).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
     expect(recovery).toContain('workflow_dispatch');
-    expect(recovery).not.toContain('schedule:');
+    expect(recovery).toContain('cron: "37 * * * *"');
+    expect(recovery).toContain('uses: ./.github/workflows/website-derived-news-cadence-backstop.yml');
+    expect(recovery).toContain('    if: ${{ false }}');
     expect(recovery).toContain('INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest');
     expect(recovery).toContain('INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest');
   });

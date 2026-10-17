@@ -6,6 +6,7 @@ name: Website Derived News Cadence Backstop
 # Only publish if the *last genuinely completed successful D1 writer* is
 # stale, never based on a recently visited site or an original news date.
 on:
+  workflow_call: {}
   workflow_dispatch: {}
   workflow_run:
     workflows: ["Geomacro Intelligence Orchestrator", "Three-Domain 30-Minute Original Publisher Pulse"]

@@ -22,10 +22,14 @@ const productionReader = fs.readFileSync(productionReaderPath, "utf8");
 const runtime = fs.readFileSync(runtimePath, "utf8");
 
 describe("Auto Ingest News reliability contract", () => {
-  it("keeps the manual wrapper recovery-only and delegates to the canonical single owner", () => {
+  it("keeps the legacy job retired while activating only the canonical Supabase-free D1 publisher", () => {
     expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).not.toContain("schedule:");
-    expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
+    expect(workflow).toContain('cron: "37 * * * *"');
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain("ingest-supabase-free-derived-news:");
+    expect(workflow).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    expect(workflow).toContain("    if: ${{ false }}");
+    expect(workflow).toContain("group: geomacro-auto-ingest-news-recovery");
     expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest');
     expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest');
     expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
