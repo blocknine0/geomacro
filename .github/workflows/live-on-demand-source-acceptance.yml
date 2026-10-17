@@ -17,7 +17,7 @@ on:
         description: "At most two countries per run; all three categories separately"
         required: false
         type: string
-        default: "1"
+        default: "2"
   push:
     branches: [main]
     paths:
