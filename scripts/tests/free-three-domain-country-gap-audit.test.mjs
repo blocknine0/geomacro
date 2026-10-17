@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   auditFreeCountryGaps,canonicalGeographicDenominator,DOMAINS,
 } from "../ops/audit-free-three-domain-country-gaps.mjs";
+import {canonicalCountry195Denominator} from "../lib/country-195-geography-crosswalk.mjs";
 
 const source=readFileSync("src/lib/global-entity-classification.ts","utf8");
 const canonical=canonicalGeographicDenominator(source);
@@ -112,4 +113,46 @@ test("public receipt contains only ISO3 and status; never raw original publisher
     assert.equal(encoded.includes(needle),false);
   assert.equal(actual.current_signed_risk_intelligence_195x3_verified,false);
   assert.equal(actual.x402_global_coverage_chargeable,false);
+});
+
+test("canonical 193+2 crosswalk reconciles exactly with 250 geographic D1 areas",()=>{
+  const text=readFileSync("src/lib/canonical-country-registry-195.ts","utf8");
+  const baseline=canonicalCountry195Denominator(text,canonical);
+  assert.equal(baseline.size,195);
+  assert.equal([...baseline.values()].filter(x=>x==="SOVEREIGN").length,194);
+  assert.equal([...baseline.values()].filter(x=>x==="SPECIAL_ENTITY").length,1);
+  assert.equal(baseline.get("PSE"),"SPECIAL_ENTITY");
+  assert.equal(baseline.get("VAT"),"SOVEREIGN");
+  assert.equal(baseline.has("TWN"),false);
+  assert.throws(()=>canonicalCountry195Denominator(text.replace("AFG|AF|Afghanistan","ZZZ|AF|Afghanistan"),canonical),/COUNTRY_195_CLASSIFICATION_/);
+  assert.throws(()=>canonicalCountry195Denominator(text.replace("VAT|VA|Holy See","VAT|VA|Fake\nVAT|VA|Fake"),canonical),/COUNTRY_195_CLASSIFICATION_/);
+});
+test("all 195 x 3 explicit source metadata gaps are reported without pretending to certify events",()=>{
+  const empty=auditFreeCountryGaps({d1Json:json([]),classificationSource:source,now});
+  assert.equal(empty.canonical_195.country_count,195);
+  assert.equal(empty.canonical_195.member_states,193);
+  assert.deepEqual(empty.canonical_195.observer_states,["PSE","VAT"]);
+  assert.equal(empty.canonical_195.cell_count,585);
+  assert.equal(empty.canonical_195.gap_count,585);
+  assert.equal(empty.canonical_195_metadata_gaps.length,585);
+  assert.equal(empty.canonical_195.metadata_floor_met,false);
+  assert.equal(empty.canonical_195.current_signed_country_intelligence_verified,false);
+  const complete=auditFreeCountryGaps({d1Json:json(cells()),classificationSource:source,now});
+  assert.equal(complete.canonical_195.gap_count,0);
+  assert.equal(complete.canonical_195.metadata_floor_met,true);
+  assert.equal(complete.canonical_195.certified_and_recent_metadata_floor_met,true);
+  assert.equal(complete.canonical_195.current_signed_country_intelligence_verified,false);
+  for(const domain of DOMAINS)
+    assert.equal(complete.canonical_195.domains[domain].recent_verified_metadata_90m,195);
+});
+test("special entities outside canonical 195 never count towards the 195-country floor",()=>{
+  const rows=cells();
+  for(const c of rows.filter(x=>x.country_code==="PSE"))c.certified_source_count=0;
+  const actual=auditFreeCountryGaps({d1Json:json(rows),classificationSource:source,now});
+  assert.equal(actual.domains.geopolitics.metadata_rows_present,250);
+  assert.equal(actual.canonical_195.domains.geopolitics.with_certified_source_metadata,194);
+  assert.equal(actual.canonical_195.gap_count,3);
+  assert.ok(actual.canonical_195_metadata_gaps.every(x=>x.iso3==="PSE"));
+  assert.equal(actual.canonical_195.certified_and_recent_metadata_floor_met,false);
+  assert.equal(actual.current_signed_risk_intelligence_195x3_verified,false);
 });

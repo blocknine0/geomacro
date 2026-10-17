@@ -9,12 +9,16 @@ on:
     branches: [main]
     paths:
       - "scripts/ops/audit-free-three-domain-country-gaps.mjs"
+      - "scripts/lib/country-195-geography-crosswalk.mjs"
+      - "src/lib/canonical-country-registry-195.ts"
       - "scripts/tests/free-three-domain-country-gap-audit.test.mjs"
       - ".github/workflows/free-three-domain-country-gap-ledger.yml"
       - "src/lib/global-entity-classification.ts"
   pull_request:
     paths:
       - "scripts/ops/audit-free-three-domain-country-gaps.mjs"
+      - "scripts/lib/country-195-geography-crosswalk.mjs"
+      - "src/lib/canonical-country-registry-195.ts"
       - "scripts/tests/free-three-domain-country-gap-audit.test.mjs"
       - ".github/workflows/free-three-domain-country-gap-ledger.yml"
       - "src/lib/global-entity-classification.ts"
@@ -89,6 +93,14 @@ jobs:
             .geographic_scope.territory==53 and
             .geographic_scope.special_entity==3 and
             .target_geography_category_cells==750 and
+            .canonical_195.country_count==195 and
+            .canonical_195.cell_count==585 and
+            .canonical_195.member_states==193 and
+            .canonical_195.observer_states==["PSE","VAT"] and
+            .canonical_195.geography_crosswalk.sovereign==194 and
+            .canonical_195.geography_crosswalk.special_entity==1 and
+            .canonical_195.current_signed_country_intelligence_verified==false and
+            .canonical_195.source_catalogue_is_not_evidence==true and
             (.domains|keys)==["geopolitics","macro","rare_earth"] and
             .rights_verified_per_country==false and
             .independent_same_event_corroboration_per_country==false and
@@ -99,7 +111,7 @@ jobs:
             .model_calls==0 and .payment_performed==false
           ' artifacts/free-three-domain-gaps/iso3-metadata-gaps.json >/dev/null
           jq '{
-            observed_at, geographic_scope,domains,gap_count,
+            observed_at, geographic_scope,canonical_195,domains,gap_count,
             metadata_country_floor_met,recent_source_metadata_floor_met,
             current_signed_risk_intelligence_195x3_verified,
             x402_global_coverage_chargeable

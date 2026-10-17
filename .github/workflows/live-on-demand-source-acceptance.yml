@@ -17,7 +17,7 @@ on:
         description: "At most two countries per run; all three categories separately"
         required: false
         type: string
-        default: "1"
+        default: "2"
   push:
     branches: [main]
     paths:
@@ -36,6 +36,9 @@ on:
       - "src/lib/country-195-batch-evidence.ts"
       - "src/lib/country-195-batch-evidence.test.ts"
       - "scripts/ops/verify-live-195-country-batch.ts"
+      - "scripts/lib/country-195-daily-rotation.mjs"
+      - "scripts/ops/plan-country-195-daily-rotation.mjs"
+      - "scripts/tests/country-195-daily-rotation.test.mjs"
       - "scripts/ops/export-canonical-195-country-matrix.ts"
       - "src/lib/on-demand-fed-board-discount-release.server.ts"
       - "scripts/ops/verify-live-fed-board-private-finding.ts"
@@ -65,6 +68,9 @@ on:
       - "src/lib/country-195-batch-evidence.ts"
       - "src/lib/country-195-batch-evidence.test.ts"
       - "scripts/ops/verify-live-195-country-batch.ts"
+      - "scripts/lib/country-195-daily-rotation.mjs"
+      - "scripts/ops/plan-country-195-daily-rotation.mjs"
+      - "scripts/tests/country-195-daily-rotation.test.mjs"
       - "scripts/ops/export-canonical-195-country-matrix.ts"
       - "src/lib/on-demand-fed-board-discount-release.server.ts"
       - "scripts/ops/verify-live-fed-board-private-finding.ts"
@@ -130,23 +136,22 @@ jobs:
       # and <=4 original-page reads PER COUNTRY (max two countries/run).
       # No separate cron or B2/Supabase/D1 intake.
       # PR runners never run this optional additional network probing stage.
-      # One bounded sample also runs once after protected-main merge.
-      - name: Rotate one real country through canonical three-category retrieval
-        if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
-        shell: bash
+      # Country batch probes run only on daily schedule or explicit dispatch.
+      # A push never repeats the same national source probe/quota window.
+      - name: Offline country calendar rotation invariant
+        run: node --test scripts/tests/country-195-daily-rotation.test.mjs
+      - name: Select deterministic daily country batch (no source requests)
+        id: country_rotation
         env:
           REQUESTED_START: ${{ inputs.country_batch_start }}
           REQUESTED_COUNT: ${{ inputs.country_batch_count }}
-        run: |
-          set -euo pipefail
-          if [[ -n "${REQUESTED_START:-}" ]]; then
-            START="${REQUESTED_START}"
-          else
-            START="$(( (GITHUB_RUN_NUMBER - 1) % 195 ))"
-          fi
-          GEOMACRO_COUNTRY_BATCH_START="$START" \
-          GEOMACRO_COUNTRY_BATCH_COUNT="${REQUESTED_COUNT:-1}" \
-            bun scripts/ops/verify-live-195-country-batch.ts
+        run: node scripts/ops/plan-country-195-daily-rotation.mjs
+      - name: Verify bounded real on-demand originals for daily ISO3 batch
+        if: ${{ steps.country_rotation.outputs.should_run == 'true' }}
+        env:
+          GEOMACRO_COUNTRY_BATCH_START: ${{ steps.country_rotation.outputs.batch_start }}
+          GEOMACRO_COUNTRY_BATCH_COUNT: ${{ steps.country_rotation.outputs.batch_count }}
+        run: bun scripts/ops/verify-live-195-country-batch.ts
       - name: Persist source-free bounded country resume checkpoint
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -230,6 +235,8 @@ jobs:
             "codeql_open_high_alerts":list(high.values())},separators=(",",":")))
           if high:sys.exit(4)
           PY
+      - name: Exact 195-country rotation and 250-area crosswalk offline tests
+        run: node --test scripts/tests/country-195-daily-rotation.test.mjs scripts/tests/free-three-domain-country-gap-audit.test.mjs
       - name: Private evidence bridge regression checks
         run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts
       - name: Real no-charge per-category provider readback
