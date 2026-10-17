@@ -23,10 +23,10 @@ const pages=[html("2026-10-17T10:05:00Z"),html("2026-10-17T10:10:00Z")];
 const candidates=[
  {org:"federal_reserve",source:"fed_monetary_original_press_rss_review",
   url:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261017a.htm",
-  native:"2026-10-17T10:05:00Z"},
+  native:"2026-10-17T10:05:00.000Z"},
  {org:"ecb",source:"ecb",
   url:"https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp261017.en.html",
-  native:"2026-10-17T10:10:00Z"},
+  native:"2026-10-17T10:10:00.000Z"},
 ].map((x,i)=>({
  category:"macro",event:eventIdentity,same_event_claim_sha256:claim,
  original_article_url:x.url,publisher_host:new URL(x.url).hostname,
