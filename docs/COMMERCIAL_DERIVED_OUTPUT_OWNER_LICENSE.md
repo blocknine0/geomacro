@@ -34,6 +34,24 @@ An internal issuer may attach a deterministic, SHA-256-bound `geomacro.owner-der
 
 This owner declaration is an express internal policy, **not** a cryptographic attestation by a third-party rights owner, not proof of legal title, and not customer acceptance of terms. Source-use and production gates continue to fail closed. Do not alter the existing strict no-attribution, independent-original or legacy signed hot snapshot contracts to make these two types of rights appear interchangeable.
 
+## Customer-facing Structured Intelligence Commercial License
+
+The Geomacro-owned output grant is reflected in the exact versioned customer
+license exposed by `GET /api/intelligence/capabilities?view=license`:
+`geomacro.structured-intelligence-commercial-license.v1`.
+
+No raw news, source HTML or upstream dataset is transferred to customers.
+Permitted internal/embedded customer use applies only to eligible derived
+structured output delivered under a valid order or agreement. The customer
+cannot infer a licence to redistribute Geomacro's full feed or any upstream
+provider material. The linked API licence is accessible even while the
+website presentation lock prevents creating additional static pages.
+
+The machine licence and x402 402/200 response-header references are
+**terms disclosure only**, not evidence that the customer has accepted the
+terms, licensed an upstream source, paid USDC, or that signed current
+Intelligence/GRI/Risk Indices have recovered.
+
 ## 5. Operational control
 
 - Owner can revise the version-controlled policy; do not silently change historical manifests.

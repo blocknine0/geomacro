@@ -10,6 +10,9 @@ import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } fro
 import {bindPrivateFedMinutesToExactCustomerQuery}
   from "./on-demand-private-query-bound-draft.server";
 import { assertGeomacroIntelligenceResponseContract } from "./geomacro-intelligence-contract";
+import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
+  GEOMACRO_STRUCTURED_LICENSE_HEADERS}
+  from "./geomacro-structured-commercial-license";
 import { buildPrivateOnDemandMacroDrivers } from "./on-demand-private-macro-drivers.server";
 import { scorePrivateOnDemandMacroPeers, type PrivatePeerMacroResult } from "./on-demand-private-macro-peer-score.server";
 import {
@@ -68,7 +71,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, PAYMENT-SIGNATURE, payment-signature",
-  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
+  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, X-Geomacro-Output-License, X-Geomacro-Raw-Data-Delivered, Link",
   "Access-Control-Max-Age": "600",
 };
 
@@ -151,6 +154,9 @@ function adaptiveBazaarExtension(planHash: string) {
         raw_data_delivered: false,
         source_identity_delivered: false,
         execution_authorized: false,
+        structured_output_license_id:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY.id,
+        structured_output_license_path:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY.human_readable,
+        license_disclosure_is_not_payment_authorization:true,
       },
       schema: {
         $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -208,7 +214,20 @@ function assertAdaptiveQueryBinding(paymentPayload: Record<string, unknown>, pla
 
 function paymentRequiredResponse(request: Request, config: CoinbaseX402Config, planHash: string) {
   const required = adaptivePaymentRequired(request, config, planHash);
-  return json(required, 402, { "PAYMENT-REQUIRED": encodeX402Header(required) });
+  return json(required, 402, { ...GEOMACRO_STRUCTURED_LICENSE_HEADERS, "PAYMENT-REQUIRED": encodeX402Header(required) });
+}
+
+/** Do not retroactively label legacy paid ledger replays with a new licence.
+ * New prepared responses bind the actual disclosed version to durable payment
+ * metadata, outside the signed Geomacro intelligence/product hash.
+ */
+function licensedPaidDeliveryHeaders(prepared: Record<string, unknown>) {
+  const payment=prepared.payment;
+  if(!payment||typeof payment!=="object"||Array.isArray(payment)||
+     (payment as Record<string,unknown>).output_contract_version !==
+       GEOMACRO_STRUCTURED_LICENSE_DISCOVERY.id)
+    return {};
+  return GEOMACRO_STRUCTURED_LICENSE_HEADERS;
 }
 
 function replaySettlement(tx: string | null, network: string | null): CoinbaseSettleResult {
@@ -640,7 +659,7 @@ export const mainnetIntelligenceHandlers = {
         if (claim.disposition === "MANUAL_REVIEW") return json({ ok: false, error: { code: "X402_SETTLEMENT_RECONCILIATION_REQUIRED", message: "A prior settlement outcome is ambiguous; automatic re-charge is blocked." }, execution_authorized: false }, 503);
         if (claim.disposition === "REPLAY" && claim.response_payload) {
           const settlement = replaySettlement(claim.settlement_tx, claim.settlement_network);
-          return json(finalResponse(claim.response_payload as Record<string, unknown>, settlement, config, true), 200, { "PAYMENT-RESPONSE": coinbaseX402PaymentResponseHeader(settlement) });
+          return json(finalResponse(claim.response_payload as Record<string, unknown>, settlement, config, true), 200, { ...licensedPaidDeliveryHeaders(claim.response_payload as Record<string, unknown>), "PAYMENT-RESPONSE": coinbaseX402PaymentResponseHeader(settlement) });
         }
         if (claim.disposition !== "CLAIMED" || !claim.claim_token) return json({ ok: false, error: { code: "X402_DELIVERY_CLAIM_FAILED", message: "Unable to claim this paid query." }, execution_authorized: false }, 503);
         const claimToken = claim.claim_token;
@@ -723,6 +742,7 @@ export const mainnetIntelligenceHandlers = {
               amount_usdc: config.priceUsdc,
               payer: verified.payer ?? null,
               settlement_reference: null,
+              output_contract_version:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY.id,
               bazaar_extension_echoed: paymentPayloadEchoesBazaar(paymentPayload),
               query_plan_bound: true,
             },
@@ -812,7 +832,7 @@ export const mainnetIntelligenceHandlers = {
           console.error("[x402-adaptive] post-settlement audit projection failed; delivery ledger remains canonical", error);
         }
 
-        return json(finalResponse(prepared, settlement, config), 200, { "PAYMENT-RESPONSE": coinbaseX402PaymentResponseHeader(settlement) });
+        return json(finalResponse(prepared, settlement, config), 200, { ...licensedPaidDeliveryHeaders(prepared), "PAYMENT-RESPONSE": coinbaseX402PaymentResponseHeader(settlement) });
       },
 };
 

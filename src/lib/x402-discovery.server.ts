@@ -14,6 +14,8 @@ import { providerRealFundsSecurityState } from "./provider-real-funds-security.s
 import { getCommercialLaunchState } from "./commercial-launch-gate.server";
 import {capabilityPricingCatalog,GEOMACRO_CAPABILITY_PRICING_VERSION}
   from "./capability-pricing-catalog";
+import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
+  from "./geomacro-structured-commercial-license";
 
 const CANONICAL_PRODUCT = "geomacro_adaptive_risk_intelligence_v1" as const;
 
@@ -132,6 +134,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
     status: resources.length > 0 ? "production" : "prelaunch",
     productionFundsAuthorized: resources.length > 0,
     resources,
+    commercialLicense:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
     capabilityPricing:{
       version:GEOMACRO_CAPABILITY_PRICING_VERSION,
       unit:"USDC",decimals:6,

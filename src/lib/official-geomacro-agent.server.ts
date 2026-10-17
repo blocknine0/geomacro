@@ -8,6 +8,8 @@ import {GEOMACRO_AGENT_TOOLS,geomacroAgentTool,
 import {AGENT_QUERY_SCHEMA_VERSION} from "./agent-query-plan";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,
  capabilityPricingCatalog} from "./capability-pricing-catalog";
+import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
+ from "./geomacro-structured-commercial-license";
 
 /** A machine-friendly facade, not a new agent engine, payment system or
  * second authority for risk. Every non-verification tool resolves through
@@ -55,6 +57,7 @@ export function officialGeomacroAgentDiscovery(){
    endpoint:t.paid?OFFICIAL_AGENT_PATH:endpoints.mcp,
    output_contract:t.paid?"geomacro.adaptive-intelligence-response.v1":"signed_risk_object_integrity_only",
   })),
+  commercial_license:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
   pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
   pricing:capabilityPricingCatalog(),
   discovery_does_not_prove_delivery:true,

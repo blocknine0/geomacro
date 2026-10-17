@@ -16,6 +16,32 @@ The new product contract version is:
 
 The contract is shared by human query surfaces and machine delivery. x402 is only the payment boundary; it does not define the intelligence calculation.
 
+## Structured-only customer commercial licence
+
+All customer-delivered commercial intelligence is eligible Geomacro-owned
+**structured derived output, never raw upstream source data**. The official,
+versioned customer terms are Geomacro Structured Intelligence Commercial License v1,
+available as the public, machine-readable and human-readable API document:
+`GET https://geomacro.live/api/intelligence/capabilities?view=license`.
+This versioned API view respects the active presentation/website lock.
+
+The Geomacro owner can license only its own original expression, scoring
+methodology and structured intelligence that it actually controls. This grant
+is separate from original-publisher rights, source commercial eligibility,
+attribution obligations, signed product status, and current freshness.
+A customer's contracted internal use and bounded application integration do
+not confer rights to redistribute raw news, recreate a publisher feed, resell
+the whole Geomacro API feed, or obtain source HTML/provider credentials.
+
+The capability API, official agent and x402 discovery expose the licence ID
+and links. The canonical x402 402 quotation and successfully delivered 200
+responses reference the same licence via HTTP headers, **not by modifying
+the signed intelligence payload or its product hash**. A quote or capability
+listing does not prove customer assent, eligibility, rights or settlement.
+Customer assent remains subject to the accepted transaction or written
+agreement, and actual chargeable delivery retains the separate rights,
+scoring, publication, signed-proof and no-funds preflight gates.
+
 ## What a paid call returns
 
 A current question returns a concise deterministic answer plus the structured state used to support it.
