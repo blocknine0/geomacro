@@ -6,14 +6,24 @@ import {
 } from "../lib/geomacro-intelligence-contract";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,capabilityPricingCatalog}
   from "../lib/capability-pricing-catalog";
-import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
+import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
+  GEOMACRO_STRUCTURED_LICENSE_TERMS}
   from "../lib/geomacro-structured-commercial-license";
 
 export const Route = createFileRoute("/api/intelligence/capabilities")({
   server: {
     handlers: {
-      GET: async () =>
-        Response.json(
+      GET: async ({request}:{request:Request}) => {
+        // Public legal terms are a back-end API view; this avoids changing
+        // the website while the presentation lock is active.
+        const view=new URL(request.url).searchParams.get("view");
+        if(view==="license"){
+          return Response.json(GEOMACRO_STRUCTURED_LICENSE_TERMS,{
+            headers:{"Cache-Control":"public, max-age=300, must-revalidate",
+              "X-Content-Type-Options":"nosniff"}
+          });
+        }
+        return Response.json(
           {
             ok: true,
             provider: {
@@ -78,7 +88,8 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
               "X-Content-Type-Options": "nosniff",
             },
           },
-        ),
+        );
+      },
     },
   },
 });
