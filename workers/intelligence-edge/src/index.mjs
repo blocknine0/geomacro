@@ -284,6 +284,7 @@ async function readD1HotSnapshot(env) {
         "x-geomacro-continuity": "d1-b2-readback-verified-hot-snapshot",
         "x-geomacro-serving-store": "cloudflare-d1",
         "x-geomacro-source-as-of": snapshot.source_as_of,
+        "x-geomacro-native-clock-contract": "live-60m-v1",
         ...(snapshot.proof_schema===MACHINE_INTELLIGENCE_PROOF_SCHEMA
           ? {"x-geomacro-qualified-until":snapshot.expires_at,"cache-control":"no-store"} : {}),
         "x-geomacro-b2-sha256": snapshot.b2_sha256,
@@ -357,6 +358,7 @@ async function buildContinuityResponse(env) {
       "x-geomacro-authority": "backblaze-b2-intelligence-edge",
       "x-geomacro-continuity": "github-actions-b2-readback-verified-projection",
       "x-geomacro-source-as-of": intelligenceOriginalSourceTime(live.rows),
+      "x-geomacro-native-clock-contract": "live-60m-v1",
       "x-geomacro-b2-sha256": continuity.source_live_sha256,
       "x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none",
       "access-control-allow-origin": "*",
@@ -435,6 +437,7 @@ async function buildResponse(env) {
       "x-geomacro-authority": "backblaze-b2-intelligence-edge",
       "x-geomacro-b2-sha256": proof.compressed_sha256,
       "x-geomacro-source-as-of": intelligenceOriginalSourceTime(rows),
+      "x-geomacro-native-clock-contract": "live-60m-v1",
       "x-geomacro-b2-verification": "full-readback-hash-exact-restore",
       ...(proof.schema===MACHINE_INTELLIGENCE_PROOF_SCHEMA
         ? {"x-geomacro-qualified-until":proof.qualified_until,"cache-control":"no-store"} : {}),
