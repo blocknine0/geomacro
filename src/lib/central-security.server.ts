@@ -104,6 +104,10 @@ export function classifyCentralSecurityRoute(
   if (pathname === "/api/v1/intelligence/availability" &&
       ["GET", "POST", "OPTIONS"].includes(method)) return "public_api";
 
+  // One founder-approved, body-bounded, same-origin FREE Ask research POST.
+  // Keep arbitrary POST routes and all x402 paid capabilities fail-closed.
+  if (pathname === "/api/ask/v2/turn" && method === "POST") return "public_api";
+
   // Official agent discovery remains free; tool POST uses canonical payment gate.
   if (pathname === "/api/v1/agent" &&
       ["GET", "HEAD", "OPTIONS"].includes(method)) return "public_api";
