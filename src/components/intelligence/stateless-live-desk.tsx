@@ -310,7 +310,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         </p>
         <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Clock3 className="h-4 w-4" aria-hidden />
-          <span>15-minute delayed · Background collection every 30 minutes · Live refresh every 2 minutes while open</span>
+          <span>15-minute delayed · Background collection targeted every 15 minutes · Live refresh every 2 minutes while open</span>
         </p>
       </header>
 
