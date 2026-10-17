@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CommercialHome } from "@/components/home/commercial-home";
+import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
+import { findCardFromObservedRelease } from "@/lib/find-card-v1";
+import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 
 const TITLE = "Global Risk Intelligence Infrastructure | Geomacro";
 const DESCRIPTION =
@@ -8,6 +11,20 @@ const URL = "https://geomacro.live/";
 const IMAGE = "https://geomacro.live/og-image-v2.png";
 
 export const Route = createFileRoute("/")({
+  loader: async () => {
+    // Bounded read-only SSR of the existing D1 derived journal. Absence or
+    // outage leaves the homepage usable and never invents an event/score.
+    // Public client hydration can independently refresh the same feed.
+    try {
+      const signals = await withPublicRuntimeTimeout(
+        fetchDirectDerivedNews(), 2_500, "Public Finds journal timed out.");
+      const now=Date.now();
+      return {initialFindCards:signals.map(s=>findCardFromObservedRelease(s,now))
+        .filter((card)=>card!==null).slice(0,100)};
+    } catch {
+      return {initialFindCards:[]};
+    }
+  },
   head: () => ({
     meta: [
       { title: TITLE },
@@ -49,9 +66,10 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
+  const {initialFindCards}=Route.useLoaderData();
   return (
     <main>
-      <CommercialHome />
+      <CommercialHome initialFindCards={initialFindCards} />
     </main>
   );
 }
