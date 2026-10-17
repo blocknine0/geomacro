@@ -7,7 +7,10 @@ const shell = readFileSync("src/components/site-shell.tsx", "utf8");
 
 describe("#1128 mobile information hierarchy", () => {
   it("keeps Ask Geomacro compact and evidence-preserving on mobile", () => {
-    expect(ask).toContain('className="mx-auto w-full max-w-5xl px-4');
+    expect(ask).toContain("h-[calc(100dvh-5.5rem)]");
+    expect(ask).toContain('aria-label="Open conversation menu"');
+    expect(ask).toContain("md:w-64");
+    expect(ask).toContain("overscroll-contain");
     expect(ask).toContain('max-w-[88%]');
     expect(ask).toContain("break-words");
     expect(ask).toContain("Evidence (");
