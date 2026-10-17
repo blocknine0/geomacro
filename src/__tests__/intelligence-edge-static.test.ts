@@ -15,7 +15,7 @@ describe("verified public edge hot-cache contract", () => {
     expect(wrangler).toContain('"binding": "CONTROL_PLANE"');
     expect(wrangler).toContain('"service": "geomacro-control-plane"');
     expect(worker).toContain('env.CONTROL_PLANE.fetch(new Request(');
-    expect(wrangler).toContain('"cross_version_cache": true');
+    expect(wrangler).toContain('"cross_version_cache": false');
     expect(worker).toContain('LIVE_KEY = "geomacro-evidence/v1/live/public-intelligence/latest.json.gz"');
     expect(worker).toContain('PROOF_KEY = "geomacro-evidence/v1/live/public-intelligence/latest-proof.json"');
     expect(worker).toContain('proof?.full_b2_readback_verified !== true');
@@ -71,7 +71,7 @@ describe("verified public edge hot-cache contract", () => {
       const wrangler = read(`workers/${base}/wrangler.jsonc`);
       const worker = read(`workers/${base}/src/index.mjs`);
       expect(wrangler).toContain('"enabled": true');
-      expect(wrangler).toContain('"cross_version_cache": true');
+      expect(wrangler).toContain('"cross_version_cache": false');
       expect(worker).toContain("liveEdgeCacheControl");
       expect(worker).toContain("x-geomacro-source-as-of");
       expect(worker).not.toContain("s-maxage=");
