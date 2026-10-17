@@ -1,0 +1,122 @@
+name: Single Original Dual-Authority Private B2 Intake (No Funds)
+
+# Manual only. Requires REAL separately signed facts and article permission
+# already written under an immutable private SHA-key. No auto-approval or
+# future public publication; no Supabase, no Gro signer private key, no USDC.
+on:
+  workflow_dispatch:
+    inputs:
+      signed_b2_key:
+        description: "Immutable geomacro-evidence/v1/private/single-original-machine/<sha256>.json"
+        required: true
+        type: string
+      signed_b2_sha256:
+        description: "Independently supplied exact JSON bytes SHA256"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-single-original-private-no-funds
+  cancel-in-progress: false
+
+jobs:
+  independent-qualification:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EXPECTED_SHA: ${{ github.sha }}
+      SIGNED_B2_KEY: ${{ inputs.signed_b2_key }}
+      SIGNED_B2_SHA256: ${{ inputs.signed_b2_sha256 }}
+      GEOMACRO_PRIVATE_REVIEW_DIR: artifacts/private-single-original
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: single_original_authority_no_funds
+      B2_REQUEST_BUDGET: "6"
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+    steps:
+      - name: Checkout exact protected main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Validate explicit exact key and frozen payment boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SHA" = "$(git rev-parse HEAD)"
+          test "$B2_ACCOUNT_QUOTA_REQUIRED" = "1"
+          test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+          for var in SUPABASE_URL SUPABASE_DB_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY COINBASE_X402_MAINNET_ACK GEOMACRO_COMMERCIAL_LAUNCH_ACK; do
+            test -z "$(printenv "$var" || true)" || { echo "::error::NO_FUNDS_OR_SUPABASE_BOUNDARY"; exit 2; }
+          done
+          bun --eval '
+            const pin=process.env.SIGNED_B2_SHA256??"";
+            const key=process.env.SIGNED_B2_KEY??"";
+            if(!/^[a-f0-9]{64}$/.test(pin)||
+               key!=="geomacro-evidence/v1/private/single-original-machine/"+pin+".json")
+              throw Error("SINGLE_ORIGINAL_IMMUTABLE_PRIVATE_INPUT_REQUIRED");
+          '
+      - name: Resolve shared account D1 quota governor
+        shell: bash
+        run: |
+          set -euo pipefail
+          json="$(npx -y wrangler@4.136.3 d1 list --json)"
+          id="$(printf '%s' "$json" | node -e 'let s="";process.stdin.on("data",x=>s+=x);process.stdin.on("end",()=>{const a=JSON.parse(s).find(v=>v.name==="geomacro-control-plane");process.stdout.write(a?.uuid??a?.id??"")})')"
+          test -n "$id" || { echo "::error::D1_QUOTA_GOVERNOR_REQUIRED"; exit 2; }
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+      - name: Bounded private source input readback and exact SHA
+        env:
+          B2_REQUEST_BUDGET: "3"
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$GEOMACRO_PRIVATE_REVIEW_DIR"
+          chmod 700 "$GEOMACRO_PRIVATE_REVIEW_DIR"
+          bun --eval '
+            import {writeFileSync} from "node:fs";
+            import {createHash} from "node:crypto";
+            import {createB2Client} from "./scripts/ops/b2-s3-client.mjs";
+            const b2=createB2Client({endpointUrl:"https://s3.us-east-005.backblazeb2.com",
+              bucket:"geomacro-private-archive",
+              accessKey:process.env.B2_KEY_ID,secretKey:process.env.B2_APPLICATION_KEY});
+            const bytes=Buffer.from(await b2.get(process.env.SIGNED_B2_KEY));
+            const sha=createHash("sha256").update(bytes).digest("hex");
+            if(bytes.length<200||bytes.length>2*1024*1024||sha!==process.env.SIGNED_B2_SHA256)
+              throw Error("SIGNED_PRIVATE_INPUT_EXACT_READBACK_INVALID");
+            writeFileSync(process.env.GEOMACRO_PRIVATE_REVIEW_DIR+"/"+sha+".json",
+              bytes,{flag:"wx",mode:0o600});
+          '
+          echo "PASS: exact pinned private input fetched, not printed"
+      - name: Verify dual approved signatures, article HTML and scoped B2 rights
+        env:
+          B2_REQUEST_BUDGET: "3"
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/accept-private-single-original-authority.ts \
+            "--input=$GEOMACRO_PRIVATE_REVIEW_DIR/$SIGNED_B2_SHA256.json" \
+            "--sha256=$SIGNED_B2_SHA256"
+          echo "PASS: PRIVATE single-original qualification completed; no GRO/GRI/customer funds"
