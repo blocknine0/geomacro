@@ -45,3 +45,9 @@ An intentional website change follows this two-stage approval and deployment seq
 6. Only after real acceptance may the publication-status record be updated; never rewrite the earlier approval history.
 
 Lovable AI edits and automatic “Fix” changes must not be used against the locked website.
+
+## Founder-approved Ask verified-progress SSE presentation (2026-10-17)
+
+The founder explicitly requested the Ask Geomacro ChatGPT-style chat to retrieve missing data live, deliver accurate official CPI/FX observations, and display streamed research progress. Reviewed presentation SHA `060fedbae69bf51d4a2b5bee0b30618bec70dd3f` (PR #2363) is the **new website presentation baseline** solely for `src/components/ask/ask-workspace.tsx`. The prior ChatGPT-style UI approved SHA `f98aa5088100a520e1c91300ad8a93c0036f663c` remains pinned in approval history.
+
+No Global Risk, Intelligence, pricing, payment, rights, source-redaction or delay presentation changes are authorized. The SSE route streams research stages and a final governed answer, **not** speculative model tokens or a new signed product. The canonical site still requires a manually published exact-SHA production deployment, outside-in tests of the new POST endpoint and the existing health/503 recovery; GitHub merge or mirror sync alone does not establish live acceptance. No real funds, no Supabase reactivation.
