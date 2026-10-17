@@ -24,7 +24,7 @@ The role's private input JSON must contain schema geomacro.offline-issuer-submis
 - proof_sha256: SHA256 of the existing canonicalRiskObjectJson(proof), original_evidence_set_sha256 equal to proof.exact_original_evidence_set_sha256.
 - original_pages_reviewed=true, same_event_independence_reviewed=true, retraction_and_contradiction_reviewed=true; actual reviewed_at, and review_document_sha256 equal to exact private review-document bytes.
 - Facts role must have no permission_documents.
-- Rights role must additionally have article_scope_and_no_attribution_approved=true, third_party_material_excluded=true, license_basis for every article/source ID with approved scope basis and attribution_required=false. permission_documents contains source_registry_id and a file basename for every permission document; its actual bytes SHA256 must match proof.source_permissions.permission_record_sha256.
+- Rights role must additionally have article_scope_and_no_attribution_approved=true, third_party_material_excluded=true, license_basis for every article/source ID with approved scope basis, attribution_required=false, licensed_article_scope_sha256 exactly matching its proof.source_permissions entry, and permission_record_sha256 equal to exact reviewed licence-document bytes. permission_documents contains source_registry_id and a file basename for every permission document; its actual bytes SHA256 must match proof.source_permissions.permission_record_sha256.
 
 Rights review is NOT automatically granted from the source registry. The custodian must independently read real licence documents and verify their applicability. All raw URLs, originals, review documents and permissions remain private.
 
