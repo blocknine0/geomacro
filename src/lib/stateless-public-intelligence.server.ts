@@ -124,6 +124,11 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "au_geoscience", category: "rare_earth", media: "html_index",
     url: "https://www.ga.gov.au/news",
     allowedHosts: ["www.ga.gov.au"], credit: null },
+  // Reuse existing independently observed Australian minister original feed.
+  // Free derived observation only; this is NOT rights-certified commercial GRO.
+  { id: "au_industry_minister", category: "rare_earth", media: "rss",
+    url: "https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   { id: "uk_energy", category: "rare_earth", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
@@ -306,7 +311,9 @@ export async function fetchFirstPartyOriginalFeed(
     const response = await fetchImpl(target, {
       method: "GET", redirect: "manual", cache: "no-store",
       headers: { Accept: accepted },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      // Cloudflare workerd does not support redirect:"error"; manual never
+      // follows a 3xx. Permit ONE bounded 8-second first-party request.
+      signal: AbortSignal.timeout(source.id === "au_industry_minister" ? 8_000 : TIMEOUT_MS),
     });
     if (![301, 302, 307, 308].includes(response.status)) return response;
     // Unrelated providers are never granted a new redirect privilege.

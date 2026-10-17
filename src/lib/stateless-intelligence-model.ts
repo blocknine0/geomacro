@@ -139,6 +139,13 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
     if (source.govContentApi &&
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
+    // Australian Industry minister: admit ONLY original issuer media articles.
+    // This private first-party RSS is NOT a second independent corroborator,
+    // commercial permission, GRO, or authorized current risk score.
+    if (source.id === "au_industry_minister" &&
+        (link.search || !/^\/t-ayres\/media\/[a-z0-9][a-z0-9-]{10,180}$/u.test(link.pathname)))
+      return null;
+
     // BLS official original statistical releases: feed landing pages,
     // arbitrary same-host content and cross-family releases are never valid.
     if (["bls_cpi", "bls_employment", "bls_external_prices"].includes(source.id)) {
