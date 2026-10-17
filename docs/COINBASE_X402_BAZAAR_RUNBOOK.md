@@ -1,6 +1,6 @@
 # Coinbase CDP x402 + Bazaar production runbook
 
-Status: implementation/acceptance-test track. This rail is isolated from the existing Circle Gateway x402 proof on Arc Testnet.
+Status: **historical/testnet implementation and Coinbase Bazaar acceptance track**. This is not current production pricing or real-earning authorization. For any present or future production launch, the only price authority is `geomacro.capability-usdc.v1` in `src/lib/capability-pricing-catalog.ts` (eight capabilities, 14 variants); see `docs/PAY_PER_CALL_PRODUCTION_ACTIVATION.md`. This legacy rail is isolated from the Circle Gateway x402 proof on Arc Testnet.
 
 ## Product boundary
 
@@ -24,7 +24,7 @@ CDP_API_KEY_SECRET=...
 
 The CDP secret may be either a PKCS#8 ES256 PEM private key or a 64-byte base64 Ed25519 key. It must remain server-only.
 
-The coordinated production launch price is **0.05 USDC per successful paid x402 intelligence delivery for the first 10,000 deliveries**. After adoption evidence supports the transition, the reference price is **0.10 USDC**. The successful Base Sepolia acceptance evidence remains historical testnet evidence and does not define production pricing.
+**Historical only:** the old flat 0.05 USDC first-10,000-call offer and later automatic/reference 0.10 USDC price are superseded. The successful Base Sepolia acceptance evidence is testnet-only and never defines the current production quote. Neither this fixed-price example nor a `COINBASE_X402_PRICE_USDC` environment variable authorizes, substitutes for or changes the verified per-capability schedule.
 
 Production additionally requires:
 
