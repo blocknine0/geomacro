@@ -93,6 +93,34 @@ Variant pricing always reuses \`capability-pricing-catalog.ts\`,
 never separate pricing by chain. Official Agent discovery and OpenAPI
 point to these new routes.
 
+## Protected prepared-delivery prequote admission (three networks, still no funds)
+
+The authenticated Cloudflare Durable Object quote vault now supports **Base,
+Arc and Polygon native-USDC** prepared *Circle facilitator candidate* records,
+bound to the same canonical price catalog, exact customer request fingerprint,
+exact prepared structured-output bytes SHA-256, approved USDC asset,
+recipient, five-minute expiry, provider environment and immutable quote ID.
+It rejects cross-network assets, duplicate/conflicting terms and reused
+Coinbase authorization on Arc or Polygon. The Coinbase CDP adapter remains
+strictly Base-only.
+
+- `src/lib/usdc-native-rail-identities.ts` is the shared pure source of
+  chain/asset identities for both public discovery and Cloudflare storage.
+- `src/lib/capability-prepared-quote.server.ts` creates candidate
+  prepared-delivery quote contracts only if the caller is the trusted,
+  separately validated commercial source and deliverability service.
+- `workers/commerce-ledger/src/capability-prequote.mjs` validates the same
+  fixed prices, native rail and exact immutable bytes when freezing/readback.
+- Synthetic, no-funds acceptance exercises Circle Base, Arc and Polygon
+  readback, cross-rail/replay/expiry/asset negatives, and all 14 prices.
+
+**Not merchant activation:** This does not check the live Circle facilitator's
+supported-chain API or merchant authentication, create an x402 402 requirement,
+verify a real payment, settle a USDC transaction, or cure an unavailable
+GRO/GRI hot product. The existing launch ACK gates, exact price schedule,
+real rights/freshness/product admission and settlement reconciler remain
+authoritative. No test fixture is a buyer, rights grant or actual revenue.
+
 ## Merchant production launch acceptance — not completed by a quote
 
 1. Verify eligible source rights and actual deliverability of the exact
