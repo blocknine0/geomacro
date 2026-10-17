@@ -25,7 +25,7 @@ export function parseVerifiedEcbReferenceCsv(body,now=new Date()){
  requireProof(typeof body==="string"&&body.length>40&&body.length<=128_000,
    "ASK_ECB_REFERENCE_SIZE_INVALID");
  const lines=body.replace(/\r\n/gu,"\n").split("\n").filter(Boolean);
- const header=lines.findIndex(line=>line.startsWith("FREQ,")&&line.includes("TIME_PERIOD")&&line.includes("OBS_VALUE"));
+ const header=lines.findIndex(line=>line.split(",").includes("FREQ")&&line.includes("TIME_PERIOD")&&line.includes("OBS_VALUE"));
  requireProof(header>=0,"ASK_ECB_REFERENCE_HEADER_INVALID");
  const cols=lines[header].split(",");
  const idx=Object.fromEntries(["FREQ","CURRENCY","CURRENCY_DENOM","EXR_TYPE","EXR_SUFFIX",
