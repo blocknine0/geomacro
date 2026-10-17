@@ -211,6 +211,19 @@ export function selectOfficialTopic(title: string, category: StatelessCategory) 
 // Subject-specific Statistics Canada Daily feeds are macro publications, but
 // Atom <updated> is not original publication. Only an independently verified
 // article day may receive this conservative unscored publication fallback.
+// Only issuer-verified original article dates may enable a day-only AU
+// Resources observation; retrieval and modified clocks remain ineligible.
+const AU_RESOURCES_DAY_SOURCE_IDS = new Set([
+  "au_resources_macro_index", "au_resources_minerals_index",
+]);
+const AU_RESOURCES_TRADE_TOPIC = {
+  test: /\b(?:resources? and energy exports?|resources? exports?|energy exports?|export earnings|export forecasts?)\b/iu,
+  name: "resources and energy export outlook",
+  implication: "A dated government resources export release informs trade context only; no export value, FX movement or risk score is inferred.",
+};
+export function australianResourcesMacroMatches(title: string): boolean {
+  return AU_RESOURCES_TRADE_TOPIC.test.test(title);
+}
 const STATCAN_FEED_IDS = new Set([
   "statcan_prices", "statcan_accounts", "statcan_trade", "statcan_labour",
 ]);
@@ -223,6 +236,8 @@ function topicForOriginal(
   title: string, category: StatelessCategory, sourceId: string, dayVerified: boolean,
 ) {
   return selectOfficialTopic(title, category) ??
+    (category === "macro" && dayVerified && sourceId === "au_resources_macro_index" &&
+      AU_RESOURCES_TRADE_TOPIC.test.test(title) ? AU_RESOURCES_TRADE_TOPIC : null) ??
     (category === "macro" && dayVerified && STATCAN_FEED_IDS.has(sourceId)
       ? STATCAN_DAILY_TOPIC : null);
 }
@@ -432,7 +447,8 @@ export function deriveStatelessSignals(
     if (!item || !["geopolitics", "macro", "rare_earth"].includes(item.category)) continue;
     const dayOnly = item.datePrecision === "day" &&
       (["eu_top_news","nrcan_releases","canada_foreign_statements","au_geoscience"].includes(item.sourceId) ||
-        STATCAN_FEED_IDS.has(item.sourceId));
+        AU_RESOURCES_DAY_SOURCE_IDS.has(item.sourceId) ||
+         STATCAN_FEED_IDS.has(item.sourceId));
     const conservativeRelease = dayOnly ? conservativeDayReleaseMs(item.publishedAt) : null;
     const native = dayOnly ? Date.parse(item.publishedAt + "T00:00:00.000Z")
       : originalPublicationMs(item.publishedAt, now);
