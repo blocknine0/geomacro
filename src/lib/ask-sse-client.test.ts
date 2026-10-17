@@ -21,7 +21,7 @@ describe("Ask progress-stream security and compatibility",()=>{
   expect(route).not.toContain("signRiskObject");
   expect(ui).toContain("streamPublicAsk(question, history, setResearchStage)");
   expect(ui).toContain("LegacyAskTransportOnlyError");
-  expect(ui).toContain('fetch("/api/public-ask"');
+  expect(readFileSync("src/lib/ask-legacy-transport.ts","utf8")).toContain('fetch("/api/public-ask"');
   expect(client).toContain("MAX_EVENT_BYTES");
   expect(client).toContain("MAX_TOTAL_BYTES");
   expect(ui).not.toMatch(/localStorage|sessionStorage|indexedDB/);

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 const ask = readFileSync("src/components/ask/ask-workspace.tsx", "utf8");
+const answer = readFileSync("src/components/ask/ask-answer-view.tsx", "utf8");
 const intelligence = readFileSync("src/routes/intelligence.tsx", "utf8");
 const shell = readFileSync("src/components/site-shell.tsx", "utf8");
 
@@ -11,9 +12,9 @@ describe("#1128 mobile information hierarchy", () => {
     expect(ask).toContain('aria-label="Open conversation menu"');
     expect(ask).toContain("md:w-64");
     expect(ask).toContain("overscroll-contain");
-    expect(ask).toContain('max-w-[88%]');
-    expect(ask).toContain("break-words");
-    expect(ask).toContain("Evidence (");
+    expect(answer).toContain('max-w-[88%]');
+    expect(answer).toContain("break-words");
+    expect(answer).toContain("Evidence (");
   });
 
   it("keeps current Intelligence responsive", () => {

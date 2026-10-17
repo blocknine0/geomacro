@@ -47,6 +47,7 @@ describe("production website runtime contract", () => {
     const intelligenceApi = read("server/api/public/intelligence.get.ts");
     const productionReader = read("src/lib/public-intelligence-production.server.ts");
     const askUi = read("src/components/ask/ask-workspace.tsx");
+    const askTransport = read("src/lib/ask-legacy-transport.ts");
     const askApi = read("server/api/public-ask.get.ts");
     const askCore = read("src/lib/ask-geomacro-core.server.ts");
     const askEngine = read("src/lib/hybrid-ask-intelligence.server.ts");
@@ -57,8 +58,8 @@ describe("production website runtime contract", () => {
     expect(productionReader).toContain("readB2PublicIntelligence");
     expect(productionReader).not.toContain("getAppSupabase");
 
-    expect(askUi).toContain('/api/public-ask');
-    expect(askUi).toContain('"X-Geomacro-Question"');
+    expect(askTransport).toContain('/api/public-ask');
+    expect(askTransport).toContain('"X-Geomacro-Question"');
     expect(askUi).not.toContain("useServerFn");
     expect(askApi).toContain("executeAskGeomacro");
     expect(askCore).toContain("checkAskRateLimit(clientKey)");
