@@ -1,0 +1,56 @@
+name: First Genuine Minerals Event Original-Byte Triage (No Funds)
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/audit-first-real-minerals-evidence.mjs"
+      - "scripts/ops/audit-first-real-minerals-evidence.test.mjs"
+      - "docs/ops/FIRST_REAL_MINERALS_EVENT_EVIDENCE_20261017.md"
+      - ".github/workflows/first-real-minerals-evidence-triage.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/audit-first-real-minerals-evidence.mjs"
+      - "scripts/ops/audit-first-real-minerals-evidence.test.mjs"
+      - ".github/workflows/first-real-minerals-evidence-triage.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-first-minerals-evidence-readonly
+  cancel-in-progress: true
+
+jobs:
+  source-proof-read-only:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Synthetic rejection tests — distinct events, original bytes and native clock
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/audit-first-real-minerals-evidence.mjs
+          node --test scripts/ops/audit-first-real-minerals-evidence.test.mjs
+      - name: Read exactly two independently issued official HTML pages without writing raw bytes
+        run: node scripts/ops/audit-first-real-minerals-evidence.mjs
+      - name: Assert no-signature, no-rights approval and no-publication boundary in source
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync} from "node:fs";
+          const source=readFileSync("scripts/ops/audit-first-real-minerals-evidence.mjs","utf8");
+          for(const forbidden of [
+            "publishB2VerifiedHotSnapshot(", "D1.prepare(", "settleCoinbaseX402(",
+            "RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64",
+            "GEOMACRO_MACHINE_FACTS_PRIVATE", "GEOMACRO_MACHINE_RIGHTS_PRIVATE",
+            "requireRiskSupabase("
+          ])if(source.includes(forbidden))
+            throw Error("FIRST_EVENT_TRIAGE_MUST_NOT_SIGN_PUBLISH_OR_SETTLE");
+          console.log("FIRST_EVENT_EVIDENCE_TRIAGE_READONLY_BOUNDARY_PASS");
+          NODE
