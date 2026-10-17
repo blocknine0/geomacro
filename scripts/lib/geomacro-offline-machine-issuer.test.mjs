@@ -89,8 +89,12 @@ function review(role,p=proof){
    permission_record_sha256:p.source_permissions.find(x=>x.source_registry_id===c.source_registry_id).permission_record_sha256,
   }))}:common;
 }
-const fetchImpl=async url=>new Response(pages[url.includes("federalreserve")?0:1],
- {status:200,headers:{"content-type":"text/html"}});
+const fetchImpl=async url=>{
+ const index=url===candidates[0].original_article_url?0:
+   url===candidates[1].original_article_url?1:-1;
+ if(index===-1)throw Error("UNREGISTERED_ORIGINAL_FIXTURE_URL");
+ return new Response(pages[index],{status:200,headers:{"content-type":"text/html"}});
+};
 function args(role,changes={}){
  const idx=role==="facts"?0:1,other=role==="facts"?1:0;
  return {role,proof,candidates,review:review(role),reviewDocumentBytes,
