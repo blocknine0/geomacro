@@ -6,12 +6,6 @@ on:
       - scripts/ops/prepare-first-qualified-country-digest.ts
       - .github/workflows/first-qualified-country-digest.yml
   workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - src/lib/qualified-mcs-country-digest.server.ts
-      - scripts/ops/prepare-first-qualified-country-digest.ts
-      - .github/workflows/first-qualified-country-digest.yml
 permissions:
   contents: read
 concurrency:
@@ -36,7 +30,7 @@ jobs:
           GEOMACRO_SUPABASE_RUNTIME_MODE: standby
         run: bun scripts/ops/prepare-first-qualified-country-digest.ts
   qualify-and-archive:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: production
