@@ -1,0 +1,62 @@
+name: Offline Facts and Rights Issuers (Zero Funds)
+on:
+  pull_request:
+    paths:
+      - "scripts/lib/geomacro-offline-machine-issuer.mjs"
+      - "scripts/lib/geomacro-offline-machine-issuer.test.mjs"
+      - "scripts/ops/issue-offline-machine-commercial-proof.mjs"
+      - "scripts/ops/issue-offline-machine-commercial-proof.test.mjs"
+      - "src/__tests__/offline-machine-proof-canonical-parity.test.ts"
+      - "docs/ops/ZERO_COST_OFFLINE_MACHINE_ISSUER.md"
+      - ".github/workflows/offline-machine-issuer-no-funds.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/lib/geomacro-offline-machine-issuer.mjs"
+      - "scripts/lib/geomacro-offline-machine-issuer.test.mjs"
+      - "scripts/ops/issue-offline-machine-commercial-proof.mjs"
+      - "src/__tests__/offline-machine-proof-canonical-parity.test.ts"
+      - ".github/workflows/offline-machine-issuer-no-funds.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-contract-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Syntax and real original-byte verified synthetic issue and assemble
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/geomacro-offline-machine-issuer.mjs
+          node --check scripts/ops/issue-offline-machine-commercial-proof.mjs
+          node --test scripts/lib/geomacro-offline-machine-issuer.test.mjs scripts/ops/issue-offline-machine-commercial-proof.test.mjs
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Compare exact signing bytes with existing canonical GRO verifier
+        run: bunx vitest run src/__tests__/offline-machine-proof-canonical-parity.test.ts
+      - name: No production credential, B2, D1, source upload or payment in issuer
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync} from "node:fs";
+          const files=[
+            "scripts/lib/geomacro-offline-machine-issuer.mjs",
+            "scripts/ops/issue-offline-machine-commercial-proof.mjs"
+          ];
+          for(const file of files){
+            const s=readFileSync(file,"utf8");
+            for(const token of [
+              "settleCoinbaseX402(", "publishB2VerifiedHotSnapshot(",
+              "D1.prepare(", "SUPABASE_SERVICE_ROLE_KEY", "RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64"
+            ]) if(s.includes(token))throw Error("OFFLINE_ISSUER_MUST_NOT_MUTATE_PRODUCTION");
+          }
+          console.log("OFFLINE_ISSUER_NO_FUNDS_PRODUCTION_BOUNDARY_PASS");
+          NODE
