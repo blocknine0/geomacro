@@ -40,8 +40,8 @@ describe("independent stateless live product deep health",()=>{
   expect(body.country_coverage_verified).toBe(false);
   expect(body.x402_payment_authorized).toBe(false);
   expect(body.new_intelligence_durable_storage_required).toBe(false);
-  expect(body.categories.geopolitics.independently_verified_current_events).toBe(1);
-  expect(body.categories["critical-minerals"].independently_verified_current_events).toBe(0);
+  expect(body.categories.geopolitics.event_occurrence_clock_observations).toBe(1);
+  expect(body.categories["critical-minerals"].event_occurrence_clock_observations).toBe(0);
  });
  it("fails HTTP 503 if one of three is missing rather than returning healthy",async()=>{
   const probe=async ({category}:{category:Category})=>
@@ -69,8 +69,8 @@ describe("independent stateless live product deep health",()=>{
  });
  it("never considers annual/calendar periods to be current signed intelligence",async()=>{
   const out=await probeLiveStructuredDeepHealth({now,probe:async ({category})=>response(category)});
-  expect(out.body.categories["macro-fx"].independently_verified_current_events).toBe(0);
-  expect(out.body.categories["critical-minerals"].independently_verified_current_events).toBe(0);
+  expect(out.body.categories["macro-fx"].event_occurrence_clock_observations).toBe(0);
+  expect(out.body.categories["critical-minerals"].event_occurrence_clock_observations).toBe(0);
   expect(out.body.all_195_countries_fresh_news_verified).toBe(false);
  });
  it("keeps legacy /api/health?deep=1 signed B2/D1 rules intact",()=>{
