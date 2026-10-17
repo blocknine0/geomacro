@@ -1,7 +1,8 @@
 name: Website Derived News Cadence Backstop
 
-# Seven-minute offset from canonical :07/:22/:37/:52 UTC collection.
-# GitHub schedules are best-effort, not an exact 15-minute SLA.
+# Fifteen-minute offset from canonical hourly :07 UTC collection.
+# GitHub schedules are best effort; publisher success clocks, not time slots,
+# determine whether bounded recovery is necessary.
 # Only publish if the *last genuinely completed successful D1 writer* is
 # stale, never based on a recently visited site or an original news date.
 on:
@@ -11,7 +12,7 @@ on:
     branches: [main]
     types: [completed]
   schedule:
-    - cron: "14,29,44,59 * * * *"
+    - cron: "22 * * * *"
   push:
     branches: [main]
     paths:
@@ -21,6 +22,8 @@ on:
       - "scripts/tests/website-derived-news-failover.test.mjs"
       - "scripts/lib/automated-finds-run-health.mjs"
       - "scripts/tests/automated-finds-run-health.test.mjs"
+      - "scripts/lib/derived-news-source-health.mjs"
+      - "scripts/tests/derived-news-source-health.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/website-derived-news-cadence-backstop.yml"
@@ -29,6 +32,8 @@ on:
       - "scripts/tests/website-derived-news-failover.test.mjs"
       - "scripts/lib/automated-finds-run-health.mjs"
       - "scripts/tests/automated-finds-run-health.test.mjs"
+      - "scripts/lib/derived-news-source-health.mjs"
+      - "scripts/tests/derived-news-source-health.test.mjs"
 
 permissions:
   contents: read
@@ -54,7 +59,7 @@ jobs:
         run: |
           node --check scripts/lib/website-derived-news-failover.mjs
           node --check scripts/ops/check-website-derived-news-cadence.mjs
-          node --test scripts/tests/website-derived-news-failover.test.mjs scripts/tests/automated-finds-run-health.test.mjs
+          node --test scripts/tests/website-derived-news-failover.test.mjs scripts/tests/automated-finds-run-health.test.mjs scripts/tests/derived-news-source-health.test.mjs
 
   catch-up-derived-only:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion)))
@@ -201,3 +206,12 @@ jobs:
       - name: Print explicit successful no-write decision
         if: steps.decide.outputs.should_run != 'true'
         run: echo "NEWS_BACKSTOP_SKIPPED_PRIMARY_PUBLISHER_CURRENT"
+
+      - name: Save recovery source-health receipt without upstream data
+        if: always() && steps.decide.outputs.should_run == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: derived-news-recovery-health-${{ github.run_id }}
+          path: artifacts/derived-news/source-health.json
+          if-no-files-found: warn
+          retention-days: 14

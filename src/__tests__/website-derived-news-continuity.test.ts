@@ -220,7 +220,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const ui=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
     expect(route).toContain('url.pathname === "/v1/public/website-derived-news"');
     expect(route).toContain('url.pathname === "/v1/website-derived-news"');
-    expect(cron).toContain('cron: "7,22,37,52 * * * *"');
+    expect(cron).toContain('cron: "7 * * * *"');
     expect(cron).toContain("bun scripts/ops/publish-website-derived-news.ts");
     expect(ui).toContain("getWebsiteDerivedNews()");
     expect(ui).toContain('const merged = new Map<string, StatelessIntelligenceSignal>()');

@@ -1,6 +1,6 @@
 name: Website Derived News Continuity
 
-# Supabase-free 15-minute collection for all three public derived-news categories.
+# Supabase-free hourly collection for all three public derived-news categories.
 # GitHub cron is best effort; only owned structured news is written to Cloudflare D1.
 # Signed Finds/B2 backup retain the existing quota governor and rights boundary.
 on:
@@ -23,8 +23,9 @@ on:
       - "src/lib/risk-object-signing.server.ts"
       - "scripts/ops/publish-automated-finds.ts"
       - "scripts/lib/automated-finds-run-health.mjs"
+      - "scripts/lib/derived-news-source-health.mjs"
   schedule:
-    - cron: "7,22,37,52 * * * *"
+    - cron: "7 * * * *"
 
 permissions:
   contents: read
@@ -148,3 +149,12 @@ jobs:
             verified:true,derived_rows:doc.signals.length,release_delay_minutes:15,
             raw_upstream_disclosed:false,supabase_dependency:false}));
           NODE
+
+      - name: Save sanitized hourly three-category source health receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: derived-news-source-health-${{ github.run_id }}
+          path: artifacts/derived-news/source-health.json
+          if-no-files-found: warn
+          retention-days: 14

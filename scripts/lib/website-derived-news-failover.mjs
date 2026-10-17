@@ -3,10 +3,12 @@
  * It compares ACTUAL successful canonical D1 publisher workflow completion
  * times, never a story's original date or a public GET/read refresh clock.
  */
-// After a normal 15-minute slot is missed, the +7m backstop may recover.
-// Keep real successful completion (not visit, scheduled start or news date)
-// authoritative; the publisher/backstop share a non-canceling writer lock.
-export const BACKSTOP_AFTER_MS = 22 * 60_000;
+// Hourly primary at :07 UTC; backstop at :22. Recover once last verified
+// publisher completion is at least 70 minutes old. This tolerates normal
+// collection runtime without hiding a missed hourly cycle indefinitely.
+// No claim of an exact GitHub scheduling SLA.
+// Both workflows use the same non-canceling writer lock.
+export const BACKSTOP_AFTER_MS = 70 * 60_000;
 export const WEBSITE_PUBLISHER_WORKFLOW = "website-derived-news-continuity.yml";
 export function decideWebsiteNewsBackstop(runs, now=Date.now(), limit=BACKSTOP_AFTER_MS) {
   if (!Array.isArray(runs) || !Number.isFinite(now) || !Number.isFinite(limit) || limit<=0)

@@ -6,6 +6,8 @@
  * GitHub schedule is best effort; website also does live on-demand reads.
  */
 import { createHmac } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { summarizeDerivedSourceHealth } from "../lib/derived-news-source-health.mjs";
 import { readStatelessWebsiteIntelligence } from "../../src/lib/stateless-public-intelligence.server";
 import {
   conservativeDayReleaseMs,reconcilePrivateDerivedSourceRefs,
@@ -34,10 +36,19 @@ globalThis.fetch=(async(input:RequestInfo|URL,init?:RequestInit)=>{
 let success=true;
 const privateOriginals:StatelessSourceCandidate[]=[];
 const reports:StatelessIntelligenceResult[]=[];
+const sourceHealthReceipts:Array<{category:string}>=[];
 for (const category of categories) {
   try {
-    const report=await readStatelessWebsiteIntelligence(category,Date.now(),undefined,
+    const lanes:{index:number;transport_ok:boolean;failure_class?:string}[]=[];
+    const report=await readStatelessWebsiteIntelligence(category,Date.now(),
+      (index, diagnostics)=>lanes.push({index,transport_ok:diagnostics.transport_ok,
+        failure_class:diagnostics.transport_failure_class}),
       candidates=>privateOriginals.push(...candidates));
+    const health=summarizeDerivedSourceHealth(category,report.feed_count,report.healthy_feed_count,lanes);
+    sourceHealthReceipts.push(health);
+    if(health.sources_unavailable>0 || !health.diagnostics_complete)
+      console.warn("::warning::DERIVED_NEWS_FREE_SOURCES_DEGRADED_"+category.toUpperCase());
+    console.log(JSON.stringify(health));
     if (report.healthy_feed_count === 0) throw Error("OFFICIAL_FEEDS_UNREACHABLE");
     reports.push(report);
     // Already derived by the publisher model; this is a belt-and-braces
@@ -75,8 +86,31 @@ for (const category of categories) {
     }));
   } catch {
     success=false;
+    if(!sourceHealthReceipts.some(r=>r.category===category))
+      sourceHealthReceipts.push({schema:"geomacro.hourly-free-source-health.v1",
+        category,status:"CATEGORY_COLLECTION_UNAVAILABLE",diagnostics_complete:false,
+        commercial_rights_verified:false,raw_upstream_stored:false});
     console.error("::error::WEBSITE_DERIVED_NEWS_INGEST_"+category.toUpperCase()+"_UNAVAILABLE");
   }
+}
+// An ephemeral, sanitized hourly source-health artifact helps identify outages
+// without storing raw feeds, article links or publisher names. Derived signals
+// are already persisted and deduplicated in D1 with 30-day/600-row bounds.
+try {
+  mkdirSync("artifacts/derived-news",{recursive:true});
+  writeFileSync("artifacts/derived-news/source-health.json",JSON.stringify({
+    schema:"geomacro.hourly-free-source-health-run.v1",
+    checked_at:new Date().toISOString(),
+    github_run_id:String(process.env.GITHUB_RUN_ID??""),
+    source_sha:String(process.env.GITHUB_SHA??""),
+    categories:sourceHealthReceipts,
+    storage:"derived-only-cloudflare-d1",
+    persisted_original_urls:false,raw_upstream_stored:false,
+    commercial_rights_verified:false,paid_publication_authorized:false,
+  },null,2)+"\n",{encoding:"utf8"});
+} catch {
+  success=false;
+  console.error("::error::DERIVED_NEWS_SOURCE_HEALTH_RECEIPT_UNAVAILABLE");
 }
 if (denied!==0||!success) process.exitCode=2;
 
