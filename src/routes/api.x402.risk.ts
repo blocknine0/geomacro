@@ -108,7 +108,12 @@ export const Route = createFileRoute("/api/x402/risk")({
           environment: config.environment,
           network: config.network,
           asset: "USDC",
-          price_usdc: config.priceUsdc,
+          // Production is never quoted a legacy flat price here: all
+          // paid amounts derive from an independently verified capability.
+          price_usdc: config.environment === "production" ? null : config.priceUsdc,
+          pricing_model: config.environment === "production"
+            ? "SERVER_VERIFIED_CAPABILITY_AND_VARIANT" : "LEGACY_TESTNET_ONLY",
+          pricing_catalog: "/api/v1/pricing",
           facilitator: "Coinbase CDP",
           bazaar_discovery: true,
           current_subject_scope: config.environment === "production"
