@@ -1,5 +1,6 @@
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import continuity from "./continuity.mjs";
+import {originalSourceIsCurrent,intelligenceOriginalSourceTime,validatedCachedLiveResponse} from "../../shared/current-source-clock.mjs";
 import { reserveB2AccountQuota } from "../../control-plane/src/b2-account-quota.mjs";
 import { b2OriginFailureCacheKey, failedB2OriginRecently, rememberFailedB2Origin } from "../../shared/b2-origin-negative-cache.mjs";
 
@@ -342,6 +343,7 @@ async function buildContinuityResponse(env) {
     live?.schema !== "geomacro.public-intelligence-live.v1" ||
     live?.source_project !== PROJECT_REF ||
     !recentEnough(live?.generated_at) ||
+    !originalSourceIsCurrent(intelligenceOriginalSourceTime(live?.rows)) ||
     !validRows(live?.rows)
   ) throw new Error("INTELLIGENCE_CONTINUITY_PAYLOAD_INVALID");
 
@@ -354,6 +356,7 @@ async function buildContinuityResponse(env) {
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-intelligence-edge",
       "x-geomacro-continuity": "github-actions-b2-readback-verified-projection",
+      "x-geomacro-source-as-of": intelligenceOriginalSourceTime(live.rows),
       "x-geomacro-b2-sha256": continuity.source_live_sha256,
       "x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none",
       "access-control-allow-origin": "*",
@@ -415,6 +418,7 @@ async function buildResponse(env) {
     live?.source_project !== PROJECT_REF ||
     proof?.generated_at !== live?.generated_at ||
     !recentEnough(live?.generated_at) ||
+    !originalSourceIsCurrent(intelligenceOriginalSourceTime(rows)) ||
     proof?.row_count !== rows?.length ||
     proof?.verified_scored_rows !== verifiedRows ||
     proof?.live_observed_rows !== liveObservedRows ||
@@ -430,6 +434,8 @@ async function buildResponse(env) {
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-intelligence-edge",
       "x-geomacro-b2-sha256": proof.compressed_sha256,
+      "x-geomacro-source-as-of": intelligenceOriginalSourceTime(rows),
+      "x-geomacro-b2-verification": "full-readback-hash-exact-restore",
       ...(proof.schema===MACHINE_INTELLIGENCE_PROOF_SCHEMA
         ? {"x-geomacro-qualified-until":proof.qualified_until,"cache-control":"no-store"} : {}),
       "x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none",
@@ -453,6 +459,7 @@ async function projectCachedResponse(cached, env) {
     live?.schema !== "geomacro.public-intelligence-live.v1" ||
     live?.source_project !== PROJECT_REF ||
     !recentEnough(live?.generated_at) ||
+    !originalSourceIsCurrent(intelligenceOriginalSourceTime(live?.rows)) ||
     !validRows(live?.rows)
   ) throw new Error("INTELLIGENCE_EDGE_CACHE_PAYLOAD_INVALID");
 
@@ -491,7 +498,7 @@ export default {
     }
 
     const cached = await cache.match(cacheKey);
-    if (cached) {
+    if (cached && await validatedCachedLiveResponse(cached,"intelligence")) {
       try {
         return await projectCachedResponse(cached, env);
       } catch (error) {
