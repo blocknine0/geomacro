@@ -30,7 +30,9 @@ describe("GRI freshness publication boundary", () => {
     const globalRisk = read(".github/workflows/gri-realtime-direct-postgres.yml");
 
     expect(recovery).toContain("workflow_dispatch");
-    expect(recovery).not.toContain("schedule:");
+    expect(recovery).toContain('cron: "37 * * * *"');
+    expect(recovery).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    expect(recovery).toContain("    if: ${{ false }}");
     expect(recovery).not.toContain("compute-gri-v12.js");
     expect(recovery).not.toContain("publish-b2-global-risk-direct-postgres.mjs");
 
