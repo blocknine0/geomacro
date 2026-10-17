@@ -1,25 +1,25 @@
 import {test} from "node:test";
 import {strict as assert} from "node:assert";
 import {decideWebsiteNewsBackstop,BACKSTOP_AFTER_MS} from "../lib/website-derived-news-failover.mjs";
-const NOW=Date.parse("2026-10-13T08:22:00.000Z");
+const NOW=Date.parse("2026-10-13T08:29:00.000Z");
 const success=(at)=>({
   status:"completed", conclusion:"success",head_branch:"main",updated_at:at,
 });
-test("no unnecessary repeat publisher call while primary collection is timely",()=>{
-  const decision=decideWebsiteNewsBackstop([success("2026-10-13T08:07:00.000Z")],NOW);
+test("no unnecessary repeat publisher call seven minutes after a timely 15m primary",()=>{
+  const decision=decideWebsiteNewsBackstop([success("2026-10-13T08:22:00.000Z")],NOW);
   assert.equal(decision.should_run,false);
   assert.equal(decision.reason,"PUBLISHER_SUCCESS_RECENT");
-  assert.equal(decision.age_minutes,15);
+  assert.equal(decision.age_minutes,7);
 });
-test("missed half-hour primary 08:07 causes source backup at 08:22",()=>{
+test("missed 08:22 primary causes source backup at 08:29 after prior 08:07 success",()=>{
   const decision=decideWebsiteNewsBackstop([
-    success("2026-10-13T07:37:00.000Z"),
-    {status:"completed",conclusion:"failure",head_branch:"main",updated_at:"2026-10-13T08:08:00Z"},
-    {status:"in_progress",conclusion:null,head_branch:"main",updated_at:"2026-10-13T08:21:00Z"},
+    success("2026-10-13T08:07:00.000Z"),
+    {status:"completed",conclusion:"failure",head_branch:"main",updated_at:"2026-10-13T08:23:00Z"},
+    {status:"in_progress",conclusion:null,head_branch:"main",updated_at:"2026-10-13T08:28:00Z"},
   ],NOW);
   assert.equal(decision.should_run,true);
   assert.equal(decision.reason,"PUBLISHER_SUCCESS_STALE");
-  assert.equal(decision.age_minutes,45);
+  assert.equal(decision.age_minutes,22);
 });
 test("old push run does not disguise an unattended scheduler lapse",()=>{
   const decision=decideWebsiteNewsBackstop([
@@ -61,7 +61,7 @@ test('actual cadence CLI coalesces a recent primary on push but preserves manual
   const script=new URL('../ops/check-website-derived-news-cadence.mjs',import.meta.url).href;
   const temp=mkdtempSync(join(tmpdir(),'news-cadence-'));
   try{
-    for(const [event,minutes,expected] of [['push',5,false],['workflow_run',50,true],['workflow_dispatch',5,true]]){
+    for(const [event,minutes,expected] of [['push',5,false],['workflow_run',10,false],['schedule',21,false],['schedule',23,true],['workflow_run',50,true],['workflow_dispatch',5,true]]){
       const output=join(temp,event);
       const code=`globalThis.fetch=async()=>Response.json({workflow_runs:[{status:'completed',conclusion:'success',head_branch:'main',updated_at:new Date(Date.now()-${minutes}*60000).toISOString()}]});await import(${JSON.stringify(script)});`;
       const result=spawnSync(process.execPath,['--input-type=module','-e',code],{encoding:'utf8',env:{...process.env,
@@ -70,4 +70,24 @@ test('actual cadence CLI coalesces a recent primary on push but preserves manual
       assert.equal(readFileSync(output,'utf8'),`should_run=${expected}\n`);
     }
   }finally{rmSync(temp,{recursive:true,force:true});}
+});
+
+test("15m Cloudflare collection and +7m recovery retain single-writer and three-domain invariants",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const root=new URL("../../",import.meta.url);
+  const primary=readFileSync(new URL(".github/workflows/website-derived-news-continuity.yml",root),"utf8");
+  const backstop=readFileSync(new URL(".github/workflows/website-derived-news-cadence-backstop.yml",root),"utf8");
+  const collector=readFileSync(new URL("scripts/ops/publish-website-derived-news.ts",root),"utf8");
+  const legacy=readFileSync(new URL(".github/workflows/auto-ingest-news.yml",root),"utf8");
+  assert.ok(primary.includes('cron: "7,22,37,52 * * * *"'));
+  assert.ok(backstop.includes('cron: "14,29,44,59 * * * *"'));
+  assert.equal(BACKSTOP_AFTER_MS,22*60_000);
+  assert.ok(primary.includes("group: geomacro-website-derived-news-continuity"));
+  assert.ok(backstop.includes("group: geomacro-website-derived-news-continuity"));
+  assert.match(collector,/const categories=\["geopolitics","macro","rare_earth"\] as const/);
+  assert.ok(collector.includes("DERIVED_NEWS_SUPABASE_BLOCKED"));
+  assert.ok(collector.includes("geomacro-control-plane.daspallab202391.workers.dev/v1/website-derived-news"));
+  assert.ok(collector.includes('GEOMACRO_AUTOMATED_FINDS_PUBLICATION==="1"'));
+  assert.ok(primary.includes('GEOMACRO_AUTOMATED_FINDS_PUBLICATION: "1"'));
+  assert.ok(legacy.includes("if: " + "$" + "{{ false }}"));
 });
