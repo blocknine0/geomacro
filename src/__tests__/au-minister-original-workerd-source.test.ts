@@ -64,6 +64,27 @@ describe("Australian minister original-source, website-only activation",()=>{
   expect(denied.status).toBe(302);
   expect(moved).toHaveBeenCalledTimes(1);
  });
+ it("retries exactly once after a real timeout on the fixed Australian minister feed",async()=>{
+  const transient=Object.assign(new Error("transient timeout"),{name:"TimeoutError"});
+  const calls=vi.fn().mockRejectedValueOnce(transient).mockResolvedValueOnce(
+    new Response(xml(title),{status:200,headers:{"content-type":"application/rss+xml"}}));
+  const reply=await fetchFirstPartyOriginalFeed(feed,calls as unknown as typeof fetch);
+  expect(reply.status).toBe(200);
+  expect(calls).toHaveBeenCalledTimes(2);
+  expect(calls.mock.calls.every(c=>c[0]===feed.url && c[1]?.redirect==="manual")).toBe(true);
+ });
+ it("never retries a publisher refusal or an unrelated source failure",async()=>{
+  for(const status of [403,429,500]){
+    const calls=vi.fn(async()=>new Response(null,{status}));
+    const reply=await fetchFirstPartyOriginalFeed(feed,calls as unknown as typeof fetch);
+    expect(reply.status).toBe(status);
+    expect(calls).toHaveBeenCalledTimes(1);
+  }
+  const other={...feed,id:"nrcan_science"};
+  const noRetry=vi.fn().mockRejectedValue(Object.assign(new Error("timeout"),{name:"TimeoutError"}));
+  await expect(fetchFirstPartyOriginalFeed(other,noRetry as unknown as typeof fetch)).rejects.toThrow("timeout");
+  expect(noRetry).toHaveBeenCalledTimes(1);
+ });
  it("does not alter commercial signing, D1, B2 or frozen Supabase",()=>{
   const site=readFileSync("src/lib/stateless-public-intelligence.server.ts","utf8");
   expect(site).toContain('id: "au_industry_minister"');
