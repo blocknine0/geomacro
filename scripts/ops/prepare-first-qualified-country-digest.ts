@@ -5,7 +5,7 @@ import { canonicalJson } from "../../src/lib/canonical-json";
 import { buildAgentQueryPlan, agentAdaptiveQuerySchema } from "../../src/lib/agent-query-plan";
 import { checkAgentQueryDeliverability } from "../../src/lib/agent-query-deliverability.server";
 import { assembleAgentQueryResponse } from "../../src/lib/agent-query-response.server";
-import { loadQualifiedMcsCountryContext, MCS_DIGEST_CSV_SHA256 }
+import { loadQualifiedMcsCountryContext, MCS_DIGEST_CSV_SHA256, qualifiedMcsAcquisitionFailure }
   from "../../src/lib/qualified-mcs-country-digest.server";
 import { resolveGeomacroCapabilityPrice } from "../../src/lib/capability-pricing-catalog";
 import { createB2Client } from "./b2-s3-client.mjs";
@@ -22,7 +22,7 @@ for (const name of ["SUPABASE_DB_URL", "SUPABASE_SERVICE_ROLE_KEY", "APP_SUPABAS
   if (process.env[name]) throw Error("FIRST_DIGEST_FORBIDDEN_RUNTIME_CONFIG");
 }
 const context = await loadQualifiedMcsCountryContext(country);
-if (!context) throw Error("FIRST_DIGEST_REAL_ORIGINAL_OR_COMPARABLE_COUNTRY_ROWS_UNAVAILABLE");
+if (!context) throw Error(qualifiedMcsAcquisitionFailure() ?? "FIRST_DIGEST_COMPARABLE_COUNTRY_ROWS_UNAVAILABLE");
 const plan = buildAgentQueryPlan(agentAdaptiveQuerySchema.parse({
   schema_version: "geomacro.agent-query.v1", delivery_tier: "structural_baseline",
   fulfillment_mode: "published_only", subjects: [{ type: "country", country_iso3: country }],

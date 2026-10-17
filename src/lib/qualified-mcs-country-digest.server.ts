@@ -22,15 +22,26 @@ type Release = { rows: Record<string, string>[]; rightsHash: string; checkedAt: 
 let cached: { until: number; value: Release } | null = null;
 let pending: Promise<Release | null> | null = null;
 let unavailableUntil = 0;
+let lastFailure: string | null = null;
+export function qualifiedMcsAcquisitionFailure() { return lastFailure; }
 
-async function read(url: string, fetchImpl: typeof fetch, limit: number): Promise<Uint8Array> {
+async function read(url: string, fetchImpl: typeof fetch, limit: number, fileRedirects = 0): Promise<Uint8Array> {
   const u = new URL(url);
   if (u.protocol !== "https:" || u.username || u.password || u.port || u.hash ||
-      !["api.datacite.org", "www.sciencebase.gov"].includes(u.hostname))
+      !["api.datacite.org", "www.sciencebase.gov"].includes(u.hostname) &&
+      !(limit === MAX_BYTES && /^[a-z0-9.-]+\.amazonaws\.com$/u.test(u.hostname)))
     throw Error("MCS_DIGEST_ORIGIN_REJECTED");
-  // Never follow access-denial/challenge pages or arbitrary download redirects.
+  // The official file service may redirect to its disclosed object-store asset.
+  // Only this pinned-file read may follow a bounded HTTPS object-store redirect;
+  // metadata redirects, HTTP denials and challenge pages remain rejected.
   const res = await fetchImpl(url, { redirect: "manual", signal: AbortSignal.timeout(12_000),
     headers: { Accept: u.hostname === "api.datacite.org" ? "application/json" : "application/json,text/csv" } });
+  if ([301, 302, 303, 307, 308].includes(res.status) && fileRedirects > 0) {
+    const target = new URL(res.headers.get("location") ?? "", url);
+    if (!/^[a-z0-9.-]+\.amazonaws\.com$/u.test(target.hostname)) throw Error("MCS_DIGEST_FILE_REDIRECT_REJECTED");
+    await res.body?.cancel();
+    return read(target.href, fetchImpl, limit, fileRedirects - 1);
+  }
   if (res.status !== 200 || !res.body) throw Error("MCS_DIGEST_SOURCE_HTTP_" + res.status);
   const reader = res.body.getReader();
   const parts: Uint8Array[] = []; let size = 0;
@@ -60,6 +71,7 @@ export function verifyMcsCc0Metadata(value: unknown): void {
 async function acquire(fetchImpl: typeof fetch, now: Date): Promise<Release> {
   const rights = await read(DATACITE, fetchImpl, 100_000);
   verifyMcsCc0Metadata(JSON.parse(new TextDecoder().decode(rights)));
+  const failures: string[] = [];
   for (const item of ITEMS) {
     try {
       const metadata = JSON.parse(new TextDecoder().decode(await read(
@@ -70,15 +82,19 @@ async function acquire(fetchImpl: typeof fetch, now: Date): Promise<Release> {
       const url = files[0].url ?? files[0].downloadUri;
       if (typeof url !== "string" || !url.startsWith("https://www.sciencebase.gov/catalog/file/get/" + item))
         throw Error("MCS_DIGEST_FILE_ORIGIN_REJECTED");
-      const bytes = await read(url, fetchImpl, MAX_BYTES);
+      const bytes = await read(url, fetchImpl, MAX_BYTES, 2);
       if (sha(bytes) !== MCS_DIGEST_CSV_SHA256) throw Error("MCS_DIGEST_FILE_REVISION_UNREVIEWED");
       const parsed = parseUsGSMcsCsv(new TextDecoder("windows-1252").decode(bytes));
       const rows = parsed.map((r: any) => r.raw.raw as Record<string, string>);
       if (!rows.length) throw Error("MCS_DIGEST_EMPTY_RELEASE");
       return { rows, rightsHash: sha(rights), checkedAt: now.toISOString() };
-    } catch { /* Two already reviewed original release IDs; no denial retry. */ }
+    } catch (error) {
+      const code = error instanceof Error && /^MCS_DIGEST_[A-Z0-9_]+$/u.test(error.message)
+        ? error.message : "MCS_DIGEST_SOURCE_CONTRACT_REJECTED";
+      failures.push(code);
+    }
   }
-  throw Error("MCS_DIGEST_PINNED_ORIGINAL_UNAVAILABLE");
+  throw Error("MCS_DIGEST_PINNED_ORIGINAL_UNAVAILABLE__" + failures.join("__"));
 }
 
 export async function loadQualifiedMcsRelease(options: { fetchImpl?: typeof fetch; now?: Date; noCache?: boolean } = {}) {
@@ -87,10 +103,15 @@ export async function loadQualifiedMcsRelease(options: { fetchImpl?: typeof fetc
   if (!options.noCache && unavailableUntil > now.getTime()) return null;
   if (!options.noCache && cached && cached.until > now.getTime()) return cached.value;
   if (!options.noCache && pending) return pending;
-  const work = acquire(options.fetchImpl ?? fetch, now).catch(() => null);
+  const work = acquire(options.fetchImpl ?? fetch, now).catch(error => {
+    lastFailure = error instanceof Error && /^MCS_DIGEST_[A-Z0-9_]+$/u.test(error.message)
+      ? error.message : "MCS_DIGEST_SOURCE_CONTRACT_REJECTED";
+    return null;
+  });
   if (!options.noCache) pending = work;
   try {
     const result = await work;
+    if (result) lastFailure = null;
     if (result && !options.noCache) cached = { until: now.getTime() + TTL, value: result };
     if (!result && !options.noCache) unavailableUntil = now.getTime() + 60_000;
     return result;
