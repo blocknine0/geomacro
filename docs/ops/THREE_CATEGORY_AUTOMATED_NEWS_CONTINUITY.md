@@ -153,3 +153,32 @@ remain restricted to canonical main and protected production credentials.
 Actual successful D1 publication and signed readback, not a queued cron or a
 scheduled start timestamp, are the only success signals. The extra checks
 cannot provide an SLA if GitHub Actions or the upstream services are down.
+
+## Verified recovery clock across two backup checkpoints
+
+An earlier two-checkpoint hourly backstop accepted only successful
+`website-derived-news-continuity.yml` completion timestamps. If the :07
+primary was missing and a protected :22 catch-up genuinely published to D1,
+the :52 backup would still consider the **primary** stale and could waste
+source/provider quotas by performing a second collection within 30 minutes.
+Conversely, GitHub labels successful *no-op* recovery checks as green; a green
+run is not a successful publisher clock.
+
+The cadence verifier now first trusts the completed canonical primary as
+before. **Only when the primary is stale**, it reads up to eight completed main
+backstop runs. A backstop counts as a freshness reset solely when its actual
+`catch-up-derived-only` job finished successfully with all three confirmed
+steps: publish to existing D1, independently verify the signed three-category
+Finds and independently read back the source-private D1 journal. The job's
+completed timestamp—not the workflow's `updated_at`, scheduled timestamp or
+any upstream article date—becomes the recovery clock. Missing, skipped,
+failed, untrusted-branch, future-dated or unverified attempts do not count.
+A GitHub job metadata lookup outage never fabricates recovery success and
+does not suppress overdue primary recovery.
+
+This reduces duplicate recovery reads while keeping the 70-minute timeout,
+:07 primary/:22 and :52 recovery slots, trusted source-pulse wakeups,
+non-canceling writer lock, Supabase-free D1 publication, no-funds gates and
+quota-governed B2 archival unchanged. It does **not** make provider services
+permanently available or verify 585 country-category current commercial
+products. Exact GitHub cron timing remains best effort.

@@ -6,35 +6,73 @@
  */
 import { appendFileSync } from "node:fs";
 import {
-  WEBSITE_PUBLISHER_WORKFLOW,decideWebsiteNewsBackstop,
+  WEBSITE_PUBLISHER_WORKFLOW,WEBSITE_BACKSTOP_WORKFLOW,
+  decideWebsiteNewsBackstop,verifiedBackstopPublicationTime,
 } from "../lib/website-derived-news-failover.mjs";
 const repo=process.env.GITHUB_REPOSITORY??"";
 const token=process.env.GITHUB_TOKEN??"";
 const output=process.env.GITHUB_OUTPUT??"";
 if(repo!=="blocknine0/geomacro" || token.length<8 || !output)
   throw Error("NEWS_BACKSTOP_GITHUB_READ_SCOPE_MISSING");
-const u=new URL("https://api.github.com/repos/"+repo+"/actions/workflows/"+
-  WEBSITE_PUBLISHER_WORKFLOW+"/runs");
+const base="https://api.github.com/repos/"+repo+"/actions/";
+const headers={
+  Authorization:"Bearer "+token,
+  Accept:"application/vnd.github+json",
+  "X-GitHub-Api-Version":"2022-11-28",
+  "User-Agent":"geomacro-news-cadence-verifier",
+};
+async function githubRead(path,label) {
+  const response=await fetch(new URL(path,base),{
+    redirect:"error",headers,signal:AbortSignal.timeout(10_000),
+  });
+  if(!response.ok)throw Error("NEWS_BACKSTOP_"+label+"_UNAVAILABLE_"+response.status);
+  return response.json();
+}
+const u=new URL("workflows/"+WEBSITE_PUBLISHER_WORKFLOW+"/runs",base);
 u.searchParams.set("branch","main");
 u.searchParams.set("status","success");
 u.searchParams.set("per_page","20");
-const response=await fetch(u,{
-  redirect:"error",
-  headers:{
-    Authorization:"Bearer "+token,
-    Accept:"application/vnd.github+json",
-    "X-GitHub-Api-Version":"2022-11-28",
-    "User-Agent":"geomacro-news-cadence-verifier",
-  },
-  signal:AbortSignal.timeout(10_000),
-});
-if(!response.ok)throw Error("NEWS_BACKSTOP_GITHUB_RUNS_UNAVAILABLE_"+response.status);
-const data=await response.json();
-if(!Array.isArray(data.workflow_runs))throw Error("NEWS_BACKSTOP_GITHUB_RESPONSE_INVALID");
-// A primary push canary already collects news. A backstop push must not force
-// another full source poll just because the contract itself changed.
+const data=await githubRead(u,"PRIMARY_RUNS");
+if(!Array.isArray(data.workflow_runs))
+  throw Error("NEWS_BACKSTOP_GITHUB_RESPONSE_INVALID");
+// A primary push canary already collects news. Do not force a duplicate
+// just because workflow YAML changed or a skipped recovery was green.
 const force=process.env.GITHUB_EVENT_NAME==="workflow_dispatch";
-const decision=decideWebsiteNewsBackstop(data.workflow_runs);
+const primary=decideWebsiteNewsBackstop(data.workflow_runs);
+let decision=primary,successProof="PRIMARY_WRITER";
+if(primary.should_run&&!force){
+  // Recovery can complete without an hourly primary. A successful backstop
+  // run by itself is not proof: skipped/no-op backstops also report success.
+  // Read only the latest bounded set of jobs and accept a completed writer
+  // ONLY if real publish + signed Finds + D1 readback steps all succeeded.
+  try{
+    const u2=new URL("workflows/"+WEBSITE_BACKSTOP_WORKFLOW+"/runs",base);
+    u2.searchParams.set("branch","main");
+    u2.searchParams.set("status","success");
+    u2.searchParams.set("per_page","8");
+    const recoveries=await githubRead(u2,"RECOVERY_RUNS");
+    if(!Array.isArray(recoveries.workflow_runs))
+      throw Error("NEWS_BACKSTOP_RECOVERY_RESPONSE_INVALID");
+    const now=Date.now(),proofs=[];
+    for(const run of recoveries.workflow_runs.slice(0,8)){
+      if(run?.status!=="completed"||run.conclusion!=="success"||
+         run.head_branch!=="main"||!Number.isSafeInteger(run.id))continue;
+      const updated=Date.parse(run.updated_at);
+      if(!Number.isFinite(updated)||updated<now-70*60_000-60_000||updated>now+60_000)continue;
+      const jobResponse=await githubRead("runs/"+run.id+"/jobs?per_page=25","RECOVERY_JOBS");
+      const at=verifiedBackstopPublicationTime(run,jobResponse.jobs,now);
+      if(at)proofs.push({status:"completed",conclusion:"success",head_branch:"main",updated_at:at});
+    }
+    if(proofs.length){
+      const combined=decideWebsiteNewsBackstop([...data.workflow_runs,...proofs],now);
+      if(!combined.should_run){decision=combined;successProof="VERIFIED_RECOVERY_D1_READBACK";}
+    }
+  }catch{
+    // An optional backstop proof lookup must not suppress real recovery when
+    // primary is actually stale. Never infer success from missing metadata.
+    console.warn("::warning::NEWS_BACKSTOP_PRIOR_RECOVERY_PROOF_UNAVAILABLE");
+  }
+}
 const shouldRun=force||decision.should_run;
 appendFileSync(output,"should_run="+(shouldRun?"true":"false")+"\n");
 console.log(JSON.stringify({
@@ -44,6 +82,8 @@ console.log(JSON.stringify({
   minutes_since_success:decision.age_minutes,
   should_publish:shouldRun,
   publisher_success_observed:decision.last_success_at!==null,
+  latest_success_proof:successProof,
+  skipped_recovery_workflow_cannot_claim_publication:true,
   exactly_hourly_guaranteed:false,
   supabase_dependency:false,
   source_contents_logged:false,

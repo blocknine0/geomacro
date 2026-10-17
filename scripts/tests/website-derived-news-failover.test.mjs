@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import {strict as assert} from "node:assert";
-import {decideWebsiteNewsBackstop,BACKSTOP_AFTER_MS} from "../lib/website-derived-news-failover.mjs";
+import {decideWebsiteNewsBackstop,verifiedBackstopPublicationTime,BACKSTOP_AFTER_MS} from "../lib/website-derived-news-failover.mjs";
 const NOW=Date.parse("2026-10-13T08:22:00.000Z");
 const success=(at)=>({
   status:"completed", conclusion:"success",head_branch:"main",updated_at:at,
@@ -93,4 +93,74 @@ test("hourly Cloudflare collection and +15m recovery retain single-writer and th
   assert.ok(collector.includes('GEOMACRO_AUTOMATED_FINDS_PUBLICATION==="1"'));
   assert.ok(primary.includes('GEOMACRO_AUTOMATED_FINDS_PUBLICATION: "1"'));
   assert.ok(legacy.includes("if: " + "$" + "{{ false }}"));
+});
+
+const finishedRecovery=(completedAt)=>({
+  name:"catch-up-derived-only",status:"completed",conclusion:"success",
+  completed_at:completedAt,steps:[
+    "Publish bounded 3-domain derived news to existing D1 (idempotent)",
+    "Independently verify signed Finds across combined and category reads",
+    "Independently prove private-source-free D1 readback after recovery",
+  ].map(name=>({name,status:"completed",conclusion:"success"})),
+});
+test("a green but skipped recovery never resets the writer freshness clock",()=>{
+  const run={id:123,head_branch:"main",status:"completed",conclusion:"success",
+    updated_at:"2026-10-13T08:20:00Z"};
+  const actual=finishedRecovery("2026-10-13T08:19:00Z");
+  assert.equal(verifiedBackstopPublicationTime(run,[actual],NOW),
+    "2026-10-13T08:19:00.000Z");
+  const noop={...actual,steps:actual.steps.map(s=>({...s,
+    conclusion:s.name.startsWith("Publish bounded")?"skipped":"success"}))};
+  assert.equal(verifiedBackstopPublicationTime(run,[noop],NOW),null);
+  const unread={...actual,steps:actual.steps.filter(s=>!s.name.includes("D1 readback"))};
+  assert.equal(verifiedBackstopPublicationTime(run,[unread],NOW),null);
+  assert.equal(verifiedBackstopPublicationTime(run,[{...actual,conclusion:"failure"}],NOW),null);
+  assert.equal(verifiedBackstopPublicationTime({...run,head_branch:"untrusted"},[actual],NOW),null);
+  assert.equal(verifiedBackstopPublicationTime({...run,status:"in_progress"},[actual],NOW),null);
+  assert.equal(verifiedBackstopPublicationTime({...run,id:0},[actual],NOW),null);
+  assert.equal(verifiedBackstopPublicationTime(run,[{...actual,completed_at:"2026-10-14T00:00:00Z"}],NOW),null);
+});
+test("hourly cadence CLI counts only real signed-and-readback recovery when primary missed",async()=>{
+  const {mkdtempSync,readFileSync,rmSync}=await import("node:fs");
+  const {tmpdir}=await import("node:os");
+  const {join}=await import("node:path");
+  const {spawnSync}=await import("node:child_process");
+  const script=new URL("../ops/check-website-derived-news-cadence.mjs",import.meta.url).href;
+  const temp=mkdtempSync(join(tmpdir(),"news-signed-recovery-"));
+  try{
+    for(const mode of ["readback_verified","noop_green","readback_missing","proof_http_failed"]){
+      const output=join(temp,mode);
+      const minutes=80, now=Date.now();
+      const recoveryAt=new Date(now-10*60_000).toISOString();
+      const recovered={id:123,status:"completed",conclusion:"success",head_branch:"main",
+        updated_at:new Date(now-9*60_000).toISOString()};
+      const steps=finishedRecovery(recoveryAt).steps;
+      const jobs=[{...finishedRecovery(recoveryAt),steps:mode==="noop_green"
+        ?steps.map(x=>({...x,conclusion:"skipped"})):mode==="readback_missing"
+          ?steps.slice(0,2):steps}];
+      const code=`globalThis.fetch=async u=>{
+        const url=new URL(u);
+        if(url.pathname.endsWith("/website-derived-news-continuity.yml/runs"))
+          return Response.json({workflow_runs:[{status:"completed",conclusion:"success",
+            head_branch:"main",updated_at:new Date(Date.now()-${minutes}*60000).toISOString()}]});
+        if(url.pathname.endsWith("/website-derived-news-cadence-backstop.yml/runs"))
+          return ${JSON.stringify(mode)}==="proof_http_failed"
+            ?new Response("",{status:503}):Response.json({workflow_runs:${JSON.stringify([recovered])}});
+        if(url.pathname.endsWith("/runs/123/jobs"))
+          return Response.json({jobs:${JSON.stringify(jobs)}});
+        throw Error("unexpected mocked GH endpoint "+url.href);
+      };await import(${JSON.stringify(script)});`;
+      const result=spawnSync(process.execPath,["--input-type=module","-e",code],{
+        encoding:"utf8",env:{...process.env,GITHUB_REPOSITORY:"blocknine0/geomacro",
+          GITHUB_TOKEN:"synthetic-token",GITHUB_EVENT_NAME:"schedule",GITHUB_OUTPUT:output},
+      });
+      assert.equal(result.status,0,result.stderr);
+      assert.equal(readFileSync(output,"utf8"),
+        `should_run=${mode==="readback_verified"?"false":"true"}\n`);
+      if(mode==="readback_verified"){
+        assert.match(result.stdout,/VERIFIED_RECOVERY_D1_READBACK/);
+        assert.match(result.stdout,/"should_publish":false/);
+      }
+    }
+  }finally{rmSync(temp,{recursive:true,force:true});}
 });
