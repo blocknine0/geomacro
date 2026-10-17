@@ -23,6 +23,26 @@ const move = (location:string)=>new Response(null,{
   status:301,headers:{location},
 });
 
+describe("BLS official Atom transport negotiation",()=>{
+  it("uses the independently verified exact BLS Accept header for all three official releases",async()=>{
+    for(const id of ["bls_cpi","bls_employment","bls_external_prices"]){
+      const spec:StatelessSourceSpec={id,category:"macro",media:"atom",
+        url:"https://www.bls.gov/feed/"+(id==="bls_cpi"?"cpi":id==="bls_employment"?"empsit":"ximpim")+".rss",
+        allowedHosts:["www.bls.gov"],credit:null};
+      const calls=vi.fn(async (_url:RequestInfo|URL,init?:RequestInit)=>{
+        expect(init?.headers).toMatchObject({
+          Accept:"application/atom+xml,application/xml;q=0.9",
+        });
+        return new Response(null,{status:406});
+      });
+      const resp=await fetchFirstPartyOriginalFeed(spec,calls as unknown as typeof fetch);
+      expect(resp.status).toBe(406);
+      // A first-party access refusal remains degraded; never bypass it.
+      expect(calls).toHaveBeenCalledTimes(1);
+    }
+  });
+});
+
 describe("first-party bank Macro release and bounded mineral redirect",()=>{
   it("uses the actual central-bank-published feed and its original native publication clock",()=>{
     const source=readFileSync("src/lib/stateless-public-intelligence.server.ts","utf8");
