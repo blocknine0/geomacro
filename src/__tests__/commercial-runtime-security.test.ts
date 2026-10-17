@@ -23,7 +23,14 @@ function expectPinnedActions(path: string) {
   const source = read(path);
   expect(source, path).not.toMatch(/uses:\s+[^\s]+@v\d+(?:\.\d+)*\b/);
   for (const line of source.split("\n").filter((item) => item.includes("uses:"))) {
-    expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
+    if (line.includes("uses: ./.github/workflows/")) {
+      // A same-commit local reusable workflow is bound to the checked-out
+      // commit; GitHub does not allow an @SHA on relative reusable paths.
+      expect(line, `${path}: ${line}`).toContain(
+        "uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    } else {
+      expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
+    }
   }
   if (source.includes("actions/checkout@")) {
     expect(source, path).toContain("persist-credentials: false");
