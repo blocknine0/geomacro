@@ -8,13 +8,13 @@ const ISO=x=>new Date(NOW+x*60000).toISOString();
 const specs={
   intelligence:["geomacro.public-intelligence-live.v1",
     "geomacro.public-intelligence-live-proof.v1",
-    "geomacro-evidence/v1/live/public-intelligence/latest.json.gz",360],
+    "geomacro-evidence/v1/live/public-intelligence/latest.json.gz",720],
   "global-risk":["geomacro.public-global-risk-live.v1",
     "geomacro.public-global-risk-live-proof.v1",
-    "geomacro-evidence/v1/live/global-risk/latest.json.gz",90],
+    "geomacro-evidence/v1/live/global-risk/latest.json.gz",180],
   "risk-indices":["geomacro.public-risk-indices-live.v1",
     "geomacro.public-risk-indices-live-proof.v1",
-    "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz",90],
+    "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz",180],
 } as const;
 const names=Object.keys(specs) as Array<keyof typeof specs>;
 function rows(){
@@ -31,16 +31,41 @@ describe("signed product pre-expiry guard (metadata-only, no false renewal)",()=
  it("tracks the genuine source-time window rather than a generated-at clock",()=>{
   const out=assess();
   expect(out.all_three_within_safe_window).toBe(true);
-  expect(out.products.intelligence.effective_minutes_to_expiry).toBe(350);
-  expect(out.products["global-risk"].effective_minutes_to_expiry).toBe(80);
-  expect(out.products["risk-indices"].effective_minutes_to_expiry).toBe(80);
+  expect(out.products.intelligence.effective_minutes_to_expiry).toBe(710);
+  expect(out.products["global-risk"].effective_minutes_to_expiry).toBe(170);
+  expect(out.products["risk-indices"].effective_minutes_to_expiry).toBe(170);
   expect(out.current_signed_products_attested).toBeUndefined();
   expect(out.signed_proof_or_b2_readback_verified).toBe(false);
   expect(out.new_snapshot_published).toBe(false);
   expect(out.b2_requests).toBe(0);
   expect(out.d1_writes).toBe(0);
  });
- it("warns BEFORE the GRI 90-minute expiry without changing any source time",()=>{
+ it("treats 3h-valid but 75m-old signed records as NOT live",()=>{
+  const data=rows();
+  for(const item of data){
+    const max=item.product==="intelligence"?720:180;
+    item.source_as_of=ISO(-75);
+    item.expires_at=ISO(max-75);
+  }
+  const output=assess(data);
+  expect(output.all_three_within_safe_window).toBe(true);
+  expect(output.live_freshness_ready).toBe(false);
+  expect(output.attention_required).toBe(true);
+  for(const key of names){
+    expect(output.products[key].status).toBe("WITHIN_WINDOW");
+    expect(output.products[key].live_freshness_eligible).toBe(false);
+    expect(output.products[key].old_payload_retimestamp_allowed).toBe(false);
+  }
+ });
+ it("does not promote decade-old sources using the extended TTL",()=>{
+  const data=rows();
+  data[0].source_as_of=ISO(-1000);
+  data[0].expires_at=ISO(-280);
+  const output=assess(data);
+  expect(output.products.intelligence.status).toBe("EXPIRED");
+  expect(output.live_freshness_ready).toBe(false);
+ });
+ it("warns BEFORE the GRI 3-hour expiry without changing any source time",()=>{
   const v=rows();
   const risk=v.find(x=>x.product==="global-risk")!;
   risk.source_as_of=ISO(-35);

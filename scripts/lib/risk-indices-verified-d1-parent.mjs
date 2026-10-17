@@ -5,7 +5,8 @@ export const VERIFIED_GRI_D1_SOURCE =
 export const VERIFIED_GRI_D1_KEY =
   "geomacro-evidence/v1/live/global-risk/latest.json.gz";
 const HASH = /^[a-f0-9]{64}$/u;
-const MAX_AGE_MS = 90 * 60_000;
+const MAX_AGE_MS = 180 * 60_000;
+const LIVE_PUBLICATION_SOURCE_MAX_AGE_MS = 60 * 60_000;
 const MAX_FUTURE_MS = 5 * 60_000;
 
 export function assertVerifiedCurrentGlobalRiskD1Parent(snapshot, now = Date.now()) {
@@ -30,6 +31,8 @@ export function assertVerifiedCurrentGlobalRiskD1Parent(snapshot, now = Date.now
       sourceMs > now + MAX_FUTURE_MS || sourceMs > generatedMs + MAX_FUTURE_MS ||
       generatedMs > now + MAX_FUTURE_MS ||
       now - sourceMs > MAX_AGE_MS ||
+      // Three-hour-valid signed parent cannot produce fresh/live indices.
+      now - sourceMs > LIVE_PUBLICATION_SOURCE_MAX_AGE_MS ||
       expiresMs <= now || expiresMs <= sourceMs ||
       expiresMs > sourceMs + MAX_AGE_MS)
     fail("SOURCE_CLOCK_OR_EXPIRY_INVALID");
@@ -63,7 +66,7 @@ export function assertVerifiedCurrentGlobalRiskD1Parent(snapshot, now = Date.now
     if (reading?.readingStatus !== "current" ||
         !Number.isFinite(readingMs) ||
         readingMs > now + MAX_FUTURE_MS ||
-        now - readingMs > MAX_AGE_MS ||
+        now - readingMs > LIVE_PUBLICATION_SOURCE_MAX_AGE_MS ||
         reading?.series?.["7D"]?.buckets?.length < 2 ||
         reading?.series?.["30D"]?.buckets?.length < 2)
       fail("DOMAIN_" + category.toUpperCase() + "_NOT_CURRENT");
@@ -113,7 +116,7 @@ export function assertPublishedRiskIndicesD1Readback(
   const expire = Date.parse(String(snapshot.expires_at ?? ""));
   const generated = Date.parse(String(snapshot.generated_at ?? ""));
   if (![clock,expire,generated].every(Number.isFinite) ||
-      clock > now + MAX_FUTURE_MS || now - clock > MAX_AGE_MS ||
+      clock > now + MAX_FUTURE_MS || now - clock > LIVE_PUBLICATION_SOURCE_MAX_AGE_MS ||
       generated > now + MAX_FUTURE_MS || generated < clock ||
       expire <= now || expire > clock + MAX_AGE_MS ||
       snapshot.source_as_of !== proof.snapshot_as_of ||

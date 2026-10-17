@@ -127,7 +127,8 @@ describe("#1827 account-wide public Global Risk B2 quota guard",()=>{
       .toBeLessThan(code.indexOf("const path ="));
     expect(code).toContain("const proofBytes = await signedGet(PROOF_KEY, env)");
     expect(code).toContain("proof?.full_b2_readback_verified !== true");
-    expect(code).toContain("Date.now() - sourceAsOf > 90 * 60 * 1000");
+    expect(code).toContain("Date.now() - sourceAsOf > 180 * 60 * 1000");
+    expect(code).toContain("Date.now() - sourceAsOf > 60 * 60 * 1000");
   });
 
   it("production deployment is gated to new independent GRI proof and validates shared D1 schema",()=>{

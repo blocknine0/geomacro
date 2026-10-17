@@ -7,9 +7,9 @@ import {pathToFileURL} from "node:url";
 import {parseWranglerMetadata} from "./classify-d1-hot-metadata.mjs";
 
 const PRODUCTS=Object.freeze({
-  intelligence:Object.freeze({maxAge:360,lead:120}),
-  "global-risk":Object.freeze({maxAge:90,lead:60}),
-  "risk-indices":Object.freeze({maxAge:90,lead:60}),
+  intelligence:Object.freeze({maxAge:720,lead:120}),
+  "global-risk":Object.freeze({maxAge:180,lead:60}),
+  "risk-indices":Object.freeze({maxAge:180,lead:60}),
 });
 const NAMES=Object.keys(PRODUCTS);
 const integer=x=>Number.isInteger(x);
@@ -37,16 +37,23 @@ export function assessSignedHotExpiry(metadata,{nowMs=Date.now()}={}){
    status,source_age_minutes:limit(x.source_age_minutes),
    expiry_in_minutes:limit(x.expiry_in_minutes),
    effective_minutes_to_expiry:remaining,renewal_lead_minutes:policy.lead,
+   live_freshness_eligible:x.metadata_eligible===true &&
+     integer(x.source_age_minutes)&&x.source_age_minutes>=-5&&x.source_age_minutes<=60,
    original_evidence_clock_required:true,
    old_payload_retimestamp_allowed:false,
    metadata_only:true,
   };
  }
- const attention_required=NAMES.some(name=>products[name].status!=="WITHIN_WINDOW");
+ // Immutable signed validity != live freshness: 60min is still the current
+ // threshold for commercial health and buyer availability.
+ const live_freshness_ready=NAMES.every(name=>products[name].live_freshness_eligible);
+ const attention_required=NAMES.some(name=>products[name].status!=="WITHIN_WINDOW") ||
+   !live_freshness_ready;
  return {
   schema:"geomacro.signed-hot-expiry-early-warning.v1",
   checked_at:new Date(nowMs).toISOString(),
-  all_three_within_safe_window:!attention_required,attention_required,products,
+  all_three_within_safe_window:NAMES.every(name=>products[name].status==="WITHIN_WINDOW"),
+  live_freshness_ready,attention_required,products,
   signed_proof_or_b2_readback_verified:false,real_commercial_product_approved:false,
   new_snapshot_published:false,b2_requests:0,d1_writes:0,
   supabase_reads:0,supabase_writes:0,real_funds_touched:false,
@@ -56,14 +63,14 @@ export function signedHotExpirySummary(report){
  const rows=[
   "## Signed hot-snapshot pre-expiry guard",
   "",
-  "Read-only D1 metadata; NOT proof of current signed B2 bytes or public delivery.",
+  "Read-only D1 metadata; 12h Intelligence / 3h GRI+Indices validity is NOT live <=60min proof or B2 delivery.",
   "",
-  "| Product | Status | Source age (min) | Effective minutes left | Warning lead (min) |",
-  "|---|---|---:|---:|---:|",
+  "| Product | Validity status | Live <= 60min | Source age (min) | Effective minutes left | Warning lead (min) |",
+  "|---|---|---|---:|---:|---:|",
  ];
  for(const name of NAMES){
   const v=report.products[name];
-  rows.push("| "+name+" | "+v.status+" | "+(v.source_age_minutes??"n/a")+" | "+
+  rows.push("| "+name+" | "+v.status+" | "+(v.live_freshness_eligible?"yes":"no")+" | "+(v.source_age_minutes??"n/a")+" | "+
     (v.effective_minutes_to_expiry??"n/a")+" | "+v.renewal_lead_minutes+" |");
  }
  rows.push("",

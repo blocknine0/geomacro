@@ -36,19 +36,19 @@ const HOT_SNAPSHOT_PRODUCTS = Object.freeze({
     schema: "geomacro.public-intelligence-live.v1",
     proofSchema: "geomacro.public-intelligence-live-proof.v1",
     b2Key: "geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
-    maxAgeMs: 6 * 60 * 60 * 1000,
+    maxAgeMs: 12 * 60 * 60 * 1000,
   },
   "global-risk": {
     schema: "geomacro.public-global-risk-live.v1",
     proofSchema: "geomacro.public-global-risk-live-proof.v1",
     b2Key: "geomacro-evidence/v1/live/global-risk/latest.json.gz",
-    maxAgeMs: 90 * 60 * 1000,
+    maxAgeMs: 180 * 60 * 1000,
   },
   "risk-indices": {
     schema: "geomacro.public-risk-indices-live.v1",
     proofSchema: "geomacro.public-risk-indices-live-proof.v1",
     b2Key: "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz",
-    maxAgeMs: 90 * 60 * 1000,
+    maxAgeMs: 180 * 60 * 1000,
   },
 });
 
@@ -952,6 +952,11 @@ async function getPublicHotSnapshot(env, product, now = Date.now()) {
       generated_at: row.generated_at,
       source_as_of: row.source_as_of,
       expires_at: row.expires_at,
+      // Durable signature/reference validity (12h/3h) is explicitly
+      // distinct from <=60min live source freshness / paid eligibility.
+      live_freshness_eligible: now - sourceAsOfMs <= 60 * 60 * 1000,
+      freshness_status: now - sourceAsOfMs <= 60 * 60 * 1000
+        ? "LIVE_SOURCE_WINDOW" : "VALID_SIGNED_REFERENCE_NOT_LIVE",
       b2_object_key: row.b2_object_key,
       b2_sha256: row.b2_sha256,
       payload_sha256: row.payload_sha256,

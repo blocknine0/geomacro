@@ -14,6 +14,8 @@ const HOT_OVERLAY_SCHEMA = "geomacro.public-intelligence-live-observed.v1";
 const D1_HOT_SNAPSHOT_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/hot-snapshot/intelligence";
 const HOT_OVERLAY_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+const SIGNED_HOT_VALIDITY_MS = 12 * 60 * 60 * 1000;
+const LIVE_SOURCE_FRESHNESS_MS = 60 * 60 * 1000;
 const HOT_OVERLAY_MAX_ROWS = 24;
 const MAX_COMPRESSED_BYTES = 12_000_000;
 const MAX_DECOMPRESSED_BYTES = 40_000_000;
@@ -255,9 +257,12 @@ async function readD1HotSnapshot(env) {
       !Number.isFinite(expiresAt) ||
       !recentEnough(snapshot.generated_at) ||
       sourceAsOf > Date.now() + 5 * 60_000 ||
-      Date.now() - sourceAsOf > HOT_OVERLAY_MAX_AGE_MS ||
+      Date.now() - sourceAsOf > SIGNED_HOT_VALIDITY_MS ||
+      // A valid signed reference cannot be served as a current paid feed
+      // after the one-hour native publication freshness target.
+      Date.now() - sourceAsOf > LIVE_SOURCE_FRESHNESS_MS ||
       expiresAt <= Date.now() ||
-      expiresAt > sourceAsOf + HOT_OVERLAY_MAX_AGE_MS ||
+      expiresAt > sourceAsOf + SIGNED_HOT_VALIDITY_MS ||
       await sha256(payloadJson) !== snapshot.payload_sha256
     ) return null;
     const live = JSON.parse(payloadJson);
