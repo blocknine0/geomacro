@@ -116,8 +116,17 @@ test("independent offline fact and rights issuers produce exact verifiable disti
    proof.exact_original_evidence_set_sha256);
  assert.equal(input.envelope.facts_signature_b64,facts.signature_b64);
  assert.equal(input.envelope.rights_signature_b64,rights.signature_b64);
- assert.equal(JSON.stringify(facts).includes("federalreserve.gov"),false);
- assert.equal(JSON.stringify(rights).includes("ecb.europa.eu"),false);
+ // Strict output allowlist: a source URL, article title, raw HTML or grant
+ // cannot appear in a private role receipt even through an extra field.
+ const allowed=[
+  "schema","role","proof_sha256","original_evidence_set_sha256",
+  "signer_public_sha256","signature_b64",
+  "original_html_and_native_clock_reread",
+  "independent_external_reviewer_attested","current_public_hot_published",
+  "payment_authorized","supabase_requests","b2_requests","d1_writes","payments",
+ ].sort();
+ for(const receipt of [facts,rights])
+  assert.deepEqual(Object.keys(receipt).sort(),allowed);
 });
 test("invalid legally scoped rights cannot be signed or passed to GRO",async()=>{
  for(const altered of [
