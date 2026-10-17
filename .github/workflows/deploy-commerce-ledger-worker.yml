@@ -7,9 +7,11 @@ on:
       - main
     paths:
       - "workers/commerce-ledger/**"
+      - "src/lib/capability-pricing-catalog.ts"
       - "scripts/ops/wait-commerce-ledger-health.mjs"
       - "scripts/ops/verify-commerce-ledger-worker.mjs"
       - "scripts/ops/verify-commerce-control-plane-worker.mjs"
+      - "scripts/ops/verify-capability-prequote-ledger-no-funds.mjs"
       - ".github/workflows/deploy-commerce-ledger-worker.yml"
 
 permissions:
@@ -31,8 +33,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup Node 24 for the shared pure TypeScript price catalogue
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        with:
+          node-version: '24'
+
       - name: Verify immutable WDI prequote worker contracts locally (no secrets, no funds)
-        run: node --test scripts/ops/verify-wdi-durable-ledger.test.mjs
+        run: node --test scripts/ops/verify-wdi-durable-ledger.test.mjs scripts/ops/verify-capability-durable-ledger.test.mjs
 
       - name: Require Cloudflare production deployment secrets
         env:
@@ -78,6 +85,7 @@ jobs:
         env:
           GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
           GEOMACRO_COMMERCE_LEDGER_EXPECTED_WDI_VERSION: geomacro.wdi-prequote-worker.v1
+          GEOMACRO_COMMERCE_LEDGER_EXPECTED_CAPABILITY_VERSION: geomacro.capability-prequote-worker.v1
         run: node scripts/ops/wait-commerce-ledger-health.mjs
 
       - name: Run no-funds delivery-ledger acceptance
@@ -97,6 +105,12 @@ jobs:
           GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: node scripts/ops/verify-wdi-prequote-ledger-no-funds.mjs
+
+      - name: Verify deployed capability prequote freeze/readback (synthetic no funds)
+        env:
+          GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: node scripts/ops/verify-capability-prequote-ledger-no-funds.mjs
 
       - name: Confirm real-funds activation remains separate
         shell: bash
