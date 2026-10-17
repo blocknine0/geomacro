@@ -52,6 +52,7 @@ describe("#1827 collect all sources BEFORE qualification, privately and honestly
     expect(result.sources_catalogued).toBe(11);
     expect(result.lane_counts).toEqual({
       core: 3, free: 4, roots: 1, telegram: 2, telegram_research: 0, historical: 1,
+      operator76: 0, operator_country: 0, operator_corridor: 0,
     });
     expect(result.domain_lane_counts.CRITICAL_MINERALS.telegram).toBe(1);
     expect(result.domain_lane_counts.GEOPOLITICS.historical).toBe(1);
@@ -247,5 +248,62 @@ describe("#1827 zero-scrape Telegram human research pointer -> 3 category PRIVAT
     const wrong:any=fixture();
     wrong.manualTelegram={schema:"bad",pointers:[humanPointer()]};
     expect(()=>assemblePrivateIntakeSnapshot(wrong,now)).toThrow();
+  });
+});
+
+describe("operator-submitted source family overlay actual scheduled fan-in",()=>{
+  const saved=()=>({
+    operator76:JSON.parse(readFileSync("config/operator-76-source-attribution-intake.v1.json","utf8")),
+    countrySources:JSON.parse(readFileSync("config/operator-country-source-crosswalk.v1.json","utf8")),
+    corridorSources:JSON.parse(readFileSync("config/operator-corridor-source-crosswalk.v1.json","utf8")),
+  });
+  it("indexes all 76+108+20 source entries under 3 categories without any real feed activation",()=>{
+    const over=saved();
+    const result=assemblePrivateIntakeSnapshot({...fixture(),...over},now);
+    expect(result.lane_counts.operator76).toBeGreaterThanOrEqual(76);
+    expect(result.lane_counts.operator_country).toBeGreaterThanOrEqual(108);
+    expect(result.lane_counts.operator_corridor).toBe(60);
+    expect(result.operator_named_corridors_catalogued_not_sources).toBe(58);
+    expect(result.sources_catalogued).toBe(
+      11+result.lane_counts.operator76+result.lane_counts.operator_country+60
+    );
+    expect(result.domain_lane_counts.GEOPOLITICS.operator_corridor).toBe(20);
+    expect(result.domain_lane_counts.MACRO.operator_corridor).toBe(20);
+    expect(result.domain_lane_counts.CRITICAL_MINERALS.operator_corridor).toBe(20);
+    expect(result.status_counts.OPERATOR_CANDIDATE_UNVERIFIED_OR_HELD).toBeGreaterThan(0);
+    expect(result.status_counts.EXISTING_FAMILY_REUSE_NO_NEW_POLLER).toBeGreaterThan(0);
+    expect(result.boundaries).toMatchObject({
+      operator_overlays_are_not_feed_authorizations:true,
+      operator_geo_candidates_are_not_scored_corridors:true,
+      direct_b2_requests:0,d1_writes:0,supabase_requests:0,
+      public_published:false,chargeable:false,payment_performed:false
+    });
+  });
+  it("never exposes provider URLs, names, original IDs, route names or raw payload in hashed queue",()=>{
+    const r=assemblePrivateIntakeSnapshot({...fixture(),...saved()},now);
+    const text=JSON.stringify(r);
+    for(const sensitive of [
+      "https://", "https%3A", "operator-secret", "gdelt_events_country",
+      "Suez Canal", "aisstream_corridor", "re_news_mining",
+    ])expect(text).not.toContain(sensitive);
+    expect(r.source_refs.every((x)=>/^[0-9a-f]{32}$/u.test(x.source_ref))).toBe(true);
+  });
+  it("rejects attempted rights or signed route score promotion by edited operator catalogue",()=>{
+    const rights=saved();
+    rights.countrySources.national_primary[0].commercial_eligible=true;
+    expect(()=>assemblePrivateIntakeSnapshot({...fixture(),...rights},now))
+      .toThrow("PRIVATE_INTAKE_OPERATOR_RIGHTS_INVALID");
+    const licensed=saved();
+    licensed.corridorSources.source_registry[0].commercial_licence_verified=true;
+    expect(()=>assemblePrivateIntakeSnapshot({...fixture(),...licensed},now))
+      .toThrow("PRIVATE_INTAKE_OPERATOR_RIGHTS_INVALID");
+    const scored=saved();
+    scored.corridorSources.corridors[0].current_risk_score=99;
+    expect(()=>assemblePrivateIntakeSnapshot({...fixture(),...scored},now))
+      .toThrow("PRIVATE_INTAKE_OPERATOR_CORRIDOR_SCORE_INVALID");
+    const malformed=saved();
+    malformed.operator76.entries[0].domains=["unknown-domain"];
+    expect(()=>assemblePrivateIntakeSnapshot({...fixture(),...malformed},now))
+      .toThrow("PRIVATE_INTAKE_SOURCE_ID_INVALID");
   });
 });

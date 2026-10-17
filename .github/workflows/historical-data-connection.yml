@@ -2,17 +2,7 @@ name: Historical Data Connection
 
 on:
   workflow_dispatch: {}
-  push:
-    branches:
-      - main
-    paths:
-      - "global-intelligence/adapters/historical-data.mjs"
-      - "global-intelligence/scripts/probe-historical-data.mjs"
-      - "global-intelligence/sources/historical-data.registry.v1.json"
-      - "config/historical-data-producer.v1.json"
-      - ".github/workflows/historical-data-connection.yml"
-  schedule:
-    - cron: "37 4 * * *"
+  # Supabase-backed historical connection probe permanently frozen.
 
 permissions:
   contents: read
@@ -23,7 +13,8 @@ concurrency:
 
 jobs:
   probe:
-    if: ${{ github.repository == 'blocknine0/geomacro' }}
+    # No scheduled historical Supabase reads or keepalive.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: production

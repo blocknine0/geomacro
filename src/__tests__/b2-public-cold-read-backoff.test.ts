@@ -1,18 +1,21 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-describe("unmetered public B2 cold fallback traffic protection",()=>{
+describe("governed private B2 cold fallback traffic protection",()=>{
   const source=readFileSync("src/lib/b2-live.server.ts","utf8");
 
   it("prefers verified cache/edge without another private Class-B request",()=>{
-    expect(source).toContain("const edge = await readPublicIntelligenceEdge();");
-    expect(source).toContain("const edge = await readGlobalRiskEdge();");
+    expect(source).toContain("return readPublicIntelligenceEdge();");
+    expect(source).toContain("return readGlobalRiskEdge();");
     const cacheIndex=source.indexOf("const cached = cache.get(key);");
     const holdIndex=source.indexOf("providerQuotaCooldownUntil > Date.now() || circuitOpen()");
-    const fetchIndex=source.indexOf("const response = await fetch(`${B2_ENDPOINT}${path}`");
+    const fetchIndex=source.indexOf("const response = await fetchWithoutRedirect(`${B2_ENDPOINT}${path}`");
     expect(cacheIndex).toBeGreaterThan(0);
     expect(cacheIndex).toBeLessThan(holdIndex);
     expect(holdIndex).toBeLessThan(fetchIndex);
+    const reservationIndex=source.indexOf("if (!(await reservePrivateB2Read(key))) return null;");
+    expect(holdIndex).toBeLessThan(reservationIndex);
+    expect(reservationIndex).toBeLessThan(fetchIndex);
     expect(source).toContain("cached.expiresAt > Date.now()");
   });
 

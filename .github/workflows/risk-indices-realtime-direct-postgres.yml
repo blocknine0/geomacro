@@ -7,11 +7,7 @@ name: Risk Indices Realtime Direct Postgres
 # Operator may dispatch manually for recovery, which still fails on stale GRI.
 on:
   workflow_dispatch: {}
-  workflow_run:
-    workflows:
-      - "GRI Realtime Direct Postgres"
-    types:
-      - completed
+  # Legacy Postgres parent must never publish in frozen Supabase mode.
 
 permissions:
   contents: read
@@ -22,19 +18,8 @@ concurrency:
 
 jobs:
   publish-three-risk-indices:
-    if: >-
-      github.repository == 'blocknine0/geomacro' &&
-      (
-        (
-          github.event_name == 'workflow_run' &&
-          github.event.workflow_run.conclusion == 'success' &&
-          github.event.workflow_run.head_branch == 'main'
-        ) ||
-        (
-          github.event_name == 'workflow_dispatch' &&
-          github.ref == 'refs/heads/main'
-        )
-      )
+    # Existing Supabase-free D1-parent publisher lives in a separate approved path.
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: production

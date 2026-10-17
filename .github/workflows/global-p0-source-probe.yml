@@ -2,6 +2,16 @@ name: Global P0 source endpoint probe
 
 on:
   workflow_dispatch:
+  schedule:
+    # Ten existing P0 source endpoints, one bounded private read each per day.
+    - cron: "33 6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/global-p0-source-probe.yml"
+      - "config/global-p0-source-expansion.json"
+      - "scripts/ops/observe-p0-private-source-runtime.mjs"
+      - "scripts/tests/existing-source-runtime-activation.test.mjs"
   pull_request:
     branches: [main]
     paths:
@@ -21,8 +31,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: geomacro-existing-p0-source-runtime-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   probe:
+    # Preserve legacy PR certification; protected runs use bounded private reads.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -60,3 +76,27 @@ jobs:
           name: global-p0-source-probe
           path: artifacts/global-p0-source-probe.json
           if-no-files-found: error
+
+  private-source-runtime:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Test bounded existing-source activation
+        run: node --test scripts/tests/existing-source-runtime-activation.test.mjs
+      - name: Read all ten existing P0 sources with canonical private parsers
+        run: node scripts/ops/observe-p0-private-source-runtime.mjs
+      - name: Preserve source-free aggregate findings, including upstream failures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: p0-private-source-runtime-${{ github.run_id }}
+          path: artifacts/p0-private-source-runtime/receipt.json
+          if-no-files-found: error
+          retention-days: 3

@@ -62,6 +62,20 @@ describe("Geomacro Mainnet Intelligence API v1", () => {
     );
   });
 
+  it("binds one verified capability price to quote, payment, replay, ledger and prepared delivery", () => {
+    expect(implementation).toContain('import { resolveEligibleCoinbaseCapabilityConfig }');
+    expect(implementation).toContain('config = resolveEligibleCoinbaseCapabilityConfig(plan, availability, config)');
+    expect(implementation).toContain('finalConfig.amountAtomic !== config.amountAtomic');
+    expect(implementation).toContain('coinbaseX402PaymentRequirements(config)');
+    expect(implementation).toContain('assertCoinbasePaymentBinding(paymentPayload, config)');
+    expect(implementation).toContain('claimCoinbaseX402Delivery({ paymentFingerprint, requestFingerprint, clientRequestId: parsed.client_request_id ?? null, config })');
+    expect(implementation).toContain('reserveCoinbaseX402AgentUsage({ paymentFingerprint, payer: verified.payer, config })');
+    expect(implementation).toContain('priceUsdc: config.priceUsdc');
+    expect(implementation).toContain('settleCoinbaseX402(paymentPayload, config)');
+    expect(implementation).toContain('CAPABILITY_PRICE_UNVERIFIED_NO_CHARGE');
+    expect(implementation).toContain('FINAL_CAPABILITY_PRICE_UNVERIFIED');
+  });
+
   it("keeps both entry paths behind the payment security class", () => {
     expect(classifyCentralSecurityRoute(CANONICAL, "POST")).toBe("payment");
     expect(classifyCentralSecurityRoute(LEGACY, "POST")).toBe("payment");

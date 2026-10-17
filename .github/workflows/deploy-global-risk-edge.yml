@@ -1,10 +1,19 @@
 name: Deploy Global Risk Edge
 
-# Do not spend GitHub minutes or B2 quota attempting deployments from
-# frozen-Supabase/stale GRI. A successful NEW canonical publisher run or
-# explicit recovery dispatch is the only production materialization trigger.
+# Do not deploy from a frozen publisher or add a recurring source check.
+# A narrow verified code-only main push can use a PREVIOUS successful
+# full-B2-readback artifact; the existing source-run/manual paths remain.
 on:
   workflow_dispatch: {}
+  # A worker-code-only redeploy is independent of a NEW publisher snapshot.
+  # It must still materialize an already full-B2-readback-verified main-run
+  # artifact before secrets are used or Cloudflare deployment is attempted.
+  # Never deploy for ordinary source/workflow commits or on a schedule.
+  push:
+    branches: [main]
+    paths:
+      - "workers/global-risk-edge/src/index.mjs"
+      - ".github/workflows/deploy-global-risk-edge.yml"
   workflow_run:
     workflows: ["GRI Realtime Direct Postgres"]
     types: [completed]
@@ -24,6 +33,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (
         github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'push' ||
         (
           github.event_name == 'workflow_run' &&
           github.event.workflow_run.conclusion == 'success' &&

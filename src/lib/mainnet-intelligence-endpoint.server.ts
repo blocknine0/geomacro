@@ -1,6 +1,14 @@
 import { randomUUID } from "node:crypto";
+import {makeGeomacroNoChargeResponse} from "./geomacro-nocharge";
+import {
+  qualifyRetrievedOnDemandEvidence, publicOnDemandQualificationStatus,
+  buildPrivateVerifiedFedMinutesFinding,
+  type QualifiedPrivateEvidence,
+} from "./on-demand-evidence-qualification.server";
 import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "./agent-query-plan";
+import {bindPrivateFedMinutesToExactCustomerQuery}
+  from "./on-demand-private-query-bound-draft.server";
 import { assertGeomacroIntelligenceResponseContract } from "./geomacro-intelligence-contract";
 import { buildPrivateOnDemandMacroDrivers } from "./on-demand-private-macro-drivers.server";
 import { scorePrivateOnDemandMacroPeers, type PrivatePeerMacroResult } from "./on-demand-private-macro-peer-score.server";
@@ -11,6 +19,7 @@ import {
 import { checkAgentQueryDeliverability, publicAgentQueryAvailability } from "./agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "./agent-query-external-modules.server";
 import { assembleAgentQueryResponse } from "./agent-query-response.server";
+import { resolveEligibleCoinbaseCapabilityConfig } from "./verified-capability-coinbase-binding.server";
 import {
   assertPublicPaidOutputBoundary,
   sanitizeAndRehashPaidPreparedResponse,
@@ -44,9 +53,10 @@ import {
 import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.server";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import { lookupTelegramFallback } from "./on-demand-telegram-fallback.server";
+import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
-  verifyOnDemandOriginalArticlePages, type OnDemandCategory,
+  inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages, type OnDemandCategory,
 } from "./on-demand-global-discovery.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
@@ -262,7 +272,10 @@ export const mainnetIntelligenceHandlers = {
           environment: config.environment,
           network: config.network,
           asset: "USDC",
-          exact_price_usdc: config.priceUsdc,
+          // One global flat price is not a valid capability quote.
+          // Buyers must POST a proven plan for an exact server-derived amount.
+          exact_price_usdc: null,
+          pricing_policy: "SERVER_VERIFIED_CAPABILITY_AND_VARIANT",
           topics: AGENT_QUERY_TOPICS,
           coverage: "data-driven; only currently deliverable subjects are payable",
           live_on_demand_discovery_supported: true,
@@ -357,21 +370,46 @@ export const mainnetIntelligenceHandlers = {
               execution_authorized:false,
             },422);
           }
+          let requestedNewsAgeSeconds:number|undefined;
+          try {
+            requestedNewsAgeSeconds=plan.requested_max_age_seconds ??
+              inferOnDemandFreshnessSeconds(plan.question_key) ?? undefined;
+          } catch {
+            return json({
+              ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"ON_DEMAND_FRESHNESS_SCOPE_UNSUPPORTED"},
+              execution_authorized:false,
+            },422);
+          }
+          // Read the existing independently signature-verified D1 country GRO
+          // first; an outage/empty object is not a reason to contact Supabase.
+          // Country GRO availability is only a hint, NOT proof that the exact
+          // requested topic/mineral is answered. Never bypass the x402 gate.
+          let existingVerifiedCountryGroAvailable=false;
+          try {
+            existingVerifiedCountryGroAvailable=Boolean(
+              await readD1VerifiedHotCountryGro(subject.country_iso3,new Date().toISOString()));
+          } catch { /* Storage lookup is optional, live retrieval continues. */ }
           let discovery;
           let privatelyQualifiedOriginalCandidateCount=0;
           let privateOriginalReviewCandidateCount=0;
           let duplicatePrivateOriginalHeadlines=0;
           let articlePageChecks=0;
           let articleDatesVerified=0;
+          let privateFedSourceBoundFindingCandidateCount=0;
+          let privateExactQueryBoundFedDraftCount=0;
           let privateOfficialAnnualChanges=0;
           let privateAnnualDirectionalDrivers=0;
           let privateAnnualRightsVerifiedDrivers=0;
           let privateAnnualMacroRightsStatus:PrivateOnDemandMacroRightsStatus="NO_ANNUAL_EVIDENCE";
           let privatePeerMacroStatus:PrivatePeerMacroResult["status"]="NO_CERTIFIED_MACRO_RIGHTS";
           let privatePeerScoredDimensions=0;
+          let privateEvidenceQualification:ReturnType<typeof publicOnDemandQualificationStatus>|null=null;
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
+              topics:plan.topics,
+              max_age_seconds:requestedNewsAgeSeconds,
             });
             discovery=privateResult.discovery;
             // NEVER copy privateResult.private_candidates into the public
@@ -402,12 +440,48 @@ export const mainnetIntelligenceHandlers = {
             privatePeerMacroStatus=privatePeerProof.status;
             privatePeerScoredDimensions=privatePeerProof.peer_normalized_dimension_count;
             const pageProof=await verifyOnDemandOriginalArticlePages(
-              privateResult.private_original_review_candidates);
+              privateResult.private_original_review_candidates,
+              {maxAgeSeconds:requestedNewsAgeSeconds});
             // No page HTML, original URL, title or publisher identity is
             // serialized. This is only publication-clock consistency, NOT
             // independent facts, commercial source rights or signed risk.
             articlePageChecks=pageProof.attempted;
             articleDatesVerified=pageProof.verified;
+            // Feed/page-backed original records and official annual structural
+            // observations now enter ONE deterministic private qualification
+            // contract, without signing, scoring or requesting x402 funds.
+            // This remains separate from reviewer-signed same-event admission.
+            const qualification:QualifiedPrivateEvidence=qualifyRetrievedOnDemandEvidence({
+              search:{
+                country_iso3:subject.country_iso3,categories,mineral,
+                topics:plan.topics,
+                max_age_seconds:requestedNewsAgeSeconds===undefined?undefined:
+                  Math.min(requestedNewsAgeSeconds,31*86_400),
+              },
+              discovery:privateResult.discovery,
+              originals:privateResult.private_original_review_candidates,
+              verifiedCountryName:privateResult.private_verified_country_name,
+              pageProof,macroChanges:privateResult.private_macro_changes,
+              macroRights:rightsProof,
+              now:new Date(privateResult.discovery.checked_at),
+            });
+            // Existing query engine, request-local only. No private source
+            // references, event prose or hashes enter the public 422 body.
+            const privateFedFinding=buildPrivateVerifiedFedMinutesFinding(
+              qualification,pageProof,{
+                queryPlanHash:plan.query_plan_hash,
+                observedAt:new Date(privateResult.discovery.checked_at),
+              });
+            privateFedSourceBoundFindingCandidateCount=privateFedFinding?1:0;
+            if(privateFedFinding){
+              const queryBound=bindPrivateFedMinutesToExactCustomerQuery({
+                receivedRequest:raw,canonicalPlan:plan,finding:privateFedFinding,
+              });
+              privateExactQueryBoundFedDraftCount=queryBound.ok?1:0;
+              // The unsigned private JSON and article SHA NEVER leave memory.
+              // A matching question is NOT rights, reviewer or payment admission.
+            }
+            privateEvidenceQualification=publicOnDemandQualificationStatus(qualification);
           } catch(error) {
             console.error("[x402-live] bounded discovery failed",error);
             return json({
@@ -441,6 +515,7 @@ export const mainnetIntelligenceHandlers = {
               checked_at:discovery.checked_at,
               network_attempts:discovery.network_attempts,
               reached_source_families:discovery.reached_source_families,
+              existing_verified_country_gro_available:existingVerifiedCountryGroAvailable,
               discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
               private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
               duplicate_original_headlines_suppressed:duplicatePrivateOriginalHeadlines,
@@ -452,9 +527,27 @@ export const mainnetIntelligenceHandlers = {
               private_macro_peer_scored_dimension_count:privatePeerScoredDimensions,
               original_article_page_checks:articlePageChecks,
               article_page_publication_dates_verified:articleDatesVerified,
+              private_source_bound_structured_finding_candidates:privateFedSourceBoundFindingCandidateCount,
+              private_exact_query_bound_fed_drafts:privateExactQueryBoundFedDraftCount,
+              structured_candidate_commercially_admitted:false,
+              private_evidence_qualification:privateEvidenceQualification,
               private_originals_article_page_verified:
                 privateOriginalReviewCandidateCount>0 &&
                 articleDatesVerified===privateOriginalReviewCandidateCount,
+              // A missing *verified* current event is scoped to this
+              // bounded on-demand search, not an assertion that no real
+              // event occurred anywhere. Index hits cannot promote it.
+              verified_signed_current_event_count:0,
+              current_evidence_state:articleDatesVerified>0
+                ?"ORIGINAL_PAGE_DATED_BUT_UNQUALIFIED"
+                :"NO_VERIFIED_CURRENT_EVENT_IN_BOUNDED_SEARCH",
+              searched_country_category_cells:categories.length,
+              bounded_search_exhaustive:false,
+              missing_proof_dimensions:[
+                "INDEPENDENT_SAME_EVENT",
+                "ITEM_COMMERCIAL_RIGHTS",
+                "CURRENT_SIGNED_CUSTOMER_READBACK",
+              ],
               independent_same_event_corroboration_verified:false,
               source_derived_commercial_rights_verified:false,
               signed_derived_intelligence_created:false,
@@ -488,7 +581,33 @@ export const mainnetIntelligenceHandlers = {
           return json({ ok: false, chargeable: false, error: { code: "AVAILABILITY_CHECK_UNAVAILABLE", message: "Deliverability could not be proven. Payment is disabled for this request." }, execution_authorized: false }, 503);
         }
         if (!availability.deliverable) {
-          return json({ ok: false, chargeable: false, payment_required_now: false, availability: publicAgentQueryAvailability(availability), error: { code: availability.code, message: "Requested intelligence is not currently fully deliverable; no payment is accepted." }, execution_authorized: false }, 422);
+          // Existing 422 status and availability contract remain unchanged. Add an
+          // explicitly zero-price machine receipt *before* any payment claim.
+          const noChargeReason = availability.code === "STALE_REQUIRED_DATA"
+            ? "STALE_NO_CHARGE" as const
+            : availability.code === "INSUFFICIENT_COVERAGE"
+              ? "INSUFFICIENT_EVIDENCE_NO_CHARGE" as const
+              : "UNAVAILABLE_NO_CHARGE" as const;
+          const no_charge = makeGeomacroNoChargeResponse({
+            request_id: randomUUID(), capability: "intelligence_query",
+            subject: {type:"query", id:plan.query_plan_hash},
+            reason: noChargeReason,
+            reason_detail: "Verified deliverable evidence is not available; this request was not charged.",
+            payment_attempted:false,delivery_committed:false,
+          });
+          return json({ ok: false, chargeable: false, payment_required_now: false,
+            no_charge, availability: publicAgentQueryAvailability(availability),
+            error: { code: availability.code, message: "Requested intelligence is not currently fully deliverable; no payment is accepted." }, execution_authorized: false }, 422);
+        }
+        // The same verified capability-price configuration travels through the
+        // HTTP 402, signed payment binding, durable claim, usage guard,
+        // prepared response, and final settlement. No mutable client price.
+        try {
+          config = resolveEligibleCoinbaseCapabilityConfig(plan, availability, config);
+        } catch {
+          return json({ ok: false, chargeable: false, payment_required_now: false,
+            error: { code: "CAPABILITY_PRICE_UNVERIFIED_NO_CHARGE" },
+            execution_authorized: false }, 422);
         }
 
         const paymentHeader = request.headers.get("payment-signature");
@@ -561,6 +680,22 @@ export const mainnetIntelligenceHandlers = {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: `FINAL_${finalAvailability.code}` });
           if (usageReservation.enforced) await releaseCoinbaseX402AgentUsage(paymentFingerprint);
           return json({ ok: false, chargeable: false, availability: publicAgentQueryAvailability(finalAvailability), error: { code: `FINAL_${finalAvailability.code}`, message: "Required data changed before settlement; no payment was taken." }, execution_authorized: false }, 409);
+        }
+        // A plan can become ineligible or change its price class after the
+        // original quote. Never settle against an unverified final capability.
+        try {
+          const finalConfig = resolveEligibleCoinbaseCapabilityConfig(plan, finalAvailability, config);
+          if (finalConfig.amountAtomic !== config.amountAtomic ||
+              finalConfig.priceUsdc !== config.priceUsdc) {
+            throw Error("FINAL_CAPABILITY_PRICE_MISMATCH");
+          }
+        } catch {
+          await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken,
+            failureCode: "FINAL_CAPABILITY_PRICE_UNVERIFIED" });
+          if (usageReservation.enforced) await releaseCoinbaseX402AgentUsage(paymentFingerprint);
+          return json({ ok: false, chargeable: false, payment_required_now: false,
+            error: { code: "FINAL_CAPABILITY_PRICE_UNVERIFIED" },
+            execution_authorized: false }, 409);
         }
 
         const requestId = randomUUID();

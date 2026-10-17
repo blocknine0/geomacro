@@ -33,17 +33,41 @@ describe("#1827 bounded governed source root health",()=>{
     }
     expect(ids.size).toBe(535);
   });
+  it("never starves Macro or Critical Minerals in a skewed 209/308/18 real registry",()=>{
+    const counts=[["GEOPOLITICS",209],["MACRO",308],["CRITICAL_MINERALS",18]] as const;
+    const roots=counts.flatMap(([category,count])=>
+      Array.from({length:count},(_,j)=>({source_id:category.toLowerCase()+"_"+j,
+        category,root_url:"https://example.org/official"})));
+    const all={roots};
+    const seen=new Set<string>();
+    const windows=Math.ceil(535/MAX_ROOTS_PER_WINDOW);
+    for(let i=0;i<windows;i++){
+      const selection=selectGovernedRootWindow(all,new Date(t.getTime()+i*90*60*1000));
+      expect(selection.roots.length).toBeGreaterThanOrEqual(38);
+      expect(selection.roots.length).toBeLessThanOrEqual(40);
+      const perDomain=Object.fromEntries(counts.map(([category])=>
+        [category,selection.roots.filter(r=>r.category===category).length]));
+      expect(perDomain.GEOPOLITICS).toBeGreaterThan(0);
+      expect(perDomain.MACRO).toBeGreaterThan(0);
+      expect(perDomain.CRITICAL_MINERALS).toBeGreaterThan(0);
+      for(const item of selection.roots){
+        expect(seen.has(item.source_id)).toBe(false);
+        seen.add(item.source_id);
+      }
+    }
+    expect(seen.size).toBe(535);
+  });
   it("reports transport-only status across all three domains without publisher content",async()=>{
     const fetchImpl=vi.fn(async()=>{
       return {status:200,body:{cancel:async()=>{}}};
     });
     const r=await probeGovernedRoots({catalog,now:t,fetchImpl});
-    expect(r.checked_roots).toBe(40);
-    expect(r.http_reachable).toBe(40);
-    expect(fetchImpl).toHaveBeenCalledTimes(40);
+    expect(r.checked_roots).toBe(39);
+    expect(r.http_reachable).toBe(39);
+    expect(fetchImpl).toHaveBeenCalledTimes(39);
     expect(Object.keys(r.per_domain).sort()).toEqual(
       ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"].sort());
-    expect(r.other_roots_not_checked_this_window).toBe(495);
+    expect(r.other_roots_not_checked_this_window).toBe(496);
     expect(r.all_sources_working_claim).toBe(false);
     expect(r.original_articles_ingested).toBe(0);
     expect(r.registered_roots_auto_activated_as_news_feeds).toBe(0);
@@ -61,9 +85,9 @@ describe("#1827 bounded governed source root health",()=>{
       return {status:206,body:null};
     });
     const proof=await probeGovernedRoots({catalog:{roots},now:t,fetchImpl});
-    expect(proof.rows.map((r:any)=>r.status)).toEqual([
+    expect(proof.rows.map((r:any)=>r.status).sort()).toEqual([
       "ROOT_INVALID_OR_UNSAFE_URL","ROOT_ACCESS_DENIED",
-      "ROOT_REDIRECT_UNVERIFIED","ROOT_HTTP_REACHABLE"]);
+      "ROOT_REDIRECT_UNVERIFIED","ROOT_HTTP_REACHABLE"].sort());
     expect(fetchImpl).toHaveBeenCalledTimes(4);
     expect(fetchImpl.mock.calls.every(([,o]:any)=>o.redirect==="manual")).toBe(true);
   });

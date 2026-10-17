@@ -24,7 +24,17 @@ describe("commercial access is explained sitewide", () => {
     expect(guide).toContain("Browse public Intelligence and Risk Indices");
     expect(guide).toContain("Ask Geomacro and read research");
     expect(guide).toContain("Pay per call");
-    expect(guide).toContain("0.05 USDC per successful delivery");
+    expect(guide).toContain("Exact USDC price by capability");
+    const schedule=read("src/components/capability-price-schedule.tsx");
+    const dataApi=read("src/routes/data-api.tsx");
+    expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICES");
+    expect(schedule).toContain("GEOMACRO_PRICING_GROUPS");
+    expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
+    expect(schedule).toContain("without a second object charge");
+    expect(pricing).toContain("<CapabilityPriceSchedule />");
+    expect(dataApi).toContain("<CapabilityPriceSchedule compact />");
+    expect(pricing).not.toContain("Launch price for the first 20,000");
+    expect(dataApi).not.toContain("Launch price for the first 20,000");
     expect(guide).toContain("Structured intelligence for APIs and AI agents");
     expect(guide).toContain("Monthly access");
     expect(guide).toContain("Recurring intelligence for teams and workflows");

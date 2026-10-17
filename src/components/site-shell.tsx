@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { ChevronDown, Github, Languages, Menu, Twitter } from "lucide-react";
+import { ChevronDown, Languages, Menu, Twitter } from "lucide-react";
 import { Wordmark } from "@/components/wordmark";
 import { Button } from "@/components/ui/button";
 import { AnimatedBackground } from "@/components/animated-background";
@@ -43,7 +43,7 @@ const EXPLORE_NAV = [
 
 const REFERENCE_NAV = [{ to: "/contact", label: "Contact" }] as const;
 const PRODUCTION_EVIDENCE_ROUTES = new Set(["/risk-gate", "/research"]);
-const GITHUB_URL = "https://github.com/blocknine0/geomacro";
+
 
 const SITE_LANGUAGES = [
   { code: "en", label: "English" },
@@ -251,9 +251,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   <Link to="/research" className="hover:text-foreground">Research & Evidence</Link>
                   <Link to="/docs" className="hover:text-foreground">Documentation</Link>
                   <Link to="/roadmap" className="hover:text-foreground">Roadmap</Link>
-                  <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
-                    <Github className="h-3.5 w-3.5" /> GitHub
-                  </a>
                 </div>
               </div>
               <div>
@@ -272,7 +269,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-              <span>Public intelligence & risk indices · Risk Gate by invitation · Paid API access subject to availability</span>
+              <span>Intelligence findings delayed at least 15 minutes · Risk Indices retain their 60-minute delay · x402/API is separately gated · No raw sources</span>
               <Link to="/about" className="hover:text-foreground">Privacy · Product use · Trust</Link>
             </div>
           </div>

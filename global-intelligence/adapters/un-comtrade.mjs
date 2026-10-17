@@ -24,14 +24,14 @@ function normalizePeriods(period){
   const out=values.map(v=>String(v).trim()).filter(Boolean);
   if(!out.length) throw new Error("period is required.");
   for(const value of out){
-    if(!/^\\d{4}(?:\\d{2})?$/.test(value)) throw new Error(`Invalid Comtrade period ${value}. Use YYYY or YYYYMM.`);
+    if(!/^\d{4}(?:\d{2})?$/.test(value)) throw new Error(`Invalid Comtrade period ${value}. Use YYYY or YYYYMM.`);
   }
   return out;
 }
 
 export async function fetchComtradeReporterCatalog(){
   if(!reporterCatalogPromise){
-    reporterCatalogPromise=getJson(REFERENCE_URL).then(data=>{
+    reporterCatalogPromise=getJson(REFERENCE_URL,{maxBytes:512*1024,redirect:'error'}).then(data=>{
       const results=Array.isArray(data?.results) ? data.results : [];
       const map={};
       for(const row of results){
@@ -77,12 +77,6 @@ function buildUrl({baseUrl,reporterCode,period,cmdCode,flowCode,partnerCode,part
   return `${baseUrl}/C/A/HS?${params.toString()}`;
 }
 
-function observationDate(period){
-  const p=String(period);
-  if(/^\\d{6}$/.test(p)) return `${p.slice(0,4)}-${p.slice(4)}-01T00:00:00Z`;
-  if(/^\\d{4}$/.test(p)) return `${p}-12-31T00:00:00Z`;
-  return null;
-}
 
 export async function fetchComtrade(countryIso3,{
   reporterCode=null,period="2025",cmdCode="TOTAL",flowCode="X",partnerCode="0",
@@ -92,11 +86,22 @@ export async function fetchComtrade(countryIso3,{
   const key=process.env.UN_COMTRADE_API_KEY || "";
   if(!key && !allowPreview) throw new Error("UN_COMTRADE_API_KEY is required when allowPreview=false.");
 
+  // Do not infer mineral-only evidence from TOTAL or mixed headings.
+  if(category==="CRITICAL_MINERALS" && !["260300","260400","260500"].includes(String(cmdCode)))
+    throw Error("UN_COMTRADE_MINERAL_SCOPE_UNVERIFIED");
+  if(!/^(?:TOTAL|[0-9]{2}|[0-9]{4}|[0-9]{6})$/u.test(String(cmdCode)))
+    throw Error("UN_COMTRADE_HS_CODE_INVALID");
+  if(normalizePeriods(period).length!==1)throw Error("UN_COMTRADE_SINGLE_PERIOD_REQUIRED");
+  if(!Number.isSafeInteger(maxRecords)||maxRecords<1||maxRecords>500)
+    throw Error("UN_COMTRADE_RECORDS_LIMIT_INVALID");
   const reporter=await reporterCodeForIso3(countryIso3,reporterCode);
   const baseUrl=key ? DATA_BASE_URL : PREVIEW_BASE_URL;
   const url=buildUrl({baseUrl,reporterCode:reporter,period,cmdCode,flowCode,partnerCode,partner2Code,motCode,customsCode,breakdownMode,maxRecords,includeDesc,key:key||null});
-  const data=await getJson(url);
+  const safeUrl=new URL(url);safeUrl.searchParams.delete('subscription-key');
+  const data=await getJson(url,{maxBytes:1024*1024,redirect:'error'});
   const rows=Array.isArray(data?.data) ? data.data : [];
+  if(rows.some(r=>Number(r?.reporterCode)!==reporter || String(r?.period)!==String(period) || String(r?.cmdCode)!==String(cmdCode) || String(r?.flowCode).toUpperCase()!==String(flowCode).toUpperCase() || String(r?.partnerCode)!==String(partnerCode)))
+    throw Error('UN_COMTRADE_ROW_SCOPE_UNVERIFIED');
   const flow=flowLabel(flowCode);
   const iso3=String(countryIso3).toUpperCase();
   const sourceId=category==="MACRO" ? "un_comtrade" : "un_comtrade_minerals";
@@ -107,16 +112,19 @@ export async function fetchComtrade(countryIso3,{
     const rowPeriod=String(r.period ?? period).split(",")[0];
     return observation({
       sourceId,category,countryIso3:iso3,
-      publishedAt:observationDate(rowPeriod),observedAt:observationDate(rowPeriod),
+      publishedAt:null,observedAt:new Date().toISOString(),
       title:`UN Comtrade ${flow} ${r.cmdCode ?? cmdCode}`,
       summary:`${flow} trade value=${tradeValue ?? "null"}${netWeight!==null ? `, net weight=${netWeight}` : ""}`,
-      url,confidence:0.85,
+      url:safeUrl.toString(),confidence:0.85,
       raw:{
         evidence_type:flow==="EXPORT" ? "TRADE_EXPORT" : "TRADE_IMPORT",
         reporter_code:reporter,reporter_iso3:iso3,period:r.period ?? period,
         cmd_code:r.cmdCode ?? cmdCode,flow_code:r.flowCode ?? flowCode,flow,
         partner_code:r.partnerCode ?? partnerCode,partner2_code:r.partner2Code ?? partner2Code,
-        trade_value:tradeValue,net_weight:netWeight,raw:r
+        trade_value:tradeValue,net_weight:netWeight,raw:r,
+        native_release_at:null,period_is_publication_date:false,
+        hs_vintage_verified:false,commercial_rights_verified:false,
+        preview_limited:!key
       }
     });
   });
@@ -131,25 +139,27 @@ export async function fetchComtradeTradeFlows(countryIso3,{
     fetchComtrade(countryIso3,{reporterCode,period,cmdCode,flowCode:"X",partnerCode,partner2Code,motCode,customsCode,maxRecords,allowPreview,category}),
     fetchComtrade(countryIso3,{reporterCode,period,cmdCode,flowCode:"M",partnerCode,partner2Code,motCode,customsCode,maxRecords,allowPreview,category})
   ]);
-  const sum=rows=>rows.reduce((total,row)=>{
-    const value=parseNumeric(row.raw?.trade_value);
-    return total+(value===null ? 0 : value);
-  },0);
-  const exportsValue=sum(exportsRows);
-  const importsValue=sum(importsRows);
-  const balance=exportsValue-importsValue;
+  // A missing/import-only/export-only or multi-row result is not zero trade.
+  // Do not silently add partial pages or mixed classifications.
+  const aggregate=exportsRows.length===1&&importsRows.length===1&&
+    [exportsRows[0],importsRows[0]].every(r=>r.raw?.trade_value!==null&&
+      Number.isFinite(r.raw?.trade_value));
+  const exportsValue=aggregate?exportsRows[0].raw.trade_value:null;
+  const importsValue=aggregate?importsRows[0].raw.trade_value:null;
+  const balance=aggregate?exportsValue-importsValue:null;
   const iso3=String(countryIso3).toUpperCase();
   const sourceId=category==="MACRO" ? "un_comtrade" : "un_comtrade_minerals";
   const periods=normalizePeriods(period);
   return {
     source:sourceId,country_iso3:iso3,period:periods.length===1 ? periods[0] : periods,
     cmd_code:String(cmdCode),observations:[...exportsRows,...importsRows],
-    trade_balance:observation({
+    trade_balance_complete:aggregate,
+    trade_balance:aggregate?observation({
       sourceId,category,countryIso3:iso3,publishedAt:null,observedAt:null,
       title:`UN Comtrade TRADE_BALANCE ${cmdCode}`,
       summary:`exports=${exportsValue}; imports=${importsValue}; balance=${balance}`,
       url:exportsRows[0]?.url || importsRows[0]?.url || null,confidence:0.85,
-      raw:{evidence_type:"TRADE_BALANCE",exports_value:exportsValue,imports_value:importsValue,balance,currency:"USD",period:periods,cmd_code:String(cmdCode),partner_code:String(partnerCode)}
-    })
+      raw:{evidence_type:"TRADE_BALANCE",exports_value:exportsValue,imports_value:importsValue,balance,currency:"USD",period:periods,cmd_code:String(cmdCode),partner_code:String(partnerCode),commercial_rights_verified:false,hs_vintage_verified:false}
+    }):null
   };
 }

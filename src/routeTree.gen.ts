@@ -55,11 +55,14 @@ import { Route as ApiTameionApproveRouteImport } from './routes/api.tameion.appr
 import { Route as ApiTameionConfirmRouteImport } from './routes/api.tameion.confirm'
 import { Route as ApiTameionDecisionRouteImport } from './routes/api.tameion.decision'
 import { Route as ApiTestnetTesterSplatRouteImport } from './routes/api/testnet-tester/$'
+import { Route as ApiV1AgentRouteImport } from './routes/api.v1.agent'
+import { Route as ApiV1FindsRouteImport } from './routes/api.v1.finds'
 import { Route as ApiX402IntelligenceRouteImport } from './routes/api.x402.intelligence'
 import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
 import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
+import { Route as ApiV1IntelligenceAvailabilityRouteImport } from './routes/api.v1.intelligence.availability'
 import { Route as ApiV1IntelligenceCriticalMineralsRouteImport } from './routes/api.v1.intelligence.critical-minerals'
 import { Route as ApiV1IntelligenceGeopoliticsRouteImport } from './routes/api.v1.intelligence.geopolitics'
 import { Route as ApiV1IntelligenceMacroFxRouteImport } from './routes/api.v1.intelligence.macro-fx'
@@ -299,6 +302,16 @@ const ApiTestnetTesterSplatRoute = ApiTestnetTesterSplatRouteImport.update({
   path: '/api/testnet-tester/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1AgentRoute = ApiV1AgentRouteImport.update({
+  id: '/api/v1/agent',
+  path: '/api/v1/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1FindsRoute = ApiV1FindsRouteImport.update({
+  id: '/api/v1/finds',
+  path: '/api/v1/finds',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiX402IntelligenceRoute = ApiX402IntelligenceRouteImport.update({
   id: '/api/x402/intelligence',
   path: '/api/x402/intelligence',
@@ -324,6 +337,12 @@ const ApiGoatPilotStatusRoute = ApiGoatPilotStatusRouteImport.update({
   path: '/api/goat/pilot/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1IntelligenceAvailabilityRoute =
+  ApiV1IntelligenceAvailabilityRouteImport.update({
+    id: '/api/v1/intelligence/availability',
+    path: '/api/v1/intelligence/availability',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV1IntelligenceCriticalMineralsRoute =
   ApiV1IntelligenceCriticalMineralsRouteImport.update({
     id: '/api/v1/intelligence/critical-minerals',
@@ -412,11 +431,14 @@ export interface FileRoutesByFullPath {
   '/api/tameion/confirm': typeof ApiTameionConfirmRoute
   '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/v1/agent': typeof ApiV1AgentRoute
+  '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
@@ -472,11 +494,14 @@ export interface FileRoutesByTo {
   '/api/tameion/confirm': typeof ApiTameionConfirmRoute
   '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/v1/agent': typeof ApiV1AgentRoute
+  '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
@@ -533,11 +558,14 @@ export interface FileRoutesById {
   '/api/tameion/confirm': typeof ApiTameionConfirmRoute
   '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/v1/agent': typeof ApiV1AgentRoute
+  '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
@@ -595,11 +623,14 @@ export interface FileRouteTypes {
     | '/api/tameion/confirm'
     | '/api/tameion/decision'
     | '/api/testnet-tester/$'
+    | '/api/v1/agent'
+    | '/api/v1/finds'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
     | '/api/v1/intelligence/macro-fx'
@@ -655,11 +686,14 @@ export interface FileRouteTypes {
     | '/api/tameion/confirm'
     | '/api/tameion/decision'
     | '/api/testnet-tester/$'
+    | '/api/v1/agent'
+    | '/api/v1/finds'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
     | '/api/v1/intelligence/macro-fx'
@@ -715,11 +749,14 @@ export interface FileRouteTypes {
     | '/api/tameion/confirm'
     | '/api/tameion/decision'
     | '/api/testnet-tester/$'
+    | '/api/v1/agent'
+    | '/api/v1/finds'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
     | '/api/v1/intelligence/macro-fx'
@@ -776,11 +813,14 @@ export interface RootRouteChildren {
   ApiTameionConfirmRoute: typeof ApiTameionConfirmRoute
   ApiTameionDecisionRoute: typeof ApiTameionDecisionRoute
   ApiTestnetTesterSplatRoute: typeof ApiTestnetTesterSplatRoute
+  ApiV1AgentRoute: typeof ApiV1AgentRoute
+  ApiV1FindsRoute: typeof ApiV1FindsRoute
   ApiX402IntelligenceRoute: typeof ApiX402IntelligenceRoute
   ApiX402RiskRoute: typeof ApiX402RiskRoute
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
   ApiGoatPilotOrderRoute: typeof ApiGoatPilotOrderRoute
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
+  ApiV1IntelligenceAvailabilityRoute: typeof ApiV1IntelligenceAvailabilityRoute
   ApiV1IntelligenceCriticalMineralsRoute: typeof ApiV1IntelligenceCriticalMineralsRoute
   ApiV1IntelligenceGeopoliticsRoute: typeof ApiV1IntelligenceGeopoliticsRoute
   ApiV1IntelligenceMacroFxRoute: typeof ApiV1IntelligenceMacroFxRoute
@@ -1114,6 +1154,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTestnetTesterSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/agent': {
+      id: '/api/v1/agent'
+      path: '/api/v1/agent'
+      fullPath: '/api/v1/agent'
+      preLoaderRoute: typeof ApiV1AgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/finds': {
+      id: '/api/v1/finds'
+      path: '/api/v1/finds'
+      fullPath: '/api/v1/finds'
+      preLoaderRoute: typeof ApiV1FindsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/x402/intelligence': {
       id: '/api/x402/intelligence'
       path: '/api/x402/intelligence'
@@ -1147,6 +1201,13 @@ declare module '@tanstack/react-router' {
       path: '/api/goat/pilot/status'
       fullPath: '/api/goat/pilot/status'
       preLoaderRoute: typeof ApiGoatPilotStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/intelligence/availability': {
+      id: '/api/v1/intelligence/availability'
+      path: '/api/v1/intelligence/availability'
+      fullPath: '/api/v1/intelligence/availability'
+      preLoaderRoute: typeof ApiV1IntelligenceAvailabilityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/intelligence/critical-minerals': {
@@ -1248,11 +1309,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTameionConfirmRoute: ApiTameionConfirmRoute,
   ApiTameionDecisionRoute: ApiTameionDecisionRoute,
   ApiTestnetTesterSplatRoute: ApiTestnetTesterSplatRoute,
+  ApiV1AgentRoute: ApiV1AgentRoute,
+  ApiV1FindsRoute: ApiV1FindsRoute,
   ApiX402IntelligenceRoute: ApiX402IntelligenceRoute,
   ApiX402RiskRoute: ApiX402RiskRoute,
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
+  ApiV1IntelligenceAvailabilityRoute: ApiV1IntelligenceAvailabilityRoute,
   ApiV1IntelligenceCriticalMineralsRoute:
     ApiV1IntelligenceCriticalMineralsRoute,
   ApiV1IntelligenceGeopoliticsRoute: ApiV1IntelligenceGeopoliticsRoute,

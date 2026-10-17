@@ -72,11 +72,16 @@ describe("verified B2 structural serving continuity", () => {
     expect(client).toContain("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
   });
 
-  it("re-publishes when the shared B2 client changes", () => {
+  it("never runs legacy Supabase publisher on main, schedule, or operator dispatch", () => {
     const workflow = read(".github/workflows/b2-structural-serving-snapshot.yml");
-    expect(workflow).toContain('- "scripts/ops/b2-s3-client.mjs"');
-    expect(workflow).toContain('- "scripts/ops/publish-b2-structural-serving-snapshot.ts"');
-    expect(workflow).toContain('- ".github/workflows/b2-structural-serving-snapshot.yml"');
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain("if: ${{ false }}");
+    expect(workflow).not.toMatch(/^\s+push:/m);
+    expect(workflow).not.toMatch(/^\s+schedule:/m);
+    expect(workflow).toContain("HISTORICAL_SUPABASE_SERVICE_ROLE_KEY");
+    expect(workflow).toContain("publish-b2-structural-serving-snapshot.ts");
+    // Source and previous verified archives are preserved; execution is
+    // frozen until reviewed replacement proves no Supabase and B2 quotas.
   });
 
   it("stages, verifies, promotes and proof-binds B2 structural serving", () => {

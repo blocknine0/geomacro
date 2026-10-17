@@ -1,4 +1,7 @@
 import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
+import {officialOriginalRssArticleUrl} from "./official-rss-original-link.mjs";
+import {canonicalPrivateOriginalArticleSha} from "./private-novel-pulse-match.mjs";
+import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "./official-original-article-date.mjs";
 
 // Fixed, independently public-publisher-addressed discovery ONLY.
@@ -72,6 +75,7 @@ function field(block,name) {
 
 export function parseOfficialThirdRss(xml,category,{
   now=new Date(),maxAgeMs=DAY_MS,diagnostics=null,broadPrivateIntake=false,
+  pulseRefs=null,pulseExpectedClocks=null,
 }={}) {
   const config=OFFICIAL_NATIVE_THIRD_FEEDS[category];
   if(!config || typeof xml!=="string" ||
@@ -97,10 +101,18 @@ export function parseOfficialThirdRss(xml,category,{
   };
   for(const [,block] of entries) {
     const title=field(block,"title");
+    // An ECB press original can carry one duplicated separator after host.
+    // The source pulse already normalizes this exact pinned release shape.
     const hostUrl=config.format==="atom"
       ? originalAtomHref(block,config.host)
-      : exactUrl(field(block,"link"),config.host);
-    const publication=Date.parse(config.format==="atom"
+      : category==="macro"
+        // No raw-link fallback: an invalid or doubled ECB press URL must
+        // never enter the canonical scorer under a different SHA than D1.
+        ? exactUrl(officialOriginalRssArticleUrl(block,{
+            id:"ecb_press_original_rss_review",
+          }),config.host)
+        : exactUrl(field(block,"link"),config.host);
+    const publication=officialItemNativePublicationMs(config.format==="atom"
       ? field(block,"published") : field(block,"pubDate"));
     const timeValid=Number.isFinite(publication);
     const current=timeValid && publication<=clock &&
@@ -112,6 +124,15 @@ export function parseOfficialThirdRss(xml,category,{
     if(config.topics.test(title))counts.third_topic_match_count++;
     if(!hostUrl||!current||title.length<16||title.length>500||
        (!broadPrivateIntake && !config.topics.test(title))||seen.has(hostUrl))continue;
+    // The D1 pulse may select a later article in this issuer feed. In
+    // automatic mode the first two unrelated dated entries must never crowd
+    // out the one already claimed, native-clock-bound SHA.
+    if(pulseRefs instanceof Set){
+      const digest=canonicalPrivateOriginalArticleSha(hostUrl);
+      if(!digest||!pulseRefs.has(digest)||
+         pulseExpectedClocks?.get(digest)!==new Date(publication).toISOString())
+        continue;
+    }
     seen.add(hostUrl);
     counts.third_private_eligible_count++;
     accepted.push({
@@ -134,7 +155,12 @@ export function parseOfficialThirdRss(xml,category,{
 
 export async function fetchOfficialThirdPublisherArticles(category,{
   now=new Date(),fetchImpl=fetch,maxAgeMs=DAY_MS,diagnostics=null,broadPrivateIntake=false,
+  pulseRefs=null,pulseExpectedClocks=null,
 }={}) {
+  if((pulseRefs!==null || pulseExpectedClocks!==null) &&
+     (!(pulseRefs instanceof Set) || !(pulseExpectedClocks instanceof Map) ||
+      pulseRefs.size>1 || pulseExpectedClocks.size!==pulseRefs.size))
+    throw new Error("OFFICIAL_THIRD_PRIVATE_PULSE_CONTEXT_INVALID");
   const cfg=OFFICIAL_NATIVE_THIRD_FEEDS[category];
   if(!cfg)throw new Error("OFFICIAL_THIRD_CATEGORY_INVALID");
   const response=await fetchOriginalPublisherWithRecovery(cfg.url,{
@@ -171,7 +197,8 @@ export async function fetchOfficialThirdPublisherArticles(category,{
     }
   } finally {reader.releaseLock();}
   const xml=new TextDecoder("utf-8",{fatal:true}).decode(Buffer.concat(chunks));
-  const accepted=parseOfficialThirdRss(xml,category,{now,maxAgeMs,diagnostics,broadPrivateIntake});
+  const accepted=parseOfficialThirdRss(xml,category,{now,maxAgeMs,diagnostics,broadPrivateIntake,
+    pulseRefs,pulseExpectedClocks});
   if(cfg.format!=="atom"||accepted.length)return accepted;
   // GOV.UK department Atom sometimes has entry <updated> without original <published>.
   // Up to TWO exactly validated GOV.UK article URLs may be inspected for
@@ -183,12 +210,23 @@ export async function fetchOfficialThirdPublisherArticles(category,{
     const title=field(block,"title");
     const url=originalAtomHref(block,cfg.host);
     if(!url||title.length<16||title.length>500||(!broadPrivateIntake && !cfg.topics.test(title))||seen.has(url))continue;
+    // Before any article-page GET, require exact D1 SHA of the claimed
+    // original. Do not spend the two-page budget on unrelated earlier entries.
+    const digest=pulseRefs instanceof Set
+      ?canonicalPrivateOriginalArticleSha(url):null;
+    if(pulseRefs instanceof Set &&
+       (!digest || !pulseRefs.has(digest) || !pulseExpectedClocks.has(digest)))
+      continue;
     seen.add(url);probes++;
     let published=null;
     try{
       published=await fetchVerifiedPublisherPageDate(url,category,{now,fetchImpl});
     }catch{/* bounded verifier failure is not event evidence */}
     const at=Date.parse(published??"");
+    if(pulseRefs instanceof Set &&
+       (!Number.isFinite(at) ||
+        pulseExpectedClocks.get(digest)!==new Date(at).toISOString()))
+      continue;
     if(Number.isFinite(at)&&at<=now.getTime()&&now.getTime()-at<=maxAgeMs){
       accepted.push({title,description:"",url,publishedAt:new Date(at).toISOString(),
         source:cfg.host,sourceDomain:cfg.host,

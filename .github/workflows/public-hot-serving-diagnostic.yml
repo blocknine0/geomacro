@@ -5,6 +5,11 @@ name: Public D1 Hot Serving Root Cause
 # This workflow does not mutate B2, Supabase, D1, x402, or website deployment.
 on:
   workflow_dispatch: {}
+  # A SHA-parity failure in the normal website health job must not prevent
+  # independent public-current D1 metadata diagnosis. Read-only, no B2 GET.
+  workflow_run:
+    workflows: ["Production Website Health"]
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -13,6 +18,10 @@ on:
       - "scripts/ops/classify-d1-hot-metadata.mjs"
       - "src/__tests__/diagnose-public-hot-serving.test.ts"
       - "src/__tests__/classify-d1-hot-metadata.test.ts"
+      # Re-audit public B2/D1 metadata when no-charge diagnostics change;
+      # no direct B2 GET, no D1 write, no tokens or private source payload.
+      - "scripts/ops/verify-failed-health-x402-no-funds.mjs"
+      - "src/__tests__/failed-health-x402-no-funds.test.ts"
 
 permissions:
   contents: read
@@ -23,7 +32,25 @@ concurrency:
 
 jobs:
   diagnose:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'push' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'failure' &&
+          (
+            github.event.workflow_run.event == 'push' ||
+            github.event.workflow_run.event == 'schedule' ||
+            github.event.workflow_run.event == 'workflow_dispatch'
+          ) &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+          github.event.workflow_run.head_sha == github.sha
+        )
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 9
     environment: production

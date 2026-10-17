@@ -69,10 +69,11 @@ describe("private on-demand publisher page date checks",()=>{
     const urls:string[]=[];
     const pageFetch=vi.fn(async(input:RequestInfo|URL,options?:RequestInit)=>{
       urls.push(String(input));
-      expect(options?.redirect).toBe("error");
+      expect(options?.redirect).toBe("manual");
       expect(options?.method).toBe("GET");
       return new Response(articleHtml(
-        '<meta property="article:published_time" content="'+published+'">'));
+        '<meta property="article:published_time" content="'+published+'">'),
+        {headers:{"content-type":"text/html"}});
     }) as unknown as typeof fetch;
     const proof=await verifyOnDemandOriginalArticlePages(await candidates(),{fetchImpl:pageFetch,now});
     expect(proof.attempted).toBe(4);
@@ -124,7 +125,7 @@ describe("private on-demand publisher page date checks",()=>{
     const one=(await candidates())[0];
     const responses=[
       new Response(null,{status:302,headers:{location:"https://another.example/"}}),
-      new Response("x".repeat(192*1024+1),{status:200}),
+      new Response("x".repeat(384*1024+1),{status:200,headers:{"content-type":"text/html"}}),
     ];
     for(const response of responses){
       const pageFetch=vi.fn(async()=>response) as unknown as typeof fetch;

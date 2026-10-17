@@ -8,6 +8,9 @@ permissions:
 
 jobs:
   keepalive:
+    # Permanently retired Supabase-only runtime; keep historical audit code
+    # immutable and use existing D1/B2-native replacements instead.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

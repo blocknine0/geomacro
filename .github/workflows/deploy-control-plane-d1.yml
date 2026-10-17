@@ -9,6 +9,7 @@ on:
       - "workers/control-plane/**"
       - ".github/workflows/deploy-control-plane-d1.yml"
       - "src/__tests__/cloudflare-d1-bootstrap-static.test.ts"
+      - "scripts/ops/verify-d1-central-security-budget.mjs"
 
 permissions:
   contents: read
@@ -27,12 +28,18 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
+      RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
+      RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
       D1_DATABASE_NAME: geomacro-control-plane
       WRANGLER_VERSION: "4.136.3"
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Require existing Cloudflare production secrets
@@ -91,7 +98,25 @@ jobs:
           if (!/^[0-9a-f-]{20,}$/i.test(id)) throw new Error('INVALID_D1_DATABASE_ID');
           const output = source.replace('REPLACE_WITH_D1_DATABASE_ID', id);
           if (output.includes('REPLACE_WITH_D1_DATABASE_ID')) throw new Error('D1_ID_REPLACEMENT_FAILED');
-          fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', output);
+          const sourceSha = String(process.env.GITHUB_SHA ?? '');
+          if (!/^[a-f0-9]{40}$/.test(sourceSha)) throw new Error('INVALID_DEPLOY_SOURCE_SHA');
+          const config = JSON.parse(output);
+          config.vars = { ...(config.vars ?? {}), GEOMACRO_SOURCE_SHA: sourceSha };
+          // Public verification material ONLY. No private signer reaches the Worker.
+          const keys=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON||'{}');
+          const keyId=process.env.RISK_OBJECT_SIGNING_KEY_ID;
+          const publicKey=process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64;
+          if(keyId&&publicKey){
+            if(!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(keyId))throw Error('FINDS_KEY_ID_INVALID');
+            const existing=keys[keyId];
+            if(existing&&(typeof existing==='string'?existing:existing.public_key_spki_b64)!==publicKey)
+              throw Error('FINDS_PUBLIC_KEY_REGISTRY_CONFLICT');
+            if(!existing)keys[keyId]={public_key_spki_b64:publicKey,status:'active',
+              not_before:process.env.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE||null,
+              not_after:process.env.RISK_OBJECT_SIGNING_KEY_NOT_AFTER||null};
+          }
+          config.vars.AUTOMATED_FINDS_VERIFY_KEYS_JSON=JSON.stringify(keys);
+          fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', JSON.stringify(config, null, 2));
           NODE
 
       - name: Apply committed D1 migrations remotely
@@ -154,10 +179,11 @@ jobs:
           HEALTH=''
           for attempt in 1 2 3 4 5 6; do
             HEALTH="$(curl -fsS --max-time 10 "$CONTROL_PLANE_URL/health" || true)"
-            if printf '%s' "$HEALTH" | grep -q '"ok":true'; then break; fi
+            if printf '%s' "$HEALTH" | jq -e --arg sha "$GITHUB_SHA" '.ok == true and .deployed_source_sha == $sha' >/dev/null; then break; fi
             sleep $((attempt * 2))
           done
           printf '%s' "$HEALTH" | jq -e '.schema_version >= 3' >/dev/null || { echo "D1 Worker schema v2 health acceptance failed"; exit 7; }
+          printf '%s' "$HEALTH" | jq -e --arg sha "$GITHUB_SHA" '.deployed_source_sha == $sha' >/dev/null || { echo "D1 Worker exact source SHA acceptance failed"; exit 7; }
           printf '%s' "$HEALTH" | grep -q '"durable_payload_store":"b2"' || { echo "B2 authority contract missing"; exit 7; }
           printf '%s' "$HEALTH" | grep -q '"commerce_ledger":"durable_object"' || { echo "Commerce authority contract missing"; exit 7; }
 
@@ -187,6 +213,9 @@ jobs:
           done
           test "$CODE" = "200" || { echo "Authenticated control-plane write failed: HTTP $CODE"; cat /tmp/auth.json; exit 9; }
           grep -q '"ok":true' /tmp/auth.json || { echo "Authenticated response missing ok=true"; exit 9; }
+
+      - name: Verify authenticated D1 central security budgets without B2 or payment
+        run: node scripts/ops/verify-d1-central-security-budget.mjs
 
       - name: Verify last-verified Global Risk historical status without B2 or payment
         env:
@@ -294,6 +323,59 @@ jobs:
             echo "PASS: no qualifying prior Risk Indices D1 archive; fail-closed."
           else
             echo "Unexpected risk indices historical HTTP $code"; exit 12
+          fi
+
+      - name: Verify 60-minute-delayed website GRI endpoint without Supabase or B2
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$CONTROL_PLANE_URL/v1/public/website-lagged-global-risk"
+          code=""
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            code="$(curl -sS -o /tmp/website-gri-delayed.json -w '%{http_code}' --max-time 15 "$URL" || true)"
+            if [ "$code" = "200" ] || [ "$code" = "503" ]; then break; fi
+            if [ "$code" != "401" ] && [ "$code" != "404" ]; then
+              echo "Unexpected website GRI delayed endpoint status HTTP $code"; exit 12
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "Delayed GRI website endpoint not deployed (HTTP $code)"; exit 12
+            fi
+            sleep 4
+          done
+          if [ "$code" = "200" ]; then
+            jq -e '
+              .ok == true and
+              .schema == "geomacro.website-lagged-global-risk.v1" and
+              .website_only == true and
+              .minimum_delay_minutes == 60 and
+              .verification_status == "verified" and
+              .prior_b2_readback_verified_at_write == true and
+              .independently_rechecked_b2_now == false and
+              .source_identity_disclosed == false and
+              .raw_upstream_disclosed == false and
+              .chargeable == false and
+              .paid_delivery_authorized == false and
+              .data.auditPersisted == true and
+              .data.verificationStatus == "verified" and
+              (.data.recentEvents | length == 0) and
+              (all(.data.drivers[]; .topEvent == null)) and
+              (has("payload_json") | not) and
+              (has("source_url") | not) and
+              (has("provider_name") | not)
+            ' /tmp/website-gri-delayed.json >/dev/null
+            echo "PASS: true previously verified delayed GRI; no sources, payments or B2 calls."
+          elif [ "$code" = "503" ]; then
+            jq -e '
+              .ok == false and
+              (.error == "WEBSITE_GRI_HISTORY_UNAVAILABLE" or
+               .error == "WEBSITE_GRI_60MIN_VERIFIED_HISTORY_NOT_FOUND") and
+              .chargeable == false and .source_identity_disclosed == false
+            ' /tmp/website-gri-delayed.json >/dev/null
+            echo "HOLD: no eligible verified 60min-old direct B2 snapshot; website fails closed."
+          else
+            echo "Delayed GRI endpoint failed: HTTP $code"; exit 12
           fi
 
       - name: Verify authenticated account-wide B2 budget reservation without contacting B2

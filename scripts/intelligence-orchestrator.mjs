@@ -50,6 +50,16 @@ const d1State = createD1ControlPlaneStateClient();
 
 const TASKS = [
   {
+    key: "supabase_free_source_runtime",
+    restrictedDirectPostgresSafe: true,
+    cadenceSeconds: 5400,
+    offsetSeconds: 0,
+    priority: 7,
+    timeoutMs: 180_000,
+    requiredEnv: ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN", "D1_DATABASE_ID"],
+    steps: [["bun", ["scripts/ops/run-supabase-free-source-runtime.ts"], "."]],
+  },
+  {
     key: "phase_a_heartbeat",
     // Heartbeat-only still calls refreshTargets() which executes SQL INSERT/
     // UPDATE for every country × source in frozen Supabase; NOT read-only.

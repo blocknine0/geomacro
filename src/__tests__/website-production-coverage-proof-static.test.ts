@@ -32,7 +32,9 @@ describe("public production coverage proof", () => {
     expect(shell).toContain('const PRODUCTION_EVIDENCE_ROUTES = new Set(["/risk-gate", "/research"]);');
     expect(shell).toContain("showProductionEvidence ? <ProductionCoverageProof /> : null");
     expect(shell).not.toContain('new Set(["/",');
-    expect(shell).toContain("Public intelligence & risk indices · Risk Gate by invitation · Paid API access subject to availability");
+    expect(shell).toContain("Intelligence findings delayed at least 15 minutes · Risk Indices retain their 60-minute delay");
+    expect(shell).toContain("x402/API is separately gated");
+    expect(shell).not.toContain("GITHUB_URL");
     expect(shell).not.toContain("AgentCommerceStatus compact");
   });
 

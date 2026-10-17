@@ -81,7 +81,9 @@ jobs:
           grep -q 'Corroborate smoke check failed' "$file"
 
   keepalive:
-    if: ${{ github.event_name == 'schedule' }}
+    # Permanently retired Supabase-only runtime; keep historical audit code
+    # immutable and use existing D1/B2-native replacements instead.
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     steps:
       - name: Keep isolated signal project active
@@ -109,7 +111,9 @@ jobs:
           echo "PASS: isolated Telegram signal Supabase keepalive succeeded."
 
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    # Permanently retired Supabase-only runtime; keep historical audit code
+    # immutable and use existing D1/B2-native replacements instead.
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_ACCESS_TOKEN }}

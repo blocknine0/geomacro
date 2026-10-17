@@ -1,3 +1,4 @@
+import {fetchWithoutRedirect} from "./fetch-without-redirect";
 import { createHash, createHmac } from "node:crypto";
 import type { GeomacroRiskObject } from "./risk-object-contract";
 import {
@@ -94,7 +95,7 @@ export async function loadPublicRiskObjectVerificationKeys(): Promise<RiskObject
   }
 
   try {
-    const response = await fetch(PUBLIC_TRUST_REGISTRY_URL, {
+    const response = await fetchWithoutRedirect(PUBLIC_TRUST_REGISTRY_URL, {
       headers: {
         accept: "application/json",
         "cache-control": "no-cache",
@@ -144,13 +145,14 @@ export async function readD1VerifiedHotCountryGro(
   try {
     const url = new URL(`${base}/v1/country-gro-hot/${iso3}`);
     url.searchParams.set("at_or_before", new Date(requestedMs).toISOString());
-    const response = await fetch(url, {
+    const response = await fetchWithoutRedirect(url, {
       headers: {
         accept: "application/json",
         authorization: `Bearer ${token}`,
         "cache-control": "no-cache",
       },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      redirect: "manual",
     });
     if (!response.ok) return null;
 

@@ -63,20 +63,31 @@ jobs:
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           const read = path => fs.readFileSync(path, "utf8");
-          const contract = read("src/lib/geomacro-intelligence-contract.ts");
-          const env = read(".env.example");
-          const config = read("config/prelaunch-mainnet-x402.env.example");
-          const manifest = JSON.parse(read("config/commercial-launch-manifest.json"));
-
-          if (!contract.includes('"0.05"')) throw new Error("canonical intelligence price is not 0.05");
-          if (!env.includes("COINBASE_X402_PRICE_USDC=0.05")) throw new Error("Coinbase production example is not 0.05");
-          if (!config.includes("COINBASE_X402_PRICE_USDC=0.05")) throw new Error("Coinbase prelaunch config is not 0.05");
-          if (!config.includes("CIRCLE_X402_PRICE_USDC=0.05")) throw new Error("Circle prelaunch config is not 0.05");
-
-          if (manifest.commercial_milestone?.launch_price_usdc !== "0.05") throw new Error("manifest launch price mismatch");
-          if (manifest.commercial_milestone?.early_adoption_delivery_target !== 20000) throw new Error("manifest 20k milestone mismatch");
-          if (manifest.commercial_milestone?.gross_usdc_if_20000_successful_deliveries !== "1000.00") throw new Error("manifest 20k gross milestone mismatch");
-          if (manifest.commercial_milestone?.pre_funding_required !== false) throw new Error("20k milestone must not require founder pre-funding");
+          const prices=read("src/lib/capability-pricing-catalog.ts");
+          const env=read(".env.example");
+          const manifest=JSON.parse(read("config/commercial-launch-manifest.json"));
+          const frozen={
+            gri_read:["0.005","0.01"],
+            structural_country_digest:["0.02"],
+            structural_corridor_digest:["0.05"],
+            structural_country_profile:["0.03"],
+            structural_corridor_profile:["0.08"],
+            intelligence_query:["0.05","0.10","0.15"],
+            signed_risk_object:["0.05","0.10"],
+            risk_gate_bundle:["0.10","0.15","0.25"],
+          };
+          for(const [cap,values]of Object.entries(frozen)){
+            if(!prices.includes(cap))throw Error("FOUNDER_CAPABILITY_MISSING:"+cap);
+            for(const v of values){if(!prices.includes('"'+v+'"'))throw Error("FOUNDER_PRICE_MISSING:"+cap+":"+v);}
+          }
+          if(manifest.commercial_milestone?.pricing_contract_version!=="geomacro.capability-usdc.v1")
+            throw Error("FOUNDER_CAPABILITY_PRICE_VERSION_MISMATCH");
+          if(manifest.commercial_milestone?.pricing_model!=="EIGHT_CAPABILITIES_EXACT_VARIANTS_NO_FLAT_PRICE")
+            throw Error("OLD_FLAT_PRICE_CONTRACT_NOT_REPLACED");
+          if(manifest.commercial_milestone?.credit_units_separate_from_usdc!==true)
+            throw Error("CREDITS_MUST_REMAIN_SEPARATE_FROM_PAYMENT");
+          if(manifest.commercial_milestone?.pre_funding_required!==false)
+            throw Error("FOUNDER_PRE_FUNDING_NOT_REQUIRED");
 
           if (manifest.required_gates?.includes("strict_p0_capacity_closure")) throw new Error("40k P0 scale proof must not be an initial launch gate");
           if (manifest.required_gates?.includes("provider_capped_paid_smoke_reconciled")) throw new Error("founder-funded provider canary must not block initial no-funds acceptance");
@@ -92,7 +103,7 @@ jobs:
           if (!env.includes("COINBASE_X402_MAINNET_ACK=")) throw new Error("Coinbase mainnet ack must remain present and blank by default");
           if (/^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$/m.test(env)) throw new Error("global production launch ack is active in .env.example");
           if (/^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$/m.test(env)) throw new Error("Coinbase real-funds ack is active in .env.example");
-          console.log("PASS: 0.05 USDC x 20,000 milestone is canonical and does not require founder pre-funding.");
+          console.log("PASS: founder-locked 8-capability exact prices are canonical; no funds or mandatory subscription.");
           NODE
 
       - name: Build exact candidate
@@ -101,6 +112,7 @@ jobs:
       - name: Run initial commercial contract and safety suite
         run: >-
           bunx vitest run
+          src/lib/capability-pricing.test.ts
           src/lib/geomacro-intelligence-contract.test.ts
           src/lib/commercial-launch-gate.server.test.ts
           src/lib/coinbase-x402.server.test.ts
@@ -132,9 +144,9 @@ jobs:
             schema_version: "geomacro.initial-commercial-pay-per-call-acceptance.v1",
             generated_at: new Date().toISOString(),
             candidate_sha: process.env.CANDIDATE_SHA,
-            launch_price_usdc: manifest.commercial_milestone.launch_price_usdc,
-            early_adoption_delivery_target: manifest.commercial_milestone.early_adoption_delivery_target,
-            gross_usdc_if_target_completed: manifest.commercial_milestone.gross_usdc_if_20000_successful_deliveries,
+            pricing_contract_version: manifest.commercial_milestone.pricing_contract_version,
+            price_model: manifest.commercial_milestone.pricing_model,
+            first_real_canary_requires_separate_owner_authorization: true,
             pre_funding_required: false,
             real_payment_performed: false,
             production_activation_performed: false,
@@ -146,7 +158,7 @@ jobs:
             marketplace_promotion: "post_launch_evidence_only",
             status: "PASS_NO_FUNDS_REQUIRED",
             notes: [
-              "20,000 is a post-launch adoption/revenue milestone, not a founder-funded test workload.",
+              "Approved eight-capability price schedule supersedes the flat testnet historical price.",
               "40k distributed capacity proof is retained as optional future scalability certification.",
               "This evidence does not authorize production funds or real-money settlement."
             ]
@@ -162,9 +174,9 @@ jobs:
           {
             echo "## Initial Commercial Pay-Per-Call Acceptance"
             echo
-            echo "- Launch price: **0.05 USDC per successful paid intelligence delivery**"
-            echo "- Early-adoption target: **20,000 successful deliveries**"
-            echo "- Gross receipts at 20,000 successful deliveries: **1,000.00 USDC** before provider/network costs"
+            echo "- Founder pricing: **geomacro.capability-usdc.v1 (eight capabilities; six display groups)**"
+            echo "- Customer price: **exact USDC variant only after verified deliverability**"
+            echo "- No flat 0.05 pricing or automatically funded 20,000 delivery milestone"
             echo "- Founder pre-funding required for the milestone: **NO**"
             echo "- Real-money payment performed by this workflow: **NO**"
             echo "- 40k scale certification required before initial launch: **NO**"

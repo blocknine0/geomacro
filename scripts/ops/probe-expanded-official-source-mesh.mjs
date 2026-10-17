@@ -119,6 +119,12 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     id:"fed_monetary_original_press_rss_review",
     domain:"macro",kind:"original_publisher_central_bank_monetary_release",
     url:"https://www.federalreserve.gov/feeds/press_all.xml",
+    // Monetary Policy is a separately published first-party Fed RSS feed.
+    // Real production observed press_all HTTP 404; retry the exact official
+    // monetary feed only on primary transport failure/404/5xx, never 401,
+    // 403 or 429, and never treat it as a second independent issuer.
+    alternate_url:"https://www.federalreserve.gov/feeds/press_monetary.xml",
+    network_fallback_same_publisher:true,
     media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
     event_intelligence:false,country_coverage_verified:false,
     original_hosts:Object.freeze(["www.federalreserve.gov","federalreserve.gov"]),
@@ -168,6 +174,36 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     original_hosts:Object.freeze(["www.ecb.europa.eu"]),
     topic:/\b(?:monetary policy|interest rates?|inflation|economic growth|financial stability|exchange rates?|liquidity|euro area|central bank|bank supervision|balance of payments|market operations)\b/iu,
   }),
+  // Three public government first-party Atom feeds: distinct departmental
+  // editorial organizations, NOT evidence of external independent review.
+  // The weekly canary/HTTP 403 quarantine of unrelated sources is untouched.
+  Object.freeze({
+    id:"uk_mod_original_defence_atom_review",
+    domain:"geopolitics",kind:"original_publisher_defence_policy_release",
+    url:"https://www.gov.uk/government/organisations/ministry-of-defence.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
+    topic:/\b(?:defence|defense|military|armed forces|security|conflict|war|peacekeeping|deployment|airstrike|sanctions?|border|NATO|naval|missile|weapons?|Ukraine)\b/iu,
+  }),
+  Object.freeze({
+    id:"uk_hmt_original_treasury_atom_review",
+    domain:"macro",kind:"original_publisher_treasury_macro_release",
+    url:"https://www.gov.uk/government/organisations/hm-treasury.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
+    topic:/\b(?:inflation|monetary|economy|economic growth|fiscal|budget|finance|financial|foreign exchange|currency|interest rates?|treasury|tax|GDP|public spending)\b/iu,
+  }),
+  Object.freeze({
+    id:"uk_desnz_original_energy_minerals_atom_review",
+    domain:"rare_earth",kind:"original_publisher_energy_materials_policy",
+    url:"https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|copper|magnet|battery|materials? supply|supply chain|mineral processing|energy security)\b/iu,
+  }),
 ]);
 
 const XML_MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
@@ -186,6 +222,9 @@ const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
   usgs_minerals_original_news_rss_review:"usgs",
   australia_industry_minister_original_rss_review:"australian_industry_minister",
   uk_dbt_critical_minerals_atom_pending_review:"uk_dbt",
+  uk_mod_original_defence_atom_review:"uk_mod",
+  uk_hmt_original_treasury_atom_review:"uk_hmt",
+  uk_desnz_original_energy_minerals_atom_review:"uk_desnz",
 });
 // Source-native event articles require the actual first-party article path;
 // a link to the publisher homepage, Atom/RSS endpoint or other press index
@@ -202,6 +241,9 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   usgs_minerals_original_news_rss_review:/^\/(?:news|programs\/mineral-resources-program\/news)(?:\/|$)/u,
   australia_industry_minister_original_rss_review:/^\/(?:t-ayres|king)\/media\//u,
   uk_dbt_critical_minerals_atom_pending_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+  uk_mod_original_defence_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+  uk_hmt_original_treasury_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+  uk_desnz_original_energy_minerals_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
 });
 
 // The original publisher documents www.statcan.gc.ca/daily-quotidien/
@@ -427,22 +469,30 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
 
 /**
  * Scan all already-valid original article links, but fetch at most two pages.
- * On open discovery keep the first (often newest) publisher item and rotate
- * the second across the remaining accepted links on successive 30m slots.
- * A permanently old first item must not prevent checking other feed entries.
+ * Rotate BOTH page slots across the bounded, original-publisher-validated
+ * candidate pool. Some feeds pin an old article first forever; re-fetching
+ * that same old page in every 30-minute pulse halves fresh coverage.
+ * This never increases HTTP request count (two page GETs maximum/source).
  * Never substitute Atom <updated> as publication or fetch a rejected URL.
  */
-export function selectRotatingFirstPartyPages(eligible,now,{rotate=false}={}) {
+export function selectRotatingFirstPartyPages(eligible,now,{rotate=false,rotationSlot=null}={}) {
   if(!Array.isArray(eligible)||eligible.length>80||
      !(now instanceof Date)||!Number.isFinite(now.getTime())||
-     eligible.some(x=>typeof x!=="string"||x.length<12||x.length>2048))
+     eligible.some(x=>typeof x!=="string"||x.length<12||x.length>2048)||
+     (rotationSlot!==null&&(!Number.isSafeInteger(rotationSlot)||rotationSlot<0)))
     throw Error("ORIGINAL_PUBLISHER_ROTATION_INPUT_INVALID");
   const unique=[...new Set(eligible)];
   if(!rotate||unique.length<=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)
     return unique.slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
-  const slot=Math.floor(now.getTime()/(30*60*1000));
-  const tail=unique.slice(1);
-  return [unique[0],tail[slot%tail.length]];
+  const slot=rotationSlot??Math.floor(now.getTime()/(30*60*1000));
+  // Publisher-rotating callers supply their per-source opportunity ordinal.
+  // A global slot aliases with a source sampled only in fixed modulo phases.
+  // Standalone callers retain their existing half-hour rotation.
+  // Sequential disjoint pairs, including a wrap-around for odd list lengths.
+  // Every accepted link is eventually probed, and no single stale first item
+  // consumes a permanent 50% of the two-page budget.
+  const start=(slot*ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)%unique.length;
+  return [unique[start],unique[(start+1)%unique.length]];
 }
 
 // Only Atom entries with NO per-entry publication date may receive bounded
@@ -600,8 +650,11 @@ function jsonShape(value) {
 
 export async function probeExpandedSource(source,{
   fetchImpl=fetch,now=new Date(), timeoutMs=5000,collectPrivateCandidates=false,
-  openDiscovery=false,
+  openDiscovery=false,originalPageRotationSlot=null,
 }={}) {
+  if(originalPageRotationSlot!==null&&
+     (!Number.isSafeInteger(originalPageRotationSlot)||originalPageRotationSlot<0))
+    throw Error("ORIGINAL_PUBLISHER_ROTATION_INPUT_INVALID");
   if(!EXPANDED_OFFICIAL_SOURCES.includes(source))throw Error("SOURCE_NOT_FIXED");
   const row={
     source_id:source.id,domain:source.domain,kind:source.kind,
@@ -629,6 +682,10 @@ export async function probeExpandedSource(source,{
     official_locale_fallback_used:false,
     official_same_publisher_fallback_attempted:false,
     official_same_publisher_fallback_used:false,
+    // Zero-current original-publisher all-topic discovery is same issuer;
+    // never independent corroboration or even a qualified original article.
+    official_same_publisher_zero_fresh_expansion_attempted:false,
+    official_same_publisher_zero_fresh_expansion_used:false,
     // Sanitized numeric transport status only; never forward upstream bodies.
     primary_http_status:null,fallback_http_status:null,
     same_event_independent_corroboration_verified:false,
@@ -711,6 +768,51 @@ export async function probeExpandedSource(source,{
     try{valid=jsonShape(JSON.parse(body));}catch{valid=false;}
   }
   if(!valid){row.reason="SOURCE_SHAPE_UNVERIFIED";return row;}
+  // The security-topic UN News RSS sometimes has no new first-party item
+  // even when UN News all-topic (same official publisher) does. Under a
+  // PRIVATE open-discovery pulse, one extra pinned same-issuer RSS GET may
+  // recover original native-dated evidence. A second UN feed is NEVER a
+  // second independent issuer; no freshness from retrieval/channel clocks.
+  if(source.id==="un_news_security_original_rss_review" && openDiscovery &&
+      !retriedAfterTransportError && row.primary_http_status===200 &&
+      source.network_fallback_same_publisher===true &&
+      source.alternate_url &&
+      new URL(source.url).origin===new URL(source.alternate_url).origin &&
+      counts?.within_24h===0) {
+    row.official_same_publisher_zero_fresh_expansion_attempted=true;
+    try {
+      const second=await fetchOfficial(source.alternate_url);
+      // Explicit access denials and rate limits never cause another fallback.
+      // Retain the already valid primary feed on every alternate error.
+      if(second.ok && XML_MIME.test(second.headers.get("content-type")??"") &&
+          Number(second.headers.get("content-length")||0)<=MAX_BODY_BYTES &&
+          second.body) {
+        const nextChunks=[];let length=0;
+        const nextReader=second.body.getReader();
+        try {
+          for(;;){
+            const {done,value}=await nextReader.read();
+            if(done)break;
+            length+=value.byteLength;
+            if(length>MAX_BODY_BYTES)break;
+            nextChunks.push(Buffer.from(value));
+          }
+        }finally{nextReader.releaseLock();}
+        if(length<=MAX_BODY_BYTES) {
+          const alternateBody=new TextDecoder("utf-8",{fatal:true})
+            .decode(Buffer.concat(nextChunks));
+          const alternateCounts=rssDateCounts(alternateBody,now,
+            source.topic??null,source.original_hosts??null,source);
+          // Require actual <item> pubDate + pinned UN original story URL,
+          // NOT a merely updated channel or different third-party source.
+          if(alternateCounts && alternateCounts.within_24h>0) {
+            body=alternateBody;counts=alternateCounts;
+            row.official_same_publisher_zero_fresh_expansion_used=true;
+          }
+        }
+      }
+    }catch{/* Preserve valid primary; never log upstream URL/body/error. */}
+  }
   row.publisher_reachable=true;
   row.format_valid=true;
   // Original publication may be unknowable at discovery time (notably Atom).
@@ -763,7 +865,9 @@ export async function probeExpandedSource(source,{
     const eligible=source.media==="atom"
       ? undatedAtomArticleCandidates(body,source,{openDiscovery})
       : undatedRssArticleCandidates(body,source,{openDiscovery});
-    const articles=selectRotatingFirstPartyPages(eligible,now,{rotate:openDiscovery});
+    const articles=selectRotatingFirstPartyPages(eligible,now,{
+      rotate:openDiscovery,rotationSlot:originalPageRotationSlot,
+    });
     // This is a count of fixed-allowlist links, NOT verified fresh articles.
     row.original_page_eligible_link_pool_count=eligible.length;
     row.original_page_rotation_applied=openDiscovery && eligible.length>2;

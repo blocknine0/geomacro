@@ -19,16 +19,19 @@ export const THIRTY_MIN_PUBLISHER_PAIRS=Object.freeze({
   geopolitics:Object.freeze([
     "un_news_security_original_rss_review",
     "uk_fcdo_original_foreign_policy_atom_review",
+    "uk_mod_original_defence_atom_review",
   ]),
   macro:Object.freeze([
     "fed_monetary_original_press_rss_review",
     "statcan_prices_original_atom_review",
     "ecb_press_original_rss_review",
+    "uk_hmt_original_treasury_atom_review",
   ]),
   rare_earth:Object.freeze([
     "nrcan_government_news_original_atom_review",
     "uk_dbt_critical_minerals_atom_pending_review",
     "australia_industry_minister_original_rss_review",
+    "uk_desnz_original_energy_minerals_atom_review",
   ]),
 });
 // Reviewed issuing institutions (not hostnames); this proves distinct
@@ -44,6 +47,9 @@ const ORIGINAL_PUBLISHER_ORG=Object.freeze({
   usgs_minerals_original_news_rss_review:"us_geological_survey",
   uk_dbt_critical_minerals_atom_pending_review:"uk_department_business_trade",
   australia_industry_minister_original_rss_review:"australian_industry_department",
+  uk_mod_original_defence_atom_review:"uk_defence_ministry",
+  uk_hmt_original_treasury_atom_review:"uk_treasury",
+  uk_desnz_original_energy_minerals_atom_review:"uk_energy_ministry",
 });
 const DOMAINS=Object.keys(THIRTY_MIN_PUBLISHER_PAIRS);
 const lookup=Object.fromEntries(EXPANDED_OFFICIAL_SOURCES.map(s=>[s.id,s]));
@@ -53,20 +59,39 @@ export function select30MinPublishers(now=new Date()) {
   const slot=Math.floor(now.getTime()/INTERVAL_MS);
   return Object.fromEntries(DOMAINS.map(domain=>{
     const pair=THIRTY_MIN_PUBLISHER_PAIRS[domain];
-    if(![2,3].includes(pair.length)||
+    if(![2,3,4].includes(pair.length)||
        pair.some(id=>lookup[id]?.domain!==domain||!lookup[id]?.original_hosts?.length)||
        new Set(pair).size!==pair.length ||
        pair.some(id=>!ORIGINAL_PUBLISHER_ORG[id]) ||
        new Set(pair.map(id=>ORIGINAL_PUBLISHER_ORG[id])).size!==pair.length)
       throw Error("30M_MONITOR_PUBLISHER_PAIR_INVALID");
-    // Two independent official organizations per 30m window, including when
-    // primary already has new items. A third minerals organization rotates
-    // into the pair, rather than tripling per-run origin GET traffic.
+    // Exactly TWO distinct departmental/institutional origins per 30m window,
+    // including when the primary already has new items. 2-4 publishers
+    // rotate through two bounded GET slots; no increase in request budget.
+    // Distinct department does NOT alone imply independently confirmed claims.
     const idx=slot%pair.length;
     const current=lookup[pair[idx]];
     const next=lookup[pair[(idx+1)%pair.length]];
     return [domain,[current,next]];
   }));
+}
+/** Scheduled opportunities for THIS issuer, not every global clock slot.
+ * Each issuer appears in two phases per publisher cycle. Number those
+ * opportunities consecutively so page-pair modulo cannot lock out articles.
+ * This is a sampling cursor only; it never supplies a publication clock.
+ */
+export function sourcePulsePageRotationSlot(domain,sourceId,now=new Date()) {
+  const ids=Object.hasOwn(THIRTY_MIN_PUBLISHER_PAIRS,domain)
+    ?THIRTY_MIN_PUBLISHER_PAIRS[domain]:null;
+  if(!ids || !(now instanceof Date)||!Number.isFinite(now.getTime())||
+     now.getTime()<0)throw Error("30M_SOURCE_PAGE_ROTATION_CONTEXT_INVALID");
+  const index=ids.indexOf(sourceId);
+  if(index<0)throw Error("30M_SOURCE_PAGE_ROTATION_CONTEXT_INVALID");
+  const slot=Math.floor(now.getTime()/INTERVAL_MS);
+  const phases=[(index+ids.length-1)%ids.length,index].sort((a,b)=>a-b);
+  const rank=phases.indexOf(slot%ids.length);
+  if(rank<0)throw Error("30M_SOURCE_PAGE_ROTATION_CONTEXT_INVALID");
+  return Math.floor(slot/ids.length)*2+rank;
 }
 function safeInt(x) {return Number.isSafeInteger(x)&&x>=0?x:null}
 // Fixed, source-free reason codes for failed first-party probes. Never forward
@@ -91,7 +116,10 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
       // Source-specific transport failure is an unknown, not zero news.
       // Open discovery: no topical/keyword gate before capturing a dated,
       // fixed-host first-party article. Semantic relevance is assessed later.
-      try { return await probe(source,{now,collectPrivateCandidates:true,openDiscovery:true}); }
+      try { return await probe(source,{
+        now,collectPrivateCandidates:true,openDiscovery:true,
+        originalPageRotationSlot:sourcePulsePageRotationSlot(domain,source.id,now),
+      }); }
       catch { return {source_id:source.id,domain,format_valid:false,primary_http_status:null}; }
     }
     const valid=(result,source)=>result?.format_valid===true &&
@@ -160,6 +188,14 @@ export async function probe30MinThreeDomainPulse({now=new Date(),probe=probeExpa
         :null,
       original_page_checked:safeInt(item.original_page_precise_date_checks),
       original_page_verified:safeInt(item.original_page_precise_date_24h),
+      // Pinned UN News *same-issuer* broader discovery. These are not
+      // independent source/reviewer/evidence or paid-eligibility claims.
+      same_issuer_zero_fresh_expansion_attempted:
+        item.source_id==="un_news_security_original_rss_review" &&
+        item.official_same_publisher_zero_fresh_expansion_attempted===true,
+      same_issuer_zero_fresh_expansion_used:
+        item.source_id==="un_news_security_original_rss_review" &&
+        item.official_same_publisher_zero_fresh_expansion_used===true,
       atom_undated_valid_article_link_candidates:
         safeInt(item.undated_atom_article_link_candidates),
       atom_original_link_diagnostics:item.undated_atom_link_diagnostic

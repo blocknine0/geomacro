@@ -128,6 +128,7 @@ export default defineEventHandler(async (event) => {
       statusMessage: "Request blocked by Geomacro central security policy",
       data: {
         ok: false,
+        security_version: CENTRAL_SECURITY_VERSION,
         error: {
           code: decision.code,
           message:

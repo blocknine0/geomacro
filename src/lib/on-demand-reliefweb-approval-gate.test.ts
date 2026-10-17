@@ -13,7 +13,7 @@ function provider() {
     seen.push(uri.href);
     expect(uri.protocol).toBe("https:");
     expect(opts?.method).toBe("GET");
-    expect(opts?.redirect).toBe("error");
+    expect(opts?.redirect).toBe("manual");
     if(uri.hostname==="api.worldbank.org")
       return Response.json([{page:1,total:1},[{id:"CHN",name:"China"}]]);
     if(uri.hostname==="api.gdeltproject.org")
@@ -33,8 +33,8 @@ describe("ReliefWeb third-party account approval is an access requirement",()=>{
       vi.stubEnv("RELIEFWEB_APPROVED_APPNAME",value);
       const p=provider();
       const proof=await discoverOnDemandForPrivateQualification(input,{fetchImpl:p.f,now});
-      expect(proof.discovery.network_attempts).toBe(4);
-      expect(p.seen).toHaveLength(4);
+      expect(proof.discovery.network_attempts).toBe(3);
+      expect(p.seen).toHaveLength(3);
       expect(p.seen.some(u=>new URL(u).hostname==="api.reliefweb.int")).toBe(false);
       expect(proof.discovery.source_probes.some(p=>p.family==="reliefweb_discovery")).toBe(false);
       expect(proof.discovery.payable).toBe(false);
@@ -45,7 +45,7 @@ describe("ReliefWeb third-party account approval is an access requirement",()=>{
     vi.stubEnv("RELIEFWEB_APPROVED_APPNAME","geomacro-risk-research-6b293f");
     const p=provider();
     const proof=await discoverOnDemandGlobal(input,{fetchImpl:p.f,now});
-    expect(proof.network_attempts).toBe(5);
+    expect(proof.network_attempts).toBe(4);
     const request=p.seen.find(u=>new URL(u).hostname==="api.reliefweb.int");
     expect(request).toBeTruthy();
     expect(new URL(request!).searchParams.get("appname"))

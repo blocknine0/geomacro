@@ -78,6 +78,7 @@ describe("#1827 Supabase-frozen B2 legacy publishers never exhaust free-tier glo
     expect(canonical).toContain("B2_ACCOUNT_QUOTA_WORKFLOW_ID: intelligence_orchestrator");
     expect(canonical).toContain("Run due intelligence tasks serially");
     expect(country).toContain("D1 signed GRO read-only coverage");
-    expect(country).toContain('github.event.inputs.mode == \'publisher_recovery\'');
+    expect(country).toContain("  publish:\n    # Legacy Supabase recovery retired:");
+    expect(country).toContain("    if: ${{ false }}");
   });
 });

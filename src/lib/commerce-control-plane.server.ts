@@ -2,16 +2,36 @@ import process from "node:process";
 
 const CONTROL_PLANE_TIMEOUT_MS = 3_500;
 
-export function durableCommerceControlPlaneEnabled() {
-  const configured = String(process.env.GEOMACRO_COMMERCE_LEDGER_BACKEND ?? "")
-    .trim()
-    .toLowerCase();
-  if (configured) {
-    if (configured === "durable_object") return true;
-    if (configured === "supabase") return false;
+/**
+ * Production commerce is exclusively backed by the verified Durable Object.
+ * A stale environment override must never silently revive Supabase for
+ * usage reservations, product audit, ledger claims or settlement telemetry.
+ * Legacy Supabase mode remains available only to explicit nonproduction
+ * fixtures; an unavailable DO always fails closed in production.
+ */
+export function resolveCommerceLedgerDurabilityPolicy(
+  configuredValue: string | undefined,
+  nodeEnvironment: string | undefined,
+): boolean {
+  const configured = String(configuredValue ?? "").trim().toLowerCase();
+  const production = nodeEnvironment === "production";
+  if (configured && configured !== "durable_object" && configured !== "supabase") {
     throw new Error("AGENT_COMMERCE_LEDGER_BACKEND_INVALID");
   }
-  return process.env.NODE_ENV === "production";
+  if (production) {
+    if (configured === "supabase") {
+      throw new Error("AGENT_PRODUCTION_SUPABASE_COMMERCE_FORBIDDEN");
+    }
+    return true;
+  }
+  return configured === "durable_object";
+}
+
+export function durableCommerceControlPlaneEnabled() {
+  return resolveCommerceLedgerDurabilityPolicy(
+    process.env.GEOMACRO_COMMERCE_LEDGER_BACKEND,
+    process.env.NODE_ENV,
+  );
 }
 
 function config() {

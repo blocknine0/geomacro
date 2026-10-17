@@ -1,3 +1,5 @@
+import {websiteHistoricalRiskView} from "./website-historical-risk-view";
+import {fetchWithoutRedirect} from "./fetch-without-redirect";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAppSupabase } from "./supabase-app.server";
 import { readB2PublicRisk } from "./b2-live.server";
@@ -94,4 +96,90 @@ export async function readPublicGlobalRisk(): Promise<GlobalRisk> {
   );
 
   return assemblePublicGlobalRisk(snapshots, recentEvents, now);
+}
+
+/**
+ * Website-only one-hour delayed genuine VERIFIED GRI read.
+ *
+ * Unlike the live machine/API reader, this selects the *previous genuine
+ * published verified snapshot* at or before the public release cutoff.
+ * Signed methodology hashes, original snapshot clock and category-history
+ * proofs are never backdated or synthesized.
+ * If frozen Supabase is inaccessible, accept only a full independently
+ * verified B2 package whose original snapshot is already past the cutoff.
+ * No Supabase writes, B2 writes or x402 calls.
+ */
+export async function readWebsiteLaggedGlobalRisk(
+  now=Date.now(),
+):Promise<GlobalRisk>{
+  const {websitePublicCutoff,websiteVerifiedSnapshotPastEmbargo}=
+    await import("./website-publication-delay");
+  const {validateGlobalRiskContinuity}=
+    await import("./global-risk-continuity");
+  const cutoff=websitePublicCutoff(now);
+  let risk:GlobalRisk|null=null;
+  // Prefer one bounded existing control-plane D1 read. This is historical
+  // website-only; the control plane itself enforces the full 60-minute cutoff
+  // and verifies the immutable original public B2-readback SHA-256 before
+  // returning a privacy-redacted (not raw-source) GRI projection.
+  try{
+    const response=await fetchWithoutRedirect(
+      "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-lagged-global-risk",
+      {method:"GET",redirect:"error",headers:{Accept:"application/json"},
+       cache:"no-store",signal:AbortSignal.timeout(3500)},
+    );
+    if(response.ok){
+      const receipt=await response.json() as {
+        ok?:boolean;schema?:string;website_only?:boolean;
+        minimum_delay_minutes?:number;verification_status?:string;
+        prior_b2_readback_verified_at_write?:boolean;
+        source_identity_disclosed?:boolean;raw_upstream_disclosed?:boolean;
+        chargeable?:boolean;paid_delivery_authorized?:boolean;
+        data?:GlobalRisk;
+      };
+      if(receipt.ok===true&&
+         receipt.schema==="geomacro.website-lagged-global-risk.v1"&&
+         receipt.website_only===true&&receipt.minimum_delay_minutes===60&&
+         receipt.verification_status==="verified"&&
+         receipt.prior_b2_readback_verified_at_write===true&&
+         receipt.source_identity_disclosed===false&&
+         receipt.raw_upstream_disclosed===false&&
+         receipt.chargeable===false&&
+         receipt.paid_delivery_authorized===false&&receipt.data&&
+         websiteVerifiedSnapshotPastEmbargo(receipt.data,now)){
+        risk=websiteHistoricalRiskView(receipt.data,now);
+      }
+    }
+  }catch{
+    // D1 may be quota-held or the new migration not yet deployed; continue
+    // to the existing strictly verified read-only historical fallback.
+  }
+  // The production website treats Supabase as permanently unavailable.
+  // Never attempt a frozen database read, even after D1 quota exhaustion.
+  // Only the independent, already proof-verified Cloudflare GRI EDGE is
+  // eligible as website backup. Its own serving order is D1 hot -> POP
+  // positive cache -> D1-quota-governed B2 reads (or safe 503).
+  //
+  // Do NOT call readB2PublicRisk() here: that generic server helper can
+  // issue its own direct signed S3 GET on edge failure, bypassing the
+  // account-wide B2 Class B governor when quotas are already exhausted.
+  if(!risk){
+    const {readGlobalRiskEdge}=await import("./global-risk-edge.server");
+    const verifiedEdge=await readGlobalRiskEdge();
+    if(verifiedEdge)risk=verifiedEdge;
+  }
+  if(risk)risk=websiteHistoricalRiskView(risk,now);
+  if(!risk||
+     !Number.isFinite(Date.parse(risk.snapshotAsOf))||
+     Date.parse(risk.snapshotAsOf)>cutoff||
+     !websiteVerifiedSnapshotPastEmbargo(risk,now)||
+     !validateGlobalRiskContinuity(risk,now).ok){
+    throw new Error("WEBSITE_GRI_ONE_HOUR_VERIFIED_SNAPSHOT_UNAVAILABLE");
+  }
+  // Website-only derived projection. Original article titles, source URLs,
+  // publisher IDs and per-source headlines never reach the browser.
+  return {...risk,recentEvents:[],
+    drivers:risk.drivers.map(driver=>({...driver,topEvent:null})),
+    topDriver:risk.topDriver?{...risk.topDriver,topEvent:null}:null,
+  };
 }

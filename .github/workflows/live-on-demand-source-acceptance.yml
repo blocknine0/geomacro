@@ -2,28 +2,105 @@ name: Live On-Demand Original API Read-only Acceptance
 
 on:
   workflow_dispatch:
+    inputs:
+      verify_hosted_customer_post:
+        description: "Opt-in no-funds exact-SHA hosted POST acceptance after Lovable Publish"
+        required: false
+        type: boolean
+        default: false
+      country_batch_start:
+        description: "Optional 0-194 offset into fixed 195-country registry; no country-wide polling"
+        required: false
+        type: string
+        default: ""
+      country_batch_count:
+        description: "At most two countries per run; all three categories separately"
+        required: false
+        type: string
+        default: "1"
   push:
     branches: [main]
     paths:
       - ".github/workflows/live-on-demand-source-acceptance.yml"
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
+      - "scripts/ops/verify-live-on-demand-representative-cases.ts"
+      - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
+      - "src/lib/on-demand-fed-official-archive.server.ts"
+      - "src/lib/on-demand-fed-board-discount-release.server.ts"
+      - "src/lib/on-demand-fed-board-discount-release.test.ts"
+      - "scripts/ops/verify-live-fed-board-private-finding.ts"
+      - "src/lib/canonical-country-registry-195.ts"
+      - "src/lib/canonical-195-country-coverage-matrix.ts"
+      - "src/lib/on-demand-original-subject-matching.ts"
+      - "src/lib/country-195-batch-evidence.ts"
+      - "src/lib/country-195-batch-evidence.test.ts"
+      - "scripts/ops/verify-live-195-country-batch.ts"
+      - "scripts/ops/export-canonical-195-country-matrix.ts"
+      - "src/lib/on-demand-fed-board-discount-release.server.ts"
+      - "scripts/ops/verify-live-fed-board-private-finding.ts"
+      - "scripts/ops/verify-live-on-demand-nrcan-original.ts"
+      - "src/lib/on-demand-nrcan-day-only-rescue.test.ts"
+      - "src/lib/on-demand-evidence-qualification.server.ts"
+      - "src/lib/on-demand-evidence-qualification.server.test.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
+      - "scripts/ops/phase2-production-no-funds-readback.mjs"
+      - "src/lib/on-demand-private-original-review.server.test.ts"
+      - "src/__tests__/on-demand-undated-atom-original-date-rescue.test.ts"
+      - "scripts/lib/official-original-article-date.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/live-on-demand-source-acceptance.yml"
+      - "scripts/ops/verify-live-on-demand-real-apis.ts"
+      - "scripts/ops/verify-live-on-demand-representative-cases.ts"
+      - "scripts/ops/verify-live-on-demand-capabilities.ts"
+      - "src/lib/on-demand-global-discovery.server.ts"
+      - "src/lib/on-demand-fed-official-archive.server.ts"
+      - "src/lib/on-demand-fed-board-discount-release.server.ts"
+      - "src/lib/on-demand-fed-board-discount-release.test.ts"
+      - "scripts/ops/verify-live-fed-board-private-finding.ts"
+      - "src/lib/canonical-country-registry-195.ts"
+      - "src/lib/canonical-195-country-coverage-matrix.ts"
+      - "src/lib/on-demand-original-subject-matching.ts"
+      - "src/lib/country-195-batch-evidence.ts"
+      - "src/lib/country-195-batch-evidence.test.ts"
+      - "scripts/ops/verify-live-195-country-batch.ts"
+      - "scripts/ops/export-canonical-195-country-matrix.ts"
+      - "src/lib/on-demand-fed-board-discount-release.server.ts"
+      - "scripts/ops/verify-live-fed-board-private-finding.ts"
+      - "scripts/ops/verify-live-on-demand-nrcan-original.ts"
+      - "src/lib/on-demand-nrcan-day-only-rescue.test.ts"
+      - "src/lib/on-demand-evidence-qualification.server.ts"
+      - "src/lib/on-demand-evidence-qualification.server.test.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
+      - "scripts/ops/phase2-production-no-funds-readback.mjs"
+      - "src/lib/on-demand-provider-category-proof.test.ts"
   schedule:
     # Once per day: max 12 discovery + 4 original-page read-only calls; no B2/D1/funding.
     - cron: "23 8 * * *"
 
 permissions:
   contents: read
+  security-events: read
 
+# One source-protected lane across PR, protected main and daily research.
+# An unrelated CI run must NEVER cancel a live bounded original-provider
+# acceptance after it has begun. The shared group still serializes provider
+# work across every trigger; do not partition by PR or remove the quota cap.
+# GitHub keeps at most one pending run: its supersession is NOT a passing
+# provider acceptance, and must be rerun explicitly before merging.
 concurrency:
   group: geomacro-live-on-demand-global-discovery-acceptance
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   real-api-proof:
     if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 7
+    # Approved ReliefWeb identity stays in production environment secrets;
+    # the same existing three-category no-funds probe can now include it.
+    environment: production
     steps:
       - name: Checkout canonical source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -36,15 +113,204 @@ jobs:
       - name: Install exact locked modules
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Search live global APIs for each category without money
+        env:
+          RELIEFWEB_APPROVED_APPNAME: ${{ secrets.RELIEFWEB_APPROVED_APPNAME }}
         shell: bash
         run: |
           set -euo pipefail
+          bun scripts/ops/verify-live-on-demand-capabilities.ts
           bun scripts/ops/verify-live-on-demand-real-apis.ts
+          bun scripts/ops/verify-live-on-demand-representative-cases.ts
+          bun scripts/ops/verify-live-on-demand-nrcan-original.ts
+          bun scripts/ops/export-canonical-195-country-matrix.ts
+          bunx vitest run src/lib/country-195-batch-evidence.test.ts
+          bun scripts/ops/verify-live-fed-board-private-finding.ts
+      # Existing once-daily original API acceptance owns the rotating probe.
+      # One canonical three-category request per country, <=12 discovery GETs
+      # and <=4 original-page reads PER COUNTRY (max two countries/run).
+      # No separate cron or B2/Supabase/D1 intake.
+      # PR runners never run this optional additional network probing stage.
+      # One bounded sample also runs once after protected-main merge.
+      - name: Rotate one real country through canonical three-category retrieval
+        if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        env:
+          REQUESTED_START: ${{ inputs.country_batch_start }}
+          REQUESTED_COUNT: ${{ inputs.country_batch_count }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${REQUESTED_START:-}" ]]; then
+            START="${REQUESTED_START}"
+          else
+            START="$(( (GITHUB_RUN_NUMBER - 1) % 195 ))"
+          fi
+          GEOMACRO_COUNTRY_BATCH_START="$START" \
+          GEOMACRO_COUNTRY_BATCH_COUNT="${REQUESTED_COUNT:-1}" \
+            bun scripts/ops/verify-live-195-country-batch.ts
+      - name: Persist source-free bounded country resume checkpoint
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: live-country-195-resume-${{ github.run_id }}
+          path: artifacts/country-195/live-batch-checkpoint.v1.json
+          if-no-files-found: warn
+          retention-days: 90
       - name: Keep redacted no-funds publisher acceptance
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: live-on-demand-global-api-proof-${{ github.run_id }}
-          path: artifacts/on-demand-live/real-api-proof.json
+          path: |
+            artifacts/on-demand-live/real-api-proof.json
+            artifacts/on-demand-live/real-category-capability.json
+            artifacts/on-demand-live/representative-source-cases.json
+            artifacts/country-195/routing-matrix.v1.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  # PR tests exercise the *real* APIs without production environment secrets.
+  # Never expose the production-approved ReliefWeb token to PR execution.
+  real-api-pr-proof:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Checkout PR source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install exact locked modules
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify actual open high-severity CodeQL alert disposition
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 15 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/code-scanning/alerts?state=open&per_page=100" \
+            > /tmp/geomacro-codeql-alerts.json
+          # Pull-request alerts need an exact head/merge ref; the default
+          # repository alert view alone can miss alerts introduced by a PR.
+          if [[ -n "${GITHUB_HEAD_REF:-}" ]]; then
+            for REF in "refs/heads/${GITHUB_HEAD_REF}" "${GITHUB_REF}"; do
+              ENCODED_REF="$(REF="${REF}" python3 -c 'import os,urllib.parse;print(urllib.parse.quote(os.environ["REF"],safe=""))')"
+              curl --fail --silent --show-error --max-time 15 \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/code-scanning/alerts?state=open&per_page=100&ref=${ENCODED_REF}" \
+                > "/tmp/geomacro-codeql-${ENCODED_REF}.json"
+            done
+          fi
+          python3 - <<'PY'
+          import json,sys,glob
+          high={}
+          files=["/tmp/geomacro-codeql-alerts.json"]+glob.glob("/tmp/geomacro-codeql-*.json")
+          for file in files:
+            rows=json.load(open(file,encoding="utf-8"))
+            if not isinstance(rows,list): sys.exit("CODEQL_ALERT_API_INVALID")
+            for a in rows:
+              tool=str((a.get("tool") or {}).get("name") or "")
+              rule=a.get("rule") or {}
+              severity=str(rule.get("security_severity_level") or "").lower()
+              if "codeql" in tool.lower() and severity in ("high","critical"):
+                instance=a.get("most_recent_instance") or {}
+                loc=instance.get("location") or {}
+                high[str(a.get("number"))]={"number":a.get("number"),
+                  "rule":rule.get("id"),"description":str(rule.get("description") or "")[:180],
+                  "severity":severity,"path":loc.get("path"),
+                  "line":loc.get("start_line"),"state":a.get("state")}
+          print(json.dumps({"codeql_open_high_alert_count":len(high),
+            "codeql_open_high_alerts":list(high.values())},separators=(",",":")))
+          if high:sys.exit(4)
+          PY
+      - name: Private evidence bridge regression checks
+        run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts
+      - name: Real no-charge per-category provider readback
+        env:
+          RELIEFWEB_APPROVED_APPNAME: ""
+        run: |
+          bun scripts/ops/verify-live-on-demand-capabilities.ts
+          bun scripts/ops/verify-live-on-demand-real-apis.ts
+          bun scripts/ops/verify-live-on-demand-representative-cases.ts
+          bun scripts/ops/verify-live-on-demand-nrcan-original.ts
+          bun scripts/ops/export-canonical-195-country-matrix.ts
+          bunx vitest run src/lib/country-195-batch-evidence.test.ts
+          bun scripts/ops/verify-live-fed-board-private-finding.ts
+      - name: Preserve redacted provider diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: live-on-demand-pr-api-proof-${{ github.run_id }}
+          path: |
+            artifacts/on-demand-live/real-api-proof.json
+            artifacts/on-demand-live/real-category-capability.json
+            artifacts/on-demand-live/representative-source-cases.json
+            artifacts/country-195/routing-matrix.v1.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  # Read deployed production, not the PR preview. Never activate x402.
+  # Compare against the reviewed PR base (protected current main), never an
+  # obsolete historical Phase 1 SHA. If the marker is stale, fail closed and
+  # request the existing Lovable owner Publish action; PR CI alone is not live proof.
+  phase2-deployed-production-readback:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Checkout PR verification script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Crosscheck current protected main base SHA and no-funds HTTP endpoints
+        env:
+          GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ops/phase2-production-no-funds-readback.mjs
+      - name: Verify all three deployed combined category views against the same main build
+        if: always()
+        env:
+          EXPECTED_CANONICAL_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ops/verify-category-combined-production.mjs
+      - name: Preserve safe aggregate production proof
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: phase2-production-no-funds-${{ github.run_id }}
+          path: artifacts/on-demand-live/production-phase2-read-only.json
+          if-no-files-found: warn
+          retention-days: 3
+
+  # Opt-in ONLY after owner Lovable Publish. Reuses the same existing, bounded
+  # no-funds production readback; never runs on push, schedule, PR or routine
+  # country rotation. Real upstream provider probes finish first so this
+  # cannot double-spend per-minute free quotas inside the same workflow.
+  # GitHub's shared run-level concurrency protects across concurrent PRs.
+  hosted-customer-post-no-funds:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.verify_hosted_customer_post == true }}
+    needs: real-api-proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Checkout exact protected main verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Prove deployed SHA and four real canonical customer POSTs, no funds
+        env:
+          GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ github.sha }}
+        run: node scripts/ops/phase2-production-no-funds-readback.mjs
+      - name: Preserve aggregate, source-free hosted acceptance receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: hosted-customer-post-no-funds-${{ github.run_id }}
+          path: artifacts/on-demand-live/production-phase2-read-only.json
           if-no-files-found: warn
           retention-days: 3

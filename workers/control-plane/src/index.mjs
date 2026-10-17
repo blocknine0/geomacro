@@ -1,7 +1,18 @@
+import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
+import { readDerivedStories, publishDerivedStories, renderDerivedStoriesHtml } from "./website-derived-intelligence.mjs";
+import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
+import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
 import { makeRiskIndicesHistoricalMetadata } from "./risk-indices-historical-status.mjs";
 import { projectPublic30mPulse } from "./source-pulse-public.mjs";
+import {
+  privateVerifiedGriHistoryProjection,
+  VERIFIED_GRI_B2_PROOF_SCHEMA,
+  WEBSITE_GRI_HISTORY_LIMIT,
+  WEBSITE_GRI_HISTORY_RETENTION_MS,
+  WEBSITE_GRI_DELAY_MS,
+} from "./website-gri-history.mjs";
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_HOT_SNAPSHOT_BODY_BYTES = 1024 * 1024;
 const MAX_HOT_SNAPSHOT_BYTES = 768 * 1024;
@@ -605,7 +616,7 @@ function validDerivedIntelligencePayload(value,now,maximumOriginalAgeMs) {
 const INDEPENDENT_ORIGINALS_SOURCE_ID="qualified_independent_original_publishers_v1";
 const INDEPENDENT_ORIGINALS_EVIDENCE_CONTRACT="geomacro.qualified-original-event-claims.v1";
 
-function validateHotSnapshot(body, product, now = Date.now()) {
+export function validateHotSnapshot(body, product, now = Date.now()) {
   const config = HOT_SNAPSHOT_PRODUCTS[product];
   if (!config || !body || typeof body !== "object" || Array.isArray(body)) throw new Error("INVALID_HOT_SNAPSHOT");
   const value = body.value;
@@ -731,7 +742,7 @@ async function putPublicHotSnapshot(env, product, body) {
       Date.parse(String(anchor.generated_at ?? "")) !== Date.parse(String(row.baselineGeneratedAt ?? ""))
     ) throw new Error("HOT_SNAPSHOT_GLOBAL_RISK_B2_ANCHOR_MISMATCH");
   }
-  await env.DB.prepare(`
+  const currentStatement=env.DB.prepare(`
     INSERT INTO public_b2_hot_snapshot (
       product, schema_name, generated_at, source_as_of, expires_at, b2_object_key, b2_sha256,
       payload_sha256, proof_schema, verified_at, source_run_id, payload_json, updated_at
@@ -752,7 +763,34 @@ async function putPublicHotSnapshot(env, product, body) {
   `).bind(
     row.product, row.schema, row.generatedAt, row.sourceAsOf, row.expiresAt, row.b2Key, row.b2Sha256,
     row.payloadSha256, row.proofSchema, row.verifiedAt, row.sourceRunId, row.payloadJson, row.verifiedAt,
-  ).run();
+  );
+  // Durable WEBSITE-ONLY historical ring. Only an actually direct B2
+  // readback/hash/restore-verified ORIGINAL GRI artifact qualifies; the
+  // independent current-over-old-baseline proof never becomes a historical
+  // signed/B2 snapshot by relabeling metadata.
+  if(row.product==="global-risk" &&
+     row.proofSchema===VERIFIED_GRI_B2_PROOF_SCHEMA &&
+     row.verificationMode==="direct-b2-readback"){
+    const historicalInsert=env.DB.prepare(`
+      INSERT OR IGNORE INTO website_verified_gri_snapshot_history
+      (source_as_of,payload_sha256,b2_sha256,original_generated_at,
+       original_verified_at,proof_schema,payload_json,created_at)
+      VALUES (?,?,?,?,?,?,?,?)
+    `).bind(row.sourceAsOf,row.payloadSha256,row.b2Sha256,
+      row.generatedAt,row.verifiedAt,row.proofSchema,row.payloadJson,nowIso());
+    const cutoffIso=new Date(Date.now()-WEBSITE_GRI_HISTORY_RETENTION_MS).toISOString();
+    const prune=env.DB.prepare(`
+      DELETE FROM website_verified_gri_snapshot_history
+      WHERE source_as_of < ? OR rowid NOT IN
+      (SELECT rowid FROM website_verified_gri_snapshot_history
+       ORDER BY source_as_of DESC LIMIT ?)
+    `).bind(cutoffIso,WEBSITE_GRI_HISTORY_LIMIT);
+    // D1 batch is transactional: do not promote current if the history
+    // migration is missing or the verified predecessor cannot be retained.
+    await env.DB.batch([currentStatement,historicalInsert,prune]);
+  }else{
+    await currentStatement.run();
+  }
   const recovery = row.verificationMode === GLOBAL_RISK_CURRENT_PROOF_MODE;
   return json({
     ok: true,
@@ -772,6 +810,73 @@ async function putPublicHotSnapshot(env, product, body) {
     current_b2_readback_verified: recovery ? false : true,
     current_b2_snapshot_promoted: recovery ? false : true,
   });
+}
+
+async function getWebsiteLaggedGriHistory(env,now=Date.now()){
+  const cutoff=new Date(now-WEBSITE_GRI_DELAY_MS).toISOString();
+  let rows;
+  try{
+    const out=await env.DB.prepare(`
+      SELECT source_as_of,payload_sha256,b2_sha256,
+        original_generated_at,original_verified_at,proof_schema,payload_json
+      FROM website_verified_gri_snapshot_history
+      WHERE source_as_of <= ?
+      ORDER BY source_as_of DESC LIMIT ?
+    `).bind(cutoff,WEBSITE_GRI_HISTORY_LIMIT).all();
+    rows=out?.results;
+  }catch{
+    return json({ok:false,error:"WEBSITE_GRI_HISTORY_UNAVAILABLE",
+      chargeable:false,source_identity_disclosed:false},503);
+  }
+  for(const row of Array.isArray(rows)?rows:[]){
+    // Verify the immutable original D1 historical artifact byte-for-byte
+    // before materializing a privacy-only projection.
+    const bytes=new TextEncoder().encode(String(row.payload_json??""));
+    if(bytes.byteLength<2||bytes.byteLength>MAX_HOT_SNAPSHOT_BYTES)continue;
+    const digest=await crypto.subtle.digest("SHA-256",bytes);
+    const hex=Array.from(new Uint8Array(digest),
+      byte=>byte.toString(16).padStart(2,"0")).join("");
+    if(hex!==row.payload_sha256)continue;
+    const view=privateVerifiedGriHistoryProjection(row,{now});
+    if(view)return json(view);
+  }
+  // READ-ONLY aging fallback. The original direct-B2 hot row may have been
+  // too young at the one-time SQL migration but become release-eligible later,
+  // especially when B2 Class B and producer quotas are frozen. Avoid a new
+  // B2 GET, a write-on-GET, Supabase or false data-clock backdating. This
+  // performs exactly ONE additional bounded D1 SELECT only on ring miss.
+  try{
+    const previous=await env.DB.prepare(`
+      SELECT source_as_of,payload_sha256,b2_sha256,
+        generated_at AS original_generated_at,
+        verified_at AS original_verified_at,
+        proof_schema,payload_json
+      FROM public_b2_hot_snapshot
+      WHERE product='global-risk'
+        AND schema_name='geomacro.public-global-risk-live.v1'
+        AND proof_schema='geomacro.public-global-risk-live-proof.v1'
+        AND b2_object_key=?
+        AND source_as_of<=?
+      LIMIT 1
+    `).bind(HOT_SNAPSHOT_PRODUCTS["global-risk"].b2Key,cutoff).first();
+    if(previous){
+      const bytes=new TextEncoder().encode(String(previous.payload_json??""));
+      if(bytes.byteLength>=2&&bytes.byteLength<=MAX_HOT_SNAPSHOT_BYTES){
+        const hash=await crypto.subtle.digest("SHA-256",bytes);
+        const actual=Array.from(new Uint8Array(hash),
+          b=>b.toString(16).padStart(2,"0")).join("");
+        if(actual===previous.payload_sha256){
+          const lagged=privateVerifiedGriHistoryProjection(previous,{now});
+          if(lagged)return json(lagged);
+        }
+      }
+    }
+  }catch{
+    return json({ok:false,error:"WEBSITE_GRI_HISTORY_UNAVAILABLE",
+      chargeable:false,source_identity_disclosed:false},503);
+  }
+  return json({ok:false,error:"WEBSITE_GRI_60MIN_VERIFIED_HISTORY_NOT_FOUND",
+    chargeable:false,source_identity_disclosed:false},503);
 }
 
 async function getPublicHotSnapshot(env, product, now = Date.now()) {
@@ -933,7 +1038,9 @@ async function health(env) {
       .bind("control-plane")
       .first();
     if (!row || Number(row.version) < 1) return json({ ok: false, error: "D1_SCHEMA_NOT_READY" }, 503);
-    return json({ ok: true, store: "d1", schema_version: Number(row.version), durable_payload_store: "b2", commerce_ledger: "durable_object" });
+    return json({ ok: true, store: "d1", schema_version: Number(row.version), durable_payload_store: "b2", commerce_ledger: "durable_object",
+      deployed_source_sha: /^[a-f0-9]{40}$/.test(String(env.GEOMACRO_SOURCE_SHA ?? ""))
+        ? env.GEOMACRO_SOURCE_SHA : null });
   } catch {
     return json({ ok: false, error: "D1_UNAVAILABLE" }, 503);
   }
@@ -1141,11 +1248,32 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
+    if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime"&&!url.search)return getSourceRuntimeStatus(env);
+    if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime-context"){
+      if([...url.searchParams.keys()].some(k=>k!=="category")||url.searchParams.getAll("category").length!==1)
+        return json({ok:false,error:"SOURCE_RUNTIME_QUERY_INVALID"},400);
+      return getSourceRuntimeContext(env,url.searchParams.get("category"));
+    }
+    if(request.method==="GET"&&url.pathname==="/v1/public/automated-finds"){
+      if([...url.searchParams.keys()].some(k=>k!=="category")||url.searchParams.getAll("category").length>1)
+        return json({ok:false,error:"AUTOMATED_FINDS_QUERY_INVALID"},400);
+      return getAutomatedFinds(env,url.searchParams.get("category"));
+    }
+    if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
+      return renderDerivedStoriesHtml(env);
+    }
+    if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news" && !url.search) {
+      return readDerivedStories(env);
+    }
     if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
       return getPublicThreeDomain30MinSourcePulse(env);
     }
     if (request.method === "GET" && url.pathname === "/v1/public/intelligence-overlay") {
       return getPublicIntelligenceOverlay(env);
+    }
+    if(request.method==="GET" &&
+       url.pathname==="/v1/public/website-lagged-global-risk" && !url.search){
+      return getWebsiteLaggedGriHistory(env);
     }
     if (request.method === "GET" && url.pathname === "/v1/public/historical-continuity/global-risk") {
       return getHistoricalGlobalRiskContinuity(env);
@@ -1161,6 +1289,12 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      if(request.method==='POST'&&url.pathname==='/v1/security/budget'&&!url.search){
+        const receipt=await consumeCentralSecurityBudget(env.DB,await readJson(request,256));
+        return json(receipt,receipt.allowed?200:429);
+      }
+      if(request.method==="PUT"&&url.pathname==="/v1/automated-finds"&&!url.search)
+        return putAutomatedFinds(env,await readJson(request,300_000));
       if (
         request.method === "GET" &&
         parts[0] === "v1" &&
@@ -1181,6 +1315,10 @@ export default {
         const body = await readJson(request, 1024);
         const receipt = await reserveB2AccountQuota(env.DB, body);
         return json(receipt, receipt.ok ? 200 : 429);
+      }
+      if (request.method === "PUT" && url.pathname === "/v1/website-derived-news" && !url.search) {
+        const batch = await readJson(request, 64 * 1024);
+        return publishDerivedStories(env, batch);
       }
       if (request.method !== "PUT") return json({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
       if (parts[0] === "v1" && parts[1] === "hot-snapshot" && parts.length === 3) {

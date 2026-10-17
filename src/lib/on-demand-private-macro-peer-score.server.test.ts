@@ -37,7 +37,7 @@ function network(options:{
   const fetchImpl=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
     const u=new URL(String(input));calls.push(u.href);
     expect(u.origin).toBe("https://api.worldbank.org");
-    expect(init?.redirect).toBe("error");
+    expect(init?.redirect).toBe("manual");
     expect(init?.method).toBe("GET");
     if(options.error)return new Response("temporary outage",{status:429});
     if(u.pathname==="/v2/country"){

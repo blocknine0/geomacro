@@ -6,6 +6,8 @@ import { writeFileSync, mkdirSync } from "node:fs";
 const SITE_URL = "https://geomacro.live";
 const D1_URL = "https://geomacro-control-plane.daspallab202391.workers.dev";
 const PRODUCTS = Object.freeze(["intelligence", "global-risk", "risk-indices"]);
+const GRI_HISTORICAL_URL =
+  D1_URL + "/v1/public/historical-continuity/global-risk";
 const SAFE_ERRORS = new Set([
   "HOT_SNAPSHOT_UNAVAILABLE","HOT_SNAPSHOT_STALE_OR_INVALID",
   "HOT_SNAPSHOT_HASH_MISMATCH","HOT_SNAPSHOT_INVALID",
@@ -55,6 +57,7 @@ function siteView(result,now) {
   const p=result.body?.public_production;
   const hot=p?.hot_snapshot_serving;
   const hotKeys=["intelligence","global_risk","risk_indices"];
+  const verifiedHistoricalBaselines=p?.last_verified_baseline_readable;
   return {
     http_status:result.http_status,
     ok:result.body?.ok===true,
@@ -66,6 +69,11 @@ function siteView(result,now) {
     supabase_required_for_serving:p?.supabase_required_for_serving===false,
     hot_snapshot_proofs: Object.fromEntries(hotKeys.map(k=>[k,
       hot?.[k]?.ok===true && hot?.[k]?.serving_store==="cloudflare-d1"])),
+    // These are real independent historical B2 readback flags, not private
+    // key-presence checks or evidence of a CURRENT scored risk snapshot.
+    historical_b2_baseline_readable: Object.fromEntries(hotKeys.map(k=>[k,
+      typeof verifiedHistoricalBaselines?.[k]==="boolean"
+        ? verifiedHistoricalBaselines[k] : null])),
     snapshot_source_times: Object.fromEntries(hotKeys.map(k=>[k,
       safeTime(hot?.[k]?.source_as_of,now)])),
     public_serving_claim_verified:
@@ -96,6 +104,39 @@ function snapshotView(result,now,product) {
     verification_mode:SAFE_PROOF_MODES.has(b.verification_mode)?b.verification_mode:null,
   };
 }
+function griHistoricalAnchorView(result, now) {
+  const b=result.body ?? {};
+  const originalTime=safeTime(b.original_snapshot_as_of,now);
+  const archiveTime=safeTime(b.archive_generated_at,now);
+  const accepted=result.http_status===200 && b.ok===true &&
+    b.schema==="geomacro.public-global-risk-historical-continuity.v1" &&
+    b.product==="global-risk" && b.historical_only===true &&
+    b.current_snapshot_available===false && b.commercial_eligible===false &&
+    b.x402_chargeable===false && b.hot_freshness_not_asserted===true &&
+    b.source_news_freshness_not_asserted===true &&
+    b.independently_verified_archive_at_past_write===true &&
+    b.independently_rechecked_b2_now===false &&
+    archiveTime!==null &&
+    (b.anchor_kind==="direct_verified_b2_snapshot" && originalTime!==null ||
+     b.anchor_kind==="prior_b2_baseline_of_independent_gri_proof" &&
+       b.original_snapshot_as_of===null);
+  return {
+    http_status:result.http_status,
+    anchor_valid_in_d1:accepted,
+    historical_only:true,
+    original_snapshot_as_of:accepted?originalTime:null,
+    archive_generated_at:accepted?archiveTime:null,
+    anchor_kind:accepted?b.anchor_kind:null,
+    // The public D1 SHA-bound archive anchor proves a past readback only.
+    // It is never a new B2 GET, present-day archive readback or current product.
+    b2_archive_readback_now_verified:false,
+    error:result.http_status===503 &&
+      b.error==="GLOBAL_RISK_VERIFIED_ARCHIVE_UNAVAILABLE"
+        ?"GLOBAL_RISK_VERIFIED_ARCHIVE_UNAVAILABLE":null,
+    current_product_verified:false,
+    commercial_eligible:false,
+  };
+}
 export async function diagnosePublicHotServing({
   fetchImpl=fetch, nowMs=Date.now(),
 }={}) {
@@ -106,9 +147,11 @@ export async function diagnosePublicHotServing({
     SITE_URL+"/api/health?deep=1",
     D1_URL+"/health",
     ...PRODUCTS.map(p=>D1_URL+"/v1/public/hot-snapshot/"+p),
+    GRI_HISTORICAL_URL,
   ];
   const results=await Promise.all(urls.map(url=>onlyPublicJson(url,fetchImpl)));
   const site=siteView(results[0],nowMs);
+  const historicalGlobalRisk=griHistoricalAnchorView(results[5],nowMs);
   const d1={
     http_status:results[1].http_status,
     ok:results[1].body?.ok===true &&
@@ -125,10 +168,27 @@ export async function diagnosePublicHotServing({
     site.b2_configured && site.intelligence_ready &&
     site.global_risk_ready && site.risk_indices_ready &&
     site.supabase_required_for_serving && site.public_serving_claim_verified &&
+    // The historical B2 baseline readback must be independently confirmed
+    // for every current public product; a green D1 pointer alone is not the
+    // archive-readback proof. Never infer true from absent properties.
+    Object.values(site.historical_b2_baseline_readable).every(v=>v===true) &&
     Object.values(site.hot_snapshot_proofs).every(Boolean);
   const rootCodes=[];
   if (!d1.ok) rootCodes.push("D1_CONTROL_PLANE_UNAVAILABLE");
+  if (!historicalGlobalRisk.anchor_valid_in_d1 &&
+      site.historical_b2_baseline_readable.global_risk !== true)
+    rootCodes.push("GRI_HISTORICAL_D1_ARCHIVE_ANCHOR_UNAVAILABLE_OR_INVALID");
+  else if (site.historical_b2_baseline_readable.global_risk !== true)
+    rootCodes.push("GRI_D1_ARCHIVE_ANCHOR_VALID_BUT_PUBLIC_BASELINE_READ_UNAVAILABLE");
   if (failing.length) rootCodes.push("D1_PUBLIC_HOT_SNAPSHOT_UNAVAILABLE");
+  const historical=site.historical_b2_baseline_readable;
+  if (Object.values(historical).includes(false))
+    rootCodes.push("HISTORICAL_B2_BASELINE_PROOF_UNREADABLE");
+  if (!site.http_status || !site.deep_checked || !Object.values(historical).every(v=>v!==null)) {
+    rootCodes.push("BASELINE_B2_PROOF_STATUS_NOT_FULLY_OBSERVED");
+  }
+  if(Object.values(site.hot_snapshot_proofs).some(v=>v===false))
+    rootCodes.push("CURRENT_SIGNED_B2_D1_HOT_PROOFS_INCOMPLETE");
   if (site.http_status===503) rootCodes.push("PUBLIC_DEEP_HEALTH_503");
   if (site.http_status===0) rootCodes.push("PUBLIC_SITE_TRANSPORT_UNAVAILABLE");
   if (!site.b2_configured) rootCodes.push("PUBLIC_B2_RUNTIME_UNCONFIGURED_OR_UNOBSERVED");
@@ -139,6 +199,7 @@ export async function diagnosePublicHotServing({
     checked_at:new Date(nowMs).toISOString(),
     ok:siteHealthy && d1.ok && failing.length===0,
     site,d1,products,
+    historical_global_risk:historicalGlobalRisk,
     unavailable_products:failing,
     failure_codes:rootCodes,
     // Explicit negative proofs: nothing here can be used to clear paid readiness.
@@ -166,6 +227,10 @@ export function summarizePublicHotServing(result) {
       status:"NOT_ASSESSED_BY_HOT_SERVING_DIAGNOSTIC",
       geopolitics:null,macro_fx:null,critical_minerals:null,
     },
+    historical_b2_baseline_readable:result.site.historical_b2_baseline_readable,
+    historical_global_risk:result.historical_global_risk,
+    // This report can identify a bad *proof*, not missing B2 S3 credentials.
+    // No arbitrary private key/configuration guess may bypass the public gate.
     unavailable_products:result.unavailable_products,
     products:Object.fromEntries(Object.entries(result.products).map(([k,v])=>[
       k,{status:v.http_status,error:v.error,source_as_of:v.source_as_of,

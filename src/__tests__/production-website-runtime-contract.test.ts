@@ -9,7 +9,12 @@ describe("production website runtime contract", () => {
     expect(health).toContain('searchParams.get("deep") === "1"');
     expect(health).toContain('serving_authority: "backblaze-b2"');
     expect(health).toContain("supabase_required_for_serving: false");
-    expect(health).toContain("b2PublicRuntimeConfigured");
+    // Lovable may have zero private B2 secrets: live edge proof, not
+    // server env configuration, establishes production readiness.
+    expect(health).not.toContain("b2PublicRuntimeConfigured");
+    expect(health).toContain("baselineIntelligenceReady && baselineGlobalRiskReady && baselineRiskIndicesReady");
+    expect(health).toContain("readB2PublicIntelligence()");
+    expect(health).toContain("readB2PublicRisk()");
     expect(health).toContain("readB2PublicIntelligence");
     expect(health).toContain("readB2PublicRisk");
     expect(health).toContain("status: deepReady ? 200 : 503");
@@ -106,8 +111,14 @@ describe("production website runtime contract", () => {
   it("keeps route loaders fail-closed without collapsing the whole page", () => {
     const intelligence = read("src/routes/intelligence.tsx");
     const event = read("src/routes/event.$eventId.tsx");
-    expect(intelligence).toContain("[intelligence-route] preload failed; rendering fail-closed workspace");
-    expect(intelligence).toContain("return { rows: [], now }");
+    expect(intelligence).toContain("Original publisher Intelligence source check timed out.");
+    expect(intelligence).toContain("stateless: accepted[0]");
+    expect(intelligence).toContain("statelessFeeds:");
+    expect(intelligence).toContain('const domains = ["geopolitics", "macro", "rare_earth"] as const');
+    expect(intelligence).toContain('journal: history.status === "fulfilled" && Array.isArray(history.value)');
+    expect(intelligence).toContain("Promise.allSettled");
+    expect(intelligence).toContain("initialJournal={loader.journal}");
+    expect(intelligence).toContain("component: StatelessWebsiteIntelligencePage");
     expect(event).toContain("[event-route] preload failed; rendering unavailable state");
     expect(event).toContain("return null");
     expect(intelligence).toContain("Risk Indices temporarily unavailable");
@@ -160,7 +171,7 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain('/api/public/risk-indices');
     expect(workflow).toContain('/api/public-ask');
     expect(workflow).toContain("This page didn't load");
-    expect(workflow).toContain("/intelligence|Risk Intelligence");
+    expect(workflow).toContain("/intelligence|What changed in the world");
     expect(workflow).toContain("/global-risk|");
     expect(workflow).toContain("/ask-geomacro|Ask Geomacro");
     expect(workflow).toContain("/pricing|Access & pricing");
@@ -176,6 +187,19 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain("geomacro.section11-production-deployment-acceptance.v1");
     expect(workflow).toContain("published_site_matches_canonical_main");
     expect(workflow).toContain("lovable_mirror_matches_canonical_main");
+  });
+
+  it("distinguishes unassessed shallow runtime from verified deep B2/D1 readiness", () => {
+    const health = read("src/routes/api.health.ts");
+    const workflow = read(".github/workflows/production-website-health.yml");
+    expect(health).toContain("b2_runtime_configured: null");
+    expect(health).toContain("b2_runtime_configured:\n      baselineIntelligenceReady && baselineGlobalRiskReady && baselineRiskIndicesReady");
+    expect(workflow).toContain("Verify B2 production serving health");
+    expect(workflow).toContain('"b2_runtime_configured":true');
+    expect(workflow).toContain("Verify production alignment contract");
+    expect(workflow).toContain('"production_data_runtime_configured":null');
+    expect(workflow).not.toContain('"production_data_runtime_configured":true');
+    expect(health).toContain("status: deepReady ? 200 : 503");
   });
 
   it("documents that hosted B2 secrets are separate from GitHub Actions secrets", () => {

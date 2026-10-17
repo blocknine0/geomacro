@@ -1,11 +1,20 @@
 name: Deploy Risk Indices Edge
 
-# Derived Risk Indices can only be redeployed after a successfully verified
-# upstream Risk Indices B2 readback artifact exists. Do not waste GitHub/B2
-# quota by trying six-hour or source-push deploys against stale/unavailable GRI.
-# Manual recovery remains available; the same artifact-proof check still applies.
+# Redeploy Risk Indices only with an existing successful full B2 readback
+# artifact. A narrowly scoped Worker-code push may trigger that recovery;
+# no recurring polling, arbitrary source deploy or synthetic GRI proof.
+# Manual and successful upstream publisher triggers retain strict proof checks.
 on:
   workflow_dispatch: {}
+  # A worker-code-only redeploy is independent of a NEW publisher snapshot.
+  # It must still materialize an already full-B2-readback-verified main-run
+  # artifact before secrets are used or Cloudflare deployment is attempted.
+  # Never deploy for ordinary source/workflow commits or on a schedule.
+  push:
+    branches: [main]
+    paths:
+      - "workers/risk-indices-edge/src/index.mjs"
+      - ".github/workflows/deploy-risk-indices-edge.yml"
   workflow_run:
     workflows: ["Risk Indices Realtime Direct Postgres"]
     types: [completed]
@@ -25,6 +34,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (
         github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'push' ||
         (
           github.event_name == 'workflow_run' &&
           github.event.workflow_run.conclusion == 'success' &&
@@ -64,13 +74,39 @@ jobs:
         # avoiding fallback to a different/stale artifact on production re-deploy.
         env:
           SOURCE_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+          TRIGGER_EVENT: ${{ github.event_name }}
         shell: bash
         run: |
-          bash scripts/ops/prepare-edge-continuity.sh \
+          set -euo pipefail
+          if bash scripts/ops/prepare-edge-continuity.sh \
             risk-indices \
             risk-indices-realtime-direct-postgres.yml \
             geomacro.public-risk-indices-direct-postgres-publish.v1 \
-            workers/risk-indices-edge/src/continuity.mjs
+            workers/risk-indices-edge/src/continuity.mjs; then
+            echo "VERIFIED_RISK_INDICES_CONTINUITY_MATERIALIZED"
+          elif [ "$TRIGGER_EVENT" = "push" ]; then
+            # Do not accidentally overwrite a still healthy previously
+            # materialized static continuity package with null when the
+            # original artifact has merely aged out of GitHub retention.
+            # A verified currently serving 200 requires preservation
+            # through a separately reviewed/manual recovery path.
+            EXISTING_CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$EXPECTED_URL/risk-indices" || true)"
+            if [ "$EXISTING_CODE" = "200" ]; then
+              echo "EXISTING_VERIFIED_EDGE_SERVING; refuse replacing prior static continuity with null"
+              exit 13
+            fi
+            # A code-only deployment must not depend on a new/frozen
+            # Supabase publisher. Deploy code with an explicitly EMPTY
+            # backup; the Worker can still serve any independently
+            # verified D1 hot/POP/B2 proof. If all are unavailable it
+            # returns 503, never manufactured risk nor payable data.
+            printf 'export default null;\n' > workers/risk-indices-edge/src/continuity.mjs
+            test "$(cat workers/risk-indices-edge/src/continuity.mjs)" = 'export default null;'
+            echo "SAFE_CODE_ONLY_DEPLOY_WITH_NO_STATIC_CONTINUITY; live proof acceptance stays mandatory"
+          else
+            echo "FULL_B2_READBACK_PROOF_REQUIRED_FOR_SOURCE_RUN_OR_MANUAL_DEPLOY"
+            exit 12
+          fi
 
       - name: Bind existing main-owned D1 budget and verify v5 shared quota schema
         shell: bash

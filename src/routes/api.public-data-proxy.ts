@@ -1,5 +1,8 @@
+import {fetchWithoutRedirect} from "../lib/fetch-without-redirect";
+import {plainPublicProjection,hasPrivateSourceQueryFilter,safePostgrestAccept} from "@/lib/public-postgrest-proxy-privacy";
 import process from "node:process";
 import { createFileRoute } from "@tanstack/react-router";
+import {websitePublicCutoff} from "@/lib/website-publication-delay";
 
 const ALLOWED_TABLES = new Set([
   "events",
@@ -11,8 +14,6 @@ const ALLOWED_TABLES = new Set([
 ]);
 
 const SAFE_REQUEST_HEADERS = [
-  "accept",
-  "accept-profile",
   "range",
   "range-unit",
   "prefer",
@@ -26,6 +27,7 @@ const SAFE_RESPONSE_HEADERS = [
 ] as const;
 
 const PRIVATE_SOURCE_KEYS = new Set([
+  "source_key",
   "source_id",
   "source_ids",
   "source_record_id",
@@ -101,24 +103,96 @@ async function handle(request: Request) {
 
   const table = parsed.pathname.slice("/rest/v1/".length).split("/")[0];
   if (!ALLOWED_TABLES.has(table)) return bad(403, "Table not public through this endpoint");
+  if (parsed.pathname !== `/rest/v1/${table}`) return bad(400,"Invalid table path");
+  // PostgREST aliasing can turn "source_name" into "friendly_label" and
+  // bypass a response-only key redactor. Limit the public projection to
+  // explicit simple column names; no *, aliases, joins, JSON selectors,
+  // embedded relations, or server-side query expressions.
+  const select=parsed.searchParams.get("select");
+  if(!plainPublicProjection(select))
+    return bad(400,"Public projection requires explicit safe fields");
+  if(hasPrivateSourceQueryFilter(parsed.searchParams))
+    return bad(400,"Private source filtering is not public");
+
 
   const base = process.env.APP_SUPABASE_URL;
   const anon = process.env.APP_SUPABASE_ANON_KEY;
   if (!base || !anon) return bad(503, "Public data backend unavailable");
 
   const upstream = new URL(parsed.pathname + parsed.search, base);
+  const cutoff=new Date(websitePublicCutoff()).toISOString();
+  // This is a WEBSITE compatibility proxy, not a machine/x402 endpoint.
+  // Never allow under-one-hour original events or current GRI scores to
+  // bypass the delayed website by reading direct PostgREST rows.
+  if(table==="events"){
+    // Prevent duplicate user-provided PostgREST predicates from weakening the
+    // authoritative minimum 60-minute hold.
+    if(upstream.searchParams.has("published_at")||upstream.searchParams.has("created_at"))
+      return bad(400,"Website event date filters are server-controlled");
+    upstream.searchParams.set("published_at","lte."+cutoff);
+    upstream.searchParams.set("created_at","lte."+cutoff);
+  }
+  if(table==="gri_snapshots"){
+    if(upstream.searchParams.has("as_of"))
+      return bad(400,"Website GRI snapshot date is server-controlled");
+    upstream.searchParams.set("as_of","lte."+cutoff);
+    upstream.searchParams.set("verification_status","eq.verified");
+    upstream.searchParams.set("status","eq.published");
+  }
   const headers = new Headers({
     apikey: anon,
     authorization: `Bearer ${anon}`,
+    // JSON-only is mandatory: CSV/TSV/XML raw body would bypass the
+    // recursively source-redacting parser below.
+    // PostgREST maybeSingle() requires its exact vendor JSON media type.
+    // Only these two redacted JSON representations are ever permitted.
+    accept: safePostgrestAccept(request.headers.get("accept")),
   });
   for (const name of SAFE_REQUEST_HEADERS) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
 
+  // Legacy GRI proof subrecords are individually queryable. They cannot
+  // bypass the snapshot embargo using a known snapshot_id: a bounded
+  // read-only parent verification proves the original GRI snapshot was
+  // published/verified at least 60 minutes ago.
+  if(table==="gri_contributions"||table==="gri_source_dispositions"){
+    const refs=upstream.searchParams.getAll("snapshot_id");
+    if(refs.length!==1||!/^eq\.[A-Za-z0-9_-]{1,128}$/u.test(refs[0]))
+      return bad(403,"Published historical snapshot ID required");
+    const id=refs[0].slice(3);
+    const parent=new URL("/rest/v1/gri_snapshots",base);
+    parent.searchParams.set("select","id,as_of,status,verification_status");
+    parent.searchParams.set("id","eq."+id);
+    parent.searchParams.set("as_of","lte."+cutoff);
+    parent.searchParams.set("status","eq.published");
+    parent.searchParams.set("verification_status","eq.verified");
+    parent.searchParams.set("limit","1");
+    try{
+      const check=await fetchWithoutRedirect(parent,{
+        method:"GET",
+        headers:{apikey:anon,authorization:`Bearer ${anon}`,accept:"application/json"},
+        redirect:"error",signal:AbortSignal.timeout(4000),
+      });
+      if(!check.ok||Number(check.headers.get("content-length")||0)>8192)
+        return bad(503,"Historical GRI parent proof unavailable");
+      const body:unknown=await check.json();
+      if(!Array.isArray(body)||body.length!==1||
+         body[0]?.id!==id||
+         body[0]?.status!=="published"||
+         body[0]?.verification_status!=="verified"||
+         !Number.isFinite(Date.parse(String(body[0]?.as_of??"")))||
+         Date.parse(String(body[0]?.as_of??""))>Date.parse(cutoff))
+        return bad(403,"GRI snapshot is not yet website-public");
+    }catch{
+      return bad(503,"Historical GRI parent proof unavailable");
+    }
+  }
+
   let response: Response;
   try {
-    response = await fetch(upstream, {
+    response = await fetchWithoutRedirect(upstream, {
       method: request.method,
       headers,
       redirect: "error",
@@ -146,7 +220,7 @@ async function handle(request: Request) {
   }
 
   const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
+  if (/^application\/(?:json|[a-z0-9.+-]+\+json)(?:;|$)/iu.test(contentType)) {
     const text = await response.text();
     try {
       const parsedBody = JSON.parse(text) as unknown;
@@ -162,11 +236,9 @@ async function handle(request: Request) {
     }
   }
 
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: outHeaders,
-  });
+  // Never stream arbitrary upstream CSV, TXT, XML or octet-stream content
+  // through the public proxy: they have not been redacted.
+  return bad(502,"Public data backend did not return safe JSON");
 }
 
 export const Route = createFileRoute("/api/public-data-proxy")({

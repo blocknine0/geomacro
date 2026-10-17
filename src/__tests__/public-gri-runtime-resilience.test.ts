@@ -19,7 +19,8 @@ describe("public risk runtime resilience", () => {
     expect(server).not.toContain("supabase.co");
     expect(b2).toContain("B2_PUBLIC_GLOBAL_RISK_KEY");
     expect(b2).toContain("B2_PUBLIC_RISK_KEY");
-    expect(b2).toContain("validateGlobalRiskContinuity");
+    expect(b2).toContain("return readGlobalRiskEdge();");
+    expect(b2).not.toContain("await readJsonGzip<{\n      schema?: string;\n      generated_at?: string;\n      data?: GlobalRisk;");
     expect(b2).toContain("PUBLIC_RISK_FALLBACK_MAX_AGE_MS");
   });
 

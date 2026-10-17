@@ -47,19 +47,20 @@ describe("independent verified Risk Indices edge", () => {
     expect(worker).not.toContain("request.json()");
   });
 
-  it("keeps publisher quota-free and separate from Global Risk and Intelligence workflows", () => {
+  it("keeps retired Postgres publisher paused while independent edge contracts remain separate", () => {
     expect(refresh).toContain("group: geomacro-risk-indices-realtime");
     expect(refresh).not.toContain('cron: "38 * * * *"');
     expect(refresh).not.toContain("  schedule:");
     expect(refresh).toContain("workflow_dispatch: {}");
-    expect(refresh).toContain("workflow_run:");
-    expect(refresh).toContain('"GRI Realtime Direct Postgres"');
-    expect(refresh).toContain("github.event.workflow_run.conclusion == 'success'");
-    expect(refresh).toContain("github.event.workflow_run.head_branch == 'main'");
+    expect(refresh).not.toContain("  workflow_run:");
+    expect(refresh).toContain("    if: ${{ false }}");
+    expect(refresh).not.toContain('      - "GRI Realtime Direct Postgres"');
+    expect(refresh).not.toContain("github.event.workflow_run.conclusion");
+    expect(refresh).not.toContain("github.event.workflow_run.head_branch");
     expect(refresh).not.toContain("  push:");
-    expect(refresh).toContain("github.event_name == 'workflow_dispatch'");
+    expect(refresh).not.toContain("github.event_name == 'workflow_dispatch'");
     expect(refresh).toContain("bun scripts/ops/publish-b2-risk-indices-direct-postgres.mjs");
-    expect(refresh).toContain("GRI Realtime Direct Postgres");
+    expect(refresh).toContain("Legacy Postgres parent must never publish");
     expect(refresh).toContain("publish-b2-risk-indices-direct-postgres.mjs");
     expect(refresh).not.toContain("scripts/ingest-news.js");
     expect(refresh).not.toContain("GUARDIAN_QUERY_BUDGET_PER_CATEGORY");
@@ -71,14 +72,29 @@ describe("independent verified Risk Indices edge", () => {
   it("deploys only after materializing a successful B2-readback-verified continuity artifact", () => {
     expect(deploy).not.toContain('cron: "28 */6 * * *"');
     expect(deploy).not.toContain("  schedule:");
-    expect(deploy).not.toContain("  push:");
+    expect(deploy).toContain("  push:");
+    expect(deploy).toContain('"workers/risk-indices-edge/src/index.mjs"');
+    expect(deploy).toContain("github.event_name == 'push'");
+    expect(deploy).not.toContain("  schedule:");
     expect(deploy).toContain('workflows: ["Risk Indices Realtime Direct Postgres"]');
     expect(deploy).toContain("github.event.workflow_run.conclusion == 'success'");
     expect(deploy).toContain("github.event.workflow_run.head_branch == 'main'");
     expect(deploy).toContain("github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'");
     expect(deploy).toContain("SOURCE_RUN_ID: ${{ github.event.workflow_run.id || '' }}");
     expect(deploy).toContain("github.event_name == 'workflow_dispatch'");
-        expect(deploy).toContain("prepare-edge-continuity.sh");
+    // Supabase/B2 quota exhaustion may remove historical run artifacts,
+    // but must not block code-only quota-resilience deployments or
+    // silently replace a still-healthy verified Risk Indices snapshot.
+    expect(deploy).toContain('TRIGGER_EVENT: ${{ github.event_name }}');
+    expect(deploy).toContain('elif [ "$TRIGGER_EVENT" = "push" ]; then');
+    expect(deploy).toContain("SAFE_CODE_ONLY_DEPLOY_WITH_NO_STATIC_CONTINUITY");
+    expect(deploy).toContain("EXISTING_VERIFIED_EDGE_SERVING; refuse replacing prior static continuity with null");
+    expect(deploy).toContain('if [ "$EXISTING_CODE" = "200" ]; then');
+    expect(deploy).toContain("exit 13");
+    expect(deploy).toContain("FULL_B2_READBACK_PROOF_REQUIRED_FOR_SOURCE_RUN_OR_MANUAL_DEPLOY");
+    expect(deploy).toContain('test "$CODE" = "200" ||');
+    expect(deploy).toContain("Risk Indices edge acceptance failed: HTTP $CODE");
+    expect(deploy).toContain("prepare-edge-continuity.sh");
     expect(deploy).toContain("risk-indices-realtime-direct-postgres.yml");
     expect(deploy).toContain("geomacro.public-risk-indices-direct-postgres-publish.v1");
     expect(deploy).not.toContain("Bootstrap isolated verified Risk Indices package");

@@ -1,0 +1,2252 @@
+{
+  "schema": "geomacro.operator-source-attribution-intake.v1",
+  "as_of": "2026-10-12",
+  "description": "Operator-submitted 76-source reconciliation overlay, not a second canonical registry and not a list of active or commercially licensed sources",
+  "source_count": 76,
+  "source_names_for_attribution": "Source names must be preserved with verified evidence where provider requires credit; never equate metadata registration with licensing, live delivery or source utilization",
+  "launch_domains": [
+    "geopolitics",
+    "macro",
+    "rare_earth"
+  ],
+  "derived_only": true,
+  "never_enable_scrape_or_paid_without_rights_review": true,
+  "operator_candidate_counts": {
+    "total": 76,
+    "canonical_exact_mapped": 20,
+    "by_state": {
+      "EXISTING_REGISTERED_NOT_REACTIVATED": 18,
+      "HOLD_RIGHTS_OR_AUTH_REVIEW": 6,
+      "CANDIDATE_NOT_ENABLED": 29,
+      "HOLD_NO_CONCRETE_ENDPOINT": 8,
+      "NEW_BOUNDED_PRIVATE_PROBE": 3,
+      "HOLD_PAID_OR_NONCOMMERCIAL": 5,
+      "DEFER_MARKETS": 7
+    },
+    "by_domain": {
+      "geopolitics": 40,
+      "macro": 36,
+      "rare_earth": 37
+    }
+  },
+  "entries": [
+    {
+      "id": "gdelt_events",
+      "name": "GDELT 2.0 Events + GKG",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "bulk",
+      "candidate_endpoint": "http://data.gdeltproject.org/gdeltv2/lastupdate.txt",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "15m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "gdelt_v2",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "GDELT Project",
+        "policy": "CREDIT_REQUIRED_RECORDED",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": false,
+      "provider_access_recheck_required": true,
+      "warning_insecure_candidate_transport": true
+    },
+    {
+      "id": "gdelt_doc_api",
+      "name": "GDELT DOC API",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "api",
+      "candidate_endpoint": "https://api.gdeltproject.org/api/v2/doc/doc",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "15m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "gdelt_v2",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "GDELT Project",
+        "policy": "CREDIT_REQUIRED_RECORDED",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": false,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "acled",
+      "name": "ACLED",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "api",
+      "candidate_endpoint": "https://acleddata.com/api/acled/read",
+      "original_declared_freshness": "weekly",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "check",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_RIGHTS_OR_AUTH_REVIEW",
+      "attribution": {
+        "source_name": "ACLED",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "ucdp",
+      "name": "UCDP GED / Candidate Events",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "api",
+      "candidate_endpoint": "https://ucdpapi.pcr.uu.se/api/",
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "ucdp_ged",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "Uppsala Conflict Data Program (UCDP)",
+        "policy": "CREDIT_REQUIRED_RECORDED",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": false,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "gpr_index",
+      "name": "Caldara-Iacoviello Geopolitical Risk Index",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "bulk",
+      "candidate_endpoint": "https://www.matteoiacoviello.com/gpr_files/data_gpr_daily_recent.xls",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "Caldara-Iacoviello Geopolitical Risk Index",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "isw",
+      "name": "ISW Daily Assessments",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "rss",
+      "candidate_endpoint": "https://understandingwar.org/",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "1h",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "ISW Daily Assessments",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "crisiswatch",
+      "name": "Crisis Group CrisisWatch",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "rss",
+      "candidate_endpoint": "https://www.crisisgroup.org/crisiswatch",
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1d",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "Crisis Group CrisisWatch",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "thinktanks_bundle",
+      "name": "CFR / CSIS / Chatham House / Carnegie / IISS",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "rss",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "6h",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_NO_CONCRETE_ENDPOINT",
+      "attribution": {
+        "source_name": "CFR / CSIS / Chatham House / Carnegie / IISS",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "reliefweb",
+      "name": "ReliefWeb API (UN OCHA)",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "api",
+      "candidate_endpoint": "https://api.reliefweb.int/v1/reports",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "1h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "reliefweb",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "ReliefWeb API (UN OCHA)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "un_press",
+      "name": "UN Security Council press",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "rss",
+      "candidate_endpoint": "https://press.un.org/en",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "1h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "un_security_council",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "UN Security Council press",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "gdacs",
+      "name": "GDACS disaster alerts",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "rss",
+      "candidate_endpoint": "https://www.gdacs.org/xml/rss.xml",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "10m",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "gdacs_global_disasters",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "GDACS disaster alerts",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "usgs_quakes",
+      "name": "USGS Earthquake feed",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "api",
+      "candidate_endpoint": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson",
+      "original_declared_freshness": "realtime",
+      "requested_poll_interval": "5m",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "NEW_BOUNDED_PRIVATE_PROBE",
+      "attribution": {
+        "source_name": "U.S. Geological Survey",
+        "policy": "CREDIT_REQUIRED_RECORDED",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": false,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "nasa_firms",
+      "name": "NASA FIRMS (thermal anomalies / strike detection)",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "api",
+      "candidate_endpoint": "https://firms.modaps.eosdis.nasa.gov/api/",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "3h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "NASA FIRMS (thermal anomalies / strike detection)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "ukmto",
+      "name": "UKMTO maritime advisories",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "scrape",
+      "candidate_endpoint": "https://www.ukmto.org/",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "30m",
+      "source_tier": 1,
+      "operator_license_label_unverified": "check",
+      "canonical_existing_id": "ukmto",
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_RIGHTS_OR_AUTH_REVIEW",
+      "attribution": {
+        "source_name": "UKMTO maritime advisories",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "imb_piracy",
+      "name": "ICC-IMB Piracy Reporting Centre",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "scrape",
+      "candidate_endpoint": "https://www.icc-ccs.org/piracy-reporting-centre",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "6h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "check",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_RIGHTS_OR_AUTH_REVIEW",
+      "attribution": {
+        "source_name": "ICC-IMB Piracy Reporting Centre",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "aisstream",
+      "name": "AISStream.io (vessel tracking)",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "websocket",
+      "candidate_endpoint": "wss://stream.aisstream.io/v0/stream",
+      "original_declared_freshness": "realtime",
+      "requested_poll_interval": "stream",
+      "source_tier": 2,
+      "operator_license_label_unverified": "partial",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_RIGHTS_OR_AUTH_REVIEW",
+      "attribution": {
+        "source_name": "AISStream.io (vessel tracking)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "adsb_exchange",
+      "name": "ADS-B Exchange",
+      "domains": [
+        "geopolitics"
+      ],
+      "provider_category": "geopolitics",
+      "access": "api",
+      "candidate_endpoint": "https://www.adsbexchange.com/data/",
+      "original_declared_freshness": "realtime",
+      "requested_poll_interval": "1m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "paid",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_PAID_OR_NONCOMMERCIAL",
+      "attribution": {
+        "source_name": "ADS-B Exchange",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "polymarket",
+      "name": "Polymarket (Gamma API)",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "markets",
+      "access": "api",
+      "candidate_endpoint": "https://gamma-api.polymarket.com",
+      "original_declared_freshness": "realtime",
+      "requested_poll_interval": "1m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "DEFER_MARKETS",
+      "attribution": {
+        "source_name": "Polymarket (Gamma API)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "kalshi",
+      "name": "Kalshi",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "markets",
+      "access": "api",
+      "candidate_endpoint": "https://api.elections.kalshi.com/trade-api/v2",
+      "original_declared_freshness": "realtime",
+      "requested_poll_interval": "1m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "DEFER_MARKETS",
+      "attribution": {
+        "source_name": "Kalshi",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "metaculus",
+      "name": "Metaculus",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "markets",
+      "access": "api",
+      "candidate_endpoint": "https://www.metaculus.com/api/",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "1h",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "DEFER_MARKETS",
+      "attribution": {
+        "source_name": "Metaculus",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "news_bbc",
+      "name": "BBC World",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "rss",
+      "candidate_endpoint": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "5m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_BUSINESS_RSS_LICENSE_REQUIRED",
+      "attribution": {
+        "source_name": "BBC World",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "warning_insecure_candidate_transport": true,
+      "probe_url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "original_candidate_endpoint": "http://feeds.bbci.co.uk/news/world/rss.xml",
+      "pending_live_provider_acceptance": false,
+      "activation_hold_reason": "BBC terms section 15 requires BBC permission/licence for business usage of RSS and metadata; none is verified"
+    },
+    {
+      "id": "news_aljazeera",
+      "name": "Al Jazeera",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "rss",
+      "candidate_endpoint": "https://www.aljazeera.com/xml/rss/all.xml",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "5m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "attribution": {
+        "source_name": "Al Jazeera",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "original_candidate_endpoint": "https://www.aljazeera.com/xml/rss/all.xml",
+      "pending_live_provider_acceptance": true
+    },
+    {
+      "id": "news_dw",
+      "name": "Deutsche Welle",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "rss",
+      "candidate_endpoint": "https://rss.dw.com/rdf/rss-en-all",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "10m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "attribution": {
+        "source_name": "Deutsche Welle",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://rss.dw.com/rdf/rss-en-all",
+      "original_candidate_endpoint": "https://rss.dw.com/rdf/rss-en-all",
+      "pending_live_provider_acceptance": true
+    },
+    {
+      "id": "news_nikkei",
+      "name": "Nikkei Asia",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "rss",
+      "candidate_endpoint": "https://asia.nikkei.com/rss",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "10m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_NONCOMMERCIAL_PROVIDER_TERMS",
+      "attribution": {
+        "source_name": "Nikkei Asia",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://asia.nikkei.com/rss",
+      "original_candidate_endpoint": "https://asia.nikkei.com/rss",
+      "pending_live_provider_acceptance": false,
+      "activation_hold_reason": "Official Nikkei Asia RSS terms explicitly personal noncommercial use only"
+    },
+    {
+      "id": "news_scmp",
+      "name": "South China Morning Post",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "rss",
+      "candidate_endpoint": "https://www.scmp.com/rss/5/feed",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "10m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_COMMERCIAL_AUTOMATED_ACCESS_PROHIBITED",
+      "attribution": {
+        "source_name": "South China Morning Post",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.scmp.com/rss/5/feed",
+      "original_candidate_endpoint": "https://www.scmp.com/rss",
+      "pending_live_provider_acceptance": false,
+      "previous_probe_url": "https://www.scmp.com/rss",
+      "activation_hold_reason": "SCMP terms revised 2026-09-15 expressly prohibit automated extraction / indexing, TDM and commercial service usage without prior express written consent."
+    },
+    {
+      "id": "news_france24",
+      "name": "France24",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "rss",
+      "candidate_endpoint": "https://www.france24.com/en/rss",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "10m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "attribution": {
+        "source_name": "France24",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.france24.com/en/rss",
+      "original_candidate_endpoint": "https://www.france24.com/en/rss",
+      "pending_live_provider_acceptance": true
+    },
+    {
+      "id": "news_kyivindependent",
+      "name": "Kyiv Independent",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "rss",
+      "candidate_endpoint": "https://kyivindependent.com/news-archive/rss/",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "15m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "attribution": {
+        "source_name": "Kyiv Independent",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://kyivindependent.com/news-archive/rss/",
+      "original_candidate_endpoint": "https://kyivindependent.com/feed/",
+      "pending_live_provider_acceptance": true,
+      "previous_probe_url": "https://kyivindependent.com/feed/"
+    },
+    {
+      "id": "news_toi",
+      "name": "Times of India",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "rss",
+      "candidate_endpoint": "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "15m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "attribution": {
+        "source_name": "Times of India",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",
+      "original_candidate_endpoint": "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",
+      "pending_live_provider_acceptance": true
+    },
+    {
+      "id": "news_reuters_ap",
+      "name": "Reuters / AP wire",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "api",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "realtime",
+      "requested_poll_interval": "1m",
+      "source_tier": 1,
+      "operator_license_label_unverified": "paid",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_PAID_OR_NONCOMMERCIAL",
+      "attribution": {
+        "source_name": "Reuters / AP wire",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "state_xinhua",
+      "name": "Xinhua",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "rss",
+      "candidate_endpoint": "http://www.news.cn/english/",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "15m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "Xinhua",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "warning_insecure_candidate_transport": true
+    },
+    {
+      "id": "state_tass",
+      "name": "TASS",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "rss",
+      "candidate_endpoint": "https://tass.com/rss/v2.xml",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "15m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "attribution": {
+        "source_name": "TASS",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://tass.com/rss/v2.xml",
+      "original_candidate_endpoint": "https://tass.com/rss/v2.xml",
+      "pending_live_provider_acceptance": true
+    },
+    {
+      "id": "state_globaltimes",
+      "name": "Global Times",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "rss",
+      "candidate_endpoint": "https://www.globaltimes.cn/rss/outbrain.xml",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "15m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "attribution": {
+        "source_name": "Global Times",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": true
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.globaltimes.cn/rss/outbrain.xml",
+      "original_candidate_endpoint": "https://www.globaltimes.cn/rss/outbrain.xml",
+      "pending_live_provider_acceptance": true
+    },
+    {
+      "id": "osint_x_telegram",
+      "name": "X / Telegram OSINT accounts",
+      "domains": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "provider_category": "news",
+      "access": "api",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "5m",
+      "source_tier": 3,
+      "operator_license_label_unverified": "check",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_NO_CONCRETE_ENDPOINT",
+      "attribution": {
+        "source_name": "X / Telegram OSINT accounts",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "ofac_recent_actions",
+      "name": "OFAC Recent Actions",
+      "domains": [
+        "geopolitics",
+        "rare_earth"
+      ],
+      "provider_category": "sanctions_policy",
+      "access": "rss",
+      "candidate_endpoint": "https://ofac.treasury.gov/recent-actions",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "15m",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "attribution": {
+        "source_name": "OFAC Recent Actions",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://ofac.treasury.gov/recent-actions",
+      "original_candidate_endpoint": "https://ofac.treasury.gov/recent-actions",
+      "pending_live_provider_acceptance": true
+    },
+    {
+      "id": "ofac_sdn",
+      "name": "OFAC SDN list (XML)",
+      "domains": [
+        "geopolitics",
+        "rare_earth"
+      ],
+      "provider_category": "sanctions_policy",
+      "access": "bulk",
+      "candidate_endpoint": "https://www.treasury.gov/ofac/downloads/sdn.xml",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "1h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "OFAC SDN list (XML)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "eu_sanctions",
+      "name": "EU consolidated sanctions list + EUR-Lex / OJ",
+      "domains": [
+        "geopolitics",
+        "rare_earth"
+      ],
+      "provider_category": "sanctions_policy",
+      "access": "bulk",
+      "candidate_endpoint": "https://webgate.ec.europa.eu/fsd/fsf",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "6h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "eu_sanctions_consolidated",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "European Commission",
+        "policy": "CREDIT_REQUIRED_RECORDED",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": false,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "uk_ofsi",
+      "name": "UK OFSI consolidated list",
+      "domains": [
+        "geopolitics",
+        "rare_earth"
+      ],
+      "provider_category": "sanctions_policy",
+      "access": "bulk",
+      "candidate_endpoint": "https://www.gov.uk/government/publications/financial-sanctions-consolidated-list-of-targets",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "6h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "uk_sanctions_list",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "UK OFSI consolidated list",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "federal_register",
+      "name": "Federal Register API (BIS export controls, Entity List, critical minerals)",
+      "domains": [
+        "geopolitics",
+        "rare_earth"
+      ],
+      "provider_category": "sanctions_policy",
+      "access": "api",
+      "candidate_endpoint": "https://www.federalregister.gov/api/v1/documents.json",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "1h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "NEW_BOUNDED_PRIVATE_PROBE",
+      "attribution": {
+        "source_name": "Federal Register API (BIS export controls, Entity List, critical minerals)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "mofcom",
+      "name": "China MOFCOM announcements",
+      "domains": [
+        "geopolitics",
+        "rare_earth"
+      ],
+      "provider_category": "sanctions_policy",
+      "access": "scrape",
+      "candidate_endpoint": "http://english.mofcom.gov.cn/",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "1h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "china_mofcom_trade_controls",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "China MOFCOM announcements",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "warning_insecure_candidate_transport": true
+    },
+    {
+      "id": "china_mfa",
+      "name": "China MFA press",
+      "domains": [
+        "geopolitics",
+        "rare_earth"
+      ],
+      "provider_category": "sanctions_policy",
+      "access": "scrape",
+      "candidate_endpoint": "https://www.fmprc.gov.cn/eng/",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "2h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "China MFA press",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "miit",
+      "name": "China MIIT (quotas / industry policy)",
+      "domains": [
+        "geopolitics",
+        "rare_earth"
+      ],
+      "provider_category": "sanctions_policy",
+      "access": "scrape",
+      "candidate_endpoint": "https://www.miit.gov.cn/",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "6h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "China MIIT (quotas / industry policy)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "japan_meti",
+      "name": "Japan METI",
+      "domains": [
+        "geopolitics",
+        "rare_earth"
+      ],
+      "provider_category": "sanctions_policy",
+      "access": "rss",
+      "candidate_endpoint": "https://www.meti.go.jp/english/",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "6h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "Japan METI",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "opensanctions",
+      "name": "OpenSanctions",
+      "domains": [
+        "geopolitics",
+        "rare_earth"
+      ],
+      "provider_category": "sanctions_policy",
+      "access": "bulk",
+      "candidate_endpoint": "https://www.opensanctions.org/datasets/",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "1d",
+      "source_tier": 2,
+      "operator_license_label_unverified": "paid",
+      "canonical_existing_id": "opensanctions",
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_PAID_OR_NONCOMMERCIAL",
+      "attribution": {
+        "source_name": "OpenSanctions",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "fred",
+      "name": "FRED API",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "api",
+      "candidate_endpoint": "https://api.stlouisfed.org/fred/",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "1h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "FRED API",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "bls",
+      "name": "BLS API",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "api",
+      "candidate_endpoint": "https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "attribution": {
+        "source_name": "BLS API",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",
+      "original_candidate_endpoint": "https://api.bls.gov/publicAPI/v2/",
+      "pending_live_provider_acceptance": true
+    },
+    {
+      "id": "bea",
+      "name": "BEA API",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "api",
+      "candidate_endpoint": "https://apps.bea.gov/api/data",
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "6h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "bea_public_api",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "BEA API",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "treasury_fiscaldata",
+      "name": "US Treasury FiscalData",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "api",
+      "candidate_endpoint": "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "6h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "NEW_BOUNDED_PRIVATE_PROBE",
+      "attribution": {
+        "source_name": "US Treasury FiscalData",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "fed_press",
+      "name": "Federal Reserve press / FOMC / Beige Book",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "rss",
+      "candidate_endpoint": "https://www.federalreserve.gov/feeds/press_all.xml",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "10m",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "SCHEDULED_BOUNDED_PRIVATE_REVIEW",
+      "attribution": {
+        "source_name": "Federal Reserve press / FOMC / Beige Book",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.federalreserve.gov/feeds/press_all.xml",
+      "original_candidate_endpoint": "https://www.federalreserve.gov/feeds/press_all.xml",
+      "pending_live_provider_acceptance": true
+    },
+    {
+      "id": "ecb_data",
+      "name": "ECB Data Portal (SDMX)",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "api",
+      "candidate_endpoint": "https://data-api.ecb.europa.eu/service/data/",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "6h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "ecb_sdmx",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "European Central Bank",
+        "policy": "CREDIT_REQUIRED_RECORDED",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": false,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "central_banks_other",
+      "name": "BoE / BoJ / PBoC / RBI",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "rss",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "1h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_NO_CONCRETE_ENDPOINT",
+      "attribution": {
+        "source_name": "BoE / BoJ / PBoC / RBI",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "imf",
+      "name": "IMF DataMapper / WEO / IFS",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "api",
+      "candidate_endpoint": "https://www.imf.org/external/datamapper/api/v1/",
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "imf_sdmx",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "IMF DataMapper / WEO / IFS",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "worldbank",
+      "name": "World Bank API",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "api",
+      "candidate_endpoint": "https://api.worldbank.org/v2/",
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "world_bank_indicators",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "World Bank",
+        "policy": "CREDIT_REQUIRED_RECORDED",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": false,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "oecd_eurostat_bis",
+      "name": "OECD / Eurostat / BIS statistics",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "api",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_NO_CONCRETE_ENDPOINT",
+      "attribution": {
+        "source_name": "OECD / Eurostat / BIS statistics",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "cftc_cot",
+      "name": "CFTC Commitments of Traders",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "bulk",
+      "candidate_endpoint": "https://www.cftc.gov/dea/newcot/",
+      "original_declared_freshness": "weekly",
+      "requested_poll_interval": "6h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "CFTC Commitments of Traders",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "eia",
+      "name": "EIA API (oil / gas)",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "api",
+      "candidate_endpoint": "https://api.eia.gov/v2/",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "1h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "eia_api_v2",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "EIA API (oil / gas)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "opec_iea",
+      "name": "OPEC MOMR / IEA",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "scrape",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "partial",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_NO_CONCRETE_ENDPOINT",
+      "attribution": {
+        "source_name": "OPEC MOMR / IEA",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "epu_index",
+      "name": "Economic Policy Uncertainty index",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "bulk",
+      "candidate_endpoint": "https://www.policyuncertainty.com/",
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "Economic Policy Uncertainty index",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "finnhub_calendar",
+      "name": "Finnhub economic calendar",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "macro",
+      "access": "api",
+      "candidate_endpoint": "https://finnhub.io/api/v1/calendar/economic",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "1h",
+      "source_tier": 2,
+      "operator_license_label_unverified": "partial",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "Finnhub economic calendar",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "market_prices",
+      "name": "Twelve Data / Polygon / Alpha Vantage (FX, equities, commodities)",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "markets",
+      "access": "api",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "1m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "partial",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "DEFER_MARKETS",
+      "attribution": {
+        "source_name": "Twelve Data / Polygon / Alpha Vantage (FX, equities, commodities)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "pyth",
+      "name": "Pyth (Hermes)",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "markets",
+      "access": "api",
+      "candidate_endpoint": "https://hermes.pyth.network",
+      "original_declared_freshness": "realtime",
+      "requested_poll_interval": "10s",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "DEFER_MARKETS",
+      "attribution": {
+        "source_name": "Pyth (Hermes)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "chainlink_feeds",
+      "name": "Chainlink Data Feeds",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "markets",
+      "access": "api",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "realtime",
+      "requested_poll_interval": "1m",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "DEFER_MARKETS",
+      "attribution": {
+        "source_name": "Chainlink Data Feeds",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "freight_indices",
+      "name": "Baltic Dry / Freightos FBX / Drewry WCI",
+      "domains": [
+        "macro"
+      ],
+      "provider_category": "markets",
+      "access": "scrape",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "1d",
+      "source_tier": 2,
+      "operator_license_label_unverified": "check",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "DEFER_MARKETS",
+      "attribution": {
+        "source_name": "Baltic Dry / Freightos FBX / Drewry WCI",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_gacc",
+      "name": "China GACC customs (HS 2805, 2846, 850511)",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "scrape",
+      "candidate_endpoint": "http://www.customs.gov.cn/",
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "China GACC customs (HS 2805, 2846, 850511)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "warning_insecure_candidate_transport": true
+    },
+    {
+      "id": "re_comtrade",
+      "name": "UN Comtrade",
+      "domains": [
+        "rare_earth",
+        "macro"
+      ],
+      "provider_category": "rare_earth",
+      "access": "api",
+      "candidate_endpoint": "https://comtradeapi.un.org/",
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "un_comtrade_minerals",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "UN Comtrade",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_us_itc",
+      "name": "US ITC DataWeb",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "api",
+      "candidate_endpoint": "https://dataweb.usitc.gov/",
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "CANDIDATE_NOT_ENABLED",
+      "attribution": {
+        "source_name": "US ITC DataWeb",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_eurostat_comext",
+      "name": "Eurostat Comext",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "api",
+      "candidate_endpoint": "https://ec.europa.eu/eurostat/",
+      "original_declared_freshness": "monthly",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "eurostat",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "Eurostat",
+        "policy": "CREDIT_REQUIRED_RECORDED",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": false,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_usgs",
+      "name": "USGS Mineral Commodity Summaries + critical minerals",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "bulk",
+      "candidate_endpoint": "https://www.usgs.gov/centers/national-minerals-information-center",
+      "original_declared_freshness": "annual",
+      "requested_poll_interval": "7d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "usgs_mcs",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "U.S. Geological Survey",
+        "policy": "CREDIT_REQUIRED_RECORDED",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": false,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_industry_reports",
+      "name": "IEA Critical Minerals Outlook / Adamas / Project Blue",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "scrape",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "annual",
+      "requested_poll_interval": "7d",
+      "source_tier": 2,
+      "operator_license_label_unverified": "paid",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_PAID_OR_NONCOMMERCIAL",
+      "attribution": {
+        "source_name": "IEA Critical Minerals Outlook / Adamas / Project Blue",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_smm",
+      "name": "Shanghai Metals Market (SMM / metal.com) - Nd/Pr/Dy/Tb oxide spot",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "scrape",
+      "candidate_endpoint": "https://www.metal.com/",
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "6h",
+      "source_tier": 2,
+      "operator_license_label_unverified": "check",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_RIGHTS_OR_AUTH_REVIEW",
+      "attribution": {
+        "source_name": "Shanghai Metals Market (SMM / metal.com) - Nd/Pr/Dy/Tb oxide spot",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_price_paid",
+      "name": "Fastmarkets / Argus / Benchmark Mineral Intelligence",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "api",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "paid",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_PAID_OR_NONCOMMERCIAL",
+      "attribution": {
+        "source_name": "Fastmarkets / Argus / Benchmark Mineral Intelligence",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_equity_proxies",
+      "name": "Equity proxies - REMX, MP, Lynas (LYC), Iluka (ILU), China Northern RE, Energy Fuels",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "api",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "5m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "partial",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_NO_CONCRETE_ENDPOINT",
+      "attribution": {
+        "source_name": "Equity proxies - REMX, MP, Lynas (LYC), Iluka (ILU), China Northern RE, Energy Fuels",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_us_policy",
+      "name": "DoD DPA Title III / DOE Critical Materials / Fed Register critical minerals",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "rss",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "6h",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_NO_CONCRETE_ENDPOINT",
+      "attribution": {
+        "source_name": "DoD DPA Title III / DOE Critical Materials / Fed Register critical minerals",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_intl_policy",
+      "name": "EU CRMA / JOGMEC / Australia Critical Minerals Office / G7",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "rss",
+      "candidate_endpoint": null,
+      "original_declared_freshness": "daily",
+      "requested_poll_interval": "1d",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_NO_CONCRETE_ENDPOINT",
+      "attribution": {
+        "source_name": "EU CRMA / JOGMEC / Australia Critical Minerals Office / G7",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_sec_edgar",
+      "name": "SEC EDGAR (MP, Energy Fuels, USA Rare Earth)",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "api",
+      "candidate_endpoint": "https://data.sec.gov/submissions/",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "30m",
+      "source_tier": 1,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": "sec_edgar",
+      "operator_v1_requested": false,
+      "runtime_state": "EXISTING_REGISTERED_NOT_REACTIVATED",
+      "attribution": {
+        "source_name": "SEC EDGAR (MP, Energy Fuels, USA Rare Earth)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_asx",
+      "name": "ASX announcements (Lynas, Iluka, Arafura)",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "scrape",
+      "candidate_endpoint": "https://www.asx.com.au/",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "15m",
+      "source_tier": 1,
+      "operator_license_label_unverified": "check",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "HOLD_RIGHTS_OR_AUTH_REVIEW",
+      "attribution": {
+        "source_name": "ASX announcements (Lynas, Iluka, Arafura)",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true
+    },
+    {
+      "id": "re_news_mining",
+      "name": "Mining.com / Mining Weekly / Rare Earth Exchanges",
+      "domains": [
+        "rare_earth"
+      ],
+      "provider_category": "rare_earth",
+      "access": "rss",
+      "candidate_endpoint": "https://www.mining.com/feed/",
+      "original_declared_freshness": "near_realtime",
+      "requested_poll_interval": "15m",
+      "source_tier": 2,
+      "operator_license_label_unverified": "free",
+      "canonical_existing_id": null,
+      "operator_v1_requested": false,
+      "runtime_state": "QUARANTINED_PROVIDER_403",
+      "attribution": {
+        "source_name": "Mining.com / Mining Weekly / Rare Earth Exchanges",
+        "policy": "CREDIT_NAME_IF_USED_REVIEW_PROVIDER_TERMS",
+        "source_names_not_evidence_of_actual_use": true,
+        "mandatory_name_added_to_provenance": true,
+        "original_publisher_additional_credit_required": false
+      },
+      "derived_only": true,
+      "raw_data_distribution": false,
+      "commercial_rights_rereview_required": true,
+      "provider_access_recheck_required": true,
+      "probe_url": "https://www.mining.com/feed/",
+      "original_candidate_endpoint": "https://www.mining.com/feed/",
+      "pending_live_provider_acceptance": false,
+      "activation_hold_reason": "Upstream returned HTTP 403 in production; do not bypass authorization"
+    }
+  ]
+}

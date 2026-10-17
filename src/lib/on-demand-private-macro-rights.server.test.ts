@@ -89,24 +89,14 @@ describe("private B2-only macro derived-use rights gate",()=>{
     expect(out.signed_intelligence_verified).toBe(false);
   });
 
-  it("prepares exact legally-required WDI CC BY 4.0 credit with both material links, but never marks signed or payable",async()=>{
+  it("rejects WDI CC BY 4.0 mandatory public credit when customer source identities are confidential",async()=>{
     const rights=await checkPrivateOnDemandMacroRights(
       [driver(),driver({driver:"real_gdp_growth"})],
       {readRights:reader([right({attribution_required:true,licence_name:"CC BY 4.0",
         commercial_usage_status:"COMMERCIAL_OK",raw_redistribution_allowed:true})])});
-    expect(rights.status).toBe("DERIVED_SOURCE_RIGHTS_VERIFIED_NOT_A_PAID_PRODUCT");
-    expect(rights.rights_verified_driver_count).toBe(2);
-    expect(rights.required_data_attribution).toEqual({
-      schema:"geomacro.approved-derived-data-attribution.v1",
-      credit:"World Bank, World Development Indicators",
-      terms:"CC BY 4.0",
-      terms_uri:"https://creativecommons.org/licenses/by/4.0/",
-      material_uris:[
-        "https://data.worldbank.org/indicator/FP.CPI.TOTL.ZG",
-        "https://data.worldbank.org/indicator/NY.GDP.MKTP.KD.ZG",
-      ],
-      modifications:"Geomacro adapted annual indicator observations into derived analysis; World Bank does not endorse the analysis.",
-    });
+    expect(rights.status).toBe("ATTRIBUTION_NOT_SUPPORTED_BY_PRIVATE_OUTPUT");
+    expect(rights.rights_verified_driver_count).toBe(0);
+    expect(rights.required_data_attribution).toBeNull();
     expect(rights.signed_intelligence_verified).toBe(false);
     expect(rights.payment_eligible).toBe(false);
   });

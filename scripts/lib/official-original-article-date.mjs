@@ -1,7 +1,11 @@
 // Private, bounded, same-original-publisher verification for Atom feeds that
 // omit per-entry <published>. An Atom <updated> is NEVER publication proof.
 // No raw HTML/title/URL is persisted to a public proof, log or paid response.
-const PAGE_BYTES_MAX = 128 * 1024;
+// Real GOV.UK original pages can exceed 128 KiB; the live 30-minute pulse
+// reported BODY_TOO_LARGE despite a valid first-party article link. Allow a
+// strictly bounded 384 KiB original HTML response, with the SAME two-page
+// GET budget/source, no redirects and no persistent article/body storage.
+const PAGE_BYTES_MAX = 384 * 1024;
 const PAGE_TIMEOUT_MS = 4_000;
 const ONE_DAY_MS = 86_400_000;
 // Explicit timezone mandatory. ISO 8601 permits >millisecond source precision
@@ -48,9 +52,9 @@ function parsePublisherOriginalClock(value) {
     .replace(/(\.\d{3})\d{1,6}(?=Z|[+-]\d\d:\d\d$)/iu,"$1");
   return Date.parse(canonical);
 }
-function precise(value, nowMs) {
+function precise(value, nowMs, maxAgeMs = ONE_DAY_MS) {
   const ms = parsePublisherOriginalClock(value);
-  if (!Number.isFinite(ms) || ms > nowMs || nowMs - ms > ONE_DAY_MS) return null;
+  if (!Number.isFinite(ms) || ms > nowMs || nowMs - ms > maxAgeMs) return null;
   return ms;
 }
 
@@ -87,7 +91,14 @@ function closingScriptTag(source, from) {
   return null;
 }
 
-export function verifiedPublisherPageDate(html, now = new Date(), diagnostics = null) {
+export function verifiedPublisherPageDate(
+  html, now = new Date(), diagnostics = null, options = {},
+) {
+  // Existing 24h readers retain the exact previous default. Only explicit,
+  // bounded on-demand historical queries may extend their original-date age.
+  const requestedAge = options?.maxAgeMs;
+  const maxAgeMs = Number.isInteger(requestedAge) && requestedAge>0 &&
+    requestedAge<=31*ONE_DAY_MS ? requestedAge : ONE_DAY_MS;
   const reason = (code) => {
     if (diagnostics && typeof diagnostics === "object" &&
         !Array.isArray(diagnostics) &&
@@ -164,7 +175,7 @@ export function verifiedPublisherPageDate(html, now = new Date(), diagnostics = 
   if (times.some(time=>time>ms)) {
     reason("FUTURE_PUBLISHER_PUBLICATION");return null;
   }
-  if (times.some(time=>ms-time>ONE_DAY_MS)) {
+  if (times.some(time=>ms-time>maxAgeMs)) {
     reason("STALE_PUBLISHER_PUBLICATION");return null;
   }
   if (Math.max(...times) - Math.min(...times) > 60_000) {
@@ -172,7 +183,7 @@ export function verifiedPublisherPageDate(html, now = new Date(), diagnostics = 
   }
   // Keep the original strict same-day precise verifier authoritative.
   if (times.some(time=>time===null) ||
-      candidates.some(value=>precise(value,ms)===null)) {
+      candidates.some(value=>precise(value,ms,maxAgeMs)===null)) {
     reason("INVALID_PUBLICATION_DATE_SHAPE");return null;
   }
   reason("PRECISE_PUBLICATION_ACCEPTED");
@@ -219,8 +230,8 @@ function fixedPublisherArticle(rawUrl, category) {
       return origin + "/en/natural-resources-canada/news/" +
         match[1] + "/" + match[2] + "/" + match[3] + ".html";
     }
-    if (["geopolitics", "rare_earth"].includes(category) && candidate.hostname === "www.gov.uk") {
-      // A precise original GOV.UK FCDO/DBT article path only, never arbitrary
+    if (["geopolitics", "macro", "rare_earth"].includes(category) && candidate.hostname === "www.gov.uk") {
+      // A precise original GOV.UK FCDO/Treasury/DBT article path only, never arbitrary
       // redirect/asset/API URLs or a caller-supplied domain.
       const match = /^\/government\/(news|speeches|world-location-news|statements|publications)\/([a-z0-9][a-z0-9-]{4,190})$/u.exec(path);
       if (!match) return null;
@@ -246,6 +257,14 @@ function fixedPublisherArticle(rawUrl, category) {
     }
     return null;
   } catch { return null; }
+}
+
+/** Strict private GKG prefilter: no arbitrary GDELT-observed website can be
+ * treated as an official original publisher merely because GDELT indexed it.
+ * This reuses exactly the verifier's existing pinned HTTPS host/path policy.
+ */
+export function approvedFirstPartyOriginalArticleUrl(url, category) {
+  return fixedPublisherArticle(url, category);
 }
 
 // Aggregate-only closed diagnostic. Never copy HTTP headers, URLs, response

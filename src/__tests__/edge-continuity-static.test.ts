@@ -51,7 +51,11 @@ describe("cap-independent verified edge continuity", () => {
     const intelligence = read(".github/workflows/deploy-intelligence-edge.yml");
     expect(global).not.toContain('cron: "13 */6 * * *"');
     expect(global).not.toContain("  schedule:");
-    expect(global).not.toContain("  push:");
+    expect(global).toContain("  push:");
+    expect(global).toContain('paths:');
+    expect(global).toContain('"workers/global-risk-edge/src/index.mjs"');
+    expect(global).toContain("github.event_name == 'push'");
+    expect(global).not.toContain("  schedule:");
     expect(global).toContain('workflows: ["GRI Realtime Direct Postgres"]');
     expect(global).toContain("github.event.workflow_run.conclusion == 'success'");
     expect(global).toContain("github.event.workflow_run.head_branch == 'main'");
@@ -60,7 +64,10 @@ describe("cap-independent verified edge continuity", () => {
     expect(global).toContain("GLOBAL_RISK_SHARED_B2_D1_SCHEMA_V5_REQUIRED");
     expect(indices).not.toContain('cron: "28 */6 * * *"');
     expect(indices).not.toContain("  schedule:");
-    expect(indices).not.toContain("  push:");
+    expect(indices).toContain("  push:");
+    expect(indices).toContain('"workers/risk-indices-edge/src/index.mjs"');
+    expect(indices).toContain("github.event_name == 'push'");
+    expect(indices).not.toContain("  schedule:");
     expect(indices).toContain('workflows: ["Risk Indices Realtime Direct Postgres"]');
     expect(indices).toContain("github.event.workflow_run.conclusion == 'success'");
     expect(indices).toContain("github.event.workflow_run.head_branch == 'main'");

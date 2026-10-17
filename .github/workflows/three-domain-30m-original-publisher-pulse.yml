@@ -7,6 +7,13 @@ on:
   schedule:
     # Intended UTC 30-minute checks; GitHub Actions cron is best-effort.
     - cron: "12,42 * * * *"
+  # GitHub's best-effort cron has missed multiple intended 30-minute
+  # windows. Use an ALREADY scheduled free producer as an alternate wakeup.
+  # Do not download or trust its artifacts; recheck canonical source-native
+  # publishers and new D1 fingerprints in this workflow itself.
+  workflow_run:
+    workflows: ["Three-Domain Unified Private Source Intake"]
+    types: [completed]
   push:
     branches: [main]
     paths:
@@ -16,11 +23,19 @@ on:
       - "src/__tests__/three-domain-30m-source-pulse.test.ts"
       - "src/__tests__/ecb-original-macro-third-publisher.test.ts"
       - "scripts/lib/private-original-publisher-candidates.mjs"
+      - "scripts/lib/official-native-rss.mjs"
+      - "scripts/lib/official-native-third-fallback.mjs"
+      - "scripts/lib/private-novel-pulse-match.mjs"
+      - "src/__tests__/official-native-third-fallback.test.ts"
+      - "scripts/lib/pulse-rotated-original-scorer.mjs"
+      - "scripts/lib/pulse-rotated-original-scorer.test.mjs"
       - "src/__tests__/private-original-publisher-candidates.test.ts"
       - "src/__tests__/open-original-observation-without-topic-gate.test.ts"
       - "src/__tests__/original-publisher-item-diagnostics.test.ts"
       - "src/__tests__/source-native-date-shape-and-original-page-codes.test.ts"
       - "src/__tests__/rotating-original-publisher-pages.test.ts"
+      - "src/__tests__/bounded-first-party-article-size-recovery.test.ts"
+      - "scripts/lib/official-original-article-date.mjs"
       - "src/__tests__/undated-atom-original-link-diagnostics.test.ts"
       - "src/__tests__/statcan-exact-original-daily-article-path.test.ts"
       - "src/__tests__/statcan-unknown-path-shapes.test.ts"
@@ -34,6 +49,9 @@ on:
       - "src/__tests__/fed-native-cdata-original-article-link.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
       - "scripts/lib/auto-private-scoring-trigger.mjs"
+      - "scripts/lib/private-classifier-retry-ledger.mjs"
+      - "scripts/lib/private-classifier-retry-ledger.test.mjs"
+      - "scripts/ops/private-classifier-retry-lifecycle.mjs"
       - "scripts/tests/auto-private-scoring-trigger.test.mjs"
       - "scripts/lib/private-original-cross-poll-dedupe.mjs"
       - "src/__tests__/private-original-cross-poll-dedupe.test.ts"
@@ -50,11 +68,19 @@ on:
       - "src/__tests__/three-domain-30m-source-pulse.test.ts"
       - "src/__tests__/ecb-original-macro-third-publisher.test.ts"
       - "scripts/lib/private-original-publisher-candidates.mjs"
+      - "scripts/lib/official-native-rss.mjs"
+      - "scripts/lib/official-native-third-fallback.mjs"
+      - "scripts/lib/private-novel-pulse-match.mjs"
+      - "src/__tests__/official-native-third-fallback.test.ts"
+      - "scripts/lib/pulse-rotated-original-scorer.mjs"
+      - "scripts/lib/pulse-rotated-original-scorer.test.mjs"
       - "src/__tests__/private-original-publisher-candidates.test.ts"
       - "src/__tests__/open-original-observation-without-topic-gate.test.ts"
       - "src/__tests__/original-publisher-item-diagnostics.test.ts"
       - "src/__tests__/source-native-date-shape-and-original-page-codes.test.ts"
       - "src/__tests__/rotating-original-publisher-pages.test.ts"
+      - "src/__tests__/bounded-first-party-article-size-recovery.test.ts"
+      - "scripts/lib/official-original-article-date.mjs"
       - "src/__tests__/undated-atom-original-link-diagnostics.test.ts"
       - "src/__tests__/statcan-exact-original-daily-article-path.test.ts"
       - "src/__tests__/statcan-unknown-path-shapes.test.ts"
@@ -68,6 +94,9 @@ on:
       - "src/__tests__/fed-native-cdata-original-article-link.test.ts"
       - "scripts/ops/write-30min-source-pulse-d1.mjs"
       - "scripts/lib/auto-private-scoring-trigger.mjs"
+      - "scripts/lib/private-classifier-retry-ledger.mjs"
+      - "scripts/lib/private-classifier-retry-ledger.test.mjs"
+      - "scripts/ops/private-classifier-retry-lifecycle.mjs"
       - "scripts/tests/auto-private-scoring-trigger.test.mjs"
       - "scripts/lib/private-original-cross-poll-dedupe.mjs"
       - "src/__tests__/private-original-cross-poll-dedupe.test.ts"
@@ -104,6 +133,9 @@ jobs:
           node --check scripts/lib/private-original-cross-poll-dedupe.mjs
           node --check scripts/ops/write-30min-source-pulse-d1.mjs
           node --test scripts/tests/auto-private-scoring-trigger.test.mjs
+          node --test scripts/lib/private-classifier-retry-ledger.test.mjs
+          node --check scripts/ops/private-classifier-retry-lifecycle.mjs
+          node --test scripts/lib/pulse-rotated-original-scorer.test.mjs
           node --check workers/control-plane/src/source-pulse-public.mjs
           node --check scripts/ops/probe-expanded-official-source-mesh.mjs
           test -f src/__tests__/three-domain-30m-source-pulse.test.ts
@@ -112,7 +144,19 @@ jobs:
     needs: source-contract
     outputs:
       private_scoring_needed: ${{ steps.d1.outputs.private_scoring_needed }}
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      (
+        github.event_name != 'workflow_run' ||
+        (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'schedule' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'
+        )
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 6
     environment: production

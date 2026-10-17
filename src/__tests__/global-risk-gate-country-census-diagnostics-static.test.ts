@@ -38,17 +38,30 @@ describe("global Risk Gate country census diagnostics", () => {
     expect(census).toContain('schema_version: "geomacro-global-risk-gate-country-census-2.2"');
     expect(census).toContain("missing_or_unverified_input_fails_closed: true");
     expect(census).toContain("execution_authorized_is_false: true");
-    expect(workflow).toContain("geomacro-global-risk-gate-country-census-2.2");
-    expect(workflow).toContain("source_state_diagnostics_exclude_credentials_and_raw_payloads");
+    expect(workflow).toContain("geomacro.supabase-free-country-runtime-audit.v1");
+    expect(workflow).toContain(".paid_country_readiness_assessed == false");
+    expect(workflow).toContain(".boundaries.supabase_requests == 0");
   });
 
-  it("continuously captures sanitized geopolitical blockers with the country readiness audit", () => {
-    expect(workflow).toContain("audit-geopolitical-production-diagnostics.ts");
-    expect(workflow).toContain("geomacro-geopolitical-production-diagnostics-1.0");
-    expect(workflow).toContain("raw_event_material_included == false");
-    expect(workflow).toContain("event_text_or_publisher_material_redistributed == false");
-    expect(workflow).toContain("source_rights_changed == false");
-    expect(workflow).toContain("scoring_changed == false");
-    expect(workflow).toContain("/tmp/geopolitical-production-diagnostics.json");
+  it("preserves legacy diagnostic boundaries while active country audit uses public D1 proofs without Supabase", () => {
+    const legacy=readFileSync("scripts/audit-geopolitical-production-diagnostics.ts","utf8");
+    expect(legacy).toContain("geomacro-geopolitical-production-diagnostics-1.0");
+    expect(legacy).toContain("raw_event_material_included: false");
+    expect(legacy).toContain("source_rights_changed: false");
+    expect(legacy).toContain("scoring_changed: false");
+    expect(workflow).toContain("audit-supabase-free-country-runtime.ts");
+    expect(workflow).toContain(".country_current_evidence_not_inferred_from_global_feeds == true");
+    const audit=readFileSync("scripts/audit-supabase-free-country-runtime.ts","utf8");
+    expect(audit).toContain("buildCanonical195x3CoverageMatrix()");
+    expect(audit).not.toContain("source_adapter_registered:true");
+    expect(workflow).not.toContain("secrets.APP_SUPABASE_URL");
+    expect(workflow).not.toContain("secrets.SUPABASE_SERVICE_ROLE_KEY");
+    expect(workflow).not.toContain("secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64");
+    // Worker routes are unavailable during the source commit's deployment
+    // race; audit only after the actual D1 deploy workflow succeeds.
+    expect(workflow).toContain('workflows: ["Deploy D1 Control Plane"]');
+    expect(workflow).not.toContain('workflows: ["Geomacro Intelligence Orchestrator"]');
+    expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(workflow).toContain('27 6 * * *');
   });
 });

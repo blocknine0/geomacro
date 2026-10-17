@@ -1,4 +1,4 @@
-name: World Bank PPG Global Shadow Census
+name: World Bank PPG Supabase-Free Source Shadow Census
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
       - "scripts/audit-world-bank-ppg-debt-stock-ratio.mjs"
       - "scripts/audit-world-bank-ppg-sovereign-fiscal-shadow.ts"
       - "scripts/global-risk-gate-country-ppg-shadow-census.ts"
+      - "scripts/ops/world-bank-ppg-supabase-free-source-census.mjs"
       - "src/lib/risk-gate-v2-world-bank-ppg-sovereign-fiscal.ts"
       - ".github/workflows/world-bank-ppg-global-shadow-census.yml"
   pull_request:
@@ -15,6 +16,7 @@ on:
       - "scripts/audit-world-bank-ppg-debt-stock-ratio.mjs"
       - "scripts/audit-world-bank-ppg-sovereign-fiscal-shadow.ts"
       - "scripts/global-risk-gate-country-ppg-shadow-census.ts"
+      - "scripts/ops/world-bank-ppg-supabase-free-source-census.mjs"
       - "src/lib/risk-gate-v2-world-bank-ppg-sovereign-fiscal.ts"
       - ".github/workflows/world-bank-ppg-global-shadow-census.yml"
   workflow_dispatch:
@@ -27,13 +29,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  full-shadow-census:
+  source-only-census:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
     env:
-      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       WORLD_BANK_PPG_RATIO_OUTPUT: world-bank-ppg-debt-stock-ratio.json
       WORLD_BANK_PPG_SHADOW_OUTPUT: world-bank-ppg-sovereign-fiscal-shadow.json
       GLOBAL_RISK_GATE_PPG_SHADOW_CENSUS_OUTPUT: global-risk-gate-country-ppg-shadow-census.json
@@ -53,8 +53,17 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Validate authoritative production read target
-        run: node scripts/db/assert-authoritative-supabase.mjs
+      - name: Prove source-only path has no Supabase credential
+        env:
+          SUPABASE_DB_URL: ""
+          SUPABASE_URL: ""
+          APP_SUPABASE_URL: ""
+          SUPABASE_SERVICE_ROLE_KEY: ""
+          APP_SUPABASE_SERVICE_ROLE_KEY: ""
+        run: |
+          set -euo pipefail
+          test -z "${SUPABASE_DB_URL}${SUPABASE_URL}${APP_SUPABASE_URL}${SUPABASE_SERVICE_ROLE_KEY}${APP_SUPABASE_SERVICE_ROLE_KEY}"
+          node --check scripts/ops/world-bank-ppg-supabase-free-source-census.mjs
 
       - name: Reproduce World Bank PPG derived coverage
         shell: bash
@@ -70,28 +79,22 @@ jobs:
           bun scripts/audit-world-bank-ppg-sovereign-fiscal-shadow.ts | tee world-bank-ppg-sovereign-fiscal-shadow.log
           grep -q 'PASS: WORLD BANK PPG SOVEREIGN-FISCAL SHADOW REACHES 100 COUNTRIES - NO PRODUCTION CHANGES' world-bank-ppg-sovereign-fiscal-shadow.log
 
-      - name: Run full four-module country shadow census
+      - name: Check real PPG fiscal country coverage without asserting missing Risk Gate modules
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/global-risk-gate-country-ppg-shadow-census.ts --require-target | tee global-risk-gate-country-ppg-shadow-census.log
-          grep -q 'PASS: GLOBAL PPG SHADOW COUNTRY CENSUS COMPLETE - NO PRODUCTION CHANGES' global-risk-gate-country-ppg-shadow-census.log
+          bun scripts/ops/world-bank-ppg-supabase-free-source-census.mjs | tee global-risk-gate-country-ppg-shadow-census.log
+          grep -q 'PASS: WORLD BANK PPG SUPABASE-FREE SOURCE-ONLY COUNTRY CENSUS - NO PRODUCTION CHANGES' global-risk-gate-country-ppg-shadow-census.log
 
-      - name: Enforce 100-country and no-production-change boundary
+      - name: Enforce 100-country fiscal-only target and no false four-module readiness
         shell: bash
         run: |
           set -euo pipefail
-          jq -e '.writes_performed == false' global-risk-gate-country-ppg-shadow-census.json >/dev/null
-          jq -e '.summary.shadow_accepted_country_count >= 100' global-risk-gate-country-ppg-shadow-census.json >/dev/null
-          jq -e '.summary.target_reached == true' global-risk-gate-country-ppg-shadow-census.json >/dev/null
-          jq -e '.claim_boundary.shadow_only == true' global-risk-gate-country-ppg-shadow-census.json >/dev/null
-          jq -e '.claim_boundary.production_activation_allowed == false' global-risk-gate-country-ppg-shadow-census.json >/dev/null
-          jq -e '.claim_boundary.production_country_payability_changed == false' global-risk-gate-country-ppg-shadow-census.json >/dev/null
-          jq -e '.claim_boundary.production_scoring_changed == false' global-risk-gate-country-ppg-shadow-census.json >/dev/null
-          jq -e '.claim_boundary.base_mainnet_gate_changed == false' global-risk-gate-country-ppg-shadow-census.json >/dev/null
-          jq -e '.claim_boundary.execution_authorized_is_false == true' global-risk-gate-country-ppg-shadow-census.json >/dev/null
-          jq -e '.claim_boundary.ppg_external_debt_not_relabelled_as_total_government_debt == true' global-risk-gate-country-ppg-shadow-census.json >/dev/null
-          jq -e '.claim_boundary.no_raw_cross_source_value_pooling == true' global-risk-gate-country-ppg-shadow-census.json >/dev/null
+          jq -e '.schema=="geomacro.ppg-supabase-free-source-shadow-census.v1"' global-risk-gate-country-ppg-shadow-census.json >/dev/null
+          jq -e '.country_count==195 and .ppg_fiscal_shadow_countries>=100 and .source_only_target_reached==true' global-risk-gate-country-ppg-shadow-census.json >/dev/null
+          jq -e '.four_module_accepted_country_count==null and .four_module_country_census_status=="NOT_ASSESSED_MISSING_INDEPENDENT_NON_SUPABASE_MODULE_SNAPSHOTS"' global-risk-gate-country-ppg-shadow-census.json >/dev/null
+          jq -e '.shadow_only==true and .production_activation_allowed==false and .production_country_payability_changed==false and .scoring_production_changed==false and .x402_chargeable==false' global-risk-gate-country-ppg-shadow-census.json >/dev/null
+          jq -e '.supabase_connections==0 and .b2_gets==0 and .d1_writes==0 and .usdc_spent==0' global-risk-gate-country-ppg-shadow-census.json >/dev/null
 
       - name: Upload sanitized shadow census evidence
         if: always()

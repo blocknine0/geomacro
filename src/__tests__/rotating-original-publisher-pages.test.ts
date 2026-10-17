@@ -25,21 +25,27 @@ const htmlFor=(url:string)=>
   '"></head></html>';
 
 describe("#2041 bounded rotating original-publisher page verification",()=>{
-  it("always anchors the first valid original and eventually samples every additional eligible page",()=>{
-    const results=[slot0,slot1,slot2].map(now=>
+  it("rotates both bounded slots and samples all pages without a permanently stale anchor",()=>{
+    const observations=[slot0,slot1,slot2].map(now=>
       selectRotatingFirstPartyPages(urls,now,{rotate:true}));
-    for(const group of results) {
+    for(const group of observations){
       expect(group).toHaveLength(2);
-      expect(group[0]).toBe(urls[0]);
-      expect(group[1]).not.toBe(urls[0]);
+      expect(new Set(group).size).toBe(2);
     }
-    expect(new Set(results.map(r=>r[1]))).toEqual(new Set(urls.slice(1)));
+    expect(new Set(observations.flat())).toEqual(new Set(urls));
+    expect(observations[0]).toEqual(observations[2]);
+    expect(observations[0]).not.toEqual(observations[1]);
     expect(selectRotatingFirstPartyPages(urls,slot0,{rotate:false}))
       .toEqual(urls.slice(0,2));
     expect(selectRotatingFirstPartyPages([urls[0]],slot0,{rotate:true}))
       .toEqual([urls[0]]);
+    const five=[...urls,"https://www.gov.uk/government/news/foreign-secretary-extra"];
+    const groups=Array.from({length:5},(_,i)=>selectRotatingFirstPartyPages(
+      five,new Date(slot0.getTime()+i*30*60*1000),{rotate:true}));
+    expect(new Set(groups.flat())).toEqual(new Set(five));
+    expect(groups.every(x=>x.length===2&&x[0]!==x[1])).toBe(true);
   });
-  it("recovers separate publisher page publication clocks across polls without trusting Atom updated or exceeding two page GETs",async()=>{
+  it("recovers original publisher dates from rotating pages under exactly two article requests",async()=>{
     const pageHistory:string[]=[];
     for(const now of [slot0,slot1,slot2]){
       const fetched:string[]=[];
@@ -54,28 +60,32 @@ describe("#2041 bounded rotating original-publisher page verification",()=>{
       const observed=await probeExpandedSource(src,{
         now,fetchImpl,openDiscovery:true,collectPrivateCandidates:true,
       });
+      const checked=selectRotatingFirstPartyPages(urls,now,{rotate:true});
+      const stale=checked.includes(urls[0])?1:0;
+      const fresh=2-stale;
       expect(fetchImpl).toHaveBeenCalledTimes(3);
-      expect(fetched[0]).toBe(src.url);
-      expect(fetched[1]).toBe(urls[0]);
+      expect(fetched).toEqual([src.url,...checked]);
       expect(observed.original_page_precise_date_checks).toBe(2);
       expect(observed.original_page_eligible_link_pool_count).toBe(4);
       expect(observed.original_page_rotation_applied).toBe(true);
       expect(observed.undated_atom_article_link_candidates).toBe(4);
-      expect(observed.original_page_precise_date_24h).toBe(1);
-      expect(observed.first_party_original_page_date_reason_codes).toMatchObject({
-        STALE_PUBLISHER_PUBLICATION:1,PRECISE_PUBLICATION_ACCEPTED:1,
-      });
+      expect(observed.original_page_precise_date_24h).toBe(fresh);
+      // Zero-count enum keys are intentionally absent from sanitized receipts.
+      expect(observed.first_party_original_page_date_reason_codes
+        .STALE_PUBLISHER_PUBLICATION??0).toBe(stale);
+      expect(observed.first_party_original_page_date_reason_codes
+        .PRECISE_PUBLICATION_ACCEPTED??0).toBe(fresh);
       expect(Object.values(observed.first_party_original_page_date_reason_codes)
         .reduce((n:number,x:any)=>n+x,0)).toBe(2);
       expect(observed.current_scored_intelligence_verified).toBe(false);
       expect(observed.commercial_eligible).toBe(false);
-      expect(observed.private_original_article_candidates).toHaveLength(1);
-      expect(observed.private_original_article_candidates[0].eligible_for_scoring)
-        .toBe(false);
+      expect(observed.private_original_article_candidates).toHaveLength(fresh);
+      expect(observed.private_original_article_candidates.every(
+        (x:{eligible_for_scoring:boolean})=>x.eligible_for_scoring===false
+      )).toBe(true);
     }
-    expect(pageHistory.filter(url=>url===urls[0])).toHaveLength(3);
-    expect(new Set(pageHistory.filter(url=>url!==urls[0])))
-      .toEqual(new Set(urls.slice(1)));
+    expect(new Set(pageHistory)).toEqual(new Set(urls));
+    expect(pageHistory).toHaveLength(6);
   });
   it("rejects invalid clocks, unbounded lists and untyped link candidates",()=>{
     expect(()=>selectRotatingFirstPartyPages(urls,new Date(NaN),{rotate:true}))

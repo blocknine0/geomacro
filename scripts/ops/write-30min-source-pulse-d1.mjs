@@ -11,6 +11,8 @@ import {createD1ControlPlaneStateClient} from "../lib/d1-control-plane-state.mjs
 import {reconcile30mPrivateArticleFingerprints} from "../lib/private-original-cross-poll-dedupe.mjs";
 import {reconcileUndatedPrivateFeedObservations} from "../lib/private-undated-feed-dedup.mjs";
 import {reconcilePrivateOriginalReviewQueue} from "../lib/private-original-review-queue.mjs";
+import {PRIVATE_SCORING_ATTEMPTS_PIPELINE,pickPrivateClassifierWork,
+ readPrivateClassifierAttempts} from "../lib/private-classifier-retry-ledger.mjs";
 
 const DOMAINS=["geopolitics","macro","rare_earth"];
 function validCount(value) {return Number.isSafeInteger(value)&&value>=0&&value<=1000;}
@@ -87,6 +89,9 @@ export function projectSourcePulseForD1(report) {
 export async function write30MinSourcePulseToD1({
   report,fetchImpl=fetch,
   createClient=createD1ControlPlaneStateClient,
+  // Separate injection is optional for legacy test fixtures. Production always
+  // uses the authenticated D1 attempts pipeline and refuses access failures.
+  createAttemptsClient=null,
 }){
   const rows=projectSourcePulseForD1(report);
   // The in-memory injected client for tests needs no live Cloudflare account.
@@ -113,7 +118,15 @@ export async function write30MinSourcePulseToD1({
   // observation. GitHub concurrency serializes this one producer workflow;
   // no raw article bodies/URLs/titles or signed paid data enter this ledger.
   const previousRows=await client.loadRows();
+  // Separate D1 checkpoint pipeline: producer never overwrites the scorer's
+  // classifier claim/ack ledger, and a missing/unreachable ledger fails closed.
+  const attemptClientFactory=createAttemptsClient??(createClient===createD1ControlPlaneStateClient?createClient:null);
+  const priorAttempts=attemptClientFactory
+    ?await attemptClientFactory({pipeline:PRIVATE_SCORING_ATTEMPTS_PIPELINE}).loadRows()
+    :new Map();
   const privateDedup=new Map();
+  const pendingWork=new Map();
+  const acknowledgedExclusions=new Map();
   const undatedDedup=new Map();
   const privateReviewQueue=new Map();
   for(const row of rows){
@@ -159,6 +172,35 @@ export async function write30MinSourcePulseToD1({
       private_undated_feed_new_unverified_topic_hints:feedResult.new_feed_entries_with_unverified_topic_hint,
       private_undated_feed_repeated_count:feedResult.existing_feed_entries_repeated,
     };
+    const eligible=pickPrivateClassifierWork({
+      domain:row.domain,source:state,ledger:priorAttempts.get(row.domain),
+      now:Date.parse(row.checked_at),
+      currentCandidates:original?.private_original_article_candidates??[],
+    });
+    pendingWork.set(row.domain,eligible);
+    // Issue #2229: compare each still-retained, durably ACKed original SHA
+    // AND its source-native publication clock against current D1 history.
+    // The receipt exports aggregate counts only, never SHA, URL or titles.
+    // No new D1 query, model invocation, source fetch or B2 request.
+    const acked=readPrivateClassifierAttempts(
+      priorAttempts.get(row.domain),row.domain,Date.parse(row.checked_at),
+    ).filter(e=>e.status==="ACKED_CLASSIFIED");
+    const clocks=new Map(result.recent_private_article_fingerprints.map(e=>
+      [e.article_sha256,e.native_published_at]));
+    let ackedReobserved=0;
+    for(const e of acked){
+      const clock=clocks.get(e.article_sha256);
+      if(clock===undefined)continue;
+      if(clock!==e.native_published_at)
+        throw Error("PRIVATE_CLASSIFIER_ACK_SOURCE_CLOCK_MISMATCH");
+      if(eligible.some(w=>w.article_sha256===e.article_sha256))
+        throw Error("PRIVATE_CLASSIFIER_ACKED_ORIGINAL_RESELECTED");
+      ackedReobserved++;
+    }
+    acknowledgedExclusions.set(row.domain,{
+      ledgerAcked:acked.length,reobserved:ackedReobserved,
+    });
+    state.private_classifier_work_refs=eligible.map(e=>e.article_sha256);
     await client.persist(row.domain,state,{
       last_attempt_at:row.checked_at,
       last_success_at:row.last_success_at,
@@ -203,6 +245,8 @@ export async function write30MinSourcePulseToD1({
          JSON.stringify(privateDedup.get(row.domain).recent_private_article_fingerprints) ||
        JSON.stringify(stored?.payload?.newly_seen_private_article_refs)!==
          JSON.stringify(privateDedup.get(row.domain).newly_seen_private_article_refs) ||
+       JSON.stringify(stored?.payload?.private_classifier_work_refs)!==
+         JSON.stringify(pendingWork.get(row.domain).map(x=>x.article_sha256)) ||
        JSON.stringify(stored?.payload?.private_original_review_refs)!==
          JSON.stringify(privateReviewQueue.get(row.domain).private_review_refs) ||
        stored?.payload?.private_original_review_pending_count!==
@@ -221,6 +265,18 @@ export async function write30MinSourcePulseToD1({
       [...privateDedup.values()].reduce((n,r)=>n+r.new_article_fingerprint_count,0),
     repeated_private_original_article_fingerprints:
       [...privateDedup.values()].reduce((n,r)=>n+r.repeated_article_fingerprint_count,0),
+    selected_private_classifier_ref_count:
+      [...pendingWork.values()].reduce((n,x)=>n+x.length,0),
+    selected_private_classifier_retry_count:
+      [...pendingWork.values()].reduce((n,x)=>n+x.filter(v=>v.retry).length,0),
+    // Authenticated private D1 SHA+native-clock comparison, after the
+    // existing source-checkpoint readback. A zero means NOT PROVEN, not
+    // absence of ACK history; counts alone never authorize issue closure.
+    classifier_acked_ledger_entries:
+      [...acknowledgedExclusions.values()].reduce((n,x)=>n+x.ledgerAcked,0),
+    classifier_acked_sha_clock_reobserved_and_excluded:
+      [...acknowledgedExclusions.values()].reduce((n,x)=>n+x.reobserved,0),
+    classifier_acked_exclusion_is_commercial_evidence:false,
     undated_feed_first_observation_baseline_count:
       [...undatedDedup.values()].reduce((n,r)=>n+r.initial_backlog_entries_baselined,0),
     undated_feed_new_since_previous_poll_count:
@@ -269,6 +325,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       "SOURCE_PULSE_PREVIOUS_HISTORY_INVALID",
       "SOURCE_PULSE_UNSAFE_OR_UNDATED_CANDIDATE",
       "SOURCE_PULSE_HISTORY_CAPACITY_EXCEEDED",
+      "PRIVATE_CLASSIFIER_ACK_SOURCE_CLOCK_MISMATCH",
+      "PRIVATE_CLASSIFIER_ACKED_ORIGINAL_RESELECTED",
       "PRIVATE_ORIGINAL_REVIEW_QUEUE_INVALID",
       "PRIVATE_ORIGINAL_REVIEW_QUEUE_CAPACITY_EXCEEDED",
       "UNDATED_PULSE_HISTORY_INVALID",

@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
+import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 import {
   discoverOnDemandGlobal, discoverOnDemandForPrivateQualification,
+  matchesRequestedTopic,
 } from "./on-demand-global-discovery.server";
 
 const now=new Date("2026-10-11T12:00:00Z");
@@ -25,6 +26,25 @@ describe("fixed country qualification for original publisher evidence",()=>{
   )=>{
     expect(originalHeadlineMentionsCountry(title,iso,name)).toBe(expected);
   });
+  it("recognizes original Fed discount-rate policy as macro, not FX or mineral evidence",()=>{
+    const genuineTitle="Minutes of the Board's discount rate meetings on August 17, September 9, and September 16, 2026";
+    expect(matchesRequestedTopic(genuineTitle,"macro",["macro_risk"])).toBe(true);
+    expect(matchesRequestedTopic(genuineTitle,"macro",["fx_external_risk"])).toBe(false);
+    expect(matchesRequestedTopic(genuineTitle,"rare_earth",["critical_minerals"])).toBe(false);
+  });
+  it("admits only authenticated US Fed domestic discount-rate meeting releases for implicit US scope",()=>{
+    const original="Minutes of the Board's discount rate meetings on August 17, September 9, and September 16, 2026";
+    expect(originalPublisherMatchesCountry(original,"","USA","United States",
+      "us_federal_reserve_original_publisher")).toBe(true);
+    expect(originalPublisherMatchesCountry(original,"","GBR","United Kingdom",
+      "us_federal_reserve_original_publisher")).toBe(false);
+    expect(originalPublisherMatchesCountry(original,"","USA","United States",
+      "uk_hmt_original_publisher")).toBe(false);
+    expect(originalPublisherMatchesCountry("Federal Reserve Bank acquires overseas securities",
+      "","USA","United States","us_federal_reserve_original_publisher")).toBe(false);
+    expect(originalPublisherMatchesCountry(original,"","USA","",
+      "us_federal_reserve_original_publisher")).toBe(false);
+  });
   it("fails closed when no real country name has been established",()=>{
     expect(originalHeadlineMentionsCountry("Chinese lithium","CHN","")).toBe(false);
     expect(originalHeadlineMentionsCountry("Chinese lithium","CHN","https://example")).toBe(false);
@@ -44,7 +64,7 @@ describe("China lithium exact customer question — one shared bounded on-demand
     const fetchImpl=vi.fn(async(input:RequestInfo|URL,opts?:RequestInit)=>{
       const uri=new URL(String(input));requests.push(uri.href);
       expect(opts?.method).toBe("GET");
-      expect(opts?.redirect).toBe("error");
+      expect(opts?.redirect).toBe("manual");
       if(uri.hostname==="api.worldbank.org")
         return Response.json([{page:1,total:1},[{id:"CHN",name:"China"}]]);
       if(uri.hostname==="api.gdeltproject.org")
@@ -69,7 +89,7 @@ describe("China lithium exact customer question — one shared bounded on-demand
     }) as unknown as typeof fetch;
     const scoped={country_iso3:"CHN",categories:["rare_earth" as const],mineral:"lithium" as const};
     const privateProof=await discoverOnDemandForPrivateQualification(scoped,{fetchImpl,now});
-    expect(privateProof.discovery.network_attempts).toBe(4);
+    expect(privateProof.discovery.network_attempts).toBe(3);
     expect(privateProof.private_candidates).toHaveLength(2);
     expect(privateProof.private_candidates.map(x=>x.publisher_family).sort())
       .toEqual(["australian_industry_original_publisher","uk_dbt_original_publisher"]);
@@ -88,7 +108,8 @@ describe("China lithium exact customer question — one shared bounded on-demand
     expect(serialized).not.toContain("article_title");
     expect(serialized).not.toContain("Chinese lithium");
     expect(serialized).not.toContain("chinese-lithium-export-licensing");
-    expect(requests).toHaveLength(8);
+    expect(requests).toHaveLength(6);
+    expect(requests.some(url=>url.includes("/v2/country/CHN?"))).toBe(false);
     expect(requests.every(v=>v.startsWith("https://"))).toBe(true);
   });
 });

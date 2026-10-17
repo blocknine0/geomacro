@@ -1,0 +1,124 @@
+name: Risk Indices from Verified D1 Global Risk (No Funds)
+
+# #2046: manual-only, protected-main, fail-closed Supabase-free migration.
+# Requires already-current original GRI proof in D1; cannot synthesize it.
+on:
+  workflow_dispatch: {}
+  # Automatic downstream continuation only after the independently reviewed,
+  # production-authorized GRI publisher actually succeeds on exact main.
+  # Does not authorize/source/compute GRI, and does not bypass D1/B2 proof.
+  workflow_run:
+    workflows: ["GRI v1.2 Supabase-Free Current Promotion"]
+    types: [completed]
+  pull_request:
+    paths:
+      - ".github/workflows/risk-indices-verified-d1-parent.yml"
+      - "scripts/lib/risk-indices-verified-d1-parent.mjs"
+      - "scripts/lib/risk-indices-verified-d1-parent.test.mjs"
+      - "scripts/ops/publish-risk-indices-from-verified-global-risk.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/risk-indices-verified-d1-parent.yml"
+      - "scripts/lib/risk-indices-verified-d1-parent.mjs"
+      - "scripts/lib/risk-indices-verified-d1-parent.test.mjs"
+      - "scripts/ops/publish-risk-indices-from-verified-global-risk.mjs"
+permissions:
+  contents: read
+concurrency:
+  group: risk-indices-verified-d1-parent
+  cancel-in-progress: false
+jobs:
+  source-contract-tests:
+    if: ${{ github.repository == 'blocknine0/geomacro' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Fail-closed current D1 source tests (no credentials or writes)
+        run: |
+          node --check scripts/lib/risk-indices-verified-d1-parent.mjs
+          node --check scripts/lib/risk-indices-verified-d1-parent.test.mjs
+          node --check scripts/ops/publish-risk-indices-from-verified-global-risk.mjs
+          node --test scripts/lib/risk-indices-verified-d1-parent.test.mjs
+  publish:
+    needs: source-contract-tests
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'workflow_dispatch' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+          github.event.workflow_run.head_sha == github.sha
+        )
+      )
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    env:
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: risk_indices_d1_parent
+      B2_REQUEST_BUDGET: "12"
+      D1_DATABASE_NAME: geomacro-control-plane
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Validate pure verified-source guard
+        run: node --test scripts/lib/risk-indices-verified-d1-parent.test.mjs
+      - name: Require exact deployed main SHA before any B2 GET or D1 write
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SHA" = "$(git rev-parse HEAD)" || {
+            echo "::error::INDICES_EXACT_CHECKOUT_SHA_MISMATCH"; exit 2;
+          }
+          curl --fail --silent --show-error --max-time 15 \
+            "https://geomacro.live/.well-known/geomacro-build.json" \
+            > /tmp/geomacro-indices-build.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const marker=JSON.parse(readFileSync('/tmp/geomacro-indices-build.json','utf8'));
+          if(marker.schema_version!=='geomacro.deployment-build.v1' ||
+             marker.canonical_repository!=='blocknine0/geomacro' ||
+             marker.canonical_main_sha!==process.env.EXPECTED_SHA)
+            throw Error('INDICES_EXACT_PRODUCTION_DEPLOYMENT_SHA_MISMATCH');
+          console.log('PASS: exact published canonical main verified before quota consumption');
+          NODE
+
+      - name: Resolve governed production D1 ID
+        run: |
+          set -euo pipefail
+          test -z "${SUPABASE_DB_URL:-}${SUPABASE_SERVICE_ROLE_KEY:-}${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          npx --yes wrangler@4.136.3 d1 list --json > /tmp/geomacro-d1-list.json
+          id="$(node -e 'const a=require("/tmp/geomacro-d1-list.json");const v=a.find(x=>x.name==="geomacro-control-plane");if(!v||!v.uuid)process.exit(2);process.stdout.write(v.uuid)')"
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+      - name: Promote only genuinely current verified parent with B2 readbacks
+        run: bun scripts/ops/publish-risk-indices-from-verified-global-risk.mjs --verified-d1-parent-only
+      - name: Verify live product (no funds)
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/hot-snapshot/risk-indices" \
+            | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>{const p=JSON.parse(s);if(p.ok!==true||p.proof_schema!=="geomacro.public-risk-indices-live-proof.v1")process.exit(3);console.log("Verified current risk-indices D1 response");})'

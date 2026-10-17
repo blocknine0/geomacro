@@ -2,9 +2,11 @@ import { mkdtempSync,writeFileSync,chmodSync,symlinkSync,
   rmSync,readFileSync,existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createHash,generateKeyPairSync } from "node:crypto";
 import { afterEach,describe,expect,it,vi } from "vitest";
 import {
   acceptReviewedLiveGRO,assertPrivateReviewPaths,parsePrivateReviewedRequest,
+  assertIndependentReviewerKeyAuthority,
 } from "../../scripts/ops/accept-private-live-on-demand-gro.ts";
 
 const dirs:string[]=[];
@@ -77,7 +79,50 @@ describe("manual-only live private signed GRO first acceptance",()=>{
       "RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64",
       "RISK_OBJECT_SIGNING_KEY_ID",
       "GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM",
+      "GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256",
     ])vi.stubEnv(key,"");
+    await expect(acceptReviewedLiveGRO(f.input,f.output))
+      .rejects.toThrow("ON_DEMAND_LIVE_GRO_ACCEPTANCE_FAILED");
+    expect(existsSync(f.output)).toBe(false);
+  });
+  it("#2044 pins an authorized reviewer verifier separately from the commercial GRO signer",()=>{
+    const reviewer=generateKeyPairSync("ed25519");
+    const gro=generateKeyPairSync("ed25519");
+    const toDer=(key:typeof reviewer.publicKey)=>
+      key.export({format:"der",type:"spki"}) as Buffer;
+    const pem=reviewer.publicKey.export({format:"pem",type:"spki"}).toString();
+    const pinnedSha=createHash("sha256").update(toDer(reviewer.publicKey)).digest("hex");
+    const signingB64=toDer(gro.publicKey).toString("base64");
+    const good={reviewer_public_key_pem:pem,
+      reviewer_public_key_sha256:pinnedSha,
+      gro_signing_public_key_spki_b64:signingB64};
+    expect(()=>assertIndependentReviewerKeyAuthority(good)).not.toThrow();
+    for(const bad of [
+      {...good,reviewer_public_key_sha256:"0".repeat(64)},
+      {...good,reviewer_public_key_sha256:""},
+      {...good,gro_signing_public_key_spki_b64:toDer(reviewer.publicKey).toString("base64")},
+      {...good,reviewer_public_key_pem:gro.publicKey.export({format:"pem",type:"spki"}).toString()},
+      {...good,gro_signing_public_key_spki_b64:"not-base64?"},
+      {...good,reviewer_public_key_pem:"not a public key"},
+    ])expect(()=>assertIndependentReviewerKeyAuthority(bad))
+      .toThrow("ON_DEMAND_LIVE_GRO_ACCEPTANCE_FAILED");
+    const ec=generateKeyPairSync("ec",{namedCurve:"prime256v1"});
+    expect(()=>assertIndependentReviewerKeyAuthority({
+      ...good,reviewer_public_key_pem:ec.publicKey.export({format:"pem",type:"spki"}).toString(),
+    })).toThrow("ON_DEMAND_LIVE_GRO_ACCEPTANCE_FAILED");
+  });
+  it("#2044 fail-closes before output if reviewer authority fingerprint is missing",async()=>{
+    const f=privateInput();
+    const gro=generateKeyPairSync("ed25519");
+    const reviewer=generateKeyPairSync("ed25519");
+    vi.stubEnv("RISK_OBJECT_SIGNING_KEY_ID","private-review-only");
+    vi.stubEnv("RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64",
+      gro.privateKey.export({format:"der",type:"pkcs8"}).toString("base64"));
+    vi.stubEnv("RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64",
+      gro.publicKey.export({format:"der",type:"spki"}).toString("base64"));
+    vi.stubEnv("GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM",
+      reviewer.publicKey.export({format:"pem",type:"spki"}).toString());
+    vi.stubEnv("GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256","");
     await expect(acceptReviewedLiveGRO(f.input,f.output))
       .rejects.toThrow("ON_DEMAND_LIVE_GRO_ACCEPTANCE_FAILED");
     expect(existsSync(f.output)).toBe(false);

@@ -11,8 +11,9 @@ import {
 } from "./agent-query-world-bank-modules.server";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
-import { readPublicGlobalRisk } from "./global-risk-read.server";
-import { loadStructuralContext } from "./structural-context.server";
+import { readProductionGlobalRisk } from "./production-global-risk.server";
+import { loadStructuralContext, type StructuralObservation } from "./structural-context.server";
+import { sourceNativeObservationTime } from "./source-native-observation-time";
 import { buildDecisionIntelligence } from "./decision-intelligence-output";
 import {
   GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
@@ -75,17 +76,18 @@ function perModuleLimit(detail: AgentQueryPlan["detail"]) {
   return detail === "compact" ? 2 : detail === "full" ? 12 : 5;
 }
 
-function latestModuleTimestamp(
-  observations: ReturnType<typeof publicStructuralObservation>[],
-  coverage: ReturnType<typeof publicStructuralCoverage>[],
-) {
-  const values = [
-    ...observations.map((row) => row.observed_at ?? row.published_at ?? row.retrieved_at),
-    ...coverage.map((row) => row.latest_observed_at),
-  ]
-    .filter((value): value is string => Boolean(value))
-    .map((value) => Date.parse(value))
-    .filter(Number.isFinite);
+/**
+ * Prepared paid delivery MUST use the same source-native evidence clock as
+ * the canonical availability checker. Coverage metadata and retrieval
+ * timestamps describe indexing, not a qualifying original observation.
+ */
+export function latestModuleTimestamp(
+  observations: readonly StructuralObservation[],
+  asOfMs: number,
+): number | null {
+  const values = observations
+    .map((row) => sourceNativeObservationTime(row, asOfMs))
+    .filter((value): value is number => value !== null);
   return values.length ? Math.max(...values) : null;
 }
 
@@ -101,15 +103,22 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
   const governedFallbackTimes: string[] = [];
 
   for (const module of structuralModules) {
-    const observations = context.observations
-      .filter((row) => moduleMatches(module, row.dimension))
+    // Exact country/observation identity is part of the buyer's paid plan.
+    // A foreign profile row or modern coverage timestamp cannot grant local
+    // freshness, even if the archive itself is well formed.
+    const nativeRows = context.observations.filter((row) =>
+      moduleMatches(module, row.dimension) &&
+      (subject.type !== "country" || row.country_iso3 === subject.country_iso3),
+    );
+    const observations = nativeRows
       .slice(0, limit)
       .map((row) => publicStructuralObservation(row, asOf));
     const coverage = context.metadata.coverage
-      .filter((row) => moduleMatches(module, row.dimension))
+      .filter((row) => moduleMatches(module, row.dimension) &&
+        (subject.type !== "country" || row.country_iso3 === subject.country_iso3))
       .slice(0, limit)
       .map((row) => publicStructuralCoverage(row));
-    const latest = latestModuleTimestamp(observations, coverage);
+    const latest = latestModuleTimestamp(nativeRows, asOfMs);
     const maxAgeSeconds = plan.module_max_age_seconds[module];
     const structuralFresh =
       context.status === "AVAILABLE" &&
@@ -209,8 +218,10 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
       continue;
     }
 
-    if (context.status !== "AVAILABLE") {
-      throw new Error("STRUCTURAL_CONTEXT_NOT_DELIVERABLE");
+    if (context.status !== "AVAILABLE" || !structuralFresh) {
+      // This is independent of the earlier availability preflight: a
+      // source/rights clock may change between quote and preparation.
+      throw new Error("STRUCTURAL_LOCAL_NATIVE_EVIDENCE_NOT_DELIVERABLE");
     }
     intelligence[module] = { observations, coverage };
   }
@@ -301,7 +312,7 @@ async function riskGateForSubject(plan: AgentQueryPlan, subject: AgentQueryPlan[
   return result;
 }
 
-function publicGri(risk: Awaited<ReturnType<typeof readPublicGlobalRisk>>) {
+function publicGri(risk: Awaited<ReturnType<typeof readProductionGlobalRisk>>) {
   return {
     scope: "global",
     snapshot_id: risk.snapshotId,
@@ -621,6 +632,24 @@ function buildDirectAnswer(
   plan: AgentQueryPlan,
   states: Awaited<ReturnType<typeof buildCurrentState>>,
 ) {
+  // Structural baseline is sold as original-dated governed MODULE research,
+  // never a currently signed risk score. It cannot acquire a risk label, GRO
+  // signature claim or "latest" headline even if other stored state exists.
+  if (plan.delivery_tier === "structural_baseline") {
+    const state = states[0];
+    const dims = state?.structural?.available_dimensions ?? [];
+    if (!state || dims.length === 0) throw Error("STRUCTURAL_BASELINE_NOT_DELIVERABLE");
+    return {
+      status: "STRUCTURAL_BASELINE",
+      headline: "Geomacro structural research baseline; not current scored or signed risk intelligence.",
+      what_changed: [{
+        subject: state.subject,
+        available_dimensions: dims,
+        latest_observed_at: state.structural?.latest_observed_at ?? null,
+      }],
+      why_it_matters: "The derived methodology reports source-native structural observations and their age, without fabricating live events, a GRO signature, or a current risk score.",
+    } as const;
+  }
   const supported = states.filter((state) => state.risk !== null);
   if (!supported.length) {
     const moduleSupported = states.filter(
@@ -827,7 +856,7 @@ export async function assembleAgentQueryResponse(input: {
       }))
     : [];
 
-  const gri = plan.required_modules.includes("gri_context") ? publicGri(await readPublicGlobalRisk()) : null;
+  const gri = plan.required_modules.includes("gri_context") ? publicGri(await readProductionGlobalRisk()) : null;
   const publicHotTopics = hotTopics.map((result) => ({
     deliverable: result.deliverable,
     code: result.code,
@@ -904,6 +933,8 @@ export async function assembleAgentQueryResponse(input: {
     query_plan_hash: plan.query_plan_hash,
     question_interpretation: {
       normalized_question: plan.question_key,
+      ...(plan.delivery_tier === "structural_baseline"
+        ? { delivery_tier: "structural_baseline" as const } : {}),
       intent: plan.intent,
       topics: plan.topics,
       required_modules: plan.required_modules,
@@ -929,6 +960,12 @@ export async function assembleAgentQueryResponse(input: {
       query_schema_version: plan.schema_version,
       response_schema_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
       product_contract_version: GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
+      ...(plan.delivery_tier === "structural_baseline" ? {
+        delivery_tier: "structural_baseline" as const,
+        source_clock: "SOURCE_NATIVE_STRUCTURAL_PUBLICATION",
+        signed_current_risk_object_included: false,
+        independently_scored_current_risk_included: false,
+      } : {}),
       pricing_phase: "EARLY_ADOPTION_10K",
       price_usdc:
         input.priceUsdc === undefined

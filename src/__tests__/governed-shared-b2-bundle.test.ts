@@ -62,6 +62,8 @@ describe("shared governed B2 transaction bundle",()=>{
     expect(plan).not.toBeNull();
     expect(plan?.totalMembers).toBe(2);
     expect(plan?.sourceIds).toEqual(["eia_api_v2","noaa_ncei_cdo_api"]);
+    expect(plan?.bundle).not.toHaveProperty('created_at');
+    expect(plan?.bundle.latest_source_observed_at).toBe('2026-10-02T00:00:00.000Z');
     expect(verifySharedGovernedBundle(plan!.compressed,plan,{
       sha,hash,maxUncompressedBytes:options.maxUncompressedBytes,
     })).toBe(true);

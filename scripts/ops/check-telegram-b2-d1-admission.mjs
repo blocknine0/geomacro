@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * #1827 Telegram consumer: no Backblaze GET while no D1 queue, frozen
- * Supabase writer, or missing shared account-wide D1 GET headroom.
+ * source authorization, or missing shared account-wide D1 GET headroom.
  * This admission is advisory: the canonical B2 S3 client MUST additionally
  * reserve an atomic D1 ticket immediately before EVERY external GET.
  *
@@ -11,7 +11,6 @@
 import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
 import { createB2D1AccountGovernor } from "./b2-d1-account-governor.mjs";
 import { B2_DAILY_LIMITS } from "../../workers/control-plane/src/b2-account-quota.mjs";
 
@@ -48,7 +47,7 @@ export function readTelegramConsumerQueue(body) {
   return rows.length;
 }
 export function evaluateTelegramConsumerAdmission({
-  pending, supabase=null, quota=null, now=new Date(),
+  pending, quota=null, now=new Date(),
 }={}) {
   requireTrue(Number.isInteger(pending)&&pending>=0&&
     pending<=TELEGRAM_DRAIN_MAX&&now instanceof Date&&
@@ -64,15 +63,9 @@ export function evaluateTelegramConsumerAdmission({
     supabase_writes:0,b2_requests:0,usdc_spent:0,
   };
   if(pending===0)return {...common,status:"NO_PENDING_AUTHORIZED_LEADS"};
-  // This runner's actual consumer calls the canonical Postgres flash writer.
-  // It must NOT read/download private Telegram evidence while that writer
-  // is frozen or disabled. Queue pointers are lossless and remain PENDING.
-  if(supabase?.ok!==true || supabase?.mode!=="normal" ||
-    supabase?.bulk_write_allowed!==true ||
-    supabase?.policy?.recurring_ingest_allowed!==true ||
-    supabase?.policy?.bulk_supabase_writes_allowed!==true) {
-    return {...common,status:"TELEGRAM_CANONICAL_WRITER_QUOTA_HELD"};
-  }
+  // Canonical intake is now a D1 UNVERIFIED private pointer with exact B2
+  // receipt. Frozen Supabase is NEVER a reason to withhold a legitimate
+  // quota-governed lead, and never a source of eligibility.
   requireTrue(quota?.ok===true &&
     quota.schema==="geomacro.b2-account-quota-status.v1" &&
     quota.day_utc===now.toISOString().slice(0,10) &&
@@ -124,25 +117,6 @@ function noWorkSummary(receipt){
     accepted:[],
   };
 }
-function readBudget() {
-  const x=spawnSync(process.execPath,[
-    "scripts/ops/supabase-free-tier-budget.mjs",
-    "--require-bulk-write","--require-normal",
-  ],{encoding:"utf8",timeout:30_000,maxBuffer:128*1024,
-    env:process.env});
-  // A 78 indicates a *verified* Supabase freeze/headroom hold, not a
-  // permission to downgrade it. Parse only its sanitized canonical stdout.
-  if(x.error || ![0,78].includes(x.status))
-    throw new Error("TELEGRAM_ADMISSION_SUPABASE_BUDGET_UNAVAILABLE");
-  let state;
-  try {state=JSON.parse(x.stdout.trim());}
-  catch {throw new Error("TELEGRAM_ADMISSION_SUPABASE_BUDGET_INVALID");}
-  requireTrue(state?.ok===true && (x.status===0 ?
-    (state.mode==="normal"&&state.bulk_write_allowed===true) :
-    (state.mode!=="normal"||state.bulk_write_allowed!==true)),
-    "TELEGRAM_ADMISSION_SUPABASE_BUDGET_CONFLICT");
-  return state;
-}
 export async function runTelegramConsumerAdmission({
   queueFile,stage,governor=null,now=new Date(),
 }={}) {
@@ -158,12 +132,9 @@ export async function runTelegramConsumerAdmission({
       {...preliminary,status:"PENDING_QUEUE_AWAITING_BUDGET_CHECK"};
   }
   if(pending===0)return evaluateTelegramConsumerAdmission({pending,now});
-  const supabase=readBudget();
-  if(supabase.mode!=="normal"||supabase.bulk_write_allowed!==true)
-    return evaluateTelegramConsumerAdmission({pending,supabase,now});
   const globalQuota=governor??createB2D1AccountGovernor();
   const quota=await globalQuota.status(); // READ-ONLY, NOT a ticket
-  return evaluateTelegramConsumerAdmission({pending,supabase,quota,now});
+  return evaluateTelegramConsumerAdmission({pending,quota,now});
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   try {

@@ -32,7 +32,8 @@ describe("Geomacro Finds commercial homepage presentation", () => {
 
   it("keeps sales enquiries open without suggesting an active monthly checkout", () => {
     expect(card).toContain('to="/pricing"');
-    expect(card).toContain("0.05 USDC");
+    expect(card).toContain("Exact USDC price by capability");
+    expect(card).not.toContain("From 0.05 USDC");
     expect(card).toContain("Monthly intelligence · Coming Soon");
     expect(card).toContain("Request a tailored plan");
     expect(card).toContain("enterprise coverage? Talk to us");

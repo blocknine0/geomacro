@@ -1,0 +1,95 @@
+name: Issue 2124 B2 D1 current hot read-only audit
+
+# 2026-10-13 one-shot after public no-funds receipt fixes: diagnose real B2
+# archive GET/hash/original-clock and D1 current comparison for issue #2124.
+# This is not a publisher, signing repair, current-data mint, or payment ACK.
+# A one-shot push on this file's merge, plus explicit owner dispatch.
+# No schedule or recurring retry; shared B2 GET quota remains fail-closed.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/issue-2124-b2-d1-current-audit.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-issue-2124-b2-d1-audit
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    env:
+      B2_ACCOUNT_QUOTA_REQUIRED: '1'
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: issue2124_readonly_audit
+      B2_REQUEST_BUDGET: '8'
+      D1_DATABASE_NAME: geomacro-control-plane
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      WRANGLER_VERSION: '4.136.3'
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: '22' }
+      - name: Verify fail-closed audit and no mutation contract
+        run: node --test scripts/ops/audit-b2-d1-current-hot-readonly.test.mjs
+      - name: Resolve canonical shared D1 B2 quota ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" && test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          list="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          id="$(printf '%s' "$list" | node -e '
+            let s="";
+            process.stdin.on("data",d=>s+=d);
+            process.stdin.on("end",()=>{
+              const row=JSON.parse(s).find(x=>x.name===process.env.D1_DATABASE_NAME);
+              process.stdout.write(row?.uuid??row?.id??"");
+            });
+          ')"
+          test -n "$id" || { echo 'D1_QUOTA_LEDGER_UNAVAILABLE'; exit 2; }
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+      - name: Fail closed without B2 GET headroom
+        run: |
+          node --input-type=module <<'NODE'
+          import {createB2D1AccountGovernor} from './scripts/ops/b2-d1-account-governor.mjs';
+          const x=await createB2D1AccountGovernor().status();
+          const today=new Date().toISOString().slice(0,10);
+          const admitted=x?.ok===true &&
+            x?.schema==='geomacro.b2-account-quota-status.v1' &&
+            x.day_utc===today && x.account_wide_reporting_requires_all_clients_governed===true &&
+            Number.isSafeInteger(x?.used?.total) && Number.isSafeInteger(x?.used?.GET) &&
+            Number.isSafeInteger(x?.limits?.total) && Number.isSafeInteger(x?.limits?.GET) &&
+            x.limits.total-x.used.total>=8 && x.limits.GET-x.used.GET>=8;
+          console.log(JSON.stringify({admitted,read_only:true,required_get_headroom:8}));
+          if(!admitted)process.exitCode=2;
+          NODE
+      - name: B2 archive exact readback and D1 current hash comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          rc=0
+          node scripts/ops/audit-b2-d1-current-hot-readonly.mjs > "$RUNNER_TEMP/issue2124-safe-receipt.json" || rc=$?
+          cat "$RUNNER_TEMP/issue2124-safe-receipt.json"
+          exit "$rc"
+      - name: Upload sanitized no-funds diagnostic
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: issue2124-b2-d1-readonly-${{ github.run_id }}
+          path: ${{ runner.temp }}/issue2124-safe-receipt.json
+          if-no-files-found: ignore
+          retention-days: 7

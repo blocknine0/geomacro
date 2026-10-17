@@ -25,6 +25,8 @@ import {
   type TrustedReviewBundle,
 } from "../../src/lib/on-demand-reviewed-rights-qualifier.server";
 import { loadRiskObjectVerificationKeysFromEnv } from "../../src/lib/risk-object-signing.server";
+import {assertIndependentReviewerKeyAuthority} from "../../src/lib/independent-reviewer-authority.server";
+export {assertIndependentReviewerKeyAuthority} from "../../src/lib/independent-reviewer-authority.server";
 
 const MAX_REVIEW_INPUT_BYTES=1024*1024;
 const MAX_SIGNED_OUTPUT_BYTES=256*1024;
@@ -103,9 +105,15 @@ function trustedSigner() {
   const key_id=process.env.RISK_OBJECT_SIGNING_KEY_ID;
   const private_key_pkcs8_b64=process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64;
   const public_key_spki_b64=process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64;
+  const reviewer_public_key_pem=process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM;
+  const reviewer_public_key_sha256=process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256;
   if(!key_id || !private_key_pkcs8_b64 || !public_key_spki_b64 ||
-     !process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM)
+     !reviewer_public_key_pem || !reviewer_public_key_sha256)
     throw Error(FAIL);
+  assertIndependentReviewerKeyAuthority({
+    reviewer_public_key_pem,reviewer_public_key_sha256,
+    gro_signing_public_key_spki_b64:public_key_spki_b64,
+  });
   return {key_id,private_key_pkcs8_b64,public_key_spki_b64};
 }
 

@@ -16,6 +16,7 @@ import {
   canUseProductionIntelligenceBackup,
 } from "@/lib/public-intelligence-edge";
 import { sanitizePublicIntelligenceRow } from "@/lib/public-intelligence-gist";
+import { websiteLaggedEvidenceRows } from "@/lib/website-publication-delay";
 import {
   PUBLIC_DATA_REQUEST_TIMEOUT_MS,
   withPublicRuntimeTimeout,
@@ -273,6 +274,9 @@ function build(rows: IntelEvent[], now: number): Intelligence {
 }
 
 export function buildPublicIntelligence(rows: PublicIntelligenceRow[], now: number): Intelligence {
+  // Pure model contract remains usable by machine-independent unit tests;
+  // WEBSITE SSR and browser loaders each enforce the 60-minute embargo
+  // before passing their rows to this classifier/deduplication model.
   return build(mapPublicRows(rows), now);
 }
 
@@ -348,7 +352,7 @@ export function useIntelligence(
         );
         if (cancelled) return;
 
-        const mapped = mapPublicRows(rows);
+        const mapped = mapPublicRows(websiteLaggedEvidenceRows(rows, now));
         if (mapped.length === 0) {
           if (hasData.current) {
             setStatus("ready");

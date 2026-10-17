@@ -9,7 +9,43 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(orchestrator).toContain("answerHybridQuestion(question)");
     expect(orchestrator).toContain("if (!primary.insufficient_evidence) return primary");
     expect(orchestrator).toContain("realtimeSearchAnswer(question, primary)");
+    expect(orchestrator).toContain("const official = await officialUnscoredReleaseAnswer(question)");
+    expect(orchestrator.indexOf("const official = await officialUnscoredReleaseAnswer(question)"))
+      .toBeLessThan(orchestrator.indexOf("const primary = await answerHybridQuestion(question)"));
+    expect(orchestrator).toContain("if (official) return official");
     expect(orchestrator).toContain("return realtime ?? primary");
+  });
+
+  it("offers publisher-observation-only responses without inventing signed or scored risk", () => {
+    const orchestrator = read("src/lib/ask-answer.server.ts");
+    const type = read("src/lib/hybrid-ask-intelligence.server.ts");
+    expect(orchestrator).toContain("readStatelessWebsiteIntelligence");
+    expect(orchestrator).toContain("now - issued <= 24 * 3_600_000");
+    expect(orchestrator).toContain("selectOfficialNewsCategories(question)");
+    expect(orchestrator).toContain("Promise.allSettled(");
+    expect(orchestrator).toContain("what (?:has )?changed today");
+    expect(orchestrator).toContain("signal.status === \"official_release_observed_unscored\"");
+    expect(orchestrator).toContain("signal.same_event_corrob_verified === false");
+    expect(orchestrator).toContain("signal.severity === null");
+    expect(orchestrator).toContain("signals.map(signal => signal.category)");
+    expect(orchestrator).toContain("latest_original_published_at: latestOriginal");
+    expect(type).toContain("latest_original_published_at?: string");
+    expect(orchestrator).toContain("rest.split(/\\s+/).some");
+    expect(orchestrator).toContain("insufficient_evidence: false");
+    expect(orchestrator).toContain("low_confidence: true");
+    expect(orchestrator).toContain("mean_relevance: null");
+    expect(orchestrator).toContain("gri: null");
+    expect(orchestrator).toContain('intelligence_tier: "official_observation_unscored"');
+    expect(orchestrator).toContain("signed_gro_generated: false");
+    expect(orchestrator).toContain("independent_same_event_verification: false");
+    expect(orchestrator).toContain("rest.split(/\\s+/).some");
+    expect(orchestrator).not.toContain("signRiskObject");
+    expect(orchestrator).not.toContain("settlePayment");
+    expect(type).toContain('intelligence_tier?: "official_observation_unscored"');
+    expect(orchestrator).toContain("live:official:");
+    // Published Ask UI remains locked; the typed JSON response states the
+    // observation is unscored and the rendered summary says so explicitly.
+    expect(orchestrator).toContain("not independently corroborated risk assessments");
   });
 
   it("uses a bounded current-web path with broad three-domain coverage", () => {
@@ -27,8 +63,17 @@ describe("Ask Geomacro realtime search fallback", () => {
     const fallback = read("src/lib/ask-realtime-search.server.ts");
     expect(fallback).toContain("groqClassifyJson");
     expect(fallback).toContain("deterministicStructuredAnswer");
-    expect(fallback).toContain("current observations, latest");
+    expect(fallback).toContain("recently indexed observations, latest");
     expect(fallback).toContain("using deterministic structure");
+    // GDELT seendate is index observation time, NOT first-party publication.
+    expect(fallback).toContain("indexedDate(article.seendate)");
+    expect(fallback).toContain("indexed_at: hit.observedAt");
+    expect(fallback).toContain('intelligence_tier: "index_observation_unverified"');
+    expect(fallback).toContain("signed_gro_generated: false");
+    expect(fallback).toContain("independent_same_event_verification: false");
+    expect(fallback).toContain("const lowConfidence = true");
+    expect(fallback).toContain("mean_relevance: null");
+    expect(fallback).toContain("gri: null");
   });
 
   it("never exposes raw realtime URLs, headlines or provider identity in the public Ask evidence contract", () => {

@@ -41,24 +41,16 @@ describe("#1827 Telegram: shared D1 quota + frozen Postgres no-B2 consumer",()=>
     });
   });
 
-  it("holds all queued private leads in D1 while Supabase writer is frozen or warn-level",()=>{
+  it("ignores frozen Supabase and requires only existing D1 quota for authorized private leads",()=>{
     expect(readTelegramConsumerQueue(queue([lead]))).toBe(1);
-    for(const frozen of [
-      {ok:true,mode:"frozen",bulk_write_allowed:false,
-        policy:{recurring_ingest_allowed:false,bulk_supabase_writes_allowed:false}},
-      {ok:true,mode:"warning",bulk_write_allowed:true,
-        policy:{recurring_ingest_allowed:false,bulk_supabase_writes_allowed:true}},
-      null,
-    ]) {
-      const result=evaluateTelegramConsumerAdmission({
-        pending:1,supabase:frozen,quota:quota(),now:NOW,
-      });
-      expect(result).toMatchObject({
-        can_consume:false,no_b2_network:true,
-        status:"TELEGRAM_CANONICAL_WRITER_QUOTA_HELD",
-        b2_requests:0,supabase_writes:0,
-      });
-    }
+    const result=evaluateTelegramConsumerAdmission({pending:1,quota:quota(),now:NOW});
+    expect(result).toMatchObject({
+      can_consume:true,no_b2_network:false,
+      status:"CAN_CONSUME_WITH_ATOMIC_PER_GET_D1_TICKETS",
+      b2_requests:0,supabase_writes:0,commercial_eligible:false,
+    });
+    // No external archive network is permitted without proven D1 ledger status.
+    expect(()=>evaluateTelegramConsumerAdmission({pending:1,quota:null,now:NOW})).toThrow();
   });
 
   it("requires genuine current UTC D1 status, exact server ceilings and integer usage",()=>{
@@ -74,7 +66,7 @@ describe("#1827 Telegram: shared D1 quota + frozen Postgres no-B2 consumer",()=>
     ];
     for(const q of invalid){
       expect(()=>evaluateTelegramConsumerAdmission({
-        pending:1,supabase:budget,quota:q,now:NOW,
+        pending:1,quota:q,now:NOW,
       })).toThrow();
     }
   });
@@ -82,7 +74,7 @@ describe("#1827 Telegram: shared D1 quota + frozen Postgres no-B2 consumer",()=>
   it("admits at most four GETs and explicitly does not pre-reserve a ticket",()=>{
     expect(TELEGRAM_DRAIN_MAX).toBe(4);
     const accepted=evaluateTelegramConsumerAdmission({
-      pending:4,supabase:budget,quota:quota(),now:NOW,
+      pending:4,quota:quota(),now:NOW,
     });
     expect(accepted).toMatchObject({
       can_consume:true,
@@ -92,7 +84,7 @@ describe("#1827 Telegram: shared D1 quota + frozen Postgres no-B2 consumer",()=>
       b2_requests:0,
     });
     const exhausted=evaluateTelegramConsumerAdmission({
-      pending:4,supabase:budget,
+      pending:4,
       quota:quota({GET:B2_DAILY_LIMITS.GET-2,PUT:0,HEAD:0,NATIVE_AUTH:0,
         total:B2_DAILY_LIMITS.GET-2}),now:NOW,
     });
@@ -132,23 +124,27 @@ describe("#1827 Telegram: shared D1 quota + frozen Postgres no-B2 consumer",()=>
     expect(flow).toContain("--max 4");
     expect(flow).toContain("steps.admission.outputs.can_consume == 'true'");
     expect(flow).toContain("check-telegram-b2-d1-admission.mjs --stage budget");
-    expect(admission).toContain("supabase-free-tier-budget.mjs");
+    expect(admission).not.toContain("supabase-free-tier-budget.mjs");
     expect(admission).toContain("createB2D1AccountGovernor");
     expect(drainer).toContain("createB2Client({");
     expect(drainer).toContain('allowedKeyPrefixes: ["telegram/leads/"]');
     expect(b2).toContain('globalAccountGovernor.reserve("GET")');
     expect(b2).toContain("B2_ACCOUNT_QUOTA_REQUIRED");
-    expect(flow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
+    expect(flow).not.toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
     expect(flow).not.toContain("SUPABASE_SERVICE_ROLE_KEY: ${{ secrets");
   });
 
-  it("keeps exact successful canonical Postgres acknowledgment and unresolved leads for recovery",()=>{
+  it("keeps successful D1-only hash-readback ACK and unresolved leads for recovery",()=>{
     const workflow=readFileSync(".github/workflows/telegram-b2-d1-consumer.yml","utf8");
-    expect(workflow).toContain("WHERE delivery_id='$delivery' AND state='PENDING'");
-    expect(workflow).toContain("SET state='CONSUMED',consumed_at=datetime('now')");
-    expect(workflow).toContain("CANONICAL_INGEST_FAILED");
+    const intake=readFileSync("scripts/ops/intake-telegram-b2-d1-leads.mjs","utf8");
+    expect(intake).toContain("TELEGRAM_D1_INTAKE_DURABLE_READBACK_MISMATCH");
+    expect(intake).toContain("telegramD1ReadbackSql(entry)");
+    expect(intake).toContain("telegramD1AckSql(entry)");
+    expect(intake).toContain("state='PENDING'");
+    expect(intake).toContain("SET state='CONSUMED',consumed_at=datetime('now')");
+    expect(workflow).not.toContain("CANONICAL_INGEST_FAILED");
     expect(workflow).toContain("Upload bounded Telegram bridge evidence");
-    expect(workflow).toContain("artifacts/telegram-lead-intake/verified/summary.json");
     expect(workflow).not.toContain("DELETE FROM telegram_signal_lead_queue WHERE state='PENDING'");
   });
+
 });

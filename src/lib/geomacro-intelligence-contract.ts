@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { sourceNativeObservationTime } from "./source-native-observation-time";
 import { isApprovedWdiAttribution } from "./world-bank-derived-attribution";
+import {isApprovedFedBoardMinutesAttribution}
+  from "./federal-reserve-board-derived-attribution";
 
 export const GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA =
   "geomacro.adaptive-intelligence-response.v1" as const;
@@ -147,10 +149,11 @@ export function assertGeomacroIntelligenceResponseContract(payload: unknown): as
   if (!isRecord(payload)) throw new Error("INTELLIGENCE_RESPONSE_NOT_OBJECT");
   // Permanent commercial boundary: reject raw payloads and upstream source/provider identity at any nesting depth.
   assertNoRawSourceLeak(payload);
-  // Narrow fixed licence/material credit is part of the exact product hash;
-  // it never exempts arbitrary source details or publisher URLs.
+  // Exactly pinned data/article credits enter the product hash; a valid
+  // attribution format never replaces source rights and reviewer approval.
   if (Object.prototype.hasOwnProperty.call(payload,"data_attribution") &&
-      !isApprovedWdiAttribution(payload.data_attribution))
+      !isApprovedWdiAttribution(payload.data_attribution) &&
+      !isApprovedFedBoardMinutesAttribution(payload.data_attribution))
     throw Error("INTELLIGENCE_RESPONSE_UNQUALIFIED_DATA_ATTRIBUTION");
   if (payload.schema_version !== GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA) {
     throw new Error("INTELLIGENCE_RESPONSE_SCHEMA_VERSION_MISMATCH");

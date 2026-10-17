@@ -77,7 +77,8 @@ describe("Agentic Commerce public demo contract", () => {
     const publicGri = read("src/lib/global-risk-read.server.ts");
     const assembler = read("src/lib/global-risk-assemble.ts");
 
-    expect(service).toContain("readPublicGlobalRisk");
+    expect(service).toContain("readProductionGlobalRisk");
+    expect(service).not.toContain("readPublicGlobalRisk");
     expect(service).not.toContain('.from("gri_snapshots")');
     expect(publicGri).toContain('.eq("verification_status", "verified")');
     expect(publicGri).toContain("assemblePublicGlobalRisk");

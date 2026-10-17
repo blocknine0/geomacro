@@ -1,3 +1,4 @@
+import {fetchWithoutRedirect} from "../lib/fetch-without-redirect";
 import { createFileRoute } from "@tanstack/react-router";
 
 import {
@@ -90,7 +91,7 @@ async function loadPublicEarlyWarningFeedFromEdge(input: {
 
   let response: Response;
   try {
-    response = await fetch(endpoint, {
+    response = await fetchWithoutRedirect(endpoint, {
       method: "GET",
       headers: { Accept: "application/json" },
       redirect: "error",

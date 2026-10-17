@@ -15,11 +15,11 @@ const validProbe=vi.fn(async id=>{
 });
 
 describe("#1827 independently activate configured credentialed sources",()=>{
-  it("uses only one bounded 30s BEA official metadata check, other providers keep 15s",()=>{
+  it("uses one bounded 30s BEA/UCDP read while other providers keep 15s",()=>{
     const adapter=readFileSync("global-intelligence/adapters/credentialed-sources.mjs","utf8");
-    expect(adapter).toContain('sourceId==="bea"?30000:15000');
+    expect(adapter).toContain('sourceId==="bea"?30000:sourceId==="ucdp_ged"?30000:15000');
     expect(adapter).toContain("method=GetDataSetList&ResultFormat=JSON");
-    expect(adapter).toContain("const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs})");
+    expect(adapter).toContain('const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error",fetchImpl:sourceId==="wto_timeseries"?fetchWtoCanonical:fetch})');
   });
   it("does not block healthy sources when a different provider key is missing",async()=>{
     const env={...allCredentials};
@@ -29,13 +29,13 @@ describe("#1827 independently activate configured credentialed sources",()=>{
       return {source_id:id,category:source.category};
     });
     const receipt=await probeConfiguredCredentialedSources({env,probe,now:when});
-    expect(probe).toHaveBeenCalledTimes(6);
+    expect(probe).toHaveBeenCalledTimes(7);
     expect(probe).not.toHaveBeenCalledWith("bea");
     expect(receipt.status).toBe("CONFIGURED_SOURCES_WORKING_PARTIAL");
-    expect(receipt.working).toBe(6);
+    expect(receipt.working).toBe(7);
     expect(receipt.configured_failed).toBe(0);
     expect(receipt.results.find((r:any)=>r.source_id==="bea").status).toBe("CREDENTIAL_NOT_CONFIGURED");
-    expect(receipt.per_domain.GEOPOLITICS.working).toBe(2);
+    expect(receipt.per_domain.GEOPOLITICS.working).toBe(3);
     expect(receipt.per_domain.CRITICAL_MINERALS.working).toBe(1);
     expect(receipt.b2_requests+receipt.d1_writes+receipt.supabase_writes).toBe(0);
     expect(receipt.commercial_eligible).toBe(false);
@@ -49,7 +49,7 @@ describe("#1827 independently activate configured credentialed sources",()=>{
       },
     });
     expect(receipt.status).toBe("CONFIGURED_SOURCES_DEGRADED");
-    expect(receipt.working).toBe(6);
+    expect(receipt.working).toBe(7);
     expect(receipt.configured_failed).toBe(1);
     expect(JSON.stringify(receipt)).not.toContain("private-token-do-not-emit");
     expect(JSON.stringify(receipt)).not.toContain("api.example");
@@ -71,15 +71,51 @@ describe("#1827 independently activate configured credentialed sources",()=>{
     expect(failure.reason).toBe("HTTP_403");
     expect(JSON.stringify(report)).not.toContain("private-token-do-not-emit");
   });
+  it("distinguishes bounded-body, redirect and connection failures without leaking error content",async()=>{
+    for(const [failure,reason] of [
+      [Error('HTTP_BODY_LIMIT'),'RESPONSE_SIZE_LIMIT'],
+      [new TypeError('fetch failed: private-token-do-not-emit',{cause:Error('unexpected redirect')}),'REDIRECT_REFUSED'],
+      [new TypeError('fetch failed: private-token-do-not-emit',{cause:Object.assign(Error('private-token-do-not-emit'),{code:'ECONNRESET'})}),'UPSTREAM_CONNECTION_FAILURE'],
+    ] as const){
+      const r=await probeConfiguredCredentialedSources({env:allCredentials,now:when,probe:async()=>{throw failure;}});
+      expect(r.results.every((x:any)=>x.reason===reason)).toBe(true);
+      expect(JSON.stringify(r)).not.toContain('private-token-do-not-emit');
+    }
+  });
+  it("classifies WTO-specific denial, body, format, DNS and TLS without leaking keys",async()=>{
+    const cases=[
+      [Error("HTTP 403 for bounded credentialed request"),"HTTP_403"],
+      [Error("HTTP 429 for bounded credentialed request"),"HTTP_429"],
+      [Error("HTTP_BODY_LIMIT"),"RESPONSE_SIZE_LIMIT"],
+      [Error("Non-JSON response from bounded credentialed request"),"RESPONSE_NOT_JSON"],
+      [Error("WTO_CANONICAL_SCOPE_INVALID"),"WTO_QUERY_SCOPE_REJECTED"],
+      [Object.assign(new TypeError("fetch failed"),{cause:{code:"ENOTFOUND",message:"private-token-do-not-emit"}}),"UPSTREAM_DNS_FAILURE"],
+      [Object.assign(new TypeError("fetch failed"),{cause:{code:"CERT_HAS_EXPIRED",message:"private-token-do-not-emit"}}),"UPSTREAM_TLS_FAILURE"],
+      [Object.assign(new TypeError("fetch failed"),{cause:{code:"UND_ERR_SOCKET",message:"private-token-do-not-emit"}}),"UPSTREAM_CONNECTION_FAILURE"],
+      [new TypeError("fetch failed"),"UPSTREAM_FETCH_ERROR"],
+    ] as const;
+    for(const [error,reason] of cases){
+      const receipt=await probeConfiguredCredentialedSources({
+        env:allCredentials,now:when,probe:async id=>{
+          if(id==="wto_timeseries")throw error;
+          return validProbe(id);
+        }
+      });
+      expect(receipt.configured_failed).toBe(1);
+      expect(receipt.working).toBe(7);
+      expect(receipt.results.find((x:any)=>x.source_id==="wto_timeseries").reason).toBe(reason);
+      expect(JSON.stringify(receipt)).not.toContain("private-token-do-not-emit");
+    }
+  });
   it("does not attempt network when no credentials exist or a result has wrong domain",async()=>{
     const probe=vi.fn();
     const empty=await probeConfiguredCredentialedSources({env:{},probe,now:when});
     expect(probe).not.toHaveBeenCalled();
     expect(empty.status).toBe("NO_CREDENTIALS_CONFIGURED");
-    expect(empty.missing_credentials).toBe(7);
+    expect(empty.missing_credentials).toBe(8);
     const wrong=await probeConfiguredCredentialedSources({env:allCredentials,
       probe:async id=>({source_id:id,category:"INVALID"}),now:when});
-    expect(wrong.configured_failed).toBe(7);
+    expect(wrong.configured_failed).toBe(8);
     expect(wrong.working).toBe(0);
   });
 });

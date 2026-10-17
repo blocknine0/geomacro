@@ -3,6 +3,8 @@ import {
   GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
 } from "./geomacro-intelligence-contract";
 import { isApprovedWdiAttribution } from "./world-bank-derived-attribution";
+import {isApprovedFedBoardMinutesAttribution}
+  from "./federal-reserve-board-derived-attribution";
 
 const INTERNAL_KEY = /(^|_)(source|provider|licen[cs]e|provenance|retrieval)(_|$)/i;
 const CURRENT_PROVIDER_IDENTITY = /\b(?:world[\s_-]+bank|gdelt|usgs|u\.?s\.?[\s_-]+geological[\s_-]+survey)\b/i;
@@ -54,9 +56,10 @@ function sanitize(
   const output: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
     if (path.length === 0 && key === "data_attribution") {
-      // Exception only for fixed CC BY WDI credit. No arbitrary provider URLs
-      // or publisher identities are allowed elsewhere in the paid response.
-      if (!isApprovedWdiAttribution(child))
+      // Narrow exemptions for fixed WDI or Board original-article credit.
+      // Attribution format alone never grants commercial source rights.
+      if (!isApprovedWdiAttribution(child) &&
+          !isApprovedFedBoardMinutesAttribution(child))
         throw Error("PAID_OUTPUT_UNQUALIFIED_DATA_ATTRIBUTION");
       output[key] = child;
       continue;
@@ -122,7 +125,8 @@ export function assertPublicPaidOutputBoundary(payload: unknown): void {
     }
     for (const [key, child] of Object.entries(value)) {
       if (path.length === 0 && key === "data_attribution") {
-        if (!isApprovedWdiAttribution(child))
+        if (!isApprovedWdiAttribution(child) &&
+            !isApprovedFedBoardMinutesAttribution(child))
           throw Error("PAID_OUTPUT_UNQUALIFIED_DATA_ATTRIBUTION");
         continue;
       }

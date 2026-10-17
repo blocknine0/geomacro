@@ -1,0 +1,203 @@
+name: Website Derived News Cadence Backstop
+
+# Recovery window offset from canonical :07/:37 newsroom collection.
+# GitHub schedules are best-effort, not an exact 30-minute SLA.
+# Only publish if the *last genuinely completed successful D1 writer* is
+# stale, never based on a recently visited site or an original news date.
+on:
+  workflow_dispatch: {}
+  workflow_run:
+    workflows: ["Geomacro Intelligence Orchestrator"]
+    branches: [main]
+    types: [completed]
+  schedule:
+    - cron: "22,52 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/website-derived-news-cadence-backstop.yml"
+      - "scripts/ops/check-website-derived-news-cadence.mjs"
+      - "scripts/lib/website-derived-news-failover.mjs"
+      - "scripts/tests/website-derived-news-failover.test.mjs"
+      - "scripts/lib/automated-finds-run-health.mjs"
+      - "scripts/tests/automated-finds-run-health.test.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/website-derived-news-cadence-backstop.yml"
+      - "scripts/ops/check-website-derived-news-cadence.mjs"
+      - "scripts/lib/website-derived-news-failover.mjs"
+      - "scripts/tests/website-derived-news-failover.test.mjs"
+      - "scripts/lib/automated-finds-run-health.mjs"
+      - "scripts/tests/automated-finds-run-health.test.mjs"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: geomacro-derived-news-cadence-backstop
+  cancel-in-progress: false
+
+jobs:
+  cadence-contract:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Verify privacy-safe missed-tick recovery rules
+        run: |
+          node --check scripts/lib/website-derived-news-failover.mjs
+          node --check scripts/ops/check-website-derived-news-cadence.mjs
+          node --test scripts/tests/website-derived-news-failover.test.mjs scripts/tests/automated-finds-run-health.test.mjs
+
+  catch-up-derived-only:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion)))
+    concurrency:
+      group: geomacro-website-derived-news-continuity
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    env:
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GEOMACRO_AUTOMATED_FINDS_PUBLICATION: "1"
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: automated_finds
+      B2_REQUEST_BUDGET: "12"
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
+      RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
+      RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Read latest successful actual primary D1 publication clock
+        id: decide
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/ops/check-website-derived-news-cadence.mjs
+      - name: Install pinned Bun only when recovery is necessary
+        if: steps.decide.outputs.should_run == 'true'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Resolve existing D1 shared B2 quota ledger
+        if: steps.decide.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {appendFileSync} from 'node:fs';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!/^[a-f0-9]{32}$/.test(account||''))throw Error('FINDS_D1_ACCOUNT_MISSING');
+          const response=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database?per_page=100',{
+            headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(15000)});
+          const data=await response.json();
+          const id=data.result?.find(x=>x.name==='geomacro-control-plane')?.uuid;
+          if(!response.ok||data.success!==true||!/^[a-f0-9-]{36}$/.test(id||''))throw Error('FINDS_D1_LEDGER_UNAVAILABLE');
+          appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+id+'\n');
+          NODE
+      - name: Publish bounded 3-domain derived news to existing D1 (idempotent)
+        if: steps.decide.outputs.should_run == 'true'
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || {
+            echo "::error::D1 derived-news recovery authorization missing"
+            exit 2
+          }
+          bun scripts/ops/publish-website-derived-news.ts
+      - name: Independently verify signed Finds across combined and category reads
+        if: always() && steps.decide.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          bun - <<'TS'
+          import {loadRiskObjectVerificationKeysFromEnv} from './src/lib/risk-object-signing.server';
+          import {verifyAutomatedFindsEnvelope,FINDS_CATEGORIES} from './src/lib/automated-finds-contract';
+          const keys=loadRiskObjectVerificationKeysFromEnv();
+          const root='https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/automated-finds';
+          for(const category of [null,...FINDS_CATEGORIES]){
+            const response=await fetch(root+(category?'?category='+category:''),{
+              redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
+            if(!response.ok)throw Error('AUTOMATED_FINDS_INDEPENDENT_READBACK_UNAVAILABLE');
+            const raw=await response.text();if(raw.length>300000)throw Error('AUTOMATED_FINDS_READBACK_OVERSIZE');
+            const doc=JSON.parse(raw);
+            if(doc.ok!==true||doc.schema!=='geomacro.automated-finds-feed.v1'||doc.chargeable!==false||
+               doc.independent_reviewed!==false||!Array.isArray(doc.batches)||doc.batches.length!==(category?1:3))
+              throw Error('AUTOMATED_FINDS_PUBLIC_READBACK_INVALID');
+            for(const envelope of doc.batches){
+              await verifyAutomatedFindsEnvelope(envelope,keys);
+              if(envelope.payload.source_sha!==process.env.GITHUB_SHA||
+                 (category&&envelope.payload.category!==category))throw Error('AUTOMATED_FINDS_EXACT_SOURCE_MISMATCH');
+            }
+            console.log(JSON.stringify({schema:'geomacro.automated-finds-independent-readback.v1',
+              scope:category??'combined',http_status:response.status,signatures_verified:doc.batches.length,
+              exact_source_sha:true,current_batch_b2_verified:doc.full_b2_readback_verified,
+              prior_archive_available:doc.archive_checkpoint!==null,categories:doc.categories,
+              independent_reviewed:false,chargeable:false,supabase_requests:0,payments:0}));
+          }
+          TS
+      - name: Independently prove private-source-free D1 readback after recovery
+        if: steps.decide.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          trap 'rm -f "$body"' EXIT
+          code="$(curl -sS --max-time 12 --proto '=https' \
+            -o "$body" -w '%{http_code}' \
+            https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news || true)"
+          test "$code" = "200" || {
+            echo "::error::DERIVED_NEWS_BACKSTOP_D1_READBACK_UNAVAILABLE"
+            exit 3
+          }
+          node - "$body" <<'NODE'
+          const fs=require("node:fs");
+          const body=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
+          if(body.ok!==true || body.schema!=="geomacro.website-derived-news-feed.v1" ||
+             body.original_release_delay_minutes!==15 ||
+             body.delivery_scope!=="free_website_only" ||
+             !Array.isArray(body.signals) || body.signals.length>250 ||
+             body.signals.some(s=>s.severity!==null ||
+               s.same_event_corrob_verified!==false ||
+               /https?:\/\/|www\./iu.test(JSON.stringify(s))))
+            throw Error("DERIVED_NEWS_BACKSTOP_PUBLIC_CONTRACT_INVALID");
+          const now=Date.now();
+          const counts=Object.fromEntries(["geopolitics","macro","rare_earth"].map(c=>[
+            c,{
+              stored_30d:body.signals.filter(s=>s.category===c).length,
+              original_last_24h:body.signals.filter(s=>s.category===c &&
+                Date.parse(s.published_at)>=now-86_400_000).length,
+            },
+          ]));
+          console.log(JSON.stringify({
+            schema:"geomacro.website-derived-news-backstop-readback.v1",
+            verified:true,derived_rows:body.signals.length,domains:counts,
+            original_release_delay_minutes:15,source_content_logged:false,
+            supabase_dependency:false,payments_performed:0,
+          }));
+          NODE
+      - name: Print explicit successful no-write decision
+        if: steps.decide.outputs.should_run != 'true'
+        run: echo "NEWS_BACKSTOP_SKIPPED_PRIMARY_PUBLISHER_CURRENT"

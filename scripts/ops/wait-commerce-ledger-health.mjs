@@ -5,6 +5,7 @@ if (!/^https:\/\//i.test(baseUrl)) {
   throw new Error("COMMERCE_LEDGER_HEALTH_CONFIG_REQUIRED");
 }
 
+const expectedVersion = String(process.env.GEOMACRO_COMMERCE_LEDGER_EXPECTED_WDI_VERSION ?? "").trim();
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const maxAttempts = 12;
 let lastSummary = "not_attempted";
@@ -17,7 +18,9 @@ for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       response.ok &&
       payload?.ok === true &&
       payload?.service === "geomacro-commerce-ledger" &&
-      payload?.storage === "durable_objects_sqlite";
+      payload?.storage === "durable_objects_sqlite" &&
+      (!expectedVersion || (payload.wdi_prequote_contract_version === expectedVersion &&
+       payload.wdi_prequote_available === true));
 
     if (valid) {
       console.log(JSON.stringify({

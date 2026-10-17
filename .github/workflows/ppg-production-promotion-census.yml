@@ -23,6 +23,9 @@ concurrency:
 
 jobs:
   promote-and-census:
+    # Supabase-only legacy execution retired. Replaced by reviewed official
+    # source read-only or B2/D1-native signed publication; no DB credential restore.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 50
     environment: production

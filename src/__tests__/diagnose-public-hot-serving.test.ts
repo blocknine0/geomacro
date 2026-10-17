@@ -22,6 +22,7 @@ function fakeFetch({
       ok:siteStatus===200,
       public_production:{
         deep_checked:true, b2_runtime_configured:true, intelligence_ready:true,
+        last_verified_baseline_readable:{intelligence:true,global_risk:true,risk_indices:true},
         global_risk_ready:true, risk_indices_ready:true,
         supabase_required_for_serving:false,
         serving_authority:siteStatus===200?"backblaze-b2-durable-truth-cloudflare-d1-verified-hot":
@@ -38,6 +39,18 @@ function fakeFetch({
     if(url.endsWith("/health")) return Response.json({
       ok:d1Status===200,store:"d1",schema_version:5,
     },{status:d1Status});
+    if(url.endsWith("/v1/public/historical-continuity/global-risk"))
+      return Response.json({
+        ok:true,schema:"geomacro.public-global-risk-historical-continuity.v1",
+        product:"global-risk",historical_only:true,
+        current_snapshot_available:false,commercial_eligible:false,
+        x402_chargeable:false,hot_freshness_not_asserted:true,
+        source_news_freshness_not_asserted:true,
+        independently_verified_archive_at_past_write:true,
+        independently_rechecked_b2_now:false,
+        anchor_kind:"direct_verified_b2_snapshot",
+        original_snapshot_as_of:recent,archive_generated_at:recent,
+      });
     const product=keys.find(k=>url.endsWith("/"+k));
     expect(product).toBeDefined();
     if(product===failProduct) return Response.json({
@@ -60,7 +73,7 @@ describe("#1827 public B2/D1 503 classification without rights bypass",()=>{
   it("identifies exactly which of three D1 hot snapshots is unavailable",async()=>{
     const {fetchImpl,calls}=fakeFetch({siteStatus:503,failProduct:"global-risk"});
     const result=await diagnosePublicHotServing({fetchImpl,nowMs:NOW});
-    expect(calls).toHaveLength(5);
+    expect(calls).toHaveLength(6);
     expect(result.ok).toBe(false);
     expect(result.unavailable_products).toEqual(["global-risk"]);
     expect(result.failure_codes).toContain("PUBLIC_DEEP_HEALTH_503");
@@ -90,6 +103,11 @@ describe("#1827 public B2/D1 503 classification without rights bypass",()=>{
     expect(result.unavailable_products).toEqual([]);
     expect(result.failure_codes).toEqual([]);
     expect(result.d1).toMatchObject({ok:true,schema_version:5});
+    expect(result.historical_global_risk).toMatchObject({
+      anchor_valid_in_d1:true,historical_only:true,
+      b2_archive_readback_now_verified:false,
+      current_product_verified:false,commercial_eligible:false,
+    });
     expect(result.products["intelligence"].source_as_of).toBe(recent);
     expect(result.site.public_serving_claim_verified).toBe(true);
     // Three valid D1 hot products do not establish current 24h per-domain
@@ -102,6 +120,29 @@ describe("#1827 public B2/D1 503 classification without rights bypass",()=>{
     });
     expect(summary).not.toHaveProperty("public_domain_ready");
     expect(summary.commercial_eligibility_verified).toBe(false);
+  });
+
+  it("does not hide a known unreadable B2 baseline behind otherwise healthy D1 snapshots",async()=>{
+    const {fetchImpl}=fakeFetch();
+    const altered=async(url:string,options:Record<string,any>)=>{
+      const result=await fetchImpl(url,options);
+      if(url.includes("/api/health?deep=1")){
+        const body=await result.json();
+        body.public_production.last_verified_baseline_readable.global_risk=false;
+        return Response.json(body,{status:200});
+      }
+      return result;
+    };
+    const receipt=await diagnosePublicHotServing({fetchImpl:altered,nowMs:NOW});
+    expect(receipt.ok).toBe(false);
+    expect(receipt.failure_codes).toContain("HISTORICAL_B2_BASELINE_PROOF_UNREADABLE");
+    expect(receipt.site.historical_b2_baseline_readable).toMatchObject({
+      intelligence:true,global_risk:false,risk_indices:true,
+    });
+    expect(receipt.commercial_eligibility_verified).toBe(false);
+    expect(receipt.historical_global_risk.anchor_valid_in_d1).toBe(true);
+    expect(receipt.historical_global_risk.b2_archive_readback_now_verified).toBe(false);
+    expect(receipt.failure_codes).toContain("GRI_D1_ARCHIVE_ANCHOR_VALID_BUT_PUBLIC_BASELINE_READ_UNAVAILABLE");
   });
 
   it("refuses stale/unknown D1 schema and transport failures, never green",async()=>{
@@ -121,6 +162,35 @@ describe("#1827 public B2/D1 503 classification without rights bypass",()=>{
     expect(result.failure_codes).toContain("D1_PUBLIC_HOT_SNAPSHOT_UNAVAILABLE");
     expect(result.failure_codes).toContain("PUBLIC_SITE_TRANSPORT_UNAVAILABLE");
     expect(JSON.stringify(result)).not.toContain("BLOCK_THIS");
+  });
+
+  it("separately flags an unavailable Global Risk historical D1 archive anchor without promoting stale data",async()=>{
+    const {fetchImpl}=fakeFetch({siteStatus:503,failProduct:"global-risk"});
+    const readOnly=async(url:string,options:Record<string,any>)=>{
+      if(url.endsWith("/v1/public/historical-continuity/global-risk"))
+        return Response.json({
+          ok:false,error:"GLOBAL_RISK_VERIFIED_ARCHIVE_UNAVAILABLE",
+        },{status:503});
+      if(url.includes("/api/health?deep=1")){
+        const response=await fetchImpl(url,options);
+        const data=await response.json();
+        data.public_production.last_verified_baseline_readable.global_risk=false;
+        return Response.json(data,{status:503});
+      }
+      return fetchImpl(url,options);
+    };
+    const result=await diagnosePublicHotServing({fetchImpl:readOnly,nowMs:NOW});
+    expect(result.ok).toBe(false);
+    expect(result.failure_codes).toContain("GRI_HISTORICAL_D1_ARCHIVE_ANCHOR_UNAVAILABLE_OR_INVALID");
+    expect(result.historical_global_risk).toMatchObject({
+      http_status:503,anchor_valid_in_d1:false,
+      error:"GLOBAL_RISK_VERIFIED_ARCHIVE_UNAVAILABLE",
+      b2_archive_readback_now_verified:false,
+      current_product_verified:false,
+    });
+    expect(JSON.stringify(result)).not.toContain("source_url");
+    expect(result.b2_private_archive_reads).toBe(0);
+    expect(result.external_payment_performed).toBe(false);
   });
 
   it("never uses B2/SQL or x402 and only reaches fixed public HTTPS origins",()=>{

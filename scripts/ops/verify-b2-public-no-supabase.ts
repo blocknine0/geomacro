@@ -14,6 +14,7 @@ for (const key of [
 
 const originalFetch = globalThis.fetch.bind(globalThis);
 let supabaseNetworkAttempts = 0;
+let directB2NetworkAttempts = 0;
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const value = input instanceof Request ? input.url : String(input);
   let target: URL | null = null;
@@ -27,17 +28,25 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     supabaseNetworkAttempts += 1;
     throw new Error("NO_SUPABASE_B2_ACCEPTANCE_BLOCKED_SUPABASE_NETWORK");
   }
+  if (host==="s3.us-east-005.backblazeb2.com" ||
+      host.endsWith(".backblazeb2.com")) {
+    directB2NetworkAttempts += 1;
+    throw new Error("NO_SUPABASE_B2_ACCEPTANCE_BLOCKED_UNMETERED_ORIGIN");
+  }
   return originalFetch(input, init);
 }) as typeof fetch;
 
 const {
-  b2PublicRuntimeConfigured,
   readB2PublicIntelligence,
   readB2PublicRisk,
 } = await import("../../src/lib/b2-live.server.ts");
 
-if (!b2PublicRuntimeConfigured()) {
-  throw new Error("NO_SUPABASE_B2_RUNTIME_NOT_CONFIGURED");
+// Public read uses only Cloudflare signed/proof-verified authority and does
+// NOT receive private B2 S3 credentials. Cloudflare Workers independently
+// reserve each cold B2 GET against the account-wide atomic D1 budget.
+if (process.env.B2_KEY_ID || process.env.B2_APPLICATION_KEY ||
+    process.env.B2_ARCHIVE_READ_KEY_ID || process.env.B2_ARCHIVE_READ_APPLICATION_KEY) {
+  throw new Error("NO_SUPABASE_B2_PUBLIC_READER_S3_CREDENTIALS_FORBIDDEN");
 }
 
 const [intelligence, risk] = await Promise.all([
@@ -66,6 +75,9 @@ if (
   throw new Error("NO_SUPABASE_B2_RISK_PROOF_INVALID");
 }
 
+if (directB2NetworkAttempts !== 0) {
+  throw new Error("NO_SUPABASE_B2_UNMETERED_ORIGIN_ATTEMPTED");
+}
 if (supabaseNetworkAttempts !== 0) {
   throw new Error(`NO_SUPABASE_B2_NETWORK_ATTEMPTED:${supabaseNetworkAttempts}`);
 }
@@ -87,6 +99,9 @@ console.log(JSON.stringify({
   ok: true,
   schema: "geomacro.no-supabase-b2-public.v1",
   authority: "backblaze-b2",
+  serving_authority: "cloudflare-quota-governed-verified-edge",
+  direct_b2_network_attempts: directB2NetworkAttempts,
+  b2_origin_quota_governed_at_worker: true,
   intelligence_rows: intelligence.length,
   categories,
   risk_verification_status: risk.verificationStatus,

@@ -1,6 +1,7 @@
 import { readB2PublicIntelligence, readB2PublicRisk } from "./b2-live.server";
 import { riskIndicesFromGlobalRisk } from "./risk-indices-from-global-risk";
 import type { AskAnswer } from "./ask-intelligence.server";
+import { freshnessMaxAgeHours } from "./ask-freshness";
 
 type PublicFinding = {
   category?: string | null;
@@ -47,6 +48,12 @@ export type HybridAskAnswer = AskAnswer & {
   source_identity_exposed: false;
   durable_live_storage_write: false;
   real_time_message?: string;
+  /** Explicit classification: publisher observation only, not GRO risk evidence. */
+  intelligence_tier?: "official_observation_unscored" | "index_observation_unverified";
+  signed_gro_generated?: false;
+  independent_same_event_verification?: false;
+  /** Native timestamp of the newest publisher release, never the fetch clock. */
+  latest_original_published_at?: string;
 };
 
 type StoredEvent = {
@@ -68,7 +75,6 @@ const STOPWORDS = new Set([
   "risks", "geomacro", "show", "tell", "give", "please", "latest", "current", "recent", "today",
 ]);
 
-const FRESHNESS_RE = /\b(now|today|latest|current|currently|real[ -]?time|breaking|recent|recently|last\s+\d+\s*(minute|minutes|hour|hours|day|days)|past\s+\d+\s*(minute|minutes|hour|hours|day|days))\b/i;
 const RISK_INDEX_RE = /\b(risk\s+indices?|risk\s+index|geopolitical\s+risk|macro(?:economic)?\s+risk|critical[- ]minerals?\s+risk)\b/i;
 
 function termsOf(question: string) {
@@ -83,12 +89,6 @@ function termsOf(question: string) {
 
 function eventText(row: StoredEvent) {
   return `${row.summary ?? ""} ${row.narrative ?? ""} ${row.category ?? ""}`.toLowerCase();
-}
-
-function freshnessMaxAgeHours(question: string): number | null {
-  if (!FRESHNESS_RE.test(question)) return null;
-  if (/\b(now|latest|current|currently|real[ -]?time|breaking)\b/i.test(question)) return 6;
-  return 24;
 }
 
 function compactStoredAnswer(

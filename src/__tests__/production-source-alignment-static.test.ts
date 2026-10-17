@@ -48,7 +48,8 @@ describe("production source alignment", () => {
 
   it("runs on exact governed revisions without recurring source-census churn", () => {
     expect(workflow).toContain("ref: ${{ github.sha }}");
-    expect(workflow).toContain('- main');
+    expect(workflow).not.toMatch(/^  push:/m);
+    expect(workflow).toContain("    if: ${{ false }}");
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).not.toContain("schedule:");
     expect(workflow).not.toContain("workflow_run:");

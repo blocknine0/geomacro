@@ -77,6 +77,30 @@ function fixture() {
 }
 
 describe("#1827 executable production governed D1 historical source readback",()=>{
+  it("binds each source subset of a shared object to the exact independently verified run receipt",()=>{
+    const f=fixture();
+    const ids=f.summary.sources.map(s=>s.source_id);
+    for(const [i,source] of f.summary.sources.entries()){
+      const fragment=source.fragments[0] as any;
+      Object.assign(fragment,{key:'geomacro-evidence/v1/observation-bundles/shared.json.gz',
+        sha256:hash,shared_bundle_members:37,source_ids:ids,
+        source_member_set_sha256:(i?'d':'e').repeat(64)});
+      const row=f.databaseResponse[0].results[i];
+      const metadata=JSON.parse(row.metadata_json);
+      metadata.fragments=source.fragments;
+      row.metadata_json=JSON.stringify(metadata);
+    }
+    expect(verifyGovernedD1CheckpointReadback(f.databaseResponse,f.summary).ok).toBe(true);
+    for(const key of ['members','shared_bundle_members','source_member_set_sha256','source_ids']){
+      const copy=structuredClone(f);
+      const row=copy.databaseResponse[0].results[0];
+      const metadata=JSON.parse(row.metadata_json);
+      metadata.fragments[0][key]=key==='source_ids'?['eia_api_v2']:key.includes('sha256')?'f'.repeat(64):99;
+      row.metadata_json=JSON.stringify(metadata);
+      expect(()=>verifyGovernedD1CheckpointReadback(copy.databaseResponse,copy.summary))
+        .toThrow('GOVERNED_D1_B2_VERIFIED_FRAGMENT_METADATA_MISMATCH');
+    }
+  });
   it("accepts exactly 2 D1 original-archive SHA-bound checkpoints with true source clocks",()=>{
     const f=fixture();
     const result=verifyGovernedD1CheckpointReadback(

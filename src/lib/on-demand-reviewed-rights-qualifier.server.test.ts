@@ -126,10 +126,17 @@ function inputs(eventInput:CountryRiskEventInput=event,packageInput=reviewedPack
     },
   };
 }
+function stubTrustedReviewer(){
+  vi.stubEnv("GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM",trustedReviewerPublicKeyPem);
+  vi.stubEnv("GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256",
+    createHash("sha256").update(pair.publicKey.export({format:"der",type:"spki"})).digest("hex"));
+  vi.stubEnv("RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64",
+    signing.publicKey.export({format:"der",type:"spki"}).toString("base64"));
+}
 afterEach(()=>vi.unstubAllEnvs());
 describe("reuse real independent reviewer and B2 rights for private on-demand GRO",()=>{
   it("authenticates exact signed reviewed event and registry rights before synthetic signed macro GRO",async()=>{
-    vi.stubEnv("GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM",trustedReviewerPublicKeyPem);
+    stubTrustedReviewer();
     const {scoring,scorerDeps}=inputs();
     const prepared=await scoreAndSignQualifiedOnDemandCountry(scoring,scorerDeps);
     const object=JSON.parse(prepared.signed_risk_object_json);
@@ -155,7 +162,7 @@ describe("reuse real independent reviewer and B2 rights for private on-demand GR
       .rejects.toThrow("ON_DEMAND_QUALIFICATION_NOT_VERIFIED");
   });
   it("rejects rights absent, stale registry unavailable, wrong category and attribution unmet",async()=>{
-    vi.stubEnv("GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM",trustedReviewerPublicKeyPem);
+    stubTrustedReviewer();
     for(const rows of [
       null,
       rights().slice(0,1),
@@ -177,13 +184,13 @@ describe("reuse real independent reviewer and B2 rights for private on-demand GR
     }
   });
   it("rejects reviewer-signed row whose reviewed severity is modified in scoring input",async()=>{
-    vi.stubEnv("GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM",trustedReviewerPublicKeyPem);
+    stubTrustedReviewer();
     const changed={...event,severity:99};
     await expect(scoreAndSignQualifiedOnDemandCountry(inputs(changed).scoring,
       inputs(changed).scorerDeps)).rejects.toThrow("ON_DEMAND_QUALIFICATION_NOT_VERIFIED");
   });
   it("rejects exact input/event signature tamper, wrong publisher mapping and syndication",async()=>{
-    vi.stubEnv("GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM",trustedReviewerPublicKeyPem);
+    stubTrustedReviewer();
     const original=reviewedPackage();
     for(const changed of [
       {...original,reviewed_scoring_event_sha256:"a".repeat(64)},
@@ -197,6 +204,34 @@ describe("reuse real independent reviewer and B2 rights for private on-demand GR
       await expect(scoreAndSignQualifiedOnDemandCountry(scoring,scorerDeps))
         .rejects.toThrow("ON_DEMAND_QUALIFICATION_NOT_VERIFIED");
     }
+  });
+  it("#2044 rejects unapproved fingerprint or reviewer/signer key reuse before B2 rights read",async()=>{
+    stubTrustedReviewer();
+    const rightsReader=vi.fn(async()=>rights());
+    const run=()=>scoreAndSignQualifiedOnDemandCountry(inputs().scoring,{
+      ...deps,
+      qualifyEvidence:createReviewedRightsOnDemandQualifier({
+        rows:[row],eventPackages:[reviewedPackage()],
+      },{readRights:rightsReader}),
+    });
+    const approved=createHash("sha256")
+      .update(pair.publicKey.export({format:"der",type:"spki"})).digest("hex");
+    vi.stubEnv("GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256","f".repeat(64));
+    await expect(run()).rejects.toThrow("ON_DEMAND_QUALIFICATION_NOT_VERIFIED");
+    expect(rightsReader).not.toHaveBeenCalled();
+    vi.stubEnv("GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256",approved);
+    vi.stubEnv("RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64",
+      pair.publicKey.export({format:"der",type:"spki"}).toString("base64"));
+    await expect(run()).rejects.toThrow("ON_DEMAND_QUALIFICATION_NOT_VERIFIED");
+    expect(rightsReader).not.toHaveBeenCalled();
+    vi.stubEnv("RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64","");
+    await expect(run()).rejects.toThrow("ON_DEMAND_QUALIFICATION_NOT_VERIFIED");
+    expect(rightsReader).not.toHaveBeenCalled();
+    stubTrustedReviewer();
+    const result=await run();
+    expect(result.locally_verified).toBe(true);
+    expect(result.payment_authorized).toBe(false);
+    expect(rightsReader).toHaveBeenCalledTimes(1);
   });
   it("retains no generic headline pairing, no stored raw payload, no Supabase and no payment",()=>{
     const src=requireSource();

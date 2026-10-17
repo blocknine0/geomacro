@@ -1,0 +1,61 @@
+name: Stateless Website Intelligence Live Sources
+
+# The website is on-demand, with no persistent raw feed or event storage.
+# This is independent release acceptance, never a scheduled publisher.
+on:
+  pull_request:
+    paths:
+      - "scripts/lib/global-official-release-feeds.mjs"
+      - "src/lib/stateless-*.ts"
+      - "src/components/intelligence/stateless-live-desk.tsx"
+      - "scripts/ops/accept-stateless-website-intelligence.ts"
+      - ".github/workflows/stateless-website-intelligence-live.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/lib/global-official-release-feeds.mjs"
+      - "src/lib/stateless-*.ts"
+      - "src/components/intelligence/stateless-live-desk.tsx"
+      - "scripts/ops/accept-stateless-website-intelligence.ts"
+      - ".github/workflows/stateless-website-intelligence-live.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-stateless-website-real-source
+  cancel-in-progress: false
+
+jobs:
+  original-live-three-domain-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Require no storage and source-private publisher entrypoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require("fs");
+          const server=fs.readFileSync("src/lib/stateless-public-intelligence.server.ts","utf8");
+          const model=fs.readFileSync("src/lib/stateless-intelligence-model.ts","utf8");
+          const page=fs.readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
+          for(const x of ["writeFileSync(", ".insert(", ".upsert(", ".put(", "SUPABASE_DB_URL", "B2_KEY_ID", "localStorage", "sessionStorage", "caches.open("]) {
+            if(server.includes(x)||page.includes(x)) throw Error("STATELESS_WEBSITE_WRITE_SURFACE:"+x);
+          }
+          if(!model.includes("STATELESS_WEBSITE_DELAY_MS = 15 * 60_000") ||
+             !page.includes("What changed") || !page.includes("Why it matters") ||
+             !page.includes('15-minute delayed'))
+            throw Error("STATELESS_PUBLIC_UI_CONTRACT_NOT_READY");
+          NODE
+      - name: Three-category actual official network reads and derived findings
+        run: bun scripts/ops/accept-stateless-website-intelligence.ts

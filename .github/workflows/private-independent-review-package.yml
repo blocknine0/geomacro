@@ -1,0 +1,82 @@
+name: Private Independent Review Package Preparation
+
+# Preparation only: never signing, public publication, source discovery or
+# a readiness gate. Private originals stay in B2; only a safe receipt leaves.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/private-independent-review-package.yml'
+      - 'scripts/lib/independent-review-preparation.mjs'
+      - 'scripts/ops/prepare-private-independent-review-package.mjs'
+      - 'config/private-review-preparation-source.v1.json'
+  pull_request:
+    paths:
+      - '.github/workflows/private-independent-review-package.yml'
+      - 'scripts/lib/independent-review-preparation.mjs'
+      - 'scripts/lib/independent-review-preparation.test.mjs'
+      - 'scripts/ops/prepare-private-independent-review-package.mjs'
+      - 'config/private-review-preparation-source.v1.json'
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-private-review-package-preparation
+  cancel-in-progress: false
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Offline package integrity, privacy and no-publication tests
+        run: |
+          node --check scripts/ops/prepare-private-independent-review-package.mjs
+          node --test scripts/lib/independent-review-preparation.test.mjs
+  prepare:
+    needs: contract
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    env:
+      B2_ACCOUNT_QUOTA_REQUIRED: '1'
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: private_review_preparation
+      B2_REQUEST_BUDGET: '8'
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Resolve existing shared D1 quota governor
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${B2_ACCOUNT_QUOTA_REQUIRED}" = '1'
+          test -n "${CLOUDFLARE_ACCOUNT_ID}" && test -n "${CLOUDFLARE_API_TOKEN}"
+          test -n "${B2_KEY_ID}" && test -n "${B2_APPLICATION_KEY}"
+          list="$(npx -y wrangler@4.136.3 d1 list --json)"
+          id="$(printf '%s' "$list" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{const r=JSON.parse(s).find(v=>v.name==="geomacro-control-plane");process.stdout.write(r?.uuid??r?.id??"")})')"
+          test -n "$id" || { echo '::error::D1_QUOTA_GOVERNOR_MISSING'; exit 2; }
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+      - name: Build actual private review package from pinned archive and verify full B2 restore
+        run: node scripts/ops/prepare-private-independent-review-package.mjs --private-review-preparation
+      - name: Upload source-free preparation receipt only
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: private-review-package-receipt-${{ github.run_id }}
+          path: artifacts/private-review-preparation/receipt.json
+          if-no-files-found: error
+          retention-days: 7

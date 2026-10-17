@@ -45,7 +45,10 @@ export function planSharedGovernedBundle(batches, buildFragment, {
   // the same otherwise content-addressed immutable archive key.
   const latestNativeObservedAt = new Date(Math.max(...rows.map(row =>
     Date.parse(row.observed_at)))).toISOString();
-  fragment.bundle.created_at = latestNativeObservedAt;
+  // Archive write time belongs to the external run/checkpoint receipt. Do not
+  // mislabel a native statistical measurement date as artifact creation time.
+  delete fragment.bundle.created_at;
+  fragment.bundle.latest_source_observed_at = latestNativeObservedAt;
   fragment.bundleBytes = Buffer.from(JSON.stringify(fragment.bundle));
   fragment.compressed = gzipSync(fragment.bundleBytes, { level: 9 });
   if (fragment.bundleBytes.length > maxUncompressedBytes ||
