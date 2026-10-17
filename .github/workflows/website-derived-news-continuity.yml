@@ -138,15 +138,23 @@ jobs:
           node - "$body" <<'NODE'
           const fs = require("fs");
           const doc=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
+          const now=Date.now(),retentionMs=72*60*60*1000;
           if(doc.ok!==true || doc.schema!=="geomacro.website-derived-news-feed.v1" ||
              doc.original_release_delay_minutes!==15 ||
+             doc.retention_days!==3 || doc.retention_hours!==72 ||
              doc.delivery_scope!=="free_website_only" ||
-             !Array.isArray(doc.signals) ||
-             doc.signals.some(s=>s.severity!==null||s.same_event_corrob_verified!==false||
-                /https?:\/\//u.test(JSON.stringify(s))))
-            throw Error("DERIVED_NEWS_PUBLIC_SCHEMA_OR_PRIVACY_MISMATCH");
+             !Array.isArray(doc.signals) || doc.signals.length>250 ||
+             doc.signals.some(s=>{
+               const at=Date.parse(s.published_at);
+               return !Number.isFinite(at) || at>now || now-at>retentionMs ||
+                 s.severity!==null||s.same_event_corrob_verified!==false||
+                 s.status!=="official_release_observed_unscored" ||
+                 /https?:\/\/|www\./iu.test(JSON.stringify(s));
+             }))
+            throw Error("DERIVED_NEWS_72H_ORIGINAL_OR_PRIVACY_READBACK_MISMATCH");
           console.log(JSON.stringify({schema:"geomacro.website-derived-news-readback-receipt.v1",
             verified:true,derived_rows:doc.signals.length,release_delay_minutes:15,
+            retention_hours_verified:72,original_clock_window_verified:true,
             raw_upstream_disclosed:false,supabase_dependency:false}));
           NODE
 
