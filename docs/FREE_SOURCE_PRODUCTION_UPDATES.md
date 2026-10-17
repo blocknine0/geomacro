@@ -144,3 +144,37 @@ Production acceptance requires Product CI, official live-source workflow and
 a protected-main D1 readback. The source cards must be shown as degraded
 rather than filling them with fabricated stories if an external origin is
 unavailable. Extra discovery lanes never certify commercial reuse rights.
+
+## Provider degradation vs D1 failure (2026-10-17)
+
+The bounded 30-minute free-source rotation sometimes finished with
+`retained_degraded_readers=2` from older denied IEA and unavailable Wikimedia
+records **even when only two new Macro/Minerals origin requests succeeded and
+all three D1 checkpoint writes plus exact independent readbacks succeeded**.
+A cached third-party 403 must remain an explicit degraded fact, but is not a
+failed Cloudflare D1 publication.
+
+The protected writer now checks a fail-closed
+`geomacro.free-source-operational-verdict.v1`: three D1 exact verified
+readbacks, zero Supabase/B2/payments and no original payload persisted are
+mandatory for a successful workflow. New or cached origin failures remain in
+the source-only D1 checkpoint, a short-lived artifact, an actionable
+`OFFICIAL_PROVIDERS_DEGRADED` warning and the GitHub step summary. No source
+is marked readable merely because CI passes. Any transport retry remains
+governed by the existing 30/60/360-minute per-source budget; a 401/403/429
+is never proxied or bypassed.
+
+The Wikimedia pageviews reader now uses the documented
+`all-projects/all-access/all-agents/daily` aggregate and requests one
+**complete UTC day from two days ago** instead of yesterday's potentially
+unavailable report. It remains reference context, never a geopolitical news
+event or a verified current country release. A reader revision re-probes the
+repaired source without overriding an existing genuine denial backoff.
+Source-specific success still requires actual production transport verification.
+
+BLS RSS 4xx, the Australian minister publisher's timeout and IEA's 4xx
+remain unverified original feeds, not fabricated green cells. Existing
+working BIS/ECB/Fed/StatCan/UK Macro and NRCan/Geoscience/UK/India/US DOE
+minerals issuers continue to serve verified eligible derived news. This
+maintenance does not generate real commercial rights, signed paid products,
+fresh B2 backups or 195x3 independently qualified country risk.
