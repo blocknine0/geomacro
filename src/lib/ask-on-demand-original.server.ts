@@ -17,17 +17,42 @@ const DOMAINS: ReadonlyArray<{domain:OnDemandCategory;pattern:RegExp}> = [
   {domain:"rare_earth",pattern:/\b(critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu},
 ];
 const CURRENT = /\b(latest|new|news|today|now|current|recent|recently|updates?|developments?|announc(?:e|ed|ement)|what changed|what happened|this week|last \d+ (?:hours?|days?|weeks?)|past \d+ (?:hours?|days?|weeks?))\b/iu;
-const NUMERIC = /\b(how much|how many|exact (?:rate|number|figure|value)|percentage|what (?:is|was) the (?:latest |current )?(?:inflation|cpi|gdp|fx|exchange|interest) rate|risk scores?|predict|forecast)\b|[%$₹€]/iu;
-function matchesCountry(question:string,country:Country195):boolean {
+const NUMERIC = /\b(how much|how many|exact|percentage|percent|rate|value|price|figure|number|risk scores?|predict|forecast)\b|[%$₹€]/iu;
+type CountrySpan=Readonly<{iso3:string;start:number;end:number}>;
+function countrySpans(question:string,country:Country195):CountrySpan[]{
   const terms=[country.name,...country.aliases,country.iso3];
   if(country.iso3==="USA")terms.push("US");
   if(country.iso3==="GBR")terms.push("UK");
-  return terms.some(term=>{
-    const escaped=term.replace(/[\^$.*+?()[\]{}|]/g,"\\$&");
-    const pattern=new RegExp("(?:^|[^\\p{L}\\p{N}])"+escaped+"(?=$|[^\\p{L}\\p{N}])",
-      term.length<4 || term===country.iso3?"u":"iu");
-    return pattern.test(question);
-  });
+  const spans:CountrySpan[]=[];
+  for(const term of terms){
+    const strict=term.length<4||term===country.iso3;
+    const needle=strict?term:term.toLocaleLowerCase();
+    const haystack=strict?question:question.toLocaleLowerCase();
+    let start=0;
+    while(start<haystack.length){
+      const at=haystack.indexOf(needle,start);
+      if(at<0)break;
+      const end=at+needle.length;
+      const left=at>0?question[at-1]:"";
+      const right=end<question.length?question[end]:"";
+      if((!left||!/[\p{L}\p{N}]/u.test(left)) &&
+         (!right||!/[\p{L}\p{N}]/u.test(right))){
+        spans.push({iso3:country.iso3,start:at,end});
+      }
+      start=end;
+    }
+  }
+  return spans;
+}
+function resolveCountry(question:string):Country195|null{
+  const spans=COUNTRIES_195.flatMap(country=>countrySpans(question,country));
+  // "South Sudan" must not incorrectly be treated as two countries simply
+  // because "Sudan" is a contained substring. Disjoint mentions are ambiguous.
+  const specific=spans.filter(row=>!spans.some(other=>
+    other.iso3!==row.iso3 && other.start<=row.start &&
+    other.end>=row.end && other.end-other.start>row.end-row.start));
+  const ids=Array.from(new Set(specific.map(row=>row.iso3)));
+  return ids.length===1?COUNTRIES_195.find(country=>country.iso3===ids[0])??null:null;
 }
 function ageSeconds(question:string):number {
   const m=/\b(?:last|past|within)\s+(\d{1,2})\s*(hours?|days?|weeks?)\b/iu.exec(question);
@@ -42,9 +67,8 @@ function ageSeconds(question:string):number {
  * unsupported numeric value. Only fixed identifiers reach providers. */
 export function planAskOriginalQuestion(question:string):AskOriginalPlan|null {
   if(!question || question.length>300 || !CURRENT.test(question) || NUMERIC.test(question))return null;
-  const countries=COUNTRIES_195.filter(country=>matchesCountry(question,country));
-  if(countries.length!==1)return null;
-  const country=countries[0];
+  const country=resolveCountry(question);
+  if(!country)return null;
   const detected=DOMAINS.filter(row=>row.pattern.test(question)).map(row=>row.domain);
   const categories:OnDemandCategory[]=detected.length?detected:["geopolitics","macro","rare_earth"];
   const topics:string[]=[];
@@ -92,7 +116,9 @@ export async function answerFromCurrentOriginals(
     plan.categories.includes(item.domain) &&
     matchesRequestedTopic(item.article_title,item.domain,plan.topics) &&
     (plan.mineral===null ||
-      new RegExp("(?:^|[^a-z])"+plan.mineral.replace(/ /g,"[- ]")+"s?(?=$|[^a-z])","iu").test(item.article_title)));
+      (plan.mineral==="rare earth"
+        ? /\brare[- ]earths?\b/iu.test(item.article_title)
+        : item.article_title.toLocaleLowerCase().split(/[^a-z]+/u).includes(plan.mineral))));
   const signals=deriveStatelessSignals(eligible.map(item=>({
     title:item.article_title,articleUrl:item.article_url,
     publishedAt:item.page_original_published_at,sourceId:item.publisher_family,
