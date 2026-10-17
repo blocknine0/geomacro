@@ -121,18 +121,20 @@ function validatePrivateProof(
      permission.attribution_required!==false||
      !within(permission.permission_checked_at,ms,90*86400_000)||
      !UTC.test(permission.permission_expires_at)||
+     !Number.isFinite(Date.parse(permission.permission_expires_at))||
      Date.parse(permission.permission_expires_at)<=ms||
      Date.parse(permission.permission_expires_at)-Date.parse(permission.permission_checked_at)>366*86400_000||
      !within(proof.attested_at,ms,3600_000)||
-     !UTC.test(proof.expires_at)||Date.parse(proof.expires_at)<=ms||
+     !UTC.test(proof.expires_at)||!Number.isFinite(Date.parse(proof.expires_at))||
+     Date.parse(proof.expires_at)<=ms||
      Date.parse(proof.expires_at)-Date.parse(proof.attested_at)>3600_000||
      !SIGNATURE.test(envelope.facts_signature_b64??"")||
      !SIGNATURE.test(envelope.rights_signature_b64??"")||
      !machineCommercialAuthorityConfigurationValid(env))return false;
   // Reject extra unsigned policy fields; the same exact bytes are signed by
   // the two separately approved authorities and bound to the GRO public key.
-  if(Object.keys(proof).length!==20||
-     Object.keys(permission).length!==7||
+  if(Object.keys(proof).length!==19||
+     Object.keys(permission).length!==8||
      Object.keys(envelope).length!==3)return false;
   const bytes=Buffer.from(canonicalRiskObjectJson(proof),"utf8");
   return validAuthoritySignature(
