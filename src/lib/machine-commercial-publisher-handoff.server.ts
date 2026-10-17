@@ -26,12 +26,24 @@ export function pinnedMachineCommercialSourceHandoff(
  if(!Number.isFinite(at)||!Number.isFinite(expires)||
     at>now.getTime()||expires<=now.getTime()||
     expires-at>60*60_000)fail();
+ const observed=new Set<string>();
+ const attestedSourceSet=candidates.map(c=>({
+   article_bytes_sha256:c.original_article_sha256,
+   original_published_at:c.original_published_at,
+   same_event_claim_sha256:c.same_event_claim_sha256,
+ })).sort((a,b)=>String(a.article_bytes_sha256).localeCompare(String(b.article_bytes_sha256)));
+ const attestedSourceSetSha=createHash("sha256")
+   .update(JSON.stringify(attestedSourceSet),"utf8").digest("hex");
+ if(attestedSourceSetSha!==p.exact_original_evidence_set_sha256)fail();
  const times=candidates.map(candidate=>{
+   const identity=String(candidate.source_registry_id)+":"+candidate.original_article_sha256;
+   if(observed.has(identity))fail();
+   observed.add(identity);
    if(!/^[a-f0-9]{64}$/u.test(String(candidate.original_article_sha256??""))||
       !/^[A-Za-z0-9_.:-]{3,160}$/u.test(String(candidate.source_registry_id??"")))
      fail();
    const time=Date.parse(String(candidate.original_published_at??""));
-   if(!Number.isFinite(time)||time>now.getTime()||
+   if(!Number.isFinite(time)||time>at||time>now.getTime()||
       now.getTime()-time>6*60*60_000)fail();
    // Require exact independently signed article scope, not generic publisher.
    if(!p.source_permissions.some(permission=>
