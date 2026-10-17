@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { groqClassifyJson } from "./groq.server";
 import { buildRealtimeSearchPlan } from "./ask-realtime-query-plan";
+import { resolveAskCountry } from "./ask-on-demand-original.server";
 import type { AskAnswer } from "./ask-intelligence.server";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 
@@ -40,14 +41,6 @@ type GroundedShape = {
   geomacro_view?: string;
   source_indexes?: number[];
 };
-
-function normalizeQuestion(value: string) {
-  return String(value || "")
-    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 220);
-}
 
 function indexedDate(value: unknown): string | null {
   const text = String(value ?? "").trim();
@@ -152,32 +145,46 @@ function dedupeAndRank(hits: SearchHit[], maxAgeHours: number): SearchHit[] {
   return selected;
 }
 
-async function currentSearch(question: string): Promise<SearchHit[]> {
-  const clean = normalizeQuestion(question);
+/**
+ * The discovery index receives ONLY fixed sector vocabulary and a canonical
+ * country name, never the user's freeform research text. This allows
+ * country-specific global search without leaking a private question or
+ * accidentally substituting unrelated worldwide search hits.
+ *
+ * These GDELT observations remain UNVERIFIED index leads: no original page,
+ * native publication clock, numeric observation or paid rights are inferred.
+ */
+export function planSafeRealtimeIndexQueries(question: string) {
   const plan = buildRealtimeSearchPlan(question);
-  const { broad, maxAgeHours, timespan } = plan;
+  const country = resolveAskCountry(question);
+  const countryPrefix = country
+    ? '"' + country.name.replace(/"/g, "") + '" AND '
+    : "";
+  return {
+    maxAgeHours: plan.maxAgeHours,
+    timespan: plan.timespan,
+    country_iso3: country?.iso3 ?? null,
+    queries: CATEGORY_QUERIES
+      .filter(spec => plan.broadCategories.includes(spec.category))
+      .map(spec => ({
+        category: spec.category,
+        query: countryPrefix + "(" + spec.query + ")",
+      })),
+  };
+}
 
-  if (broad) {
-    // Restrict category-scoped current questions to those sectors. Unknown
-    // categories retain the original broad three-sector fallback.
-    const selectedQueries = CATEGORY_QUERIES.filter(spec =>
-      plan.broadCategories.includes(spec.category)
-    );
-    const batches = await Promise.allSettled(
-      selectedQueries.map(spec => searchGdelt(spec.query, spec.category, timespan)),
-    );
-    return dedupeAndRank(
-      batches.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
-      maxAgeHours,
-    );
-  }
-
-  const category = /mineral|rare earth|lithium|cobalt|nickel|graphite|copper/i.test(question)
-    ? "CRITICAL_MINERALS"
-    : /inflation|rate|central bank|currency|gdp|recession|trade|macro/i.test(question)
-      ? "MACRO"
-      : "GEOPOLITICS";
-  return dedupeAndRank(await searchGdelt(clean, category, timespan), maxAgeHours);
+async function currentSearch(question: string): Promise<SearchHit[]> {
+  const plan = planSafeRealtimeIndexQueries(question);
+  // Independent search failures cannot erase a reachable category.
+  // At most three fixed-identifier index calls share the seven-second
+  // deadline; no raw question or third-party article is served to customers.
+  const batches = await Promise.allSettled(
+    plan.queries.map(spec => searchGdelt(spec.query, spec.category, plan.timespan)),
+  );
+  return dedupeAndRank(
+    batches.flatMap(result => result.status === "fulfilled" ? result.value : []),
+    plan.maxAgeHours,
+  );
 }
 
 function deterministicStructuredAnswer(hits: SearchHit[]): GroundedShape {
@@ -213,7 +220,10 @@ async function structureWithGroundedModel(question: string, hits: SearchHit[]): 
         "Keep summary to one short sentence. Keep why_it_matters and geomacro_view concise and analytical, not generic. " +
         "If support is thin, phrase cautiously rather than fabricating certainty. Return JSON with summary, what_changed, why_it_matters, geomacro_view, source_indexes.",
       user: JSON.stringify({
-        question,
+        // Do not send the researcher's private question to an optional LLM.
+        // The model sees fixed sector scope and already-private index leads.
+        country_iso3: planSafeRealtimeIndexQueries(question).country_iso3,
+        categories: [...new Set(hits.map(hit => hit.category))],
         findings: hits.map((hit, index) => ({
           index,
           category: hit.category,
