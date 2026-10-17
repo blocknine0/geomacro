@@ -1,7 +1,8 @@
 name: Website Derived News Continuity
 
-# This is the missing unattended ingestion that the old Supabase-backed
-# Intelligence page had. Free, derived ONLY, no Supabase or paid API writes.
+# Supabase-free 15-minute collection for all three public derived-news categories.
+# GitHub cron is best effort; only owned structured news is written to Cloudflare D1.
+# Signed Finds/B2 backup retain the existing quota governor and rights boundary.
 on:
   workflow_dispatch: {}
   workflow_run:
@@ -23,7 +24,7 @@ on:
       - "scripts/ops/publish-automated-finds.ts"
       - "scripts/lib/automated-finds-run-health.mjs"
   schedule:
-    - cron: "7,37 * * * *"
+    - cron: "7,22,37,52 * * * *"
 
 permissions:
   contents: read
