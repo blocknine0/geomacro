@@ -952,6 +952,11 @@ async function getPublicHotSnapshot(env, product, now = Date.now()) {
       generated_at: row.generated_at,
       source_as_of: row.source_as_of,
       expires_at: row.expires_at,
+      // Durable signature/reference validity (12h/3h) is explicitly
+      // distinct from <=60min live source freshness / paid eligibility.
+      live_freshness_eligible: now - sourceAsOfMs <= 60 * 60 * 1000,
+      freshness_status: now - sourceAsOfMs <= 60 * 60 * 1000
+        ? "LIVE_SOURCE_WINDOW" : "VALID_SIGNED_REFERENCE_NOT_LIVE",
       b2_object_key: row.b2_object_key,
       b2_sha256: row.b2_sha256,
       payload_sha256: row.payload_sha256,
