@@ -57,6 +57,7 @@ import { Route as ApiTameionDecisionRouteImport } from './routes/api.tameion.dec
 import { Route as ApiTestnetTesterSplatRouteImport } from './routes/api/testnet-tester/$'
 import { Route as ApiV1AgentRouteImport } from './routes/api.v1.agent'
 import { Route as ApiV1FindsRouteImport } from './routes/api.v1.finds'
+import { Route as ApiV1PricingRouteImport } from './routes/api.v1.pricing'
 import { Route as ApiX402IntelligenceRouteImport } from './routes/api.x402.intelligence'
 import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
@@ -315,6 +316,11 @@ const ApiV1FindsRoute = ApiV1FindsRouteImport.update({
   path: '/api/v1/finds',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1PricingRoute = ApiV1PricingRouteImport.update({
+  id: '/api/v1/pricing',
+  path: '/api/v1/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiX402IntelligenceRoute = ApiX402IntelligenceRouteImport.update({
   id: '/api/x402/intelligence',
   path: '/api/x402/intelligence',
@@ -452,6 +458,7 @@ export interface FileRoutesByFullPath {
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/v1/agent': typeof ApiV1AgentRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
+  '/api/v1/pricing': typeof ApiV1PricingRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
@@ -518,6 +525,7 @@ export interface FileRoutesByTo {
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/v1/agent': typeof ApiV1AgentRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
+  '/api/v1/pricing': typeof ApiV1PricingRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
@@ -585,6 +593,7 @@ export interface FileRoutesById {
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/v1/agent': typeof ApiV1AgentRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
+  '/api/v1/pricing': typeof ApiV1PricingRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
@@ -653,6 +662,7 @@ export interface FileRouteTypes {
     | '/api/testnet-tester/$'
     | '/api/v1/agent'
     | '/api/v1/finds'
+    | '/api/v1/pricing'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
@@ -719,6 +729,7 @@ export interface FileRouteTypes {
     | '/api/testnet-tester/$'
     | '/api/v1/agent'
     | '/api/v1/finds'
+    | '/api/v1/pricing'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
@@ -785,6 +796,7 @@ export interface FileRouteTypes {
     | '/api/testnet-tester/$'
     | '/api/v1/agent'
     | '/api/v1/finds'
+    | '/api/v1/pricing'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
@@ -852,6 +864,7 @@ export interface RootRouteChildren {
   ApiTestnetTesterSplatRoute: typeof ApiTestnetTesterSplatRoute
   ApiV1AgentRoute: typeof ApiV1AgentRoute
   ApiV1FindsRoute: typeof ApiV1FindsRoute
+  ApiV1PricingRoute: typeof ApiV1PricingRoute
   ApiX402IntelligenceRoute: typeof ApiX402IntelligenceRoute
   ApiX402RiskRoute: typeof ApiX402RiskRoute
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
@@ -1208,6 +1221,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1FindsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/pricing': {
+      id: '/api/v1/pricing'
+      path: '/api/v1/pricing'
+      fullPath: '/api/v1/pricing'
+      preLoaderRoute: typeof ApiV1PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/x402/intelligence': {
       id: '/api/x402/intelligence'
       path: '/api/x402/intelligence'
@@ -1372,6 +1392,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTestnetTesterSplatRoute: ApiTestnetTesterSplatRoute,
   ApiV1AgentRoute: ApiV1AgentRoute,
   ApiV1FindsRoute: ApiV1FindsRoute,
+  ApiV1PricingRoute: ApiV1PricingRoute,
   ApiX402IntelligenceRoute: ApiX402IntelligenceRoute,
   ApiX402RiskRoute: ApiX402RiskRoute,
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,

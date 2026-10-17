@@ -6,6 +6,7 @@ import {
 } from "../lib/geomacro-intelligence-contract";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,capabilityPricingCatalog}
   from "../lib/capability-pricing-catalog";
+import {GEOMACRO_PAID_PRICING_PATH} from "../lib/geomacro-paid-pricing-manifest.server";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
   GEOMACRO_STRUCTURED_LICENSE_TERMS}
   from "../lib/geomacro-structured-commercial-license";
@@ -77,6 +78,9 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
             endpoints: {
               paid_intelligence: "POST /api/v1/intelligence/query",
               free_capability_discovery: "GET /api/intelligence/capabilities",
+              paid_price_catalog: "GET "+GEOMACRO_PAID_PRICING_PATH,
+              nonpayable_usdc_preflight: "POST /api/v1/payments/preflight",
+              official_agent: "GET/POST /api/v1/agent",
               free_state_check:
                 "GET /api/intelligence/state?country=ISO3&known_state_version=...",
               risk_object_keys: "GET /api/risk-object-keys",

@@ -125,6 +125,10 @@
       "classification": "PRODUCTION",
       "status": "NO_FUNDS_PREFLIGHT"
     },
+    "/api/v1/pricing": {
+      "classification": "PRODUCTION",
+      "status": "LIVE_NO_FUNDS_DISCOVERY"
+    },
     "/api/x402/circle/intelligence": {
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
