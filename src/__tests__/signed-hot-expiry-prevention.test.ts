@@ -97,7 +97,7 @@ describe("signed product pre-expiry guard (metadata-only, no false renewal)",()=
   expect(yaml).not.toContain("INSERT INTO");
   expect(yaml).not.toContain("B2_APPLICATION_KEY");
   expect(yaml).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
-  expect(yaml).not.toContain("workflow_dispatch:");
+  expect(yaml).toContain("workflow_dispatch: {}");
   expect(yaml).toContain("on:");
   expect(yaml).not.toContain("payments: write");
  });
