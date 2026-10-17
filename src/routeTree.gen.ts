@@ -70,6 +70,7 @@ import { Route as ApiV1IntelligenceMacroFxRouteImport } from './routes/api.v1.in
 import { Route as ApiV1IntelligenceQueryRouteImport } from './routes/api.v1.intelligence.query'
 import { Route as ApiV1PaymentsNetworksRouteImport } from './routes/api.v1.payments.networks'
 import { Route as ApiV1PaymentsPreflightRouteImport } from './routes/api.v1.payments.preflight'
+import { Route as ApiV1PricingRouteImport } from './routes/api.v1.pricing'
 import { Route as ApiX402CircleIntelligenceRouteImport } from './routes/api.x402.circle_.intelligence'
 import { Route as ApiX402NeverminedIntelligenceRouteImport } from './routes/api.x402.nevermined_.intelligence'
 import { Route as ApiX402RiskAvailabilityRouteImport } from './routes/api.x402.risk_.availability'
@@ -385,6 +386,11 @@ const ApiV1PaymentsPreflightRoute = ApiV1PaymentsPreflightRouteImport.update({
   path: '/api/v1/payments/preflight',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1PricingRoute = ApiV1PricingRouteImport.update({
+  id: '/api/v1/pricing',
+  path: '/api/v1/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiX402CircleIntelligenceRoute =
   ApiX402CircleIntelligenceRouteImport.update({
     id: '/api/x402/circle_/intelligence',
@@ -465,6 +471,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
+  '/api/v1/pricing': typeof ApiV1PricingRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
@@ -531,6 +538,7 @@ export interface FileRoutesByTo {
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
+  '/api/v1/pricing': typeof ApiV1PricingRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
@@ -598,6 +606,7 @@ export interface FileRoutesById {
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
+  '/api/v1/pricing': typeof ApiV1PricingRoute
   '/api/x402/circle_/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined_/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk_/availability': typeof ApiX402RiskAvailabilityRoute
@@ -666,6 +675,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/query'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/preflight'
+    | '/api/v1/pricing'
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
     | '/api/x402/risk/availability'
@@ -732,6 +742,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/query'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/preflight'
+    | '/api/v1/pricing'
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
     | '/api/x402/risk/availability'
@@ -798,6 +809,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/query'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/preflight'
+    | '/api/v1/pricing'
     | '/api/x402/circle_/intelligence'
     | '/api/x402/nevermined_/intelligence'
     | '/api/x402/risk_/availability'
@@ -865,6 +877,7 @@ export interface RootRouteChildren {
   ApiV1IntelligenceQueryRoute: typeof ApiV1IntelligenceQueryRoute
   ApiV1PaymentsNetworksRoute: typeof ApiV1PaymentsNetworksRoute
   ApiV1PaymentsPreflightRoute: typeof ApiV1PaymentsPreflightRoute
+  ApiV1PricingRoute: typeof ApiV1PricingRoute
   ApiX402CircleIntelligenceRoute: typeof ApiX402CircleIntelligenceRoute
   ApiX402NeverminedIntelligenceRoute: typeof ApiX402NeverminedIntelligenceRoute
   ApiX402RiskAvailabilityRoute: typeof ApiX402RiskAvailabilityRoute
@@ -1299,6 +1312,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1PaymentsPreflightRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/pricing': {
+      id: '/api/v1/pricing'
+      path: '/api/v1/pricing'
+      fullPath: '/api/v1/pricing'
+      preLoaderRoute: typeof ApiV1PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/x402/circle_/intelligence': {
       id: '/api/x402/circle_/intelligence'
       path: '/api/x402/circle/intelligence'
@@ -1386,6 +1406,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1IntelligenceQueryRoute: ApiV1IntelligenceQueryRoute,
   ApiV1PaymentsNetworksRoute: ApiV1PaymentsNetworksRoute,
   ApiV1PaymentsPreflightRoute: ApiV1PaymentsPreflightRoute,
+  ApiV1PricingRoute: ApiV1PricingRoute,
   ApiX402CircleIntelligenceRoute: ApiX402CircleIntelligenceRoute,
   ApiX402NeverminedIntelligenceRoute: ApiX402NeverminedIntelligenceRoute,
   ApiX402RiskAvailabilityRoute: ApiX402RiskAvailabilityRoute,
