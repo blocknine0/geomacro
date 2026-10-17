@@ -8,6 +8,7 @@ import { getCoinbaseX402Config } from "../lib/coinbase-x402.server";
 import { readRiskIndicesEdge } from "../lib/risk-indices-edge.server";
 import { geomacroSupabaseRuntimeMode } from "../lib/supabase-runtime-mode.server";
 import { qualifyPublicCurrentReadiness } from "../lib/public-production-current-readiness";
+import { probeLiveStructuredDeepHealth } from "../lib/live-structured-deep-health.server";
 
 const SUPABASE_RECOVERY_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const CONTROL_PLANE_PUBLIC_URL =
@@ -406,7 +407,25 @@ export const Route = createFileRoute("/api/health")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        const url = new URL(request.url);
         const deep = new URL(request.url).searchParams.get("deep") === "1";
+        const profile = url.searchParams.get("profile");
+        // Separate truth contract: do not make legacy signed-GRO/B2/D1 checks
+        // pass by treating unsigned stateless source observations as signed.
+        if (profile !== null) {
+          if (profile !== "live-structured" || !deep ||
+              url.searchParams.getAll("profile").length !== 1 ||
+              [...url.searchParams.keys()].some(key =>
+                key !== "deep" && key !== "profile")) {
+            return Response.json({ok:false,error:"HEALTH_PROFILE_INVALID",
+              accepted_profile:"live-structured",chargeable:false},
+              {status:400,headers:{"Cache-Control":"no-store",
+                "X-Content-Type-Options":"nosniff"}});
+          }
+          const scoped = await probeLiveStructuredDeepHealth();
+          return Response.json(scoped.body,{status:scoped.statusCode,
+            headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
+        }
         const publicProduction = await getPublicProductionReadiness(deep);
         const deepReady =
           !deep ||
