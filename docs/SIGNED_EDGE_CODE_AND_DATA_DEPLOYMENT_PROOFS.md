@@ -1,0 +1,13 @@
+# Signed Edge deployment code proof vs current signed product acceptance
+
+Three Edge Workers have an independent **code deployment** claim and a distinct **current signed-data delivery** claim. Treating one as the other caused confusion when the old October 8 B2/D1 snapshots expired: new Worker code deployed correctly, yet all three endpoints correctly returned HTTP 503. Neither a 503 nor a static continuity artifact constitutes a fresh verified risk product.
+
+Every `geomacro-intelligence`, `geomacro-global-risk` and `geomacro-risk-indices` Worker now attaches the constant non-sensitive `x-geomacro-worker-code-contract: source-clock-guard-v1` to its positive current-data responses AND its 503 JSON unavailability replies. Its 503 reply also carries `x-geomacro-data-available: false`, `cache-control: no-store` and the original fail-closed product error code. It contains no source document, key, article URL, score, source re-timestamp or payment claim.
+
+Immediately after the existing pinned Wrangler deployment step and before the independent B2/D1 response verification, the three workflows run `scripts/ops/verify-signed-edge-code-only.mjs` once against the exact deployed URL. A 503 is accepted *only for this code-rollout diagnostic* when the new marker, no-data boundary and response contract match. A missing marker, old cached deployment, unexpected response, or false 503 claim fails that diagnostic. The workflow step summary explicitly records `worker_code_deployed=true` with `current_signed_data_accepted=false`.
+
+**The following signed-product step still REQUIRES a genuine fresh, independently reviewed and published B2/D1-bound current snapshot and HTTP 200**. There is no `continue-on-error` and no clearing of failed product acceptance checks. Existing 12-hour/3-hour signed reference validity caps remain separate from the original-source <=60-minute public current cutoff. No Supabase reactivation, no paid x402 settlement, no forged approval, no new source data storage.
+
+After deployment, a correct expected result when no fresh authorized source input exists is: code proof PASS, signed data acceptance FAIL (503), legacy deep-health FAIL (503). When a valid publisher/verified B2+D1 snapshot later arrives, the second step must pass independently, and exact live deep-health can be tested anew.
+
+Status: a successful GitHub merge, a successful code diagnostic, a new Worker version ID, or a Lovable source mirror alone are **not** a production signed Intelligence/GRI/Risk Indices recovery. The legacy recovery issues remain open until authenticated current inputs and independent live public readback.
