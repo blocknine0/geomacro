@@ -6,8 +6,8 @@ import {validateFreeLineupProbePayload} from '../lib/free-no-key-source-probe.mj
 const now=new Date('2026-10-16T08:00:00Z');
 const candidate={articleUrl:'https://www.iea.org/news/zambia-critical-minerals-supply-security',title:'Zambia critical minerals supply security'};
 const page=(clock='2026-10-16T07:00:00Z',extra='')=>`<!doctype html><html><h1>${candidate.title}</h1><p class="o-hero-news__meta">News<br/><time datetime="${clock}">16 October 2026</time></p>${extra}</html>`;
-test('ten pinned international connectors cover all three categories without credentials',()=>{
- assert.equal(feeds.length,10);assert.equal(new Set(feeds.map(s=>s.id)).size,10);
+test('twelve pinned international connectors cover all three categories without credentials',()=>{
+ assert.equal(feeds.length,12);assert.equal(new Set(feeds.map(s=>s.id)).size,12);
  assert.deepEqual(new Set(feeds.map(s=>s.category)),new Set(['geopolitics','macro','rare_earth']));
  for(const s of feeds){const u=new URL(s.url);assert.equal(u.hostname,s.host);assert.equal(u.protocol,'https:');assert.ok(!u.username&&!u.password);assert.equal(s.poll_minutes,30);}
 });
@@ -53,4 +53,32 @@ test('new Canadian RDF reader require the exact registry and original clock',()=
  const bc=feeds.find(s=>s.id==='bc_minerals_global');
  assert.equal(globalOriginalArticleUrl('https://news.gov.bc.ca/releases/2026MCM0031-001120',bc),'https://news.gov.bc.ca/releases/2026MCM0031-001120');
  for(const url of ['https://news.gov.bc.ca.evil.example/releases/2026MCM0031-001120','https://news.gov.bc.ca/ministries/mining-and-critical-minerals','http://news.gov.bc.ca/releases/2026MCM0031-001120'])assert.equal(globalOriginalArticleUrl(url,bc),null);
+});
+
+test('targeted macro trade and rare-earth discovery use real strict official first-party identity',()=>{
+ const cases=[
+  ['govuk_global_trade_fx','macro','international trade',
+    'https://www.gov.uk/government/news/global-trade-and-inflation'],
+  ['govuk_global_rare_earth','rare_earth','rare earth',
+    'https://www.gov.uk/government/news/rare-earth-minerals-supply-chain'],
+ ];
+ for(const [id,category,keyword,article] of cases){
+  const spec=feeds.find(row=>row.id===id);
+  assert.ok(spec);assert.equal(spec.category,category);
+  assert.equal(spec.host,'www.gov.uk');assert.equal(spec.format,'json');
+  assert.ok(spec.url.startsWith('https://www.gov.uk/api/search.json?'));
+  assert.equal(new URL(spec.url).searchParams.get('q'),keyword);
+  assert.equal(new URL(spec.url).searchParams.get('filter_format'),'news_article');
+  assert.equal(new URL(spec.url).searchParams.get('count'),'10');
+  assert.equal(globalOriginalArticleUrl(article,spec),article);
+  assert.equal(globalOriginalArticleUrl(article.replace('www.gov.uk','www.gov.uk.evil.test'),spec),null);
+  assert.equal(globalOriginalArticleUrl(article+'#index-time',spec),null);
+  assert.equal(validateFreeLineupProbePayload(spec,JSON.stringify({total:0,results:[]})).valid,true);
+  assert.equal(validateFreeLineupProbePayload(spec,'<html>fake news</html>').valid,false);
+ }
+ // These complementary search lanes cannot count as independent publishers.
+ assert.equal(feeds.find(x=>x.id==='govuk_global_economy').family,
+   feeds.find(x=>x.id==='govuk_global_trade_fx').family);
+ assert.equal(feeds.find(x=>x.id==='govuk_global_minerals').family,
+   feeds.find(x=>x.id==='govuk_global_rare_earth').family);
 });

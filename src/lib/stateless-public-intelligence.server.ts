@@ -132,6 +132,12 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "uk_energy", category: "rare_earth", media: "atom",
     url: "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
     allowedHosts: ["www.gov.uk"], credit: OGL_CREDIT, govContentApi: true },
+  // Official U.S. DOE news RSS already inventoried in the canonical free-source
+  // update collector. Independent issuer from UK/Canada/EU; its generic news
+  // is admitted only when native article publication and mineral topic match.
+  { id: "us_doe_news_minerals", category: "rare_earth", media: "rss",
+    url: "https://www.energy.gov/rss/energygov/2193718",
+    allowedHosts: ["www.energy.gov"], credit: "U.S. Department of Energy" },
   // Actual publisher-issued RSS publication clocks; independent of the
   // EU DG GROW landing-page index and previous HTTP-403 mineral feed.
   { id: "eu_representation_news", category: "rare_earth", media: "rss",
@@ -384,7 +390,7 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       native_clock_valid: 0, undated_original: 0, recovered_original_page: 0,
       transport_ok: false, transport_failure_class: kind } satisfies LaneMetrics,
   });
-  if(source.id==='govuk_global_economy'||source.id==='govuk_global_minerals'){
+  if(source.id.startsWith('govuk_global_')){
     try{
       const response=await fetchWithoutRedirect(source.url,{redirect:'error',headers:{Accept:'application/json'},signal:AbortSignal.timeout(TIMEOUT_MS)});
       const body=await boundedText(response,192*1024);if(!body)return {healthy:false,candidates:[]};
