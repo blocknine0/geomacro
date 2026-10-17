@@ -255,11 +255,15 @@ function publicEvidenceLabel(hit: SearchHit, index: number) {
 export async function realtimeSearchAnswer(
   question: string,
   prior: HybridAskAnswer,
+  options: { deterministicOnly?: boolean } = {},
 ): Promise<HybridAskAnswer | null> {
   const hits = await currentSearch(question);
   if (!hits.length) return null;
 
-  const grounded = await structureWithGroundedModel(question, hits);
+  // Broad free-news discovery does not require an optional hosted formatter.
+  const grounded = options.deterministicOnly
+    ? deterministicStructuredAnswer(hits)
+    : await structureWithGroundedModel(question, hits);
   const indexes = safeIndexes(grounded.source_indexes, hits.length);
   const evidence = indexes.map((index) => ({
     eventId: fallbackId(hits[index], index),
