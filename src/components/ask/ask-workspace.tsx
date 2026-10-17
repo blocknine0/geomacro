@@ -450,6 +450,24 @@ function AssistantAnswer({ answer }: { answer: AskAnswer }) {
         {answer.low_confidence ? <span className="text-muted-foreground">· Limited confidence</span> : null}
       </div>
       <p className="mt-2 break-words text-[15px] leading-7 text-foreground sm:text-base">{answer.summary}</p>
+      {answer.what_changed && answer.what_changed !== answer.summary ? (
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold text-foreground">What changed</h3>
+          <p className="mt-1 break-words text-sm leading-7 text-foreground/90">{answer.what_changed}</p>
+        </div>
+      ) : null}
+      {answer.why_it_matters ? (
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold text-foreground">Why it matters</h3>
+          <p className="mt-1 break-words text-sm leading-7 text-foreground/90">{answer.why_it_matters}</p>
+        </div>
+      ) : null}
+      {answer.geomacro_view ? (
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold text-foreground">Geomacro view</h3>
+          <p className="mt-1 break-words text-sm leading-7 text-foreground/90">{answer.geomacro_view}</p>
+        </div>
+      ) : null}
 
       {evidence.length > 0 ? (
         <details className="mt-3 min-w-0 rounded-xl border border-border/60 bg-card/25 px-3 py-2">
