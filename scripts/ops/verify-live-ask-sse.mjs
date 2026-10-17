@@ -87,7 +87,12 @@ export async function probeAsk(fetchImpl = fetch) {
     console.error("ASK_LIVE_PUBLIC_RESULT_DIAG:"+JSON.stringify({
       lane:failure_lane,insufficient_evidence:true,
       evidence_count:Array.isArray(result.answer.evidence)?result.answer.evidence.length:0,
-      data_mode:result.answer.data_mode??null,source_identity_exposed:result.answer.source_identity_exposed??null,
+      data_mode:result.answer.data_mode??null,
+      failure_class:/^Official numeric retrieval status: ASK_OFFICIAL_NUMERIC_[A-Z0-9_]+$/u.test(
+        String(result.answer.real_time_message??""))
+        ? String(result.answer.real_time_message).slice("Official numeric retrieval status: ".length)
+        : "UNCLASSIFIED_OR_OLD_DEPLOYMENT",
+      source_identity_exposed:result.answer.source_identity_exposed??null,
       payment_executed:false,raw_evidence_logged:false
     }));
   }
