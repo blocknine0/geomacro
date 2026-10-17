@@ -312,7 +312,7 @@ export function AskWorkspace() {
                   What would you like to understand?
                 </h2>
                 <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
-                  Explore geopolitical developments, macro/FX and critical minerals.
+                  Ask a public risk question for free. Explore geopolitical developments, macro/FX and critical minerals.
                   Each response is grounded in available evidence, with uncertainty stated clearly.
                 </p>
                 <div className="mt-8 grid w-full gap-3 text-left sm:grid-cols-2">
@@ -417,6 +417,8 @@ export function AskWorkspace() {
             </p>
             <p className="text-center text-[11px] leading-5 text-muted-foreground">
               Public chat is free; signed structured API products use separate x402 pricing.{" "}
+              <Link to="/pricing" className="hover:text-foreground hover:underline">compare API and monthly access</Link>
+              {" · "}
               <Link to="/intelligence" className="hover:text-foreground hover:underline">Intelligence</Link>
               {" · "}
               <Link to="/global-risk" className="hover:text-foreground hover:underline">Risk Indices</Link>
