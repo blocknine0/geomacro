@@ -201,6 +201,30 @@ jobs:
           console.log(JSON.stringify({ ok: true, snapshot_id: data.snapshotId, snapshot_as_of: data.snapshotAsOf }));
           NODE
 
+      - name: Verify actual source freshness and new Worker revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import {originalSourceIsCurrent} from "./workers/shared/current-source-clock.mjs";
+          const body=JSON.parse(fs.readFileSync("/tmp/risk-indices-edge.json","utf8"));
+          const raw=fs.readFileSync("/tmp/risk-indices-edge.headers","utf8");
+          const header=(name)=>raw.split(/\r?\n/).filter(s=>s.toLowerCase().startsWith(name+":")).at(-1)?.slice(name.length+1).trim()??"";
+          const native=body?.data?.snapshotAsOf;
+          if(header("x-geomacro-native-clock-contract")!=="live-60m-v1")throw Error("INDICES_WORKER_CODE_NOT_ACTIVE");
+          if(!originalSourceIsCurrent(native)||!originalSourceIsCurrent(header("x-geomacro-source-as-of"))||
+             Date.parse(native)!==Date.parse(header("x-geomacro-source-as-of")))
+            throw Error("INDICES_SOURCE_OLDER_THAN_60M");
+          if(!(
+             header("x-geomacro-b2-verification")==="full-readback-hash-exact-restore"||
+             /^(github-actions-b2-readback-verified|d1-b2-readback-verified-hot-snapshot)$/.test(header("x-geomacro-continuity"))
+          ))throw Error("INDICES_PUBLIC_PROOF_MISSING");
+          if(/stale-while-revalidate|stale-if-error/.test(header("cache-control")))
+            throw Error("INDICES_EXPIRED_CDN_REPLAY_ENABLED");
+          console.log("PASS: current native Risk Indices source, new Worker code and B2/D1 proof");
+          NODE
+
       - name: Confirm narrow non-destructive serving boundary
         shell: bash
         run: |
