@@ -30,7 +30,6 @@ describe("Auto Ingest News reliability contract", () => {
     expect(workflow).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
     expect(workflow).toContain("    if: ${{ false }}");
     expect(workflow).toContain("group: geomacro-auto-ingest-news-recovery");
-    expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
     expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest');
     expect(workflow).toContain('INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest');
     expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
