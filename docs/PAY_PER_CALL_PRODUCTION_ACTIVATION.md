@@ -1,103 +1,50 @@
-# Geomacro Pay-Per-Call Production Activation
+# Geomacro x402 production activation — canonical capability contract
 
-Status: READY FOR OWNER-CONTROLLED ACTIVATION. Real-USDC settlement remains disabled until the existing commercial launch gates are explicitly authorized.
+**State as of 2026-10-17: CONTROLLED PRELAUNCH / NO FUNDS.**
+This document is a runbook, **not** proof of a current deployment, licensed intelligence, hot snapshots, settlement readiness or commercial revenue. Supabase remains frozen. Do not re-enable Supabase to complete a payment path.
 
-## Canonical paid endpoint
+## Sole authoritative USDC schedule
 
-`POST https://geomacro.live/api/v1/intelligence/query`
+Version: `geomacro.capability-usdc.v1`. Code: `src/lib/capability-pricing-catalog.ts`. Contract: `docs/GEOMACRO_INTELLIGENCE_CONTRACT_V1.md`. The website and both x402 rails must use this schedule after actual runtime acceptance.
 
-Product:
+| Capability | Approved variant → USDC |
+| --- | --- |
+| `gri_read` | `verified_cached` 0.005; `verified_change_attribution` 0.01 |
+| `structural_country_digest` | `standard` 0.02 |
+| `structural_corridor_digest` | `standard` 0.05 |
+| `structural_country_profile` | `standard` 0.03 |
+| `structural_corridor_profile` | `standard` 0.08 |
+| `intelligence_query` | `focused` 0.05; `standard` 0.10; `complex_multi_source` 0.15 |
+| `signed_risk_object` | `existing_valid_signed` 0.05; `newly_qualified_signed` 0.10 |
+| `risk_gate_bundle` | `existing_proof_preflight` 0.10; `standard` 0.15; `complex_multi_source` 0.25 |
 
-`geomacro_adaptive_risk_intelligence_v1`
+No hidden surcharge, forced subscription, automatic future tier change or double-charge of the Risk Gate's included signed Risk Object. Six-decimal exact USDC atomic amounts are computed server-side. Historical fixed-price environment variables and old 10k/20k adoption projections are **not** a pricing authority. Testnet charges are never revenue.
 
-The endpoint is designed for machine-native pay-per-call intelligence:
+## Product and serving boundary
 
-1. Client submits a valid deliverable query without payment.
-2. Geomacro performs a no-charge deliverability check.
-3. The endpoint returns HTTP 402 with x402 v2 payment requirements.
-4. The payment payload is bound to the exact query plan.
-5. Coinbase CDP verifies the payment authorization.
-6. Geomacro settles the payment.
-7. The exact prepared intelligence response is delivered.
-8. Payment, request and delivery are linked by the delivery ledger.
-9. Replaying the same payment proof for the same request returns the cached delivery.
-10. Reusing the same payment proof for changed business terms is rejected.
+Primary machine endpoint: `POST https://geomacro.live/api/v1/intelligence/query`. Legacy `/api/x402/intelligence` is a compatibility alias; neither route creates a separate intelligence engine.
 
-The response must keep `execution_authorized=false`.
+For every chargeable request: derive canonical capability/variant and exact scope → retrieve genuine native-clock originals, validate same-event evidence and private per-source derived-use rights → prepare a qualified real signed response from the canonical engine → independently verify signer/key, immutable hash, source_as_of and expiry → verify current B2/D1 readback and exact customer-deliverable bytes → issue a server-bound x402 v2 quote with the correct Base USDC token/network/recipient/amount/expiry → authenticate and verify payment proof → once-only settlement and durable claim/reconciliation → deliver exactly the prepared response and preserved payment receipt.
 
-## Initial production commercial offer
+If any prerequisite fails, return a truthful **no-charge** status. No 402 challenge for stale/unqualified/not-deliverable material. Source identities, raw payloads and upstream URLs must never enter public commercial JSON. Never fabricate current values or advance timestamps on old B2 snapshots.
 
-- Network: Base mainnet
-- Asset: canonical USDC on Base
-- Price: 0.05 USDC per successful paid intelligence delivery
-- Initial adoption cohort: first 20,000 successfully settled and delivered intelligence calls
-- Gross milestone at the launch price: 1,000 USDC before provider/network/hosting costs, refunds or disputes
-- Post-cohort pricing: operator-controlled and published explicitly before any change takes effect; there is no automatic price increase
+## Mandatory no-funds acceptance before authorizing mainnet
 
-Failed, stale, unavailable, replayed, refunded, internal, testnet and unpaid requests do not count as successful paid deliveries. Testnet payments are not commercial revenue.
+1. Freeze the exact protected-main commit; pass Product CI, CodeQL, rights/signer and payment-negative tests. Compare deployed website/Worker executable SHA, not merely source mirror and static build marker.
+2. Obtain genuinely fresh, rights-eligible source evidence and independently read back signed Intelligence, Global Risk and Risk Indices where those products are offered. Confirm real three-domain API readbacks, truthful unavailable/422 states and current deep-health product proofs; do not force HTTP 200 while evidence is missing.
+3. Verify Supabase-free authenticated Cloudflare D1/B2/commerce Durable Object persistence, readback, expiry, Class-B operations and free-tier quotas. Production B2 historical archives are **not** current evidence.
+4. Review draft [x402 capability quote integration PR #2242](https://github.com/blocknine0/geomacro/pull/2242) for correct current-main parity. It is **not merged** and must not be deployed from a draft. Prove the exact final HTTP response, including envelope metadata, is bound to a frozen verified prequote and settled payment; do not rely on a prepared-payload hash alone.
+5. With **no funds**, verify invalid amount, token, network, recipient, unknown variant, rights, signer, expired quote, replay, concurrent duplicate, changed query, ambiguous settlement, fee/double-charge and missing-product cases fail closed. Verify independent two-readback ledger and customer-byte identity. Capture redacted receipts/run IDs.
+6. Configure server-only production Coinbase/Circle credentials and the controlled receiver **only after acceptance**. No secrets or wallet keys in repository, logs, GitHub issues or this document. Any provider-specific legacy `COINBASE_X402_PRICE_USDC=0.05` setting must not override the per-capability authoritative quote.
 
-## Production activation inputs
+## Real-money launch boundary
 
-These are server-side environment values only:
+The two production launch acknowledgements are separate:
+`GEOMACRO_COMMERCIAL_LAUNCH_ACK` and `COINBASE_X402_MAINNET_ACK`.
+Do **not** set either merely because this runbook exists or code tests pass. Require explicit separate founder approval of real-money activation, a verified Base mainnet recipient and configured credentials; no founder-prefunded buyer is required for no-funds checks. First real mainnet purchase (owner-approved canary or independent buyer) must prove 402 → verified settlement → signed byte-identical response → exactly-once replay/ledger reconciliation. Until then `commercial_revenue_verified=false`.
 
-```text
-COINBASE_X402_ENVIRONMENT=production
-COINBASE_X402_PAY_TO=<dedicated Base mainnet revenue address>
-COINBASE_X402_PRICE_USDC=0.05
-CDP_API_KEY_ID=<production CDP key id>
-CDP_API_KEY_SECRET=<production CDP secret>
-COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC
-GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH
-```
+After first reconciled transaction, enable only verified variants with quotas, kill switch, alerts and truthful API/agent marketplace inventory. Preserve `execution_authorized=false`. Never claim broader 195×3 signed product coverage than real accepted results. Close production issue checkboxes only with exact SHA, external production acceptance and receipt, not merged code alone.
 
-Do not commit any real value.
+## Emergency stop
 
-The two acknowledgement variables are deliberately independent:
-
-- `GEOMACRO_COMMERCIAL_LAUNCH_ACK` authorizes the coordinated Geomacro commercial launch.
-- `COINBASE_X402_MAINNET_ACK` authorizes Coinbase Base mainnet settlement.
-
-Both are required before production settlement can occur.
-
-## Pre-activation checks
-
-Before setting either acknowledgement:
-
-- exact release commit is deployed to `geomacro.live`;
-- Product CI, security/CodeQL, schema safety and commercial source-rights checks are green;
-- production Supabase migration for the Coinbase delivery ledger is applied;
-- dedicated Base mainnet receiver ownership/recovery is verified;
-- production CDP credentials are server-only;
-- paid data/source rights are confirmed;
-- monitoring and reconciliation ownership are assigned;
-- testnet paid E2E evidence is preserved;
-- replay produces no second settlement;
-- changed-query reuse is rejected;
-- invalid network/token/amount/recipient/payment proofs fail closed;
-- unpaid requests never return premium intelligence;
-- ambiguous settlement outcomes enter reconciliation/manual-review state;
-- marketplace/Bazaar metadata is valid for the canonical endpoint.
-
-## Activation order
-
-1. Deploy the exact reviewed release candidate.
-2. Configure production CDP credentials and the dedicated Base receiver.
-3. Configure `COINBASE_X402_ENVIRONMENT=production` and `COINBASE_X402_PRICE_USDC=0.05`.
-4. Verify the production endpoint still fails closed while the launch acknowledgements are absent.
-5. Set `GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH`.
-6. Set `COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC`.
-7. Send one controlled real-USDC paid request.
-8. Verify HTTP 402 -> payment -> settlement -> exact intelligence delivery.
-9. Verify the onchain amount, asset, network and receiver against the delivery ledger.
-10. Replay the same signed proof and confirm no second charge.
-11. Attempt the same proof against changed query terms and confirm rejection with no debit.
-12. Preserve the sanitized production evidence.
-13. Only then announce pay-per-call as live.
-
-## Emergency disable
-
-To stop new real-money settlement, remove or invalidate the production launch acknowledgement(s) at the deployment environment. Do not change payment price, receiver or chain while a paid request is in flight unless the incident procedure explicitly requires it.
-
-## Important boundary
-
-The existing Arc Testnet/Circle x402 implementation remains technical proof. This Coinbase Base mainnet route is the initial production pay-per-call rail. Provider-specific metadata never defines Geomacro's intelligence entitlement or output contract.
+Freeze new settlement through `GEOMACRO_COMMERCE_EMERGENCY_FREEZE=true` and quarantine affected provider via `GEOMACRO_COMMERCE_DISABLED_PROVIDERS`. Preserve ledger records for reconciliation, do not silently retry ambiguous settlements. Re-enable only after safety acceptance.
