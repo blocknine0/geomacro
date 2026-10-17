@@ -9,7 +9,7 @@ import { loadQualifiedMcsCountryContext, MCS_DIGEST_CSV_SHA256, qualifiedMcsAcqu
   from "../../src/lib/qualified-mcs-country-digest.server";
 import { resolveGeomacroCapabilityPrice } from "../../src/lib/capability-pricing-catalog";
 import { createB2Client } from "./b2-s3-client.mjs";
-import { STRUCTURAL_CANDIDATE_VERSION, STRUCTURAL_CANDIDATE_SCOPE, structuralCandidateHash }
+import { STRUCTURAL_CANDIDATE_VERSION, STRUCTURAL_CANDIDATE_SCOPE, structuralCandidateHash, assertStructuralCandidate }
   from "../../workers/commerce-ledger/src/structural-candidate.mjs";
 
 const sha = (v: string | Uint8Array) => createHash("sha256").update(v).digest("hex");
@@ -56,6 +56,18 @@ const bundle = canonicalJson({ schema: "geomacro.qualified-structural-delivery-c
   original_period_kind: "ANNUAL_NOT_CURRENT_NEWS", payment_authorized: false, settlement_verified: false });
 let archived = false;
 let key: string | null = null;
+const native = "2025-12-31T23:59:59.000Z";
+const candidate = { schema: STRUCTURAL_CANDIDATE_VERSION, capability: "structural_country_digest",
+  variant: "standard", amount_atomic: "20000", country_iso3: country, topic: "critical_minerals",
+  request_hash: plan.query_plan_hash, answer_sha256: hash, source_file_sha256: MCS_DIGEST_CSV_SHA256,
+  rights_metadata_sha256: (provenance[0] as any).rights_metadata_sha256,
+  source_period_end: native, checked_at: checkedAt,
+  expires_at: new Date(Math.min(Date.parse(checkedAt) + 86400_000,
+    Date.parse(native) + 400 * 86400_000)).toISOString(), binding_hash: "" };
+candidate.binding_hash = await structuralCandidateHash(candidate);
+// Actual canonical customer bytes, not a fixture, must pass the same storage
+// validator even in the secret-free real-source pre-merge acceptance.
+await assertStructuralCandidate(candidate, customerBytes, STRUCTURAL_CANDIDATE_SCOPE);
 let vaultVerified = false;
 let vaultBindingHash: string | null = null;
 let vaultExpiry: string | null = null;
@@ -72,15 +84,6 @@ if (freezePrivate) {
   if (!healthRes.ok || health.storage !== "durable_objects_sqlite" ||
       health.structural_candidate_contract_version !== STRUCTURAL_CANDIDATE_VERSION)
     throw Error("FIRST_DIGEST_PRIVATE_VAULT_VERSION_UNVERIFIED");
-  const native = "2025-12-31T23:59:59.000Z";
-  const candidate = { schema: STRUCTURAL_CANDIDATE_VERSION, capability: "structural_country_digest",
-    variant: "standard", amount_atomic: "20000", country_iso3: country, topic: "critical_minerals",
-    request_hash: plan.query_plan_hash, answer_sha256: hash, source_file_sha256: MCS_DIGEST_CSV_SHA256,
-    rights_metadata_sha256: (provenance[0] as any).rights_metadata_sha256,
-    source_period_end: native, checked_at: checkedAt,
-    expires_at: new Date(Math.min(Date.parse(checkedAt) + 86400_000,
-      Date.parse(native) + 400 * 86400_000)).toISOString(), binding_hash: "" };
-  candidate.binding_hash = await structuralCandidateHash(candidate);
   async function post(action: string, fields: Record<string, unknown>) {
     const res = await fetch(origin + "/v1/delivery/" + action, { method: "POST", redirect: "manual",
       headers: { authorization: "Bearer " + token, "content-type": "application/json" },
@@ -142,6 +145,7 @@ const receipt = { schema: "geomacro.first-qualified-structural-digest-receipt.v1
   reference_year: 2025, previous_reference_year: 2024, current_news_or_risk_score: false,
   canonical_engine_deliverable: true, prepared_customer_bytes_sha256: hash,
   prepared_customer_bytes_length: Buffer.byteLength(customerBytes),
+  private_vault_admission_validated: true,
   private_immutable_archive_verified: archived, private_archive_key: key,
   private_immutable_delivery_bytes_verified: archived || vaultVerified,
   private_candidate_vault_verified: vaultVerified, vault_binding_hash: vaultBindingHash,
