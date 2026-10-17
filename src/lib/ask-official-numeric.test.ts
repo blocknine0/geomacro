@@ -16,7 +16,7 @@ describe("official question-time numerical answers",()=>{
   const guarded=vi.fn(async(url:string,init?:RequestInit)=>{
     if(init?.redirect==="error")throw TypeError("workerd rejects unsupported redirect:error");
     expect(init?.redirect).toBe("manual");
-    if(url.includes("api.worldbank.org"))
+    if(new URL(url).origin==="https://api.worldbank.org")
       return new Response(wdi("IND","FP.CPI.TOTL.ZG"),{status:200});
     return new Response(csv("USD",1.2),{status:200});
   }) as unknown as typeof fetch;
