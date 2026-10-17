@@ -42,7 +42,7 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-verified-ask-sse-stream-20261017");
+    expect(config.lock_revision).toBe("founder-approved-modular-ask-budget-fix-20261017");
     const findApproval = config.approved_find_card_v1_presentation_change;
      expect(findApproval?.approved_ui_commit).toBe("5b70fc0fc83477662aa314a07dde0706be2c3640");
     expect(findApproval?.previous_baseline_sha).toBe("7af9ea7eb5a67743d730bae258dcac3724625473");
@@ -62,7 +62,20 @@ describe("website lock governance", () => {
     expect(askApproval?.approved_ui_commit).toBe("f98aa5088100a520e1c91300ad8a93c0036f663c");
     const streamApproval = config.approved_ask_sse_presentation_change;
     expect(streamApproval?.approved_pr).toBe(2363);
-    expect(streamApproval?.approved_ui_commit).toBe(config.baseline_sha);
+    expect(streamApproval?.approved_ui_commit).toBe("060fedbae69bf51d4a2b5bee0b30618bec70dd3f");
+    const modular = config.approved_ask_modular_budget_fix;
+    expect(modular?.approved_pr).toBe(2366);
+    expect(modular?.approved_ui_commit).toBe(config.baseline_sha);
+    expect(modular?.previous_baseline_sha).toBe("060fedbae69bf51d4a2b5bee0b30618bec70dd3f");
+    expect(modular?.scope).toEqual([
+      "src/components/ask/ask-workspace.tsx",
+      "src/components/ask/ask-answer-view.tsx",
+      "src/lib/ask-legacy-transport.ts",
+    ]);
+    expect(modular?.approved_ui_bytes).toBeLessThanOrEqual(18000);
+    expect(modular?.global_risk_final_lock_unmodified).toBe(true);
+    expect(modular?.funds_authorized).toBe(false);
+    expect(modular?.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(streamApproval?.previous_baseline_sha).toBe("f98aa5088100a520e1c91300ad8a93c0036f663c");
     expect(streamApproval?.scope).toEqual(["src/components/ask/ask-workspace.tsx"]);
     expect(streamApproval?.global_risk_final_lock_unmodified).toBe(true);
@@ -105,7 +118,7 @@ describe("website lock governance", () => {
     expect(config.intelligence_ssr_change_approval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(config.pending_publish_acceptance).toBe(true);
     expect(config.website_privacy_baseline_status)
-      .toBe("FOUNDER_APPROVED_ASK_SSE_LOCKED_AWAITING_EXACT_SHA_LIVE_DEPLOYMENT");
+      .toBe("FOUNDER_APPROVED_MODULAR_ASK_LOCKED_AWAITING_EXACT_SHA_LIVE_DEPLOYMENT");
     expect(config.published_source_sha).toBe("7215b0d05b05ccc4de1e5f69a333ae615abc38e3");
     expect(config.published_baseline).toContain("User will manually publish only after exact-head source/test/security verification and Lovable sync");
     expect(config.published_baseline).toContain("no x402 or GRI changes");
