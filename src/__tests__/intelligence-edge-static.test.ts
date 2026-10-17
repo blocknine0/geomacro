@@ -45,8 +45,8 @@ describe("verified public edge hot-cache contract", () => {
     expect(worker).not.toContain("if (cached) return cached");
     expect(worker).toContain('"x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none"');
     expect(worker).toContain("/intelligence?projection=d1-hot-v2");
-    expect(worker).toContain("stale-while-revalidate=3600");
-    expect(worker).toContain("stale-if-error=86400");
+    expect(worker).toContain("liveEdgeCacheControl");
+    expect(worker).toContain("x-geomacro-source-as-of");
     expect(worker).toContain('import continuity from "./continuity.mjs"');
     expect(worker).toContain("INTELLIGENCE_CONTINUITY_HASH_INVALID");
     expect(worker).toContain('"x-geomacro-continuity": "github-actions-b2-readback-verified-projection"');
@@ -72,8 +72,8 @@ describe("verified public edge hot-cache contract", () => {
       const worker = read(`workers/${base}/src/index.mjs`);
       expect(wrangler).toContain('"enabled": true');
       expect(wrangler).toContain('"cross_version_cache": true');
-      expect(worker).toContain("stale-while-revalidate=3600");
-      expect(worker).toContain("stale-if-error=86400");
+      expect(worker).toContain("liveEdgeCacheControl");
+      expect(worker).toContain("x-geomacro-source-as-of");
       expect(worker).not.toContain("s-maxage=");
     }
   });
