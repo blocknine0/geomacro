@@ -1,5 +1,5 @@
 import {createHash} from "node:crypto";
-import {defineEventHandler,getRequestHeader,getRequestHost,readBody,setResponseStatus} from "h3";
+import {defineEventHandler,getRequestHeader,getRequestHost,readBody} from "h3";
 import {executeHybridChatTurn} from "../../../../src/lib/hybrid-agent-chat.server";
 import {prepareHybridAgentContext} from "../../../../src/lib/hybrid-agent-context";
 import {AskGeomacroRateLimitError} from "../../../../src/lib/ask-geomacro-core.server";
