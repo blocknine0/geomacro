@@ -119,6 +119,19 @@ jobs:
           printf '%s' "$B2_ARCHIVE_READ_APPLICATION_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put B2_APPLICATION_KEY --config wrangler.runtime.jsonc >/tmp/intelligence-edge-b2-secret.log
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
+      - name: Verify deployed Intelligence code separately from signed-product availability
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/geomacro-edge-code-check
+          headers="/tmp/geomacro-edge-code-check/intelligence.headers"
+          body="/tmp/geomacro-edge-code-check/intelligence.json"
+          code="$(curl -sS --max-time 20 -D "$headers" -o "$body" -w '%{http_code}' "$DEPLOYMENT_URL/intelligence" || true)"
+          node scripts/ops/verify-signed-edge-code-only.mjs "intelligence" "$code" "$headers" "$body"
+          echo "PASS: deployed Worker code verified; the next signed-product step remains independently fail-closed."
+
       - name: Require verified package through Intelligence edge
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
