@@ -12,7 +12,7 @@ function row(category,i=1,when="2026-10-12T12:00:00Z"){
 }
 function doc(signals=names.map(x=>row(x))){
   return {ok:true,schema:"geomacro.website-derived-news-feed.v1",
-    original_release_delay_minutes:15,retention_days:30,
+    original_release_delay_minutes:15,retention_days:3,retention_hours:72,
     delivery_scope:"free_website_only",signals};
 }
 const article=(label)=>
