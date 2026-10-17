@@ -5,7 +5,7 @@
  * website findings; news headline/URL/body never enter public products.
  */
 import {
-  selectOfficialTopic, type StatelessCategory, type StatelessSourceCandidate,
+  selectOfficialTopic, australianResourcesMacroMatches, type StatelessCategory, type StatelessSourceCandidate,
 } from "./stateless-intelligence-model";
 import { visiblePublisherText } from "./stateless-publisher-text";
 
@@ -64,7 +64,9 @@ export function australianResourcesIndexCandidates(
     const link = officialArticle(anchor[1]);
     if (!link || seen.has(link)) continue;
     const title = visiblePublisherText(anchor[2]);
-    if (title.length < 12 || title.length > 260 || !selectOfficialTopic(title,category))
+    if (title.length < 12 || title.length > 260 ||
+        !(selectOfficialTopic(title,category) ||
+          category === "macro" && australianResourcesMacroMatches(title)))
       continue;
     // Index date is provisional. The same original calendar day MUST also
     // appear directly after the matching first-party article h1.
