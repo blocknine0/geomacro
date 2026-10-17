@@ -24,7 +24,9 @@ const EXTRA=[
  {id:'ecb_fx',category:'macro',url:'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml',format:'xml',maxBytes:128000,baseline:true},
  {id:'us_doe',category:'rare_earth',url:'https://www.energy.gov/rss/energygov/2193718',format:'rss',maxBytes:384000},
  {id:'us_bis_export_controls',category:'geopolitics',url:'https://www.federalregister.gov/api/v1/documents.json?conditions%5Bagencies%5D%5B%5D=industry-and-security-bureau&per_page=5&order=newest',format:'json',maxBytes:128000},
- {id:'wikimedia_pageviews',category:'geopolitics',url:(()=>{const day=new Date(Date.now()-86400000).toISOString().slice(0,10).replaceAll('-','')+'00';return 'https://wikimedia.org/api/rest_v1/metrics/pageviews/aggregate/all-projects/all-access/user/daily/'+day+'/'+day;})(),format:'json',maxBytes:128000,baseline:true},
+ // Official Analytics API supports all-agents, not generic user traffic here.
+ // Read a complete UTC day two days old to avoid publication lag/404 at the edge.
+ {id:'wikimedia_pageviews',reader_revision:2,category:'geopolitics',url:(()=>{const day=new Date(Date.now()-2*86400000).toISOString().slice(0,10).replaceAll('-','')+'00';return 'https://wikimedia.org/api/rest_v1/metrics/pageviews/aggregate/all-projects/all-access/all-agents/daily/'+day+'/'+day;})(),format:'json',maxBytes:128000,baseline:true},
 ];
 export const PRODUCTION_FREE_UPDATE_SOURCES=Object.freeze([
  ...FREE_NO_KEY_TRANSPORT_SPECS.map(s=>({...s,baseline:BASELINE.has(s.id),
