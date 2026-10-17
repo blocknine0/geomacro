@@ -140,6 +140,33 @@ describe("B2 cap resilient public edge reads", () => {
     ["intelligence", intelligenceWorker, "/intelligence"],
     ["global-risk", globalRiskWorker, "/global-risk"],
     ["risk-indices", riskIndicesWorker, "/risk-indices"],
+  ])("rejects 75m-old but still-valid signed %s proof from the live edge",async(product,worker,path)=>{
+    const snapshot=hotSnapshot(product as string);
+    const source=new Date(Date.now()-75*60_000).toISOString();
+    const ttl=product==="intelligence"?12*60*60_000:180*60_000;
+    snapshot.source_as_of=source;
+    snapshot.expires_at=new Date(Date.parse(source)+ttl).toISOString();
+    const value=JSON.parse(snapshot.payload_json);
+    if(product==="intelligence"){
+      for(const row of value.rows)row.published_at=source;
+    }else value.data.snapshotAsOf=source;
+    snapshot.payload_json=JSON.stringify(value);
+    snapshot.payload_sha256=createHash("sha256").update(snapshot.payload_json).digest("hex");
+    vi.stubGlobal("caches",{default:{match:async()=>null,put:async()=>undefined}});
+    vi.stubGlobal("fetch",async(input:RequestInfo|URL)=>{
+      if(String(input).includes("/v1/public/hot-snapshot/"))return Response.json(snapshot);
+      return Response.json({ok:false,error:"NO_B2_CURRENT"},{status:503});
+    });
+    const response=await worker.fetch(new Request("https://edge.test"+path),{
+      CONTROL_PLANE:{fetch:(request:Request)=>fetch(request.url)},
+    },{waitUntil:()=>undefined});
+    expect(response.headers.get("x-geomacro-serving-store")).not.toBe("cloudflare-d1");
+  });
+
+  it.each([
+    ["intelligence", intelligenceWorker, "/intelligence"],
+    ["global-risk", globalRiskWorker, "/global-risk"],
+    ["risk-indices", riskIndicesWorker, "/risk-indices"],
   ])("serves the current %s snapshot from D1 when private B2 GET is capped", async (product, worker, path) => {
     let b2Reads = 0;
     vi.stubGlobal("caches", { default: { match: async () => null, put: async () => undefined } });
