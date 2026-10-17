@@ -90,11 +90,20 @@ jobs:
             # original artifact has merely aged out of GitHub retention.
             # A verified currently serving 200 requires preservation
             # through a separately reviewed/manual recovery path.
-            EXISTING_CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$EXPECTED_URL/risk-indices" || true)"
-            if [ "$EXISTING_CODE" = "200" ]; then
-              echo "EXISTING_VERIFIED_EDGE_SERVING; refuse replacing prior static continuity with null"
+            # A bare HTTP 200 is insufficient: old continuity can be
+            # historically verified but outside the native 60m live window.
+            # A genuinely fresh verified response is preserved; an expired
+            # or unproven old 200 must not block a fail-closed code patch.
+            EXISTING_CODE="$(curl -sS -D /tmp/indices-existing.headers -o /tmp/indices-existing.json -w '%{http_code}' --max-time 10 "$EXPECTED_URL/risk-indices" || true)"
+            DECISION="$(node scripts/ops/assess-risk-indices-code-deploy.mjs "$EXISTING_CODE" /tmp/indices-existing.headers /tmp/indices-existing.json)" || {
+              echo "::error::RISK_INDICES_EXISTING_EDGE_UNVERIFIED"
+              exit 13
+            }
+            if [ "$DECISION" = "PRESERVE_VERIFIED_CURRENT_EDGE" ]; then
+              echo "PRESERVE_VERIFIED_CURRENT_EDGE; refusing to overwrite recent original-source continuity without proof"
               exit 13
             fi
+            test "$DECISION" = "SAFE_CODE_ONLY_NULL_CONTINUITY" || exit 13
             # A code-only deployment must not depend on a new/frozen
             # Supabase publisher. Deploy code with an explicitly EMPTY
             # backup; the Worker can still serve any independently

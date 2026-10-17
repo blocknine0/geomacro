@@ -1,5 +1,6 @@
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import continuity from "./continuity.mjs";
+import {originalSourceIsCurrent,intelligenceOriginalSourceTime,liveEdgeCacheControl,validatedCachedLiveResponse} from "../../shared/current-source-clock.mjs";
 import { reserveB2AccountQuota } from "../../control-plane/src/b2-account-quota.mjs";
 import { b2OriginFailureCacheKey, failedB2OriginRecently, rememberFailedB2Origin } from "../../shared/b2-origin-negative-cache.mjs";
 
@@ -277,7 +278,7 @@ async function readD1HotSnapshot(env) {
       status: 200,
       headers: {
         "content-type": "application/json; charset=utf-8",
-        "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
+        "cache-control": liveEdgeCacheControl(snapshot.source_as_of),
         "x-content-type-options": "nosniff",
         "x-geomacro-authority": "backblaze-b2-intelligence-edge",
         "x-geomacro-continuity": "d1-b2-readback-verified-hot-snapshot",
@@ -342,6 +343,7 @@ async function buildContinuityResponse(env) {
     live?.schema !== "geomacro.public-intelligence-live.v1" ||
     live?.source_project !== PROJECT_REF ||
     !recentEnough(live?.generated_at) ||
+    !originalSourceIsCurrent(intelligenceOriginalSourceTime(live?.rows)) ||
     !validRows(live?.rows)
   ) throw new Error("INTELLIGENCE_CONTINUITY_PAYLOAD_INVALID");
 
@@ -350,10 +352,11 @@ async function buildContinuityResponse(env) {
     status: 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
+      "cache-control": liveEdgeCacheControl(intelligenceOriginalSourceTime(live.rows)),
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-intelligence-edge",
       "x-geomacro-continuity": "github-actions-b2-readback-verified-projection",
+      "x-geomacro-source-as-of": intelligenceOriginalSourceTime(live.rows),
       "x-geomacro-b2-sha256": continuity.source_live_sha256,
       "x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none",
       "access-control-allow-origin": "*",
@@ -415,6 +418,7 @@ async function buildResponse(env) {
     live?.source_project !== PROJECT_REF ||
     proof?.generated_at !== live?.generated_at ||
     !recentEnough(live?.generated_at) ||
+    !originalSourceIsCurrent(intelligenceOriginalSourceTime(rows)) ||
     proof?.row_count !== rows?.length ||
     proof?.verified_scored_rows !== verifiedRows ||
     proof?.live_observed_rows !== liveObservedRows ||
@@ -426,10 +430,12 @@ async function buildResponse(env) {
     status: 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "cache-control": "public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
+      "cache-control": liveEdgeCacheControl(intelligenceOriginalSourceTime(rows)),
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-intelligence-edge",
       "x-geomacro-b2-sha256": proof.compressed_sha256,
+      "x-geomacro-source-as-of": intelligenceOriginalSourceTime(rows),
+      "x-geomacro-b2-verification": "full-readback-hash-exact-restore",
       ...(proof.schema===MACHINE_INTELLIGENCE_PROOF_SCHEMA
         ? {"x-geomacro-qualified-until":proof.qualified_until,"cache-control":"no-store"} : {}),
       "x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none",
@@ -453,12 +459,14 @@ async function projectCachedResponse(cached, env) {
     live?.schema !== "geomacro.public-intelligence-live.v1" ||
     live?.source_project !== PROJECT_REF ||
     !recentEnough(live?.generated_at) ||
+    !originalSourceIsCurrent(intelligenceOriginalSourceTime(live?.rows)) ||
     !validRows(live?.rows)
   ) throw new Error("INTELLIGENCE_EDGE_CACHE_PAYLOAD_INVALID");
 
   const projected = await applyHotOverlay(env, live, cached.headers.get("x-geomacro-b2-sha256"));
   const headers = new Headers(cached.headers);
   headers.set("content-type", "application/json; charset=utf-8");
+  headers.set("cache-control",liveEdgeCacheControl(intelligenceOriginalSourceTime(live.rows)));
   headers.set("x-geomacro-current-overlay", projected.used ? "cloudflare-d1-hot" : "none");
   const exposed = new Set(
     String(headers.get("access-control-expose-headers") ?? "")
@@ -491,7 +499,7 @@ export default {
     }
 
     const cached = await cache.match(cacheKey);
-    if (cached) {
+    if (cached && await validatedCachedLiveResponse(cached,"intelligence")) {
       try {
         return await projectCachedResponse(cached, env);
       } catch (error) {
