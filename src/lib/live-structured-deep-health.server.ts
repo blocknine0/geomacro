@@ -61,14 +61,14 @@ export async function probeLiveStructuredDeepHealth(options:Options={}){
        status:safe?"SOURCE_OBSERVATIONS_AVAILABLE":"NO_ELIGIBLE_LIVE_SOURCE_OBSERVATIONS",
        source_fetch_accepted:safe,
        eligible_observations:safe?obs.length:0,
-       independently_verified_current_events:eventCount,
+       event_occurrence_clock_observations:eventCount,
        signed_gro_required:false,
        observation_reference_periods_are_not_current_event_clocks:true,
      }];
    }),
  ) as Record<(typeof LIVE_STRUCTURED_HEALTH_CATEGORIES)[number],{
    status:string;source_fetch_accepted:boolean;eligible_observations:number;
-   independently_verified_current_events:number;signed_gro_required:false;
+   event_occurrence_clock_observations:number;signed_gro_required:false;
    observation_reference_periods_are_not_current_event_clocks:boolean;
  }>;
  const allReady=LIVE_STRUCTURED_HEALTH_CATEGORIES.every(
