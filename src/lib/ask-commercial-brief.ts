@@ -71,6 +71,12 @@ export function directAnswerForQuestion(answer: AskAnswer, question = ""): strin
   if (answer.insufficient_evidence) {
     return concise(firstUseful(answer.what_changed, answer.summary), 2, 420);
   }
+  // The authoritative value and reporting period are the direct answer to
+  // official numeric questions. A "latest" keyword must NOT turn the
+  // previous-period comparison into the entire chatbot answer.
+  if (answer.evidence.some(item => item.eventId === "live:official:numeric")) {
+    return concise(firstUseful(answer.summary), 2, 420);
+  }
 
   if (/\b(why|impact|implication|matter|matters)\b/i.test(q)) {
     return concise(firstUseful(answer.why_it_matters, answer.what_changed, answer.summary), 2, 420);
