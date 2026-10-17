@@ -1,0 +1,78 @@
+name: First qualified country digest (no funds)
+on:
+  pull_request:
+    paths:
+      - src/lib/qualified-mcs-country-digest.server.ts
+      - scripts/ops/prepare-first-qualified-country-digest.ts
+      - .github/workflows/first-qualified-country-digest.yml
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - src/lib/qualified-mcs-country-digest.server.ts
+      - scripts/ops/prepare-first-qualified-country-digest.ts
+      - .github/workflows/first-qualified-country-digest.yml
+permissions:
+  contents: read
+concurrency:
+  group: first-qualified-country-digest
+  cancel-in-progress: false
+jobs:
+  real-source-no-secrets:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Real source qualification and canonical byte preparation, no secrets or durable writes
+        env:
+          NODE_ENV: production
+          GEOMACRO_SUPABASE_RUNTIME_MODE: standby
+        run: bun scripts/ops/prepare-first-qualified-country-digest.ts
+  qualify-and-archive:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify scoped source qualification and negative rights/clock cases
+        run: bun x vitest run src/lib/qualified-mcs-country-digest.server.test.ts src/__tests__/earn-first-structural-pilot.test.ts
+      - name: Real original and CC0 qualification, canonical engine, private exact archive readback
+        env:
+          NODE_ENV: production
+          GEOMACRO_SUPABASE_RUNTIME_MODE: standby
+          GEOMACRO_FIRST_DIGEST_COUNTRY: CHN
+          B2_ACCOUNT_QUOTA_REQUIRED: '1'
+          B2_ACCOUNT_QUOTA_WORKFLOW_ID: first_qualified_country_digest
+          B2_REQUEST_BUDGET: '8'
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+          B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+          B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}
+          B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}
+        run: bun scripts/ops/prepare-first-qualified-country-digest.ts --archive-private
+      - name: Retain sanitized result only, never source or customer bytes
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: first-qualified-country-digest-receipt
+          path: artifacts/first-qualified-structural-digest-receipt.json
+          if-no-files-found: ignore
+          retention-days: 14

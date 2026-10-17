@@ -185,7 +185,9 @@ export async function checkAgentQueryDeliverability(
   const asOf = plan.as_of ?? now.toISOString();
 
   for (const subject of plan.subjects) {
-    const context = await loadStructuralContext(subject);
+    const context = await loadStructuralContext(subject, {
+      allowQualifiedRelease: plan.delivery_tier === "structural_baseline" && plan.topics.includes("critical_minerals"),
+    });
     const available = structuralModulesFor(context);
     const structuralModulesUsed = new Set<string>();
     const governedFallbackModules = new Set<string>();

@@ -92,7 +92,9 @@ export function latestModuleTimestamp(
 }
 
 async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["subjects"][number]) {
-  const context = await loadStructuralContext(subject);
+  const context = await loadStructuralContext(subject, {
+    allowQualifiedRelease: plan.delivery_tier === "structural_baseline" && plan.topics.includes("critical_minerals"),
+  });
   const structuralModules = plan.required_modules.filter((module) => !EXTERNAL_MODULES.has(module));
   const intelligence: Record<string, unknown> = {};
   const limit = perModuleLimit(plan.detail);
