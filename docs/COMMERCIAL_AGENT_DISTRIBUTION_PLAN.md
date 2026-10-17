@@ -6,7 +6,7 @@ Status: PRE-LAUNCH BUILD. **ALL MAINNET / REAL-MONEY ACTIVATION IS LOCKED UNTIL 
 
 Turn the existing Geomacro Risk Object / Risk Gate and x402 technical proof into a measurable commercial service that autonomous agents can discover, purchase, receive, verify, and reuse without weakening Geomacro's source-rights, proof, or execution boundaries.
 
-The immediate milestone is the initial commercial pay-per-call readiness path at 0.05 USDC per successful paid intelligence delivery, with the first 10,000 successful deliveries tracked as the adoption milestone. The 10,000-delivery target is post-launch customer demand, not founder-funded traffic. Production rails remain disabled until their required runtime configuration and explicit owner authorization are in place. Marketplace promotion and the optional 40k capacity-certification track remain separate evidence stages.
+The immediate milestone is one genuinely verified, signed, rights-eligible, reconciled paid delivery at the canonical `geomacro.capability-usdc.v1` per-capability price. There is no flat-price public launch offer or automatic 10k/20k cohort repricing. Production rails remain disabled until independently accepted delivery/payment proofs and separate founder real-money approval. Marketplace promotion and optional 40k capacity certification are separate evidence stages.
 
 ## Global launch lock
 
@@ -68,28 +68,27 @@ One intelligence core serves every rail. Marketplace-specific code must stay at 
 
 ## Launch products
 
-Initial prices are controlled launch experiments, not claims about market-clearing value.
+**The only approved prices** are defined by `geomacro.capability-usdc.v1` in `src/lib/capability-pricing-catalog.ts`:
 
-| Product | Resource purpose | Initial launch-test price |
-| --- | --- | ---: |
-| Discovery Signal | bounded current country signal for agent discovery | $0.05 |
-| Signed Risk Object | signed machine-readable country intelligence | $0.10 |
-| Event Risk Intelligence | bounded event-specific risk context | $0.10 |
-| Macro + Geopolitical Assessment | combined bounded assessment | $0.15 |
-| Corridor Assessment | directional endpoint-composed corridor context | $0.25 |
-| Risk Gate Pre-flight | policy evaluation over eligible signed context | $0.25 |
-| Deep Evidence Bundle | richer evidence/confidence package | $0.50 |
-| Agent Decision Bundle | bounded combined context + Risk Gate output | $0.50-$1.00 |
+| Capability | Variant → USDC |
+| --- | --- |
+| `gri_read` | verified cached 0.005; change attribution 0.01 |
+| `structural_country_digest` | standard 0.02 |
+| `structural_corridor_digest` | standard 0.05 |
+| `structural_country_profile` | standard 0.03 |
+| `structural_corridor_profile` | standard 0.08 |
+| `intelligence_query` | focused 0.05; standard 0.10; complex multi-source 0.15 |
+| `signed_risk_object` | existing verified 0.05; newly qualified 0.10 |
+| `risk_gate_bundle` | existing-proof preflight 0.10; standard 0.15; complex 0.25 |
 
-Only products actually supported by the production data contract may be advertised. Do not expose unsupported logistics, counterparty, sanctions-screening, legal-compliance, or autonomous-execution claims.
-
+All earlier proposed separate discovery, event, deep-evidence and agent-decision bundles are superseded, not additional products or prices. Risk Gate bundles include their signed object without double charging. Each variant is pay-eligible only when live evidence, derived commercial rights, signed immutable response and quote-bound delivery are proved. Do not advertise unsupported logistics, counterparty, sanctions-screening, legal-compliance or autonomous-execution products.
 ## Phase 0: exact-head audit
 
 Before adding new adapters:
 
 1. Pin the exact `main` commit.
 2. Confirm Product CI, schema safety, security/resilience, CodeQL, Risk Object verification, and relevant GRI proof checks.
-3. Confirm migration `927_coinbase_x402_delivery_ledger.sql` is deployed to the intended production database.
+3. Verify live authenticated Cloudflare Durable Object/D1 commerce ledger and B2/D1 signed publication/readback against the actual deployed SHA; Supabase remains frozen. A historical Supabase SQL migration is not a production reactivation instruction.
 4. Confirm current sandbox/testnet acceptance evidence and zero-duplicate-charge evidence remain valid for the deployed code lineage.
 5. Produce a source-rights allowlist for every future paid response field and supported geography.
 

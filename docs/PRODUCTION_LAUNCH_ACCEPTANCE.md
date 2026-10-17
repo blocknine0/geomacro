@@ -1,129 +1,26 @@
-# Initial Commercial Pay-Per-Call Launch Acceptance
+# Geomacro capability-priced commercial launch acceptance
 
-Status: **PRELAUNCH · REAL FUNDS DISABLED · INITIAL PAY-PER-CALL PATH**
+**CONTROLLED PRELAUNCH — REAL FUNDS DISABLED until separate founder ACK and independent production evidence.**
 
-This is the authoritative acceptance policy for Geomacro's initial commercial pay-per-call release.
+This is a release *acceptance policy*, not a checkout or live readiness certificate. The authoritative pricing is `geomacro.capability-usdc.v1` in `src/lib/capability-pricing-catalog.ts`, with **8 approved capabilities and 14 USDC variants**. The exact amounts range from 0.005 to 0.25 USDC; an `intelligence_query/focused` purchase is 0.05 USDC. No universal flat fee, 10k/20k price cohort, auto-increase, or double-charge for Risk Gate's included Signed Risk Object. Details: [Intelligence Contract v1](./GEOMACRO_INTELLIGENCE_CONTRACT_V1.md).
 
-The initial commercial product is the bounded machine-readable intelligence service at the canonical launch price of **0.05 USDC per successful paid intelligence delivery for the first 20,000 deliveries**.
+## Mandatory production sequence
 
-The first 20,000 deliveries are an adoption and revenue milestone. They are **not** a requirement to pre-fund 1,000 USDC. At the launch price, 20,000 successful customer-paid deliveries would represent 1,000 USDC gross receipts before provider/network costs and any applicable commercial adjustments.
+1. **Current exact SHA:** freeze protected main; Product CI, CodeQL, source-rights, signature verification, security negatives, D1/B2 checks and deployment parity must be verified against the actual serving instance. Lovable sync/static SHA markers alone are not executable proof.
+2. **Actual current intelligence:** independently corroborate genuine same-event native-clock originals, exclude syndicated/contradicted/retracted cases, certify per-source lawful derived-commercial use and produce real correctly labelled machine-signed Geomacro GRO. The separate `FEDERICO_STRICT` profile requires a truly independent approved external reviewer; do not pretend the Geomacro machine signer is one.
+3. **Hot serving:** immutable signed customer product readback, current B2→D1 provenance, three-product deep-health proof and truthful historical/stale/no-data paths. The October 8 historical baseline never becomes current by timestamp rewriting. Do not reactivate frozen Supabase or exceed free-tier B2/D1 limits.
+4. **Quote and final delivery identity:** quote the exact capability/variant from the immutable price catalog only **after** an eligible signed deliverable is frozen. Bind query, country/commodity/corridor, active signer/key, rights, payload hash, response bytes/envelope, expiry, amount, canonical Base USDC asset, network and pay-to to one durable prequote. An unsupported request returns no-charge, not HTTP 402.
+5. **Commerce no-funds tests:** deployed Coinbase/Circle rail, authenticated Durable Object freeze/two readbacks, payment verifier, settled claim/replay/reconciliation, over-/underpayment, changed-request conflict, expiry, wrong asset/chain/pay-to, invalid signatures, concurrent duplicate and no-charge cases. No unverified 200, no settlement retries after ambiguity, and no payment if delivery fails.
+6. **Explicit owner approval:** commercial launch acknowledgement and mainnet settlement acknowledgement are independent gates. Neither is granted by merging code or by a request to complete engineering work. Verify receiver ownership/recovery, secret storage, provider compliance and incident/support owner before setting either.
+7. **First authentic payment:** independent real Base mainnet transaction (owner-approved canary or external buyer), exactly once settled and reconciled, correct amount/asset/network/recipient, immutable signed response delivered to payer, replay no second charge. Only this is evidence of revenue. Testnet payments never count.
+8. **Limited launch:** activate only proven variants, monitor 24/7 budget/quota, stop switch, failures, ledger reconciliation and product-specific availability. Marketplace visibility and the 195-country on-demand promise must never imply 585 fully signed current products.
 
-The separate 40,000 requests/second staging workflows remain useful as future scalability certification. They are not required to activate the initial commercial pay-per-call path.
+## Not mandatory for the first legitimate sale
 
-## Initial launch sequence
+40,000 requests/second staging certification, 12M-request stress evidence, a full 195×3 signed snapshot census, and marketplace listing approval are separate scale/distribution work; do not let them block the first **supported, eligible** customer request. They do not waive real eligibility, current signed delivery, payment safety or required founder authorization.
 
-1. **Freeze one exact release candidate**
-   - current canonical `main` SHA is frozen;
-   - product, security, database, source-rights and payment-contract checks pass on that SHA;
-   - production acknowledgements remain disabled.
+## Accounting and incidents
 
-2. **Run Initial Commercial Pay-Per-Call Acceptance**
-   - exact candidate SHA is verified against `main`;
-   - production build succeeds;
-   - canonical intelligence contract is `0.05 USDC`;
-   - launch target is 20,000 successful paid deliveries;
-   - production atomic amount for six-decimal USDC is 50,000;
-   - payment delivery ledger, replay/idempotency and fail-closed tests pass;
-   - no real-money payment is performed by this acceptance workflow.
+Paid delivery counts only after matched actual settled USDC and immutable delivered customer response; failed/stale/unavailable/replayed/refunded/unpaid/internal requests are nonchargeable. Testnet is non-revenue. The 20,000-call number is a historical planning milestone, **not** a production pricing contract. Do not fabricate a gross revenue projection from a fixed per-call price.
 
-3. **Prepare the production runtime without spending founder capital**
-   - dedicated receiving address;
-   - provider credentials;
-   - exact price/network/asset configuration;
-   - production source/freshness controls;
-   - monitoring and reconciliation access;
-   - all real-funds launch acknowledgements remain off until final owner authorization.
-
-4. **Owner-authorized production activation**
-   - activate only the provider rails that are actually configured and approved for launch;
-   - preserve `execution_authorized=false`;
-   - do not expose paid intelligence before payment verification;
-   - do not treat testnet or sandbox payments as revenue.
-
-5. **First production buyer**
-   - an external buyer pays the configured price;
-   - payment is verified and settled exactly once;
-   - the corresponding intelligence is delivered for the same request/order identity;
-   - the delivery ledger reconciles payment and delivery;
-   - replay cannot create a second charge;
-   - ambiguous settlement enters manual review;
-   - this first independently originating production purchase becomes the first commercial revenue evidence.
-
-6. **Marketplace promotion is a separate step**
-   - only after production smoke and reconciliation are clean;
-   - verify marketplace endpoint, price, network, asset and capability metadata;
-   - marketplace visibility is external and is never inferred from payment success alone.
-
-## No-funds rule
-
-The founder does not need to purchase 20,000 calls in order to reach the 20,000-delivery milestone.
-
-The acceptance work before launch is designed to be non-revenue and non-prefunded. Customer payments are the source of commercial receipts after the production route is genuinely enabled.
-
-An internal real-money canary is therefore not a prerequisite for this initial no-funds acceptance path. When an internal canary cannot be funded, the first independent production purchase is the authoritative commercial purchase/reconciliation event.
-
-## Hard blockers for initial paid operation
-
-- exact release SHA mismatch;
-- required product/security/source-rights/database checks failing;
-- production payment credentials or receiving configuration missing;
-- runtime price/network/asset/recipient mismatch;
-- paid response available without verified payment;
-- payment verification or settlement failure;
-- payment settled but delivery missing;
-- replay or double-charge protection failure;
-- ambiguous settlement without manual-review handling;
-- stale or commercially ineligible intelligence dependency;
-- production emergency freeze active;
-- provider explicitly quarantined;
-- no clear incident/support owner.
-
-The following are **not** initial launch blockers:
-
-- the 40k distributed staging capacity certification;
-- 12M-request five-minute stress evidence;
-- marketplace listing approval;
-- an internal founder-funded real-money canary.
-
-They remain separate operational or post-launch evidence tracks.
-
-## Optional scale certification
-
-The existing:
-
-- `Distributed 40k Staging Execution`;
-- `Distributed 40k Evidence Closure`;
-- `P0 Strict Prepublic Closure`
-
-workflows are retained for future high-scale capacity certification.
-
-Passing or failing those workflows does not change the canonical 0.05 USDC commercial price and does not create revenue evidence.
-
-## Revenue semantics
-
-A commercial revenue event requires:
-
-- approved production/mainnet environment;
-- successful payment settlement;
-- matched reconciliation;
-- completed delivery for the same request/order identity;
-- source-rights and freshness eligibility;
-- amount, asset, network and recipient matching the authoritative contract.
-
-Testnet, sandbox and controlled internal evidence are never counted as commercial revenue.
-
-## Emergency response
-
-Global freeze:
-
-`GEOMACRO_COMMERCE_EMERGENCY_FREEZE=true`
-
-Provider quarantine:
-
-`GEOMACRO_COMMERCE_DISABLED_PROVIDERS=provider_id`
-
-After an incident, do not re-enable the affected production rail until the bounded remediation and reconciliation checks pass.
-
-## Public communication
-
-Do not announce "live", "production", "revenue", or marketplace availability until the corresponding evidence exists.
+`GEOMACRO_COMMERCE_EMERGENCY_FREEZE=true` freezes new commerce. `GEOMACRO_COMMERCE_DISABLED_PROVIDERS` isolates a failing rail. On ambiguous settlement, preserve records, reconcile manually, do not blindly settle twice. Never publicly announce checkout, earnings, all-195-country readiness or successful production recovery without exact live receipts.
