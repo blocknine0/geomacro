@@ -57,6 +57,7 @@ for (const category of categories) {
     const signals=report.signals.filter(signal=>{
       const at=Date.parse(signal.published_at);
       return signal.category===category && Number.isFinite(at) &&
+        at>=checked-72*60*60_000 && at<=checked &&
         (signal.date_precision==="day"
           ? (conservativeDayReleaseMs(signal.published_at)??Infinity)<=checked
           : at+15*60_000<=checked) &&
