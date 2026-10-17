@@ -3,7 +3,10 @@
  * It compares ACTUAL successful canonical D1 publisher workflow completion
  * times, never a story's original date or a public GET/read refresh clock.
  */
-export const BACKSTOP_AFTER_MS = 38 * 60_000;
+// After a normal 15-minute slot is missed, the +7m backstop may recover.
+// Keep real successful completion (not visit, scheduled start or news date)
+// authoritative; the publisher/backstop share a non-canceling writer lock.
+export const BACKSTOP_AFTER_MS = 22 * 60_000;
 export const WEBSITE_PUBLISHER_WORKFLOW = "website-derived-news-continuity.yml";
 export function decideWebsiteNewsBackstop(runs, now=Date.now(), limit=BACKSTOP_AFTER_MS) {
   if (!Array.isArray(runs) || !Number.isFinite(now) || !Number.isFinite(limit) || limit<=0)

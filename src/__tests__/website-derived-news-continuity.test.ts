@@ -220,10 +220,11 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const ui=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
     expect(route).toContain('url.pathname === "/v1/public/website-derived-news"');
     expect(route).toContain('url.pathname === "/v1/website-derived-news"');
-    expect(cron).toContain('cron: "7,37 * * * *"');
+    expect(cron).toContain('cron: "7,22,37,52 * * * *"');
     expect(cron).toContain("bun scripts/ops/publish-website-derived-news.ts");
     expect(ui).toContain("getWebsiteDerivedNews()");
     expect(ui).toContain('const merged = new Map<string, StatelessIntelligenceSignal>()');
+    // Presentation copy is locked to the approved published website baseline until separately published.
     expect(ui).toContain("Background collection every 30 minutes");
     for(const forbidden of ["https://supabase", "createPayment", "signed_risk_object",
       "publishB2VerifiedHotSnapshot", "fetch(", "localStorage"]) {

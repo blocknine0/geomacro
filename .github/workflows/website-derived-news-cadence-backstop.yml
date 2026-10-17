@@ -1,7 +1,7 @@
 name: Website Derived News Cadence Backstop
 
-# Recovery window offset from canonical :07/:37 newsroom collection.
-# GitHub schedules are best-effort, not an exact 30-minute SLA.
+# Seven-minute offset from canonical :07/:22/:37/:52 UTC collection.
+# GitHub schedules are best-effort, not an exact 15-minute SLA.
 # Only publish if the *last genuinely completed successful D1 writer* is
 # stale, never based on a recently visited site or an original news date.
 on:
@@ -11,7 +11,7 @@ on:
     branches: [main]
     types: [completed]
   schedule:
-    - cron: "22,52 * * * *"
+    - cron: "14,29,44,59 * * * *"
   push:
     branches: [main]
     paths:
