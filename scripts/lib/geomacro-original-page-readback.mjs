@@ -36,8 +36,8 @@ function pinnedOriginalPage(url,category){
     return parsed;
   return null;
 }
-function checkedInputs(originals, now){
-  if(!Array.isArray(originals)||originals.length<2||
+function checkedInputs(originals, now,{minOriginals=2,maxAgeMs=24*60*60*1000}={}){
+  if(!Array.isArray(originals)||originals.length<minOriginals||
      originals.length>MAX_ORIGINALS ||!(now instanceof Date)||
      !Number.isFinite(now.getTime()))fail();
   const seenOrgs=new Set(), seenUrls=new Set();
@@ -64,7 +64,7 @@ function checkedInputs(originals, now){
     const time=Date.parse(row.original_published_at);
     if(!uri||org!==row.originating_reporting_organization_id||
        !Number.isFinite(time)||time>now.getTime()||
-       now.getTime()-time>24*60*60*1000 ||
+       now.getTime()-time>maxAgeMs ||
        seenUrls.has(uri.href)||seenOrgs.has(org))fail();
     if(category && category!==row.category)fail();
     if(claim && claim!==row.same_event_claim_sha256)fail();
@@ -140,7 +140,14 @@ async function exactReadback(row,now,fetchImpl){
 export async function verifyGeomacroOriginalPages({
   originals,now=new Date(),fetchImpl=fetch,
 }={}){
-  const {checked,category,claim}=checkedInputs(originals,now);
+  return verifyOriginalPageSet({originals,now,fetchImpl,minOriginals:2,
+    schema:"geomacro.private-two-original-page-readback.v1"});
+}
+
+async function verifyOriginalPageSet({originals,now,fetchImpl,minOriginals,schema}){
+  const {checked,category,claim}=checkedInputs(originals,now,{
+    minOriginals,maxAgeMs:minOriginals===1?6*60*60*1000:24*60*60*1000,
+  });
   // One HTTPS GET per distinct original organization. No retries, redirects,
   // concurrent bursts, D1/B2/DB calls, customer traffic or hidden payments.
   const results=[];
@@ -148,7 +155,7 @@ export async function verifyGeomacroOriginalPages({
   const valid=results.every(x=>
     x.status==="PAGE_BYTES_AND_NATIVE_CLOCK_VERIFIED");
   return {
-    schema:"geomacro.private-two-original-page-readback.v1",
+    schema,
     checked_at:now.toISOString(),category,
     same_event_claim_sha256:claim,
     verified_original_count:results.filter(x=>
@@ -163,4 +170,27 @@ export async function verifyGeomacroOriginalPages({
     raw_source_exposed:false,b2_requests:0,d1_writes:0,
     supabase_requests:0,payments:0,results,
   };
+}
+
+/** Deliberately distinct single-original first-party proof. It NEVER implies
+ * independent corroboration, approval of article-specific rights, scoring,
+ * GRO signing or public-hot publication. Legacy multi-origin readers still
+ * require at least TWO independent original publishers.
+ */
+export async function verifyGeomacroSingleOriginalPage({
+  original,now=new Date(),fetchImpl=fetch,
+}={}){
+  if(!original||Array.isArray(original))
+    throw Error("GEOMACRO_PRIVATE_SINGLE_ORIGINAL_INPUT_INVALID");
+  const result=await verifyOriginalPageSet({
+    originals:[original],now,fetchImpl,minOriginals:1,
+    schema:"geomacro.private-single-original-page-readback.v1",
+  });
+  return Object.freeze({
+    ...result,
+    independent_same_event_sources_verified:false,
+    original_source_count:1,
+    commercial_rights_verified:false,
+    signed_commercial_gro:false,
+  });
 }
