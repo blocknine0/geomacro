@@ -27,3 +27,9 @@
 6. Independently verify live HTTP 200 for all genuinely current signed products and no-funds x402. Never spend USDC without separate owner ACK.
 
 Do not infer legal rights from B2 registry, backdate news, assert independent source count two, treat synthetic tests as permission, enable real funds, or turn 503 into false HTTP 200.
+
+## Private source-free factual handoff (separate from GRO/GRI)
+
+After a single real original and both signed authority proofs pass exact original HTML readback and current source-wide rights registry, the protected private operator now calls `preparePrivateSingleOriginalFactualHandoff`. Its hash-bound output admits **only** category, ISO3, signed event type, verified original native publication time, article-content SHA, event/proof hashes and the bounded permission expiry. It emits **no** source URL, issuer identity, quote, article body, score, severity, independent corroboration claim, GRI country certificate or customer-ready commercial GRO.
+
+The private B2 operator prints only the proof and derived-input SHA. The handoff schema `geomacro.private-single-original-factual-handoff.v1` has `score:null`, `severity:null`, `independent_corroboration_verified:false`, `commercial_gro_signed:false`, `public_published:false` and `chargeable:false`. Neither this private handoff nor its SHA is a licence decision; actual original article permission must be made and signed by the authorized facts/rights issuers. Public serving still requires a separately audited single-original scoring/publication profile and fresh independent B2/D1 hot acceptance. Expired source clocks are not refreshed.
