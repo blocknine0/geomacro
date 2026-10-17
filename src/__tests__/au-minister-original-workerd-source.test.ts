@@ -89,7 +89,7 @@ describe("Australian minister original-source, website-only activation",()=>{
   const site=readFileSync("src/lib/stateless-public-intelligence.server.ts","utf8");
   expect(site).toContain('id: "au_industry_minister"');
   expect(site).toContain("feed/t-ayres/rss.xml");
-  expect(site).not.toContain('id: "au_resources_minerals_index"');
+  expect(site).toContain('id: "au_resources_minerals_index"');
   expect(site).not.toContain("SUPABASE_DB_URL");
   expect(site).toContain('source.id === "au_industry_minister" ? 8_000 : TIMEOUT_MS');
   expect(site).not.toContain('redirect: source.id === "au_industry_minister" ? "error"');
