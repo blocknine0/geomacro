@@ -10,7 +10,7 @@ describe("config-only and shared freshness changes redeploy all three production
  for(const [name,config] of cases)it(name+" deploys on changed Wrangler cache strategy and shared source clock",()=>{
   const workflow=readFileSync(".github/workflows/deploy-"+name+"-edge.yml","utf8");
   const wrangler=JSON.parse(readFileSync("workers/"+name+"-edge/wrangler.jsonc","utf8"));
-  expect(workflow).toContain('branches: [main]').or.toContain('      - main');
+  expect(workflow.includes('branches: [main]') || workflow.includes('      - main')).toBe(true);
   expect(workflow).toContain('"workers/shared/current-source-clock.mjs"');
   expect(workflow).toContain('"workers/shared/b2-origin-negative-cache.mjs"');
   expect(workflow).toContain('"scripts/ops/'+config+'"');
