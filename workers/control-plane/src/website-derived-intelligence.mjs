@@ -4,7 +4,10 @@
  * Never persist upstream title, URL, article text, publisher id or raw feed.
  * Exact public original-time delay is rechecked on write AND on every read.
  */
-const LOOKBACK_MS = 30 * 86400_000;
+// The founder-approved auto-ingest journal is strictly a rolling 72h window.
+// Old signed Finds/B2 archival products are independent (not reclassified here).
+export const AUTO_INGEST_RETENTION_MS = 72 * 60 * 60_000;
+const LOOKBACK_MS = AUTO_INGEST_RETENTION_MS;
 const DELAY_MS = 15 * 60_000;
 const CATEGORIES = new Set(["geopolitics", "macro", "rare_earth"]);
 const TOPICS = new Set(["sanctions and trade restrictions","security and diplomacy",
@@ -79,9 +82,12 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
     ).bind(s.id,s.category,s.published_at,s.date_precision,JSON.stringify(s),new Date(now).toISOString()));
     // D1 batch is atomic. If one statement fails, the entire write fails.
     await env.DB.batch(statements);
-    // Bounded retention: 30 days by ORIGINAL date, never by restore/poll time.
-    await env.DB.prepare("DELETE FROM website_derived_intelligence WHERE published_at < ?")
-      .bind(new Date(now-LOOKBACK_MS).toISOString().slice(0,10)).run();
+    // Evict both expired original-publication records and records held longer
+    // than 72h from FIRST ingestion. YYYY-MM-DD is used for SQL day precision;
+    // verifyDerivedStory applies the precise 72h original-date cutoff.
+    await env.DB.prepare("DELETE FROM website_derived_intelligence WHERE published_at < ? OR first_seen_at < ?")
+      .bind(new Date(now-LOOKBACK_MS).toISOString().slice(0,10),
+        new Date(now-LOOKBACK_MS).toISOString()).run();
     await env.DB.prepare(
       "DELETE FROM website_derived_intelligence WHERE id IN (SELECT id FROM website_derived_intelligence ORDER BY published_at DESC, id DESC LIMIT -1 OFFSET 600)"
     ).run();
@@ -94,8 +100,9 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
 export async function readDerivedStories(env,now=Date.now()) {
   try {
     const {results=[]}=await env.DB.prepare(
-      "SELECT story_json FROM website_derived_intelligence WHERE published_at>=? ORDER BY published_at DESC, id DESC LIMIT 250"
-    ).bind(new Date(now-LOOKBACK_MS).toISOString().slice(0,10)).all();
+      "SELECT story_json FROM website_derived_intelligence WHERE published_at>=? AND first_seen_at>=? ORDER BY published_at DESC, id DESC LIMIT 250"
+    ).bind(new Date(now-LOOKBACK_MS).toISOString().slice(0,10),
+      new Date(now-LOOKBACK_MS).toISOString()).all();
     const signals=[];
     for (const row of results) {
       try {
@@ -106,7 +113,7 @@ export async function readDerivedStories(env,now=Date.now()) {
     return json({ok:true,schema:"geomacro.website-derived-news-feed.v1",
       checked_at:new Date(now).toISOString(),
       original_release_delay_minutes:15,
-      retention_days:30,
+      retention_days:3,retention_hours:72,
       delivery_scope:"free_website_only",
       scored:false,chargeable:false,supabase_dependency:false,
       signals},200);
