@@ -1,0 +1,59 @@
+name: Single Official Original Evidence Policy (No Funds)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/lib/geomacro-original-page-readback.mjs'
+      - 'scripts/lib/geomacro-single-original-binding.mjs'
+      - 'scripts/lib/geomacro-single-original-binding.test.mjs'
+      - 'src/lib/geomacro-single-original-rights-preflight.server.ts'
+      - 'src/lib/geomacro-single-original-rights-preflight.server.test.ts'
+      - 'docs/ops/SINGLE_ORIGINAL_OWNER_POLICY_20261017.md'
+      - '.github/workflows/single-original-evidence-policy-no-funds.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/lib/geomacro-original-page-readback.mjs'
+      - 'scripts/lib/geomacro-single-original-binding.mjs'
+      - 'scripts/lib/geomacro-single-original-binding.test.mjs'
+      - 'src/lib/geomacro-single-original-rights-preflight.server.ts'
+      - 'src/lib/geomacro-single-original-rights-preflight.server.test.ts'
+      - '.github/workflows/single-original-evidence-policy-no-funds.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  source-and-rights-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Genuine HTML native-clock SHA and no-false-independent tests
+        run: |
+          node --check scripts/lib/geomacro-original-page-readback.mjs
+          node --check scripts/lib/geomacro-single-original-binding.mjs
+          node --test scripts/lib/geomacro-single-original-binding.test.mjs
+          node --test scripts/lib/geomacro-machine-original-binding.test.mjs
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: B2 rights source registry is NOT article licence, single original only
+        run: bunx vitest run src/lib/geomacro-single-original-rights-preflight.server.test.ts src/lib/geomacro-machine-source-rights.server.test.ts
+      - name: Prevent one-source evidence from authorizing GRO publishing or funds
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const files=['scripts/lib/geomacro-single-original-binding.mjs','src/lib/geomacro-single-original-rights-preflight.server.ts'];
+          for(const path of files){
+            const src=readFileSync(path,'utf8');
+            for(const forbidden of ['settleCoinbaseX402(', 'publishB2VerifiedHotSnapshot(', 'D1.prepare(', 'RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64', 'SUPABASE_SERVICE_ROLE_KEY'])
+              if(src.includes(forbidden))throw Error('SINGLE_SOURCE_PREQUALIFICATION_MUST_NOT_SETTLE_OR_PUBLISH');
+          }
+          console.log('SINGLE_SOURCE_SOURCE_AND_RIGHTS_PREQUALIFICATION_NO_FUNDS');
+          NODE
