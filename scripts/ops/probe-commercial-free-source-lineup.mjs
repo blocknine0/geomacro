@@ -8,8 +8,9 @@
 import { observeNoKeyLineup } from "../lib/free-no-key-source-probe.mjs";
 import { sourceLineupSummary } from "../lib/operator-commercial-free-source-lineup.mjs";
 import {collectProductionFreeSourceUpdates} from '../lib/free-source-production-updates.mjs';
+import {assessFreeSourceOperationalVerdict} from '../lib/free-source-operational-verdict.mjs';
 import {createD1ControlPlaneStateClient} from '../lib/d1-control-plane-state.mjs';
-import {mkdirSync,writeFileSync} from 'node:fs';
+import {mkdirSync,writeFileSync,appendFileSync} from 'node:fs';
 
 if(process.argv.includes('--production-updates')){
  try{
@@ -22,10 +23,28 @@ if(process.argv.includes('--production-updates')){
      if(process.env[key])throw Error('SOURCE_READER_FORBIDDEN_CREDENTIAL');
    const client=createD1ControlPlaneStateClient({pipeline:'free_source_production_updates'});
    const receipt=await collectProductionFreeSourceUpdates({stateClient:client,onObservation:row=>console.log(JSON.stringify({schema:"geomacro.free-source-reader-outcome.v1",...row}))});
+   // A real D1 readback mismatch throws before this point. Cached 403/429
+   // provider diagnoses must remain red in metadata but must not make a
+   // verified metadata-publication workflow masquerade as a failed writer.
+   const verdict=assessFreeSourceOperationalVerdict(receipt);
    mkdirSync('artifacts/free-source-updates',{recursive:true,mode:0o700});
-   writeFileSync('artifacts/free-source-updates/receipt.json',JSON.stringify(receipt,null,2)+'\n',{mode:0o600});
+   writeFileSync('artifacts/free-source-updates/receipt.json',JSON.stringify(
+     {...receipt,operational_verdict:verdict},null,2)+'\n',{mode:0o600});
    console.log(JSON.stringify(receipt));
-   if(receipt.retained_degraded_readers)process.exitCode=3;
+   console.log(JSON.stringify(verdict));
+   if(verdict.require_source_recovery_followup){
+     console.warn('::warning title=OFFICIAL_PROVIDERS_DEGRADED::'+
+       verdict.retained_degraded_source_count+
+       ' source reader(s) have recorded negative observations; see D1 receipt for exact statuses. D1 readback is independently verified.');
+   }
+   if(process.env.GITHUB_STEP_SUMMARY)
+     appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+       '### Free source data availability (not commercial publication)\n\n'+
+       '- D1 checkpoint/readback: VERIFIED\n'+
+       '- Provider status: '+verdict.operator_status+'\n'+
+       '- Current attempts unavailable: '+verdict.attempts_unavailable+'\n'+
+       '- Retained provider failures: '+verdict.retained_degraded_source_count+'\n'+
+       '- 195-country current signed coverage: NOT VERIFIED\n');
  }catch{console.error('PRODUCTION_FREE_SOURCE_UPDATES_FAILED_CLOSED');process.exitCode=2;}
 }else{
 
