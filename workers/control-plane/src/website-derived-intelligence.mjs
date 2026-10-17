@@ -72,7 +72,9 @@ export function verifyDerivedStory(s, now=Date.now()) {
 }
 export async function publishDerivedStories(env, body, now=Date.now()) {
   if (!body || body.schema!=="geomacro.website-derived-news-batch.v1" ||
-      !Array.isArray(body.signals) || body.signals.length<1 || body.signals.length>50 ||
+      // An authenticated EMPTY batch is a legitimate hourly TTL sweep when
+      // all publishers are quiet. No raw stories or unsigned products created.
+      !Array.isArray(body.signals) || body.signals.length>50 ||
       body.signals.some(s=>!verifyDerivedStory(s,now) ||
         (originalTime(s,now)?.at??-Infinity)<now-AUTO_INGEST_RETENTION_MS)) {
     return json({ok:false,error:"DERIVED_NEWS_BATCH_INVALID"},400);
@@ -83,8 +85,8 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
     const statements=body.signals.map(s=>env.DB.prepare(
       "INSERT OR IGNORE INTO website_derived_intelligence (id,category,published_at,date_precision,story_json,first_seen_at) VALUES (?,?,?,?,?,?)"
     ).bind(s.id,s.category,s.published_at,s.date_precision,JSON.stringify(s),new Date(now).toISOString()));
-    // D1 batch is atomic. If one statement fails, the entire write fails.
-    await env.DB.batch(statements);
+    // D1 batch is atomic. An empty batch is still a retention sweep.
+    if(statements.length)await env.DB.batch(statements);
     // Evict both expired original-publication records and records held longer
     // than 72h from FIRST ingestion. YYYY-MM-DD is used for SQL day precision;
     // verifyDerivedStory applies the precise 72h original-date cutoff.
