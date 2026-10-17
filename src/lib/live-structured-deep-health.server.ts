@@ -9,7 +9,7 @@ export const LIVE_STRUCTURED_HEALTH_CATEGORIES =
   ["geopolitics","macro-fx","critical-minerals"] as const;
 
 type Probe=(input:{category:(typeof LIVE_STRUCTURED_HEALTH_CATEGORIES)[number]})=>
-  ReturnType<typeof liveStructuredData>;
+  Promise<{statusCode:number;body:unknown}>;
 type Options={probe?:Probe;now?:()=>Date};
 const MAX_CLOCK_SKEW_MS=2*60_000;
 const VALID_CLOCKS=new Set([
