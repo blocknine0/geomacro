@@ -46,7 +46,7 @@ jobs:
         run: bun scripts/ops/run-supabase-free-source-runtime.ts > source-runtime.json
       - name: Upload operational evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-open-realtime-source-mesh
           path: source-runtime.json

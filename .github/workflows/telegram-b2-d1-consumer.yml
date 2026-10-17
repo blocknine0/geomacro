@@ -229,7 +229,7 @@ jobs:
           NODE
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "DELETE FROM telegram_signal_lead_queue WHERE state='CONSUMED' AND consumed_at < datetime('now','-7 days');" >/tmp/telegram-prune.json
       - name: Upload bounded Telegram bridge evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: telegram-b2-d1-consumer-${{ github.run_id }}
           path: |
