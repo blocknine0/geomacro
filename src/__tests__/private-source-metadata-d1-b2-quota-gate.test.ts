@@ -1,6 +1,8 @@
+import {createHmac} from "node:crypto";
 import {afterEach,beforeEach,describe,expect,it,vi} from "vitest";
 import {
- readB2CommercialSourceRights,readB2SourceNetworkStatus,
+ readB2CommercialSourceRights,readB2SourceNetworkStatus,reservePrivateB2Read,
+ B2_COMMERCIAL_SOURCE_RIGHTS_KEY,
 } from "../lib/b2-live.server";
 
 beforeEach(()=>{
@@ -9,6 +11,7 @@ beforeEach(()=>{
  vi.stubEnv("B2_ARCHIVE_READ_APPLICATION_KEY","offline-test-secret");
  vi.stubEnv("GEOMACRO_CONTROL_PLANE_TOKEN","");
  vi.stubEnv("CONTROL_PLANE_TOKEN","");
+ vi.stubEnv("GEOMACRO_COMMERCE_LEDGER_TOKEN","");
 });
 afterEach(()=>{
  vi.unstubAllGlobals();
@@ -79,4 +82,37 @@ describe("private source metadata B2 Class B access / frozen Supabase quota fail
   expect(await readB2CommercialSourceRights()).toBeNull();
   expect(hits).toHaveLength(1);
  });
+ it("derives the pinned quota bearer from the existing root secret, without requiring another production secret",async()=>{
+  const root="root-fixture-only-".repeat(4);
+  vi.stubEnv("GEOMACRO_COMMERCE_LEDGER_TOKEN","  "+root+"  ");
+  const request=vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{
+    expect(String(url)).toBe("https://geomacro-control-plane.daspallab202391.workers.dev/v1/b2-quota/reserve");
+    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer "+createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex"));
+    expect(JSON.stringify(init)).not.toContain(root);
+    expect(JSON.parse(String(init?.body))).toEqual({kind:"GET",workflow_id:"app_private_source_rights"});
+    return receipt();
+  });
+  vi.stubGlobal("fetch",request);
+  expect(await reservePrivateB2Read(B2_COMMERCIAL_SOURCE_RIGHTS_KEY)).toBe(true);
+  expect(request).toHaveBeenCalledTimes(1);
+ });
+ it("keeps explicit credential precedence, and never retries a denied or redirected reservation with the root",async()=>{
+  vi.stubEnv("GEOMACRO_COMMERCE_LEDGER_TOKEN","root-fixture-only-".repeat(4));
+  vi.stubEnv("GEOMACRO_CONTROL_PLANE_TOKEN","explicit-fixture-".repeat(4));
+  for(const status of [401,429,503,307]){
+    const request=vi.fn(async(_url:RequestInfo|URL,init?:RequestInit)=>{
+      expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer "+"explicit-fixture-".repeat(4));
+      expect(init?.redirect).toBe("manual");
+      return new Response(null,{status,headers:{Location:"https://untrusted.invalid/"}});
+    });
+    vi.stubGlobal("fetch",request);
+    expect(await reservePrivateB2Read(B2_COMMERCIAL_SOURCE_RIGHTS_KEY)).toBe(false);
+    expect(request).toHaveBeenCalledTimes(1);
+  }
+  vi.stubEnv("GEOMACRO_CONTROL_PLANE_TOKEN","short");
+  const request=vi.fn();vi.stubGlobal("fetch",request);
+  expect(await reservePrivateB2Read(B2_COMMERCIAL_SOURCE_RIGHTS_KEY)).toBe(false);
+  expect(request).not.toHaveBeenCalled();
+ });
+
 });

@@ -162,11 +162,19 @@ const B2_QUOTA_WORKER =
 
 export async function reservePrivateB2Read(key: string): Promise<boolean> {
   if (typeof window !== "undefined" || typeof process === "undefined") return false;
-  const token = String(
-    process.env.GEOMACRO_CONTROL_PLANE_TOKEN ??
-    process.env.CONTROL_PLANE_TOKEN ??
-    "",
-  ).trim();
+  // Explicit pre-derived credentials retain precedence. An invalid explicit
+  // credential fails closed; never silently switch authority after rejection.
+  const explicit = String(process.env.GEOMACRO_CONTROL_PLANE_TOKEN ?? "").trim() ||
+    String(process.env.CONTROL_PLANE_TOKEN ?? "").trim();
+  let token = explicit;
+  if (!explicit) {
+    const root = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
+    if (root.length < 32) return false;
+    // Same domain separation as security-budget, hot reads and protected
+    // publishers. The root secret itself must never become a bearer token.
+    try { token = hex(await hmac(root, "geomacro-control-plane-v1")); }
+    catch { return false; }
+  }
   if (token.length < 32) return false;
   const workflowId = key === B2_COMMERCIAL_SOURCE_RIGHTS_KEY
     ? "app_private_source_rights"
