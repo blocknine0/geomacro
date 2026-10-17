@@ -3,6 +3,7 @@ import { gzipSync, gunzipSync } from "node:zlib";
 import { writeFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { createB2Client } from "./ops/b2-s3-client.mjs";
+import { requireGdeltB2RecoveryHeadroom } from "./lib/gdelt-b2-shared-quota-guard.mjs";
 
 const AUTHORITATIVE_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const SOURCE_KEY = "gdelt_gal";
@@ -173,6 +174,11 @@ async function main() {
   if (!url || !key) throw new Error("Authoritative Supabase server credentials are required");
   if (projectRef(url) !== AUTHORITATIVE_PROJECT_REF) throw new Error("Supabase URL is not the authoritative Geomacro project");
 
+  // Direct invocations have the same fail-closed quota admission as the
+  // canonical wrapper. Source probing cannot precede this check.
+  if (process.env.B2_GDELT_PRIMARY === "1") {
+    await requireGdeltB2RecoveryHeadroom();
+  }
   const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const now = new Date();
   const nowIso = now.toISOString();

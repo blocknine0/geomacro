@@ -34,6 +34,13 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_REQUEST_BUDGET: "4"
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: gdelt_gal_recovery
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       LIVE_STRUCTURE_EXECUTION_MODE: local_direct_postgres
       LIVE_STRUCTURE_DRAIN_CONCURRENCY: "1"
@@ -70,6 +77,40 @@ jobs:
           jq -e '.ok == true and .policy.recurring_ingest_allowed == true' "$report" >/dev/null ||
             { echo "::error::SUPABASE_NORMAL_HEADROOM_NOT_VERIFIED"; exit 3; }
           echo "PASS: free-tier budget independently cleared before manual legacy writer."
+
+      - name: Resolve existing shared D1 B2 quota ledger (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" && test -n "${CLOUDFLARE_ACCOUNT_ID:-}" ||
+            { echo "::error::GDELT_B2_SHARED_D1_CREDENTIALS_REQUIRED"; exit 6; }
+          LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let s=""; process.stdin.on("data",d=>s+=d);
+            process.stdin.on("end",()=>{
+              const rows=JSON.parse(s);
+              if(!Array.isArray(rows)) throw Error("GDELT_D1_LIST_INVALID");
+              const matches=rows.filter(row=>row.name===process.env.D1_DATABASE_NAME);
+              if(matches.length!==1) throw Error("GDELT_SHARED_D1_NOT_FOUND");
+              const id=String(matches[0].uuid??matches[0].id??"");
+              if(!/^[0-9a-f-]{20,64}$/i.test(id)) throw Error("GDELT_D1_ID_INVALID");
+              process.stdout.write(id);
+            });
+          ')"
+          test -n "$DB_ID" || exit 7
+          echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
+
+      - name: Read-only shared B2 quota preflight before GDELT upstream requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${B2_ACCOUNT_QUOTA_REQUIRED:-}" = "1"
+          test "${B2_ACCOUNT_QUOTA_WORKFLOW_ID:-}" = "gdelt_gal_recovery"
+          node --input-type=module -e '
+            import { requireGdeltB2RecoveryHeadroom } from "./scripts/lib/gdelt-b2-shared-quota-guard.mjs";
+            const proof=await requireGdeltB2RecoveryHeadroom();
+            console.log(JSON.stringify(proof));
+          '
 
       - name: Validate production invocation boundary
         shell: bash
