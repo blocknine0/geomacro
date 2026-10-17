@@ -375,7 +375,6 @@ const ApiV1IntelligenceQueryRoute = ApiV1IntelligenceQueryRouteImport.update({
   path: '/api/v1/intelligence/query',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiX402CircleIntelligenceRoute =
 const ApiV1PaymentsNetworksRoute = ApiV1PaymentsNetworksRouteImport.update({
   id: '/api/v1/payments/networks',
   path: '/api/v1/payments/networks',
@@ -386,6 +385,7 @@ const ApiV1PaymentsPreflightRoute = ApiV1PaymentsPreflightRouteImport.update({
   path: '/api/v1/payments/preflight',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiX402CircleIntelligenceRoute =
   ApiX402CircleIntelligenceRouteImport.update({
     id: '/api/x402/circle_/intelligence',
     path: '/api/x402/circle/intelligence',
@@ -1285,7 +1285,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1IntelligenceQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/x402/circle_/intelligence': {
     '/api/v1/payments/networks': {
       id: '/api/v1/payments/networks'
       path: '/api/v1/payments/networks'
@@ -1300,6 +1299,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1PaymentsPreflightRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/x402/circle_/intelligence': {
       id: '/api/x402/circle_/intelligence'
       path: '/api/x402/circle/intelligence'
       fullPath: '/api/x402/circle/intelligence'
