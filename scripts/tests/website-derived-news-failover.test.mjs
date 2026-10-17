@@ -62,7 +62,7 @@ test('actual cadence CLI coalesces a recent primary on push but preserves manual
   const temp=mkdtempSync(join(tmpdir(),'news-cadence-'));
   try{
     for(const [event,minutes,expected] of [['push',5,false],['workflow_run',10,false],['schedule',21,false],['schedule',23,true],['workflow_run',50,true],['workflow_dispatch',5,true]]){
-      const output=join(temp,event);
+      const output=join(temp,event+'-'+minutes);
       const code=`globalThis.fetch=async()=>Response.json({workflow_runs:[{status:'completed',conclusion:'success',head_branch:'main',updated_at:new Date(Date.now()-${minutes}*60000).toISOString()}]});await import(${JSON.stringify(script)});`;
       const result=spawnSync(process.execPath,['--input-type=module','-e',code],{encoding:'utf8',env:{...process.env,
         GITHUB_REPOSITORY:'blocknine0/geomacro',GITHUB_TOKEN:'synthetic-token',GITHUB_OUTPUT:output,GITHUB_EVENT_NAME:event}});
