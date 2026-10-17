@@ -12,6 +12,34 @@ const csv=(code:string,value:number,day="2026-10-16")=>
  "FREQ,CURRENCY,CURRENCY_DENOM,EXR_TYPE,EXR_SUFFIX,TIME_PERIOD,OBS_VALUE\n"+
  "D,"+code+",EUR,SP00,A,"+day+","+value+"\n";
 describe("official question-time numerical answers",()=>{
+ it("uses the workerd-compatible no-redirect helper for WDI and ECB; blocks 3xx",async()=>{
+  const guarded=vi.fn(async(url:string,init?:RequestInit)=>{
+    if(init?.redirect==="error")throw TypeError("workerd rejects unsupported redirect:error");
+    expect(init?.redirect).toBe("manual");
+    if(url.includes("api.worldbank.org"))
+      return new Response(wdi("IND","FP.CPI.TOTL.ZG"),{status:200});
+    return new Response(csv("USD",1.2),{status:200});
+  }) as unknown as typeof fetch;
+  const wdiAnswer=await answerOfficialNumeric("India latest inflation rate?",{
+    fetchImpl:guarded,noCache:true,now,
+  });
+  expect(wdiAnswer?.summary).toContain("4.187%");
+  const fxAnswer=await answerOfficialNumeric("EUR/USD exchange rate",{
+    fetchImpl:guarded,noCache:true,now,
+  });
+  expect(fxAnswer?.summary).toContain("1.2 USD");
+  expect(vi.mocked(guarded).mock.calls).toHaveLength(2);
+  const redirect=vi.fn(async()=>new Response(null,{
+    status:302,headers:{Location:"https://example.com/unsafe"}
+  })) as unknown as typeof fetch;
+  const failures:string[]=[];
+  const denied=await answerOfficialNumeric("India latest inflation rate?",{
+    fetchImpl:redirect,noCache:true,now,onFailure:code=>failures.push(code)
+  });
+  expect(denied).toBeNull();
+  expect(failures).toEqual(["ASK_OFFICIAL_NUMERIC_TRANSPORT_UNAVAILABLE"]);
+  expect(vi.mocked(redirect)).toHaveBeenCalledTimes(1);
+ });
  it("preserves source-private typed failure codes on official transport errors",async()=>{
   const classes:string[]=[];
   const blocked=vi.fn(async()=>new Response("rate limited",{status:429})) as unknown as typeof fetch;
