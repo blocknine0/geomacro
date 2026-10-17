@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/ask-live-official-sse.yml"
       - "scripts/ops/verify-live-ask-sse.mjs"
+      - "scripts/ops/verify-live-ask-ecb-sse.mjs"
+      - "src/__tests__/ask-live-ecb-acceptance.test.ts"
       - "server/api/ask/v2/turn.post.ts"
       - "src/lib/ask-official-numeric.server.ts"
       - "src/lib/ask-sse-client.ts"
@@ -15,6 +17,8 @@ on:
     paths:
       - ".github/workflows/ask-live-official-sse.yml"
       - "scripts/ops/verify-live-ask-sse.mjs"
+      - "scripts/ops/verify-live-ask-ecb-sse.mjs"
+      - "src/__tests__/ask-live-ecb-acceptance.test.ts"
       - "server/api/ask/v2/turn.post.ts"
       - "src/lib/ask-official-numeric.server.ts"
       - "src/lib/ask-sse-client.ts"
@@ -63,5 +67,7 @@ jobs:
             raw_dataset_logged:false,payment_executed:false
           }));
           NODE
-      - name: Verify official numerical question and completed SSE from production
+      - name: Verify WDI annual numerical question and completed SSE from production
         run: node scripts/ops/verify-live-ask-sse.mjs
+      - name: Verify ECB daily reference FX against independent original and production SSE
+        run: node scripts/ops/verify-live-ask-ecb-sse.mjs
