@@ -1,0 +1,37 @@
+name: Hybrid Agent Production Acceptance
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/hybrid-agent-production-acceptance.yml"
+      - "scripts/ops/verify-hybrid-agent-production.mjs"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/hybrid-agent-production-acceptance.yml"
+      - "scripts/ops/verify-hybrid-agent-production.mjs"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-hybrid-agent-production-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  no-funds-hybrid-agent-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout audited source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prove fail-closed verifier cases offline
+        run: node scripts/ops/verify-hybrid-agent-production.mjs --self-test
+      - name: Check live published main and three-domain Hybrid Ask behavior
+        env:
+          EXPECTED_CANONICAL_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+        run: node scripts/ops/verify-hybrid-agent-production.mjs
