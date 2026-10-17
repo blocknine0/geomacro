@@ -7,6 +7,7 @@ const docs = [
   "docs/PAY_PER_CALL_PRODUCTION_ACTIVATION.md",
   "docs/PRODUCTION_LAUNCH_ACCEPTANCE.md",
   "docs/COINBASE_X402_BAZAAR_RUNBOOK.md",
+  "docs/COMMERCIAL_AGENT_DISTRIBUTION_PLAN.md",
 ];
 
 describe("commercial runbooks cannot contradict founder-locked capability pricing", () => {
