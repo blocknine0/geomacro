@@ -69,7 +69,8 @@ describe("founder-locked USD prices: precise output fields per product",()=>{
     expect(cached.customer_receives).toContain("gri_context.score");
     expect(cached.customer_receives).not.toContain("change_intelligence[*].change");
     expect(change.customer_receives).toContain("gri_context.change_attribution");
-    expect(change.customer_receives).toContain("change_intelligence[*].drivers");
+    expect(change.customer_receives).toContain("gri_context.previous_score");
+    expect(change.only_when_verified).toContain("change_intelligence[*].drivers");
     expect(change.extra_preconditions).toContain("SIGNED_PREVIOUS_STATE_AND_CHANGE_ATTRIBUTION_PROVEN");
   });
   it("never promises risk scoring/signatures for a structural digest",()=>{
@@ -92,6 +93,7 @@ describe("founder-locked USD prices: precise output fields per product",()=>{
       expect(result.execution_authorized).toBe(false);
     }
     const signed=geomacroPricedStructuredOutput("signed_risk_object","existing_valid_signed");
+    expect(signed.customer_receives).toContain("signed_risk_objects[*].object.risk_object_id");
     expect(signed.customer_receives).toContain("signed_risk_objects[*].object.integrity");
     expect(signed.customer_receives).toContain("signed_risk_objects[*].object.expires_at");
   });
