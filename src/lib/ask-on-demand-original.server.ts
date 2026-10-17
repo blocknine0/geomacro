@@ -131,8 +131,9 @@ export async function answerFromCurrentOriginals(
   if(!signals.length)return null;
   const newest=signals.map(item=>item.published_at).sort().at(-1)!;
   return {
-    summary:signals[0].what_changed,
-    what_changed:signals.map(item=>item.what_changed).join(" "),
+    summary:"For "+plan.country_name+": "+signals[0].what_changed+
+      " Original release dated "+newest+".",
+    what_changed:"For "+plan.country_name+": "+signals.map(item=>item.what_changed).join(" "),
     why_it_matters:signals.map(item=>item.why_it_matters).join(" "),
     geomacro_view:"Country/topic-matched original article release dates verified. These are unscored observations, not independently confirmed effects, a numeric reading, a forecast or a signed risk object.",
     evidence:signals.map(item=>({eventId:"live:official:"+item.id,title:item.title,relevance:100})),
