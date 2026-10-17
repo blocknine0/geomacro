@@ -95,7 +95,7 @@ for (const category of categories) {
 }
 // An ephemeral, sanitized hourly source-health artifact helps identify outages
 // without storing raw feeds, article links or publisher names. Derived signals
-// are already persisted and deduplicated in D1 with 30-day/600-row bounds.
+// are already persisted and deduplicated in D1 with a strict 72h/600-row cap.
 try {
   mkdirSync("artifacts/derived-news",{recursive:true});
   writeFileSync("artifacts/derived-news/source-health.json",JSON.stringify({
