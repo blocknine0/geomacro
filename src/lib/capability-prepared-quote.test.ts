@@ -73,4 +73,58 @@ describe("exact prepared-answer capability binding (no funds)",()=>{
     provider:"coinbase_x402",providerEnvironment:"mainnet",
   },now.getTime())).rejects.toThrow();
  });
+ it("accepts all fourteen founder prices on Circle Base Arc and Polygon while preserving immutable chain identity",async()=>{
+  const rails=[
+    ["eip155:8453","0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"],
+    ["eip155:5042","0x3600000000000000000000000000000000000000"],
+    ["eip155:137","0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"],
+  ] as const;
+  let checked=0;
+  for(const [capability,variants] of Object.entries(GEOMACRO_CAPABILITY_PRICES)){
+   for(const [variant,amount] of Object.entries(variants)){
+    const quotes=[];
+    for(const [network,asset] of rails){
+     const cfg={...base,capability,variant,network,asset,rail:"circle_gateway_x402" as const};
+     const quote=quoteGeomacroPreparedCapability(cfg);
+     expect(quote.amount_usdc).toBe(amount);
+     expect(quote.amount_atomic).toBe(quote.amount_usdc==="0.005"?"5000":
+       String(Math.round(Number(amount)*1_000_000)));
+     expect(verifyGeomacroPreparedCapabilityQuote(quote,cfg,now)).toEqual(quote);
+     await expect(assertCapabilityPrequote(quote,{
+      provider:"circle_gateway_x402",providerEnvironment:"production",
+     },now.getTime())).resolves.toBe(Date.parse(quote.expires_at));
+     quotes.push(quote);
+     checked++;
+    }
+    expect(new Set(quotes.map(q=>q.quote_id)).size).toBe(3);
+   }
+  }
+  expect(checked).toBe(42);
+ });
+ it("rejects cross-chain asset substitution, unsupported Coinbase settlement and a changed Circle scope",async()=>{
+  const native=[
+   {network:"eip155:5042",asset:"0x3600000000000000000000000000000000000000"},
+   {network:"eip155:137",asset:"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"},
+  ];
+  for(const input of native){
+   const cfg={...base,...input,rail:"circle_gateway_x402" as const};
+   const good=quoteGeomacroPreparedCapability(cfg);
+   await expect(assertCapabilityPrequote(good,{
+    provider:"coinbase_x402",providerEnvironment:"mainnet",
+   },now.getTime())).rejects.toThrow();
+   expect(()=>quoteGeomacroPreparedCapability({...cfg,rail:"coinbase_x402"})).toThrow();
+   expect(()=>quoteGeomacroPreparedCapability({...cfg,asset:base.asset})).toThrow();
+   expect(()=>quoteGeomacroPreparedCapability({...cfg,asset:"0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"})).toThrow();
+   expect(()=>verifyGeomacroPreparedCapabilityQuote({...good,network:"eip155:8453"},cfg,now)).toThrow();
+   expect(()=>verifyGeomacroPreparedCapabilityQuote({...good,asset_contract:base.asset.toLowerCase()},cfg,now)).toThrow();
+   await expect(assertCapabilityPrequote({...good,network:"eip155:8453"},{
+    provider:"circle_gateway_x402",providerEnvironment:"production",
+   },now.getTime())).rejects.toThrow();
+   await expect(assertCapabilityPrequote({...good,asset_contract:base.asset.toLowerCase()},{
+    provider:"circle_gateway_x402",providerEnvironment:"production",
+   },now.getTime())).rejects.toThrow();
+  }
+  expect(()=>quoteGeomacroPreparedCapability({...base,network:"eip155:1"})).toThrow();
+ });
+
 });
