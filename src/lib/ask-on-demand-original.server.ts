@@ -17,7 +17,7 @@ const DOMAINS: ReadonlyArray<{domain:OnDemandCategory;pattern:RegExp}> = [
   {domain:"rare_earth",pattern:/\b(critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu},
 ];
 const CURRENT = /\b(latest|new|news|today|now|current|recent|recently|updates?|developments?|announc(?:e|ed|ement)|what changed|what happened|this week|last \d+ (?:hours?|days?|weeks?)|past \d+ (?:hours?|days?|weeks?))\b/iu;
-const NUMERIC = /\b(how much|how many|exact|percentage|percent|rate|value|price|figure|number|risk scores?|predict|forecast)\b|[%$₹€]/iu;
+const NUMERIC = /\b(how much|how many|exact|percentage|percent|rate|value|price|figure|number|risk scores?|risk indices?|risk index|gri|predict|forecast)\b|[%$₹€]/iu;
 type CountrySpan=Readonly<{iso3:string;start:number;end:number}>;
 function countrySpans(question:string,country:Country195):CountrySpan[]{
   const terms=[country.name,...country.aliases,country.iso3];

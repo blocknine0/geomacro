@@ -26,6 +26,7 @@ describe("Ask question-driven original publisher retrieval",()=>{
   expect(planAskOriginalQuestion("US macro updates today")?.country_iso3).toBe("USA");
   expect(planAskOriginalQuestion("What about us today?")).toBeNull();
   expect(planAskOriginalQuestion("Latest exact inflation rate in India?")).toBeNull();
+  expect(planAskOriginalQuestion("What is the latest GRI risk index for India?")).toBeNull();
   expect(planAskOriginalQuestion("Latest news in India and China?")).toBeNull();
   expect(planAskOriginalQuestion("Latest sanctions in South Sudan")?.country_iso3).toBe("SSD");
   expect(planAskOriginalQuestion("Latest mining updates in Democratic Republic of the Congo")?.country_iso3).toBe("COD");
