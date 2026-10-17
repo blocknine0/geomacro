@@ -172,6 +172,15 @@ describe("one-original source-free factual handoff",()=>{
     expect(result.accepted).toBe(true);
     if(!result.accepted||!result.derived_input)throw Error("HANDOFF_EXPECTED");
     const fact=result.derived_input;
+    expect(result.owner_output_license.schema)
+      .toBe("geomacro.owner-derived-output-commercial-grant.v1");
+    expect(result.owner_output_license.owner_output_use_granted).toBe(true);
+    expect(result.owner_output_license.source_use_permission_granted).toBe(false);
+    expect(result.owner_output_license.gro_or_gri_authorized).toBe(false);
+    expect(result.owner_output_license.public_delivery_authorized).toBe(false);
+    expect(result.owner_output_license.payment_authorized).toBe(false);
+    expect(result.owner_output_license.output_sha256)
+      .toBe(result.derived_input_sha256);
     expect(fact.schema).toBe("geomacro.private-single-original-factual-handoff.v1");
     expect(fact.category).toBe("macro");
     expect(fact.country_iso3).toBe("USA");
