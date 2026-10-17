@@ -7,6 +7,7 @@
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
+import {canonicalCountry195Denominator} from "../lib/country-195-geography-crosswalk.mjs";
 
 export const DOMAINS = Object.freeze(["geopolitics","macro","rare_earth"]);
 const ALIASES = Object.freeze({
@@ -56,10 +57,13 @@ function originalTime(value,nowMs){
 }
 
 export function auditFreeCountryGaps({
-  d1Json,classificationSource,now=new Date(),
+  d1Json,classificationSource,
+  country195RegistrySource=readFileSync("src/lib/canonical-country-registry-195.ts","utf8"),
+  now=new Date(),
 }={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))fail("CLOCK_INVALID");
   const canon=canonicalGeographicDenominator(classificationSource);
+  const canon195=canonicalCountry195Denominator(country195RegistrySource,canon);
   let parsed;
   try{parsed=typeof d1Json==="string"?JSON.parse(d1Json):d1Json;}catch{fail("D1_JSON_INVALID");}
   const blocks=Array.isArray(parsed)?parsed:parsed?.result;
@@ -120,6 +124,36 @@ export function auditFreeCountryGaps({
       if(blocker)missing.push({iso3:code,scope:classification,domain,blocker});
     }
   }
+  // Exact 195-country report, distinct from the historical 250-area census.
+  // A static route, source catalogue, or recently touched metadata row cannot
+  // be promoted into a genuinely current country-specific evidence product.
+  const canonical195Domains=Object.fromEntries(DOMAINS.map(d=>[d,{
+    expected_countries:195,metadata_rows_present:0,
+    with_certified_source_metadata:0,recent_verified_metadata_90m:0,
+    unverified_or_missing:0,
+  }]));
+  const canonical195Gaps=[];
+  for(const [code,classification] of canon195){
+    for(const domain of DOMAINS){
+      const state=provided.get(code+":"+domain),c=canonical195Domains[domain];
+      let blocker=null;
+      if(!state)blocker="NO_COUNTRY_DOMAIN_METADATA";
+      else{
+        c.metadata_rows_present++;
+        if(state.certified>0)c.with_certified_source_metadata++;
+        else blocker="NO_CERTIFIED_SOURCE_METADATA";
+        const recent=state.timestamp!==null && state.timestamp<=now.getTime() &&
+          now.getTime()-state.timestamp<=NINETY_MINUTES;
+        if(recent && state.certified>0)c.recent_verified_metadata_90m++;
+        if(!blocker && !recent)blocker="SOURCE_METADATA_NOT_RECENT_90M";
+      }
+      if(blocker){
+        c.unverified_or_missing++;
+        canonical195Gaps.push({iso3:code,scope:classification,domain,blocker});
+      }
+    }
+  }
+  if(canonical195Gaps.length>585)fail("COUNTRY_195_GAP_INTEGRITY");
   const covered=Object.fromEntries(DOMAINS.map(d=>[d,domainCounts[d].recent_verified_metadata_90m]));
   const allMetadataFloor=DOMAINS.every(d=>domainCounts[d].metadata_rows_present>=195);
   const minMetadata=DOMAINS.every(d=>domainCounts[d].recent_verified_metadata_90m>=195);
@@ -130,6 +164,18 @@ export function auditFreeCountryGaps({
       special_entity:classTotals.SPECIAL_ENTITY,total:canon.size},
     target_country_floor:195,
     target_geography_category_cells:canon.size*DOMAINS.length,
+    canonical_195:{
+      country_count:canon195.size,category_count:3,cell_count:585,
+      member_states:193,observer_states:["PSE","VAT"],
+      geography_crosswalk:{sovereign:194,special_entity:1,territory:0},
+      domains:canonical195Domains,gap_count:canonical195Gaps.length,
+      metadata_floor_met:DOMAINS.every(d=>canonical195Domains[d].metadata_rows_present===195),
+      certified_and_recent_metadata_floor_met:DOMAINS.every(
+        d=>canonical195Domains[d].recent_verified_metadata_90m===195),
+      current_signed_country_intelligence_verified:false,
+      source_catalogue_is_not_evidence:true,
+    },
+    canonical_195_metadata_gaps:canonical195Gaps,
     domains:domainCounts,
     metadata_country_floor_met:allMetadataFloor,
     recent_source_metadata_floor_met:minMetadata,
@@ -164,7 +210,7 @@ if(process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).
       JSON.stringify(result,null,2)+"\n",{mode:0o600});
     console.log(JSON.stringify({
       schema:result.schema, observed_at:result.observed_at,
-      geographic_scope:result.geographic_scope,
+      geographic_scope:result.geographic_scope,canonical_195:result.canonical_195,
       domains:result.domains,gap_count:result.gap_count,
       recent_source_metadata_floor_met:result.recent_source_metadata_floor_met,
       current_signed_risk_intelligence_195x3_verified:false,
