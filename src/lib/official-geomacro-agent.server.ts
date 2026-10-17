@@ -10,6 +10,8 @@ import {GEOMACRO_CAPABILITY_PRICING_VERSION,
  capabilityPricingCatalog} from "./capability-pricing-catalog";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
  from "./geomacro-structured-commercial-license";
+import {GEOMACRO_USDC_NETWORKS_PATH,GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH,
+  publicGeomacroUsdcRailDiscovery} from "./geomacro-multichain-usdc.server";
 
 /** A machine-friendly facade, not a new agent engine, payment system or
  * second authority for risk. Every non-verification tool resolves through
@@ -40,6 +42,8 @@ const endpoints={
  find_schema:"/schemas/v1/find-card.json",
  mcp:"/api/mcp",a2a:"/api/a2a",
  agent_card:"/.well-known/agent-card.json",
+ usdc_networks:GEOMACRO_USDC_NETWORKS_PATH,
+ usdc_price_preflight:GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH,
 };
 export function officialGeomacroAgentDiscovery(){
  return {
@@ -58,6 +62,7 @@ export function officialGeomacroAgentDiscovery(){
    output_contract:t.paid?"geomacro.adaptive-intelligence-response.v1":"signed_risk_object_integrity_only",
   })),
   commercial_license:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
+  usdc_rails:publicGeomacroUsdcRailDiscovery(),
   pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
   pricing:capabilityPricingCatalog(),
   discovery_does_not_prove_delivery:true,
@@ -110,6 +115,23 @@ export function officialGeomacroAgentOpenApi(){
    [endpoints.macro_fx]:{post:op("Query macro FX scoped intelligence","post")},
    [endpoints.critical_minerals]:{post:op("Query critical minerals scoped intelligence","post")},
    [endpoints.availability]:{post:op("Check no funds Geomacro query availability","post")},
+   [GEOMACRO_USDC_NETWORKS_PATH]:{get:{
+    summary:"Discover Base Arc Polygon native USDC settlement candidates (not an active pay offer)",
+    operationId:"discoverGeomacroUsdcNetworks",
+    responses:{"200":{description:"Three networks; actual merchant payment remains gated"}},
+   }},
+   [GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH]:{post:{
+    summary:"Preview founder-locked USDC capability amount on selected network WITHOUT requiring or collecting funds",
+    operationId:"preflightGeomacroUsdcPrice",
+    requestBody:{required:true,content:{"application/json":{schema:{
+      type:"object",additionalProperties:false,
+      required:["capability","variant","network"],
+      properties:{capability:{type:"string"},variant:{type:"string"},
+        network:{type:"string",enum:["base","arc","polygon"]}},
+    }}}},
+    responses:{"200":{description:"Non-payable catalog estimate only"},
+      "400":{description:"Invalid rail or pricing tier, no charge"}},
+   }},
    [endpoints.free_finds]:{get:{
     summary:"Get 15 minute delayed public no attribution Find Cards",
     operationId:"listGeomacroFindCards",
@@ -123,6 +145,8 @@ export function officialGeomacroAgentOpenApi(){
    pricing:capabilityPricingCatalog(),
    agent_discovery:OFFICIAL_AGENT_PATH,agent_card:endpoints.agent_card,
    mcp:endpoints.mcp,a2a:endpoints.a2a,
+   usdc_networks:GEOMACRO_USDC_NETWORKS_PATH,
+   usdc_quote_preflight:GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH,
    evidence_and_rights_required:true,
    execution_authorized:false,payment_authorized_by_discovery:false,
   },
