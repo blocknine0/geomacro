@@ -43,8 +43,22 @@ test("two first-party original byte receipts matched topic, rights still blocked
  assert.equal(r.article_specific_no_attribution_commercial_rights_verified,false);
  assert.equal(r.licensed_signed_commercial_gro,false);
  assert.equal(r.b2_requests,0);assert.equal(r.payments,0);
- assert.equal(JSON.stringify(r).includes(kz),false);
- assert.equal(JSON.stringify(r).includes(gov),false);
+ // Only fixed, source-private fields may cross the read-only output boundary.
+ // No arbitrary raw upstream HTML, article URL or licence contents can leak.
+ assert.deepEqual(Object.keys(r.kazakhstan_government).sort(),[
+   "issuer","exact_html_sha256","bytes_observed",
+   "source_native_publication_at","precise_native_publication_clock_verified",
+   "source_identity_url_sha256",
+ ].sort());
+ assert.deepEqual(Object.keys(r).sort(),[
+   "schema","status","country_iso3","category","world_bank",
+   "kazakhstan_government","source_websites_independent_issuers_candidate",
+   "same_event_semantic_review_verified","independent_authored_review_verified",
+   "article_specific_no_attribution_commercial_rights_verified",
+   "rights_rejected_reason","licensed_signed_commercial_gro",
+   "verified_country_category_commercial_event_count",
+   "no_public_raw_source","b2_requests","d1_writes","supabase_writes","payments",
+ ].sort());
 });
 test("no government independently issued article denies same-event candidate",async()=>{
  const failed=await auditKazakhstanWorldBankSameEvent({
