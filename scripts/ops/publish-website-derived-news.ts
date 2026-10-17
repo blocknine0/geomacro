@@ -57,13 +57,16 @@ for (const category of categories) {
     const signals=report.signals.filter(signal=>{
       const at=Date.parse(signal.published_at);
       return signal.category===category && Number.isFinite(at) &&
+        at>=checked-72*60*60_000 && at<=checked &&
         (signal.date_precision==="day"
           ? (conservativeDayReleaseMs(signal.published_at)??Infinity)<=checked
           : at+15*60_000<=checked) &&
         signal.severity===null && signal.same_event_corrob_verified===false &&
         signal.sources_credited.every(v=>typeof v==="string");
     });
-    if (signals.length>0) {
+    // Always send a bounded authenticated heartbeat, including EMPTY batches.
+    // This prunes expired D1 records during quiet issuer hours.
+    {
       // The content is transmitted only to OUR authenticated Cloudflare
       // control plane. Never log request or response body.
       const reply=await fetch(ENDPOINT,{
@@ -95,7 +98,7 @@ for (const category of categories) {
 }
 // An ephemeral, sanitized hourly source-health artifact helps identify outages
 // without storing raw feeds, article links or publisher names. Derived signals
-// are already persisted and deduplicated in D1 with 30-day/600-row bounds.
+// are already persisted and deduplicated in D1 with a strict 72h/600-row cap.
 try {
   mkdirSync("artifacts/derived-news",{recursive:true});
   writeFileSync("artifacts/derived-news/source-health.json",JSON.stringify({

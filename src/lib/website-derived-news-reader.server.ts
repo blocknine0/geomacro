@@ -7,7 +7,8 @@ export type WebsiteDerivedNewsResult = {
   schema: "geomacro.website-derived-news-feed.v1";
   checked_at: string;
   original_release_delay_minutes: 15;
-  retention_days: 30;
+  retention_days: 3;
+  retention_hours: 72;
   delivery_scope: "free_website_only";
   signals: StatelessIntelligenceSignal[];
 };
@@ -31,7 +32,7 @@ export async function readWebsiteDerivedNews(fetchImpl:typeof fetch=fetch,now=Da
     if (data.ok !== true ||
         data.schema !== "geomacro.website-derived-news-feed.v1" ||
         data.original_release_delay_minutes !== 15 ||
-        data.retention_days !== 30 ||
+        data.retention_days !== 3 || data.retention_hours !== 72 ||
         data.delivery_scope !== "free_website_only" ||
         !Array.isArray(data.signals) || data.signals.length > 250) {
       throw Error("DERIVED_NEWS_FEED_SCHEMA_INVALID");

@@ -57,6 +57,7 @@ import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.se
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import { lookupTelegramFallback } from "./on-demand-telegram-fallback.server";
 import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
+import {readAutoIngest72hStructuredDrafts} from "./auto-ingest-72h-context.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
   inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages, type OnDemandCategory,
@@ -375,6 +376,15 @@ export const mainnetIntelligenceHandlers = {
               execution_authorized:false,
             },422);
           }
+          // Reuse the exact same 72h D1 auto-ingest stream as private
+          // STRUCTURED RESEARCH DRAFTS for this country/category query.
+          // A publisher-title country mention is just a lead, not verified
+          // article relevance, corroboration, commercial reuse or payment.
+          // Never copy drafts into paid evidence or the public 422 payload.
+          const autoIngestDrafts=await readAutoIngest72hStructuredDrafts(
+            subject.country_iso3,categories);
+          const autoIngestCandidateTopicCount=new Set(
+            autoIngestDrafts.map(d=>d.topic)).size;
           // Query-specific commodity routing uses only fixed identifiers.
           // Ambiguous multi-mineral requests require a scoped query instead of
           // returning unrelated articles as intelligence for one commodity.
@@ -536,6 +546,12 @@ export const mainnetIntelligenceHandlers = {
               reached_source_families:discovery.reached_source_families,
               existing_verified_country_gro_available:existingVerifiedCountryGroAvailable,
               discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
+              // Own-derived news guides this query's structured research,
+              // but only separately verified originals can produce a paid
+              // score, quote or settled customer delivery.
+              auto_ingest_72h_research_draft_count:autoIngestDrafts.length,
+              auto_ingest_72h_distinct_research_topics:autoIngestCandidateTopicCount,
+              auto_ingest_72h_drafts_commercially_eligible:false,
               private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
               duplicate_original_headlines_suppressed:duplicatePrivateOriginalHeadlines,
               private_official_annual_change_count:privateOfficialAnnualChanges,

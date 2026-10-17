@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 // Static test: historical recovery must never replace original publication
 // timestamps with fetch/restore timestamps, skip outage weeks, or persist raw.
 const script=readFileSync("scripts/ops/backfill-website-derived-news.ts","utf8");
-describe("website-only original-date 30-day shutdown gap repair",()=>{
-  it("searches the full rolling 30-day window in weekly page slices",()=>{
-    expect(script).toContain("TODAY-29*DAY_MS");
+describe("website-only original-date 72-hour shutdown gap repair",()=>{
+  it("searches the full rolling 72-hour window in weekly page slices",()=>{
+    expect(script).toContain("TODAY-3*DAY_MS");
     expect(script).toContain("ms+=7*DAY_MS");
     expect(script).toContain("for(const start of [0,80])");
     expect(script).toContain("sourceWindows.push");
@@ -21,7 +21,7 @@ describe("website-only original-date 30-day shutdown gap repair",()=>{
     expect(script).toContain("deriveStatelessSignals");
     expect(script).toContain("source_raw_stored:false");
   });
-  it("keeps one 30d derived-only journal and fail-closed readback",()=>{
+  it("keeps one 72h derived-only journal and fail-closed readback",()=>{
     expect(script).toContain("/v1/website-derived-news");
     expect(script).toContain("/v1/public/website-derived-news");
     expect(script).toContain("HISTORICAL_WRITE_ACK_MISMATCH");

@@ -35,7 +35,7 @@ function db() {
             const [id,category,published_at,date_precision,story_json,first_seen_at]=args;
             if(!data.has(id))data.set(id,{id,category,published_at,date_precision,story_json,first_seen_at});
           } else if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE published_at")) {
-            for(const [id,row] of data) if(row.published_at < args[0]) data.delete(id);
+            for(const [id,row] of data) if(row.published_at < args[0] || row.first_seen_at < args[1]) data.delete(id);
           } else if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE id IN")) {
             const sorted=[...data.values()].sort((a,b)=>
               b.published_at.localeCompare(a.published_at)||b.id.localeCompare(a.id));
@@ -104,6 +104,29 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(result.signals[0].published_at).toBe("2026-10-12T19:00:00.000Z");
     expect(JSON.stringify(result)).not.toContain("source_url");
   });
+  it("does not publish >72h originals, and evicts older original or ingest times on empty hourly sweep",async()=>{
+    const {data,env}=db();
+    const old=sample("macro","2026-10-09T19:59:59.000Z");
+    expect((await publishDerivedStories(env,{
+      schema:"geomacro.website-derived-news-batch.v1",signals:[old],
+    },NOW)).status).toBe(400);
+    const fresh=sample();
+    expect((await publishDerivedStories(env,{
+      schema:"geomacro.website-derived-news-batch.v1",signals:[fresh],
+    },NOW)).status).toBe(200);
+    const before=await (await readDerivedStories(env,NOW)).json();
+    expect(before.retention_hours).toBe(72);
+    expect(before.retention_days).toBe(3);
+    expect(before.signals).toHaveLength(1);
+    // Publication is still within 72h at +71h, but first ingestion has aged
+    // 72h 1min: the scheduled empty batch MUST physically evict the record.
+    const next=NOW+72*60*60_000+60_000;
+    expect((await publishDerivedStories(env,{
+      schema:"geomacro.website-derived-news-batch.v1",signals:[],
+    },next)).status).toBe(200);
+    expect(data.size).toBe(0);
+    expect((await (await readDerivedStories(env,next)).json()).signals).toHaveLength(0);
+  });
   it("renders authentic D1-derived cards without React SSR and without upstream secrets", async()=>{
     const {env}=db();
     const b={schema:"geomacro.website-derived-news-batch.v1",
@@ -123,10 +146,10 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(locked).toContain("website-derived-news-html");
     expect(locked).toContain("allSignals.length === 0");
   });
-  it("backfills across rolling 30 days by verified original Content API first_published_at, never search update clock",()=>{
+  it("backfills across rolling 72 hours by verified original Content API first_published_at, never search update clock",()=>{
     const source=readFileSync("scripts/ops/backfill-website-derived-news.ts","utf8");
     const workflow=readFileSync(".github/workflows/website-news-gap-backfill.yml","utf8");
-    expect(source).toContain("const START=new Date(TODAY-29*DAY_MS)");
+    expect(source).toContain("const START=new Date(TODAY-3*DAY_MS)");
     expect(source).toContain("ms+=7*DAY_MS");
     expect(source).toContain("sourceWindows.push");
     expect(source).toContain("search_pages_checked");

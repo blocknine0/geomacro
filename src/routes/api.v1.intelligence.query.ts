@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { mainnetIntelligenceHandlers } from "../lib/mainnet-intelligence-endpoint.server";
 import { unifiedThreeDomainSourceObservation } from "../lib/unified-three-domain-source-observation.server";
 import {automatedFindsResponse} from "../lib/automated-finds-reader.server";
+import {publicFindCardsResponse} from "../lib/public-find-card-feed.server";
 
 export const Route = createFileRoute("/api/v1/intelligence/query")({
   server: {
@@ -14,6 +15,18 @@ export const Route = createFileRoute("/api/v1/intelligence/query")({
       GET: async ({request}:{request:Request}) => {
         const url=new URL(request.url);
         if(url.searchParams.get("view")==="finds")return automatedFindsResponse(request);
+        // Auto Ingest's original-dated rolling 72h D1 data is available on
+        // the same canonical machine API as explicit no-charge structured
+        // research cards. This is NOT an x402 capability quote or verified GRO.
+        if(url.searchParams.get("view")==="auto-ingest-72h"){
+          if(url.searchParams.getAll("view").length!==1 ||
+             url.searchParams.getAll("domain").length>1 ||
+             [...url.searchParams.keys()].some(k=>!["view","domain"].includes(k)))
+            return Response.json({ok:false,chargeable:false,
+              error:"AUTO_INGEST_72H_QUERY_INVALID"},{status:400});
+          url.searchParams.delete("view");
+          return publicFindCardsResponse(new Request(url.toString()));
+        }
         if(url.searchParams.get("view")!=="source-status")
           return mainnetIntelligenceHandlers.GET({request});
         if([...url.searchParams.keys()].some(key=>key!=="view") ||

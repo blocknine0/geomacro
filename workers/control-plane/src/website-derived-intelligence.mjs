@@ -4,6 +4,11 @@
  * Never persist upstream title, URL, article text, publisher id or raw feed.
  * Exact public original-time delay is rechecked on write AND on every read.
  */
+// The founder-approved auto-ingest journal is strictly a rolling 72h window.
+// Old signed Finds/B2 archival products are independent (not reclassified here).
+export const AUTO_INGEST_RETENTION_MS = 72 * 60 * 60_000;
+// Backward compatible verification of separately signed historical Finds.
+// ONLY the auto-ingest journal below has the founder-approved 72h TTL.
 const LOOKBACK_MS = 30 * 86400_000;
 const DELAY_MS = 15 * 60_000;
 const CATEGORIES = new Set(["geopolitics", "macro", "rare_earth"]);
@@ -67,8 +72,11 @@ export function verifyDerivedStory(s, now=Date.now()) {
 }
 export async function publishDerivedStories(env, body, now=Date.now()) {
   if (!body || body.schema!=="geomacro.website-derived-news-batch.v1" ||
-      !Array.isArray(body.signals) || body.signals.length<1 || body.signals.length>50 ||
-      body.signals.some(s=>!verifyDerivedStory(s,now))) {
+      // An authenticated EMPTY batch is a legitimate hourly TTL sweep when
+      // all publishers are quiet. No raw stories or unsigned products created.
+      !Array.isArray(body.signals) || body.signals.length>50 ||
+      body.signals.some(s=>!verifyDerivedStory(s,now) ||
+        (originalTime(s,now)?.at??-Infinity)<now-AUTO_INGEST_RETENTION_MS)) {
     return json({ok:false,error:"DERIVED_NEWS_BATCH_INVALID"},400);
   }
   if (new Set(body.signals.map(s=>s.id)).size!==body.signals.length)
@@ -77,11 +85,14 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
     const statements=body.signals.map(s=>env.DB.prepare(
       "INSERT OR IGNORE INTO website_derived_intelligence (id,category,published_at,date_precision,story_json,first_seen_at) VALUES (?,?,?,?,?,?)"
     ).bind(s.id,s.category,s.published_at,s.date_precision,JSON.stringify(s),new Date(now).toISOString()));
-    // D1 batch is atomic. If one statement fails, the entire write fails.
-    await env.DB.batch(statements);
-    // Bounded retention: 30 days by ORIGINAL date, never by restore/poll time.
-    await env.DB.prepare("DELETE FROM website_derived_intelligence WHERE published_at < ?")
-      .bind(new Date(now-LOOKBACK_MS).toISOString().slice(0,10)).run();
+    // D1 batch is atomic. An empty batch is still a retention sweep.
+    if(statements.length)await env.DB.batch(statements);
+    // Evict both expired original-publication records and records held longer
+    // than 72h from FIRST ingestion. YYYY-MM-DD is used for SQL day precision;
+    // verifyDerivedStory applies the precise 72h original-date cutoff.
+    await env.DB.prepare("DELETE FROM website_derived_intelligence WHERE published_at < ? OR first_seen_at < ?")
+      .bind(new Date(now-AUTO_INGEST_RETENTION_MS).toISOString().slice(0,10),
+        new Date(now-AUTO_INGEST_RETENTION_MS).toISOString()).run();
     await env.DB.prepare(
       "DELETE FROM website_derived_intelligence WHERE id IN (SELECT id FROM website_derived_intelligence ORDER BY published_at DESC, id DESC LIMIT -1 OFFSET 600)"
     ).run();
@@ -94,19 +105,22 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
 export async function readDerivedStories(env,now=Date.now()) {
   try {
     const {results=[]}=await env.DB.prepare(
-      "SELECT story_json FROM website_derived_intelligence WHERE published_at>=? ORDER BY published_at DESC, id DESC LIMIT 250"
-    ).bind(new Date(now-LOOKBACK_MS).toISOString().slice(0,10)).all();
+      "SELECT story_json FROM website_derived_intelligence WHERE published_at>=? AND first_seen_at>=? ORDER BY published_at DESC, id DESC LIMIT 250"
+    ).bind(new Date(now-AUTO_INGEST_RETENTION_MS).toISOString().slice(0,10),
+      new Date(now-AUTO_INGEST_RETENTION_MS).toISOString()).all();
     const signals=[];
     for (const row of results) {
       try {
         const signal=JSON.parse(row.story_json);
-        if (verifyDerivedStory(signal,now)) signals.push(signal);
+        if (verifyDerivedStory(signal,now) &&
+            (originalTime(signal,now)?.at??-Infinity)>=now-AUTO_INGEST_RETENTION_MS)
+          signals.push(signal);
       } catch { /* reject malformed row, never leak SQL metadata */ }
     }
     return json({ok:true,schema:"geomacro.website-derived-news-feed.v1",
       checked_at:new Date(now).toISOString(),
       original_release_delay_minutes:15,
-      retention_days:30,
+      retention_days:3,retention_hours:72,
       delivery_scope:"free_website_only",
       scored:false,chargeable:false,supabase_dependency:false,
       signals},200);

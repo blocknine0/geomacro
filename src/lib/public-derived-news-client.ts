@@ -35,7 +35,7 @@ function safeSignal(value: unknown, now: number): value is StatelessIntelligence
       s.sources_credited.some(c => typeof c !== "string" || c.length > 230)) return false;
   const original = typeof s.published_at === "string" ? s.published_at : "";
   const ms = Date.parse(original);
-  if (!Number.isFinite(ms) || ms > now || ms < now - 30 * 86_400_000) return false;
+  if (!Number.isFinite(ms) || ms > now || ms < now - 72 * 3_600_000) return false;
   // Date.parse can normalize impossible days (e.g. 2026-02-30); require the
   // exact originating Gregorian date, never a JavaScript-normalized alias.
   if (s.date_precision === "day" && new Date(ms).toISOString().slice(0, 10) !== original)
@@ -67,7 +67,7 @@ export function checkedDerivedNews(doc: unknown, now = Date.now()): StatelessInt
   if (value.ok !== true ||
       value.schema !== "geomacro.website-derived-news-feed.v1" ||
       value.original_release_delay_minutes !== 15 ||
-      value.retention_days !== 30 ||
+      value.retention_days !== 3 || value.retention_hours !== 72 ||
       value.delivery_scope !== "free_website_only" ||
       !Array.isArray(value.signals) || value.signals.length > 250) {
     throw Error("DERIVED_NEWS_PUBLIC_DOCUMENT_INVALID");
