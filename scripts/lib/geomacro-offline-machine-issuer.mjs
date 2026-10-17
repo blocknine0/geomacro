@@ -1,4 +1,4 @@
-import {createHash,createPrivateKey,createPublicKey,sign,timingSafeEqual} from "node:crypto";
+import {createHash,createPrivateKey,createPublicKey,sign,verify,timingSafeEqual} from "node:crypto";
 import {verifyGeomacroTwoOriginalMachineBinding} from "./geomacro-machine-original-binding.mjs";
 
 // OFFLINE issuer only: never import this from a public API, cron publisher, or
@@ -153,5 +153,63 @@ export async function issueOfflineMachineAuthority({
   current_public_hot_published:false,
   payment_authorized:false,
   supabase_requests:0,b2_requests:0,d1_writes:0,payments:0,
+ });
+}
+
+
+/** Join two genuinely independent offline issuer decisions. This checks
+ * cryptographic signatures but does not re-approve an article licence or
+ * invoke the GRO signer: the existing private machine acceptance repeats
+ * every live HTML, rights registry and actual GRO proof check.
+ */
+export function assembleOfflineMachineCommercialRequest({
+ proof,candidates,event,attestations,factsPublicPem,rightsPublicPem,
+ factsPublicSha256,rightsPublicSha256,groPublicSpkiB64,
+ countryName=null,now=new Date(),
+}){
+ if(!proof||!Array.isArray(candidates)||candidates.length<2||
+    !event||event.id!==proof.event_id||
+    proof.exact_evidence_sha256!==sha(canonicalMachineProofBytes([event]))||
+    !Array.isArray(attestations)||attestations.length!==2||
+    !eq(factsPublicSha256,factsPublicSha256)||
+    !eq(rightsPublicSha256,rightsPublicSha256)||
+    eq(factsPublicSha256,rightsPublicSha256)||
+    !Number.isFinite(now.getTime())||
+    native(proof.expires_at)<=now.getTime())fail();
+ const keys=[["facts",factsPublicPem,factsPublicSha256],
+             ["rights",rightsPublicPem,rightsPublicSha256]];
+ const bytes=canonicalMachineProofBytes(proof);
+ let gro;
+ try{gro=createPublicKey({key:Buffer.from(groPublicSpkiB64,"base64"),format:"der",type:"spki"})}
+ catch{fail()}
+ const groHash=sha(gro.export({format:"der",type:"spki"}));
+ const signatures={};
+ for(const [role,pem,pin] of keys){
+   let pub;
+   try{pub=createPublicKey(pem)}catch{fail()}
+   if(pub.asymmetricKeyType!=="ed25519"||!eq(sha(pub.export({format:"der",type:"spki"})),pin)||
+      eq(pin,groHash))fail();
+   const matches=attestations.filter(a=>a?.role===role&&
+     a.schema==="geomacro.offline-machine-issuer-attestation.v1");
+   if(matches.length!==1)fail();
+   const a=matches[0];
+   if(a.proof_sha256!==sha(bytes)||
+      a.original_evidence_set_sha256!==proof.exact_original_evidence_set_sha256||
+      a.signer_public_sha256!==pin||
+      a.original_html_and_native_clock_reread!==true||
+      a.independent_external_reviewer_attested!==false||
+      a.current_public_hot_published!==false||
+      a.payment_authorized!==false||
+      typeof a.signature_b64!=="string"||
+      !/^[A-Za-z0-9+/]{86}==$/u.test(a.signature_b64)||
+      !verify(null,bytes,pub,Buffer.from(a.signature_b64,"base64")))fail();
+   signatures[role]=a.signature_b64;
+ }
+ return Object.freeze({
+  schema:"geomacro.private-machine-commercial-request.v1",
+  category:proof.category,country_iso3:proof.country_iso3,
+  country_name:countryName,event,candidates,
+  envelope:{proof,facts_signature_b64:signatures.facts,
+   rights_signature_b64:signatures.rights},
  });
 }
