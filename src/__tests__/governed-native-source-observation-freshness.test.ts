@@ -121,9 +121,9 @@ describe("#1827 authoritative statistical source clocks, domain and zero-cost ad
     expect(script).toContain("governedSourceNativeSpan(rows, { sourceId, now: new Date(now) })");
     expect(script).toContain("GOVERNED_SOURCE_MINIMUM_B2_BUDGET_INSUFFICIENT");
     expect(script.indexOf("const sourceBatches = []"))
-      .toBeLessThan(script.indexOf("const summaries = []"));
+      .toBeLessThan(script.indexOf("const summaries = sharedPlan"));
     expect(script.indexOf("const summaries = []"))
-      .toBeLessThan(script.indexOf("archiveSourceBatch(sourceId, rows);"));
+      .toBeLessThan(script.indexOf("parts.push(await archiveSourceBatch(sourceId, rows));"));
     expect(script).toContain("published_at: null");
     expect(script).not.toContain("published_at: now");
     expect(script).toContain("latest_source_observed_at: summary.latest_source_observed_at");

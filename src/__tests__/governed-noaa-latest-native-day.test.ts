@@ -121,7 +121,7 @@ describe("#1827 latest NOAA source-native daily sampling, not false GRI freshnes
     expect(ingest).toContain("await fetchNoaaLatestNativeDayRows({");
     expect(ingest).toContain("const sourceBatches = [];");
     expect(ingest.indexOf("const sourceBatches = [];"))
-      .toBeLessThan(ingest.indexOf("archiveSourceBatch(sourceId, rows);"));
+      .toBeLessThan(ingest.indexOf("const summaries = sharedPlan"));
     expect(ingest).toContain("GOVERNED_SOURCE_MINIMUM_B2_BUDGET_INSUFFICIENT");
     expect(ingest).toContain("sourceNativeMeasurementTime(observed, sourceId");
     expect(ingest).not.toContain("startdate=2026-09-01");

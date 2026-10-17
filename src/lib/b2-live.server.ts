@@ -74,6 +74,24 @@ const cache = new Map<string, CacheEntry>();
 const shareSignedB2Read = createPerKeySingleFlight<string, Uint8Array | null>();
 let failureCount = 0;
 let circuitOpenedAt = 0;
+// Local backoff supplements the account-wide D1 reservation; it never grants
+// permission for a B2 request or extends a cached artifact's acceptance TTL.
+let providerQuotaCooldownUntil = 0;
+const B2_COLD_READ_BACKOFF_MS = 15 * 60_000;
+function nextUtcDay(nowMs: number): number {
+  const day = new Date(nowMs);
+  return Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate() + 1);
+}
+function noteProviderReadDenial(status: number, errorBody: string) {
+  const nowMs = Date.now();
+  const providerCap = status === 403 &&
+    /(?:transaction_cap_exceeded|download_cap_exceeded)/i.test(errorBody.slice(0, 4_096));
+  if (providerCap) providerQuotaCooldownUntil = Math.max(
+    providerQuotaCooldownUntil, nextUtcDay(nowMs));
+  else if (status === 403 || status === 429)
+    providerQuotaCooldownUntil = Math.max(
+      providerQuotaCooldownUntil, nowMs + B2_COLD_READ_BACKOFF_MS);
+}
 
 const hex = (bytes: Uint8Array) =>
   Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -215,10 +233,11 @@ export async function reservePrivateB2Read(key: string): Promise<boolean> {
 
 async function signedGetOnce(key: string): Promise<Uint8Array | null> {
   const cfg = config();
-  if (!cfg || !allowedKey(key) || circuitOpen()) return null;
+  if (!cfg || !allowedKey(key)) return null;
 
   const cached = cache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.bytes;
+  if (providerQuotaCooldownUntil > Date.now() || circuitOpen()) return null;
 
   // Must reserve an account-wide Class B GET ticket before any AWS-signed
   // request. If D1's atomic receipt is unavailable, fail closed (no B2).
@@ -260,6 +279,10 @@ async function signedGetOnce(key: string): Promise<Uint8Array | null> {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) {
+      if (response.status === 403 || response.status === 429) {
+        const errorBody = await response.text().catch(() => "");
+        noteProviderReadDenial(response.status, errorBody);
+      }
       noteFailure();
       return null;
     }

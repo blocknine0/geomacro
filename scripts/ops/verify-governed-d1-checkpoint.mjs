@@ -134,6 +134,20 @@ export function verifyGovernedD1CheckpointReadback(databaseResponse,summary) {
       metadata.fragments.every((fragment,i)=>
         fragment.key===source.fragments[i]?.key &&
         fragment.sha256===source.fragments[i]?.sha256 &&
+        fragment.fingerprint===source.fragments[i]?.fingerprint &&
+        fragment.members===source.fragments[i]?.members &&
+        fragment.shared_bundle_members===source.fragments[i]?.shared_bundle_members &&
+        fragment.source_member_set_sha256===source.fragments[i]?.source_member_set_sha256 &&
+        JSON.stringify(fragment.source_ids)===JSON.stringify(source.fragments[i]?.source_ids) &&
+        (fragment.shared_bundle_members===undefined || (
+          SHA.test(String(fragment.source_member_set_sha256??"")) &&
+          fragment.members===source.normalized_observations &&
+          fragment.shared_bundle_members===summary.sources.reduce((n,s)=>n+s.normalized_observations,0) &&
+          Array.isArray(fragment.source_ids) &&
+          fragment.source_ids.length===REQUIRED_SOURCES.length &&
+          new Set(fragment.source_ids).size===REQUIRED_SOURCES.length &&
+          REQUIRED_SOURCES.every(id=>fragment.source_ids.includes(id))
+        )) &&
         SHA.test(String(fragment.sha256??"")) &&
         String(fragment.key).startsWith(
           "geomacro-evidence/v1/observation-bundles/") &&

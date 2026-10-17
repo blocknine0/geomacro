@@ -5,6 +5,7 @@ import { gzipSync, gunzipSync } from "node:zlib";
 import { createB2Client } from "./ops/b2-s3-client.mjs";
 import { createB2D1AccountGovernor } from "./ops/b2-d1-account-governor.mjs";
 import { evaluateGovernedB2Headroom } from "./lib/governed-b2-headroom.mjs";
+import { planSharedGovernedBundle, verifySharedGovernedBundle } from "./lib/governed-shared-ingestion-bundle.mjs";
 import {
   governedMetricCategory,
   governedSourceNativeSpan,
@@ -14,6 +15,7 @@ import {
 
 const MAX_SOURCE_ROWS = 250;
 const MAX_FRAGMENT_MEMBERS = 25;
+const MAX_SHARED_FRAGMENT_MEMBERS = 50;
 const MAX_FRAGMENT_UNCOMPRESSED_BYTES = 8_000_000;
 const MAX_FRAGMENT_COMPRESSED_BYTES = 1_500_000;
 const MAX_FRAGMENTS_PER_SOURCE = 12;
@@ -342,6 +344,87 @@ async function archiveSourceBatch(sourceId, rows) {
   };
 }
 
+// Fast path for TWO small, independent source batches: one immutable bundle
+// and one independent full B2 readback instead of 2 PUT + 2 GET. Each source
+// retains its own subset hash, original source-native clocks and D1 checkpoint.
+// Large batches remain on the existing per-source verified fragment path.
+async function archiveSharedGovernedBatches(batches, planned) {
+  let restored = false;
+  const receipt = await b2.putWithMetadataVerification(
+    planned.key, planned.compressed, {
+      verifyRestored(readback) {
+        restored = verifySharedGovernedBundle(readback, planned, {
+          sha, hash, maxUncompressedBytes: MAX_FRAGMENT_UNCOMPRESSED_BYTES,
+        });
+      },
+    },
+  );
+  const compressedSha = sha(planned.compressed);
+  if (!restored || receipt.sha256 !== compressedSha ||
+      receipt.bytes !== planned.compressed.length ||
+      receipt.verification_mode !== "signed-put-full-readback-sha256" ||
+      receipt.full_body_readback_verified !== true) {
+    throw new Error("GOVERNED_SHARED_BUNDLE_INDEPENDENT_READBACK_REQUIRED");
+  }
+  return batches.map(({ sourceId, rows }) => {
+    const nativeSpan = governedSourceNativeSpan(rows, {
+      sourceId, now: new Date(now),
+    });
+    const subset = planned.entries.filter(entry =>
+      entry.normalized_observation?.source_id === sourceId);
+    if (subset.length !== rows.length) {
+      throw new Error("GOVERNED_SHARED_BUNDLE_SOURCE_COUNT_MISMATCH");
+    }
+    const memberSetSha = hash(subset.map(entry => ({
+      observation_id: entry.observation_id,
+      payload_sha256: entry.payload_sha256,
+      normalized_sha256: entry.normalized_sha256,
+    })));
+    const fragment = {
+      key: planned.key,
+      sha256: compressedSha,
+      fingerprint: planned.fingerprint,
+      members: rows.length,
+      shared_bundle_members: planned.totalMembers,
+      source_member_set_sha256: memberSetSha,
+      source_ids: planned.sourceIds,
+      uncompressed_bytes: planned.bundleBytes.length,
+      compressed_bytes: planned.compressed.length,
+      verification_mode: receipt.verification_mode,
+      storage_metadata_verified: true,
+      local_restore_verified: true,
+      full_body_readback_verified: true,
+      contains_normalized_observations: true,
+    };
+    const fragmentSetSha256 = hash([{
+      key: fragment.key, sha256: fragment.sha256,
+      fingerprint: fragment.fingerprint, members: fragment.members,
+      source_id: sourceId, source_member_set_sha256: memberSetSha,
+    }]);
+    return {
+      source_id: sourceId, ...nativeSpan,
+      normalized_observations: rows.length,
+      storage_mode: "gzip-fragment-bundles",
+      fragment_count: 1,
+      fragment_set_sha256: fragmentSetSha256,
+      fragments: [fragment],
+      uncompressed_bytes: planned.bundleBytes.length,
+      compressed_bytes: planned.compressed.length,
+      compression_ratio: Number((planned.compressed.length /
+        Math.max(1, planned.bundleBytes.length)).toFixed(6)),
+      shared_multi_source_bundle: true,
+      b2_storage_metadata_verified: true,
+      b2_local_restore_verified: true,
+      b2_full_body_readback_verified: true,
+      verification_mode: "signed-put-full-readback-sha256",
+      normalized_observations_durable_in_b2: true,
+      supabase_dependency: false,
+      supabase_mirror_attempted: false,
+      supabase_raw_payload_written: false,
+    };
+  });
+}
+
 // Compute the actual deterministic gzip fragment count BEFORE the first B2
 // PUT. A tiny 2+2 early D1 headroom check cannot guarantee that larger,
  // provider-native source batches will fit the remaining daily GET/PUT caps.
@@ -394,8 +477,15 @@ for (const sourceId of sourceIds) {
 }
 // Budget pessimistically per fragment; large-fragment splits still hit the
 // independent local+shared quota guard before any additional network call.
-const exactPlannedFragments = sourceBatches.reduce((total, batch) =>
-  total + plannedSourceFragmentCount(batch.sourceId,batch.rows), 0);
+const sharedPlan = sourceBatches.length === 2
+  ? planSharedGovernedBundle(sourceBatches, buildFragment, {
+      maxMembers: MAX_SHARED_FRAGMENT_MEMBERS,
+      maxUncompressedBytes: MAX_FRAGMENT_UNCOMPRESSED_BYTES,
+      maxCompressedBytes: MAX_FRAGMENT_COMPRESSED_BYTES,
+    }) : null;
+const exactPlannedFragments = sharedPlan ? 1
+  : sourceBatches.reduce((total, batch) =>
+      total + plannedSourceFragmentCount(batch.sourceId,batch.rows), 0);
 const minimumB2Requests = exactPlannedFragments * 2;
 if (minimumB2Requests > Number(process.env.B2_REQUEST_BUDGET ?? 0)) {
   throw new Error("GOVERNED_SOURCE_MINIMUM_B2_BUDGET_INSUFFICIENT");
@@ -412,10 +502,16 @@ const plannedHeadroom=evaluateGovernedB2Headroom(quotaSnapshot,{
 if(!plannedHeadroom.admitted) {
   throw new Error("GOVERNED_SOURCE_SHARED_B2_PLAN_QUOTA_HELD");
 }
-const summaries = [];
-for (const { sourceId, rows } of sourceBatches) {
-  const summary = await archiveSourceBatch(sourceId, rows);
-  summaries.push(summary);
+const summaries = sharedPlan
+  ? await archiveSharedGovernedBatches(sourceBatches, sharedPlan)
+  : await (async () => {
+      const parts = [];
+      for (const { sourceId, rows } of sourceBatches) {
+        parts.push(await archiveSourceBatch(sourceId, rows));
+      }
+      return parts;
+    })();
+for (const summary of summaries) {
   console.log(JSON.stringify({ ...summary, status: "PASS" }));
 }
 
@@ -440,7 +536,10 @@ const checkpointSql = summaries.map((summary) => {
     compression: "gzip-9",
     fragment_count: summary.fragment_count,
     fragment_set_sha256: summary.fragment_set_sha256,
-    fragments: summary.fragments.map(({ key, sha256, fingerprint, members }) => ({ key, sha256, fingerprint, members })),
+    fragments: summary.fragments.map(({ key, sha256, fingerprint, members, shared_bundle_members, source_member_set_sha256, source_ids }) =>
+      ({ key, sha256, fingerprint, members,
+        ...(shared_bundle_members ? { shared_bundle_members, source_member_set_sha256, source_ids } : {}),
+      })),
     uncompressed_bytes: summary.uncompressed_bytes,
     compressed_bytes: summary.compressed_bytes,
     compression_ratio: summary.compression_ratio,
@@ -465,9 +564,14 @@ const result = {
   storage_mode: "gzip-fragment-bundles",
   compression: "gzip-9",
   normalized_observations: summaries.reduce((sum, item) => sum + item.normalized_observations, 0),
-  fragment_count: summaries.reduce((sum, item) => sum + item.fragment_count, 0),
-  uncompressed_bytes: summaries.reduce((sum, item) => sum + item.uncompressed_bytes, 0),
-  compressed_bytes: summaries.reduce((sum, item) => sum + item.compressed_bytes, 0),
+  fragment_count: sharedPlan ? 1 : summaries.reduce((sum, item) => sum + item.fragment_count, 0),
+  shared_multi_source_bundle: Boolean(sharedPlan),
+  b2_minimum_requests_planned: minimumB2Requests,
+  b2_saved_requests_vs_independent: sharedPlan ? 2 : 0,
+  uncompressed_bytes: sharedPlan ? sharedPlan.bundleBytes.length
+    : summaries.reduce((sum, item) => sum + item.uncompressed_bytes, 0),
+  compressed_bytes: sharedPlan ? sharedPlan.compressed.length
+    : summaries.reduce((sum, item) => sum + item.compressed_bytes, 0),
   sources: summaries,
   b2_usage: b2.usage(),
   supabase_dependency: false,

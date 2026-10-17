@@ -11,7 +11,7 @@ import { evaluateGovernedB2Headroom } from "../lib/governed-b2-headroom.mjs";
 export async function checkGovernedB2Headroom({ governor =
   createB2D1AccountGovernor(), now = new Date() } = {}) {
   const status = await governor.status();
-  return evaluateGovernedB2Headroom(status, { now });
+  return evaluateGovernedB2Headroom(status, { now, getRequests: 1, putRequests: 1 });
 }
 
 if(process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -28,7 +28,7 @@ if(process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url
       {encoding:"utf8"});
     appendFileSync(process.env.GITHUB_STEP_SUMMARY,
       proof.admitted
-        ? "Governed B2 ingestion: capacity for at least 2 PUT + 2 GET exists. Actual plan is rechecked after source discovery, and every B2 attempt still requires an atomic D1 ticket.\n"
+        ? "Governed B2 ingestion: capacity for one shared-bundle PUT + GET exists; larger fallback plans are rechecked after staging. Actual plan is rechecked after source discovery, and every B2 attempt still requires an atomic D1 ticket.\n"
         : "Governed B2 ingestion: QUOTA-HELD (internal shared D1 request budget). NO new source API, B2, Supabase or payment request made. No fresh observation or commercial readiness is claimed. Retry after next UTC budget day or operator dispatch.\n",
       {encoding:"utf8"});
     // Safe public Actions log: no provider credentials, source data or

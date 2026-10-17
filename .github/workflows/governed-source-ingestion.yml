@@ -13,6 +13,7 @@ on:
       - "scripts/ingest-certified-sources.mjs"
       - "scripts/lib/governed-source-native-time.mjs"
       - "scripts/lib/governed-b2-headroom.mjs"
+      - "scripts/lib/governed-shared-ingestion-bundle.mjs"
       - "scripts/ops/check-governed-source-b2-headroom.mjs"
       - "scripts/ops/verify-governed-d1-checkpoint.mjs"
       - "scripts/test-governed-source-ingestion.mjs"
