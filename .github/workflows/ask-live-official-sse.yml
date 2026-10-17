@@ -2,6 +2,14 @@ name: Ask Live Official SSE Acceptance
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/ask-live-official-sse.yml"
+      - "scripts/ops/verify-live-ask-sse.mjs"
+      - "server/api/ask/v2/turn.post.ts"
+      - "src/lib/ask-official-numeric.server.ts"
+      - "src/lib/ask-sse-client.ts"
+      - "src/__tests__/ask-live-sse-acceptance.test.ts"
   push:
     branches: [main]
     paths:
