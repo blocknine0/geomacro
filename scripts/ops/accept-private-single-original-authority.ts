@@ -77,6 +77,12 @@ export async function runPrivateSingleOriginalOperator({
     qualified_until:fact?.qualified_until??null,
     derived_factual_input_sha256:qualified.derived_input_sha256,
     derived_factual_input_type:fact?.product_type??null,
+    owner_output_license_id:qualified.accepted?
+      qualified.owner_output_license?.schema??null:null,
+    owner_output_use_granted:qualified.accepted?
+      qualified.owner_output_license?.owner_output_use_granted===true:false,
+    // Owner-created expression is not upstream publisher permission.
+    third_party_source_permission_self_granted:false,
     signed_commercial_gro:false,
     public_hot_published:false,
     gri_current_certified:false,

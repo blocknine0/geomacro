@@ -1,5 +1,6 @@
 import {createHash} from "node:crypto";
 import {canonicalRiskObjectJson} from "./risk-object-signing.server";
+import {issueGeomacroOwnedOutputLicense} from "./geomacro-owned-derived-output-license.server";
 import {qualifySingleOriginalPrivateAuthority,
   SINGLE_ORIGINAL_AUTHORITY_PROFILE,
   type SingleOriginalAuthorityEnvelope} from "./single-original-private-authority.server";
@@ -86,5 +87,8 @@ export async function preparePrivateSingleOriginalFactualHandoff({
   return Object.freeze({
     accepted:true,reason:"PRIVATE_ONE_ORIGINAL_FACTUAL_INPUT_PREPARED",
     derived_input:result,derived_input_sha256:fingerprint,
+    // This is a licence of Geomacro-owned DERIVED expression only. It is
+    // not an upstream license, scored-product grant or payment clearance.
+    owner_output_license:issueGeomacroOwnedOutputLicense(result),
   });
 }

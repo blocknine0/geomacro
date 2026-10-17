@@ -7,6 +7,19 @@ This register records the engineering evidence and delivery restrictions used wh
 
 It is not legal advice. Dataset/API terms can change and can contain item-specific exceptions. Re-review a source whenever the exact dataset, API contract, access tier, licence, attribution requirement, raw-redistribution rule, or intended customer-delivery mode changes.
 
+## Owner-controlled licence for Geomacro-original output (separate boundary)
+
+Geomacro may grant commercial use of original Geomacro-derived output and
+analysis to the extent it owns the rights. The version-controlled declaration
+is [Owner-Controlled Commercial License for Original Derived Outputs](./COMMERCIAL_DERIVED_OUTPUT_OWNER_LICENSE.md).
+
+**This does NOT license the underlying third-party article, provider data,
+publisher copyright, database right, required source attribution or external
+credentials.** Source eligibility, original dates and rights verification
+below remain independently mandatory. An owner-origin derived-output licence
+never promotes `UNVERIFIED` or `REVIEW_REQUIRED` to `VERIFIED`, authorizes
+x402 payment or cures stale signed GRI/Intelligence/Risk Indices.
+
 ## Core rule
 
 Public accessibility is **not** commercial permission.
