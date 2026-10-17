@@ -72,6 +72,55 @@ test('two provider namespaces remain exact, including Circle environment binding
   quoteId:q.quote_id,provider:q.payment_rail,providerEnvironment:'production'})).status,200);
  assert.equal((await post(ledger,'capability-prequote-readback',{quoteId:q.quote_id})).status,409);
 });
+test('Circle Base Arc Polygon native immutable quotes admit no-funds bytes but reject mixed asset, rail and scope',async()=>{
+ const rails=[
+  ['eip155:8453','0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'],
+  ['eip155:5042','0x3600000000000000000000000000000000000000'],
+  ['eip155:137','0x3c499c542cef5e3811e1192ce70d8cc03d5c3359'],
+ ];
+ const {ledger,map}=vault();
+ const frozen=new Set();
+ for(const [network,asset_contract] of rails){
+  const q={...await quote('intelligence_query','focused',network),
+   network,asset_contract,payment_rail:'circle_gateway_x402'};
+  q.quote_id=await capabilityQuoteHash(q);
+  const scoped={provider:'circle_gateway_x402',providerEnvironment:'production'};
+  const p={quote:q,customerBytes,...scoped};
+  const first=await post(ledger,'capability-prequote-freeze',p);
+  assert.equal(first.status,200);
+  assert.equal(first.body.disposition,'FROZEN');
+  frozen.add(q.quote_id);
+  for(let i=0;i<2;i++){
+   const read=await post(ledger,'capability-prequote-readback',{quoteId:q.quote_id,...scoped});
+   assert.equal(read.status,200);
+   assert.equal(read.body.customerBytes,customerBytes);
+   assert.equal(read.body.quote.network,network);
+   assert.equal(read.body.quote.asset_contract,asset_contract);
+   assert.equal(read.body.payment_authorized,false);
+   assert.equal(read.body.settlement_attempted,false);
+  }
+  assert.equal((await post(ledger,'capability-prequote-freeze',p)).body.disposition,'EXACT_REPLAY');
+  assert.equal((await post(ledger,'capability-prequote-readback',{quoteId:q.quote_id})).status,409);
+  for(const bad of [
+   {...q,network:'eip155:10'},
+   {...q,asset_contract:'0x'+'f'.repeat(40)},
+   {...q,payment_rail:'coinbase_x402'},
+   {...q,amount_atomic:'1'},
+  ]){
+   assert.equal((await post(ledger,'capability-prequote-freeze',{...p,quote:bad})).status,409);
+  }
+  if(network!=='eip155:8453'){
+   const wrongProvider={...q,payment_rail:'coinbase_x402'};
+   wrongProvider.quote_id=await capabilityQuoteHash(wrongProvider);
+   assert.equal((await post(ledger,'capability-prequote-freeze',{
+    quote:wrongProvider,customerBytes
+   })).status,409);
+  }
+ }
+ assert.equal(frozen.size,3);
+ assert.equal(map.size,3);
+});
+
 test('expiry and stored-byte/price corruption fail closed at readback',async()=>{
  const {ledger,map}=vault();const q=await quote();
  await post(ledger,'capability-prequote-freeze',{quote:q,customerBytes});
