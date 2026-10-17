@@ -43,6 +43,14 @@ describe("production launch safety contract", () => {
     expect(manifest.launch_rule.require_marketplace_verification_before_initial_launch).toBe(false);
   });
 
+  it("requires explicitly non-funded capability-priced manual acceptance", () => {
+    const workflow = read(".github/workflows/initial-commercial-pay-per-call-acceptance.yml");
+    expect(workflow).toContain("ACCEPT_GEOMACRO_CAPABILITY_PRICES_NO_FUNDS");
+    expect(workflow).not.toContain("ACCEPT_GEOMACRO_INITIAL_0_05_USDC_PAY_PER_CALL");
+    expect(workflow).toContain("geomacro.capability-usdc.v1");
+    expect(workflow).toContain("EIGHT_CAPABILITIES_EXACT_VARIANTS_NO_FLAT_PRICE");
+  });
+
   it("ships global freeze and provider quarantine controls disabled by default", () => {
     const env = read(".env.example");
     const gate = read("src/lib/commercial-launch-gate.server.ts");
