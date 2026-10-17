@@ -5,29 +5,29 @@ const card = readFileSync("src/components/home/live-intelligence-showcase.tsx", 
 const home = readFileSync("src/components/home/commercial-home.tsx", "utf8");
 
 describe("Geomacro Finds commercial homepage presentation", () => {
-  it("retains one canonical derived winner with a truthful actual event date", () => {
-    expect(card).toContain("selectHomepageShowcase(intelligence.data.all)");
-    expect(card).toContain("useIntelligence(null, 5 * 60_000)");
-    expect(card).toContain("publicHeadline(event.title)");
+  it("shows exactly one public original-dated free Find with a truthful evidence clock",()=>{
+    expect(card).toContain("selectHomepageFreeFind(cards)");
+    expect(card).toContain("findCardFromObservedRelease(s,now)");
+    expect(card).toContain("winner.originalAt");
+    expect(card).toContain("dateTime={winner.originalAt}");
+    expect(card).toContain("card.headline");
+    expect(card).toContain("card.what_changed");
+    expect(card).toContain("card.why_it_matters");
     expect(card).not.toContain("categoryLeads(intelligence.data.all)");
     expect(card).not.toContain("categoryHighlights");
-    expect(card).not.toContain("Global coverage · Three intelligence domains");
     expect(card).toContain("<AccessOptions />");
-    expect(card).toContain("winner.observedAt");
-    expect(card).toContain("dateTime={winner.observedAt}");
-    expect(card).not.toContain("Top verified · Last 24h");
-    expect(card).not.toContain("Latest verified historical");
-    expect(card).not.toContain("Current as of today");
   });
 
-  it("never invents detail, scores or predictions, and only renders verified canonical summary", () => {
-    expect(card).toContain("selectHomepageShowcase(intelligence.data.all)");
-    expect(card).toContain("event.summary");
-    expect(card).toContain("event.severity !== null");
-    expect(card).toContain('winner.isCurrent ? "Verified within 24h" : "Historical verified assessment"');
-    expect(card).not.toContain("FOCUS[event");
-    expect(card).not.toContain("Potential next impact");
-    expect(card).not.toContain("Specific causal drivers have not");
+  it("does not promote a free D1 release to paid GRO/score or fresh commercial review",()=>{
+    expect(card).toContain("homeFindsPulse(cards)");
+    expect(card).toContain('fetch("/api/v1/finds"');
+    expect(card).toContain("Original release within 24h");
+    expect(card).toContain("Earlier original release · not current");
+    expect(card).toContain("independent same-event review not established");
+    expect(card).toContain("Recent release · unscored");
+    expect(card).not.toContain("useIntelligence(");
+    expect(card).not.toContain("RiskBadge");
+    expect(card).not.toContain("event.severity");
   });
 
   it("keeps sales enquiries open without suggesting an active monthly checkout", () => {
@@ -44,7 +44,7 @@ describe("Geomacro Finds commercial homepage presentation", () => {
   it("has a balanced responsive hero and correct risk-indices route", () => {
     expect(home).toContain("minmax(0,1.02fr)_minmax(0,.98fr)");
     expect(home).toContain("text-[clamp(2.6rem,4vw,4.6rem)]");
-    expect(home).toContain("<LiveIntelligenceShowcase />");
+    expect(home).toContain("<LiveIntelligenceShowcase initialFindCards={initialFindCards} />");
     expect(home).toContain('to="/risk-indices"');
     expect(home).toContain("Clarity without the noise.");
     expect(home).not.toContain("Not another raw-data feed.");
