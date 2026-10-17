@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const workspace = readFileSync("src/components/ask/ask-workspace.tsx", "utf8");
+const answers = readFileSync("src/components/ask/ask-answer-view.tsx", "utf8");
+const legacy = readFileSync("src/lib/ask-legacy-transport.ts", "utf8");
 const transport = readFileSync("server/api/public-ask.get.ts", "utf8");
 const adapter = readFileSync("src/lib/hybrid-agent-chat.server.ts", "utf8");
 
@@ -35,13 +37,13 @@ describe("Ask Geomacro conversational workspace", () => {
   });
 
   it("retains the public research boundary with no payment or direct signing", () => {
-    expect(workspace).toContain('fetch("/api/public-ask"');
-    expect(workspace).toContain('cache: "no-store"');
+    expect(legacy).toContain('fetch("/api/public-ask"');
+    expect(legacy).toContain('cache: "no-store"');
     expect(transport).toContain("executeHybridChatTurn");
     expect(workspace).not.toMatch(/settleCoinbaseX402|signRiskObject|GROQ_API_KEY|OPENAI_API_KEY/);
-    expect(workspace).toContain("answer.insufficient_evidence");
-    expect(workspace).toContain("answer.what_changed");
-    expect(workspace).toContain("answer.why_it_matters");
-    expect(workspace).toContain("answer.geomacro_view");
+    expect(answers).toContain("answer.insufficient_evidence");
+    expect(answers).toContain("answer.what_changed");
+    expect(answers).toContain("answer.why_it_matters");
+    expect(answers).toContain("answer.geomacro_view");
   });
 });

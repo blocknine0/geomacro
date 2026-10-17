@@ -18,11 +18,13 @@ describe("Ask Geomacro public API boundary", () => {
 
   it("keeps the browser transport off the hashed server-function path", () => {
     const workspace = read("src/components/ask/ask-workspace.tsx");
-    expect(workspace).toContain('fetch("/api/public-ask"');
-    expect(workspace).toContain('method: "GET"');
-    expect(workspace).toContain('"X-Geomacro-Question"');
-    expect(workspace).toContain('cache: "no-store"');
-    expect(workspace).toContain('credentials: "same-origin"');
+    const legacy = read("src/lib/ask-legacy-transport.ts");
+    expect(workspace).toContain("requestPublicAsk");
+    expect(legacy).toContain('fetch("/api/public-ask"');
+    expect(legacy).toContain('method: "GET"');
+    expect(legacy).toContain('"X-Geomacro-Question"');
+    expect(legacy).toContain('cache: "no-store"');
+    expect(legacy).toContain('credentials: "same-origin"');
     expect(workspace).not.toContain("useServerFn(askGeomacro)");
   });
 

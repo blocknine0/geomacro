@@ -69,6 +69,7 @@ describe("public product surface failure-domain isolation", () => {
     const globalRisk = read("src/lib/use-global-risk.ts");
     const riskIndices = read("src/lib/use-risk-indices.ts");
     const ask = read("src/components/ask/ask-workspace.tsx");
+    const askLegacy = read("src/lib/ask-legacy-transport.ts");
 
     expect(intelligence).toContain('/api/public/intelligence');
     expect(intelligence).not.toContain('/api/public/global-risk');
@@ -85,7 +86,7 @@ describe("public product surface failure-domain isolation", () => {
     expect(riskIndices).not.toContain('/api/public/global-risk');
     expect(riskIndices).not.toContain('/api/public-ask');
 
-    expect(ask).toContain('/api/public-ask');
+    expect(askLegacy).toContain('/api/public-ask');
     expect(ask).not.toContain('/api/public/intelligence');
     expect(ask).not.toContain('/api/public/global-risk');
     expect(ask).not.toContain('/api/public/risk-indices');
