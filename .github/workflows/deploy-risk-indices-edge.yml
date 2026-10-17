@@ -14,6 +14,10 @@ on:
     branches: [main]
     paths:
       - "workers/risk-indices-edge/src/index.mjs"
+      - "workers/risk-indices-edge/wrangler.jsonc"
+      - "workers/shared/current-source-clock.mjs"
+      - "workers/shared/b2-origin-negative-cache.mjs"
+      - "scripts/ops/configure-risk-indices-edge-d1-quota.mjs"
       - ".github/workflows/deploy-risk-indices-edge.yml"
   workflow_run:
     workflows: ["Risk Indices Realtime Direct Postgres"]
