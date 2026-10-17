@@ -25,7 +25,7 @@ const safe=(category:"geopolitics"|"macro"|"rare_earth"="macro",
  same_event_corrob_verified:false,severity:null,
 });
 const feed=(signals:unknown[])=>({ok:true,schema:"geomacro.website-derived-news-feed.v1",
- original_release_delay_minutes:15,retention_days:30,delivery_scope:"free_website_only",signals});
+ original_release_delay_minutes:15,retention_days:3,retention_hours:72,delivery_scope:"free_website_only",signals});
 
 describe("Geomacro Find Card v1—supplied exact public JSON Schema",()=>{
  it("publishes the canonical 2020-12 schema, all required fields and five conditional rules",()=>{
