@@ -40,7 +40,7 @@ test("does not count Loading or source health as an actual story",()=>{
   assert.ok(!x.browser_domains_rendered.includes("rare_earth"));
 });
 test("zero original last-24h is truthful observation and not fabricated news",()=>{
-  const x=evaluatePublicNews(doc(names.map(n=>row(n,1,"2026-10-07T12:00:00Z"))),html(),NOW);
+  const x=evaluatePublicNews(doc(names.map(n=>row(n,1,"2026-10-11T12:00:00Z"))),html(),NOW);
   assert.equal(x.accepted,true);
   assert.equal(x.category_counts.rare_earth.original_last_24h,0);
   assert.equal(x.category_counts.rare_earth.original_last_7d,1);
@@ -48,6 +48,7 @@ test("zero original last-24h is truthful observation and not fabricated news",()
 test("reject old, future, malformed and unscored-contract-breaking rows",()=>{
   for(const bad of [
     {published_at:"2026-10-14T09:00:00Z"},
+    {published_at:"2026-10-09T07:59:59Z"},
     {published_at:"2026-08-11T12:00:00Z"},
     {published_at:"garbled"},
     {id:"private-external-identity"},
