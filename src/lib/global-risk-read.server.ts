@@ -1,3 +1,4 @@
+import {websiteHistoricalRiskView} from "./website-historical-risk-view";
 import {fetchWithoutRedirect} from "./fetch-without-redirect";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAppSupabase } from "./supabase-app.server";
@@ -145,9 +146,8 @@ export async function readWebsiteLaggedGlobalRisk(
          receipt.raw_upstream_disclosed===false&&
          receipt.chargeable===false&&
          receipt.paid_delivery_authorized===false&&receipt.data&&
-         websiteVerifiedSnapshotPastEmbargo(receipt.data,now)&&
-         validateGlobalRiskContinuity(receipt.data,now).ok){
-        risk=receipt.data;
+         websiteVerifiedSnapshotPastEmbargo(receipt.data,now)){
+        risk=websiteHistoricalRiskView(receipt.data,now);
       }
     }
   }catch{
@@ -168,6 +168,7 @@ export async function readWebsiteLaggedGlobalRisk(
     const verifiedEdge=await readGlobalRiskEdge();
     if(verifiedEdge)risk=verifiedEdge;
   }
+  if(risk)risk=websiteHistoricalRiskView(risk,now);
   if(!risk||
      !Number.isFinite(Date.parse(risk.snapshotAsOf))||
      Date.parse(risk.snapshotAsOf)>cutoff||
