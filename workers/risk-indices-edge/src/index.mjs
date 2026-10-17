@@ -191,9 +191,11 @@ async function readD1HotSnapshot(env) {
       !Number.isFinite(expiresAt) ||
       !recentEnough(snapshot.generated_at) ||
       sourceAsOf > Date.now() + 5 * 60_000 ||
-      Date.now() - sourceAsOf > 90 * 60 * 1000 ||
+      Date.now() - sourceAsOf > 180 * 60 * 1000 ||
+      // Signed 3h validity must never greenwash a >1h current index.
+      Date.now() - sourceAsOf > 60 * 60 * 1000 ||
       expiresAt <= Date.now() ||
-      expiresAt > sourceAsOf + 90 * 60 * 1000 ||
+      expiresAt > sourceAsOf + 180 * 60 * 1000 ||
       await sha256(payloadJson) !== snapshot.payload_sha256
     ) return null;
     const live = JSON.parse(payloadJson);
