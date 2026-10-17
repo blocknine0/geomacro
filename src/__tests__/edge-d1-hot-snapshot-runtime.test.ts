@@ -243,7 +243,7 @@ describe("B2 cap resilient public edge reads", () => {
     expect(cacheWrites).toBe(1);
   });
 
-  it("projects a fresh Intelligence overlay over an older verified B2 baseline when baseline time is explicitly bound", async () => {
+  it("refuses to reclassify a 19-hour signed baseline as live merely because a new overlay exists", async () => {
     const baselineAt = new Date(Date.now() - 19 * 60 * 60 * 1000).toISOString();
     const overlayAt = new Date(Date.now() - 60_000).toISOString();
     const live = {
@@ -319,15 +319,12 @@ describe("B2 cap resilient public edge reads", () => {
       { waitUntil: () => undefined },
     );
     const body = await response.json();
-    expect(response.status).toBe(200);
-    expect(response.headers.get("x-geomacro-current-overlay")).toBe("cloudflare-d1-hot");
-    expect(body.generated_at).toBe(overlayAt);
-    expect(body.current_overlay_source_batch_at).toBe(overlayAt);
-    expect(body.rows.filter((row: any) => row.public_status === "live_observed")).toHaveLength(1);
-    expect(body.rows.filter((row: any) => row.public_status === "verified_b2")).toHaveLength(3);
+    expect(response.status).toBe(503);
+    expect(response.headers.get("x-geomacro-serving-store")).toBeNull();
+    expect(body.ok).toBe(false);
   });
 
-  it("does not apply an Intelligence overlay whose B2 baseline timestamp does not match the cached verified package", async () => {
+  it("fails closed when both the verified baseline clock and overlay identity are unfit", async () => {
     const baselineAt = new Date(Date.now() - 19 * 60 * 60 * 1000).toISOString();
     const overlayAt = new Date(Date.now() - 60_000).toISOString();
     const live = {
@@ -402,10 +399,9 @@ describe("B2 cap resilient public edge reads", () => {
       { waitUntil: () => undefined },
     );
     const body = await response.json();
-    expect(response.status).toBe(200);
-    expect(response.headers.get("x-geomacro-current-overlay")).toBe("none");
-    expect(body.generated_at).toBe(baselineAt);
-    expect(body.rows.some((row: any) => row.public_status === "live_observed")).toBe(false);
+    expect(response.status).toBe(503);
+    expect(response.headers.get("x-geomacro-serving-store")).toBeNull();
+    expect(body.ok).toBe(false);
   });
 
   it("fails closed when a D1 hot payload hash is invalid and B2 is capped", async () => {
