@@ -17,7 +17,7 @@ const DAY=86_400_000;
 
 export function evaluatePublicNews(doc,dom,now=Date.now()) {
   if(!doc || doc.ok!==true || doc.schema!=="geomacro.website-derived-news-feed.v1" ||
-     doc.original_release_delay_minutes!==15 || doc.retention_days!==30 ||
+     doc.original_release_delay_minutes!==15 || doc.retention_days!==3 || doc.retention_hours!==72 ||
      doc.delivery_scope!=="free_website_only" || !Array.isArray(doc.signals) ||
      doc.signals.length>250) throw Error("PUBLIC_NEWS_D1_SCHEMA_FAILED");
   if(typeof dom!=="string" || dom.length>6_000_000)throw Error("PUBLIC_NEWS_BROWSER_DOM_INVALID");
@@ -32,13 +32,13 @@ export function evaluatePublicNews(doc,dom,now=Date.now()) {
          !["exact","day"].includes(row.date_precision))
         throw Error("PUBLIC_NEWS_DERIVED_CONTRACT_FAILED");
       const ms=Date.parse(row.published_at);
-      if(!Number.isFinite(ms)||ms>now || ms<now-30*DAY)
+      if(!Number.isFinite(ms)||ms>now || ms<now-72*60*60_000)
         throw Error("PUBLIC_NEWS_ORIGINAL_TIMESTAMP_INVALID");
       if(ms>=now-DAY)n24++;
       if(ms>=now-7*DAY)n7++;
       if(lastDate===null || ms>lastDate)lastDate=ms;
     }
-    counts[domain]={stored_30d:rows.length,original_last_24h:n24,original_last_7d:n7};
+    counts[domain]={stored_72h:rows.length,original_last_24h:n24,original_last_7d:n7};
     lastDates[domain]=lastDate===null?null:new Date(lastDate).toISOString().slice(0,10);
   }
   const cards=[...dom.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/giu)];
@@ -50,7 +50,7 @@ export function evaluatePublicNews(doc,dom,now=Date.now()) {
       if(text.includes(CATEGORIES[domain]))rendered.add(domain);
     }
   }
-  const d1Domains=DOMAINS.filter(x=>counts[x].stored_30d>0);
+  const d1Domains=DOMAINS.filter(x=>counts[x].stored_72h>0);
   const browserDomains=[...rendered].sort();
   return {
     schema:"geomacro.public-three-domain-freshness-observability.v1",
