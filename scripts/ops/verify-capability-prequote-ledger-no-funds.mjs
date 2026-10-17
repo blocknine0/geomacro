@@ -148,12 +148,75 @@ const circleWrongScope=await post("capability-prequote-readback",{
 if(circleWrongScope.status===200&&circleWrongScope.body?.ok===true)
   throw Error("CAPABILITY_NO_FUNDS_CROSS_RAIL_PREQUOTE_VISIBLE");
 
+// Circle Arc/Polygon native USDC prepared-quote admission is a synthetic
+// NO-FUNDS storage proof only. No provider verification/settlement is invoked.
+const extraCircleRails=[
+  {network:"eip155:5042",asset:"0x3600000000000000000000000000000000000000"},
+  {network:"eip155:137",asset:"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"},
+];
+for(const rail of extraCircleRails){
+  const immutableTerms=terms.map((value,index)=>
+    index===5?rail.network:index===6?rail.asset:
+    index===8?"circle_gateway_x402":value);
+  const scopedQuote={
+    ...quote,network:rail.network,asset_contract:rail.asset,
+    payment_rail:"circle_gateway_x402",
+    quote_id:digest(JSON.stringify(immutableTerms)),
+  };
+  const scopedPayload={
+    provider:"circle_gateway_x402",providerEnvironment:"production",
+    quote:scopedQuote,customerBytes:bytes,
+  };
+  const freeze=requireOk(await post("capability-prequote-freeze",scopedPayload),
+    "CIRCLE_NATIVE_RAIL_FREEZE");
+  if(freeze.disposition!=="FROZEN"||freeze.quote_id!==scopedQuote.quote_id)
+    throw Error("CAPABILITY_CIRCLE_NATIVE_RAIL_FREEZE_INVALID");
+  const replayResult=requireOk(await post("capability-prequote-freeze",scopedPayload),
+    "CIRCLE_NATIVE_RAIL_REPLAY");
+  if(replayResult.disposition!=="EXACT_REPLAY")
+    throw Error("CAPABILITY_CIRCLE_NATIVE_RAIL_NOT_IDEMPOTENT");
+  for(let attempt=0;attempt<2;attempt++){
+    const result=requireOk(await post("capability-prequote-readback",{
+      provider:"circle_gateway_x402",providerEnvironment:"production",
+      quoteId:scopedQuote.quote_id,
+    }),"CIRCLE_NATIVE_RAIL_READBACK");
+    if(result.customerBytes!==bytes||digest(result.customerBytes)!==answerHash||
+       result.quote?.network!==rail.network||
+       result.quote?.asset_contract!==rail.asset||
+       result.quote?.amount_atomic!==quote.amount_atomic||
+       result.quote?.quote_id!==scopedQuote.quote_id||
+       result.payment_authorized!==false||
+       result.settlement_attempted!==false)
+      throw Error("CAPABILITY_CIRCLE_NATIVE_RAIL_SCOPE_OR_BYTES_INVALID");
+  }
+  const crossed=await post("capability-prequote-readback",{
+    provider:"coinbase_x402",providerEnvironment:"mainnet",
+    quoteId:scopedQuote.quote_id,
+  });
+  if(crossed.status===200&&crossed.body?.ok===true)
+    throw Error("CAPABILITY_CROSS_PROVIDER_NATIVE_RAIL_REPLAY");
+  const wrongAsset=await post("capability-prequote-freeze",{
+    ...scopedPayload,
+    quote:{...scopedQuote,asset_contract:asset},
+  });
+  if(wrongAsset.status===200||wrongAsset.body?.ok===true)
+    throw Error("CAPABILITY_CIRCLE_WRONG_NATIVE_ASSET_ACCEPTED");
+  const wrongNetwork=await post("capability-prequote-freeze",{
+    ...scopedPayload,
+    quote:{...scopedQuote,network:"eip155:8453"},
+  });
+  if(wrongNetwork.status===200||wrongNetwork.body?.ok===true)
+    throw Error("CAPABILITY_CIRCLE_WRONG_CHAIN_ACCEPTED");
+}
+
 console.log(JSON.stringify({
   schema:"geomacro.capability-prequote-synthetic-production-acceptance.v1",
   status:"SYNTHETIC_NO_FUNDS_CAPABILITY_DO_VERIFIED",
   version:health.capability_prequote_contract_version,
   authenticated:true,two_independent_readbacks:true,
   both_coinbase_circle_production_namespaces:true,cross_rail_scope_isolated:true,
+  circle_native_base_arc_polygon_synthetic_prequotes_verified:true,
+  all_three_merchant_settlements_verified:false,
   immutable_freeze:true,exact_replay:true,
   corrupt_bytes_rejected:true,terms_conflict_rejected:true,
   expired_quote_rejected:true,wrong_rail_rejected:true,

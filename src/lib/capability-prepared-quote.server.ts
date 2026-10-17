@@ -1,4 +1,5 @@
 import {createHash} from "node:crypto";
+import {exactGeomacroUsdcRail} from "./usdc-native-rail-identities";
 import {
   resolveGeomacroCapabilityPrice,
   type CapabilityQuote,
@@ -16,7 +17,7 @@ export type PreparedCapabilityQuote=Readonly<CapabilityQuote&{
 
 const HASH=/^[a-f0-9]{64}$/u;
 const ADDRESS=/^0x[0-9a-fA-F]{40}$/u;
-const ASSET="0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
+
 const digest=(value:unknown)=>createHash("sha256").update(
   JSON.stringify(value),"utf8").digest("hex");
 
@@ -31,11 +32,14 @@ export function quoteGeomacroPreparedCapability(input:Readonly<{
 }>):PreparedCapabilityQuote{
   if(input.availabilityVerified!==true||input.preparedAnswerVerified!==true)
     throw Error("CAPABILITY_PREPARED_ANSWER_NOT_VERIFIED");
+  // Coinbase CDP adapter currently settles only Base; Circle's separate
+  // facilitator identity is eligible for a FUTURE merchant configuration on
+  // Base, Arc or Polygon. Neither produces a payable offer at this stage.
+  const matched=exactGeomacroUsdcRail(input.network,input.asset);
   if(!HASH.test(input.requestFingerprint)||!HASH.test(input.preparedAnswerSha256)||
-      input.network!=="eip155:8453"||
-      input.asset.toLowerCase()!==ASSET||
-      !ADDRESS.test(input.recipient)||
-      !["coinbase_x402","circle_gateway_x402"].includes(input.rail))
+      !matched||!ADDRESS.test(input.recipient)||
+      !["coinbase_x402","circle_gateway_x402"].includes(input.rail)||
+      (input.rail==="coinbase_x402"&&matched.id!=="base"))
     throw Error("CAPABILITY_PREPARED_QUOTE_SCOPE_INVALID");
   const now=input.now??new Date();
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
