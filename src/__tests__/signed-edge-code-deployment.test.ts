@@ -20,7 +20,7 @@ describe("independent code-deployment proof cannot greenwash missing signed Inte
     expect(verified.current_data_result).toBe("NO_CURRENT_SIGNED_DATA");
     expect(verified.b2_readback_attested).toBe(false);
     expect(verified.x402_payment_authorized).toBe(false);
-    expect(summary(verified)).toContain("not established by code deployment");
+    expect(summary(verified)).toContain("Not established by code deployment");
   });
   it(product+" refuses old-release errors, stale CDN cache and fake success",()=>{
     const deny={ok:false,code:denial};
