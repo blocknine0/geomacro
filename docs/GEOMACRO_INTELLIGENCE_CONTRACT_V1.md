@@ -20,10 +20,10 @@ The contract is shared by human query surfaces and machine delivery. x402 is onl
 
 All customer-delivered commercial intelligence is eligible Geomacro-owned
 **structured derived output, never raw upstream source data**. The official,
-versioned customer terms are [Geomacro Structured Intelligence Commercial
-License v1](../public/legal/structured-intelligence-license.html), with
-machine-readable terms in
-[`geomacro-structured-license.json`](../public/.well-known/geomacro-structured-license.json).
+versioned customer terms are Geomacro Structured Intelligence Commercial License v1,
+available as the public, machine-readable and human-readable API document:
+`GET https://geomacro.live/api/intelligence/capabilities?view=license`.
+This versioned API view respects the active presentation/website lock.
 
 The Geomacro owner can license only its own original expression, scoring
 methodology and structured intelligence that it actually controls. This grant
