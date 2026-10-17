@@ -138,7 +138,10 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
   // For explicit precise official measurements, either answer with a verified
   // source period or fail closed: an indexed headline is never a numeric value.
   if (planAskOfficialNumeric(question)) {
-    const official = await answerOfficialNumeric(question);
+    let safeFailureCode = "ASK_OFFICIAL_NUMERIC_SOURCE_NO_VERIFIED_DATA";
+    const official = await answerOfficialNumeric(question, {
+      onFailure: code => { safeFailureCode = code; },
+    });
     if (official) return official;
     return {
       summary: "The requested exact official observation could not be verified from the live source.",
@@ -149,6 +152,7 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
       low_confidence: true, gri: null, generatedAt: new Date().toISOString(),
       data_mode: "ephemeral_live", cache_status: "bypassed",
       source_identity_exposed: false, durable_live_storage_write: false,
+      real_time_message: "Official numeric retrieval status: " + safeFailureCode,
       signed_gro_generated: false, independent_same_event_verification: false,
     };
   }
