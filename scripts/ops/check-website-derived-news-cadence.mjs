@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * #2052: best-effort cadence recovery on another GitHub Actions schedule.
+ * Best-effort 15-minute cadence recovery on an offset GitHub Actions schedule.
  * No news titles, URLs or authorization token printed. It requests only
  * workflow statuses via the GitHub API (NOT live news or D1 raw rows).
  */
@@ -44,7 +44,7 @@ console.log(JSON.stringify({
   minutes_since_success:decision.age_minutes,
   should_publish:shouldRun,
   publisher_success_observed:decision.last_success_at!==null,
-  exactly_30m_guaranteed:false,
+  exactly_15m_guaranteed:false,
   supabase_dependency:false,
   source_contents_logged:false,
 }));
