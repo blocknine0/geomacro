@@ -69,7 +69,12 @@ describe("Geomacro structured-only commercial customer license v1",()=>{
       .toBe("false");
     expect(paid).toContain("structured_output_license_id:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY.id");
     expect(paid).toContain("license_disclosure_is_not_payment_authorization:true");
-    expect((paid.match(/\.\.\.GEOMACRO_STRUCTURED_LICENSE_HEADERS/gu)??[])).toHaveLength(3);
+    expect((paid.match(/\.\.\.GEOMACRO_STRUCTURED_LICENSE_HEADERS/gu)??[])).toHaveLength(1);
+    expect(paid).toContain("output_contract_version:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY.id");
+    expect(paid).toContain("function licensedPaidDeliveryHeaders(prepared:");
+    expect(paid).toContain("(payment as Record<string,unknown>).output_contract_version");
+    expect(paid).toContain("...licensedPaidDeliveryHeaders(prepared)");
+    expect(paid).toContain("...licensedPaidDeliveryHeaders(claim.response_payload");
     expect(paid).toContain("PAYMENT-REQUIRED");
     expect(paid).toContain("PAYMENT-RESPONSE");
     expect(paid).toContain("assertGeomacroIntelligenceResponseContract(safeIntelligence)");
