@@ -8,15 +8,14 @@ remain mandatory. Raw upstream titles/URLs/articles are not public products.
 The existing country-specific on-demand engine remains separate; a global
 publisher feed does not certify current evidence for every one of 585 cells.
 
-The primary Cloudflare D1 derived-news publisher is scheduled at :07/:22/:37/:52
-UTC (15-minute polling). The offset :14/:29/:44/:59 backstop checks the
-last *successfully completed* primary publisher run and recovers when that clock
-has reached 22 minutes. The common non-canceling writer lock prevents competing
+The primary Cloudflare D1 derived-news publisher is scheduled **hourly at :07
+UTC**. Its independent hourly :22 backstop checks the last *actually successful*
+primary publication and recovers if the completion clock is at least **70 minutes** old. The common non-canceling writer lock prevents competing
 writes when the primary is slow. Successful recent collection skips the backstop. A failed
 or timed-out trusted main orchestrator can wake this same recovery; frozen
 legacy tasks must not suppress independently working news ingestion. Recovery
 still runs only canonical main with protected production credentials under the
-same writer concurrency group. The existing two workflows have more 15-minute slots; no new service or paid API.
+same writer concurrency group. The existing two workflows now have one primary and one conditional recovery slot per hour, no new service or paid API.
 
 A verified, signed, exactly read-back D1 batch is current free website delivery.
 Its six-hour B2 backup has separate health: quota hold or archive failure emits
@@ -27,20 +26,22 @@ B2 governor and all commercial hot-snapshot eligibility remain unchanged.
 A backstop push no longer forces duplicate collection when a primary success
 is recent; explicit manual recovery can still force a run.
 
-This is 15-minute best-effort near-real-time polling, not an exact SLA or an
-instantaneous feed. GitHub schedule delays, upstream outages, quota limits and
+This is best-effort **hourly** polling, not an exact one-hour SLA or an
+instantaneous feed. The original-source 15-minute website-display delay is
+unchanged. GitHub schedule delays, upstream outages, quota limits and
 periods without a qualifying original release remain visible. The publisher
 continues to read all three categories each cycle, but official source response
 rates, dates, or missing articles can legitimately produce zero new Finds. An empty current category is never filled with invented
 news or refreshed original timestamps. Free unscored Finds do not establish
 independent same-event verification, commercial rights or paid GRO readiness.
 
-Verify a real protected run on the new 15-minute cadence with three category
+Verify a real protected run on the new hourly cadence with three category
 read receipts, signed-batch verification, exact D1 readback, truthful original
-dates and privacy-safe public readback. Check the +7-minute backstop skips a
+dates and privacy-safe public readback. Check the +15-minute offset backstop skips a
 recent primary and catches up a missed primary; inspect completed workflow
 runs, not only YAML. A green contract/unit test alone is insufficient live
-evidence. Previous 30-minute production successes do not prove the new cadence.
+evidence. Previous 15-minute/push-triggered production successes do not prove that a
+new hourly scheduled run completed successfully.
 
 Canonical `GET /api/v1/intelligence/query?view=finds` serves the same free
 signed feed. It uses public-read HMAC and burst controls like the category
@@ -54,8 +55,8 @@ publication; backend automatic collection is deployed by the workflow merge.
 
 | Workflow | GitHub Actions UTC schedule | Writes |
 | --- | --- | --- |
-| `website-derived-news-continuity.yml` | `7,22,37,52 * * * *` | Cloudflare D1-only derived journal and signed free Finds; quota-governed B2 backup remains six-hour cadence |
-| `website-derived-news-cadence-backstop.yml` | `14,29,44,59 * * * *` | Same Cloudflare D1 publisher only when last confirmed primary completion is at least 22 minutes old or manual recovery requested |
+| `website-derived-news-continuity.yml` | `7 * * * *` | Cloudflare D1-only derived journal and signed free Finds; quota-governed B2 backup remains six-hour cadence |
+| `website-derived-news-cadence-backstop.yml` | `22 * * * *` | Same Cloudflare D1 publisher only when last confirmed primary completion is at least 70 minutes old or manual recovery requested |
 
 Production uses existing `GEOMACRO_COMMERCE_LEDGER_TOKEN`, Cloudflare D1, signer
 credentials and B2 account budget.
@@ -77,3 +78,42 @@ readbacks. Compare against the Website Derived News Cadence Backstop skip/catch-
 result and the Cloudflare `/v1/public/automated-finds` and
 `/v1/public/website-derived-news` endpoints. Failed source/signing/D1 reads
 must alert through a failed Action; never convert failure to fabricated events.
+
+## Data persistence and source completeness
+
+**Actual persistence:** The authenticated collector writes only qualified
+Geomacro-owned derived cards to the existing Cloudflare D1
+`website_derived_intelligence` table, idempotently using `INSERT OR IGNORE`
+with deterministic story IDs. Existing privacy-safe published journal retention
+is at most **30 days** by *original release timestamp* and **600 stored rows**
+and public reads return up to **250**. Do not claim that all upstream article
+data is saved. Source URLs, raw titles, original bytes, and publisher IDs are not
+persisted by the free website publisher. The existing signed free Finds snapshot
+is read back from D1 each successful run; its separate six-hour B2 backup can be
+quota-held and then must explicitly report a degraded archive, not a fake backup.
+No current paid-product GRO/GRI readiness is inferred from free Finds.
+
+**Free-source health evidence:** Each scheduled primary (and actual catch-up)
+records a sanitized `artifacts/derived-news/source-health.json` receipt as a
+GitHub Actions artifact for 14 days, including all three category counts, indexed
+source failures, failure classes, diagnostic consistency and actual run SHA/time.
+Only fixed source-lane indexes and coarse failure classes appear; no original
+headlines, URLs, article bodies, keys, or source payloads are written to CI.
+The hourly receipt distinguishes healthy original feed transport from actual
+eligible newly published findings. Missing/failed sources remain degraded.
+The collector continues using remaining healthy original sources and fails a
+category if **all** original feeds fail. Source-native publication clocks,
+country/category relevance, source provenance, rights and free unscored
+publication restrictions remain enforced.
+
+This hourly free newsroom is not a blanket activation of every third-party
+free API or a promise that all configured endpoints will stay available. Other
+source-pulse and official-series refresh workflows have distinct licensed
+content, update clocks and quotas. Their approved upstream service constraints,
+historical certification and free-tier budgets must be audited separately, not
+silently replaced with hourly writes.
+
+The website copy is under its own approved baseline lock; it may still say a
+previous polling interval until a separately approved hosting publication.
+GitHub Actions actual run evidence and D1 signed/public readbacks, not that
+older UI text, determine the authoritative scheduled-news state.
