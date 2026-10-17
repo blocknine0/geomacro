@@ -58,7 +58,14 @@ publication; backend automatic collection is deployed by the workflow merge.
 | `website-derived-news-cadence-backstop.yml` | `14,29,44,59 * * * *` | Same Cloudflare D1 publisher only when last confirmed primary completion is at least 22 minutes old or manual recovery requested |
 
 Production uses existing `GEOMACRO_COMMERCE_LEDGER_TOKEN`, Cloudflare D1, signer
-credentials and B2 account budget. Legacy `auto-ingest-news.yml` stays
+credentials and B2 account budget.
+
+The checked-in website presentation is covered by a separate approved website
+lock and may still display the previous 30-minute collection copy. This backend
+cadence change intentionally does not alter that locked UI; the user-facing copy
+must be corrected through its dedicated founder-approved website publication.
+The Actions and D1 readback receipts, not the old UI label, determine the
+observed production cadence. Legacy `auto-ingest-news.yml` stays
 disabled because it depends on the frozen Supabase pipeline. Prediction-market
 jobs, paid GRO admission, x402 settlement and raw upstream data publication
 remain disabled/unchanged. Current website delivery is free derived output,
