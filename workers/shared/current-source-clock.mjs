@@ -13,6 +13,15 @@ export function originalSourceIsCurrent(value,now=Date.now()){
     source>=0 && now-source<=LIVE_CURRENT_SOURCE_MS;
 }
 
+export function liveEdgeCacheControl(original,now=Date.now()){
+ if(!originalSourceIsCurrent(original,now))return "no-store";
+ const source=Date.parse(String(original));
+ // Never allow intermediary/CDN stale-while-revalidate or stale-if-error:
+ // those could resurrect an expired proof without running the Worker.
+ const seconds=Math.floor((source+LIVE_CURRENT_SOURCE_MS-now)/1000);
+ return seconds>1?"public, max-age="+Math.min(30,seconds-1):"no-store";
+}
+
 export function intelligenceOriginalSourceTime(rows){
   if(!Array.isArray(rows)||rows.length===0)return null;
   const scored=rows.filter(row=>row?.public_status==="verified_b2");
