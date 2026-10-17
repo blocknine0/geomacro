@@ -36,19 +36,19 @@ const HOT_SNAPSHOT_PRODUCTS = Object.freeze({
     schema: "geomacro.public-intelligence-live.v1",
     proofSchema: "geomacro.public-intelligence-live-proof.v1",
     b2Key: "geomacro-evidence/v1/live/public-intelligence/latest.json.gz",
-    maxAgeMs: 6 * 60 * 60 * 1000,
+    maxAgeMs: 12 * 60 * 60 * 1000,
   },
   "global-risk": {
     schema: "geomacro.public-global-risk-live.v1",
     proofSchema: "geomacro.public-global-risk-live-proof.v1",
     b2Key: "geomacro-evidence/v1/live/global-risk/latest.json.gz",
-    maxAgeMs: 90 * 60 * 1000,
+    maxAgeMs: 180 * 60 * 1000,
   },
   "risk-indices": {
     schema: "geomacro.public-risk-indices-live.v1",
     proofSchema: "geomacro.public-risk-indices-live-proof.v1",
     b2Key: "geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz",
-    maxAgeMs: 90 * 60 * 1000,
+    maxAgeMs: 180 * 60 * 1000,
   },
 });
 
