@@ -17,7 +17,7 @@ export function makeQuotaProtectedRiskIndicesConfig(base, databaseId) {
       base.main !== "src/index.mjs" ||
       base.workers_dev !== true ||
       base.cache?.enabled !== true ||
-      base.cache?.cross_version_cache !== true ||
+      base.cache?.cross_version_cache !== false ||
       !Array.isArray(base.services) ||
       !base.services.some(row => row.binding === "CONTROL_PLANE" && row.service === "geomacro-control-plane") ||
       Array.isArray(base.d1_databases)) {
