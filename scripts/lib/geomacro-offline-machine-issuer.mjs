@@ -124,6 +124,8 @@ export async function issueOfflineMachineAuthority({
    const scope=review.license_basis.filter(x=>x.source_registry_id===p.source_registry_id&&
      x.original_article_sha256===p.original_article_sha256);
    if(scope.length!==1||used.has(scope[0].source_registry_id)||
+      scope[0].licensed_article_scope_sha256!==p.licensed_article_scope_sha256||
+      scope[0].permission_record_sha256!==p.permission_record_sha256||
       !["SCOPED_PUBLIC_DOMAIN_WITH_THIRD_PARTY_EXCLUDED","ARTICLE_SPECIFIC_WRITTEN_PERMISSION"]
          .includes(scope[0].basis)||scope[0].attribution_required!==false)fail();
    used.add(scope[0].source_registry_id);
