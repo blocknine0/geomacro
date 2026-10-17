@@ -68,7 +68,7 @@ function livePackage(product: string) {
 function hotSnapshot(product: string, validHash = true) {
   const value: any = livePackage(product);
   const payloadJson = JSON.stringify(value);
-  const maxAgeMs = product === "intelligence" ? 6 * 60 * 60 * 1000 : 90 * 60 * 1000;
+  const maxAgeMs = product === "intelligence" ? 12 * 60 * 60 * 1000 : 180 * 60 * 1000;
   const sourceAsOf = product === "intelligence" ? freshAt : value.data.snapshotAsOf;
   const key = product === "intelligence"
     ? "geomacro-evidence/v1/live/public-intelligence/latest.json.gz"
