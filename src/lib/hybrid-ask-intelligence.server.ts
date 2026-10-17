@@ -256,7 +256,9 @@ function liveToAskAnswer(runtime: HybridRuntimeAnswer): HybridAskAnswer {
 
   const groups = runtime.findings ?? [];
   const preferred = groups.filter((group) => group.verified || group.corroborated);
-  const usable = preferred.length ? preferred : groups;
+  // Never present a single unverified provider observation as verified live fact.
+  // Unverified index leads may still be surfaced separately as insufficient.
+  const usable = preferred;
   const flattened = usable.flatMap((group) =>
     (group.findings ?? []).map((finding) => ({ finding, group })),
   ).slice(0, 5);

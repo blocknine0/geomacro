@@ -5,7 +5,8 @@ import { answerAskQuestion } from "./ask-answer.server";
 import { toCommercialAskBrief } from "./ask-commercial-brief";
 import { assertPublicReadOrigin } from "./origin-guard";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
-import { checkAskRateLimit } from "./ask-rate-limit.server";
+import { checkAskRateLimit, checkAskOriginalBudget } from "./ask-rate-limit.server";
+import { planAskOriginalQuestion } from "./ask-on-demand-original.server";
 
 const INJECTION_RE =
   /(ignore (all|previous|prior)|disregard (all|previous)|system prompt|you are now|act as|jailbreak|<\|.*\|>)/i;
@@ -26,7 +27,8 @@ export const askGeomacro = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<AskAnswer> => {
     assertPublicReadOrigin();
     const ip = getRequestIP({ xForwardedFor: true }) ?? "unknown";
-    if (!checkAskRateLimit(ip)) {
+    if (!checkAskRateLimit(ip) ||
+        (planAskOriginalQuestion(data.question) && !checkAskOriginalBudget(ip))) {
       throw new Error("Too many requests. Please wait a moment.");
     }
     return toCommercialAskBrief(await answerAskQuestion(data.question), data.question) as AskAnswer;

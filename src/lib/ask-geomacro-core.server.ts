@@ -2,7 +2,8 @@ import { z } from "zod";
 
 import { answerAskQuestion } from "./ask-answer.server";
 import { toCommercialAskBrief } from "./ask-commercial-brief";
-import { checkAskRateLimit } from "./ask-rate-limit.server";
+import { checkAskRateLimit, checkAskOriginalBudget } from "./ask-rate-limit.server";
+import { planAskOriginalQuestion } from "./ask-on-demand-original.server";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 
 export const ASK_GEOMACRO_MAX_LENGTH = 300;
@@ -46,7 +47,8 @@ export async function executeAskGeomacro(
 ): Promise<AskAnswer> {
   const data = parseAskGeomacroInput(input);
 
-  if (!checkAskRateLimit(clientKey)) {
+  if (!checkAskRateLimit(clientKey) ||
+      (planAskOriginalQuestion(data.question) && !checkAskOriginalBudget(clientKey))) {
     throw new AskGeomacroRateLimitError();
   }
 

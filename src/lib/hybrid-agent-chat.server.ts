@@ -5,6 +5,8 @@ import {
   type AskAnswer,
 } from "./ask-geomacro-core.server";
 import { prepareHybridAgentContext } from "./hybrid-agent-context";
+import { planAskOriginalQuestion } from "./ask-on-demand-original.server";
+import { COUNTRIES_195 } from "./canonical-country-registry-195";
 
 type HybridChatMode = "grounded_ask" | "bounded_follow_up";
 
@@ -21,6 +23,32 @@ export function resolveGroundedFollowUp(
   if (!match) return { question, mode: "grounded_ask" };
 
   const previous = [...history].reverse().find(turn => turn.role === "user")?.content ?? "";
+  // Country-switch follow-ups reuse ONLY the previous query's explicit topic,
+  // mineral and requested time window. Previous answers provide NO evidence.
+  const priorPlan = planAskOriginalQuestion(previous);
+  if (priorPlan) {
+    const targetName = match[1].trim();
+    const country = COUNTRIES_195.find(row =>
+      [row.name, row.iso3, ...row.aliases].some(alias =>
+        alias.toLocaleLowerCase() === targetName.toLocaleLowerCase()));
+    if (!country) throw new Error("AMBIGUOUS_FOLLOW_UP");
+    const label = priorPlan.categories.length > 1
+      ? "geopolitics macro/FX and critical minerals news"
+      : priorPlan.categories[0] === "rare_earth"
+        ? (priorPlan.mineral ?? "critical minerals") + " news"
+        : priorPlan.categories[0] === "macro"
+          ? (priorPlan.topics.includes("fx_external_risk") ? "FX" :
+             priorPlan.topics.includes("sovereign_risk") ? "sovereign debt" : "macro") + " news"
+          : (priorPlan.topics.includes("sanctions_restrictions") ? "sanctions" :
+             priorPlan.topics.includes("conflict_geopolitics") ? "conflict" : "geopolitics") + " news";
+    const age = priorPlan.max_age_seconds;
+    const window = age <= 86400 ? "today" : age === 604800 ? "this week" :
+      age % 86400 === 0 ? "last " + (age / 86400) + " days" :
+      "last " + Math.max(1, Math.floor(age / 3600)) + " hours";
+    const rewritten = "Latest " + label + " in " + country.name + " " + window + "?";
+    parseAskGeomacroInput({ question: rewritten });
+    return {question:rewritten,mode:"bounded_follow_up"};
+  }
   const topic = [
     /geopolitic(?:al|s)?/i.test(previous) && /\brisk\b/i.test(previous) ? "geopolitical" : null,
     /(?:macroeconomic|macro\/fx|macro|currency|foreign exchange)/i.test(previous) && /\brisk\b/i.test(previous) ? "macroeconomic" : null,

@@ -151,41 +151,28 @@ export async function answerQuestion(
   const observations = [];
   const adapterResults = {};
 
-  for (const category of categories) {
+  // At most the three canonical domain adapters run concurrently. Preserve
+  // deterministic category order when collecting results; a slow/erroring
+  // provider cannot serialize or prevent the other category fetches.
+  const settled = await Promise.allSettled(categories.map(async category => {
     const adapter = activeAdapters[category];
-    if (!adapter) {
-      adapterResults[category] = {
-        observation_count: 0,
-        requested: null,
-        unavailable: true
-      };
-      continue;
-    }
-
-    try {
-      const result = await adapter({question: normalizedQuestion, countryIso3});
-      const rows = unwrapRows(result);
-      adapterResults[category] = {
-        observation_count: rows.length,
-        requested: result?.requested_indicators ?? null,
-        unavailable: false
-      };
+    if (!adapter) return {unavailable:true,rows:[],requested:null};
+    const result = await adapter({question:normalizedQuestion,countryIso3});
+    return {unavailable:false,rows:unwrapRows(result),
+      requested:result?.requested_indicators ?? null};
+  }));
+  for (let i=0;i<categories.length;i++){
+    const category=categories[i];
+    const result=settled[i];
+    if (result.status==="fulfilled"){
+      const {rows,requested,unavailable}=result.value;
+      adapterResults[category]={observation_count:rows.length,requested,unavailable};
       observations.push(...rows);
-    } catch (error) {
-      // A single free/public upstream must never turn the whole Ask workspace
-      // into a page-level failure. Keep provider details server-side, continue
-      // with independent categories, and return insufficient evidence if the
-      // remaining adapters cannot support a grounded answer.
-      console.error(
-        "[intelligence-engine] live adapter unavailable; continuing",
-        category,
-        error instanceof Error ? error.message : "unknown error"
-      );
-      adapterResults[category] = {
-        observation_count: 0,
-        requested: null,
-        unavailable: true
-      };
+    } else {
+      // Do not leak upstream errors or provider identity into public output.
+      console.error("[intelligence-engine] live adapter unavailable; continuing",
+        category,result.reason instanceof Error?result.reason.message:"unknown error");
+      adapterResults[category]={observation_count:0,requested:null,unavailable:true};
     }
   }
 
@@ -193,7 +180,7 @@ export async function answerQuestion(
   const publicGroups = publicVerification(verified, maxFindingsPerGroup);
   const verifiedGroupCount = publicGroups.filter(group => group.verified).length;
   const corroboratedGroupCount = publicGroups.filter(group => group.corroborated).length;
-  const hasUsableFindings = publicGroups.some(group => (group.findings || []).length > 0);
+  const hasUsableFindings = publicGroups.some(group => group.verified && (group.findings || []).length > 0);
 
   const answer = {
     schema_version: "intelligence-answer-2.0",
