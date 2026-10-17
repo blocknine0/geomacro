@@ -237,7 +237,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     };
   }, [initial, initialFeeds]);
 
-  // Durable derived-only 30-day D1 journal independent of visitor activity.
+  // Durable derived-only 72-hour D1 journal independent of visitor activity.
   useEffect(() => {
     let alive = true;
     const sync = async () => {
@@ -305,7 +305,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         <p className="mt-4 text-base leading-7 text-muted-foreground">
           A continuously updating feed of Geomacro-derived news across Geopolitics, Macro/FX and
           Critical Minerals. An original-publisher release appears only after the 15-minute
-          website delay. The rolling 30-day derived-only timeline keeps prior findings visible
+          website delay. The rolling 72-hour derived-only timeline keeps prior findings visible
           even when a publisher's feed rotates or every visitor closes the website. No risk scores.
         </p>
         <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -347,9 +347,9 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
             </h2>
             <p role="status" className="mt-2 text-xs text-muted-foreground">
               {allSignals.length === 0
-                ? "Reading the verified 30-day Intelligence journal below"
+                ? "Reading the verified 72-hour Intelligence journal below"
                 : recent.length + " in the last 24 hours · " +
-                  earlier.length + " earlier (last 30 days)"}
+                  earlier.length + " earlier (last 72 hours)"}
               {latestCheck ? " · Latest source check " + formatInstant(new Date(latestCheck).toISOString()) : ""}
             </p>
           </div>
@@ -416,7 +416,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
             )}
             {earlier.length > 0 ? (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Earlier original releases · Last 30 days</h3>
+                <h3 className="text-sm font-semibold">Earlier original releases · Last 72 hours</h3>
                 {earlier.map(signal => <Story key={signal.id} signal={signal} checkedAt={checkedAt} />)}
               </div>
             ) : null}
@@ -429,7 +429,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         ) : null}
 
         <p className="mt-8 text-xs leading-6 text-muted-foreground">
-          Only Geomacro-derived findings are kept in a bounded Cloudflare D1 30-day timeline.
+          Only Geomacro-derived findings are kept in a bounded Cloudflare D1 72-hour timeline.
           Raw upstream feeds, publisher article text, original headlines and source URLs are not stored.
           Live original-source reads remain independent of Supabase and historical risk score archives.
           Original publication timestamps, not fetch or restore times, control the 15-minute delay.
