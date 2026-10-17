@@ -11,6 +11,8 @@ on:
       - "scripts/lib/operator-commercial-free-source-lineup.mjs"
       - "scripts/lib/free-no-key-source-probe.mjs"
       - "scripts/lib/free-source-production-updates.mjs"
+      - "scripts/lib/free-source-operational-verdict.mjs"
+      - "scripts/tests/free-source-operational-verdict.test.mjs"
       - "scripts/tests/free-source-production-updates.test.mjs"
       - "scripts/tests/operator-commercial-free-source-lineup.test.mjs"
       - "scripts/ops/probe-commercial-free-source-lineup.mjs"
@@ -23,6 +25,8 @@ on:
       - "scripts/lib/operator-commercial-free-source-lineup.mjs"
       - "scripts/lib/free-no-key-source-probe.mjs"
       - "scripts/lib/free-source-production-updates.mjs"
+      - "scripts/lib/free-source-operational-verdict.mjs"
+      - "scripts/tests/free-source-operational-verdict.test.mjs"
       - "scripts/tests/free-source-production-updates.test.mjs"
       - "scripts/tests/operator-commercial-free-source-lineup.test.mjs"
       - "scripts/ops/probe-commercial-free-source-lineup.mjs"
@@ -50,7 +54,7 @@ jobs:
         with:
           node-version: "22"
       - name: Exact dataset rights plus 3-category source transport contracts
-        run: node --test scripts/tests/operator-commercial-free-source-lineup.test.mjs scripts/tests/free-source-production-updates.test.mjs scripts/tests/global-official-release-feeds.test.mjs
+        run: node --test scripts/tests/operator-commercial-free-source-lineup.test.mjs scripts/tests/free-source-production-updates.test.mjs scripts/tests/global-official-release-feeds.test.mjs scripts/tests/free-source-operational-verdict.test.mjs
 
   read-only-production-mesh:
     needs: source-contract
