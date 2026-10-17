@@ -1,3 +1,4 @@
+import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
 import {resolveAskCountry} from "./ask-on-demand-original.server";
 import type {HybridAskAnswer} from "./hybrid-ask-intelligence.server";
 import {parseCsvRecords} from "../../global-intelligence/adapters/public-reference-extraction.mjs";
@@ -24,7 +25,10 @@ async function bounded(url:string,accept:string,fetchImpl:typeof fetch):Promise<
  if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash||
    !["api.worldbank.org","data-api.ecb.europa.eu"].includes(u.hostname))
    throw Error("ASK_OFFICIAL_NUMERIC_ORIGIN");
- const res=await fetchImpl(url,{method:"GET",redirect:"error",signal:AbortSignal.timeout(6000),
+ // Cloudflare workerd rejects redirect:"error" before issuing the request.
+ // The shared helper uses redirect:"manual" and rejects every 3xx, so this
+ // restores official HTTPS reads without following an upstream redirect.
+ const res=await fetchWithoutRedirectUsing(fetchImpl,url,{method:"GET",signal:AbortSignal.timeout(6000),
    headers:{Accept:accept}});
  if(!res.ok||!res.body)throw Error("ASK_OFFICIAL_NUMERIC_HTTP_"+res.status);
  if(Number(res.headers.get("content-length")??0)>256_000)throw Error("ASK_OFFICIAL_NUMERIC_SIZE");
