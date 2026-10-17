@@ -8,6 +8,7 @@ import {GEOMACRO_AGENT_TOOLS,geomacroAgentTool,
 import {AGENT_QUERY_SCHEMA_VERSION} from "./agent-query-plan";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,
  capabilityPricingCatalog} from "./capability-pricing-catalog";
+import {GEOMACRO_PAID_PRICING_PATH} from "./geomacro-paid-pricing-manifest.server";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
  from "./geomacro-structured-commercial-license";
 import {GEOMACRO_USDC_NETWORKS_PATH,GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH,
@@ -44,6 +45,7 @@ const endpoints={
  agent_card:"/.well-known/agent-card.json",
  usdc_networks:GEOMACRO_USDC_NETWORKS_PATH,
  usdc_price_preflight:GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH,
+ locked_usdc_pricing:GEOMACRO_PAID_PRICING_PATH,
 };
 export function officialGeomacroAgentDiscovery(){
  return {
@@ -115,6 +117,11 @@ export function officialGeomacroAgentOpenApi(){
    [endpoints.macro_fx]:{post:op("Query macro FX scoped intelligence","post")},
    [endpoints.critical_minerals]:{post:op("Query critical minerals scoped intelligence","post")},
    [endpoints.availability]:{post:op("Check no funds Geomacro query availability","post")},
+   [GEOMACRO_PAID_PRICING_PATH]:{get:{
+    summary:"Approved exact per-call USDC prices for API and AI agent on Base Arc Polygon, never a payment offer",
+    operationId:"getGeomacroFounderLockedPricing",
+    responses:{"200":{description:"All approved capability/variant USDC amounts, raw data excluded, payment still gated"}},
+   }},
    [GEOMACRO_USDC_NETWORKS_PATH]:{get:{
     summary:"Discover Base Arc Polygon native USDC settlement candidates (not an active pay offer)",
     operationId:"discoverGeomacroUsdcNetworks",
@@ -143,6 +150,7 @@ export function officialGeomacroAgentOpenApi(){
   "x-geomacro":{
    pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
    pricing:capabilityPricingCatalog(),
+   locked_pricing_endpoint:GEOMACRO_PAID_PRICING_PATH,
    agent_discovery:OFFICIAL_AGENT_PATH,agent_card:endpoints.agent_card,
    mcp:endpoints.mcp,a2a:endpoints.a2a,
    usdc_networks:GEOMACRO_USDC_NETWORKS_PATH,
