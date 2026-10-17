@@ -23,6 +23,8 @@ function envelope():MachineCommercialEnvelope{
  })).sort((a,b)=>String(a.article_bytes_sha256).localeCompare(String(b.article_bytes_sha256)));
  return {proof:{
   schema:"geomacro.automated-commercial-proof.v1",
+  profile:"GEOMACRO_AUTOMATED_CROSS_SOURCE_NOT_EXTERNAL_REVIEWED_V1",
+  same_event_claim_sha256:sha("event-claim"),
   attested_at:"2026-10-17T10:45:00Z",expires_at:"2026-10-17T11:20:00Z",
   exact_original_evidence_set_sha256:sha(JSON.stringify(originalSet)),
   source_permissions:candidates.map(c=>({
@@ -59,6 +61,25 @@ describe("private three-domain machine signed GRO publisher handoff pins",()=>{
   expect(()=>pinnedMachineCommercialSourceHandoff({
    ...p,proof:{...p.proof,exact_original_evidence_set_sha256:"0".repeat(64)},
   },candidates,now)).toThrow();
+ });
+ it("rejects same newsroom, reused article, tampered event claim and wrong trust profile",()=>{
+  const p=envelope();
+  const sameOrg=[candidates[0],{...candidates[1],
+    originating_reporting_organization_id:candidates[0].originating_reporting_organization_id}];
+  expect(()=>pinnedMachineCommercialSourceHandoff(p,sameOrg,now)).toThrow();
+  const reusedArticle=[candidates[0],{...candidates[1],
+    original_article_sha256:candidates[0].original_article_sha256}];
+  expect(()=>pinnedMachineCommercialSourceHandoff(p,reusedArticle,now)).toThrow();
+  const mismatchedClaim=[candidates[0],{...candidates[1],
+    same_event_claim_sha256:sha("different-claim")}];
+  expect(()=>pinnedMachineCommercialSourceHandoff(p,mismatchedClaim,now)).toThrow();
+  expect(()=>pinnedMachineCommercialSourceHandoff({...p,proof:{
+    ...p.proof,profile:"FEDERICO_STRICT" as never,
+  }},candidates,now)).toThrow();
+  expect(()=>pinnedMachineCommercialSourceHandoff({...p,proof:{
+    ...p.proof,source_permissions:[p.proof.source_permissions[0],
+      p.proof.source_permissions[0]],
+  }},candidates,now)).toThrow();
  });
  it("refuses stale/future articles, expired attestation, and forbidden public attribution",()=>{
   const p=envelope();
