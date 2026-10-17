@@ -13,6 +13,9 @@ on:
       - "src/lib/single-original-private-authority.server.ts"
       - "src/lib/single-original-private-authority.server.test.ts"
       - "src/lib/single-original-private-derived-handoff.server.ts"
+      - "docs/COMMERCIAL_DERIVED_OUTPUT_OWNER_LICENSE.md"
+      - "src/lib/geomacro-owned-derived-output-license.server.test.ts"
+      - "src/lib/geomacro-owned-derived-output-license.server.ts"
       - "scripts/ops/accept-private-single-original-authority.ts"
       - "src/lib/geomacro-machine-source-rights.server.ts"
       - "docs/ops/GEOMACRO_AUTOMATED_COMMERCIAL_GRO_V1.md"
@@ -31,6 +34,9 @@ on:
       - "src/lib/single-original-private-authority.server.ts"
       - "src/lib/single-original-private-authority.server.test.ts"
       - "src/lib/single-original-private-derived-handoff.server.ts"
+      - "docs/COMMERCIAL_DERIVED_OUTPUT_OWNER_LICENSE.md"
+      - "src/lib/geomacro-owned-derived-output-license.server.test.ts"
+      - "src/lib/geomacro-owned-derived-output-license.server.ts"
       - "scripts/ops/accept-private-single-original-authority.ts"
   workflow_dispatch:
 
@@ -52,7 +58,7 @@ jobs:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - name: Dual-attestation, canonical GRO and negative source/rights tests
-        run: bunx vitest run src/lib/geomacro-machine-commercial-qualification.server.test.ts src/lib/geomacro-machine-research-gro.server.test.ts src/lib/geomacro-machine-source-rights.server.test.ts src/lib/on-demand-qualified-country-risk.server.test.ts src/lib/geomacro-machine-commercial-operator.server.test.ts src/__tests__/signed-publication-recovery-preflight.test.ts src/lib/single-original-private-authority.server.test.ts
+        run: bunx vitest run src/lib/geomacro-machine-commercial-qualification.server.test.ts src/lib/geomacro-machine-research-gro.server.test.ts src/lib/geomacro-machine-source-rights.server.test.ts src/lib/on-demand-qualified-country-risk.server.test.ts src/lib/geomacro-machine-commercial-operator.server.test.ts src/__tests__/signed-publication-recovery-preflight.test.ts src/lib/single-original-private-authority.server.test.ts src/lib/geomacro-owned-derived-output-license.server.test.ts
       - name: Compile private machine acceptance, without running or supplying secrets
         run: |
           bun build scripts/ops/accept-private-geomacro-machine-commercial-gro.ts --target=bun --outfile=/tmp/geomacro-machine-commercial-operator.js
