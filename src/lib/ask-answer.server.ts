@@ -3,6 +3,7 @@ import {
   type HybridAskAnswer,
 } from "./hybrid-ask-intelligence.server";
 import { realtimeSearchAnswer } from "./ask-realtime-search.server";
+import { answerFromCurrentOriginals } from "./ask-on-demand-original.server";
 
 /**
  * Canonical Ask Geomacro answer orchestration.
@@ -133,6 +134,14 @@ function noCurrentPublisherNewsAnswer(): HybridAskAnswer {
 }
 
 export async function answerAskQuestion(question: string): Promise<HybridAskAnswer> {
+  // Narrow first-party source reads are separate from signed/payable intelligence.
+  try {
+    const original = await answerFromCurrentOriginals(question);
+    if (original) return original;
+  } catch (error) {
+    console.error("[ask-answer] original retrieval unavailable",
+      error instanceof Error ? error.message : "unknown error");
+  }
   // Broad free-news requests use original releases and bounded index discovery.
   // Country, corridor and scored questions keep the governed path below.
   if (selectOfficialNewsCategories(question).length > 0) {

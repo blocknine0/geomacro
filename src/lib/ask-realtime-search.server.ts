@@ -277,20 +277,15 @@ export async function realtimeSearchAnswer(
   const lowConfidence = true;
 
   const answer: AskAnswer = {
-    summary: "Unverified index observation (original publication date not confirmed): " +
-      String(grounded.summary ?? grounded.what_changed ?? "Recent indexed activity found.").trim(),
-    what_changed: "Recent index leads, not independently verified publisher events: " +
-      String(grounded.what_changed ?? grounded.summary ?? "Recently indexed activity found.").trim(),
+    summary: "An exact current answer is unavailable: search-index leads do not verify original publisher facts.",
+    what_changed: "Indexed leads were observed, but original publisher dates and exact country/topic claims are unconfirmed.",
     why_it_matters: "Indexed observation dates are not original publisher release dates. " + String(
       grounded.why_it_matters ??
         "These are current externally observed developments and should be read as evidence, not as a synthetic risk score.",
     ).trim(),
-    geomacro_view: String(
-      grounded.geomacro_view ??
-        "Geomacro is presenting the current evidence directly without inventing unsupported certainty.",
-    ).trim(),
+    geomacro_view: "Search discovery does not certify an event, exact figure, risk score, source rights or signature.",
     evidence,
-    insufficient_evidence: false,
+    insufficient_evidence: true,
     mean_relevance: null,
     low_confidence: lowConfidence,
     gri: null,
