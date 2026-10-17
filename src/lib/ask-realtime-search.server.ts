@@ -220,7 +220,10 @@ async function structureWithGroundedModel(question: string, hits: SearchHit[]): 
         "Keep summary to one short sentence. Keep why_it_matters and geomacro_view concise and analytical, not generic. " +
         "If support is thin, phrase cautiously rather than fabricating certainty. Return JSON with summary, what_changed, why_it_matters, geomacro_view, source_indexes.",
       user: JSON.stringify({
-        question,
+        // Do not send the researcher's private question to an optional LLM.
+        // The model sees fixed sector scope and already-private index leads.
+        country_iso3: planSafeRealtimeIndexQueries(question).country_iso3,
+        categories: [...new Set(hits.map(hit => hit.category))],
         findings: hits.map((hit, index) => ({
           index,
           category: hit.category,
