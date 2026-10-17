@@ -3,7 +3,7 @@
  * It compares ACTUAL successful canonical D1 publisher workflow completion
  * times, never a story's original date or a public GET/read refresh clock.
  */
-// Hourly primary at :07 UTC; backstop at :22. Recover once last verified
+// Hourly primary at :07 UTC; backstop at :22 and :52. Recover once last verified
 // publisher completion is at least 70 minutes old. This tolerates normal
 // collection runtime without hiding a missed hourly cycle indefinitely.
 // No claim of an exact GitHub scheduling SLA.
@@ -33,4 +33,33 @@ export function decideWebsiteNewsBackstop(runs, now=Date.now(), limit=BACKSTOP_A
     last_success_at:new Date(mostRecent).toISOString(),
     guaranteed:false,
   };
+}
+
+/**
+ * Only a successful RECOVERY PUBLISH (not a green/no-op backstop workflow)
+ * can reset the unattended freshness clock. GitHub Actions marks skipped
+ * backstop workflows green, so require all three actual publication/readback
+ * steps on the canonical recovery writer job. Job completion, not run updates
+ * or news timestamps, is the verified successful recovery time.
+ */
+export const WEBSITE_BACKSTOP_WORKFLOW = "website-derived-news-cadence-backstop.yml";
+export function verifiedBackstopPublicationTime(run,jobs,now=Date.now()) {
+  if (!run || run.status!=="completed" || run.conclusion!=="success" ||
+      run.head_branch!=="main" || !Number.isSafeInteger(run.id) || run.id<=0 ||
+      !Array.isArray(jobs) || !Number.isFinite(now)) return null;
+  const expected=[
+    "Publish bounded 3-domain derived news to existing D1 (idempotent)",
+    "Independently verify signed Finds across combined and category reads",
+    "Independently prove private-source-free D1 readback after recovery",
+  ];
+  for (const job of jobs) {
+    if (job?.name!=="catch-up-derived-only" || job.status!=="completed" ||
+        job.conclusion!=="success" || !Array.isArray(job.steps))continue;
+    if (!expected.every(name=>job.steps.some(step=>step.name===name &&
+      step.status==="completed" && step.conclusion==="success")))continue;
+    const at=Date.parse(job.completed_at);
+    if(Number.isFinite(at) && at<=now+60_000 && at<=Date.parse(run.updated_at)+60_000)
+      return new Date(at).toISOString();
+  }
+  return null;
 }
