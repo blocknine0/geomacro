@@ -26,6 +26,38 @@ implementation. Existing Coinbase CDP x402 Base adapter is not automatically an
 Arc facilitator, and a chain being supported by Circle is not evidence that
 Geomacro's product-specific payment integration or merchant wallet has deployed.
 
+## Founder-approved public paid pricing catalog (no funds)
+
+`GET /api/v1/pricing` is the canonical API and AI Agent price manifest.
+It reads **only** `src/lib/capability-pricing-catalog.ts`, never a second
+chain-specific schedule or the obsolete flat 0.05 USDC environment default.
+It exposes exactly eight capabilities and fourteen variants:
+
+| Capability | Variant(s) — exact USDC |
+| --- | --- |
+| gri_read | verified_cached 0.005; verified_change_attribution 0.01 |
+| structural_country_digest | standard 0.02 |
+| structural_corridor_digest | standard 0.05 |
+| structural_country_profile | standard 0.03 |
+| structural_corridor_profile | standard 0.08 |
+| intelligence_query | focused 0.05; standard 0.10; complex_multi_source 0.15 |
+| signed_risk_object | existing_valid_signed 0.05; newly_qualified_signed 0.10 |
+| risk_gate_bundle | existing_proof_preflight 0.10; standard 0.15; complex_multi_source 0.25 |
+
+All prices are in USDC with exactly six onchain token decimals.
+Each variant shows Base, Arc and Polygon *catalog* options with the
+same amount and exact native USDC contract. Bundles include their signed
+object without a second charge. No hidden tier, automatic price increase or
+mandatory subscription. No raw upstream data ever enters paid payloads.
+
+This public manifest is **not** an invoice or x402 HTTP 402; it explicitly
+reports merchant verification false, no source/data deliverability proof, and
+no customer charge authorization. For the network-specific nonpayable
+preview, use `POST /api/v1/payments/preflight`. Only after actual current
+evidence, source rights, signed product, merchant setup and explicit
+no-funds acceptance may separate live settlement be considered. The old
+`GET /api/x402/risk` cannot advertise a flat USDC price for production.
+
 ## Public discovery (no funds)
 
 \`GET /api/v1/payments/networks\`
