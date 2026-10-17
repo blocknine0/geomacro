@@ -744,3 +744,57 @@ jobs:
           path: artifacts/section11-production-website/acceptance.json
           if-no-files-found: error
           retention-days: 30
+
+  free-finds-independent-canary:
+    # Independent of strict signed-hot/deep-health job: a legacy paid 503
+    # must not prevent observing real free homepage/API reachability.
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify free homepage, Ask and D1-derived Finds without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const base='https://geomacro.live';
+          const d1='https://geomacro-control-plane.daspallab202391.workers.dev';
+          async function read(path,type='html'){
+            const url=path.startsWith('https://')?path:base+path;
+            const r=await fetch(url,{method:'GET',redirect:'error',
+              headers:{Accept:type==='json'?'application/json':'text/html'},
+              signal:AbortSignal.timeout(22000)});
+            if(r.status!==200)throw Error('PUBLIC_FREE_ROUTE_HTTP_'+r.status+':'+new URL(url).pathname);
+            const raw=await r.text();
+            if(raw.length>(type==='json'?512000:500000))throw Error('FREE_ROUTE_OVERSIZE');
+            return type==='json'?JSON.parse(raw):raw;
+          }
+          const [home,ask,journal,finds]=await Promise.all([
+            read('/'),read('/ask-geomacro'),
+            read(d1+'/v1/public/website-derived-news','json'),
+            read('/api/v1/finds','json'),
+          ]);
+          if(!home.includes('Geomacro Finds')||
+             !home.includes('Know what changed')||
+             !ask.includes('Ask Geomacro'))throw Error('PUBLIC_FREE_HTML_MISSING');
+          if(journal?.ok!==true||
+             journal?.schema!=='geomacro.website-derived-news-feed.v1'||
+             journal?.original_release_delay_minutes!==15||
+             !Array.isArray(journal?.signals))
+             throw Error('PUBLIC_FREE_D1_JOURNAL_INVALID');
+          if(finds?.ok!==true||finds?.schema!=='geomacro.find-card-feed.v1'||
+             finds?.chargeable!==false||finds?.scored!==false||
+             finds?.independent_same_event_verified!==false||
+             finds?.source_metadata_returned!==false||
+             finds?.original_release_delay_minutes!==15||
+             !Array.isArray(finds.cards))
+             throw Error('PUBLIC_FREE_FINDS_CONTRACT_INVALID');
+          if(finds.cards.some(card=>card?.schema!=='geomacro.find.v1'||
+             card?.severity!==null||JSON.stringify(card).match(/https?:\\/\\//u)))
+             throw Error('PUBLIC_FINDS_PRIVATE_OR_SCORED_DATA');
+          console.log(JSON.stringify({schema:'geomacro.free-website-live-canary.v1',
+            homepage_http:200,ask_http:200,finds_http:200,d1_http:200,
+            free_cards:finds.cards.length,derived_journal_rows:journal.signals.length,
+            independent_review_claimed:false,paid_hot_verified:false,
+            payment_performed:false,source_names_disclosed:false}));
+          NODE
