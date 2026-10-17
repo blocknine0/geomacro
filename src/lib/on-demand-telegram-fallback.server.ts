@@ -1,4 +1,5 @@
 import {fetchWithoutRedirect} from "./fetch-without-redirect";
+import { country195ByIso3 } from "./canonical-country-registry-195";
 /**
  * Optional private, per-question research lookup. It never turns a Telegram
  * lead into verified intelligence or an x402 deliverable.
@@ -42,9 +43,10 @@ function isReaderReply(value: unknown): value is ReaderReply {
     row.authorization_checked === true && row.source_text_retained === false &&
     row.commercial_eligible === false &&
     typeof row.searched_channel_count === "number" && Number.isSafeInteger(row.searched_channel_count) &&
-    Number(row.searched_channel_count) >= 0 && Number(row.searched_channel_count) <= 3 &&
+    Number(row.searched_channel_count) >= 1 && Number(row.searched_channel_count) <= 3 &&
     typeof row.unverified_lead_count === "number" && Number.isSafeInteger(row.unverified_lead_count) &&
-    Number(row.unverified_lead_count) >= 0 && Number(row.unverified_lead_count) <= 60;
+    Number(row.unverified_lead_count) >= 0 &&
+    Number(row.unverified_lead_count) <= Number(row.searched_channel_count) * 20;
 }
 
 function trustedReaderConfig(): { url: string; token: string } | null {
@@ -75,8 +77,9 @@ export async function lookupTelegramFallback(input: {
     return { attempted: false, status: input.originalArticleEvidenceSufficient ||
       input.categories.length === 0 ? "NOT_NEEDED" : "NOT_CONFIGURED", ...EMPTY };
   }
-  if (!config || !/^[A-Z]{3}$/.test(input.country_iso3) ||
-      input.categories.length > 3 || new Set(input.categories).size !== input.categories.length)
+  if (!config || !country195ByIso3(input.country_iso3) ||
+      input.categories.length > 3 || new Set(input.categories).size !== input.categories.length ||
+      input.categories.some(category => !["geopolitics", "macro", "rare_earth"].includes(category)))
     return { attempted: false, status: "UNAVAILABLE", ...EMPTY };
   try {
     const response = await fetchWithoutRedirect(config.url, {

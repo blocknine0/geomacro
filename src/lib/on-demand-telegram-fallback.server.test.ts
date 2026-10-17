@@ -95,4 +95,31 @@ describe("on-demand Telegram research fallback", () => {
       verified_intelligence_created: false, chargeable: false,
     });
   });
+
+  it("rejects countries outside the exact 195-state universe before network access", async () => {
+    vi.stubEnv("GEOMACRO_PRIVATE_TELEGRAM_READER_URL", url);
+    vi.stubEnv("GEOMACRO_PRIVATE_TELEGRAM_READER_TOKEN", "test-token");
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    for (const country_iso3 of ["ZZZ", "TWN", "HKG", "ind"]) {
+      expect(await lookupTelegramFallback({ ...input, country_iso3 })).toMatchObject({
+        attempted: false, status: "UNAVAILABLE", chargeable: false,
+      });
+    }
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("requires actual searched channels and a count within their sample budget", async () => {
+    vi.stubEnv("GEOMACRO_PRIVATE_TELEGRAM_READER_URL", url);
+    vi.stubEnv("GEOMACRO_PRIVATE_TELEGRAM_READER_TOKEN", "test-token");
+    for (const [channels, leads, status] of [[0, 0, "UNAVAILABLE"], [1, 21, "UNAVAILABLE"],
+        [1, 0, "NO_LEADS"]] as const) {
+      vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+        schema: "geomacro.private-telegram-query-receipt.v1", authorization_checked: true,
+        source_text_retained: false, commercial_eligible: false,
+        searched_channel_count: channels, unverified_lead_count: leads,
+      })));
+      expect(await lookupTelegramFallback(input)).toMatchObject({status, chargeable: false});
+    }
+  });
 });
