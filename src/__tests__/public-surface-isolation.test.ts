@@ -46,7 +46,9 @@ describe("public product surface failure-domain isolation", () => {
     expect(orchestrator).toContain("MISTRAL_API_KEY");
 
     expect(recovery).toContain("workflow_dispatch");
-    expect(recovery).not.toContain("schedule:");
+    expect(recovery).toContain('cron: "37 * * * *"');
+    expect(recovery).toContain("ingest-supabase-free-derived-news:");
+    expect(recovery).toContain("    if: ${{ false }}");
     expect(recovery).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest");
     expect(recovery).toContain("INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest");
 
