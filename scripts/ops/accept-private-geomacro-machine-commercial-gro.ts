@@ -17,6 +17,8 @@ import {prepareGeomacroMachineCommercialGRO}
  from "../../src/lib/geomacro-machine-commercial-qualification.server";
 import {loadRiskObjectVerificationKeysFromEnv}
  from "../../src/lib/risk-object-signing.server";
+import {pinnedMachineCommercialSourceHandoff}
+ from "../../src/lib/machine-commercial-publisher-handoff.server";
 
 const FAIL="GEOMACRO_MACHINE_COMMERCIAL_PRIVATE_ACCEPTANCE_FAILED";
 const MAX_OUT=256*1024;
@@ -79,12 +81,22 @@ export async function acceptMachineCommercialPrivateGRO(inputPath:string,outputP
      signed.subject_id!==input.country_iso3||
      createHash("sha256").update(signed.signed_risk_object_json).digest("hex")!==
        signed.record_sha256)throw Error(FAIL);
+  // Re-check the exact separately attested proof/rights/native date AGAIN
+  // after live source verification and signing. A B2 clock cannot substitute.
+  const pins=pinnedMachineCommercialSourceHandoff(
+    input.envelope as import("../../src/lib/geomacro-machine-commercial-qualification.server").MachineCommercialEnvelope,
+    input.candidates as import("../../src/lib/geomacro-machine-source-rights.server").MachineOriginalWithRegistry[],
+    new Date(),
+  );
   const output=JSON.stringify({
     schema:"geomacro.private-machine-commercial-prepared-gro.v1",
     profile:"GEOMACRO_AUTOMATED_CROSS_SOURCE_NOT_EXTERNAL_REVIEWED_V1",
     country_iso3:input.country_iso3,category:input.category,
     record_sha256:signed.record_sha256,
     signing_key_id:signed.signing_key_id,
+    machine_attested_proof_sha256:pins.machine_attested_proof_sha256,
+    machine_attestation_expires_at:pins.machine_attestation_expires_at,
+    original_native_source_as_of:pins.original_native_source_as_of,
     canonical_signed_gro_json:signed.signed_risk_object_json,
     local_signature_verified:true,
     rights_policy_attested:true,
