@@ -16,7 +16,7 @@ export function makeQuotaProtectedGlobalRiskConfig(base,databaseId) {
     base.main!=="src/index.mjs" ||
     base.workers_dev!==true ||
     base.cache?.enabled!==true ||
-    base.cache?.cross_version_cache!==true ||
+    base.cache?.cross_version_cache!==false ||
     !Array.isArray(base.services) ||
     !base.services.some(x=>x.binding==="CONTROL_PLANE" &&
       x.service==="geomacro-control-plane") ||
