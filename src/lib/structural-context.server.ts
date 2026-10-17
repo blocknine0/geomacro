@@ -5,6 +5,7 @@ import {
   type B2StructuralServingSnapshot,
 } from "./b2-structural.server";
 import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
+import { loadQualifiedMcsCountryContext } from "./qualified-mcs-country-digest.server";
 
 export const STRUCTURAL_METHODOLOGY_STATUS =
   "EVIDENCE_ONLY_NOT_IN_GRI_V1_2" as const;
@@ -60,6 +61,7 @@ export type StructuralServingMetadata = {
     | "COUNTRY_PROFILE_V1"
     | "CORRIDOR_ENDPOINT_COMPOSED_V1"
     | "BASE_COMMERCIAL_VIEW_ROLLOUT_FALLBACK"
+    | "QUALIFIED_RELEASE_DERIVED_V1"
     | "NOT_CONFIGURED";
   warehouse_methodology_status: typeof STRUCTURAL_WAREHOUSE_METHODOLOGY_STATUS;
   coverage: StructuralCoverage[];
@@ -501,11 +503,16 @@ function unavailableContext(subject: StructuralSubject): StructuralContext {
 
 export async function loadStructuralContext(
   requestedSubject: StructuralSubject,
+  options: { allowQualifiedRelease?: boolean } = {},
 ): Promise<StructuralContext> {
   const subject = normalizeSubject(requestedSubject);
   const db = getHistoricalClient();
 
   if (!db) {
+    if (options.allowQualifiedRelease === true && subject.type === "country") {
+      const qualified = await loadQualifiedMcsCountryContext(subject.country_iso3);
+      if (qualified) return qualified;
+    }
     const b2 = await loadB2StructuralContext(subject);
     if (b2) return b2;
     return {

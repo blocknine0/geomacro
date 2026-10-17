@@ -1,0 +1,168 @@
+import { createHash } from "node:crypto";
+import { parseUsGSMcsCsv } from "../../global-intelligence/adapters/usgs-mcs-2026.mjs";
+import { canonicalJson } from "./canonical-json";
+import type { StructuralContext, StructuralObservation } from "./structural-context.server";
+import type { SourceRightsRow } from "./commercial-source-eligibility.server";
+
+// A scoped, published CC0 dataset, never blanket authorization for USGS news,
+// pictures, another dataset, a new CSV revision, or the legacy usgs_mcs ID.
+export const MCS_DIGEST_SOURCE_ID = "usgs_mcs_2026_cc0_582a0aa231ae";
+export const MCS_DIGEST_CSV_SHA256 = "582a0aa231aea53d8a97dc8d1cd3dfa5f885cf3760353e3d029d7f0ae4fbaaf5";
+const DOI = "10.5066/p1wkq63t";
+const ITEM = "696a75d5d4be0228872d3bf8";
+const ITEMS = ["69837e43b66b01367d7ec7c7", ITEM];
+const FILE = "MCS2026_Commodities_Data.csv";
+const DATACITE = "https://api.datacite.org/dois/10.5066/P1WKQ63T";
+const COUNTRIES: Record<string, string> = { USA: "UNITED STATES", CHN: "CHINA" };
+const METHOD = "geomacro.mcs-annual-production-change.v1";
+const MAX_BYTES = 16_000_000;
+const TTL = 10 * 60_000;
+const sha = (v: string | Uint8Array) => createHash("sha256").update(v).digest("hex");
+type Release = { rows: Record<string, string>[]; rightsHash: string; checkedAt: string };
+let cached: { until: number; value: Release } | null = null;
+let pending: Promise<Release | null> | null = null;
+let unavailableUntil = 0;
+
+async function read(url: string, fetchImpl: typeof fetch, limit: number): Promise<Uint8Array> {
+  const u = new URL(url);
+  if (u.protocol !== "https:" || u.username || u.password || u.port || u.hash ||
+      !["api.datacite.org", "www.sciencebase.gov"].includes(u.hostname))
+    throw Error("MCS_DIGEST_ORIGIN_REJECTED");
+  // Never follow access-denial/challenge pages or arbitrary download redirects.
+  const res = await fetchImpl(url, { redirect: "manual", signal: AbortSignal.timeout(12_000),
+    headers: { Accept: u.hostname === "api.datacite.org" ? "application/json" : "application/json,text/csv" } });
+  if (res.status !== 200 || !res.body) throw Error("MCS_DIGEST_SOURCE_HTTP_" + res.status);
+  const reader = res.body.getReader();
+  const parts: Uint8Array[] = []; let size = 0;
+  try { while (true) {
+    const { done, value } = await reader.read(); if (done) break;
+    size += value.byteLength; if (size > limit) throw Error("MCS_DIGEST_SOURCE_TOO_LARGE");
+    parts.push(value);
+  } } finally { await reader.cancel().catch(() => undefined); }
+  if (!size) throw Error("MCS_DIGEST_SOURCE_EMPTY");
+  const out = new Uint8Array(size); let offset = 0;
+  for (const part of parts) { out.set(part, offset); offset += part.length; }
+  return out;
+}
+
+export function verifyMcsCc0Metadata(value: unknown): void {
+  const a = (value as any)?.data?.attributes;
+  if (a?.doi?.toLowerCase() !== DOI || a?.publicationYear !== 2026 ||
+      a?.publisher !== "U.S. Geological Survey" || a?.state !== "findable" || a?.isActive !== true ||
+      a?.url !== "https://www.sciencebase.gov/catalog/item/" + ITEM ||
+      !Array.isArray(a.rightsList) || a.rightsList.length !== 1 ||
+      a.rightsList[0]?.rightsIdentifier !== "cc0-1.0" ||
+      a.rightsList[0]?.rightsIdentifierScheme !== "SPDX" ||
+      a.rightsList[0]?.rightsUri !== "https://creativecommons.org/publicdomain/zero/1.0/legalcode")
+    throw Error("MCS_DIGEST_DATASET_CC0_NOT_VERIFIED");
+}
+
+async function acquire(fetchImpl: typeof fetch, now: Date): Promise<Release> {
+  const rights = await read(DATACITE, fetchImpl, 100_000);
+  verifyMcsCc0Metadata(JSON.parse(new TextDecoder().decode(rights)));
+  for (const item of ITEMS) {
+    try {
+      const metadata = JSON.parse(new TextDecoder().decode(await read(
+        "https://www.sciencebase.gov/catalog/item/" + item + "?format=json", fetchImpl, 1_000_000)));
+      if (metadata?.id !== item) throw Error("MCS_DIGEST_ITEM_MISMATCH");
+      const files = metadata.files?.filter((f: any) => f.name === FILE);
+      if (!Array.isArray(files) || files.length !== 1) throw Error("MCS_DIGEST_FILE_NOT_UNIQUE");
+      const url = files[0].url ?? files[0].downloadUri;
+      if (typeof url !== "string" || !url.startsWith("https://www.sciencebase.gov/catalog/file/get/" + item))
+        throw Error("MCS_DIGEST_FILE_ORIGIN_REJECTED");
+      const bytes = await read(url, fetchImpl, MAX_BYTES);
+      if (sha(bytes) !== MCS_DIGEST_CSV_SHA256) throw Error("MCS_DIGEST_FILE_REVISION_UNREVIEWED");
+      const parsed = parseUsGSMcsCsv(new TextDecoder("windows-1252").decode(bytes));
+      const rows = parsed.map((r: any) => r.raw.raw as Record<string, string>);
+      if (!rows.length) throw Error("MCS_DIGEST_EMPTY_RELEASE");
+      return { rows, rightsHash: sha(rights), checkedAt: now.toISOString() };
+    } catch { /* Two already reviewed original release IDs; no denial retry. */ }
+  }
+  throw Error("MCS_DIGEST_PINNED_ORIGINAL_UNAVAILABLE");
+}
+
+export async function loadQualifiedMcsRelease(options: { fetchImpl?: typeof fetch; now?: Date; noCache?: boolean } = {}) {
+  const now = options.now ?? new Date();
+  if (!Number.isFinite(now.getTime())) return null;
+  if (!options.noCache && unavailableUntil > now.getTime()) return null;
+  if (!options.noCache && cached && cached.until > now.getTime()) return cached.value;
+  if (!options.noCache && pending) return pending;
+  const work = acquire(options.fetchImpl ?? fetch, now).catch(() => null);
+  if (!options.noCache) pending = work;
+  try {
+    const result = await work;
+    if (result && !options.noCache) cached = { until: now.getTime() + TTL, value: result };
+    if (!result && !options.noCache) unavailableUntil = now.getTime() + 60_000;
+    return result;
+  } finally { if (!options.noCache) pending = null; }
+}
+
+/** Pure transformation only. The acquisition path above independently pins
+ * actual original bytes and dataset-specific CC0 before invoking this method. */
+export function deriveMcsProductionChanges(rows: Record<string, string>[], iso3: string, now: Date) {
+  const name = COUNTRIES[iso3]; if (!name) return [];
+  const groups = new Map<string, Map<number, { value: number; rowHash: string }>>();
+  for (const row of rows) {
+    if (String(row.Country ?? "").trim().toUpperCase() !== name ||
+        String(row["Is critical mineral 2025"] ?? "").trim().toLowerCase() !== "yes" ||
+        !/production/iu.test(row.Statistics ?? "") || !String(row.Commodity ?? "").trim() ||
+        !/^\d{4}$/u.test(row.Year ?? "") ||
+        !/^[0-9]+(?:\.[0-9]+)?$/u.test(String(row.Value ?? "").replaceAll(",", "").trim())) continue;
+    const year = Number(row.Year), value = Number(String(row.Value).replaceAll(",", ""));
+    // Annual observations are reference periods, not today's market values.
+    if (year !== 2024 && year !== 2025 || !Number.isFinite(value) || value < 0) continue;
+    const key = canonicalJson([row.Commodity, row.Section, row.Statistics, row.Statistics_detail, row.Unit].map(x => x ?? ""));
+    const years = groups.get(key) ?? new Map();
+    if (years.has(year)) throw Error("MCS_DIGEST_DUPLICATE_COUNTRY_SERIES_YEAR");
+    years.set(year, { value, rowHash: sha(canonicalJson(row)) }); groups.set(key, years);
+  }
+  const periodEnd = Date.parse("2025-12-31T23:59:59.000Z");
+  if (now.getTime() < periodEnd || now.getTime() - periodEnd > 400 * 86400_000) return [];
+  return [...groups].sort(([a], [b]) => a.localeCompare(b)).flatMap(([key, years]) => {
+    const current = years.get(2025), previous = years.get(2024);
+    if (!current || !previous || previous.value <= 0) return [];
+    const change = (current.value / previous.value - 1) * 100;
+    if (!Number.isFinite(change)) return [];
+    return [{ commodity: JSON.parse(key)[0] as string, change_pct: Number(change.toFixed(6)),
+      row_hashes: [previous.rowHash, current.rowHash], series_key_hash: sha(key) }];
+  }).slice(0, 12);
+}
+
+export async function loadQualifiedMcsCountryContext(iso3: string, options: Parameters<typeof loadQualifiedMcsRelease>[0] = {}): Promise<StructuralContext | null> {
+  if (!Object.hasOwn(COUNTRIES, iso3)) return null;
+  const release = await loadQualifiedMcsRelease(options); if (!release) return null;
+  const now = options.now ?? new Date();
+  let changes;
+  try { changes = deriveMcsProductionChanges(release.rows, iso3, now); } catch { return null; }
+  if (!changes.length) return null;
+  const observations: StructuralObservation[] = changes.map(change => {
+    const normalized_hash = sha(canonicalJson({ source: MCS_DIGEST_SOURCE_ID, iso3, ...change }));
+    return { observation_id: "derived:" + normalized_hash, source_id: MCS_DIGEST_SOURCE_ID,
+      source_record_id: change.series_key_hash, dimension: "critical_minerals", country_iso3: iso3,
+      partner_country_iso3: null, observed_at: "2025-12-31T23:59:59.000Z", published_at: null,
+      metric: "annual_mineral_production_change_pct", value_numeric: change.change_pct,
+      value_text: change.commodity + ": annual production comparison, 2025 versus 2024; annual estimates, not live supply.",
+      unit: "percent_change", event_type: null, signal_type: "ANNUAL_STRUCTURAL_NOT_CURRENT_NEWS",
+      source_url: null, parser_version: METHOD, methodology_status: "EVIDENCE_ONLY_NOT_IN_GRI_V1_2",
+      quality_status: "VERIFIED", provenance: { source_file_sha256: MCS_DIGEST_CSV_SHA256,
+        rights_metadata_sha256: release.rightsHash, input_row_hashes: change.row_hashes,
+        reference_year: 2025, previous_reference_year: 2024, date_precision: "YEAR",
+        reference_period_end_is_not_publication_time: true },
+      normalized_hash, retrieved_at: release.checkedAt };
+  });
+  return { status: "AVAILABLE", methodology_status: "EVIDENCE_ONLY_NOT_IN_GRI_V1_2",
+    subject: { type: "country", country_iso3: iso3 }, observations,
+    metadata: { serving_layer: "QUALIFIED_RELEASE_DERIVED_V1", warehouse_methodology_status: "EVIDENCE_ONLY_NOT_IN_GRO_V02",
+      coverage: [], composition_method: null, route_modeling_status: null, direct_evidence_status: null },
+    note: "Derived annual mineral-production comparisons for 2025 versus 2024. Reference-period end is not a publication clock. No live market, current event, calibrated risk score or signed GRO is included." };
+}
+
+export async function qualifiedMcsSourceRights(sourceId: string): Promise<SourceRightsRow | null> {
+  if (sourceId !== MCS_DIGEST_SOURCE_ID) return null;
+  const release = await loadQualifiedMcsRelease(); if (!release) return null;
+  // These statuses describe this exact hash-pinned, technically checked data
+  // release. Permission comes from the publisher's current DOI metadata.
+  return { source_id: MCS_DIGEST_SOURCE_ID, category: "CRITICAL_MINERALS", certification_state: "CERTIFIED",
+    commercial_usage_status: "DERIVED_ONLY", enabled_for_ingestion: true, enabled_for_commercial_signals: true,
+    raw_redistribution_allowed: false, attribution_required: false, licence_name: "CC0-1.0 (exact MCS 2026 dataset only)" };
+}
