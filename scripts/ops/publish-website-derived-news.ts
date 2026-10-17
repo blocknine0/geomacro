@@ -64,7 +64,9 @@ for (const category of categories) {
         signal.severity===null && signal.same_event_corrob_verified===false &&
         signal.sources_credited.every(v=>typeof v==="string");
     });
-    if (signals.length>0) {
+    // Always send a bounded authenticated heartbeat, including EMPTY batches.
+    // This prunes expired D1 records during quiet issuer hours.
+    {
       // The content is transmitted only to OUR authenticated Cloudflare
       // control plane. Never log request or response body.
       const reply=await fetch(ENDPOINT,{
