@@ -20,10 +20,10 @@ describe("exact prepared-answer capability binding (no funds)",()=>{
  it("matches production Worker quote digest and all approved 14 prices",async()=>{
   let count=0;
   for(const [capability,variants] of Object.entries(GEOMACRO_CAPABILITY_PRICES)){
-   for(const variant of Object.keys(variants)){
+   for(const [variant,amount] of Object.entries(variants)){
     const q=quoteGeomacroPreparedCapability({...base,capability,variant});
     expect(q.prepared_answer_sha256).toBe(newHash);
-    expect(q.amount_usdc).toBe(variants[variant as keyof typeof variants]);
+    expect(q.amount_usdc).toBe(amount);
     expect(q.execution_authorized).toBe(false);
     await expect(assertCapabilityPrequote(q,{
       provider:"coinbase_x402",providerEnvironment:"mainnet",
