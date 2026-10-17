@@ -66,8 +66,10 @@ lock and may still display the previous 30-minute collection copy. This backend
 cadence change intentionally does not alter that locked UI; the user-facing copy
 must be corrected through its dedicated founder-approved website publication.
 The Actions and D1 readback receipts, not the old UI label, determine the
-observed production cadence. Legacy `auto-ingest-news.yml` stays
-disabled because it depends on the frozen Supabase pipeline. Prediction-market
+observed production cadence. The legacy Supabase/Postgres `recover-news-ingest`
+job inside `auto-ingest-news.yml` remains permanently disabled, while its
+separate Supabase-free `ingest-supabase-free-derived-news` job runs the existing
+verified D1 recovery workflow on a guarded hourly checkpoint. Prediction-market
 jobs, paid GRO admission, x402 settlement and raw upstream data publication
 remain disabled/unchanged. Current website delivery is free derived output,
 not a substitute for independently reviewed paid Intelligence/GRI/Risk Indices.
@@ -182,3 +184,40 @@ non-canceling writer lock, Supabase-free D1 publication, no-funds gates and
 quota-governed B2 archival unchanged. It does **not** make provider services
 permanently available or verify 585 country-category current commercial
 products. Exact GitHub cron timing remains best effort.
+
+## Permanent Auto Ingest News activation (2026-10-18)
+
+`.github/workflows/auto-ingest-news.yml` is now a real GitHub Actions
+entry point, not a manual green/skipped placeholder. It has
+`workflow_dispatch` (a direct bounded operator recovery) and an independent
+`37 * * * *` UTC cron. A main-branch workflow-path push runs one canary
+so the wiring can be accepted immediately after merging.
+
+**Important architecture:** The active job does NOT invoke
+`scripts/ingest-news.js`, the historical Postgres/Durable Object structuring
+batch or Supabase Edge. Instead it calls the existing
+`website-derived-news-cadence-backstop.yml` as a reusable workflow with
+inherited production credentials and read-only GitHub Actions metadata access.
+That existing audited backstop checks its normal last-successful-source-proof
+70-minute clock, distinguishes a signed and independently read-back actual
+recovery from a green/no-op run, and holds the very same
+`geomacro-website-derived-news-continuity` writer mutex as the hourly
+:07 publisher and :22/:52 backup. The new :37 check therefore cannot overlap
+a real current writer or issue another read simply because the calendar
+changed. Direct manual dispatch retains its existing deliberate force mode.
+
+The :37 slot is a **third independent GitHub scheduling chance**, not a
+guaranteed timer: if the :07 primary succeeds it normally becomes a no-op;
+if the :22 backup succeeds the latest real D1 publication proof prevents a
+second source poll; if either is genuinely stale the normal published
+three-category D1 writer runs. Checked output remains signed unscored Finds,
+15-minute delayed, source-private, free and never automatically payable.
+The historical `recover-news-ingest` job still uses
+`if: ${{ false }}` so dormant Supabase secrets/logic are never executed.
+
+Acceptance is NOT a green no-op alone: verify an exact-main Auto Ingest
+News workflow run with live `ingest-supabase-free-derived-news` and
+`catch-up-derived-only` job contract; inspect the decision JSON.
+A genuine recovery, when needed, must show successful D1 publication,
+verified signed Finds and independent public D1 readback. Keep the separate
+old 503 paid-product/degraded provider/B2 quota status visible.
