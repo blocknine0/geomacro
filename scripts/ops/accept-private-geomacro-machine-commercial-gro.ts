@@ -15,7 +15,7 @@ import {resolve} from "node:path";
 import {assertPrivateReviewPaths} from "./accept-private-live-on-demand-gro";
 import {prepareGeomacroMachineCommercialGRO}
  from "../../src/lib/geomacro-machine-commercial-qualification.server";
-import {loadRiskObjectVerificationKeysFromEnv}
+import {canonicalRiskObjectJson,loadRiskObjectVerificationKeysFromEnv}
  from "../../src/lib/risk-object-signing.server";
 
 const FAIL="GEOMACRO_MACHINE_COMMERCIAL_PRIVATE_ACCEPTANCE_FAILED";
@@ -79,12 +79,25 @@ export async function acceptMachineCommercialPrivateGRO(inputPath:string,outputP
      signed.subject_id!==input.country_iso3||
      createHash("sha256").update(signed.signed_risk_object_json).digest("hex")!==
        signed.record_sha256)throw Error(FAIL);
+  // The signed private original set/attestation has its OWN immutable hash,
+  // independent of the third GRO signature. This exact clock originates in
+  // current first-party publication bytes, never the retry, B2/D1 write or
+  // website deployment time. Downstream cannot re-label an older event fresh.
+  const attestedProof=input.envelope as import("../../src/lib/geomacro-machine-commercial-qualification.server").MachineCommercialEnvelope;
+  const sourceAsOf=new Date(Math.max(...(input.candidates as Array<{
+    original_published_at:string;
+  }>).map(c=>Date.parse(c.original_published_at)))).toISOString();
+  const machineProofSha256=createHash("sha256")
+    .update(canonicalRiskObjectJson(attestedProof.proof),"utf8").digest("hex");
   const output=JSON.stringify({
     schema:"geomacro.private-machine-commercial-prepared-gro.v1",
     profile:"GEOMACRO_AUTOMATED_CROSS_SOURCE_NOT_EXTERNAL_REVIEWED_V1",
     country_iso3:input.country_iso3,category:input.category,
     record_sha256:signed.record_sha256,
     signing_key_id:signed.signing_key_id,
+    machine_attested_proof_sha256:machineProofSha256,
+    machine_attestation_expires_at:attestedProof.proof.expires_at,
+    original_native_source_as_of:sourceAsOf,
     canonical_signed_gro_json:signed.signed_risk_object_json,
     local_signature_verified:true,
     rights_policy_attested:true,
