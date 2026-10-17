@@ -20,7 +20,7 @@ const signal=(over:Partial<StatelessIntelligenceSignal>={}):StatelessIntelligenc
 describe("72h auto ingest -> own structured Intelligence and API research drafts",()=>{
   it("uses only own structured fields, exact country/category/date and NEVER grants payment eligibility",()=>{
     const rows=[signal(),signal(),signal({id:"macro-1234abcd",geography:"United Kingdom"}),
-      signal({id:"rare_earth-1234abcd",category:"rare_earth",topic:"rare-earth supply"})];
+      signal({id:"rare_earth-1234abcd",category:"rare_earth",topic:"rare-earth supply",geography:"China"})];
     const drafts=buildAutoIngest72hStructuredDrafts(rows,"IND",["macro","rare_earth"],NOW);
     expect(drafts).toHaveLength(1);
     expect(drafts[0]).toEqual({
