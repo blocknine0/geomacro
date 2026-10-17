@@ -40,6 +40,31 @@ describe("signed product pre-expiry guard (metadata-only, no false renewal)",()=
   expect(out.b2_requests).toBe(0);
   expect(out.d1_writes).toBe(0);
  });
+ it("treats 3h-valid but 75m-old signed records as NOT live",()=>{
+  const data=rows();
+  for(const item of data){
+    const max=item.product==="intelligence"?720:180;
+    item.source_as_of=ISO(-75);
+    item.expires_at=ISO(max-75);
+  }
+  const output=assess(data);
+  expect(output.all_three_within_safe_window).toBe(true);
+  expect(output.live_freshness_ready).toBe(false);
+  expect(output.attention_required).toBe(true);
+  for(const key of names){
+    expect(output.products[key].status).toBe("WITHIN_WINDOW");
+    expect(output.products[key].live_freshness_eligible).toBe(false);
+    expect(output.products[key].old_payload_retimestamp_allowed).toBe(false);
+  }
+ });
+ it("does not promote decade-old sources using the extended TTL",()=>{
+  const data=rows();
+  data[0].source_as_of=ISO(-1000);
+  data[0].expires_at=ISO(-280);
+  const output=assess(data);
+  expect(output.products.intelligence.status).toBe("EXPIRED");
+  expect(output.live_freshness_ready).toBe(false);
+ });
  it("warns BEFORE the GRI 3-hour expiry without changing any source time",()=>{
   const v=rows();
   const risk=v.find(x=>x.product==="global-risk")!;
