@@ -2,6 +2,15 @@ name: Stateless Live Structured No-Funds Acceptance
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/stateless-live-structured-no-funds.yml"
+      - "scripts/ops/verify-live-structured-no-funds.mjs"
+      - "src/routes/api.health.ts"
+      - "src/lib/live-structured-deep-health.server.ts"
+      - "src/lib/live-structured-on-demand.server.ts"
+      - "src/routes/api.v1.intelligence.live-structured.ts"
   schedule:
     - cron: "37 */6 * * *"
 
