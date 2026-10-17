@@ -1,0 +1,67 @@
+name: Ask Live Official SSE Acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/ask-live-official-sse.yml"
+      - "scripts/ops/verify-live-ask-sse.mjs"
+      - "server/api/ask/v2/turn.post.ts"
+      - "src/lib/ask-official-numeric.server.ts"
+      - "src/lib/ask-sse-client.ts"
+      - "src/__tests__/ask-live-sse-acceptance.test.ts"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ask-live-official-sse.yml"
+      - "scripts/ops/verify-live-ask-sse.mjs"
+      - "server/api/ask/v2/turn.post.ts"
+      - "src/lib/ask-official-numeric.server.ts"
+      - "src/lib/ask-sse-client.ts"
+      - "src/__tests__/ask-live-sse-acceptance.test.ts"
+  schedule:
+    - cron: "27 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-ask-live-official-sse
+  cancel-in-progress: false
+
+jobs:
+  live-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Diagnose official annual source response shape without exposing data
+        run: |
+          node --input-type=module - <<'NODE'
+          const url = "https://api.worldbank.org/v2/country/ind/indicator/FP.CPI.TOTL.ZG?source=2&format=json&mrnev=3";
+          const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(8000) });
+          let exactRows = 0, indicatorMatched = 0, iso3Matched = 0, releaseYears = 0;
+          if (res.status === 200) {
+            const p = await res.json().catch(() => null);
+            for (const row of Array.isArray(p?.[1]) ? p[1].slice(0, 20) : []) {
+              indicatorMatched += Number(row?.indicator?.id === "FP.CPI.TOTL.ZG");
+              iso3Matched += Number(row?.countryiso3code === "IND");
+              releaseYears += Number(/^(?:19|20)\d{2}$/.test(row?.date ?? ""));
+              exactRows += Number(row?.indicator?.id === "FP.CPI.TOTL.ZG" &&
+                row?.countryiso3code === "IND" && typeof row?.value === "number");
+            }
+          }
+          console.log(JSON.stringify({
+            schema:"geomacro.wdi-annual-shape-metadata.v1", http_status:res.status,
+            returned_redirect:res.status>=300&&res.status<400,
+            redirects_to_allowlisted_origin:(() => { const l=res.headers.get("location");
+              if(!l)return false;try{return new URL(l,url).hostname==="api.worldbank.org"}catch{return false} })(),
+            exact_rows:exactRows,indicator_matched:indicatorMatched,
+            iso3_matched:iso3Matched,year_shaped_rows:releaseYears,
+            raw_dataset_logged:false,payment_executed:false
+          }));
+          NODE
+      - name: Verify official numerical question and completed SSE from production
+        run: node scripts/ops/verify-live-ask-sse.mjs

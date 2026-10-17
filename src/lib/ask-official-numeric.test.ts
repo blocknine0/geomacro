@@ -12,6 +12,19 @@ const csv=(code:string,value:number,day="2026-10-16")=>
  "FREQ,CURRENCY,CURRENCY_DENOM,EXR_TYPE,EXR_SUFFIX,TIME_PERIOD,OBS_VALUE\n"+
  "D,"+code+",EUR,SP00,A,"+day+","+value+"\n";
 describe("official question-time numerical answers",()=>{
+ it("preserves source-private typed failure codes on official transport errors",async()=>{
+  const classes:string[]=[];
+  const blocked=vi.fn(async()=>new Response("rate limited",{status:429})) as unknown as typeof fetch;
+  const result=await answerOfficialNumeric("India latest inflation rate?",{
+    fetchImpl:blocked,noCache:true,now,onFailure:code=>classes.push(code)});
+  expect(result).toBeNull();
+  expect(classes).toEqual(["ASK_OFFICIAL_NUMERIC_HTTP_429"]);
+  const unknown=vi.fn(async()=>{throw Error("Bearer secret should never appear here")}) as unknown as typeof fetch;
+  const classes2:string[]=[];
+  await answerOfficialNumeric("India latest inflation rate?",{
+    fetchImpl:unknown,noCache:true,now,onFailure:code=>classes2.push(code)});
+  expect(classes2).toEqual(["ASK_OFFICIAL_NUMERIC_TRANSPORT_UNAVAILABLE"]);
+ });
  it("requires an unambiguous country or explicit currency pair",()=>{
   expect(planAskOfficialNumeric("India latest inflation rate?")).toMatchObject({
    kind:"wdi",iso3:"IND",indicator:"FP.CPI.TOTL.ZG"});

@@ -26,7 +26,7 @@ async function bounded(url:string,accept:string,fetchImpl:typeof fetch):Promise<
    throw Error("ASK_OFFICIAL_NUMERIC_ORIGIN");
  const res=await fetchImpl(url,{method:"GET",redirect:"error",signal:AbortSignal.timeout(6000),
    headers:{Accept:accept}});
- if(!res.ok||!res.body)throw Error("ASK_OFFICIAL_NUMERIC_HTTP");
+ if(!res.ok||!res.body)throw Error("ASK_OFFICIAL_NUMERIC_HTTP_"+res.status);
  if(Number(res.headers.get("content-length")??0)>256_000)throw Error("ASK_OFFICIAL_NUMERIC_SIZE");
  const reader=res.body.getReader();const chunks:Uint8Array[]=[];let size=0;
  try{while(true){const {done,value}=await reader.read();if(done)break;
@@ -76,7 +76,7 @@ async function query(plan:Plan,now:Date,fetchImpl:typeof fetch):Promise<HybridAs
    plan.iso3.toLowerCase()+"/indicator/"+plan.indicator+
    "?source=2&format=json&mrnev=3","application/json",fetchImpl));
   const rows=parseAnnualWdi(json,plan.iso3,plan.indicator);
-  if(!rows.length)return null;
+  if(!rows.length)throw Error("ASK_OFFICIAL_NUMERIC_NO_MATCHING_ROWS");
   const [latest,prior]=rows;
   const metric=plan.indicator==="FP.CPI.TOTL.ZG"?"consumer-price inflation":"GDP growth";
   return result(now,plan.name+"'s latest available ANNUAL "+metric+" is "+
@@ -96,7 +96,7 @@ async function query(plan:Plan,now:Date,fetchImpl:typeof fetch):Promise<HybridAs
  const to=plan.quote==="EUR"?null:data.find(x=>x.currency===plan.quote)?.rows;
  const shared=(from??to??[]).find(row=>(!from||from.some(x=>x.day===row.day))&&
    (!to||to.some(x=>x.day===row.day)));
- if(!shared)return null;
+ if(!shared)throw Error("ASK_OFFICIAL_NUMERIC_NO_SHARED_DATE");
  const a=plan.base==="EUR"?1:from?.find(x=>x.day===shared.day)?.value;
  const b=plan.quote==="EUR"?1:to?.find(x=>x.day===shared.day)?.value;
  if(!a||!b)return null;
@@ -112,7 +112,7 @@ async function query(plan:Plan,now:Date,fetchImpl:typeof fetch):Promise<HybridAs
 }
 const cache=new Map<string,{until:number;value:HybridAskAnswer}>();
 const inFlight=new Map<string,Promise<HybridAskAnswer|null>>();
-export async function answerOfficialNumeric(question:string,opts:{fetchImpl?:typeof fetch;now?:Date;noCache?:boolean}={}):Promise<HybridAskAnswer|null>{
+export async function answerOfficialNumeric(question:string,opts:{fetchImpl?:typeof fetch;now?:Date;noCache?:boolean;onFailure?:(code:string)=>void}={}):Promise<HybridAskAnswer|null>{
  const plan=planAskOfficialNumeric(question);if(!plan)return null;
  const key=JSON.stringify(plan),now=opts.now??new Date();
  if(!opts.noCache){
@@ -120,7 +120,16 @@ export async function answerOfficialNumeric(question:string,opts:{fetchImpl?:typ
   if(cached&&cached.until>now.getTime())return {...cached.value,generatedAt:now.toISOString(),cache_status:"hit"};
   const pending=inFlight.get(key);if(pending)return pending;
  }
- const work=query(plan,now,opts.fetchImpl??fetch).catch(()=>null);
+ const work=query(plan,now,opts.fetchImpl??fetch).catch(error=>{
+   // Strictly bounded telemetry: never forward provider body, URL, stack,
+   // source title, customer text or token to a public or log surface.
+   const message=error instanceof Error?error.message:"";
+   const safe=/^ASK_OFFICIAL_NUMERIC_(?:HTTP_\d{3}|NO_MATCHING_ROWS|NO_SHARED_DATE|SIZE|ORIGIN)$/u.test(message)
+     ? message : message.includes("timeout")||message.includes("Timeout")||message.includes("abort")
+       ? "ASK_OFFICIAL_NUMERIC_TIMEOUT" : "ASK_OFFICIAL_NUMERIC_TRANSPORT_UNAVAILABLE";
+   opts.onFailure?.(safe);
+   return null;
+ });
  if(!opts.noCache)inFlight.set(key,work);
  try{const answer=await work;if(answer&&!opts.noCache){
    cache.set(key,{value:answer,until:now.getTime()+120_000});

@@ -27,7 +27,10 @@ function normalize(text: string): string {
 function sentenceParts(text: string): string[] {
   const normalized = normalize(text);
   if (!normalized) return [];
-  return normalized.match(/[^.!?]+[.!?]?/g)?.map((part) => part.trim()).filter(Boolean) ?? [normalized];
+  // Split only after terminal punctuation followed by whitespace. Splitting
+  // at every literal dot corrupts exact decimals (4.2%, 83.333333 FX rate)
+  // and makes the "latest" direct answer materially wrong.
+  return normalized.split(/(?<=[.!?])\s+/u).map((part) => part.trim()).filter(Boolean);
 }
 
 function concise(text: string, maxSentences: number, maxChars: number): string {
@@ -70,6 +73,12 @@ export function directAnswerForQuestion(answer: AskAnswer, question = ""): strin
 
   if (answer.insufficient_evidence) {
     return concise(firstUseful(answer.what_changed, answer.summary), 2, 420);
+  }
+  // The authoritative value and reporting period are the direct answer to
+  // official numeric questions. A "latest" keyword must NOT turn the
+  // previous-period comparison into the entire chatbot answer.
+  if (answer.evidence.some(item => item.eventId === "live:official:numeric")) {
+    return concise(firstUseful(answer.summary), 2, 420);
   }
 
   if (/\b(why|impact|implication|matter|matters)\b/i.test(q)) {
