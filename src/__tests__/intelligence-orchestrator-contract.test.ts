@@ -10,9 +10,7 @@ function expectScheduledOrExplicitQuotaHold(workflow: string) {
     "Emergency quota hold. Preserve workflow_dispatch for controlled recovery.";
   if (workflow.includes(emergencyMarker)) {
     expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).toContain('cron: "37 * * * *"');
-    expect(workflow).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
-    expect(workflow).toContain("    if: ${{ false }}");
+    expect(workflow).not.toContain("schedule:");
     return;
   }
   expect(workflow).toContain('cron: "47 0,3,6,9,12,15,18,21 * * *"');
@@ -23,7 +21,7 @@ describe("permanent intelligence orchestration contract", () => {
     const workflow = read(".github/workflows/intelligence-orchestrator.yml");
     const orchestrator = read("scripts/intelligence-orchestrator.mjs");
     expectScheduledOrExplicitQuotaHold(workflow);
-    expect(workflow).toContain("group: geomacro-auto-ingest-news-recovery");
+    expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
     expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
     expect(workflow).not.toContain("oven-sh/setup-bun@0c5077e51419868618aaae5fe8019c62421857d6");
     expect(workflow).toContain("cancel-in-progress: false");
@@ -122,9 +120,11 @@ describe("permanent intelligence orchestration contract", () => {
   it("keeps Auto Ingest recurring only through verified D1 recovery, with old Supabase writer retired", () => {
     const workflow = read(".github/workflows/auto-ingest-news.yml");
     expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).not.toContain("schedule:");
+    expect(workflow).toContain('cron: "37 * * * *"');
+    expect(workflow).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    expect(workflow).toContain("    if: ${{ false }}");
     expect(workflow).toContain('      - ".github/workflows/auto-ingest-news.yml"');
-    expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
+    expect(workflow).toContain("group: geomacro-auto-ingest-news-recovery");
     expect(workflow).toContain("INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: news_ingest");
     expect(workflow).toContain("INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: news_ingest");
     expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
