@@ -9,6 +9,10 @@ describe("Ask Geomacro public API boundary", () => {
   it("uses the public-read central-security class without weakening writes or server functions", () => {
     expect(classifyCentralSecurityRoute("/api/public-ask", "GET")).toBe("public_api");
     expect(classifyCentralSecurityRoute("/api/public-ask", "POST")).toBe("api_write");
+    expect(classifyCentralSecurityRoute("/api/ask/v2/turn", "POST")).toBe("public_api");
+    expect(classifyCentralSecurityRoute("/api/ask/v2/turn", "PUT")).toBe("api_write");
+    expect(classifyCentralSecurityRoute("/api/ask/v2/other", "POST")).toBe("api_write");
+    expect(classifyCentralSecurityRoute("/api/v1/intelligence/query", "POST")).toBe("payment");
     expect(classifyCentralSecurityRoute("/_serverFn/sensitive", "POST")).toBe("server_function");
   });
 
