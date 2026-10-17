@@ -9,6 +9,8 @@ import {AGENT_QUERY_SCHEMA_VERSION} from "./agent-query-plan";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,
  capabilityPricingCatalog} from "./capability-pricing-catalog";
 import {GEOMACRO_PAID_PRICING_PATH} from "./geomacro-paid-pricing-manifest.server";
+import {GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION}
+ from "./capability-structured-output-contract";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
  from "./geomacro-structured-commercial-license";
 import {GEOMACRO_USDC_NETWORKS_PATH,GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH,
@@ -46,6 +48,7 @@ const endpoints={
  usdc_networks:GEOMACRO_USDC_NETWORKS_PATH,
  usdc_price_preflight:GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH,
  locked_usdc_pricing:GEOMACRO_PAID_PRICING_PATH,
+ priced_output_fields:"/api/intelligence/capabilities?view=outputs",
 };
 export function officialGeomacroAgentDiscovery(){
  return {
@@ -67,6 +70,8 @@ export function officialGeomacroAgentDiscovery(){
   usdc_rails:publicGeomacroUsdcRailDiscovery(),
   pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
   pricing:capabilityPricingCatalog(),
+  structured_output_contract_version:GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,
+  per_variant_output_fields_endpoint:endpoints.priced_output_fields,
   discovery_does_not_prove_delivery:true,
   current_paid_availability:"REQUIRES_PER_REQUEST_LIVE_NO_FUNDS_PREFLIGHT",
   all_routed_country_category_cells_commercially_verified:false,
@@ -117,6 +122,12 @@ export function officialGeomacroAgentOpenApi(){
    [endpoints.macro_fx]:{post:op("Query macro FX scoped intelligence","post")},
    [endpoints.critical_minerals]:{post:op("Query critical minerals scoped intelligence","post")},
    [endpoints.availability]:{post:op("Check no funds Geomacro query availability","post")},
+   ["/api/intelligence/capabilities"]:{get:{
+    summary:"Discover exact approved per-variant structured fields via view=outputs or terms via view=license; never a payable offer",
+    operationId:"discoverGeomacroPaidStructuredOutputFields",
+    parameters:[{in:"query",name:"view",schema:{type:"string",enum:["outputs","license"]}}],
+    responses:{"200":{description:"Fourteen approved per-variant structured deliverables with source-free boundaries"}},
+   }},
    [GEOMACRO_PAID_PRICING_PATH]:{get:{
     summary:"Approved exact per-call USDC prices for API and AI agent on Base Arc Polygon, never a payment offer",
     operationId:"getGeomacroFounderLockedPricing",

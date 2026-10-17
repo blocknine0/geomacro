@@ -3,6 +3,8 @@ import {
   capabilityPricingCatalog,
 } from "./capability-pricing-catalog";
 import {GEOMACRO_USDC_NETWORKS} from "./geomacro-multichain-usdc.server";
+import {GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,geomacroPricedStructuredOutput}
+  from "./capability-structured-output-contract";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY} from "./geomacro-structured-commercial-license";
 
 /**
@@ -25,6 +27,7 @@ export function publicGeomacroPaidPricingManifest(){
       currency:"USDC" as const,
       decimals:6 as const,
       output_contract:price.output_contract,
+      structured_delivery:geomacroPricedStructuredOutput(capability,price.variant),
       included_signed_object_charge:price.included_signed_object_charge,
       // Named supported rails are not proof that a Geomacro merchant can
       // receive a real x402 payment on any of these networks today.
@@ -48,6 +51,8 @@ export function publicGeomacroPaidPricingManifest(){
     pricing_model:"EXACT_CAPABILITY_VARIANT_PER_SUCCESSFUL_DELIVERY" as const,
     capability_count:capabilities.length,
     price_variant_count:capabilities.reduce((n,cap)=>n+cap.variants.length,0),
+    structured_output_contract_version:GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,
+    all_prices_map_to_structured_output_contracts:true as const,
     capabilities,
     networks:rails.map(rail=>({
       id:rail.id,

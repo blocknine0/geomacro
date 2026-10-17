@@ -151,6 +151,26 @@ The response is JSON and includes:
 
 These identifiers allow a machine to persist the exact Geomacro state it last consumed and later determine whether the state has changed.
 
+## Per-price structured delivery specifications
+
+Each founder-approved USDC capability and exact variant has a separate,
+versioned **machine-readable field-level** customer entitlement. The sole
+registry is `src/lib/capability-structured-output-contract.ts`, linked
+to the exact `geomacro.capability-usdc.v1` price catalogue.
+
+- `GET /api/v1/pricing`: each variant now includes `structured_delivery`
+  (fields, conditional fields, scope, proofs, rights boundary, price).
+- `GET /api/intelligence/capabilities?view=outputs`: the same 14
+  structured-output descriptions, including unscored structural digests,
+  signed-GRO attestation and risk-gate distinctions.
+- `GET /api/v1/agent`: links and OpenAPI discovery for those contracts.
+- Detailed comparison: `docs/PAID_CAPABILITY_STRUCTURED_DELIVERABLES.md`.
+
+No raw source data, no signed-GRO double-charge in risk-gate bundles,
+no implicit tier upgrade or x402 payment authorization. A catalogue item
+never proves real product availability, source permission or freshness.
+The canonical paid responses preserve existing schemas and hashes.
+
 ## Founder-locked capability-based x402 pricing (supersedes legacy pilot)
 
 Canonical source: `src/lib/capability-pricing-catalog.ts` (`geomacro.capability-usdc.v1`).

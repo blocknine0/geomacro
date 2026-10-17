@@ -7,6 +7,8 @@ import {
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,capabilityPricingCatalog}
   from "../lib/capability-pricing-catalog";
 import {GEOMACRO_PAID_PRICING_PATH} from "../lib/geomacro-paid-pricing-manifest.server";
+import {GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,geomacroStructuredOutputCatalog}
+  from "../lib/capability-structured-output-contract";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
   GEOMACRO_STRUCTURED_LICENSE_TERMS}
   from "../lib/geomacro-structured-commercial-license";
@@ -18,6 +20,18 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
         // Public legal terms are a back-end API view; this avoids changing
         // the website while the presentation lock is active.
         const view=new URL(request.url).searchParams.get("view");
+        if(view==="outputs"){
+          return Response.json({
+            schema:GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,
+            pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
+            currency:"USDC",per_successful_delivery:true,
+            capability_variants:geomacroStructuredOutputCatalog(),
+            no_raw_source_data:true,
+            this_discovery_is_not_a_payment_offer:true,
+            requires_separate_source_rights_and_live_product_proofs:true,
+          },{headers:{"Cache-Control":"public, max-age=300, must-revalidate",
+            "X-Content-Type-Options":"nosniff"}});
+        }
         if(view==="license"){
           return Response.json(GEOMACRO_STRUCTURED_LICENSE_TERMS,{
             headers:{"Cache-Control":"public, max-age=300, must-revalidate",
@@ -68,6 +82,13 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
               state_version: true,
               signed_risk_object_attestation: true,
             },
+            structured_output_entitlements:{
+              contract_version:GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,
+              discovery:"GET /api/intelligence/capabilities?view=outputs",
+              variant_count:geomacroStructuredOutputCatalog().length,
+              raw_upstream_included:false,
+              verified_live_paid_delivery_implied:false,
+            },
             commercial_license:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
             commercial_boundary: {
               raw_source_identity_exposed: false,
@@ -79,6 +100,7 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
               paid_intelligence: "POST /api/v1/intelligence/query",
               free_capability_discovery: "GET /api/intelligence/capabilities",
               paid_price_catalog: "GET "+GEOMACRO_PAID_PRICING_PATH,
+              priced_structured_deliverables: "GET /api/intelligence/capabilities?view=outputs",
               nonpayable_usdc_preflight: "POST /api/v1/payments/preflight",
               official_agent: "GET/POST /api/v1/agent",
               free_state_check:
