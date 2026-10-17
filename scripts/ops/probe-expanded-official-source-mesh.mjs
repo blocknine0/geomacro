@@ -119,6 +119,12 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     id:"fed_monetary_original_press_rss_review",
     domain:"macro",kind:"original_publisher_central_bank_monetary_release",
     url:"https://www.federalreserve.gov/feeds/press_all.xml",
+    // Monetary Policy is a separately published first-party Fed RSS feed.
+    // Real production observed press_all HTTP 404; retry the exact official
+    // monetary feed only on primary transport failure/404/5xx, never 401,
+    // 403 or 429, and never treat it as a second independent issuer.
+    alternate_url:"https://www.federalreserve.gov/feeds/press_monetary.xml",
+    network_fallback_same_publisher:true,
     media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
     event_intelligence:false,country_coverage_verified:false,
     original_hosts:Object.freeze(["www.federalreserve.gov","federalreserve.gov"]),
@@ -469,15 +475,19 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
  * This never increases HTTP request count (two page GETs maximum/source).
  * Never substitute Atom <updated> as publication or fetch a rejected URL.
  */
-export function selectRotatingFirstPartyPages(eligible,now,{rotate=false}={}) {
+export function selectRotatingFirstPartyPages(eligible,now,{rotate=false,rotationSlot=null}={}) {
   if(!Array.isArray(eligible)||eligible.length>80||
      !(now instanceof Date)||!Number.isFinite(now.getTime())||
-     eligible.some(x=>typeof x!=="string"||x.length<12||x.length>2048))
+     eligible.some(x=>typeof x!=="string"||x.length<12||x.length>2048)||
+     (rotationSlot!==null&&(!Number.isSafeInteger(rotationSlot)||rotationSlot<0)))
     throw Error("ORIGINAL_PUBLISHER_ROTATION_INPUT_INVALID");
   const unique=[...new Set(eligible)];
   if(!rotate||unique.length<=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)
     return unique.slice(0,ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN);
-  const slot=Math.floor(now.getTime()/(30*60*1000));
+  const slot=rotationSlot??Math.floor(now.getTime()/(30*60*1000));
+  // Publisher-rotating callers supply their per-source opportunity ordinal.
+  // A global slot aliases with a source sampled only in fixed modulo phases.
+  // Standalone callers retain their existing half-hour rotation.
   // Sequential disjoint pairs, including a wrap-around for odd list lengths.
   // Every accepted link is eventually probed, and no single stale first item
   // consumes a permanent 50% of the two-page budget.
@@ -640,8 +650,11 @@ function jsonShape(value) {
 
 export async function probeExpandedSource(source,{
   fetchImpl=fetch,now=new Date(), timeoutMs=5000,collectPrivateCandidates=false,
-  openDiscovery=false,
+  openDiscovery=false,originalPageRotationSlot=null,
 }={}) {
+  if(originalPageRotationSlot!==null&&
+     (!Number.isSafeInteger(originalPageRotationSlot)||originalPageRotationSlot<0))
+    throw Error("ORIGINAL_PUBLISHER_ROTATION_INPUT_INVALID");
   if(!EXPANDED_OFFICIAL_SOURCES.includes(source))throw Error("SOURCE_NOT_FIXED");
   const row={
     source_id:source.id,domain:source.domain,kind:source.kind,
@@ -852,7 +865,9 @@ export async function probeExpandedSource(source,{
     const eligible=source.media==="atom"
       ? undatedAtomArticleCandidates(body,source,{openDiscovery})
       : undatedRssArticleCandidates(body,source,{openDiscovery});
-    const articles=selectRotatingFirstPartyPages(eligible,now,{rotate:openDiscovery});
+    const articles=selectRotatingFirstPartyPages(eligible,now,{
+      rotate:openDiscovery,rotationSlot:originalPageRotationSlot,
+    });
     // This is a count of fixed-allowlist links, NOT verified fresh articles.
     row.original_page_eligible_link_pool_count=eligible.length;
     row.original_page_rotation_applied=openDiscovery && eligible.length>2;

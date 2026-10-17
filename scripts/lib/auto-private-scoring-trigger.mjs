@@ -20,6 +20,10 @@ export function evaluatePulsePrivateScoringTrigger(receipt,now=new Date()) {
   const checked=typeof receipt?.checked_at==="string"&&ISO.test(receipt.checked_at)
     ?Date.parse(receipt.checked_at):NaN;
   const count=receipt?.new_private_original_article_fingerprints;
+  // Authoritative current per-category D1 readback selector, including the
+  // single bounded unfinished SHA retry. Legacy receipts retain old behavior.
+  const selected=receipt?.selected_private_classifier_ref_count??count;
+  const retryCount=receipt?.selected_private_classifier_retry_count??0;
   if (!Number.isFinite(at) || !Number.isFinite(checked) ||
       checked>at+30_000 || at-checked>MAX_AGE_MS ||
       receipt?.schema!==SCHEMA ||
@@ -30,15 +34,19 @@ export function evaluatePulsePrivateScoringTrigger(receipt,now=new Date()) {
       receipt?.b2_requests!==0 || receipt?.supabase_requests!==0 ||
       receipt?.payment_performed!==false ||
       !Number.isSafeInteger(count) || count<0 || count>MAX_NEW_FINGERPRINTS ||
+      !Number.isSafeInteger(selected) || selected<0 || selected>3 ||
+      !Number.isSafeInteger(retryCount) || retryCount<0 || retryCount>selected ||
       !Number.isSafeInteger(receipt?.repeated_private_original_article_fingerprints) ||
       receipt.repeated_private_original_article_fingerprints<0 ||
       receipt.repeated_private_original_article_fingerprints>MAX_NEW_FINGERPRINTS) {
     throw new Error("PRIVATE_SCORING_PULSE_D1_PROOF_INVALID");
   }
   return Object.freeze({
-    private_scoring_needed:count>0,
+    private_scoring_needed:selected>0,
     new_original_fingerprints:count,
-    status:count>0?"NEW_PRIVATE_ORIGINALS_RECHECK_WITH_CANONICAL_SCORER":
+    selected_classifier_refs:selected,
+    selected_retries:retryCount,
+    status:selected>0?"D1_PRIVATE_ORIGINALS_CLAIM_AND_RECHECK":
       "NO_NEW_PRIVATE_ORIGINALS_NO_MODEL_OR_B2_REQUESTS",
     independently_verified_current_intelligence:false,
     public_published:false,commercial_eligible:false,

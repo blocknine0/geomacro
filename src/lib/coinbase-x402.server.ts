@@ -4,6 +4,7 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 import { SignJWT, importJWK, importPKCS8 } from "jose";
 import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";
 import { recordCommercialPaymentEvent, recordCommercialUsageEvent } from "./commercial-ops.server";
+import { durableCommerceControlPlaneEnabled } from "./commerce-control-plane.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 import {
   claimAgentCommerceDelivery,
@@ -613,6 +614,13 @@ export async function persistCoinbaseSettlementTelemetry(input: {
   bazaarStatus: string | null;
   bazaarRejectedReason: string | null;
 }) {
+  // With the durable control plane enabled, the canonical ledger has already
+  // persisted the claim, hashed prepared response, settlement reference and
+  // exactly-once delivery. The required durable product audit is separately
+  // written by upsertCoinbaseX402ProductAudit. This old non-authoritative
+  // Supabase projection must not reawaken a frozen database or delay customer
+  // delivery. Legacy nonproduction deployments retain their original sink.
+  if (durableCommerceControlPlaneEnabled()) return;
   try {
     const db = requireRiskSupabase();
     const settledAt = new Date().toISOString();

@@ -44,7 +44,7 @@ describe("private originals survive presentation headline dedup",()=>{
     const visited:string[]=[];
     const fetchImpl=vi.fn(async(url:RequestInfo|URL,options?:RequestInit)=>{
       visited.push(String(url));
-      expect(options?.redirect).toBe("error");
+      expect(options?.redirect).toBe("manual");
       expect(options?.method).toBe("GET");
       return new Response(
         '<html><head><meta property="article:published_time" content="2026-10-11T07:00:00Z"></head></html>',
@@ -96,7 +96,7 @@ describe("private originals survive presentation headline dedup",()=>{
   it("never serializes private originals in public query or zero-funds proof",()=>{
     const endpoint=readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts","utf8");
     const ops=readFileSync("scripts/ops/verify-live-on-demand-real-apis.ts","utf8");
-    expect(endpoint).toContain("verifyOnDemandOriginalArticlePages(\n              privateResult.private_original_review_candidates)");
+    expect(endpoint).toContain("verifyOnDemandOriginalArticlePages(\n              privateResult.private_original_review_candidates,\n              {maxAgeSeconds:requestedNewsAgeSeconds})");
     expect(endpoint).toContain("articleDatesVerified===privateOriginalReviewCandidateCount");
     expect(ops).toContain("privateEvidence.private_original_review_candidates");
     expect(ops).toContain("pageProof.verified===privateEvidence.private_original_review_candidates.length");

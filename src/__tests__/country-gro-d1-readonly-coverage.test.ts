@@ -166,7 +166,8 @@ describe("#1827 zero-Supabase/B2 D1 GRO current signed hot observer",()=>{
     expect(workflow).toContain('- "scripts/ops/audit-country-gro-d1-hot-readonly.ts"');
     expect(workflow).toContain("github.event_name == 'push'");
     expect(workflow).toContain("github.event.inputs.mode == 'audit'");
-    expect(workflow).toContain("github.event.inputs.mode == 'publisher_recovery'");
+    expect(workflow).toContain("  publish:\n    # Legacy Supabase recovery retired:");
+    expect(workflow.slice(workflow.indexOf("  publish:"))).toContain("    if: ${{ false }}");
     expect(workflow).toContain("default: audit");
     expect(workflow).toContain("github.event_name == 'schedule'");
     expect(workflow).toContain("github.event_name == 'workflow_dispatch'");

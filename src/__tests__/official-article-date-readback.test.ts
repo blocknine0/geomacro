@@ -24,6 +24,21 @@ const page = (date: string) => [
   '</head><body>private original publisher page</body></html>',
 ].join("");
 
+describe("explicit question-time history retains strict default original publication rules",()=>{
+  it("verifies a dated historical original only with the caller's 31-day bound",()=>{
+    const current=new Date("2026-10-14T12:00:00Z");
+    const first='<meta name="govuk:first-published-at" content="2026-09-27T12:00:00+00:00">';
+    expect(verifiedPublisherPageDate(first,current)).toBeNull();
+    expect(verifiedPublisherPageDate(first,current,null,{maxAgeMs:31*86_400_000}))
+      .toBe("2026-09-27T12:00:00.000Z");
+    expect(verifiedPublisherPageDate(first,current,null,{maxAgeMs:7*86_400_000}))
+      .toBeNull();
+    const modified='<meta name="govuk:public-updated-at" content="2026-10-13T10:00:00Z">';
+    expect(verifiedPublisherPageDate(modified,current,null,{maxAgeMs:31*86_400_000}))
+      .toBeNull();
+  });
+});
+
 describe("bounded original-publisher article precise-date fallback", () => {
   it("requires explicit precise publication time, not merely date or update time", () => {
     expect(verifiedPublisherPageDate(page("2026-10-09T12:45:00Z"), now))
@@ -204,7 +219,7 @@ describe("bounded original-publisher article precise-date fallback", () => {
     expect(denied).toEqual({code:"URL_UNAPPROVED"});
   });
 
-  it("restricts new UK FCDO, Fed and USGS HTML date fallbacks to fixed first-party article paths",async()=>{
+  it("restricts UK, Fed and USGS HTML date fallbacks to fixed first-party article paths",async()=>{
     const valid=[
       ["geopolitics","https://www.gov.uk/government/news/uk-foreign-policy-security-statement"],
       ["macro","https://www.federalreserve.gov/newsevents/pressreleases/monetary20261009a.htm"],
@@ -235,11 +250,16 @@ describe("bounded original-publisher article precise-date fallback", () => {
       }
     }
     expect(fetchImpl).toHaveBeenCalledTimes(3);
-    for(const [domain,url] of valid){
+    // GOV.UK original article paths are shared by the existing Treasury,
+    // FCDO and DBT lanes; a category does not certify department or relevance.
+    expect(await fetchVerifiedPublisherPageDate(valid[0][1],"macro",{
+      now,fetchImpl,
+    })).toBe("2026-10-09T12:45:00.000Z");
+    for(const [domain,url] of valid.slice(1)){
       expect(await fetchVerifiedPublisherPageDate(url,"macro"===domain
         ?"rare_earth":"macro",{now,fetchImpl})).toBeNull();
     }
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
   });
 
   it("uses a maximum two original publisher pages; outputs only private derived evidence", async () => {

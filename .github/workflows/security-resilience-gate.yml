@@ -84,38 +84,12 @@ jobs:
           audit_code=${PIPESTATUS[0]}
           set -e
 
-          if [[ "$audit_code" -eq 0 ]]; then
-            echo "PASS: canonical dependency graph has no known advisories."
-            exit 0
-          fi
-
-          today="$(date -u +%F)"
-          expiry="2026-10-12"
-          if [[ "$today" > "$expiry" ]]; then
-            echo "::error title=Dependency exception expired::The elliptic upstream exception expired on ${expiry}. Re-review or remove it before release."
+          if [[ "$audit_code" -ne 0 ]]; then
+            echo "::error title=Dependency advisory gate::Any known dependency advisory or audit failure is a release blocker. No temporary exceptions."
             exit 1
           fi
 
-          if ! grep -Fq 'elliptic@6.6.1' dependency-audit.txt || \
-             ! grep -Fq 'GHSA-848j-6mx2-7j84' dependency-audit.txt || \
-             ! grep -Fq '1 vulnerability (1 low)' dependency-audit.txt; then
-            echo "::error title=Unexpected dependency advisory::Only the documented elliptic@6.6.1 low advisory may remain temporarily."
-            exit 1
-          fi
-
-          if grep -Eqi '(^|[[:space:]])(critical|high|moderate):|^[[:alnum:]@._/-]+@[0-9].*$' dependency-audit.txt; then
-            package_headers="$(grep -Ec '^[[:alnum:]@._/-]+@[0-9]' dependency-audit.txt || true)"
-            if [[ "$package_headers" -ne 1 ]]; then
-              echo "::error title=Additional dependency advisory::Expected exactly one vulnerable package entry, found ${package_headers}."
-              exit 1
-            fi
-            if grep -Eqi '(^|[[:space:]])(critical|high|moderate):' dependency-audit.txt; then
-              echo "::error title=Dependency severity gate::Critical, high, or moderate advisories are not permitted."
-              exit 1
-            fi
-          fi
-
-          echo "PASS with bounded exception: GHSA-848j-6mx2-7j84 is the only residual advisory; exception expires ${expiry}."
+          echo "PASS: canonical locked dependency graph contains no known advisories."
 
       - name: Risk Gate abuse and fail-closed tests
         run: >-

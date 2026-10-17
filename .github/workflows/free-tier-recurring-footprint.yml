@@ -11,6 +11,8 @@ on:
       - "src/__tests__/phase-a-runtime-freshness-repair-static.test.ts"
       - "src/__tests__/full-source-production-alignment-static.test.ts"
       - "src/__tests__/supabase-free-tier-b2-first.test.ts"
+      - "scripts/ops/read-account-free-tier-footprint.mjs"
+      - "src/__tests__/free-tier-recurring-footprint-supabase-free.test.ts"
   push:
     branches: [main]
     paths:
@@ -22,6 +24,8 @@ on:
       - "src/__tests__/phase-a-runtime-freshness-repair-static.test.ts"
       - "src/__tests__/full-source-production-alignment-static.test.ts"
       - "src/__tests__/supabase-free-tier-b2-first.test.ts"
+      - "scripts/ops/read-account-free-tier-footprint.mjs"
+      - "src/__tests__/free-tier-recurring-footprint-supabase-free.test.ts"
   workflow_dispatch: {}
 
 permissions:
@@ -52,103 +56,133 @@ jobs:
           src/__tests__/phase-a-runtime-freshness-repair-static.test.ts
           src/__tests__/full-source-production-alignment-static.test.ts
           src/__tests__/supabase-free-tier-b2-first.test.ts
+          src/__tests__/free-tier-recurring-footprint-supabase-free.test.ts
 
   production-budget:
     if: ${{ github.ref == 'refs/heads/main' && github.repository == 'blocknine0/geomacro' }}
     needs: static-contract
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 12
     environment: production
     env:
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       BASE_URL: https://geomacro.live
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: recurring_footprint_readonly
     steps:
-      - name: Checkout exact main
+      - name: Checkout exact accepted main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Setup Node.js 22
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "22"
-      - name: Setup Bun 1.4.2
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.4.2"
-      - name: Install locked dependencies
-        run: bun install --frozen-lockfile --ignore-scripts
-      - name: Read authoritative free-tier budget through direct PostgreSQL
+      - name: Resolve the existing canonical B2 account-wide D1 ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" && test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          list="$(npx -y wrangler@4.136.3 d1 list --json)"
+          db_id="$(printf '%s' "$list" | node -e '
+            let data="";
+            process.stdin.on("data",d=>data+=d);
+            process.stdin.on("end",()=>{
+              const rows=JSON.parse(data);
+              const found=rows.filter(x=>x.name===process.env.D1_DATABASE_NAME);
+              if(found.length!==1)process.exit(2);
+              process.stdout.write(found[0].uuid??found[0].id??"");
+            });
+          ')"
+          test -n "$db_id" || { echo "::error::Account D1 ledger unavailable"; exit 2; }
+          echo "D1_DATABASE_ID=$db_id" >> "$GITHUB_ENV"
+      - name: Read canonical D1 B2 budget without Supabase or B2 network
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL is required"; exit 2; }
-          node scripts/ops/supabase-free-tier-budget.mjs | tee artifacts/free-tier-budget.json
-      - name: Require fail-closed recurring-ingest semantics
+          node scripts/ops/read-account-free-tier-footprint.mjs > artifacts/free-tier-account-budget.json
+          node -e '
+            const b=require("./artifacts/free-tier-account-budget.json");
+            if(b.ok!==true||b.status_read_only!==true||
+               b.per_b2_operation_atomic_reservation_still_required!==true||
+               b.supabase_required!==false||b.ungoverned_b2_admission!==false||
+               b.d1_writes!==0||b.b2_network_calls!==0)process.exit(2);
+          '
+      - name: Capture actual public deep health separately
         shell: bash
         run: |
-          set -euo pipefail
-          node <<'NODE'
-          const fs=require('fs');
-          const b=JSON.parse(fs.readFileSync('artifacts/free-tier-budget.json','utf8'));
-          if (b.ok!==true) throw new Error('FREE_TIER_BUDGET_NOT_OK');
-          if (!['normal','warning','frozen'].includes(b.mode)) throw new Error('FREE_TIER_MODE_INVALID');
-          if (b.mode==='normal' && b.policy?.recurring_ingest_allowed!==true) {
-            throw new Error('NORMAL_MODE_RECURRING_INGEST_UNEXPECTEDLY_BLOCKED');
-          }
-          if (b.mode!=='normal' && b.policy?.recurring_ingest_allowed!==false) {
-            throw new Error('WARNING_OR_FROZEN_MODE_MUST_BLOCK_RECURRING_INGEST');
-          }
-          if (Number(b.database_bytes)>=Number(b.freeze_bytes) && b.policy?.bulk_supabase_writes_allowed!==false) {
-            throw new Error('FREEZE_THRESHOLD_MUST_BLOCK_BULK_WRITES');
-          }
-          NODE
-      - name: Require customer serving to remain outside Supabase
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --silent --show-error --location --retry 3 --retry-all-errors             "$BASE_URL/api/health?deep=1" > artifacts/free-tier-public-health.json
-          node <<'NODE'
-          const fs=require('fs');
-          const h=JSON.parse(fs.readFileSync('artifacts/free-tier-public-health.json','utf8'));
-          const p=h.public_production||{};
-          if (h.ok!==true) throw new Error('PUBLIC_HEALTH_NOT_OK');
-          if (p.serving_authority!=='backblaze-b2-durable-truth-cloudflare-d1-verified-hot') throw new Error('PUBLIC_SERVING_NOT_B2_D1_VERIFIED_HOT');
-          if (p.supabase_required_for_serving!==false) throw new Error('PUBLIC_SERVING_REQUIRES_SUPABASE');
-          const hot=Object.values(p.hot_snapshot_serving||{});
-          if (hot.length!==3 || hot.some(proof=>proof?.ok!==true || proof?.serving_store!=='cloudflare-d1')) throw new Error('PUBLIC_B2_D1_HOT_PROOF_MISSING');
-          NODE
-      - name: Write bounded-footprint proof
+          mkdir -p artifacts
+          status="$(curl --silent --show-error --location --max-time 20 --retry 0 --output artifacts/free-tier-public-health.json --write-out '%{http_code}' "$BASE_URL/api/health?deep=1")" || status=000
+          printf '%s\n' "$status" > artifacts/free-tier-public-health-status.txt
+          echo "Public health HTTP $status (200 requires independent signed hot snapshots)"
+      - name: Write truthful read-only budget and serving proof
+        if: always()
         shell: bash
         env:
           ACCEPTED_SHA: ${{ github.sha }}
         run: |
           node <<'NODE'
           const fs=require('fs');
-          const b=JSON.parse(fs.readFileSync('artifacts/free-tier-budget.json','utf8'));
-          const h=JSON.parse(fs.readFileSync('artifacts/free-tier-public-health.json','utf8'));
+          const read=(p)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch{return null}};
+          const b=read('artifacts/free-tier-account-budget.json');
+          const h=read('artifacts/free-tier-public-health.json');
+          const status=fs.existsSync('artifacts/free-tier-public-health-status.txt')
+            ?fs.readFileSync('artifacts/free-tier-public-health-status.txt','utf8').trim():'000';
+          const p=h?.public_production||{};
+          const hot=Object.values(p.hot_snapshot_serving||{});
+          const servingReady=status==='200' && h?.ok===true &&
+            p.serving_authority==='backblaze-b2-durable-truth-cloudflare-d1-verified-hot' &&
+            p.supabase_required_for_serving===false && hot.length===3 &&
+            hot.every(v=>v?.ok===true && v?.serving_store==='cloudflare-d1');
           const proof={
-            schema:'geomacro.free-tier-recurring-footprint-proof.v1',
+            schema:'geomacro.free-tier-recurring-footprint-proof.v2',
             checked_at:new Date().toISOString(),
             accepted_main_sha:process.env.ACCEPTED_SHA,
-            database_bytes:Number(b.database_bytes),
-            mode:b.mode,
-            recurring_ingest_allowed:b.policy?.recurring_ingest_allowed===true,
-            bulk_supabase_writes_allowed:b.policy?.bulk_supabase_writes_allowed===true,
-            public_serving_authority:h?.public_production?.serving_authority??null,
-            supabase_required_for_serving:h?.public_production?.supabase_required_for_serving??null,
+            canonical_d1_b2_budget_verified:b?.ok===true,
+            b2_usage:b?.b2_used??null,
+            b2_remaining:b?.b2_remaining??null,
+            b2_limits:b?.b2_limits??null,
+            b2_atomic_reservation_still_required:b?.per_b2_operation_atomic_reservation_still_required??null,
+            d1_daily_operations_used:null,workers_daily_requests_used:null,
+            durable_object_usage:null,other_platform_usage_unknown:true,
+            legacy_supabase_recurring_ingest_allowed:false,
+            supabase_required_for_budget:false,
+            public_deep_health_http_status:status,
+            public_serving_authority:p.serving_authority??null,
+            public_signed_hot_snapshots_ready:servingReady,
             recovery_writers_scheduled:false,
-            real_money_action_performed:false
+            real_money_action_performed:false,
           };
-          fs.writeFileSync('artifacts/free-tier-recurring-footprint-proof.json',JSON.stringify(proof,null,2)+'\n');
-          console.log(JSON.stringify(proof));
+          fs.mkdirSync('artifacts',{recursive:true});
+          fs.writeFileSync('artifacts/free-tier-recurring-footprint-proof.json',
+            JSON.stringify(proof,null,2)+'\n');
+          console.log(JSON.stringify({
+            schema:proof.schema,
+            canonical_d1_b2_budget_verified:proof.canonical_d1_b2_budget_verified,
+            public_deep_health_http_status:status,
+            public_signed_hot_snapshots_ready:servingReady,
+            real_money_action_performed:false,
+          }));
           NODE
-      - name: Upload bounded-footprint proof
+      - name: Require actual verified B2 D1 customer hot serving
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('artifacts/free-tier-recurring-footprint-proof.json','utf8'));
+          if(p.canonical_d1_b2_budget_verified!==true)
+            throw Error('ACCOUNT_B2_D1_BUDGET_NOT_VERIFIED');
+          if(p.public_signed_hot_snapshots_ready!==true)
+            throw Error('PUBLIC_DEEP_HEALTH_NOT_READY');
+          NODE
+      - name: Upload fail-closed read-only footprint receipt
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: free-tier-recurring-footprint-${{ github.run_id }}
           path: artifacts/free-tier-*.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30

@@ -11,7 +11,9 @@ concurrency:
 
 jobs:
   country-census:
-    if: github.event_name != 'workflow_run'
+    # Supabase-only legacy execution retired. Replaced by reviewed official
+    # source read-only or B2/D1-native signed publication; no DB credential restore.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
@@ -57,8 +59,9 @@ jobs:
           retention-days: 30
 
   hot-topic-readiness:
-    if: >-
-      ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    # Supabase-only legacy execution retired. Replaced by reviewed official
+    # source read-only or B2/D1-native signed publication; no DB credential restore.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: production

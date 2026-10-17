@@ -1,0 +1,51 @@
+name: WDI B2 Rights One-Shot Production Attestation
+
+# Owner-initiated, production-environment-only credential access.
+# Never triggered by PR, push, schedule, or workflow_run.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-wdi-rights-one-shot
+  cancel-in-progress: false
+
+jobs:
+  attest:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    env:
+      # Existing canonical repo production secrets; NEVER PR-secret checkout.
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      GEOMACRO_OPERATOR_SINGLE_B2_RIGHTS_READ: CONFIRMED_ONE
+    steps:
+      - name: Checkout approved canonical main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        with:
+          node-version: "22"
+
+      - name: Verify synthetic fail-closed contracts before credentialed read
+        run: node --test scripts/ops/verify-wdi-b2-rights-once.test.mjs
+
+      - name: Attest one exact genuine WDI rights receipt, no funds
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 1 D1 status GET, 1 atomic GET reservation, at most 1 S3 GET.
+          # No retries, B2 HEAD/native fallback, writes or settlements.
+          node scripts/ops/verify-wdi-b2-rights-once.mjs

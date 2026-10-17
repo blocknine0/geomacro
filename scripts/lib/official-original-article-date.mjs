@@ -52,9 +52,9 @@ function parsePublisherOriginalClock(value) {
     .replace(/(\.\d{3})\d{1,6}(?=Z|[+-]\d\d:\d\d$)/iu,"$1");
   return Date.parse(canonical);
 }
-function precise(value, nowMs) {
+function precise(value, nowMs, maxAgeMs = ONE_DAY_MS) {
   const ms = parsePublisherOriginalClock(value);
-  if (!Number.isFinite(ms) || ms > nowMs || nowMs - ms > ONE_DAY_MS) return null;
+  if (!Number.isFinite(ms) || ms > nowMs || nowMs - ms > maxAgeMs) return null;
   return ms;
 }
 
@@ -91,7 +91,14 @@ function closingScriptTag(source, from) {
   return null;
 }
 
-export function verifiedPublisherPageDate(html, now = new Date(), diagnostics = null) {
+export function verifiedPublisherPageDate(
+  html, now = new Date(), diagnostics = null, options = {},
+) {
+  // Existing 24h readers retain the exact previous default. Only explicit,
+  // bounded on-demand historical queries may extend their original-date age.
+  const requestedAge = options?.maxAgeMs;
+  const maxAgeMs = Number.isInteger(requestedAge) && requestedAge>0 &&
+    requestedAge<=31*ONE_DAY_MS ? requestedAge : ONE_DAY_MS;
   const reason = (code) => {
     if (diagnostics && typeof diagnostics === "object" &&
         !Array.isArray(diagnostics) &&
@@ -168,7 +175,7 @@ export function verifiedPublisherPageDate(html, now = new Date(), diagnostics = 
   if (times.some(time=>time>ms)) {
     reason("FUTURE_PUBLISHER_PUBLICATION");return null;
   }
-  if (times.some(time=>ms-time>ONE_DAY_MS)) {
+  if (times.some(time=>ms-time>maxAgeMs)) {
     reason("STALE_PUBLISHER_PUBLICATION");return null;
   }
   if (Math.max(...times) - Math.min(...times) > 60_000) {
@@ -176,7 +183,7 @@ export function verifiedPublisherPageDate(html, now = new Date(), diagnostics = 
   }
   // Keep the original strict same-day precise verifier authoritative.
   if (times.some(time=>time===null) ||
-      candidates.some(value=>precise(value,ms)===null)) {
+      candidates.some(value=>precise(value,ms,maxAgeMs)===null)) {
     reason("INVALID_PUBLICATION_DATE_SHAPE");return null;
   }
   reason("PRECISE_PUBLICATION_ACCEPTED");
@@ -223,8 +230,8 @@ function fixedPublisherArticle(rawUrl, category) {
       return origin + "/en/natural-resources-canada/news/" +
         match[1] + "/" + match[2] + "/" + match[3] + ".html";
     }
-    if (["geopolitics", "rare_earth"].includes(category) && candidate.hostname === "www.gov.uk") {
-      // A precise original GOV.UK FCDO/DBT article path only, never arbitrary
+    if (["geopolitics", "macro", "rare_earth"].includes(category) && candidate.hostname === "www.gov.uk") {
+      // A precise original GOV.UK FCDO/Treasury/DBT article path only, never arbitrary
       // redirect/asset/API URLs or a caller-supplied domain.
       const match = /^\/government\/(news|speeches|world-location-news|statements|publications)\/([a-z0-9][a-z0-9-]{4,190})$/u.exec(path);
       if (!match) return null;

@@ -1,0 +1,9 @@
+{
+  "schema": "geomacro.private-review-preparation-source.v1",
+  "source_run_id": "38801721081",
+  "source_main_sha": "441b58cdbb2e254ee6f3d9dae928f3ca3226d074",
+  "stage_key": "geomacro-evidence/v1/private/restricted-current-scoring/35224e14b32034fbcdcfb34b196038cc58ca8b41e9000a841a2c8da2f92a836a.json.gz",
+  "stage_sha256": "35224e14b32034fbcdcfb34b196038cc58ca8b41e9000a841a2c8da2f92a836a",
+  "companion_key": "geomacro-evidence/v1/private/gri-original-source-companions/841b2274d762d7c93c3bb10e750ec65261876256adaff4b431b4dd2e3f5dcd2e.json.gz",
+  "companion_sha256": "841b2274d762d7c93c3bb10e750ec65261876256adaff4b431b4dd2e3f5dcd2e"
+}

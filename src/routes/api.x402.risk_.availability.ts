@@ -4,6 +4,7 @@ import { buildAgentQueryPlan } from "../lib/agent-query-plan";
 import { checkAgentQueryDeliverability } from "../lib/agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "../lib/agent-query-external-modules.server";
 import { getCoinbaseX402Config } from "../lib/coinbase-x402.server";
+import {resolveEligibleCoinbaseCapabilityConfig} from "../lib/verified-capability-coinbase-binding.server";
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -79,19 +80,29 @@ export const Route = createFileRoute("/api/x402/risk/availability")({
           const availability = await checkAgentQueryDeliverability(plan, {
             externalModuleChecker: checkAgentQueryExternalModule,
           });
+          let pricedConfig = null;
+          if (availability.deliverable) {
+            try {
+              pricedConfig = resolveEligibleCoinbaseCapabilityConfig(plan, availability, config);
+            } catch {
+              return json({ok:false,chargeable:false,payment_required_now:false,
+                execution_authorized:false,
+                error:{code:"CAPABILITY_PRICE_ELIGIBILITY_UNVERIFIED_NO_CHARGE"}},422);
+            }
+          }
           return json({
             ok: availability.deliverable,
             chargeable: availability.deliverable,
             payment_required_now: false,
             product: "geomacro_adaptive_risk_intelligence_v1",
             query_plan_hash: plan.query_plan_hash,
-            exact_price: {
-              amount_usdc: config.priceUsdc,
-              amount_atomic: config.amountAtomic,
+            exact_price: pricedConfig ? {
+              amount_usdc: pricedConfig.priceUsdc,
+              amount_atomic: pricedConfig.amountAtomic,
               asset: "USDC",
-              asset_contract: config.asset,
-              network: config.network,
-            },
+              asset_contract: pricedConfig.asset,
+              network: pricedConfig.network,
+            } : null,
             availability,
             execution_authorized: false,
             note: availability.deliverable

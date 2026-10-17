@@ -1,5 +1,8 @@
+import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 import { readDerivedStories, publishDerivedStories, renderDerivedStoriesHtml } from "./website-derived-intelligence.mjs";
+import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
+import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
 import { makeRiskIndicesHistoricalMetadata } from "./risk-indices-historical-status.mjs";
 import { projectPublic30mPulse } from "./source-pulse-public.mjs";
@@ -613,7 +616,7 @@ function validDerivedIntelligencePayload(value,now,maximumOriginalAgeMs) {
 const INDEPENDENT_ORIGINALS_SOURCE_ID="qualified_independent_original_publishers_v1";
 const INDEPENDENT_ORIGINALS_EVIDENCE_CONTRACT="geomacro.qualified-original-event-claims.v1";
 
-function validateHotSnapshot(body, product, now = Date.now()) {
+export function validateHotSnapshot(body, product, now = Date.now()) {
   const config = HOT_SNAPSHOT_PRODUCTS[product];
   if (!config || !body || typeof body !== "object" || Array.isArray(body)) throw new Error("INVALID_HOT_SNAPSHOT");
   const value = body.value;
@@ -1035,7 +1038,9 @@ async function health(env) {
       .bind("control-plane")
       .first();
     if (!row || Number(row.version) < 1) return json({ ok: false, error: "D1_SCHEMA_NOT_READY" }, 503);
-    return json({ ok: true, store: "d1", schema_version: Number(row.version), durable_payload_store: "b2", commerce_ledger: "durable_object" });
+    return json({ ok: true, store: "d1", schema_version: Number(row.version), durable_payload_store: "b2", commerce_ledger: "durable_object",
+      deployed_source_sha: /^[a-f0-9]{40}$/.test(String(env.GEOMACRO_SOURCE_SHA ?? ""))
+        ? env.GEOMACRO_SOURCE_SHA : null });
   } catch {
     return json({ ok: false, error: "D1_UNAVAILABLE" }, 503);
   }
@@ -1243,6 +1248,17 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
+    if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime"&&!url.search)return getSourceRuntimeStatus(env);
+    if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime-context"){
+      if([...url.searchParams.keys()].some(k=>k!=="category")||url.searchParams.getAll("category").length!==1)
+        return json({ok:false,error:"SOURCE_RUNTIME_QUERY_INVALID"},400);
+      return getSourceRuntimeContext(env,url.searchParams.get("category"));
+    }
+    if(request.method==="GET"&&url.pathname==="/v1/public/automated-finds"){
+      if([...url.searchParams.keys()].some(k=>k!=="category")||url.searchParams.getAll("category").length>1)
+        return json({ok:false,error:"AUTOMATED_FINDS_QUERY_INVALID"},400);
+      return getAutomatedFinds(env,url.searchParams.get("category"));
+    }
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
       return renderDerivedStoriesHtml(env);
     }
@@ -1273,6 +1289,12 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      if(request.method==='POST'&&url.pathname==='/v1/security/budget'&&!url.search){
+        const receipt=await consumeCentralSecurityBudget(env.DB,await readJson(request,256));
+        return json(receipt,receipt.allowed?200:429);
+      }
+      if(request.method==="PUT"&&url.pathname==="/v1/automated-finds"&&!url.search)
+        return putAutomatedFinds(env,await readJson(request,300_000));
       if (
         request.method === "GET" &&
         parts[0] === "v1" &&

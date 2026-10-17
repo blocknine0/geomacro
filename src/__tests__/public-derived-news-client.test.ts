@@ -56,4 +56,22 @@ describe("browser public journal fallback",()=>{
     expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-10T12:14:59Z"))).toEqual([]);
     expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-10T12:15:00Z"))).toEqual([day]);
   });
+  it("uses workerd-supported manual mode and rejects every redirect without retry",async()=>{
+    for(const status of [301,302,303,307,308]){
+      const f=vi.fn(async(_input:RequestInfo|URL,init?:RequestInit)=>{
+        expect(init?.redirect).toBe("manual");
+        return new Response(null,{status,headers:{Location:"https://untrusted.invalid/"}});
+      });
+      await expect(fetchDirectDerivedNews(f,NOW)).rejects.toThrow("UPSTREAM_REDIRECT_REJECTED");
+      expect(f).toHaveBeenCalledTimes(1);
+    }
+  });
+  it("rejects source metadata and unknown fields even without a source URL",()=>{
+    for(const extra of [{source_name:"private supplier"},{provider_id:"private"},
+      {source_record_id:"private"},{unexpected:"hidden metadata"},{geography:{supplier:"private"}},
+      {published_at:"2026-02-30T18:30:00.000Z"}])
+      expect(checkedDerivedNews(doc([{...signal,...extra}]),NOW)).toEqual([]);
+    expect(checkedDerivedNews(doc([signal]),NOW)).toEqual([signal]);
+  });
+
 });

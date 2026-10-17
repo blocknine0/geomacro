@@ -3,9 +3,10 @@ import {createHash} from "node:crypto";
 import {deflateRawSync} from "node:zlib";
 import {
   GDELT_GKG_BULK_SCHEMA,GDELT_GKG_LATEST_URL,
-  parseGdeltGkgLastupdate,unpackSingleGkgZip,
+  parseGdeltGkgLastupdate,unpackSingleGkgZip,readGdeltStaticArchive,
   summarizeGdeltGkgBulk,probeGdeltGkgBulk,
 } from "../../scripts/lib/gdelt-gkg-bulk-discovery.mjs";
+import {parseGdeltFipsCountries,summarizeGdeltEventDiscovery,readGdeltEventDiscovery} from "../lib/gdelt-event-discovery.server";
 
 const now=new Date("2026-10-12T12:00:00.000Z");
 const stamp="20261012114500",date="2026-10-12T11:45:00.000Z";
@@ -48,6 +49,45 @@ const md5=createHash("md5").update(archive).digest("hex");
 const manifest=(digest=md5,bytes=archive.length)=>
   String(bytes)+" "+digest+" http://data.gdeltproject.org/gdeltv2/"+stamp+".gkg.csv.zip\n"+
   "42 "+"e".repeat(32)+" http://data.gdeltproject.org/gdeltv2/"+stamp+".export.CSV.zip\n";
+
+describe("Supabase-free GDELT Event export restores the former source stage",()=>{
+  const fipsRows=new Map<string,string>();
+  for(let i=0;i<205;i++)fipsRows.set(String.fromCharCode(65+Math.floor(i/26))+String.fromCharCode(65+i%26),"Unknown country "+i);
+  fipsRows.set("CH","China");fipsRows.set("US","United States");fipsRows.set("SW","Switzerland");
+  const fips=[...fipsRows].map(x=>x.join("\t")).join("\n");
+  const event=(id:string,code:string,root="19")=>{const f=Array(61).fill("");f[0]=id;f[1]="20261012";f[28]=root;f[53]=code;f[60]="https://private-original.invalid/never-persist";return f.join("\t");};
+  const text=[event("1","CH"),event("2","SW"),event("3","US"),event("3","US"),event("4","XX"),event("5","US","01")].join("\n");
+  it("uses official FIPS names plus canonical countries, never confusing FIPS CH with ISO CH",()=>{
+    const lookup=parseGdeltFipsCountries(fips);
+    const r=summarizeGdeltEventDiscovery(text,lookup,date,now);
+    expect(r.country_counts).toEqual([{country_iso3:"CHE",indexed_records:1},{country_iso3:"CHN",indexed_records:1},{country_iso3:"USA",indexed_records:1}]);
+    expect(r.unmapped_conflict_rows).toBe(1);expect(r.conflict_root_rows).toBe(4);
+    expect(r.original_news_freshness_verified).toBe(false);expect(JSON.stringify(r)).not.toContain("private-original");
+  });
+  it("reuses the bounded ZIP verifier for the exact Event filename and rejects cross-kind members",()=>{
+    const bytes=zip(text,stamp+".export.CSV");
+    expect(unpackSingleGkgZip(bytes,stamp,"events")).toBe(text);
+    expect(()=>unpackSingleGkgZip(bytes,stamp)).toThrow();
+    expect(()=>unpackSingleGkgZip(bytes,stamp,"unknown")).toThrow();
+  });
+  it("fetches current integrity-matched exports and aggregates without a DB, raw store or DOC calls",async()=>{
+    const bytes=zip(text,stamp+".export.CSV"),digest=createHash("md5").update(bytes).digest("hex");
+    const index=String(bytes.length)+" "+digest+" http://data.gdeltproject.org/gdeltv2/"+stamp+".export.CSV.zip";
+    const fake=vi.fn(async(url:string)=>new Response(url.endsWith("lastupdate.txt")?index:url.endsWith("FIPS.country.txt")?fips:bytes));
+    const r=await readGdeltEventDiscovery({fetchImpl:fake as any,now});
+    expect(r.archive_integrity_verified).toBe(true);expect(fake).toHaveBeenCalledTimes(3);
+    expect(fake.mock.calls[2][0]).toBe("https://gdeltproject.org/data/lookups/FIPS.country.txt");
+    expect(fake.mock.calls.some(c=>c[0].includes("supabase")||c[0].includes("api/v2/doc"))).toBe(false);
+    expect(r.supabase_requests).toBe(0);
+  });
+  it("preserves actual integrity/auth/future-date failures without promoting indexed news",async()=>{
+    const denied=vi.fn(async()=>new Response("",{status:429}));
+    const r=await readGdeltEventDiscovery({fetchImpl:denied as any,now});
+    expect(r.archive_integrity_verified).toBe(false);expect(r.reason).toBe("GKG_MANIFEST_HTTP_429");expect(denied).toHaveBeenCalledOnce();
+    expect(()=>summarizeGdeltEventDiscovery(text,parseGdeltFipsCountries(fips),"2026-10-12T12:15:00Z",now)).toThrow();
+    expect(()=>parseGdeltFipsCountries(fips+"\nCH\tSwitzerland")).toThrow();
+  });
+});
 
 describe("#2042 static GDELT 15-minute global discovery independent of DOC 429",()=>{
   it("validates pinned GKG only; rejects old, future, malformed, off-host and excessive batches",()=>{
@@ -185,5 +225,45 @@ describe("#2042 static GDELT 15-minute global discovery independent of DOC 429",
     expect(denied).toMatchObject({state:"GKG_BULK_DEGRADED",
       reason:"GKG_MANIFEST_HTTP_429",public_published:false,chargeable:false});
     expect(JSON.stringify(denied)).not.toContain("sensitive");
+  });
+});
+
+
+describe("bounded static archive publication-race recovery",()=>{
+  const missingStamp="20261012120000";
+  const entry=(kind:string,ts:string,bytes:Buffer)=>`${bytes.length} ${createHash("md5").update(bytes).digest("hex")} http://data.gdeltproject.org/gdeltv2/${ts}.${kind==="gkg"?"gkg.csv":"export.CSV"}.zip\n`;
+  for(const kind of ["gkg","events"] as const){
+    it(`${kind}: recovers one 404 using a strictly older checksum-pinned entry, never the missing URL again`,async()=>{
+      const bytes=zip(raw,stamp+(kind==="gkg"?".gkg.csv":".export.CSV"));
+      const latest=entry(kind,missingStamp,bytes),tail=entry(kind,stamp,bytes)+latest;
+      const fetcher=vi.fn(async(url:string)=>{
+        if(url.endsWith("lastupdate.txt"))return new Response(latest);
+        if(url.endsWith("masterfilelist.txt"))return new Response(tail,{status:206,headers:{"content-range":`bytes 0-${Buffer.byteLength(tail)-1}/${Buffer.byteLength(tail)}`}});
+        return url.includes(missingStamp)?new Response("missing",{status:404}):new Response(bytes);
+      });
+      const r=await readGdeltStaticArchive({fetchImpl:fetcher,now,kind});
+      expect(r.manifest.batch_at).toBe(date);expect(r.manifest_route).toBe("MASTERFILE_EARLIER_AFTER_404");
+      expect(fetcher).toHaveBeenCalledTimes(4);
+      expect(fetcher.mock.calls.filter(c=>c[0].includes(missingStamp))).toHaveLength(1);
+    });
+  }
+  it("never falls back on denial or checksum failure",async()=>{
+    for(const status of [401,403,429,500]){
+      const fake=vi.fn(async(url:string)=>url.endsWith("lastupdate.txt")?new Response(manifest()):new Response("held",{status}));
+      await expect(readGdeltStaticArchive({fetchImpl:fake,now})).rejects.toThrow(`GKG_ARCHIVE_HTTP_${status}`);
+      expect(fake).toHaveBeenCalledTimes(2);
+    }
+    const fake=vi.fn(async(url:string)=>url.endsWith("lastupdate.txt")?new Response(manifest("0".repeat(32))):new Response(archive));
+    await expect(readGdeltStaticArchive({fetchImpl:fake,now})).rejects.toThrow("GKG_ARCHIVE_MD5_OR_SIZE_MISMATCH");
+    expect(fake).toHaveBeenCalledTimes(2);
+  });
+  it("stops after a second missing object and refuses a tail containing only the same or future entries",async()=>{
+    for(const older of [true,false]){
+      const latest=entry("gkg",missingStamp,archive),tail=(older?manifest():"")+latest;
+      const fake=vi.fn(async(url:string)=>url.endsWith("lastupdate.txt")?new Response(latest):url.endsWith("masterfilelist.txt")?
+        new Response(tail,{status:206,headers:{"content-range":`bytes 0-${Buffer.byteLength(tail)-1}/${Buffer.byteLength(tail)}`}}):new Response("missing",{status:404}));
+      await expect(readGdeltStaticArchive({fetchImpl:fake,now})).rejects.toThrow(older?"GKG_ARCHIVE_HTTP_404":"GKG_NO_CURRENT_PINNED_BATCH");
+      expect(fake).toHaveBeenCalledTimes(older?4:3);
+    }
   });
 });

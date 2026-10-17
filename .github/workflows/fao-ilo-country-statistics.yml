@@ -1,0 +1,60 @@
+name: FAO ILO exact country-statistics observation
+on:
+  pull_request:
+    paths:
+      - "global-intelligence/adapters/official-fao-ilo-country-statistics.mjs"
+      - "scripts/tests/official-fao-ilo-country-statistics.test.mjs"
+      - "scripts/ops/probe-official-fao-ilo-statistics.mjs"
+      - ".github/workflows/fao-ilo-country-statistics.yml"
+  push:
+    branches: [main]
+    paths:
+      - "global-intelligence/adapters/official-fao-ilo-country-statistics.mjs"
+      - "scripts/tests/official-fao-ilo-country-statistics.test.mjs"
+      - "scripts/ops/probe-official-fao-ilo-statistics.mjs"
+      - ".github/workflows/fao-ilo-country-statistics.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "37 6 * * *"
+permissions:
+  contents: read
+concurrency:
+  group: fao-ilo-country-stats-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: |
+          set -euo pipefail
+          node --check global-intelligence/adapters/official-fao-ilo-country-statistics.mjs
+          node --check scripts/ops/probe-official-fao-ilo-statistics.mjs
+          node --test scripts/tests/official-fao-ilo-country-statistics.test.mjs
+  source-live-probe:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: source-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: node scripts/ops/probe-official-fao-ilo-statistics.mjs
+      - name: Upload sanitized exact source status (no values)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: fao-ilo-country-stats-${{ github.run_id }}
+          path: artifacts/fao-ilo-statistics/receipt.json
+          if-no-files-found: warn
+          retention-days: 7

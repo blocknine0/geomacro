@@ -1,0 +1,66 @@
+# Three category API — government open-data adapters (October 13, 2026)
+
+Adds **a second, typed data modality** to each existing API, without
+changing the old GET view=latest first-party original-release reader,
+scoring, x402 signing or the canonical payment-protected POST.
+
+| Existing category endpoint | New read-only modality |
+| --- | --- |
+| /api/v1/intelligence/geopolitics?view=open-data | USGS earthquake occurrence (M4.5+ band), CISA KEV catalog inclusion and Federal Register sanctions notices |
+| /api/v1/intelligence/macro-fx?view=open-data | US Treasury interest-rate reference month, BLS CPI reference month and World Bank WDI annual GDP period |
+| /api/v1/intelligence/critical-minerals?view=open-data | USAspending contract award search, qualified by literal mineral terms in award description and original obligation date |
+
+**Combined view:** each of the same three paths also accepts `?view=combined`, which
+returns `original_release_observations` and `structured_open_data` in separate
+namespaces with different clocks, source-class availability and no payment. This
+is not one flattened or falsely corroborated feed. `?view=latest` remains
+unchanged, and both classes can be separately requested.
+
+Every upstream is a pinned HTTPS host and path, no user-provided URL,
+no redirect, 5–6s timeout, bounded JSON and 2-minute in-process cache.
+USAspending's **upstream read-only POST search** has nothing to do with
+Geomacro payment; no account or payment signature is sent.
+
+## Semantics and legal boundaries
+
+**Event occurrence** is not a publisher release; **catalog added day**
+is not exploit date; **monthly/annual data period** is not a current
+market tick; **contract obligation day** is not publication or mineral
+production. No raw record IDs, source URLs, headlines, supplier names,
+indicator numeric values or upstream descriptions are delivered.
+
+Signals have class official_open_data_unscored, null scores,
+false independent corroboration/signing/payment fields, and are NOT
+commercially chargeable or proof of signed Risk Indices. World Bank
+WDI carries the explicit 'World Bank (CC BY 4.0)' reuse credit.
+Any future paid product must separately satisfy exact dataset reuse
+rights/attribution, causal risk analysis, signed GRO, and x402 binding.
+
+The user's full source-family inventory remains in
+scripts/lib/operator-commercial-free-source-lineup.mjs. **This PR
+activates seven specific APIs, not all listed provider families.**
+Other sources have API key, registration, legal licensing, semantic
+mapping, data cadence and safe quota questions to resolve individually.
+A healthy provider transport does not imply a new qualifying news event.
+
+The no-funds real-network canary is:
+bun scripts/ops/probe-three-category-open-data.ts. It logs aggregate
+counts only, never raw payloads or any database writes. Missing data,
+denials and rate limits stay unavailable rather than synthetic success.
+
+## Deployment
+
+GitHub main and the linked Lovable repository must sync. The website
+must publish the matching main SHA before these GETs are truly live.
+CI green or GitHub mirror sync is not proof of public deployment.
+
+The GitHub `three-category-combined-open-data.yml` acceptance requires exact
+published SHA before issuing three `GET ?view=combined` requests. Each response
+must keep original-release and reference-period evidence distinct; zero
+readable source classes is a 503 failure. Source family catalog coverage
+is distinct from observed response availability.
+
+Real GitHub-runner no-funds canary #38435904872 confirmed 7 of 7 pinned
+upstream JSON APIs readable: Geopolitics 3/3, Macro/FX 3/3, Critical
+Minerals 1/1, with 58 local contract tests passing. This is not a
+claim that all 67 catalogued providers are ingestible or currently live.

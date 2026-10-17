@@ -260,10 +260,15 @@ async function fetchCountryProfile(
   ]);
   if (profileResult.error) throw profileResult.error;
   const profile = profileResult.data as unknown as CountryProfileRow | null;
+  const rows = profile ? observationsFromJson(profile.latest_observations) : [];
+  // A country profile is not a licence to deliver another country's rows.
+  // Fail closed to the existing verified B2 path if this curated view is
+  // internally inconsistent; do not silently reinterpret foreign evidence.
+  if (rows.some((row) => row.country_iso3 !== iso3)) {
+    throw new Error("STRUCTURAL_COUNTRY_PROFILE_EVIDENCE_IDENTITY_MISMATCH");
+  }
   return {
-    observations: profile
-      ? latestStructuralObservations(observationsFromJson(profile.latest_observations), 12)
-      : [],
+    observations: latestStructuralObservations(rows, 12),
     coverage,
   };
 }

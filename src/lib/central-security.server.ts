@@ -2,13 +2,13 @@ import {
   createHmac,
 } from "node:crypto";
 
-import {
-  requireRiskSupabase,
-} from "./risk-supabase.server";
+import { CENTRAL_SECURITY_POLICIES } from "../../workers/control-plane/src/central-security-policies.mjs";
+import { consumeD1CentralSecurityBudget, centralSecurityBudgetFailureCode } from "./d1-central-security-budget.server";
+const POLICIES = CENTRAL_SECURITY_POLICIES as Record<Exclude<CentralSecurityRouteClass, "page">, BudgetPolicy>;
 
 
 export const CENTRAL_SECURITY_VERSION =
-  "geomacro-central-security-v1.0.0" as const;
+  "geomacro-central-security-v1.1.1-d1" as const;
 
 export const REAL_FUNDS_SECURITY_ACK =
   "I_ACCEPT_REAL_FUNDS_SECURITY_GATES" as const;
@@ -55,67 +55,7 @@ const localClientBuckets = new Map<string, Bucket>();
 const localGlobalBuckets = new Map<string, Bucket>();
 
 
-const POLICIES: Record<Exclude<CentralSecurityRouteClass, "page">, BudgetPolicy> = {
-  public_api: {
-    windowSeconds: 60,
-    perClient: 240,
-    global: 5000,
-    maxBodyBytes: 128 * 1024,
-    distributed: true,
-    // Public read/proof surfaces remain available for diagnosis if the
-    // privileged abuse-control store is temporarily unavailable. They still
-    // receive the bounded in-process burst guard.
-    failClosed: false,
-  },
-  api_write: {
-    windowSeconds: 60,
-    perClient: 60,
-    global: 1200,
-    maxBodyBytes: 64 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-  server_function: {
-    windowSeconds: 60,
-    perClient: 60,
-    global: 1200,
-    maxBodyBytes: 128 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-  risk_gate: {
-    windowSeconds: 60,
-    perClient: 90,
-    global: 1500,
-    maxBodyBytes: 32 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-  commercial: {
-    windowSeconds: 60,
-    perClient: 90,
-    global: 1500,
-    maxBodyBytes: 32 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-  payment: {
-    windowSeconds: 60,
-    perClient: 45,
-    global: 900,
-    maxBodyBytes: 32 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-  internal: {
-    windowSeconds: 60,
-    perClient: 30,
-    global: 300,
-    maxBodyBytes: 64 * 1024,
-    distributed: true,
-    failClosed: true,
-  },
-};
+
 
 
 function normalizedPathname(pathname: string): string {
@@ -154,8 +94,38 @@ export function classifyCentralSecurityRoute(
   const pathname = normalizedPathname(pathnameInput);
   const method = String(methodInput || "GET").toUpperCase();
 
+  // The buyer availability/offer endpoint is explicitly NEVER a payment
+  // handler. Its POST only checks the canonical signed-source deliverability,
+  // rejects any payment/authorization header, and has its own low quota
+  // (3/client and 24 globally per minute, bounded 8 KiB JSON). When frozen
+  // Supabase distributed abuse control is unavailable, keep this no-charge
+  // preflight reachable under public_api's keyed in-process burst guard.
+  // Do NOT extend this exception to canonical x402 POST or paid aliases.
+  if (pathname === "/api/v1/intelligence/availability" &&
+      ["GET", "POST", "OPTIONS"].includes(method)) return "public_api";
+
+  // Official agent discovery remains free; tool POST uses canonical payment gate.
+  if (pathname === "/api/v1/agent" &&
+      ["GET", "HEAD", "OPTIONS"].includes(method)) return "public_api";
+
+  // Canonical GET serves free Finds/source-status/discovery only; actual
+  // fulfillment and payment exist on POST. These category GETs are also
+  // read-only discovery/official-observation surfaces. Public abuse controls
+  // still apply, including an HMAC client
+  // fingerprint and local burst guard. POST / payment-signature methods remain
+  // on the strict distributed/fail-closed PAYMENT path without exceptions.
+  if (method === "GET" && [
+    "/api/v1/intelligence/query",
+    "/api/v1/intelligence/geopolitics",
+    "/api/v1/intelligence/macro-fx",
+    "/api/v1/intelligence/critical-minerals",
+  ].includes(pathname)) {
+    return "public_api";
+  }
+
   if (
     pathname.startsWith("/api/x402") ||
+    pathname === "/api/v1/agent" ||
     pathname === "/api/v1/intelligence/query" ||
     pathname === "/api/v1/intelligence/geopolitics" ||
     pathname === "/api/v1/intelligence/macro-fx" ||
@@ -546,30 +516,7 @@ export async function enforceCentralRequestSecurity(
   }
 
   try {
-    const db = requireRiskSupabase();
-    const { data, error } = await db.rpc(
-      "consume_central_security_budget",
-      {
-        p_route_class: routeClass,
-        p_client_key: clientKey,
-        p_window_seconds: policy.windowSeconds,
-        p_client_limit: policy.perClient,
-        p_global_limit: policy.global,
-      },
-    );
-
-    if (error) throw error;
-
-    const result =
-      data &&
-      typeof data === "object" &&
-      !Array.isArray(data)
-        ? data as Record<string, unknown>
-        : null;
-
-    if (!result || result.ok !== true) {
-      throw new Error("Central security budget returned invalid state");
-    }
+    const result = await consumeD1CentralSecurityBudget(routeClass, clientKey);
 
     const retryAfterSeconds =
       Number.isFinite(Number(result.retry_after_seconds))
@@ -596,7 +543,7 @@ export async function enforceCentralRequestSecurity(
     console.error(
       "[central-security] distributed abuse control unavailable",
       routeClass,
-      error instanceof Error ? error.message : "unknown error",
+      centralSecurityBudgetFailureCode(error),
     );
 
     if (
@@ -617,7 +564,7 @@ export async function enforceCentralRequestSecurity(
       return {
         allowed: false,
         status: 503,
-        code: "CENTRAL_SECURITY_UNAVAILABLE",
+        code: centralSecurityBudgetFailureCode(error),
         routeClass,
       };
     }

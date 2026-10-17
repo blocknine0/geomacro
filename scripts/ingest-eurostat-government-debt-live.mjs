@@ -5,6 +5,7 @@ import {
   sha256,
   upsertObservations,
 } from "./lib-live-source-utils.mjs"
+import { COUNTRIES_195 } from "../src/lib/canonical-country-registry-195.ts"
 
 const SOURCE_ID = "eurostat_government_finance"
 const DATASET = "gov_10q_ggdebt"
@@ -126,9 +127,26 @@ if (!Number.isFinite(MAX_AGE_DAYS) || MAX_AGE_DAYS <= 0) {
   throw new Error("EUROSTAT_FISCAL_MAX_AGE_DAYS must be positive")
 }
 
-const db = createDb()
-const registry = await loadCountryRegistry(db)
-const sourceRegistration = await loadSourceRegistration(db)
+// The immutable 193+2 routing registry is sufficient to verify Eurostat
+// country/period normalization without querying frozen Supabase.
+function offlineCountryRegistry() {
+  const byIso2 = new Map(COUNTRIES_195.map(country => [country.iso2, country.iso3]))
+  const byIso3 = new Map(COUNTRIES_195.map(country => [country.iso3, {
+    iso2: country.iso2, iso3: country.iso3, country_name: country.name,
+  }]))
+  if (byIso2.size !== 195 || byIso3.size !== 195)
+    throw new Error("OFFLINE_EUROSTAT_COUNTRY_REGISTRY_INVALID")
+  return { byIso2, byIso3 }
+}
+const db = WRITE ? createDb() : null
+const registry = WRITE ? await loadCountryRegistry(db) : offlineCountryRegistry()
+const sourceRegistration = WRITE
+  ? await loadSourceRegistration(db)
+  : {
+      commercial_usage_status: "NOT_ASSESSED_READ_ONLY",
+      enabled_for_ingestion: false,
+      enabled_for_commercial_signals: false,
+    }
 if (WRITE) assertWriteGovernance(sourceRegistration)
 
 const params = new URLSearchParams({

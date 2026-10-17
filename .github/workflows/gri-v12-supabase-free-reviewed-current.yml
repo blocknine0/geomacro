@@ -1,0 +1,189 @@
+name: GRI v1.2 Supabase-Free Current Promotion
+
+# Never cron/push-trigger; existing protected environment must authorize it.
+on:
+  workflow_dispatch:
+    inputs:
+      reviewed_b2_key:
+        description: "Immutable private reviewed GRI input key"
+        required: true
+        type: string
+      reviewed_b2_sha256:
+        description: "Independently pinned private input SHA256"
+        required: true
+        type: string
+      reviewed_certificates_b2_key:
+        description: "Immutable independently signed country-category certificates B2 key"
+        required: true
+        type: string
+      reviewed_certificates_b2_sha256:
+        description: "Independently pinned exact SHA256 of signed country certificates JSON"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-reviewed-gri-b2-d1
+  cancel-in-progress: false
+
+jobs:
+  verified-current:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: production
+    env:
+      EXPECTED_SHA: ${{ github.sha }}
+      REVIEWED_B2_KEY: ${{ inputs.reviewed_b2_key }}
+      REVIEWED_B2_SHA256: ${{ inputs.reviewed_b2_sha256 }}
+      REVIEWED_CERTIFICATES_B2_KEY: ${{ inputs.reviewed_certificates_b2_key }}
+      REVIEWED_CERTIFICATES_B2_SHA256: ${{ inputs.reviewed_certificates_b2_sha256 }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: gri_supabase_free_reviewed
+      B2_REQUEST_BUDGET: "12"
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256 }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+    steps:
+      - name: Checkout exact canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Require exact public deployment SHA and Supabase freeze before B2
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SHA" = "$(git rev-parse HEAD)"
+          for key in SUPABASE_DB_URL SUPABASE_URL APP_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_SERVICE_ROLE_KEY; do
+            test -z "$(printenv "$key" || true)" || { echo "::error::SUPABASE_CREDENTIAL_FORBIDDEN"; exit 2; }
+          done
+          curl -fsS --max-time 15 https://geomacro.live/.well-known/geomacro-build.json -o /tmp/gri-build.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const m=JSON.parse(readFileSync('/tmp/gri-build.json','utf8'));
+          if(m.schema_version!=='geomacro.deployment-build.v1' ||
+             m.canonical_repository!=='blocknine0/geomacro' ||
+             m.canonical_main_sha!==process.env.EXPECTED_SHA)
+            throw Error('PRODUCTION_SOURCE_SHA_NOT_DEPLOYED');
+          console.log('Verified exact live canonical SHA');
+          NODE
+
+      - name: Resolve shared D1 quota governor before any private B2 GET
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$B2_ACCOUNT_QUOTA_REQUIRED" = "1"
+          test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+          json="$(npx -y wrangler@4.136.3 d1 list --json)"
+          id="$(printf '%s' "$json" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{const r=JSON.parse(s).find(v=>v.name==="geomacro-control-plane");process.stdout.write(r?.uuid??r?.id??"")})')"
+          test -n "$id" || { echo "::error::D1_QUOTA_GOVERNOR_MISSING"; exit 2; }
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+
+      - name: Verify independent reviewer distinct from GRO signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {createPrivateKey,createPublicKey} from 'node:crypto';
+          import {appendFileSync} from 'node:fs';
+          const raw=process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64;
+          if(!raw)throw Error('GRO_SIGNER_IDENTITY_MISSING');
+          const secret=createPrivateKey({key:Buffer.from(raw,'base64'),format:'der',type:'pkcs8'});
+          if(secret.asymmetricKeyType!=='ed25519')throw Error('GRO_SIGNER_INVALID');
+          const pub=createPublicKey(secret).export({format:'der',type:'spki'});
+          appendFileSync(process.env.GITHUB_ENV,'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64='+pub.toString('base64')+'\n');
+          NODE
+
+      - name: Read exact pinned signed current evidence from quota-governed B2
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p artifacts/private-gri-v12
+          bun --eval '
+            import {writeFileSync} from "node:fs";
+            import {createHash} from "node:crypto";
+            import {createB2Client} from "./scripts/ops/b2-s3-client.mjs";
+            const key=process.env.REVIEWED_B2_KEY??"";
+            const pin=process.env.REVIEWED_B2_SHA256??"";
+            if(!/^geomacro-evidence\/v1\/private\/reviewed-gri-current\/[a-f0-9]{64}\.json$/.test(key)||
+               !/^[a-f0-9]{64}$/.test(pin))throw Error("REVIEWED_INPUT_PIN_INVALID");
+            const b2=createB2Client({
+              endpointUrl:"https://s3.us-east-005.backblazeb2.com",
+              bucket:"geomacro-private-archive",accessKey:process.env.B2_KEY_ID,
+              secretKey:process.env.B2_APPLICATION_KEY});
+            const bytes=Buffer.from(await b2.get(key));
+            if(bytes.length<100||bytes.length>1024*1024||
+              createHash("sha256").update(bytes).digest("hex")!==pin)
+              throw Error("REVIEWED_INPUT_B2_READBACK_MISMATCH");
+            writeFileSync("artifacts/private-gri-v12/reviewed-input.json",bytes,{flag:"wx",mode:0o600});
+            console.log("PASS: reviewer input exact B2 bytes verified; no raw data printed");
+          '
+          echo "GEOMACRO_GRI_REVIEWED_INPUT=artifacts/private-gri-v12/reviewed-input.json" >> "$GITHUB_ENV"
+          echo "GEOMACRO_GRI_REVIEWED_INPUT_SHA256=$REVIEWED_B2_SHA256" >> "$GITHUB_ENV"
+
+      - name: Retrieve exact independently signed country-category certifications from governed B2
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          bun --eval '
+            import {writeFileSync} from "node:fs";
+            import {createHash} from "node:crypto";
+            import {createB2Client} from "./scripts/ops/b2-s3-client.mjs";
+            const key=process.env.REVIEWED_CERTIFICATES_B2_KEY??"";
+            const pin=process.env.REVIEWED_CERTIFICATES_B2_SHA256??"";
+            if(!/^geomacro-evidence\/v1\/private\/reviewed-country-certification\/[a-f0-9]{64}\.json$/.test(key)||
+               !/^[a-f0-9]{64}$/.test(pin))
+              throw Error("EXTERNAL_SIGNED_COUNTRY_CERTIFICATE_PIN_REQUIRED");
+            const b2=createB2Client({
+              endpointUrl:"https://s3.us-east-005.backblazeb2.com",
+              bucket:"geomacro-private-archive",
+              accessKey:process.env.B2_KEY_ID,secretKey:process.env.B2_APPLICATION_KEY});
+            const bytes=Buffer.from(await b2.get(key));
+            if(bytes.length<100||bytes.length>512*1024||
+               createHash("sha256").update(bytes).digest("hex")!==pin)
+              throw Error("COUNTRY_CERTIFICATES_B2_BYTES_NOT_VERIFIED");
+            writeFileSync("artifacts/private-gri-v12/reviewed-country-certificates.json",
+              bytes,{flag:"wx",mode:0o600});
+            console.log("PASS: independent country-category certification B2 SHA; no source data printed");
+          '
+          echo "GEOMACRO_GRI_SIGNED_COUNTRY_CERTIFICATES=artifacts/private-gri-v12/reviewed-country-certificates.json" >> "$GITHUB_ENV"
+          echo "GEOMACRO_GRI_SIGNED_COUNTRY_CERTIFICATES_SHA256=$REVIEWED_CERTIFICATES_B2_SHA256" >> "$GITHUB_ENV"
+
+      - name: Publish current verified GRI and prove B2/D1 public readback without funds
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/publish-supabase-free-global-risk.mjs --verified-current > /tmp/gri-current-receipt.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const r=JSON.parse(readFileSync('/tmp/gri-current-receipt.json','utf8'));
+          if(r.ok!==true||r.direct_b2_readback_verified!==true||
+             r.exact_gzip_restore_verified!==true||r.d1_public_readback_verified!==true||
+             r.supabase_reads!==0||r.supabase_writes!==0||r.funds_spent_usdc!==0||
+             r.x402_activation_performed!==false||r.private_only_promoted!==false)
+            throw Error('CURRENT_GRI_FAIL_CLOSED');
+          console.log(JSON.stringify({ok:true,schema:r.schema,
+            snapshot_as_of:r.snapshot_as_of,payload_sha256:r.payload_sha256,
+            d1_public_readback_verified:true,usdc_spent:0}));
+          NODE

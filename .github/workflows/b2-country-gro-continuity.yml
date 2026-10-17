@@ -94,10 +94,9 @@ jobs:
           retention-days: 2
 
   publish:
-    # No more hourly/main-push attempts against a known frozen Supabase DB:
-    # 546,991,251 bytes vs 471,859,200-byte write freeze on 9 Oct 2026.
-    # Owner recovery still checks original budget before any D1/B2 mutation.
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'publisher_recovery' }}
+    # Legacy Supabase recovery retired: never execute from manual dispatch,
+    # push or schedule. Keep reviewed historical logic for forensic replay only.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production

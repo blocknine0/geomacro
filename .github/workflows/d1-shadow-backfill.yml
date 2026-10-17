@@ -1,20 +1,11 @@
 name: D1 Shadow Backfill
 
+# Supabase-only shadow migration was a one-time import, not an ongoing
+# production publisher. The canonical B2/D1 writers and public hot publishers
+# are independent. Retain this historical workflow for audit, but never
+# schedule its legacy Postgres copy (not even manual dispatch).
 on:
   workflow_dispatch: {}
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/d1-shadow-backfill.yml"
-      - "scripts/ops/d1-shadow-backfill.mjs"
-      - "src/__tests__/d1-shadow-backfill-workflow-static.test.ts"
-  workflow_run:
-    workflows:
-      - Deploy D1 Control Plane
-      - Phase A Runtime Freshness Repair
-    types:
-      - completed
 
 permissions:
   contents: read
@@ -25,11 +16,9 @@ concurrency:
 
 jobs:
   verified-shadow-backfill:
-    if: >-
-      github.repository == 'blocknine0/geomacro' &&
-      (github.event_name == 'workflow_dispatch' ||
-       github.event_name == 'push' ||
-       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
+    # Permanent retirement: never run psql/Supabase-to-D1 copy.
+    # Re-enable only through a new separately reviewed B2-native repair PR.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production

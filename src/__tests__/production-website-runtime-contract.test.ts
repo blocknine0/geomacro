@@ -189,6 +189,19 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain("lovable_mirror_matches_canonical_main");
   });
 
+  it("distinguishes unassessed shallow runtime from verified deep B2/D1 readiness", () => {
+    const health = read("src/routes/api.health.ts");
+    const workflow = read(".github/workflows/production-website-health.yml");
+    expect(health).toContain("b2_runtime_configured: null");
+    expect(health).toContain("b2_runtime_configured:\n      baselineIntelligenceReady && baselineGlobalRiskReady && baselineRiskIndicesReady");
+    expect(workflow).toContain("Verify B2 production serving health");
+    expect(workflow).toContain('"b2_runtime_configured":true');
+    expect(workflow).toContain("Verify production alignment contract");
+    expect(workflow).toContain('"production_data_runtime_configured":null');
+    expect(workflow).not.toContain('"production_data_runtime_configured":true');
+    expect(health).toContain("status: deepReady ? 200 : 503");
+  });
+
   it("documents that hosted B2 secrets are separate from GitHub Actions secrets", () => {
     const contract = read("docs/PRODUCTION_WEBSITE_RUNTIME.md");
     expect(contract).toContain("B2_KEY_ID");

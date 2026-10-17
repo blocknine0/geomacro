@@ -48,34 +48,40 @@ describe("Telegram B2/D1 governed consumer", () => {
     expect(drain).toContain("commercial_eligible: false");
   });
 
-  it("executes the canonical flash handler through direct PostgreSQL and preserves channel authorization identity", () => {
+  it("retires the direct-Postgres consumer but preserves the old handler for forensics", () => {
     const runner = read("scripts/run-live-flash-ingest-local.ts");
+    const workflow = read(".github/workflows/telegram-b2-d1-consumer.yml");
+    const intake = read("scripts/ops/intake-telegram-b2-d1-leads.mjs");
     expect(runner).toContain("LIVE_FLASH_LOCAL_REQUIRES_DIRECT_POSTGRES");
-    expect(runner).toContain('createGriDbClient()');
-    expect(runner).toContain("rewriteDenoEnvGets(source)");
-    expect(runner).toContain('source_channel_key:\\n      cleanString(payload.source_channel_key, 64)');
-    expect(runner).toContain("LOCAL_FLASH_CHANNEL_KEY_TRANSPORT_MISSING");
-    expect(runner).toContain("local_canonical_source_direct_postgres");
+    expect(workflow).not.toContain("run-live-flash-ingest-local.ts");
+    expect(workflow).not.toContain("secrets.SUPABASE");
+    expect(workflow).not.toContain("GRI_DB_MODE: direct_postgres");
+    expect(intake).toContain("telegram_private_unverified_leads");
+    expect(intake).toContain("sanitized_payload_sha256");
+    expect(intake).toContain("TELEGRAM_D1_INTAKE_DURABLE_READBACK_MISMATCH");
   });
 
-  it("acknowledges an exact delivery only after canonical ingestion succeeds", () => {
+  it("acknowledges the exact version only after private D1 pointer readback", () => {
+    const intake = read("scripts/ops/intake-telegram-b2-d1-leads.mjs");
     const workflow = read(".github/workflows/telegram-b2-d1-consumer.yml");
-    expect(workflow).toContain("WHERE state='PENDING' ORDER BY created_at ASC, delivery_id ASC LIMIT 4");
-    expect(workflow).toContain("CANONICAL_INGEST_IN_PROGRESS");
-    expect(workflow).toContain("CANONICAL_INGEST_FAILED");
-    expect(workflow).toContain("WHERE delivery_id='$delivery' AND state='PENDING'");
-    expect(workflow).toContain("SET state='CONSUMED',consumed_at=datetime('now')");
+    expect(intake).toContain("telegramD1ReadbackSql(entry)");
+    expect(intake).toContain("telegramD1AckSql(entry)");
+    expect(intake).toContain("TELEGRAM_D1_QUEUE_ACK_NOT_CONFIRMED");
+    expect(intake).toContain("WHERE delivery_id=");
+    expect(intake).toContain("state='PENDING'");
+    expect(intake).toContain("SET state='CONSUMED',consumed_at=datetime('now')");
     expect(workflow).toContain("DELETE FROM telegram_signal_lead_queue WHERE state='CONSUMED'");
+    expect(workflow).not.toContain("DELETE FROM telegram_signal_lead_queue WHERE state='PENDING'");
   });
 
   it("uses main-owned D1 plus B2 and never calls Supabase Edge for the bridge", () => {
     const workflow = read(".github/workflows/telegram-b2-d1-consumer.yml");
     expect(workflow).toContain("D1_DATABASE_NAME: geomacro-control-plane");
     expect(workflow).toContain("B2_BUCKET: geomacro-private-archive");
-    expect(workflow).toContain("GRI_DB_MODE: direct_postgres");
-    expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
+    expect(workflow).not.toContain("GRI_DB_MODE: direct_postgres");
+    expect(workflow).not.toContain("SUPABASE_DB_URL:");
     expect(workflow).toContain("drain-telegram-b2-leads.mjs");
-    expect(workflow).toContain("run-live-flash-ingest-local.ts");
+    expect(workflow).toContain("intake-telegram-b2-d1-leads.mjs");
     expect(workflow).not.toContain("supabase.co/functions/v1/live-flash-ingest");
   });
 

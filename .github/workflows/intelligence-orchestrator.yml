@@ -13,6 +13,13 @@ on:
     paths:
       - ".github/workflows/intelligence-orchestrator.yml"
       - "scripts/intelligence-orchestrator.mjs"
+      - "scripts/ops/run-supabase-free-source-runtime.ts"
+      - "src/lib/supabase-free-source-runtime.server.ts"
+      - "src/lib/gdelt-event-discovery.server.ts"
+      - "src/lib/category-open-data-contract.ts"
+      - "src/lib/category-open-data.server.ts"
+      - "scripts/lib/gdelt-gkg-bulk-discovery.mjs"
+      - "scripts/lib/gdelt-doc-request-gate.mjs"
       - "scripts/ops/probe-scheduled-official-active-mesh.mjs"
       - "src/__tests__/scheduled-official-active-mesh.test.ts"
       - "scripts/run-rss-live-cycle.mjs"
@@ -228,6 +235,26 @@ jobs:
           timeout --signal=TERM --kill-after=30s 52m node scripts/intelligence-orchestrator.mjs > intelligence-orchestrator.json
           jq -e . intelligence-orchestrator.json > /dev/null
           cat intelligence-orchestrator.json
+
+      - name: Verify actual D1 fallback for all three existing context readers
+        if: always()
+        shell: bash
+        run: |
+          bun - <<'TS'
+          import {readCategoryOpenData} from './src/lib/category-open-data.server';
+          import {validOpenDataContext} from './src/lib/category-open-data-contract';
+          const origin='https://geomacro-control-plane.daspallab202391.workers.dev';
+          for(const category of ['geopolitics','macro-fx','critical-minerals'] as const){
+            const fetcher=(async(input,init)=>new URL(String(input)).origin===origin
+              ?fetch(input,init):new Response('',{status:503})) as typeof fetch;
+            const result=await readCategoryOpenData(category,{fetcher});
+            if(!validOpenDataContext(result,category))throw Error('SOURCE_RUNTIME_PUBLIC_FALLBACK_UNAVAILABLE');
+            console.log(JSON.stringify({schema:'geomacro.source-runtime-independent-d1-fallback.v1',
+              category,readback_verified:true,source_checked_at:result.checked_at,
+              readable_families:result.source_families_readable,derived_context_count:result.findings.length,
+              original_release_news:false,chargeable:false,supabase_requests:0,b2_requests:0,payments:0}));
+          }
+          TS
 
       - name: Publish scheduler summary
         if: always()

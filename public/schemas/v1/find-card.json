@@ -1,0 +1,359 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geomacro.live/schemas/v1/find-card.json",
+  "title": "Geomacro Find Card v1",
+  "description": "Public intelligence card for geopolitics, macro/FX and critical minerals (rare earth). No source names, URLs or verbatim upstream titles. Missing detail is stated, never invented.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "domain",
+    "published_at",
+    "date_precision",
+    "headline",
+    "what_changed",
+    "facts",
+    "why_it_matters",
+    "watch_next",
+    "ladder",
+    "evidence_directness",
+    "subjects",
+    "freshness",
+    "detail_state",
+    "extraction_confidence"
+  ],
+  "properties": {
+    "schema": {
+      "const": "geomacro.find.v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "domain": {
+      "enum": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ]
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "date_precision": {
+      "enum": [
+        "exact",
+        "day"
+      ],
+      "description": "day = publisher gave only a calendar date; never invent a clock time."
+    },
+    "action_class": {
+      "type": "string",
+      "pattern": "^[a-z_]+$"
+    },
+    "headline": {
+      "type": "string",
+      "maxLength": 120,
+      "description": "Actor-verb-object. Geomacro wording, never a copied upstream title."
+    },
+    "what_changed": {
+      "type": "string",
+      "maxLength": 280
+    },
+    "facts": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "label",
+          "value"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "actor",
+              "action",
+              "indicator",
+              "period",
+              "value",
+              "prior",
+              "change",
+              "currency_pair",
+              "mineral",
+              "stage",
+              "quantity",
+              "amount",
+              "jurisdiction",
+              "counterparty",
+              "effective_date",
+              "deadline",
+              "instrument",
+              "licence_regime"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 16
+          }
+        }
+      }
+    },
+    "why_it_matters": {
+      "type": "string",
+      "maxLength": 260,
+      "description": "Deterministic mapping to a channel/corridor. Non-predictive."
+    },
+    "watch_next": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "text"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "next_release",
+            "effective_date",
+            "deadline",
+            "comment_period",
+            "follow_up_check",
+            "not_captured"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        }
+      }
+    },
+    "ladder": {
+      "enum": [
+        "ANNOUNCED",
+        "CORROBORATED",
+        "OBSERVED"
+      ]
+    },
+    "evidence_directness": {
+      "enum": [
+        "DIRECT",
+        "INDIRECT",
+        "NONE"
+      ]
+    },
+    "subjects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "countries",
+        "corridors",
+        "commodities",
+        "instruments"
+      ],
+      "properties": {
+        "countries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          }
+        },
+        "corridors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          }
+        },
+        "commodities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          }
+        },
+        "instruments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 24
+          }
+        }
+      }
+    },
+    "freshness": {
+      "enum": [
+        "realtime",
+        "near_realtime",
+        "daily",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "annual"
+      ]
+    },
+    "detail_state": {
+      "enum": [
+        "FULL",
+        "LIMITED"
+      ],
+      "description": "LIMITED = the release exposed too little to state specifics; card falls back to the generic conservative text."
+    },
+    "extraction_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "severity": {
+      "type": "null",
+      "description": "Unscored until a validated methodology exists."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "domain": {
+            "const": "macro"
+          },
+          "detail_state": {
+            "const": "FULL"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "facts": {
+            "contains": {
+              "properties": {
+                "kind": {
+                  "const": "indicator"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "domain": {
+            "const": "rare_earth"
+          },
+          "detail_state": {
+            "const": "FULL"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "facts": {
+            "contains": {
+              "properties": {
+                "kind": {
+                  "const": "mineral"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "domain": {
+            "const": "geopolitics"
+          },
+          "detail_state": {
+            "const": "FULL"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "facts": {
+            "contains": {
+              "properties": {
+                "kind": {
+                  "const": "actor"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "ladder": {
+            "enum": [
+              "CORROBORATED",
+              "OBSERVED"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "evidence_directness": {
+            "enum": [
+              "DIRECT",
+              "INDIRECT"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "detail_state": {
+            "const": "LIMITED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "facts": {
+            "maxItems": 3
+          },
+          "extraction_confidence": {
+            "maximum": 0.5
+          }
+        }
+      }
+    }
+  ]
+}

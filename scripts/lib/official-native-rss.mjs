@@ -1,8 +1,11 @@
 import { fetchOriginalAlternate } from "./official-native-alternates.mjs";
-import {validatePrivatePulseRefs,privateOriginalMatchesPulse} from "./private-novel-pulse-match.mjs";
+import {validatePrivatePulseRefs,privateOriginalMatchesPulse,canonicalPrivateOriginalArticleSha,assertPrivatePulseArticleContext} from "./private-novel-pulse-match.mjs";
 import {createD1ControlPlaneStateClient} from "./d1-control-plane-state.mjs";
 import {selectPrivateNovelPulseRefs} from "./private-novel-pulse-match.mjs";
 import {fetchPulseRotatedPrivateOriginals} from "./pulse-rotated-original-scorer.mjs";
+import {PRIVATE_SCORING_ATTEMPTS_PIPELINE,validateClaimForPrivateScorer} from "./private-classifier-retry-ledger.mjs";
+import {officialOriginalRssArticleUrl} from "./official-rss-original-link.mjs";
+import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
 import { fetchOfficialThirdPublisherArticles } from "./official-native-third-fallback.mjs";
 import { fetchOriginalPublisherWithRecovery } from "./official-native-network-retry.mjs";
 import { fetchVerifiedPublisherPageDate, ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN } from "./official-original-article-date.mjs";
@@ -88,9 +91,27 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
   for (const match of items) {
     const block = match[1];
     const title = field(block, "title");
-    const url = safeOriginalUrl(field(block, "link"), config.host);
+    // UN News RSS may point to its /feed/view/ router while an exact
+    // same-ID first-party permalink GUID names the true article identity.
+    // Reuse the ORIGINAL pulse's strict, already-reviewed resolver so URL
+    // SHA and source-native timestamp match the separately readback D1 row.
+    const rawLink=field(block,"link");
+    const canonical=category==="geopolitics"
+      ?officialOriginalRssArticleUrl(block,{id:"un_news_security_original_rss_review"})
+      :null;
+    // Preserve existing non-router first-party RSS intake: historic live
+    // same-host article paths are still discovery hints, but an actual UN
+    // /feed/view/ router must NEVER enter the classifier without an exact
+    // same-ID publisher permalink GUID.
+    const isUnFeedRouter=category==="geopolitics" && (()=>{
+      try {const u=new URL(rawLink);return u.hostname===config.host &&
+        u.pathname.startsWith("/feed/");}catch{return false;}
+    })();
+    const link=category==="geopolitics"
+      ?(canonical??(isUnFeedRouter?null:rawLink)):rawLink;
+    const url = safeOriginalUrl(link, config.host);
     const original = field(block, "pubDate");
-    const at = Date.parse(original);
+    const at = officialItemNativePublicationMs(original);
     if (Number.isFinite(at)) stats.item_native_pubdate_count += 1;
     // Publication dates later than the evaluation clock are not evidence of
     // a published event; even short future skew must fail closed.
@@ -130,8 +151,9 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
 // URL cannot add a new destination, even with a first-party hostname.
 export async function recoverPrivateOfficialRssMissingDates(xml, category,{
   now=new Date(),maxAgeMs=MAX_AGE_MS,fetchImpl=fetch,diagnostics=null,
-  broadPrivateIntake=false,
+  broadPrivateIntake=false,pulseRefs=null,pulseExpectedClocks=null,
 }={}) {
+  assertPrivatePulseArticleContext(pulseRefs,pulseExpectedClocks);
   const config=OFFICIAL_NATIVE_FEEDS[category];
   const nowMs=now.getTime();
   if(!["macro","rare_earth"].includes(category) || !config ||
@@ -141,10 +163,14 @@ export async function recoverPrivateOfficialRssMissingDates(xml, category,{
      maxAgeMs<60000 || maxAgeMs>MAX_AGE_MS) return [];
   const candidates=[],seen=new Set();
   for(const [,block] of [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,MAX_ITEM_COUNT)){
-    if(/<pubDate(?:\s[^>]*)?>/iu.test(block))continue;
+    if(/<pubDate\b[^>]*>/iu.test(block))continue;
     const title=field(block,"title"),url=safeOriginalUrl(field(block,"link"),config.host);
     if(!url || (!broadPrivateIntake && !config.topics.test(title)) || title.length<16 ||
        title.length>500 || seen.has(url))continue;
+    if(pulseRefs instanceof Set){
+      const id=canonicalPrivateOriginalArticleSha(url);
+      if(!id||!pulseRefs.has(id))continue;
+    }
     seen.add(url);
     candidates.push({title,url});
     if(candidates.length>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
@@ -160,14 +186,17 @@ export async function recoverPrivateOfficialRssMissingDates(xml, category,{
     if(!date)continue;
     const asOf=Date.parse(date);
     if(!Number.isFinite(asOf)||asOf>nowMs||nowMs-asOf>maxAgeMs)continue;
-    result.push({
+    const article={
       title:row.title,description:"",url:row.url,
       publishedAt:date,source:config.host,sourceDomain:config.host,
       discoveryProvider:"official_native_rss",
       nativePublishedAtVerified:true,
       nativeTimeEvidence:"publisher_original_article_datePublished",
       privateOnly:true,rightsVerified:false,commercialEligible:false,
-    });
+    };
+    if(pulseRefs instanceof Set&&
+       !privateOriginalMatchesPulse(article,pulseRefs,nowMs,pulseExpectedClocks))continue;
+    result.push(article);
   }
   if(diagnostics && typeof diagnostics==="object" && !Array.isArray(diagnostics))
     diagnostics.original_page_precise_date_admitted=result.length;
@@ -237,7 +266,16 @@ export async function fetchOfficialNativeArticles(category, {
     }).loadRows();
     const snapshot=read.get(category);
     refs=selectPrivateNovelPulseRefs(snapshot,category,now.getTime());
-    // No novel item in THIS category: no native network or model budget.
+    if(snapshot?.payload?.private_classifier_work_refs!==undefined){
+      const attemptRow=(await createD1ControlPlaneStateClient({
+        pipeline:PRIVATE_SCORING_ATTEMPTS_PIPELINE,
+      }).loadRows()).get(category);
+      const allowed=validateClaimForPrivateScorer(snapshot,attemptRow,
+        category,process.env.GITHUB_RUN_ID,now.getTime());
+      if(allowed.size!==refs.size||[...refs].some(x=>!allowed.has(x)))
+        throw Error("PRIVATE_CLASSIFIER_WORK_CLAIM_MISMATCH");
+    }
+    // No claimed original in THIS category: no native network or model budget.
     if(refs.size===0)return [];
     originalPulseAt=snapshot.payload.checked_at;
     expectedClocks=new Map(
@@ -281,10 +319,12 @@ export async function fetchOfficialNativeArticles(category, {
   try {
     const rss=await boundedRssFetch(config.url,fetchImpl);
     primary=parseOfficialNativeRss(rss,category,now,maxAgeMs,diagnostics,broadPrivateIntake);
-    if(primary.length===0 && includeOriginalPageDateFallback &&
+    if(selected(primary).length===0 && includeOriginalPageDateFallback &&
         (category==="macro" || category==="rare_earth")){
       primary=await recoverPrivateOfficialRssMissingDates(rss,category,{
         now,maxAgeMs,fetchImpl,diagnostics,broadPrivateIntake,
+        pulseRefs:fromAutomaticPulse?refs:null,
+        pulseExpectedClocks:fromAutomaticPulse?expectedClocks:null,
       });
     }
   } catch {
@@ -310,6 +350,8 @@ export async function fetchOfficialNativeArticles(category, {
   try {
     alternate = await fetchOriginalAlternate(category,{
       now,fetchImpl,diagnostics,maxAgeMs,broadPrivateIntake,
+      pulseRefs:fromAutomaticPulse?refs:null,
+      pulseExpectedClocks:fromAutomaticPulse?expectedClocks:null,
     });
     if (diagnostics && typeof diagnostics === "object")
       diagnostics.alternate_feed_ok = true;
@@ -341,6 +383,8 @@ export async function fetchOfficialNativeArticles(category, {
   try {
     const third=await fetchOfficialThirdPublisherArticles(category,{
       now,fetchImpl,maxAgeMs,diagnostics,broadPrivateIntake,
+      pulseRefs:fromAutomaticPulse?refs:null,
+      pulseExpectedClocks:fromAutomaticPulse?expectedClocks:null,
     });
     if (diagnostics && typeof diagnostics === "object")
       diagnostics.third_feed_ok = true;

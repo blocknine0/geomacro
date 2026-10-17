@@ -15,7 +15,7 @@ function api(override?:Record<string,unknown>[]) {
     const u=new URL(String(input));
     urls.push(u.href);
     expect(u.protocol).toBe("https:");
-    expect(opts?.redirect).toBe("error");
+    expect(opts?.redirect).toBe("manual");
     if(u.hostname==="api.worldbank.org" && u.pathname==="/v2/country/IND")
       return Response.json([{page:1,total:1},[{id:"IND",name:"India"}]]);
     if(u.hostname==="api.worldbank.org" && u.pathname.includes("/indicator/"))
@@ -33,7 +33,7 @@ describe("private official annual change evidence — NOT live scored news",()=>
     const {fetchImpl,urls}=api();
     const input={country_iso3:"IND",categories:["macro" as const]};
     const privateProof=await discoverOnDemandForPrivateQualification(input,{fetchImpl,now});
-    expect(privateProof.discovery.network_attempts).toBe(5);
+    expect(privateProof.discovery.network_attempts).toBe(4);
     expect(privateProof.private_macro_changes).toHaveLength(2);
     for(const x of privateProof.private_macro_changes){
       expect(x.country_iso3).toBe("IND");

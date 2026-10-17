@@ -12,9 +12,8 @@ describe("#1414 current scored Intelligence across all launch domains", () => {
     expect(workflow).not.toContain("\n  schedule:");
     expect(workflow).not.toContain("\n  push:");
     expect(workflow).not.toContain("\n  workflow_run:");
-    expect(workflow).toContain("github.event.inputs.permit_legacy_supabase_scoring == 'true'");
-    expect(workflow).toContain("vars.GEOMACRO_ENABLE_LEGACY_SUPABASE_SCORING == 'true'");
-    expect(workflow).toContain("github.ref == 'refs/heads/main'");
+    expect(workflow).toContain("  score-current-all-domains:\n    # Legacy Supabase recovery retired:");
+    expect(workflow).toContain("    if: ${{ false }}");
     expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
     // The actual fresh first-party discovery workflow is NOT disabled.
     const source=readFileSync(".github/workflows/expanded-official-source-observation.yml", "utf8");

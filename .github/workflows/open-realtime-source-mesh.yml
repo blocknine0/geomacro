@@ -2,90 +2,53 @@ name: Geomacro Open Realtime Source Mesh
 
 on:
   workflow_dispatch:
-
-
 permissions:
   contents: read
-
 concurrency:
   group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
-
 jobs:
   sync-and-structure:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 8
     environment: production
     env:
-      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
-      OPEN_LIVE_SOURCE_SYNC_OUTPUT: open-live-source-mesh.json
-      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
-
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GEOMACRO_SUPABASE_RESTRICTED_MODE: "true"
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-
-      - name: Setup Bun 1.4.2
+      - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: 1.4.2
-
+          bun-version: "1.4.2"
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
-
-      - name: Validate authoritative runtime
-        shell: bash
+      - name: Resolve existing D1 without creating a database
         run: |
-          set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY LIVE_STRUCTURE_TOKEN; do
-            test -n "${!name:-}" || { echo "::error::${name} missing"; exit 1; }
-          done
-          node scripts/db/assert-authoritative-supabase.mjs
-          bun --check scripts/sync-open-live-source-mesh.mjs
-          node --check scripts/run-open-live-source-mesh-with-retry.mjs
-
-      - name: Sync open realtime sources
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/run-open-live-source-mesh-with-retry.mjs
-
-      - name: Structure source fragments
-        shell: bash
-        run: |
-          set -euo pipefail
-          : > open-source-structure-summary.ndjson
-          for i in 1 2 3 4 5 6; do
-            response_file="open-source-structure-${i}.json"
-            curl --fail-with-body -sS               --retry 3               --retry-all-errors               --retry-delay 2               --retry-max-time 90               -X POST               "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence"               -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}"               -H "Content-Type: application/json"               -o "$response_file"
-            jq -e '.ok == true' "$response_file" >/dev/null
-            jq -c '{ok,status,fragment_id:(.fragment_id // null),fragment_total:(.fragment_total // null),remaining:(.remaining // 0),evidence_structured:(.evidence_structured // 0),evidence_excluded:(.evidence_excluded // 0),events_created:(.events_created // 0),events_updated:(.events_updated // 0)}' "$response_file" | tee -a open-source-structure-summary.ndjson
-          done
-
-      - name: Prove source-private structured delivery boundary
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f open-live-source-mesh.json
-          jq -e '.ok == true' open-live-source-mesh.json >/dev/null
-          jq -e '.sources | length >= 3' open-live-source-mesh.json >/dev/null
-          for file in open-source-structure-*.json; do
-            jq -e '.ok == true' "$file" >/dev/null
-          done
-
+          bun - <<'TS'
+          import {appendFileSync} from 'node:fs';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!account||!token)throw Error('SOURCE_RUNTIME_CLOUDFLARE_CONFIG_REQUIRED');
+          const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(account)}/d1/database`,{
+            headers:{Authorization:`Bearer ${token}`},redirect:'error',signal:AbortSignal.timeout(20000)});
+          if(!r.ok)throw Error('SOURCE_RUNTIME_D1_DISCOVERY_UNAVAILABLE');
+          const d=await r.json();
+          const db=d.success===true&&Array.isArray(d.result)?d.result.find(x=>x.name==='geomacro-control-plane'):null;
+          if(!db||!/^[0-9a-f-]{36}$/i.test(db.uuid))throw Error('SOURCE_RUNTIME_EXISTING_D1_NOT_FOUND');
+          appendFileSync(process.env.GITHUB_ENV,`D1_DATABASE_ID=${db.uuid}\n`);
+          TS
+      - name: Read sources and verify exact D1 derived context
+        run: bun scripts/ops/run-supabase-free-source-runtime.ts > source-runtime.json
       - name: Upload operational evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: geomacro-open-realtime-source-mesh
-          path: |
-            open-live-source-mesh.json
-            open-source-structure-summary.ndjson
-            open-source-structure-*.json
+          path: source-runtime.json
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 14

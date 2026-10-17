@@ -1,3 +1,4 @@
+import {fetchWithoutRedirect} from "./fetch-without-redirect";
 import { createPerKeySingleFlight } from "./b2-single-flight";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 import type { GlobalRisk } from "./global-risk.types";
@@ -159,22 +160,33 @@ async function signedGet(key: string): Promise<Uint8Array | null> {
 const B2_QUOTA_WORKER =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/b2-quota/reserve";
 
-async function reservePrivateB2Read(key: string): Promise<boolean> {
+export async function reservePrivateB2Read(key: string): Promise<boolean> {
   if (typeof window !== "undefined" || typeof process === "undefined") return false;
-  const token = String(
-    process.env.GEOMACRO_CONTROL_PLANE_TOKEN ??
-    process.env.CONTROL_PLANE_TOKEN ??
-    "",
-  ).trim();
+  // Explicit pre-derived credentials retain precedence. An invalid explicit
+  // credential fails closed; never silently switch authority after rejection.
+  const explicit = String(process.env.GEOMACRO_CONTROL_PLANE_TOKEN ?? "").trim() ||
+    String(process.env.CONTROL_PLANE_TOKEN ?? "").trim();
+  let token = explicit;
+  if (!explicit) {
+    const root = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
+    if (root.length < 32) return false;
+    // Same domain separation as security-budget, hot reads and protected
+    // publishers. The root secret itself must never become a bearer token.
+    try { token = hex(await hmac(root, "geomacro-control-plane-v1")); }
+    catch { return false; }
+  }
   if (token.length < 32) return false;
   const workflowId = key === B2_COMMERCIAL_SOURCE_RIGHTS_KEY
     ? "app_private_source_rights"
     : key === B2_SOURCE_NETWORK_STATUS_KEY
       ? "app_private_source_status"
-      : null;
+      : key === "geomacro-evidence/v1/structural/serving/latest.json.gz" ||
+        key === "geomacro-evidence/v1/structural/serving/latest-proof.json"
+        ? "app_private_structural_serving"
+        : null;
   if (!workflowId) return false;
   try {
-    const res = await fetch(B2_QUOTA_WORKER, {
+    const res = await fetchWithoutRedirect(B2_QUOTA_WORKER, {
       method: "POST",
       redirect: "error",
       headers: {
@@ -238,7 +250,7 @@ async function signedGetOnce(key: string): Promise<Uint8Array | null> {
     );
     const signature = hex(await hmac(signingKey, stringToSign));
 
-    const response = await fetch(`${B2_ENDPOINT}${path}`, {
+    const response = await fetchWithoutRedirect(`${B2_ENDPOINT}${path}`, {
       method: "GET",
       headers: {
         "x-amz-content-sha256": emptyHash,
@@ -292,7 +304,7 @@ function recentEnough(value: unknown, maxAgeMs = 24 * 60 * 60 * 1000): boolean {
 
 async function readPublicIntelligenceEdge(): Promise<PublicIntelligenceRow[] | null> {
   try {
-    const response = await fetch(PUBLIC_INTELLIGENCE_EDGE_URL, {
+    const response = await fetchWithoutRedirect(PUBLIC_INTELLIGENCE_EDGE_URL, {
       method: "GET",
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(4_500),

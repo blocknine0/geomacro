@@ -42,7 +42,9 @@ jobs:
           echo 'PASS: GDELT write path requires current certified commercial governance and still cannot bypass the Risk Gate evidence boundary.'
 
   sync:
-    if: github.event_name == 'workflow_dispatch'
+    # Supabase-only legacy execution retired. Replaced by reviewed official
+    # source read-only or B2/D1-native signed publication; no DB credential restore.
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment: production

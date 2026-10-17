@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { reconcile30mPrivateArticleFingerprints } from "../../scripts/lib/private-original-cross-poll-dedupe.mjs";
 import { reconcilePrivateOriginalReviewQueue } from "../../scripts/lib/private-original-review-queue.mjs";
 import { write30MinSourcePulseToD1 } from "../../scripts/ops/write-30min-source-pulse-d1.mjs";
+import {claimPrivateClassifierWork,acknowledgePrivateClassifierWork} from "../../scripts/lib/private-classifier-retry-ledger.mjs";
 
 const at = "2026-10-10T18:45:00.000Z";
 const domains = ["geopolitics","macro","rare_earth"] as const;
@@ -290,4 +291,62 @@ describe("#1827 continuous 30m original article identity, private D1 only",()=>{
     expect(flow).not.toContain("B2_KEY_ID");
     expect(flow).not.toContain("GEOMACRO_COMMERCE_LEDGER_TOKEN");
   });
+});
+
+
+it("#2229 D1 producer can recover one failed original with readback, then suppress ACKed repeats",async()=>{
+ const data=new Map<string,any>();
+ const attempts=new Map<string,any>();
+ const client=()=>({
+   persist:async (domain:string,state:any,update:any)=>{
+     data.set(domain,{last_attempt_at:update.last_attempt_at,
+       payload:{...state,cursor:state.cursor}});
+   },
+   loadRows:async()=>data,
+ });
+ const attemptsClient=()=>({loadRows:async()=>attempts});
+ const original=make("geopolitics","e".repeat(64));
+ const first=await write30MinSourcePulseToD1({
+   report:report([original]),createClient:client,
+   createAttemptsClient:attemptsClient,
+ });
+ expect(first.selected_private_classifier_ref_count).toBe(1);
+ expect(first.selected_private_classifier_retry_count).toBe(0);
+ const sha=original.original_article_sha256;
+ const claim=claimPrivateClassifierWork({domain:"geopolitics",ledger:null,
+   work:{article_sha256:sha,native_published_at:original.native_published_at,
+      next_attempts:1,retry:false},now:at,runId:"400"});
+ attempts.set("geopolitics",{payload:claim});
+ const second=await write30MinSourcePulseToD1({
+   report:report([original],"2026-10-10T19:16:00.000Z"),
+   createClient:client,createAttemptsClient:attemptsClient,
+ });
+ expect(second.new_private_original_article_fingerprints).toBe(0);
+ expect(second.repeated_private_original_article_fingerprints).toBe(1);
+ expect(second.selected_private_classifier_ref_count).toBe(1);
+ expect(second.selected_private_classifier_retry_count).toBe(1);
+ expect(data.get("geopolitics").payload.private_classifier_work_refs).toEqual([sha]);
+ const retried=claimPrivateClassifierWork({domain:"geopolitics",
+   ledger:attempts.get("geopolitics"),work:{article_sha256:sha,
+     native_published_at:original.native_published_at,
+     next_attempts:2,retry:true},now:"2026-10-10T19:16:00.000Z",runId:"401"});
+ attempts.set("geopolitics",{payload:acknowledgePrivateClassifierWork({
+   domain:"geopolitics",ledger:{payload:retried},
+   now:"2026-10-10T19:16:00.000Z",runId:"401",
+   attempted:[sha],returned:[sha],
+ })});
+ const third=await write30MinSourcePulseToD1({
+   report:report([original],"2026-10-10T19:47:00.000Z"),
+   createClient:client,createAttemptsClient:attemptsClient,
+ });
+ expect(third.selected_private_classifier_ref_count).toBe(0);
+ expect(third.selected_private_classifier_retry_count).toBe(0);
+ expect(third.classifier_acked_ledger_entries).toBe(1);
+ expect(third.classifier_acked_sha_clock_reobserved_and_excluded).toBe(1);
+ expect(third.classifier_acked_exclusion_is_commercial_evidence).toBe(false);
+ expect(JSON.stringify(third)).not.toContain(sha);
+ expect(third.new_private_original_article_fingerprints).toBe(0);
+ expect(data.get("geopolitics").payload.private_classifier_work_refs).toEqual([]);
+ expect(third.supabase_requests).toBe(0);
+ expect(third.payment_performed).toBe(false);
 });

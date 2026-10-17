@@ -16,6 +16,12 @@ on:
 permissions:
   contents: read
 
+# Superseded PR revisions must not run duplicate live census probes.
+# Production acceptance is serialized and never cancelled mid-run.
+concurrency:
+  group: geomacro-live-x402-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   verify:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
@@ -90,6 +96,7 @@ jobs:
 
       - name: Verify live no-charge 195+ country paid-path availability
         env:
+          GEOMACRO_X402_PR_DIAGNOSTIC: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
           GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
         run: node scripts/agentic/verify-live-x402-country-availability-census.mjs
 

@@ -1,26 +1,16 @@
 # Dependency security exceptions
 
-Geomacro treats dependency advisories as release-gating findings. Exceptions are temporary, explicit, and fail closed when their scope or expiry changes.
+Geomacro runs a **zero-known-advisory** dependency security gate. Temporary advisory bypasses are not permitted.
 
-## GHSA-848j-6mx2-7j84: elliptic 6.6.1
+## Closed — GHSA-848j-6mx2-7j84 (`elliptic@6.6.1`)
 
-- Severity: Low
-- Package: `elliptic@6.6.1`
-- Status: upstream patch unavailable as of 2026-09-12
-- Review expiry: 2026-10-12
-- Current paths:
-  - `@circle-fin/adapter-ethers-v6 > @ethersproject/abi > ... > @ethersproject/signing-key > elliptic`
-  - `@circle-fin/app-kit > @ethersproject/abi > ... > @ethersproject/signing-key > elliptic`
-- Advisory: https://github.com/advisories/GHSA-848j-6mx2-7j84
+- **Removed:** 2026-10-15
+- **Original risk:** Ethers v5 `@ethersproject/signing-key` depended on unpatched `elliptic@6.6.1`, vulnerable to incorrect ECDSA nonce length computation. The upstream package still has no published patched version.
+- **Original transitive roots:** `@circle-fin/adapter-ethers-v6` and `@circle-fin/app-kit`.
+- **Permanent remediation:** Both unused direct packages and their 86 newly orphaned locked transitive entries were removed, including `@ethersproject/signing-key` and `elliptic`. The standalone `@circle-fin/x402-batching` and canonical x402 payment code remain intact.
+- **Evidence:** root dependency manifests, `bun.lock` graph pruning, zero-advisory `bun audit` security gate, full Product CI, CodeQL and no-funds x402 acceptance before any protected merge.
+- **Advisory:** https://github.com/advisories/GHSA-848j-6mx2-7j84
 
-The current Circle packages still depend on the affected Ethers v5 transitive chain, and the advisory has no published patched `elliptic` version. Geomacro will not replace a cryptographic dependency with an unreviewed fork only to make an alert disappear.
+The previous exception expired on 2026-10-12. It must **not** be extended, reintroduced through an override, or bypassed via a synthetic audit result. If the package is ever needed again, re-review the actual upstream dependency graph and security advisory first.
 
-Compensating controls:
-
-1. The Security Resilience Gate permits exactly this one low advisory and rejects every other dependency advisory.
-2. The exception automatically expires on 2026-10-12, forcing re-review.
-3. `bun.lock` is the only committed dependency lockfile and is installed with `--frozen-lockfile` in CI.
-4. `toml` and `stream-json` are pinned to patched transitive versions through validated Bun overrides.
-5. Product build, Risk Gate fail-closed tests, database migration safety, and deterministic stress testing remain release gates.
-
-Remove this exception immediately when Circle or the affected upstream dependency chain publishes and validates a patched path.
+The canonical dependency lock remains `bun.lock` (Bun 1.4.2); pinned `toml` and `stream-json` security overrides, cryptographic signing boundaries, offline tests, and production payment freezes remain unchanged.

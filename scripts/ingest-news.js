@@ -2984,6 +2984,17 @@ async function ingestNews() {
   }
   const privateStagedRows = [];
   const privateGriSourceRows = [];
+  const attemptedOriginalRefs=new Set();
+  const returnedOriginalRefs=new Set();
+  const privateOriginalRef=article=>{
+    if(article?.discoveryProvider!=="official_native_rss")return null;
+    const u=new URL(article.url);
+    for(const key of [...u.searchParams.keys()]){
+      if(/^utm_|^(?:fbclid|gclid|mc_cid|mc_eid)$/iu.test(key))u.searchParams.delete(key);
+    }
+    u.searchParams.sort();
+    return createHash("sha256").update(u.href).digest("hex");
+  };
   const privateScoringDomain = String(process.env.GDELT_FORCE_CATEGORY ?? '');
   const privateDiagnostic = PRIVATE_B2_STAGE
     ? emptyPrivateScoringDiagnostic(privateScoringDomain)
@@ -3487,6 +3498,12 @@ async function ingestNews() {
       }
     }
 
+    // D1 automatic private stages can classify only the exact SHA-bound
+    // original-publisher candidate, not a discovery-index GDELT article.
+    if(PRIVATE_B2_STAGE && process.env.GEOMACRO_AUTOMATIC_D1_PULSE_STAGE==="true"){
+      candidateArticles=candidateArticles.filter(article=>
+        article.discoveryProvider==="official_native_rss");
+    }
     candidateArticles.sort(
       (a, b) =>
         Date.parse(b.publishedAt || 0) -
@@ -3595,6 +3612,12 @@ async function ingestNews() {
     for (const [batchIndex, batch] of batches.entries()) {
       let assessments;
       if (privateDiagnostic) privateDiagnostic.classifier_attempted_count += batch.length;
+      if(PRIVATE_B2_STAGE){
+        for(const article of batch){
+          const id=privateOriginalRef(article);
+          if(id)attemptedOriginalRefs.add(id);
+        }
+      }
       try {
         assessments = await assessWithRetry(batch, category.name);
         if (privateDiagnostic) privateDiagnostic.classifier_returned_count += assessments.length;
@@ -3627,6 +3650,10 @@ async function ingestNews() {
       for (let i = 0; i < batch.length; i++) {
         const article = batch[i];
         const assessment = assessments[i];
+        if(PRIVATE_B2_STAGE && assessment){
+          const id=privateOriginalRef(article);
+          if(id)returnedOriginalRefs.add(id);
+        }
         const gated = passesGates(article, assessment, category.name);
         if (!gated.ok) {
           totalRejectedByGate++;
@@ -3795,6 +3822,10 @@ async function ingestNews() {
       private_only: true,
       records: privateStagedRows,
       diagnostics: privateDiagnostic,
+      // Private D1-only classifier lifecycle proof: SHA hashes, never
+      // publisher URLs, titles, or model output; not a rights admission.
+      attempted_original_article_refs:[...attemptedOriginalRefs],
+      returned_original_article_refs:[...returnedOriginalRefs],
     }) + '\n', { mode: 0o600 });
     // Never upload this headline-bearing private file as a GH artifact.
     // The B2 archiver validates exact stage title hashes and stores it only

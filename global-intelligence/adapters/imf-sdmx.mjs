@@ -1,6 +1,10 @@
 import {getJson,observation} from "./http.mjs";
 
-const DATAMAPPER_BASE = "https://www.imf.org/external/datamapper/api/v2";
+// IMF's own public DataMapper guide documents the anonymous v1 endpoint.
+// The legacy v2 host returned a real HTTP 403 from the production runner.
+// Do not attach a credential or bypass the 403; use the separately documented
+// public API operation and keep rights/publication authority unverified.
+const DATAMAPPER_BASE = "https://www.imf.org/external/datamapper/api/v1";
 
 function authHeaders() {
   return process.env.IMF_API_TOKEN
@@ -19,31 +23,40 @@ function rowsFromDataMapper(payload, indicator, countryIso3, periods) {
     .filter(([iso, values]) => iso === country && values && typeof values === "object")
     .flatMap(([, values]) =>
       Object.entries(values)
-        .filter(([period, value]) => value !== null && value !== undefined && (!wanted || wanted.has(String(period))))
-        .map(([period, value]) => ({ period, value }))
+        .filter(([period, value]) => /^(?:19|20)\d{2}$/.test(period) &&
+          value !== null && value !== undefined && value !== "" &&
+          Number.isFinite(Number(value)) && (!wanted || wanted.has(period)))
+        .map(([period, value]) => ({ period, value:Number(value) }))
     );
 }
 
 export async function fetchImfDataMapper({
   indicator = "NGDP_RPCH",
   countryIso3,
-  periods = null
+  periods = null,
+  fetchImpl=fetch
 } = {}) {
-  if (!countryIso3) throw new Error("countryIso3 is required");
+  if (!/^[A-Z]{3}$/u.test(String(countryIso3 ?? "").toUpperCase()))throw Error("IMF_COUNTRY_ISO3_INVALID");
+  if (!/^[A-Z][A-Z0-9_]{1,32}$/u.test(indicator))throw Error("IMF_INDICATOR_INVALID");
+  if(periods!==null&&(!Array.isArray(periods)||periods.length<1||periods.length>6||
+     periods.some(p=>!/^(?:19|20)\d{2}$/u.test(String(p)))))
+    throw Error("IMF_PERIOD_FILTER_INVALID");
 
   const path = periods?.length
     ? `/${indicator}/${countryIso3.toUpperCase()}?periods=${encodeURIComponent(periods.join(","))}`
     : `/${indicator}/${countryIso3.toUpperCase()}`;
 
   const url = DATAMAPPER_BASE + path;
-  const data = await getJson(url, {headers: authHeaders()});
+  const data = await getJson(url, {headers: {},timeoutMs:12000,
+    maxBytes:256*1024,redirect:"error",fetchImpl});
   const rows = rowsFromDataMapper(data, indicator, countryIso3, periods);
 
   return rows.map(r => observation({
     sourceId: "imf_sdmx",
     category: "MACRO",
     countryIso3: countryIso3.toUpperCase(),
-    publishedAt: r.period ? `${r.period}-12-31T00:00:00Z` : null,
+    // A reference period is NOT the native IMF release timestamp.
+    publishedAt:null,observedAt:new Date().toISOString(),
     title: `IMF ${indicator} ${r.period}`,
     summary: JSON.stringify({
       indicator,
@@ -52,16 +65,21 @@ export async function fetchImfDataMapper({
       source: "IMF DataMapper v2"
     }),
     url,
-    confidence: 0.8
+    confidence: 0.8,
+    raw:{evidence_type:"IMF_STATISTICAL_REFERENCE",indicator,
+      reference_period:r.period,reference_country:countryIso3.toUpperCase(),
+      native_release_at:null,commercial_rights_verified:false,
+      independent_original_review_verified:false}
   }));
 }
 
 export async function fetchImfDataMapperCatalog() {
+  // The public catalogue requires no bearer credential.
   const [indicators, countries, regions, groups] = await Promise.all([
-    getJson(`${DATAMAPPER_BASE}/indicators`, {headers: authHeaders()}),
-    getJson(`${DATAMAPPER_BASE}/countries`, {headers: authHeaders()}),
-    getJson(`${DATAMAPPER_BASE}/regions`, {headers: authHeaders()}),
-    getJson(`${DATAMAPPER_BASE}/groups`, {headers: authHeaders()})
+    getJson(`${DATAMAPPER_BASE}/indicators`, {headers: {},maxBytes:256*1024,redirect:"error"}),
+    getJson(`${DATAMAPPER_BASE}/countries`, {headers: {},maxBytes:256*1024,redirect:"error"}),
+    getJson(`${DATAMAPPER_BASE}/regions`, {headers: {},maxBytes:256*1024,redirect:"error"}),
+    getJson(`${DATAMAPPER_BASE}/groups`, {headers: {},maxBytes:256*1024,redirect:"error"})
   ]);
 
   return {

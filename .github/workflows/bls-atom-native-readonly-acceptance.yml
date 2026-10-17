@@ -1,0 +1,74 @@
+name: BLS Atom Publisher Native Readonly Acceptance
+on:
+  pull_request:
+    paths:
+      - "src/lib/stateless-intelligence-model.ts"
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - "src/__tests__/bls-atom-originals-regression.test.ts"
+      - ".github/workflows/bls-atom-native-readonly-acceptance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/stateless-intelligence-model.ts"
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - ".github/workflows/bls-atom-native-readonly-acceptance.yml"
+permissions:
+  contents: read
+jobs:
+  official-native-atom:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Prove all three real government-native Atom release feeds
+        shell: bash
+        env:
+          APP_SUPABASE_URL: ""
+          SUPABASE_URL: ""
+          SUPABASE_DB_URL: ""
+          APP_SUPABASE_SERVICE_ROLE_KEY: ""
+          SUPABASE_SERVICE_ROLE_KEY: ""
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const families=["cpi","empsit","ximpim"];
+          for (const family of families) {
+            const url="https://www.bls.gov/feed/"+family+".rss";
+            const res=await fetch(url,{
+              method:"GET",redirect:"error",cache:"no-store",
+              headers:{Accept:"application/atom+xml,application/xml;q=0.9"},
+              signal:AbortSignal.timeout(10000),
+            });
+            if(!res.ok)throw Error("BLS_NATIVE_ATOM_HTTP_UNAVAILABLE:"+family+":"+res.status);
+            const mime=String(res.headers.get("content-type")||"");
+            if(!/(?:atom\+xml|rss\+xml|application\/xml|text\/xml)/i.test(mime))
+              throw Error("BLS_NATIVE_ATOM_MIME_INVALID:"+family);
+            const body=await res.text();
+            if(body.length===0||body.length>384*1024||/<!DOCTYPE|<!ENTITY/i.test(body)||
+              !/<feed(?:\s|>)/i.test(body))
+              throw Error("BLS_NATIVE_ATOM_SIZE_OR_ENVELOPE_INVALID:"+family);
+            const entries=[...body.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/gi)].slice(0,75);
+            let clocks=0,originals=0;
+            const allowed=new RegExp("^/news\\.release/(?:archives/)?"+family+
+              "(?:\\.nr[0-9]+|_[0-9]{8})\\.htm$","u");
+            for(const [,entry] of entries){
+              const date=/<published(?:\s[^>]*)?>([^<>]{10,100})<\/published>/i.exec(entry)?.[1]||"";
+              const href=/<link\b[^>]*\bhref=["']([^"']{10,1200})["']/i.exec(entry)?.[1]||"";
+              if(!/(?:Z|[+-]\d\d:\d\d)$/i.test(date)||!Number.isFinite(Date.parse(date)))continue;
+              clocks++;
+              try {
+                const original=new URL(href.replaceAll("&amp;","&"));
+                if(original.protocol==="https:"&&original.hostname==="www.bls.gov"&&
+                  !original.search&&!original.hash&&allowed.test(original.pathname))
+                  originals++;
+              }catch{}
+            }
+            if(!entries.length||!clocks||!originals)
+              throw Error("BLS_NATIVE_PUBLISHED_OR_ORIGINAL_MISSING:"+family);
+            console.log(JSON.stringify({family,transport_ok:true,atom_entries:entries.length,
+              native_published_clocks:clocks,first_party_originals:originals,
+              unverified_risk_score_promoted:false,source_data_released:false}));
+          }
+          console.log(JSON.stringify({schema:"geomacro.bls-atom-readonly.v1",
+            validated_families:3,supabase_connections:0,b2_requests:0,d1_writes:0,
+            current_signed_products_generated:0,x402_charges:0}));
+          NODE

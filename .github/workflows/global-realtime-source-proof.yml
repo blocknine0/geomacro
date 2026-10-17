@@ -156,7 +156,9 @@ jobs:
           retention-days: 30
 
   exact-head-production-realtime-acceptance:
-    if: github.event_name == 'pull_request'
+    # Permanently retired Supabase-only runtime; keep historical audit code
+    # immutable and use existing D1/B2-native replacements instead.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: production

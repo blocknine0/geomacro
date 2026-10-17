@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { computeGeomacroIntelligenceProductHash } from "../lib/geomacro-intelligence-contract";
 import { approvedWdiAttribution } from "../lib/world-bank-derived-attribution";
+import {approvedFedBoardMinutesAttribution}
+  from "../lib/federal-reserve-board-derived-attribution";
 import {
   assertPublicPaidOutputBoundary,
   sanitizeAndRehashPaidPreparedResponse,
@@ -130,6 +132,47 @@ describe("source-free paid output boundary", () => {
     expect(delivered_product_hash).toBe(computeGeomacroIntelligenceProductHash(core));
     expect(JSON.stringify(payload)).not.toContain("world_bank_indicators");
     expect(JSON.stringify(payload)).not.toContain("raw_payload");
+  });
+
+  it("preserves exact Board publication credit in the delivered-product hash without original source links",()=>{
+    const credit=approvedFedBoardMinutesAttribution();
+    const prepared={
+      schema_version:"geomacro.adaptive-intelligence-response.v1",
+      product:"geomacro_adaptive_risk_intelligence_v1",
+      request_id:"request-board-credit-001",
+      answer:{summary:"Geomacro-derived factual Board minutes publication."},
+      data_attribution:credit,
+      delivered_product_hash:"0".repeat(64),
+      availability:{deliverable:false},payment:{provider:"coinbase_cdp_x402"},
+    };
+    const value=sanitizeAndRehashPaidPreparedResponse(prepared,{rejectEmbeddedLinks:true});
+    expect(value.data_attribution).toEqual(credit);
+    expect(()=>assertPublicPaidOutputBoundary(value)).not.toThrow();
+    const {delivered_product_hash,availability,payment,...core}=value;
+    expect(delivered_product_hash).toBe(computeGeomacroIntelligenceProductHash(core));
+    expect(availability).toEqual({deliverable:false});
+    for(const secret of ["federalreserve.gov","source_id","article_url",
+      "original_article_sha256","raw_payload"]){
+      expect(JSON.stringify(value)).not.toContain(secret);
+    }
+  });
+
+  it("fails closed on forged Board credit, endorsement, replaced source, URL or hidden receipt",()=>{
+    const approved=approvedFedBoardMinutesAttribution();
+    for(const forged of [
+      {...approved,credit:"Federal Reserve Bank of New York"},
+      {...approved,material:"Other rate announcement"},
+      {...approved,use_scope:"Includes third-party charts and seals"},
+      {...approved,endorsement:"Board endorses Geomacro"},
+      {...approved,material_url:"https://www.federalreserve.gov/newsevents"},
+      {...approved,article_identity_sha256:"a".repeat(64)},
+    ]){
+      expect(()=>sanitizePublicPaidOutput({data_attribution:forged},{rejectEmbeddedLinks:true}))
+        .toThrow("PAID_OUTPUT_UNQUALIFIED_DATA_ATTRIBUTION");
+      expect(()=>assertPublicPaidOutputBoundary({data_attribution:forged}))
+        .toThrow("PAID_OUTPUT_UNQUALIFIED_DATA_ATTRIBUTION");
+    }
+    expect(()=>assertPublicPaidOutputBoundary({data_attribution:approved})).not.toThrow();
   });
 
   it("does not allow arbitrary upstream links or forged credits to escape the paid source firewall",()=>{

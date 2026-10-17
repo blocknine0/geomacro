@@ -1,0 +1,82 @@
+name: First Earnings Zero-Funds Live Acceptance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/agent-query-plan.ts"
+      - "src/lib/agent-query-response.server.ts"
+      - "src/lib/earn-first-structural-offers.server.ts"
+      # The security classifier for unpaid POST and both fallback module
+      # gateways materially determine buyer eligibility. Re-test exact-main
+      # no-funds behavior whenever they change, not only when the public
+      # availability route source is edited.
+      - "src/lib/central-security.server.ts"
+      - "src/lib/agent-query-deliverability.server.ts"
+      - "src/lib/structural-context.server.ts"
+      - "src/lib/agent-query-world-bank-modules.server.ts"
+      - "src/lib/agent-query-critical-minerals.server.ts"
+      - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
+      - "src/lib/verified-capability-coinbase-binding.server.ts"
+      - "src/lib/capability-pricing-verified-plan.server.ts"
+      - "src/lib/capability-pricing-catalog.ts"
+      - "src/routes/api.v1.intelligence.availability.ts"
+      - "scripts/agentic/verify-earn-first-live-no-funds.mjs"
+      - ".github/workflows/earn-first-live-no-funds-acceptance.yml"
+  pull_request:
+    paths:
+      - "src/lib/agent-query-plan.ts"
+      - "src/lib/agent-query-response.server.ts"
+      - "src/lib/earn-first-structural-offers.server.ts"
+      - "src/routes/api.v1.intelligence.availability.ts"
+      - "scripts/agentic/verify-earn-first-live-no-funds.mjs"
+      - "src/__tests__/earn-first-live-no-funds-acceptance.test.ts"
+      - "src/lib/central-security.server.ts"
+      - "src/lib/agent-query-deliverability.server.ts"
+      - "src/lib/structural-context.server.ts"
+      - "src/lib/agent-query-world-bank-modules.server.ts"
+      - "src/lib/agent-query-critical-minerals.server.ts"
+      - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
+      - "src/lib/verified-capability-coinbase-binding.server.ts"
+      - "src/lib/capability-pricing-verified-plan.server.ts"
+      - "src/lib/capability-pricing-catalog.ts"
+      - ".github/workflows/earn-first-live-no-funds-acceptance.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-earn-first-no-funds-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governed-buyer-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Checkout exact canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # PR mode proves only that the published *base* can be examined without
+      # wallets, quotes or payment. A positive diagnostic job is NOT proof
+      # of payable evidence. On main push the original strict gate remains.
+      - name: Read-only three-domain alternate-country diagnosis (not earning acceptance)
+        if: github.event_name == 'pull_request'
+        env:
+          # The PR base is the comparison point. A stale published SHA
+          # is explicitly reported, never accepted as production payable.
+          # No static old deployment hash or implicit approval to charge.
+          EXPECTED_CANONICAL_SHA: ${{ github.event.pull_request.base.sha }}
+        # Only three other fixed markets (UKR/BRA/AUS) are queried in PR
+        # diagnostics. Main always checks the canonical owner-selected USA
+        # pilot. No double probing, no 195-country enumeration, no wallets.
+        run: node scripts/agentic/verify-earn-first-live-no-funds.mjs --diagnostic-only --alternate-country-probe
+      - name: Verify exact deployed build, 3 category preflights, no funds
+        if: github.event_name != 'pull_request'
+        env:
+          EXPECTED_CANONICAL_SHA: ${{ github.sha }}
+        run: node scripts/agentic/verify-earn-first-live-no-funds.mjs

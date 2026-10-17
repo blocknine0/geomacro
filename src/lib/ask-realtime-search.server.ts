@@ -260,7 +260,7 @@ export async function realtimeSearchAnswer(
   const hits = await currentSearch(question);
   if (!hits.length) return null;
 
-  // Free broad-news fallback never invokes an optional hosted LLM.
+  // Broad free-news discovery does not require an optional hosted formatter.
   const grounded = options.deterministicOnly
     ? deterministicStructuredAnswer(hits)
     : await structureWithGroundedModel(question, hits);

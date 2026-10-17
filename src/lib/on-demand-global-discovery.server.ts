@@ -1,7 +1,15 @@
+import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS,verifiedGlobalRdfFeed,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { createHash } from "node:crypto";
-import { originalHeadlineMentionsCountry } from "./on-demand-original-subject-matching";
+import {fetchGdeltDocWithBudget,gdeltRetryAfterMs} from "../../scripts/lib/gdelt-doc-request-gate.mjs";
+import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
+import { country195ByIso3 } from "./canonical-country-registry-195";
+import { classifyGlobalEntity } from "./global-entity-classification";
+import { verifiedFedBoardDiscountMinutesOriginal } from "./on-demand-fed-board-discount-release.server";
+import { originalFedDiscountMinutesArchiveLinks } from "./on-demand-fed-official-archive.server";
+import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
 
 /**
  * Query-time, bounded, Supabase/B2-free GLOBAL DISCOVERY for a future paid
@@ -16,6 +24,8 @@ export type OnDemandSearchInput = {
   categories: OnDemandCategory[];
   // Optional fixed vocabulary, never the raw customer question.
   mineral?: OnDemandMineral | null;
+  topics?: readonly string[];
+  max_age_seconds?: number;
 };
 /**
  * PRIVATE EPHEMERAL EVIDENCE ONLY: never put this in response JSON or
@@ -25,13 +35,22 @@ export type OnDemandSearchInput = {
  */
 export type PrivateOriginalCandidate = {
   domain: OnDemandCategory;
+  // Private country binding is assigned ONLY after canonical ISO3 validation
+  // and issuer-specific subject matching in the discovery engine.
+  country_iso3?: string;
   publisher_family: string;
   article_url: string;
   article_title: string;
+  // Only exact same-item original first-party feed summary or GOV.UK
+  // first-party search description. Private, bounded and never returned
+  // in public discovery, user payloads or audit logs.
+  item_scoped_summary_private?: string;
   feed_item_published_at: string | null;
-  // Never promote a feed <updated> as original publication. Only an
-  // allowlisted GOV.UK Atom first-party page may rescue this private lead.
+  // Never promote a feed <updated> as original publication. Only allowlisted
+  // official original article pages may rescue an undated Atom lead.
   undated_atom_original_page_pending?: true;
+  search_index_original_page_pending?: true;
+  official_archive_release_day?: string; // official issuer index day, never exact clock
   article_identity_sha256: string;
   first_party_article_url_verified: true;
   source_native_feed_publication_date_verified: boolean;
@@ -63,10 +82,21 @@ export type PrivateOfficialMacroChange = {
 };
 export type SourceProbe = {
   family: string;
+  // Category-specific acceptance must not count Macro as Geopolitics.
+  category?: OnDemandCategory;
   attempted: boolean;
   reachable: boolean;
   observed_record_count: number;
   publication_clock_verified: boolean;
+  // Distinguish no relevant original from upstream errors or access controls.
+  retrieval_state?: "RECORDS_OBSERVED"|"NO_MATCHING_RECORDS"|
+    "RATE_LIMITED"|"ACCESS_RESTRICTED"|"TRANSPORT_UNAVAILABLE"|
+    "COOLDOWN_ACTIVE"|"PROVIDER_INVALID";
+  // Aggregate original-item diagnostics, never titles or article URLs.
+  feed_audit?: {
+    inspected:number; native_dated:number; country_mentioned:number;
+    scope_matched:number; eligible_pub_date:number; allowed_article_paths:number;
+  };
   independent_claim_verified: false;
   derived_commercial_rights_verified: false;
 };
@@ -117,40 +147,91 @@ export function inferOnDemandMineral(question: string | null | undefined): OnDem
   return matches[0]?.value ?? null;
 }
 
+// Fixed topic vocabulary. Never send a customer's freeform question upstream.
+// A generic official headline is not evidence for an exact sanctioned topic.
+const TOPIC_TITLE_PATTERNS:Readonly<Record<string,RegExp>>={
+  sanctions_restrictions:/\b(?:sanctions?|embargo|export controls?|restrictions?)\b/iu,
+  conflict_geopolitics:/\b(?:conflict|ceasefire|war|military|airstrike|peace|security council)\b/iu,
+  political_governance:/\b(?:government|governance|election|parliament|diplomatic)\b/iu,
+  macro_risk:/\b(?:inflation|gdp|monetary|central bank|growth|interest rates?|discount rates?|economy|economic|financial|chancellor|treasury)\b/iu,
+  sovereign_risk:/\b(?:fiscal|sovereign|budget|bond|debt)\b/iu,
+  fx_external_risk:/\b(?:foreign exchange|exchange rate|currency|reserves|fx)\b/iu,
+  critical_minerals:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mining)\b/iu,
+};
+const CATEGORY_TOPICS:Readonly<Record<OnDemandCategory,readonly string[]>>={
+  geopolitics:["sanctions_restrictions","conflict_geopolitics","political_governance"],
+  macro:["macro_risk","sovereign_risk","fx_external_risk"],
+  rare_earth:["critical_minerals"],
+};
+export function matchesRequestedTopic(title:string,category:OnDemandCategory,topics:readonly string[]):boolean {
+  const scoped=topics.filter(topic=>CATEGORY_TOPICS[category].includes(topic));
+  return scoped.length===0 || scoped.some(topic=>TOPIC_TITLE_PATTERNS[topic]?.test(title));
+}
+
+/** Fixed, bounded rolling-window parser for free question-time discovery only. */
+export function inferOnDemandFreshnessSeconds(question:string|null|undefined):number|null {
+  if(!question)return null;
+  const matches=[...question.matchAll(/\b(?:last|past|within)\s+(\d{1,2})\s*(hours?|days?|weeks?)\b/giu)];
+  if(matches.length===0)return null;
+  const values=matches.map(match=>{
+    const amount=Number(match[1]);
+    const unit=match[2].toLowerCase();
+    const seconds=amount*(unit.startsWith("hour")?3_600:unit.startsWith("day")?86_400:604_800);
+    if(!Number.isInteger(seconds) || seconds<1 || seconds>31*86_400)
+      throw Error("ON_DEMAND_FRESHNESS_UNSUPPORTED");
+    return seconds;
+  });
+  if(new Set(values).size!==1)throw Error("ON_DEMAND_FRESHNESS_AMBIGUOUS");
+  return values[0];
+}
+
 const MAX_BODY_BYTES = 192 * 1024;
 // Original first-party government pages regularly exceed ordinary small-feed
 // limits; the shared 30m verifier uses exactly 384KiB. This never applies to
 // GDELT/WorldBank/ReliefWeb/RSS discovery responses.
 const MAX_FIRST_PARTY_HTML_BYTES = 384 * 1024;
 const TIMEOUT_MS = 5_000;
+const ONE_DAY_MS = 86_400_000;
+const MAX_NEWS_AGE_MS = 31 * ONE_DAY_MS;
+const RATE_LIMIT_COOLDOWNS_MS = {403: 60*60_000, 429: 15*60_000};
+const providerCooldownUntil = new Map<string,number>();
+export function retryAfterCooldownMs(value:string|null, now=Date.now()):number {
+  return gdeltRetryAfterMs(value,now);
+}
 
 async function boundedFetch(
   fetchImpl: typeof fetch, url: string, accept: string,
+  timeoutMs = TIMEOUT_MS,
 ): Promise<string> {
   const target = new URL(url);
   // This whitelist is not caller configurable. Do not follow redirects to
   // arbitrary locations, signed querystrings, credentials or metadata IPs.
   if (target.protocol !== "https:" ||
       !["api.worldbank.org","api.gdeltproject.org","api.reliefweb.int",
-        "www.gov.uk","news.un.org","www.federalreserve.gov",
-        "www.minister.industry.gov.au"].includes(target.hostname)) {
+        "www.gov.uk","news.un.org","www.federalreserve.gov","www.ecb.europa.eu",
+        "www.minister.industry.gov.au","api.io.canada.ca",
+        "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
   const maxBytes = accept === "text/html" ? MAX_FIRST_PARTY_HTML_BYTES : MAX_BODY_BYTES;
   let response: Response;
   try {
-    response = await fetchImpl(url, {
+    response = await fetchWithoutRedirectUsing(fetchImpl,url, {
       method: "GET",
       redirect: "error",
       headers: { Accept: accept },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
-  } catch {
+  } catch(error) {
+    if(error instanceof Error&&error.message==="ON_DEMAND_PROVIDER_COOLDOWN")throw error;
     // A network failure may use a specifically approved alternate; an
     // explicit 401/403/429 denial must never be worked around.
     throw Error("ON_DEMAND_SOURCE_TRANSPORT_FAILURE");
   }
   if (!response.ok) {
+    if(response.status===429)throw Error("ON_DEMAND_SOURCE_RATE_LIMITED");
+    if(response.status===401 || response.status===403)
+      throw Error("ON_DEMAND_SOURCE_ACCESS_RESTRICTED");
     const transient = response.status === 404 ||
       (response.status >= 500 && response.status <= 599);
     throw Error(transient ? "ON_DEMAND_SOURCE_TRANSIENT_HTTP" :
@@ -186,26 +267,38 @@ function digest(s: string) {
   return createHash("sha256").update(s,"utf8").digest("hex");
 }
 function iso3(value: string) {
-  const country = String(value || "").toUpperCase();
-  if (!/^[A-Z]{3}$/.test(country)) throw Error("ON_DEMAND_ISO3_INVALID");
+  const country=String(value||"").toUpperCase();
+  if(!/^[A-Z]{3}$/u.test(country))
+    throw Error("ON_DEMAND_ISO3_INVALID");
+  if(!country195ByIso3(country) &&
+     classifyGlobalEntity(country)==="UNCLASSIFIED")
+    throw Error("ON_DEMAND_COUNTRY_NOT_IN_CANONICAL_REGISTRY");
   return country;
 }
-function freshPublished(value: string, now: Date) {
+function freshPublished(value: string, now: Date, maxAgeMs=ONE_DAY_MS) {
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) && parsed <= now.getTime() &&
-    now.getTime() - parsed <= 24*60*60*1_000;
+    now.getTime() - parsed <= maxAgeMs;
 }
 function probe(family: string, count: number, clock: boolean): SourceProbe {
   return {
     family,attempted:true,reachable:true,
     observed_record_count:Math.min(Math.max(0,count),10),
+    retrieval_state:count>0?"RECORDS_OBSERVED":"NO_MATCHING_RECORDS",
     publication_clock_verified:clock,
     independent_claim_verified:false,
     derived_commercial_rights_verified:false,
   };
 }
-function failed(family: string): SourceProbe {
-  return {...probe(family,0,false),reachable:false};
+function failed(family:string,error?:unknown):SourceProbe {
+  const code=error instanceof Error?error.message:"";
+  const retrieval_state:NonNullable<SourceProbe["retrieval_state"]>=
+    code==="ON_DEMAND_SOURCE_RATE_LIMITED"?"RATE_LIMITED":
+    code==="ON_DEMAND_SOURCE_ACCESS_RESTRICTED"?"ACCESS_RESTRICTED":
+    code==="ON_DEMAND_PROVIDER_COOLDOWN"?"COOLDOWN_ACTIVE":
+    code==="ON_DEMAND_SOURCE_TRANSPORT_FAILURE" ||
+    code==="BOUNDED_EXTERNAL_TRANSPORT_FAILURE"?"TRANSPORT_UNAVAILABLE":"PROVIDER_INVALID";
+  return {...probe(family,0,false),reachable:false,retrieval_state};
 }
 
 async function countryName(country: string, fetchImpl: typeof fetch) {
@@ -222,32 +315,69 @@ async function countryName(country: string, fetchImpl: typeof fetch) {
 }
 async function gdelt(
   category: OnDemandCategory, countryNameValue: string, fetchImpl: typeof fetch,
-  mineral: OnDemandMineral | null,
+  mineral: OnDemandMineral | null, topics:readonly string[]=[], countryIso3="",
+  maxAgeMs=ONE_DAY_MS, deadlineMs=Date.now()+12_000,
 ): Promise<SourceProbe> {
   // GDELT is a discovery INDEX. Its "seendate" is NEVER original publication
   // and third-party discovery NEVER proves independent event corroboration.
+  const scopedTerms=category==="geopolitics" && topics.includes("sanctions_restrictions")
+    ? "(sanctions OR embargo OR export controls)"
+    : category==="geopolitics" && topics.includes("conflict_geopolitics")
+      ? "(ceasefire OR conflict OR war)"
+      : category==="macro" && topics.includes("fx_external_risk")
+        ? "(foreign exchange OR exchange rate OR currency)"
+        : SEARCH_TERMS[category];
   const q = '"' + countryNameValue.replace(/"/g,"") + '" AND ' +
-    (category === "rare_earth" && mineral ? '"' + mineral + '"' : SEARCH_TERMS[category]);
+    (category === "rare_earth" && mineral ? '"' + mineral + '"' : scopedTerms);
   const params = new URLSearchParams({
     query:q,mode:"ArtList",format:"json",maxrecords:"10",
-    sort:"DateDesc",timespan:"24h",
+    sort:"DateDesc",timespan:Math.max(1,Math.ceil(maxAgeMs/ONE_DAY_MS))+"d",
   });
-  const body = await boundedFetch(fetchImpl,
-    "https://api.gdeltproject.org/api/v2/doc/doc?" + params,
-    "application/json");
+  const url="https://api.gdeltproject.org/api/v2/doc/doc?" + params;
+  // Share ONE 12s latency envelope among the requested category-specific
+  // GDELT indexes. Every retry consumes the same original deadline.
+  const readIndex=()=>{
+    const remaining=deadlineMs-Date.now();
+    if(remaining<250)throw Error("ON_DEMAND_PROVIDER_COOLDOWN");
+    return boundedFetch(fetchImpl,url,"application/json",Math.min(12_000,remaining));
+  };
+  let body:string;
+  try {
+    body=await readIndex();
+  } catch(error) {
+    // One bounded same-provider retry for 404/5xx only. Never retry
+    // authorization (401/403), quota (429), invalid JSON, or bad timestamps.
+    // The outer twelve-request budget also applies to this extra attempt.
+    if(!(error instanceof Error) ||
+       error.message!=="ON_DEMAND_SOURCE_TRANSIENT_HTTP")throw error;
+    body=await readIndex();
+  }
   const parsed: unknown = JSON.parse(body);
   const articles = typeof parsed === "object" && parsed !== null &&
     Array.isArray((parsed as {articles?:unknown}).articles)
     ? (parsed as {articles:unknown[]}).articles : [];
-  const valid = articles.filter(v => {
-    if (!v || typeof v !== "object") return false;
-    const row = v as {url?:unknown,title?:unknown};
+  // Repeated index entries for an identical publisher URL are one lead.
+  // Keep publisher path/query identity; never infer event corroboration.
+  const uniqueUrls = new Set<string>();
+  for (const value of articles) {
+    if (!value || typeof value !== "object") continue;
+    const row = value as {url?:unknown,title?:unknown};
     if (typeof row.title !== "string" || row.title.trim().length < 10 ||
-        typeof row.url !== "string") return false;
-    try { const url = new URL(row.url); return url.protocol === "https:"; }
-    catch { return false; }
-  });
-  return probe("gdelt_doc_discovery",valid.length,false);
+        typeof row.url !== "string") continue;
+    try {
+      const uri = new URL(row.url);
+      if (uri.protocol !== "https:" || uri.username || uri.password ||
+          uri.port || uri.hash || !uri.hostname) continue;
+      if(topics.length>0 &&
+        (!originalHeadlineMentionsCountry(row.title,countryIso3,countryNameValue) ||
+         !matchesRequestedTopic(row.title,category,topics) ||
+         (category==="rare_earth"&&mineral&&
+           !MINERAL_TERMS.some(term=>term.value===mineral&&term.pattern.test(row.title)))))
+        continue;
+      uniqueUrls.add(uri.href);
+    } catch { /* Reject an invalid upstream article URL. */ }
+  }
+  return probe("gdelt_doc_discovery",uniqueUrls.size,false);
 }
 
 /** ReliefWeb demands an operator-requested, provider-approved appname.
@@ -263,7 +393,7 @@ function approvedReliefWebAppname():string|null {
   return value;
 }
 async function reliefWeb(
-  countryNameValue:string,fetchImpl:typeof fetch,now:Date,appname:string,
+  countryNameValue:string,fetchImpl:typeof fetch,now:Date,appname:string,maxAgeMs=ONE_DAY_MS,
 ) {
   const params = new URLSearchParams({
     appname,limit:"10",
@@ -280,7 +410,7 @@ async function reliefWeb(
     if (!x || typeof x !== "object") return false;
     const fields = (x as {fields?:{date?:{original?:unknown}}}).fields;
     return typeof fields?.date?.original === "string" &&
-      freshPublished(fields.date.original,now);
+      freshPublished(fields.date.original,now,maxAgeMs);
   });
   // Provider release date is evidence metadata, not signed same-event proof.
   return probe("reliefweb_discovery",published.length,published.length > 0);
@@ -389,19 +519,48 @@ type OriginalFeed = {
   domain: OnDemandCategory;
   family:string;
   url:string;
-  media:"rss"|"atom";
+  media:"rss"|"atom"|"search";
   originalHost:string;
   alternateUrl?:string;
   originalPath:RegExp;
   topic:RegExp;
+  scopedTopics?:readonly string[];
 };
+const GOVUK_SEARCH_FALLBACKS:readonly OriginalFeed[]=[
+  {
+    domain:"geopolitics",family:"uk_fcdo_search_original_page",
+    url:"https://www.gov.uk/api/search.json",
+    media:"search",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:sanctions?|embargo|export controls?|conflict|war|military|security|peace)\b/iu,
+  },
+  {
+    domain:"macro",family:"uk_hmt_search_original_page",
+    url:"https://www.gov.uk/api/search.json",
+    media:"search",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:econom(?:y|ic|ics)?|financial|chancellor|treasury|inflation|monetary|foreign exchange|exchange rates?|currency|reserves?)\b/iu,
+  },
+  {
+    domain:"rare_earth",family:"uk_dbt_search_original_page",
+    url:"https://www.gov.uk/api/search.json",
+    media:"search",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
+  },
+];
+const INTERNATIONAL_ORIGINAL_FEEDS:readonly OriginalFeed[]=GLOBAL_OFFICIAL_RELEASE_FEEDS.filter((s:{format:string})=>s.format!=='json').map(
+  (s:{category:OnDemandCategory;family:string;url:string;format:string;host:string;path:RegExp;topic:RegExp})=>({
+    domain:s.category,family:s.family,url:s.url,media:s.format==='rss'?'rss' as const:'search' as const,
+    originalHost:s.host,originalPath:s.path,topic:s.topic,
+  }));
 const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   {
     domain:"rare_earth",family:"uk_dbt_original_publisher",
     url:"https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
     media:"atom",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
   },
   {
     domain:"geopolitics",family:"un_news_original_publisher",
@@ -424,17 +583,61 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
     url:"https://www.federalreserve.gov/feeds/press_all.xml",
     media:"rss",originalHost:"www.federalreserve.gov",
     originalPath:/^\/newsevents\/pressreleases\/[A-Za-z0-9]/u,
-    topic:/\b(?:monetary policy|interest rates?|inflation|foreign exchange|economic activity|financial stability|liquidity|federal funds)\b/iu,
+    topic:/\b(?:monetary policy|interest rates?|discount rates?|inflation|foreign exchange|economic activity|financial stability|liquidity|federal funds)\b/iu,
+  },
+  {
+    domain:"geopolitics",family:"uk_ofsi_original_publisher",
+    url:"https://www.gov.uk/government/organisations/office-of-financial-sanctions-implementation.atom",
+    media:"atom",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:sanctions?|asset freezes?|designations?|restrictive measures?)\b/iu,
+    scopedTopics:["sanctions_restrictions"],
+  },
+  {
+    domain:"macro",family:"uk_hmt_original_publisher",
+    url:"https://www.gov.uk/government/organisations/hm-treasury.atom",
+    media:"atom",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:financial|econom|inflation|interest rates?|treasury|chancellor|monetary|foreign exchange|exchange rates?|currency|reserves?)\b/iu,
+  },
+  {
+    domain:"macro",family:"ecb_original_publisher",
+    url:"https://www.ecb.europa.eu/rss/press.html",
+    media:"rss",originalHost:"www.ecb.europa.eu",
+    originalPath:/^\/press\/(?:pr|key|inter|accounts)\/date\/\d{4}\//u,
+    topic:/\b(?:monetary|inflation|interest rates?|foreign exchange|economic|currency)\b/iu,
+  },
+  {
+    domain:"rare_earth",family:"uk_desnz_original_publisher",
+    url:"https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
+    media:"atom",originalHost:"www.gov.uk",
+    originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
+  },
+  {
+    // Reuse the original Natural Resources Canada Atom connector already
+    // running in the Supabase-free website newsroom. A lead is never itself
+    // signed, rights-certified or evidence of actual mineral output.
+    domain:"rare_earth",family:"canada_nrcan_original_publisher",
+    url:"https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+    media:"atom",originalHost:"www.canada.ca",
+    originalPath:/^\/en\/natural-resources-canada\/news\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\.html$/u,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining|mineral processing)\b/iu,
   },
   {
     domain:"rare_earth",family:"australian_industry_original_publisher",
     url:"https://www.minister.industry.gov.au/feed/t-ayres/rss.xml",
+    // Official all-minister media releases from the same government publisher;
+    // this is transport resilience, NOT independent source corroboration.
+    alternateUrl:"https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
     media:"rss",originalHost:"www.minister.industry.gov.au",
     originalPath:/^\/(?:t-ayres|king)\/media\//u,
-    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|mineral supply|mining)\b/iu,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
   },
 ];
 function originalArticleUrl(value:string, def:OriginalFeed):string|null {
+  const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((s:{family:string})=>s.family===def.family);
+  if(global)return globalOriginalArticleUrl(value,global);
   try {
     const u=new URL(value.replace(/&amp;/giu,"&"));
     if(u.protocol!=="https:" || u.hostname!==def.originalHost ||
@@ -465,7 +668,7 @@ function rssItemText(entry: string, tag: "title" | "pubDate" | "link"): string {
  */
 function originalRssArticleLink(entry: string, def: OriginalFeed): string {
   const link = rssItemText(entry, "link");
-  if (def.family !== "un_news_original_publisher") return link;
+  if (def.originalHost !== "news.un.org") return link;
   try {
     const router = new URL(link);
     if (router.protocol !== "https:" || router.hostname !== "news.un.org" ||
@@ -494,11 +697,117 @@ function originalRssArticleLink(entry: string, def: OriginalFeed): string {
   }
 }
 
+// Trusted first-party RSS/Atom item summaries may carry exact subject/topic
+// omitted from the headline. Bound parsing to 600 characters of item metadata;
+// never use unrelated feed-level descriptions, updated clocks or linked pages.
+function originalItemSummary(entry:string, atom:boolean):string {
+  const tag=atom?"summary":"description";
+  const matched=new RegExp("<(?:atom:)?"+tag+"(?:\\s[^>]*)?>([\\s\\S]{0,3000}?)<\\/(?:atom:)?"+tag+">","iu").exec(entry);
+  if(!matched)return "";
+  const raw=matched[1].replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/u,"$1");
+  return raw.replace(/<[^>]*>/gu," ")
+    .replace(/&(?:amp|lt|gt|quot|apos|nbsp);/giu," ")
+    .replace(/\s+/gu," ").trim().slice(0,600);
+}
+
+/**
+ * Narrow documented GOV.UK public Search API fallback when a first-party
+ * organisational Atom feed returns no query-relevant item. Search results
+ * NEVER prove original publication: only the GOV.UK original article page
+ * and its exact first-published metadata may advance a candidate privately.
+ */
+async function govukOriginalSearch(
+  def:OriginalFeed,countryIso3:string,countryNameValue:string,
+  fetchImpl:typeof fetch,topics:readonly string[],mineral:OnDemandMineral|null,
+):Promise<OriginalFeedResult> {
+  if(def.media!=="search")throw Error("ON_DEMAND_GOVUK_SEARCH_SCOPE_INVALID");
+  const org=def.domain==="geopolitics"?"foreign-commonwealth-development-office":
+    def.domain==="macro"?"hm-treasury":
+    "department-for-business-innovation-science-and-trade";
+  const subject=countryIso3==="RUS"?"Russia":
+    countryIso3==="IRN"?"Iran":countryIso3==="GBR"?"UK":countryNameValue;
+  // Fixed identifiers are derived from validated ISO3 and enumerated topics,
+  // not forwarded from the customer's freeform question.
+  const words=def.domain==="rare_earth" && mineral ? mineral:
+    def.domain==="geopolitics" && topics.includes("sanctions_restrictions")
+      ? "sanctions":def.domain==="macro" ? "economic":"critical minerals";
+  const query=def.domain==="rare_earth" && countryIso3==="GBR" && mineral
+    ? mineral:subject+" "+words;
+  const url=new URL(def.url);
+  url.searchParams.set("q",query);
+  url.searchParams.set("count","10");
+  url.searchParams.set("order","-public_timestamp");
+  url.searchParams.set("filter_organisations",org);
+  url.searchParams.set("fields","title,description,link");
+  const body=await boundedFetch(fetchImpl,url.toString(),"application/json");
+  const parsed:unknown=JSON.parse(body);
+  const results=parsed && typeof parsed==="object" &&
+    Array.isArray((parsed as {results?:unknown}).results)
+      ? (parsed as {results:unknown[]}).results.slice(0,10):[];
+  const audit={inspected:0,native_dated:0,country_mentioned:0,
+    scope_matched:0,eligible_pub_date:0,allowed_article_paths:0};
+  const candidates:PrivateOriginalCandidate[]=[];
+  for(const item of results){
+    audit.inspected++;
+    if(!item || typeof item!=="object")continue;
+    const row=item as {title?:unknown;description?:unknown;link?:unknown};
+    if(typeof row.title!=="string" || row.title.length<8 ||
+      row.title.length>300 || typeof row.link!=="string")continue;
+    const title=row.title.replace(/\s+/gu," ").trim();
+    const description=typeof row.description==="string"
+      ? row.description.replace(/\s+/gu," ").slice(0,500):"";
+    const countryMention=originalHeadlineMentionsCountry(title,countryIso3,countryNameValue) ||
+      originalHeadlineMentionsCountry(description.slice(0,300),countryIso3,countryNameValue);
+    if(countryMention)audit.country_mentioned++;
+    const subjectScope=title+" "+description;
+    const matches=def.topic.test(subjectScope) &&
+      matchesRequestedTopic(subjectScope,def.domain,topics) &&
+      (!mineral || def.domain!=="rare_earth" ||
+        MINERAL_TERMS.some(t=>t.value===mineral && t.pattern.test(subjectScope)));
+    if(countryMention && matches)audit.scope_matched++;
+    if(!countryMention || !matches || !row.link.startsWith("/government/"))continue;
+    const article_url=originalArticleUrl("https://www.gov.uk"+row.link,def);
+    if(!article_url)continue;
+    audit.allowed_article_paths++;
+    const article_identity_sha256=digest(def.family+"|"+article_url);
+    if(candidates.some(x=>x.article_identity_sha256===article_identity_sha256))continue;
+    candidates.push({
+      domain:def.domain,publisher_family:def.family,article_url,article_title:title,
+      item_scoped_summary_private:description,
+      feed_item_published_at:null,search_index_original_page_pending:true,
+      article_identity_sha256,first_party_article_url_verified:true,
+      source_native_feed_publication_date_verified:false,
+      publisher_article_page_date_verified:false,
+      independent_same_event_verified:false,derived_commercial_rights_verified:false,
+      score_verified:false,signed_gro_verified:false,paid_delivery_allowed:false,
+    });
+    if(candidates.length>=2)break;
+  }
+  return {probe:{...probe(def.family,candidates.length,false),feed_audit:audit},
+    private_candidates:candidates};
+}
+
 type OriginalFeedResult={probe:SourceProbe;private_candidates:PrivateOriginalCandidate[]};
 async function originalOfficialFeed(
   def:OriginalFeed,countryIso3:string,countryNameValue:string,
   fetchImpl:typeof fetch,now:Date,mineral:OnDemandMineral|null,
+  topics:readonly string[]=[],maxAgeMs=ONE_DAY_MS,
 ):Promise<OriginalFeedResult>{
+  if(def.family==='iea_minerals_original_publisher'){
+    const html=await boundedFetch(fetchImpl,def.url,'text/html');
+    const candidates:PrivateOriginalCandidate[]=ieaMineralsIndexCandidates(html)
+      .filter((row:{title:string})=>originalHeadlineMentionsCountry(row.title,countryIso3,countryNameValue)&&
+        matchesRequestedTopic(row.title,def.domain,topics)&&(!mineral||row.title.toLowerCase().includes(mineral)))
+      .slice(0,2).map((row:{title:string;articleUrl:string})=>({
+        domain:def.domain,publisher_family:def.family,article_url:row.articleUrl,article_title:row.title,
+        feed_item_published_at:null,search_index_original_page_pending:true as const,
+        article_identity_sha256:digest(def.family+'|'+row.articleUrl),first_party_article_url_verified:true as const,
+        source_native_feed_publication_date_verified:false,publisher_article_page_date_verified:false as const,
+        independent_same_event_verified:false as const,derived_commercial_rights_verified:false as const,
+        score_verified:false as const,signed_gro_verified:false as const,paid_delivery_allowed:false as const,
+      }));
+    return {probe:probe(def.family,candidates.length,false),private_candidates:candidates};
+  }
   let xml: string;
   try {
     xml = await boundedFetch(fetchImpl,def.url,
@@ -507,43 +816,59 @@ async function originalOfficialFeed(
     const retryable = error instanceof Error &&
       ["ON_DEMAND_SOURCE_TRANSPORT_FAILURE","ON_DEMAND_SOURCE_TRANSIENT_HTTP"]
         .includes(error.message);
-    if (!retryable || def.family !== "un_news_original_publisher" ||
-        !def.alternateUrl) throw error;
-    // One same-UN-News issuer alternate: not a second independent source.
-    // No retry for malformed XML, oversized body, 401/403 or 429.
+    if (!retryable ||
+        !["un_news_original_publisher","australian_industry_original_publisher"]
+          .includes(def.family) || !def.alternateUrl) throw error;
+    // One exact same-publisher alternate (UN News or Australia Industry);
+    // never count this as corroboration or bypass an explicit 401/403/429.
+    // No retry for malformed XML, oversized responses or bad publication.
     xml = await boundedFetch(fetchImpl,def.alternateUrl,
       "application/rss+xml,application/atom+xml,application/xml");
   }
   if (/<!DOCTYPE|<!ENTITY/iu.test(xml))
     throw Error("ON_DEMAND_ORIGINAL_FEED_XML_UNSAFE");
   const atom=def.media==="atom";
+  const rdf=verifiedGlobalRdfFeed(def.family,def.url,xml);
   if(atom ? !/<(?:atom:)?feed(?:\s|>)/iu.test(xml)
-          : !/<rss(?:\s|>)/iu.test(xml))
+          : !/<rss(?:\s|>)/iu.test(xml)&&!rdf)
     throw Error("ON_DEMAND_ORIGINAL_FEED_FORMAT_INVALID");
   const entries=atom
     ? [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)]
     : [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)];
   const candidates:PrivateOriginalCandidate[]=[];
-  for(const [,entry] of entries.slice(0,40)){
+  const audit={inspected:0,native_dated:0,country_mentioned:0,
+    scope_matched:0,eligible_pub_date:0,allowed_article_paths:0};
+  for(const [,entry] of entries.slice(0,80)){
+    audit.inspected++;
     const title=atom
       ? /<(?:atom:)?title(?:\s[^>]*)?>([^<]{1,300})<\/(?:atom:)?title>/iu.exec(entry)?.[1] ?? ""
       : rssItemText(entry,"title");
     const date=atom
       ? /<(?:atom:)?published(?:\s[^>]*)?>([^<]+)<\/(?:atom:)?published>/iu.exec(entry)?.[1] ?? ""
-      : rssItemText(entry,"pubDate");
+      : rdf?(/<dc:date(?:\s[^>]*)?>([^<>]+)<\/dc:date>/iu.exec(entry)?.[1]??""):rssItemText(entry,"pubDate");
     // A different mineral's article must not qualify as evidence for this
     // query just because both are under the broad Critical Minerals topic.
+    const summary=originalItemSummary(entry,atom);
+    const contextualText=(title+" "+summary).slice(0,850);
     const mineralMatches = !mineral || def.domain !== "rare_earth" ||
-      MINERAL_TERMS.some((term) => term.value === mineral && term.pattern.test(title));
-    const hasNativeDate=freshPublished(date,now);
-    const undatedGovukAtom=atom && !date.trim() &&
-      ["uk_fcdo_original_publisher","uk_dbt_original_publisher"].includes(def.family);
+      MINERAL_TERMS.some((term) => term.value === mineral && term.pattern.test(contextualText));
+    const hasNativeDate=freshPublished(date,now,maxAgeMs);
+    if(date.trim())audit.native_dated++;
+    const matchedCountry=originalPublisherMatchesCountry(
+      title,summary,countryIso3,countryNameValue,def.family);
+    if(matchedCountry)audit.country_mentioned++;
+    const matchedScope=def.topic.test(contextualText) &&
+      matchesRequestedTopic(contextualText,def.domain,topics) && mineralMatches;
+    if(matchedCountry && matchedScope)audit.scope_matched++;
+    const undatedFirstPartyAtom=atom && !date.trim() &&
+      ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
+       "uk_ofsi_original_publisher","uk_desnz_original_publisher","uk_hmt_original_publisher",
+       "canada_nrcan_original_publisher"].includes(def.family);
     // Missing Atom <published> may enter PRIVATE article-page verification,
     // not score/payment. Never accept <updated>, bad/missing RSS clocks, or
     // a stale/future <published> as original source time.
-    if (!originalHeadlineMentionsCountry(title,countryIso3,countryNameValue) ||
-        !def.topic.test(title) || !mineralMatches ||
-        (!hasNativeDate && !undatedGovukAtom)) continue;
+    if (!matchedCountry || !matchedScope || (!hasNativeDate && !undatedFirstPartyAtom)) continue;
+    audit.eligible_pub_date++;
     let href="";
     if(atom){
       const links=[...entry.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)];
@@ -557,6 +882,7 @@ async function originalOfficialFeed(
     }
     const article_url=originalArticleUrl(href,def);
     if(!article_url)continue;
+    audit.allowed_article_paths++;
     if(candidates.length>=4)continue; // fixed private evidence budget/issuer
     const article_title=title.replace(/\s+/gu," ").trim();
     const article_identity_sha256=digest(def.family+"|"+article_url);
@@ -564,8 +890,9 @@ async function originalOfficialFeed(
       continue; // Same publisher URL in a second feed entry is one article.
     candidates.push({
       domain:def.domain,publisher_family:def.family,article_url,article_title,
+      item_scoped_summary_private:summary,
       feed_item_published_at:hasNativeDate?new Date(Date.parse(date)).toISOString():null,
-      ...(undatedGovukAtom?{undated_atom_original_page_pending:true as const}:{}),
+      ...(undatedFirstPartyAtom?{undated_atom_original_page_pending:true as const}:{}),
       article_identity_sha256,
       first_party_article_url_verified:true,
       source_native_feed_publication_date_verified:hasNativeDate,
@@ -577,8 +904,9 @@ async function originalOfficialFeed(
       paid_delivery_allowed:false,
     });
   }
-  return {probe:probe(def.family,candidates.length,
+  return {probe:{...probe(def.family,candidates.length,
     candidates.some(x=>x.source_native_feed_publication_date_verified)),
+    feed_audit:audit},
     private_candidates:candidates};
 }
 
@@ -609,20 +937,35 @@ export function deduplicateOnDemandOriginalHeadlines(
   for(const item of candidates){
     const time=item.feed_item_published_at===null?NaN:
       Date.parse(item.feed_item_published_at);
-    const def=ORIGINAL_FALLBACK_FEEDS.find(x=>x.domain===item.domain &&
-      x.family===item.publisher_family);
+    const def=[...ORIGINAL_FALLBACK_FEEDS,...INTERNATIONAL_ORIGINAL_FEEDS,...GOVUK_SEARCH_FALLBACKS].find(x=>
+      x.domain===item.domain && x.family===item.publisher_family);
     const nativeDated=item.source_native_feed_publication_date_verified===true &&
       Number.isFinite(time) && item.undated_atom_original_page_pending!==true;
     const undatedReview=def?.media==="atom" &&
-      ["uk_fcdo_original_publisher","uk_dbt_original_publisher"]
+      ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
+       "uk_ofsi_original_publisher","uk_desnz_original_publisher","uk_hmt_original_publisher",
+       "canada_nrcan_original_publisher"]
         .includes(item.publisher_family) &&
       item.undated_atom_original_page_pending===true &&
       item.feed_item_published_at===null &&
       item.source_native_feed_publication_date_verified===false;
+    const searchReview=def?.media==="search" &&
+      item.search_index_original_page_pending===true &&
+      item.feed_item_published_at===null &&
+      item.source_native_feed_publication_date_verified===false;
+    // Fixed Fed first-party archive is a narrow, same-issuer, day-only
+    // review lead; never mark archive-only records feed-clock verified.
+    const archiveReview=def?.family==="us_federal_reserve_original_publisher" &&
+      def?.domain==="macro" &&
+      item.feed_item_published_at===null &&
+      item.source_native_feed_publication_date_verified===false &&
+      typeof item.official_archive_release_day==="string" &&
+      /^20\d{2}-\d{2}-\d{2}$/u.test(item.official_archive_release_day);
     // Preserve established native-dated candidate dedup contracts.
     // Enforce fixed issuer/host/path and exact SHA binding additionally ONLY
     // on the new missing-<published> GOV.UK Atom rescue path.
-    const reviewedUndated=undatedReview===true && !!def &&
+    const reviewedUndated=(undatedReview===true || searchReview===true ||
+      archiveReview===true) && !!def &&
       originalArticleUrl(item.article_url,def)===item.article_url &&
       item.article_identity_sha256===digest(def.family+"|"+item.article_url);
     if((!nativeDated&&!reviewedUndated)||
@@ -647,7 +990,7 @@ export function deduplicateOnDemandOriginalHeadlines(
 /** Never returns upstream text, URLs or source identities for paid output. */
 async function discoverOnDemandImpl(
   input: OnDemandSearchInput,
-  options: {fetchImpl?:typeof fetch; now?:Date}={},
+  options: {fetchImpl?:typeof fetch; now?:Date; disableDiscoveryIndex?:boolean}={},
 ): Promise<{
   discovery:OnDemandDiscovery;
   private_candidates:PrivateOriginalCandidate[];
@@ -656,17 +999,50 @@ async function discoverOnDemandImpl(
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
   private_macro_qualifications:PrivateMacroQualification[];
+  /** Private first-party World Bank country identity; never in public discovery. */
+  private_verified_country_name:string|null;
 }> {
   const now=options.now ?? new Date(), fetchImpl=options.fetchImpl ?? fetch;
+  const topics=input.topics??[];
+  const allowedTopics=["sanctions_restrictions","conflict_geopolitics",
+    "political_governance","macro_risk","sovereign_risk",
+    "fx_external_risk","critical_minerals","hot_topics"];
+  if(!Array.isArray(topics)||topics.length>8||
+    topics.some(topic=>!allowedTopics.includes(topic)))
+    throw Error("ON_DEMAND_TOPICS_INVALID");
+  const newsMaxAgeMs=input.max_age_seconds===undefined?ONE_DAY_MS:
+    Number.isInteger(input.max_age_seconds)&&input.max_age_seconds>0
+      ? Math.min(MAX_NEWS_AGE_MS,input.max_age_seconds*1000):0;
+  if(newsMaxAgeMs===0)throw Error("ON_DEMAND_FRESHNESS_INVALID");
   let networkAttempts=0;
-  const trackedFetch:typeof fetch=((input,init)=>{
-    // Counting real fetch calls is essential when an optional approved API
-    // and one same-publisher transport retry would otherwise exceed quota.
-    // At most 12 query-discovery GETs; blocked attempts are not counted.
+  const trackedFetch:typeof fetch=(async (target,init)=>{
+    const upstream=new URL(String(target));
+    // Defense in depth: this wrapper must never become a variable-origin
+    // proxy even if future callers bypass boundedFetch's own allowlist.
+    const permittedHosts=["api.worldbank.org","api.gdeltproject.org",
+      "api.reliefweb.int","www.gov.uk","news.un.org",
+      "www.federalreserve.gov","www.ecb.europa.eu",
+      "www.minister.industry.gov.au","api.io.canada.ca",
+      "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca"];
+    if(upstream.protocol!=="https:" || !permittedHosts.includes(upstream.hostname) ||
+       upstream.username || upstream.password || upstream.port || upstream.hash)
+      throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
+    const host=upstream.hostname;
+    // Per-worker provider cool-down limits calls after explicit denial.
+    // A different publisher stays available; no mirrors for denied APIs.
+    if(options.fetchImpl===undefined && (providerCooldownUntil.get(host)??0)>Date.now())
+      throw Error("ON_DEMAND_PROVIDER_COOLDOWN");
     if(networkAttempts>=12)
-      return Promise.reject(Error("ON_DEMAND_NETWORK_BUDGET_EXHAUSTED"));
+      throw Error("ON_DEMAND_NETWORK_BUDGET_EXHAUSTED");
     networkAttempts++;
-    return fetchImpl(input,init);
+    const response=host==="api.gdeltproject.org"&&options.fetchImpl===undefined
+      ?await fetchGdeltDocWithBudget(String(target),init,(input,options)=>fetchWithoutRedirectUsing(fetchImpl,input,options)):await fetchWithoutRedirectUsing(fetchImpl,target,init);
+    if(options.fetchImpl===undefined && response.status===429)
+      providerCooldownUntil.set(host,Date.now()+
+        retryAfterCooldownMs(response.headers.get("retry-after")));
+    if(options.fetchImpl===undefined && response.status===403)
+      providerCooldownUntil.set(host,Date.now()+RATE_LIMIT_COOLDOWNS_MS[403]);
+    return response;
   }) as typeof fetch;
   if(!(now instanceof Date) || !Number.isFinite(now.getTime()))
     throw Error("ON_DEMAND_CLOCK_INVALID");
@@ -684,43 +1060,305 @@ async function discoverOnDemandImpl(
     throw Error("ON_DEMAND_MINERAL_SCOPE_INVALID");
   // Always bound fan-out; missing country metadata is not substituted by an
   // ungrounded guessed country name.
-  let name: string;
-  try { name = await countryName(country,trackedFetch); }
-  catch { name = ""; }
-  const tasks: Array<{name:string;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
+  // The canonical 195-country registry is the authoritative local query
+  // label. No speculative World Bank GET is needed for any of those 195
+  // countries; avoid burning one of only twelve provider requests per
+  // on-demand query before the original publishers are even consulted.
+  // Non-195 legacy territories may still use the existing bounded external
+  // lookup, which never proves a current source or country-specific event.
+  let name=country195ByIso3(country)?.name??"";
+  if(!name){
+    try {name=await countryName(country,trackedFetch);}
+    catch {name="";}
+  }
+  // World Bank describes Palestine as "West Bank and Gaza", but routing a
+  // PSE query must still match the UN observer-state country denominator.
+  if(country==="PSE" && name)name="State of Palestine";
+  const gdeltDeadline=Date.now()+12_000;
+  const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
   const approvedReliefAppname=approvedReliefWebAppname();
-  if (name) for (const category of categories) {
-    tasks.push({name:"gdelt_doc_discovery",run:()=>gdelt(category,name,trackedFetch,mineral)});
+  if (name && !options.disableDiscoveryIndex) for (const category of categories) {
+    tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral,topics,country,newsMaxAgeMs,gdeltDeadline)});
     // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
     // account approval must not generate repeat 403s on every user query.
     if (category==="geopolitics" && approvedReliefAppname)
-      tasks.push({name:"reliefweb_discovery",run:()=>
-        reliefWeb(name,trackedFetch,now,approvedReliefAppname)});
+      tasks.push({name:"reliefweb_discovery",category,run:()=>
+        reliefWeb(name,trackedFetch,now,approvedReliefAppname,newsMaxAgeMs)});
   }
-  if (name) for (const source of ORIGINAL_FALLBACK_FEEDS) {
-    if (categories.includes(source.domain)) tasks.push({
-      name:source.family,
-      run:()=>originalOfficialFeed(source,country,name,trackedFetch,now,mineral),
+  if (name) for (const source of [...ORIGINAL_FALLBACK_FEEDS,...(topics.length?INTERNATIONAL_ORIGINAL_FEEDS:[])]) {
+    // Reuse the Canadian government publisher for verified Canadian country
+    // scope only. Do not consume a scarce original-provider slot or alter
+    // unrelated global/China queries simply because a new issuer was added.
+    if(source.family==="canada_nrcan_original_publisher" && country!=="CAN") continue;
+    if(!topics.length && ["uk_ofsi_original_publisher","ecb_original_publisher",
+      "uk_desnz_original_publisher","uk_hmt_original_publisher"].includes(source.family)) continue;
+    if (categories.includes(source.domain) &&
+        (!source.scopedTopics || !topics.length ||
+         source.scopedTopics.some(t=>topics.includes(t)))) tasks.push({
+      name:source.family,category:source.domain,
+      run:()=>originalOfficialFeed(
+        source.family==="uk_dbt_original_publisher" && topics.length>0
+          ? {...source,url:"https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom"}
+          : source,
+        country,name,trackedFetch,now,mineral,topics,newsMaxAgeMs),
     });
   }
   if (categories.includes("macro")) for (const indicator of [
     "FP.CPI.TOTL.ZG","NY.GDP.MKTP.KD.ZG",
-  ] as const) tasks.push({name:"world_bank_official_" + indicator,
+  ] as const) tasks.push({name:"world_bank_official_" + indicator,category:"macro",
     run:()=>worldBank(country,indicator,trackedFetch,now)});
   // Exactly one fixed metadata lookup + at most eleven provider requests,
   // no 195-country fanout and no user question passed upstream.
-  const settled=await Promise.allSettled(tasks.map(t=>t.run()));
-  const source_probes=settled.map((result,i)=>{
-    if(result.status==="rejected")return failed(tasks[i].name);
-    const value=result.value;
-    return "probe" in value ? value.probe : value;
+  // One country GET + at most eleven provider GETs. Prioritize annual macro
+  // observables when optional approvals increase the configured fanout.
+  // In explicit three-domain current-event discovery reserve two slots
+  // for the existing country-scoped first-party GOV.UK Search rescue
+  // (the search itself never supplies an original article clock). We can
+  // afford 6 independent originating publisher feeds + 3 GDELT scopes +
+  // 1 annual WDI context = 10 primary GETs, never more than the existing
+  // 12 total. WDI annual records are NOT current event proof. Two-domain
+  // queries and unscoped legacy requests retain their existing behaviour.
+  const maxPrimary=topics.length>0 && categories.length===3?10:11;
+  // Multi-category current-event questions must sample two distinct
+  // ORIGINAL issuers per requested domain before spending the bounded
+  // request budget on GDELT discovery indexes (never original evidence).
+  // Preserve the existing max 12 requests, issuer allowlist, WDI structural
+  // reads where headroom permits, and no-403/429 bypass. A publisher feed
+  // success is still NOT verified same-event facts or commercial rights.
+  // Unscoped legacy requests keep their existing selection/order intact.
+  // Unscoped legacy requests keep their existing selection/order intact.
+  const selected=topics.length>0 && categories.length>1
+    ? (()=>{
+      const macro=tasks.filter(t=>t.name.startsWith("world_bank_official_"))
+        .slice(0,categories.length===3?1:2);
+      // Use an already registered country-relevant issuer for the first
+      // source-native release slot. All other publishers remain fallback
+      // candidates; no new URL, credential, source rights or network budget.
+      // Current euro-area membership includes Bulgaria from 1 January 2026.
+      // An ECB release is only a country lead when the item's own text
+      // passes the existing exact-country relevance and page-date checks.
+      const euroAreaIso3=new Set([
+        "AUT","BEL","BGR","HRV","CYP","EST","FIN","FRA","DEU",
+        "GRC","IRL","ITA","LVA","LTU","LUX","MLT","NLD",
+        "PRT","SVK","SVN","ESP",
+      ]);
+      const preferredNational=(category:OnDemandCategory):string|null=>
+        category==="rare_earth" && country==="CAN"
+          ?"canada_nrcan_original_publisher":
+        category==="rare_earth" && country==="AUS"
+          ?"australian_industry_original_publisher":
+        category==="rare_earth" && country==="GBR"
+          ?"uk_dbt_original_publisher":
+        category==="geopolitics" && country==="GBR"
+          ?"uk_fcdo_original_publisher":
+        category==="macro" && country==="CAN"
+          ?"boc_original_publisher":
+        category==="macro" && country==="GBR"
+          ?"uk_hmt_original_publisher":
+        category==="macro" && euroAreaIso3.has(country)
+          ?"ecb_original_publisher":
+        category==="macro" && country==="USA"
+          ?"us_federal_reserve_original_publisher":null;
+      const originalTask=(t:(typeof tasks)[number],category:OnDemandCategory)=>
+        t.category===category && t.name!=="gdelt_doc_discovery" &&
+        t.name!=="reliefweb_discovery" &&
+        !t.name.startsWith("world_bank_official_");
+      const originals=categories.map(category=>
+        tasks.find(t=>originalTask(t,category) &&
+          t.name===preferredNational(category)) ??
+        (input.max_age_seconds!==undefined&&input.max_age_seconds<=86400
+          ?tasks.find(t=>originalTask(t,category)&&t.name===
+            (category==='geopolitics'?'un_press_original_publisher':category==='macro'?'bis_original_publisher':'un_minerals_original_publisher')):undefined) ??
+        tasks.find(t=>originalTask(t,category)),
+      ).filter((t):t is (typeof tasks)[number]=>Boolean(t));
+      // Never mistake two articles from one institution for two issuers.
+      // Each secondary must have a different registered publisher family
+      // from this category's selected primary. No extra provider requests:
+      // replace lower-priority index-only slots when the cap is full.
+      const secondary=categories.map((category,index)=>
+        tasks.find(t=>originalTask(t,category) &&
+          t.name!==originals[index]?.name),
+      ).filter((t):t is (typeof tasks)[number]=>Boolean(t));
+      const indexes=categories.map(category=>tasks.find(t=>
+        t.category===category && t.name==="gdelt_doc_discovery")).filter(
+          (t):t is (typeof tasks)[number]=>Boolean(t));
+      const primary=[...new Set([...originals,...secondary,...macro,...indexes])];
+      return [...primary,...tasks.filter(t=>!primary.includes(t))].slice(0,maxPrimary);
+    })()
+    : tasks.length>maxPrimary
+      ? [...tasks.filter(t=>t.name.startsWith("world_bank_official_")),
+         ...tasks.filter(t=>!t.name.startsWith("world_bank_official_"))].slice(0,maxPrimary)
+      : tasks;
+  // A single user query never bursts 2-3 category-index calls into GDELT
+  // simultaneously. A real 429/403 on the FIRST scoped index suppresses
+  // subsequent GDELT calls *for this request only*. Other independently
+  // approved original publishers remain concurrent and unaffected.
+  let gdeltDenied=false;
+  let gdeltQueue:Promise<void>=Promise.resolve();
+  const runPrimary=(task:(typeof tasks)[number])=>{
+    if(task.name!=="gdelt_doc_discovery")return task.run();
+    const pending=gdeltQueue.then(async()=>{
+      if(gdeltDenied || gdeltDeadline-Date.now()<250){
+        return {...probe("gdelt_doc_discovery",0,false),attempted:false,
+          reachable:false,retrieval_state:"COOLDOWN_ACTIVE" as const};
+      }
+      try{return await task.run();}
+      catch(error){
+        if(error instanceof Error &&
+          ["ON_DEMAND_SOURCE_RATE_LIMITED","ON_DEMAND_SOURCE_ACCESS_RESTRICTED",
+           "ON_DEMAND_PROVIDER_COOLDOWN"].includes(error.message))
+          gdeltDenied=true;
+        throw error;
+      }
+    });
+    gdeltQueue=pending.then(()=>{},()=>{});
+    return pending;
+  };
+  const settled=await Promise.allSettled(selected.map(runPrimary));
+  const source_probes:SourceProbe[]=settled.map((result,i)=>{
+    const row = result.status==="rejected" ? failed(selected[i].name,result.reason) :
+      "probe" in result.value ? result.value.probe : result.value;
+    return {...row,category:selected[i].category};
   });
+  const fallbackIssuerGroups:PrivateOriginalCandidate[][]=[];
+  const searchedGovukCategories=new Set<OnDemandCategory>();
+  // For an explicit three-domain country question, the fixed primary
+  // 1-country + 8-provider budget often leaves only three source GETs.
+  // If all rotating feeds missed an original, the old sequence consumed the
+  // remaining GETs on unrelated global feeds BEFORE the country-filtered
+  // official GOV.UK Search API was reached. Reserve at most two issuer-index
+  // attempts for the weakest world-wide categories (minerals, geopolitics),
+  // preserving at least one remaining network slot for an independent
+  // original-publisher fallback. Every search lead still requires its
+  // first-party article page and real original publication date.
+  if(name && topics.length>0 && categories.length===3){
+    const targeted=["rare_earth","geopolitics"] as const;
+    for(const category of targeted){
+      if(!categories.includes(category) || networkAttempts>=11)break;
+      const originalPresent=settled.some(result=>
+        result.status==="fulfilled" &&
+        "private_candidates" in result.value &&
+        result.value.private_candidates.some(item=>item.domain===category));
+      if(originalPresent)continue;
+      const def=GOVUK_SEARCH_FALLBACKS.find(item=>item.domain===category)!;
+      searchedGovukCategories.add(category);
+      try{
+        const found=await govukOriginalSearch(def,country,name,trackedFetch,topics,mineral);
+        source_probes.push({...found.probe,category});
+        if(found.private_candidates.length>0)
+          fallbackIssuerGroups.push(found.private_candidates);
+      }catch(error){
+        source_probes.push({...failed(def.family,error),category});
+      }
+    }
+  }
+  // If a selected original publisher fails or returns zero matching records,
+  // try another already registered original institution within the SAME
+  // twelve-request budget. Do not promote GDELT index links to originals, and
+  // do not turn a source outage into a positive coverage claim.
+  if(name && topics.length>0 && categories.length>1){
+    for(const category of categories){
+      const hasOriginal=()=>settled.some(result=>
+        result.status==="fulfilled" &&
+        "private_candidates" in result.value &&
+        result.value.private_candidates.some(item=>item.domain===category)) ||
+        fallbackIssuerGroups.some(group=>group.some(item=>item.domain===category));
+      if(hasOriginal()||networkAttempts>=12)continue;
+      const alternates=tasks.filter(t=>
+        t.category===category && !selected.includes(t) &&
+        t.name!=="gdelt_doc_discovery" && t.name!=="reliefweb_discovery" &&
+        !t.name.startsWith("world_bank_official_"));
+      for(const alternate of alternates){
+        if(networkAttempts>=12)break;
+        try{
+          const found=await alternate.run();
+          if(!("private_candidates" in found))continue;
+          source_probes.push({...found.probe,category});
+          if(found.private_candidates.length>0){
+            fallbackIssuerGroups.push(found.private_candidates);
+            break;
+          }
+        }catch(error){
+          source_probes.push({...failed(alternate.name,error),category});
+        }
+      }
+    }
+  }
+  // A live Federal Reserve RSS is rolling-window limited. This ONE
+  // optional official annual press index GET recovers missing source leads.
+  // It does not prove a precise release clock, licence, corroboration or GRO.
+  if(country==="USA" && categories.includes("macro") &&
+     topics.includes("macro_risk") && networkAttempts<12 &&
+     !settled.some(result=>result.status==="fulfilled" &&
+       "private_candidates" in result.value &&
+       result.value.private_candidates.some(x=>
+         x.publisher_family==="us_federal_reserve_original_publisher"))){
+    const def=ORIGINAL_FALLBACK_FEEDS.find(x=>
+      x.family==="us_federal_reserve_original_publisher")!;
+    try{
+      const index=await boundedFetch(trackedFetch,
+        "https://www.federalreserve.gov/newsevents/pressreleases/"+
+          now.getUTCFullYear()+"-press.htm","text/html");
+      const leads=originalFedDiscountMinutesArchiveLinks(
+        index,now.getUTCFullYear(),now,newsMaxAgeMs);
+      const results:PrivateOriginalCandidate[]=leads.flatMap(x=>{
+        if(originalArticleUrl(x.article_url,def)!==x.article_url ||
+           !def.topic.test(x.article_title) ||
+           !matchesRequestedTopic(x.article_title,"macro",topics))return [];
+        return [{
+          domain:"macro" as const,publisher_family:def.family,
+          article_url:x.article_url,article_title:x.article_title,
+          official_archive_release_day:x.official_archive_release_day,
+          feed_item_published_at:null,
+          article_identity_sha256:digest(def.family+"|"+x.article_url),
+          first_party_article_url_verified:true as const,
+          source_native_feed_publication_date_verified:false,
+          publisher_article_page_date_verified:false as const,
+          independent_same_event_verified:false as const,
+          derived_commercial_rights_verified:false as const,
+          score_verified:false as const,signed_gro_verified:false as const,
+          paid_delivery_allowed:false as const,
+        }];
+      });
+      source_probes.push({...probe("us_federal_reserve_annual_archive",
+        results.length,false),category:"macro"});
+      if(results.length)fallbackIssuerGroups.push(results);
+    }catch(error){
+      source_probes.push({...failed("us_federal_reserve_annual_archive",error),
+        category:"macro"});
+    }
+  }
+  // A reachable 2xx feed with zero exact-topic records is a valid search
+  // miss, not proof the original publisher has no matching article.
+  // Reuse one bounded public issuer search only when the original feed mesh
+  // found nothing relevant to this country/commodity.
+  if(name && topics.length>0)for(const category of categories){
+    const originalPresent=settled.some(result=>
+      result.status==="fulfilled" &&
+      "private_candidates" in result.value &&
+      result.value.private_candidates.some(item=>item.domain===category)) ||
+      fallbackIssuerGroups.some(group=>group.some(item=>item.domain===category));
+    if(originalPresent || searchedGovukCategories.has(category) ||
+       networkAttempts>=12)continue;
+    const def=GOVUK_SEARCH_FALLBACKS.find(item=>item.domain===category)!;
+    try {
+      const found=await govukOriginalSearch(def,country,name,trackedFetch,topics,mineral);
+      source_probes.push({...found.probe,category});
+      if(found.private_candidates.length>0)
+        fallbackIssuerGroups.push(found.private_candidates);
+    }catch(error){
+      source_probes.push({...failed(def.family,error),category});
+    }
+  }
   // Never persist, log, or expose raw first-party titles/articles here.
   // Every candidate requires the later governed article-page/rights/signing
   // stages; each source institution stays independently identified.
-  const issuerCandidateGroups=settled.flatMap(result=>
-    result.status==="fulfilled" && "private_candidates" in result.value
-      ? [result.value.private_candidates] : []);
+  const issuerCandidateGroups=[
+    ...settled.flatMap(result=>
+      result.status==="fulfilled" && "private_candidates" in result.value
+        ? [result.value.private_candidates] : []),
+    ...fallbackIssuerGroups,
+  ];
   const private_macro_changes=settled.flatMap(result=>
     result.status==="fulfilled" && "private_macro_changes" in result.value
       ? result.value.private_macro_changes : []);
@@ -740,17 +1378,27 @@ async function discoverOnDemandImpl(
   // The same GDELT producer searched for 3 different topics is ONE family,
   // and two World Bank indicator requests are ONE official institution.
   const reached=new Set(source_probes.filter(p=>p.reachable).map(p=>
-    p.family.startsWith("world_bank_official_")
-      ? "world_bank_official" : p.family)).size;
+    p.family.startsWith("world_bank_official_") ? "world_bank_official" :
+    p.family==="uk_fcdo_search_original_page" ? "uk_fcdo_original_publisher":
+    p.family==="uk_hmt_search_original_page" ? "uk_hmt_original_publisher":
+    p.family==="uk_dbt_search_original_page" ? "uk_dbt_original_publisher":
+    p.family)).size;
   const grouped=deduplicateOnDemandOriginalHeadlines(private_candidates);
+  // Bind each private lead to the exact canonical country searched by the
+  // existing source-specific matcher. The downstream 585-cell compiler must
+  // reject unbound or foreign-country candidates, even with a valid page date.
+  const bindCountry=(candidate:PrivateOriginalCandidate):PrivateOriginalCandidate=>
+    ({...candidate,country_iso3:country});
   const discovery:OnDemandDiscovery={
     schema:"geomacro.on-demand-global-private-discovery.v1",
     country_iso3:country,categories,checked_at:now.toISOString(),
     searched_in_parallel:true,network_attempts:networkAttempts,
     reached_source_families:reached,source_probes,
     // Preserve existing fingerprints for country/category-only requests.
-    query_fingerprint_sha256:digest(JSON.stringify(mineral
-      ? [country,categories,mineral] : [country,categories])),
+    query_fingerprint_sha256:digest(JSON.stringify(
+      topics.length>0 || input.max_age_seconds!==undefined
+        ? [country,categories,mineral,[...topics].sort(),newsMaxAgeMs]
+        : mineral ? [country,categories,mineral] : [country,categories])),
     status:reached>0?"DISCOVERY_OBSERVED_NOT_YET_VERIFIED":"DISCOVERY_DEGRADED",
     independent_same_event_corroboration_verified:false,
     source_derived_commercial_rights_verified:false,
@@ -759,11 +1407,12 @@ async function discoverOnDemandImpl(
     settlement_attempted:false,
   };
   return {
-    discovery,private_candidates:grouped.unique_candidates,
-    private_original_review_candidates:grouped.original_review_candidates,
+    discovery,private_candidates:grouped.unique_candidates.map(bindCountry),
+    private_original_review_candidates:grouped.original_review_candidates.map(bindCountry),
     duplicate_original_headline_count:grouped.duplicate_headlines_removed,
     private_macro_changes,
     private_macro_qualifications,
+    private_verified_country_name:name||null,
   };
 }
 
@@ -775,12 +1424,26 @@ async function discoverOnDemandImpl(
  */
 export type PrivatePageDatedOriginal = Omit<
   PrivateOriginalCandidate, "publisher_article_page_date_verified"
-> & { publisher_article_page_date_verified: true; page_original_published_at: string };
+> & { publisher_article_page_date_verified: true; page_original_published_at: string;
+  verified_original_event_kind?:"FED_BOARD_DISCOUNT_WINDOW_MEETING_MINUTES_PUBLISHED";
+};
 
+export type PrivatePageDayOriginal = Readonly<{
+  publisher_family:"canada_nrcan_original_publisher";
+  article_identity_sha256:string;
+  page_original_publication_day:string; // YYYY-MM-DD; never a synthetic UTC clock
+  original_clock_precision:"day";
+  original_issuer_page_verified:true;
+  article_commercial_rights_verified:false;
+  signed_customer_answer_verified:false;
+}>;
 export type PrivatePageDateResult = {
   attempted: number;
   verified: number;
   verified_candidates: PrivatePageDatedOriginal[];
+  // Present only for a verified Canada.ca calendar-day original. This is
+  // NEVER admitted as an exact-dated or signed customer evidence object.
+  day_only_originals?: PrivatePageDayOriginal[];
 };
 
 const MAX_ARTICLE_PAGE_PROBES = 4;
@@ -792,12 +1455,15 @@ const MAX_ARTICLE_PAGE_PROBES = 4;
 /** Internal-only evidence continuation; never serialize verified_candidates. */
 export async function verifyOnDemandOriginalArticlePages(
   candidates: readonly PrivateOriginalCandidate[],
-  options: {fetchImpl?:typeof fetch; now?:Date}={},
+  options: {fetchImpl?:typeof fetch; now?:Date; maxAgeSeconds?:number}={},
 ): Promise<PrivatePageDateResult> {
   const now=options.now ?? new Date();
-  if(!Number.isFinite(now.getTime()))throw Error("ON_DEMAND_CLOCK_INVALID");
+  const maxAgeMs=options.maxAgeSeconds===undefined?ONE_DAY_MS:
+    Math.min(MAX_NEWS_AGE_MS,options.maxAgeSeconds*1000);
+  if(!Number.isFinite(now.getTime()) || !Number.isFinite(maxAgeMs) || maxAgeMs<=0)
+    throw Error("ON_DEMAND_CLOCK_INVALID");
   const eligible=candidates.slice(0,16).filter((candidate)=>{
-    const def=ORIGINAL_FALLBACK_FEEDS.find((feed)=>
+    const def=[...ORIGINAL_FALLBACK_FEEDS,...INTERNATIONAL_ORIGINAL_FEEDS,...GOVUK_SEARCH_FALLBACKS].find((feed)=>
       feed.family===candidate.publisher_family && feed.domain===candidate.domain);
     return !!def &&
       originalArticleUrl(candidate.article_url,def)===candidate.article_url &&
@@ -806,14 +1472,24 @@ export async function verifyOnDemandOriginalArticlePages(
       (
         (candidate.source_native_feed_publication_date_verified===true &&
          candidate.feed_item_published_at!==null &&
-         freshPublished(candidate.feed_item_published_at,now) &&
+         freshPublished(candidate.feed_item_published_at,now,maxAgeMs) &&
          candidate.undated_atom_original_page_pending!==true) ||
         (def.media==="atom" &&
-         ["uk_fcdo_original_publisher","uk_dbt_original_publisher"]
+         ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
+       "uk_ofsi_original_publisher","uk_desnz_original_publisher","uk_hmt_original_publisher",
+           "canada_nrcan_original_publisher"]
            .includes(def.family) &&
          candidate.source_native_feed_publication_date_verified===false &&
          candidate.feed_item_published_at===null &&
-         candidate.undated_atom_original_page_pending===true)
+         candidate.undated_atom_original_page_pending===true) ||
+        (def.media==="search" && candidate.search_index_original_page_pending===true &&
+         candidate.feed_item_published_at===null &&
+         candidate.source_native_feed_publication_date_verified===false) ||
+         (def.family==="us_federal_reserve_original_publisher" &&
+          candidate.source_native_feed_publication_date_verified===false &&
+          candidate.feed_item_published_at===null &&
+          typeof candidate.official_archive_release_day==="string" &&
+          /^20\d{2}-\d{2}-\d{2}$/u.test(candidate.official_archive_release_day))
       );
   });
   const chosen:PrivateOriginalCandidate[]=[];
@@ -831,30 +1507,122 @@ export async function verifyOnDemandOriginalArticlePages(
   }
   for(const candidate of eligible)add(candidate);
 
-  const dates=await Promise.all(chosen.map(async(candidate)=>{
+  // First pass covers distinct approved originating publishers/categories.
+  // A secondary page from the SAME publisher is only an evidence-rescue
+  // attempt if its first article failed publication-clock verification and
+  // the four-page budget still has headroom; it is never independent proof.
+  const verifyCandidate=async(candidate:PrivateOriginalCandidate):Promise<{
+    verified:PrivatePageDatedOriginal|null;
+    dayOnly:PrivatePageDayOriginal|null; denied:boolean;
+  }>=>{
     try{
       const html=await boundedFetch(options.fetchImpl??fetch,candidate.article_url,"text/html");
-      const originalDate=verifiedPublisherPageDate(html,now);
-      if(!originalDate || !freshPublished(originalDate,now) ||
-        (candidate.feed_item_published_at!==null &&
-         Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>10*60*1000))
-        return null;
-      return {...candidate,publisher_article_page_date_verified:true as const,
-        page_original_published_at:originalDate};
-    }catch{
-      // Redirect, source outage, oversized page or invalid clock => no proof.
-      // Never log private originals, URLs or source payloads.
-      return null;
+      const isCanada=candidate.publisher_family==="canada_nrcan_original_publisher";
+      // Reuse the independently tested Canada.ca issuer/H1/first-publication
+      // verifier already powering the official website feed; never substitute
+      // Atom <updated>, crawl clocks, or article URL month for issue date.
+      const canadaDay=isCanada?canadaOriginalPublicationDay(
+        html,candidate.article_url,candidate.article_title,now.getTime()):null;
+      if(isCanada && !canadaDay)return {verified:null,dayOnly:null,denied:false};
+      const publisherDateDiagnostics:{date_reason?:string}={};
+      const metadataDate=verifiedPublisherPageDate(html,now,publisherDateDiagnostics,{maxAgeMs});
+      const ieaDate=candidate.publisher_family==='iea_minerals_original_publisher'
+        ?verifiedIeaOriginalPublication(html,{title:candidate.article_title,articleUrl:candidate.article_url},now,maxAgeMs):null;
+      if(candidate.publisher_family==='iea_minerals_original_publisher'&&!ieaDate)
+        return {verified:null,dayOnly:null,denied:false};
+      // A pinned issuer-specific visible original may rescue absent metadata,
+      // never conflicting, stale, future or malformed original metadata.
+      const precise=metadataDate??(publisherDateDiagnostics.date_reason==='MISSING_PUBLISHER_PUBLICATION_METADATA'?ieaDate:null);
+      // For a Board discount-meeting minutes original whose page has a
+      // timezone-labelled release line but not machine-readable precise
+      // metadata, independently bind issuer URL, native feed clock, the
+      // actual first-party Board release body and New York DST.
+      const boardRelease=candidate.publisher_family==="us_federal_reserve_original_publisher"
+        ? verifiedFedBoardDiscountMinutesOriginal(
+            html,candidate.article_url,candidate.article_title,
+            candidate.feed_item_published_at,now,
+            candidate.official_archive_release_day??null):null;
+      // Never let a plausible visible clock override contradictory original
+      // publisher datePublished metadata. Also require the requested window.
+      const boardBodyTimeAdmissible=boardRelease!==null &&
+        (precise!==null ||
+         publisherDateDiagnostics.date_reason==="MISSING_PUBLISHER_PUBLICATION_METADATA");
+      const originalDate=precise && boardRelease &&
+         Math.abs(Date.parse(precise)-Date.parse(boardRelease.publication_utc))>60_000
+        ? null : (precise??(boardBodyTimeAdmissible?boardRelease?.publication_utc:null)??null);
+      if(originalDate && freshPublished(originalDate,now,maxAgeMs) &&
+          (!isCanada || originalDate.slice(0,10)===canadaDay) &&
+          (!candidate.official_archive_release_day ||
+           originalDate.slice(0,10)===candidate.official_archive_release_day) &&
+          (candidate.feed_item_published_at===null ||
+           Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))<=10*60*1000))
+        return {verified:{...candidate,publisher_article_page_date_verified:true as const,
+          page_original_published_at:originalDate,
+          ...(boardRelease?{verified_original_event_kind:boardRelease.verified_event}:{})},
+          dayOnly:null,denied:false};
+      // Conservative boundary: require the beginning of the publisher's
+      // calendar day to fit the requested window. This may reject useful
+      // news, but cannot claim an invented exact hour of publication.
+      const at=canadaDay?Date.parse(canadaDay+"T00:00:00.000Z"):NaN;
+      const dayOnly=canadaDay && Number.isFinite(at) && at<=now.getTime() &&
+          now.getTime()-at<=maxAgeMs
+        ? {publisher_family:"canada_nrcan_original_publisher" as const,
+           article_identity_sha256:candidate.article_identity_sha256,
+           page_original_publication_day:canadaDay,
+           original_clock_precision:"day" as const,
+           original_issuer_page_verified:true as const,
+           article_commercial_rights_verified:false as const,
+           signed_customer_answer_verified:false as const}:null;
+      return {verified:null,dayOnly,denied:false};
+    }catch(error){
+      const code=error instanceof Error?error.message:"";
+      return {verified:null,dayOnly:null,denied:[
+        "ON_DEMAND_SOURCE_ACCESS_RESTRICTED","ON_DEMAND_SOURCE_RATE_LIMITED"
+      ].includes(code)};
     }
-  }));
-  const verified_candidates=dates.filter((c):c is PrivatePageDatedOriginal=>c!==null);
-  return {attempted:chosen.length,verified:verified_candidates.length,verified_candidates};
+  };
+  const first=await Promise.all(chosen.map(verifyCandidate));
+  const verified_candidates:PrivatePageDatedOriginal[]=[];
+  const day_only_originals:PrivatePageDayOriginal[]=[];
+  const blockedFamilies=new Set<string>();
+  const successfulFamilies=new Set<string>();
+  const seenIds=new Set(chosen.map(x=>x.article_identity_sha256));
+  for(let i=0;i<chosen.length;i++){
+    if(first[i].verified){
+      verified_candidates.push(first[i].verified!);
+      successfulFamilies.add(chosen[i].publisher_family);
+    }
+    if(first[i].dayOnly){day_only_originals.push(first[i].dayOnly!);
+      successfulFamilies.add(chosen[i].publisher_family);}
+    if(first[i].denied)blockedFamilies.add(chosen[i].publisher_family);
+  }
+  let attempted=chosen.length;
+  // Try at most one different original article per failed publisher.
+  // Keep independent source identity intact and never exceed total page quota.
+  for(let i=0;i<chosen.length && attempted<MAX_ARTICLE_PAGE_PROBES;i++){
+    const family=chosen[i].publisher_family;
+    if(successfulFamilies.has(family) || blockedFamilies.has(family))continue;
+    const alternate=eligible.find(x=>x.publisher_family===family &&
+      !seenIds.has(x.article_identity_sha256));
+    if(!alternate)continue;
+    seenIds.add(alternate.article_identity_sha256);
+    attempted++;
+    const outcome=await verifyCandidate(alternate);
+    if(outcome.verified){
+      verified_candidates.push(outcome.verified);
+      successfulFamilies.add(family);
+    }
+    if(outcome.dayOnly){day_only_originals.push(outcome.dayOnly);successfulFamilies.add(family);}
+    if(outcome.denied)blockedFamilies.add(family);
+  }
+  return {attempted,verified:verified_candidates.length,verified_candidates,
+    ...(day_only_originals.length?{day_only_originals}:{})};
 }
 
 /** Client-safe shape: no upstream article, URLs, text, or private evidence. */
 export async function discoverOnDemandGlobal(
   input:OnDemandSearchInput,
-  options:{fetchImpl?:typeof fetch;now?:Date}={},
+  options:{fetchImpl?:typeof fetch;now?:Date;disableDiscoveryIndex?:boolean}={},
 ):Promise<OnDemandDiscovery>{
   return (await discoverOnDemandImpl(input,options)).discovery;
 }
@@ -865,7 +1633,7 @@ export async function discoverOnDemandGlobal(
  */
 export async function discoverOnDemandForPrivateQualification(
   input:OnDemandSearchInput,
-  options:{fetchImpl?:typeof fetch;now?:Date}={},
+  options:{fetchImpl?:typeof fetch;now?:Date;disableDiscoveryIndex?:boolean}={},
 ):Promise<{
   discovery:OnDemandDiscovery;
   private_candidates:PrivateOriginalCandidate[];
@@ -873,6 +1641,7 @@ export async function discoverOnDemandForPrivateQualification(
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
   private_macro_qualifications:PrivateMacroQualification[];
+  private_verified_country_name:string|null;
 }>{
   return discoverOnDemandImpl(input,options);
 }

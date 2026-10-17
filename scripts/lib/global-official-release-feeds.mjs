@@ -1,0 +1,67 @@
+// Pinned first-party international release connectors. No commercial rights,
+// event corroboration or country coverage is granted by these definitions.
+import {verifiedPublisherPageDate} from './official-original-article-date.mjs';
+import {officialItemNativePublicationMs} from './official-native-item-publication-date.mjs';
+const macro=/\b(?:inflation|monetary|interest rates?|central banks?|economic|economy|growth|debt|fiscal|banking|financial|foreign exchange|currency|trade|gdp|liquidity|tankan)\b/iu;
+export const MINERAL_RELEASE_TOPIC=/\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|mineral supply|mining)\b/iu;
+const geo=/\b(?:security council|peace|conflict|war|sanctions?|military|ceasefire|diploma|humanitarian|violence|disarmament)\w*/iu;
+export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
+ {id:'govuk_global_economy',category:'macro',url:'https://www.gov.uk/api/search.json?q=economy&filter_format=news_article&count=10&order=-public_timestamp',format:'json',host:'www.gov.uk',path:/^\/government\/(?:news|speeches|statements|world-location-news)\/[a-z0-9-]+$/u,topic:macro,credit:'Contains public sector information licensed under the Open Government Licence v3.0.',family:'govuk_economy_global_original_publisher'},
+ {id:'govuk_global_minerals',category:'rare_earth',url:'https://www.gov.uk/api/search.json?q=critical%20minerals&filter_format=news_article&count=10&order=-public_timestamp',format:'json',host:'www.gov.uk',path:/^\/government\/(?:news|speeches|statements|world-location-news)\/[a-z0-9-]+$/u,topic:MINERAL_RELEASE_TOPIC,credit:'Contains public sector information licensed under the Open Government Licence v3.0.',family:'govuk_minerals_global_original_publisher'},
+ {id:'un_press_global',category:'geopolitics',url:'https://press.un.org/en/rss.xml',format:'rss',host:'press.un.org',path:/^\/en\/20\d{2}\/[a-z]+\d+[a-z0-9]*\.doc\.htm$/u,topic:geo,credit:'United Nations',family:'un_press_original_publisher'},
+ {id:'un_news_economy',category:'macro',url:'https://news.un.org/feed/subscribe/en/news/topic/economic-development/feed/rss.xml',format:'rss',host:'news.un.org',path:/^\/en\/story\/20\d{2}\/\d{1,2}\/[a-z0-9-]+$/u,topic:macro,credit:'UN News',family:'un_economy_original_publisher'},
+ {id:'bis_press_global',category:'macro',url:'https://www.bis.org/doclist/all_pressrels.rss',format:'rss',host:'www.bis.org',path:/^\/(?:press\/p\d{6}[a-z]?\.htm|media-releases\/20\d{6}-[a-z0-9-]+)$/u,topic:macro,credit:'Bank for International Settlements',family:'bis_original_publisher',rdf:true,websiteId:'bis_press'},
+ {id:'boj_press_global',category:'macro',url:'https://www.boj.or.jp/en/rss/whatsnew.xml',format:'rss',host:'www.boj.or.jp',path:/^\/en\/(?:about|announcements|mopo|statistics|research)\/[A-Za-z0-9_./-]+\.htm$/u,topic:macro,credit:'Bank of Japan',family:'boj_original_publisher'},
+ {id:'un_news_minerals',category:'rare_earth',url:'https://news.un.org/feed/subscribe/en/news/all/rss.xml',format:'rss',host:'news.un.org',path:/^\/en\/story\/20\d{2}\/\d{1,2}\/[a-z0-9-]+$/u,topic:MINERAL_RELEASE_TOPIC,credit:'UN News',family:'un_minerals_original_publisher'},
+ {id:'boc_press_global',category:'macro',url:'https://www.bankofcanada.ca/content_type/press-releases/feed/',format:'rss',host:'www.bankofcanada.ca',path:/^\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\/$/u,topic:macro,credit:'Bank of Canada',family:'boc_original_publisher',rdf:true},
+ {id:'bc_minerals_global',category:'rare_earth',url:'https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed',format:'rss',host:'news.gov.bc.ca',path:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,topic:MINERAL_RELEASE_TOPIC,credit:'Province of British Columbia',family:'bc_minerals_original_publisher'},
+ {id:'iea_minerals_global',category:'rare_earth',url:'https://www.iea.org/news?topic%5B0%5D=critical-minerals',format:'html',host:'www.iea.org',path:/^\/news\/[a-z0-9]+(?:-[a-z0-9]+){1,35}$/u,topic:MINERAL_RELEASE_TOPIC,credit:'International Energy Agency',family:'iea_minerals_original_publisher'},
+].map(s=>{
+ const u=new URL(s.url);if(u.protocol!=='https:'||u.hostname!==s.host||u.username||u.password||u.port||u.hash)throw Error('GLOBAL_RELEASE_REGISTRY_INVALID');
+ return Object.freeze({...s,maxBytes:384*1024,production_update_reader:true,poll_minutes:30});
+}));
+export function globalOriginalArticleUrl(raw,spec){
+ try{
+  // BOJ's own RSS emits legacy HTTP permalinks. Upgrade only that exact
+  // observed issuer origin; no other HTTP link, redirect or URL is admitted.
+  let text=String(raw).replace(/&amp;/giu,'&').trim();
+  if(spec.id==='boj_press_global'&&text.startsWith('http://www.boj.or.jp/en/'))text=text.replace('http:','https:');
+  const u=new URL(text);
+  if(u.protocol!=='https:'||u.hostname!==spec.host||u.username||u.password||u.port||u.hash||u.href.length>1800||!spec.path.test(u.pathname))return null;
+  return u.origin+u.pathname;
+ }catch{return null;}
+}
+const visible=x=>String(x).replace(/<[^>]*>/gu,' ').replace(/&(?:amp|quot|apos|#039|rsquo|lsquo|nbsp);/giu,m=>({'&amp;':'&','&quot;':'"','&apos;':"'",'&#039;':"'",'&rsquo;':"'",'&lsquo;':"'",'&nbsp;':' '})[m.toLowerCase()]??m).replace(/\s+/gu,' ').trim();
+export function ieaMineralsIndexCandidates(html){
+ if(typeof html!=='string'||new TextEncoder().encode(html).byteLength>384*1024||/<!ENTITY|<!DOCTYPE\s+[^>]*\[/iu.test(html))return [];
+ const spec=GLOBAL_OFFICIAL_RELEASE_FEEDS.find(s=>s.id==='iea_minerals_global'),seen=new Set(),rows=[];
+ for(const m of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/giu)){
+  if(!/^\/news\/[a-z0-9-]+$/u.test(m[1]))continue;
+  const url=globalOriginalArticleUrl('https://www.iea.org'+m[1],spec);
+  const title=visible(m[2]).replace(/^(?:Critical Minerals|Energy Security|News)\s+/u,'').replace(/\s+\d{1,2}\s+[A-Za-z]+\s+20\d{2}$/u,'');
+  if(!url||seen.has(url)||title.length<12||title.length>300||!MINERAL_RELEASE_TOPIC.test(title))continue;
+  seen.add(url);rows.push({articleUrl:url,title});if(rows.length===12)break;
+ }
+ return rows;
+}
+export function verifiedIeaOriginalPublication(html,candidate,now=new Date(),maxAgeMs=31*86400000){
+ const spec=GLOBAL_OFFICIAL_RELEASE_FEEDS.find(s=>s.id==='iea_minerals_global');
+ if(typeof html!=='string'||new TextEncoder().encode(html).byteLength>384*1024||!Number.isFinite(now.getTime())||!Number.isFinite(maxAgeMs)||maxAgeMs<=0||maxAgeMs>31*86400000||globalOriginalArticleUrl(candidate?.articleUrl,spec)!==candidate?.articleUrl)return null;
+ const heading=html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/iu)?.[1];
+ if(!heading||visible(heading)!==candidate.title)return null;
+ // Publisher's exact News header, not arbitrary footer <time>, last-updated,
+ // URL day or fetch time. Require one unambiguous original clock.
+ const metas=[...html.matchAll(/<p\b[^>]*class=["'][^"']*\bo-hero-news__meta\b[^"']*["'][^>]*>([\s\S]*?)<\/p>/giu)];
+ if(metas.length!==1||!/\bNews\b/u.test(visible(metas[0][1]))||/updated|modified|revised/iu.test(visible(metas[0][1])))return null;
+ const clocks=[...metas[0][1].matchAll(/<time\b[^>]*datetime=["']([^"']+)["'][^>]*>/giu)];
+ if(clocks.length!==1)return null;
+ const ms=officialItemNativePublicationMs(clocks[0][1]);
+ const diagnostics={};const metadata=verifiedPublisherPageDate(html,now,diagnostics,{maxAgeMs});
+ if(metadata?Math.abs(Date.parse(metadata)-ms)>60000:diagnostics.date_reason!=='MISSING_PUBLISHER_PUBLICATION_METADATA')return null;
+ return Number.isFinite(ms)&&ms<=now.getTime()&&now.getTime()-ms<=maxAgeMs?new Date(ms).toISOString():null;
+}
+
+export function verifiedGlobalRdfFeed(id,url,xml){
+ const spec=GLOBAL_OFFICIAL_RELEASE_FEEDS.find(s=>(s.id===id||s.websiteId===id||s.family===id)&&s.url===url&&s.rdf===true);
+ return Boolean(spec&&typeof xml==='string'&&!/<!DOCTYPE|<!ENTITY/iu.test(xml)&&/<rdf:RDF(?:\s|>)/iu.test(xml)&&/xmlns:dc\s*=\s*["']http:\/\/purl\.org\/dc\/elements\/1\.1\/["']/iu.test(xml));
+}

@@ -14,7 +14,8 @@ describe("GRI freshness publication boundary", () => {
     expect(workflow).not.toContain("\n  schedule:\n");
     expect(workflow).not.toContain("\n  push:\n");
     expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).toContain("github.event_name == 'workflow_dispatch'");
+    expect(workflow).toContain("  refresh-three-domain-gri:\n    # Supabase-only legacy execution retired.");
+    expect(workflow).toContain("    if: ${{ false }}");
     expect(workflow).toContain("node scripts/verify-gri-snapshot-v12.js");
     expect(workflow).toContain("bun scripts/ops/publish-b2-global-risk-direct-postgres.mjs");
     expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { fetchOfficialNativeArticles, OFFICIAL_NATIVE_FEEDS }
   from "../../scripts/lib/official-native-rss.mjs";
@@ -38,6 +39,70 @@ const res=(body:string,type="application/rss+xml")=>
   new Response(body,{headers:{"content-type":type}});
 
 describe("#1827 three-domain third publisher RSS/Atom strict private originals",()=>{
+  it("D1 claimed later undated FCDO article is not starved by first-two page probes",async()=>{
+    const cfg=OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics;
+    const candidates=[
+      "https://www.gov.uk/government/news/first-unrelated-policy-announcement",
+      "https://www.gov.uk/government/news/second-unrelated-policy-announcement",
+      "https://www.gov.uk/government/news/third-claimed-foreign-policy-announcement",
+    ];
+    const atom='<feed>'+candidates.map(link=>
+      '<entry><title>Foreign Secretary official policy announcement on ceasefire</title>'+
+      '<updated>2026-10-09T18:09:00Z</updated>'+
+      '<link rel="alternate" href="'+link+'"/></entry>').join('')+'</feed>';
+    const claimed=candidates[2];
+    const digest=createHash("sha256").update(claimed).digest("hex");
+    const clock="2026-10-09T17:55:00.000Z";
+    const seen:string[]=[];
+    const page='<html><meta property="article:published_time" content="'+clock+'"></html>';
+    const fetchImpl=vi.fn(async(input:string)=>{
+      seen.push(input);
+      if(input===cfg.url)return res(atom,"application/atom+xml");
+      if(input===claimed)return res(page,"text/html");
+      throw Error("NON_CLAIMED_PAGE_PROBED");
+    });
+    const checks:Record<string,number>={};
+    const matched=await fetchOfficialThirdPublisherArticles("geopolitics",{
+      now,fetchImpl,maxAgeMs:6*60*60*1000,broadPrivateIntake:true,
+      pulseRefs:new Set([digest]),pulseExpectedClocks:new Map([[digest,clock]]),
+      diagnostics:checks,
+    });
+    expect(seen).toEqual([cfg.url,claimed]);
+    expect(matched).toHaveLength(1);
+    expect(matched[0]).toMatchObject({url:claimed,publishedAt:clock,
+      nativeTimeEvidence:"publisher_original_article_datePublished",
+      privateOnly:true,rightsVerified:false,commercialEligible:false});
+    expect(checks.third_original_page_date_checks).toBe(1);
+    expect(checks.third_original_page_date_admitted).toBe(1);
+    const mismatched=await fetchOfficialThirdPublisherArticles("geopolitics",{
+      now,maxAgeMs:6*60*60*1000,broadPrivateIntake:true,
+      pulseRefs:new Set([digest]),
+      pulseExpectedClocks:new Map([[digest,"2026-10-09T17:50:00.000Z"]]),
+      fetchImpl:async(input:string)=>input===cfg.url
+        ?res(atom,"application/atom+xml"):res(page,"text/html"),
+    });
+    expect(mismatched).toEqual([]);
+  });
+
+  it("D1 claimed later native entry cannot be crowded out by first two dated entries",()=>{
+    const links=[
+      "https://www.gov.uk/government/news/first-news-release-announcement",
+      "https://www.gov.uk/government/news/second-news-release-announcement",
+      "https://www.gov.uk/government/news/third-news-release-announcement",
+    ];
+    const feed='<feed>'+links.map(link=>
+      '<entry><title>Government foreign policy ceasefire update and statement</title>'+
+      '<link rel="alternate" href="'+link+'"/>'+
+      '<published>2026-10-09T17:55:00.000Z</published></entry>').join('')+
+      '</feed>';
+    const sha=createHash("sha256").update(links[2]).digest("hex");
+    const rows=parseOfficialThirdRss(feed,"geopolitics",{now,broadPrivateIntake:true,
+      pulseRefs:new Set([sha]),pulseExpectedClocks:new Map([[sha,"2026-10-09T17:55:00.000Z"]])});
+    expect(rows).toHaveLength(1);
+    expect(rows[0].url).toBe(links[2]);
+    expect(rows[0].commercialEligible).toBe(false);
+  });
+
   it.each(["geopolitics","macro","rare_earth"])(
     "%s accepts ONLY original native-published current article, private/unlicensed",
     domain=>{

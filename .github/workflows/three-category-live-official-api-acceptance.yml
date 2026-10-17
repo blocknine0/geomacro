@@ -1,0 +1,67 @@
+name: Three Category Live Official GET Exact-SHA Acceptance
+
+# Never conflate GitHub sync with public Lovable publication. Three GETs are
+# issued only when the exact canonical commit SHA is already publicly served.
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/verify-three-category-live-official-api.mjs"
+      - ".github/workflows/three-category-live-official-api-acceptance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/category-live-observation.server.ts"
+      - "src/lib/category-intelligence-alias.server.ts"
+      - "src/lib/central-security.server.ts"
+      - "scripts/ops/verify-three-category-live-official-api.mjs"
+      - ".github/workflows/three-category-live-official-api-acceptance.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-three-category-official-get-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  read-only-production:
+    if: github.event_name != 'pull_request' && github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      EXPECTED_CANONICAL_SHA: ${{ github.sha }}
+      GEOMACRO_BASE_URL: https://geomacro.live
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: GET-only exact deployed SHA and 3 category original-date assertions
+        run: node scripts/ops/verify-three-category-live-official-api.mjs
+
+  no-funds-static-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Ensure no POST or payment header in production readback
+        run: |
+          node --input-type=module -e '
+            import {readFileSync} from "node:fs";
+            const code=readFileSync("scripts/ops/verify-three-category-live-official-api.mjs","utf8");
+            if (!code.includes("method: \"GET\"") ||
+                code.includes("method: \"POST\"") ||
+                code.includes("PAYMENT-SIGNATURE\",") ||
+                !code.includes("exact_deployment") ||
+                !code.includes("all_three_endpoints_live")) {
+              throw Error("THREE_CATEGORY_NO_FUNDS_CONTRACT_INVALID");
+            }
+          '

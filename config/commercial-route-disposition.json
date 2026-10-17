@@ -85,6 +85,10 @@
       "classification": "REMOVE",
       "status": "REMOVED"
     },
+    "/api/v1/intelligence/availability": {
+      "classification": "PRODUCTION",
+      "status": "NO_FUNDS_PREFLIGHT"
+    },
     "/api/v1/intelligence/query": {
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
@@ -230,6 +234,14 @@
       "status": "CONTROLLED_PRELAUNCH"
     },
     "/api/v1/intelligence/critical-minerals": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/v1/finds": {
+      "classification": "PRODUCTION",
+      "status": "FREE_DERIVED_ONLY"
+    },
+    "/api/v1/agent": {
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
     }

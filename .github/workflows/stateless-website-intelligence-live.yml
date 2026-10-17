@@ -5,6 +5,7 @@ name: Stateless Website Intelligence Live Sources
 on:
   pull_request:
     paths:
+      - "scripts/lib/global-official-release-feeds.mjs"
       - "src/lib/stateless-*.ts"
       - "src/components/intelligence/stateless-live-desk.tsx"
       - "scripts/ops/accept-stateless-website-intelligence.ts"
@@ -12,6 +13,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "scripts/lib/global-official-release-feeds.mjs"
       - "src/lib/stateless-*.ts"
       - "src/components/intelligence/stateless-live-desk.tsx"
       - "scripts/ops/accept-stateless-website-intelligence.ts"

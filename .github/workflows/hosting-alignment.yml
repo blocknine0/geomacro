@@ -7,6 +7,7 @@ on:
       - "package.json"
       - "bun.lock"
       - "vite.config.ts"
+      - "nitro.config.ts"
       - "src/**"
       - "server/**"
       - "docs/HOSTING_ALIGNMENT.md"
@@ -22,6 +23,7 @@ on:
       - "package.json"
       - "bun.lock"
       - "vite.config.ts"
+      - "nitro.config.ts"
       - "src/**"
       - "server/**"
       - "docs/HOSTING_ALIGNMENT.md"
@@ -57,5 +59,21 @@ jobs:
       - name: Verify public data boundary
         run: bunx vitest run src/__tests__/public-data-proxy-contract.test.ts
 
+      - name: Verify real Workers D1 transport and redirect isolation
+        run: npm exec --yes --package=workerd@1.20261016.1 -- bun scripts/tests/workerd-d1-transport.ts
+
       - name: Verify Lovable-compatible production build
         run: bun run build
+
+      - name: Verify public Worker routing in generated deployment configuration
+        run: |
+          bun - <<'JS'
+          import {existsSync,readFileSync} from 'node:fs';
+          const path=['.output/server/wrangler.json','dist/server/wrangler.json'].find(existsSync);
+          if(!path)throw Error('WEBSITE_WORKER_DEPLOY_CONFIG_MISSING');
+          const config=JSON.parse(readFileSync(path,'utf8'));
+          if(!config.compatibility_flags?.includes('global_fetch_strictly_public')||
+             config.compatibility_flags.includes('global_fetch_private_origin'))
+            throw Error('WEBSITE_PUBLIC_WORKER_ROUTING_REQUIRED');
+          console.log('WEBSITE_PUBLIC_WORKER_ROUTING_BUILD_VERIFIED');
+          JS

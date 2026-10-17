@@ -1,3 +1,4 @@
+import {fetchWithoutRedirect} from "../lib/fetch-without-redirect";
 import {plainPublicProjection,hasPrivateSourceQueryFilter,safePostgrestAccept} from "@/lib/public-postgrest-proxy-privacy";
 import process from "node:process";
 import { createFileRoute } from "@tanstack/react-router";
@@ -169,7 +170,7 @@ async function handle(request: Request) {
     parent.searchParams.set("verification_status","eq.verified");
     parent.searchParams.set("limit","1");
     try{
-      const check=await fetch(parent,{
+      const check=await fetchWithoutRedirect(parent,{
         method:"GET",
         headers:{apikey:anon,authorization:`Bearer ${anon}`,accept:"application/json"},
         redirect:"error",signal:AbortSignal.timeout(4000),
@@ -191,7 +192,7 @@ async function handle(request: Request) {
 
   let response: Response;
   try {
-    response = await fetch(upstream, {
+    response = await fetchWithoutRedirect(upstream, {
       method: request.method,
       headers,
       redirect: "error",

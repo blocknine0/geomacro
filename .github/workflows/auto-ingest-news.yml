@@ -16,7 +16,9 @@ concurrency:
 
 jobs:
   recover-news-ingest:
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    # Legacy Supabase recovery retired: never execute from manual dispatch,
+    # push or schedule. Keep reviewed historical logic for forensic replay only.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
