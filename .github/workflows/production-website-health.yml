@@ -790,7 +790,7 @@ jobs:
              !Array.isArray(finds.cards))
              throw Error('PUBLIC_FREE_FINDS_CONTRACT_INVALID');
           if(finds.cards.some(card=>card?.schema!=='geomacro.find.v1'||
-             card?.severity!==null||JSON.stringify(card).match(/https?:\\/\\//u)))
+             card?.severity!==null||JSON.stringify(card).includes('https://')||JSON.stringify(card).includes('http://')))
              throw Error('PUBLIC_FINDS_PRIVATE_OR_SCORED_DATA');
           console.log(JSON.stringify({schema:'geomacro.free-website-live-canary.v1',
             homepage_http:200,ask_http:200,finds_http:200,d1_http:200,
