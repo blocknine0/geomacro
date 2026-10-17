@@ -182,3 +182,25 @@ non-canceling writer lock, Supabase-free D1 publication, no-funds gates and
 quota-governed B2 archival unchanged. It does **not** make provider services
 permanently available or verify 585 country-category current commercial
 products. Exact GitHub cron timing remains best effort.
+
+## Independent original-page verification of BLS newsroom releases
+
+Three first-party `bls.gov/feed/*.rss` Atom endpoints have returned 4xx to
+protected GitHub collectors. The **publisher's own separate public newsroom**
+(`https://www.bls.gov/newsroom/`) is an additional read-only candidate.
+It has a bounded, exact-path parser for the latest CPI, Employment Situation,
+and Import/Export Price Indexes, accepting only the official recent-news
+section with original `MM/DD/YYYY` day markers. For every possible candidate,
+it separately fetches the corresponding fixed
+`/news.release/{cpi,empsit,ximpim}.nr0.htm` original via no-redirect HTTPS,
+matches the release headline family and the publisher's explicit
+`Transmission of material ... embargoed until` date, and requires the two
+dates to agree. This yields **day precision only** and requires the 15-minute
+public release guard; fetch time, HTTP last-modified, current data-period dates
+and upcoming calendar entries cannot create an event.
+
+This is **not** a bypass of the rejected feed endpoint: its denied transport
+remains degraded independently. The new newsroom lane itself must be
+readable on the protected GitHub runner before it is considered operational.
+All article bytes are ephemeral. No new data storage, Supabase, payment,
+rights authorization or signed commercial event is introduced.
