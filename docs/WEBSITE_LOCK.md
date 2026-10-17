@@ -2,7 +2,7 @@
 
 ## Status
 
-The published public website is **frozen** at the approved 2026-09-18 presentation baseline.
+The public website presentation is **locked to a founder-approved Git baseline**. An approved source baseline is not proof that Lovable has published that SHA; live deployment acceptance is checked separately.
 
 The lock exists so backend, API, data, agent-commerce, x402, database, security, and infrastructure work can continue without accidentally changing the public website presentation.
 
@@ -35,12 +35,13 @@ Two independent checks protect the published site:
 
 Do not edit the protected presentation surface as part of background/backend work.
 
-A future intentional website change requires:
+An intentional website change follows this two-stage approval and deployment sequence:
 
-1. explicit founder approval;
-2. a dedicated website change PR;
-3. full Product CI, Hosting Alignment, CodeQL, and Website Lock review;
-4. visual verification after publish;
-5. only then, a dedicated baseline update.
+1. The founder explicitly authorizes the specific presentation change.
+2. A dedicated website PR contains only that scoped change, with Product CI, Hosting Alignment and CodeQL reviewed. Website Lock may fail until approval metadata catches up; that failure must be recorded, never disguised.
+3. A separate founder-approval/baseline PR pins the exact approved UI commit (not an arbitrary future main SHA), preserves the independent immutable Global Risk lock, keeps `pending_publish_acceptance=true`, and retains the previously observed `published_source_sha`. Website Lock must then pass.
+4. The existing protected one-way Lovable mirror synchronizes the approved canonical main. The founder explicitly publishes in Lovable.
+5. Verify the exact deployed SHA, visually inspect desktop/mobile, test affected functionality and verify the existing no-funds/data health gates. Do not mark production live merely because CI passed or a mirror commit was created.
+6. Only after real acceptance may the publication-status record be updated; never rewrite the earlier approval history.
 
 Lovable AI edits and automatic “Fix” changes must not be used against the locked website.
