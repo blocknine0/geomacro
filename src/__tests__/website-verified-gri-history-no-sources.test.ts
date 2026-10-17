@@ -105,7 +105,10 @@ describe("bounded privacy-safe genuine prior verified website GRI history",()=>{
   expect(code).toContain("source_identity_disclosed:false");
   expect(website).toContain("/v1/public/website-lagged-global-risk");
   expect(website).toContain("websiteVerifiedSnapshotPastEmbargo(receipt.data,now)");
-  expect(website).toContain("validateGlobalRiskContinuity(receipt.data,now).ok");
+  expect(website).toContain("websiteHistoricalRiskView(receipt.data,now)");
+  expect(website).toContain("!validateGlobalRiskContinuity(risk,now).ok");
+  const view=readFileSync("src/lib/website-historical-risk-view.ts","utf8");
+  expect(view).toContain("validateGlobalRiskContinuity(projected,now).ok");
   const paid=readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts","utf8");
   expect(paid).not.toContain("website-lagged-global-risk");
   expect(paid).not.toContain("WEBSITE_GRI_DELAY_MS");
