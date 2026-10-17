@@ -1,0 +1,63 @@
+name: Signed Hot Snapshot Pre-Expiry Guard
+
+# Read-only governance: 2 checks/hour, ONE minimal D1 metadata SELECT per run.
+# Never publishes new signed data, touches B2, pays x402 or writes Supabase.
+# Genuine new independently attested source inputs remain a hard dependency.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "09,39 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/signed-hot-pre-expiry-guard.yml"
+      - "scripts/ops/watch-signed-hot-expiry.mjs"
+      - "scripts/ops/classify-d1-hot-metadata.mjs"
+      - "src/__tests__/signed-hot-expiry-prevention.test.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-signed-hot-expiry-guardian
+  cancel-in-progress: false
+
+jobs:
+  verify-before-expiry:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout exact canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        with:
+          node-version: "22"
+      - name: Check source and expiry guardian syntax
+        run: |
+          node --check scripts/ops/watch-signed-hot-expiry.mjs
+          node --check scripts/ops/classify-d1-hot-metadata.mjs
+      - name: Read only proof metadata and warn before 6h / 90min windows close
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" && test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || {
+            echo "::error::SIGNED_HOT_CLOUDFLARE_READONLY_CREDENTIAL_MISSING"; exit 2;
+          }
+          sql="SELECT product, schema_name, generated_at, source_as_of, expires_at, b2_object_key, proof_schema, source_run_id, length(b2_sha256) AS b2_hash_length, length(payload_sha256) AS payload_hash_length, length(CAST(payload_json AS BLOB)) AS payload_bytes FROM public_b2_hot_snapshot WHERE product IN ('intelligence','global-risk','risk-indices') LIMIT 3;"
+          raw="$(mktemp)"
+          err="$(mktemp)"
+          trap 'rm -f "$raw" "$err"' EXIT
+          if ! npx -y wrangler@4.136.3 d1 execute geomacro-control-plane \
+             --remote --json --command "$sql" > "$raw" 2> "$err"; then
+            echo "::error::SIGNED_HOT_D1_METADATA_READ_FAILED"
+            exit 2
+          fi
+          node scripts/ops/watch-signed-hot-expiry.mjs < "$raw"
