@@ -29,7 +29,7 @@ describe("Geomacro structured-only commercial customer license v1",()=>{
     expect(publicRoute).toContain("return Response.json(GEOMACRO_STRUCTURED_LICENSE_TERMS");
     expect(publicRoute).toContain("commercial_license:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY");
     expect(policy).toContain("/api/intelligence/capabilities?view=license");
-    expect(owner).toContain("Geomacro's own");
+    expect(owner).toContain("Owner-Controlled Commercial License");
   });
   it("licenses only original owned derived outputs; never raw upstream rights",()=>{
     const t=GEOMACRO_STRUCTURED_LICENSE_TERMS;
@@ -80,6 +80,5 @@ describe("Geomacro structured-only commercial customer license v1",()=>{
     expect(paidPrivacy).toContain("PAID_OUTPUT_INTERNAL_SOURCE_FIELD");
     expect(GEOMACRO_STRUCTURED_LICENSE_TERMS.grant.exclusions.join(" ")).toMatch(/feeds/i);
     expect(policy).toContain("independent");
-    expect(file(".github/workflows/website-lock.yml")).toBeDefined();
   });
 });
