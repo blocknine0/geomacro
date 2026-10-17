@@ -15,7 +15,7 @@ const signal={
   same_event_corrob_verified:false,severity:null,
 };
 const doc=(signals:unknown[]=[])=>({ok:true,schema:"geomacro.website-derived-news-feed.v1",
-  original_release_delay_minutes:15,retention_days:30,delivery_scope:"free_website_only",signals});
+  original_release_delay_minutes:15,retention_days:3,retention_hours:72,delivery_scope:"free_website_only",signals});
 describe("browser public journal fallback",()=>{
   it("serves original-dated derived cards without browser server-RPC dependency",async()=>{
     const f=vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(doc([signal])),{
