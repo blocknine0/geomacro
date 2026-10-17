@@ -155,6 +155,7 @@ async function buildContinuityResponse() {
       "x-geomacro-authority": "backblaze-b2-verified-edge",
       "x-geomacro-continuity": "github-actions-b2-readback-verified",
       "x-geomacro-source-as-of": data.snapshotAsOf,
+      "x-geomacro-native-clock-contract": "live-60m-v1",
       "access-control-allow-origin": "*",
       "access-control-expose-headers": "x-geomacro-authority, x-geomacro-continuity",
     },
@@ -278,6 +279,7 @@ async function readD1HotSnapshot(env) {
         "x-geomacro-continuity": "d1-b2-readback-verified-hot-snapshot",
         "x-geomacro-serving-store": "cloudflare-d1",
         "x-geomacro-source-as-of": snapshot.source_as_of,
+        "x-geomacro-native-clock-contract": "live-60m-v1",
         "x-geomacro-b2-sha256": snapshot.b2_sha256,
         "x-geomacro-d1-payload-sha256": snapshot.payload_sha256,
         "x-geomacro-b2-verification":
@@ -345,6 +347,7 @@ async function buildResponse(env) {
     headers: {
       "content-type": "application/json; charset=utf-8",
       "x-geomacro-source-as-of": data.snapshotAsOf,
+      "x-geomacro-native-clock-contract": "live-60m-v1",
       "x-geomacro-b2-verification": "full-readback-hash-exact-restore",
       "cache-control": liveEdgeCacheControl(data.snapshotAsOf),
       "x-content-type-options": "nosniff",

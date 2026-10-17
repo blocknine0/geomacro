@@ -158,6 +158,30 @@ jobs:
           console.log(JSON.stringify({ ok: true, snapshot_id: d.snapshotId, snapshot_as_of: d.snapshotAsOf }));
           NODE
 
+      - name: Require new Worker version and native current signed GRI
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import {originalSourceIsCurrent} from "./workers/shared/current-source-clock.mjs";
+          const body=JSON.parse(fs.readFileSync("/tmp/global-risk-edge.json","utf8"));
+          const raw=fs.readFileSync("/tmp/global-risk-edge.headers","utf8");
+          const header=(name)=>raw.split(/\r?\n/).filter(s=>s.toLowerCase().startsWith(name+":")).at(-1)?.slice(name.length+1).trim()??"";
+          const source=body?.data?.snapshotAsOf;
+          if(header("x-geomacro-native-clock-contract")!=="live-60m-v1")throw Error("GRI_WORKER_CODE_NOT_ACTIVE");
+          if(!originalSourceIsCurrent(source)||!originalSourceIsCurrent(header("x-geomacro-source-as-of"))||
+             Date.parse(source)!==Date.parse(header("x-geomacro-source-as-of")))
+            throw Error("GRI_ORIGINAL_SOURCE_OLDER_THAN_60M");
+          if(!(
+             header("x-geomacro-b2-verification")==="full-readback-hash-exact-restore"||
+             /^(github-actions-b2-readback-verified|d1-b2-readback-verified-hot-snapshot)$/.test(header("x-geomacro-continuity"))
+          ))throw Error("GRI_PUBLIC_PROOF_MISSING");
+          if(/stale-while-revalidate|stale-if-error/.test(header("cache-control")))
+            throw Error("GRI_EXPIRED_CDN_REPLAY_ENABLED");
+          console.log("PASS: fresh GRI original source and new proof-gated Worker code");
+          NODE
+
       - name: Confirm narrow non-destructive serving boundary
         shell: bash
         run: |
