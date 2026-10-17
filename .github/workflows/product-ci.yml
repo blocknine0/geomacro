@@ -50,6 +50,14 @@ jobs:
           mkdir -p artifacts
           bun run test:app 2>&1 | tee artifacts/product-ci-tests.log
 
+      - name: Setup Node 24 for shared TypeScript contract verification
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+
+      - name: Native Circle Facilitator verification (offline, no funds)
+        run: node --test scripts/lib/circle-facilitator-verification.test.mjs
+
       - name: Supabase-free verified Intelligence publication contract (no network or funds)
         run: |
           node --test scripts/ops/supabase-free-public-intelligence-publisher.test.mjs \
